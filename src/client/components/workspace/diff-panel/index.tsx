@@ -5,6 +5,7 @@ import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
 import { UnifiedView } from '@/client/components/workspace/diff-panel/UnifiedView';
 import { SplitView } from '@/client/components/workspace/diff-panel/SplitView';
+import { usePluginDiffView } from '@/client/components/workspace/editor/plugin-file-view';
 import { AlertCircle, RefreshCw } from 'lucide-preact';
 
 interface DiffPanelProps {
@@ -131,6 +132,8 @@ export function DiffPanel({
     [rawDiff, ignoreWhitespace, viewMode],
   );
   const language = getLanguageFromPath(filePath);
+  // A contributed renderer replaces the built-in views below, never the toolbar.
+  const pluginDiffView = usePluginDiffView({ path: filePath, diff: rawDiff });
 
   const handleSetViewMode = (mode: DiffViewMode) => {
     setViewMode(mode);
@@ -296,6 +299,8 @@ export function DiffPanel({
               Retry
             </button>
           </div>
+        ) : pluginDiffView ? (
+          <pluginDiffView.Component {...pluginDiffView.props} />
         ) : viewMode === 'split' ? (
           <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} />
         ) : (

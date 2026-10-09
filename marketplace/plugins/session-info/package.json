@@ -10,7 +10,16 @@
     "version": "1.0.0",
     "description": "Shows the active workspace and keeps a note per session.",
     "app": "dist/app.js",
-    "icon": "icon.svg"
+    "server": "dist/server.js",
+    "icon": "icon.svg",
+    "settings": {
+      "notePrefix": {
+        "type": "string",
+        "label": "Note prefix",
+        "description": "Prepended to every note saved by the server half.",
+        "default": ""
+      }
+    }
   },
   "peerDependencies": {
     "@ompchamber/plugin-sdk": "*",

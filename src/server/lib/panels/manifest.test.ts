@@ -83,6 +83,72 @@ describe('toManifest', () => {
   test('refuses a non-object body', () => {
     expect(toManifest('nope', ROOT)).toMatchObject({ error: expect.stringContaining('not an object') });
   });
+
+  test('accepts a server-only manifest with no app', () => {
+    expect(toManifest({ ...MANIFEST, app: undefined, server: 'dist/server.js' }, ROOT)).toMatchObject({
+      server: 'dist/server.js',
+    });
+  });
+
+  test('refuses a manifest with neither an app nor a server', () => {
+    expect(toManifest({ ...MANIFEST, app: undefined }, ROOT)).toMatchObject({
+      error: expect.stringContaining('no "app" bundle or "server" entry'),
+    });
+  });
+
+  test('refuses a server path escaping the plugin root', () => {
+    expect(toManifest({ ...MANIFEST, server: '../outside.js' }, ROOT)).toMatchObject({
+      error: expect.stringContaining('escapes the plugin directory'),
+    });
+  });
+
+  test('carries a well-formed engines and capabilities block through', () => {
+    const manifest = { ...MANIFEST, engines: { ompchamber: '^1.2', pluginSdk: '~2.0' }, capabilities: ['panel'] };
+    expect(toManifest(manifest, ROOT)).toMatchObject({
+      engines: { ompchamber: '^1.2', pluginSdk: '~2.0' },
+      capabilities: ['panel'],
+    });
+  });
+
+  test('refuses a malformed range rather than passing it', () => {
+    expect(toManifest({ ...MANIFEST, engines: { ompchamber: 'not a range' } }, ROOT)).toMatchObject({
+      error: expect.stringContaining('is not a valid version range'),
+    });
+    expect(toManifest({ ...MANIFEST, engines: { ompchamber: '  ' } }, ROOT)).toMatchObject({
+      error: expect.stringContaining('is not a version range'),
+    });
+  });
+
+  test('refuses an unknown engines key', () => {
+    expect(toManifest({ ...MANIFEST, engines: { chamber: '^1' } }, ROOT)).toMatchObject({
+      error: expect.stringContaining('unknown key'),
+    });
+  });
+
+  test('refuses a capabilities value that is not an array of strings', () => {
+    expect(toManifest({ ...MANIFEST, capabilities: 'panel' }, ROOT)).toMatchObject({
+      error: expect.stringContaining('is not an array'),
+    });
+    expect(toManifest({ ...MANIFEST, capabilities: ['panel', ''] }, ROOT)).toMatchObject({
+      error: expect.stringContaining('invalid entry'),
+    });
+  });
+
+  test('carries a well-formed settings definition through', () => {
+    const manifest = { ...MANIFEST, settings: { note: { type: 'string', label: 'Note', default: 'hi' } } };
+    expect(toManifest(manifest, ROOT)).toMatchObject({
+      settings: { note: { type: 'string', label: 'Note', default: 'hi' } },
+    });
+  });
+
+  test('refuses a settings definition the host cannot render', () => {
+    expect(toManifest({ ...MANIFEST, settings: { mode: { type: 'select', label: 'Mode' } } }, ROOT)).toMatchObject({
+      error: expect.stringContaining('unknown type'),
+    });
+    expect(toManifest({ ...MANIFEST, settings: { mode: { type: 'string' } } }, ROOT)).toMatchObject({
+      error: expect.stringContaining('no label'),
+    });
+  });
 });
 
 describe('toMarketplaceCatalog', () => {

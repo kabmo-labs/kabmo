@@ -20,6 +20,7 @@ import type { SetSearchParams } from '@/client/lib/router/search-params';
 import { applyComposerPick, consumeComposerPick, stashComposerPick, type DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
 import { useNewChatSubmit } from '@/client/hooks/chat/timeline/new-chat';
 import { dispatchBtwCommand } from '@/client/hooks/chat/btw/intercept';
+import { dispatchPluginCommand } from '@/client/hooks/chat/timeline/plugin-commands';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
 import { createQueueActions } from '@/client/hooks/chat/timeline/queue-actions';
 import { reportSteerOutcome } from '@/shared/lib/chat/timeline/steer-report';
@@ -163,6 +164,18 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // implements it in the TUI only), so the guard would refuse the very
     // command the chamber answers with a panel.
     if (dispatchBtwCommand(textToSend, attachments)) {
+      setInputValue('');
+      return;
+    }
+
+    // A command a PLUGIN contributed through the `commandPaletteAction` slot is
+    // answered by that plugin, exactly like a chamber command: it is local work
+    // the popup advertised, so it must never reach the model as literal text
+    // (RPC has no expansion for it, and omp would improvise a whole turn around
+    // the string). MUST run before the TUI-only guard below: a plugin may
+    // legitimately claim a name omp implements only in its TUI, and refusing
+    // the row the popup just offered would be the composer contradicting itself.
+    if (dispatchPluginCommand(textToSend)) {
       setInputValue('');
       return;
     }

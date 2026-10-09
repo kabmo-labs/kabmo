@@ -6,8 +6,7 @@
 /**
  * Panel-plugin discovery for the single bundled marketplace.
  *
- * The rules pinned here are the ones a wrong answer makes invisible rather than
- * loud:
+ * The rules pinned here are the ones a wrong answer makes invisible:
  *
  * - a manifest naming a path that escapes its own root must be REJECTED, not
  *   served — the asset route would otherwise read any file the server can open;
@@ -15,13 +14,12 @@
  * - a directory that IS a plugin but is broken must be REPORTED with its reason;
  * - a plugin present under `plugins/` but absent from the catalog still loads —
  *   that is what makes a hand-copied folder work;
- * - a catalog entry naming a missing directory is reported, because the file
- *   says "installed" while nothing is there;
+ * - a catalog entry naming a missing directory is reported, because the file says "installed";
  * - a duplicate panel key is dropped and reported;
- * - the cache is invalidated explicitly, because a plugin written by an install
- *   must appear without a restart;
- * - the disabled set is keyed by the PREFIXED panel id, so one stored list
- *   answers for a built-in view and a plugin alike.
+ * - the cache is invalidated explicitly, so an install appears without a restart;
+ * - the disabled set is keyed by the PREFIXED panel id, one list for both kinds;
+ * - an unsatisfiable `engines` range or a capability this host lacks is refused
+ *   BY NAME, with both sides of the comparison in the reason.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -38,6 +36,7 @@ import {
   invalidatePanelScan,
 } from '@/server/lib/panels/registry.server';
 import { setPluginEnabled } from '@/server/lib/panels/state.server';
+import { runningVersions } from '@/server/lib/panels/compat.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 let root = '';
@@ -62,6 +61,13 @@ function writePlugin(dirName: string, manifest: unknown): string {
   // reported as UNBUILT, which is a different list.
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
   return dir;
+}
+
+/** Write one plugin and scan it: the payload a compatibility test asserts on. */
+async function scanWith(manifest: unknown) {
+  writePlugin('demo', manifest);
+  invalidatePanelScan();
+  return discoverPanelPlugins();
 }
 
 beforeEach(() => {
@@ -312,5 +318,32 @@ describe('discoverPanelPlugins', () => {
     expect(payload.disabledPanels).toEqual(['demo']);
     expect(payload.panels.map((panel) => panel.pluginId)).toEqual(['demo']);
     expect(payload.plugins[0].enabled).toBe(true);
+  });
+
+  test('a satisfied engines range loads, and an absent one does too', async () => {
+    // Absent means "any": every plugin that predates these fields keeps working.
+    for (const engines of [undefined, { ompchamber: '>=1.0.0' }]) {
+      const { panels, errors } = await scanWith({ ...VALID, engines });
+      expect(errors).toEqual([]);
+      expect(panels).toHaveLength(1);
+    }
+  });
+
+  test('an unsatisfiable engines.ompchamber is refused, naming both versions', async () => {
+    const { panels, errors } = await scanWith({ ...VALID, engines: { ompchamber: '^9.0.0' } });
+    expect(panels).toEqual([]);
+    expect(errors[0].reason).toContain('^9.0.0');
+    expect(errors[0].reason).toContain(String((await runningVersions()).ompchamber));
+  });
+
+  test('an unknown capability is refused by name', async () => {
+    const { panels, errors } = await scanWith({ ...VALID, capabilities: ['storage'] });
+    expect(panels).toEqual([]);
+    expect(errors[0].reason).toContain('capability "storage"');
+  });
+
+  test('a malformed range is refused as malformed, not as a mismatch', async () => {
+    const { errors } = await scanWith({ ...VALID, engines: { ompchamber: 'not a range' } });
+    expect(errors[0].reason).toContain('is not a valid version range');
   });
 });

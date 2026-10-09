@@ -10,6 +10,7 @@ import { SystemNotice } from '@/client/components/workspace/chat-timeline/System
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { AttachmentChips } from '@/client/components/workspace/chat-timeline/AttachmentChips';
 import { CopyButton } from '@/client/components/common/CopyButton';
+import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { isNoticeRow, messageAnswerText } from '@/shared/lib/chat/notice-row';
 import { formatMessageStamp } from '@/shared/lib/format/time';
@@ -157,6 +158,10 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 <MessageSquarePlus size={12} />
               </button>
             )}
+
+            {/* Plugin contributions, in store order. The empty slot renders
+                nothing, so a chamber with no plugins keeps this strip intact. */}
+            <PluginMessageActions messageId={String(msg.id)} role="user" text={typeof msg.content === 'string' ? msg.content : ''} />
           </div>
         </div>
       </div>

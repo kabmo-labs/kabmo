@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import { Bot, Brain, Clock3, Coins, Hourglass, MessageSquarePlus, MoreHorizontal, RotateCcw, X } from 'lucide-preact';
 import { CopyButton } from '@/client/components/common/CopyButton';
+import { PluginMessageActions } from '@/client/components/workspace/chat-timeline/PluginMessageActions';
 import { formatDuration } from '@/shared/lib/chat/duration';
 import { providerLabel } from '@/shared/lib/models/provider/label';
 import { formatCompactTokens } from '@/shared/lib/format/number';
@@ -220,6 +221,9 @@ export function AiMessageFooter({
                     </button>
                   </>
                 )}
+                {/* Plugin contributions sit after the built-ins, in store order;
+                    an empty slot adds no row to this sheet. */}
+                <PluginMessageActions messageId={msgId} role="ai" text={content} />
               </div>
             </div>
           </div>
@@ -264,6 +268,9 @@ export function AiMessageFooter({
             <MessageSquarePlus size={12} />
           </button>
         )}
+        {/* Plugin contributions sit after the built-ins, in store order; an
+            empty slot renders nothing at all, so the strip is unchanged. */}
+        <PluginMessageActions messageId={msgId} role="ai" text={content} />
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ import type {
   SettingsSectionProps,
 } from '@ompchamber/plugin-sdk/app';
 import { isPluginAppDefinition } from '@ompchamber/plugin-sdk/app';
+import { clearPluginListSlots, registerListSlot } from '@/client/lib/plugins/list-slots';
 
 /** The four slots a plugin may fill, one component each. */
 export type SlotName = 'rightPanel' | 'panel' | 'headerPanel' | 'settingsSection';
@@ -142,6 +143,12 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
   const sizing: PluginSlots['sizing'] = {};
   let headerDropdown: unknown;
 
+  // A bundle re-imported under a new URL (a rebuild) registers AGAIN, and the
+  // list slots refuse a duplicate id — so the previous rows go first. Doing it
+  // here rather than per registration is what keeps a rebuilt plugin from
+  // throwing on its own ids.
+  clearPluginListSlots(pluginId);
+
   const register = (
     slot: SlotName,
     component: unknown,
@@ -169,6 +176,19 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
       if (dropdown) headerDropdown = dropdown.component;
     },
     settingsSection: ({ id, title, component }) => register('settingsSection', component, id, title),
+    // The list slots: each is a keyed registration that RETURNS its own
+    // disposer, which the plugin may call to take one row back. They are not
+    // tracked here — `clearPluginListSlots` at the top of this function is what
+    // a re-registration relies on, and the disposer the plugin holds is the
+    // only handle that should ever remove its row.
+    messageAction: (registration) => registerListSlot(pluginId, 'messageAction', registration),
+    commandPaletteAction: (registration) => registerListSlot(pluginId, 'commandPaletteAction', registration),
+    fileOpener: (registration) => registerListSlot(pluginId, 'fileOpener', registration),
+    sourceCodeRenderer: (registration) => registerListSlot(pluginId, 'sourceCodeRenderer', registration),
+    diffRenderer: (registration) => registerListSlot(pluginId, 'diffRenderer', registration),
+    timelineRenderer: (registration) => registerListSlot(pluginId, 'timelineRenderer', registration),
+    composerAction: (registration) => registerListSlot(pluginId, 'composerAction', registration),
+    composerBanner: (registration) => registerListSlot(pluginId, 'composerBanner', registration),
   };
 
   try {

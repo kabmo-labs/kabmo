@@ -7,6 +7,7 @@ import { QueueList } from '@/client/components/workspace/chat-timeline/QueueList
 import type { Attachment, QueuedMessage } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
+import { PluginComposerBanners } from '@/client/components/workspace/chat-timeline/chat-input/PluginComposerSlots';
 
 interface ComposerDockProps {
   isMobile: boolean;
@@ -104,6 +105,10 @@ export function ComposerDock({
       {/* `relative` keeps the queue/indicator stack anchored above the input
           while the side-question form takes the composer's place. */}
       <div className="relative mx-auto w-full max-w-[970px]">
+        {/* Plugin banner strip: above the input, in the chat's own composer.
+            An empty slot renders nothing, so a chamber with no plugins keeps
+            this dock byte-identical. */}
+        <PluginComposerBanners />
         {showGeneratingIndicator && (
           <GeneratingIndicator
             modelName={modelName}

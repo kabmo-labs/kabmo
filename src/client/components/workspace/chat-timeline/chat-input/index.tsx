@@ -343,6 +343,7 @@ export function ChatInput({
         voiceListening={voiceListening}
         voiceBusy={voiceBusy}
         onVoiceToggle={handleVoiceToggle}
+        text={value}
       />
     </div>
   );

@@ -26,6 +26,8 @@ import { DiffView } from '@/client/components/workspace/chat-timeline/tool-rende
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
 import { ToolDetailsPanel, resolveToolKey } from '@/client/components/workspace/chat-timeline/tool-renderers';
+import { usePluginTimelineRenderer } from '@/client/components/workspace/chat-timeline/tool-renderers/plugin-renderers';
+import { usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 import { toolSummary } from '@/shared/lib/chat/tool/summary';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
@@ -61,6 +63,12 @@ export const ToolCallCard = memo(function ToolCallCard({ tool, isOpen, onToggle,
   // built the panel's VNode and threw it away, once per card per streaming
   // frame. `toolPanelKind` is a lookup, so this is free.
   const hasPanel = useMemo(() => toolPanelKind(tool) !== null, [tool]);
+  // A plugin renderer is consulted only for a tool the host has NO panel for,
+  // so a plugin can ship its own agent tool without shadowing `bash` or `read`.
+  const pluginRenderer = usePluginTimelineRenderer(toolKey);
+  const slotContext = usePluginSlotContext();
+  const pluginPanel = hasPanel ? null : pluginRenderer;
+  const hasBody = hasPanel || pluginPanel !== null;
   const summary = useMemo(() => toolSummary(tool), [tool]);
   const header = useMemo(() => toolCardHeader(tool, toolKey), [tool, toolKey]);
   const subtitle = toolCardSubtitle(tool, header);
@@ -74,8 +82,8 @@ export const ToolCallCard = memo(function ToolCallCard({ tool, isOpen, onToggle,
   }, [onToggle, tool.id]);
 
   const inputJson = useMemo(
-    () => (!hasPanel && commandOrInput ? tryParseJson(commandOrInput) : null),
-    [hasPanel, commandOrInput]
+    () => (!hasBody && commandOrInput ? tryParseJson(commandOrInput) : null),
+    [hasBody, commandOrInput]
   );
 
   // A reminder envelope in the result is the runtime interrupting the call, not
@@ -125,9 +133,18 @@ export const ToolCallCard = memo(function ToolCallCard({ tool, isOpen, onToggle,
       defaultExpanded={defaultExpanded}
       alwaysExpanded={hasPanel && (toolKey === 'yield' || toolKey === 'goal' || toolKey === 'ask')}
     >
-      <ToolDetailsPanel tool={tool} />
+      {pluginPanel ? (
+        <pluginPanel.component
+          {...slotContext}
+          toolName={toolKey}
+          args={tool.input}
+          output={outputText}
+        />
+      ) : (
+        <ToolDetailsPanel tool={tool} />
+      )}
 
-      {!hasPanel && commandOrInput && (
+      {!hasBody && commandOrInput && (
         <div className="space-y-1.5 code-surface">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -159,14 +176,14 @@ export const ToolCallCard = memo(function ToolCallCard({ tool, isOpen, onToggle,
         </div>
       )}
 
-      {!hasPanel && diffText && (
+      {!hasBody && diffText && (
         <div className="space-y-1.5">
           <SectionLabel>Diff</SectionLabel>
           <DiffView text={diffText} path={subtitle} />
         </div>
       )}
 
-      {!hasPanel && outputText && (
+      {!hasBody && outputText && (
         <FallbackOutput text={outputText} />
       )}
     </ToolCardShell>

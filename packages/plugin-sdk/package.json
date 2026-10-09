@@ -5,7 +5,25 @@
   "description": "The contract between a panel plugin and the OMPChamber host.",
   "exports": {
     ".": "./src/index.ts",
-    "./app": "./src/app.ts"
+    "./app": "./src/app.ts",
+    "./testing": "./src/testing/index.ts",
+    "./testing/app": "./src/testing/app.tsx"
+  },
+  "peerDependencies": {
+    "@ompchamber/ui": "*",
+    "happy-dom": "*",
+    "preact": "^10.29.8"
+  },
+  "peerDependenciesMeta": {
+    "@ompchamber/ui": {
+      "optional": true
+    },
+    "happy-dom": {
+      "optional": true
+    },
+    "preact": {
+      "optional": true
+    }
   },
   "files": [
     "src"

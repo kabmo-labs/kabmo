@@ -4,6 +4,7 @@ import { ModelDropdown } from '@/client/components/workspace/model-dropdown/inde
 import { ThinkingLevelDropdown } from '@/client/components/workspace/chat-timeline/chat-input/ThinkingLevelDropdown';
 import { AccessDropdown } from '@/client/components/workspace/chat-timeline/chat-input/AccessDropdown';
 import { ModeToggles } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
+import { PluginComposerActions } from '@/client/components/workspace/chat-timeline/chat-input/PluginComposerSlots';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
@@ -50,6 +51,8 @@ export interface ComposerToolbarProps {
   /** True from release until the transcript lands; the button shows a spinner. */
   voiceBusy?: boolean;
   onVoiceToggle?: () => void;
+  /** The draft, handed to a plugin `composerAction` at render time. */
+  text?: string;
 }
 
 /**
@@ -89,6 +92,7 @@ export function ComposerToolbar({
   voiceListening,
   voiceBusy,
   onVoiceToggle,
+  text = '',
 }: ComposerToolbarProps) {
   const chatInFlight = chatRunning ?? isGenerating;
   const showStop = chatInFlight && (isMobile ? Boolean(onStop) : true);
@@ -142,6 +146,9 @@ export function ComposerToolbar({
       </div>
 
       <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Plugin contributions sit before the built-in controls, in store
+            order. An empty slot renders nothing, so this row is unchanged. */}
+        <PluginComposerActions text={text} isSubmitting={chatInFlight} />
         {/* Voice input — only when the browser can capture audio. Idle ▸ mic,
             recording ▸ pulsing red mic-off, transcribing ▸ spinner. */}
         {voiceSupported && (

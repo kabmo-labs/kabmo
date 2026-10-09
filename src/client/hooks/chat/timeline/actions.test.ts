@@ -13,17 +13,21 @@
  * wrong silently refuses the one command the chamber does answer.
  *
  * Pinned here: a btw draft fires `omp:btw` (question + attachments) and never
- * calls the send path, while clearing the composer; a plain prompt passes
- * through untouched; a TUI-only command is refused locally with a notice and
- * the draft is KEPT; and while a turn streams a plain submit is queued with the
- * composer's model/access snapshot.
+ * calls the send path, while clearing the composer; a plugin's
+ * `commandPaletteAction` runs the plugin with its parsed args and is likewise
+ * never sent; a plain prompt passes through untouched; a TUI-only command is
+ * refused locally with a notice and the draft is KEPT; and while a turn streams
+ * a plain submit is queued with the composer's model/access snapshot.
  */
 
 import { afterEach, beforeAll, afterAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
+import type { CommandActionContext } from '@ompchamber/plugin-sdk';
 import type { Attachment, ChatMessageData } from '@/shared/types';
+import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
+import { setPluginContext } from '@/client/lib/plugins/context';
 import {
   useChatTimelineActions,
   type ChatTimelineActionsDeps,
@@ -71,6 +75,8 @@ afterEach(() => {
   container?.remove();
   actions = null;
   attachmentsForClick = [];
+  resetListSlots();
+  setPluginContext(null, null);
 });
 
 interface Recorded {
@@ -258,5 +264,47 @@ describe('handleSend', () => {
     expect(sends).toEqual([{ text: 'raced the run', attachments: [] }]);
     expect(rec.queued).toHaveLength(1);
     expect(rec.queued[0]?.text).toBe('raced the run');
+  });
+
+  // The popup offers a plugin's `commandPaletteAction` as a `/command` row, so
+  // the send path must answer that token locally — a forwarded one would reach
+  // the model as literal text. `hotkeys` is deliberate (a TUI-only name): it
+  // pins that the plugin branch runs BEFORE the guard, otherwise the row the
+  // popup just offered would be refused with a notice.
+  test('a plugin command runs the plugin, sends nothing, and clears the draft', async () => {
+    const runs: Array<{ args: string; sessionId: string | null; workspacePath: string | null }> = [];
+    registerListSlot('plug', 'commandPaletteAction', {
+      id: 'hotkeys-row',
+      command: 'hotkeys',
+      description: 'Show the hotkeys',
+      run: (context: CommandActionContext) => {
+        runs.push({ args: context.args, sessionId: context.sessionId, workspacePath: context.workspacePath });
+      },
+    });
+    setPluginContext('sess-1', '/repo');
+    const rec = makeRecorded({ inputValue: '/hotkeys global' });
+
+    await (await mount(rec.deps)).clickSend();
+
+    expect(runs).toEqual([{ args: 'global', sessionId: 'sess-1', workspacePath: '/repo' }]);
+    expect(rec.sends).toEqual([]);
+    expect(rec.drafts).toEqual(['']);
+    expect(rec.deps.localMessagesRef.current).toEqual([]);
+  });
+
+  test('a slash command no plugin registered still follows the normal send path', async () => {
+    registerListSlot('plug', 'commandPaletteAction', {
+      id: 'deploy-row',
+      command: 'deploy',
+      description: 'Deploy the workspace',
+      run: () => {},
+    });
+    // `fix` is neither registered here nor in the TUI-only table, so nothing
+    // intercepts it: it must reach the send path as an ordinary prompt.
+    const rec = makeRecorded({ inputValue: '/fix the failing test' });
+
+    await (await mount(rec.deps)).clickSend();
+
+    expect(rec.sends).toEqual([{ text: '/fix the failing test', attachments: [], scope: 'sess-1' }]);
   });
 });
