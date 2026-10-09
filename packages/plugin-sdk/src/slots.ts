@@ -25,6 +25,15 @@
  */
 
 import type { ComponentType } from 'preact';
+// The four slots that reach INTO the conversation live in their own module and
+// are re-exported here, so an author imports one path either way.
+import type {
+  ContentScriptRegistration,
+  MessageDirectiveRegistration,
+  PendingInteractionRegistration,
+  ProviderIconRegistration,
+} from './slots-agent';
+export * from './slots-agent';
 
 /**
  * Props every list-slot component receives.
@@ -223,6 +232,18 @@ export interface PluginListSlots {
   timelineRenderer(registration: TimelineRendererRegistration): () => void;
   composerAction(registration: ComposerActionRegistration): () => void;
   composerBanner(registration: ComposerBannerRegistration): () => void;
+  providerIcon(registration: ProviderIconRegistration): () => void;
+  pendingInteraction(registration: PendingInteractionRegistration): () => void;
+  /**
+   * A fenced-block renderer.
+   *
+   * The one slot whose KEY is matched across plugins rather than within one:
+   * two plugins claiming `omp:chart` would make the same fence render
+   * differently depending on registration order, so a name already claimed by
+   * ANY plugin is refused.
+   */
+  messageDirective(registration: MessageDirectiveRegistration): () => void;
+  contentScript(registration: ContentScriptRegistration): () => void;
 }
 
 /** Every list slot's name, so a store can be built from one list. */
@@ -235,6 +256,22 @@ export const LIST_SLOT_NAMES = [
   'timelineRenderer',
   'composerAction',
   'composerBanner',
+  'providerIcon',
+  'pendingInteraction',
+  'messageDirective',
+  'contentScript',
 ] as const;
 
 export type ListSlotName = (typeof LIST_SLOT_NAMES)[number];
+
+/**
+ * The slots whose registration key must be unique ACROSS plugins, not only
+ * within one.
+ *
+ * A row among rows (`messageAction`) may repeat a key across plugins — two
+ * plugins each having a `copy` action is two rows, and that is the point. A
+ * fence NAME cannot: the same `omp:chart` resolving to one plugin or another by
+ * registration order is a renderer that changes when an unrelated plugin is
+ * installed.
+ */
+export const GLOBALLY_KEYED_SLOTS: readonly ListSlotName[] = ['messageDirective'];

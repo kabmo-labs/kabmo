@@ -107,6 +107,84 @@ export interface UiKitServices {
   readWorkspaceFile(workspacePath: string | null, relativePath: string): Promise<string>;
   /** The chamber's markdown renderer, so a plugin does not bundle a second one. */
   markdown?(): ComponentType<HostMarkdownProps> | null;
+
+  // -------------------------------------------------------------------------
+  // The participant seam: what lets a plugin act on the conversation, not only
+  // draw beside it.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Call one of a plugin's server methods.
+   *
+   * `pluginId` is the FIRST argument and the kit supplies it from the Preact
+   * context of the subtree the call was made in — so a plugin never names its
+   * own namespace, and a component rendered for plugin A cannot reach plugin B.
+   * The host is the one party that cannot be wrong about which plugin it is
+   * running.
+   *
+   * The result is the WIRE shape the route answers with: `{ ok: true, value }`
+   * or `{ ok: false, error }` at HTTP 200, because a plugin's own refusal is a
+   * value rather than a transport failure. A hook that flattened the two would
+   * turn "the plugin said no" into "the network broke", which is the one
+   * distinction the route exists to preserve.
+   */
+  callRpc?(pluginId: string, method: string, input: unknown): Promise<PluginRpcOutcome>;
+  /** Subscribe to a plugin's own realtime topic. Returns an unsubscribe. */
+  subscribePluginTopic?(pluginId: string, listener: (value: unknown) => void): () => void;
+  /** The plugin's topic value as it stands, for a first render before a frame. */
+  readPluginTopic?(pluginId: string): unknown;
+  /** Ask the server for a fresh snapshot of the plugin's topic. */
+  refreshPluginTopic?(pluginId: string): void;
+  /** Whether the value on hand is not known to be current. */
+  pluginTopicStale?(pluginId: string): boolean;
+
+  /**
+   * The composer's live state and its writes.
+   *
+   * `write` goes through the SAME state the chat owns, not the DOM: the
+   * composer is a controlled textarea, so a DOM write is reverted by the next
+   * keystroke and the plugin's edit vanishes with no error.
+   */
+  composer?(): ComposerService;
+  /** Subscribe to composer changes (a keystroke, a run starting, a send). */
+  subscribeComposer?(listener: (state: ComposerState) => void): () => void;
+}
+
+/**
+ * One RPC call's failure, as the wire carries it.
+ *
+ * `issues` is the schema's own report, passed through so a plugin can render
+ * which argument was wrong rather than only that something was.
+ */
+export interface PluginRpcError {
+  code: string;
+  message: string;
+  issues?: readonly { message: string; path?: readonly (string | number)[] }[];
+}
+
+/**
+ * One RPC call's outcome, mirroring the wire exactly.
+ */
+export type PluginRpcOutcome = { ok: true; value: unknown } | { ok: false; error: PluginRpcError };
+
+/** What a plugin may read of the composer. */
+export interface ComposerState {
+  /** The draft as it stands. */
+  text: string;
+  isEmpty: boolean;
+  /** A run is in flight, so a send-like action should disable itself. */
+  isSubmitting: boolean;
+  /** Where this composer writes: a session's chat, or a not-yet-created one. */
+  scope: { kind: 'session' | 'new'; sessionId: string | null };
+}
+
+/** The composer's writes, for a plugin that drives it rather than reading it. */
+export interface ComposerService extends ComposerState {
+  /** Replace the draft. */
+  set(text: string): void;
+  /** Insert at the caret, leaving the rest of the draft alone. */
+  insert(text: string): void;
+  focus(): void;
 }
 
 let services: UiKitServices | null = null;

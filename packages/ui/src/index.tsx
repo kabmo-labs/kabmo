@@ -26,9 +26,10 @@
  *
  * | Module | What it holds |
  * |---|---|
- * | `./services` | The injected services and the two prop contracts |
+ * | `./services` | The injected services and the prop contracts |
  * | `./panels` | `usePanelInfo`, `usePanelHost`, `useSessionValue`, `useWorkspaceFile`, the scrollbar fade |
  * | `./fetch` | `useChamberFetch` — a plugin's own read of the chamber's HTTP API (poll + events) |
+ * | `./participant` | `useRpc`, `useRealtime`, `useComposer` — what lets a plugin ACT on the conversation |
  * | `./components` | The presentation kit (`Panel`, `Field`, `Button`, …) |
  */
 
@@ -37,6 +38,10 @@ export type {
   PanelHostProps,
   HostMarkdownProps,
   UiKitServices,
+  PluginRpcError,
+  PluginRpcOutcome,
+  ComposerState,
+  ComposerService,
 } from './services';
 export { configureUiKit, uiKitServices, requireServices } from './services';
 
@@ -53,7 +58,17 @@ export {
 } from './panels';
 
 export { PanelHostProvider, usePanelHost } from './panel-host';
+export { PluginIdProvider, usePluginId } from './plugin-id';
 
 export { useChamberFetch, DEFAULT_POLL_MS, type ChamberFetchOptions, type ChamberFetchState } from './fetch';
+
+export {
+  useRpc,
+  useRealtime,
+  useComposer,
+  type RpcState,
+  type PluginRealtimeState,
+  type ComposerHandle,
+} from './participant';
 
 export * from './components';

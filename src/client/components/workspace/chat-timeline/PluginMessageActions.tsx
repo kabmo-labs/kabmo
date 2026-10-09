@@ -20,6 +20,7 @@
 
 import type { MessageActionRegistration } from '@ompchamber/plugin-sdk';
 import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
 interface PluginMessageActionsProps {
@@ -40,13 +41,9 @@ export function PluginMessageActions({ messageId, role, text }: PluginMessageAct
       {rows.map((entry: ListSlotEntry<MessageActionRegistration>) => {
         const Component = entry.registration.component;
         return (
-          <Component
-            key={`${entry.pluginId}:${entry.registration.id}`}
-            {...context}
-            messageId={messageId}
-            role={role}
-            text={text}
-          />
+          <PluginIdProvider key={`${entry.pluginId}:${entry.registration.id}`} pluginId={entry.pluginId}>
+            <Component {...context} messageId={messageId} role={role} text={text} />
+          </PluginIdProvider>
         );
       })}
     </>

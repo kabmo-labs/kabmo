@@ -139,6 +139,7 @@ export function ComposerDock({
           <ChatInput
             value={inputValue}
             onChange={setInputValue}
+            sessionId={sessionId}
             rootPath={rootPath}
             attachments={attachments}
             onAttachmentsChange={setAttachments}

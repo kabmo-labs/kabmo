@@ -14,6 +14,7 @@
  */
 
 import type { ComposerActionRegistration, ComposerBannerRegistration } from '@ompchamber/plugin-sdk';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
 interface PluginComposerActionsProps {
@@ -32,12 +33,9 @@ export function PluginComposerActions({ text, isSubmitting }: PluginComposerActi
       {rows.map((entry) => {
         const Component = entry.registration.component;
         return (
-          <Component
-            key={`${entry.pluginId}:${entry.registration.id}`}
-            {...context}
-            text={text}
-            isSubmitting={isSubmitting}
-          />
+          <PluginIdProvider key={`${entry.pluginId}:${entry.registration.id}`} pluginId={entry.pluginId}>
+            <Component {...context} text={text} isSubmitting={isSubmitting} />
+          </PluginIdProvider>
         );
       })}
     </>
@@ -52,7 +50,11 @@ export function PluginComposerBanners() {
     <>
       {rows.map((entry) => {
         const Component = entry.registration.component;
-        return <Component key={`${entry.pluginId}:${entry.registration.id}`} {...context} />;
+        return (
+          <PluginIdProvider key={`${entry.pluginId}:${entry.registration.id}`} pluginId={entry.pluginId}>
+            <Component {...context} />
+          </PluginIdProvider>
+        );
       })}
     </>
   );

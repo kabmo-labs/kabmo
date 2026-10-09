@@ -26,6 +26,7 @@ import type {
   ListSlotName,
   KeyedRegistration,
 } from '@ompchamber/plugin-sdk';
+import { GLOBALLY_KEYED_SLOTS } from '@ompchamber/plugin-sdk';
 
 /** One contributed row, with the plugin it came from already attached. */
 export interface ListSlotEntry<T = KeyedRegistration> {
@@ -69,13 +70,30 @@ function publish(): void {
   for (const listener of [...state().listeners]) listener();
 }
 
+/** Whether another plugin already claimed `id` for a globally-keyed slot. */
+function claimedElsewhere(slot: ListSlotName, id: string, byPlugin: string): string | null {
+  if (!GLOBALLY_KEYED_SLOTS.includes(slot)) return null;
+  for (const entry of state().entries.values()) {
+    if (entry.slot === slot && entry.registration.id === id && entry.pluginId !== byPlugin) return entry.pluginId;
+  }
+  return null;
+}
+
 /**
  * Register one row. Returns the disposer that takes exactly that row back.
  *
- * A duplicate `id` within the same plugin and slot THROWS rather than
- * replacing: the registration the plugin made first is the one it can address,
- * and a quiet overwrite would leave a component the host draws while the plugin
- * believes it registered something else.
+ * Two duplicate rules, and which applies is a property of the SLOT:
+ *
+ * - Within one plugin, a repeated `id` THROWS rather than replacing: the
+ *   registration the plugin made first is the one it can address, and a quiet
+ *   overwrite would leave a component the host draws while the plugin believes
+ *   it registered something else.
+ * - Across plugins, only a GLOBALLY-KEYED slot (`GLOBALLY_KEYED_SLOTS`) refuses
+ *   a duplicate. A row among rows may repeat a key — two plugins each having a
+ *   `copy` action is two rows, and that is the point — while a fence NAME may
+ *   not: the same `omp:chart` resolving to one plugin or another by
+ *   registration order is a renderer that changes when an unrelated plugin is
+ *   installed.
  */
 export function registerListSlot<T extends KeyedRegistration>(
   pluginId: string,
@@ -88,6 +106,8 @@ export function registerListSlot<T extends KeyedRegistration>(
   const entries = state().entries;
   const key = entryKey(pluginId, slot, registration.id);
   if (entries.has(key)) throw new Error(`${slot} "${registration.id}" is already registered by this plugin`);
+  const owner = claimedElsewhere(slot, registration.id, pluginId);
+  if (owner) throw new Error(`${slot} "${registration.id}" is already claimed by plugin "${owner}"`);
   entries.set(key, { pluginId, slot, registration });
   publish();
   return () => {

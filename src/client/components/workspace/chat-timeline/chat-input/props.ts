@@ -16,6 +16,12 @@ import type { ComposerModes } from '@/client/components/workspace/chat-timeline/
 
 export interface ChatInputProps {
   value: string;
+  /**
+   * The session this composer writes to, or null on a composer with no session
+   * yet (the New Chat modal). Published to the plugin kit as the composer's
+   * `scope`, so a plugin knows which conversation its draft belongs to.
+   */
+  sessionId?: string | null;
   onChange: (v: string) => void;
   onSend: (attachments: Attachment[], options?: { steering?: boolean }) => void;
   isGenerating: boolean;

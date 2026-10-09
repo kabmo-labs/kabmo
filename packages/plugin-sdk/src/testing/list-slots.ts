@@ -6,30 +6,36 @@
 /**
  * The fake host's LIST-slot registrar.
  *
- * Split from `./fake-host` for the repo's per-file size ceiling, and because the
- * two halves are different KINDS of registration: `./fake-host` records the four
- * POSITIONAL slots (one of each, a second is refused), while this module records
- * the eight LIST slots (a row among rows, keyed, each returning a disposer).
+ * A plugin's own tests need the registrations the host would have accepted,
+ * keyed the way the host keys them, with the host's own refusals — otherwise a
+ * test passes against a registrar that never validates and the plugin ships
+ * broken.
  *
- * The validation is written from the same rules as the host's own store
- * (`src/client/lib/plugins/list-slots.ts`) — message for message — because this
- * package is published and cannot import the host's source; a plugin author's
- * test must catch what the app would refuse.
+ * A TABLE, not a method per slot: the twelve registrations differ only in which
+ * array they write to and which key is globally unique, and a chain of
+ * near-identical blocks is where the next slot gets added to the interface and
+ * forgotten here (the failure is a type error at best, and a silently missing
+ * slot at worst — a test asserting on rows that were never recorded).
  */
 
 import type {
   CommandPaletteRegistration,
   ComposerActionRegistration,
   ComposerBannerRegistration,
+  ContentScriptRegistration,
   DiffRendererRegistration,
   FileOpenerRegistration,
   KeyedRegistration,
   ListSlotName,
   MessageActionRegistration,
+  MessageDirectiveRegistration,
+  PendingInteractionRegistration,
   PluginListSlots,
+  ProviderIconRegistration,
   SourceCodeRendererRegistration,
   TimelineRendererRegistration,
 } from '../slots';
+import { GLOBALLY_KEYED_SLOTS } from '../slots';
 
 /**
  * The list slots' rows, one array each, in registration order.
@@ -47,6 +53,10 @@ export interface FakeListRegistrations {
   timelineRenderers: TimelineRendererRegistration[];
   composerActions: ComposerActionRegistration[];
   composerBanners: ComposerBannerRegistration[];
+  providerIcons: ProviderIconRegistration[];
+  pendingInteractions: PendingInteractionRegistration[];
+  messageDirectives: MessageDirectiveRegistration[];
+  contentScripts: ContentScriptRegistration[];
 }
 
 export function emptyListRegistrations(): FakeListRegistrations {
@@ -59,23 +69,48 @@ export function emptyListRegistrations(): FakeListRegistrations {
     timelineRenderers: [],
     composerActions: [],
     composerBanners: [],
+    providerIcons: [],
+    pendingInteractions: [],
+    messageDirectives: [],
+    contentScripts: [],
   };
 }
 
+/** `ListSlotName` → the array that holds its rows. One row per slot. */
+const ARRAY_BY_SLOT: Record<ListSlotName, keyof FakeListRegistrations> = {
+  messageAction: 'messageActions',
+  commandPaletteAction: 'commandPaletteActions',
+  fileOpener: 'fileOpeners',
+  sourceCodeRenderer: 'sourceCodeRenderers',
+  diffRenderer: 'diffRenderers',
+  timelineRenderer: 'timelineRenderers',
+  composerAction: 'composerActions',
+  composerBanner: 'composerBanners',
+  providerIcon: 'providerIcons',
+  pendingInteraction: 'pendingInteractions',
+  messageDirective: 'messageDirectives',
+  contentScript: 'contentScripts',
+};
+
 /**
- * The store's own two refusals, message for message: a registration with no id,
- * and a duplicate id within the same plugin and slot.
+ * The store's own refusals, message for message: a registration with no id, a
+ * duplicate id within this plugin and slot, and — for a globally-keyed slot —
+ * an id another plugin already claimed.
  */
 function validateList(
   slot: ListSlotName,
   registration: KeyedRegistration,
   list: readonly KeyedRegistration[],
+  globallyKeyed: readonly KeyedRegistration[],
 ): void {
   if (!registration || typeof registration.id !== 'string' || !registration.id) {
     throw new Error(`${slot} registration needs a non-empty id`);
   }
   if (list.some((entry) => entry.id === registration.id)) {
     throw new Error(`${slot} "${registration.id}" is already registered by this plugin`);
+  }
+  if (GLOBALLY_KEYED_SLOTS.includes(slot) && globallyKeyed.some((entry) => entry.id === registration.id)) {
+    throw new Error(`${slot} "${registration.id}" is already claimed by another plugin`);
   }
 }
 
@@ -88,7 +123,7 @@ function removeListed<T extends KeyedRegistration>(list: T[], registration: T): 
 }
 
 /**
- * Build the eight keyed registrars over the harness's CURRENT state.
+ * Build the twelve keyed registrars over the harness's CURRENT state.
  *
  * `registrations` is read through a function rather than handed in as an object
  * so the registrar always writes where the harness reads: `harness.setup` swaps
@@ -96,54 +131,34 @@ function removeListed<T extends KeyedRegistration>(list: T[], registration: T): 
  * keep writing into the live one.
  */
 export function createListRegistrar(registrations: () => FakeListRegistrations): PluginListSlots {
+  /** Register one row, with the two duplicate rules the host's store applies. */
+  const register = <T extends KeyedRegistration>(slot: ListSlotName, registration: T): (() => void) => {
+    const state = registrations();
+    const list = state[ARRAY_BY_SLOT[slot]] as unknown as T[];
+    // A globally-keyed slot's cross-plugin view: the host refuses the second
+    // claim, and a fake that allowed it would let a plugin ship a fence name it
+    // can never own.
+    const elsewhere =
+      GLOBALLY_KEYED_SLOTS.includes(slot)
+        ? (Object.values(state).flat() as KeyedRegistration[]).filter((entry) => entry.id === registration.id)
+        : [];
+    validateList(slot, registration, list, elsewhere);
+    list.push(registration);
+    return removeListed(list, registration);
+  };
+
   return {
-    messageAction: (registration) => {
-      const list = registrations().messageActions;
-      validateList('messageAction', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    commandPaletteAction: (registration) => {
-      const list = registrations().commandPaletteActions;
-      validateList('commandPaletteAction', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    fileOpener: (registration) => {
-      const list = registrations().fileOpeners;
-      validateList('fileOpener', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    sourceCodeRenderer: (registration) => {
-      const list = registrations().sourceCodeRenderers;
-      validateList('sourceCodeRenderer', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    diffRenderer: (registration) => {
-      const list = registrations().diffRenderers;
-      validateList('diffRenderer', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    timelineRenderer: (registration) => {
-      const list = registrations().timelineRenderers;
-      validateList('timelineRenderer', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    composerAction: (registration) => {
-      const list = registrations().composerActions;
-      validateList('composerAction', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
-    composerBanner: (registration) => {
-      const list = registrations().composerBanners;
-      validateList('composerBanner', registration, list);
-      list.push(registration);
-      return removeListed(list, registration);
-    },
+    messageAction: (registration) => register('messageAction', registration),
+    commandPaletteAction: (registration) => register('commandPaletteAction', registration),
+    fileOpener: (registration) => register('fileOpener', registration),
+    sourceCodeRenderer: (registration) => register('sourceCodeRenderer', registration),
+    diffRenderer: (registration) => register('diffRenderer', registration),
+    timelineRenderer: (registration) => register('timelineRenderer', registration),
+    composerAction: (registration) => register('composerAction', registration),
+    composerBanner: (registration) => register('composerBanner', registration),
+    providerIcon: (registration) => register('providerIcon', registration),
+    pendingInteraction: (registration) => register('pendingInteraction', registration),
+    messageDirective: (registration) => register('messageDirective', registration),
+    contentScript: (registration) => register('contentScript', registration),
   };
 }

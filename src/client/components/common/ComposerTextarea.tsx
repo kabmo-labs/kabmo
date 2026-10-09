@@ -40,6 +40,15 @@ export interface ComposerTextareaProps {
    * content (`useAutoGrow`).
    */
   textareaRef?: RefObject<HTMLTextAreaElement>;
+  /**
+   * The composer's own element, for a caller that must WRITE into the draft
+   * (a plugin's `useComposer().insert`, which places at the caret).
+   *
+   * Separate from `textareaRef` because that one is owned by a caller that
+   * measures the box: two writers of one ref is how a plugin's caret position
+   * and a grow hook's measurement end up fighting over the same node.
+   */
+  onReady?: (element: HTMLTextAreaElement | null) => void;
 }
 
 export function ComposerTextarea({
@@ -55,6 +64,7 @@ export function ComposerTextarea({
   enablePicker = true,
   variant = 'desktop',
   textareaRef: externalRef,
+  onReady,
 }: ComposerTextareaProps): ReactElement {
   const isMobile = variant === 'mobile';
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,6 +74,7 @@ export function ComposerTextarea({
   const setTextareaRef = (node: HTMLTextAreaElement | null) => {
     textareaRef.current = node;
     if (externalRef) externalRef.current = node;
+    onReady?.(node);
   };
   const composer = useComposerTrigger({ value, setValue: onChange, textareaRef, disabled, rootPath, enabled: enablePicker });
 

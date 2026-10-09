@@ -189,6 +189,10 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
     timelineRenderer: (registration) => registerListSlot(pluginId, 'timelineRenderer', registration),
     composerAction: (registration) => registerListSlot(pluginId, 'composerAction', registration),
     composerBanner: (registration) => registerListSlot(pluginId, 'composerBanner', registration),
+    providerIcon: (registration) => registerListSlot(pluginId, 'providerIcon', registration),
+    pendingInteraction: (registration) => registerListSlot(pluginId, 'pendingInteraction', registration),
+    messageDirective: (registration) => registerListSlot(pluginId, 'messageDirective', registration),
+    contentScript: (registration) => registerListSlot(pluginId, 'contentScript', registration),
   };
 
   try {

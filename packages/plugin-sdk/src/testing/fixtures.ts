@@ -17,7 +17,14 @@
  * instead would exercise a seam no host has.
  */
 
-import type { PanelContext, PanelHostProps, UiKitServices } from '@ompchamber/ui';
+import type {
+  ComposerState,
+  PanelContext,
+  PanelHostProps,
+  PluginRpcError,
+  PluginRpcOutcome,
+  UiKitServices,
+} from '@ompchamber/ui';
 
 /** The session and workspace a fixture answers with when a test names none. */
 const DEFAULT_CONTEXT: PanelContext = { sessionId: 'session-1', workspacePath: '/workspace', theme: 'paper' };
@@ -107,6 +114,8 @@ export interface FakeUiKitOptions {
   context?: Partial<PanelContext>;
   /** Files `readWorkspaceFile` can answer, by workspace-relative path. */
   files?: Record<string, string>;
+  /** The composer's starting state. */
+  composer?: Partial<ComposerState>;
 }
 
 /**
@@ -114,7 +123,8 @@ export interface FakeUiKitOptions {
  *
  * It IS a `UiKitServices` — `configureUiKit` takes it directly — with the
  * controls the kit deliberately does not expose (move the context, read what a
- * plugin wrote) attached under names the service interface does not use.
+ * plugin wrote, answer an RPC call) attached under names the service interface
+ * does not use.
  */
 export interface FakeUiKit extends UiKitServices {
   /** The context as it stands. */
@@ -125,6 +135,40 @@ export interface FakeUiKit extends UiKitServices {
   readonly files: Map<string, string>;
   /** The session slots for the current context session. */
   readonly session: FakeSessionHandle;
+  /** Methods a test has stubbed, and the calls made to them. */
+  readonly rpc: FakeRpcHandle;
+  /** Push a value onto the plugin's topic, as `api.realtime.publish` would. */
+  publishTopic(value: unknown): void;
+  /**
+   * The composer's live state and the writes a plugin made.
+   *
+   * Named `composerControl` because `composer` is the SERVICE the kit reads:
+   * one name cannot be both the function the hook calls and the handle a test
+   * asserts through.
+   */
+  readonly composerControl: FakeComposerHandle;
+}
+
+/** Stubbed RPC methods and the calls a test made against them. */
+export interface FakeRpcHandle {
+  /** Answer `method` with `value`. */
+  stub(method: string, value: unknown): void;
+  /** Answer `method` with a refusal, as the real route does at HTTP 200. */
+  stubError(method: string, error: PluginRpcError): void;
+  /** Every call made, in order — with the plugin the caller was scoped to. */
+  readonly calls: { pluginId: string; method: string; input: unknown }[];
+}
+
+/** The composer's state, its writes, and what a plugin asked of it. */
+export interface FakeComposerHandle {
+  readonly state: ComposerState;
+  setState(next: Partial<ComposerState>): void;
+  /** The drafts a plugin set, in order. */
+  readonly sets: string[];
+  /** The insertions a plugin made, in order. */
+  readonly inserts: string[];
+  /** How many times a plugin asked for focus. */
+  focusCount(): number;
 }
 
 /** A complete fake `UiKitServices` with an in-memory per-session store. */
@@ -140,6 +184,29 @@ export function makeUiKitServices(options: FakeUiKitOptions = {}): FakeUiKit {
     subscribe: (key, listener) => slots.subscribe(context.sessionId, key, listener),
     readJson: (key) => slots.getJson(context.sessionId, key),
     writeJson: (key, value) => slots.setJson(context.sessionId, key, value),
+  };
+
+  // --- the participant half -------------------------------------------------
+  const answers = new Map<string, PluginRpcOutcome>();
+  const calls: { pluginId: string; method: string; input: unknown }[] = [];
+  const topicListeners = new Set<(value: unknown) => void>();
+  let topicValue: unknown;
+  let topicStale = false;
+
+  const composerSets: string[] = [];
+  const composerInserts: string[] = [];
+  let focusCount = 0;
+  const composerListeners = new Set<(state: ComposerState) => void>();
+  let composerState: ComposerState = {
+    text: '',
+    isEmpty: true,
+    isSubmitting: false,
+    scope: { kind: 'new', sessionId: null },
+    ...options.composer,
+  };
+
+  const announceComposer = () => {
+    for (const listener of [...composerListeners]) listener(composerState);
   };
 
   return {
@@ -164,6 +231,47 @@ export function makeUiKitServices(options: FakeUiKitOptions = {}): FakeUiKit {
     // kit degrades to plain text rather than failing — which is what a plugin
     // test should see.
     markdown: () => null,
+
+    // --- the participant services -------------------------------------------
+    callRpc: async (_pluginId, method, input) => {
+      calls.push({ pluginId: _pluginId, method, input });
+      // An unstubbed method answers `unknown_method`, exactly as the route does
+      // — a fake that resolved `undefined` would let a plugin ship a typo.
+      return answers.get(method) ?? { ok: false, error: { code: 'unknown_method', message: `no stub for "${method}"` } };
+    },
+    subscribePluginTopic: (_pluginId, listener) => {
+      topicListeners.add(listener);
+      return () => topicListeners.delete(listener);
+    },
+    readPluginTopic: () => topicValue,
+    refreshPluginTopic: () => {
+      // A refresh in the fake is a re-announcement of the value on hand, which
+      // is what a real one looks like to a subscriber that is already current.
+      for (const listener of [...topicListeners]) listener(topicValue);
+    },
+    pluginTopicStale: () => topicStale,
+    composer: () => ({
+      ...composerState,
+      set: (text: string) => {
+        composerSets.push(text);
+        composerState = { ...composerState, text, isEmpty: text.length === 0 };
+        announceComposer();
+      },
+      insert: (text: string) => {
+        composerInserts.push(text);
+        const next = `${composerState.text}${text}`;
+        composerState = { ...composerState, text: next, isEmpty: next.length === 0 };
+        announceComposer();
+      },
+      focus: () => {
+        focusCount += 1;
+      },
+    }),
+    subscribeComposer: (listener) => {
+      composerListeners.add(listener);
+      return () => composerListeners.delete(listener);
+    },
+
     get currentContext() {
       return context;
     },
@@ -173,6 +281,27 @@ export function makeUiKitServices(options: FakeUiKitOptions = {}): FakeUiKit {
     },
     files,
     session,
+    rpc: {
+      stub: (method, value) => answers.set(method, { ok: true, value }),
+      stubError: (method, error) => answers.set(method, { ok: false, error }),
+      calls,
+    },
+    publishTopic: (value) => {
+      topicValue = value;
+      for (const listener of [...topicListeners]) listener(value);
+    },
+    composerControl: {
+      get state() {
+        return composerState;
+      },
+      setState: (next) => {
+        composerState = { ...composerState, ...next };
+        announceComposer();
+      },
+      sets: composerSets,
+      inserts: composerInserts,
+      focusCount: () => focusCount,
+    },
   };
 }
 
