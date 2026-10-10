@@ -1,3 +1,4 @@
+import './styles.css';
 import { definePluginApp } from '@ompchamber/plugin-sdk/app';
 import { usePanelInfo, useSessionValue } from '@ompchamber/ui';
 import { Field, FieldList, Note, Panel, TextAreaField } from '@ompchamber/ui/components';
@@ -18,6 +19,11 @@ import { Field, FieldList, Note, Panel, TextAreaField } from '@ompchamber/ui/com
  * - `panel` — the editor column, taken over whole. It is NOT an editor: the
  *   host supplies no tabs and no file tree, so a plugin that wants those builds
  *   them itself.
+ * - `contentScript` + an imported stylesheet — the app-shell half. This is the
+ *   only contribution that touches DOM the host did not hand it, so it also
+ *   demonstrates the two rules that come with it: the script gives its DOM back
+ *   through the disposer, and the CSS is scoped under the attribute it sets so
+ *   it cannot leak onto the host's chrome.
  */
 
 /** The status line, from the same save state the field reports. */
@@ -122,7 +128,22 @@ function ScratchpadPanel() {
   );
 }
 
+/**
+ * The `contentScript` slot, plus the stylesheet its import produces.
+ *
+ * The attribute on `<html>` is what the imported CSS scopes under, and the
+ * disposer removes BOTH — a content script that leaves its attribute behind
+ * would keep its rules matching after it was unloaded.
+ */
+function mountShellDecoration(context: { pluginId: string; generation: number }): () => void {
+  document.documentElement.setAttribute('data-session-info', String(context.generation));
+  return () => {
+    document.documentElement.removeAttribute('data-session-info');
+  };
+}
+
 export default definePluginApp((app) => {
+  app.contentScript({ id: 'shell-decoration', mount: mountShellDecoration });
   app.rightPanel({
     id: 'info',
     title: 'Session Info',

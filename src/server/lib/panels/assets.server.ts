@@ -30,6 +30,19 @@ export async function bundleUrl(pluginDir: string, app: string): Promise<string>
 }
 
 /**
+ * A plugin's stylesheet URL, carrying the file's content hash.
+ *
+ * Content-addressed for the same reason the bundle is: the client loads this as
+ * a `<link rel=stylesheet>`, and a REBUILT plugin whose CSS changed must reach a
+ * new URL or the browser would serve the old rules from its cache.
+ */
+export async function cssUrl(pluginDir: string, css: string): Promise<string> {
+  const file = Bun.file(join(pluginDir, css));
+  const digest = Bun.hash(await file.arrayBuffer()).toString(36);
+  return `/api/panels/css/${encodeURIComponent(basenameOf(pluginDir))}.css?v=${digest}`;
+}
+
+/**
  * A plugin's README URL, when it ships one — either the file its manifest names
  * or the `README.md` at its root.
  */

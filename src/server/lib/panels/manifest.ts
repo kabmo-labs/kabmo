@@ -65,6 +65,10 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
   // the reason this is not simply "no app".
   if (!app && !server) return { error: 'manifest has no "app" bundle or "server" entry' };
   if (app && !resolveInsideRoot(root, app)) return { error: `manifest app "${app}" escapes the plugin directory` };
+  const css = trimmed(raw.css);
+  if (css && !resolveInsideRoot(root, css)) {
+    return { error: `manifest css "${css}" escapes the plugin directory` };
+  }
   if (server && !resolveInsideRoot(root, server)) {
     return { error: `manifest server "${server}" escapes the plugin directory` };
   }
@@ -92,6 +96,7 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
     name,
     version,
     ...(app ? { app } : {}),
+    ...(css ? { css } : {}),
     ...(server ? { server } : {}),
     ...(settings.value ? { settings: settings.value } : {}),
     ...(engines.value ? { engines: engines.value } : {}),

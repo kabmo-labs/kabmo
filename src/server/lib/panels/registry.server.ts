@@ -44,7 +44,7 @@ import { packageDir } from '@/server/lib/fs/package-root';
 import { readDisabledPlugins } from '@/server/lib/panels/state.server';
 import { readJsonBody, readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';
 import { toManifest, toMarketplaceCatalog } from '@/server/lib/panels/manifest';
-import { basenameOf, bundleUrl, iconUrl, readmeUrlFor } from '@/server/lib/panels/assets.server';
+import { basenameOf, bundleUrl, cssUrl, iconUrl, readmeUrlFor } from '@/server/lib/panels/assets.server';
 import { describeIncompatibility, runningVersions } from '@/server/lib/panels/compat.server';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 
@@ -230,6 +230,13 @@ async function runPanelScan(): Promise<PanelScan> {
       name: manifest.name,
       version: manifest.version,
       appUrl: await bundleUrl(pluginDir, manifest.app),
+      // Only when the plugin DECLARED a stylesheet and the file is actually
+      // there. A manifest that names a `css` the build did not emit would
+      // otherwise put a 404 URL in the payload and a console error on every
+      // load, for a stylesheet the plugin does not have.
+      ...(manifest.css && (await pathExists(join(pluginDir, manifest.css)))
+        ? { cssUrl: await cssUrl(pluginDir, manifest.css) }
+        : {}),
       ...(manifest.icon ? { iconUrl: await iconUrl(pluginDir, manifest.icon) } : {}),
       ...(await readmeUrlFor(pluginDir, manifest)),
     });

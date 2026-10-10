@@ -1,0 +1,25 @@
+/*
+ * A stylesheet the demo plugin IMPORTS, which is the case this file exists to
+ * prove: `Bun.build` emits it beside the bundle (`dist/app.css`) and the emitted
+ * JS never references it, so without `css` in the manifest nothing would load
+ * it. The manifest declares it and the host loads it for as long as this
+ * plugin's content script is mounted.
+ *
+ * Every rule is scoped under the attribute the content script sets, so it cannot
+ * leak onto the host's own chrome — the demo doubles as the example of how a
+ * plugin should scope app-shell styling.
+ */
+
+html[data-session-info] .code-block::before {
+  content: '';
+  display: block;
+  height: 2px;
+  margin: -1px 0 6px;
+  background: linear-gradient(90deg, var(--theme-ink) 0%, transparent 100%);
+  opacity: 0.25;
+}
+
+html[data-session-info] .plugin-directive-block {
+  outline: 1px dashed color-mix(in srgb, var(--theme-ink) 25%, transparent);
+  outline-offset: 3px;
+}

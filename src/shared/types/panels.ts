@@ -39,6 +39,16 @@ export interface PanelPluginManifest {
    */
   app?: string;
   /**
+   * A stylesheet the plugin's app bundle imports, relative to the plugin root —
+   * conventionally `dist/app.css`.
+   *
+   * Bun emits an imported stylesheet BESIDE the bundle and the JS never
+   * references it, so without this the file is inert: built, served by nothing,
+   * and silently not applied. Declaring it is what makes the host load it for
+   * as long as the plugin has a live content-script generation.
+   */
+  css?: string;
+  /**
    * The built server entry, relative to the plugin root — conventionally
    * `dist/server.js`. Its default export is a `ChamberPluginFactory`.
    */
@@ -134,6 +144,14 @@ export interface PanelRegistryEntry {
   version: string;
   /** Absolute URL of the plugin's ESM bundle, content-addressed per build. */
   appUrl: string;
+  /**
+   * Absolute URL of the plugin's stylesheet, content-addressed per build.
+   *
+   * Present only when the plugin declares `css` AND the file exists, so a plugin
+   * with no stylesheet costs nothing. The client loads it while the plugin has a
+   * live content-script generation and unloads it when the last one goes.
+   */
+  cssUrl?: string;
   /** Absolute URL of the plugin's icon, when it declares one. */
   iconUrl?: string;
   /** Absolute URL of the plugin's README, when it ships one. */

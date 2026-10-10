@@ -10,6 +10,7 @@ import {
   unmountAllContentScripts,
   unmountContentScripts,
 } from '@/client/lib/plugins/content-scripts';
+import { reconcilePluginStylesheets } from '@/client/lib/plugins/stylesheets';
 
 /**
  * Boot the plugin system, once, from the layout.
@@ -40,8 +41,45 @@ export function PluginBootstrap({ workspacePath }: { workspacePath: string | nul
   }, [sessionId, workspacePath]);
 
   useContentScripts();
+  usePluginStylesheets();
 
   return null;
+}
+
+/**
+ * Load a plugin's declared stylesheet while it has a live content-script
+ * generation, and unload it when it does not.
+ *
+ * A plugin's imported CSS is otherwise inert (see `stylesheets.ts`), so this is
+ * what makes `css` in the manifest do anything. The gate is the content-script
+ * registration itself: a plugin that ships app-shell styling mounts app-shell
+ * code, and one that renders only into a slot uses the host's own utilities and
+ * needs no stylesheet of its own.
+ *
+ * Reconciled from the whole registry payload rather than per plugin, so a
+ * plugin that was disabled or removed loses its `<link>` in the same pass —
+ * CSS is not scoped, and a switched-off plugin must stop styling the document.
+ */
+function usePluginStylesheets(): void {
+  const { panels } = usePanelRegistry();
+  const rows = useListSlotRows<ContentScriptRegistration>('contentScript');
+  // A stable signature: the same live set must not churn the links on every
+  // render, and a rebuild's new URL is already handled by the loader.
+  const livePlugins = [...new Set(rows.map((row) => row.pluginId))].sort().join('|');
+  const signature = panels
+    .map((panel) => `${panel.pluginId}:${panel.cssUrl ?? ''}`)
+    .sort()
+    .join('|');
+
+  useEffect(() => {
+    const withContentScripts = new Set(livePlugins ? livePlugins.split('|') : []);
+    reconcilePluginStylesheets(
+      panels
+        .filter((panel) => withContentScripts.has(panel.pluginId))
+        .map((panel) => ({ pluginId: panel.pluginId, cssUrl: panel.cssUrl })),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, livePlugins]);
 }
 
 /**
