@@ -488,11 +488,23 @@ exactly that row back.
 
 ### Slots that reach into the conversation
 
-Four more, each aimed at something a drawing slot cannot do:
+Four more, each aimed at something a drawing slot cannot do.
+
+**The `experimental_` prefix is a contract.** It marks a surface whose SHAPE may
+change between minor versions — a plugin that uses one opts into that. It is not
+decoration: a surface gaining or losing the prefix is a change you have to act on,
+so the set is pinned by a test rather than left to whoever edits the file next.
+The split follows bb's own, measured against its published SDK: the participants
+(`useRpc`, `useRealtime`, `useComposer`) are stable there and here, while the
+sidebar-thread hooks and the provider-icon registration carry the marker in both.
+
+A slot's NAME is never prefixed — `providerIcon` stays the store key and the
+resolver's lookup, because a stability marker means nothing inside the host. Only
+the METHOD a plugin author writes carries it.
 
 | Method | What it does | Registration | Props |
 |---|---|---|---|
-| `app.providerIcon(...)` | Supplies a provider's mark, beating the built-in glyph for the provider it names. | `{ id, title?, order?, provider, glyph }` | — (a glyph is SVG source; paint it `currentColor`) |
+| `app.experimental_providerIcon(...)` | Supplies a provider's mark, beating the built-in glyph for the provider it names. | `{ id, title?, order?, provider, glyph }` | — (a glyph is SVG source; paint it `currentColor`) |
 | `app.pendingInteraction(...)` | Renders the agent's own question, and may ANSWER it. The one slot where a plugin changes what the agent does. | `{ id, title?, order?, component }` | `{ questions, recorded, submit, cancel }` |
 | `app.messageDirective(...)` | Claims a fenced block in an assistant message and renders it as your component. | `{ id, title?, order?, name, component }` | `{ sessionId, workspacePath, name, body, attributes }` |
 | `app.contentScript(...)` | Mounts code into the app shell, with no component at all. | `{ id, title?, order?, mount }` | `mount({ pluginId, generation, signal })` → a disposer |
@@ -709,6 +721,49 @@ phone's drawer already carries every view.
 | `useWorkspaceFile(relPath)` | `{ content, loading, error }` — a text file inside the active workspace. |
 | `useChamberFetch(url, opts?)` | `{ data, isLoading, error, reload }` — a direct read of the chamber's HTTP API: a poll that pauses while hidden, plus re-reads on the window events you name. |
 | `useScrollbarFadeRef(delayMs?)` | `{ ref, onScroll }` — attach to a `.scrollbar-overlay-container`; the fade class is toggled on the element, so a scroll does not re-render the rows it holds. |
+| `useSidebarThreads()` | `{ threads, isLoading, stale, refresh }` — the sessions the sidebar is showing. |
+| `useSidebarThreadActions()` | `{ open, rename, setArchived, markSeen, remove, openNew, error }` — the session actions, over the host's own routes. |
+
+bb calls the sidebar's rows "threads"; the chamber calls the same thing a
+**session**, and these hooks use that word because it is what the host's own
+routes and types say. One concept, two names.
+
+The read is a **projection of the host's own sidebar topic**, not a second
+fetch — so a plugin sees exactly what the sidebar beside it sees, including a
+run in flight and the `awaitingInput` flag, which ride their own topic. `stale`
+means the socket is down, and it is surfaced rather than hidden.
+
+```tsx
+import { useSidebarThreads, useSidebarThreadActions } from '@ompchamber/ui';
+
+function Recent() {
+  const { threads, stale } = useSidebarThreads();
+  const actions = useSidebarThreadActions();
+  return (
+    <Panel title="Recent sessions">
+      {stale && <Note tone="error">Live updates are paused.</Note>}
+      <FieldList>
+        {threads.slice(0, 5).map((t) => (
+          <Field key={t.id} label={t.title} value={t.isRunning ? 'running' : ''} />
+        ))}
+      </FieldList>
+      <Button onClick={() => void actions.rename(threads[0].id, 'Pinned by me')}>Rename</Button>
+      {actions.error && <Note tone="error">{actions.error}</Note>}
+    </Panel>
+  );
+}
+```
+
+Two properties worth knowing:
+
+- **A write goes through the host's own route.** `rename` posts
+  `/api/sessions/:id/rename`, the same one the sidebar's inline editor posts, so
+  the two cannot drift — and the rename publishes the same `session-renamed`
+  signal, so the navbar follows it without a refetch.
+- **A refusal is a value.** Each mutation resolves `false` and puts the host's
+  own reason on `error`; it does not throw. There is deliberately no
+  `setPinned` — the chamber pins a FOLDER, not a session, so a session pin here
+  would be a control that cannot do what it says.
 
 `usePanelHost` is a Preact context, not a global: the desktop stack keeps every
 built-in view mounted at once, so "the current panel's props" is not one
@@ -759,13 +814,30 @@ so Tailwind's scan does not see its own class names. Prefer the kit's components
 (`Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`) and
 inline styles for anything the kit does not cover.
 
-**Do not `import './styles.css'` and expect it to apply.** The build emits the
-CSS as a sibling of the bundle (`dist/app.js` beside `dist/app.css`), and the
-manifest has no field that names it, so nothing ever loads it — the import is
-silently inert. Verified against `Bun.build` with `target: 'browser'`: the
-output list carries both files and the JS does not reference the `.css`. Either
-use the host's utilities (above) or inject a `<style>` element from a content
-script, which you own and can take down.
+**Importing a stylesheet works, but you must DECLARE it.** `import './styles.css'`
+makes `Bun.build` emit the CSS as a sibling of the bundle (`dist/app.js` beside
+`dist/app.css`), and the emitted JS never references it — so a stylesheet that
+is not declared is built, served by nothing, and silently not applied. Name it in
+the manifest and the host loads it:
+
+```json
+"ompchamber": { "app": "dist/app.js", "css": "dist/app.css" }
+```
+
+The host loads it as a `<link>` **for as long as the plugin has a live content
+script**, and removes it when the last generation goes — a disabled or removed
+plugin stops styling the document. So a stylesheet needs a `contentScript`; a
+plugin that renders only into a slot uses the host's utilities (above) and needs
+none. Scope your rules under an attribute your own content script sets:
+
+```css
+html[data-my-plugin] .some-host-class { /* … */ }
+```
+
+The URL is content-addressed, so a rebuild with changed rules reaches a new URL
+and the old `<link>` is replaced. Verified end to end: the demo plugin's
+`::before` rule applies while installed, and disabling the plugin takes the
+`<link>`, the content script's attribute and the rule with it.
 
 ## The bundle route
 
