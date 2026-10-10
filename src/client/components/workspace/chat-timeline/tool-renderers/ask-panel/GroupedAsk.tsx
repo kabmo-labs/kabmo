@@ -23,6 +23,7 @@
  */
 
 import { useMemo, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
 import { Check, CornerDownLeft } from 'lucide-preact';
 import type { ExtensionAskQuestion, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
@@ -33,6 +34,15 @@ interface GroupedAskProps {
   /** Answers omp already recorded, per question — those rows render settled. */
   recorded: boolean[];
   onRespond: (response: ExtensionDialogResponse) => void;
+  /**
+   * The `pendingInteraction` slot's controls, if any.
+   *
+   * Passed in as an element rather than rendered here, so the plugin surface
+   * sits in the ask card's tree — above the human's own buttons, and OUTSIDE
+   * the plugin boundary that guards it. A plugin that threw inside this
+   * component would take the buttons down with it.
+   */
+  interactions?: ComponentChildren;
 }
 
 interface Draft {
@@ -121,7 +131,7 @@ function QuestionRow({
   );
 }
 
-export function GroupedAsk({ frame, recorded, onRespond }: GroupedAskProps) {
+export function GroupedAsk({ frame, recorded, onRespond, interactions }: GroupedAskProps) {
   const questions = useMemo(() => frame.questions ?? [], [frame.questions]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
@@ -170,6 +180,7 @@ export function GroupedAsk({ frame, recorded, onRespond }: GroupedAskProps) {
           onText={(value) => setText(question, value)}
         />
       ))}
+      {interactions}
       <div className="flex items-center justify-end gap-2">
         <button
           type="button"

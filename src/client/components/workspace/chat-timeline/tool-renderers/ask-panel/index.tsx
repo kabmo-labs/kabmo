@@ -21,6 +21,8 @@ import { useAskFrames } from '@/client/hooks/chat/timeline/ask-frames';
 import { liveFrame, useAskDrafts } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/drafts';
 import { QuestionBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionBlock';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
+import { PluginPendingInteractions } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/PluginPendingInteractions';
+import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 
 // Stable empties: fresh `[]` literals would defeat the question block's props.
@@ -69,6 +71,11 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
   // is where it renders — exactly once.
   const groupedFrame = groups.flat().find((frame) => frame.method === 'ask' && (frame.questions?.length ?? 0) > 0);
   if (groupedFrame && !settled) {
+    // The recorded flags and the answer path are shared with the plugin slot:
+    // a plugin's response must be the frame the Submit button would have sent,
+    // through the same sender, or omp receives something it did not expect.
+    const answered = questions.map((_, index) => recorded[index] !== null);
+    const answer = (response: ExtensionDialogResponse) => respond(groupedFrame, response);
     return (
       <div className="space-y-2">
         {waiting && (
@@ -79,8 +86,11 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
         )}
         <GroupedAsk
           frame={groupedFrame}
-          recorded={questions.map((_, index) => recorded[index] !== null)}
-          onRespond={(response) => respond(groupedFrame, response)}
+          recorded={answered}
+          onRespond={answer}
+          interactions={
+            <PluginPendingInteractions frame={groupedFrame} recorded={answered} onRespond={answer} />
+          }
         />
       </div>
     );
@@ -95,26 +105,41 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
         </div>
       )}
 
-      {questions.map((question, index) => (
-        <QuestionBlock
-          key={question.id ?? index}
-          index={index}
-          total={questions.length}
-          question={question}
-          frames={groups[index] ?? NO_FRAMES}
-          recorded={recorded[index] ?? null}
-          draft={drafts[index]}
-          passed={askingIndex !== -1 && index < askingIndex}
-          settled={settled}
-          multiSelected={multiSelected[index] ?? NO_LABELS}
-          onAnswer={(value) => commit(index, value)}
-          onToggle={(label) => toggleMulti(index, label)}
-          onRespond={(response) => {
-            const frame = liveFrame(groups, index);
-            if (frame) respond(frame, response);
-          }}
-        />
-      ))}
+      {questions.map((question, index) => {
+        const live = liveFrame(groups, index);
+        const answer = (response: ExtensionDialogResponse) => {
+          if (live) respond(live, response);
+        };
+        return (
+          <QuestionBlock
+            key={question.id ?? index}
+            index={index}
+            total={questions.length}
+            question={question}
+            frames={groups[index] ?? NO_FRAMES}
+            recorded={recorded[index] ?? null}
+            draft={drafts[index]}
+            passed={askingIndex !== -1 && index < askingIndex}
+            settled={settled}
+            multiSelected={multiSelected[index] ?? NO_LABELS}
+            onAnswer={(value) => commit(index, value)}
+            onToggle={(label) => toggleMulti(index, label)}
+            onRespond={answer}
+            // Rendered by `QuestionBlock` only while its dialog is live, so a
+            // question already answered — or one omp has moved past — never
+            // shows a plugin control.
+            interactions={
+              live ? (
+                <PluginPendingInteractions
+                  frame={live}
+                  recorded={[recorded[index] !== null]}
+                  onRespond={answer}
+                />
+              ) : undefined
+            }
+          />
+        );
+      })}
 
       {(tool.status === 'error' || tool.status === 'aborted') && tool.output && (
         <div className="flex items-start gap-2 rounded-md border border-ink/8 bg-ink/[0.02] px-2.5 py-1.5 text-[10.5px] text-ink/60">

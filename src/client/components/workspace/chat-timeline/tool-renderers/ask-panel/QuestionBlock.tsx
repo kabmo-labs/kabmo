@@ -12,6 +12,7 @@
  */
 
 import { Ban, CheckCircle2, Clock } from 'lucide-preact';
+import type { ComponentChildren } from 'preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import type { AskAnswer, AskQuestion } from '@/shared/lib/chat/ask-questions';
@@ -37,6 +38,14 @@ interface QuestionBlockProps {
   settled: boolean;
   /** Labels toggled locally on a multi-select question. */
   multiSelected: string[];
+  /**
+   * The `pendingInteraction` slot's controls for the live dialog, if any.
+   *
+   * An element, not a component rendered here: it sits above the human's own
+   * control and OUTSIDE the plugin boundary, so a plugin that threw cannot take
+   * the question off screen.
+   */
+  interactions?: ComponentChildren;
   onAnswer: (value: string) => void;
   onToggle: (label: string) => void;
   onRespond: (response: ExtensionDialogResponse) => void;
@@ -58,6 +67,7 @@ export function QuestionBlock({
   passed,
   settled,
   multiSelected,
+  interactions,
   onAnswer,
   onToggle,
   onRespond,
@@ -101,14 +111,17 @@ export function QuestionBlock({
           </div>
 
           {asking && live && (
-            <FrameControl
-              frame={live}
-              multi={question.multi}
-              selected={multiSelected}
-              onAnswer={onAnswer}
-              onToggle={onToggle}
-              onRespond={onRespond}
-            />
+            <>
+              {interactions}
+              <FrameControl
+                frame={live}
+                multi={question.multi}
+                selected={multiSelected}
+                onAnswer={onAnswer}
+                onToggle={onToggle}
+                onRespond={onRespond}
+              />
+            </>
           )}
 
           {hasAnswer && (
