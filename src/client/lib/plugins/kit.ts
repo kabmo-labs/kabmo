@@ -35,6 +35,12 @@ import {
   refreshPluginTopic,
   subscribePluginTopic,
 } from '@/client/lib/plugins/topic';
+import {
+  refreshSidebarThreads,
+  sidebarActions,
+  sidebarThreads,
+  subscribeSidebarThreads,
+} from '@/client/lib/plugins/sidebar-bridge';
 
 /**
  * Read a text file inside the active workspace, through the chamber's own fs
@@ -125,5 +131,12 @@ export function installUiKit(): void {
     pluginTopicStale,
     composer: composerService,
     subscribeComposer,
+
+    // The sidebar: a projection of the host's own sidebar topic, and the
+    // session writes that go through the host's own routes.
+    sidebarThreads,
+    subscribeSidebarThreads,
+    refreshSidebarThreads,
+    sidebarActions,
   });
 }

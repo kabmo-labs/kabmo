@@ -25,6 +25,8 @@ import type {
   PluginRpcOutcome,
   UiKitServices,
 } from '@ompchamber/ui';
+import type { SidebarThread } from '../slots-sidebar';
+import { createFakeSidebar, type FakeSidebarHandle } from './sidebar';
 
 /** The session and workspace a fixture answers with when a test names none. */
 const DEFAULT_CONTEXT: PanelContext = { sessionId: 'session-1', workspacePath: '/workspace', theme: 'paper' };
@@ -116,6 +118,10 @@ export interface FakeUiKitOptions {
   files?: Record<string, string>;
   /** The composer's starting state. */
   composer?: Partial<ComposerState>;
+  /** The sessions the fake sidebar reports. */
+  threads?: SidebarThread[];
+  /** Force the sidebar to report itself stale (the socket is down). */
+  sidebarStale?: boolean;
 }
 
 /**
@@ -147,7 +153,15 @@ export interface FakeUiKit extends UiKitServices {
    * asserts through.
    */
   readonly composerControl: FakeComposerHandle;
+  /**
+   * The sidebar the fake reports, and the writes a plugin made through it.
+   *
+   * Named `sidebarControl` for the same reason `composerControl` is: `sidebar`
+   * would collide with the service name the kit reads.
+   */
+  readonly sidebarControl: FakeSidebarHandle;
 }
+
 
 /** Stubbed RPC methods and the calls a test made against them. */
 export interface FakeRpcHandle {
@@ -208,6 +222,10 @@ export function makeUiKitServices(options: FakeUiKitOptions = {}): FakeUiKit {
   const announceComposer = () => {
     for (const listener of [...composerListeners]) listener(composerState);
   };
+
+  // --- the sidebar half -----------------------------------------------------
+  // The rules live in `sidebar.ts`; this only builds one from the options.
+  const sidebar = createFakeSidebar({ threads: options.threads, stale: options.sidebarStale });
 
   return {
     context: () => context,
@@ -272,6 +290,9 @@ export function makeUiKitServices(options: FakeUiKitOptions = {}): FakeUiKit {
       return () => composerListeners.delete(listener);
     },
 
+    // --- the sidebar services -----------------------------------------------
+    ...sidebar.service,
+
     get currentContext() {
       return context;
     },
@@ -302,6 +323,7 @@ export function makeUiKitServices(options: FakeUiKitOptions = {}): FakeUiKit {
       inserts: composerInserts,
       focusCount: () => focusCount,
     },
+    sidebarControl: sidebar.control,
   };
 }
 

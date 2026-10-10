@@ -71,4 +71,6 @@ export {
   type ComposerHandle,
 } from './participant';
 
+export { experimental_useSidebarThreads, experimental_useSidebarThreadActions } from './sidebar';
+
 export * from './components';

@@ -34,6 +34,13 @@ export {
 } from './fake-host';
 
 export {
+  createFakeSidebar,
+  type FakeSidebar,
+  type FakeSidebarHandle,
+  type SidebarSnapshot,
+} from './sidebar';
+
+export {
   makeChamberFetchResponse,
   makePanelContext,
   makePanelHostProps,

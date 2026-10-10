@@ -34,3 +34,4 @@
 export * from './app';
 export * from './backend';
 export * from './slots';
+export * from './slots-sidebar';

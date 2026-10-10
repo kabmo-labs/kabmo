@@ -17,6 +17,7 @@
  */
 
 import type { ComponentType } from 'preact';
+import type { SidebarThread, SidebarThreadActions } from '@ompchamber/plugin-sdk';
 
 /** What the host seeds every plugin component with. */
 export interface PanelContext {
@@ -148,6 +149,26 @@ export interface UiKitServices {
   composer?(): ComposerService;
   /** Subscribe to composer changes (a keystroke, a run starting, a send). */
   subscribeComposer?(listener: (state: ComposerState) => void): () => void;
+
+  /**
+   * The sidebar's sessions, as the host's own sidebar holds them.
+   *
+   * A projection rather than a second fetch: a plugin sees exactly what the
+   * sidebar beside it sees, including a run in flight, so the two cannot
+   * disagree. Returns the current value and a subscription for pushes.
+   */
+  sidebarThreads?(): { value: SidebarThread[]; stale: boolean };
+  subscribeSidebarThreads?(listener: (state: { value: SidebarThread[]; stale: boolean }) => void): () => void;
+  /** Ask the host for a fresh sidebar snapshot. */
+  refreshSidebarThreads?(): void;
+  /**
+   * The session actions, injected as a service.
+   *
+   * The host owns the writes because they go through its own routes — there is
+   * no second session store, so a plugin's rename and the sidebar's own inline
+   * editor cannot drift.
+   */
+  sidebarActions?(): SidebarThreadActions;
 }
 
 /**
