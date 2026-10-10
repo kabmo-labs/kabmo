@@ -161,6 +161,19 @@ export const PROVIDER_GLYPH_ALIASES: Readonly<Record<string, string>> = {
 };
 
 /**
+ * The one fold every provider match uses: lowercase alphanumerics only, so
+ * `google-vertex`, `Google Vertex` and `google_vertex` are the same key.
+ *
+ * Exported because the plugin registry (`providerIcon`) matches a provider with
+ * this SAME rule — a registered mark has to be found by every spelling the
+ * built-in table accepts, or a plugin's mark would appear only for the exact
+ * string its author happened to type.
+ */
+export function foldProviderKey(candidate: string): string {
+  return candidate.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
  * The glyph name for a provider, or `null` when no brand mark is registered —
  * the caller then draws the initials badge instead of an empty box.
  *
@@ -174,7 +187,7 @@ export function resolveProviderGlyph(
 ): string | null {
   for (const candidate of candidates) {
     if (!candidate) continue;
-    const key = candidate.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const key = foldProviderKey(candidate);
     const alias = key ? PROVIDER_GLYPH_ALIASES[key] : undefined;
     if (alias) return alias;
   }
