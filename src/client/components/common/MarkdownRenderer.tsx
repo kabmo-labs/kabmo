@@ -28,6 +28,9 @@ import { expandGollumLinks } from '@/shared/lib/wiki/pages';
 import { hydrateMathBlocks, MATH_PENDING_CLASS, preloadKatex } from '@/shared/lib/markdown/katex';
 import { sanitizeHtml } from '@/shared/lib/markdown/sanitize';
 import { hydrateMermaidBlocks } from '@/shared/lib/markdown/mermaid';
+import { DIRECTIVE_BLOCK_CLASS } from '@/shared/lib/markdown/directives';
+import { hydrateDirectiveBlocks, unmountDirectiveBlocks } from '@/client/lib/plugins/directives';
+import { useDirectiveContext, useDirectiveRenderer } from '@/client/hooks/workspace/directives';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
 import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
@@ -100,6 +103,26 @@ export function MarkdownRenderer({ content, className = '', document: isDocument
 
   const hasMermaid = html.includes('mermaid-block');
   const hasMath = html.includes(MATH_PENDING_CLASS);
+  const hasDirective = html.includes(DIRECTIVE_BLOCK_CLASS);
+
+  // A claimed fence renders the plugin's component. The placeholder holds the
+  // ordinary code block, so an unclaimed one needs no work at all.
+  const directive = useDirectiveRenderer();
+  const slotContext = useDirectiveContext();
+  useIsomorphicLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!hasDirective || !container || typeof window === 'undefined') return;
+    hydrateDirectiveBlocks(container, directive, slotContext);
+    // `html` is a dep so a re-parse re-hydrates; the call itself is idempotent,
+    // so a re-render with the same markup does nothing.
+    //
+    // The cleanup is not optional: `render()` mounts a real Preact tree, and a
+    // timeline that drops a message (a rewind, a session switch) would leave
+    // that tree's hooks and effects alive against a detached host. The markup
+    // itself is the container's own, so the next render re-creates it — only
+    // the plugin tree has to be taken down here.
+    return () => unmountDirectiveBlocks(container);
+  }, [hasDirective, html, directive, slotContext]);
 
   // KaTeX is ~522 kB of JS fetched only when a message contains math; the
   // placeholders emitted by `marked.ts` are swapped for real markup here.
