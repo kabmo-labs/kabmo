@@ -24,7 +24,8 @@ This plan closes that, in the order value-per-cost, and stops where the gap is
 structural (bb's `providers`/`environments`/`machines` exist because bb ships its
 own agent runtime; see D1 of the wave-1 plan — that decision stands).
 
-Status: **planned**.
+Status: **W0–W6 shipped**; see the workstream table below for what each one
+verified.
 
 ## Workstreams
 
@@ -208,27 +209,72 @@ hand it**, so it needs the strictest lifecycle in the file:
   never overlap.
 - **`signal` aborts on teardown**, so an async mount cannot finish after its own
   disposal.
-- **A throwing mount is reported and rolled back**, not left half-applied.
+- **A throwing mount is reported**, and the host rolls back what it owns: its
+  own generation RECORD, so a failed mount leaves nothing the reaper can never
+  reach. The DOM a script added is the script's own to undo — the contract hands
+  it no container, so a host-side rollback of those nodes is not possible and is
+  not claimed. (An earlier revision staged the mount in a detached container and
+  moved its children into the document on success; the container was never
+  handed to the script, so the loop moved zero nodes and the rollback never
+  fired. Removed.)
 
-The stylesheet half matters too: a plugin's imported CSS stays active while it
-has slot UI or a live content-script generation, and not otherwise — an
-app-wide stylesheet hook is a different feature (`bb.themes` in bb) and is NOT
-part of this.
+The stylesheet half is **answered by measurement, and the answer is "none
+needed"**, not deferred:
+
+- A plugin's bundle is an ES module imported into the host's document, so it
+  renders with the host's own Tailwind classes and theme variables already in
+  the stylesheet (see the README's "Styling" section). There is no `oc-*` layer
+  to ship and nothing to activate or deactivate.
+- A plugin that imports CSS anyway gets an **inert** artifact, verified: `Bun.build`
+  emits `dist/app.css` BESIDE `dist/app.js` and the JS never references it, so the
+  file is simply never fetched. That is a silent trap, and the fix is the build
+  failing loudly, not a host-side stylesheet lifecycle.
+- A live-generation lifecycle for CSS would have nothing to toggle: the artifact
+  above is not loaded at all, and the documented path (host utilities) is always
+  on. Building the lifecycle would have meant building the loader that makes it
+  meaningful — an app-wide stylesheet hook, which this file excludes.
+
+So no `contentScripts` stylesheet half ships. The trap is recorded where a plugin
+author will hit it.
 
 ### Acceptance
-- A mount/dispose cycle leaves the DOM exactly as it was (asserted by comparing
-  the shell's HTML before and after).
-- A reload disposes generation N before mounting N+1.
-- A throwing mount leaves no partial DOM and reports the reason.
+- A mount/dispose cycle removes exactly the nodes the scripts added, and
+  unmounting twice runs each disposer ONCE (asserted on the document, not on a
+  mock).
+- A reload disposes generation N before mounting N+1 — the disposal line comes
+  before the mount line.
+- A throwing mount reports its reason and leaves no generation record; one
+  broken script does not stop the next one mounting.
+- The `signal` aborts on teardown, and a mount that resolves after its own
+  teardown still has its disposer run.
 
-## W6 — Component registry: re-evaluate
+## W6 — Component registry: re-evaluated, still NO
 
-Wave 1's P6 decided NO, with the evidence that eight new slots needed no
-component the kit lacks. W2–W5 add four more surfaces; if none of them needs a
-new primitive either, the decision stands and is re-recorded with the new
-evidence. **Do not build a registry speculatively** — bb's exists because bb
-REMOVED its kit, and a registry that duplicates a working kit is a second place
-for a component to live.
+Wave 1's P6 decided no, with the evidence that eight new slots needed no
+component the kit lacks. W2–W5 add four more surfaces, and the answer holds:
+
+| New surface | What it needed from the kit |
+|---|---|
+| `providerIcon` | Nothing — a plugin supplies SVG source, and the host's existing mark component draws it. |
+| `pendingInteraction` | Nothing — the plugin renders its own controls; the host supplies `submit`/`cancel`. |
+| `messageDirective` | Nothing — a plugin's component, with the fence body as a prop. |
+| `contentScript` | Nothing — the plugin owns its own DOM. |
+
+Twelve surfaces now, and **not one has needed a primitive the kit does not
+ship**. That is the evidence the phase existed to wait for, and it is consistent
+across both waves, so the decision is re-recorded rather than revisited.
+
+What bb's registry genuinely buys is component BREADTH (Radix primitives,
+tables, charts) for plugins that want a rich UI. A plugin that wants those
+depends on the library directly — the chamber is a Preact-native world, so
+`lucide-preact` or a hand-rolled primitive is the same work either way, and the
+chamber does not have to own a generated registry to make that possible. bb's
+registry exists because bb REMOVED its kit; a registry that duplicates a working
+kit is a second place for a component to live.
+
+**Revisit if:** a real plugin needs a component whose implementation is large and
+host-coupled (a virtualized table reading the chamber's session store, say). Then
+the answer is a new module in `@ompchamber/ui`, not a registry.
 
 ## Sequencing
 

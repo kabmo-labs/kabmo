@@ -11,10 +11,15 @@ Preact is what this app renders with, so a plugin's components are built from th
 same runtime and the same hooks — and the bundle is small because the shared
 runtime is not bundled at all.
 
-The direction this surface is heading — a server half, more slots, a test
-harness and a plugin CLI — is recorded in
-[Plugin platform plan](../plugin-platform-plan.md). It is planned, not shipped;
-this document describes what exists today.
+A plugin can also be a **participant**: `useRpc` calls its own server methods,
+`useRealtime` follows its own topic, and `useComposer` reads and writes the
+composer's draft. That is what separates a plugin that draws from one that acts.
+
+The plans this surface was built from are
+[Plugin platform plan](../plugin-platform-plan.md) (the server half, the slots,
+the harness, the CLI) and
+[Wave 2](../plugin-platform-wave2-plan.md) (the participant hooks and the four
+slots that reach into the conversation).
 
 Two packages are provided by the chamber itself:
 
@@ -24,7 +29,7 @@ Two packages are provided by the chamber itself:
 | `@ompchamber/plugin-sdk/app` | The same app contract, as the runtime slot the build shims to. |
 | `@ompchamber/plugin-sdk/testing` | A fake host for the plugin's own tests — no chamber process needed. |
 | `@ompchamber/plugin-sdk/testing/app` | `loadPluginApp` / `renderSlot` / `renderPanel`, for testing the components. |
-| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useScrollbarFadeRef`, and the `PanelHostProvider` that scopes `usePanelHost`. |
+| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useScrollbarFadeRef`, `useRpc`, `useRealtime`, `useComposer`, plus the two providers (`PanelHostProvider`, `PluginIdProvider`). |
 | `@ompchamber/ui/components` | `Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`, and `Markdown` (rendered through the chamber's own pipeline). |
 
 They are published on npm (`@ompchamber/plugin-sdk`, `@ompchamber/ui`), and the
@@ -481,6 +486,17 @@ exactly that row back.
 | `app.composerAction(...)` | A button in the composer's toolbar. | `{ id, title?, order?, component }` | `{ sessionId, workspacePath, text, isSubmitting }` |
 | `app.composerBanner(...)` | A strip above the composer's input. | `{ id, title?, order?, component }` | `{ sessionId, workspacePath }` |
 
+### Slots that reach into the conversation
+
+Four more, each aimed at something a drawing slot cannot do:
+
+| Method | What it does | Registration | Props |
+|---|---|---|---|
+| `app.providerIcon(...)` | Supplies a provider's mark, beating the built-in glyph for the provider it names. | `{ id, title?, order?, provider, glyph }` | — (a glyph is SVG source; paint it `currentColor`) |
+| `app.pendingInteraction(...)` | Renders the agent's own question, and may ANSWER it. The one slot where a plugin changes what the agent does. | `{ id, title?, order?, component }` | `{ questions, recorded, submit, cancel }` |
+| `app.messageDirective(...)` | Claims a fenced block in an assistant message and renders it as your component. | `{ id, title?, order?, name, component }` | `{ sessionId, workspacePath, name, body, attributes }` |
+| `app.contentScript(...)` | Mounts code into the app shell, with no component at all. | `{ id, title?, order?, mount }` | `mount({ pluginId, generation, signal })` → a disposer |
+
 Three rules, all of them enforced:
 
 - **A duplicate `id` within the same plugin and slot THROWS.** The registration
@@ -493,6 +509,65 @@ Three rules, all of them enforced:
 - **A plugin that contributes nothing changes nothing.** Every surface renders
   nothing at all for an empty slot, so a chamber with no plugins is behaviourally
   identical to one before these slots existed.
+
+Three of them carry a rule of their own:
+
+- **`providerIcon` is a registry, and resolution order is its contract.** A
+  plugin's glyph wins for the provider it names and leaves every other provider
+  on its built-in mark. Matching folds the provider exactly as the built-in table
+  does, so `google-vertex`, `Google Vertex` and a legacy icon key all find it.
+  Two plugins naming one provider resolve to the first merged row (`order`, then
+  plugin id, then registration id), and the second registration is still accepted.
+  A glyph that is not a usable SVG — no root `<svg>` with a `viewBox` — falls
+  through to the built-in mark rather than blanking the provider's icon.
+- **`messageDirective`'s name is unique ACROSS plugins.** The same fence token
+  resolving to one plugin or another by registration order is a renderer that
+  changes when an unrelated plugin is installed, so a second claim of the same
+  name is refused.
+- **`contentScript`'s disposer is REQUIRED, and disposal is exact-once and
+  reverse-order.** The host owns teardown across reload, disable, removal and
+  window teardown, so a script that keeps DOM it does not give back leaks it for
+  the life of the page. The `signal` aborts on teardown, so an async mount
+  cannot finish after its own disposal.
+
+### Acting on the conversation
+
+```tsx
+import { useComposer, useRealtime, useRpc } from '@ompchamber/ui';
+
+function Notes() {
+  // Calls THIS plugin's own server method — the plugin id is implicit, so a
+  // component rendered for one plugin can never reach another's namespace.
+  const list = useRpc<{ query: string }, Row[]>('list');
+  // The plugin's own `plugin:<id>` topic, seeded from the value on hand.
+  const count = useRealtime<{ count: number }>();
+  const composer = useComposer();
+
+  return (
+    <Panel title="Notes">
+      <Field label="count" value={count.stale ? 'stale' : String(count.value?.count ?? 0)} />
+      <Button onClick={() => void list.call({ query: 'today' })} disabled={list.pending}>
+        Load
+      </Button>
+      {list.error && <Note tone="error">{list.error.message}</Note>}
+      <Button onClick={() => composer.insert('@notes ')}>Mention</Button>
+    </Panel>
+  );
+}
+```
+
+Three properties worth knowing, because each is a bug when it is missing:
+
+- **A refusal is a result, not an exception.** The route answers
+  `{ ok: false, error }` at HTTP 200 — the call reached the plugin and the
+  plugin said no — so `list.error` carries the plugin's own reason rather than a
+  thrown network error.
+- **A superseded call is dropped**, so a slow first call cannot repaint the
+  panel a faster second one already moved.
+- **`composer.set`/`insert` write through the composer's own state**, not the
+  DOM. The textarea is controlled, so a DOM write is reverted by the next
+  keystroke and the edit vanishes with no error. `insert` places at the caret
+  and moves it past, so two inserts in a row do not both land at the old spot.
 
 `timelineRenderer` matches a tool name EXACTLY, so two plugins cannot both claim
 `bash` — the second registration is refused rather than shadowing the first.
@@ -683,6 +758,14 @@ A plugin added to `~/.ompchamber/marketplace/` is **outside the project root**,
 so Tailwind's scan does not see its own class names. Prefer the kit's components
 (`Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`) and
 inline styles for anything the kit does not cover.
+
+**Do not `import './styles.css'` and expect it to apply.** The build emits the
+CSS as a sibling of the bundle (`dist/app.js` beside `dist/app.css`), and the
+manifest has no field that names it, so nothing ever loads it — the import is
+silently inert. Verified against `Bun.build` with `target: 'browser'`: the
+output list carries both files and the JS does not reference the `.css`. Either
+use the host's utilities (above) or inject a `<style>` element from a content
+script, which you own and can take down.
 
 ## The bundle route
 
