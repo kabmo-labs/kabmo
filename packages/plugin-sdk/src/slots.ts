@@ -232,7 +232,7 @@ export interface PluginListSlots {
   timelineRenderer(registration: TimelineRendererRegistration): () => void;
   composerAction(registration: ComposerActionRegistration): () => void;
   composerBanner(registration: ComposerBannerRegistration): () => void;
-  providerIcon(registration: ProviderIconRegistration): () => void;
+  experimental_providerIcon(registration: ProviderIconRegistration): () => void;
   pendingInteraction(registration: PendingInteractionRegistration): () => void;
   /**
    * A fenced-block renderer.

@@ -189,7 +189,10 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
     timelineRenderer: (registration) => registerListSlot(pluginId, 'timelineRenderer', registration),
     composerAction: (registration) => registerListSlot(pluginId, 'composerAction', registration),
     composerBanner: (registration) => registerListSlot(pluginId, 'composerBanner', registration),
-    providerIcon: (registration) => registerListSlot(pluginId, 'providerIcon', registration),
+    // The slot NAME stays `providerIcon` (it is the store key and the
+    // resolver's lookup); only the METHOD carries the stability marker.
+    experimental_providerIcon: (registration) =>
+      registerListSlot(pluginId, 'providerIcon', registration),
     pendingInteraction: (registration) => registerListSlot(pluginId, 'pendingInteraction', registration),
     messageDirective: (registration) => registerListSlot(pluginId, 'messageDirective', registration),
     contentScript: (registration) => registerListSlot(pluginId, 'contentScript', registration),
