@@ -5,6 +5,26 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.10.0](https://github.com/rajebdev/ompchamber/compare/v4.9.1...v4.10.0) — 2026-10-11
+
+### Added
+
+* **plugins:** add a plugin platform — server half, list slots, harness, CLI ([8ea446f](https://github.com/rajebdev/ompchamber/commit/8ea446f4d589a291e668555e709cc19ae26ad6c9))
+* **plugins:** let a plugin act on the conversation, not only draw beside it ([751a304](https://github.com/rajebdev/ompchamber/commit/751a30411495317831a2b54b8d855d6665f1db77))
+* **plugins:** let a plugin answer the agent's own questions ([c83e963](https://github.com/rajebdev/ompchamber/commit/c83e9636add788c75d88e048efb172108ec8c75c))
+* **plugins:** let a plugin claim a fenced block in a message ([f0db376](https://github.com/rajebdev/ompchamber/commit/f0db3768336026417683d8ddb67e999353351416))
+* **plugins:** let a plugin read the sidebar and act on a session ([6171a37](https://github.com/rajebdev/ompchamber/commit/6171a37160bb65017086da8d10d4161b4a9add6b))
+* **plugins:** let a plugin run code against the app shell ([1ba0047](https://github.com/rajebdev/ompchamber/commit/1ba0047407bdc67bd70baee0ee7d963a9a8bbd7e))
+* **plugins:** let a plugin supply a provider's mark ([e759bc9](https://github.com/rajebdev/ompchamber/commit/e759bc9b871c31bbd0990a5c0414c7d7a1ccd0f6))
+* **plugins:** load a plugin's declared stylesheet with its content script ([d2fd738](https://github.com/rajebdev/ompchamber/commit/d2fd738d980ed8e7d2fec511b54ae49e3fc279f1))
+* **plugins:** mark the unstable surfaces experimental_ ([5f8d300](https://github.com/rajebdev/ompchamber/commit/5f8d30092a59641a730854d195c8b16d8606d7f0))
+
+### Changed
+
+* **contributing:** warn that the skip marker matches anywhere in a message ([88e2bed](https://github.com/rajebdev/ompchamber/commit/88e2bed4e94474a0306707dfcb6bedfe56b4de39))
+* **plugins:** document the stylesheet, the sidebar and the stability policy ([4916029](https://github.com/rajebdev/ompchamber/commit/4916029e1a1d869bd77f3a093159983c303939e9))
+* **plugins:** record wave 2's surfaces and the two decisions behind them ([411656a](https://github.com/rajebdev/ompchamber/commit/411656a36fb1eb2a764d767ed4046d701d867751))
+
 ## [4.9.1](https://github.com/rajebdev/ompchamber/compare/v4.9.0...v4.9.1) — 2026-10-08
 
 ### Fixed
