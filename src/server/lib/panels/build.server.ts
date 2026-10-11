@@ -48,8 +48,14 @@ import type { PanelPluginManifest } from '@/shared/types';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { runShell } from '@/server/lib/fs/shell';
-import { runtimeShimPlugin } from '@/server/lib/panels/shim';
 import { linkChamberPackages } from '@/server/lib/panels/link.server';
+import {
+  APP_SOURCE_CANDIDATES,
+  SERVER_SOURCE_CANDIDATES,
+  buildAppBundle,
+  buildServerBundle,
+  findSource,
+} from '@/server/lib/panels/build-targets.server';
 
 /** Where a built plugin's output lands, relative to the plugin root. */
 export const PLUGIN_BUILD_DIR = 'dist';
@@ -81,22 +87,6 @@ export interface PluginBuildResult {
 
 const INSTALL_TIMEOUT_MS = 300_000;
 const BUILD_TIMEOUT_MS = 180_000;
-
-/**
- * The source file the shimmed bundle is built from.
- *
- * The manifest names the OUTPUT (`dist/app.js`), so the source has to come from
- * a convention. `src/app.tsx` is the documented one; the root-level fallbacks
- * cover a hand-written plugin that has no `src/`.
- */
-const APP_SOURCE_CANDIDATES = ['src/app.tsx', 'src/app.ts', 'app.tsx', 'app.ts'];
-
-async function findAppSource(root: string): Promise<string | null> {
-  for (const candidate of APP_SOURCE_CANDIDATES) {
-    if (await pathExists(join(root, candidate))) return candidate;
-  }
-  return null;
-}
 
 /**
  * Whether the plugin's package.json declares a `build` script.
@@ -146,22 +136,27 @@ async function declaresDependencies(root: string): Promise<boolean> {
  * Two paths, and which one runs is decided by the plugin:
  *
  * - **Its own `build` script.** Run as-is; the plugin owns its output and must
- *   produce the file the manifest names. The chamber's shim does not apply, so
+ *   produce the files the manifest names. The chamber's shim does not apply, so
  *   such a plugin carries its own runtime unless it marks the shared specifiers
  *   external itself.
- * - **The chamber's bundler.** A shimmed `Bun.build` over the conventional app
- *   source, emitting ONE ESM file at the manifest's `app` path. Every shared
- *   specifier is rewritten to read the host runtime, so the bundle carries no
- *   Preact, no UI kit and no SDK.
+ * - **The chamber's bundler.** One `Bun.build` per declared entry: the app
+ *   entry shimmed for the browser, the server entry bundled for Bun. A plugin
+ *   may declare either or both, and each half is built only when its source is
+ *   present.
+ *
+ * The `dist/` purge happens only when the chamber is about to WRITE something.
+ * A server-only plugin whose server half is emitted by its own tooling has
+ * nothing to rebuild here, and deleting its output would leave it unservable
+ * with nothing to put back.
  */
 export async function buildPanelPlugin(root: string, manifest: PanelPluginManifest): Promise<PluginBuildResult> {
-  const outPath = join(root, manifest.app);
   const usesOwnScript = await hasBuildScript(root);
-  const source = usesOwnScript ? null : await findAppSource(root);
-  if (!usesOwnScript && !source) {
+  const appSource = usesOwnScript ? null : await findSource(root, APP_SOURCE_CANDIDATES);
+  const serverSource = usesOwnScript ? null : await findSource(root, SERVER_SOURCE_CANDIDATES);
+  if (!usesOwnScript && !appSource && !serverSource) {
     return {
       status: 'not-a-package',
-      reason: `no build script, and none of ${APP_SOURCE_CANDIDATES.join(', ')} exists`,
+      reason: `no build script, and none of ${[...APP_SOURCE_CANDIDATES, ...SERVER_SOURCE_CANDIDATES].join(', ')} exists`,
     };
   }
 
@@ -192,34 +187,42 @@ export async function buildPanelPlugin(root: string, manifest: PanelPluginManife
       return { status: 'failed', reason: firstLine(build.stderr) || firstLine(build.stdout) || 'build failed' };
     }
   } else {
-    try {
-      const result = await Bun.build({
-        entrypoints: [join(root, source as string)],
-        target: 'browser',
-        format: 'esm',
-        minify: true,
-        // Naming is fixed rather than hashed: the manifest names the output, and
-        // the bundle route adds a content hash to the URL so a rebuilt plugin is
-        // re-imported instead of being served from the browser's module cache.
-        naming: '[dir]/[name].[ext]',
-        outdir: join(root, PLUGIN_BUILD_DIR),
-        plugins: [runtimeShimPlugin()],
-      });
-      if (!result.success) {
-        return { status: 'failed', reason: describeBuildFailure(result.logs) };
-      }
-    } catch (error) {
-      // An UNRESOLVABLE import throws rather than answering `success: false`
-      // (measured on Bun 1.4.2), and the thrown error is the only place the
-      // specifier that could not be found appears.
-      return { status: 'failed', reason: error instanceof Error ? error.message : String(error) };
+    const outdir = join(root, PLUGIN_BUILD_DIR);
+    const bundles = [
+      ...(appSource ? [{ kind: 'app' as const, source: appSource }] : []),
+      ...(serverSource ? [{ kind: 'server' as const, source: serverSource }] : []),
+    ];
+    for (const bundle of bundles) {
+      const outcome =
+        bundle.kind === 'app'
+          ? await buildAppBundle(root, bundle.source, outdir)
+          : await buildServerBundle(root, bundle.source, outdir);
+      if (!outcome.ok) return { status: 'failed', reason: describeBundleError(outcome.error) };
     }
   }
 
-  if (!(await pathExists(outPath))) {
-    return { status: 'failed', reason: `the build produced no ${relative(root, outPath)}` };
+  for (const entry of [manifest.app, manifest.server]) {
+    if (!entry) continue;
+    if (!(await pathExists(join(root, entry)))) {
+      return { status: 'failed', reason: `the build produced no ${entry}` };
+    }
   }
   return { status: 'built', outDir: PLUGIN_BUILD_DIR };
+}
+
+/**
+ * The line that explains a bundle failure, from either shape `Bun.build` uses.
+ *
+ * Two shapes because the failure arrives two ways: a `logs` array for a compile
+ * error, and a THROWN error for an unresolvable import. Only the second names
+ * the specifier that could not be found, so collapsing them into "the bundle
+ * failed" would lose the one message the author needs.
+ */
+function describeBundleError(error: unknown): string {
+  if (Array.isArray(error)) {
+    return describeBuildFailure(error as readonly { message?: string; position?: unknown }[]);
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**

@@ -14,6 +14,7 @@
  */
 
 import DOMPurify, { type Config } from 'dompurify';
+import { DIRECTIVE_ATTRS_ATTR, DIRECTIVE_BLOCK_CLASS, DIRECTIVE_NAME_ATTR } from '@/shared/lib/markdown/directives';
 
 const KATEX_MATHML_TAGS = [
   'math',
@@ -104,7 +105,12 @@ export function sanitizeHtml(html: string): string {
 
   const hasSvgIcon = /<svg[^>]*>/.test(html);
   const hasMathPlaceholder = html.includes('math-pending');
-  const config = hasKatex(html) || hasSvgIcon || hasMathPlaceholder
+  // A plugin directive's placeholder rides on the same allowlist shape as the
+  // math placeholders: DOMPurify strips an unknown `data-*` attribute unless it
+  // is listed, and a stripped name means the client cannot tell which plugin
+  // claims the fence — the block would stay a code block forever.
+  const hasDirective = html.includes(DIRECTIVE_BLOCK_CLASS);
+  const config = hasKatex(html) || hasSvgIcon || hasMathPlaceholder || hasDirective
     ? {
         USE_PROFILES: { html: true, mathMl: true } as const,
         ADD_TAGS: [...KATEX_MATHML_TAGS, ...(hasSvgIcon ? COPY_ICON_TAGS : [])],
@@ -118,6 +124,7 @@ export function sanitizeHtml(html: string): string {
           // they are listed here.
           'data-math',
           'data-math-display',
+          ...(hasDirective ? [DIRECTIVE_NAME_ATTR, DIRECTIVE_ATTRS_ATTR, 'data-hydrated'] : []),
           ...(hasSvgIcon ? COPY_ICON_ATTRS : []),
         ],
       }

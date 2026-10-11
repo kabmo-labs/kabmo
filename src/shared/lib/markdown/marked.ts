@@ -31,6 +31,7 @@ import { Marked } from 'marked';
 import { codeSafeAutolink } from '@/shared/lib/markdown/autolink';
 import remend from 'remend';
 import { highlightCode } from '@/shared/lib/code/syntax-highlight';
+import { directiveBlockHtml, isDirectiveLanguage, parseDirectiveAttributes } from '@/shared/lib/markdown/directives';
 import { MATH_PENDING_CLASS } from '@/shared/lib/markdown/katex';
 
 /** Escape HTML for safe interpolation inside highlighted output. */
@@ -129,13 +130,20 @@ function mermaidBlockRenderer(code: string): string {
 }
 
 function codeBlockRenderer(token: CodeToken): string {
-  const lang = token.lang?.trim() || 'text';
+  const info = token.lang?.trim() || 'text';
   const code = token.text ?? '';
-  if (lang === 'mermaid') {
+  if (info === 'mermaid') {
     return mermaidBlockRenderer(code);
   }
+  // A namespace-qualified token (`omp:chart`) is a plugin directive. The
+  // ordinary code block is still produced — and stays INSIDE the placeholder —
+  // so a fence no plugin claims renders exactly as it did before the slot
+  // existed. `info` may carry `key=\"value\"` pairs after the token.
+  const [lang = 'text'] = info.split(/\s+/, 1);
   const highlighted = lang === 'text' ? escapeHtml(code) : highlightCode(code, lang);
-  return codeBlockShell(code, `<pre><code class="language-${lang}">${highlighted}</code></pre>`);
+  const block = codeBlockShell(code, `<pre><code class="language-${lang}">${highlighted}</code></pre>`);
+  if (!isDirectiveLanguage(lang)) return block;
+  return directiveBlockHtml(lang, parseDirectiveAttributes(info.slice(lang.length)), block);
 }
 
 marked.use({

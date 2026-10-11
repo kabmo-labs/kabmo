@@ -20,6 +20,7 @@ import { ompBindings } from '@/server/routes/omp';
 import { updatesBindings } from '@/server/routes/updates';
 import { wikiBindings } from '@/server/routes/wiki';
 import { panelsBindings } from '@/server/routes/panels/bindings';
+import { pluginsBindings } from '@/server/routes/plugins/bindings';
 import { realtimeWsRoutes } from '@/server/routes/realtime/ws';
 import { healthBindings } from '@/server/routes/health';
 import { wellKnownBindings } from '@/server/routes/well-known';
@@ -43,6 +44,7 @@ const allBindings: HandlerBinding[] = [
   ...updatesBindings,
   ...wikiBindings,
   ...panelsBindings,
+  ...pluginsBindings,
   ...healthBindings,
   ...wellKnownBindings,
 ];

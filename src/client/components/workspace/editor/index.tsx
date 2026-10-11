@@ -18,6 +18,7 @@ import { ImageViewer } from '@/client/components/common/image-viewer';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
 import { FileDocument } from '@/client/components/workspace/editor/FileDocument';
+import { PluginFileViewBody, usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
@@ -77,6 +78,10 @@ export function Editor({
     reportSaveError: true,
     onFileSaved,
   });
+
+  // Resolved unconditionally: hooks cannot live in the branch that draws the
+  // view, and the resolver is cheap when no plugin contributed one.
+  const pluginFileView = usePluginFileView({ path: activeFile?.path ?? '', content: editor.content, language: editor.language });
 
   const find = useEditorFind({
     text: editor.content,
@@ -311,6 +316,8 @@ export function Editor({
                 <span className="text-xs text-error font-sans">Could not read {activeFile.name}</span>
                 <span className="text-[11px] text-ink/50 font-mono break-all">{editor.loadError}</span>
               </div>
+            ) : pluginFileView && !editor.isImage ? (
+              <PluginFileViewBody view={pluginFileView} />
             ) : (
               <FileDocument
                 activeFile={activeFile}

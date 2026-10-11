@@ -17,7 +17,13 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { compareVersions, isNewer, normalizeVersion } from '@/shared/lib/updates/semver';
+import {
+  compareVersions,
+  isNewer,
+  isValidRange,
+  normalizeVersion,
+  satisfiesRange,
+} from '@/shared/lib/updates/semver';
 
 describe('normalizeVersion', () => {
   test('strips a single leading v/V and surrounding whitespace', () => {
@@ -73,5 +79,69 @@ describe('isNewer', () => {
 
   test('a pre-release of the same core version is not newer', () => {
     expect(isNewer('1.2.3-beta', '1.2.3')).toBe(false);
+  });
+});
+
+describe('satisfiesRange', () => {
+  test('* and the empty string accept anything', () => {
+    expect(satisfiesRange('4.9.1', '*')).toBe(true);
+    expect(satisfiesRange('0.0.1', '')).toBe(true);
+  });
+
+  test('a bare version is exact, and = is the same comparison', () => {
+    expect(satisfiesRange('1.2.3', '1.2.3')).toBe(true);
+    expect(satisfiesRange('1.2.4', '1.2.3')).toBe(false);
+    expect(satisfiesRange('1.2.3', '=1.2.3')).toBe(true);
+    // `1.2` === `1.2.0`, the module's own segment rule.
+    expect(satisfiesRange('1.2.0', '1.2')).toBe(true);
+  });
+
+  test('comparisons are inclusive where written', () => {
+    expect(satisfiesRange('1.2.3', '>=1.2.3')).toBe(true);
+    expect(satisfiesRange('1.2.2', '>=1.2.3')).toBe(false);
+    expect(satisfiesRange('1.2.3', '>1.2.3')).toBe(false);
+    expect(satisfiesRange('1.2.3', '<=1.2.3')).toBe(true);
+    expect(satisfiesRange('1.2.3', '<1.2.3')).toBe(false);
+    expect(satisfiesRange('1.2.2', '<1.2.3')).toBe(true);
+  });
+
+  test('^ is same-major for a 1.x+ range and same-minor for 0.x', () => {
+    expect(satisfiesRange('1.9.0', '^1.2.3')).toBe(true);
+    expect(satisfiesRange('2.0.0', '^1.2.3')).toBe(false);
+    expect(satisfiesRange('1.2.2', '^1.2.3')).toBe(false);
+    expect(satisfiesRange('0.2.9', '^0.2.3')).toBe(true);
+    expect(satisfiesRange('0.3.0', '^0.2.3')).toBe(false);
+  });
+
+  test('~ is same major.minor', () => {
+    expect(satisfiesRange('1.2.9', '~1.2.3')).toBe(true);
+    expect(satisfiesRange('1.3.0', '~1.2.3')).toBe(false);
+    expect(satisfiesRange('1.2.2', '~1.2.3')).toBe(false);
+  });
+
+  test('space-separated tokens are a conjunction', () => {
+    expect(satisfiesRange('1.5.0', '>=1.2 <2')).toBe(true);
+    expect(satisfiesRange('2.0.0', '>=1.2 <2')).toBe(false);
+    expect(satisfiesRange('1.1.0', '>=1.2 <2')).toBe(false);
+  });
+
+  test('a malformed range is not a pass', () => {
+    expect(satisfiesRange('1.2.3', 'not a range')).toBe(false);
+    expect(satisfiesRange('1.2.3', '1.2.x')).toBe(false);
+    expect(satisfiesRange('1.2.3', '>= 1.2.3')).toBe(false);
+  });
+});
+
+describe('isValidRange', () => {
+  test('accepts the supported grammar', () => {
+    for (const range of ['*', '', '1.2.3', '=1.2.3', '>=1.2', '>1', '<=2.0.0', '<3', '^1.2.3', '~1.2', '>=1.2 <2']) {
+      expect(isValidRange(range)).toBe(true);
+    }
+  });
+
+  test('refuses anything outside it', () => {
+    for (const range of ['not a range', '1.2.x', '>= 1.2.3', '^1.2.3 || ^2.0.0', 'v1.2.3']) {
+      expect(isValidRange(range)).toBe(false);
+    }
   });
 });

@@ -21,6 +21,7 @@ import { isMockMode } from '@/server/mock.server';
 import { stopDiscoveryRootsWatch, syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
+import { loadPluginServers } from '@/server/lib/plugins/loader.server';
 
 // Refuse to run without a resolvable omp binary — before the listener opens and
 // before the first request can reach a route that shells out to it. The database
@@ -238,6 +239,23 @@ try {
  * leave a second interval running.
  */
 startScheduleRuntime();
+
+/**
+ * The plugin platform's server half. After the listener is up and the
+ * scheduled-task clock exists — a plugin's own schedules are registered with
+ * the same runtime, so starting a plugin before it would race the schema and
+ * the timer. Never throws: one broken plugin must not stop the server from
+ * booting, and its reason is reported here and by `GET /api/plugins`.
+ */
+try {
+  const result = await loadPluginServers();
+  if (result.loaded.length > 0) {
+    console.log(`[ompchamber] plugins:        ${result.loaded.length} server half(s) loaded (${result.loaded.join(', ')})`);
+  }
+  for (const failure of result.errors) console.error(`[plugins] ${failure.pluginId}: ${failure.reason}`);
+} catch (error) {
+  console.error('[plugins] server halves skipped:', error);
+}
 
 /**
  * What omp reports it can actually run. A live RPC round-trip: a cold utility

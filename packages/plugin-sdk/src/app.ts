@@ -25,6 +25,7 @@
  */
 
 import type { ComponentType } from 'preact';
+import type { PluginListSlots } from './slots';
 
 /** Where a contributed panel renders. One panel per position, per plugin. */
 export type PanelPosition = 'right' | 'editor' | 'header';
@@ -116,13 +117,17 @@ export interface SettingsSectionRegistration extends SlotRegistration {
 /**
  * The registrar the host hands to `setup`.
  *
- * Each method is a slot, and each slot takes AT MOST ONE registration — the
+ * Each POSITIONAL method is a slot that takes AT MOST ONE registration — the
  * layout gives a plugin one activity-bar button, one navbar entry and one
- * editor-column view, so a second `rightPanel` would be unreachable. Registering
- * twice throws rather than silently replacing, because a plugin that tried is
- * broken and a quiet overwrite would hide it.
+ * editor-column view, so a second `rightPanel` would be unreachable.
+ * Registering twice throws rather than silently replacing, because a plugin
+ * that tried is broken and a quiet overwrite would hide it.
+ *
+ * The list slots (see `./slots`) are the other kind: `PluginListSlots` methods
+ * take a keyed registration and return a disposer, because a row among rows can
+ * be added and removed without touching its neighbours.
  */
-export interface PluginApp {
+export interface PluginApp extends PluginListSlots {
   readonly pluginId: string;
   rightPanel(registration: RightPanelRegistration): void;
   panel(registration: PanelRegistration): void;

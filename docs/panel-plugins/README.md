@@ -11,13 +11,25 @@ Preact is what this app renders with, so a plugin's components are built from th
 same runtime and the same hooks — and the bundle is small because the shared
 runtime is not bundled at all.
 
+A plugin can also be a **participant**: `useRpc` calls its own server methods,
+`useRealtime` follows its own topic, and `useComposer` reads and writes the
+composer's draft. That is what separates a plugin that draws from one that acts.
+
+The plans this surface was built from are
+[Plugin platform plan](../plugin-platform-plan.md) (the server half, the slots,
+the harness, the CLI) and
+[Wave 2](../plugin-platform-wave2-plan.md) (the participant hooks and the four
+slots that reach into the conversation).
+
 Two packages are provided by the chamber itself:
 
 | Import | What it gives you |
 |---|---|
-| `@ompchamber/plugin-sdk` | The contract: `definePluginApp`, the slot and props types. |
-| `@ompchamber/plugin-sdk/app` | The same contract, as the runtime slot the build shims to. |
-| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useScrollbarFadeRef`, and the `PanelHostProvider` that scopes `usePanelHost`. |
+| `@ompchamber/plugin-sdk` | The contract: `definePluginApp`, the slot and props types, and the SERVER half (`ChamberPluginApi`). |
+| `@ompchamber/plugin-sdk/app` | The same app contract, as the runtime slot the build shims to. |
+| `@ompchamber/plugin-sdk/testing` | A fake host for the plugin's own tests — no chamber process needed. |
+| `@ompchamber/plugin-sdk/testing/app` | `loadPluginApp` / `renderSlot` / `renderPanel`, for testing the components. |
+| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useScrollbarFadeRef`, `useRpc`, `useRealtime`, `useComposer`, plus the two providers (`PanelHostProvider`, `PluginIdProvider`). |
 | `@ompchamber/ui/components` | `Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`, and `Markdown` (rendered through the chamber's own pipeline). |
 
 They are published on npm (`@ompchamber/plugin-sdk`, `@ompchamber/ui`), and the
@@ -145,9 +157,16 @@ with.
   plugin may need a bundler pass the chamber knows nothing about (a framework, a
   template compiler).
 - Otherwise the chamber bundles `src/app.tsx` (or `src/app.ts`, or the same at
-  the plugin root) into the `app` file the manifest names. A plain plugin needs
-  no build script at all — and a plugin built this way gets the shared runtime
-  shimmed in, which a script-driven build must arrange for itself.
+  the plugin root) into the `app` file the manifest names, **and
+  `src/server.ts` into the `server` file** when the manifest declares one. A
+  plain plugin needs no build script at all — and a plugin built this way gets
+  the shared runtime shimmed into its APP bundle, which a script-driven build
+  must arrange for itself.
+- **The two targets are not symmetric.** The app bundle is built for the browser
+  with the shared specifiers rewritten to the host runtime; the server bundle is
+  built for Bun (`target: 'bun'`, unminified) with nothing shimmed, because the
+  chamber's process imports it by absolute path and there is no runtime global
+  published there.
 - **Dependencies are installed first** (`bun install --ignore-scripts`) when
   `package.json` declares any. `--ignore-scripts` because a postinstall would run
   arbitrary code on the SERVER.
@@ -156,17 +175,37 @@ with.
   cloned into the marketplace cannot resolve them from its own install — `bun
   install` would have to fetch them from a registry that does not carry them.
   Symlinks, one per package, written after the install so it cannot delete them.
-- **One Preact per bundle.** This matters only for a plugin that uses its own
-  build script: the chamber's bundler marks `preact` external, but a script
-  bundles whatever it resolves, and the linked UI kit would then pull a SECOND
-  copy beside the plugin's. Two copies means two option objects, so Preact's
-  hooks die at render with `Cannot read properties of undefined (reading '__H')`.
-  The kit's own `node_modules/preact` is therefore pointed at the plugin's copy.
+- **The link deliberately does NOT reconcile Preact.** An earlier version
+  pointed each linked package's `node_modules/preact` at the plugin's copy, which
+  replaced the HOST's Preact — and since the runtime shim hands the host's
+  `preact/hooks` to every plugin, a plugin that declared `preact` made the host
+  hand out the wrong hooks instance. The shim marks `preact` external, so the
+  chamber's bundler never resolves it through a linked package anyway.
 - `dist/` is **replaced**, never merged, so a file the current source no longer
   emits cannot survive.
-- The bundle the manifest names must exist after the build. A build that produces
+- Every file the manifest names must exist after the build. A build that produces
   nothing fails outright, because the alternative is a plugin that reports as
   built while every one of its panels is missing.
+- A plugin that declares `server` but no `app` is not a build failure — it is a
+  background plugin, and only its server entry is required.
+
+### The CLI
+
+`ompchamber plugin` builds, types and scaffolds plugins without going through the
+UI:
+
+```bash
+ompchamber plugin new my-plugin     # scaffold: manifest, src/app.tsx, src/server.ts, tsconfig
+ompchamber plugin build my-plugin   # the SAME build the chamber runs on install
+ompchamber plugin types my-plugin   # (re)emit bundled-types/
+ompchamber plugin list              # installed plugins and their build state
+```
+
+`new` writes the SDK's declarations into `bundled-types/` and a `tsconfig.json`
+whose `paths` map onto them, so a fresh directory typechecks immediately with no
+chamber source on disk — `bunx tsc --noEmit -p .` just works. `build` is the
+CLI's own entry to the same `buildPanelPlugin` the server calls, so a plugin
+author runs locally exactly what the chamber will run on install.
 
 ## Installing
 
@@ -283,7 +322,17 @@ their positions are decided by the registrations the bundle makes when it loads.
     "name": "Session Info",
     "version": "1.0.0",
     "description": "Shows the active workspace and keeps a note per session.",
-    "app": "dist/app.js"
+    "app": "dist/app.js",
+    "server": "dist/server.js",
+    "settings": {
+      "notePrefix": {
+        "type": "string",
+        "label": "Note prefix",
+        "default": ""
+      }
+    },
+    "engines": { "ompchamber": "^4", "pluginSdk": "^2" },
+    "capabilities": ["panel"]
   },
   "devDependencies": {
     "preact": "^10.29.8",
@@ -298,16 +347,25 @@ their positions are decided by the registrations the bundle makes when it loads.
 | `id` | yes | `[a-z0-9][a-z0-9._-]*`, ≤ 64 chars. The plugin's namespace. |
 | `name` | yes | Shown in the activity-bar tooltip and the settings pane. |
 | `version` | yes | Free-form string; displayed, not parsed. |
-| `app` | yes | The BUILT ESM bundle, relative to the plugin root — conventionally `dist/app.js`. Its default export must be a `definePluginApp(...)` definition. |
+| `app` | one of `app`/`server` | The BUILT ESM bundle, relative to the plugin root — conventionally `dist/app.js`. Its default export must be a `definePluginApp(...)` definition. |
+| `server` | one of `app`/`server` | The BUILT server entry, conventionally `dist/server.js`. Its default export is a `ChamberPluginApi` factory. Built for Bun, not for the browser. |
+| `settings` | no | Declared settings, keyed by name: `{ type: 'string'\|'number'\|'boolean', label, description?, default?, secret? }`. Declarative so the host can draw a form and validate a value **without the plugin running** — a switched-off plugin still shows its settings. A `secret` value is stored and never returned to a client. |
+| `engines` | no | `{ ompchamber?, pluginSdk? }` — version RANGES (`^4`, `>=4.9 <5`, `*`). Absent means "any". A range the running host does not satisfy refuses the plugin BY NAME, naming both sides. |
+| `capabilities` | no | Host capabilities the plugin requires. Today only `panel` exists — the list is what the host actually provides, so declaring something not yet shipped is refused rather than silently ignored. |
 | `icon` | no | Image, relative to the plugin root. Omit and the pane draws the plugin's initials. |
 | `readme` | no | Markdown, relative to the plugin root. Defaults to `README.md` at the root when it exists. |
 | `description` | no | Shown in the store list and the settings pane. |
 | `homepage` | no | Displayed, never fetched. |
 | `branding.icon` | no | An alias for `icon`; `icon` wins when both are present. |
 
-**`app`, `icon` and `readme` must stay inside the plugin directory.** An absolute
-path or a `../` segment is refused at scan time and reported in the pane, because
-those values become filesystem reads on the bundle, icon and README routes.
+**At least one of `app` and `server` must be present.** A plugin that declares
+neither has nothing the host could ever run; one that declares only `server` is a
+background plugin with no UI, which is a legitimate shape (a scheduled job that
+owns storage and answers RPC but draws nothing).
+
+**`app`, `server`, `icon` and `readme` must stay inside the plugin directory.** An
+absolute path or a `../` segment is refused at scan time and reported in the pane,
+because those values become filesystem reads on the bundle, icon and README routes.
 
 **An icon is optional, and its absence is drawn, not hidden.** A plugin with no
 `icon` is marked by its initials — `Session Info` → `si.`, the same rule the
@@ -410,6 +468,206 @@ that is broken.
 
 `position` in the old manifest is gone — a registration IS the position.
 
+### List slots: rows among rows
+
+The four methods above are POSITIONAL — one of each. These are LISTS: a plugin
+may contribute several, and a second plugin's contribution sits beside the
+first's. Each takes a keyed registration and **returns the disposer** that takes
+exactly that row back.
+
+| Method | Where it appears | Registration | Props |
+|---|---|---|---|
+| `app.messageAction(...)` | A chat row's action strip (beside Retry / Copy / New-chat), on both desktop and the phone's sheet. | `{ id, title?, order?, component }` | `{ sessionId, workspacePath, messageId, role, text }` |
+| `app.commandPaletteAction(...)` | The composer's `/` popup, merged with the chamber's own commands. | `{ id, title?, order?, command, description, hint?, run }` | `run({ sessionId, workspacePath, args })` |
+| `app.fileOpener(...)` | Replaces the editor's file view when `matches` accepts the file. | `{ id, title?, order?, matches, component }` | `{ sessionId, workspacePath, path, extension }` |
+| `app.sourceCodeRenderer(...)` | Replaces the editor's read-only code view for a claimed extension. | `{ id, title?, order?, extensions, component }` | `{ sessionId, workspacePath, path, content, language? }` |
+| `app.diffRenderer(...)` | Replaces the diff viewer. | `{ id, title?, order?, extensions?, component }` | `{ sessionId, workspacePath, path, diff }` |
+| `app.timelineRenderer(...)` | Draws a tool call the host does not know. | `{ id, title?, order?, tool, component }` | `{ sessionId, workspacePath, toolName, args, output? }` |
+| `app.composerAction(...)` | A button in the composer's toolbar. | `{ id, title?, order?, component }` | `{ sessionId, workspacePath, text, isSubmitting }` |
+| `app.composerBanner(...)` | A strip above the composer's input. | `{ id, title?, order?, component }` | `{ sessionId, workspacePath }` |
+
+### Slots that reach into the conversation
+
+Four more, each aimed at something a drawing slot cannot do.
+
+**The `experimental_` prefix is a contract.** It marks a surface whose SHAPE may
+change between minor versions — a plugin that uses one opts into that. It is not
+decoration: a surface gaining or losing the prefix is a change you have to act on,
+so the set is pinned by a test rather than left to whoever edits the file next.
+The split follows bb's own, measured against its published SDK: the participants
+(`useRpc`, `useRealtime`, `useComposer`) are stable there and here, while the
+sidebar-thread hooks and the provider-icon registration carry the marker in both.
+
+A slot's NAME is never prefixed — `providerIcon` stays the store key and the
+resolver's lookup, because a stability marker means nothing inside the host. Only
+the METHOD a plugin author writes carries it.
+
+| Method | What it does | Registration | Props |
+|---|---|---|---|
+| `app.experimental_providerIcon(...)` | Supplies a provider's mark, beating the built-in glyph for the provider it names. | `{ id, title?, order?, provider, glyph }` | — (a glyph is SVG source; paint it `currentColor`) |
+| `app.pendingInteraction(...)` | Renders the agent's own question, and may ANSWER it. The one slot where a plugin changes what the agent does. | `{ id, title?, order?, component }` | `{ questions, recorded, submit, cancel }` |
+| `app.messageDirective(...)` | Claims a fenced block in an assistant message and renders it as your component. | `{ id, title?, order?, name, component }` | `{ sessionId, workspacePath, name, body, attributes }` |
+| `app.contentScript(...)` | Mounts code into the app shell, with no component at all. | `{ id, title?, order?, mount }` | `mount({ pluginId, generation, signal })` → a disposer |
+
+Three rules, all of them enforced:
+
+- **A duplicate `id` within the same plugin and slot THROWS.** The registration
+  the plugin made first is the one it can address; a quiet replace would leave a
+  component the host draws while the plugin believes it registered something
+  else.
+- **`order` sorts within the slot** (lower first, absent = 0). Ties break by
+  plugin id then registration id, so two plugins contributing at the same
+  `order` still render deterministically across reloads.
+- **A plugin that contributes nothing changes nothing.** Every surface renders
+  nothing at all for an empty slot, so a chamber with no plugins is behaviourally
+  identical to one before these slots existed.
+
+Three of them carry a rule of their own:
+
+- **`providerIcon` is a registry, and resolution order is its contract.** A
+  plugin's glyph wins for the provider it names and leaves every other provider
+  on its built-in mark. Matching folds the provider exactly as the built-in table
+  does, so `google-vertex`, `Google Vertex` and a legacy icon key all find it.
+  Two plugins naming one provider resolve to the first merged row (`order`, then
+  plugin id, then registration id), and the second registration is still accepted.
+  A glyph that is not a usable SVG — no root `<svg>` with a `viewBox` — falls
+  through to the built-in mark rather than blanking the provider's icon.
+- **`messageDirective`'s name is unique ACROSS plugins.** The same fence token
+  resolving to one plugin or another by registration order is a renderer that
+  changes when an unrelated plugin is installed, so a second claim of the same
+  name is refused.
+- **`contentScript`'s disposer is REQUIRED, and disposal is exact-once and
+  reverse-order.** The host owns teardown across reload, disable, removal and
+  window teardown, so a script that keeps DOM it does not give back leaks it for
+  the life of the page. The `signal` aborts on teardown, so an async mount
+  cannot finish after its own disposal.
+
+### Acting on the conversation
+
+```tsx
+import { useComposer, useRealtime, useRpc } from '@ompchamber/ui';
+
+function Notes() {
+  // Calls THIS plugin's own server method — the plugin id is implicit, so a
+  // component rendered for one plugin can never reach another's namespace.
+  const list = useRpc<{ query: string }, Row[]>('list');
+  // The plugin's own `plugin:<id>` topic, seeded from the value on hand.
+  const count = useRealtime<{ count: number }>();
+  const composer = useComposer();
+
+  return (
+    <Panel title="Notes">
+      <Field label="count" value={count.stale ? 'stale' : String(count.value?.count ?? 0)} />
+      <Button onClick={() => void list.call({ query: 'today' })} disabled={list.pending}>
+        Load
+      </Button>
+      {list.error && <Note tone="error">{list.error.message}</Note>}
+      <Button onClick={() => composer.insert('@notes ')}>Mention</Button>
+    </Panel>
+  );
+}
+```
+
+Three properties worth knowing, because each is a bug when it is missing:
+
+- **A refusal is a result, not an exception.** The route answers
+  `{ ok: false, error }` at HTTP 200 — the call reached the plugin and the
+  plugin said no — so `list.error` carries the plugin's own reason rather than a
+  thrown network error.
+- **A superseded call is dropped**, so a slow first call cannot repaint the
+  panel a faster second one already moved.
+- **`composer.set`/`insert` write through the composer's own state**, not the
+  DOM. The textarea is controlled, so a DOM write is reverted by the next
+  keystroke and the edit vanishes with no error. `insert` places at the caret
+  and moves it past, so two inserts in a row do not both land at the old spot.
+
+`timelineRenderer` matches a tool name EXACTLY, so two plugins cannot both claim
+`bash` — the second registration is refused rather than shadowing the first.
+`fileOpener`'s `matches` is a function rather than an extension list, because the
+decision is genuinely the plugin's: a list cannot express "a `.md` that starts
+with frontmatter".
+
+### The server half
+
+A plugin may also ship `src/server.ts`, built to `dist/server.js` and imported by
+the CHAMBER'S process. Its default export is a factory:
+
+```ts
+import type { ChamberPluginApi } from '@ompchamber/plugin-sdk';
+
+export default function plugin(api: ChamberPluginApi) {
+  api.log.info('loaded');
+
+  // Named methods, called by the plugin's OWN client half.
+  // `POST /api/plugins/<id>/rpc/<method>`.
+  api.rpc.register('list', { handler: async () => api.storage.records.list('items') });
+
+  // A REST surface anything else can reach:
+  // `ALL /api/plugins/<id>/http/*`.
+  api.http.route('/status', () => Response.json({ ok: true }));
+
+  // Namespaced storage — the host binds the plugin's own id, so two plugins
+  // using the key `notes` are two rows.
+  api.storage.kv; // read / write / remove / keys
+  api.storage.records; // put / get / list / remove / clear
+
+  // Declared settings (see the manifest), validated against their definitions.
+  api.settings.read(); // + readOne / write / subscribe
+
+  // Push a VALUE to connected clients on `plugin:<id>`.
+  api.realtime.publish({ count: 3 });
+
+  // Announce and hear names within the plugin.
+  api.events.on('saved', (payload) => api.log.debug('saved', payload));
+
+  // Long-lived work, declared rather than run: the chamber owns the timer.
+  api.background.schedule('refresh', '5m', async () => { /* … */ });
+
+  api.onDispose(() => api.log.info('disposed'));
+}
+```
+
+Four properties worth knowing:
+
+- **Everything is namespaced by the host.** Every storage call binds `plugin_id`
+  from the id the host was given, so a plugin holds no string it could point at
+  another plugin's rows. That is a property of the call signature, not a check
+  that could be forgotten.
+- **A plugin is loaded by the chamber's process, in-process** — the same trust
+  decision its browser bundle already carries. Install plugins you would run.
+- **Disposal is exact-once and LIFO.** Every registration is recorded; on reload,
+  disable or removal the disposers run in reverse and every registry the plugin
+  wrote to is cleared. A plugin that keeps a timer in a module-level variable
+  leaks it — `api.background` and `api.onDispose` exist so it does not have to.
+- **A plugin that throws on load is REPORTED**, by name and with its message, in
+  the server log and at `GET /api/plugins`. Silence would read as "this plugin
+  does nothing", which is the one thing a user cannot debug.
+
+A server-only plugin (no `app`) is legitimate: a background job that owns storage
+and answers RPC but draws nothing.
+
+### Testing a plugin
+
+`@ompchamber/plugin-sdk/testing` gives a plugin's own tests a fake host, with no
+chamber running:
+
+```ts
+import { createFakeChamberHost } from '@ompchamber/plugin-sdk/testing';
+import { loadPluginApp, renderSlot } from '@ompchamber/plugin-sdk/testing/app';
+
+const app = await loadPluginApp(() => import('./app'));
+expect(app.harness.registrations.rightPanel?.id).toBe('info');
+
+const slot = renderSlot(app.harness.registrations.rightPanel!, { sessionId: 's1', workspacePath: '/ws' });
+expect(slot.container.textContent).toContain('s1');
+```
+
+`loadPluginApp` installs the runtime global and wires the kit through the SAME
+`configureUiKit` the host calls, so a component's hooks work without a host.
+`renderSlot` installs both halves itself. `createFakeChamberHost` validates the
+registrations exactly as the host does — the same four rules, the same error
+strings — so a test catches what the host would refuse.
+
 ### `panel` is a place, not an editor
 
 The editor column is the SECOND place a view can live. A plugin registered with
@@ -463,6 +721,49 @@ phone's drawer already carries every view.
 | `useWorkspaceFile(relPath)` | `{ content, loading, error }` — a text file inside the active workspace. |
 | `useChamberFetch(url, opts?)` | `{ data, isLoading, error, reload }` — a direct read of the chamber's HTTP API: a poll that pauses while hidden, plus re-reads on the window events you name. |
 | `useScrollbarFadeRef(delayMs?)` | `{ ref, onScroll }` — attach to a `.scrollbar-overlay-container`; the fade class is toggled on the element, so a scroll does not re-render the rows it holds. |
+| `useSidebarThreads()` | `{ threads, isLoading, stale, refresh }` — the sessions the sidebar is showing. |
+| `useSidebarThreadActions()` | `{ open, rename, setArchived, markSeen, remove, openNew, error }` — the session actions, over the host's own routes. |
+
+bb calls the sidebar's rows "threads"; the chamber calls the same thing a
+**session**, and these hooks use that word because it is what the host's own
+routes and types say. One concept, two names.
+
+The read is a **projection of the host's own sidebar topic**, not a second
+fetch — so a plugin sees exactly what the sidebar beside it sees, including a
+run in flight and the `awaitingInput` flag, which ride their own topic. `stale`
+means the socket is down, and it is surfaced rather than hidden.
+
+```tsx
+import { useSidebarThreads, useSidebarThreadActions } from '@ompchamber/ui';
+
+function Recent() {
+  const { threads, stale } = useSidebarThreads();
+  const actions = useSidebarThreadActions();
+  return (
+    <Panel title="Recent sessions">
+      {stale && <Note tone="error">Live updates are paused.</Note>}
+      <FieldList>
+        {threads.slice(0, 5).map((t) => (
+          <Field key={t.id} label={t.title} value={t.isRunning ? 'running' : ''} />
+        ))}
+      </FieldList>
+      <Button onClick={() => void actions.rename(threads[0].id, 'Pinned by me')}>Rename</Button>
+      {actions.error && <Note tone="error">{actions.error}</Note>}
+    </Panel>
+  );
+}
+```
+
+Two properties worth knowing:
+
+- **A write goes through the host's own route.** `rename` posts
+  `/api/sessions/:id/rename`, the same one the sidebar's inline editor posts, so
+  the two cannot drift — and the rename publishes the same `session-renamed`
+  signal, so the navbar follows it without a refetch.
+- **A refusal is a value.** Each mutation resolves `false` and puts the host's
+  own reason on `error`; it does not throw. There is deliberately no
+  `setPinned` — the chamber pins a FOLDER, not a session, so a session pin here
+  would be a control that cannot do what it says.
 
 `usePanelHost` is a Preact context, not a global: the desktop stack keeps every
 built-in view mounted at once, so "the current panel's props" is not one
@@ -512,6 +813,31 @@ A plugin added to `~/.ompchamber/marketplace/` is **outside the project root**,
 so Tailwind's scan does not see its own class names. Prefer the kit's components
 (`Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`) and
 inline styles for anything the kit does not cover.
+
+**Importing a stylesheet works, but you must DECLARE it.** `import './styles.css'`
+makes `Bun.build` emit the CSS as a sibling of the bundle (`dist/app.js` beside
+`dist/app.css`), and the emitted JS never references it — so a stylesheet that
+is not declared is built, served by nothing, and silently not applied. Name it in
+the manifest and the host loads it:
+
+```json
+"ompchamber": { "app": "dist/app.js", "css": "dist/app.css" }
+```
+
+The host loads it as a `<link>` **for as long as the plugin has a live content
+script**, and removes it when the last generation goes — a disabled or removed
+plugin stops styling the document. So a stylesheet needs a `contentScript`; a
+plugin that renders only into a slot uses the host's utilities (above) and needs
+none. Scope your rules under an attribute your own content script sets:
+
+```css
+html[data-my-plugin] .some-host-class { /* … */ }
+```
+
+The URL is content-addressed, so a rebuild with changed rules reaches a new URL
+and the old `<link>` is replaced. Verified end to end: the demo plugin's
+`::before` rule applies while installed, and disabling the plugin takes the
+`<link>`, the content script's attribute and the rule with it.
 
 ## The bundle route
 

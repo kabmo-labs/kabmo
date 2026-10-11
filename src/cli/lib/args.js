@@ -205,6 +205,8 @@ COMMANDS:
   restart        Stop and start again (every CLI-started instance, or --port <port>)
   status         Show running instances (every one, or --port <port>)
   logs           Print or follow server logs (every instance, or --port <port>)
+  plugin         Build, type, scaffold or list panel plugins
+                 (build|types|new|list; see "ompchamber plugin --help")
 
 OPTIONS:
   -p, --port <port>       Web server port (default: 3000); scopes status/stop/restart/logs

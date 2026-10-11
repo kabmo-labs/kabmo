@@ -22,22 +22,13 @@ import {
   TOPIC_USAGE,
   isValidTopic,
   reposTopic,
-  sessionPlanTopic,
-  sessionQueueTopic,
-  sessionTelemetryTopic,
-  sessionTodosTopic,
   sessionTopic,
 } from '@/shared/lib/realtime/protocol';
-import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 import { getRealtimeHub, registerTopics, type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { loadSidebarStatus, loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
-import { sessionDescriptor } from '@/server/lib/realtime/topics/session.server';
-import { btwDescriptor } from '@/server/lib/realtime/topics/btw.server';
-import { SESSION_DATA_TOPICS } from '@/server/lib/realtime/topics/session-data.server';
-import { globalDescriptor } from '@/server/lib/realtime/topics/global.server';
-import { workspaceDescriptor } from '@/server/lib/realtime/topics/workspace.server';
+import { EXACT_TOPICS, descriptorFor, isKnownTopicName } from '@/server/lib/realtime/topics/catalog.server';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -50,84 +41,6 @@ declare global {
  * would otherwise cost a status read plus a fan-out to every tab.
  */
 const PUBLISH_COALESCE_MS = 120;
-
-/**
- * The scoped families, keyed by their topic PREFIX (without the separator).
- *
- * A table rather than a chain of `startsWith` calls: each family's descriptor
- * lives in its own file, and adding one is a row here rather than another
- * branch. A family whose descriptor is missing means the prefix is not served.
- */
-const SCOPED_FAMILIES: Record<string, (scope: string) => TopicDescriptor> = {
-  session: sessionDescriptor,
-  btw: btwDescriptor,
-  git: workspaceDescriptor('git'),
-  fs: workspaceDescriptor('fs'),
-  repos: workspaceDescriptor('repos'),
-  wiki: workspaceDescriptor('wiki'),
-};
-
-/** The exact-name topics, plus the per-session DATA families keyed by suffix. */
-const EXACT_TOPICS = new Map<string, TopicDescriptor>([
-  [TOPIC_SIDEBAR, { resolve: async (): Promise<SidebarPayload> => loadSidebarStructure() }],
-  [TOPIC_SIDEBAR_STATUS, { resolve: async (): Promise<SidebarStatusPayload> => loadSidebarStatus() }],
-  [TOPIC_SCHEDULE, { resolve: () => globalDescriptor(TOPIC_SCHEDULE).resolve(TOPIC_SCHEDULE) }],
-  [TOPIC_USAGE, { resolve: () => globalDescriptor(TOPIC_USAGE).resolve(TOPIC_USAGE) }],
-  [TOPIC_PANELS, { resolve: () => globalDescriptor(TOPIC_PANELS).resolve(TOPIC_PANELS) }],
-  [TOPIC_MODELS, { resolve: () => globalDescriptor(TOPIC_MODELS).resolve(TOPIC_MODELS) }],
-]);
-
-/** Suffixes a `session:<id>:<suffix>` topic may carry. */
-const SESSION_DATA_SUFFIXES = new Map<string, (sessionId: string) => TopicDescriptor>([
-  ['todos', (id) => SESSION_DATA_TOPICS[sessionTodosTopic('')](id)],
-  ['plan', (id) => SESSION_DATA_TOPICS[sessionPlanTopic('')](id)],
-  ['telemetry', (id) => SESSION_DATA_TOPICS[sessionTelemetryTopic('')](id)],
-  ['queue', (id) => SESSION_DATA_TOPICS[sessionQueueTopic('')](id)],
-]);
-
-
-/**
- * Whether `topic` is one this hub serves.
- *
- * Prefixes are structural: a scoped topic must be asked about for a scope whose
- * snapshot a resolver can produce, and an unknown prefix is refused so a typo
- * reports itself rather than subscribing to nothing.
- */
-function isKnownTopicName(topic: string): boolean {
-  if (EXACT_TOPICS.has(topic)) return true;
-  const separator = topic.indexOf(':');
-  if (separator === -1) return false;
-  const family = topic.slice(0, separator);
-  const scope = topic.slice(separator + 1);
-  if (!scope) return false;
-  if (family === 'session') {
-    // A session topic is either the session itself or one of its data families.
-    const nested = scope.indexOf(':');
-    return nested === -1 || SESSION_DATA_SUFFIXES.has(scope.slice(nested + 1));
-  }
-  return family in SCOPED_FAMILIES;
-}
-
-/** The descriptor for `topic`, building a scoped one on first use. */
-function descriptorFor(topic: string): TopicDescriptor | undefined {
-  const exact = EXACT_TOPICS.get(topic);
-  if (exact) return exact;
-  const separator = topic.indexOf(':');
-  if (separator === -1) return undefined;
-  const family = topic.slice(0, separator);
-  const scope = topic.slice(separator + 1);
-  if (!scope) return undefined;
-
-  if (family === 'session') {
-    const nested = scope.indexOf(':');
-    if (nested === -1) return sessionDescriptor(scope);
-    const build = SESSION_DATA_SUFFIXES.get(scope.slice(nested + 1));
-    return build ? build(scope.slice(0, nested)) : undefined;
-  }
-
-  const build = SCOPED_FAMILIES[family];
-  return build ? build(scope) : undefined;
-}
 
 /**
  * Build the descriptor map the hub serves.

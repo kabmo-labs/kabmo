@@ -20,13 +20,30 @@ export function joinPath(...segments) {
   return joined;
 }
 
-/** Resolve a path to an absolute normalized path. */
+/**
+ * Resolve a path to an absolute normalized path.
+ *
+ * Node's `path.resolve` semantics on the two points that matter here:
+ *
+ * - An ABSOLUTE segment discards everything before it. `joinPath` deliberately
+ *   strips a leading slash (it is used to build a path FROM a root), so
+ *   `joinPath(cwd, '/tmp/x')` yields `<cwd>/tmp/x` — a silent relocation of an
+ *   absolute argument. Verified on the CLI: `ompchamber plugin new /tmp/x`
+ *   scaffolded into `<cwd>/tmp/x`.
+ * - A `.` segment means "here", so it contributes nothing. Without this,
+ *   `resolvePath(cwd, '.')` answered `<cwd>/.` — a path that works but is not
+ *   the string a caller compares against.
+ */
 export function resolvePath(...segments) {
-  const joined = joinPath(...segments);
-  if (joined.startsWith('/')) {
-    return joined.replace(/\/{2,}/g, '/').replace(/(.+)\/$/, '$1');
+  let lastAbsolute = -1;
+  for (let i = 0; i < segments.length; i += 1) {
+    if (typeof segments[i] === 'string' && segments[i].startsWith('/')) lastAbsolute = i;
   }
-  return joinPath(process.cwd(), joined).replace(/\/{2,}/g, '/').replace(/(.+)\/$/, '$1');
+  const parts = (lastAbsolute === -1 ? [process.cwd(), ...segments] : segments.slice(lastAbsolute)).filter(
+    (segment) => typeof segment === 'string' && segment.length > 0 && segment !== '.',
+  );
+  const joined = (parts.length > 0 && parts[0].startsWith('/') ? parts : [process.cwd(), ...parts]).join('/');
+  return joined.replace(/\/{2,}/g, '/').replace(/(.+)\/$/, '$1');
 }
 
 /** Directory portion of an absolute path ('/' for the root). */

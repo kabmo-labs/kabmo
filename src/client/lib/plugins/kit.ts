@@ -22,11 +22,25 @@
  *   URL.
  */
 
-import { configureUiKit } from '@ompchamber/ui';
+import { configureUiKit, type PluginRpcOutcome } from '@ompchamber/ui';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { pluginContext, subscribePluginContext } from '@/client/lib/plugins/context';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
+import { pluginRpcPath } from '@/shared/lib/plugins/protocol';
+import { composerService, subscribeComposer } from '@/client/lib/plugins/composer-bridge';
+import {
+  pluginTopicStale,
+  readPluginTopic,
+  refreshPluginTopic,
+  subscribePluginTopic,
+} from '@/client/lib/plugins/topic';
+import {
+  refreshSidebarThreads,
+  sidebarActions,
+  sidebarThreads,
+  subscribeSidebarThreads,
+} from '@/client/lib/plugins/sidebar-bridge';
 
 /**
  * Read a text file inside the active workspace, through the chamber's own fs
@@ -45,6 +59,39 @@ async function readWorkspaceFile(workspacePath: string | null, relativePath: str
     throw new Error(body?.error ?? `Could not read ${relativePath} (${response.status})`);
   }
   return response.text();
+}
+
+/**
+ * Call one of the plugin's own server methods.
+ *
+ * The plugin id is the FIRST argument and the kit supplies it from the context
+ * of the subtree the call was made in — so a plugin never names its own
+ * namespace, and a component rendered for plugin A cannot call into plugin B.
+ *
+ * The answer is returned as the WIRE shape rather than thrown: the route
+ * answers `{ ok: false, error }` at HTTP 200 for a plugin's own refusal, and
+ * flattening that into a rejection would turn "the plugin said no" into "the
+ * network broke" — the one distinction the route exists to preserve.
+ */
+async function callRpc(pluginId: string, method: string, input: unknown): Promise<PluginRpcOutcome> {
+  if (!pluginId) return { ok: false, error: { code: 'no_plugin', message: 'No plugin is in scope.' } };
+  const path = pluginRpcPath(pluginId, method);
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input ?? null),
+    });
+    const body = (await response.json().catch(() => null)) as PluginRpcOutcome | null;
+    if (body && typeof body === 'object' && 'ok' in body) return body;
+    return { ok: false, error: { code: 'bad_response', message: `${method} answered ${response.status}` } };
+  } catch (cause) {
+    return {
+      ok: false,
+      error: { code: 'transport', message: cause instanceof Error ? cause.message : String(cause) },
+    };
+  }
 }
 
 /** Install the kit's services. Idempotent. */
@@ -72,5 +119,24 @@ export function installUiKit(): void {
     // The chamber's markdown renderer, so a plugin does not bundle a second
     // copy of the marked / KaTeX / mermaid / Shiki pipeline.
     markdown: () => MarkdownRenderer,
+
+    // The participant seam: RPC, the plugin's own topic, and the composer.
+    // The id arrives as an ARGUMENT, supplied by the kit hook from the context
+    // of the subtree it was called in — never resolved here, because this
+    // module cannot see which component is rendering.
+    callRpc,
+    subscribePluginTopic,
+    readPluginTopic,
+    refreshPluginTopic,
+    pluginTopicStale,
+    composer: composerService,
+    subscribeComposer,
+
+    // The sidebar: a projection of the host's own sidebar topic, and the
+    // session writes that go through the host's own routes.
+    sidebarThreads,
+    subscribeSidebarThreads,
+    refreshSidebarThreads,
+    sidebarActions,
   });
 }

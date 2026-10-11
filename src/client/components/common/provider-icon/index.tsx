@@ -11,6 +11,11 @@
  * preset list, the composer's model picker and the usage panel — so a provider
  * cannot be a whale emoji in one place and a generic cloud in another.
  *
+ * Resolution order is the `providerIcon` slot's contract: a plugin's registered
+ * mark for a provider wins over the built-in table, and only for the provider it
+ * names ({@link resolveProviderMark}). Because there is one component, there is
+ * one place that order lives.
+ *
  * The mark is painted in `currentColor`, so it takes the surrounding ink and
  * follows the theme. That is deliberate: the app's palette is a monochrome
  * paper/ink system (`DESIGN.md`), and a full-colour logo per row would be the
@@ -22,11 +27,10 @@
  * stable, readable badge rather than an empty box.
  */
 
-import {
-  PROVIDER_GLYPHS,
-  type ProviderGlyph,
-} from '@/client/components/common/provider-icon/glyphs';
-import { providerInitials, resolveProviderGlyph } from '@/shared/lib/models/provider/glyph';
+import type { ProviderIconRegistration } from '@ompchamber/plugin-sdk';
+import { resolveProviderMark } from '@/client/components/common/provider-icon/resolve';
+import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
+import { providerInitials } from '@/shared/lib/models/provider/glyph';
 
 interface ProviderIconProps {
   /**
@@ -43,8 +47,12 @@ interface ProviderIconProps {
 }
 
 export function ProviderIcon({ icon, slug, name, size = 16, className = '' }: ProviderIconProps) {
-  const glyphName = resolveProviderGlyph(icon, slug, name);
-  const glyph: ProviderGlyph | undefined = glyphName ? PROVIDER_GLYPHS[glyphName] : undefined;
+  // The ONE resolution point: a plugin's `providerIcon` registration for this
+  // provider wins over the built-in table, and any other provider is untouched.
+  // Read reactively, so a bundle that registers after this icon mounted still
+  // reaches it — the same contract every other list slot has.
+  const registered = useListSlotRows<ProviderIconRegistration>('providerIcon');
+  const glyph = resolveProviderMark([icon, slug, name], registered);
 
   if (!glyph) {
     // No mark: the initials badge. It is a PILL, not a square — the text has to
@@ -87,7 +95,9 @@ export function ProviderIcon({ icon, slug, name, size = 16, className = '' }: Pr
       className={`flex-shrink-0 ${className}`}
       aria-hidden="true"
       focusable="false"
-      // Static, bake-time data from this repo — never user input.
+      // A built-in body is bake-time data from this repo; a registered one is
+      // the plugin's own SVG source, reduced to its inner markup. Both are
+      // trusted the same way: a plugin's bundle already runs in this document.
       dangerouslySetInnerHTML={{ __html: glyph.body }}
     />
   );

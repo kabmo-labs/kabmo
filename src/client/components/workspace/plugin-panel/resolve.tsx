@@ -4,6 +4,7 @@ import type { RightPanelProps } from '@ompchamber/plugin-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
 import { pluginIdOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 import { resolvePluginPanelWidths } from '@/shared/lib/workspace/panel-widths';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { panelOf, rightPanelOf } from '@/client/lib/plugins/slots';
 import { PluginError } from '@/client/components/workspace/plugin-panel/Error';
 import {
@@ -241,7 +242,13 @@ export function usePanelCatalog(): ResolvedPanel[] {
         defaultWidth: widths.px,
         defaultFraction: widths.fraction,
         ...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {}),
-        render: (props) => <Component sessionId={props.sessionId ?? null} workspacePath={null} />,
+        // Wrapped so the kit's participant hooks resolve THIS plugin's id while
+        // its panel renders — the scope is what `useRpc`/`useRealtime` read.
+        render: (props) => (
+          <PluginIdProvider pluginId={panel.pluginId}>
+            <Component sessionId={props.sessionId ?? null} workspacePath={null} />
+          </PluginIdProvider>
+        ),
       });
     }
 

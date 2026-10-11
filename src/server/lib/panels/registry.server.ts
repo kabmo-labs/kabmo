@@ -42,8 +42,10 @@ import type {
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { readDisabledPlugins } from '@/server/lib/panels/state.server';
-import { findReadme, readJsonBody, readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';
+import { readJsonBody, readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';
 import { toManifest, toMarketplaceCatalog } from '@/server/lib/panels/manifest';
+import { basenameOf, bundleUrl, cssUrl, iconUrl, readmeUrlFor } from '@/server/lib/panels/assets.server';
+import { describeIncompatibility, runningVersions } from '@/server/lib/panels/compat.server';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 
 /** The marketplace root: `~/.ompchamber/marketplace`, overridable for tests. */
@@ -154,6 +156,9 @@ async function runPanelScan(): Promise<PanelScan> {
   // is what filters its own views. The scan itself only ever asks about plugin
   // ids, which is why the membership test above is the `Set`.
   scan.disabledPanels = disabledList;
+  // Resolved ONCE per scan, and lazily relative to the loop: a plugin's
+  // `engines` is compared against what is running HERE, never a constant.
+  const running = await runningVersions();
   const pluginStatus: PanelPluginStatus[] = [];
   for (const pluginName of await subdirectories(pluginsRoot)) {
     const pluginDir = join(pluginsRoot, pluginName);
@@ -169,17 +174,36 @@ async function runPanelScan(): Promise<PanelScan> {
       continue;
     }
 
-    // A plugin is served from its build output, so the bundle its manifest
-    // names must already exist. A plugin whose build has not run is reported as
-    // UNBUILT rather than as broken — the manifest is fine, and the pane offers
-    // to run the build — which is why this is a separate list from `errors`.
+    // Refused BEFORE it is admitted: an incompatible plugin must contribute
+    // nothing — no panel, no bundle, no directory for the route to resolve.
+    // The reason names both sides, because the pane's only repair is the author
+    // editing the range.
+    const refusal = describeIncompatibility(manifest, running);
+    if (refusal) {
+      fail(pluginDir, refusal);
+      continue;
+    }
+
+    // A plugin is served from its build output, so every entry its manifest
+    // declares must already exist. A plugin whose build has not run is reported
+    // as UNBUILT rather than as broken — the manifest is fine, and the pane
+    // offers to run the build — which is why this is a separate list from
+    // `errors`. A plugin with BOTH an app and a server needs both.
     const isPackage = await pathExists(join(pluginDir, 'package.json'));
     // A plugin's enablement key carries the SAME prefix the client uses for its
     // panel id (`plugin:<id>`), so one stored list answers for both kinds. Testing
     // the bare manifest id here made a disabled plugin still report `enabled:
     // true` while its panel stayed hidden — two answers for one question.
     const enabled = !disabled.has(pluginPanelKey(manifest.id));
-    const built = await pathExists(join(pluginDir, manifest.app));
+    const entries = [manifest.app, manifest.server].filter((entry): entry is string => Boolean(entry));
+    let missingEntry: string | undefined;
+    for (const entry of entries) {
+      if (!(await pathExists(join(pluginDir, entry)))) {
+        missingEntry = entry;
+        break;
+      }
+    }
+    const built = missingEntry === undefined;
     pluginStatus.push({
       pluginId: manifest.id,
       name: manifest.name,
@@ -187,23 +211,35 @@ async function runPanelScan(): Promise<PanelScan> {
       built,
       enabled,
       bundled: false,
-      ...(built ? {} : { reason: `the build produced no ${manifest.app}` }),
+      ...(missingEntry ? { reason: `the build produced no ${missingEntry}` } : {}),
     });
 
     // A switched-off plugin contributes NOTHING: no button, no tab, and no
     // bundle for the route to serve. Its files stay on disk, which is the whole
     // difference between disabling and removing.
     if (!enabled || !built) continue;
+    // The directory map is the asset routes' root, so it is filled even for a
+    // server-only plugin: its README and icon are still served.
+    scan.dirs[manifest.id] = pluginDir;
+    // `panels` is the list of UI bundles the host IMPORTS, so a plugin with no
+    // `app` contributes none — its work happens on the server, not in the page.
+    if (!manifest.app) continue;
 
     scan.panels.push({
       pluginId: manifest.id,
       name: manifest.name,
       version: manifest.version,
       appUrl: await bundleUrl(pluginDir, manifest.app),
+      // Only when the plugin DECLARED a stylesheet and the file is actually
+      // there. A manifest that names a `css` the build did not emit would
+      // otherwise put a 404 URL in the payload and a console error on every
+      // load, for a stylesheet the plugin does not have.
+      ...(manifest.css && (await pathExists(join(pluginDir, manifest.css)))
+        ? { cssUrl: await cssUrl(pluginDir, manifest.css) }
+        : {}),
       ...(manifest.icon ? { iconUrl: await iconUrl(pluginDir, manifest.icon) } : {}),
       ...(await readmeUrlFor(pluginDir, manifest)),
     });
-    scan.dirs[manifest.id] = pluginDir;
   }
 
   // The bundled marketplace is a STORE, so its plugins are listed whether or
@@ -223,51 +259,6 @@ async function runPanelScan(): Promise<PanelScan> {
   scan.plugins = pluginStatus;
 
   return scan;
-}
-
-/**
- * A plugin's bundle URL, carrying the file's content hash.
- *
- * The hash is not decoration: the browser caches an ES module by URL, so a
- * REBUILT plugin imported from the same URL would return the first evaluation
- * and never re-run its `setup`. A changed hash is a changed URL, which is what
- * makes "Rebuild" actually reload the plugin.
- */
-async function bundleUrl(pluginDir: string, app: string): Promise<string> {
-  const file = Bun.file(join(pluginDir, app));
-  const digest = Bun.hash(await file.arrayBuffer()).toString(36);
-  return `/api/panels/bundle/${encodeURIComponent(basenameOf(pluginDir))}.js?v=${digest}`;
-}
-
-/**
- * A plugin's README URL, when it ships one — either the file its manifest names
- * or the `README.md` at its root.
- */
-async function readmeUrlFor(
-  pluginDir: string,
-  manifest: { readme?: string },
-): Promise<{ readmeUrl?: string }> {
-  const readme = await findReadme(pluginDir, manifest.readme);
-  if (!readme) return {};
-  const file = Bun.file(join(pluginDir, readme));
-  const digest = Bun.hash(await file.arrayBuffer()).toString(36);
-  return {
-    readmeUrl: `/api/panels/readme/${encodeURIComponent(basenameOf(pluginDir))}/${readme
-      .split('/')
-      .map(encodeURIComponent)
-      .join('/')}?v=${digest}`,
-  };
-}
-
-/** A plugin's icon URL, likewise content-addressed. */
-async function iconUrl(pluginDir: string, icon: string): Promise<string> {
-  const file = Bun.file(join(pluginDir, icon));
-  const digest = Bun.hash(await file.arrayBuffer()).toString(36);
-  return `/api/panels/icon/${encodeURIComponent(basenameOf(pluginDir))}/${icon.split('/').map(encodeURIComponent).join('/')}?v=${digest}`;
-}
-
-function basenameOf(dir: string): string {
-  return dir.split(/[/\\]/).filter(Boolean).pop() ?? '';
 }
 
 /**

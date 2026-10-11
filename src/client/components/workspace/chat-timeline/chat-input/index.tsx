@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import type { ClipboardEvent, SetStateAction } from 'preact/compat';
 import { AlertTriangle, X } from 'lucide-preact';
-import type { AIModelOption, Attachment, ModelEntry } from '@/shared/types';
+import type { Attachment } from '@/shared/types';
 import { ComposerToolbar } from '@/client/components/workspace/chat-timeline/chat-input/Toolbar';
 import { VoiceNotice } from '@/client/components/workspace/chat-timeline/chat-input/VoiceNotice';
 import { ComposerTextarea } from '@/client/components/common/ComposerTextarea';
+import { usePublishComposerState } from '@/client/hooks/chat/composer/publish-state';
+import { useModelSelection } from '@/client/hooks/chat/composer/model-selection';
 import { AttachmentToolbar } from '@/client/components/workspace/chat-timeline/chat-input/AttachmentToolbar';
-import { selectableThinkingLevels } from '@/shared/lib/models/thinking-levels';
-import { fetchModelsData, subscribeModelsUpdated } from '@/shared/lib/models/client';
-import { resolveThinkingLevel, selectionFor } from '@/client/components/workspace/chat-timeline/chat-input/selection';
 import { NO_PENDING_PICK } from '@/client/hooks/chat/timeline/deferred-model';
 import { useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
 import { useVoiceInput } from '@/client/hooks/chat/composer/voice-input';
@@ -23,6 +22,7 @@ import type { ChatInputProps } from '@/client/components/workspace/chat-timeline
 export function ChatInput({ 
   value, 
   onChange, 
+  sessionId, 
   onSend, 
   isGenerating,
   onStop,
@@ -57,6 +57,14 @@ export function ChatInput({
   // and the modal it opens needs the same `modes` slice the toolbar got.
   const [goalModalOpen, setGoalModalOpen] = useState(false);
 
+  const { selectedModel, setSelectedModel, thinkingLevels, currentThinking, selectThinking } = useModelSelection({
+    composerModelRef,
+    sessionModel,
+    sessionThinkingLevel,
+    deferredComposerPickRef,
+    onThinkingLevelChange,
+  });
+
   const attachments = externalAttachments !== undefined ? externalAttachments : internalAttachments;
   const setAttachments = (updater: SetStateAction<Attachment[]>) => {
     if (onAttachmentsChange) {
@@ -70,133 +78,6 @@ export function ChatInput({
     }
   };
 
-  // Selected Model State — starts null and is filled from `/api/models` (session
-  // pick → persisted pick → registry default). Seeding a demo catalog entry here
-  // showed a fabricated provider in the composer before the real list arrived.
-  const [selectedModel, setSelectedModel] = useState<AIModelOption | null>(null);
-  const [currentThinking, setCurrentThinking] = useState('auto');
-  // Live mirror for the send path's queue snapshot (see composerModelRef).
-  useEffect(() => {
-    if (!selectedModel?.id) return;
-    composerModelRef.current = {
-      provider: selectedModel.provider,
-      modelId: selectedModel.id,
-      thinkingLevel: selectedModel.thinkingLevel ?? 'auto',
-    };
-  }, [selectedModel?.provider, selectedModel?.id, selectedModel?.thinkingLevel, composerModelRef]);
-  // Mirror session model/thinking so async sync effects do not clobber them.
-  const sessionThinkingLevelRef = useRef<string | null>(null);
-  sessionThinkingLevelRef.current = sessionThinkingLevel ?? null;
-  const sessionModelRef = useRef<{ provider: string; modelId: string } | null>(sessionModel ?? null);
-  sessionModelRef.current = sessionModel ?? null;
-
-  // Adopt the active session's model. A pending pick wins over adoption.
-  useEffect(() => {
-    if (!sessionModel?.provider || !sessionModel.modelId) return;
-    if (deferredComposerPickRef.current) return;
-    let active = true;
-    fetchModelsData()
-      .then((data) => {
-        if (!active || !sessionModel) return;
-        if (deferredComposerPickRef.current) return;
-        const match = (data.modelList || []).find(
-          (m) => m.id === sessionModel.modelId && m.provider === sessionModel.provider
-        );
-        if (match) {
-          setSelectedModel(prev => selectionFor(match, sessionThinkingLevelRef.current, prev));
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [sessionModel?.provider, sessionModel?.modelId, deferredComposerPickRef]);
-
-  // Adopt the session's thinking level; a pending pick wins.
-  useEffect(() => {
-    if (!sessionThinkingLevel) return;
-    if (deferredComposerPickRef.current?.thinkingLevel) return;
-    setSelectedModel(prev => {
-      if (!prev) return prev;
-      const level = resolveThinkingLevel(prev.thinkingLevels, sessionThinkingLevel, prev.thinkingLevel);
-      return level === prev.thinkingLevel ? prev : { ...prev, thinkingLevel: level };
-    });
-  }, [sessionThinkingLevel, deferredComposerPickRef]);
-
-  // Sync selected model from server and event listener
-  useEffect(() => {
-    let active = true;
-    const syncModel = async () => {
-      try {
-        const data = await fetchModelsData();
-        if (!active) return;
-        // A pick waiting for the next prompt owns the composer's selection:
-        // every branch below would replace it with a session/catalog default.
-        if (deferredComposerPickRef.current) return;
-        if (Array.isArray(data.modelList) && data.modelList.length > 0) {
-          // 1. The active session's last-used model is authoritative; even when
-          // it is missing from the catalog, never replace it with the default.
-          const sm = sessionModelRef.current;
-          if (sm?.provider && sm.modelId) {
-            const match = data.modelList.find((m: ModelEntry) => m.id === sm.modelId && m.provider === sm.provider);
-            if (match) {
-              setSelectedModel(prev => selectionFor(match, sessionThinkingLevelRef.current, prev));
-            }
-            return;
-          }
-          // 2. The user's persisted pick (survives new sessions).
-          const persisted = data.selectedModel;
-          if (persisted?.provider && persisted.id) {
-            const match = data.modelList.find((m: ModelEntry) => m.id === persisted.id && m.provider === persisted.provider);
-            if (match) {
-              setSelectedModel(prev => selectionFor(match, sessionThinkingLevelRef.current, prev));
-              return;
-            }
-          }
-          // 3. Registry default.
-          const defaultModel = data.defaultModel;
-          if (defaultModel) {
-            const match = data.modelList.find((m: ModelEntry) => m.id === defaultModel.modelId && m.provider === defaultModel.provider);
-            if (match) {
-              setSelectedModel(prev => selectionFor(match, sessionThinkingLevelRef.current, prev));
-            }
-          }
-        } else if (data.selectedModel) {
-          const selected = data.selectedModel;
-          setSelectedModel(prev => ({
-            ...selected,
-            thinkingLevel: resolveThinkingLevel(selected.thinkingLevels, sessionThinkingLevelRef.current, prev?.thinkingLevel ?? selected.thinkingLevel),
-          }));
-        }
-      } catch {}
-    };
-
-    syncModel();
-    const unsubscribe = subscribeModelsUpdated(syncModel);
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [deferredComposerPickRef]);
-
-  // Thinking Dropdown State - Reactive with selectedModel
-  const thinkingLevels = useMemo(() => {
-    return selectableThinkingLevels(selectedModel?.thinkingLevels);
-  }, [selectedModel]);
-
-  const handleSelectThinking = (level: string) => {
-    setCurrentThinking(level);
-    setSelectedModel(prev => (prev ? { ...prev, thinkingLevel: level } : prev));
-    onThinkingLevelChange?.(level);
-  };
-
-  // Re-sync the thinking dropdown label when the model dropdown's thinking
-  // pill cycles the level (it updates `selectedModel.thinkingLevel`).
-  useEffect(() => {
-    if (selectedModel?.thinkingLevel) {
-      setCurrentThinking(selectedModel.thinkingLevel);
-    }
-  }, [selectedModel?.thinkingLevel]);
 
   const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboard = e.clipboardData;
@@ -220,6 +101,15 @@ export function ChatInput({
     disabled,
     rootPath,
     onSend,
+  });
+
+  // Publishes this composer's state to the plugin kit, and gives the kit a way
+  // to write into it (through `onChange`, never the DOM).
+  const { onTextareaReady } = usePublishComposerState({
+    value,
+    onChange,
+    isSubmitting: isGenerating,
+    sessionId: sessionId ?? null,
   });
 
   const isMobile = variant === 'mobile';
@@ -310,6 +200,7 @@ export function ChatInput({
         onPaste={handlePaste}
         variant={variant}
         textareaRef={autoGrow ? growRef : undefined}
+        onReady={onTextareaReady}
       />
 
       {/* Dictation progress / failure, above the toolbar that owns the mic. */}
@@ -325,7 +216,7 @@ export function ChatInput({
         }}
         thinkingLevels={thinkingLevels}
         currentThinking={currentThinking}
-        onSelectThinking={handleSelectThinking}
+        onSelectThinking={selectThinking}
         onThinkingLevelChange={onThinkingLevelChange}
         isGenerating={isGenerating}
         chatRunning={chatRunning}
@@ -343,6 +234,7 @@ export function ChatInput({
         voiceListening={voiceListening}
         voiceBusy={voiceBusy}
         onVoiceToggle={handleVoiceToggle}
+        text={value}
       />
     </div>
   );

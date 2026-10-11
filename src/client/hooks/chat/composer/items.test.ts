@@ -17,6 +17,9 @@
  *   skipped, so the same skill is never listed twice under two tokens.
  * - A hook must discard a response that lands after its `kind` changed: the
  *   late items would otherwise repopulate a menu the user has already left.
+ * - A `commandPaletteAction` a plugin registered must appear in the `/` popup
+ *   beside the chamber's own commands — and only there: a closed menu or an `@`
+ *   mention must not gain a row the user cannot act on.
  */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
@@ -25,6 +28,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import type { ComposerPickItem, ComposerPickKind } from '@/shared/types';
 import { useComposerItems } from '@/client/hooks/chat/composer/items';
+import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import {
   invalidateComposerCache,
   loadComposerItems,
@@ -76,6 +80,7 @@ afterAll(() => {
 
 beforeEach(() => {
   invalidateComposerCache();
+  resetListSlots();
   requested.length = 0;
   pendingAnswers = [];
   answer = () => ({ ok: true, status: 200, body: {} });
@@ -163,6 +168,87 @@ describe('useComposerItems', () => {
     pendingAnswers.forEach((resolve) => resolve({ ok: true, status: 200, body: { agents: [{ name: 'late' }], files: [] } }));
     await settle();
     expect(state).toEqual({ items: [], loading: false, error: null });
+  });
+});
+
+describe('plugin commands in the popup', () => {
+  const registration = {
+    id: 'deploy',
+    command: 'deploy',
+    description: 'Deploy the workspace',
+    hint: '[env]',
+    run: () => {},
+  };
+
+  test('a registered command is appended beside the chamber’s own commands', async () => {
+    answer = () => ({ body: { commands: [], skills: [] } });
+    await mount('command');
+    await settle(6);
+    const chamberIds = state.items.map((item) => item.id);
+    expect(chamberIds).toContain('command-btw');
+
+    registerListSlot('plug', 'commandPaletteAction', registration);
+    await settle();
+
+    expect(state.items.slice(0, chamberIds.length).map((item) => item.id)).toEqual(chamberIds);
+    expect(state.items[chamberIds.length]).toEqual({
+      id: 'plugin-command-plug-deploy',
+      name: 'deploy',
+      description: '[env] - Deploy the workspace',
+      kind: 'command',
+      source: 'command',
+      token: '/deploy',
+      inputHint: '[env]',
+    });
+  });
+
+  test('a command with no hint carries its description verbatim', async () => {
+    answer = () => ({ body: { commands: [], skills: [] } });
+    registerListSlot('plug', 'commandPaletteAction', {
+      id: 'status',
+      command: 'status',
+      description: 'Show the workspace status',
+      run: () => {},
+    });
+    await mount('command');
+    await settle(6);
+
+    expect(state.items.find((item) => item.id === 'plugin-command-plug-status')).toEqual({
+      id: 'plugin-command-plug-status',
+      name: 'status',
+      description: 'Show the workspace status',
+      kind: 'command',
+      source: 'command',
+      token: '/status',
+    });
+  });
+
+  test('two plugins may reuse the same registration id without colliding', async () => {
+    answer = () => ({ body: { commands: [], skills: [] } });
+    registerListSlot('alpha', 'commandPaletteAction', { ...registration, command: 'alpha-go' });
+    registerListSlot('beta', 'commandPaletteAction', { ...registration, command: 'beta-go' });
+    await mount('command');
+    await settle(6);
+
+    expect(state.items.filter((item) => item.id.startsWith('plugin-command-')).map((item) => item.id))
+      .toEqual(['plugin-command-alpha-deploy', 'plugin-command-beta-deploy']);
+  });
+
+  test('a non-command kind is untouched by plugin rows', async () => {
+    answer = () => ({ body: { agents: [], files: [] } });
+    registerListSlot('plug', 'commandPaletteAction', registration);
+    await mount('mention', '/repo');
+    await settle(6);
+
+    expect(state.items).toEqual([]);
+  });
+
+  test('a closed menu offers nothing, not even a plugin row', async () => {
+    registerListSlot('plug', 'commandPaletteAction', registration);
+    await mount(null);
+    await settle();
+
+    expect(state.items).toEqual([]);
   });
 });
 

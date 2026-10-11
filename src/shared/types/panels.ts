@@ -13,6 +13,8 @@
  * makes when it loads.
  */
 
+import type { PluginSettingDefinition } from '@ompchamber/plugin-sdk';
+
 /** Where a contributed panel renders. One panel per position, per plugin. */
 export type PanelPosition = 'right' | 'editor' | 'header';
 
@@ -30,8 +32,46 @@ export interface PanelPluginManifest {
    * The built ESM bundle, relative to the plugin root — conventionally
    * `dist/app.js`. It is what the host `import()`s; the module's default export
    * must be a `definePluginApp(...)` definition.
+   *
+   * Optional since a plugin may be server-only, but at least one of `app` and
+   * `server` must be present: a plugin that declares neither has nothing the
+   * host could ever run.
    */
-  app: string;
+  app?: string;
+  /**
+   * A stylesheet the plugin's app bundle imports, relative to the plugin root —
+   * conventionally `dist/app.css`.
+   *
+   * Bun emits an imported stylesheet BESIDE the bundle and the JS never
+   * references it, so without this the file is inert: built, served by nothing,
+   * and silently not applied. Declaring it is what makes the host load it for
+   * as long as the plugin has a live content-script generation.
+   */
+  css?: string;
+  /**
+   * The built server entry, relative to the plugin root — conventionally
+   * `dist/server.js`. Its default export is a `ChamberPluginFactory`.
+   */
+  server?: string;
+  /**
+   * Declared settings, keyed by setting name. Declarative so the host can draw
+   * a form and validate a value without the plugin running.
+   */
+  settings?: Record<string, PluginSettingDefinition>;
+  /**
+   * Host versions this plugin declares it works with. Absent means "any".
+   *
+   * `ompchamber` is the app's own version, `pluginSdk` the `@ompchamber/plugin-sdk`
+   * version — the two move independently, and a plugin built against a newer
+   * contract must be refused rather than allowed to load and misbehave.
+   */
+  engines?: { ompchamber?: string; pluginSdk?: string };
+  /**
+   * Host capabilities this plugin requires; a missing one refuses the plugin.
+   *
+   * The host's list is `HOST_CAPABILITIES` — the ONE table of what ships today.
+   */
+  capabilities?: string[];
   /** Optional icon file, relative to the plugin root. */
   icon?: string;
   /**
@@ -104,6 +144,14 @@ export interface PanelRegistryEntry {
   version: string;
   /** Absolute URL of the plugin's ESM bundle, content-addressed per build. */
   appUrl: string;
+  /**
+   * Absolute URL of the plugin's stylesheet, content-addressed per build.
+   *
+   * Present only when the plugin declares `css` AND the file exists, so a plugin
+   * with no stylesheet costs nothing. The client loads it while the plugin has a
+   * live content-script generation and unloads it when the last one goes.
+   */
+  cssUrl?: string;
   /** Absolute URL of the plugin's icon, when it declares one. */
   iconUrl?: string;
   /** Absolute URL of the plugin's README, when it ships one. */

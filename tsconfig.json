@@ -35,6 +35,12 @@
       "@ompchamber/plugin-sdk/app": [
         "./packages/plugin-sdk/src/app.ts"
       ],
+      "@ompchamber/plugin-sdk/testing": [
+        "./packages/plugin-sdk/src/testing/index.ts"
+      ],
+      "@ompchamber/plugin-sdk/testing/app": [
+        "./packages/plugin-sdk/src/testing/app.tsx"
+      ],
       "@ompchamber/ui": [
         "./packages/ui/src/index.tsx"
       ],
