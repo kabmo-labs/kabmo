@@ -29,7 +29,7 @@ import os from 'os';
 import path from 'path';
 
 import type { TimeRangeType } from '@/shared/types';
-import { PRESET_RANGES, type UsageAggregate, type UsageWindow } from './aggregate';
+import { PRESET_RANGES, type UsageAggregate, type UsageWindow } from '@/server/lib/omp/session/usage/aggregate';
 
 
 /** The slice of the aggregator these tests drive, typed without an inline import. */

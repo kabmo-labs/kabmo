@@ -12,8 +12,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { UsageAggregate } from './aggregate';
-import { buildChartSeries, toBreakdownRows, toMetricSet } from './shaping';
+import type { UsageAggregate } from '@/server/lib/omp/session/usage/aggregate';
+import { buildChartSeries, toBreakdownRows, toMetricSet } from '@/server/lib/omp/session/usage/shaping';
 
 function agg(partial: Partial<UsageAggregate> = {}): UsageAggregate {
   return {
