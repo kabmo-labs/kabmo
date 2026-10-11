@@ -5,6 +5,13 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/rajebdev/ompchamber/compare/ui/v2.1.1...ui/v2.2.0) — 2026-10-11
+
+### Added
+
+* **plugins:** let a plugin act on the conversation, not only draw beside it ([751a304](https://github.com/rajebdev/ompchamber/commit/751a30411495317831a2b54b8d855d6665f1db77))
+* **plugins:** let a plugin read the sidebar and act on a session ([6171a37](https://github.com/rajebdev/ompchamber/commit/6171a37160bb65017086da8d10d4161b4a9add6b))
+
 ## [2.1.1](https://github.com/rajebdev/ompchamber/compare/ui/v2.1.0...ui/v2.1.1) — 2026-10-07
 
 ### Changed

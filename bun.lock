@@ -62,7 +62,7 @@
     },
     "packages/ui": {
       "name": "@ompchamber/ui",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "dependencies": {
         "@ompchamber/plugin-sdk": "workspace:*",
         "preact": "^10.29.8",
