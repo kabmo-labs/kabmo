@@ -48,7 +48,17 @@
     },
     "packages/plugin-sdk": {
       "name": "@ompchamber/plugin-sdk",
-      "version": "2.0.0",
+      "version": "2.1.0",
+      "peerDependencies": {
+        "@ompchamber/ui": "*",
+        "happy-dom": "*",
+        "preact": "^10.29.8",
+      },
+      "optionalPeers": [
+        "@ompchamber/ui",
+        "happy-dom",
+        "preact",
+      ],
     },
     "packages/ui": {
       "name": "@ompchamber/ui",
