@@ -235,6 +235,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
               <PluginBootstrap workspacePath={activeProjectPath} />
               <TopNavbar
                 sessionTitle={sessionTitle}
+                sessionId={sessionId}
                 showLeftPanel={showLeftPanel}
                 showEditor={showEditor}
                 showRightPanel={showRightPanel}

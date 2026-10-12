@@ -16,10 +16,11 @@
 
 import { publishClientSignal } from '@/client/lib/signals';
 import { useFetcher } from '@/client/lib/router/fetcher';
+import { isSessionRenaming, setSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { SessionItemData } from '@/shared/types';
 
-/** Surfaces a refusal to the user; omitted callers stay silent. */
-export type ReportSessionError = (message: string) => void;
+/** Surfaces an outcome to the user; omitted callers stay silent. */
+export type ReportSessionOutcome = (message: string, tone?: 'success' | 'error') => void;
 
 export interface SessionActions {
   handleArchive: (session: SessionItemData) => void;
@@ -28,7 +29,7 @@ export interface SessionActions {
   handleRenameWithAi: (session: SessionItemData) => Promise<void>;
 }
 
-export function useSessionActions(refresh: () => void, reportError?: ReportSessionError): SessionActions {
+export function useSessionActions(refresh: () => void, report?: ReportSessionOutcome): SessionActions {
   const archiveFetcher = useFetcher();
 
   const handleArchive = (session: SessionItemData) => {
@@ -61,19 +62,36 @@ export function useSessionActions(refresh: () => void, reportError?: ReportSessi
    * too thin to title — so the outcome is reported rather than assumed, and
    * the title it produces is announced on the same `session-renamed` signal a
    * manual rename uses, so the navbar follows it without a refetch.
+   *
+   * The wait is shown as a SPINNER, not a toast: the request can outlive any
+   * toast's duration, and a progress notice that vanished while the work went
+   * on would read as a finished failure. `setSessionRenaming` marks the session
+   * for as long as the request is in flight, and every surface that draws that
+   * row — both sidebars and the navbar title — spins its status slot from it,
+   * so the cue cannot disagree with itself whichever surface started the
+   * rename. The mark is cleared BEFORE the outcome is reported, so the success
+   * toast never renders beside a row that is still spinning.
    */
   const handleRenameWithAi = async (session: SessionItemData) => {
+    const sessionId = String(session.id);
+    // A double click would otherwise fire two generations, and the second
+    // would re-derive the title from the transcript the first is naming.
+    if (isSessionRenaming(sessionId)) return;
+    setSessionRenaming(sessionId, true);
     try {
-      const res = await fetch(`/api/sessions/${encodeURIComponent(String(session.id))}/rename-with-ai`, { method: 'POST' });
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/rename-with-ai`, { method: 'POST' });
       const data = (await res.json().catch(() => ({}))) as { name?: string; error?: string };
       if (!res.ok || !data.name) {
-        reportError?.(data.error || `Could not generate a name (HTTP ${res.status}).`);
+        report?.(data.error || `Could not generate a name (HTTP ${res.status}).`, 'error');
         return;
       }
-      publishClientSignal('session-renamed', { sessionId: String(session.id), title: data.name });
+      publishClientSignal('session-renamed', { sessionId, title: data.name });
       refresh();
+      report?.(`Renamed to "${data.name}".`, 'success');
     } catch (error) {
-      reportError?.(error instanceof Error ? error.message : String(error));
+      report?.(error instanceof Error ? error.message : String(error), 'error');
+    } finally {
+      setSessionRenaming(sessionId, false);
     }
   };
 

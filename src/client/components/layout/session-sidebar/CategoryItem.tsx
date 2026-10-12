@@ -224,6 +224,7 @@ export function Category({
             return (
               <div key={session.id} className="space-y-0.5">
                 <SessionItem
+                  sessionId={session.id}
                   title={session.title}
                   isActive={isActive && !isViewingSubagent}
                   isArchived={session.is_archived === 1}

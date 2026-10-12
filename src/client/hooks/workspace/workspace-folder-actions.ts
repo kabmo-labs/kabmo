@@ -55,22 +55,26 @@ export interface WorkspaceFolderActions {
 }
 
 /**
- * What the reveal endpoint answers, and what the caller is told when the
- * request itself fails. The message is the server's own — a directory that no
+ * The one channel a folder action reports on, success or failure.
+ *
+ * A message is always the surface's own or the server's — a directory that no
  * longer exists and a machine with no opener are different problems, and the
- * old fire-and-forget call could not report either.
+ * old fire-and-forget call could not report either. The tone is optional
+ * because the session actions this hook forwards to report SUCCESS through the
+ * same channel ("Renamed to …"), while a folder's own failures are the error
+ * tone their callers already assume.
  */
-export type ReportFolderError = (message: string) => void;
+export type ReportFolderOutcome = (message: string, tone?: 'success' | 'error') => void;
 
 export function useWorkspaceFolderActions(
   folder: WorkspaceFolderLike,
   refresh: () => void,
-  reportError?: ReportFolderError,
+  report?: ReportFolderOutcome,
 ): WorkspaceFolderActions {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const pinFetcher = useFetcher<{ success?: boolean }>();
   const deleteFetcher = useFetcher<{ success?: boolean }>();
-  const { handleArchive, handleRename, handleRenameWithAi } = useSessionActions(refresh, reportError);
+  const { handleArchive, handleRename, handleRenameWithAi } = useSessionActions(refresh, report);
 
   const handlePin = () => {
     if (typeof folder.id !== 'number') return;
@@ -99,9 +103,9 @@ export function useWorkspaceFolderActions(
           try {
             const res = await fetch(`/api/folders/${encodeURIComponent(String(folder.id))}/open`, { method: 'POST' });
             const data = await res.json().catch(() => ({})) as { error?: string };
-            if (!res.ok) reportError?.(data.error || `Could not open the folder (HTTP ${res.status})`);
+            if (!res.ok) report?.(data.error || `Could not open the folder (HTTP ${res.status})`);
           } catch (error) {
-            reportError?.(error instanceof Error ? error.message : String(error));
+            report?.(error instanceof Error ? error.message : String(error));
           }
         })();
       }

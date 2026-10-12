@@ -1,6 +1,7 @@
 import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Loader2, MoreHorizontal } from 'lucide-preact';
 import type { SessionItemData } from '@/shared/types';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
+import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 
 export interface MobileSessionRowProps {
@@ -50,6 +51,9 @@ export function MobileSessionRow({
     handleKeyDown,
     handleBlur,
   } = useInlineRename(session.title, onRename);
+  // The phone draws the same cue the desktop row does, from the same store, so
+  // a rename started in either layout is visible in both.
+  const renaming = useSessionRenaming(session.id);
   // One trigger for every row action; also reachable by long-press contextmenu.
   const menu = useRowMenu();
   const hasActions = Boolean(onRename || onArchive || onDelete);
@@ -99,9 +103,15 @@ export function MobileSessionRow({
             {/* Status slot, 16px at the same x as the folder header's icon slot,
                 so the left column reads as one line. Waiting on an answer
                 outranks the run spinner — the spinner says work is happening,
-                the question mark says it is YOUR turn (desktop parity). */}
+                the question mark says it is YOUR turn (desktop parity). An
+                in-flight rename outranks both, for the same reason it does
+                there: it answers a click that is still pending. */}
             <span className="w-4 flex-shrink-0 flex items-center justify-center">
-              {awaitingInput ? (
+              {renaming ? (
+                <span role="status" aria-label="Generating a name…">
+                  <Loader2 size={13} className="text-ink/50 animate-spin" />
+                </span>
+              ) : awaitingInput ? (
                 <CircleQuestionMark size={13} className="text-ink/70 animate-pulse" />
               ) : status === 'stream' ? (
                 <Loader2 size={13} className="text-ink/50 animate-spin" />

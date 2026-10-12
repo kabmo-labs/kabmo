@@ -1,10 +1,11 @@
-import { LayoutTemplate, MoreHorizontal, PanelLeft, PanelRight, PanelRightClose, RefreshCw, Smartphone } from 'lucide-preact';
+import { LayoutTemplate, Loader2, MoreHorizontal, PanelLeft, PanelRight, PanelRightClose, RefreshCw, Smartphone } from 'lucide-preact';
 import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
 import { PanelLauncher } from '@/client/components/layout/desktop-layout/PanelLauncher';
 import { HeaderPanelButtons } from '@/client/components/layout/desktop-layout/HeaderPanelButtons';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
+import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 import { WORKSPACE_KEY_BINDINGS, type WorkspaceCommand } from '@/shared/lib/workspace/keymap';
 import { describeBinding } from '@/shared/lib/ui/key-binding';
@@ -22,6 +23,8 @@ function withChord(command: WorkspaceCommand, label: string): string {
 
 interface TopNavbarProps {
   sessionTitle: string | null;
+  /** The session the title belongs to, for the in-flight rename cue. */
+  sessionId?: string | null;
   showLeftPanel: boolean;
   showEditor: boolean;
   showRightPanel: boolean;
@@ -47,6 +50,7 @@ interface TopNavbarProps {
 
 export function TopNavbar({
   sessionTitle,
+  sessionId,
   showLeftPanel,
   showEditor,
   showRightPanel,
@@ -62,6 +66,10 @@ export function TopNavbar({
   // menu offers Rename and the header swaps its label for the field.
   const rename = useInlineRename(sessionTitle ?? '', sessionActions?.onRename);
   const menu = useRowMenu();
+  // The title menu's "Rename with AI" acts on the session on screen, whose
+  // sidebar row may be scrolled out of view — so the header says the wait is
+  // happening even when the row that started it is not on screen.
+  const renaming = useSessionRenaming(sessionId);
   const hasSessionActions = Boolean(
     sessionActions && (sessionActions.onRename || sessionActions.onRenameWithAi || sessionActions.onArchive || sessionActions.onDelete)
   );
@@ -115,10 +123,18 @@ export function TopNavbar({
                 aria-label="Session title"
               />
             ) : (
-              <span className="font-bold text-sm tracking-tight hidden sm:flex items-center">
+              <span className="font-bold text-sm tracking-tight hidden sm:flex items-center gap-1.5">
                 <span className="font-semibold text-xs text-ink truncate">
                   {sessionTitle.charAt(0).toUpperCase() + sessionTitle.slice(1)}
                 </span>
+                {renaming && (
+                  <Loader2
+                    size={12}
+                    className="animate-spin text-ink/50 shrink-0"
+                    role="status"
+                    aria-label="Generating a session name…"
+                  />
+                )}
               </span>
             )}
             {hasSessionActions && !rename.isEditing && (

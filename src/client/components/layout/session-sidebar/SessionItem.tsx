@@ -1,9 +1,12 @@
 import type { TargetedMouseEvent } from 'preact';
 import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Loader2, MoreHorizontal } from 'lucide-preact';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
+import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 
 export interface SessionItemProps {
+  /** The session this row draws; the key its in-flight rename is tracked under. */
+  sessionId: string | number;
   title: string;
   isActive?: boolean;
   isArchived?: boolean;
@@ -29,6 +32,7 @@ export interface SessionItemProps {
 }
 
 export function SessionItem({
+  sessionId,
   title,
   isActive = false,
   isArchived = false,
@@ -45,6 +49,11 @@ export function SessionItem({
   hasSubagents = false,
   onToggleExpand,
 }: SessionItemProps) {
+  // A rename in flight is drawn in the same 16px slot the run spinner uses, so
+  // a row the user just acted on says so where they are already looking. It
+  // outranks the run cue: the server refuses a rename mid-run, so the two can
+  // only overlap for the instant the refusal is in flight.
+  const renaming = useSessionRenaming(sessionId);
   const showChevron = Boolean(expandable && hasSubagents && onToggleExpand);
   // The slot shows one glyph, never two side by side. A live run signal owns
   // it at rest — the spinner, or the blocked-on-a-question cue, which says it
@@ -53,8 +62,8 @@ export function SessionItem({
   // hover-only would leave the roster reachable only by hovering exactly the
   // right 16px.
   const liveRun = awaitingInput || status === 'stream';
-  const chevronPinned = showChevron && !liveRun;
-  const showStatus = Boolean(awaitingInput || status) && !chevronPinned;
+  const chevronPinned = showChevron && !liveRun && !renaming;
+  const showStatus = Boolean(renaming || awaitingInput || status) && !chevronPinned;
   const {
     isEditing,
     draft,
@@ -115,8 +124,15 @@ export function SessionItem({
               }`}
             >
               {/* Waiting on an answer outranks the run spinner: the spinner says
-                  work is happening, the question mark says it is YOUR turn. */}
-              {awaitingInput ? (
+                  work is happening, the question mark says it is YOUR turn.
+                  An in-flight rename outranks both — it is the answer to the
+                  click that is still pending, and it names itself in `title`
+                  so the glyph is not a second unexplained spinner. */}
+              {renaming ? (
+                <span role="status" aria-label="Generating a name…">
+                  <Loader2 size={12} className="animate-spin" />
+                </span>
+              ) : awaitingInput ? (
                 <CircleQuestionMark size={12} className="animate-pulse text-ink/80" />
               ) : status === 'stream' ? (
                 <Loader2 size={12} className="animate-spin" />

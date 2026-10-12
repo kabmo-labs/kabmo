@@ -63,13 +63,35 @@ const resume = flag('--resume');
 const sessionId = resume
   ? (resume.split('/').pop() ?? '').replace(/\.jsonl$/, '') || crypto.randomUUID()
   : crypto.randomUUID();
-const sessionFile = resume ?? join(agentDir, 'sessions', `${sessionId}.jsonl`);
+
+/**
+ * The session file, under the layout both omp and the chamber read:
+ * `<sessions>/<project-dir>/<file>.jsonl`, with a `{"type":"session"}` header
+ * carrying the id.
+ *
+ * The directory NAME is not load-bearing — the chamber's scan walks one level
+ * under the sessions root and takes each file's id from its header — but the
+ * DEPTH and the header are. A fixture that wrote `<sessions>/<file>.jsonl` with
+ * no header left every session lookup 404ing (measured: `rename-with-ai`
+ * answered "Session not found" for a session the sidebar was rendering), which
+ * is what a real omp install never produces.
+ */
+const cwd = flag('--cwd') ?? process.cwd();
+const sessionFile = resume ?? join(agentDir, 'sessions', 'project', `${sessionId}.jsonl`);
 
 // omp writes the transcript as the run proceeds; a spec that reloads the page
 // reads it back. Creating the file (and its parent) is what makes the session
 // visible to the sidebar's scan.
 mkdirSync(dirname(sessionFile), { recursive: true });
-if (!resume) writeFileSync(sessionFile, '');
+if (!resume) {
+  writeFileSync(sessionFile, `${JSON.stringify({
+    type: 'session',
+    version: 3,
+    id: sessionId,
+    timestamp: new Date().toISOString(),
+    cwd,
+  })}\n`);
+}
 
 const encoder = new TextEncoder();
 const write = (frame: unknown) => {
@@ -88,6 +110,11 @@ const record = (frame: unknown) => {
 
 let messageCount = resume ? 1 : 0;
 let streaming = false;
+/** The title `get_state` reports; `/rename` replaces it, the way omp does. */
+let sessionName = 'Fake session';
+/** How long `/rename` takes to answer. A real generation is a model call;
+ *  this keeps the in-flight window wide enough for a spec to observe. */
+const RENAME_DELAY_MS = 600;
 /** Set while the chamber has requested delta-mode `message_update` frames. */
 let deltaMode = false;
 
@@ -105,7 +132,7 @@ function getState() {
   return {
     sessionId,
     sessionFile,
-    sessionName: 'Fake session',
+    sessionName,
     isStreaming: streaming,
     isSettled: !streaming,
     isCompacting: false,
@@ -237,11 +264,23 @@ function handleCommand(frame: Record<string, unknown>) {
       // Acknowledge the admission first, then run the turn — the order omp uses.
       respond({ agentInvoked: true });
       const message = typeof frame.message === 'string' ? frame.message : '';
-      // The chamber fires `/rename` in the background for the auto-title; answer
-      // it on the `command_output` frame it reads.
+      // The chamber fires `/rename` in the background for the auto-title, and
+      // on demand for "Rename with AI". Real omp answers with
+      // `session_info_update` (the new title) and THEN `command_output` — and
+      // the rename route's verdict is which of the two arrives, so a fixture
+      // that only sent the output would report every rename as a refusal.
+      //
+      // The pause is what makes the in-flight window observable: a real title
+      // generation is a model call of a few seconds, and a spec asserting the
+      // spinner needs the request to still be outstanding when it looks.
       if (message.trim().startsWith('/rename')) {
-        write({ type: 'command_output', output: 'Session renamed to Fake session' });
-        write({ type: 'prompt_result', agentInvoked: false });
+        void (async () => {
+          await sleep(RENAME_DELAY_MS);
+          sessionName = 'Fake session';
+          write({ type: 'session_info_update', sessionId, title: sessionName });
+          write({ type: 'command_output', output: 'Session renamed to Fake session' });
+          write({ type: 'prompt_result', agentInvoked: false });
+        })();
         return;
       }
       void runTurn(message, String(id));

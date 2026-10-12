@@ -13,12 +13,13 @@
  * actually waiting for the user — the bug this pins.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { MobileSessionRow } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import type { MobileSessionRowProps } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
+import { setSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { SessionItemData } from '@/shared/types';
 
 let container: HTMLElement;
@@ -87,5 +88,35 @@ describe('mobile session row status slot', () => {
     const el = await mount({});
     const slot = el.querySelector('span.w-4');
     expect(slot?.querySelector('svg')).toBeNull();
+  });
+});
+
+/**
+ * The rename cue. It is not a run state — it is the answer to a click that is
+ * still pending — so it must draw over a row that has no status at all, and it
+ * must outrank the run cue for the instant the server's mid-run refusal is in
+ * flight. Both directions are asserted against the store the row reads, because
+ * a row that kept its own flag would show nothing here.
+ */
+describe('mobile session row rename cue', () => {
+  afterEach(() => setSessionRenaming('s1', false));
+
+  test('spins, with an accessible name, while the rename is in flight', async () => {
+    setSessionRenaming('s1', true);
+    const el = await mount({});
+    const status = el.querySelector('[role="status"]');
+    expect(status?.getAttribute('aria-label')).toBe('Generating a name…');
+    expect(status?.querySelector('svg')?.getAttribute('class')).toContain('animate-spin');
+  });
+
+  test('outranks the stream spinner and the terminal check', async () => {
+    setSessionRenaming('s1', true);
+    const streaming = await mount({ status: 'stream' });
+    expect(streaming.querySelectorAll('[role="status"]').length).toBe(1);
+
+    setSessionRenaming('s1', false);
+    const settled = await mount({ status: 'finish' });
+    expect(settled.querySelector('[role="status"]')).toBeNull();
+    expect(svgClasses(settled)).toContain('lucide-check');
   });
 });

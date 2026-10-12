@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, Menu, PanelRight, Plus } from 'lucide-preact';
+import { Check, ChevronDown, Loader2, Menu, PanelRight, Plus } from 'lucide-preact';
 import type { SessionContextTelemetry } from '@/shared/types/context';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getLastOpenedAt } from '@/shared/lib/workspace/session-state/store';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
+import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { formatCompactTokens } from '@/shared/lib/format/number';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
@@ -44,6 +45,9 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const { folders } = useSidebarData();
   const streamStatus = useAgentStreamStatus();
+  // The drawer's row spins from the same store, so the two surfaces cannot
+  // disagree about whether a rename is running.
+  const renaming = useSessionRenaming(activeSessionId);
   const modelNames = useModelNames();
   const providerNames = useProviderNames();
   const [showSessionPicker, setShowSessionPicker] = useState(false);
@@ -171,6 +175,18 @@ export function MobileHeader({
             title={displayTitle}
           >
             <span className="truncate">{displayTitle}</span>
+            {/* The phone's drawer row spins too, but the drawer is closed while
+                the user reads the chat — and "Rename with AI" is reachable from
+                the drawer alone, so without this the click would look like it
+                did nothing at all until the name changed. */}
+            {renaming && (
+              <Loader2
+                size={12}
+                className="animate-spin text-ink/50 flex-shrink-0"
+                role="status"
+                aria-label="Generating a session name…"
+              />
+            )}
             <ChevronDown size={13} className="text-ink/50 flex-shrink-0" />
           </button>
 
