@@ -41,6 +41,8 @@ import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
 import { markTitleRequestSent, type AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { loadSessionModel } from '@/server/lib/omp/session/messages';
+import { withTitleModelOverride } from '@/server/lib/omp/session/title-model-overlay.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { isMockMode } from '@/server/mock.server';
 
@@ -65,6 +67,14 @@ export type RenameWithAiResult =
  * turns, so naming a conversation mid-run would name it after a half-finished
  * turn — and omp runs RPC handlers one at a time, so the request would sit
  * queued behind the very turn it should not have been reading.
+ *
+ * The generation runs with the `tiny` role pointed at the SESSION's own model
+ * (see `title-model-overlay.server.ts`). omp's `/rename` names a session with
+ * the `tiny` role and only ever appends the session's model when
+ * `retry.modelFallback` is on — so a user whose tiny role points at a provider
+ * whose plan lapsed got "Could not generate a session title" after a 53s
+ * timeout, while the conversation's own model answered the same request in ~7s.
+ * The override is scoped to this call and removed in its `finally`.
  */
 export async function renameSessionWithAi(sessionId: string): Promise<RenameWithAiResult> {
   if (isMockMode()) {
@@ -100,7 +110,16 @@ export async function renameSessionWithAi(sessionId: string): Promise<RenameWith
     };
   }
 
-  const outcome = await awaitTitleFrame(session);
+  // Read from the session FILE, not from the live child: the overlay has to be
+  // written before `/rename` is dispatched, and the file is what the model
+  // actually ran on (a child resumed for this one action has the model its
+  // transcript records). A model that cannot be read leaves the role alone —
+  // naming the session with a model the conversation never used would be worse
+  // than the role the user configured.
+  const model = await loadSessionModel(resolved.filePath);
+  const selector = model ? `${model.provider}/${model.modelId}` : undefined;
+
+  const outcome = await withTitleModelOverride(selector, () => awaitTitleFrame(session));
   if (outcome.ok) clearSessionFileCaches();
   return outcome;
 }

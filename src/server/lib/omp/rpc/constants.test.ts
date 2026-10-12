@@ -18,9 +18,10 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
 
 import {
   AWAITING_AGENT_START_TIMEOUT_MS,
@@ -184,8 +185,10 @@ describe('resolveSpawnCwd', () => {
 });
 
 describe('buildSessionSpawnArgs', () => {
-  test('resume file, approval mode and extension load in that order', () => {
+  test('the title-model overlay, then the resume file, approval mode and extension load', () => {
     expect(buildSessionSpawnArgs('/tmp/session.jsonl', 'yolo')).toEqual([
+      '--config',
+      titleModelOverlayPath(),
       '--resume',
       '/tmp/session.jsonl',
       '--approval-mode',
@@ -195,11 +198,26 @@ describe('buildSessionSpawnArgs', () => {
   });
 
   test('an approval mode is passed without a resume file', () => {
-    expect(buildSessionSpawnArgs('', 'write')).toEqual(['--approval-mode', 'write', ...chamberExtensionArgs()]);
+    expect(buildSessionSpawnArgs('', 'write')).toEqual([
+      '--config',
+      titleModelOverlayPath(),
+      '--approval-mode',
+      'write',
+      ...chamberExtensionArgs(),
+    ]);
   });
 
-  test('a new session gets only the extension load', () => {
-    expect(buildSessionSpawnArgs('')).toEqual(chamberExtensionArgs());
+  test('a new session still gets the overlay and the extension load', () => {
+    expect(buildSessionSpawnArgs('')).toEqual(['--config', titleModelOverlayPath(), ...chamberExtensionArgs()]);
+  });
+
+  test('the overlay file EXISTS by the time the argv names it', () => {
+    // omp's `--config` loader is strict: a missing file is a hard error, so the
+    // file has to be there before the spawn reads the argv.
+    const args = buildSessionSpawnArgs('');
+    const path = args[args.indexOf('--config') + 1];
+    expect(path).toBe(titleModelOverlayPath());
+    expect(existsSync(path)).toBe(true);
   });
 
   test('the extension load is the `-e <existing absolute file>` pair', () => {

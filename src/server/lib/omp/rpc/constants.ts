@@ -12,6 +12,7 @@
 import { homedir } from 'os';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { chamberExtensionArgs } from '@/server/lib/omp/extensions/locator';
+import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
 export interface AgentEvent {
@@ -271,9 +272,17 @@ export async function resolveSpawnCwd(recordedCwd?: string | null): Promise<stri
  *  present: the chamber's plan/goal toggles are driven from inside the child
  *  (omp has no RPC verb for either mode), so the extension is not optional
  *  equipment for a session that happens to have a mode on — it is how the
- *  composer's controls reach the agent at all. */
+ *  composer's controls reach the agent at all.
+ *
+ *  `--config <overlay>` points the child at the chamber's title-model overlay,
+ *  which exists (empty) before this runs. It is how a session's own model
+ *  reaches omp's title generation: the child watches that path, so
+ *  `rename-with-ai` rewrites the `tiny` role for the duration of one request.
+ *  See `session/title-model-overlay.server.ts`. */
 export function buildSessionSpawnArgs(sessionFile: string, approvalMode?: ApprovalMode): string[] {
   const args: string[] = [];
+  ensureTitleModelOverlay();
+  args.push('--config', titleModelOverlayPath());
   if (sessionFile) {
     // An absolute path resolves deterministically: omp's createSessionManager
     // opens it directly via SessionManager.open without any interactive
