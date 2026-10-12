@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 537 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 548 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -517,6 +517,16 @@
         "description": "Emit OSC 9;4 indeterminate progress while the agent or context maintenance is running (always on in Tern)"
       }
     },
+    "terminal.programStatus": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "appearance",
+        "group": "Display",
+        "label": "Program Status (OSC 7501)",
+        "description": "Report whether the agent is working, waiting on you, done, or failed over OSC 7501, for terminal tab indicators and agent inboxes"
+      }
+    },
     "tui.textSizing": {
       "type": "boolean",
       "default": false,
@@ -564,7 +574,7 @@
           {
             "value": "smart",
             "label": "Smart",
-            "description": "The judge model picks the chart kind and columns for tables with several numeric columns"
+            "description": "The judge model refines each chart: kind, columns, row names and grouping, scales, which way is better, and its title"
           },
           {
             "value": "always",
@@ -906,7 +916,7 @@
           {
             "value": "text",
             "label": "Text",
-            "description": "Full mode name — NORMAL, INSERT, VISUAL, V-LINE"
+            "description": "Full mode name — NORMAL, INSERT, VISUAL, V-LINE, REPLACE"
           },
           {
             "value": "icon",
@@ -1132,6 +1142,16 @@
             "description": "macOS dictionary completions"
           }
         ]
+      }
+    },
+    "composer.predictions": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "interaction",
+        "group": "Input",
+        "label": "Composer Predictions",
+        "description": "After a completed turn, ask the active model to predict your next message and show it as ghost text in the empty composer; Tab or Right inserts it without sending. Extra usage: every completed turn sends one more billed request over the whole conversation (counted in /stats)"
       }
     },
     "spelling.autocorrect": {
@@ -1400,7 +1420,7 @@
         "tab": "interaction",
         "group": "Notifications",
         "label": "Ask Timeout",
-        "description": "Auto-select the recommended ask option after this many seconds (0 disables)",
+        "description": "Auto-select the recommended ask option after this many seconds (0 disables). Also bounds cfg:// approval prompts; an unanswered approval denies the write instead of auto-selecting",
         "options": [
           {
             "value": "0",
@@ -2409,6 +2429,38 @@
         "description": "Allow retry recovery to switch to configured fallback models"
       }
     },
+    "retry.fallbackOn": {
+      "type": "enum",
+      "default": "any",
+      "values": [
+        "any",
+        "usage-limit",
+        "except-usage-limit"
+      ],
+      "ui": {
+        "tab": "model",
+        "group": "Retry & Fallback",
+        "label": "Fallback Trigger",
+        "description": "Which failed requests may switch to a configured fallback model",
+        "options": [
+          {
+            "value": "any",
+            "label": "Any error",
+            "description": "Every provider error may switch models"
+          },
+          {
+            "value": "usage-limit",
+            "label": "Usage limits only",
+            "description": "Switch only on a usage limit; retry other errors on the same model, then surface them"
+          },
+          {
+            "value": "except-usage-limit",
+            "label": "All but usage limits",
+            "description": "Wait out or surface a usage limit; switch on other errors"
+          }
+        ]
+      }
+    },
     "retry.usageAwareFallback": {
       "type": "boolean",
       "default": false,
@@ -3296,6 +3348,50 @@
         ]
       }
     },
+    "tts.localSpeed": {
+      "type": "number",
+      "default": 1,
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Local TTS Speed",
+        "description": "Speaking rate of the local TTS backend (tts tool, omp say). 1 = normal; clamped to 0.5–2.5",
+        "options": [
+          {
+            "value": "0.5",
+            "label": "0.5×"
+          },
+          {
+            "value": "0.75",
+            "label": "0.75×"
+          },
+          {
+            "value": "1",
+            "label": "1× (normal)"
+          },
+          {
+            "value": "1.25",
+            "label": "1.25×"
+          },
+          {
+            "value": "1.5",
+            "label": "1.5×"
+          },
+          {
+            "value": "1.75",
+            "label": "1.75×"
+          },
+          {
+            "value": "2",
+            "label": "2×"
+          },
+          {
+            "value": "2.5",
+            "label": "2.5×"
+          }
+        ]
+      }
+    },
     "speech.enabled": {
       "type": "boolean",
       "default": false,
@@ -3419,6 +3515,50 @@
         ]
       }
     },
+    "speech.speed": {
+      "type": "number",
+      "default": 1,
+      "ui": {
+        "tab": "providers",
+        "group": "Services",
+        "label": "Speech Vocalization Speed",
+        "description": "Speaking rate when reading the assistant's output aloud. 1 = normal; clamped to 0.5–2.5",
+        "options": [
+          {
+            "value": "0.5",
+            "label": "0.5×"
+          },
+          {
+            "value": "0.75",
+            "label": "0.75×"
+          },
+          {
+            "value": "1",
+            "label": "1× (normal)"
+          },
+          {
+            "value": "1.25",
+            "label": "1.25×"
+          },
+          {
+            "value": "1.5",
+            "label": "1.5×"
+          },
+          {
+            "value": "1.75",
+            "label": "1.75×"
+          },
+          {
+            "value": "2",
+            "label": "2×"
+          },
+          {
+            "value": "2.5",
+            "label": "2.5×"
+          }
+        ]
+      }
+    },
     "providers.fetch": {
       "type": "enum",
       "default": "auto",
@@ -3487,12 +3627,12 @@
         "tab": "providers",
         "group": "Services",
         "label": "Codex Auto-Redeem Saved Resets",
-        "description": "Spend saved Codex rate-limit resets automatically: restore an account blocked by an exhausted 5h or weekly window when a turn is stuck and no other account can take over, and salvage credits that are about to expire. unset asks before the first spend, yes spends without prompting, and no disables both checks.",
+        "description": "Spend saved Codex rate-limit resets automatically: restore an account blocked by an exhausted 5h or weekly window when a turn is stuck and no other account can take over, and salvage credits that are about to expire. unset asks before the first spend (with no prompt UI, it spends only a reset expiring within 5 minutes), yes spends without prompting, and no disables both checks.",
         "options": [
           {
             "value": "unset",
             "label": "Unset",
-            "description": "Check eligibility, then ask before spending the first saved reset."
+            "description": "Check eligibility, then ask before spending the first saved reset. With no prompt UI, spend only a reset expiring within 5 minutes."
           },
           {
             "value": "yes",
@@ -3549,12 +3689,12 @@
         "tab": "providers",
         "group": "Services",
         "label": "Claude Auto-Redeem Resets",
-        "description": "Spend eligible Claude Cedar or Juniper resets automatically. Cedar is spent only for covered limits; Juniper can only recover a sole 5-hour block. unset asks before the first spend, yes spends without prompting, and no disables blocked recovery and expiry salvage.",
+        "description": "Spend eligible Claude Cedar or Juniper resets automatically. Cedar is spent only for covered limits; Juniper can only recover a sole 5-hour block. unset asks before the first spend (with no prompt UI, it spends only a reset expiring within 5 minutes), yes spends without prompting, and no disables blocked recovery and expiry salvage.",
         "options": [
           {
             "value": "unset",
             "label": "Unset",
-            "description": "Check live eligibility, then ask before spending the first Claude reset."
+            "description": "Check live eligibility, then ask before spending the first Claude reset. With no prompt UI, spend only a reset expiring within 5 minutes."
           },
           {
             "value": "yes",
@@ -3823,6 +3963,18 @@
         "group": "General",
         "label": "Additional Workspace Dirs",
         "description": "Extra workspace directories added to every session as additional roots (multi-root workspace). Managed live via /add-dir and /remove-dir. Paths resolve relative to cwd; absolute paths recommended. The agent is told these roots exist and can read/grep/glob them."
+      }
+    },
+    "contextFiles.extra": {
+      "type": "array",
+      "default": [],
+      "ui": {
+        "tab": "context",
+        "group": "General",
+        "label": "Extra Context Files",
+        "editor": "json",
+        "description": "Extra instruction filenames loaded beside AGENTS.md. Use a JSON list of names, not paths, e.g. [\"AGENTS.local.md\"]; [] disables extras. Start a new session to load them.",
+        "condition": "contextFilesExtraNotProject"
       }
     },
     "contextPromotion.enabled": {
@@ -6273,7 +6425,7 @@
         "tab": "tools",
         "group": "Discovery & MCP",
         "label": "xd:// Tools",
-        "description": "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request. Sessions whose explicit tool list grants read but omits write mount devices through a device-only write transport (filesystem writes stay rejected). Disable to expose every enabled tool top-level."
+        "description": "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request. Sessions whose explicit tool list grants read but omits write mount devices through a device-only write transport (only local:// scratch stays writable besides devices). Disable to expose every enabled tool top-level."
       }
     },
     "tools.xdevDocs": {
@@ -6436,6 +6588,16 @@
         "group": "Bash",
         "label": "Bash Auto-Background",
         "description": "Automatically background long-running bash commands and deliver the result later"
+      }
+    },
+    "bash.gitGuard": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "shell",
+        "group": "Bash",
+        "label": "Git Guard",
+        "description": "Refuse git commands that discard or move shared work in the bash tool: stash, reset --hard or to another commit, and checkout/switch/restore outside a merge or rebase conflict"
       }
     },
     "bash.patterns": {
@@ -6686,6 +6848,70 @@
         "group": "Isolation",
         "label": "Clean Source Checkout on /wt",
         "description": "When creating a worktree with `/wt`, reset tracked changes and remove untracked files from the original checkout after carrying them over"
+      }
+    },
+    "worktree.onStart": {
+      "type": "enum",
+      "default": "off",
+      "values": [
+        "off",
+        "ask",
+        "create"
+      ],
+      "ui": {
+        "tab": "tasks",
+        "group": "Isolation",
+        "label": "Worktree on Start",
+        "description": "Whether fresh interactive sessions start in a new linked worktree",
+        "options": [
+          {
+            "value": "off",
+            "label": "Off",
+            "description": "Start in the current checkout"
+          },
+          {
+            "value": "ask",
+            "label": "Ask",
+            "description": "Ask at session start"
+          },
+          {
+            "value": "create",
+            "label": "Create",
+            "description": "Always start in a new worktree on a `wt/*` branch"
+          }
+        ]
+      }
+    },
+    "worktree.onExit": {
+      "type": "enum",
+      "default": "keep",
+      "values": [
+        "keep",
+        "ask",
+        "remove"
+      ],
+      "ui": {
+        "tab": "tasks",
+        "group": "Isolation",
+        "label": "Worktree on Exit",
+        "description": "What to do on exit with worktrees created since omp started (on start or with `/wt`)",
+        "options": [
+          {
+            "value": "keep",
+            "label": "Keep",
+            "description": "Leave worktrees in place"
+          },
+          {
+            "value": "ask",
+            "label": "Ask",
+            "description": "Ask on exit"
+          },
+          {
+            "value": "remove",
+            "label": "Remove",
+            "description": "Remove clean worktrees; ask when they have uncommitted changes or new commits. Gitignored files (e.g. `.env`) are deleted too"
+          }
+        ]
       }
     },
     "task.isolation.apply": {
@@ -7155,7 +7381,7 @@
         "tab": "appearance",
         "group": "Display",
         "label": "Title Icons",
-        "description": "Icon and short code that head new generated session titles",
+        "description": "Icon and short code that head new generated or /rename session titles",
         "options": [
           {
             "value": "nf+emoji",
