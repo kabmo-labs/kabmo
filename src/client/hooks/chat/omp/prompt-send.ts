@@ -5,21 +5,20 @@
 
 /**
  * Prompt delivery for the live omp bridge: warm the session up, attach the
- * event stream, POST the prompt, then signal the sidebars the moment it is
- * dispatched.
+ * event stream, POST the prompt.
  *
- * The signal is the point: the server writes the live `stream` row when it
- * dispatches the prompt, so waiting for `agent_start` (spawn + ack round trip)
- * would leave the sidebar spinner dark for seconds after the user hit send.
- * The client half of that is the optimistic mark armed on the click itself
- * (`setStreamPending`), which covers the round trip the server's write cannot:
- * see `stream-overlay.ts`. Extracted from useOmpAgent so that hook stays under
+ * The run's `stream` row is written SERVER-side at dispatch
+ * (`rpc/session-commands.ts`), and the sidebar and the generating indicator
+ * both read it from there. Nothing is armed here: a client-owned mark was a
+ * second answer to "is a run in flight", and one whose release depended on the
+ * client naming the same session id it armed — which is how a spinner outlived
+ * the run it belonged to. Extracted from useOmpAgent so that hook stays under
  * the repo's per-file size ceiling.
  */
 
 import { useCallback } from 'preact/hooks';
 import type { Dispatch, SetStateAction } from 'preact/compat';
-import { setSessionTitleHint, setStreamPending } from '@/client/hooks/chat/omp/stream-overlay';
+import { setSessionTitleHint } from '@/client/hooks/chat/omp/sidebar-overlay';
 import { redirectToOwningInstance, type SessionOwnerConflict } from '@/client/hooks/chat/omp/owner-redirect';
 import type { AgentImage, OmpAgentState, PromptDispatchResult } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
@@ -62,10 +61,6 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
     const sid = sessionIdRef.current;
     if (!sid) return { ok: false, busy: false, error: 'No session' };
     setState((prev) => ({ ...prev, isGenerating: true, error: null }));
-    // The sidebar spinner starts on the CLICK, not when the server's dispatch
-    // write lands a spawn/resume round trip later; the chat's own
-    // `isGenerating` cannot carry this across a session switch.
-    setStreamPending(sid, true);
     try {
       // Mirror omp-web handleSend: warm the session process up with get_state
       // (spawns it on first use), then attach the event stream before sending
@@ -97,9 +92,6 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
         // Another chamber instance owns this session: send the tab there
         // instead of starting a second writer (which omp would fork).
         if (redirectToOwningInstance(body, sid)) return { ok: false, busy: false, error: 'Session is owned by another instance' };
-        // Release the optimistic mark: this dispatch started nothing. A run
-        // that IS streaming server-side draws the sidebar from its own row.
-        setStreamPending(sid, false);
         setState((prev) => ({ ...prev, isGenerating: false, error: body.error ?? `HTTP ${res.status}` }));
         // `agent_busy`: omp REFUSED the prompt because a turn is still
         // streaming. Nothing was delivered, so the caller may queue it. Every
@@ -107,15 +99,8 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
         // been accepted and must never be resent automatically.
         return { ok: false, busy: body.code === 'agent_busy', error: body.error ?? `HTTP ${res.status}` };
       }
-      // Re-arm on the accepted dispatch: the authoritative row exists now, so
-      // the mark's clock moves to a moment a later snapshot can be trusted
-      // against (see `releaseObservedPending`).
-      setStreamPending(sid, true);
-      // Tell the sidebars to re-read the session list now — the server wrote
-      // this session's live `stream` row at dispatch. Revalidation is
       return { ok: true, busy: false };
     } catch (e) {
-      setStreamPending(sid, false);
       setState((prev) => ({ ...prev, isGenerating: false, error: e instanceof Error ? e.message : String(e) }));
       return { ok: false, busy: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -172,7 +157,6 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       }
       sid = createdBody.sessionId;
       connect(sid);
-      setStreamPending(sid, true);
       // Name the sidebar's placeholder row with what the user actually sent:
       // omp's own title is ~17s away (it writes the session file only at the
       // first assistant message), so until then the row would read
@@ -189,17 +173,11 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       });
       const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok || body.error) {
-        setStreamPending(sid, false);
         setState((prev) => ({ ...prev, isGenerating: false, error: body.error ?? `HTTP ${res.status}` }));
         return null;
       }
-      // Same dispatch-time signal as sendPrompt, and the same re-arm: the new
-      // session's live badge must not wait for agent_start + the first JSONL
-      // write.
-      setStreamPending(sid, true);
       return { sessionId: sid, model: createdBody.model ?? null };
     } catch (e) {
-      if (sid) setStreamPending(sid, false);
       setState((prev) => ({ ...prev, isGenerating: false, error: e instanceof Error ? e.message : String(e) }));
       return null;
     }

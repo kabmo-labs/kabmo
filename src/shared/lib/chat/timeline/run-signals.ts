@@ -4,13 +4,15 @@
  */
 
 /**
- * The run-boundary half of the chat's omp callbacks: the three points at which
- * a run opens or is reattached.
+ * The run-boundary half of the chat's omp callbacks: the points at which a run
+ * opens or is reattached.
  *
- * The sidebar is no longer signalled from here — it reads the realtime
- * `sidebar`/`sidebar:status` topics, and the optimistic mark rides the
- * `stream-pending` client signal. What remains is the timeline's own state
- * (the generating UI and the meta refresh).
+ * Nothing here signals the sidebar. A run in flight has ONE source — the
+ * server's `session_stream_state` row, published on the `sidebar:status` topic
+ * and written at prompt dispatch — so the sidebar spinner and the timeline's
+ * generating indicator read the same answer. A client-side mark was a second
+ * one, and its release depended on the client naming the session id it had
+ * armed, which is how a spinner outlived its run.
  *
  * Split from `omp-callbacks.ts` to keep that file under the repo's per-file
  * size ceiling; the closures take the caller's deps record, so the captured
@@ -19,7 +21,6 @@
 
 import type { OmpAgentCallbacksDeps } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
-import { setStreamPending } from '@/client/hooks/chat/omp/stream-overlay';
 
 /** A run STARTED: resume the generating UI and refresh the session metadata. */
 export function handleAgentStart(deps: OmpAgentCallbacksDeps): void {
@@ -48,18 +49,11 @@ export function handleTurnStart(_deps: OmpAgentCallbacksDeps): void {
  * already loaded the committed messages; live updates continue).
  */
 export function handleResumeStream(deps: OmpAgentCallbacksDeps): void {
-  const { setGenerating, setGeneratingVerb, scrollToBottom, adoptedSessionIdRef, sessionIdRef } = deps;
+  const { setGenerating, setGeneratingVerb, scrollToBottom } = deps;
   setGenerating(true);
   setGeneratingVerb(PHASE_VERBS.thinking);
   setTimeout(() => scrollToBottom('smooth'), 50);
-  const sid = adoptedSessionIdRef.current ?? sessionIdRef.current;
-  if (!sid) return;
-  // Re-arm the optimistic mark as well, because for a fresh spawn the server's
-  // row cannot reach the sidebar at all: the list route buckets sessions out of
-  // omp's transcript scan, and omp has not written the file yet, so the session
-  // is absent from the payload and `isSessionStreaming` reports false however
-  // long the run has left to go. Measured on a reload 5s into a 25s run: the
-  // generating indicator resumed (this frame) while the sidebar spinner stayed
-  // dark until the file appeared at ~18s. `onAgentEnd` releases the mark.
-  setStreamPending(sid, true);
+  // No sidebar signal: the run is live server-side, so its `stream` row is in
+  // the status payload and the sidebar's spinner (and this indicator, through
+  // `timelineRunning`) already report it.
 }

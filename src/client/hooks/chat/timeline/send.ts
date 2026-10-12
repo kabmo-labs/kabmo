@@ -15,7 +15,6 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { AgentImage, Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { streamChatResponse } from '@/client/hooks/chat/stream';
-import { setStreamPending } from '@/client/hooks/chat/omp/stream-overlay';
 import type { SessionSeed } from '@/client/hooks/chat/timeline/session-load';
 import { buildPromptText } from '@/client/hooks/chat/timeline/prompt-text';
 import { flushDeferredPick, type DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
@@ -266,24 +265,12 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
         // here, and cleared below on success: a selection that outlived its
         // spawn would re-apply to the NEXT new session the user opens.
         const spawnModes = spawnSelectionRef.current;
-        // The sidebar's row for a pending chat is a client-side PLACEHOLDER,
-        // built outside the loader's folders, so the optimistic mark has to
-        // name THIS id (the `new-…` one) for the spinner to appear at the click
-        // instead of seconds later, when the real row is scanned in.
-        // `sendNewPrompt` arms the real session id as soon as it knows it; this
-        // mark is handed over right below.
-        const pendingKey = String(sessionId);
-        const marksPendingRow = pendingKey.startsWith('new-');
-        if (marksPendingRow) setStreamPending(pendingKey, true);
         const spawned = await ompAgent.sendNewPrompt(
           promptText,
           cwd,
           images.length ? images : undefined,
           { model: composerModel, thinkingLevel: composerThinking, accessMode: accessModeRef.current, modes: spawnModes },
         );
-        // Hand over to the real id (or drop the mark with a spawn that never
-        // happened — the placeholder must not spin over the mock fallback).
-        if (marksPendingRow) setStreamPending(pendingKey, false);
         if (spawned) {
           spawnSelectionRef.current = null;
           adoptedSessionIdRef.current = spawned.sessionId;

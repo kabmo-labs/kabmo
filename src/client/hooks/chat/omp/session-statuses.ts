@@ -10,6 +10,13 @@
  * check update with the list they belong to. Opening a session acknowledges the one-shot terminal badge
  * (`finish` / `abort` / `error`) via POST /api/sessions/:id/stream-seen so
  * the check shows exactly once, then disappears from the rendered list.
+ *
+ * A run in flight is reported by ONE source: the `stream` row the server writes
+ * at prompt dispatch (`session_stream_state`). There is deliberately no
+ * client-side optimistic mark — a second writer that the client owned the
+ * lifecycle of is exactly what left a spinner and a generating indicator
+ * turning after the run had ended (a mark armed under one session id and
+ * released under another is never released at all).
  */
 
 import { useEffect, useRef } from 'preact/hooks';
@@ -41,16 +48,14 @@ export function buildSidebarSessionStatus(
  * condition that holds for a run this client did not start: a second tab, a
  * second chamber instance, or a page that never attached to the session's
  * event stream (`GET /api/agent/:id` answers `running: false` for a child
- * owned by another process, so no `onResumeStream` fires here). Local
- * optimistic state cannot see any of those, which is what left the sidebar
- * spinning with nothing in the timeline.
+ * owned by another process, so no `onResumeStream` fires here).
  */
 export function isSessionStreaming(
-  folders: { sessions?: SessionItemData[] }[],
+  statusMap: Record<string, SessionStreamStatus | undefined> | null | undefined,
   sessionId: string | number | null | undefined,
 ): boolean {
   if (sessionId === null || sessionId === undefined) return false;
-  return buildSidebarSessionStatus(folders)[String(sessionId)] === 'stream';
+  return statusMap?.[String(sessionId)] === 'stream';
 }
 
 /**

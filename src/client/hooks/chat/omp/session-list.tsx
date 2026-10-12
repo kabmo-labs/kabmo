@@ -18,9 +18,10 @@
  *     stream-status write — which is what used to be the 8s stream poll and the
  *     30s idle poll.
  *
- * The two optimistic overlays still ride on top: the seen-strip (a terminal
- * badge this mount already acked) and the pending `stream` force (a send whose
- * dispatch round trip is still in flight), both from `stream-overlay.ts`.
+ * One overlay rides on top, and it can only REMOVE a status: the seen-strip
+ * (a one-shot terminal badge this mount already acked), from
+ * `sidebar-overlay.ts`. `stream` itself is never invented here — the server's
+ * row is the only source, so a run in flight cannot outlive its own row.
  */
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -32,12 +33,11 @@ import { useInputRequiredAlert } from '@/client/hooks/ui/input-required-alert';
 import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import {
-  applyStreamOverlay,
-  releaseObservedPending,
+  applySeenStrip,
   SESSION_TITLE_HINT_SIGNAL,
-  STREAM_PENDING_SIGNAL,
-} from '@/client/hooks/chat/omp/stream-overlay';
+} from '@/client/hooks/chat/omp/sidebar-overlay';
 import { subscribeClientSignal } from '@/client/lib/signals';
+import { buildSidebarSessionStatus } from '@/client/hooks/chat/omp/session-statuses';
 import type { WorkspaceFolderData } from '@/shared/types';
 import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 
@@ -82,13 +82,13 @@ export interface SidebarDataHandle {
   /** True when markSeen already ran for this session on this mount. */
   hasSeen: (sessionId: number | string) => boolean;
   /**
-   * True while a session carries an armed optimistic `stream` mark: a send this
-   * tab started whose authoritative row has not arrived yet. The sidebar's
-   * PLACEHOLDER row — a `new-…` chat, or a spawned session the list has not
-   * scanned yet — is built outside `folders`, so it needs this predicate to
-   * paint a spinner at all.
+   * The authoritative `sessionId → streamStatus` map, merged from the
+   * `sidebar:status` topic and already carrying the seen-strip. This is the
+   * ONLY run-in-flight source: the server writes the `stream` row at prompt
+   * dispatch, so the sidebar's spinner and the chat's generating indicator
+   * read the same answer.
    */
-  isStreamPending: (id: number | string | null | undefined) => boolean;
+  streamStatusMap: Record<string, 'stream' | 'finish' | 'abort'>;
   /**
    * Text the user just sent for this session, shown by the sidebar's
    * PLACEHOLDER row while omp's transcript scan cannot name the session yet
@@ -123,11 +123,6 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
   // Optimistic strip: keeps the click→disappearance instant and stops the
   // pending ack effect in useSessionStatusAck from double-POSTing.
   const seenRef = useRef<Set<string>>(new Set());
-  // Sessions whose send is in flight but whose server `stream` row may not
-  // exist yet, by id → the clock the mark was armed at. Rendered as `stream`
-  // and dropped as soon as a snapshot that landed AFTER the arm carries a real
-  // status (see `releaseObservedPending`).
-  const pendingRef = useRef<Map<string, number>>(new Map());
   // Text the user just sent, by session id — shown by the placeholder row until
   // omp's transcript scan can name the session (its file appears only at the
   // first assistant message). Dropped when the real row arrives.
@@ -143,22 +138,6 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
   const isMock = structure.data?.isMock ?? false;
   const initializing = structure.data === null;
 
-  // The send path arms/disarms the optimistic `stream` mark; the sidebar only
-  // listens. A message rather than a prop because the send lives in the chat
-  // timeline while the mark must outlive any single timeline — a session switch
-  // is exactly when the local `isGenerating` is gone.
-  useEffect(() => subscribeClientSignal(STREAM_PENDING_SIGNAL, (detail) => {
-    if (!detail?.sessionId) return;
-    const key = String(detail.sessionId);
-    if (detail.pending) {
-      pendingRef.current.set(key, Date.now());
-    } else if (!pendingRef.current.delete(key)) {
-      // Already gone: nothing to re-render for.
-      return;
-    }
-    setOverlayVersion((v) => v + 1);
-  }), []);
-
   // The text the user just sent, for the placeholder row that stands in until
   // omp's transcript scan can name the session.
   useEffect(() => subscribeClientSignal(SESSION_TITLE_HINT_SIGNAL, (detail) => {
@@ -173,25 +152,22 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
     setOverlayVersion((v) => v + 1);
   }), []);
 
-  // Hand a session back to the authoritative status the moment a snapshot that
-  // landed after the arm carries one: the server wrote `stream` before
-  // answering the send, so such a read cannot be the run's absence.
+  // A hint lives only until omp's transcript scan surfaces the session; the
+  // real row carries the real title, and the placeholder is not drawn.
   useEffect(() => {
-    if (!status.data) return;
-    // A hint lives only until omp's transcript scan surfaces the session; the
-    // real row carries the real title, and the placeholder is not drawn.
-    if (titleHintRef.current.size) {
-      const listed = new Set<string>();
-      for (const folder of folders) {
-        for (const session of folder.sessions ?? []) listed.add(String(session.id));
-      }
-      for (const key of titleHintRef.current.keys()) {
-        if (listed.has(key)) titleHintRef.current.delete(key);
+    if (!status.data || titleHintRef.current.size === 0) return;
+    const listed = new Set<string>();
+    for (const folder of folders) {
+      for (const session of folder.sessions ?? []) listed.add(String(session.id));
+    }
+    let dropped = false;
+    for (const key of titleHintRef.current.keys()) {
+      if (listed.has(key)) {
+        titleHintRef.current.delete(key);
+        dropped = true;
       }
     }
-    if (releaseObservedPending(pendingRef.current, folders)) {
-      setOverlayVersion((v) => v + 1);
-    }
+    if (dropped) setOverlayVersion((v) => v + 1);
   }, [status.data, folders]);
 
   const refresh = useCallback(() => {
@@ -240,7 +216,6 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
 
   const value = useMemo<SidebarDataHandle>(() => {
     const seen = seenRef.current;
-    const pending = pendingRef.current;
     // A session that streams again earns a fresh badge lifecycle: forget the
     // ack from an earlier run. Without this, a session opened with a terminal
     // badge stays stripped for the whole mount — its spinner never renders no
@@ -253,11 +228,26 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
         }
       }
     }
+    // The authoritative status map. Built from the merged folders AND the raw
+    // status payload, because a session the structure has not scanned yet (a
+    // fresh spawn: omp writes its file only at the first assistant message) has
+    // no row to merge onto — its `stream` row is in the payload all the same,
+    // and the sidebar's PLACEHOLDER row needs it to draw a spinner.
+    const streamStatusMap = buildSidebarSessionStatus(folders);
+    for (const [id, entry] of Object.entries(status.data ?? {})) {
+      if (entry.streamStatus) streamStatusMap[id] = entry.streamStatus;
+    }
+    // The one overlay: a one-shot terminal badge this mount already acked. It
+    // can only REMOVE a status — `stream` itself is never invented client-side,
+    // so the spinner and the generating indicator stop when the server's row
+    // says the run is over, and never a moment later.
+    const stripped = applySeenStrip(folders, seen);
+    for (const key of seen) {
+      if (streamStatusMap[key] && streamStatusMap[key] !== 'stream') delete streamStatusMap[key];
+    }
     return {
-      // The seen-strip (a one-shot terminal badge this mount acked) then the
-      // optimistic `stream` force (a send whose dispatch round trip is still
-      // in flight), applied in that order. NEVER strip a live `stream` row.
-      folders: applyStreamOverlay(folders, seen, pending),
+      folders: stripped,
+      streamStatusMap,
       isMock,
       initializing,
       stale: structure.stale || status.stale,
@@ -267,7 +257,6 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
       isRefreshing,
       markSeen,
       hasSeen: (id) => seen.has(String(id)),
-      isStreamPending: (id) => id !== null && id !== undefined && pending.has(String(id)),
       titleHint: (id) => (id === null || id === undefined ? undefined : titleHintRef.current.get(String(id))),
     };
     // `overlayVersion` is the re-render trigger for the two refs above.
@@ -285,6 +274,7 @@ export function useSidebarData(): SidebarDataHandle {
   if (value) return value;
   return {
     folders: [],
+    streamStatusMap: {},
     isMock: false,
     initializing: true,
     stale: false,
@@ -294,7 +284,6 @@ export function useSidebarData(): SidebarDataHandle {
     isRefreshing: false,
     markSeen: () => {},
     hasSeen: () => false,
-    isStreamPending: () => false,
     titleHint: () => undefined,
   };
 }

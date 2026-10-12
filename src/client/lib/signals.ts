@@ -5,19 +5,23 @@
 
 /**
  * The client-only signals the chat, the sidebar and the composer hand each
- * other: an optimistic stream mark, the text a session row should show until
- * omp's own title lands, a rename, and a chamber-mode marker.
+ * other: the text a session row should show until omp's own title lands, a
+ * rename, and a chamber-mode marker.
  *
  * A module bus rather than window events, for the reason the subagent frames
  * are: the payload is already scoped (a session id, a marker) and the consumers
  * are a known handful of hooks, so advertising the contract to the whole page
  * only made it harder to find who listened. Nothing here crosses the network —
  * the server's own state travels on the realtime topics.
+ *
+ * There is deliberately NO signal for a session's run state. The `stream` row
+ * in `session_stream_state` is the single source of a run in flight (it rides
+ * the `sidebar:status` topic), so a client-side mark could only ever ADD a
+ * second answer — and one the client owns the lifecycle of, which is what left
+ * a spinner turning after the run had ended.
  */
 
 export type ClientSignalName =
-  /** Arm/disarm a session's optimistic `stream` mark. */
-  | 'stream-pending'
   /** Seed a session row's title from the text the user just sent. */
   | 'session-title-hint'
   /** A session was renamed (this tab), so the navbar follows without a refetch. */
@@ -27,7 +31,6 @@ export type ClientSignalName =
 
 /** One signal's payload, keyed by the signal that carries it. */
 export interface ClientSignalPayloads {
-  'stream-pending': { sessionId: string; pending: boolean };
   'session-title-hint': { sessionId: string; title: string };
   'session-renamed': { sessionId: string; title: string };
   'chamber-mode': { sessionId?: string; marker?: unknown };
@@ -36,7 +39,6 @@ export interface ClientSignalPayloads {
 type Listener<N extends ClientSignalName> = (payload: ClientSignalPayloads[N]) => void;
 
 const listeners: { [N in ClientSignalName]: Set<Listener<N>> } = {
-  'stream-pending': new Set(),
   'session-title-hint': new Set(),
   'session-renamed': new Set(),
   'chamber-mode': new Set(),

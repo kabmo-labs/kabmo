@@ -36,7 +36,7 @@ interface ChatTimelineProps {
 }
 
 export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle, variant = 'desktop' }: ChatTimelineProps) {
-  const { folders } = useSidebarData();
+  const { folders, streamStatusMap } = useSidebarData();
   const isMobile = variant === 'mobile';
   const { toasts, pushToast, dismissToast } = useToasts();
   const {
@@ -85,7 +85,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     extensionDialogs,
     resolveExtensionDialog,
     respondToExtensionUi,
-  } = useChatTimeline({ folders, appSettings, reportActionError: pushToast });
+  } = useChatTimeline({ folders, streamStatusMap, appSettings, reportActionError: pushToast });
 
   // Ask dialogs render on their own tool card; anything else omp is blocked on
   // (an approval gate, an extension picker) has no card and keeps the modal.

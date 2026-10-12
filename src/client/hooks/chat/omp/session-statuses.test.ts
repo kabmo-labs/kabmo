@@ -109,24 +109,31 @@ describe('buildSidebarSessionStatus', () => {
 });
 
 describe('isSessionStreaming', () => {
-  const folders = [{ sessions: [session('a', 'stream'), session('b', 'finish'), session('c', 'abort'), session(4, 'stream')] }];
+  const statusMap = { a: 'stream', b: 'finish', c: 'abort', 4: 'stream' } as const;
 
   test('is true only for the exact `stream` status, across id shapes', () => {
-    expect(isSessionStreaming(folders, 'a')).toBe(true);
-    expect(isSessionStreaming(folders, 4)).toBe(true);
-    expect(isSessionStreaming(folders, '4')).toBe(true);
-    expect(isSessionStreaming(folders, 'b')).toBe(false);
-    expect(isSessionStreaming(folders, 'c')).toBe(false);
+    expect(isSessionStreaming(statusMap, 'a')).toBe(true);
+    expect(isSessionStreaming(statusMap, 4)).toBe(true);
+    expect(isSessionStreaming(statusMap, '4')).toBe(true);
+    expect(isSessionStreaming(statusMap, 'b')).toBe(false);
+    expect(isSessionStreaming(statusMap, 'c')).toBe(false);
   });
 
-  test('is false for a session absent from every folder', () => {
-    expect(isSessionStreaming(folders, 'missing')).toBe(false);
-    expect(isSessionStreaming([], 'a')).toBe(false);
+  test('is false for a session absent from the map', () => {
+    expect(isSessionStreaming(statusMap, 'missing')).toBe(false);
+    expect(isSessionStreaming({}, 'a')).toBe(false);
   });
 
   test('is false for a null/undefined selection (nothing is open yet)', () => {
-    expect(isSessionStreaming(folders, null)).toBe(false);
-    expect(isSessionStreaming(folders, undefined)).toBe(false);
+    expect(isSessionStreaming(statusMap, null)).toBe(false);
+    expect(isSessionStreaming(statusMap, undefined)).toBe(false);
+  });
+
+  test('is false when no status map has arrived', () => {
+    // The provider's map is `{}` before the first snapshot; a caller outside
+    // the provider gets the same shape. Neither may read as a live run.
+    expect(isSessionStreaming(null, 'a')).toBe(false);
+    expect(isSessionStreaming(undefined, 'a')).toBe(false);
   });
 });
 

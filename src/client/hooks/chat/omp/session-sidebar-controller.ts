@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
 import { pendingSessionCreatedAt, pendingSessionTitle, sessionIdEpochMs } from '@/shared/lib/omp/session/default-title';
-import { buildSidebarSessionStatus, useSessionStatusAck } from '@/client/hooks/chat/omp/session-statuses';
+import { useSessionStatusAck } from '@/client/hooks/chat/omp/session-statuses';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { writeSetting } from '@/shared/lib/settings/client';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
@@ -74,7 +74,7 @@ export function useSessionSidebarController(
   options: SessionSidebarControllerOptions = {},
 ): SessionSidebarController {
   const { includePendingSessions = false, onSelectSession, onAfterSelect } = options;
-  const { folders, initializing, refresh, refreshNow, refreshing, isRefreshing, markSeen, hasSeen, isStreamPending, titleHint } = useSidebarData();
+  const { folders, initializing, refresh, refreshNow, refreshing, isRefreshing, markSeen, hasSeen, streamStatusMap, titleHint } = useSidebarData();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionParam = searchParams.get('sessionId');
   const activeSessionId = sessionParam
@@ -124,14 +124,10 @@ export function useSessionSidebarController(
   //
   // The rows render from THIS map, not from an item's own `streamStatus`, and
   // the pending placeholder is built in `processedFolders` — outside `folders` —
-  // so the mark has to be folded in here: without it the "New Session …" row of
-  // a send this tab just started drew no spinner at all until the real row was
-  // scanned in seconds later.
-  const sessionStatus = useMemo(() => {
-    const map = buildSidebarSessionStatus(folders);
-    if (isStreamPending(sessionParam)) map[String(sessionParam)] = 'stream';
-    return map;
-  }, [folders, sessionParam, isStreamPending]);
+  // so the map has to carry a session the structure has not scanned yet. It is
+  // the provider's authoritative map (status payload + structure), never a
+  // client-side guess: `stream` exists only where the server wrote it.
+  const sessionStatus = streamStatusMap;
   // hasSeen: clicks already acked + optimistically stripped these badges, so
   // the effect must not re-POST while the authoritative list is still stale.
   useSessionStatusAck(sessionStatus, activeSessionId, revalidate, hasSeen);
@@ -237,7 +233,7 @@ export function useSessionSidebarController(
     result = sortFolders(result, sortOption);
 
     return result;
-  }, [folders, searchQuery, sortOption, sessionParam, searchParams, includePendingSessions, isStreamPending, titleHint]);
+  }, [folders, searchQuery, sortOption, sessionParam, searchParams, includePendingSessions, titleHint]);
 
   return {
     folders,

@@ -21,17 +21,18 @@ import { isSessionStreaming } from '@/client/hooks/chat/omp/session-statuses';
 
 interface UseChatTimelineOptions {
   folders?: any[];
+  /** The authoritative `sessionId → streamStatus` map from the sidebar's
+   *  `sidebar:status` topic — the only source of "a run is in flight". */
+  streamStatusMap?: Record<string, 'stream' | 'finish' | 'abort'>;
   appSettings?: Record<string, any>;
-  /**
-   * Where a failed footer action (rewind refused, send rejected) is reported.
-   * Defaults to the console: the hook is also exercised headless, and a caller
-   * with a toast stack passes one in.
-   */
+  /** Where a failed footer action (rewind refused, send rejected) is reported.
+   *  Defaults to the console; a caller with a toast stack passes one in. */
   reportActionError?: (message: string) => void;
 }
 
 export function useChatTimeline({
   folders = [],
+  streamStatusMap = {},
   appSettings = {},
   reportActionError = (message: string) => console.error(message),
 }: UseChatTimelineOptions = {}) {
@@ -76,13 +77,6 @@ export function useChatTimeline({
   // live run's generating UI sets `isGenerating` too, so reading that as
   // ownership discarded the transcript of every session opened mid-stream.
   const ownRunRef = useRef(false);
-  // One "a run is in flight" state for the whole chat: this client's own run OR
-  // the server-tracked `stream` status the sidebar spinner draws from. Every
-  // consumer that describes the RUN (the docked indicator, the withheld footer,
-  // the queue-vs-send decision, Stop) reads this one flag so they cannot
-  // disagree — `isGenerating` alone only knows the run THIS page started.
-  const timelineRunning = isGenerating || isSessionStreaming(folders, sessionId);
-  // Mirror of localMessages for non-reactive reads (session-load merge path).
   const localMessagesRef = useRef<ChatMessageData[]>([]);
   localMessagesRef.current = localMessages;
   const [generatingVerb, setGeneratingVerb] = useState('');
@@ -94,24 +88,23 @@ export function useChatTimeline({
   // function per render made that effect re-run every render, and its
   // setLocalMessages(fetched) then re-rendered again — an unbounded fetch loop.
   //
-  // `owned` marks a run THIS PAGE dispatched, which is what lets a committed
-  // history fetch stand down while it streams. Only the SEND path passes it:
-  // every other `setGenerating(true)` (the mount probe resuming a live run, an
-  // `agent_start` on an adopted stream) must leave ownership alone, or a
-  // session opened mid-run loses its whole transcript. Settling releases it.
+  // `owned` marks a run THIS PAGE dispatched, which lets a committed history
+  // fetch stand down while it streams. Only the SEND path passes it: every
+  // other `setGenerating(true)` (a mount probe resuming a live run, an adopted
+  // stream) must leave ownership alone, or a session opened mid-run loses its
+  // whole transcript. Settling releases it.
   const setGenerating = useCallback((v: boolean, owned = false) => {
     isGeneratingRef.current = v;
     if (!v) ownRunRef.current = false;
     else if (owned) ownRunRef.current = true;
     setIsGenerating(v);
   }, []);
-  // Set when the user presses Stop; the queue auto-process effect holds off
-  // while this is armed so a stopped run does NOT trigger the next queued
-  // item (stop-all semantics). Disarmed by any explicit send.
+  // Armed by Stop so a stopped run does NOT trigger the next queued item
+  // (stop-all semantics); disarmed by any explicit send.
   const stopHoldRef = useRef(false);
-  // Fire the sidebar/metadata refresh once per session when the AI starts
-  // responding (agent_start = first chunk) — the omp JSONL now carries the
-  // user turn, so the sidebar item + real title appear immediately.
+  // Fire the metadata refresh once per session when the AI starts responding
+  // (agent_start = first chunk): the omp JSONL now carries the user turn, so
+  // the sidebar item + real title appear immediately.
   const metaRefreshedRef = useRef<string | null>(null);
   // Optimistic user bubble awaiting omp's echo (reconciled by the callbacks).
   const optimisticUserIdRef = useRef<string | null>(null);
@@ -119,10 +112,19 @@ export function useChatTimeline({
   const pendingUserDisplaysRef = useRef<{ sent: string; display: string }[]>([]);
 
   // omp sessions are string UUIDs; chamber-created (mock/numeric) sessions are
-  // integers. Only omp UUIDs route through the live agent bridge. Pending
-  // client-side sessions ("new-…", created before the omp spawn) are treated
-  // as not-yet-omp so executeSend spawns the real session on first send.
+  // integers, and a pending client-side "new-…" has no omp session yet — so
+  // only a UUID routes through the live agent bridge.
   const isOmpSession = Boolean(sessionId) && !String(sessionId).startsWith('new-') && Number.isNaN(Number(sessionId));
+
+  // One "a run is in flight" state for the whole chat: this client's own
+  // dispatch window OR the server's `stream` row (`sidebar:status`), the exact
+  // status the sidebar's spinner is drawn from. Every consumer that describes
+  // the RUN (the docked indicator, the streaming row's marker, the withheld run
+  // footer, queue-vs-send, Stop) reads this one flag. The removed
+  // `stream-pending` mark was a third source and is why a finished run kept
+  // spinning: it forced `stream` into `folders`, and a mark armed under one
+  // session id and released under another was never released at all.
+  const timelineRunning = isGenerating || isSessionStreaming(streamStatusMap, sessionId);
 
   const aiPlaceholderIdRef = useRef<string | null>(null);
 
@@ -247,9 +249,8 @@ export function useChatTimeline({
 
   // Queue auto-delivery moved server-side: the wrapper's terminal `agent_end`
   // schedules the next queued prompt (`lib/queue/delivery.server.ts`), with a
-  // transactional head claim so no reload/tab race can double-send or wipe the
-  // table. The client panel is a view; the mount nudge lives in the queue
-  // hook. `stopHoldRef` remains only for the mock path below.
+  // transactional head claim so no reload/tab race can double-send. The client
+  // panel is a view; `stopHoldRef` remains only for the mock path below.
 
   const {
     handleSend,

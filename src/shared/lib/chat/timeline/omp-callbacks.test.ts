@@ -4,10 +4,10 @@
  */
 
 /**
- * The run boundaries: the sidebar is NOT signalled from here any more (it
- * follows the realtime topics), while the optimistic `stream` mark still rides
- * the client signal bus — armed on a mid-run reattach, so a resumed fresh spawn
- * draws its spinner before omp has written a session file.
+ * The run boundaries: nothing here signals the sidebar any more — a run in
+ * flight has ONE source, the server's `session_stream_state` row published on
+ * the `sidebar:status` topic. The assertions below pin that silence, because a
+ * client-side mark is what left a spinner turning after its run had ended.
  *
  * One case is driven through `foldAgentEvent` with a real omp frame: the
  * callbacks see the MAPPED chamber role (`assistant` → `ai`), which a
@@ -22,8 +22,6 @@ import {
 } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { foldAgentEvent, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/agent-events';
 import { bindStreamingCoalescer, disposeStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coalescer';
-import { STREAM_PENDING_SIGNAL } from '@/client/hooks/chat/omp/stream-overlay';
-import { subscribeClientSignal } from '@/client/lib/signals';
 import type { SetStateAction } from 'preact/compat';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
 import type { IncomingExtensionUiRequest } from '@/shared/types/omp/agent';
@@ -36,8 +34,6 @@ const OMP_ASSISTANT_TURN = {
 };
 
 const assistantTurn = (id: string): ChatMessageData => ({ id, role: 'ai', content: 'hi' });
-const userTurn = (id: string): ChatMessageData => ({ id, role: 'user', content: 'yo' });
-const noticeRow = (id: string): ChatMessageData => ({ id, role: 'ai', content: '', notice: 'job done' });
 
 /** The callbacks with every dep defaulted; overrides patch one behaviour. */
 function makeCallbacks(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgentCallbacks {
@@ -64,20 +60,24 @@ function makeCallbacks(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgent
 }
 
 describe('createOmpAgentCallbacks run boundaries', () => {
-  const signals: Array<{ name: string; sessionId?: string }> = [];
-  let unsubscribe: (() => void) | null = null;
+  /** Every `setGenerating` the callbacks push, in order. */
+  const generating: boolean[] = [];
+  /** Every verb the indicator was handed, in order. */
+  const verbs: string[] = [];
 
   beforeEach(() => {
-    signals.length = 0;
-    unsubscribe = subscribeClientSignal(STREAM_PENDING_SIGNAL, (detail) => {
-      signals.push({ name: 'stream-pending', sessionId: detail.sessionId });
-    });
+    generating.length = 0;
+    verbs.length = 0;
   });
 
-  afterEach(() => {
-    unsubscribe?.();
-    unsubscribe = null;
-  });
+  /** The callbacks with the two observable sinks recorded. */
+  function recordingCallbacks(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgentCallbacks {
+    return makeCallbacks({
+      setGenerating: (v) => { generating.push(v); },
+      setGeneratingVerb: (v) => { verbs.push(v); },
+      ...overrides,
+    });
+  }
 
   function makeFoldDeps(callbacks: OmpAgentCallbacks): OmpAgentFoldDeps {
     let state: OmpAgentState = { isGenerating: false, connected: true, error: null };
@@ -95,43 +95,46 @@ describe('createOmpAgentCallbacks run boundaries', () => {
       };
   }
 
-  test('a run start no longer signals the sidebar', () => {
+  test('a run start resumes the generating UI, and only that', () => {
     // The sidebar follows the realtime `sidebar:status` topic, which the server
-    // publishes on the same status write this dispatch used to announce.
-    const callbacks = makeCallbacks();
+    // publishes on the same status write this dispatch used to announce. There
+    // is no client-side run signal left to send, so the run boundary's whole
+    // job is the timeline's own state.
+    const callbacks = recordingCallbacks();
 
     callbacks.onAgentStart?.();
-    callbacks.onMessageEnd?.(assistantTurn('a1'));
     callbacks.onTurnStart?.();
-    callbacks.onMessageEnd?.(userTurn('u1'));
-    callbacks.onMessageEnd?.(noticeRow('n1'));
+    callbacks.onMessageEnd?.(assistantTurn('a1'));
 
-    expect(signals).toHaveLength(0);
+    expect(generating).toEqual([true]);
+    expect(verbs).toEqual(['Thinking']);
   });
 
-  test('re-arms the optimistic mark on a mid-run stream reattach', () => {
-    const callbacks = makeCallbacks();
+  test('re-attaching a mid-run stream resumes the UI without arming anything', () => {
+    // A client-side mark was a SECOND answer to "is a run in flight", and its
+    // release depended on the client naming the id it had armed — which is how
+    // a spinner outlived its run. The run is live server-side, so its `stream`
+    // row is already in the status payload the sidebar and the indicator read.
+    const callbacks = recordingCallbacks();
 
     callbacks.onResumeStream?.();
-    callbacks.onMessageEnd?.(assistantTurn('a1'));
 
-    // The reattach arms the sidebar's OPTIMISTIC mark, because a fresh spawn's
-    // session is absent from the list payload until omp writes its file (~17s):
-    // without the arm the spinner stayed dark for the resumed run while the
-    // generating indicator was already showing.
-    expect(signals).toEqual([
-      { name: 'stream-pending', sessionId: 'sess-1' },
-    ]);
+    expect(generating).toEqual([true]);
+    expect(verbs).toEqual(['Thinking']);
   });
 
-  test('a real omp assistant message_end frame signals nothing on its own', () => {
-    const deps = makeFoldDeps(makeCallbacks());
+  test('a real omp frame sequence drives the boundary once per run', () => {
+    const callbacks = recordingCallbacks();
+    const deps = makeFoldDeps(callbacks);
 
     foldAgentEvent({ type: 'agent_start' }, deps);
     foldAgentEvent({ type: 'message_end', message: OMP_ASSISTANT_TURN }, deps);
     foldAgentEvent({ type: 'message_end', message: { ...OMP_ASSISTANT_TURN, timestamp: 1757943901000 } }, deps);
 
-    expect(signals).toHaveLength(0);
+    // `agent_start` is the run boundary; an assistant `message_end` is a
+    // segment settling inside it, so it must not open the run again or settle
+    // it — a second `true` here would be a second run boundary for one run.
+    expect(generating).toEqual([true]);
   });
 });
 
