@@ -5,6 +5,32 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.0](https://github.com/rajebdev/ompchamber/compare/v4.10.0...v4.11.0) — 2026-10-12
+
+### Added
+
+* **chat:** show progress and report the outcome of Rename with AI ([0f084f4](https://github.com/rajebdev/ompchamber/commit/0f084f4b16f4c69bfa4f25a68e4ce4441007c461))
+* **editor:** mark an open tab whose file was deleted ([45921d7](https://github.com/rajebdev/ompchamber/commit/45921d7b5ef17a8583eaf05b60484652fa88a113))
+* **files-panel:** new file from the panel's own context menu ([2347335](https://github.com/rajebdev/ompchamber/commit/2347335535ed228953a585985be2f1b7cedb2e5f))
+
+### Changed
+
+* **omp:** record the 18.9.2 re-audit and the 18.10.0 adoption ([289f556](https://github.com/rajebdev/ompchamber/commit/289f55655d811702a92b146b46204c08713e5975))
+
+### Fixed
+
+* **chat:** answer the grouped ask dialog instead of waiting on it ([4353e17](https://github.com/rajebdev/ompchamber/commit/4353e179fa4239c355833907f6276bb457f11e92))
+* **chat:** make the server's stream row the only source of a live run ([ecd669c](https://github.com/rajebdev/ompchamber/commit/ecd669c668577d69624d20fb28fd23059170f5f9))
+* **chat:** name and grow a streamed tool call in delta mode ([e5d2c79](https://github.com/rajebdev/ompchamber/commit/e5d2c79d0f7740e3880a60252fcb61130628713a))
+* **editor:** never autosave a file deleted under its tab ([502677b](https://github.com/rajebdev/ompchamber/commit/502677b17e91c500b911bda12bf524c836fa2349))
+* **git-panel:** make the sync badge follow the branch it describes ([bb8fdcc](https://github.com/rajebdev/ompchamber/commit/bb8fdcc7b53afbce095a3479a9827aecbbd2f8c8))
+* **layout:** keep the sidebar width global so a session switch cannot move it ([18c3308](https://github.com/rajebdev/ompchamber/commit/18c33089abf455a40c99412003161813baebf277))
+* **layout:** persist the width a separator drag actually landed ([2acb5c2](https://github.com/rajebdev/ompchamber/commit/2acb5c20f0f938d9400cfe9918f6e483f7cd4a62))
+* **omp:** adopt a forked resume under the requested session id ([9de2b35](https://github.com/rajebdev/ompchamber/commit/9de2b35982e69985c07963ae4d6c62961cc15d5d))
+* **omp:** regenerate the settings schema from omp 18.9.2 ([0e020b2](https://github.com/rajebdev/ompchamber/commit/0e020b25a732588123e19e04beea706c79bba43d))
+* **panels:** scope a plugin's stylesheet to its own DOM ([bfd7f98](https://github.com/rajebdev/ompchamber/commit/bfd7f983956c3cedd932f56728df5ac8cd957578)), closes [session-info#1](https://github.com/rajebdev/session-info/issues/1)
+* **sidebar:** never hide the opened or a live session behind "Show more" ([14576df](https://github.com/rajebdev/ompchamber/commit/14576df7b1ebc3c4829a963f171bd3882544da14))
+
 ## [4.10.0](https://github.com/rajebdev/ompchamber/compare/v4.9.1...v4.10.0) — 2026-10-11
 
 ### Added
