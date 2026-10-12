@@ -74,13 +74,49 @@ test.describe('chat', () => {
     workspace.dispose();
   });
 
-  test('a tool call renders as a card in the timeline', async ({ harness, page }) => {
+  test('a tool call renders as a named card in the timeline', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-chat-tool');
 
-    await sendPrompt(page, server, workspace.id, 'e2e-chat-tool', 'tool:bash then answer');
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-chat-tool').first()).toBeVisible();
 
-    await expect(page.getByText(/bash/i).first()).toBeVisible({ timeout: 30_000 });
+    // Record every tool-card title the DOM ever shows, not just the final one.
+    // The finished card is IDENTICAL either way — `toolcall_end` hands over the
+    // whole block — so an assertion on the settled state cannot see the bug.
+    // What was broken is the card DURING the argument stream: it read a bare
+    // `Tool` with no subtitle, because the accumulator discarded the seed's
+    // `id`/`name` and never parsed the arriving `arguments`. The fixture
+    // streams its arguments slowly so this window is observable.
+    await page.evaluate(() => {
+      const titles = new Set<string>();
+      const holder = window as unknown as Record<string, unknown>;
+      holder.__toolTitles = titles;
+      const record = () => {
+        for (const button of document.querySelectorAll('[aria-label^="Expand "]')) {
+          const label = button.getAttribute('aria-label');
+          if (label) titles.add(label.slice('Expand '.length));
+        }
+      };
+      record();
+      new MutationObserver(record).observe(document.body, { childList: true, subtree: true, attributes: true });
+    });
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeVisible();
+    await input.fill('tool:bash then answer');
+    await input.press('Enter');
+
+    await expect(page.getByRole('button', { name: /^Expand Bash/ }).first()).toBeVisible({ timeout: 30_000 });
+
+    const titles = await page.evaluate(() => {
+      const holder = window as unknown as Record<string, unknown>;
+      const seen = holder.__toolTitles;
+      return seen instanceof Set ? [...seen].filter((entry): entry is string => typeof entry === 'string') : [];
+    });
+    // Every title seen must name the tool: the placeholder `Tool` never appears.
+    for (const title of titles) expect(title).toMatch(/^Bash/);
+    expect(titles.some((title) => title.startsWith('Bash'))).toBe(true);
 
     workspace.dispose();
   });

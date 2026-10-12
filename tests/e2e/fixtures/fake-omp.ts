@@ -48,6 +48,7 @@
 
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { assistantMessage, createFrameWriters, sleep } from './fake-omp-frames';
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -90,6 +91,8 @@ let streaming = false;
 /** Set while the chamber has requested delta-mode `message_update` frames. */
 let deltaMode = false;
 
+const { streamAnswer, streamToolCall } = createFrameWriters({ write, isDeltaMode: () => deltaMode });
+
 const MODEL = {
   id: 'fake-model',
   provider: 'fake',
@@ -130,74 +133,6 @@ const AVAILABLE_COMMANDS = [
   { name: 'usage', description: 'Show token usage', hint: '' },
   { name: 'compact', description: 'Compact the conversation', hint: '' },
 ];
-
-function assistantMessage(text: string, stopReason = 'end_turn') {
-  return {
-    role: 'assistant',
-    content: [{ type: 'text', text }],
-    api: 'openai-completions',
-    provider: 'fake',
-    model: 'fake-model',
-    usage: { input: 100, output: text.length, cacheRead: 0, cacheWrite: 0, totalTokens: 100 + text.length, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } },
-    stopReason,
-    timestamp: Date.now(),
-  };
-}
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-/** Stream one assistant message as the frames omp would emit for it. */
-async function streamAnswer(messageId: string, text: string) {
-  const full = assistantMessage(text);
-  // `message_start` carries the FULL message — the seed the accumulator keeps.
-  write({ type: 'message_start', messageId, message: full });
-
-  const pieces = text.match(/[\s\S]{1,12}/g) ?? [text];
-  for (const [index, piece] of pieces.entries()) {
-    if (deltaMode) {
-      // Delta mode: `message` shrinks to `{role}` and the fragment rides
-      // `assistantMessageEvent`. The client rebuilds the accumulated shape.
-      write({
-        type: 'message_update',
-        messageId,
-        message: { role: 'assistant' },
-        assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: piece, partial: full },
-      });
-    } else {
-      // A build that ignores the filter re-sends the whole accumulated message.
-      const accumulated = pieces.slice(0, index + 1).join('');
-      write({
-        type: 'message_update',
-        messageId,
-        message: { ...full, content: [{ type: 'text', text: accumulated }] },
-        assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: piece, partial: full },
-      });
-    }
-    await sleep(15);
-  }
-
-  // The authority: the finished message, full either way.
-  write({ type: 'message_end', messageId, message: full });
-  write({ type: 'turn_end', message: full, toolResults: [] });
-  return full;
-}
-
-/** A tool call, as the three frames the timeline folds into one card. */
-async function streamToolCall(toolName: string) {
-  const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
-  const args = { command: `echo ${toolName}` };
-  write({ type: 'tool_execution_start', toolCallId: callId, toolName, args });
-  await sleep(20);
-  write({ type: 'tool_execution_update', toolCallId: callId, partialResult: `${toolName} output` });
-  await sleep(20);
-  write({
-    type: 'tool_execution_end',
-    toolCallId: callId,
-    toolName,
-    result: { content: [{ type: 'text', text: `${toolName} output` }], isError: false },
-    isError: false,
-  });
-}
 
 /** The whole turn: everything a `prompt` produces on the wire. */
 async function runTurn(prompt: string, requestId: string) {

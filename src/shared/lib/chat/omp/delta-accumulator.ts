@@ -19,7 +19,8 @@
  * the fragments back into that shape and hand it on. Nothing downstream learns
  * that the transport changed.
  *
- * The frame shapes this relies on were measured on omp 18.8.3:
+ * The frame shapes this relies on were measured on omp 18.8.3 and re-measured
+ * on 18.10.0:
  *
  *   message_start        `message.content` = the FULL message, no
  *                        `assistantMessageEvent` — the seed.
@@ -28,6 +29,17 @@
  *                        toolcall / image equivalents) with `contentIndex`.
  *   message_end          `message.content` = the full message again — the
  *                        authority, so the rebuild is discarded here.
+ *
+ * A tool call is the one block whose SEED matters beyond its row identity. The
+ * seed's block carries omp's `id` and `name`, the deltas carry neither, and
+ * `toolcall_end` is the first frame to repeat them — so the rebuild keeps the
+ * identity across `toolcall_start` and parses the accumulating argument text
+ * into `arguments` on every fragment, which is the field the accumulated shape
+ * carries and every reader of a tool card depends on. Both rules were bugs
+ * first: without them a streamed call rendered as a bare **Tool** card with no
+ * subtitle, and the run's whole tool call appeared in one step at
+ * `toolcall_end` instead of growing. See `partial-json.ts` and
+ * `toolCallIdentity`.
  *
  * A build that ignores `set_event_filter` sends the accumulated message on
  * every update; those frames carry content and pass through untouched, so the
@@ -41,6 +53,7 @@
  */
 
 import { isRecord } from '@/shared/lib/util/guards';
+import { parsePartialJsonObject } from '@/shared/lib/omp/session/partial-json';
 
 interface Accumulated {
   blocks: Array<Record<string, unknown>>;
@@ -88,6 +101,23 @@ const ACCUMULATED_FIELD: Record<string, 'text' | 'thinking' | 'partialArgs'> = {
   thinking: 'thinking',
   toolcall: 'partialArgs',
 };
+
+/**
+ * The identity fields a streamed tool call must survive its `toolcall_start`
+ * reset with: omp's `id` (the card's React key and its `toolResultsRef` key)
+ * and `name` (which drives the icon, the panel and the header's title). Both
+ * arrive only on the seed and again on `toolcall_end`, so dropping them blanks
+ * the card for the whole stream. `streamIndex` rides along because the
+ * accumulated shape carries it and nothing else re-adds it.
+ */
+function toolCallIdentity(block: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!isRecord(block)) return {};
+  const identity: Record<string, unknown> = {};
+  for (const key of ['id', 'name', 'streamIndex'] as const) {
+    if (block[key] !== undefined) identity[key] = block[key];
+  }
+  return identity;
+}
 
 export function createDeltaAccumulator(): DeltaAccumulator {
   const byMessage = new Map<string, Accumulated>();
@@ -170,12 +200,37 @@ export function createDeltaAccumulator(): DeltaAccumulator {
       // rebuild from zero instead of appending onto the seed and doubling the
       // text — measured on omp 18.8.3: a seeded 58-char answer accumulated to
       // 116 before `text_end` corrected it.
-      entry.blocks[index] = { type: kind === 'toolcall' ? 'toolCall' : kind };
+      //
+      // A TOOL CALL is the exception, and the identity is what it must keep:
+      // the seed's block already carries omp's real `id` and `name`, while the
+      // deltas carry neither — `toolcall_delta` has only `{contentIndex,
+      // delta}`, and `toolcall_end` is the first frame to repeat them. Resetting
+      // the whole block therefore blanked both for the entire stream and the
+      // card fell back to `name: 'tool'`, which renders as a bare **Tool**
+      // title with no subtitle (measured on omp 18.10.0 delta mode: every
+      // fragment of a `bash` call drew `title="Tool"`, and only `toolcall_end`
+      // snapped it to `Bash — echo alpha`). Only the accumulating field is
+      // reset, so the text-doubling rule above still holds.
+      entry.blocks[index] = kind === 'toolcall'
+        ? { type: 'toolCall', ...toolCallIdentity(block) }
+        : { type: kind };
       entry.touched = true;
     } else if (eventType.endsWith('_delta')) {
       const field = ACCUMULATED_FIELD[kind];
       block.type = kind === 'toolcall' ? 'toolCall' : kind;
       block[field] = (typeof block[field] === 'string' ? block[field] : '') + (typeof rawEvent.delta === 'string' ? rawEvent.delta : '');
+      // The accumulated shape carries `arguments` PARSED (`omp` runs
+      // `parseStreamingJsonThrottled` on the buffer it is building), and that
+      // field is what the card's subtitle, its subject chip and the indicator's
+      // verb read. Delta mode leaves only the raw text, so it is parsed here on
+      // every fragment — otherwise a tool card had no arguments at all until
+      // `toolcall_end` arrived, and the run's whole tool call appeared in one
+      // step instead of growing. See `partial-json.ts` for why a still-arriving
+      // value is dropped rather than guessed.
+      if (kind === 'toolcall') {
+        const parsed = parsePartialJsonObject(block[field] as string);
+        if (parsed) block.arguments = parsed;
+      }
       entry.touched = true;
     } else if (eventType.endsWith('_end')) {
       // `toolcall_end` and `image_end` hand over the finished block whole;
