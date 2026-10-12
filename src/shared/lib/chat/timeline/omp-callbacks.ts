@@ -26,6 +26,7 @@ import { appendNoticeRow } from '@/shared/lib/chat/timeline/command-output';
 import { retryNotice } from '@/shared/lib/chat/timeline/provider-retry';
 import { setStreamPending } from '@/client/hooks/chat/omp/stream-overlay';
 import { handleAgentStart, handleResumeStream, handleTurnStart } from '@/shared/lib/chat/timeline/run-signals';
+import { isAnswerableUiRequest } from '@/shared/lib/omp/dialog-methods';
 
 export interface OmpAgentCallbacksDeps {
   setGenerating: (v: boolean) => void;
@@ -302,7 +303,13 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
       console.info('OMP notice:', message);
     },
     onExtensionUiRequest: (request: IncomingExtensionUiRequest) => {
-      if (request.method === 'select' || request.method === 'confirm' || request.method === 'input' || request.method === 'editor') {
+      // The blocking-method list is SHARED with the server
+      // (`@/shared/lib/omp/dialog-methods`): a method one half lists and the
+      // other does not is a dialog remembered on one side and dropped on the
+      // other. The grouped `ask` frame (`set_ask_dialog`) was missing from this
+      // local copy, so it never reached the queue and its card rendered every
+      // question as "Waiting for the previous answer…" with nothing to answer.
+      if (isAnswerableUiRequest(request)) {
         enqueueExtensionDialog(request);
       } else if (request.method === 'cancel') {
         withdrawExtensionDialog(request.targetId);

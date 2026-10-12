@@ -11,7 +11,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { finalAnswer, finalStatus, isAnswerableUiMethod } from '@/server/lib/btw/frames';
+import { finalAnswer, finalStatus } from '@/server/lib/btw/frames';
 
 function assistant(over: Record<string, unknown> = {}): Record<string, unknown> {
   return { role: 'assistant', content: [{ type: 'text', text: 'answer' }], ...over };
@@ -55,14 +55,5 @@ describe('finalAnswer', () => {
   test('falls back to the streamed text when the frame carries no answer', () => {
     expect(finalAnswer([], 'streamed')).toBe('streamed');
     expect(finalAnswer(undefined, 'streamed')).toBe('streamed');
-  });
-});
-
-describe('isAnswerableUiMethod', () => {
-  test('recognizes the dialogs that park a child, and nothing else', () => {
-    expect(isAnswerableUiMethod('select')).toBe(true);
-    expect(isAnswerableUiMethod('confirm')).toBe(true);
-    expect(isAnswerableUiMethod('notify')).toBe(false);
-    expect(isAnswerableUiMethod(undefined)).toBe(false);
   });
 });

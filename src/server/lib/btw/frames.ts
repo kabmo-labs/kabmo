@@ -11,13 +11,7 @@
 
 import { isRecord } from '@/shared/lib/util/guards';
 import { turnStoppedAbnormally } from '@/shared/lib/omp/session/turn-error';
-import { ANSWERABLE_UI_METHODS } from '@/server/lib/omp/rpc/constants';
 import type { BtwTurnStatus } from '@/shared/types';
-
-/** A side session has no UI, so it must release every dialog omp parks on. */
-export function isAnswerableUiMethod(method: unknown): boolean {
-  return typeof method === 'string' && ANSWERABLE_UI_METHODS.has(method);
-}
 
 /** A turn stopped by the user is 'cancelled'; a provider error is a failure —
  *  both are abnormal stops, so the shared predicate decides (it also reads the

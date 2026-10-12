@@ -312,3 +312,20 @@ describe('spawn provenance', () => {
     expect(state.destroyed).toBe(true);
   });
 });
+
+describe('PendingUiDialogs with a grouped ask', () => {
+  test('tracks method:ask — the frame omp parks on after set_ask_dialog', () => {
+    const dialogs = new PendingUiDialogs();
+    const ask = {
+      type: 'extension_ui_request',
+      id: 'ask-1',
+      method: 'ask',
+      questions: [{ id: 'q1', question: 'Pick', options: [{ label: 'a' }] }],
+    };
+    expect(dialogs.track(ask)).toBe(true);
+    expect(dialogs.list()).toEqual([ask]);
+    // Still the ONLY reattach source: answering it forgets it.
+    expect(dialogs.resolve('ask-1')).toBe(true);
+    expect(dialogs.list()).toEqual([]);
+  });
+});

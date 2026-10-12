@@ -218,8 +218,11 @@ export const IMAGE_BEARING_COMMANDS = new Set(['prompt', 'steer', 'follow_up', '
 // `extension_ui_request` methods that BLOCK the agent until the matching
 // `extension_ui_response` arrives. omp emits no re-delivery, so the server is
 // the only place a still-pending request can be remembered across a client
-// reload. `cancel`, `notify`, `open_url`, `setWidget`, ... are fire-and-forget.
-export const ANSWERABLE_UI_METHODS = new Set(['select', 'confirm', 'input', 'editor']);
+// reload. The list is SHARED with the client's dialog queue
+// (`@/shared/lib/omp/dialog-methods`) because the two must agree — a method
+// missing from one side is a dialog one half remembers and the other drops,
+// which is how a grouped `ask` frame went unanswerable on both.
+export { ANSWERABLE_UI_METHODS } from '@/shared/lib/omp/dialog-methods';
 
 export const MAX_ATTACHED_IMAGES = 20;
 export const MAX_ATTACHED_IMAGE_BYTES = 20 * 1024 * 1024;

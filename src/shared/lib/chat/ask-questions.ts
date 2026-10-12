@@ -8,14 +8,20 @@
  * per-question dialogs omp raises for them back to the question they belong to,
  * and read the recorded answers out of the tool result.
  *
- * The pairing is load-bearing, and the reason is worth stating: omp's RPC UI
- * context implements `select`/`confirm`/`input`/`editor` but NOT the rich
- * `askDialog` primitive the TUI uses. `AskTool` therefore falls back to its
- * per-question loop, and over RPC a multi-question ask reaches the chamber as
- * ONE blocking `select` frame per question, in order — never as one payload. The
- * frame carries the question as its `title` (plus a ` (2/3)` progress suffix and
- * a `(2 selected) ` prefix for multi-select questions), which is what lets the
- * inline card put each frame back on the question it asked.
+ * The pairing is load-bearing, and there are TWO shapes to pair against.
+ * `configureChild` opts the child into the rich dialog with
+ * `set_ask_dialog {enabled:true}`, so omp's `AskTool` takes its `askDialog`
+ * path and a multi-question ask arrives as ONE frame (`method:"ask"`) carrying
+ * every question — matched by the question IDS it shares with the tool call's
+ * arguments, which is what `ask-frames.ts` does.
+ *
+ * The per-question loop is still reachable (a host that never opted in, or a
+ * build without the command), and there a multi-question ask reaches the
+ * chamber as ONE blocking `select` frame per question, in order. That frame
+ * carries the question as its `title` (plus a ` (2/3)` progress suffix and a
+ * `(2 selected) ` prefix for multi-select questions), which is what lets the
+ * inline card put each frame back on the question it asked. Both shapes must
+ * keep working: the frame-ownership split knows each one.
  */
 
 import type { ToolCallData } from '@/shared/types';

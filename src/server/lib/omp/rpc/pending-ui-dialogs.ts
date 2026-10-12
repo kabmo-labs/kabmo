@@ -35,7 +35,7 @@ export class PendingUiDialogs {
       return targetId ? this.requests.delete(targetId) : false;
     }
     const id = typeof frame.id === 'string' ? frame.id : '';
-    if (!id || typeof frame.method !== 'string' || !ANSWERABLE_UI_METHODS.has(frame.method)) return false;
+    if (!id || typeof frame.method !== 'string' || ANSWERABLE_UI_METHODS[frame.method] !== true) return false;
     // A repeat of the same id is not a change.
     if (this.requests.has(id)) return false;
     this.requests.set(id, frame);

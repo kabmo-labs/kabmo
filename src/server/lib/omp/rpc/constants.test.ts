@@ -106,10 +106,14 @@ describe('command classification sets', () => {
 
   test('image-bearing commands and answerable UI methods', () => {
     expect([...IMAGE_BEARING_COMMANDS].sort()).toEqual(['abort_and_prompt', 'follow_up', 'prompt', 'steer']);
-    expect([...ANSWERABLE_UI_METHODS].sort()).toEqual(['confirm', 'editor', 'input', 'select']);
+    // `ask` is the grouped dialog `configureChild` opts into with
+    // `set_ask_dialog`: omp parks the tool call on it exactly as it does on a
+    // `select`, so a list without it leaves the frame unremembered and the
+    // question unanswerable after a reload.
+    expect(Object.keys(ANSWERABLE_UI_METHODS).sort()).toEqual(['ask', 'confirm', 'editor', 'input', 'select']);
     // Fire-and-forget methods must never block a turn waiting for a response.
-    expect(ANSWERABLE_UI_METHODS.has('notify')).toBe(false);
-    expect(ANSWERABLE_UI_METHODS.has('cancel')).toBe(false);
+    expect(ANSWERABLE_UI_METHODS.notify).toBeUndefined();
+    expect(ANSWERABLE_UI_METHODS.cancel).toBeUndefined();
   });
 });
 

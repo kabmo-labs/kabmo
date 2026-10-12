@@ -26,6 +26,7 @@ import { STREAM_PENDING_SIGNAL } from '@/client/hooks/chat/omp/stream-overlay';
 import { subscribeClientSignal } from '@/client/lib/signals';
 import type { SetStateAction } from 'preact/compat';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentState } from '@/shared/types';
+import type { IncomingExtensionUiRequest } from '@/shared/types/omp/agent';
 
 /** omp's own shape for a completed assistant turn, before the mapper runs. */
 const OMP_ASSISTANT_TURN = {
@@ -247,5 +248,53 @@ describe('createOmpAgentCallbacks optimistic user reconciliation', () => {
 
     h.callbacks.onAgentEnd?.({});
     expect(h.optimisticUserIdRef.current).toBeNull();
+  });
+});
+
+/**
+ * Every method omp PARKS on must reach the client's dialog queue.
+ *
+ * The list is shared with the server (`@/shared/lib/omp/dialog-methods`) and
+ * the grouped `ask` frame — the shape `configureChild` opts into with
+ * `set_ask_dialog` — was missing from this gate's local copy. The frame was
+ * dropped silently, so the ask card had no dialog to render and drew every
+ * question as "Waiting for the previous answer…" with no control to answer it,
+ * while omp sat blocked on the request. `cancel` stays a withdrawal, not a
+ * queue insert.
+ */
+describe('createOmpAgentCallbacks dialog routing', () => {
+  const groupedAsk = {
+    type: 'extension_ui_request',
+    id: 'frame-1',
+    method: 'ask',
+    title: '',
+    questions: [{ id: 'q1', question: 'Pick a size', options: [{ label: 's' }] }],
+  } as unknown as IncomingExtensionUiRequest;
+
+  test('a grouped ask frame is enqueued, not dropped', () => {
+    const enqueued: string[] = [];
+    const callbacks = makeCallbacks({ enqueueExtensionDialog: (request) => enqueued.push(request.id) });
+
+    callbacks.onExtensionUiRequest?.(groupedAsk);
+
+    expect(enqueued).toEqual(['frame-1']);
+  });
+
+  test('every answerable method is enqueued; cancel withdraws instead', () => {
+    const enqueued: string[] = [];
+    const withdrawn: string[] = [];
+    const callbacks = makeCallbacks({
+      enqueueExtensionDialog: (request) => enqueued.push(request.method),
+      withdrawExtensionDialog: (targetId) => withdrawn.push(targetId),
+    });
+
+    for (const method of ['select', 'confirm', 'input', 'editor', 'ask']) {
+      callbacks.onExtensionUiRequest?.({ type: 'extension_ui_request', id: `f-${method}`, method, title: 't' } as unknown as IncomingExtensionUiRequest);
+    }
+    callbacks.onExtensionUiRequest?.({ type: 'extension_ui_request', id: 'c1', method: 'cancel', targetId: 'f-ask' } as unknown as IncomingExtensionUiRequest);
+    callbacks.onExtensionUiRequest?.({ type: 'extension_ui_request', id: 'n1', method: 'notify', message: 'hi' } as unknown as IncomingExtensionUiRequest);
+
+    expect(enqueued).toEqual(['select', 'confirm', 'input', 'editor', 'ask']);
+    expect(withdrawn).toEqual(['f-ask']);
   });
 });
