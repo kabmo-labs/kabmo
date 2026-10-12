@@ -50,8 +50,8 @@
  * reload itself is one file read.
  */
 
-import { existsSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { getAgentDir } from '@/server/lib/omp/core/paths';
 import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
 
@@ -88,11 +88,21 @@ const EMPTY_OVERLAY = '{}\n';
  * child reads it — a missing overlay is a hard error in omp, not a fallback.
  * `existsSync` keeps it to one stat per spawn, and an EXISTING file is never
  * touched: a rename in flight owns its content.
+ *
+ * The agent dir is created first. It normally exists because omp wrote it, but
+ * nothing guarantees that: on a fresh machine, in a container, or on a CI
+ * runner where omp was installed and never run, `~/.omp/agent` is absent and
+ * the bare write threw ENOENT — swallowed, leaving no overlay behind. Every
+ * spawn then named a `--config` path that did not exist, which omp answers with
+ * `Config overlay not found` and no session at all. Verified: the chamber's own
+ * `constants.test.ts` fails on a clean `PI_CODING_AGENT_DIR`, and passes once
+ * the parent is created.
  */
 export function ensureTitleModelOverlay(): void {
   const path = titleModelOverlayPath();
   if (existsSync(path)) return;
   try {
+    mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, EMPTY_OVERLAY, { mode: 0o600 });
   } catch {
     // An unwritable agent dir leaves no overlay, and the spawn then fails on a

@@ -66,6 +66,26 @@ describe('title-model overlay', () => {
     expect(readFileSync(path, 'utf8')).toBe(withRole);
   });
 
+  test('creates a missing agent directory, not just the file', async () => {
+    // The failure this pins: on a machine where omp was installed and never run
+    // — a CI runner, a container, a fresh box — `~/.omp/agent` does not exist.
+    // The bare write threw ENOENT, the catch swallowed it, and every spawn then
+    // named a `--config` path omp answers with `Config overlay not found`: no
+    // session at all, and no error naming the real cause.
+    const { ensureTitleModelOverlay, titleModelOverlayPath } = await overlay();
+    const nested = join(agentDir, 'not', 'yet', 'agent');
+    const prior = process.env.PI_CODING_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = nested;
+    try {
+      expect(existsSync(nested)).toBe(false);
+      ensureTitleModelOverlay();
+      expect(existsSync(join(nested, 'ompchamber-title-model.yml'))).toBe(true);
+    } finally {
+      process.env.PI_CODING_AGENT_DIR = prior;
+    }
+    expect(titleModelOverlayPath()).toBe(join(agentDir, 'ompchamber-title-model.yml'));
+  });
+
   test('writes the role under `modelRoles` and restores the empty overlay after', async () => {
     const { withTitleModelOverride, ensureTitleModelOverlay, titleModelOverlayPath } = await overlay();
     ensureTitleModelOverlay();
