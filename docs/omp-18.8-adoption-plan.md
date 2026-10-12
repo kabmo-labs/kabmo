@@ -8,6 +8,15 @@ does not use, and the phased plan to close it.
 Status: **complete**. Phase table and per-phase outcomes below; P4b–d and P5 were
 measured and deliberately NOT adopted (see the outcomes).
 
+**Re-audited at 18.9.2 (2026-10-12)** — the pin moved on again and the schema had
+drifted 9 rows; see [the re-audit section](#omp-1892-re-audit-2026-10-12) at the
+end of this file. The 18.8 phases above are unchanged.
+
+**Adopted 18.10.0 the same day** — both the RPC and the settings surface were
+unchanged, but session identity was not: a session marked moved away now forks on
+resume, which the registry was not prepared for. See
+[the 18.10.0 section](#omp-18100-adoption-2026-10-12).
+
 ## How this audit was produced
 
 Every claim below was measured, not read off a changelog:
@@ -292,8 +301,9 @@ with a single `{answers:[…]}`. Tests: `ask-frames-grouped.test.ts`.
 ### P9 — frames & hygiene (shipped)
 
 `transport-frames.ts` folds `rpc_frame_error`, `extension_error` and
-`session_settled`, and names the frames deliberately ignored. `OMP_VERSION` is
-pinned to `18.8.3`. AGENTS.md carries the delta transport, the transport frames,
+`session_settled`, and names the frames deliberately ignored. `OMP_VERSION` was
+pinned to `18.8.3` by this phase (now `18.9.2` — see the re-audit section).
+AGENTS.md carries the delta transport, the transport frames,
 the steering rule and the generated settings schema; the STT audio doc drift
 (base64 → `Float32Array`) is corrected.
 
@@ -304,3 +314,257 @@ the steering rule and the generated settings schema; the STT audio doc drift
 - No `export_html`.
 - `get_entries` / `get_tree` / `get_branch_messages` are read-only tree views the
   chamber has no UI for; noted, not adopted.
+
+---
+
+# omp 18.9.2 re-audit (2026-10-12)
+
+The 18.8 work above was measured against **18.8.3**. The installed binary is now
+**18.9.2** (published 2026-10-11T19:17Z), so the same questions were re-asked:
+what moved under the chamber, and what does the panel still not offer. Every
+claim below is measured against the installed package, not read off a changelog.
+
+## Method
+
+- `src/modes/rpc/wire/rpc-wire.schema.json` from the installed package, diffed
+  against the `v18.8.3` tag — the machine-readable contract, not prose.
+- `omp config list --json` (548 keys) against the chamber's merged schema table.
+- The slash-command registry: `BUILTIN_SLASH_COMMAND_RESERVED_NAMES` +
+  `lookupBuiltinSlashCommand`, classified by whether the spec carries a text-mode
+  `handle`.
+- `bun run omp:schema:check`, live `omp config get` per key, a live STT worker
+  ping, and the upstream changelog/tags for what is still unreleased.
+
+## Findings
+
+### R1 — The RPC surface is UNCHANGED (nothing to adopt, nothing broken)
+
+18.8.3 → 18.9.2 carries **the same 67 commands**: `ADDED: []`, `REMOVED: []`, and
+no command's params/result/timeout changed. Every verb the chamber depends on
+(`steer`, `set_event_filter`, `set_ask_dialog`, `cancel_subagent`,
+`steer_subagent`, `get_logout_accounts`, `logout`, `get_subagents`) is present
+with an identical signature.
+
+Two shape changes exist and both are additive:
+
+- `SessionState.queuedMessages` gained `liveSteered: number` (default `0`) — the
+  count of leading `steering` entries already sent into the streaming response,
+  which `remove_queued_message` cannot reach. The chamber never reads omp's queue
+  (P4b–d, below), so it is inert here.
+- `QueueUpdateEvent` gained the same field, for the same reason.
+
+The frame names the chamber folds (`session_settled`, `rpc_frame_error`,
+`extension_error`) all still exist.
+
+### R2 — The settings schema had drifted 9 rows (fixed)
+
+`src/client/data/settings/omp-schema.json` was generated against 18.8.3 and had
+gone stale. Regenerated: **404 → 413 entries**, header `10 tabs / 537 settings` →
+`10 tabs / 548 settings`, 0 removed. The 9 additions:
+
+`bash.gitGuard`, `composer.predictions`, `contextFiles.extra`,
+`retry.fallbackOn`, `speech.speed`, `terminal.programStatus`, `tts.localSpeed`,
+`worktree.onStart`, `worktree.onExit`.
+
+Seven existing entries changed **description text only** (`ask.timeout`,
+`claudeResets.autoRedeem`, `codexResets.autoRedeem`, `title.icons`, `tools.xdev`,
+`tui.autoGraph`, `tui.vimModeDisplay`) — no type, default or enum value moved.
+
+Verified against the live binary rather than the file: `omp config list --json`
+reports 548 keys, and of the chamber's 435 merged entries **0 are rejected**. The
+12 keys that used to be rejected (`stt.modelName`, `providers.tts`, …) are still
+absent from omp's registry, so the generator does not pull them back.
+
+### R3 — The schema gate was documented but not wired (fixed)
+
+AGENTS.md described `bun run omp:schema:check` as "a CI failure rather than a
+shipped panel", but no workflow called it — it existed only as a `package.json`
+script, which is why R2 could sit stale. It is now a `schema` job in
+`ci.yml`, separate from `gates` because the generator imports the INSTALLED
+`@oh-my-pi/pi-coding-agent`, which this repo does not depend on and a cold Bun
+global install would otherwise put in front of every other gate.
+
+### R4 — The version pin had drifted a second time (fixed)
+
+`install-omp.sh` pinned `18.8.3` — the F9 failure repeating one minor later: the
+CI bot ran a build two versions behind the audited one. Bumped to `18.9.2`, and
+the schema job deliberately reads that one pin rather than restating a version,
+so the two cannot disagree about which omp generated the table.
+
+### R5 — Verified still correct at 18.9.2 (do not "fix")
+
+- **TUI-only command guard.** The chamber's 42-name list is an exact match for
+  18.9.2's TUI-only set (44 names; `plan`/`goal` are chamber-owned and
+  deliberately absent). 0 unguarded, 0 stale.
+- **STT worker transport.** `omp __omp_worker_stt` still answers on the Bun IPC
+  channel with `serialization: "advanced"` and `stdin`/`stdout` ignored — ping →
+  `{"type":"pong"}` verified live. The 18.9.x IPC work is a Rust transport for
+  omp's OWN internal endpoints (daemon broker, LSP mux, IDA, predict, stream,
+  collab, local model workers); it does not replace the STT worker channel.
+- **STT model keys.** Still exactly `whisper-base`, `whisper-small`,
+  `whisper-large-v3-turbo`, `parakeet-tdt-0.6b-v3`; omp's own default is still
+  the English-European-only Parakeet, so the chamber's `whisper-base` default
+  remains the right call.
+- **`omp usage --json` / `omp plugin list --json` / `omp skill list --json`.**
+  Same shapes; `usage` gained only a `reset` subcommand.
+- **Session title slot.** Still 256 bytes, same entry type, on both sides.
+- **Schema extras.** All 15 chamber-documented keys still answer `omp config get`.
+- **`PI_NO_TITLE` gate.** Still set by `--mode rpc-ui` and still gates only the
+  two automatic title paths, so the chamber's own `/rename` remains the way a
+  session gets named.
+
+### R6 — `title.icons` changes what a generated title looks like (not a bug)
+
+18.9.0 added **title cards**: `title.icons` (default `nf+emoji`) heads a
+generated or `/rename`d title with an icon and a short code — `formatCardTitle`
+emits `🧪 FLAKY: Fix flaky park tests`. This reaches the chamber, because the
+chamber names sessions by sending `/rename` to the child and then reads the
+resulting name back.
+
+It is **not** handled specially and does not need to be: `sessionTitleFor`
+returns `session.name` verbatim (first character upper-cased), so a card title
+renders as the card title — which is what omp's own TUI shows. There is nothing
+to strip; the prefix is part of the name omp persisted. Worth knowing rather
+than fixing: a user who prefers plain names sets `title.icons: boring` in
+Settings → Appearance, and the row is now present in the panel because of R2.
+
+### R7 — 18.10.0 is tagged but NOT published (do not pin yet)
+
+`v18.10.0` was tagged 2026-10-12 and its changelog is written, but npm `latest`
+is still `18.9.2` and there is no `18.10.0` on the registry. It brings
+`omp session pack|unpack|moved`, `omp auth export|import`, and the native local
+IPC transport — whose Windows note is the one operational caveat ("daemons
+started by an older omp are not reused"). Its RPC wire schema is **identical to
+18.9.2's** (67 commands, 0 added, 0 removed, 0 defs changed), so the chamber
+needs no code change for it. Re-audit when it lands on npm; do not pin a
+tag-only release.
+
+## Re-audit outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R1 | RPC surface unchanged | none needed | wire-schema diff, 67/67 |
+| R2 | schema 9 rows stale | regenerated + committed | `omp:schema:check`, 0 keys rejected of 435 |
+| R3 | gate documented, not wired | `schema` job in `ci.yml` | fails on a perturbed file, passes restored |
+| R4 | pin 2 minors behind | `OMP_VERSION=18.9.2` | 3 stub-omp scenarios (match / stale / override) |
+| R5 | six surfaces still correct | none needed | live ping, key sets, slot size, `config list` |
+| R6 | title cards reach the UI | documented, no code | `title.icons` row present; name passes through |
+| R7 | 18.10.0 tagged, unpublished | wait | npm `latest` = 18.9.2 |
+
+---
+
+# omp 18.10.0 adoption (2026-10-12)
+
+18.10.0 landed on npm the same day it was tagged (published
+2026-10-12T01:25Z, `latest`), so the wait R7 prescribed ended within hours and
+the install was moved to it. Everything below is measured against the installed
+18.10.0.
+
+## Method
+
+- `rpc-wire.schema.json` from the installed package, diffed against the `v18.9.2`
+  tag — the machine-readable contract, not prose.
+- `orderedSettings()` from the installed package, generated into a temp file and
+  compared entry by entry with the committed schema.
+- A real `--mode rpc-ui` child: `ready` → `get_state`, then the attach sequence.
+- The slash-command registry, classified by whether a spec carries a text-mode
+  `handle`.
+- Live CLI probes: `omp usage|plugin|skill|config … --json`, `omp --help`,
+  `omp session|auth --help`.
+- The real spawn path, twice, against one session file — the measurement that
+  found R10.
+
+## Findings
+
+### R8 — Both surfaces are UNCHANGED (nothing to adopt, nothing broken)
+
+- **RPC wire schema: identical.** 67 commands, 283 definitions, `ADDED: []`,
+  `REMOVED: []`, 0 command signatures changed, 0 definitions changed.
+- **Settings registry: identical.** `orderedSettings()` at 18.10.0 produces the
+  same `10 tabs / 548 settings` and the same 413 panel entries; a regeneration
+  diff shows 0 added, 0 removed, 0 changed and identical tabs. `omp:schema:check`
+  therefore passed against the 18.9.2-generated file with no regeneration —
+  which is the strongest form of "the schema did not move".
+
+The frames the chamber folds (`session_settled`, `rpc_frame_error`,
+`extension_error`) and the RPC verbs it drives (`steer`, `set_event_filter`,
+`set_ask_dialog`, `cancel_subagent`, `steer_subagent`, `get_logout_accounts`,
+`logout`) are all unchanged.
+
+### R9 — Verified still correct at 18.10.0 (do not "fix")
+
+- **STT worker transport.** `omp __omp_worker_stt` still answers `pong` on the
+  Bun IPC channel with `serialization: "advanced"` and `stdin`/`stdout` ignored.
+  The 18.10.0 native-IPC work replaced omp's OWN internal endpoints (daemon
+  broker, LSP mux, IDA hosts, predict, `omp stream`, Collab discovery, local model
+  workers) — it did not touch this channel, which is spawned by the parent with
+  an inherited IPC handle.
+- **STT model keys.** Still exactly `whisper-base`, `whisper-small`,
+  `whisper-large-v3-turbo`, `parakeet-tdt-0.6b-v3`; omp's default is still the
+  European-only Parakeet, so the chamber's `whisper-base` default stands.
+- **TUI-only command guard.** 44 TUI-only names at 18.10.0, and the chamber's
+  42-name list is an exact match (`plan`/`goal` are chamber-owned). 0 unguarded,
+  0 stale.
+- **Every CLI surface the chamber shells out to.** `omp usage --json`,
+  `omp plugin list --json`, `omp skill list . --json` and `omp config list --json`
+  all exit 0 with the same shapes (548 config keys, 413 with a `ui` block).
+- **Every flag the chamber passes to a child.** `--mode --cwd --resume
+  --no-session --no-lsp --no-title --no-tools --approval-mode --model --thinking`
+  are all still accepted.
+- **Session title slot.** Still 256 bytes, same entry type.
+- **The new CLI verbs are additive.** `omp session pack|unpack|moved` and
+  `omp auth export|import` exist and change nothing the chamber calls.
+
+### R10 — A forked resume was re-spawned (bug, fixed)
+
+**This is the one real finding, and it is new in 18.10.0.**
+
+`omp session moved` (and any `departed` transfer marker) makes omp FORK a session
+on resume instead of continuing it: the child answers a fresh `sessionId` and
+writes the conversation to a fresh file under a fresh id. Verified against a real
+18.10.0 child — resuming a departed file answered
+`01a12dc0-8f6b-…` and a file under `--private-tmp-ompfork--/`, in a different
+directory from the one resumed.
+
+The chamber's registry was keyed on the id the CALLER holds (the URL's session
+id), and `startRpcSession`'s lookup therefore MISSED on the very next message:
+the send re-resolved the ORIGINAL file and spawned a second child, which forked
+again. Measured on the real spawn path (`startRpcSession` twice, and again
+through the route-level lookup): **two sends on one session file produced two
+children with two different ids**, each with its own fork file — a chain of
+forks, a sidebar row each, and nothing on screen to explain the duplication. The
+split is silent in a second way too: the client keeps posting to the id in its
+URL, so the frames of the second child never reach the tab that started it.
+
+Fix: `registerSpawnedSession` (`src/server/lib/omp/rpc/session-registration.ts`)
+registers the wrapper under the reported id AND, when they differ, under the id
+the caller asked for — and removes both on destroy, so a dead child cannot answer
+for the requested id. The spawn path also emits `session-attached` for the
+requested id, so a subscribed tab re-snapshots instead of holding the pre-spawn
+`running:false`. `realSessionId` now reports the child's OWN id on a registry
+hit (it reported the requested id, which is the alias, not the session).
+
+Pinned by `forked-resume.test.ts`, which drives the REAL spawn path against a
+scripted child (`test-support/fake-omp-fork.ts`) that answers a forked identity —
+the only way the two ids can differ. Verified both directions: with the fix, two
+sends produce ONE child; with the pre-fix bookkeeping restored, the same test
+fails with 2.
+
+### R11 — `session-transfer` transcript entries render as a notice (no action)
+
+18.10.0 writes a visible, model-facing `custom_message` with
+`customType: "session-transfer"` when a session arrives, departs or is forked.
+The chamber's notice mapper carries any unrecognised `customType` through as a
+`notice` row with its `noticeSource` — verified by loading a session file built
+to 18.10.0's exact shape: the marker rendered as a notice row with
+`source: session-transfer`, and the surrounding turns were unaffected. No branch
+is needed; the generic path is correct here because the entry IS a notice.
+
+## 18.10.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R8 | RPC + settings identical | none needed | wire diff 67/67, schema diff 0/0 |
+| R9 | eight surfaces still correct | none needed | live ping, key sets, flags, slot size, CLI probes |
+| R10 | forked resume re-spawned | `registerSpawnedSession` + alias signal | `forked-resume.test.ts` 1 child; fails with 2 pre-fix |
+| R11 | transfer markers | none needed | real reader: notice + `noticeSource` |
