@@ -42,7 +42,7 @@ let container: HTMLElement;
 let server: RealtimeTestServer;
 
 /** A payload the panel renders as `n` changed files. */
-function statusOf(count: number): unknown {
+function statusOf(count: number, syncCount?: { ahead: number; behind: number }): unknown {
   return {
     changes: Array.from({ length: count }, (_, i) => ({
       status: '??',
@@ -54,6 +54,7 @@ function statusOf(count: number): unknown {
     branch: 'main',
     branches: ['main'],
     remoteBranches: [],
+    ...(syncCount ? { syncCount } : {}),
   };
 }
 
@@ -76,9 +77,12 @@ afterAll(() => {
 });
 
 /** Mount the panel over a server whose topic answers one change and HTTP none. */
-async function mount(): Promise<void> {
+async function mount(options: {
+  topicSync?: { ahead: number; behind: number };
+  httpSync?: { ahead: number; behind: number };
+} = {}): Promise<void> {
   server = await startRealtimeTestServer(new Map<string, TopicResolver>([
-    [TOPIC, async () => statusOf(1)],
+    [TOPIC, async () => statusOf(1, options.topicSync)],
     [reposTopic(ROOT), async () => ({ repos: ['.'], reposPending: false })],
   ]));
   const win = new Window({ url: `http://127.0.0.1:${server.port}` });
@@ -91,7 +95,7 @@ async function mount(): Promise<void> {
     if (url.includes('/state')) return json({ sessionId: SESSION, state: {} });
     if (url.includes('reposOnly')) return json({ repos: ['.'], reposPending: false });
     // The panel's own HTTP read (mount + Refresh): EMPTY, deliberately.
-    return json(statusOf(0));
+    return json(statusOf(0, options.httpSync));
   };
 
   container = document.createElement('div');
@@ -125,5 +129,76 @@ describe('GitPanel change list', () => {
     });
     for (let i = 0; i < 20; i += 1) await act(async () => {});
     expect(container.textContent).toContain('file-1.txt');
+  });
+});
+
+/**
+ * The badge describes the SAME read the list does.
+ *
+ * The count rides the topic's payload, so it cannot describe a different read
+ * than the list: pinning it to the HTTP copy is the reported bug — the list
+ * followed the topic while `↑ahead` stayed at its mount value. The HTTP read
+ * still matters, because it is what refreshes the branch's tracking ref; the
+ * topic's count is LOCAL (no network), so `loadRepo` re-resolves the topic once
+ * its fetch settles and the badge then reads a count taken from refs that
+ * include it.
+ */
+describe('GitPanel sync badge', () => {
+  test('renders the topic count, not the HTTP one', async () => {
+    await mount({ topicSync: { ahead: 0, behind: 2 }, httpSync: { ahead: 0, behind: 9 } });
+    expect(container.textContent).toContain('↑0 ↓2');
+    expect(container.textContent).not.toContain('↓9');
+  });
+
+  test('a topic push updates the badge, not just the list', async () => {
+    await mount({ topicSync: { ahead: 0, behind: 0 } });
+    expect(container.textContent).toContain('↑0 ↓0');
+
+    // A commit made outside the panel: the server republishes `git:` with the
+    // LOCAL count, exactly as a tool call's `workspace-dirty` does.
+    await act(async () => {
+      server.publish(TOPIC, statusOf(1, { ahead: 3, behind: 2 }));
+      await server.waitForTopic(TOPIC, (value) => (value as { syncCount?: { ahead?: number } })?.syncCount?.ahead === 3);
+    });
+    for (let i = 0; i < 20; i += 1) await act(async () => {});
+    expect(container.textContent).toContain('↑3 ↓2');
+  });
+
+  test('the HTTP count fills the window before the topic snapshot lands', async () => {
+    // The topic's resolver is slow (a cold `git rev-list`), so the badge has
+    // only the HTTP read to go on. It must show that rather than a bare
+    // `↑0 ↓0` that reads as "up to date".
+    let releaseTopic: () => void = () => {};
+    const topicGate = new Promise<void>((resolve) => { releaseTopic = resolve; });
+    server = await startRealtimeTestServer(new Map<string, TopicResolver>([
+      [TOPIC, async () => { await topicGate; return statusOf(1, { ahead: 0, behind: 3 }); }],
+      [reposTopic(ROOT), async () => ({ repos: ['.'], reposPending: false })],
+    ]));
+    const win = new Window({ url: `http://127.0.0.1:${server.port}` });
+    installDomGlobals(win);
+    const target = globalThis as unknown as Record<string, unknown>;
+    target.WebSocket = pristineWebSocket;
+    target.fetch = async (input: unknown) => {
+      const url = String(input);
+      const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.includes('/state')) return json({ sessionId: SESSION, state: {} });
+      if (url.includes('reposOnly')) return json({ repos: ['.'], reposPending: false });
+      return json(statusOf(0, { ahead: 0, behind: 5 }));
+    };
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    await act(async () => {
+      render(h(SessionStateProvider, { sessionId: SESSION, children: h(GitPanel, { rootPath: ROOT, enabled: true }) }), container);
+    });
+    for (let i = 0; i < 20; i += 1) await act(async () => {});
+    expect(container.textContent).toContain('↑0 ↓5');
+
+    // Once the topic answers, its own (newer, local) count takes over.
+    releaseTopic();
+    await act(async () => {
+      await server.waitForTopic(TOPIC, (value) => value !== null);
+    });
+    for (let i = 0; i < 20; i += 1) await act(async () => {});
+    expect(container.textContent).toContain('↑0 ↓3');
   });
 });

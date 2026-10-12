@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useFetcher } from '@/client/lib/router/fetcher';
-import type { CommitHistoryPage, GitChange } from '@/shared/types';
+import type { CommitHistoryPage } from '@/shared/types';
 import { BranchPromptModal, ConfirmActionModal, GitOutputModal } from '@/client/components/workspace/git-panel/Modals';
 import { GitCommitBox } from '@/client/components/workspace/git-panel/CommitBox';
 import { GitBranchToolbar } from '@/client/components/workspace/git-panel/BranchToolbar';
@@ -10,10 +10,7 @@ import { GitChangesList } from '@/client/components/workspace/git-panel/ChangesL
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
-import { resolveRepoForPanel, useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
-import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
-import { gitTopic } from '@/shared/lib/realtime/protocol';
-import type { GitStatusPayload } from '@/server/lib/fs/git-status-read';
+import { useGitPanelData } from '@/client/hooks/workspace/git-panel-data';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 
 interface GitPanelProps {
@@ -24,82 +21,27 @@ interface GitPanelProps {
 }
 
 export function GitPanel({ className = '', enabled = true, rootPath, refreshKey = 0 }: GitPanelProps) {
-  const fetcher = useFetcher<{ changes: GitChange[], branch: string, branches: string[], remoteBranches?: string[], syncCount?: { ahead: number, behind: number } }>();
+  // The status read, the repo scope and the realtime topic — see
+  // `useGitPanelData` for why the list and the ahead/behind badge take their
+  // values from the topic while the HTTP read only refreshes the tracking ref.
+  const {
+    activeRepo,
+    setActiveRepo,
+    repos,
+    reposScanning,
+    refreshRepos,
+    isReading,
+    isRefreshing,
+    data,
+    syncCount,
+    loadRepo,
+    refreshTopic,
+  } = useGitPanelData(rootPath, enabled, refreshKey);
+  // Mutations (commit/stage/checkout/sync, and the history/graph reads) go
+  // through their own fetcher: a user-started action disables the controls,
+  // which is the one thing a topic push must not do.
   const actionFetcher = useFetcher<{ success: boolean, type?: string, data?: unknown[], hasMore?: boolean, total?: number, error?: string }>();
 
-  const { activeRepo: pickedRepo, setActiveRepo, ready: activeRepoReady } = useRepoScope(rootPath);
-  const { repos, scanning: reposScanning, rescan: refreshRepos } = useRepoList(rootPath, enabled);
-  // When the user has picked nothing and the workspace root is not itself a
-  // repo, git falls back to the first repo discovery found — the same choice
-  // the loader makes for a request that names no repo. Resolving it here rather
-  // than reading it back from the response is what keeps the header label, the
-  // picker's checkmark and the requests describing one repo: the response
-  // arrives a render later, and by then it may belong to a workspace the user
-  // has already left.
-  const activeRepo = resolveRepoForPanel(pickedRepo, repos);
-  const activeRepoRef = useRef(activeRepo);
-  activeRepoRef.current = activeRepo;
-
-  // `root\0repo` — the working tree the panel is showing right now.
-  const scopeRef = useRef('');
-  scopeRef.current = `${rootPath ?? ''}\u0000${activeRepo}`;
-  // The scope the in-flight read was asked for, and the scope the payload
-  // currently in `fetcher.data` was asked for. Only one read is ever in flight
-  // (the fetcher aborts its predecessor), so the former is what the latter
-  // becomes when a new payload arrives.
-  const requestedScopeRef = useRef('');
-  const payloadScopeRef = useRef('');
-  const lastPayloadRef = useRef<unknown>(undefined);
-  if (fetcher.data !== lastPayloadRef.current) {
-    lastPayloadRef.current = fetcher.data;
-    payloadScopeRef.current = requestedScopeRef.current;
-  }
-  // The change list rides the `git:<root>\0<repo>` topic: the server pushes a
-  // fresh status when a file-mutating tool completes, so neither the poll nor
-  // the event-driven re-read is needed. `loadRepo` stays for the toolbar's own
-  // Refresh (which also asks for the ahead/behind count).
-  const gitTopicName = enabled && activeRepoReady
-    ? gitTopic(`${rootPath ?? ''}\u0000${activeRepo}`)
-    : null;
-  const git = useRealtimeTopic<GitStatusPayload>(gitTopicName);
-
-  // A switch leaves the previous repo's branch, changes and branch list in
-  // `fetcher.data` until the new read lands. Rendering those under the new
-  // repo's header would claim the new working tree is on the old branch with
-  // the old changes, so the payload is used only while it describes the scope
-  // on screen.
-  const fetched = payloadScopeRef.current === scopeRef.current ? fetcher.data : undefined;
-  // The change list rides the REALTIME topic: the server pushes a fresh read on
-  // every tool call, so the topic is the source of the list. The HTTP read is
-  // needed only for the ahead/behind count, which the topic's resolver
-  // deliberately does not fetch (`sync: false`), so it SUPPLEMENTS the payload
-  // rather than overriding it. The previous `fetched ?? git.data` did the
-  // opposite — the HTTP copy won unconditionally, pinning the list to whatever
-  // the mount or the last Refresh read saw and hiding every change a tool call
-  // made (measured: the panel said "No changes found." while `git status`
-  // reported the file a tool call had just created).
-  const data = git.data ?? fetched;
-  const syncCount = fetched?.syncCount ?? data?.syncCount;
-
-  const loadRepo = (repo?: string) => {
-    if (!enabled) return;
-    const targetRepo = repo ?? activeRepoRef.current;
-    const params = new URLSearchParams();
-    if (rootPath) params.set('root', rootPath);
-    if (targetRepo && targetRepo !== '.') params.set('repo', targetRepo);
-    // The toolbar's ↑ahead ↓behind badge is what this asks for; it makes the
-    // loader refresh the branch's remote-tracking ref before counting, so the
-    // numbers describe origin rather than the last fetch.
-    params.set('sync', '1');
-    params.set('t', String(Date.now()));
-    // Tag the response with the scope it was asked for: a switch leaves the
-    // previous repo's branch, changes and branch list in `fetcher.data` until
-    // the new read lands, and rendering those under the new repo's header
-    // claims the new working tree is on the old branch with the old changes.
-    requestedScopeRef.current = scopeRef.current;
-    fetcher.load(`/api/fs/git?${params.toString()}`);
-  };
-  
   const [message, setMessage] = useSessionState<string>('git.commitDraft', '');
   const [viewMode, setViewMode] = useSessionState<'flat' | 'tree'>('git.viewMode', 'flat');
   
@@ -128,15 +70,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
     setMounted(true);
   }, []);
 
-  // `activeRepo` is a dependency, not just the root: the repo list that
-  // resolves the root-level fallback arrives after the first render, and a
-  // workspace switch re-resolves it to '.'.
-  useEffect(() => {
-    if (!activeRepoReady) return;
-    loadRepo();
-  }, [refreshKey, rootPath, enabled, activeRepoReady, activeRepo]);
-
-
   // Focus input when branch prompt opens
   useEffect(() => {
     if (branchPrompt && newBranchInputRef.current) {
@@ -164,13 +97,13 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         pushToast(payload.error || 'Git operation failed');
       }
     }
-  }, [actionFetcher.state, actionFetcher.data]);
+  }, [actionFetcher.state, actionFetcher.data, loadRepo]);
 
   useOnClickOutside(optionsRef, () => setShowOptions(false));
   useOnClickOutside(repoRef, () => setShowRepoMenu(false));
   useOnClickOutside(branchRef, () => setShowBranchMenu(false));
 
-  const handleAction = (actionType: string, file?: string, additionalData?: any) => {
+  const handleAction = (actionType: string, file?: string, additionalData?: Record<string, string>) => {
     if (actionType === 'revert') {
       setConfirmModal({ type: actionType, file, message: `Are you sure you want to discard changes in ${file}?` });
       return;
@@ -184,14 +117,14 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
     executeAction(actionType, file, additionalData);
   };
 
-  const executeAction = (actionType: string, file?: string, additionalData?: any) => {
+  const executeAction = (actionType: string, file?: string, additionalData?: Record<string, string>) => {
     const formData = new FormData();
     formData.append('actionType', actionType);
     formData.append('repo', activeRepo);
     if (rootPath) formData.append('root', rootPath);
     if (file) formData.append('file', file);
     if (additionalData) {
-      Object.entries(additionalData).forEach(([key, val]) => formData.append(key, val as string));
+      Object.entries(additionalData).forEach(([key, val]) => formData.append(key, val));
     }
     
     actionFetcher.submit(formData, { method: 'POST', action: '/api/fs/git' });
@@ -208,10 +141,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // A mutation the user started (a fetch, a commit/stage action) disables the
   // controls; a topic PUSH must not, or a background tool call would lock the
   // commit box for a beat.
-  const isBusy = fetcher.state === 'loading' || actionFetcher.state !== 'idle';
-  // The refresh button and the change list also light for a topic push: a tool
-  // call republishes `git:` and the panel should show that it moved on its own.
-  const isRefreshing = isBusy || git.refreshing;
+  const isBusy = isReading || actionFetcher.state !== 'idle';
 
   const stagedChanges = changes.filter(c => {
     const status = c.status;
@@ -292,14 +222,11 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         }}
         onRefresh={() => {
           // The list comes from the TOPIC, so refreshing it is what updates the
-          // change list; `loadRepo` only adds the ahead/behind count. It used
-          // to call `loadRepo` alone, and since `data = git.data ?? fetched`
-          // the topic's value won unconditionally — so a repository that
-          // changed on disk (a terminal `git add`, an editor save) stayed
-          // "No changes found." no matter how many times Refresh was pressed
-          // (verified in the browser). Both, because the toolbar's ↑↓ badge is
-          // the count only the HTTP read carries.
-          git.refresh();
+          // change list; `loadRepo` is what refreshes the tracking ref and then
+          // re-resolves the topic, so the count describes origin. Both, because
+          // a repository that changed on disk (a terminal `git add`, an editor
+          // save) needs the topic re-read while the badge needs the fetch.
+          refreshTopic();
           loadRepo();
         }}
         onRefreshRepos={refreshRepos}

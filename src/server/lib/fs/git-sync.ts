@@ -171,8 +171,19 @@ export function invalidateRemoteRefs(cwd: string): void {
 
 /**
  * Ahead/behind against the branch's upstream, read from the local tracking ref
- * (`refreshRemoteRefs` is what makes that ref current). Both zero when the
- * branch has no upstream or git cannot answer.
+ * (`refreshRemoteRefs` is what makes that ref current).
+ *
+ * A branch with **no upstream** — a fresh local branch, the common case right
+ * after "Create new branch" — has no `@{upstream}` to compare against, and
+ * `git rev-list HEAD...@{upstream}` exits 128. Reporting `{ahead: 0}` there is a
+ * lie that matters: the badge read `↑0 ↓0` on a branch holding unpushed commits
+ * and the Sync button (disabled by that zero, and by the tooltip it drives)
+ * could never correct itself. The unpushed commits are counted against the
+ * remote-tracking refs instead (`--not --remotes`), so `ahead` is the number of
+ * commits the next push would send. `behind` stays 0: without an upstream there
+ * is no ref to be behind, and the publish path sets one up.
+ *
+ * Both zero when git cannot answer at all (not a repository, git missing).
  */
 export async function gitSyncCount(cwd: string): Promise<GitSyncCount> {
   try {
@@ -181,10 +192,20 @@ export async function gitSyncCount(cwd: string): Promise<GitSyncCount> {
       cwd,
       timeout: 8_000,
     });
-    if (!shellOk(result)) return { ahead: 0, behind: 0 };
+    if (shellOk(result)) {
+      const [ahead, behind] = result.stdout.trim().split(/\s+/).map(Number);
+      return { ahead: ahead || 0, behind: behind || 0 };
+    }
 
-    const [ahead, behind] = result.stdout.trim().split(/\s+/).map(Number);
-    return { ahead: ahead || 0, behind: behind || 0 };
+    // No upstream (or a detached HEAD): count what a push would send. A
+    // repository with no remote at all answers its full history, which is what
+    // "nothing has been published" means — and is still the honest number.
+    const unpushed = await runShell('git rev-list --count HEAD --not --remotes', {
+      cwd,
+      timeout: 8_000,
+    });
+    if (!shellOk(unpushed)) return { ahead: 0, behind: 0 };
+    return { ahead: Number(unpushed.stdout.trim()) || 0, behind: 0 };
   } catch {
     return { ahead: 0, behind: 0 };
   }

@@ -82,11 +82,30 @@ afterAll(() => {
 });
 
 describe('gitSyncCount without an upstream', () => {
-  test('a repository with no upstream answers zero on both sides', async () => {
+  // A fresh local branch has no `@{upstream}`, and `git rev-list HEAD...@{upstream}`
+  // exits 128. Reporting `{ahead: 0}` there is the lie this pins: the badge read
+  // `↑0 ↓0` on a branch holding commits the next push would send.
+  test('a new local branch reports the commits a push would send', async () => {
+    const { clone } = makeClone();
+    git(clone, 'checkout', '-q', '-b', 'feat/x');
+    commitFile(clone, 'one.txt', 'one');
+    commitFile(clone, 'two.txt', 'two');
+    expect(await gitSyncCount(clone)).toEqual({ ahead: 2, behind: 0 });
+  });
+
+  test('a repository with no remote at all reports its whole history as unpushed', async () => {
     const repo = tempDir();
     initRepo(repo);
     commitFile(repo, 'a.txt', 'a');
-    expect(await gitSyncCount(repo)).toEqual({ ahead: 0, behind: 0 });
+    expect(await gitSyncCount(repo)).toEqual({ ahead: 1, behind: 0 });
+  });
+
+  test('a branch whose commits are all published answers zero', async () => {
+    const { clone } = makeClone();
+    git(clone, 'checkout', '-q', '-b', 'feat/y');
+    commitFile(clone, 'y.txt', 'y');
+    git(clone, 'push', '-q', '-u', 'origin', 'feat/y');
+    expect(await gitSyncCount(clone)).toEqual({ ahead: 0, behind: 0 });
   });
 
   test('a directory that is not a repository answers zero instead of throwing', async () => {
@@ -94,6 +113,8 @@ describe('gitSyncCount without an upstream', () => {
   });
 
   test('refreshRemoteRefs is a no-op without an upstream', async () => {
+    // An empty repository has no `HEAD` to count, which is genuinely nothing to
+    // push — not the same case as a branch holding unpushed commits.
     const repo = tempDir();
     initRepo(repo);
     await refreshRemoteRefs(repo);

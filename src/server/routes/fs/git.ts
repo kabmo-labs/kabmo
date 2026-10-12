@@ -19,6 +19,7 @@ import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git
 import { fetchFileDiff, fetchGitCommits } from '@/server/lib/fs/git-log';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
 import { invalidateRemoteRefs, markRemoteRefsFresh } from '@/server/lib/fs/git-sync';
+import { pullBranch, pushBranch } from '@/server/lib/fs/git-publish';
 import { repoRelative, resolveRepoPath, runGit, type GitRunResult } from '@/server/lib/fs/git-run';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -86,7 +87,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   //
   // The read itself lives in `lib/fs/git-status-read.ts`, so the realtime `git:`
   // topic and this route answer from one implementation.
-  const status = await readGitStatus(targetDir, { sync: url.searchParams.get('sync') === '1' });
+  const status = await readGitStatus(targetDir, {
+    count: url.searchParams.get('sync') === '1' ? 'fetch' : undefined,
+  });
 
   // No `repos`/`reposPending`/`activeRepo` here: the repo list travels on the
   // `?reposOnly=1` branch, keyed to the root it was discovered for. Echoing a
@@ -218,14 +221,14 @@ export async function action({ request }: ActionFunctionArgs) {
     } else if (actionType === 'rebase_commit') {
       await expectOk(['rebase', formData.get('hash') as string], targetDir);
     } else if (actionType === 'push') {
-      await expectOk(['push'], targetDir, 120000);
+      await pushBranch(targetDir);
       markRemoteRefsFresh(targetDir);
     } else if (actionType === 'pull') {
-      await expectOk(['pull', '--ff-only'], targetDir, 120000);
+      await pullBranch(targetDir);
       markRemoteRefsFresh(targetDir);
     } else if (actionType === 'sync') {
-      await expectOk(['pull', '--ff-only'], targetDir, 120000);
-      await expectOk(['push'], targetDir, 120000);
+      await pullBranch(targetDir);
+      await pushBranch(targetDir);
       // Both commands already moved the tracking ref; the next read must not
       // fetch again to see a state it just produced.
       markRemoteRefsFresh(targetDir);

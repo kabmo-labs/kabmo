@@ -31,16 +31,24 @@ export interface GitStatusPayload {
   error?: string;
 }
 
+/**
+ * How the ahead/behind count is produced, when one is asked for at all.
+ *
+ * - `fetch` — refresh the branch's remote-tracking ref first, so `behind`
+ *   describes origin rather than the last fetch. A network round trip, TTL'd
+ *   inside the helper. The git panel's own read (mount and Refresh) uses it.
+ * - `local` — count against the tracking ref as it stands. ~15ms of `git
+ *   rev-list`, no network, so the realtime `git:` topic can carry a count that
+ *   follows every push (a tool call's commit) without turning each one into a
+ *   fetch.
+ *
+ * Omitted means no count at all: the status-only readers (the activity bar's
+ * dot, the file explorer) must not pay for a value they never read.
+ */
+export type GitCountMode = 'fetch' | 'local';
+
 export interface GitStatusOptions {
-  /**
-   * Fetch the remote's refs and report the ahead/behind count.
-   *
-   * Only the git panel asks for it: the status-only readers (the activity bar's
-   * dot, the file explorer) must not trigger a network fetch, and must not pay
-   * for a count they never read. TTL'd inside the helper, so a poll is not a
-   * fetch loop.
-   */
-  sync?: boolean;
+  count?: GitCountMode;
 }
 
 /**
@@ -52,11 +60,12 @@ export interface GitStatusOptions {
  * the user merely pointed at.
  */
 export async function readGitStatus(targetDir: string, options: GitStatusOptions = {}): Promise<GitStatusPayload> {
-  const syncRequested = options.sync === true;
+  const countMode = options.count;
   try {
     // Started before the local probes below so the fetch overlaps them instead
-    // of adding up.
-    const remoteRefresh = syncRequested ? refreshRemoteRefs(targetDir) : Promise.resolve();
+    // of adding up. `local` deliberately starts nothing: the tracking ref is
+    // read where it stands.
+    const remoteRefresh = countMode === 'fetch' ? refreshRemoteRefs(targetDir) : Promise.resolve();
 
     // `--porcelain=v1 -z -uall` so all individual edited/untracked files are
     // listed, and so a path holding a space, a quote or a non-ASCII byte
@@ -117,7 +126,7 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
     const changes: GitChange[] = parsePorcelainZ(statusOut);
 
     await remoteRefresh;
-    const syncCount = syncRequested ? await gitSyncCount(targetDir) : undefined;
+    const syncCount = countMode ? await gitSyncCount(targetDir) : undefined;
 
     return { changes, branch: branch || 'main', branches: branches.length ? branches : ['main'], remoteBranches, syncCount };
   } catch (error) {

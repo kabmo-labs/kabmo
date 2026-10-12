@@ -39,15 +39,22 @@ async function resolveScope(scope: string): Promise<{ root: string; repo: string
   return { root, repo };
 }
 
-/** One working tree's git status, as the panel renders its change list. */
+/**
+ * One working tree's git status, as the panel renders its change list.
+ *
+ * The count is `local`, never `fetch`: the panel renders this topic's payload
+ * as its change list, and the ahead/behind it carries must therefore follow
+ * every push a tool call makes. A fetch here would be a network round trip per
+ * publish, so the badge would still read the pre-push numbers — the bug this
+ * replaces. The panel's own read (`?sync=1`) is what refreshes the tracking ref
+ * before counting, which is why `behind` becomes honest on mount and Refresh.
+ */
 async function gitResolve(scope: string): Promise<unknown> {
   const parsed = await resolveScope(scope);
   if (!parsed) return null;
   const targetDir = parsed.repo === '.' ? parsed.root : resolveWithinRoot(parsed.root, parsed.repo);
   if (!targetDir) return null;
-  // No `sync`: the ahead/behind count triggers a remote fetch, and a panel
-  // watching a topic must not turn every push into a network round trip.
-  return readGitStatus(targetDir, { sync: false });
+  return readGitStatus(targetDir, { count: 'local' });
 }
 
 /** One working tree's root listing, as the file explorer renders it. */
