@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { RefreshCw, Search } from 'lucide-preact';
 import type { FsNode } from '@/shared/types';
 import { GitRepoDropdown } from '@/client/components/workspace/file-explorer/GitRepoDropdown';
 import { FileTreeItem } from '@/client/components/workspace/file-explorer/TreeItem';
+import { RootContextMenu } from '@/client/components/workspace/file-explorer/RootMenu';
+import { FileCreateModal } from '@/client/components/workspace/file-explorer/Modals';
 import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
+import { useFileCreate } from '@/client/hooks/workspace/file-create';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { fsTopic } from '@/shared/lib/realtime/protocol';
@@ -19,6 +22,9 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   const { repos, scanning: reposScanning, rescan: rescanRepos } = useRepoList(rootPath, enabled);
   const fade = useScrollbarFadeRef();
   const { fileMap: gitFileMap, folderMap: gitFolderMap, refreshGitStatus } = useGitStatus(rootPath, activeRepo, enabled);
+  /** The panel background's own menu — the only place a file can be created at the tree's root. */
+  const [rootMenu, setRootMenu] = useState<{ x: number; y: number } | null>(null);
+  const rootMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!expandedPathsReady) return;
@@ -90,6 +96,30 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     setActiveRepo(repo);
   };
 
+  /**
+   * Re-read everything this panel shows. Defined ABOVE the `!enabled` return so
+   * the create flow below can use it: a hook cannot be called after a branch.
+   */
+  const refresh = () => {
+    refreshGitStatus();
+    if (onRefresh) onRefresh();
+    else void listing.reload();
+  };
+
+  // The root's own "New File": the panel background is the one target whose
+  // create belongs at the tree's top, and it is the only action the root menu
+  // offers (a row's menu names a FILE, which the root is not).
+  const rootCreate = useFileCreate({
+    folderPath: '.',
+    rootPath,
+    repo: activeRepo,
+    onCreated: refresh,
+    onOpenCreated: (file) => onOpenFile?.({ ...file, root: rootPath, repo: activeRepo }),
+  });
+  /** Portals need a real document; the first client render is the gate. */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   if (!enabled) {
     return (
       <div className={`flex flex-col h-full bg-paper items-center justify-center text-ink/40 ${className}`}>
@@ -128,11 +158,6 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   };
 
   const files = getFilteredFiles();
-  const refresh = () => {
-    refreshGitStatus();
-    if (onRefresh) onRefresh();
-    else void listing.reload();
-  };
   // The button spins for this panel's own read OR a topic push: the server
   // republishes `fs:` on every tool call, so the tree moved with nothing on
   // screen saying so otherwise.
@@ -170,7 +195,18 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
         </div>
       </div>
 
-      <div ref={fade.ref} className="flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80" onContextMenu={(e) => e.preventDefault()} onScroll={fade.onScroll}>
+      <div
+        ref={fade.ref}
+        className="flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80"
+        onContextMenu={(e) => {
+          // The panel's own background. A row stops propagation before this
+          // runs, so this handler only ever sees a right-click that named NO
+          // file — which is what makes the root's menu a different menu.
+          e.preventDefault();
+          setRootMenu({ x: e.clientX, y: e.clientY });
+        }}
+        onScroll={fade.onScroll}
+      >
         {listing.isLoading && files.length === 0 ? (
           <div className="p-4 text-center text-ink/40">
             Loading files...
@@ -198,6 +234,30 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           ))
         )}
       </div>
+
+      {mounted && rootMenu && (
+        <RootContextMenu
+          x={rootMenu.x}
+          y={rootMenu.y}
+          menuRef={rootMenuRef}
+          onAction={(action) => {
+            setRootMenu(null);
+            if (action === 'new_file') rootCreate.openDialog();
+          }}
+        />
+      )}
+
+      {mounted && rootCreate.open && (
+        <FileCreateModal
+          folderPath="."
+          value={rootCreate.name}
+          error={rootCreate.error}
+          isLoading={rootCreate.busy}
+          onChange={rootCreate.setName}
+          onCancel={rootCreate.closeDialog}
+          onSubmit={rootCreate.submit}
+        />
+      )}
     </div>
   );
 }

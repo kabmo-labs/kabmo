@@ -5,12 +5,16 @@
 
 /**
  * Everything a file-tree row does that is not rendering: the context menu's
- * action dispatch, the create/rename/delete dialogs and their server calls.
+ * action dispatch, the rename/delete/history dialogs and their server calls.
  *
  * Extracted from the row component because it is a stateful cluster with one
  * shared dependency (`/api/fs/action` and the fetcher that submits to it), and
  * because the row is at the repository's line ceiling. The component keeps the
  * markup and the handlers that need its own DOM node; this keeps the behavior.
+ *
+ * The row's "New File" is NOT implemented here: it delegates to `useFileCreate`,
+ * the same flow the panel's own background menu uses, so the two cannot drift on
+ * what a refusal and a success do.
  */
 
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -18,14 +22,13 @@ import type { FormEvent, RefObject } from 'preact/compat';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { toAbsolutePath } from '@/shared/lib/fs/paths';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
+import { useFileCreate } from '@/client/hooks/workspace/file-create';
 
 /** The shape `/api/fs/action` answers with, as far as a row reads it. */
 interface FsActionResponse {
   success?: boolean;
   /** Present on the git-history payload, which the history modal reads. */
   type?: string;
-  /** Relative path of a freshly created file. */
-  path?: string;
   error?: string;
 }
 
@@ -83,15 +86,21 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [createError, setCreateError] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState(file.path);
-  /** Which dialog the in-flight request belongs to, so its result is routed. */
-  const pendingActionRef = useRef<'create' | null>(null);
 
   const repo = file.repo;
   const rootPath = file.rootPath;
+
+  // The row's own "New File": the SAME flow the panel's root menu uses, so a
+  // refusal keeps the dialog open with the server's reason and a success opens
+  // the file — two copies of that rule would drift.
+  const create = useFileCreate({
+    folderPath: file.path,
+    rootPath,
+    repo,
+    onCreated: onActionComplete,
+    onOpenCreated: (created) => onOpenFile?.({ ...created, root: rootPath, repo: repo || '.' }),
+  });
 
   /**
    * The payload already acted on.
@@ -109,30 +118,9 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
     const data = actionFetcher.data;
     if (handledRef.current === data) return;
     handledRef.current = data;
-    // The fetcher parses the body whatever the status, so a refusal arrives as
-    // `data.error` rather than as a throw — which is what lets the create
-    // dialog stay open and put the reason beside the field.
-    if (pendingActionRef.current === 'create') {
-      pendingActionRef.current = null;
-      if (data.success && data.path) {
-        // The user asked for a file to work on, so it opens: closing the dialog
-        // and refreshing the tree alone would leave them hunting for the empty
-        // row they just created.
-        setShowCreateModal(false);
-        setCreateName('');
-        setCreateError(null);
-        onActionComplete();
-        onOpenFile?.({
-          path: data.path,
-          name: data.path.split('/').pop() || data.path,
-          root: rootPath,
-          repo: repo || '.',
-        });
-      } else {
-        setCreateError(data.error || 'Could not create the file');
-      }
-      return;
-    }
+    // A create never reaches here: it rides its own fetcher (see
+    // `useFileCreate`), so this one only ever answers a rename, a delete or a
+    // history read.
     if (data.success && !data.type) {
       setShowRenameModal(false);
       setShowDeleteModal(false);
@@ -184,25 +172,10 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
       setRenameValue(file.path);
       setShowRenameModal(true);
     } else if (actionType === 'new_file') {
-      setCreateName('');
-      setCreateError(null);
-      setShowCreateModal(true);
+      create.openDialog();
     } else if (actionType === 'delete') {
       setShowDeleteModal(true);
     }
-  };
-
-  const submitCreate = (e: FormEvent) => {
-    e.preventDefault();
-    const name = createName.trim();
-    if (!name) return;
-    setCreateError(null);
-    pendingActionRef.current = 'create';
-    const fd = new FormData();
-    fd.append('actionType', 'create');
-    fd.append('path', file.path);
-    fd.append('name', name);
-    submitAction(fd);
   };
 
   const submitRename = (e: FormEvent) => {
@@ -229,20 +202,20 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
     showRenameModal,
     showDeleteModal,
     showHistoryModal,
-    showCreateModal,
-    createError,
-    createName,
-    setCreateName,
+    showCreateModal: create.open,
+    createError: create.error,
+    createName: create.name,
+    setCreateName: create.setName,
     renameValue,
     setRenameValue,
-    busy: actionFetcher.state !== 'idle',
+    busy: actionFetcher.state !== 'idle' || create.busy,
     fetcherState: actionFetcher.state,
     fetcherData: actionFetcher.data,
     handleAction,
-    submitCreate,
+    submitCreate: create.submit,
     submitRename,
     submitDelete,
-    closeCreate: () => setShowCreateModal(false),
+    closeCreate: create.closeDialog,
     closeDelete: () => setShowDeleteModal(false),
     closeRename: () => setShowRenameModal(false),
     closeHistory: () => setShowHistoryModal(false),
