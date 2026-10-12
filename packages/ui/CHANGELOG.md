@@ -5,6 +5,12 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1](https://github.com/rajebdev/ompchamber/compare/ui/v2.2.0...ui/v2.2.1) — 2026-10-12
+
+### Fixed
+
+* **panels:** scope a plugin's stylesheet to its own DOM ([bfd7f98](https://github.com/rajebdev/ompchamber/commit/bfd7f983956c3cedd932f56728df5ac8cd957578)), closes [session-info#1](https://github.com/rajebdev/session-info/issues/1)
+
 ## [2.2.0](https://github.com/rajebdev/ompchamber/compare/ui/v2.1.1...ui/v2.2.0) — 2026-10-11
 
 ### Added
