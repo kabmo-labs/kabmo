@@ -17,6 +17,7 @@ import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
+import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
@@ -116,7 +117,10 @@ export async function startRpcSession(
 
   const existing = registry.get(sessionId);
   if (existing?.isAlive()) {
-    return { session: existing, realSessionId: sessionId };
+    // The child's OWN id, not the one asked for: after a forked resume the two
+    // differ, and `realSessionId` means the former. Callers that persist it (the
+    // scheduler) must not record the alias as if it were the session.
+    return { session: existing, realSessionId: existing.sessionId || sessionId };
   }
   if (existing?.destroyPromise) await existing.destroyPromise;
 
@@ -153,11 +157,7 @@ export async function startRpcSession(
     }
 
     const realSessionId = created.sessionId;
-    created.onDestroy(() => {
-      if (registry.get(created.sessionId) === created) registry.delete(created.sessionId);
-      if (registry.get(realSessionId) === created) registry.delete(realSessionId);
-    });
-    registry.set(realSessionId, created);
+    registerSpawnedSession(registry, created, sessionId, realSessionId);
     // A session's cwd may sit outside every registered workspace, and omp
     // resolves project skills from it all the same — so the discovery watcher
     // has to learn this directory. AWAITED, not fired and forgotten: the
@@ -171,6 +171,13 @@ export async function startRpcSession(
     // snapshot. The child exists now: tell the realtime layer to re-snapshot
     // that topic for whoever is watching.
     emitRealtimeSignal('session-attached', realSessionId);
+    // A forked resume answers a NEW id, and the client is still subscribed (and
+    // still posting) under the id it asked for. Publishing only the real id
+    // leaves that subscriber attached to a topic whose `getRpcSession` now
+    // resolves — through the alias `registerSpawnedSession` installs — while
+    // nothing ever told it to re-snapshot, so a reload-less tab would keep the
+    // pre-spawn snapshot.
+    if (sessionId !== realSessionId) emitRealtimeSignal('session-attached', sessionId);
     return { session: created, realSessionId };
   })().finally(() => locks.delete(sessionId));
 
