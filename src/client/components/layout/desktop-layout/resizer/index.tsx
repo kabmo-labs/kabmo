@@ -135,7 +135,21 @@ export function Panel(props: {
     filler ? null : clamp(toPx(defaultSize, minPx), minPx, maxPx),
   );
   const sizePxRef = useRef(sizePx);
-  sizePxRef.current = sizePx;
+
+  /**
+   * The ONE way a size is applied: the ref and the state move together.
+   *
+   * A separator drag commits in the same tick it lands its final size —
+   * `useSeparatorDrag`'s `onUp` calls `apply()` and then reads every panel's
+   * `getSize()` to build the layout it reports. Writing only the state leaves the
+   * ref holding the size from the LAST render, so the commit persisted the width
+   * the panel had BEFORE the drag (measured: a sidebar dragged 351 → 446 posted
+   * `omp_sidebar_width: 351`), and the drag looked like it never saved.
+   */
+  const applySize = (px: number) => {
+    sizePxRef.current = px;
+    setSizePx(px);
+  };
 
   // Register with the group so separators and the imperative handle can find
   // this panel. Runs once per mount.
@@ -145,7 +159,7 @@ export function Panel(props: {
       isFiller: filler,
       minSize: minPx,
       maxSize: maxPx,
-      setSize: (px) => setSizePx(px),
+      setSize: applySize,
       getSize: () => sizePxRef.current,
     };
     panels.current.set(id, state);
@@ -177,14 +191,14 @@ export function Panel(props: {
     const nextPx = toPx(defaultSize, minPx);
     if (lastDefaultPxRef.current === nextPx) return;
     lastDefaultPxRef.current = nextPx;
-    setSizePx(clamp(nextPx, minPx, maxPx));
+    applySize(clamp(nextPx, minPx, maxPx));
   }, [defaultSize, filler, minPx, maxPx]);
 
   useEffect(() => {
     if (!panelRef) return;
     panelRef.current = {
       resize: (px) => {
-        setSizePx(clamp(px, minPx, maxPx));
+        applySize(clamp(px, minPx, maxPx));
       },
       getSize: () => {
         const px = sizePxRef.current;
