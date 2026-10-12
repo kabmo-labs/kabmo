@@ -48,7 +48,7 @@
     },
     "packages/plugin-sdk": {
       "name": "@ompchamber/plugin-sdk",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "peerDependencies": {
         "@ompchamber/ui": "*",
         "happy-dom": "*",

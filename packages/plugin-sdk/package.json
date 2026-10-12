@@ -1,6 +1,6 @@
 {
   "name": "@ompchamber/plugin-sdk",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "type": "module",
   "description": "The contract between a panel plugin and the OMPChamber host.",
   "exports": {
