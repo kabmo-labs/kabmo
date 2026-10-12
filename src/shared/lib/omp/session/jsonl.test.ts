@@ -19,7 +19,6 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   countMessageMarkers,
-  extractFirstDisplayMessageFromPrefix,
   extractStringProperty,
   extractTextFromContent,
   parseJsonlLenient,
@@ -129,27 +128,6 @@ describe('countMessageMarkers', () => {
 
   test('is zero when no type marker is present', () => {
     expect(countMessageMarkers('{"a":1}')).toBe(0);
-  });
-});
-
-describe('extractFirstDisplayMessageFromPrefix', () => {
-  test('prefers a user message over an earlier developer/assistant one', () => {
-    const body = '{"role":"developer","content":"system"}\n{"role":"user","content":"ask"}';
-    expect(extractFirstDisplayMessageFromPrefix(body)).toBe('ask');
-  });
-
-  test('falls back to the first developer or assistant text', () => {
-    expect(extractFirstDisplayMessageFromPrefix('{"role":"assistant","content":"answer"}')).toBe('answer');
-    expect(extractFirstDisplayMessageFromPrefix('{"role":"developer","content":"rule"}')).toBe('rule');
-  });
-
-  test('reads a `text` field when there is no `content`', () => {
-    expect(extractFirstDisplayMessageFromPrefix('{"role":"user","text":"via text"}')).toBe('via text');
-  });
-
-  test('is undefined when no role carries text', () => {
-    expect(extractFirstDisplayMessageFromPrefix('{"a":1}')).toBeUndefined();
-    expect(extractFirstDisplayMessageFromPrefix('{"role":"user"}')).toBeUndefined();
   });
 });
 

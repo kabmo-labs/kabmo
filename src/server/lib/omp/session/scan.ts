@@ -18,7 +18,8 @@
  */
 
 import { readLastEntryTimestamp, readTextPrefix, SESSION_LIST_PREFIX_BYTES } from '@/server/lib/omp/session/file-scan';
-import { countMessageMarkers, extractFirstDisplayMessageFromPrefix, extractTextFromContent, parseJsonlLenient, parseSessionListHeader } from '@/shared/lib/omp/session/jsonl';
+import { countMessageMarkers, parseJsonlLenient, parseSessionListHeader } from '@/shared/lib/omp/session/jsonl';
+import { firstOperatorTitleFromPrefix, operatorTitleFromEntry } from '@/shared/lib/omp/session/operator-title';
 
 export const SESSION_TITLE_SLOT_BYTES = 256;
 
@@ -81,13 +82,23 @@ export async function scanSessionInfo(filePath: string): Promise<OmpSessionInfo 
       }
       if (entry.type === 'message' && entry.message) {
         parsedMessageCount++;
-        if (entry.message.role === 'user' && !firstMessage) {
-          firstMessage = extractTextFromContent(entry.message.content);
-        }
+      }
+      // The operator's opening turn, by the ONE rule every surface shares — a
+      // `user` message OR a `/skill:` custom entry. A skill turn carries no
+      // `role` field, so a scan that looked only for `role: "user"` reported
+      // `(no messages)` for a session opened with `/skill:<name>` and its row
+      // read "New Session - <timestamp>" while the header showed the title.
+      if (!firstMessage) {
+        const operator = operatorTitleFromEntry(entry as Record<string, unknown>);
+        if (operator) firstMessage = operator;
       }
     }
 
-    firstMessage ||= extractFirstDisplayMessageFromPrefix(prefix) ?? '';
+    // The window is bounded, so a preamble (a skill's expanded body) can push
+    // the opening turn past it. `firstMessage` stays empty in that case and the
+    // raw-text pass below is the only chance — it is what keeps this reader in
+    // agreement with the header instead of guessing a placeholder.
+    firstMessage ||= firstOperatorTitleFromPrefix(prefix) ?? '';
     return {
       path: filePath,
       id: header.id,

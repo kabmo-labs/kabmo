@@ -33,6 +33,7 @@ import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
 import { parseChamberMarker } from '@/shared/lib/omp/mode/markers';
+import { SKILL_PROMPT_CUSTOM_TYPE } from '@/shared/lib/omp/session/operator-title';
 import type { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 
 /**
@@ -85,6 +86,13 @@ export interface FrameFoldResult {
  * `message_start` is equally too early — the message is appended to the agent's
  * state on `message_end`, so only here does `get_state` report it.
  *
+ * A `/skill:<name>` turn does NOT arrive as `role: "user"`. Measured against a
+ * real child, it is `role: "custom"` with `customType: "skill-prompt"` — and a
+ * gate that only knew the user role never fired for one, so a session opened
+ * with a skill stayed unnamed (its row read "New Session - <timestamp>" in the
+ * sidebar while the header showed the invocation). The chip a skill turn stands
+ * for is `/skill:<name> <args>`, which is the text omp itself titles from.
+ *
  * The latch makes a later user message (a queued steer) a no-op, and a session
  * that resumed an existing conversation is ineligible from the start. The
  * terminal `agent_end` retries if this attempt produced nothing.
@@ -92,6 +100,9 @@ export interface FrameFoldResult {
 function handleMessageEnd(host: SessionFrameHost, event: AgentEvent): void {
   const message = event.message as Record<string, unknown> | undefined;
   if (message?.role === 'user') void triggerAutoSessionTitle(host, 'opening');
+  else if (message?.role === 'custom' && message.customType === SKILL_PROMPT_CUSTOM_TYPE) {
+    void triggerAutoSessionTitle(host, 'opening');
+  }
 }
 
 /**

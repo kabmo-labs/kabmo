@@ -25,20 +25,23 @@ import { normalizeThinkingLevel } from '@/shared/lib/models/thinking-levels';
 import type { ChatMessageData } from '@/shared/types/chat';
 import { collectToolOutputs, noticeFromCustomMessage, toChatMessage, type SequenceState } from '@/shared/lib/omp/session/messages-map';
 import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
+import { operatorTitleFromEntry } from '@/shared/lib/omp/session/operator-title';
+import { isRecord } from '@/shared/lib/util/guards';
 import { readBlobRef } from '@/server/lib/omp/session/blobs.server';
 
 const MAX_SESSION_LOAD_BYTES = 512 * 1024 * 1024;
 
 /** omp expands `/skill:<name>` into a `custom_message` record and stores no
- *  user message for it, so the chamber reconstructs the bubble from it. */
+ *  user message for it, so the chamber reconstructs the bubble from it.
+ *
+ *  The bubble text comes from the SAME rule the sidebar row and the title use
+ *  (`operatorTitleFromEntry`) — `/skill:<name>` plus the operator's args — so
+ *  the timeline, the sidebar and the header cannot show three spellings of one
+ *  turn. It read `/skill:<name>` alone before, which dropped the args the user
+ *  had typed and disagreed with omp's own chip. */
 function skillUserMessageFromRecord(record: Record<string, unknown>): ChatMessageData | null {
-  const details = record.details as { name?: unknown } | undefined;
-  const fromDetails = typeof details?.name === 'string' ? details.name : undefined;
-  const fromContent = typeof record.content === 'string'
-    ? /User invoked the "([^"]+)" skill/.exec(record.content)?.[1]
-    : undefined;
-  const skillName = fromDetails ?? fromContent;
-  if (!skillName) return null;
+  const content = operatorTitleFromEntry(record);
+  if (!content) return null;
   const parsed = typeof record.timestamp === 'string' ? new Date(record.timestamp) : undefined;
   const time = parsed && !Number.isNaN(parsed.getTime())
     ? parsed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -46,7 +49,7 @@ function skillUserMessageFromRecord(record: Record<string, unknown>): ChatMessag
   return {
     id: typeof record.id === 'string' ? record.id : `skill-${Date.now()}`,
     role: 'user',
-    content: `/skill:${skillName}`,
+    content,
     date: time ? `Today, ${time}` : undefined,
     timestamp: time,
   };
@@ -187,17 +190,16 @@ export async function loadSessionTitle(filePath: string): Promise<string | undef
         return taskLines[0].slice(0, 60);
       }
     }
-    // Fallback: extract from first user message
-    const userMsg = records.find((r) => r?.type === 'message' && (r as Record<string, unknown>).message != null
-      && ((r as Record<string, unknown>).message as Record<string, unknown>).role === 'user');
-    if (userMsg) {
-      const message = (userMsg as Record<string, unknown>).message as Record<string, unknown>;
-      const text = message.content;
-      const str = typeof text === 'string' ? text : Array.isArray(text) ? text.map((c) => (c as Record<string, unknown>).text || '').join('') : '';
-      const lines = str.trim().split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !l.startsWith('Complete assignment'));
-      if (lines.length > 0) {
-        return lines[0].slice(0, 60);
-      }
+    // Fallback: the operator's opening turn — a `user` message, or the
+    // `/skill:<name> <args>` chip a skill turn stands for. One rule for the
+    // header, the sidebar row and the timeline bubble, so the three cannot
+    // disagree about what a session is called.
+    for (const record of records) {
+      if (!isRecord(record)) continue;
+      const operator = operatorTitleFromEntry(record);
+      if (!operator) continue;
+      const lines = operator.trim().split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !l.startsWith('Complete assignment'));
+      if (lines.length > 0) return lines[0].slice(0, 60);
     }
     return undefined;
   } catch {

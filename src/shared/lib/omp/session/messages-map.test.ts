@@ -323,4 +323,3 @@ describe('loadSessionMessages — ordering and thinking-level stamping', () => {
     expect(messages[1]?.notice).toBe('no skill name here');
   });
 });
-

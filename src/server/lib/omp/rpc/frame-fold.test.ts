@@ -67,11 +67,29 @@ describe('auto-title trigger wiring', () => {
   });
 
   test('does not ask on an assistant or tool message', () => {
-    for (const role of ['assistant', 'toolResult', 'custom']) {
+    for (const role of ['assistant', 'toolResult']) {
       const host = makeHost();
       fold(host, { type: 'message_end', message: { role, content: 'x' } });
       expect(host.autoTitleRequested).toBe(false);
     }
+  });
+
+  test('asks for the title on a /skill: turn, which arrives as role "custom"', () => {
+    // Measured against a real child: a `/skill:<name>` turn is a
+    // `message_end` with `role: "custom"` and `customType: "skill-prompt"`, NOT
+    // `role: "user"`. A gate that only knew the user role never fired for one,
+    // so a session opened with a skill stayed unnamed forever.
+    const host = makeHost();
+    fold(host, { type: 'message_end', message: { role: 'custom', customType: 'skill-prompt' } });
+
+    expect(host.autoTitleRequested).toBe(true);
+    expect(host.autoTitlePending).toBe(true);
+  });
+
+  test('a custom message of another kind still does not ask', () => {
+    const host = makeHost();
+    fold(host, { type: 'message_end', message: { role: 'custom', customType: 'system-prompt-digest' } });
+    expect(host.autoTitleRequested).toBe(false);
   });
 
   test('does not ask at agent_start, where the transcript is still empty', () => {

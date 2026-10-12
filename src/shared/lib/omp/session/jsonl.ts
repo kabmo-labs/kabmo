@@ -106,21 +106,6 @@ export function countMessageMarkers(content: string): number {
   return count;
 }
 
-export function extractFirstDisplayMessageFromPrefix(content: string): string | undefined {
-  let fallback: string | undefined;
-  let index = content.indexOf('"role"');
-  while (index !== -1) {
-    const role = extractStringProperty(content, 'role', index);
-    const text = extractStringProperty(content, 'content', index) ?? extractStringProperty(content, 'text', index);
-    if (text) {
-      if (role === 'user') return text;
-      if (!fallback && (role === 'developer' || role === 'assistant')) fallback = text;
-    }
-    index = content.indexOf('"role"', index + 6);
-  }
-  return fallback;
-}
-
 // ============================================================================
 // Header parsing
 // ============================================================================
