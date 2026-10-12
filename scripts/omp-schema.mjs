@@ -26,6 +26,11 @@
  *
  * `--check` regenerates in memory and exits non-zero when the file on disk
  * differs, so CI can fail a stale schema instead of shipping one.
+ *
+ * Generation is pinned to ONE platform (see {@link pinGenerationPlatform}):
+ * omp's panel metadata is platform-conditional, so an unpinned generator
+ * produced a file that differed between a macOS author's machine and the Linux
+ * runner the gate runs on.
  */
 
 import { dirname, join, resolve } from 'node:path';
@@ -59,6 +64,31 @@ async function readTabs(tuiDir) {
   return { order: mod.SETTING_TABS, meta: mod.TAB_METADATA };
 }
 
+/**
+ * Generate against ONE platform, so the committed artifact is deterministic.
+ *
+ * omp's panel metadata is platform-conditional in exactly one EVALUATED place:
+ * `modes/settings.ts` appends an `apple` option to `spelling.autocomplete` under
+ * `process.platform === "darwin"`. The chamber ships one schema for every client
+ * and CI runs on Linux, so generating against whatever host happened to run the
+ * script made the gate fail for a file produced on macOS — measured, the only
+ * diff was that one option and everything else was byte-identical.
+ *
+ * The schema is generated against the macOS view because it is the SUPERSET:
+ * `definition.values` (the vocabulary omp actually accepts) is the same on every
+ * platform, so the extra entry is a display label, and a non-macOS client simply
+ * never picks it. omp's own macOS-only ROWS are already platform-independent
+ * here — they carry `ui.condition: "macOS"`, a string the panel evaluates.
+ *
+ * The native addon must load BEFORE the pin: it validates the RUNNING platform
+ * against its own build and refuses a mismatch, which is why pinning first
+ * answers `Failed to load pi_natives native addon for darwin-arm64` on Linux.
+ */
+async function pinGenerationPlatform(pkgDir) {
+  await import(pkgDir.replace(/pi-coding-agent$/, 'pi-natives'));
+  Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+}
+
 /** One schema entry, in the chamber's `SchemaEntry` shape. */
 function toEntry(definition) {
   const entry = { type: definition.type };
@@ -72,6 +102,7 @@ function toEntry(definition) {
 async function build() {
   const pkgDir = findPackageDir();
   const tuiDir = pkgDir.replace(/pi-coding-agent$/, 'pi-tui');
+  await pinGenerationPlatform(pkgDir);
   const [{ orderedSettings }, { order, meta }] = await Promise.all([
     import(join(pkgDir, 'src/config/all-settings.ts')),
     readTabs(tuiDir),
