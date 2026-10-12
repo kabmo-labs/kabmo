@@ -10,6 +10,7 @@ import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-fo
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
+import { selectVisibleSessions } from '@/shared/lib/workspace/session-visibility';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
@@ -90,7 +91,14 @@ export function MobileSessionCategory({
   const filteredSessions = (folder.sessions || []).filter((s) =>
     showArchived ? s.is_archived === 1 : s.is_archived !== 1
   );
-  const visibleSessions = filteredSessions.slice(0, visibleCount);
+  // Same window as the desktop sidebar: the opened session and every live run
+  // stay on screen past the boundary, so nothing being watched is paginated
+  // away on the phone either.
+  const { rendered: visibleSessions, hiddenCount } = selectVisibleSessions(
+    filteredSessions,
+    visibleCount,
+    { activeSessionId, sessionStatus },
+  );
   const ProjectIcon = getProjectIcon(folder.icon);
 
   return (
@@ -231,7 +239,7 @@ export function MobileSessionCategory({
             );
           })}
 
-          {filteredSessions.length > visibleCount && (
+          {hiddenCount > 0 && (
             <button
               type="button"
               onClick={showMore}
@@ -246,7 +254,7 @@ export function MobileSessionCategory({
                 <ChevronDown size={12} />
               </span>
               <span className="w-2 shrink-0" />
-              <span className="truncate">Show more sessions ({filteredSessions.length - visibleCount})</span>
+              <span className="truncate">Show more sessions ({hiddenCount})</span>
             </button>
           )}
         </div>

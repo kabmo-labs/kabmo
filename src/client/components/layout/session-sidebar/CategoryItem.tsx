@@ -12,6 +12,7 @@ import { SubagentList } from '@/client/components/common/subagent-list';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
+import { selectVisibleSessions } from '@/shared/lib/workspace/session-visibility';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 
@@ -116,8 +117,14 @@ export function Category({
     showArchived ? s.is_archived === 1 : s.is_archived !== 1
   );
 
-  const renderedSessions = visibleSessions.slice(0, visibleCount);
-  const hasMore = visibleSessions.length > visibleCount;
+  // The opened session and every live run are exempt from the window, so a
+  // session being watched is never one of the hidden rows.
+  const { rendered: renderedSessions, hiddenCount } = selectVisibleSessions(
+    visibleSessions,
+    visibleCount,
+    { activeSessionId, sessionStatus },
+  );
+  const hasMore = hiddenCount > 0;
 
   return (
     <div className="space-y-1">
@@ -264,7 +271,7 @@ export function Category({
               </span>
               <span className="w-2 shrink-0" />
               <span className="truncate leading-snug">
-                Show more sessions ({visibleSessions.length - visibleCount})
+                Show more sessions ({hiddenCount})
               </span>
             </button>
           )}

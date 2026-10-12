@@ -10,6 +10,10 @@ export interface SessionItemData {
   created_at?: string;
   updated_at?: string;
   is_archived?: number;
+  /** MOCK's `sessions` table column, carried through by the sidebar loader. Real
+   *  mode writes `0` for every row (the opened session is the URL's), so the
+   *  rows and the pagination read it only as a fallback for a mock install. */
+  is_active?: number;
   timeAgo?: string;
   hasArrow?: boolean;
   hasSubagents?: boolean;
