@@ -4,6 +4,7 @@ import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
+import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
@@ -24,11 +25,13 @@ interface MobileFullEditorProps {
     repo?: string;
   };
   onClose: () => void;
+  /** The file this editor names is gone from disk. */
+  missing?: boolean;
   /** Fired after a debounced write lands, so the workspace panels can refresh. */
   onFileSaved?: () => void;
 }
 
-export function MobileFullEditor({ file, onClose, onFileSaved }: MobileFullEditorProps) {
+export function MobileFullEditor({ file, missing = false, onClose, onFileSaved }: MobileFullEditorProps) {
   const [isPreview, setIsPreview] = useState(file.name.endsWith('.md'));
   const [fontSize, setFontSize] = useState(EDITOR_DEFAULT_FONT_SIZE);
   const [wordWrap, setWordWrap] = useState(true);
@@ -42,6 +45,9 @@ export function MobileFullEditor({ file, onClose, onFileSaved }: MobileFullEdito
     reportSaveError: true,
     downloadMimeType: 'text/plain;charset=utf-8',
     onFileSaved,
+    // The write path stands down on a deleted file (and asks before a Save
+    // recreates it) — see `use-file-writes.ts`.
+    missing,
   });
 
   // A search row on the phone opens this full-screen editor, so the hand-off
@@ -79,6 +85,8 @@ export function MobileFullEditor({ file, onClose, onFileSaved }: MobileFullEdito
         wordWrap={wordWrap}
         copied={editor.copied}
         isImage={editor.isImage}
+        missing={missing}
+        onSave={editor.saveNow}
         onClose={onClose}
         onTogglePreview={() => setIsPreview(!isPreview)}
         onToggleWrap={() => setWordWrap(!wordWrap)}
@@ -87,6 +95,21 @@ export function MobileFullEditor({ file, onClose, onFileSaved }: MobileFullEdito
         onCopy={editor.copy}
         onDownload={editor.download}
       />
+
+      {/* A deleted file: the buffer is still on screen and still editable, so
+          the state has to be stated where the user is looking, and the Save
+          that recreates it has to be confirmed. Same rule as the desktop pane. */}
+      {missing && (
+        <div className="flex items-start gap-2 px-3 py-2 border-b border-error/30 bg-error/10 text-error shrink-0">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <div className="text-[11.5px] font-sans">This file was deleted from disk.</div>
+            <div className="text-[11px] font-sans text-error/80">
+              The buffer is still here. Saving recreates the file — autosave is off until then.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Editor Content Area - Desktop styled: bg-paper text-ink. An image owns
           its own pan/zoom, so it replaces the scrolling text container rather
@@ -198,6 +221,15 @@ export function MobileFullEditor({ file, onClose, onFileSaved }: MobileFullEdito
           {editor.saveStatus === 'idle' && file.path && <span className="truncate max-w-[140px]">{file.path}</span>}
         </div>
       </footer>
+
+      {editor.saveMissingConfirm && file.path && (
+        <SaveDeletedFileModal
+          fileName={file.name}
+          filePath={file.path}
+          onClose={editor.cancelSaveMissing}
+          onConfirm={editor.confirmSaveMissing}
+        />
+      )}
 
     </div>
   );

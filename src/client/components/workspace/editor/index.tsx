@@ -11,6 +11,7 @@ import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
 import { FilePane } from '@/client/components/workspace/editor/FilePane';
+import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
@@ -66,14 +67,6 @@ export function Editor({
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
   const editorFontFamily = useEditorFontStack();
 
-  const editor = useFileEditor(activeFile ?? null, {
-    // A file that could not be read must report the failure, not substitute
-    // placeholder text — the mock sample used to be written straight over the
-    // real file by the next save.
-    reportSaveError: true,
-    onFileSaved,
-  });
-
   // A deleted file keeps its tab (its buffer is still on screen), but the tab
   // strip must say so. Only a plain FILE tab is probed: a diff tab's path names
   // a change rather than a document, and an attachment chip carries inline
@@ -83,6 +76,18 @@ export function Editor({
     openedFiles.filter((file) => !file.isDiff && file.content === undefined),
     refreshKey,
   );
+  const activeFileMissing = Boolean(activeFile && missingIds.has(activeFile.id));
+
+  const editor = useFileEditor(activeFile ?? null, {
+    // A file that could not be read must report the failure, not substitute
+    // placeholder text — the mock sample used to be written straight over the
+    // real file by the next save.
+    reportSaveError: true,
+    onFileSaved,
+    // The write path needs to know: a Save on a deleted file must ask first, and
+    // a debounced autosave must not recreate it at all.
+    missing: activeFileMissing,
+  });
 
   // Resolved unconditionally: hooks cannot live in the branch that draws the
   // view, and the resolver is cheap when no plugin contributed one.
@@ -302,12 +307,24 @@ export function Editor({
             editorFontFamily={editorFontFamily}
             togglePreview={togglePreview}
             revealActive={Boolean(searchReveal)}
+            missing={activeFileMissing}
           />
         )
       ) : (
         <div className="flex-1 flex items-center justify-center text-ink/40">
           <p className="font-mono text-sm">Select a tab to view content</p>
         </div>
+      )}
+
+      {/* Owned here, not by the pane: switching tabs must not close a question
+          the user has not answered. The modal names the file it will recreate. */}
+      {editor.saveMissingConfirm && activeFile && (
+        <SaveDeletedFileModal
+          fileName={activeFile.name}
+          filePath={activeFile.path}
+          onClose={editor.cancelSaveMissing}
+          onConfirm={editor.confirmSaveMissing}
+        />
       )}
     </div>
   );

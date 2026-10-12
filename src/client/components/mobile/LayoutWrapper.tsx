@@ -11,6 +11,7 @@ import { SettingsModal } from '@/client/components/settings/LazyModal';
 import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
+import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
 
 interface MobileLayoutWrapperProps {
   onDesktopToggle?: () => void;
@@ -38,6 +39,18 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   const [autoOpenAddProvider, setAutoOpenAddProvider] = useState(false);
 
   const handleWorkspaceChanged = useCallback(() => setRefreshKey(k => k + 1), []);
+
+  // The phone's full-screen editor shows ONE file at a time, so the probe has a
+  // single subject and a constant id. `refreshKey` is what carries a deletion
+  // here: the Files panel's delete, an agent `rm` that triggers a workspace
+  // refresh, and the editor's own save all bump it.
+  const mobileEditorMissingIds = useMissingFiles(
+    mobileEditorFile?.path
+      ? [{ id: 'mobile-editor', path: mobileEditorFile.path, root: mobileEditorFile.root }]
+      : [],
+    refreshKey,
+  );
+  const mobileEditorMissing = mobileEditorMissingIds.size > 0;
 
   const { folder: sessionFolder } = activeProjectForSession(folders, sessionId);
   const contextFolder = sessionFolder ?? (folderId ? folders.find(f => String(f.id) === String(folderId)) ?? null : null);
@@ -214,6 +227,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
       {mobileEditorFile && (
         <MobileFullEditor
           file={mobileEditorFile}
+          missing={mobileEditorMissing}
           onClose={() => setMobileEditorFile(null)}
           onFileSaved={handleWorkspaceChanged}
         />

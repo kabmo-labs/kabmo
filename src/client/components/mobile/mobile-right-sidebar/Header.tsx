@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
+import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Save, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 
 interface EditorHeaderProps {
@@ -10,6 +10,10 @@ interface EditorHeaderProps {
   copied: boolean;
   /** Raster image: wrap and font zoom are text-only, so both are hidden. */
   isImage?: boolean;
+  /** The file is gone from disk: the name goes red and struck through. */
+  missing?: boolean;
+  /** Save, offered ONLY while the file is missing. */
+  onSave?: () => void;
   onClose: () => void;
   onTogglePreview: () => void;
   onToggleWrap: () => void;
@@ -27,6 +31,8 @@ export function EditorHeader({
   wordWrap,
   copied,
   isImage = false,
+  missing = false,
+  onSave,
   onClose,
   onTogglePreview,
   onToggleWrap,
@@ -57,12 +63,29 @@ export function EditorHeader({
         </button>
 
         <div className="flex items-center space-x-1.5 truncate">
-          <FileIcon name={fileName} size={15} className="flex-shrink-0" />
-          <span className="font-semibold text-xs text-ink truncate">{fileName}</span>
+          <FileIcon name={fileName} size={15} className={`flex-shrink-0${missing ? ' text-error' : ''}`} />
+          <span className={`font-semibold text-xs truncate${missing ? ' text-error line-through' : ' text-ink'}`}>{fileName}</span>
         </div>
       </div>
 
       <div className="flex items-center space-x-1 text-ink/70 flex-shrink-0">
+        {/* Only while the file is gone. With it present the debounced autosave
+            and the closing flush already own every write, and a Save here would
+            be a second way to do what typing already did. Missing is the one
+            state where autosave stands down, so the explicit Save is the only
+            route back — it opens the confirmation. */}
+        {missing && onSave && (
+          <button
+            type="button"
+            onClick={onSave}
+            className="p-1.5 rounded bg-error text-canvas hover:bg-error/90 transition-colors cursor-pointer"
+            title="Save and recreate the file"
+            aria-label="Save and recreate the file"
+          >
+            <Save size={15} />
+          </button>
+        )}
+
         {isMarkdown && (
           <button
             type="button"

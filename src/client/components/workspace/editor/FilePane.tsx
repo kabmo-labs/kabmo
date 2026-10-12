@@ -36,6 +36,8 @@ interface FilePaneProps {
   togglePreview: () => void;
   /** A search hit was jumped to in this file, so its matches are painted. */
   revealActive: boolean;
+  /** The file this tab names is gone from disk (see `useMissingFiles`). */
+  missing: boolean;
 }
 
 /**
@@ -71,6 +73,7 @@ export function FilePane({
   editorFontFamily,
   togglePreview,
   revealActive,
+  missing,
 }: FilePaneProps) {
   return (
     <>
@@ -95,6 +98,21 @@ export function FilePane({
         onDownload={editor.download}
         onToggleMaximize={() => setIsMaximized(!isMaximized)}
       />
+
+      {/* The tab strip says a deleted file is gone, but it is a small target in
+          a crowded row — the banner states the same fact where the user is
+          looking, and names the one thing that is still possible. */}
+      {missing && (
+        <div className="flex items-start gap-2 px-3 py-2 border-b border-error/30 bg-error/10 text-error">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <div className="text-[11.5px] font-sans">This file was deleted from disk.</div>
+            <div className="text-[11px] font-sans text-error/80">
+              The buffer is still here. Saving recreates the file — autosave is off until then.
+            </div>
+          </div>
+        </div>
+      )}
 
       {editor.isImage && editor.imageUrl ? (
         // The picture owns its own pan/zoom, so it must NOT sit inside the

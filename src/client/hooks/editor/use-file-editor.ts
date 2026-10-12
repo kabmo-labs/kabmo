@@ -3,8 +3,9 @@ import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 import { buildFsRawUrl } from '@/shared/lib/fs/paths';
 import { detectLineEnding, toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
-import { retainKeys, saveEditorFile } from '@/client/hooks/editor/save-file';
+import { retainKeys } from '@/client/hooks/editor/save-file';
 import { useFileTransfer } from '@/client/hooks/editor/use-file-transfer';
+import { useFileWrites } from '@/client/hooks/editor/use-file-writes';
 
 export type FileEditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -27,6 +28,16 @@ export interface UseFileEditorOptions {
   downloadMimeType?: string;
   /** Fired after a write lands, so workspace panels can refresh. */
   onFileSaved?: () => void;
+  /**
+   * The file this tab names is gone from disk (the tab strip strikes it
+   * through; see `useMissingFiles`).
+   *
+   * A save then means something the user did not ask for — writing the buffer
+   * back would CREATE the file again — so the debounced autosave stands down
+   * and an explicit Save asks first. Without this, a keystroke in a tab whose
+   * file was deleted a moment ago silently resurrected it on disk.
+   */
+  missing?: boolean;
 }
 
 export interface UseFileEditorResult {
@@ -60,6 +71,12 @@ export interface UseFileEditorResult {
   reset: () => void;
   /** Drop cached content for files no longer open. */
   retain: (ids: Array<number | string>) => void;
+  /** The file was deleted, so a Save is waiting on the user's answer. */
+  saveMissingConfirm: boolean;
+  /** Write the buffer anyway — this recreates the file on disk. */
+  confirmSaveMissing: () => void;
+  /** Dismiss the dialog; nothing is written and the buffer stays dirty. */
+  cancelSaveMissing: () => void;
 }
 
 function targetKey(target: FileEditorTarget): string {
@@ -81,6 +98,7 @@ export function useFileEditor(
     reportSaveError = false,
     downloadMimeType = 'text/plain',
     onFileSaved,
+    missing = false,
   } = options;
 
   const [contents, setContents] = useState<Record<string, string>>({});
@@ -139,27 +157,33 @@ export function useFileEditor(
     setLineEndings((prev) => ({ ...prev, [fileKey]: ending }));
   }, []);
 
-  const persist = useCallback(
-    async (file: FileEditorTarget, text: string) => {
-      if (!file.path) return;
-      setSaveStatus('saving');
-      const fileKey = targetKey(file);
-      // The buffer is LF; the file's own ending is applied by the server, so an
-      // untouched CRLF file stays byte-identical and an LF file stays LF.
-      const written = await saveEditorFile(file, text, lineEndingsRef.current[fileKey] ?? 'lf');
-      if (written) {
-        setSaveStatus('saved');
-        setBaselines((prev) => ({ ...prev, [fileKey]: text }));
-        onFileSaved?.();
-      } else {
-        setSaveStatus(reportSaveError ? 'error' : 'idle');
-      }
+  /**
+   * The write path (debounced autosave, explicit Save, the deleted-file
+   * confirmation) lives in its own hook — see `use-file-writes.ts` for why a
+   * deleted file is never written back by a timer.
+   *
+   * It is called through a ref because `onChange` below must stay stable while
+   * the callbacks it forwards to are rebuilt on every render.
+   */
+  const writes = useFileWrites({
+    target,
+    isImage,
+    loadError,
+    missing,
+    contentsRef,
+    lineEndingsRef,
+    pendingRef,
+    flushOnUnmount,
+    onSaveStart: () => setSaveStatus('saving'),
+    onSaved: (fileKey, text) => {
+      setSaveStatus('saved');
+      setBaselines((prev) => ({ ...prev, [fileKey]: text }));
+      onFileSaved?.();
     },
-    [onFileSaved, reportSaveError],
-  );
-
-  const persistRef = useRef(persist);
-  persistRef.current = persist;
+    onSaveFailed: () => setSaveStatus(reportSaveError ? 'error' : 'idle'),
+  });
+  const writesRef = useRef(writes);
+  writesRef.current = writes;
 
   // Read the active file once per key. A cancelled guard keeps a late response
   // from a previous file from overwriting the one now on screen.
@@ -256,30 +280,10 @@ export function useFileEditor(
       if (!target || isImage) return;
       const fileKey = targetKey(target);
       setContents((prev) => ({ ...prev, [fileKey]: next }));
-      if (!target.path) return;
-      if (pendingRef.current) window.clearTimeout(pendingRef.current.timer);
-      const timer = window.setTimeout(() => {
-        pendingRef.current = null;
-        void persistRef.current(target, next);
-      }, 800);
-      pendingRef.current = { timer, file: target, content: next };
+      writesRef.current.onChange(next);
     },
     [target, isImage],
   );
-
-  const saveNow = useCallback(() => {
-    if (!target || isImage) return;
-    // A file whose read failed has no trustworthy buffer: saving it would write
-    // the empty placeholder over the real file. The user must reopen it first.
-    if (loadError) return;
-    const text = contents[targetKey(target)];
-    if (text === undefined) return;
-    if (pendingRef.current) {
-      window.clearTimeout(pendingRef.current.timer);
-      pendingRef.current = null;
-    }
-    void persistRef.current(target, text);
-  }, [target, contents, isImage, loadError]);
 
   const { copied, copy, download } = useFileTransfer({
     target,
@@ -311,17 +315,6 @@ export function useFileEditor(
     setLineEndings((prev) => retainKeys(prev, keep));
   }, []);
 
-  useEffect(() => {
-    if (!flushOnUnmount) return;
-    return () => {
-      const pending = pendingRef.current;
-      if (!pending) return;
-      window.clearTimeout(pending.timer);
-      pendingRef.current = null;
-      void persistRef.current(pending.file, pending.content);
-    };
-  }, [flushOnUnmount]);
-
   return {
     content,
     onChange,
@@ -336,10 +329,13 @@ export function useFileEditor(
     language: target ? getLanguageFromPath(target.name) : 'javascript',
     isImage,
     imageUrl,
-    saveNow,
+    saveNow: writes.saveNow,
     copy,
     download,
     reset,
     retain,
+    saveMissingConfirm: writes.saveMissingConfirm,
+    confirmSaveMissing: writes.confirmSaveMissing,
+    cancelSaveMissing: writes.cancelSaveMissing,
   };
 }
