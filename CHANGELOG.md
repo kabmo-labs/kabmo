@@ -5,6 +5,15 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.11.1](https://github.com/rajebdev/ompchamber/compare/v4.11.0...v4.11.1) — 2026-10-12
+
+### Fixed
+
+* **chat:** name a session with its own model in Rename with AI ([10289e2](https://github.com/rajebdev/ompchamber/commit/10289e2ac6e5add02c8941cbf6ce3c2d8e99d5a6))
+* **chat:** title a /skill: session from its invocation, in one rule ([ca9addf](https://github.com/rajebdev/ompchamber/commit/ca9addf8676ecfd42528053b49ffcefadd07af60))
+* **ci:** generate the settings schema against one pinned platform ([3b9c715](https://github.com/rajebdev/ompchamber/commit/3b9c7158bb8806956267aee3566cce4bbf3b2de8))
+* **omp:** create the overlay's agent directory before a spawn names it ([83665a3](https://github.com/rajebdev/ompchamber/commit/83665a3abbb195b73263d311ef4eaa7200519323))
+
 ## [4.11.0](https://github.com/rajebdev/ompchamber/compare/v4.10.0...v4.11.0) — 2026-10-12
 
 ### Added
