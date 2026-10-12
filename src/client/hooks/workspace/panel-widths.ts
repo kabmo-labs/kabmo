@@ -6,7 +6,7 @@ import {
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 
 /** Session-state key holding this session's own per-panel widths. */
-const PANEL_WIDTHS_KEY = 'layout.panelWidths';
+export const PANEL_WIDTHS_KEY = 'layout.panelWidths';
 
 interface PanelWidthsResult {
   widths: PanelWidths;
@@ -23,8 +23,8 @@ interface PanelWidthsResult {
  * switching sessions brings back the layout that session was left in.
  *
  * A session that has never been resized starts EMPTY, so every panel opens at
- * its own default (`DEFAULT_EDITOR_FRACTIONS`, `DEFAULT_RIGHT_PANEL_FRACTION`,
- * `DEFAULT_LEFT_PANEL_WIDTH`). There is deliberately no global seed: a former
+ * its own default (`DEFAULT_EDITOR_FRACTIONS`, `DEFAULT_RIGHT_PANEL_FRACTION`).
+ * There is deliberately no global seed: a former
  * `app_settings.desktopLayoutSizes` carried the last global drag forward into
  * every new session, and since nothing has written it since the per-session
  * migration it was frozen at a stale value — measured, it pinned a new
@@ -32,6 +32,10 @@ interface PanelWidthsResult {
  * mechanism could not be repaired by writing to it either: a write would have
  * to run before this session's own blob has loaded and would therefore clobber
  * it with the global value.
+ *
+ * The SIDEBAR is not in this map at all — it is the one panel whose content does
+ * not change with the session, so its width lives in `app_settings`
+ * (`sidebar-width.ts`) and a session switch cannot move it.
  */
 export function usePanelWidths(): PanelWidthsResult {
   const [widths, setWidths] = useSessionState<PanelWidths>(PANEL_WIDTHS_KEY, {});

@@ -1,22 +1,23 @@
 /**
  * Per-panel width state for the desktop layout.
  *
- * Every resizable surface remembers its OWN width: the session sidebar, the
- * editor panel (source and diff tabs separately, since a diff wants room a
- * file view does not) and each right-panel view (see `right-panels.ts`).
- * Collapsing those into one slot per group is what made switching a panel look
- * like a reset. The chat column is the group's filler — flexbox sizes it — so
- * it has no remembered width, only a floor it may not be pushed below.
+ * Every resizable surface remembers its OWN width: the editor panel (source and
+ * diff tabs separately, since a diff wants room a file view does not) and each
+ * right-panel view (see `right-panels.ts`). Collapsing those into one slot per
+ * group is what made switching a panel look like a reset. The chat column is the
+ * group's filler — flexbox sizes it — so it has no remembered width, only a
+ * floor it may not be pushed below.
  *
- * Two units, deliberately:
+ * The **sidebar is deliberately NOT here**: it is the one surface that shows the
+ * same thing in every session, so its width lives in `app_settings` instead
+ * (`sidebar-width.ts`). A `left` slot in this map changed the sidebar whenever
+ * the user picked a different session.
  *
- * - The **sidebar** is pixels. It holds a session list, which does not get more
- *   useful on a wider monitor, and OpenChamber's sidebar is pixels too.
- * - The **editor and right panels** are a *share of the group's available
- *   area*. A pixel width is only right on the display it was dragged on; a
- *   fraction follows a window resize. A remembered pixel value is kept
- *   alongside as the fallback for the window before the area is measured and
- *   for blobs written before the fraction existed.
+ * The editor and right panels are a *share of the group's available area*. A
+ * pixel width is only right on the display it was dragged on; a fraction
+ * follows a window resize. A remembered pixel value is kept alongside as the
+ * fallback for the window before the area is measured and for blobs written
+ * before the fraction existed.
  *
  * Sizes persist per session as `layout.panelWidths` in `session_ui_state`.
  */
@@ -36,8 +37,6 @@ export interface PanelWidth {
 }
 
 export interface PanelWidths {
-  /** Session sidebar. Pixels only — it does not scale with the window. */
-  left?: number;
   /** Editor panel while a source file tab is active. */
   editor?: PanelWidth;
   /** Editor panel while a diff tab is active. */
@@ -81,21 +80,17 @@ export const DEFAULT_EDITOR_WIDTHS: Record<EditorWidthMode, number> = {
 export const PAIR_MAX_TOTAL_FRACTION = 0.7;
 export const PAIR_MAX_FRACTION = 0.6;
 
-/** Fallback for the sidebar, which has no fraction. */
-export const DEFAULT_LEFT_PANEL_WIDTH = 280;
-
 /**
- * Panel floors and ceilings. The sidebar ceiling and the chat floor are a pair:
- * `MIN_CHAT_PANEL_WIDTH` is what stops the workspace stack from eating the
- * conversation, and it is also why the sidebar cannot open past 500 and still
- * leave the editor (320) and a browser view (320) room on a 1440px display.
+ * Panel floors and ceilings. The chat floor pairs with the sidebar ceiling in
+ * `sidebar-width.ts`: `MIN_CHAT_PANEL_WIDTH` is what stops the workspace stack
+ * from eating the conversation, and it is also why the sidebar cannot open past
+ * 500 and still leave the editor (320) and a browser view (320) room on a
+ * 1440px display.
  *
  * `MIN_EDITOR_PANEL_WIDTH` matches the shared right-panel floor so the two
  * panels cannot disagree about the narrowest width the same content is shown
  * at.
  */
-export const MIN_LEFT_PANEL_WIDTH = 264;
-export const MAX_LEFT_PANEL_WIDTH = 500;
 export const MIN_CHAT_PANEL_WIDTH = 400;
 export const MIN_EDITOR_PANEL_WIDTH = 320;
 
@@ -268,9 +263,19 @@ const DEFAULT_PLUGIN_PANEL_WIDTH = 560;
  * Fold a freshly measured patch over the stored widths (one level deep for
  * `right`, and within a slot for its two units — a fraction patch must not
  * discard the px fallback it was derived from).
+ *
+ * A retired `left` slot is DROPPED rather than carried: a blob written while the
+ * sidebar still lived in this map has one, and keeping it would leave a second
+ * answer for a width that now has one home (`sidebar-width.ts`). `current` is
+ * read from `session_ui_state`, so its type is the current `PanelWidths` while
+ * its runtime value can still be the older shape.
  */
 export function mergePanelWidths(current: PanelWidths, patch: PanelWidths): PanelWidths {
-  const next: PanelWidths = { ...current, ...patch };
+  // Declared as an intersection, not a cast: a persisted blob written before
+  // the cutover still carries `left`, so the runtime shape is wider than
+  // `PanelWidths` even though the read is typed as it.
+  const next: PanelWidths & { left?: unknown } = { ...current, ...patch };
+  delete next.left;
   if (patch.right) {
     const right: Record<string, PanelWidth> = { ...current.right };
     for (const [view, value] of Object.entries(patch.right)) {

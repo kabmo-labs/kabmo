@@ -18,7 +18,11 @@
  * - layout.showRightPanel     boolean
  * - layout.showLeftPanel      boolean
  * - layout.userToggledEditor  boolean | null (null = follow whether a file is open)
- * - layout.panelWidths        PanelWidths (per-panel widths; a session that has never been resized has none, so panels open at their defaults)
+ * - layout.panelWidths        PanelWidths (the editor's and the right panel's
+ *                             widths, per session; a session that has never
+ *                             been resized has none, so those panels open at
+ *                             their defaults). The SIDEBAR is not in here — its
+ *                             width is global (`app_settings.omp_sidebar_width`).
  * - layout.openedFiles        editor file entries array
  * - layout.activeFileId       number | null
  * - editor.previewMode        Record<fileId, boolean>

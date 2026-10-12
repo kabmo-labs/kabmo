@@ -13,13 +13,13 @@ import {
   mergePanelWidths,
   pairMaxSize,
   resolvePanelWidth,
+  type PanelWidths,
 } from '@/shared/lib/workspace/panel-widths';
 import { DEFAULT_RIGHT_PANEL_FRACTION } from '@/shared/lib/workspace/right-panels';
 
 describe('mergePanelWidths', () => {
   test('merging one view keeps every other remembered width', () => {
     const stored = {
-      left: 342,
       editor: { px: 620, fraction: 0.54 },
       diff: { fraction: 0.6 },
       right: { files: { px: 300, fraction: 0.26 }, git: { px: 260 } },
@@ -32,9 +32,20 @@ describe('mergePanelWidths', () => {
       git: { px: 260 },
       browser: { px: 804, fraction: 0.7 },
     });
-    expect(merged.left).toBe(342);
     expect(merged.editor).toEqual({ px: 620, fraction: 0.54 });
     expect(merged.diff).toEqual({ fraction: 0.6 });
+  });
+
+  test('the retired sidebar slot is dropped, never carried', () => {
+    // A blob written while the sidebar still lived in this map holds a `left`;
+    // keeping it would leave a second answer for a width that is now global.
+    // Named const, not an inline cast: the runtime shape really is wider than
+    // `PanelWidths`, and this is the only place that fact is expressed.
+    const legacyBlob = { left: 351, editor: { px: 620 } } as unknown as PanelWidths;
+    const merged = mergePanelWidths(legacyBlob, { editor: { px: 700 } });
+
+    expect(merged).toEqual({ editor: { px: 700 } });
+    expect('left' in merged).toBe(false);
   });
 
   test('a patch adds a unit without discarding the one already stored', () => {
@@ -47,12 +58,11 @@ describe('mergePanelWidths', () => {
 
   test('a resized panel replaces only its own slot', () => {
     const merged = mergePanelWidths(
-      { left: 300, editor: { px: 620 }, diff: { px: 900 }, right: { files: { px: 300 } } },
+      { editor: { px: 620 }, diff: { px: 900 }, right: { files: { px: 300 } } },
       { editor: { px: 480, fraction: 0.4 } },
     );
 
     expect(merged).toEqual({
-      left: 300,
       editor: { px: 480, fraction: 0.4 },
       diff: { px: 900 },
       right: { files: { px: 300 } },

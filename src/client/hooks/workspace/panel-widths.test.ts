@@ -33,7 +33,7 @@ import { useAvailableWidth } from '@/client/hooks/workspace/available-width';
 import { usePanelWidths } from '@/client/hooks/workspace/panel-widths';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import {
-  DEFAULT_LEFT_PANEL_WIDTH,
+  DEFAULT_EDITOR_WIDTHS,
   MIN_EDITOR_PANEL_WIDTH,
   resolvePanelWidth,
   type PanelWidths,
@@ -185,8 +185,8 @@ describe('resolvePanelWidth', () => {
       resolvePanelWidth({ stored: { px: 100 }, defaultFraction: 0.6, defaultPx: 600, available: 0, min: 320, siblingWidth: 280, handleCount: 1 }),
     ).toBe(320);
     expect(
-      resolvePanelWidth({ defaultFraction: 0.6, defaultPx: DEFAULT_LEFT_PANEL_WIDTH, available: null, min: 264, siblingWidth: 320, handleCount: 1 }),
-    ).toBe(DEFAULT_LEFT_PANEL_WIDTH);
+      resolvePanelWidth({ defaultFraction: 0.4, defaultPx: DEFAULT_EDITOR_WIDTHS.editor, available: null, min: MIN_EDITOR_PANEL_WIDTH, siblingWidth: 280, handleCount: 1 }),
+    ).toBe(DEFAULT_EDITOR_WIDTHS.editor);
   });
 
   test('a px-only remembered width is honoured as written, not rescaled', () => {
@@ -234,13 +234,13 @@ describe('usePanelWidths', () => {
 
   test('each panel owns its slot: a commit never resets another panel', async () => {
     await mountPanels();
-    await act(async () => panels?.commitWidths({ left: 320 }));
     await act(async () => panels?.commitWidths({ editor: { fraction: 0.5 } }));
     await act(async () => panels?.commitWidths({ right: { git: { px: 460 } } }));
+    await act(async () => panels?.commitWidths({ diff: { px: 900 } }));
 
-    expect(panels?.widths.left).toBe(320);
     expect(panels?.widths.editor).toEqual({ fraction: 0.5 });
     expect(panels?.widths.right?.git).toEqual({ px: 460 });
+    expect(panels?.widths.diff).toEqual({ px: 900 });
   });
 
   test('switching the right-panel view keeps the other views widths', async () => {

@@ -11,8 +11,10 @@ import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
 import { WorkspacePanels } from '@/client/components/layout/desktop-layout/WorkspacePanels';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { usePanelWidths } from '@/client/hooks/workspace/panel-widths';
+import { useSidebarWidth } from '@/client/hooks/workspace/sidebar-width';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
-import { DEFAULT_LEFT_PANEL_WIDTH, MAX_LEFT_PANEL_WIDTH, MIN_LEFT_PANEL_WIDTH, type EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
+import { MAX_LEFT_PANEL_WIDTH, MIN_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
+import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
 import { useChamberEvent, useWindowEvent } from '@/client/hooks/ui/window-event';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
@@ -36,6 +38,9 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   const [activeRightPanel, setActiveRightPanel] = useSessionState<string>('layout.activeRightPanel', (appSettings.activeRightPanel as string) ?? 'files');
   const [showLeftPanel, setShowLeftPanel] = useSessionState<boolean>('layout.showLeftPanel', appSettings.showLeftPanel ?? true);
   const { widths: panelWidths, commitWidths } = usePanelWidths();
+  // The sidebar's width is the one panel width that is NOT per session: it
+  // lists the same sessions in every chat, so it lives in `app_settings`.
+  const [sidebarWidth, commitSidebarWidth] = useSidebarWidth();
 
   const editorPanelRef = useRef<PanelImperativeHandle | null>(null);
   const rightPanelRef = useRef<PanelImperativeHandle | null>(null);
@@ -216,10 +221,10 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
           id="ompchamber-main"
           onLayoutChanged={() => {
             const left = leftPanelRef.current?.getSize()?.inPixels;
-            if (left != null && left > 0) commitWidths({ left: Math.round(left) });
+            if (left != null && left > 0) commitSidebarWidth(Math.round(left));
           }}
         >
-          <Panel panelRef={leftPanelRef} id="left-panel" defaultSize={panelWidths.left ?? DEFAULT_LEFT_PANEL_WIDTH} minSize={MIN_LEFT_PANEL_WIDTH} maxSize={MAX_LEFT_PANEL_WIDTH} collapsed={!showLeftPanel}>
+          <Panel panelRef={leftPanelRef} id="left-panel" defaultSize={sidebarWidth} minSize={MIN_LEFT_PANEL_WIDTH} maxSize={MAX_LEFT_PANEL_WIDTH} collapsed={!showLeftPanel}>
             <SessionSidebar className="w-full h-full" onClose={() => handleToggleLeftPanel(false)} appSettings={appSettings} streamStatus={streamStatus} />
           </Panel>
           {showLeftPanel && <ResizeHandle />}
