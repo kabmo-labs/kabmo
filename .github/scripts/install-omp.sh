@@ -20,7 +20,15 @@ fi
 # audit in docs/omp-18.8-adoption-plan.md names which features each phase
 # depends on, and the RPC verbs they use (steer, set_event_filter, isSettled)
 # do not exist on the 18.3.0 this used to pin.
-OMP_VERSION="${OMP_VERSION:-18.8.3}"
+#
+# 18.10.0 (2026-10-12) is a surface-identical step up from the 18.9.2 this pinned
+# before, in both directions the chamber reads: the RPC wire schema carries the
+# SAME 67 commands and 283 definitions with nothing added, removed or changed,
+# and `orderedSettings()` produces a byte-identical schema (548 settings, 413
+# panel entries). What it does change is session IDENTITY — a session marked
+# moved away now forks on resume, answering a new id and file — which is why
+# `registerSpawnedSession` exists; see the audit for the measurement.
+OMP_VERSION="${OMP_VERSION:-18.10.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

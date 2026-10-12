@@ -1,6 +1,6 @@
 name: CI
 
-# The four gates every change is required to pass (CONTRIBUTING.md §1), on the pull
+# The gates every change is required to pass (CONTRIBUTING.md §1), on the pull
 # request and again on `main`.
 #
 # They used to run only inside `release.yml` — after a merge, on the commit that was
@@ -83,3 +83,36 @@ jobs:
             exit 1
           fi
           echo "No file over 350 lines."
+
+  # The settings panel is driven by a GENERATED table, so its staleness is a
+  # gate rather than a review note: `bun run omp:schema:check` regenerates from
+  # the installed omp and exits non-zero when the committed JSON differs. A
+  # stale schema is otherwise silent — the panel simply stops offering the rows
+  # upstream added (measured: 9 settings behind at 18.9.2, and the file had been
+  # frozen since the Remix→Elysia migration before the generator existed).
+  #
+  # A separate job, not a step in `gates`: the generator imports the INSTALLED
+  # `@oh-my-pi/pi-coding-agent`, which this repo does not depend on, so this job
+  # must install omp first — a Bun global install is minutes on a cold runner
+  # and would otherwise sit in front of every other gate.
+  #
+  # The pin lives in `.github/scripts/install-omp.sh` (shared with the bot
+  # workflows); this job deliberately does not restate it, so the two cannot
+  # disagree about which omp the schema was generated from.
+  schema:
+    name: Settings schema
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install the pinned omp
+        run: bash .github/scripts/install-omp.sh
+
+      - name: Check the settings schema is current
+        run: bun run omp:schema:check
