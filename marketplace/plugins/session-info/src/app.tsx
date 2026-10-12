@@ -21,9 +21,9 @@ import { Field, FieldList, Note, Panel, TextAreaField } from '@ompchamber/ui/com
  *   them itself.
  * - `contentScript` + an imported stylesheet — the app-shell half. This is the
  *   only contribution that touches DOM the host did not hand it, so it also
- *   demonstrates the two rules that come with it: the script gives its DOM back
- *   through the disposer, and the CSS is scoped under the attribute it sets so
- *   it cannot leak onto the host's chrome.
+ *   demonstrates the two rules that come with it: the script appends into the
+ *   ROOT element the context hands it (that element is what the plugin's own
+ *   CSS is scoped to), and it gives its DOM back through the disposer.
  */
 
 /** The status line, from the same save state the field reports. */
@@ -131,14 +131,24 @@ function ScratchpadPanel() {
 /**
  * The `contentScript` slot, plus the stylesheet its import produces.
  *
- * The attribute on `<html>` is what the imported CSS scopes under, and the
- * disposer removes BOTH — a content script that leaves its attribute behind
- * would keep its rules matching after it was unloaded.
+ * The context hands over a ROOT element, and that is where this script's DOM
+ * goes. The element carries this plugin's scope attribute, which is what the
+ * imported stylesheet is scoped to — a node appended to `document.body`
+ * instead would sit outside the surface and its own CSS could not reach it.
+ *
+ * The disposer releases what the host cannot. The DOM here needs no undoing —
+ * the host removes the whole root subtree on teardown — but a script that
+ * registered a listener or a timer has no other place to release it, and that
+ * is what the returned function is for.
  */
-function mountShellDecoration(context: { pluginId: string; generation: number }): () => void {
-  document.documentElement.setAttribute('data-session-info', String(context.generation));
+function mountShellDecoration(context: { pluginId: string; root: HTMLElement }): () => void {
+  const badge = context.root.ownerDocument.createElement('span');
+  badge.className = 'session-info-badge';
+  badge.textContent = 'session info active';
+  context.root.appendChild(badge);
+
   return () => {
-    document.documentElement.removeAttribute('data-session-info');
+    badge.remove();
   };
 }
 

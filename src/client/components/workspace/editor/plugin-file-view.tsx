@@ -36,6 +36,7 @@ import type {
   SourceCodeRendererRegistration,
 } from '@ompchamber/plugin-sdk';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
+import { PluginIdProvider } from '@ompchamber/ui';
 
 /** What a non-diff file carries into resolution. */
 export interface PluginFileViewFile {
@@ -51,13 +52,14 @@ export interface PluginFileViewFile {
   extension?: string;
 }
 
-/** A resolved contributed view: the component, and the props it must receive. */
+/** A resolved contributed view: the component, its plugin, and its props. */
 export type ResolvedPluginFileView =
-  | { kind: 'opener'; Component: ComponentType<FileOpenerProps>; props: FileOpenerProps }
-  | { kind: 'source'; Component: ComponentType<SourceCodeRendererProps>; props: SourceCodeRendererProps };
+  | { kind: 'opener'; pluginId: string; Component: ComponentType<FileOpenerProps>; props: FileOpenerProps }
+  | { kind: 'source'; pluginId: string; Component: ComponentType<SourceCodeRendererProps>; props: SourceCodeRendererProps };
 
 /** A resolved diff view: one props shape, so no union is needed. */
 export interface ResolvedPluginDiffView {
+  pluginId: string;
   Component: ComponentType<DiffRendererProps>;
   props: DiffRendererProps;
 }
@@ -86,6 +88,7 @@ export function usePluginFileView(file: PluginFileViewFile): ResolvedPluginFileV
   if (opener) {
     return {
       kind: 'opener',
+      pluginId: opener.pluginId,
       Component: opener.registration.component,
       props: { ...context, path: file.path, extension },
     };
@@ -95,6 +98,7 @@ export function usePluginFileView(file: PluginFileViewFile): ResolvedPluginFileV
   if (renderer) {
     return {
       kind: 'source',
+      pluginId: renderer.pluginId,
       Component: renderer.registration.component,
       props: { ...context, path: file.path, content: file.content, language: file.language },
     };
@@ -119,6 +123,7 @@ export function usePluginDiffView(file: { path: string; diff: string }): Resolve
   });
   if (!renderer) return null;
   return {
+    pluginId: renderer.pluginId,
     Component: renderer.registration.component,
     props: { ...context, path: file.path, diff: file.diff },
   };
@@ -131,12 +136,24 @@ export function usePluginDiffView(file: { path: string; diff: string }): Resolve
  * branches carry different props: each branch reads `Component` and `props`
  * together so TypeScript keeps them correlated, which one spread of the union
  * would lose.
+ *
+ * The wrapper is the plugin's SURFACE, not decoration: the plugin's stylesheet
+ * is scoped to `[data-plugin-surface="<id>"]`, so a view drawn outside it would
+ * have no CSS of its own.
  */
 export function PluginFileViewBody({ view }: { view: ResolvedPluginFileView }): ComponentChildren {
   if (view.kind === 'opener') {
     const Opener = view.Component;
-    return <Opener {...view.props} />;
+    return (
+      <PluginIdProvider pluginId={view.pluginId}>
+        <Opener {...view.props} />
+      </PluginIdProvider>
+    );
   }
   const Source = view.Component;
-  return <Source {...view.props} />;
+  return (
+    <PluginIdProvider pluginId={view.pluginId}>
+      <Source {...view.props} />
+    </PluginIdProvider>
+  );
 }

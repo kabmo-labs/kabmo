@@ -142,4 +142,56 @@ describe('PluginRowScope', () => {
     act(() => render(h(PluginRowScope, { pluginId: 'healthy' }, h(Recorder, {})), container));
     expect(observed).toBe('healthy');
   });
+
+  /**
+   * The DOM half, which is what confines a plugin's stylesheet.
+   *
+   * The server serves a plugin's CSS wrapped in
+   * `@scope ([data-plugin-surface="<id>"])`, so a rule can only match inside an
+   * element carrying that attribute. The provider is where a slot component's
+   * DOM gets one — without it a plugin's own CSS would match nothing, and the
+   * pattern it replaced (marking `<html>`) matched the host's chrome too.
+   */
+  describe('the surface element', () => {
+    test('the wrapper carries the plugin scope attribute', () => {
+      act(() => render(h(PluginRowScope, { pluginId: 'alpha' }, h('div', { id: 'body' })), container));
+
+      const surface = container.querySelector('[data-plugin-surface="alpha"]');
+      expect(surface).not.toBeNull();
+      // The plugin's own markup is INSIDE it, so a scoped rule can reach it.
+      expect(surface?.querySelector('#body')).not.toBeNull();
+    });
+
+    test('the wrapper generates no box, so the host layout is undisturbed', () => {
+      act(() => render(h(PluginRowScope, { pluginId: 'alpha' }, null), container));
+      const surface = container.querySelector<HTMLElement>('[data-plugin-surface="alpha"]');
+      expect(surface?.style.display).toBe('contents');
+    });
+
+    test('two plugins on one screen each get their own surface', () => {
+      act(() =>
+        render(
+          h(
+            'div',
+            {},
+            h(PluginRowScope, { pluginId: 'alpha' }, null),
+            h(PluginRowScope, { pluginId: 'beta' }, null),
+          ),
+          container,
+        ),
+      );
+      expect(container.querySelectorAll('[data-plugin-surface]')).toHaveLength(2);
+      expect(container.querySelector('[data-plugin-surface="alpha"]')).not.toBeNull();
+      expect(container.querySelector('[data-plugin-surface="beta"]')).not.toBeNull();
+    });
+
+    test('the surface is phrasing content, so it is valid inside a button', () => {
+      // The navbar renders a plugin trigger INSIDE a `<button>`; a `<div>` there
+      // is invalid HTML and the browser would reparent it, taking the scope with
+      // it.
+      act(() => render(h('button', { id: 'host' }, h(PluginRowScope, { pluginId: 'alpha' }, h('span', {}, 'x'))), container));
+      const button = container.querySelector('#host');
+      expect(button?.querySelector('[data-plugin-surface="alpha"]')).not.toBeNull();
+    });
+  });
 });

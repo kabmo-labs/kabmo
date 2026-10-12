@@ -122,6 +122,25 @@ export interface MessageDirectiveRegistration extends KeyedRegistration {
 /** What a content script's `mount` is handed. */
 export interface ContentScriptContext {
   pluginId: string;
+  /**
+   * The element this script's DOM belongs in — the plugin's own surface.
+   *
+   * It carries the plugin's scope attribute
+   * ({@link PLUGIN_SURFACE_ATTR}), which is what confines the plugin's
+   * stylesheet to its own DOM: the host serves that CSS wrapped in
+   * `@scope ([data-plugin-surface="<id>"])`, so a rule reaches an element only
+   * when the element is inside a surface carrying the same id.
+   *
+   * That makes this container the difference between a working stylesheet and a
+   * leak. A script that appends to `document.body` instead puts its DOM OUTSIDE
+   * every surface, where the plugin's own CSS cannot match it — and the old
+   * workaround (marking `<html>` with a scoping attribute) is exactly the leak
+   * this replaced, because `<html>` is an ancestor of the host's chrome too.
+   *
+   * Append here. The host removes the whole subtree on teardown, so a node left
+   * inside it needs no removal of its own.
+   */
+  root: HTMLElement;
   /** Bumped on every reload; a script may use it to key its own DOM. */
   generation: number;
   /** Aborts when this generation is torn down. */

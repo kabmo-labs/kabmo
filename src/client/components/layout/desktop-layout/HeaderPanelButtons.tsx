@@ -3,6 +3,7 @@ import type { ComponentType } from 'preact';
 import type { HeaderDropdownProps, HeaderTriggerProps } from '@ompchamber/plugin-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
 import { headerDropdownOf, headerTriggerOf } from '@/client/lib/plugins/slots';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 
@@ -112,7 +113,11 @@ function HeaderPanelEntry({ entry, sessionId, open, onToggle, onClose }: HeaderP
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
-  const trigger = <entry.Trigger sessionId={sessionId} workspacePath={null} />;
+  const trigger = (
+    <PluginIdProvider pluginId={entry.pluginId}>
+      <entry.Trigger sessionId={sessionId} workspacePath={null} />
+    </PluginIdProvider>
+  );
 
   if (!entry.Dropdown) {
     return (
@@ -142,7 +147,9 @@ function HeaderPanelEntry({ entry, sessionId, open, onToggle, onClose }: HeaderP
         // markup, exactly as it does for a right-panel view. Mounted ONLY while
         // open, so a closed header renders nothing.
         <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-auto bg-paper border border-ink/15 rounded shadow-lg z-50">
-          <entry.Dropdown sessionId={sessionId} workspacePath={null} />
+          <PluginIdProvider pluginId={entry.pluginId}>
+            <entry.Dropdown sessionId={sessionId} workspacePath={null} />
+          </PluginIdProvider>
         </div>
       ) : null}
     </div>

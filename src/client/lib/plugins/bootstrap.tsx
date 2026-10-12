@@ -57,8 +57,11 @@ export function PluginBootstrap({ workspacePath }: { workspacePath: string | nul
  * needs no stylesheet of its own.
  *
  * Reconciled from the whole registry payload rather than per plugin, so a
- * plugin that was disabled or removed loses its `<link>` in the same pass —
- * CSS is not scoped, and a switched-off plugin must stop styling the document.
+ * plugin that was disabled or removed loses its `<link>` in the same pass. The
+ * RULES are scoped now (the server wraps every stylesheet in
+ * `@scope ([data-plugin-surface="<id>"])`), but the link still has to go: a
+ * switched-off plugin must stop shipping bytes, and an unloaded one must not
+ * keep a stale stylesheet alive.
  */
 function usePluginStylesheets(): void {
   const { panels } = usePanelRegistry();
@@ -92,6 +95,14 @@ function usePluginStylesheets(): void {
  * immediately mount it again, which is a visible flash and a lost listener
  * registration for the script that did nothing wrong.
  *
+ * **The live set is the REGISTRY's, not the slot store's.** The slot rows are
+ * what a bundle registered, and nothing clears them when a plugin is switched
+ * off — only a re-import does (`clearPluginListSlots`). Keying the effect on
+ * the rows alone therefore left a disabled plugin's content script mounted:
+ * its `<link>` was removed (that hook reads `panels`) while its DOM, listeners
+ * and scoping attribute stayed until a reload. The registry payload is the
+ * whole truth about which plugins are live, so it is what the reconcile reads.
+ *
  * The dependency is a SIGNATURE rather than the row array: a re-read that
  * produces the same rows is the same set of scripts, and re-running for it
  * would churn every generation for nothing.
@@ -100,22 +111,27 @@ function usePluginStylesheets(): void {
  * must not take the chamber's boot with it.
  */
 function useContentScripts(): void {
+  const { panels } = usePanelRegistry();
   const rows = useListSlotRows<ContentScriptRegistration>('contentScript');
+  const enabled = panels.map((panel) => panel.pluginId).sort().join('|');
   const signature = rows.map((row) => `${row.pluginId}:${row.registration.id}`).join('|');
   /** The plugins mounted by the PREVIOUS run, so a vanished one is unmounted. */
   const live = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    const enabledSet = new Set(enabled ? enabled.split('|') : []);
     // Read through the closure the effect was created in: the rows that belong
     // to this signature, not whatever the next render holds.
     const byPlugin = new Map<string, ContentScriptRegistration[]>();
     for (const row of rows) {
+      if (!enabledSet.has(row.pluginId)) continue;
       const list = byPlugin.get(row.pluginId) ?? [];
       list.push(row.registration);
       byPlugin.set(row.pluginId, list);
     }
 
-    // A plugin whose registrations all left is the one that needs taking down.
+    // A plugin whose registrations all left — or that the registry no longer
+    // reports as enabled — is the one that needs taking down.
     for (const pluginId of live.current) {
       if (!byPlugin.has(pluginId)) void unmountContentScripts(pluginId);
     }
@@ -130,7 +146,7 @@ function useContentScripts(): void {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
+  }, [signature, enabled]);
 
   // Window teardown: nothing else runs a disposer on an unload, and a script
   // holding listeners past it leaks them into whatever replaces the document.

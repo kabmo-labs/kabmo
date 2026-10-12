@@ -6,6 +6,7 @@ import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/c
 import { UnifiedView } from '@/client/components/workspace/diff-panel/UnifiedView';
 import { SplitView } from '@/client/components/workspace/diff-panel/SplitView';
 import { usePluginDiffView } from '@/client/components/workspace/editor/plugin-file-view';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { AlertCircle, RefreshCw } from 'lucide-preact';
 
 interface DiffPanelProps {
@@ -300,7 +301,9 @@ export function DiffPanel({
             </button>
           </div>
         ) : pluginDiffView ? (
-          <pluginDiffView.Component {...pluginDiffView.props} />
+          <PluginIdProvider pluginId={pluginDiffView.pluginId}>
+            <pluginDiffView.Component {...pluginDiffView.props} />
+          </PluginIdProvider>
         ) : viewMode === 'split' ? (
           <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} />
         ) : (

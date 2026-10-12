@@ -11,6 +11,7 @@ import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
 import { FilePane } from '@/client/components/workspace/editor/FilePane';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -241,7 +242,9 @@ export function Editor({
   if (pluginColumn) {
     return (
       <div className={`flex flex-col h-full bg-canvas ${className}`}>
-        <pluginColumn.Component sessionId={sessionId ?? null} workspacePath={null} />
+        <PluginIdProvider pluginId={pluginColumn.pluginId}>
+          <pluginColumn.Component sessionId={sessionId ?? null} workspacePath={null} />
+        </PluginIdProvider>
       </div>
     );
   }

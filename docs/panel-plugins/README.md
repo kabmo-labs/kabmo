@@ -828,16 +828,65 @@ The host loads it as a `<link>` **for as long as the plugin has a live content
 script**, and removes it when the last generation goes — a disabled or removed
 plugin stops styling the document. So a stylesheet needs a `contentScript`; a
 plugin that renders only into a slot uses the host's utilities (above) and needs
-none. Scope your rules under an attribute your own content script sets:
+none.
+
+### Scoping
+
+**The host scopes your stylesheet for you.** It is served wrapped in
 
 ```css
-html[data-my-plugin] .some-host-class { /* … */ }
+@scope ([data-plugin-surface="your-plugin-id"]) { /* your rules */ }
 ```
 
+so a rule can only match inside **your own DOM**: the element the host wraps
+each of your slot components in, and the `root` element your content script is
+handed. Write ordinary CSS for your own markup and it works; write a selector
+aimed at the host's chrome and it matches nothing.
+
+That last part is the point, not a limitation. The pattern this document used to
+recommend —
+
+```css
+/* WRONG — this is a leak, not a scope. */
+html[data-my-plugin] .code-block::before { /* … */ }
+```
+
+— selects the app's own `.code-block` elements, because `html[…]` is an ancestor
+of everything rather than a scope. A plugin written that way restyled every code
+block in the chat. Under `@scope` it simply does not match, and the fix is to
+style your own DOM.
+
+A content script therefore appends into the `root` it is given, never into
+`document.body`:
+
+```ts
+app.contentScript({
+  id: 'badge',
+  mount: ({ root }) => {
+    const badge = document.createElement('span');
+    badge.className = 'my-badge'; // your class — your CSS owns it
+    root.appendChild(badge);
+    return () => badge.remove(); // release listeners/timers; the DOM is the host's
+  },
+});
+```
+
+The host removes the whole `root` subtree on teardown, so a node left inside it
+needs no removal of its own — but a listener or a timer you registered has no
+other place to be released, and that is what the disposer is for.
+
+Three at-rules are hoisted out of the scope because they are only honoured at
+the top level: `@charset`, `@import` and `@namespace`. Everything else nests
+(`@media`, `@supports`, `@layer`, `@keyframes`, `@font-face`, `@property`).
+
+`@scope` is Chromium 118+, Safari 17.4+, Firefox 128+. On an older engine the
+whole stylesheet is dropped rather than applied unscoped — an unstyled plugin,
+never a plugin that restyles the host.
+
 The URL is content-addressed, so a rebuild with changed rules reaches a new URL
-and the old `<link>` is replaced. Verified end to end: the demo plugin's
-`::before` rule applies while installed, and disabling the plugin takes the
-`<link>`, the content script's attribute and the rule with it.
+and the old `<link>` is replaced. Verified end to end: the demo plugin's rules
+apply to its own badge, and a rule naming a host class (`.code-block`) has no
+effect anywhere.
 
 ## The bundle route
 

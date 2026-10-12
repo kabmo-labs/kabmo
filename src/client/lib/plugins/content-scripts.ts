@@ -21,12 +21,18 @@
  * - **A throwing mount is reported and rolled back.** The host mounts into a
  *   DETACHED container first and moves it in only on success, so a mount that
  *   throws halfway leaves nothing behind.
+ * - **Every script is handed a scoped ROOT element**, and that is the CSS half
+ *   of the contract: the plugin's stylesheet is served wrapped in
+ *   `@scope ([data-plugin-surface="<id>"])`, so DOM appended outside that
+ *   element is unreachable by the plugin's own CSS. The host removes the whole
+ *   subtree on teardown, so a node left inside it needs no removal of its own.
  *
  * The generation counter is per plugin and monotonic, so a script can key its
  * own DOM by it and a stale generation can be recognised rather than guessed at.
  */
 
 import type { ContentScriptRegistration } from '@ompchamber/plugin-sdk';
+import { PLUGIN_SURFACE_ATTR } from '@ompchamber/plugin-sdk';
 
 /** One mounted generation, held so it can be taken down in order. */
 interface MountedScript {
@@ -51,10 +57,30 @@ declare global {
   var __ompChamberContentScripts: MountedScript[] | undefined;
   // eslint-disable-next-line no-var
   var __ompChamberContentGeneration: number | undefined;
+  // eslint-disable-next-line no-var
+  var __ompChamberContentScriptRoots: Map<string, HTMLElement> | undefined;
 }
 
 function mounted(): MountedScript[] {
   return (globalThis.__ompChamberContentScripts ??= []);
+}
+
+/**
+ * One root element per plugin, the DOM its scripts belong in.
+ *
+ * The element carries the plugin's scope attribute, which is what confines the
+ * plugin's stylesheet (served wrapped in `@scope ([data-plugin-surface="…"])`)
+ * to its own markup. A script that appends to `document.body` instead puts its
+ * DOM outside every surface, where the plugin's own CSS cannot reach it — the
+ * failure is silent, which is why the context hands the root over rather than
+ * documenting one.
+ *
+ * The map is keyed by plugin id and lives beside the generations on `globalThis`
+ * for the same hot-reload reason: a re-evaluated module must still find the
+ * roots it has to remove.
+ */
+function roots(): Map<string, HTMLElement> {
+  return (globalThis.__ompChamberContentScriptRoots ??= new Map());
 }
 
 /** The next generation number. Monotonic across every plugin. */
@@ -98,12 +124,14 @@ export async function mountContentScripts(
 ): Promise<ContentScriptFailure[]> {
   // The replacement rule: this plugin's previous generations go FIRST, so two
   // generations of one plugin never coexist. Reverse order, so a script that
-  // mounted last (and may depend on an earlier one) comes down first.
+  // mounted last (and may depend on an earlier one) comes down first. The root
+  // element goes with them, so the new generation starts from an empty one.
   await unmountContentScripts(pluginId);
 
   const target = host.target();
   if (!target) return [{ pluginId, reason: 'no host element to mount into' }];
 
+  const root = createRoot(target, pluginId);
   const failures: ContentScriptFailure[] = [];
   for (const registration of registrations) {
     const generation = nextGeneration();
@@ -113,12 +141,13 @@ export async function mountContentScripts(
     // async mount is in flight still finds the generation and aborts it.
     mounted().push(record);
 
-    // A content script owns the DOM it adds — the contract hands it no
-    // container (matching bb's), so the host has nothing of its own to stage or
-    // roll back. What the host owns is the RECORD: a mount that throws must not
+    // A content script owns the DOM it adds, but the CONTAINER is the host's:
+    // the plugin's CSS is scoped to it, so a script that mounted into
+    // `document.body` would put its own nodes out of its own stylesheet's
+    // reach. What the host owns is the RECORD: a mount that throws must not
     // leave a generation the reaper can never reach.
     try {
-      const dispose = await registration.mount({ pluginId, generation, signal: abort.signal });
+      const dispose = await registration.mount({ pluginId, root, generation, signal: abort.signal });
       if (abort.signal.aborted) {
         // Teardown already ran while this mount was in flight. The script's own
         // disposer is the only thing that can undo it.
@@ -134,7 +163,34 @@ export async function mountContentScripts(
       failures.push({ pluginId, reason: error instanceof Error ? error.message : String(error) });
     }
   }
+  // A registration list that produced no generation at all leaves an empty root
+  // behind; it is inert, but removing it keeps the document honest about which
+  // plugins are live.
+  if (mounted().every((entry) => entry.pluginId !== pluginId)) removeRoot(pluginId);
   return failures;
+}
+
+/**
+ * The element a plugin's scripts mount into: a real node carrying the plugin's
+ * scope attribute, appended to `target`.
+ *
+ * `display: contents` so it generates no box — a content script's own nodes lay
+ * out exactly as they would have if appended directly — while still being a
+ * node the `@scope` prelude can root at.
+ */
+function createRoot(target: Element, pluginId: string): HTMLElement {
+  const root = target.ownerDocument.createElement('div');
+  root.setAttribute(PLUGIN_SURFACE_ATTR, pluginId);
+  root.style.display = 'contents';
+  target.appendChild(root);
+  roots().set(pluginId, root);
+  return root;
+}
+
+/** Remove a plugin's root element, if one is held. */
+function removeRoot(pluginId: string): void {
+  roots().get(pluginId)?.remove();
+  roots().delete(pluginId);
 }
 
 /** Take one plugin's generations down, newest first, exactly once. */
@@ -149,6 +205,11 @@ export async function unmountContentScripts(pluginId: string): Promise<void> {
     entry.abort.abort();
     callDisposer(entry.dispose);
   }
+  // After the disposers, not before: a disposer that reaches into the root it
+  // was handed must still find it. Removing the whole subtree is what takes a
+  // script's nodes with it, so the contract does not ask each disposer to undo
+  // its own DOM — only to release what the host cannot (listeners, timers).
+  removeRoot(pluginId);
 }
 
 /** Take every plugin's generations down. Used by window teardown and tests. */
@@ -187,4 +248,5 @@ function callDisposer(dispose: (() => void) | null): void {
 /** Test seam: forget every generation without running disposers. */
 export function resetContentScripts(): void {
   mounted().length = 0;
+  roots().clear();
 }

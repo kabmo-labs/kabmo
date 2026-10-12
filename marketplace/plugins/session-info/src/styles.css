@@ -5,21 +5,44 @@
  * it. The manifest declares it and the host loads it for as long as this
  * plugin's content script is mounted.
  *
- * Every rule is scoped under the attribute the content script sets, so it cannot
- * leak onto the host's own chrome — the demo doubles as the example of how a
- * plugin should scope app-shell styling.
+ * THE HOST SCOPES THIS FOR YOU. The server serves the file wrapped in
+ * `@scope ([data-plugin-surface="session-info"])`, so these rules can only match
+ * inside this plugin's own DOM — its slot components and its content script's
+ * root. Write them the way you would write ordinary CSS for your own markup.
+ *
+ * Do NOT reach for the host's classes. This file used to say
+ * `html[data-session-info] .code-block::before`, and that is the leak the
+ * scoping replaced: `.code-block` is the CHAMBER's class and `html[…]` is an
+ * ancestor of everything, so the rule drew a gradient line over every code block
+ * in the chat. Under `@scope` a selector like that matches nothing — which is
+ * the honest outcome, and the reason the content-script contract hands you a
+ * root element to put your own markup in.
  */
 
-html[data-session-info] .code-block::before {
-  content: '';
-  display: block;
-  height: 2px;
-  margin: -1px 0 6px;
-  background: linear-gradient(90deg, var(--theme-ink) 0%, transparent 100%);
-  opacity: 0.25;
+/* This plugin's own marker element, appended to the content script's root. */
+.session-info-badge {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--theme-ink) 15%, transparent);
+  border-radius: 0.375rem;
+  background: var(--theme-paper);
+  color: color-mix(in srgb, var(--theme-ink) 60%, transparent);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.625rem;
+  line-height: 1;
+  pointer-events: none;
 }
 
-html[data-session-info] .plugin-directive-block {
-  outline: 1px dashed color-mix(in srgb, var(--theme-ink) 25%, transparent);
-  outline-offset: 3px;
+.session-info-badge::before {
+  content: '';
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--theme-success);
 }

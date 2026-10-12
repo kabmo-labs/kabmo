@@ -29,6 +29,7 @@ import { ToolDetailsPanel, resolveToolKey } from '@/client/components/workspace/
 import { usePluginTimelineRenderer } from '@/client/components/workspace/chat-timeline/tool-renderers/plugin-renderers';
 import { usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
+import { PluginIdProvider } from '@ompchamber/ui';
 import { toolSummary } from '@/shared/lib/chat/tool/summary';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import {
@@ -134,12 +135,14 @@ export const ToolCallCard = memo(function ToolCallCard({ tool, isOpen, onToggle,
       alwaysExpanded={hasPanel && (toolKey === 'yield' || toolKey === 'goal' || toolKey === 'ask')}
     >
       {pluginPanel ? (
-        <pluginPanel.component
-          {...slotContext}
-          toolName={toolKey}
-          args={tool.input}
-          output={outputText}
-        />
+        <PluginIdProvider pluginId={pluginPanel.pluginId}>
+          <pluginPanel.registration.component
+            {...slotContext}
+            toolName={toolKey}
+            args={tool.input}
+            output={outputText}
+          />
+        </PluginIdProvider>
       ) : (
         <ToolDetailsPanel tool={tool} />
       )}

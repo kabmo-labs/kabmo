@@ -40,8 +40,10 @@ afterAll(() => restoreDomGlobals());
 
 /** Renders the resolved row's id, or `none`, so the verdict is in the DOM. */
 function Probe({ tool }: { tool: string }) {
-  const registration = usePluginTimelineRenderer(tool);
-  return h('span', { id: 'verdict' }, registration ? registration.id : 'none');
+  const entry = usePluginTimelineRenderer(tool);
+  // The resolver hands back the whole store ENTRY now, because the host needs
+  // the owning plugin id to wrap the render in that plugin's CSS surface.
+  return h('span', { id: 'verdict' }, entry ? entry.registration.id : 'none');
 }
 
 function mount(tool: string) {

@@ -267,10 +267,10 @@ describe('async mounts and abort', () => {
 describe('failures', () => {
   test('a throwing mount is reported and leaves no live generation', async () => {
     // What the host can roll back is its own RECORD: a generation the reaper
-    // could never reach is the leak. A content script owns the DOM it adds —
-    // the contract hands it no container — so undoing those nodes is the
-    // script's own job (its disposer, or catching its own throw), and the host
-    // does not pretend otherwise.
+    // could never reach is the leak. The DOM a script added is the script's own
+    // to undo — the contract hands it a root, not a promise that the host
+    // un-append what the script put there — so a mount that throws must release
+    // what it created itself, and the host does not pretend otherwise.
     const registration: ContentScriptRegistration = {
       id: 'boom',
       mount: () => {

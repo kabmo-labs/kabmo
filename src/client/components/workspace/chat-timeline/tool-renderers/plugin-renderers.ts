@@ -19,13 +19,22 @@
  */
 
 import type { TimelineRendererRegistration } from '@ompchamber/plugin-sdk';
+import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 
-/** The plugin renderer for `tool`, or null when the host's own panel should run. */
-export function usePluginTimelineRenderer(tool: string): TimelineRendererRegistration | null {
+/**
+ * The plugin renderer for `tool`, with the plugin that registered it, or null
+ * when the host's own panel should run.
+ *
+ * The plugin id rides along because the host must wrap the render in that
+ * plugin's surface: a plugin's stylesheet is scoped to
+ * `[data-plugin-surface="<id>"]`, so a renderer drawn outside its own surface
+ * would have no CSS at all.
+ */
+export function usePluginTimelineRenderer(tool: string): ListSlotEntry<TimelineRendererRegistration> | null {
   const rows = useListSlotRows<TimelineRendererRegistration>('timelineRenderer');
   for (const entry of rows) {
-    if (entry.registration.tool === tool) return entry.registration;
+    if (entry.registration.tool === tool) return entry;
   }
   return null;
 }
