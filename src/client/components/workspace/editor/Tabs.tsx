@@ -3,15 +3,18 @@ import { FileIcon } from '@/client/components/common/file-icon';
 import { ChevronDown, GitCompare, X } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
+import type { OpenedFile } from '@/shared/types/fs';
 
 interface EditorTabsProps {
-  openedFiles: any[];
+  openedFiles: OpenedFile[];
   activeFileId: number | string | null;
   onSelectFile: (id: number | string) => void;
   onCloseFile: (id: number | string) => void;
+  /** Tab ids whose file no longer exists on disk (see `useMissingFiles`). */
+  missingIds?: ReadonlySet<number | string>;
 }
 
-export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFile }: EditorTabsProps) {
+export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFile, missingIds }: EditorTabsProps) {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [maxVisibleTabs, setMaxVisibleTabs] = useState(5);
@@ -34,8 +37,8 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
     return () => observer.disconnect();
   }, []);
 
-  let visibleTabs: any[] = [];
-  let hiddenTabs: any[] = [];
+  let visibleTabs: OpenedFile[] = [];
+  let hiddenTabs: OpenedFile[] = [];
 
   if (openedFiles.length <= maxVisibleTabs) {
     visibleTabs = openedFiles;
@@ -63,6 +66,7 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
           const isActive = file.id === activeFileId;
           const isDiff = Boolean(file.isDiff);
           const statusInfo = isDiff ? getGitStatusInfo(file.diffStatus || 'M', file.diffStaged) : null;
+          const isMissing = Boolean(missingIds?.has(file.id));
 
           return (
             <div
@@ -71,14 +75,17 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
               className={`flex items-center space-x-1.5 px-3 py-1.5 cursor-pointer border-r border-ink/10 min-w-[120px] max-w-[210px] group ${
                 isActive ? 'bg-paper border-t-2 border-t-ink text-ink' : 'bg-transparent border-t-2 border-t-transparent text-ink/60 hover:bg-paper/50'
               }`}
-              title={file.path}
+              title={isMissing ? `${file.path} — file no longer exists` : file.path}
             >
               {isDiff ? (
                 <GitCompare size={14} className={isActive ? 'text-info flex-shrink-0' : 'text-info/70 flex-shrink-0'} />
               ) : (
-                <FileIcon name={file.name} size={14} className={isActive ? 'flex-shrink-0' : 'opacity-60 flex-shrink-0'} />
+                <FileIcon name={file.name} size={14} className={`flex-shrink-0${isActive || isMissing ? '' : ' opacity-60'}${isMissing ? ' text-error' : ''}`} />
               )}
-              <span className="text-xs font-mono truncate flex-1">{file.name}</span>
+              {/* A deleted file keeps its tab (the buffer is still on screen),
+                  but the tab must SAY so: the name goes red and struck through,
+                  the one convention that reads as "this is gone" at a glance. */}
+              <span className={`text-xs font-mono truncate flex-1${isMissing ? ' text-error line-through' : ''}`}>{file.name}</span>
               {statusInfo && (
                 <span className={`px-1 text-[9px] font-mono font-bold rounded ${statusInfo.badgeBgClass}`}>
                   {statusInfo.charStatus}
@@ -113,33 +120,36 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
               <div className="px-3 py-1 text-[10px] uppercase font-mono text-ink/40 border-b border-ink/10 mb-1">
                 Older Tabs
               </div>
-              {hiddenTabs.map(file => (
-                <div
-                  key={file.id}
-                  onClick={() => {
-                    onSelectFile(file.id);
-                    setShowDropdown(false);
-                  }}
-                  className="flex items-center space-x-2 px-3 py-1.5 hover:bg-ink/5 cursor-pointer group"
-                >
-                  {file.isDiff ? (
-                    <GitCompare size={14} className="text-info/80" />
-                  ) : (
-                    <FileIcon name={file.name} size={14} className="opacity-60" />
-                  )}
-                  <span className="text-xs font-mono truncate flex-1 text-ink/80">{file.name}</span>
+              {hiddenTabs.map(file => {
+                const isMissing = Boolean(missingIds?.has(file.id));
+                return (
                   <div
-                    className="touch-visible p-0.5 rounded hover:bg-ink/10 opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseFile(file.id);
-                      if (hiddenTabs.length === 1) setShowDropdown(false);
+                    key={file.id}
+                    onClick={() => {
+                      onSelectFile(file.id);
+                      setShowDropdown(false);
                     }}
+                    className="flex items-center space-x-2 px-3 py-1.5 hover:bg-ink/5 cursor-pointer group"
                   >
-                    <X size={12} className="text-ink/60" />
+                    {file.isDiff ? (
+                      <GitCompare size={14} className="text-info/80" />
+                    ) : (
+                      <FileIcon name={file.name} size={14} className={isMissing ? 'text-error' : 'opacity-60'} />
+                    )}
+                    <span className={`text-xs font-mono truncate flex-1 ${isMissing ? 'text-error line-through' : 'text-ink/80'}`}>{file.name}</span>
+                    <div
+                      className="touch-visible p-0.5 rounded hover:bg-ink/10 opacity-0 group-hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseFile(file.id);
+                        if (hiddenTabs.length === 1) setShowDropdown(false);
+                      }}
+                    >
+                      <X size={12} className="text-ink/60" />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

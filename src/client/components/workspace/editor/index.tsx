@@ -1,34 +1,29 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedKeyboardEvent } from 'preact';
-import { AlertTriangle, Loader2 } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { EditorTabs } from '@/client/components/workspace/editor/Tabs';
-import { EditorToolbar } from '@/client/components/workspace/editor/Toolbar';
 import { EDITOR_KEY_BINDINGS, isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
-import {
-  EDITOR_DEFAULT_FONT_SIZE,
-  EDITOR_MAX_FONT_SIZE,
-  EDITOR_MIN_FONT_SIZE,
-} from '@/shared/lib/code/editor/typography';
+import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
 import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
-import { ImageViewer } from '@/client/components/common/image-viewer';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
-import { FileDocument } from '@/client/components/workspace/editor/FileDocument';
-import { PluginFileViewBody, usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
+import { FilePane } from '@/client/components/workspace/editor/FilePane';
+import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useEditorFind } from '@/client/hooks/editor/use-editor-find';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
+import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
+import type { OpenedFile } from '@/shared/types/fs';
 
 interface EditorProps {
   className?: string;
-  openedFiles: any[];
+  openedFiles: OpenedFile[];
   activeFileId: number | string | null;
   onSelectFile: (id: number | string) => void;
   onCloseFile: (id: number | string) => void;
@@ -78,6 +73,16 @@ export function Editor({
     reportSaveError: true,
     onFileSaved,
   });
+
+  // A deleted file keeps its tab (its buffer is still on screen), but the tab
+  // strip must say so. Only a plain FILE tab is probed: a diff tab's path names
+  // a change rather than a document, and an attachment chip carries inline
+  // `content` with no file behind its `path` at all — probing that name would
+  // strike the chip through the moment it was opened.
+  const missingIds = useMissingFiles(
+    openedFiles.filter((file) => !file.isDiff && file.content === undefined),
+    refreshKey,
+  );
 
   // Resolved unconditionally: hooks cannot live in the branch that draws the
   // view, and the resolver is cheap when no plugin contributed one.
@@ -135,7 +140,7 @@ export function Editor({
   useEffect(() => {
     if (!previewReady) return;
     const id = activeFile?.id;
-    if (id === undefined || id === null) return;
+    if (!activeFile || id === undefined || id === null) return;
     if (!activeFile.name.endsWith('.md')) return;
     const stored = getSessionValue<Record<string | number, boolean>>(sessionId, 'editor.previewMode');
     if (stored && stored[id] !== undefined) return;
@@ -245,7 +250,7 @@ export function Editor({
     );
   }
 
-  const isMd = activeFile?.name.endsWith('.md');
+  const isMd = Boolean(activeFile?.name.endsWith('.md'));
   const isPreview = activeFile ? previewMode[activeFile.id] : false;
 
   const editorContainerClass = isMaximized 
@@ -259,6 +264,7 @@ export function Editor({
         activeFileId={activeFileId}
         onSelectFile={onSelectFile}
         onCloseFile={onCloseFile}
+        missingIds={missingIds}
       />
 
       {activeFile ? (
@@ -274,69 +280,29 @@ export function Editor({
             className="flex-1"
           />
         ) : (
-          <>
-            <EditorToolbar
-              path={activeFile.path}
-              saveStatus={editor.saveStatus}
-              wordWrap={wordWrap}
-              isMd={isMd}
-              isPreview={isPreview}
-              copied={editor.copied}
-              isImage={editor.isImage}
-              saveDisabled={Boolean(editor.loadError)}
-              isMaximized={isMaximized}
-              findOpen={find.open}
-              onToggleFind={() => (find.open ? find.close() : find.openFind())}
-              onSave={editor.saveNow}
-              onTogglePreview={togglePreview}
-              onToggleWordWrap={() => setWordWrap(!wordWrap)}
-              onZoomIn={() => setZoomLevel(z => Math.min(EDITOR_MAX_FONT_SIZE, z + 1))}
-              onZoomOut={() => setZoomLevel(z => Math.max(EDITOR_MIN_FONT_SIZE, z - 1))}
-              onCopy={editor.copy}
-              onDownload={editor.download}
-              onToggleMaximize={() => setIsMaximized(!isMaximized)}
-            />
-
-            {editor.isImage && editor.imageUrl ? (
-              // The picture owns its own pan/zoom, so it must NOT sit inside
-              // the scrolling text container — a wheel there would scroll the
-              // pane instead of zooming the image.
-              <ImageViewer src={editor.imageUrl} name={activeFile.name} className="flex-1 min-h-0" />
-            ) : editor.isLoading ? (
-              <div className="flex-1 flex items-center justify-center gap-2 text-ink/40 text-xs font-mono">
-                <Loader2 size={14} className="animate-spin" />
-                <span>Loading file content…</span>
-              </div>
-            ) : editor.loadError ? (
-              // A read that failed must say so. Without this the pane rendered
-              // an empty (or substituted) buffer, and the next save wrote it
-              // over the real file.
-              <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
-                <AlertTriangle size={20} className="text-error" />
-                <span className="text-xs text-error font-sans">Could not read {activeFile.name}</span>
-                <span className="text-[11px] text-ink/50 font-mono break-all">{editor.loadError}</span>
-              </div>
-            ) : pluginFileView && !editor.isImage ? (
-              <PluginFileViewBody view={pluginFileView} />
-            ) : (
-              <FileDocument
-                activeFile={activeFile}
-                editor={editor}
-                find={find}
-                surfaceRef={surfaceRef}
-                paletteOpen={paletteOpen}
-                onClosePalette={() => setPaletteOpen(false)}
-                onRunCommand={runCommand}
-                wordWrap={wordWrap}
-                zoomLevel={zoomLevel}
-                editorFontFamily={editorFontFamily}
-                occurrences={occurrences}
-                onOccurrencesChange={setOccurrences}
-                isPreview={Boolean(isPreview)}
-                revealActive={Boolean(searchReveal)}
-              />
-            )}
-          </>
+          <FilePane
+            activeFile={activeFile}
+            editor={editor}
+            find={find}
+            surfaceRef={surfaceRef}
+            pluginFileView={pluginFileView}
+            wordWrap={wordWrap}
+            setWordWrap={setWordWrap}
+            isMd={isMd}
+            isPreview={Boolean(isPreview)}
+            isMaximized={isMaximized}
+            setIsMaximized={setIsMaximized}
+            zoomLevel={zoomLevel}
+            setZoomLevel={setZoomLevel}
+            occurrences={occurrences}
+            setOccurrences={setOccurrences}
+            paletteOpen={paletteOpen}
+            setPaletteOpen={setPaletteOpen}
+            runCommand={runCommand}
+            editorFontFamily={editorFontFamily}
+            togglePreview={togglePreview}
+            revealActive={Boolean(searchReveal)}
+          />
         )
       ) : (
         <div className="flex-1 flex items-center justify-center text-ink/40">

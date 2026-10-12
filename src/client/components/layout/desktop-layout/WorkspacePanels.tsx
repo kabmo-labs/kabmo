@@ -231,7 +231,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               onSelectFile={onSetActiveFileId}
               onCloseFile={onCloseFile}
               onConvertDiffToEditor={onConvertDiffToEditor}
-             
+              refreshKey={refreshKey}
               onFileSaved={onRefreshWorkspace}
             />
           </PanelSuspense>
