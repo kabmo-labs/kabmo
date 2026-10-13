@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 548 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 550 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -4383,7 +4383,7 @@
         "tab": "context",
         "group": "Experimental",
         "label": "Snapcompact Tool Results",
-        "description": "Experimental: render large historical tool results as dense PNG image(s) instead of text (vision models only). Saves tokens on accumulated read/search output."
+        "description": "Experimental: render large tool results, the newest one included, as dense PNG image(s) instead of text (vision models only). Saves tokens on accumulated search and command output; read results stay text unless the model is known to edit exactly from images."
       }
     },
     "tools.format": {
@@ -7027,6 +7027,16 @@
         "description": "Switch the task tool to its batch shape: one call carries { context, tasks[] } — one subagent per item, with an optional per-item agent (defaulting to the session spawn-policy agent), per-item isolation, and a required shared context prepended to every assignment. With async.enabled=true, each spawn runs as an independent background agent with the normal idle/parked lifecycle; otherwise the call blocks for merged results. Disable to restore the flat single-spawn schema."
       }
     },
+    "task.structured": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "tasks",
+        "group": "Subagents",
+        "label": "Structured Task Results",
+        "description": "Expose outputSchema/schemaMode on the task tool and return subagent results through the yield tool, validated against caller or agent output schemas. Off: task subagents have no yield tool and return their final message as plain text. Eval agent()/workpool spawns always keep structured results."
+      }
+    },
     "task.speculativeLaunch": {
       "type": "boolean",
       "default": true,
@@ -7193,7 +7203,7 @@
         "tab": "tasks",
         "group": "Subagents",
         "label": "Soft Subagent Request Budget",
-        "description": "Soft per-subagent request budget (assistant requests per run). Crossing it injects a wrap-up steering notice (see task.softRequestBudgetNotice); at 1.5x the budget the run is force-stopped and the agent must yield its partial findings. 0 disables the guard. Bundled scout/sonic agents cap out at a lower built-in budget, so a value below that cap still applies to them.",
+        "description": "Soft per-subagent request budget (assistant requests per run). Crossing it injects a wrap-up steering notice (see task.softRequestBudgetNotice); at 1.5x the budget the run is force-stopped and the agent must hand back its partial findings. 0 disables the guard. Bundled scout/sonic agents cap out at a lower built-in budget, so a value below that cap still applies to them. A task.agentSoftRequestBudget entry replaces this budget for the agent it names.",
         "options": [
           {
             "value": "0",

@@ -64,11 +64,15 @@ export function foldTransportFrame(data: OmpAgentEvent, host: TransportFrameHost
       return true;
 
     // `cache_warming_*`, `retry_fallback_*`, `config_warnings_changed`,
-    // `ttsr_triggered`, `todo_reminder`, `todo_auto_clear` and `irc_message`
-    // carry no chamber-side effect, and are listed here so the omission is a
-    // decision rather than an oversight: warming and fallback are already named
-    // by `auto_retry_*` / `model_changed`, the todo frames describe a list the
-    // Todo panel reads from its own topic, and IRC is not a chamber surface.
+    // `ttsr_triggered`, `todo_reminder`, `todo_auto_clear`, `irc_message`,
+    // `tool_stream_update` and the newer surfaces carry no chamber-side effect,
+    // and are listed here so the omission is a decision rather than an
+    // oversight: warming and fallback are already named by `auto_retry_*` /
+    // `model_changed`, the todo frames describe a list the Todo panel reads from
+    // its own topic, IRC is not a chamber surface, and `tool_stream_update` is a
+    // tool's own projection of a call whose arguments the card already reads
+    // from `toolcall_delta`. The advisor / live-voice / `queue_update` /
+    // `config_update` frames (omp 18.9+) are the same kind of no-op here.
     case 'cache_warming_start':
     case 'cache_warming_end':
     case 'retry_fallback_applied':
@@ -78,6 +82,11 @@ export function foldTransportFrame(data: OmpAgentEvent, host: TransportFrameHost
     case 'todo_reminder':
     case 'todo_auto_clear':
     case 'irc_message':
+    case 'tool_stream_update':
+    case 'advisor_yielded':
+    case 'advisor_cost_changed':
+    case 'queue_update':
+    case 'config_update':
       return true;
 
     default:
