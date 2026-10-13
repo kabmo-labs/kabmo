@@ -5,6 +5,21 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.12.0](https://github.com/rajebdev/ompchamber/compare/v4.11.1...v4.12.0) — 2026-10-13
+
+### Added
+
+* **diff-panel:** default the content scope to Diff Only ([2e7812d](https://github.com/rajebdev/ompchamber/commit/2e7812d8755325c34e24eaf6dfefb20a7b8267ba))
+* **sidebar:** add Show less control to collapse the session window ([4a9b351](https://github.com/rajebdev/ompchamber/commit/4a9b351c2567f4637e55e37c9e3cb0e1c4085115))
+
+### Fixed
+
+* **chat:** pair a live tool card with the details omp nests in its result ([b6e6cbb](https://github.com/rajebdev/ompchamber/commit/b6e6cbb88ffe4b252fba8dbe5c9df61b34399b22))
+* **chat:** stop a file tool's first output line becoming its card subject ([ac8c5d3](https://github.com/rajebdev/ompchamber/commit/ac8c5d31a2a242960f71499a17d2a808e276bbf3))
+* **git-panel:** stop the commit modal reopening when the workspace root moves ([102a842](https://github.com/rajebdev/ompchamber/commit/102a842413490d00d1744a81c15438d3dfb5807f))
+* **omp:** name the 18.10.3 frames the fold ignores, and refresh the schema ([948f9e4](https://github.com/rajebdev/ompchamber/commit/948f9e4b6c2a6710ea24d3e7224cadd34a89ad5a))
+* **sidebar:** render session title card icons on every device ([03555bc](https://github.com/rajebdev/ompchamber/commit/03555bc06ff29107cb25fe5d66e51a7fb8e86e04))
+
 ## [4.11.1](https://github.com/rajebdev/ompchamber/compare/v4.11.0...v4.11.1) — 2026-10-12
 
 ### Fixed
