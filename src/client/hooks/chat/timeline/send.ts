@@ -205,6 +205,14 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       persistMessages(next.filter(m => m.id !== aiPlaceholderId));
       return next;
     });
+    // Arm the placeholder ref WITH its row, never after the spawn await. A
+    // brand-new session's child streams its first frames before
+    // `sendNewPrompt` resolves, and a frame that finds no placeholder APPENDS
+    // its message beside the placeholder row instead of filling it; arming the
+    // ref afterwards then made the next update map the placeholder onto that
+    // same id, rendering the turn (and its ask card) TWICE — measured as two
+    // cards for one ask, one "Running" and one "Done", on ~1 run in 30.
+    aiPlaceholderIdRef.current = aiPlaceholderId;
 
     setGenerating(true, true);
     setGeneratingVerb(PHASE_VERBS.thinking);
@@ -214,7 +222,6 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
 
     // Real mode: route through the omp agent RPC bridge + event stream.
     if (isOmpSession) {
-      aiPlaceholderIdRef.current = aiPlaceholderId;
       optimisticUserIdRef.current = userMsgId;
       // A model/thinking pick made while the previous turn streamed was held
       // back so it could not re-target that answer. A queued delivery does NOT
@@ -274,7 +281,9 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
         if (spawned) {
           spawnSelectionRef.current = null;
           adoptedSessionIdRef.current = spawned.sessionId;
-          aiPlaceholderIdRef.current = aiPlaceholderId;
+          // The placeholder ref is already armed (with its row) before the
+          // spawn — see the note at the assignment; re-arming here would be
+          // harmless but is redundant.
           // The spawn already applied this level to the session; seed it so the
           // composer taking over from the pending view reports the run's real
           // setting instead of a catalog default (the JSONL that carries it is
