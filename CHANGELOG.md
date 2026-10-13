@@ -5,6 +5,19 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.13.0](https://github.com/rajebdev/ompchamber/compare/v4.12.0...v4.13.0) — 2026-10-13
+
+### Added
+
+* **files:** cut, copy, paste and duplicate from the panel's context menus ([8977b8c](https://github.com/rajebdev/ompchamber/commit/8977b8c2041e2312b7070f06c4ca572a147a76a7))
+* **files:** drag and drop to move a file or folder in the tree ([c5f8dde](https://github.com/rajebdev/ompchamber/commit/c5f8dde9865a3c54e300ed90b1c064ed34891646))
+
+### Fixed
+
+* **chat:** arm the AI placeholder ref with its row, not after the spawn ([624cf14](https://github.com/rajebdev/ompchamber/commit/624cf143de0e2867d27b69dab10ee815b69fec84))
+* **chat:** draw the grouped ask as one card per question ([530b439](https://github.com/rajebdev/ompchamber/commit/530b4399c5cec4d37531ecc4388cdf72a981eb0c))
+* **chat:** name a streaming tool call by keeping omp's full message updates ([466045e](https://github.com/rajebdev/ompchamber/commit/466045e08d4b572f42d763f6e5b0597efd0def39))
+
 ## [4.12.0](https://github.com/rajebdev/ompchamber/compare/v4.11.1...v4.12.0) — 2026-10-13
 
 ### Added
