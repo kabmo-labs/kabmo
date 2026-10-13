@@ -1,5 +1,5 @@
 import { useRef, useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight, GitBranch, MessageSquare, MoreHorizontal, Plus } from 'lucide-preact';
+import { ChevronDown, ChevronRight, ChevronUp, GitBranch, MessageSquare, MoreHorizontal, Plus } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { MobileSessionRow } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import { SubagentList } from '@/client/components/common/subagent-list';
@@ -39,7 +39,7 @@ export function MobileSessionCategory({
   sessionStatus = {},
   onToast,
 }: MobileSessionCategoryProps) {
-  const { visibleCount, showMore } = useShowMore();
+  const { visibleCount, showMore, showLess, canShowLess } = useShowMore();
   const { refresh } = useSidebarData();
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
   // The viewed transcript, so its session row dims while a roster entry is
@@ -239,23 +239,41 @@ export function MobileSessionCategory({
             );
           })}
 
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              onClick={showMore}
-              className="w-full text-left pl-2 pr-3 py-2 text-xs text-ink/60 hover:text-ink flex items-center"
-            >
-              {/* `pl-2` inside the `pl-2` list is what lands this chevron's
-                  centre on the folder header's icon column (16px + 8px), and
-                  the label then starts at 40px — the x a row's title occupies
-                  (16px slot + 8px gap). The `space-x-1.5` this replaced put
-                  both 4px left of the list they belong to. */}
-              <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
-                <ChevronDown size={12} />
-              </span>
-              <span className="w-2 shrink-0" />
-              <span className="truncate">Show more sessions ({hiddenCount})</span>
-            </button>
+          {/* Reveal / collapse controls, one row — parity with the desktop
+              category. Same window, so the phone cannot offer a different
+              boundary than the sidebar. */}
+          {(hiddenCount > 0 || canShowLess) && (
+            <div className="flex items-center gap-1">
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={showMore}
+                  className="flex items-center min-w-0 text-left pl-2 pr-3 py-2 text-xs text-ink/60 hover:text-ink"
+                >
+                  {/* `pl-2` inside the `pl-2` list is what lands this chevron's
+                      centre on the folder header's icon column (16px + 8px), and
+                      the label then starts at 40px — the x a row's title occupies
+                      (16px slot + 8px gap). The `space-x-1.5` this replaced put
+                      both 4px left of the list they belong to. */}
+                  <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
+                    <ChevronDown size={12} />
+                  </span>
+                  <span className="w-2 shrink-0" />
+                  <span className="truncate">Show more sessions ({hiddenCount})</span>
+                </button>
+              )}
+
+              {canShowLess && (
+                <button
+                  type="button"
+                  onClick={showLess}
+                  className="ml-auto shrink-0 flex items-center gap-1 text-xs text-ink/60 hover:text-ink px-3 py-2"
+                >
+                  <ChevronUp size={12} />
+                  <span className="truncate">Show less</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}

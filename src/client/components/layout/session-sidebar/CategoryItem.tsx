@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight, MoreHorizontal, Pin, Plus } from 'lucide-preact';
+import { ChevronDown, ChevronRight, ChevronUp, MoreHorizontal, Pin, Plus } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
@@ -39,7 +39,7 @@ export function Category({
 }) {
   const [isOpen, setIsOpen] = useState(folder.isExpanded || false);
   const [showMenu, setShowMenu] = useState(false);
-  const { visibleCount, showMore } = useShowMore();
+  const { visibleCount, showMore, showLess, canShowLess } = useShowMore();
   const [searchParams] = useSearchParams();
   const urlSubagentId = searchParams.get('subagent');
   const urlSessionId = searchParams.get('sessionId');
@@ -256,25 +256,44 @@ export function Category({
             );
           })}
 
-          {/* Show more sessions Button */}
-          {hasMore && !forceExpanded && (
-            <button 
-              type="button"
-              onClick={showMore}
-              className="flex items-center text-xs text-ink/45 hover:text-ink/80 w-full text-left py-1.5 px-2 rounded-lg hover:bg-ink/5 transition-colors cursor-pointer select-none"
-            >
-              {/* The chevron sits in the same 16px slot the rows give their
-                  status/roster glyph, and the label starts where a row's title
-                  does — the disclosure control lines up with the list it
-                  reveals instead of floating beside it. */}
-              <span className="w-4 h-4 shrink-0 flex items-center justify-center">
-                <ChevronDown size={12} />
-              </span>
-              <span className="w-2 shrink-0" />
-              <span className="truncate leading-snug">
-                Show more sessions ({hiddenCount})
-              </span>
-            </button>
+          {/* Reveal / collapse controls — one row, reveal on the left and
+              collapse on the right. They are not a toggle: the list is
+              truncated for height, so after a partial reveal the user needs to
+              keep revealing AND to start over, which is what two controls say
+              and one alternating control cannot. */}
+          {(hasMore || canShowLess) && !forceExpanded && (
+            <div className="flex items-center gap-1">
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={showMore}
+                  className="flex items-center min-w-0 text-xs text-ink/45 hover:text-ink/80 py-1.5 px-2 rounded-lg hover:bg-ink/5 transition-colors cursor-pointer select-none"
+                >
+                  {/* The chevron sits in the same 16px slot the rows give their
+                      status/roster glyph, and the label starts where a row's title
+                      does — the disclosure control lines up with the list it
+                      reveals instead of floating beside it. */}
+                  <span className="w-4 h-4 shrink-0 flex items-center justify-center">
+                    <ChevronDown size={12} />
+                  </span>
+                  <span className="w-2 shrink-0" />
+                  <span className="truncate leading-snug">
+                    Show more sessions ({hiddenCount})
+                  </span>
+                </button>
+              )}
+
+              {canShowLess && (
+                <button
+                  type="button"
+                  onClick={showLess}
+                  className="ml-auto shrink-0 flex items-center gap-1 text-xs text-ink/45 hover:text-ink/80 py-1.5 px-2 rounded-lg hover:bg-ink/5 transition-colors cursor-pointer select-none"
+                >
+                  <ChevronUp size={12} />
+                  <span className="truncate leading-snug">Show less</span>
+                </button>
+              )}
+            </div>
           )}
 
           {visibleSessions.length === 0 && (

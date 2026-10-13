@@ -192,6 +192,32 @@ describe('useShowMore', () => {
     act(() => seen.current!.showMore());
     expect(seen.current!.visibleCount).toBe(13);
   });
+
+  test('canShowLess is false until the window grows, and showLess collapses to the initial size', () => {
+    const seen: { current: ShowMore | null } = { current: null };
+    mount(h(ShowMoreProbe, { seen }));
+    expect(seen.current!.canShowLess).toBe(false);
+
+    act(() => seen.current!.showMore());
+    act(() => seen.current!.showMore());
+    expect(seen.current!.visibleCount).toBe(19);
+    expect(seen.current!.canShowLess).toBe(true);
+
+    // One click closes whatever several opened — the whole point of the
+    // separate control.
+    act(() => seen.current!.showLess());
+    expect(seen.current!.visibleCount).toBe(5);
+    expect(seen.current!.canShowLess).toBe(false);
+  });
+
+  test('showLess returns to the hook\'s own initial, not a hardcoded five', () => {
+    const seen: { current: ShowMore | null } = { current: null };
+    mount(h(ShowMoreProbe, { initial: 2, step: 4, seen }));
+    act(() => seen.current!.showMore());
+    expect(seen.current!.visibleCount).toBe(6);
+    act(() => seen.current!.showLess());
+    expect(seen.current!.visibleCount).toBe(2);
+  });
 });
 
 function ToastProbe({ seen }: { seen: { current: ToastsApi | null } }) {
