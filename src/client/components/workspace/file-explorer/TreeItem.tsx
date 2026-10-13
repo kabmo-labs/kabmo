@@ -5,8 +5,9 @@ import { FileContextMenu } from '@/client/components/workspace/file-explorer/Con
 import { FileCreateModal, FileDeleteModal, FileHistoryModal, FileRenameModal } from '@/client/components/workspace/file-explorer/Modals';
 import { getGitStatusInfo, type FolderGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { useFileActions } from '@/client/hooks/workspace/file-tree-actions';
+import { useFileRowDrag } from '@/client/hooks/workspace/file-row-drag';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
-import type { FileClipboard } from '@/client/hooks/workspace/file-clipboard';
+import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
 import type { GitChange } from '@/shared/types/git';
 
 interface FileTreeItemProps {
@@ -24,6 +25,12 @@ interface FileTreeItemProps {
   gitFolderMap?: Map<string, FolderGitStatusInfo>;
   /** The panel's clipboard — one instance for the whole tree, passed down. */
   clipboard: FileClipboard;
+  /** The row currently being dragged, or null. Panel state: see `FileTreeItem`. */
+  dragging: ClipboardTarget | null;
+  /** A drag of this row started / ended / was dropped on `target`. */
+  onDragStart: (target: ClipboardTarget) => void;
+  onDragEnd: () => void;
+  onDropOn: (target: ClipboardTarget) => void;
 }
 
 /**
@@ -61,6 +68,10 @@ export function FileTreeItem({
   gitFileMap,
   gitFolderMap,
   clipboard,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onDropOn,
 }: FileTreeItemProps) {
   const isFolder = file.type === 'folder';
   const [isOpen, setIsOpen] = useState(false);
@@ -145,12 +156,35 @@ export function FileTreeItem({
     actions.openContextMenu(e.clientX, e.clientY);
   };
 
+  /**
+   * The row as a drag source and a drop target.
+   *
+   * The row's own identity is what both roles need: a drop on a FILE lands in
+   * that file's directory — the same rule a paste obeys (`pasteTargetDir`) — so
+   * a drop beside a file is a real destination rather than an invisible one.
+   * The handlers themselves live in the hook, which owns the two platform facts
+   * they depend on (see `useFileRowDrag`).
+   */
+  const target: ClipboardTarget = {
+    path: file.path,
+    name: file.name,
+    kind: isFolder ? 'folder' : 'file',
+  };
+  const drag = useFileRowDrag({ target, dragging, clipboard, onDragStart, onDragEnd, onDropOn });
+
   return (
     <div>
       <div
-        className="flex items-center space-x-1.5 py-1 px-2 hover:bg-ink/5 cursor-pointer rounded group"
+        className={`flex items-center space-x-1.5 py-1 px-2 hover:bg-ink/5 cursor-pointer rounded group ${
+          drag.isDragging ? 'opacity-40' : ''
+        } ${drag.acceptsDrop ? 'bg-info/10 ring-1 ring-info/40 ring-inset' : ''}`}
+        draggable
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
+        onDragStart={drag.onDragStart}
+        onDragEnd={drag.onDragEnd}
+        onDragOver={drag.onDragOver}
+        onDrop={drag.onDrop}
       >
         {isFolder ? (
           actualIsOpen ? <ChevronDown size={12} className="flex-shrink-0 text-ink/40" /> : <ChevronRight size={12} className="flex-shrink-0 text-ink/40" />
@@ -207,6 +241,10 @@ export function FileTreeItem({
               gitFileMap={gitFileMap}
               gitFolderMap={gitFolderMap}
               clipboard={clipboard}
+              dragging={dragging}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onDropOn={onDropOn}
             />
           ))}
         </div>

@@ -76,7 +76,7 @@ describe('pasteEntry', () => {
     const outcome = await pasteEntry({ scopedRoot: DIR, sourcePath: abs('dest/a.ts'), destinationDir: abs('dest'), mode: 'cut' });
 
     expect(outcome.status).toBe(409);
-    expect(outcome.error).toContain('already in this folder');
+    expect(outcome.error).toBe('Already in this folder');
     expect(fs.readFileSync(abs('dest/a.ts'), 'utf8')).toBe('A');
   });
 

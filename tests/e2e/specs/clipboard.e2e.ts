@@ -150,4 +150,63 @@ test.describe('files panel clipboard', () => {
 
     workspace.dispose();
   });
+
+  test('dragging a file onto a folder moves it there on disk', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-drag-file');
+    seedTree(workspace);
+    await openFilesPanel(page, server.baseURL, workspace);
+
+    // Playwright's own drag gesture: it raises dragstart/dragover/drop with a
+    // real DataTransfer, which is the only way to exercise the handlers.
+    await page.getByText('a.ts', { exact: true }).first().dragTo(page.getByText('target', { exact: true }).first());
+
+    await expect.poll(() => existsSync(join(workspace.path, 'target', 'a.ts'))).toBe(true);
+    expect(existsSync(join(workspace.path, 'a.ts'))).toBe(false);
+    expect(readFileSync(join(workspace.path, 'target', 'a.ts'), 'utf8')).toBe('A');
+
+    workspace.dispose();
+  });
+
+  test('dragging an entry onto the panel background moves it to the listing root', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-drag-root');
+    seedTree(workspace);
+    await openFilesPanel(page, server.baseURL, workspace);
+
+    // Expand `src` so its child is a drop source, then drag it onto the empty
+    // background below the last row — the listing root's own drop target.
+    await page.getByText('src', { exact: true }).first().click();
+    await expect(page.getByText('b.ts', { exact: true }).first()).toBeVisible();
+    const scroller = page.locator('[data-panel-id="right-panel"] .scrollbar-overlay-container.p-2');
+    const box = (await scroller.boundingBox())!;
+    await page.getByText('b.ts', { exact: true }).first().dragTo(scroller, {
+      targetPosition: { x: box.width / 2, y: box.height - 8 },
+    });
+
+    await expect.poll(() => existsSync(join(workspace.path, 'b.ts'))).toBe(true);
+    expect(existsSync(join(workspace.path, 'src', 'b.ts'))).toBe(false);
+
+    workspace.dispose();
+  });
+
+  test('dragging a file onto the folder it already lives in changes nothing', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-drag-noop');
+    seedTree(workspace);
+    await openFilesPanel(page, server.baseURL, workspace);
+
+    await page.getByText('src', { exact: true }).first().click();
+    await expect(page.getByText('b.ts', { exact: true }).first()).toBeVisible();
+    // Onto its own parent folder: a no-op, and the file must stay put.
+    await page.getByText('b.ts', { exact: true }).first().dragTo(page.getByText('src', { exact: true }).first());
+
+    // The assertion is the ABSENCE of a move, so it needs a settle rather than
+    // a poll: a paste that wrongly ran would land `b.ts` at the root as well.
+    await page.waitForTimeout(1500);
+    expect(existsSync(join(workspace.path, 'src', 'b.ts'))).toBe(true);
+    expect(existsSync(join(workspace.path, 'b.ts'))).toBe(false);
+
+    workspace.dispose();
+  });
 });

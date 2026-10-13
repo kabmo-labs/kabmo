@@ -21,6 +21,8 @@ export interface StubClipboardOptions {
   clip?: FsClipboard | null;
   /** The reason `refusalFor` answers with, or null to allow every paste. */
   refusal?: string | null;
+  /** The reason `moveRefusalFor` answers with; falls back to `refusal`. */
+  moveRefusal?: string | null;
   busy?: boolean;
 }
 
@@ -40,9 +42,11 @@ export function createStubClipboard(options: StubClipboardOptions = {}): StubCli
     busy: options.busy ?? false,
     calls,
     refusalFor: () => options.refusal ?? null,
+    moveRefusalFor: () => options.moveRefusal ?? options.refusal ?? null,
     copy: record('copy'),
     cut: record('cut'),
     duplicate: record('duplicate'),
     paste: record('paste'),
+    move: record('move'),
   };
 }

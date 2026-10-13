@@ -74,6 +74,13 @@ export interface FileExplorerHarness {
   buttonLabels: () => string[];
   /** Click a button by its exact label (a context-menu row, a dialog action). */
   clickMenuRow: (label: string) => Promise<void>;
+  /**
+   * Drag the row named `from` onto the row named `to`, or onto the panel
+   * background when `to` is null — the whole gesture, in the order the browser
+   * raises it: dragstart on the source, dragover on the target (where a target
+   * refuses), then drop.
+   */
+  dragRow: (from: string, to: string | null) => Promise<void>;
   /** Install the DOM globals (call from `beforeAll`). */
   install: () => void;
   /** Restore the runner's own globals (call from `afterAll`). */
@@ -255,6 +262,55 @@ export function createFileExplorerHarness(): FileExplorerHarness {
         row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
       });
       for (let i = 0; i < 5; i += 1) await act(async () => {});
+    },
+    async dragRow(from, to) {
+      const rowFor = (name: string) => {
+        // The row itself is the element carrying the drag handlers: the deepest
+        // `div` whose own text is exactly the name is the row's inner content,
+        // and its parent is the handler-carrying row.
+        const matches = [...harness.container.querySelectorAll('div')].filter((el) => el.textContent?.trim() === name);
+        const inner = matches[matches.length - 1];
+        if (!inner) throw new Error(`no row named ${name}`);
+        return (inner.closest('[draggable]') as HTMLElement | null) ?? (inner.parentElement as HTMLElement);
+      };
+      const source = rowFor(from);
+      const target = to === null ? harness.panelBackground() : rowFor(to);
+      // A real `DataTransfer` does not exist in happy-dom, and the handlers read
+      // only `setData`/`dropEffect`, so a minimal stand-in is what the event
+      // carries. Without it `handleDragStart` would throw on `setData`.
+      const transfer = {
+        data: {} as Record<string, string>,
+        effectAllowed: '',
+        dropEffect: '',
+        types: [] as string[],
+        setData(type: string, value: string) {
+          this.data[type] = value;
+        },
+        getData(type: string) {
+          return this.data[type] ?? '';
+        },
+      };
+      const fire = (element: HTMLElement, type: string) => {
+        const event = new window.Event(type, { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'dataTransfer', { value: transfer });
+        element.dispatchEvent(event);
+        return event;
+      };
+      await act(async () => {
+        fire(source, 'dragstart');
+      });
+      for (let i = 0; i < 3; i += 1) await act(async () => {});
+      await act(async () => {
+        fire(target, 'dragover');
+      });
+      for (let i = 0; i < 3; i += 1) await act(async () => {});
+      await act(async () => {
+        fire(target, 'drop');
+      });
+      await act(async () => {
+        fire(source, 'dragend');
+      });
+      for (let i = 0; i < 20; i += 1) await act(async () => {});
     },
   };
   return harness;

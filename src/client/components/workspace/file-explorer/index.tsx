@@ -10,7 +10,7 @@ import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
-import { useFileClipboard } from '@/client/hooks/workspace/file-clipboard';
+import { useFileClipboard, type ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { useToasts } from '@/client/hooks/ui/toasts';
@@ -132,6 +132,23 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     ? `Paste ${clipboard.clip.name}`
     : null;
 
+  /**
+   * The row a drag is currently carrying, or null.
+   *
+   * Panel state rather than read off the drag event: `dataTransfer.getData()`
+   * returns an empty string during `dragover` — the payload is only released at
+   * the drop — so a drop target has no way to ask the event what is being
+   * dragged. `dragover` is also the only moment a target may refuse, which is
+   * why the entry has to be readable there.
+   */
+  const [dragging, setDragging] = useState<ClipboardTarget | null>(null);
+
+  /**
+   * Whether the listing root may accept the drag in flight — the background is
+   * a drop target like any other, and the rule is the same one a row uses.
+   */
+  const rootAcceptsDrop = Boolean(dragging) && clipboard.moveRefusalFor(dragging!, rootTarget) === null;
+
   // The root's own "New File": the panel background is the one target whose
   // create belongs at the tree's top, and it is the only action the root menu
   // offers (a row's menu names a FILE, which the root is not).
@@ -223,13 +240,28 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
 
       <div
         ref={fade.ref}
-        className="flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80"
+        className={`flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80 ${
+          rootAcceptsDrop ? 'bg-info/[0.06]' : ''
+        }`}
         onContextMenu={(e) => {
           // The panel's own background. A row stops propagation before this
           // runs, so this handler only ever sees a right-click that named NO
           // file — which is what makes the root's menu a different menu.
           e.preventDefault();
           setRootMenu({ x: e.clientX, y: e.clientY });
+        }}
+        onDragOver={(e) => {
+          // The background is the LISTING ROOT's drop target — the only way to
+          // move an entry back out of a folder, since a drop on a file lands in
+          // that file's own directory instead.
+          if (!rootAcceptsDrop) return;
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(e) => {
+          if (!rootAcceptsDrop) return;
+          e.preventDefault();
+          clipboard.move(dragging!, rootTarget);
         }}
         onScroll={fade.onScroll}
       >
@@ -257,6 +289,13 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
               gitFileMap={gitFileMap}
               gitFolderMap={gitFolderMap}
               clipboard={clipboard}
+              dragging={dragging}
+              onDragStart={setDragging}
+              onDragEnd={() => setDragging(null)}
+              onDropOn={(target) => {
+                if (!dragging) return;
+                clipboard.move(dragging, target);
+              }}
             />
           ))
         )}

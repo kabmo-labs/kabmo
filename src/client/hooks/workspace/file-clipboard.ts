@@ -27,6 +27,7 @@ import { useCallback, useEffect, useRef } from 'preact/hooks';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import {
+  dropRefusal,
   fsClipboardScope,
   pasteRefusal,
   pasteTargetDir,
@@ -57,6 +58,18 @@ export interface FileClipboard {
   cut: (target: ClipboardTarget) => void;
   duplicate: (target: ClipboardTarget) => void;
   paste: (target: ClipboardTarget) => void;
+  /**
+   * The reason a DRAG of `source` onto `target` would be refused, or null.
+   *
+   * Read during `dragover`, which is the only moment a drop target can refuse:
+   * `dataTransfer.getData()` returns nothing until the drop itself, so the
+   * dragged entry has to be panel state rather than read off the event — and a
+   * target that cannot accept the entry must not call `preventDefault`, or the
+   * browser draws a drop cursor over a drop it will not perform.
+   */
+  moveRefusalFor: (source: ClipboardTarget, target: ClipboardTarget) => string | null;
+  /** Move `source` onto `target` — what a drag-and-drop performs. */
+  move: (source: ClipboardTarget, target: ClipboardTarget) => void;
 }
 
 export interface FileClipboardDeps {
@@ -117,10 +130,17 @@ export function useFileClipboard({ rootPath, repo, onComplete, onError }: FileCl
     [clip, scope],
   );
 
+  const moveRefusalFor = useCallback(
+    (source: ClipboardTarget, target: ClipboardTarget): string | null =>
+      dropRefusal(source, pasteTargetDir(target.path, target.kind)),
+    [],
+  );
+
   return {
     clip,
     busy: fetcher.state !== 'idle',
     refusalFor,
+    moveRefusalFor,
     copy: (target) => {
       setStoredClip({ scope, path: target.path, name: target.name, kind: target.kind, mode: 'copy' });
     },
@@ -129,6 +149,26 @@ export function useFileClipboard({ rootPath, repo, onComplete, onError }: FileCl
     },
     duplicate: (target) => {
       post({ actionType: 'duplicate', path: target.path }, false);
+    },
+    move: (source, target) => {
+      const refusal = moveRefusalFor(source, target);
+      if (refusal) {
+        onError(refusal);
+        return;
+      }
+      // The same `paste` request a Cut's paste posts: a drag IS a cut, so the
+      // two must not diverge on what moving an entry does. It clears the
+      // clipboard only when the entry it holds was the one moved.
+      post(
+        {
+          actionType: 'paste',
+          sourcePath: source.path,
+          mode: 'cut',
+          targetPath: target.path,
+          targetKind: target.kind,
+        },
+        clip?.path === source.path && clip?.mode === 'cut',
+      );
     },
     paste: (target) => {
       if (!clip) return;

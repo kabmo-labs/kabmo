@@ -96,7 +96,11 @@ export async function pasteEntry(options: {
   const destination = path.join(destinationDir, name);
 
   if (mode === 'cut' && destination === sourcePath) {
-    return { error: `${path.basename(sourcePath)} is already in this folder`, status: 409 };
+    // A filesystem fact, not a UI rule: with the entry's own name available in
+    // its own directory, `uniqueName` hands back the source's own name, so the
+    // move would target itself. `dropRefusal` refuses the same case before any
+    // call arrives — this is the belt for a direct caller.
+    return { error: 'Already in this folder', status: 409 };
   }
   // The containment check `resolveWithinRoot` cannot make: the destination path
   // is inside the root and outside the source, but the DIRECTORY it resolves to

@@ -50,6 +50,15 @@ export function pasteTargetDir(targetPath: string, targetKind: 'file' | 'folder'
 }
 
 /**
+ * The directory an entry lives in — the SOURCE side of `pasteTargetDir`, which
+ * cannot answer it: a folder's destination is itself, but its parent is not.
+ */
+export function parentOf(path: string): string {
+  const cut = path.lastIndexOf('/');
+  return cut === -1 ? '.' : path.slice(0, cut);
+}
+
+/**
  * The refusal a transfer of `source` into the folder `targetDir` carries, or
  * null when it may run. Both paths are relative to the same scoped root.
  *
@@ -73,6 +82,26 @@ export function transferRefusal(
 }
 
 /**
+ * The refusal a MOVE of `source` into `targetDir` carries — the rule a drag
+ * obeys, and the reason it is not just `transferRefusal`.
+ *
+ * A drag is always a move, so landing back in the directory the entry already
+ * lives in is a no-op with nothing to report. A CUT only hits the same case
+ * when the user pastes into the folder the entry is already in, which is why
+ * `pasteRefusal` applies the same test to `mode: 'cut'` and not to a copy —
+ * copying into one's own directory is how `a copy.ts` is made.
+ */
+export function dropRefusal(
+  source: { path: string; kind: 'file' | 'folder' },
+  targetDir: string,
+): string | null {
+  const refusal = transferRefusal(source, targetDir);
+  if (refusal) return refusal;
+  if (targetDir === parentOf(source.path)) return 'Already in this folder';
+  return null;
+}
+
+/**
  * Whether a paste of `clip` into the folder `targetDir` is legal.
  *
  * `transferRefusal` plus the one check only a client can make: the clipboard
@@ -85,6 +114,10 @@ export function transferRefusal(
 export function pasteRefusal(clip: FsClipboard | null, scope: string, targetDir: string): string | null {
   if (!clip) return 'Nothing to paste';
   if (clip.scope !== scope) return 'The clipboard holds an entry from another workspace';
+  // A cut has nothing to do in the folder it is already in — the entry would be
+  // renamed to a `copy` name, which is the opposite of what a cut means. The
+  // route refuses the same case in the same words.
+  if (clip.mode === 'cut' && targetDir === parentOf(clip.path)) return 'Already in this folder';
   return transferRefusal(clip, targetDir);
 }
 

@@ -51,6 +51,39 @@ export const pristineDomGlobals: Partial<Record<(typeof DOM_TEST_GLOBALS)[number
 let captured = false;
 
 /**
+ * The `on*` drag properties happy-dom does not define, and Preact needs.
+ *
+ * Preact picks a listener's DOM event name by asking whether `name in dom`
+ * (`diff/props.js`): a property that exists means it can lower-case the prop
+ * (`onDragStart` → `dragstart`), and one that does not falls back to stripping
+ * `on` only — registering a listener for the event `DragStart`, which never
+ * fires. Real browsers define all of these on `HTMLElement`; happy-dom defines
+ * `onclick` and `oncontextmenu` but none of the drag family, so a component's
+ * drag handlers were silently inert under test while working in a browser.
+ *
+ * Defined here rather than in one spec because the trap is Preact's, not the
+ * Files panel's: any component with drag handlers hits it.
+ */
+const DRAG_EVENT_PROPERTIES = [
+  'ondrag', 'ondragstart', 'ondragend', 'ondragenter', 'ondragleave', 'ondragover', 'ondrop',
+] as const;
+
+/** Give `win`'s element prototype the drag properties a browser has. */
+export function installDragEventProperties(win: unknown): void {
+  // happy-dom's `Window` is not structurally nameable here without importing it
+  // (this module is imported by suites that never touch a DOM), so the lookup
+  // is guarded rather than asserted — a caller handing a bare stub simply gets
+  // no shim, which is the same state it was in before.
+  if (typeof win !== 'object' || win === null || !('HTMLElement' in win)) return;
+  const ctor = win.HTMLElement;
+  if (typeof ctor !== 'function') return;
+  for (const name of DRAG_EVENT_PROPERTIES) {
+    if (name in ctor.prototype) continue;
+    Object.defineProperty(ctor.prototype, name, { value: null, writable: true, configurable: true });
+  }
+}
+
+/**
  * Replace the DOM globals with a happy-dom window's, for a suite that renders
  * components. Pairs with `restoreDomGlobals`.
  *
@@ -62,6 +95,7 @@ let captured = false;
  */
 export function installDomGlobals(win: unknown): void {
   const target = globalThis as unknown as Record<string, unknown>;
+  installDragEventProperties(win);
   if (!captured) {
     captured = true;
     for (const key of DOM_TEST_GLOBALS) pristineDomGlobals[key] = target[key];

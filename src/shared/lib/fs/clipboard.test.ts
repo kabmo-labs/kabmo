@@ -15,8 +15,10 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  dropRefusal,
   duplicateName,
   fsClipboardScope,
+  parentOf,
   pasteRefusal,
   pasteTargetDir,
   readFsClipboard,
@@ -99,6 +101,34 @@ describe('transferRefusal', () => {
   });
 });
 
+describe('parentOf', () => {
+  test('a nested path names its directory; a top-level one names the root', () => {
+    expect(parentOf('src/deep/a.ts')).toBe('src/deep');
+    expect(parentOf('src')).toBe('.');
+    expect(parentOf('a.ts')).toBe('.');
+  });
+});
+
+describe('dropRefusal', () => {
+  test('allows a drop into a sibling folder and onto the root', () => {
+    expect(dropRefusal({ path: 'src/a.ts', kind: 'file' }, 'other')).toBeNull();
+    expect(dropRefusal({ path: 'src/a.ts', kind: 'file' }, '.')).toBeNull();
+    expect(dropRefusal({ path: 'src', kind: 'folder' }, 'other')).toBeNull();
+  });
+
+  test('refuses a drop into the folder the entry already lives in', () => {
+    // A drag is a move, so this is a no-op with nothing to report — and
+    // `dragover` must not draw a drop cursor for it.
+    expect(dropRefusal({ path: 'src/a.ts', kind: 'file' }, 'src')).toBe('Already in this folder');
+    expect(dropRefusal({ path: 'a.ts', kind: 'file' }, '.')).toBe('Already in this folder');
+    expect(dropRefusal({ path: 'src', kind: 'folder' }, '.')).toBe('Already in this folder');
+  });
+
+  test('refuses a folder dropped into its own subtree', () => {
+    expect(dropRefusal({ path: 'src', kind: 'folder' }, 'src/deep')).toContain('itself');
+  });
+});
+
 describe('pasteRefusal', () => {
   test('reports an empty clipboard rather than pasting nothing', () => {
     expect(pasteRefusal(null, 'ws\u0000.', '.')).toBe('Nothing to paste');
@@ -111,6 +141,14 @@ describe('pasteRefusal', () => {
   test('allows a paste of this listing’s entry and applies the folder rule', () => {
     expect(pasteRefusal(clip(), 'ws\u0000.', 'other')).toBeNull();
     expect(pasteRefusal(clip({ path: 'src', kind: 'folder' }), 'ws\u0000.', 'src/sub')).toContain('itself');
+  });
+
+  test('a CUT into its own folder is refused; a COPY into it is how a copy is made', () => {
+    // The two modes differ here on purpose: copying a file into the directory
+    // it already lives in is how `a copy.ts` is produced, while a cut there
+    // would have nothing to do.
+    expect(pasteRefusal(clip({ path: 'src/a.ts', mode: 'cut' }), 'ws\u0000.', 'src')).toBe('Already in this folder');
+    expect(pasteRefusal(clip({ path: 'src/a.ts', mode: 'copy' }), 'ws\u0000.', 'src')).toBeNull();
   });
 });
 
