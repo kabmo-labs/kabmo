@@ -23,9 +23,19 @@ export interface FrameWriterDeps {
   write: (frame: unknown) => void;
 }
 
-/** An assistant message in the shape omp emits on the wire. */
-export function assistantMessage(text: string, stopReason = 'end_turn') {
+/**
+ * An assistant message in the shape omp emits on the wire.
+ *
+ * `id` is load-bearing, not decoration: the chamber's mapper keys a timeline row
+ * by the message's OWN id and falls back to `msg-<timestamp>-ai` when it is
+ * absent. A fixture that omitted it therefore let two frames created in the same
+ * millisecond derive the SAME id, and the timeline rendered the turn twice —
+ * measured as an intermittent duplicate row on ~1 run in 30. Real omp sends the
+ * id, so the fixture must too.
+ */
+export function assistantMessage(text: string, stopReason = 'end_turn', id?: string) {
   return {
+    ...(id ? { id } : {}),
     role: 'assistant',
     content: [{ type: 'text', text }],
     api: 'openai-completions',
@@ -42,7 +52,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export function createFrameWriters({ write }: FrameWriterDeps) {
   /** Stream one assistant message as the frames omp would emit for it. */
   async function streamAnswer(messageId: string, text: string) {
-    const full = assistantMessage(text);
+    const full = assistantMessage(text, 'end_turn', messageId);
     // `message_start` carries the FULL message, and every `message_update`
     // carries it accumulated again — the `"full"` projection `configureChild`
     // requests. The client folds each frame as-is.
@@ -82,7 +92,7 @@ export function createFrameWriters({ write }: FrameWriterDeps) {
     const args = { command: `echo ${toolName}` };
     const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
     const block = { type: 'toolCall', id: callId, name: toolName, arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
-    const message = { ...assistantMessage('', 'toolUse'), content: [block] };
+    const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
     const json = JSON.stringify(args);
 
     // The seed carries the block with its id/name; the deltas re-send it

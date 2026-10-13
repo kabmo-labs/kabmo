@@ -182,20 +182,17 @@ async function runTurn(prompt: string, requestId: string) {
 
   if (delay) await sleep(Number(delay[1]));
   if (tool) await streamToolCall(tool[1]);
-  if (ask) {
-    const requestId2 = `ui-${crypto.randomUUID().slice(0, 8)}`;
-    write({ type: 'extension_ui_request', requestId: requestId2, method: 'ask', questions: [{ id: 'q1', question: ask[1].trim(), options: [{ label: 'Yes' }, { label: 'No' }], multi: false }] });
-  }
+  if (ask) await runAsk(ask[1].trim());
 
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
   if (error) {
-    const failed = assistantMessage('', 'error');
+    const failed = assistantMessage('', 'error', messageId);
     write({ type: 'message_start', messageId, message: { ...failed, errorMessage: error[1].trim() } });
     write({ type: 'message_end', messageId, message: { ...failed, errorMessage: error[1].trim() } });
   } else {
     const text = `Response to: ${prompt}`;
     if (slow) {
-      const full = assistantMessage(text);
+      const full = assistantMessage(text, 'end_turn', messageId);
       write({ type: 'message_start', messageId, message: full });
       for (const [index, char] of [...text].entries()) {
         const accumulated = text.slice(0, index + 1);
@@ -216,10 +213,81 @@ async function runTurn(prompt: string, requestId: string) {
 
   messageCount += 2;
   streaming = false;
-  const messages = [assistantMessage('Response')];
+  const messages = [assistantMessage('Response', 'end_turn', `${messageId}-end`)];
   write({ type: 'agent_end', messages, isTerminal: true });
   // The completion frame omp sends for a prompt that opened a turn.
   write({ type: 'prompt_result', requestId, agentInvoked: true });
+}
+
+/** One answer of a grouped `ask` reply, as omp's response frame spells it. */
+interface AskAnswer {
+  id: string;
+  selectedOptions: string[];
+  customInput?: string;
+}
+
+/** The grouped asks the child is parked on, keyed by the request id omp uses. */
+const pendingAsks = new Map<string, (answers: AskAnswer[]) => void>();
+
+/**
+ * The real `ask` tool shape, which is what the inline card exists for.
+ *
+ * The assistant message carries the `ask` toolCall block (a card is drawn from
+ * the MESSAGE — `tool_execution_*` frames alone render nothing), the child then
+ * parks on the grouped `extension_ui_request` (`method:"ask"`, keyed by `id`,
+ * exactly as omp keys it) and BLOCKS until the matching response arrives, and
+ * only then writes the tool result the card reads its answers back from. A
+ * fixture that skipped the block or the wait would leave the card unrenderable
+ * or the post-submit window untestable — the two things a spec needs here.
+ */
+async function runAsk(text: string) {
+  const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
+  const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+  const questions = [
+    { id: 'q1', question: text, options: [{ label: 'Yes' }, { label: 'No' }], multi: false },
+    { id: 'q2', question: `${text} — which ones?`, options: [{ label: 'Alpha' }, { label: 'Beta' }], multi: true },
+  ];
+  const args = { questions };
+  const block = { type: 'toolCall', id: callId, name: 'ask', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+  const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+
+  write({ type: 'message_start', messageId, message });
+  write({ type: 'message_end', messageId, message });
+  write({ type: 'turn_end', message, toolResults: [] });
+
+  write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'ask', args });
+  const uiRequestId = `ui-${crypto.randomUUID().slice(0, 8)}`;
+  const answers = await new Promise<AskAnswer[]>((resolve) => {
+    pendingAsks.set(uiRequestId, resolve);
+    write({ type: 'extension_ui_request', id: uiRequestId, method: 'ask', questions });
+  });
+
+  const text2 = answers
+    .map((answer) => `${answer.id}: ${answer.customInput ?? answer.selectedOptions.join(', ')}`)
+    .join('\n');
+  write({
+    type: 'tool_execution_end',
+    toolCallId: callId,
+    toolName: 'ask',
+    result: {
+      content: [{ type: 'text', text: `User answers:\n${text2}` }],
+      details: {
+        results: questions.map((question, index) => {
+          const answer = answers[index] ?? { selectedOptions: [] };
+          return {
+            id: question.id,
+            question: question.question,
+            options: question.options.map((option) => option.label),
+            multi: question.multi,
+            selectedOptions: answer.selectedOptions,
+            ...(answer.customInput ? { customInput: answer.customInput } : {}),
+          };
+        }),
+      },
+      isError: false,
+    },
+    isError: false,
+  });
 }
 
 function handleCommand(frame: Record<string, unknown>) {
@@ -281,6 +349,21 @@ function handleCommand(frame: Record<string, unknown>) {
         })();
         return;
       }
+      // The chamber's own `/chamber-mode …` control channel (the Plan/Goal
+      // toggles, the plan-review republish). Real omp executes it in the
+      // chamber-owned extension and answers `agentInvoked:false` with NO
+      // assistant message — it costs no transcript. A fixture that ran it as a
+      // full turn opened a SECOND concurrent run beside the operator's, and
+      // that stray run's `message_end` cleared the first run's AI placeholder
+      // ref mid-turn: the ask card's own message then got APPENDED beside the
+      // placeholder and a later coalesced update mapped the placeholder onto it,
+      // rendering the turn (and its ask card) TWICE. Measured: ~1 run in 30,
+      // with two cards for one ask — one "Running", one "Done".
+      if (message.trim().startsWith('/chamber-mode')) {
+        respond({ agentInvoked: false });
+        write({ type: 'prompt_result', agentInvoked: false });
+        return;
+      }
       void runTurn(message, String(id));
       return;
     }
@@ -288,6 +371,17 @@ function handleCommand(frame: Record<string, unknown>) {
     case 'force_reset':
       respond({});
       return;
+    case 'extension_ui_response': {
+      // The reply to a parked dialog. A grouped `ask` is answered by ONE
+      // `answers` array; the child only then writes the tool result, which is
+      // the window the card must keep showing what it sent in.
+      const targetId = typeof frame.id === 'string' ? frame.id : '';
+      const resolve = pendingAsks.get(targetId);
+      if (!resolve) return;
+      pendingAsks.delete(targetId);
+      resolve(Array.isArray(frame.answers) ? (frame.answers as AskAnswer[]) : []);
+      return;
+    }
     default:
       respond({});
   }
