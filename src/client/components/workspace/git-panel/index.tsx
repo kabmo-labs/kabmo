@@ -63,6 +63,18 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // History and Graph states
   const [viewingOutput, setViewingOutput] = useState<CommitHistoryPage | null>(null);
   const [mounted, setMounted] = useState(false);
+  /**
+   * The payload this effect has already acted on.
+   *
+   * `actionFetcher.data` is STICKY — it holds the last response for the life of
+   * the mount — while `loadRepo` is a dependency whose identity changes whenever
+   * `rootPath` does. Switching to a session in another workspace therefore
+   * re-ran the effect against the PREVIOUS history payload and reopened a modal
+   * the user had already dismissed, which is the reported "clicking a session
+   * item opens the commit modal". Consuming each response exactly once is what
+   * makes the modal open because the user ASKED for it and nothing else.
+   */
+  const consumedActionRef = useRef<unknown>(null);
 
   const { toasts, pushToast, dismissToast } = useToasts();
 
@@ -77,10 +89,15 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
     }
   }, [branchPrompt]);
 
-  // Reload after action completes
+  // Reload after action completes. A response is acted on ONCE: the fetcher
+  // keeps its last payload, so without the guard any later run of this effect
+  // (a new `loadRepo` identity, a re-render) would re-open the commit modal the
+  // user just closed.
   useEffect(() => {
     if (actionFetcher.state === 'idle' && actionFetcher.data) {
       const payload = actionFetcher.data;
+      if (payload === consumedActionRef.current) return;
+      consumedActionRef.current = payload;
       if (payload.type === 'history' || payload.type === 'graph') {
         // `hasMore` and `total` are part of the page, not decoration: without
         // them the modal cannot know the branch holds more than the 50 rows it
