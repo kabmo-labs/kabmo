@@ -33,7 +33,7 @@ import {
   putToolResult,
   recordToolResult,
   refreshToolMessage,
-  type ToolResultRecord,
+  resultDetails,
 } from '@/shared/lib/chat/omp/tool-results';
 
 // Re-exported so stream.ts and the timeline hook keep their existing import
@@ -100,6 +100,11 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
       if (!completed) break;
       if (completed.role === 'toolResult') {
         recordToolResult(completed, toolHost(deps));
+        // Re-pair the card now. omp sends this frame AFTER `tool_execution_end`,
+        // but the two are independent, and a result that arrived first (or a
+        // build whose `_end` frame carried no details) must still reach the row
+        // that is on screen.
+        refreshToolMessage(typeof completed.toolCallId === 'string' ? completed.toolCallId : undefined, toolHost(deps));
         break;
       }
       if (completed.role === 'custom') break;
@@ -162,7 +167,7 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
       putToolResult(deps, callId, {
         output: toolResultText(data.result),
         isError: data.isError === true,
-        details: (data.details && typeof data.details === 'object' ? data.details : undefined) as ToolResultRecord['details'],
+        details: resultDetails(data),
         ...(images.length > 0 ? { images } : {}),
       });
       refreshToolMessage(callId, toolHost(deps));

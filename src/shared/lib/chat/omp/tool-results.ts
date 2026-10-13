@@ -70,6 +70,28 @@ export function putToolResult(host: ToolResultHost, callId: string, record: Tool
   if (map) storeToolResult(map, callId, record);
 }
 
+/** The `details` a tool frame reports.
+ *
+ *  omp nests a tool result's `details` INSIDE `result` on the live frames
+ *  (`tool_execution_end`, `tool_execution_update`) — its own wire schema declares
+ *  `ToolExecutionEndEvent` with only `type/toolCallId/toolName/result/isError`,
+ *  and `details` lives on the `ToolResultMessage` that `result` mirrors. A
+ *  `message_end` toolResult carries them at the TOP level. Reading only the top
+ *  level therefore dropped every live card's details (measured against omp
+ *  18.10.3: `wallTimeMs`, `exitCode`, `service`, `diff`, `phases`, … all lost
+ *  on the card that had just streamed, while a reload showed them). Read both,
+ *  `result` first because that is the shape the live frames use. */
+export function resultDetails(frame: Record<string, unknown>): ToolResultRecord['details'] {
+  const result = frame.result;
+  const nested = result && typeof result === 'object' && !Array.isArray(result)
+    ? (result as Record<string, unknown>).details
+    : undefined;
+  const details = nested && typeof nested === 'object' ? nested : frame.details;
+  return details && typeof details === 'object'
+    ? (details as ToolResultRecord['details'])
+    : undefined;
+}
+
 /** Record a toolResult frame's output against its tool call id. */
 export function recordToolResult(raw: Record<string, unknown>, host: ToolResultHost): void {
   const callId = typeof raw.toolCallId === 'string' ? raw.toolCallId : undefined;
@@ -77,7 +99,8 @@ export function recordToolResult(raw: Record<string, unknown>, host: ToolResultH
   const images = extractToolImages(raw.content);
   host.toolResultsRef.current?.set(callId, {
     output: extractTextFromContent(raw.content),
-    details: (raw.details && typeof raw.details === 'object' ? raw.details : undefined) as ToolResultRecord['details'],
+    isError: raw.isError === true,
+    details: resultDetails(raw),
     ...(images.length > 0 ? { images } : {}),
   });
 }
