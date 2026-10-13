@@ -28,7 +28,6 @@ import type { Dispatch, RefObject, SetStateAction } from 'preact/compat';
 import type { ChatMessageData, OmpAgentCallbacks, OmpAgentEvent, OmpAgentState } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { foldAgentEvent, type ToolResultRecord } from '@/shared/lib/chat/omp/agent-events';
-import { createDeltaAccumulator } from '@/shared/lib/chat/omp/delta-accumulator';
 import { realtimeClient, type RealtimeFrame } from '@/shared/lib/realtime/client';
 import { sessionTopic } from '@/shared/lib/realtime/protocol';
 
@@ -69,21 +68,11 @@ export function useOmpAgentStream({
   const attachedRef = useRef<string | null>(null);
   /** Cleanup of the live frame subscription. */
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  /**
-   * Rebuilds the accumulated assistant message when the child streams in
-   * DELTA mode (`set_event_filter`). Held across reconnects of the same
-   * session and dropped on a switch, because its state belongs to the run in
-   * flight. See `delta-accumulator.ts`.
-   */
-  const deltasRef = useRef(createDeltaAccumulator());
 
   const disconnect = useCallback(() => {
     const unsubscribe = unsubscribeRef.current;
     unsubscribeRef.current = null;
     attachedRef.current = null;
-    // The accumulator holds the run in flight, so it never outlives the
-    // subscription that fed it.
-    deltasRef.current.reset();
     unsubscribe?.();
     setState((prev) => ({ ...prev, connected: false }));
   }, [setState]);
@@ -123,28 +112,15 @@ export function useOmpAgentStream({
         return;
       }
 
-      // Rebuild the accumulated message when the child streams in delta mode;
-      // a frame that already carries it passes through untouched.
-      const raw = frame.payload as Record<string, unknown>;
-      const rebuilt = deltasRef.current.apply(raw);
-      if (raw.type === 'message_end' || raw.type === 'agent_end') {
-        deltasRef.current.clear(typeof raw.messageId === 'string' ? raw.messageId : undefined);
-      }
-      // `event` is absent when the accumulator rewrote only the terminal
-      // message: a `message_end` for a stream whose fragments were keyed by the
-      // wire message id (a client that attached mid-message), so the finished
-      // row is the one the fragments were drawn under.
-      const payload = rebuilt
-        ? { ...raw, message: rebuilt.message, ...(rebuilt.event ? { assistantMessageEvent: rebuilt.event } : {}) }
-        : raw;
-
-      foldAgentEvent(payload as OmpAgentEvent, {
+      // The child streams FULL accumulated `message_update` frames (see
+      // `child-config.ts`), so the payload folds as-is — no rebuild.
+      foldAgentEvent(frame.payload as OmpAgentEvent, {
         sessionId: sid,
         setState,
         callbacksRef,
         toolResultsRef,
         lastToolMessageRef,
-              activityRef,
+        activityRef,
         currentThinkingLevelRef,
         providerRetryVerbRef,
       });

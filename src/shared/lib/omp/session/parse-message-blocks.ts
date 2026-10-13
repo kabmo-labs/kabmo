@@ -117,11 +117,12 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
       if (typeof block.thinking === 'string') result.thinking = block.thinking;
       else if (typeof block.text === 'string') result.thinking = block.text;
     } else if (block.type === 'toolCall') {
-      // A streaming tool call has no `id` yet — its arguments are still
-      // arriving as partial JSON (see `delta-accumulator.ts`), so omp's id only
-      // appears at `toolcall_end`. A random fallback re-keyed the card on every
-      // frame and remounted it per chunk; the block's position is stable for
-      // the whole stream and the real id takes over the moment it arrives.
+      // The child streams FULL accumulated messages (`child-config.ts`), so the
+      // block carries omp's own `id` and `name` from the first delta. The
+      // fallbacks cover a frame that somehow omits them (a hand-built fixture, a
+      // build that ignores the filter): a random id would re-key the card on
+      // every frame and remount it per chunk, while the block's position is
+      // stable for the whole stream.
       const id = typeof block.id === 'string' ? block.id : `tool-${blockIndex}`;
       const name = typeof block.name === 'string' ? block.name : 'tool';
       const rawInput = (block.arguments ?? block.input) as Record<string, unknown> | undefined;

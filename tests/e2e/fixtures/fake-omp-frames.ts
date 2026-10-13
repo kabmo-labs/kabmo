@@ -21,8 +21,6 @@
 export interface FrameWriterDeps {
   /** Write one frame to the child's stdout. */
   write: (frame: unknown) => void;
-  /** Whether the chamber has requested delta-mode `message_update` frames. */
-  isDeltaMode: () => boolean;
 }
 
 /** An assistant message in the shape omp emits on the wire. */
@@ -41,34 +39,24 @@ export function assistantMessage(text: string, stopReason = 'end_turn') {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-export function createFrameWriters({ write, isDeltaMode }: FrameWriterDeps) {
+export function createFrameWriters({ write }: FrameWriterDeps) {
   /** Stream one assistant message as the frames omp would emit for it. */
   async function streamAnswer(messageId: string, text: string) {
     const full = assistantMessage(text);
-    // `message_start` carries the FULL message — the seed the accumulator keeps.
+    // `message_start` carries the FULL message, and every `message_update`
+    // carries it accumulated again — the `"full"` projection `configureChild`
+    // requests. The client folds each frame as-is.
     write({ type: 'message_start', messageId, message: full });
 
     const pieces = text.match(/[\s\S]{1,12}/g) ?? [text];
     for (const [index, piece] of pieces.entries()) {
-      if (isDeltaMode()) {
-        // Delta mode: `message` shrinks to `{role}` and the fragment rides
-        // `assistantMessageEvent`. The client rebuilds the accumulated shape.
-        write({
-          type: 'message_update',
-          messageId,
-          message: { role: 'assistant' },
-          assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: piece, partial: full },
-        });
-      } else {
-        // A build that ignores the filter re-sends the whole accumulated message.
-        const accumulated = pieces.slice(0, index + 1).join('');
-        write({
-          type: 'message_update',
-          messageId,
-          message: { ...full, content: [{ type: 'text', text: accumulated }] },
-          assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: piece, partial: full },
-        });
-      }
+      const accumulated = pieces.slice(0, index + 1).join('');
+      write({
+        type: 'message_update',
+        messageId,
+        message: { ...full, content: [{ type: 'text', text: accumulated }] },
+        assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: piece, partial: full },
+      });
       await sleep(15);
     }
 
@@ -84,12 +72,10 @@ export function createFrameWriters({ write, isDeltaMode }: FrameWriterDeps) {
    * The assistant MESSAGE is what makes a card exist: `tool_execution_*` frames
    * only carry the result, and the timeline draws a card from the message's
    * `toolCall` block. Real omp seeds that block on `message_start` with its own
-   * `id`/`name`, streams the arguments as `toolcall_delta` (the delta frames
-   * carry ONLY `{contentIndex, delta}` — no `partial`, no `name`), and repeats
-   * the whole block on `toolcall_end`. That shape is what
-   * `delta-accumulator.ts` rebuilds, so the fixture emits it — a fixture that
-   * skipped the message would leave the timeline with nothing to render and any
-   * spec's assertion vacuous.
+   * `id`/`name` and re-sends the whole accumulated message on every delta (the
+   * `"full"` projection), so the card is named from the first fragment; the
+   * fixture emits that shape. A fixture that skipped the message would leave the
+   * timeline with nothing to render and any spec's assertion vacuous.
    */
   async function streamToolCall(toolName: string) {
     const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
@@ -99,20 +85,21 @@ export function createFrameWriters({ write, isDeltaMode }: FrameWriterDeps) {
     const message = { ...assistantMessage('', 'toolUse'), content: [block] };
     const json = JSON.stringify(args);
 
-    // The seed carries the finished block; the deltas carry only their fragment.
+    // The seed carries the block with its id/name; the deltas re-send it
+    // accumulated, so the name is readable the moment the call starts.
     write({ type: 'message_start', messageId, message });
     write({
       type: 'message_update',
       messageId,
-      message: isDeltaMode() ? { role: 'assistant' } : message,
-      assistantMessageEvent: { type: 'toolcall_start', contentIndex: 0, ...(isDeltaMode() ? {} : { partial: message }) },
+      message,
+      assistantMessageEvent: { type: 'toolcall_start', contentIndex: 0, partial: message },
     });
     for (const piece of json.match(/[\s\S]{1,6}/g) ?? [json]) {
       write({
         type: 'message_update',
         messageId,
-        message: isDeltaMode() ? { role: 'assistant' } : message,
-        assistantMessageEvent: { type: 'toolcall_delta', contentIndex: 0, delta: piece, ...(isDeltaMode() ? {} : { partial: message }) },
+        message,
+        assistantMessageEvent: { type: 'toolcall_delta', contentIndex: 0, delta: piece, partial: message },
       });
       // Slow on purpose: the argument stream is the window in which the card's
       // name and subtitle must already be readable. At omp's real speed the
@@ -124,8 +111,8 @@ export function createFrameWriters({ write, isDeltaMode }: FrameWriterDeps) {
     write({
       type: 'message_update',
       messageId,
-      message: isDeltaMode() ? { role: 'assistant' } : message,
-      assistantMessageEvent: { type: 'toolcall_end', contentIndex: 0, toolCall: block, ...(isDeltaMode() ? {} : { partial: message }) },
+      message,
+      assistantMessageEvent: { type: 'toolcall_end', contentIndex: 0, toolCall: block, partial: message },
     });
     write({ type: 'message_end', messageId, message });
     write({ type: 'turn_end', message, toolResults: [] });

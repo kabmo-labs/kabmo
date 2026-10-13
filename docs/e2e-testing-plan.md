@@ -137,8 +137,8 @@ mock.** A `tests/e2e/fixtures/fake-omp.ts` (`#!/usr/bin/env bun`) that honors
 frame, `response` frames for `get_state` / `get_available_models` /
 `get_available_commands` / `set_event_filter` / `set_ask_dialog`, and the event
 frames a turn produces (`agent_start`, `message_start`, `message_update` in
-**delta** mode — the child is configured with `messageUpdates:"delta"`, so the
-fake must emit fragments and let `delta-accumulator.ts` rebuild them —
+**full** mode — the child is configured with `messageUpdates:"full"`, so the
+fake re-sends the accumulated message on each frame, exactly as omp does —
 `message_end`, `tool_execution_start/update/end`, `turn_end`, `agent_end`).
 Prompt directives mirror bb's scripted-echo-provider: `delay:<ms>`,
 `tool:<name>`, `ask:<text>`, `error:<text>`, `retry:<n>`, and a default of

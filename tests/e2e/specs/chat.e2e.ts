@@ -7,12 +7,12 @@
  * A full chat turn, driven through the real spawn path with a scripted child.
  *
  * This is the spec the whole layer exists for. It exercises what no unit test
- * can: the server spawns `omp` (here the fake), the child streams delta
- * `message_update` frames, `delta-accumulator.ts` rebuilds the accumulated
- * message, the fold marks the run live, the realtime topic pushes it to the
- * browser, and the timeline renders the user bubble and the streamed answer —
- * with the run footer settling when `agent_end` arrives. Every one of those
- * steps has been a real regression; none is visible to a happy-dom mount.
+ * can: the server spawns `omp` (here the fake), the child streams full
+ * `message_update` frames, the fold marks the run live, the realtime topic
+ * pushes it to the browser, and the timeline renders the user bubble and the
+ * streamed answer — with the run footer settling when `agent_end` arrives.
+ * Every one of those steps has been a real regression; none is visible to a
+ * happy-dom mount.
  *
  * It runs in `real` mode (MOCK=false) with `OMPCHAMBER_OMP_BIN` pointed at the
  * scripted child, so there is no model and no network, but there IS a real

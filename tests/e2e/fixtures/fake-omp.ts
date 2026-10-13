@@ -10,8 +10,8 @@
  *
  * It is NOT a mock of the chamber's side of the protocol — it is a client of
  * omp's own wire protocol, so the code under test is the real thing: the
- * spawn path, the frame reader, `delta-accumulator.ts`, the frame fold, the
- * realtime topic, the timeline renderer. A test double that stubbed any of
+ * spawn path, the frame reader, the frame fold, the realtime topic, the
+ * timeline renderer. A test double that stubbed any of
  * those would test the double. This is the same argument AGENTS.md makes for
  * `test-support/realtime-server.ts` ("stubbing `WebSocket` would test the
  * fake's frame timing rather than the delivery contract") and it is the shape
@@ -42,7 +42,7 @@
  * best-effort.
  *
  * `FAKE_OMP_RECORD_PATH` appends every frame RECEIVED as JSONL, so a spec can
- * assert what the chamber actually sent (that the delta filter was requested,
+ * assert what the chamber actually sent (that the event filter was requested,
  * that a `/reload-plugins` reached a live child) rather than inferring it.
  */
 
@@ -115,10 +115,8 @@ let sessionName = 'Fake session';
 /** How long `/rename` takes to answer. A real generation is a model call;
  *  this keeps the in-flight window wide enough for a spec to observe. */
 const RENAME_DELAY_MS = 600;
-/** Set while the chamber has requested delta-mode `message_update` frames. */
-let deltaMode = false;
 
-const { streamAnswer, streamToolCall } = createFrameWriters({ write, isDeltaMode: () => deltaMode });
+const { streamAnswer, streamToolCall } = createFrameWriters({ write });
 
 const MODEL = {
   id: 'fake-model',
@@ -197,17 +195,18 @@ async function runTurn(prompt: string, requestId: string) {
   } else {
     const text = `Response to: ${prompt}`;
     if (slow) {
-      for (const char of text) {
+      const full = assistantMessage(text);
+      write({ type: 'message_start', messageId, message: full });
+      for (const [index, char] of [...text].entries()) {
+        const accumulated = text.slice(0, index + 1);
         write({
           type: 'message_update',
           messageId,
-          message: { role: 'assistant' },
-          assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: char, partial: assistantMessage(text) },
+          message: { ...full, content: [{ type: 'text', text: accumulated }] },
+          assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: char, partial: full },
         });
         await sleep(30);
       }
-      const full = assistantMessage(text);
-      write({ type: 'message_start', messageId, message: full });
       write({ type: 'message_end', messageId, message: full });
       write({ type: 'turn_end', message: full, toolResults: [] });
     } else {
@@ -247,7 +246,6 @@ function handleCommand(frame: Record<string, unknown>) {
       respond({ commands: AVAILABLE_COMMANDS });
       return;
     case 'set_event_filter':
-      deltaMode = frame.messageUpdates === 'delta';
       respond({});
       return;
     case 'set_ask_dialog':
