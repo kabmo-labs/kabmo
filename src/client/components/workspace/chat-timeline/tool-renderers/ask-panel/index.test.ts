@@ -19,9 +19,9 @@ const ASK_TOOL: ToolCallData = {
   input: { questions: QUESTIONS },
 };
 const MESSAGE = { id: 'm1', role: 'ai', content: '', toolCalls: [ASK_TOOL] } as unknown as ChatMessageData;
-const GROUPED = {
+const GROUPED: ExtensionUiDialogRequest = {
   type: 'extension_ui_request', id: 'ui-grouped', method: 'ask', title: '', questions: QUESTIONS,
-} as unknown as IncomingExtensionUiRequest;
+};
 
 let container: HTMLElement;
 beforeEach(() => { resetListSlots(); installDomGlobals(new Window()); container = document.createElement('div'); document.body.appendChild(container); });
@@ -49,6 +49,28 @@ function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogReq
   return queue;
 }
 
+/** Mount the card with an explicit frame queue and tool, keeping it mounted. */
+function paint(queue: ExtensionUiDialogRequest[], tool: ToolCallData = ASK_TOOL): void {
+  const split = splitAskFrames([MESSAGE], queue, true);
+  const handle: AskFramesHandle = { framesByTool: split.framesByTool, respond: () => {} };
+  act(() => { render(h(AskFramesContext.Provider, { value: handle }, h(AskPanel, { tool })), container); });
+}
+
+function button(text: string): HTMLElement {
+  const found = [...container.querySelectorAll('button')].find((node) => node.textContent === text);
+  if (!found) throw new Error(`no button labelled "${text}" in ${container.innerHTML}`);
+  return found as HTMLElement;
+}
+
+const ANSWERED_TOOL: ToolCallData = {
+  ...ASK_TOOL,
+  status: 'success',
+  details: { results: [
+    { id: 'q1', selectedOptions: ['red', 'green'] },
+    { id: 'q2', selectedOptions: ['m'], customInput: 'a typed answer' },
+  ] },
+};
+
 describe('grouped ask frame end to end', () => {
   test('a real omp ask frame reaches the card and is answerable', () => {
     const queue = mountFromFrame(GROUPED);
@@ -58,5 +80,33 @@ describe('grouped ask frame end to end', () => {
     expect(html).toContain('Submit answers');
     expect(html).toContain('Pick colors');
     expect(html).toContain('Pick a size');
+  });
+
+  test('submitting does not flip the card back to unanswered while omp acts', () => {
+    // The reported symptom: answering the grouped dialog made the card read
+    // "Waiting for the previous answer…" on every question, because the frame
+    // left the pending queue the instant the response was sent and omp writes
+    // no tool result until the tool call finishes.
+    paint([GROUPED]);
+    act(() => button('red').click());
+    act(() => button('m').click());
+    act(() => button('Submit answers').click());
+    // omp has not echoed the result yet — only the client's own hold remains.
+    paint([]);
+
+    const html = container.innerHTML;
+    expect(html).not.toContain('Waiting for the previous answer');
+    expect(html).toContain('answered');
+    expect(html).toContain('Pick colors');
+    expect(html).toContain('Pick a size');
+  });
+
+  test('answers render as stacked rows, never as a sideways chip strip', () => {
+    // The other reported symptom: the grouped card's answer was a `flex-wrap`
+    // chip strip, so a label plus typed text ran sideways as one sentence.
+    paint([], ANSWERED_TOOL);
+    const rows = [...container.querySelectorAll('[data-answer-row]')].map((node) => node.textContent?.trim());
+    expect(rows).toEqual(['red', 'green', 'm', 'a typed answer']);
+    expect(container.innerHTML).not.toContain('flex-wrap items-center gap-1.5');
   });
 });

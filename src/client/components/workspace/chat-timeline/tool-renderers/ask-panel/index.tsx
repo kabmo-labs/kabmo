@@ -11,8 +11,18 @@
  * show the question in flight and lost every earlier one on the way; the card
  * keeps all of them in view, marks the ones already answered, and ends as the
  * summary of what the agent asked and what it was told.
+ *
+ * Two shapes reach this card (see `ask-questions.ts`): the grouped frame
+ * (`method:"ask"`, one frame for every question) and the per-question `select`
+ * loop. The grouped frame is answered by ONE `answers` response, and the card
+ * HOLDS that response until omp echoes it back in the tool result: the frame
+ * leaves the pending queue the instant the response is on the wire, and omp
+ * writes no result until the tool call finishes — so without the hold the card
+ * redrew as unanswered (every question back to "Waiting for the previous
+ * answer…") for the whole stretch the agent spent acting on the answers.
  */
 
+import { useState } from 'preact/hooks';
 import { HelpCircle, XCircle } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
@@ -30,11 +40,24 @@ const NO_FRAMES: ExtensionUiDialogRequest[] = [];
 const NO_GROUPS: ExtensionUiDialogRequest[][] = [];
 const NO_LABELS: string[] = [];
 
+/**
+ * A grouped ask this client answered, waiting for omp to echo it in the result.
+ *
+ * The FRAME is held, not only the answers: the pending queue drops it the
+ * instant the response is on the wire, so the card would otherwise have no
+ * questions to draw for the whole window omp spends acting on the answers.
+ */
+interface SubmittedAsk {
+  frame: ExtensionUiDialogRequest;
+  answers: { id: string; selectedOptions: string[]; customInput?: string }[];
+}
+
 export function AskPanel({ tool }: { tool: ToolCallData }) {
   const questions = parseAskQuestions(tool);
   const recorded = parseAskResult(tool, questions);
   const { framesByTool, respond } = useAskFrames();
   const groups = framesByTool.get(tool.id) ?? NO_GROUPS;
+  const [submitted, setSubmitted] = useState<SubmittedAsk | null>(null);
   const { drafts, multiSelected, commit, toggleMulti } = useAskDrafts({
     toolId: tool.id,
     questions,
@@ -70,12 +93,25 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
   // the same frame on each question it names, so the first bucket that holds it
   // is where it renders — exactly once.
   const groupedFrame = groups.flat().find((frame) => frame.method === 'ask' && (frame.questions?.length ?? 0) > 0);
-  if (groupedFrame && !settled) {
+
+  // The grouped card renders while its frame is pending. It is ALSO drawn from
+  // the frame this client already answered, for the window between the response
+  // leaving here and omp echoing it in the tool result: the pending queue drops
+  // the frame the instant it is answered, and without the held copy the card
+  // redrew as unanswered (every question back to "Waiting for the previous
+  // answer…") while the agent was acting on the answers it had just received.
+  const heldFrame = submitted && recorded.every((answer) => answer === null) ? submitted.frame : null;
+  const card = groupedFrame ?? heldFrame;
+
+  if (card && !settled) {
+    const answered = submitted && submitted.frame.id === card.id ? submitted.answers : null;
     // The recorded flags and the answer path are shared with the plugin slot:
     // a plugin's response must be the frame the Submit button would have sent,
     // through the same sender, or omp receives something it did not expect.
-    const answered = questions.map((_, index) => recorded[index] !== null);
-    const answer = (response: ExtensionDialogResponse) => respond(groupedFrame, response);
+    const answer = (response: ExtensionDialogResponse) => {
+      if ('answers' in response) setSubmitted({ frame: card, answers: response.answers });
+      respond(card, response);
+    };
     return (
       <div className="space-y-2">
         {waiting && (
@@ -85,11 +121,16 @@ export function AskPanel({ tool }: { tool: ToolCallData }) {
           </div>
         )}
         <GroupedAsk
-          frame={groupedFrame}
-          recorded={answered}
+          frame={card}
+          recorded={recorded}
+          submitted={answered}
           onRespond={answer}
           interactions={
-            <PluginPendingInteractions frame={groupedFrame} recorded={answered} onRespond={answer} />
+            <PluginPendingInteractions
+              frame={card}
+              recorded={questions.map((_, index) => recorded[index] !== null)}
+              onRespond={answer}
+            />
           }
         />
       </div>

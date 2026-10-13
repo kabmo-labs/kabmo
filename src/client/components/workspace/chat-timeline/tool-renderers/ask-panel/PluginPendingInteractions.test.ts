@@ -156,7 +156,7 @@ describe('the plugin answer control', () => {
     // The card as it renders with NO slot in its tree — the shape every
     // pre-plugin install had, and the one a plugin-less install must keep.
     act(() => {
-      render(h(GroupedAsk, { frame: GROUPED_FRAME, recorded: [false], onRespond: () => {} }), container);
+      render(h(GroupedAsk, { frame: GROUPED_FRAME, recorded: [null], onRespond: () => {} }), container);
     });
     const withoutSlot = container.innerHTML;
     render(null, container);
@@ -167,7 +167,7 @@ describe('the plugin answer control', () => {
       render(
         h(GroupedAsk, {
           frame: GROUPED_FRAME,
-          recorded: [false],
+          recorded: [null],
           onRespond: () => {},
           interactions: h(PluginPendingInteractions, {
             frame: GROUPED_FRAME,
