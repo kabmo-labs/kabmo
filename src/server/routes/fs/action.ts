@@ -6,7 +6,65 @@ import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
 import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
+import { duplicateEntry, nextDuplicateName, pasteEntry } from '@/server/lib/fs/transfer';
+import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
+
+/** The two shapes a transfer action answers with, ready for `json`. */
+function transferResponse(outcome: { path?: string; error?: string; status?: number }) {
+  if (outcome.error) return json({ error: outcome.error }, { status: outcome.status ?? 400 });
+  return json({ success: true, path: outcome.path });
+}
+
+/**
+ * The `duplicate` action: copy an entry beside itself under the `a copy.txt`
+ * naming ladder.
+ *
+ * The name is chosen from the source's real directory listing (not a probe that
+ * races the write), so the answer the panel renders and the file that landed
+ * are the same name.
+ */
+async function runDuplicateAction(options: { filePath: string; scopedRoot: string }) {
+  const { filePath, scopedRoot } = options;
+  const source = resolveWithinRoot(scopedRoot, filePath);
+  if (!source) return json({ error: 'Invalid path' }, { status: 403 });
+  const kind = (await Bun.file(source).stat().catch(() => null))?.isDirectory() ? 'folder' : 'file';
+  const destinationName = await nextDuplicateName(source, kind);
+  return transferResponse(await duplicateEntry({ scopedRoot, sourcePath: source, destinationName }));
+}
+
+/**
+ * `Paste` carries the clipboard ENTRY, not just its destination: the entry is
+ * what the rule checks (a folder may not land in its own subtree) and what the
+ * source path is resolved from, so the client cannot ask the server to move an
+ * arbitrary pair of paths.
+ *
+ * The SCOPE half of `pasteRefusal` is deliberately not re-checked here: the
+ * client's scope is built from the un-resolved `rootPath` (which may be
+ * `~`-relative) while this side holds the resolved directory, so the two are
+ * not comparable. `transferRefusal` is the half both ends can enforce.
+ */
+async function runPasteAction(options: { formData: FormData; scopedRoot: string }) {
+  const { formData, scopedRoot } = options;
+  const mode = formData.get('mode') === 'cut' ? 'cut' : 'copy';
+  const sourceRel = ((formData.get('sourcePath') as string) ?? '').trim();
+  const sourcePath = resolveWithinRoot(scopedRoot, sourceRel);
+  if (!sourcePath) return json({ error: 'Invalid path' }, { status: 403 });
+  const sourceStat = await Bun.file(sourcePath).stat().catch(() => null);
+  if (!sourceStat) return json({ error: 'The entry on the clipboard no longer exists' }, { status: 404 });
+  const rawTarget = ((formData.get('targetPath') as string) ?? '').trim() || '.';
+  const rawTargetKind = formData.get('targetKind') === 'folder' ? 'folder' : 'file';
+  const targetDir = rawTargetKind === 'folder' ? rawTarget : path.dirname(rawTarget);
+  const refusal = transferRefusal(
+    { path: sourceRel, kind: sourceStat.isDirectory() ? 'folder' : 'file' },
+    targetDir,
+  );
+  if (refusal) return json({ error: refusal }, { status: 409 });
+  const fullDir = resolveWithinRoot(scopedRoot, targetDir);
+  if (!fullDir) return json({ error: 'Invalid path' }, { status: 403 });
+  return transferResponse(await pasteEntry({ scopedRoot, sourcePath, destinationDir: fullDir, mode }));
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const actionType = formData.get('actionType') as string;
@@ -18,13 +76,20 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!scopedRoot) {
     return json({ error: 'Invalid repo path' }, { status: 403 });
   }
-  const fullPath = resolveWithinRoot(scopedRoot, filePath);
-
-  if (!fullPath) {
-    return json({ error: 'Invalid path' }, { status: 403 });
-  }
 
   try {
+    if (actionType === 'duplicate') {
+      return await runDuplicateAction({ filePath, scopedRoot });
+    }
+    if (actionType === 'paste') {
+      return await runPasteAction({ formData, scopedRoot });
+    }
+
+    const fullPath = resolveWithinRoot(scopedRoot, filePath);
+
+    if (!fullPath) {
+      return json({ error: 'Invalid path' }, { status: 403 });
+    }
     if (actionType === 'save') {
       const raw = (formData.get('content') as string) ?? '';
       const eol = formData.get('eol');

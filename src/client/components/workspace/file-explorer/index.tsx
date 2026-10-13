@@ -10,8 +10,11 @@ import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
+import { useFileClipboard } from '@/client/hooks/workspace/file-clipboard';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
+import { useToasts } from '@/client/hooks/ui/toasts';
+import { ToastStack } from '@/client/components/common/ToastStack';
 import { fsTopic } from '@/shared/lib/realtime/protocol';
 
 export function FileExplorer({ className = '', enabled = true, rootPath, onOpenFile, refreshKey = 0, onRefresh }: { className?: string, enabled?: boolean, rootPath?: string, onOpenFile?: (file: any) => void, refreshKey?: number, onRefresh?: () => void }) {
@@ -105,6 +108,29 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     if (onRefresh) onRefresh();
     else void listing.reload();
   };
+
+  // One clipboard for the whole tree, owned here and passed down: a
+  // subscription per row would be hundreds of listeners for a value that
+  // changes on a right-click.
+  const { toasts, pushToast, dismissToast } = useToasts();
+  const clipboard = useFileClipboard({
+    rootPath,
+    repo: activeRepo,
+    onComplete: refresh,
+    onError: (message) => pushToast(message, 'error'),
+  });
+  /**
+   * The background's Paste label, or null when a paste cannot land at the root.
+   *
+   * The root is a folder like any other, so the SAME rule decides it: an entry
+   * from another workspace is not this listing's to paste, and a row that is
+   * always there and always refuses reads as broken. Pasting into the root is
+   * how an entry is moved back out of a folder, since the tree offers no drag.
+   */
+  const rootTarget = { path: '.', name: '.', kind: 'folder' as const };
+  const rootPasteLabel = clipboard.clip && !clipboard.refusalFor(rootTarget)
+    ? `Paste ${clipboard.clip.name}`
+    : null;
 
   // The root's own "New File": the panel background is the one target whose
   // create belongs at the tree's top, and it is the only action the root menu
@@ -230,6 +256,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
               onToggleFolder={handleToggleFolder}
               gitFileMap={gitFileMap}
               gitFolderMap={gitFolderMap}
+              clipboard={clipboard}
             />
           ))
         )}
@@ -240,9 +267,12 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           x={rootMenu.x}
           y={rootMenu.y}
           menuRef={rootMenuRef}
+          pasteLabel={rootPasteLabel}
+          busy={clipboard.busy}
           onAction={(action) => {
             setRootMenu(null);
             if (action === 'new_file') rootCreate.openDialog();
+            if (action === 'paste') clipboard.paste(rootTarget);
           }}
         />
       )}
@@ -258,6 +288,8 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           onSubmit={rootCreate.submit}
         />
       )}
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

@@ -23,6 +23,7 @@ import { act } from 'preact/test-utils';
 import { FileExplorer } from '@/client/components/workspace/file-explorer/index';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
+import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import { fsTopic, reposTopic } from '@/shared/lib/realtime/protocol';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
 import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
@@ -47,6 +48,8 @@ export interface FileExplorerHarness {
   failNext: Set<string>;
   /** Every create the panel posted, as its form fields. */
   createRequests: Array<Record<string, string>>;
+  /** Every duplicate/paste the panel posted, as its form fields. */
+  transferRequests: Array<Record<string, string>>;
   /** Files the panel asked the editor to open, in order. */
   openedFiles: Array<{ path: string; name: string }>;
   container: HTMLElement;
@@ -94,6 +97,7 @@ export function createFileExplorerHarness(): FileExplorerHarness {
     dirReads: [],
     failNext: new Set(),
     createRequests: [],
+    transferRequests: [],
     openedFiles: [],
     container: null as unknown as HTMLElement,
     server: null,
@@ -116,7 +120,12 @@ export function createFileExplorerHarness(): FileExplorerHarness {
     async mount() {
       harness.failNext = new Set();
       harness.createRequests = [];
+      harness.transferRequests = [];
       harness.openedFiles = [];
+      // A fresh mount is a fresh session: the panel's per-session UI state
+      // (the clipboard among it) is otherwise carried over from the previous
+      // spec, and a cut taken in one test would offer Paste in the next.
+      forgetSession(SESSION);
       harness.server = await startRealtimeTestServer(new Map<string, TopicResolver>([
         // The root listing rides the topic; the panel's own reads go over HTTP.
         [TOPIC, async () => ({ files: entriesOf(harness.disk, '.'), root: ROOT })],
@@ -139,6 +148,12 @@ export function createFileExplorerHarness(): FileExplorerHarness {
           const form = init?.body as FormData;
           const fields: Record<string, string> = {};
           for (const [key, value] of form.entries()) fields[key] = String(value);
+          // A transfer (duplicate/paste) is recorded separately from a create:
+          // the two answer different shapes and the assertions read them apart.
+          if (fields.actionType === 'duplicate' || fields.actionType === 'paste') {
+            harness.transferRequests.push(fields);
+            return json({ success: true, path: `moved-${fields.actionType}` });
+          }
           harness.createRequests.push(fields);
           // The create route answers with the new file's path relative to the
           // LISTED root; the folder is `.` for the panel's own background menu.

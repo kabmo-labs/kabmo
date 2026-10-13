@@ -44,3 +44,25 @@ export interface FsFileEntry {
   /** Workspace-relative path with forward slashes. */
   path: string;
 }
+
+/** One row of the git-history payload `/api/fs/action` answers with. */
+export interface FsHistoryRow {
+  graph: string;
+  hash?: string;
+  author?: string;
+  time?: string;
+  message: string;
+}
+
+/** The shape `/api/fs/action` answers with, as far as the Files panel reads it. */
+export interface FsActionResponse {
+  success?: boolean;
+  /** Present on the git-history payload, which the history modal reads. */
+  type?: string;
+  /** Present alongside `type === 'history'`. */
+  data?: FsHistoryRow[];
+  /** Present on a refusal — a name that exists, a path outside the root. */
+  error?: string;
+  /** The path a create or a transfer landed at, relative to the listed root. */
+  path?: string;
+}

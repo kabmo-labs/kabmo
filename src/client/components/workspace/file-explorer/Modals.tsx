@@ -1,92 +1,7 @@
 import { createPortal } from 'preact/compat';
-import type { FormEvent, RefObject } from 'preact/compat';
-import { Copy, Edit2, ExternalLink, Eye, FilePlus, GitCompare, History, RefreshCw, Trash2, X } from 'lucide-preact';
-
-interface ContextMenuProps {
-  x: number;
-  y: number;
-  isFolder: boolean;
-  hasGitStatus?: boolean;
-  onAction: (actionType: string) => void;
-  menuRef?: RefObject<HTMLDivElement>;
-}
-
-export function FileContextMenu({ x, y, isFolder, hasGitStatus, onAction, menuRef }: ContextMenuProps) {
-  const menuWidth = 190;
-  // The row count differs by kind, and the clamp below needs the real height —
-  // an under-estimate puts the menu's last rows off-screen at the bottom edge.
-  const menuHeight = isFolder ? 250 : hasGitStatus ? 285 : 255;
-  
-  const posX = typeof window !== 'undefined' ? Math.max(10, Math.min(x, window.innerWidth - menuWidth - 12)) : x;
-  const posY = typeof window !== 'undefined' ? Math.max(10, Math.min(y, window.innerHeight - menuHeight - 12)) : y;
-
-  return createPortal(
-    <div 
-      className="fixed inset-0 z-50 bg-ink/20"
-      onClick={() => onAction('close')}
-      onContextMenu={(e) => { e.preventDefault(); onAction('close'); }}
-    >
-      <div 
-        ref={menuRef}
-        className="fixed z-50 bg-paper border border-ink/15 shadow-2xl rounded-lg py-1 min-w-[185px] text-xs text-ink font-sans"
-        style={{ top: posY, left: posX }}
-        onClick={e => e.stopPropagation()}
-      >
-        {!isFolder && (
-          <>
-            <button onClick={() => onAction('view')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-              <Eye size={13} className="text-ink/60" />
-              <span>View</span>
-            </button>
-            {hasGitStatus && (
-              <button onClick={() => onAction('diff')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors text-ink">
-                <GitCompare size={13} className="text-warning" />
-                <span className="font-medium">Open in Diff Panel</span>
-              </button>
-            )}
-          </>
-        )}
-        {isFolder && (
-          <>
-            <button onClick={() => onAction('new_file')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-              <FilePlus size={13} className="text-ink/60" />
-              <span>New File</span>
-            </button>
-            <div className="my-1 border-t border-ink/10"></div>
-          </>
-        )}
-        <button onClick={() => onAction('explorer')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-          <ExternalLink size={13} className="text-ink/60" />
-          <span>Go to Explorer</span>
-        </button>
-        <div className="my-1 border-t border-ink/10"></div>
-        <button onClick={() => onAction('copy_path')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-          <Copy size={13} className="text-ink/60" />
-          <span>Copy Path</span>
-        </button>
-        <button onClick={() => onAction('copy_relative')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-          <Copy size={13} className="text-ink/60" />
-          <span>Copy Relative Path</span>
-        </button>
-        <div className="my-1 border-t border-ink/10"></div>
-        <button onClick={() => onAction('history')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-          <History size={13} className="text-ink/60" />
-          <span>Show Git History</span>
-        </button>
-        <div className="my-1 border-t border-ink/10"></div>
-        <button onClick={() => onAction('rename')} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center space-x-2 transition-colors">
-          <Edit2 size={13} className="text-ink/60" />
-          <span>Rename</span>
-        </button>
-        <button onClick={() => onAction('delete')} className="w-full text-left px-3 py-1.5 hover:bg-error/10 text-error flex items-center space-x-2 transition-colors">
-          <Trash2 size={13} className="text-error" />
-          <span>Delete</span>
-        </button>
-      </div>
-    </div>,
-    document.body
-  );
-}
+import type { FormEvent } from 'preact/compat';
+import { History, RefreshCw, X } from 'lucide-preact';
+import type { FsActionResponse } from '@/shared/types';
 
 interface NewFileModalProps {
   /** Folder the file will be created in, relative to the listed root. */
@@ -238,11 +153,12 @@ export function FileRenameModal({ isFolder, renameValue, originalPath, isLoading
 interface HistoryModalProps {
   filePath: string;
   fetcherState: string;
-  fetcherData: any;
+  fetcherData: FsActionResponse | undefined;
   onClose: () => void;
 }
 
 export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose }: HistoryModalProps) {
+  const rows = fetcherData?.type === 'history' ? fetcherData.data : undefined;
   return createPortal(
     <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-paper rounded-lg shadow-xl w-full max-w-4xl border border-ink/10 flex flex-col max-h-[85vh]">
@@ -261,8 +177,8 @@ export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose 
         
         <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static bg-paper p-2">
           {fetcherState === 'idle' ? (
-            fetcherData?.type === 'history' ? (
-              fetcherData.data.length > 0 ? (
+            rows ? (
+              rows.length > 0 ? (
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead className="bg-canvas sticky top-0 z-10 border-b border-ink/10">
                     <tr>
@@ -273,7 +189,7 @@ export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink/5">
-                    {fetcherData.data.map((row: any, i: number) => (
+                    {rows.map((row, i) => (
                       <tr key={i} className="hover:bg-ink/[0.03] transition-colors group bg-paper">
                         <td className="px-3 py-2 text-ink">
                           {row.message ? <span className="font-medium text-ink/90 group-hover:text-ink">{row.message}</span> : null}

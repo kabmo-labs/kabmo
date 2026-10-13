@@ -23,14 +23,8 @@ import { useFetcher } from '@/client/lib/router/fetcher';
 import { toAbsolutePath } from '@/shared/lib/fs/paths';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
-
-/** The shape `/api/fs/action` answers with, as far as a row reads it. */
-interface FsActionResponse {
-  success?: boolean;
-  /** Present on the git-history payload, which the history modal reads. */
-  type?: string;
-  error?: string;
-}
+import type { FileClipboard } from '@/client/hooks/workspace/file-clipboard';
+import type { FsActionResponse } from '@/shared/types';
 
 export interface FileActionTarget {
   path: string;
@@ -47,6 +41,10 @@ export interface FileActionDeps {
   diff?: { staged?: boolean; status?: string };
   onOpenFile?: (file: { path: string; name: string; root?: string; repo?: string }) => void;
   onActionComplete: () => void;
+  /** The panel's clipboard: Cut/Copy fill it, Paste reads it. */
+  clipboard: FileClipboard;
+  /** Whether this row is a folder — what Cut/Copy/Paste need to name their target. */
+  isFolder: boolean;
 }
 
 export interface FileActions {
@@ -66,6 +64,8 @@ export interface FileActions {
   setRenameValue: (value: string) => void;
   /** True while a request is in flight; every dialog's buttons read it. */
   busy: boolean;
+  /** Label of the row's Paste action, or null when a paste cannot land here. */
+  pasteLabel: string | null;
   /** The fetcher's own state/data, for the history modal. */
   fetcherState: string;
   fetcherData: FsActionResponse | undefined;
@@ -79,7 +79,7 @@ export interface FileActions {
   closeHistory: () => void;
 }
 
-export function useFileActions({ file, diff, onOpenFile, onActionComplete }: FileActionDeps): FileActions {
+export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipboard, isFolder }: FileActionDeps): FileActions {
   const actionFetcher = useFetcher<FsActionResponse>();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -139,6 +139,20 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
     onOpenFile?.({ path: file.path, name: file.name, root: rootPath, repo: repo || '.' });
   };
 
+  const clipboardTarget = { path: file.path, name: file.name, kind: isFolder ? 'folder' as const : 'file' as const };
+  /**
+   * The row's Paste label, or null when a paste cannot land here.
+   *
+   * A refusal is not a disabled row: a folder inside the copied folder's own
+   * subtree, or an entry from another workspace, has no destination — and a row
+   * that is always present and always refuses reads as broken. The reason
+   * itself is reported when the paste is attempted through the panel's own
+   * background menu, which cannot know which rows are illegal.
+   */
+  const pasteLabel = clipboard.clip && !clipboard.refusalFor(clipboardTarget)
+    ? `Paste ${clipboard.clip.name}`
+    : null;
+
   const handleAction = (actionType: string) => {
     setContextMenu(null);
     if (actionType === 'view') {
@@ -175,6 +189,14 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
       create.openDialog();
     } else if (actionType === 'delete') {
       setShowDeleteModal(true);
+    } else if (actionType === 'cut') {
+      clipboard.cut(clipboardTarget);
+    } else if (actionType === 'copy') {
+      clipboard.copy(clipboardTarget);
+    } else if (actionType === 'duplicate') {
+      clipboard.duplicate(clipboardTarget);
+    } else if (actionType === 'paste') {
+      clipboard.paste(clipboardTarget);
     }
   };
 
@@ -208,7 +230,8 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete }: Fil
     setCreateName: create.setName,
     renameValue,
     setRenameValue,
-    busy: actionFetcher.state !== 'idle' || create.busy,
+    busy: actionFetcher.state !== 'idle' || create.busy || clipboard.busy,
+    pasteLabel,
     fetcherState: actionFetcher.state,
     fetcherData: actionFetcher.data,
     handleAction,

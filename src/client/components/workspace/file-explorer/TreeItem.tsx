@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'preact/hooks';
 import { ChevronDown, ChevronRight } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
-import { FileContextMenu, FileCreateModal, FileDeleteModal, FileHistoryModal, FileRenameModal } from '@/client/components/workspace/file-explorer/Modals';
+import { FileContextMenu } from '@/client/components/workspace/file-explorer/ContextMenu';
+import { FileCreateModal, FileDeleteModal, FileHistoryModal, FileRenameModal } from '@/client/components/workspace/file-explorer/Modals';
 import { getGitStatusInfo, type FolderGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { useFileActions } from '@/client/hooks/workspace/file-tree-actions';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import type { FileClipboard } from '@/client/hooks/workspace/file-clipboard';
 import type { GitChange } from '@/shared/types/git';
 
 interface FileTreeItemProps {
@@ -20,6 +22,8 @@ interface FileTreeItemProps {
   onToggleFolder?: (path: string, open: boolean) => void;
   gitFileMap?: Map<string, GitChange>;
   gitFolderMap?: Map<string, FolderGitStatusInfo>;
+  /** The panel's clipboard — one instance for the whole tree, passed down. */
+  clipboard: FileClipboard;
 }
 
 /**
@@ -56,6 +60,7 @@ export function FileTreeItem({
   onToggleFolder,
   gitFileMap,
   gitFolderMap,
+  clipboard,
 }: FileTreeItemProps) {
   const isFolder = file.type === 'folder';
   const [isOpen, setIsOpen] = useState(false);
@@ -99,6 +104,8 @@ export function FileTreeItem({
     diff: { staged: gitChange?.staged || (gitChange?.status ? gitChange.status[0] !== ' ' && gitChange.status[0] !== '?' : false), status: gitStatusInfo?.charStatus },
     onOpenFile,
     onActionComplete,
+    clipboard,
+    isFolder,
   });
   useOnClickOutside(actions.contextMenuRef, actions.closeContextMenu);
 
@@ -199,6 +206,7 @@ export function FileTreeItem({
               onToggleFolder={onToggleFolder}
               gitFileMap={gitFileMap}
               gitFolderMap={gitFolderMap}
+              clipboard={clipboard}
             />
           ))}
         </div>
@@ -210,6 +218,8 @@ export function FileTreeItem({
           y={actions.contextMenu.y}
           isFolder={isFolder}
           hasGitStatus={hasGitStatus}
+          pasteLabel={actions.pasteLabel}
+          busy={actions.busy}
           onAction={actions.handleAction}
         />
       )}
