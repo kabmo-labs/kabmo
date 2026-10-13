@@ -32,7 +32,7 @@ export function DiffPanel({
 }: DiffPanelProps) {
   // Read and persist view mode & whitespace preference in session_ui_state
   const [viewMode, setViewMode] = useSessionUiState<DiffViewMode>('diff.viewMode', 'unified');
-  const [contentMode, setContentMode] = useSessionUiState<DiffContentMode>('diff.contentMode', 'full');
+  const [contentMode, setContentMode] = useSessionUiState<DiffContentMode>('diff.contentMode', 'diff');
   const [wordWrap, setWordWrap] = useSessionUiState<boolean>('diff.wordWrap', true);
   const [ignoreWhitespace, setIgnoreWhitespace] = useSessionUiState<boolean>('diff.ignoreWhitespace', false);
 

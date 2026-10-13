@@ -5,10 +5,10 @@ import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 export type DiffViewMode = 'unified' | 'split';
 
 /**
- * How much of the file the diff shows. `full` is the default: the whole file
- * with the changes marked inside it, which is what a reader wants when the
- * hunks alone leave the edit without context. `diff` asks git for its own
- * default context and shows only the changed regions.
+ * How much of the file the diff shows. `diff` is the default: git's own
+ * default context around the changed regions, which is what a reader wants
+ * first. `full` shows the whole file with the changes marked inside it, for
+ * when the hunks alone leave the edit without context.
  */
 export type DiffContentMode = 'full' | 'diff';
 
