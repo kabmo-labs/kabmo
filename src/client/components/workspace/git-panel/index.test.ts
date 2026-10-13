@@ -246,7 +246,7 @@ describe('GitPanel commit modal', () => {
   });
 
   /** Mount with an HTTP POST that answers a history page. */
-  async function mountHistory(): Promise<{ rerender: (rootPath: string) => Promise<void> }> {
+  async function mountHistory(): Promise<{ rerender: (props: { rootPath: string; enabled: boolean }) => Promise<void> }> {
     server = await startRealtimeTestServer(new Map<string, TopicResolver>([
       [TOPIC, async () => statusOf(1)],
       [reposTopic(ROOT), async () => ({ repos: ['.'], reposPending: false })],
@@ -267,13 +267,13 @@ describe('GitPanel commit modal', () => {
     };
     container = document.createElement('div');
     document.body.appendChild(container);
-    const rerender = async (rootPath: string) => {
+    const rerender = async (props: { rootPath: string; enabled: boolean }) => {
       await act(async () => {
-        render(h(SessionStateProvider, { sessionId: SESSION, children: h(GitPanel, { rootPath, enabled: true }) }), container);
+        render(h(SessionStateProvider, { sessionId: SESSION, children: h(GitPanel, props) }), container);
       });
       for (let i = 0; i < 20; i += 1) await act(async () => {});
     };
-    await rerender(ROOT);
+    await rerender({ rootPath: ROOT, enabled: true });
     await server.waitForTopic(TOPIC, (value) => value !== null);
     for (let i = 0; i < 20; i += 1) await act(async () => {});
     return { rerender };
@@ -296,7 +296,37 @@ describe('GitPanel commit modal', () => {
     await settle(5);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
 
-    await rerender('/ws-other');
+    await rerender({ rootPath: '/ws-other', enabled: true });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  /**
+   * The same guard covers the ACTIVITY-BAR case: `enabled` is what the layout
+   * flips when another right-panel view is selected, and `loadRepo` depends on
+   * it too — so a panel-button click re-ran the effect exactly as a workspace
+   * switch did. Reported as the modal appearing "when clicking a panel button".
+   */
+  test('a dismissed modal stays dismissed when the panel is toggled off and on', async () => {
+    const { rerender } = await mountHistory();
+
+    const historyButton = container.querySelector('button[title="Commit History"]') as HTMLButtonElement | null;
+    expect(historyButton).toBeTruthy();
+    await act(async () => { historyButton?.click(); });
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeTruthy();
+
+    const close = container.querySelector('button[title="Close modal"]') as HTMLButtonElement | null;
+    expect(close).toBeTruthy();
+    await act(async () => { close?.click(); });
+    await settle(5);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    // Selecting another view in the activity bar: the layout sets `enabled` false.
+    await rerender({ rootPath: ROOT, enabled: false });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    // And back to Source Control.
+    await rerender({ rootPath: ROOT, enabled: true });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });
