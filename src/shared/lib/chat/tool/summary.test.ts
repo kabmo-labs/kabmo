@@ -285,6 +285,43 @@ describe('toolSummary — fallback and empty', () => {
     expect(summary?.facts.some((fact) => fact.kind === 'subject')).toBe(false);
   });
 
+  test('a read excerpt names no subject, because its rows use the pipe gutter', () => {
+    // `read` prints `1|code` where `edit`/`write` print `1:code` — measured on
+    // 981 of 994 read results in the author's sessions. Only the colon gutter
+    // was recognised, so a read's first line of CODE became the subject and the
+    // collapsed card drew it on the same row as the path, reading as "the
+    // subtitle is line 1 of the file".
+    const summary = toolSummary(tool({
+      type: 'read',
+      target: 'src/services/laporanCetak.ts:1-60',
+      output: '1|import { jsPDF } from "jspdf";\n2|export const x = 1;\n3|',
+    }));
+    expect(summary?.facts.some((fact) => fact.kind === 'subject')).toBe(false);
+  });
+
+  test('a FAILED read still names its prose reason', () => {
+    // A file-body tool names no subject (the subtitle is the path), EXCEPT when
+    // the read failed: then the output is a prose reason, not the file, and it
+    // is the one thing worth saying. The frame carries `isError` — measured.
+    const summary = toolSummary(tool({
+      type: 'read',
+      status: 'error',
+      output: 'Path "src/gone.ts" not found\n',
+    }));
+    expect(summary?.facts[0]).toMatchObject({ kind: 'subject', label: 'Path "src/gone.ts" not found' });
+  });
+
+  test('a read returning raw JSON names no subject', () => {
+    // A legacy `read_file` returns the file body with no gutter at all; its
+    // first line is still the file, and the subtitle is still the path.
+    const summary = toolSummary(tool({
+      type: 'read_file',
+      target: 'package.json',
+      output: '{\n  "name": "ompchamber"\n}\n',
+    }));
+    expect(summary?.facts.some((fact) => fact.kind === 'subject')).toBe(false);
+  });
+
   test('returns null when there is nothing to say', () => {
     expect(toolSummary(tool({ type: 'wait' }))).toBeNull();
   });

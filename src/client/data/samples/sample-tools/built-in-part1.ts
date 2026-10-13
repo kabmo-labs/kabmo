@@ -8,19 +8,25 @@ export const builtInToolsPart1: ToolCallData[] = [
     title: 'read — app/types/chat.ts',
     target: 'app/types/chat.ts',
     input: { path: 'app/types/chat.ts', offset: 1, limit: 15 },
-    output: `1: export interface Attachment {
-2:   id: string;
-3:   name?: string;
-4:   file: File;
-5:   preview: string;
-6: }
-7:
-8: export type ToolType =
-9:   | 'bash' | 'read' | 'edit' | 'write'
-10:  | 'ast_grep' | 'ast_edit' | 'ask'
-11:  | 'debug' | 'eval' | 'github' | 'glob'
-12:  | 'grep' | 'lsp' | 'checkpoint' | 'rewind'
-13:  | 'context_notes' | 'new_context' | 'security_scan';`,
+    // The real shape omp 18.10.3 answers a `read` with: a PIPE gutter
+    // (`1|code`, not `1:code`) and a `details` bag carrying the size/line facts.
+    // The demo used a colon gutter with no details, so it exercised neither the
+    // facts path nor the furniture rule — and a colon-gutter read is a shape
+    // the product never receives.
+    details: { contentType: 'text/plain', totalLines: 13, fileSize: 412 },
+    output: `1| export interface Attachment {
+2|   id: string;
+3|   name?: string;
+4|   file: File;
+5|   preview: string;
+6| }
+7|
+8| export type ToolType =
+9|   | 'bash' | 'read' | 'edit' | 'write'
+10|  | 'ast_grep' | 'ast_edit' | 'ask'
+11|  | 'debug' | 'eval' | 'github' | 'glob'
+12|  | 'grep' | 'lsp' | 'checkpoint' | 'rewind'
+13|  | 'context_notes' | 'new_context' | 'security_scan';`,
     status: 'success',
     duration: '18ms',
   },
@@ -218,10 +224,14 @@ app/components/workspace/chat-timeline/tool-renderers/Todo.tsx`,
     id: 'call_12_grep',
     name: 'grep',
     type: 'grep',
-    title: 'grep — export function ToolCallCard',
-    input: { query: 'export function ToolCallCard', path: 'app' },
-    output: `Found 1 match in 1 file
-app/components/workspace/chat-timeline/ToolCallCard.tsx:106:export function ToolCallCard({ tool, isOpen, onToggle }: ToolCallCardProps) {`,
+    // The real shape: the SCOPE is the subtitle (`grep — app`) and the PATTERN
+    // rides `input.pattern` as the subject chip. The demo put the pattern in the
+    // title too, so the same string printed as both the subtitle and the chip.
+    title: 'grep — app',
+    target: 'app',
+    input: { pattern: 'export function ToolCallCard', path: 'app' },
+    details: { scopePath: 'app', matchCount: 1, fileCount: 1, truncated: false },
+    output: `app/components/workspace/chat-timeline/ToolCallCard.tsx:106:export function ToolCallCard({ tool, isOpen, onToggle }: ToolCallCardProps) {`,
     status: 'success',
     duration: '29ms',
   },

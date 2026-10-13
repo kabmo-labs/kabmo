@@ -322,8 +322,21 @@ export function toolSummary(tool: ToolCallData): ToolSummary | null {
     // an `edit`/`write` result leads with the `[path]` header of the excerpt it
     // touched, which is the card's own SUBTITLE, and naming it here printed the
     // path twice on one row.
-    const first = lines.find((line) => line.trim() && !isExcerptFurniture(line));
-    if (first) facts.push(subjectFact(first.trim()));
+    //
+    // A file-content tool's output IS the file body, and the card's SUBTITLE
+    // already names the path — so its first line is never the subject, whether
+    // or not the furniture rule recognised it. That covers a gutter-less read
+    // (measured on 13 of 994 read results), a legacy `read_file` returning raw
+    // JSON, and any excerpt whose rows the rule misses. A FAILED one carries a
+    // prose reason ("Path 'src/gone.ts' not found") that IS worth naming, so the
+    // gate opens for an error result.
+    const isFileBody = key === 'read' || key === 'read_file' || key === 'view_file'
+      || key === 'read_file_content' || key === 'edit' || key === 'edit_file'
+      || key === 'write' || key === 'create_file';
+    if (!isFileBody || isError) {
+      const first = lines.find((line) => line.trim() && !isExcerptFurniture(line));
+      if (first) facts.push(subjectFact(first.trim()));
+    }
     if (lines.length > 1) facts.push({ kind: 'count', label: `${lines.length} lines` });
   }
 

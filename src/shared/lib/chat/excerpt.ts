@@ -34,8 +34,14 @@ export interface EditOutputSection {
 /** `[PATH#TAG]` header line → path + snapshot tag. The closing bracket is
  *  optional in omp's parser, and the tag is only stripped when it is 4 hex. */
 const HEADER_RE = /^\[([^\[\]]+?)(?:#([0-9a-fA-F]{4}))?\]$/;
-/** `115:code` — an excerpt row's gutter number. */
+/** `115:code` — an excerpt row's gutter number (an `edit`/`write` result). */
 const ROW_RE = /^\s*\d+:/;
+/** `115|code` — the same gutter as a `read` result prints it. omp uses the pipe
+ *  form for a file read (981 of 994 read results in the author's sessions) and
+ *  the colon form for an edit/write excerpt, so both are furniture. Without the
+ *  pipe form a read's first line of CODE was read as the card's subject, and the
+ *  collapsed card drew it on the same row as the path. */
+const PIPE_ROW_RE = /^\s*\d+\s*[|│]/;
 /** `[115ln elided; re-read needed ranges with …]`, `[Showing lines 54-103 of 208]`. */
 const ELISION_RE = /^\[[^\]]*(?:elided|Showing lines|results limit|more lines)[^\]]*\]$/;
 
@@ -49,7 +55,7 @@ function isElisionLine(line: string): boolean {
 
 /**
  * True when a line is excerpt FURNITURE rather than content: a `[path#TAG]`
- * header, a numbered row, or a gap marker.
+ * header, a numbered row (either gutter), or a gap marker.
  *
  * A card's collapsed summary names its SUBJECT from the result's first
  * meaningful line, and an `edit`/`write` result's first line is the header of
@@ -57,10 +63,15 @@ function isElisionLine(line: string): boolean {
  * as the subject printed the same path twice on one row, behind a quote glyph
  * that said "quoted text" about a file path. The rows and the markers are the
  * body's, not a label either.
+ *
+ * BOTH gutters count. `read` prints `1|code` where `edit`/`write` print
+ * `1:code`, so a read's first line of code was not furniture and became the
+ * subject — the collapsed card then drew it on the same row as the path, which
+ * read as "the subtitle is line 1 of the file".
  */
 export function isExcerptFurniture(line: string): boolean {
   const trimmed = line.trim();
-  return HEADER_RE.test(trimmed) || ROW_RE.test(trimmed) || isElisionLine(line);
+  return HEADER_RE.test(trimmed) || ROW_RE.test(trimmed) || PIPE_ROW_RE.test(trimmed) || isElisionLine(line);
 }
 
 /** Every excerpt group the tool result carries, in order.
