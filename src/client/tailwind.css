@@ -2,6 +2,31 @@
 @import "@xterm/xterm/css/xterm.css";
 
 @theme {
+  /* The UI font stack, with the Nerd Font families LAST.
+   *
+   * omp heads a session title with a card icon — a private-use glyph
+   * (`title.icons: nf+emoji`, the default) that no Latin face contains. The
+   * terminal already names a Nerd Font for exactly this reason
+   * (`XTERM_GLYPH_FALLBACKS` + `NERD_SYMBOLS_FAMILY` in
+   * `data/theme/terminal.ts`), but the UI stack did not, so a title card
+   * rendered only where the DEVICE happened to have a Nerd Font installed: on
+   * the developer's desktop Chromium fell back to one, and on a phone — which
+   * has none — every card icon was a hollow tofu box.
+   *
+   * The order is the whole point, and it is the terminal's: the installed
+   * families come FIRST, so a machine that already has one renders from it and
+   * never reaches the bundled face; `'OMPChamber Nerd Symbols'` is LAST, so
+   * only a device with none fetches its bytes. Verified: with `FiraCode Nerd
+   * Font Mono` installed the glyph paints from that family and the bundled
+   * face stays unloaded; with no local family the face is fetched once and the
+   * card renders. Naming the bundled face WITHOUT the installed families ahead
+   * of it defeats this — Chromium prefers the named webfont over the system
+   * fallback and downloads it on every machine.
+   *
+   * The family names are literals here because Tailwind's `@theme` cannot
+   * import a TS constant; they must stay equal to `XTERM_GLYPH_FALLBACKS` and
+   * `NERD_SYMBOLS_FAMILY`, which `nerd-symbols.test.ts` asserts. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "FiraCode Nerd Font Mono", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "JetBrainsMono NF", "JetBrains Mono Nerd Font", "Hack Nerd Font", "MesloLGS NF", "MesloLGM Nerd Font", "CaskaydiaCove Nerd Font", "SauceCodePro Nerd Font", "Symbols Nerd Font Mono", "Symbols Nerd Font", "PowerlineSymbols", "OMPChamber Nerd Symbols";
   --color-ink: var(--theme-ink);
   --color-paper: var(--theme-paper);
   --color-canvas: var(--theme-canvas);

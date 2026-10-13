@@ -37,6 +37,8 @@ import {
 const FONT_DIR = import.meta.dir;
 const CSS = readFileSync(join(FONT_DIR, 'nerd-symbols.css'), 'utf8');
 const WOFF2 = join(FONT_DIR, 'symbols-nerd-font-mono.woff2');
+/** The app's UI stack (`--font-sans`), which paints the session-title card icon. */
+const TAILWIND = readFileSync(join(FONT_DIR, '../../../client/tailwind.css'), 'utf8');
 
 /** Parse `unicode-range: a, b, c;` into codepoint intervals. */
 function declaredRanges(css: string): Array<[number, number]> {
@@ -130,5 +132,35 @@ print(json.dumps({ "codepoints": len(cmap), "uncovered": uncovered, "missing": [
     const file = Bun.file(WOFF2);
     expect(await file.exists()).toBe(true);
     expect(file.size).toBeGreaterThan(100_000);
+  });
+
+  /**
+   * The UI stack is the SECOND consumer of this face, and it was missing one.
+   * omp heads a session title with a card icon — a PUA glyph
+   * (`title.icons: nf+emoji`) that no Latin face contains — so a stack without
+   * a Nerd Font renders it as tofu wherever the device has none (a phone). The
+   * desktop only looked correct because Chromium's OS fallback found the
+   * developer's installed Nerd Font; there is no such fallback on a phone.
+   *
+   * The order is what keeps it from being a bandwidth regression: the installed
+   * families must precede the bundled face, or Chromium prefers the named
+   * webfont over the system fallback and every machine downloads 1.1 MB.
+   */
+  test('the UI stack names a Nerd Font, with the bundled face LAST', () => {
+    const stack = TAILWIND.match(/--font-sans:\s*([^;]+);/)?.[1];
+    expect(stack).toBeDefined();
+    // A title card must have SOME Nerd Font in the UI stack, or it is tofu on a phone.
+    expect(stack!).toContain(NERD_SYMBOLS_FAMILY);
+    // Installed families first, bundled face last: the terminal's own contract,
+    // for the same reason (a machine that has one never fetches these bytes).
+    // Both must be PRESENT (`indexOf` alone lets a missing name through, since
+    // `-1 < anyPositive` is true).
+    for (const family of ['FiraCode Nerd Font Mono', 'Symbols Nerd Font Mono']) {
+      expect(stack!).toContain(family);
+      expect(stack!.indexOf(family)).toBeLessThan(stack!.indexOf(NERD_SYMBOLS_FAMILY));
+    }
+    // Nothing may follow the bundled face — a later generic would be dead code.
+    const after = stack!.slice(stack!.indexOf(NERD_SYMBOLS_FAMILY) + NERD_SYMBOLS_FAMILY.length);
+    expect(after.replace(/["'\s,]/g, '')).toBe('');
   });
 });
