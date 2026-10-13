@@ -17,17 +17,26 @@ const BOOLEAN_LONG = new Set([
   'check',
   'force',
   'no-restart',
+  'tray',
+  'startup',
   'json',
   'quiet',
   'help',
   'version',
 ]);
 
-// Flags that set another option to a non-`true` value.
+// Flags that set a DIFFERENTLY NAMED option, so a hyphenated flag can land on a
+// camelCase key. `--start-server` and `--no-icon` are here rather than in
+// BOOLEAN_LONG for exactly that reason: BOOLEAN_LONG stores the flag under its
+// own spelling (`options['start-server']`), and a command reading
+// `options.startServer` would then never see the flag — measured: `tray run
+// --start-server` reported `server.started: false` because the option it set was
+// never the one the command read.
 const NEGATED_LONG = {
   'no-daemon': { key: 'foreground', value: true },
   'no-restart': { key: 'restart', value: false },
   'no-ui-password': { key: 'noUiPassword', value: true },
+  'no-startup': { key: 'startup', value: false },
 };
 
 const SHORT_TO_LONG = {
@@ -82,6 +91,8 @@ export function parseArgs(argv) {
     force: false,
     restart: true,
     lines: null,
+    tray: false,
+    startup: null,
     json: false,
     quiet: false,
     help: false,
@@ -214,6 +225,9 @@ OPTIONS:
   --hostname <address>    Alias for --host
   --lan                   Bind to 0.0.0.0 for LAN access (warns when no password is set)
   --tls                   Serve over HTTPS with a self-signed certificate (generated once)
+  --tray                  Show a menu-bar/notification-area icon for this server
+  --startup               Start the server at login (and show the tray icon now)
+  --no-startup            Remove the login entry
   --ui-password [value]   Require a password for the browser UI (generates one when omitted)
   --no-ui-password        Disable the UI password for this start
   --prod                  Accepted for compatibility; production is the default
@@ -252,5 +266,8 @@ EXAMPLES:
   ompchamber restart               # Restart the server
   ompchamber status                # Show whether the server is running
   ompchamber logs -f -n 200        # Follow the last 200 log lines
+  ompchamber serve --tray          # Start the server with a tray icon
+  ompchamber serve --startup       # Also start at every login
+  ompchamber serve --no-startup    # Remove the login entry
 `;
 }

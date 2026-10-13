@@ -14,6 +14,9 @@ import { fetchOmpRegistrySnapshot } from '@/server/lib/models/provider-registry.
 import { ompStartupError, ompStartupLogLines } from '@/server/lib/omp/core/startup';
 import { readInstanceRecord, removeInstanceRecord, writeInstanceRecord } from '@/server/lib/lifecycle/instance';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
+import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
+import { ensureTray } from '@/server/lib/tray/runtime.server';
+import { packageDir } from '@/server/lib/fs/package-root';
 import { acquirePortLock, claimPort, PortInUseError } from '@/server/lib/lifecycle/port-guard';
 import { ensureTlsCertificate, isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
@@ -255,6 +258,19 @@ try {
   for (const failure of result.errors) console.error(`[plugins] ${failure.pluginId}: ${failure.reason}`);
 } catch (error) {
   console.error('[plugins] server halves skipped:', error);
+}
+
+/**
+ * The tray icon, when `--tray` was passed (`serve --tray`, or the login entry
+ * the CLI writes for `--startup`). After the listener is up, because the config
+ * it writes carries the URL the icon opens and the login row it draws, and both
+ * must describe a server that is actually serving. Never throws: a machine with
+ * no tray client (Linux without yad/zenity) reports why and keeps serving.
+ */
+if (isTrayEnabledByArgv()) {
+  const result = ensureTray({ port, host, tls: Boolean(tlsOptions), pkgRoot: packageDir() });
+  if (result.started) console.log('[ompchamber] tray:            icon shown');
+  else console.log(`[ompchamber] tray:            not shown — ${result.reason}`);
 }
 
 /**

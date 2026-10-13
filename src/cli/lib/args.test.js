@@ -1,0 +1,50 @@
+// The argument parser's two option vocabularies.
+//
+// A flag's SPELLING and the option KEY it sets are not the same thing, and the
+// tray flags are where that stopped being theoretical: `--no-startup` is
+// hyphenated while the command reads `options.startup`, so putting it in
+// `BOOLEAN_LONG` (which stores a flag under its own spelling,
+// `options['no-startup']`) would make it silently inert. Measured on the earlier
+// `--start-server`: the flag parsed, the command never saw it, and the feature
+// reported success while doing nothing.
+//
+// This suite pins the mapping so a new hyphenated flag has to choose a side.
+
+import { describe, expect, test } from 'bun:test';
+
+import { parseArgs } from '@/cli/lib/args.js';
+
+describe('parseArgs', () => {
+  test('a hyphenated flag lands on the camelCase option the command reads', () => {
+    const parsed = parseArgs(['serve', '--no-startup']);
+    expect(parsed.options.startup).toBe(false);
+    expect(parsed.unknown).toEqual([]);
+  });
+
+  test('--tray and --startup are booleans', () => {
+    const both = parseArgs(['serve', '--tray', '--startup']);
+    expect(both.options.tray).toBe(true);
+    expect(both.options.startup).toBe(true);
+  });
+
+  test('an unmentioned --startup stays null, so "install" and "remove" are told apart', () => {
+    expect(parseArgs(['serve']).options.startup).toBeNull();
+  });
+
+  test('the pre-existing aliases keep working', () => {
+    const parsed = parseArgs(['serve', '--no-daemon', '--no-ui-password', '--no-restart']);
+    expect(parsed.options.foreground).toBe(true);
+    expect(parsed.options.noUiPassword).toBe(true);
+    expect(parsed.options.restart).toBe(false);
+  });
+
+  test('--port still parses as a number', () => {
+    const parsed = parseArgs(['serve', '--port', '3999']);
+    expect(parsed.command).toBe('serve');
+    expect(parsed.options.port).toBe(3999);
+  });
+
+  test('an unknown flag is reported rather than swallowed', () => {
+    expect(parseArgs(['serve', '--nope']).unknown).toEqual(['--nope']);
+  });
+});

@@ -15,6 +15,7 @@ import { killChildTree, STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
 import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
 import { launchModeArg } from '@/server/lib/lifecycle/launch-mode';
 import { TLS_FLAG } from '@/server/lib/lifecycle/tls';
+import { TRAY_FLAG } from '@/server/lib/lifecycle/argv-flags';
 import { listInstanceRecords, readInstanceRecord, removeInstanceRecord } from '@/server/lib/lifecycle/instance';
 import { fetchHealth, probeHost } from '@/server/lib/lifecycle/probe';
 import { joinPath, homeDir } from '@/cli/lib/path-utils.js';
@@ -144,7 +145,7 @@ export function resolveBunBin() {
  * started from an OMPChamber shell would otherwise be labelled `daemon` and
  * replaced by the next update.
  */
-export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = 'daemon', tls = false }) {
+export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = 'daemon', tls = false, tray = false }) {
   // Production runs the built server: `bun run build` bundles `src/server/index.ts`
   // into `dist/client/index.js`, and that bundle carries the HTML route and the
   // hashed assets beside it. Development runs the source, which is what gives
@@ -159,10 +160,10 @@ export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = '
   }
   return {
     file: resolveBunBin(),
-    // `--tls` travels as argv, like `--launch-mode`: env is inherited by every
-    // descendant, so a server started inside the chamber's own terminal would
-    // otherwise inherit the choice.
-    args: [entry, '--ompchamber-server', launchModeArg(launchMode), ...(tls ? [TLS_FLAG] : [])],
+    // `--tls` and `--tray` travel as argv, like `--launch-mode`: env is inherited
+    // by every descendant, so a server started inside the chamber's own terminal
+    // would otherwise inherit the choice.
+    args: [entry, '--ompchamber-server', launchModeArg(launchMode), ...(tls ? [TLS_FLAG] : []), ...(tray ? [TRAY_FLAG] : [])],
     // Both modes run from the package root. The built server's HTML bundle
     // resolves its asset paths against the cwd, and the build emits them under
     // `dist/client/` from that same root — while everything else the server
@@ -186,11 +187,11 @@ export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = '
  * actually owns the port, so a spawn that fails (port lost to something else)
  * cannot leave a record pointing at a process that never served.
  */
-export function spawnDetachedServer({ pkgRoot, mode, port, host, launchMode = 'daemon', resolvedPassword = null, tls = false }) {
+export function spawnDetachedServer({ pkgRoot, mode, port, host, launchMode = 'daemon', resolvedPassword = null, tls = false, tray = false }) {
   ensureDataDirs();
   const logFile = getLogFilePath(port);
   const fd = fs.openSync(logFile, 'a');
-  const { file, args, env, cwd } = buildServeInvocation({ pkgRoot, mode, port, host, launchMode, tls });
+  const { file, args, env, cwd } = buildServeInvocation({ pkgRoot, mode, port, host, launchMode, tls, tray });
 
   let child;
   try {

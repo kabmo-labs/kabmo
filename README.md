@@ -156,6 +156,7 @@ instance serving that console.
 | `restart` | Stop, then start again — leaving servers started from source alone |
 | `status` | Report whether an instance is running |
 | `logs` | Print or follow the server log |
+| `plugin` | Build, type, scaffold or list panel plugins |
 
 | Option | Purpose |
 |---|---|
@@ -163,6 +164,9 @@ instance serving that console.
 | `--host <address>` (`--hostname`) | Bind address (default `127.0.0.1`) |
 | `--lan` | Bind to `0.0.0.0` for LAN access (warns when the traffic is unencrypted) |
 | `--tls` | Serve HTTPS from a self-signed certificate, generated once into `~/.ompchamber/tls/` |
+| `--tray` | Show a menu-bar/notification-area icon for this server |
+| `--startup` | Start the server at login (and show the tray icon now) |
+| `--no-startup` | Remove the login entry |
 | `--ui-password [value]` | Require a password for the browser UI; generates one when the value is omitted |
 | `--no-ui-password` | Ignore `OMPCHAMBER_UI_PASSWORD` for this start |
 | `--prod` | Accepted for compatibility — production is the default |
@@ -174,6 +178,42 @@ instance serving that console.
 | `--no-restart` | Do not restart a running instance after updating |
 | `-f, --follow` / `-n, --lines <count>` | Tail the log, optionally from a line count |
 | `--json` / `-q, --quiet` | Machine-readable output / suppress non-essential output |
+
+### Tray icon and start at login
+
+`ompchamber serve --tray` puts an OMPChamber icon in the menu bar (macOS) or the notification area
+(Windows, Linux). `--startup` additionally registers the server to start at every login, and
+`--no-startup` removes that registration:
+
+```bash
+ompchamber serve --tray          # start the server with a tray icon
+ompchamber serve --startup       # also start at every login
+ompchamber serve --no-startup    # remove the login entry
+```
+
+The icon's menu reflects the server as it is **right now** — rebuilt on every open: Open Console,
+Open Logs, Start at Login / Disable Start at Login, Quit OMPChamber.
+
+- **The tray is a child of the server.** It exits when the server does (it watches its parent), so a
+  killed or crashed server leaves no orphan icon, and **Quit OMPChamber signals the server** — the
+  icon and the console end together. There is no pid file, no `status`/`stop` for the icon, and
+  nothing to keep in sync: the process tree is the registration.
+- **The login entry runs `serve --foreground`.** launchd reaps a job's whole process tree when the
+  job's program exits, so an entry that ran a detached `serve` (which returns once the health check
+  passes) produced no server at all. In the foreground the CLI is the long-lived job, the server is
+  its child, and the tray is the server's child. Verified against `launchctl print`: the entry is
+  `state = running` with the CLI as its program.
+- **macOS** registers `~/Library/LaunchAgents/dev.ompchamber.tray.plist` (`RunAtLoad`, no
+  `KeepAlive` — a server stopped on purpose stays stopped). **Linux** writes
+  `$XDG_CONFIG_HOME/autostart/ompchamber-tray.desktop`, which every freedesktop session reads.
+  **Windows** sets the HKCU `…\CurrentVersion\Run` value through `reg`, so registering never needs
+  elevation.
+- **What draws the icon is the platform's own tray API**: an AppKit status item on macOS (via
+  `osascript -l JavaScript`), `System.Windows.Forms.NotifyIcon` on Windows, and `yad`/`zenity`
+  `--notification` on Linux. Only Linux can lack a client — the icon is then skipped with the
+  package to install in the log, and the server keeps running.
+- `--startup` without `--tray` is a supported shape: the login-started server comes up without an
+  icon.
 
 ### Ports and multiple instances
 
