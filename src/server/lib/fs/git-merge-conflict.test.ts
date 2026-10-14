@@ -44,9 +44,18 @@ function makeRepo(): string {
 
 function git(cwd: string, ...args: string[]): string {
   const result = Bun.spawnSync({
-    cmd: ['git', '-c', 'user.email=e2e@example.invalid', '-c', 'user.name=E2E', ...args],
+    cmd: ['git', ...args],
     cwd,
-    env: { ...Bun.env, GIT_EDITOR: 'true' },
+    // Identity through the ENVIRONMENT, not `-c`: the CI runner has no global
+    // git identity, and a commit made by a fixture must not depend on one.
+    env: {
+      ...Bun.env,
+      GIT_EDITOR: 'true',
+      GIT_AUTHOR_NAME: 'E2E',
+      GIT_AUTHOR_EMAIL: 'e2e@example.invalid',
+      GIT_COMMITTER_NAME: 'E2E',
+      GIT_COMMITTER_EMAIL: 'e2e@example.invalid',
+    },
   });
   if (result.exitCode !== 0) throw new Error(`git ${args.join(' ')} failed: ${result.stderr.toString()}`);
   return result.stdout.toString();
