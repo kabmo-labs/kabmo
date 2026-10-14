@@ -20,11 +20,15 @@ import { describe, expect, test } from 'bun:test';
 import {
   BINARY_SNIFF_BYTES,
   classifyEditorFile,
+  DOCUMENT_MIME_BY_EXT,
   EDITOR_MAX_FILE_BYTES,
+  getDocumentMimeType,
   getFileExtension,
   getImageMimeFromBytes,
   getImageMimeType,
+  getRawContentType,
   IMAGE_MIME_BY_EXT,
+  SVG_MIME,
   unsupportedEditorMessage,
 } from '@/shared/lib/fs/file-kind';
 
@@ -121,6 +125,61 @@ describe('getImageMimeType', () => {
   });
 });
 
+describe('getDocumentMimeType', () => {
+  test('each document extension resolves to its MIME type', () => {
+    expect(getDocumentMimeType('a.pdf')).toBe('application/pdf');
+    expect(getDocumentMimeType('a.docx')).toBe(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    expect(getDocumentMimeType('a.xlsx')).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    expect(getDocumentMimeType('a.xlsm')).toBe('application/vnd.ms-excel.sheet.macroEnabled.12');
+  });
+
+  test('the table covers exactly the extensions above', () => {
+    expect(Object.keys(DOCUMENT_MIME_BY_EXT).sort()).toEqual(['docx', 'pdf', 'xlsm', 'xlsx']);
+  });
+
+  // `.xls` is the legacy OLE2 binary the reader refuses; naming it as a
+  // spreadsheet type would advertise a viewer that cannot open it.
+  test('legacy .xls has no MIME entry', () => {
+    expect(getDocumentMimeType('legacy.xls')).toBeNull();
+  });
+
+  test('images and unknown extensions are null', () => {
+    expect(getDocumentMimeType('a.png')).toBeNull();
+    expect(getDocumentMimeType('a.ts')).toBeNull();
+    expect(getDocumentMimeType(undefined)).toBeNull();
+  });
+});
+
+describe('getRawContentType', () => {
+  test('an image keeps its image type', () => {
+    expect(getRawContentType('shot.png')).toBe('image/png');
+  });
+
+  test('a document gets its document type', () => {
+    expect(getRawContentType('report.pdf')).toBe('application/pdf');
+    expect(getRawContentType('book.xlsx')).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+  });
+
+  // SVG is deliberately absent from the image table (it is editable text), but
+  // the raw route still serves it to an <img>, so it must be named here or the
+  // browser downloads the file instead of painting it.
+  test('svg is named by the raw route even though it is not an image kind', () => {
+    expect(getRawContentType('logo.svg')).toBe(SVG_MIME);
+    expect(getImageMimeType('logo.svg')).toBeNull();
+  });
+
+  test('a text file has no raw content type', () => {
+    expect(getRawContentType('a.ts')).toBeNull();
+    expect(getRawContentType(undefined)).toBeNull();
+  });
+});
+
 describe('getImageMimeFromBytes', () => {
   test('the PNG signature is recognized', () => {
     expect(getImageMimeFromBytes(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))).toBe('image/png');
@@ -211,6 +270,22 @@ describe('classifyEditorFile', () => {
   test('a NUL in the head is binary, and its absence is text', () => {
     expect(classifyEditorFile({ path: 'app.zip', size: 1024, head: bytes(0x50, 0x4b, 0x00) })).toBe('binary');
     expect(classifyEditorFile({ path: 'app.ts', size: 1024, head: bytes(0x63, 0x6f, 0x6e) })).toBe('text');
+  });
+
+  // A DOCX and an XLSX are zips and a PDF carries binary streams, so the NUL
+  // sniff would refuse exactly the files the viewer exists for. The document
+  // branch runs before it.
+  test('a document is exempt from the binary sniff', () => {
+    expect(classifyEditorFile({ path: 'report.pdf', size: 4096, head: bytes(0x25, 0x50, 0x44, 0x46) })).toBe('document');
+    expect(classifyEditorFile({ path: 'doc.docx', size: 4096, head: bytes(0x50, 0x4b, 0x03, 0x04, 0x00) })).toBe('document');
+    expect(classifyEditorFile({ path: 'sheet.xlsx', size: 4096, head: bytes(0x50, 0x4b, 0x03, 0x04, 0x00) })).toBe('document');
+    expect(classifyEditorFile({ path: 'sheet.xlsm', size: 4096 })).toBe('document');
+  });
+
+  // A document's bytes are fetched whole by the viewer, so it is refused for
+  // size like text — the image exemption does not extend to it.
+  test('a document past the ceiling is refused for size, not classified document', () => {
+    expect(classifyEditorFile({ path: 'huge.pdf', size: EDITOR_MAX_FILE_BYTES + 1 })).toBe('too-large');
   });
 
   test('a missing head is text — the answer that opens the file', () => {

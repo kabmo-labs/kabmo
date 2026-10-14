@@ -39,7 +39,7 @@ interface FileScope {
   root?: string;
   path?: string;
   name?: string;
-  kind?: 'image' | 'text' | 'binary' | 'too-large';
+  kind?: 'image' | 'document' | 'text' | 'binary' | 'too-large';
   error?: string;
 }
 
@@ -113,6 +113,8 @@ async function openDroppedReference(
 
   // A file the editor cannot show is refused HERE, with the server's own
   // sentence, rather than opened as a tab whose whole content is that sentence.
+  // A document (PDF/DOCX/XLSX) is NOT refused: its viewer fetches the bytes
+  // itself, so it opens like any other file.
   if (body.kind === 'binary' || body.kind === 'too-large') {
     onResult?.({ ok: false, message: body.error ?? `${body.name ?? 'That file'} cannot be opened here.` });
     return;

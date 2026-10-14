@@ -6,12 +6,21 @@ interface EditorToolbarProps {
   path: string;
   saveStatus: EditorSaveStatus;
   wordWrap: boolean;
-  isMd: boolean;
+  /**
+   * The file has a rendered form (markdown prose, a CSV grid, an SVG picture),
+   * so the eye toggle is offered. Named for the CONTRACT rather than for one
+   * kind: the button used to be markdown-only, and a second `isMd`-shaped flag
+   * per new preview is how the toolbar drifts from the pane.
+   */
+  hasPreview: boolean;
   isPreview: boolean;
   /** True for the 1.5s after a copy landed, so the button can confirm it. */
   copied: boolean;
-  /** Raster image: no text to save or wrap, and zoom belongs to the picture. */
-  isImage?: boolean;
+  /**
+   * A byte-drawing viewer (image, PDF, DOCX, workbook): no text buffer, so no
+   * Save, find, wrap or font zoom — the picture/grid owns its own scale.
+   */
+  byteViewer?: boolean;
   /** A read failure left no trustworthy buffer, so there is nothing to save. */
   saveDisabled?: boolean;
   /**
@@ -51,10 +60,10 @@ export function EditorToolbar({
   path,
   saveStatus,
   wordWrap,
-  isMd,
+  hasPreview,
   isPreview,
   copied,
-  isImage = false,
+  byteViewer = false,
   saveDisabled = false,
   unsupported = false,
   handleMissing = false,
@@ -101,7 +110,7 @@ export function EditorToolbar({
           above is hidden, which `justify-between` alone would not do (a single
           child sits at the start). */}
       <div className="flex items-center space-x-1 text-ink/40 flex-shrink-0 ml-auto">
-        {!isImage && (
+        {!byteViewer && (
           <div className="flex items-center pr-2 mr-1 border-r border-ink/10">
             <button
               type="button"
@@ -127,14 +136,14 @@ export function EditorToolbar({
           </div>
         )}
 
-        {isMd && (
+        {hasPreview && (
           <div className="flex items-center pr-2 mr-1 border-r border-ink/10">
             <button
               type="button"
               onClick={onTogglePreview}
               className={`${ACTION_CLASS} hover:bg-ink/5 ${isPreview ? 'text-ink' : 'hover:text-ink'}`}
-              title={isPreview ? 'Show markdown source' : 'Preview markdown'}
-              aria-label={isPreview ? 'Show markdown source' : 'Preview markdown'}
+              title={isPreview ? 'Show source' : 'Show preview'}
+              aria-label={isPreview ? 'Show source' : 'Show preview'}
               aria-pressed={isPreview}
             >
               {isPreview ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -142,7 +151,7 @@ export function EditorToolbar({
           </div>
         )}
 
-        {!isImage && (
+        {!byteViewer && (
           <>
             <div className="flex items-center pr-2 mr-1 border-r border-ink/10">
               <button
@@ -198,8 +207,8 @@ export function EditorToolbar({
             type="button"
             onClick={onCopy}
             className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
-            title={copied ? 'Copied' : isImage ? 'Copy image' : 'Copy content'}
-            aria-label={copied ? 'Copied' : isImage ? 'Copy image' : 'Copy content'}
+            title={copied ? 'Copied' : byteViewer ? 'Copy image' : 'Copy content'}
+            aria-label={copied ? 'Copied' : byteViewer ? 'Copy image' : 'Copy content'}
           >
             {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
           </button>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
-import { buildFsRawUrl } from '@/shared/lib/fs/paths';
+import { type ViewerKind } from '@/shared/lib/fs/document-kind';
+import { resolveViewer } from '@/client/hooks/editor/resolve-viewer';
 import { detectLineEnding, toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
 import { retainKeys } from '@/client/hooks/editor/save-file';
 import { fileHandleFor } from '@/client/lib/launch/file-handlers';
+import { type ByteSource } from '@/client/components/workspace/editor/viewers/bytes';
 import { useFileRead } from '@/client/hooks/editor/use-file-read';
 import { useFileTransfer } from '@/client/hooks/editor/use-file-transfer';
 import { useFileWrites } from '@/client/hooks/editor/use-file-writes';
@@ -78,6 +79,31 @@ export interface UseFileEditorResult {
   isImage: boolean;
   /** Raw-byte URL of the active image (cache-busted per revision), else null. */
   imageUrl: string | null;
+  /**
+   * Which surface draws this file (see `shared/lib/fs/document-kind`). The pane
+   * dispatches on it, and `isImage` is now one case of it rather than its own
+   * axis.
+   */
+  viewerKind: ViewerKind;
+  /**
+   * The bytes a byte-drawing viewer reads, from the tab's path or its live
+   * handle. `loadBytes` is null for a text viewer and for an inline attachment
+   * (nothing to fetch); `url` is additionally null when the file came from a
+   * handle rather than a workspace path.
+   */
+  byteSource: ByteSource;
+  /**
+   * True for the viewers that read BYTES rather than the text buffer (image,
+   * PDF, DOCX, workbook). Their read path is skipped and their writes refused,
+   * because a byte surface has no buffer to save.
+   */
+  isBinaryViewer: boolean;
+  /**
+   * Bumped by `reset()` (a workspace refresh). A byte viewer that fetches its
+   * own bytes has no read effect to re-run, so it takes this as its re-read
+   * lever; the text path already re-reads through `useFileRead`.
+   */
+  revision: number;
   saveNow: () => void;
   copy: () => void;
   download: () => void;
@@ -137,14 +163,10 @@ export function useFileEditor(
   const content = target ? (contents[key] ?? (target.content !== undefined ? toLf(target.content) : '')) : '';
   const isDirty = content !== (baselines[key] ?? content);
 
-  // Extension-keyed, matching the server's own classification: an image tab
-  // never reads a text buffer and never writes one back. A target without a
-  // path has no bytes to serve, and one that already carries inline `content`
-  // (an attachment chip) has its text in hand — both stay on the text path.
-  const imageTarget =
-    target?.path && target.content === undefined && getImageMimeType(target.path) ? target.path : null;
-  const isImage = imageTarget !== null;
-  const imageUrl = imageTarget ? `${buildFsRawUrl({ ...target, path: imageTarget })}&v=${revision}` : null;
+  // The viewer, its bytes and the image URL — see `resolve-viewer.ts` for the
+  // three rules this derivation encodes (the kind comes from the path; a
+  // handle-backed tab has no server path; an image keeps its own URL field).
+  const { viewerKind, isBinaryViewer, isImage, imageUrl, byteSource } = resolveViewer(target, revision);
 
   // Keys whose read has been requested or served, so a re-render cannot fire a
   // duplicate fetch while the first one is still in flight.
@@ -180,7 +202,7 @@ export function useFileEditor(
   const { isLoading, loadError, unsupported } = useFileRead({
     target,
     key,
-    isImage,
+    isBinaryViewer,
     revision,
     loadedRef,
     contentsRef,
@@ -199,7 +221,7 @@ export function useFileEditor(
    */
   const writes = useFileWrites({
     target,
-    isImage,
+    isBinaryViewer,
     loadError,
     missing,
     contentsRef,
@@ -235,12 +257,12 @@ export function useFileEditor(
 
   const onChange = useCallback(
     (next: string) => {
-      if (!target || isImage) return;
+      if (!target || isBinaryViewer) return;
       const fileKey = targetKey(target);
       setContents((prev) => ({ ...prev, [fileKey]: next }));
       writesRef.current.onChange(next);
     },
-    [target, isImage],
+    [target, isBinaryViewer],
   );
 
   const { copied, copy, download } = useFileTransfer({
@@ -253,6 +275,10 @@ export function useFileEditor(
     downloadContent: target ? toDiskText(content, lineEndings[key] ?? 'lf') : content,
     imageUrl,
     downloadMimeType,
+    // A byte viewer's bytes are not in the buffer, so its download (and, for an
+    // image, its copy) reads them from the source.
+    byteSource,
+    byteViewer: isBinaryViewer,
   });
 
   const reset = useCallback(() => {
@@ -277,9 +303,9 @@ export function useFileEditor(
     content,
     onChange,
     isLoading,
-    // An image has no buffer to wait for, and inline content is already in
+    // A byte viewer has no buffer to wait for, and inline content is already in
     // hand; otherwise the key's entry exists only once the read resolved.
-    loaded: target ? isImage || target.content !== undefined || contents[key] !== undefined : false,
+    loaded: target ? isBinaryViewer || target.content !== undefined || contents[key] !== undefined : false,
     loadError,
     unsupported,
     saveStatus,
@@ -288,6 +314,10 @@ export function useFileEditor(
     language: target ? getLanguageFromPath(target.name) : 'javascript',
     isImage,
     imageUrl,
+    viewerKind,
+    byteSource,
+    isBinaryViewer,
+    revision,
     handleMissing: Boolean(target?.handleId) && fileHandleFor(target?.handleId) === null,
     saveNow: writes.saveNow,
     copy,

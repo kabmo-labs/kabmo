@@ -7,6 +7,7 @@ import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
+import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 
@@ -23,7 +24,9 @@ interface FileDocumentProps {
   editorFontFamily: string;
   occurrences: readonly TextRange[];
   onOccurrencesChange: (next: readonly TextRange[]) => void;
-  /** Markdown preview is on for the active file — render it, not the source. */
+  /** The surface this file's kind is drawn by (see `document-kind`). */
+  viewerKind: ViewerKind;
+  /** The rendered view is on for the active file — render it, not the source. */
   isPreview: boolean;
   /**
    * A search hit was jumped to in this file. The find bar is closed (a search
@@ -56,10 +59,14 @@ export function FileDocument({
   editorFontFamily,
   occurrences,
   onOccurrencesChange,
+  viewerKind,
   isPreview,
   revealActive,
 }: FileDocumentProps) {
-  const isMd = activeFile.name.endsWith('.md');
+  // Only markdown reaches this component in preview mode; the CSV grid and the
+  // SVG picture are drawn by the viewer dispatch instead (they replace the code
+  // surface rather than living inside its scroller).
+  const isMd = viewerKind === 'markdown';
   // The document owns its scroller, so it owns the fade class.
   const fade = useScrollbarFadeRef();
 

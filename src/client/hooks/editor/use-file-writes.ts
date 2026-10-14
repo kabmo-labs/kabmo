@@ -49,7 +49,7 @@ export interface PendingWrite {
 
 export interface FileWriteDeps {
   target: FileEditorTarget | null;
-  isImage: boolean;
+  isBinaryViewer: boolean;
   /** A failed read left no trustworthy buffer, so there is nothing to write. */
   loadError: string | null;
   /** The file this tab names is gone from disk. */
@@ -94,7 +94,7 @@ function targetKey(target: FileEditorTarget): string {
 
 export function useFileWrites({
   target,
-  isImage,
+  isBinaryViewer,
   loadError,
   missing,
   contentsRef,
@@ -149,7 +149,7 @@ export function useFileWrites({
 
   const onChange = useCallback(
     (next: string) => {
-      if (!target || isImage) return;
+      if (!target || isBinaryViewer) return;
       if (!target.path) return;
       // No timer at all while the file is gone. `persist` would drop the write
       // anyway, so this is belt-and-braces: it keeps `pendingRef` clear, which
@@ -162,11 +162,11 @@ export function useFileWrites({
       }, 800);
       pendingRef.current = { timer, file: target, content: next };
     },
-    [target, isImage, pendingRef],
+    [target, isBinaryViewer, pendingRef],
   );
 
   const saveNow = useCallback(() => {
-    if (!target || isImage) return;
+    if (!target || isBinaryViewer) return;
     // A file whose read failed has no trustworthy buffer: saving it would write
     // the empty placeholder over the real file. The user must reopen it first.
     if (loadError) return;
@@ -191,16 +191,16 @@ export function useFileWrites({
     // Interactive: this runs from a click or Ctrl+S, which is the gesture a
     // handle-backed file needs to grant write access.
     void persistRef.current(target, text, { interactive: true });
-  }, [target, contentsRef, isImage, loadError, pendingRef]);
+  }, [target, contentsRef, isBinaryViewer, loadError, pendingRef]);
 
   const confirmSaveMissing = useCallback(() => {
     setSaveMissingConfirm(false);
-    if (!target || isImage || loadError) return;
+    if (!target || isBinaryViewer || loadError) return;
     const text = contentsRef.current[targetKey(target)];
     if (text === undefined) return;
     // The confirm dialog's button is itself the gesture.
     void persistRef.current(target, text, { allowMissing: true, interactive: true });
-  }, [target, contentsRef, isImage, loadError]);
+  }, [target, contentsRef, isBinaryViewer, loadError]);
 
   const cancelSaveMissing = useCallback(() => setSaveMissingConfirm(false), []);
 

@@ -4,7 +4,9 @@ import {
   FileArchive,
   FileCog,
   FileImage,
+  FileSpreadsheet,
   FileText,
+  FileType,
   Folder,
   FolderOpen,
 } from 'lucide-preact';
@@ -131,6 +133,16 @@ export function FileIcon({ name, isFolder, isOpen, size = 14, className = '' }: 
   }
   if (lowerName.endsWith('.html')) {
     return <BrandIconSvg name="Html5" size={size} className={className} />;
+  }
+  // The documents the editor renders: a spreadsheet icon for the grid viewers, a
+  // document icon for PDF/Word. Each has a viewer behind it, so the glyph is
+  // what tells a user at a glance that the file opens as something other than
+  // source text.
+  if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xlsm')) {
+    return <FileSpreadsheet size={size} color="#22c55e" className={className} />;
+  }
+  if (lowerName.endsWith('.pdf') || lowerName.endsWith('.docx')) {
+    return <FileType size={size} color="#f97316" className={className} />;
   }
   if (lowerName.endsWith('.md') || lowerName.endsWith('.txt')) {
     return <FileText size={size} className={`text-ink/70 ${className}`} />;

@@ -40,7 +40,17 @@
         "text/x-sh": [".sh", ".bash", ".zsh"],
         "text/x-sql": [".sql"],
         "text/x-diff": [".diff", ".patch"],
-        "image/svg+xml": [".svg"]
+        "image/svg+xml": [".svg"],
+        "image/png": [".png", ".apng"],
+        "image/jpeg": [".jpg", ".jpeg", ".jfif"],
+        "image/gif": [".gif"],
+        "image/webp": [".webp"],
+        "image/avif": [".avif"],
+        "image/bmp": [".bmp"],
+        "image/tiff": [".tif", ".tiff"],
+        "application/pdf": [".pdf"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx", ".xlsm"]
       },
       "icons": [
         {

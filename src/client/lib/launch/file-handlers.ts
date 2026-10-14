@@ -93,18 +93,18 @@ export async function openHandleAsTab(
     return { ok: false, message: unsupportedEditorMessage(kind, file.size) };
   }
 
-  // A raster image is refused rather than opened. The editor paints a picture
-  // from `/api/fs/raw`, which resolves a path against a workspace — and a
-  // handle has no such path, so the tab would draw a broken image. The manifest
-  // does not claim raster types for exactly this reason; this is the defensive
-  // half, for a launch or a drop that arrives anyway.
-  if (kind === 'image') {
-    return { ok: false, message: `${file.name} is a picture — open it from a workspace to view it.` };
-  }
-
+  // A picture and a document are opened like any other file: the handle id is
+  // registered below, and the editor's byte source reads the bytes through it —
+  // an object URL for the surfaces that take a URL (`<img>`, `<iframe>`), the
+  // `ArrayBuffer` for the ones that parse. That is what makes a dropped PDF or
+  // PNG work without a server path, which the previous version refused outright.
+  //
+  // Only a TEXT file is read into the buffer here: a document's bytes can be
+  // megabytes, and reading them into a string would corrupt them anyway.
   const handleId = `${origin}-${nextHandleId++}`;
   handles.set(handleId, handle);
-  openFileInEditor({ path: file.name, name: file.name, content: await file.text(), handleId });
+  const content = kind === 'text' ? await file.text() : undefined;
+  openFileInEditor({ path: file.name, name: file.name, content, handleId });
   return { ok: true, message: `Opened ${file.name}` };
 }
 

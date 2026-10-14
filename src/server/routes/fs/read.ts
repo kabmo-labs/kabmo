@@ -242,13 +242,18 @@ export async function readFile({ request }: LoaderFunctionArgs) {
     // branches on the extension first and takes `/api/fs/raw`, so this answers
     // the remaining callers with the real reason instead of garbage.
     //
+    // A document (PDF/DOCX/XLSX) is the same answer for the same reason — its
+    // viewer fetches the bytes from the raw route — but a DIFFERENT sentence:
+    // "served by /api/fs/raw" tells the caller where to look, and a document is
+    // not an image.
+    //
     // A binary or oversized file is refused the same way, and the refusal is
     // the point rather than a nicety: the editor's buffer is empty on a failed
     // read, and Save is only disabled by `loadError`. Answering with mojibake
     // left a buffer the next save wrote straight back over the real file.
     const kind = await classifyForEditor(fullPath, cleanPath, stat.size);
-    if (kind === 'image') {
-      return json({ error: 'Image files are served by /api/fs/raw' }, { status: 400 });
+    if (kind === 'image' || kind === 'document') {
+      return json({ error: 'This file is served by /api/fs/raw' }, { status: 400 });
     }
     if (kind !== 'text') {
       return json(
@@ -302,10 +307,12 @@ export async function readReferencedFile({ request }: LoaderFunctionArgs) {
       return json({ error: 'Cannot read a directory' }, { status: 400 });
     }
     // Same classification as `/api/fs/read`: a binary or oversized reference is
-    // refused with its reason rather than handed back as mojibake.
+    // refused with its reason rather than handed back as mojibake. A document
+    // has no text form either — its viewer takes the bytes from the drop's own
+    // `File`, not from this route.
     const kind = await classifyForEditor(filePath, filePath, stat.size);
-    if (kind === 'image') {
-      return json({ error: 'Image files are served by /api/fs/raw' }, { status: 400 });
+    if (kind === 'image' || kind === 'document') {
+      return json({ error: 'This file is served by /api/fs/raw' }, { status: 400 });
     }
     if (kind !== 'text') {
       return json({ error: unsupportedEditorMessage(kind, stat.size), kind }, { status: 415 });

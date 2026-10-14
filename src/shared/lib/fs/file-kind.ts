@@ -43,12 +43,62 @@ export function getFileExtension(filePath: string | undefined | null): string {
 }
 
 /**
+ * MIME types for the documents the editor renders rather than edits — the ones
+ * `/api/fs/raw` must label correctly, because the browser decides whether to
+ * paint or download from `content-type`.
+ *
+ * These are NOT in `IMAGE_MIME_BY_EXT`: an image is classified `image` (streamed,
+ * size-exempt) while these are classified `document` (bytes fetched whole by the
+ * viewer, size-checked like text). One table for the MIME, one list for the
+ * classification, so the two questions cannot drift.
+ */
+export const DOCUMENT_MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+};
+
+/**
+ * SVG's MIME. Kept out of every classification table on purpose: an SVG is
+ * editable XML text and stays on the code path (see the module doc), but
+ * `/api/fs/raw` still has to name it, or an `<img>` pointed at it downloads the
+ * file instead of painting it.
+ */
+export const SVG_MIME = 'image/svg+xml';
+
+/**
  * MIME type for a raster image path, or null when the extension is not one.
  * Null is the "treat as text" answer, so every caller branches on this single
  * check instead of re-deriving the extension list.
  */
 export function getImageMimeType(filePath: string | undefined | null): string | null {
   return IMAGE_MIME_BY_EXT[getFileExtension(filePath)] ?? null;
+}
+
+/**
+ * MIME type for a document the viewer paints (PDF, DOCX, XLSX/XLSM), or null.
+ * Null is the "not one of those" answer, the same shape `getImageMimeType` uses.
+ */
+export function getDocumentMimeType(filePath: string | undefined | null): string | null {
+  return DOCUMENT_MIME_BY_EXT[getFileExtension(filePath)] ?? null;
+}
+
+/**
+ * The `content-type` `/api/fs/raw` should answer a path with, or null when the
+ * bytes have no picture/document type (the route falls back to
+ * `application/octet-stream`).
+ *
+ * SVG is named here rather than by `getImageMimeType` because it is deliberately
+ * excluded there — the classifier must keep it on the text path — while the raw
+ * route serves it to an `<img>`.
+ */
+export function getRawContentType(filePath: string | undefined | null): string | null {
+  return (
+    getImageMimeType(filePath) ??
+    getDocumentMimeType(filePath) ??
+    (getFileExtension(filePath) === 'svg' ? SVG_MIME : null)
+  );
 }
 
 /** Leading bytes → MIME, longest signature first so `webp`'s `RIFF`/`WEBP`
@@ -108,25 +158,29 @@ export const BINARY_SNIFF_BYTES = 8192;
  * leading bytes — the ONE classification the read route, the editor surface and
  * the drop target all branch on.
  *
- * `text` and `image` are openable; `binary` and `too-large` are not, and each
- * says why so the refusal can name the actual reason instead of "could not
- * read".
+ * `text`, `image` and `document` are openable; `binary` and `too-large` are not,
+ * and each says why so the refusal can name the actual reason instead of "could
+ * not read".
  */
-export type EditorFileKind = 'image' | 'text' | 'binary' | 'too-large';
+export type EditorFileKind = 'image' | 'document' | 'text' | 'binary' | 'too-large';
 
 /**
  * Classify a file for the editor.
  *
  * An image is checked FIRST and stays openable whatever its size: `/api/fs/raw`
  * streams it and the browser paints it, so a large picture costs no buffer.
- * Everything else is refused for size before its bytes are looked at, because a
- * file too large to hold is also too large to sniff.
+ *
+ * A document (PDF/DOCX/XLSX) is the opposite: the viewer fetches its bytes
+ * whole and hands them to a parser, so it is refused for size exactly like text
+ * — the same ceiling, applied before the bytes are looked at.
  *
  * The binary test is a NUL byte in the leading bytes — git's own test, and the
  * boring one: no encoding a source file uses puts a NUL inside a character,
  * while every container format (zip, PNG, wasm, sqlite, a compiled object) has
- * one early. Sniffing only the head keeps the check off the read path's
- * critical section.
+ * one early. A document is exempt from that sniff, because every one of them IS
+ * a container: a DOCX and an XLSX are zips and a PDF carries binary streams, so
+ * the sniff would refuse exactly the files the viewer exists for. Sniffing only
+ * the head keeps the check off the read path's critical section.
  *
  * `head` may be omitted when the caller has already refused on size or kind —
  * a missing head is treated as text, which is the answer that opens the file.
@@ -138,6 +192,7 @@ export function classifyEditorFile(options: {
 }): EditorFileKind {
   if (getImageMimeType(options.path)) return 'image';
   if (options.size > EDITOR_MAX_FILE_BYTES) return 'too-large';
+  if (getDocumentMimeType(options.path)) return 'document';
   if (options.head?.includes(0)) return 'binary';
   return 'text';
 }

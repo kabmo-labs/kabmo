@@ -34,7 +34,7 @@ import { BINARY_SNIFF_BYTES } from '@/shared/lib/fs/file-kind';
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent', 'MouseEvent', 'KeyboardEvent', 'fetch'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
 
-let opened: { path: string; content?: string; handleId?: string }[] = [];
+let opened: { path: string; name?: string; content?: string; handleId?: string }[] = [];
 let fetchCalls: string[] = [];
 
 beforeAll(() => {
@@ -206,17 +206,42 @@ describe('launch file handlers', () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
-  test('a raster image is refused — a launched handle has no path to paint from', async () => {
+  // A picture and a document reach the editor through their live handle now:
+  // the byte source reads the bytes and the viewer wraps them in an object URL,
+  // so no server path is needed. The tab opens with a `handleId` and NO inline
+  // content (a binary read into a string would corrupt it).
+  test('a launched image opens through its handle, with no inline content', async () => {
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     const { handle } = fakeHandle('shot.png', png);
     const result = await openLaunchedHandle(handle);
 
-    // The editor paints a picture through `/api/fs/raw`, which needs a
-    // workspace path; a launched handle has none, so the tab would be a broken
-    // image. Refused, and nothing is opened.
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('picture');
-    expect(opened).toHaveLength(0);
+    expect(result.ok).toBe(true);
+    expect(opened).toHaveLength(1);
+    expect(opened[0].name).toBe('shot.png');
+    // No `content`: the viewer reads the bytes itself, and a PNG decoded as text
+    // is replacement characters.
+    expect(opened[0].content).toBeUndefined();
+    expect(opened[0].handleId).toBeTruthy();
+  });
+
+  test('a launched document opens through its handle, with no inline content', async () => {
+    // A minimal PDF signature is enough: the classifier exempts documents from
+    // the NUL sniff, so the bytes are not read into the buffer.
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]);
+    const { handle } = fakeHandle('report.pdf', pdf);
+    const result = await openLaunchedHandle(handle);
+
+    expect(result.ok).toBe(true);
+    expect(opened[0].name).toBe('report.pdf');
+    expect(opened[0].content).toBeUndefined();
+  });
+
+  test('a launched text file still opens with its content in the buffer', async () => {
+    const { handle } = fakeHandle('notes.txt', new TextEncoder().encode('hello\n'));
+    const result = await openLaunchedHandle(handle);
+
+    expect(result.ok).toBe(true);
+    expect(opened[0].content).toBe('hello\n');
   });
 
   test('a browser without launchQueue reports no support and installs nothing', () => {

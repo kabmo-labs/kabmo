@@ -60,7 +60,7 @@ export interface UseFileReadOptions {
   target: FileReadTarget | null;
   /** The target's cache key, so the effect re-runs when the file changes. */
   key: string;
-  isImage: boolean;
+  isBinaryViewer: boolean;
   /** Bumped by `reset()` to force a re-read of the active file. */
   revision: number;
   /** Cache keys whose read has been requested or served. */
@@ -89,7 +89,7 @@ function targetKey(target: FileReadTarget): string {
 export function useFileRead({
   target,
   key,
-  isImage,
+  isBinaryViewer,
   revision,
   loadedRef,
   contentsRef,
@@ -109,10 +109,11 @@ export function useFileRead({
     if (loadedRef.current.has(fileKey)) return;
     loadedRef.current.add(fileKey);
 
-    // An image has no text to read: the surface points an <img> at the raw
-    // bytes. Fetching here would only decode them into replacement characters
-    // and paint mojibake, so the key is marked loaded and left bufferless.
-    if (isImage) {
+    // A byte-drawing viewer (image, PDF, DOCX, workbook) has no text to read:
+    // its surface fetches the raw bytes itself. Fetching here would decode them
+    // into replacement characters, so the key is marked loaded and left
+    // bufferless.
+    if (isBinaryViewer) {
       setLoadError(null);
       setUnsupported(null);
       setIsLoading(false);
@@ -190,7 +191,7 @@ export function useFileRead({
     return () => {
       cancelled = true;
     };
-  }, [key, target, remember, revision, isImage, loadedRef, contentsRef, baselinesRef, pendingRef]);
+  }, [key, target, remember, revision, isBinaryViewer, loadedRef, contentsRef, baselinesRef, pendingRef]);
 
   return { isLoading, loadError, unsupported };
 }

@@ -17,15 +17,12 @@ import {
   EDITOR_MIN_FONT_SIZE,
 } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
+import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
+import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
+import type { MobileEditorFile } from '@/client/components/mobile/open-file-payload';
 
 interface MobileFullEditorProps {
-  file: {
-    name: string;
-    path?: string;
-    content?: string;
-    root?: string;
-    repo?: string;
-  };
+  file: MobileEditorFile;
   onClose: () => void;
   /** The file this editor names is gone from disk. */
   missing?: boolean;
@@ -36,13 +33,30 @@ interface MobileFullEditorProps {
 }
 
 export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, onDropResult }: MobileFullEditorProps) {
-  const [isPreview, setIsPreview] = useState(file.name.endsWith('.md'));
+  const viewerKind = viewerKindFor(file.path ?? file.name);
+  // The default preview is DERIVED, never a `useState` initializer: this editor
+  // stays mounted while the file it names changes, so an initializer computed
+  // once left the toggle stuck on the first file's kind — opening a CSV after a
+  // PDF kept `false` and drew the raw text where the grid belongs. The override
+  // map is per file (the phone shows one file at a time), which is the same
+  // per-tab memory the desktop pane keeps.
+  const [previewOverrides, setPreviewOverrides] = useState<Record<string, boolean>>({});
   const [fontSize, setFontSize] = useState(EDITOR_DEFAULT_FONT_SIZE);
   const [wordWrap, setWordWrap] = useState(true);
   const fade = useScrollbarFadeRef();
   const editorFontFamily = useEditorFontStack();
 
-  const isMd = file.name.endsWith('.md');
+  const isMd = viewerKind === 'markdown';
+  // A byte viewer (image, PDF, DOCX, workbook) owns the whole surface and has
+  // no text buffer, so its read is skipped and the write path is refused — the
+  // same contract the desktop pane applies through the hook's own flag.
+  const byteViewer = BINARY_VIEWERS[viewerKind] === true;
+  const hasPreview = RENDERED_VIEWERS[viewerKind] === true;
+  const fileKey = file.path ?? file.name;
+  // The picture/grid/prose is what the file was opened to read, so a rendered
+  // kind defaults to its preview and only a user's own toggle moves it.
+  const isPreview = previewOverrides[fileKey] ?? hasPreview;
+  const togglePreview = () => setPreviewOverrides((prev) => ({ ...prev, [fileKey]: !isPreview }));
 
   // The full-screen editor is the phone's editor panel, so it is a drop target
   // of its own — it covers the chat screen entirely while open.
@@ -92,15 +106,15 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
       
       <EditorHeader
         fileName={file.name}
-        isMarkdown={isMd}
+        hasPreview={hasPreview}
         isPreview={isPreview}
         wordWrap={wordWrap}
         copied={editor.copied}
-        isImage={editor.isImage}
+        byteViewer={byteViewer}
         missing={missing}
         onSave={editor.saveNow}
         onClose={onClose}
-        onTogglePreview={() => setIsPreview(!isPreview)}
+        onTogglePreview={togglePreview}
         onToggleWrap={() => setWordWrap(!wordWrap)}
         onZoomOut={() => setFontSize(prev => Math.max(EDITOR_MIN_FONT_SIZE, prev - 1))}
         onZoomIn={() => setFontSize(prev => Math.min(EDITOR_MAX_FONT_SIZE, prev + 1))}
@@ -125,9 +139,28 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
 
       {/* Editor Content Area - Desktop styled: bg-paper text-ink. An image owns
           its own pan/zoom, so it replaces the scrolling text container rather
-          than living inside it. */}
+          than living inside it; the same is true of every other byte viewer and
+          of the rendered text views (a CSV grid, an SVG picture). */}
       {editor.isImage && editor.imageUrl ? (
         <ImageViewer src={editor.imageUrl} name={file.name} className="flex-1 min-h-0" />
+      ) : editor.isImage ? (
+        <ViewerSurface
+          kind="image"
+          path={file.path ?? file.name}
+          name={file.name}
+          source={editor.byteSource}
+          content={editor.content}
+          revision={editor.revision}
+        />
+      ) : hasViewerSurface(viewerKind) && (byteViewer || isPreview) ? (
+        <ViewerSurface
+          kind={viewerKind}
+          path={file.path ?? file.name}
+          name={file.name}
+          source={editor.byteSource}
+          content={editor.content}
+          revision={editor.revision}
+        />
       ) : (
         <div ref={fade.ref} onScroll={fade.onScroll} className="flex-1 min-h-0 overflow-auto relative bg-paper text-ink select-text">
           {editor.isLoading ? (
@@ -211,6 +244,11 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         <div className="flex items-center space-x-3">
           {editor.isImage ? (
             <span className="uppercase">Image</span>
+          ) : byteViewer ? (
+            // A byte viewer has no text buffer, so the line/char counts would
+            // describe an empty string: a PDF reported `1 lines · 0 chars` over
+            // the document it was drawing. The viewer's own name is the fact.
+            <span className="uppercase">{VIEWER_LABELS[viewerKind]}</span>
           ) : (
             <>
               <span>{linesCount} lines</span>

@@ -7,6 +7,7 @@ import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import type { RefObject } from 'preact';
+import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
 
 interface EditorBodyProps {
@@ -17,7 +18,8 @@ interface EditorBodyProps {
   pluginFileView: ResolvedPluginFileView | null;
   wordWrap: boolean;
   setWordWrap: (next: boolean) => void;
-  isMd: boolean;
+  /** The surface this file's kind is drawn by (see `document-kind`). */
+  viewerKind: ViewerKind;
   isPreview: boolean;
   isMaximized: boolean;
   setIsMaximized: (next: boolean) => void;
@@ -52,7 +54,7 @@ export function EditorBody({
   pluginFileView,
   wordWrap,
   setWordWrap,
-  isMd,
+  viewerKind,
   isPreview,
   isMaximized,
   setIsMaximized,
@@ -102,7 +104,7 @@ export function EditorBody({
       pluginFileView={pluginFileView}
       wordWrap={wordWrap}
       setWordWrap={setWordWrap}
-      isMd={isMd}
+      viewerKind={viewerKind}
       isPreview={isPreview}
       isMaximized={isMaximized}
       setIsMaximized={setIsMaximized}

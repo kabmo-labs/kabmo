@@ -7,7 +7,7 @@ import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
+import { getRawContentType } from '@/shared/lib/fs/file-kind';
 
 /**
  * GET /api/fs/raw?path=<rel>&root=<abs>&repo=<rel> — the file's bytes, verbatim.
@@ -17,6 +17,11 @@ import { getImageMimeType } from '@/shared/lib/fs/file-kind';
  * UTF-8, so `Bun.file().text()` returned replacement characters and the panel
  * painted mojibake. The browser can only paint a picture from a real byte
  * stream with a real `content-type`, which is exactly what this returns.
+ *
+ * The same is now true of the documents the editor renders — a PDF, a DOCX, a
+ * workbook — and of SVG. Their viewers fetch the bytes whole and hand them to a
+ * parser, so they need a byte stream and a `content-type` that says what they
+ * are, not a JSON string. `getRawContentType` is the one table that names them.
  *
  * Scope resolution is identical to `/api/fs/read` (same root allow-list, same
  * `resolveWithinRoot` containment), so a path that reads as text can be served
@@ -62,7 +67,7 @@ export async function serveRawFile({ request }: LoaderFunctionArgs) {
     // old bytes for the life of the tab.
     return new Response(file.stream(), {
       headers: {
-        'content-type': getImageMimeType(cleanPath) ?? 'application/octet-stream',
+        'content-type': getRawContentType(cleanPath) ?? 'application/octet-stream',
         'content-length': String(stat.size),
         'content-disposition': `inline; filename="${safeFileName(cleanPath)}"`,
         'cache-control': 'no-store',

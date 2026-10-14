@@ -16,6 +16,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
+import { mobileEditorFileFrom, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
 
 interface MobileLayoutWrapperProps {
   onDesktopToggle?: () => void;
@@ -33,7 +34,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   const folderId = folderParam ? (Number.isNaN(Number(folderParam)) ? folderParam : Number(folderParam)) : null;
 
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('main');
-  const [mobileEditorFile, setMobileEditorFile] = useState<{ name: string; path?: string; content?: string; root?: string } | null>(null);
+  const [mobileEditorFile, setMobileEditorFile] = useState<MobileEditorFile | null>(null);
   const [mobileDiff, setMobileDiff] = useState<{ path: string; status?: string; staged?: boolean; repo?: string; root?: string } | null>(null);
   // Bumped whenever a write lands so the workspace panels (explorer, git,
   // context) re-read from disk — the same signal the desktop layout passes down.
@@ -74,16 +75,9 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
 
   // Listen to open-file event on mobile
   useChamberEvent('omp:open-file', (e) => {
-    const customEvent = e as CustomEvent<{ path: string; name?: string; content?: string; root?: string }>;
-    if (!customEvent.detail || !customEvent.detail.path) return;
-    const rawPath = customEvent.detail.path.replace(/^\/+/, '');
-    const name = customEvent.detail.name || rawPath.split('/').pop() || 'file';
-    setMobileEditorFile({
-      name,
-      path: rawPath,
-      content: customEvent.detail.content,
-      root: customEvent.detail.root,
-    });
+    const customEvent = e as CustomEvent<unknown>;
+    const next = mobileEditorFileFrom(customEvent.detail);
+    if (next) setMobileEditorFile(next);
   });
 
   // The git panel and the file explorer announce a diff through
@@ -167,15 +161,9 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     setCurrentScreen('main');
   };
 
-  const handleOpenFile = useCallback((file: any) => {
-    const rawPath = (file?.path || '').replace(/^\/+/, '');
-    const name = file?.name || rawPath.split('/').pop() || 'file';
-    setMobileEditorFile({
-      name,
-      path: rawPath,
-      content: file?.content,
-      root: file?.root ?? activeProjectPath ?? undefined,
-    });
+  const handleOpenFile = useCallback((file: unknown) => {
+    const next = mobileEditorFileFrom(file, activeProjectPath);
+    if (next) setMobileEditorFile(next);
   }, [activeProjectPath]);
 
   return (

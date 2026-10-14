@@ -13,6 +13,7 @@ import { EditorBody } from '@/client/components/workspace/editor/Body';
 import { PluginIdProvider } from '@ompchamber/ui';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
+import { RENDERED_VIEWERS, viewerKindFor } from '@/shared/lib/fs/document-kind';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
@@ -146,7 +147,11 @@ export function Editor({
     if (!previewReady) return;
     const id = activeFile?.id;
     if (!activeFile || id === undefined || id === null) return;
-    if (!activeFile.name.endsWith('.md')) return;
+    // Only a file with a RENDERED view has a default worth setting; a code file
+    // has no preview to open. The default is ON (the picture/grid/prose is what
+    // the user opened the file to read), which is why this seeds `true` — and
+    // only when nothing was stored, so a user who switched to source keeps it.
+    if (!RENDERED_VIEWERS[viewerKindFor(activeFile.name)] ) return;
     const stored = getSessionValue<Record<string | number, boolean>>(sessionId, 'editor.previewMode');
     if (stored && stored[id] !== undefined) return;
     setPreviewMode(prev => (prev[id] === undefined ? { ...prev, [id]: true } : prev));
@@ -257,7 +262,7 @@ export function Editor({
     );
   }
 
-  const isMd = Boolean(activeFile?.name.endsWith('.md'));
+  const viewerKind = editor.viewerKind;
   const isPreview = activeFile ? previewMode[activeFile.id] : false;
 
   const editorContainerClass = isMaximized 
@@ -282,7 +287,7 @@ export function Editor({
         pluginFileView={pluginFileView}
         wordWrap={wordWrap}
         setWordWrap={setWordWrap}
-        isMd={isMd}
+        viewerKind={viewerKind}
         isPreview={Boolean(isPreview)}
         isMaximized={isMaximized}
         setIsMaximized={setIsMaximized}

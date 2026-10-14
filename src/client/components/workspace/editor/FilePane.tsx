@@ -4,12 +4,14 @@ import { EditorToolbar } from '@/client/components/workspace/editor/Toolbar';
 import { FileDocument } from '@/client/components/workspace/editor/FileDocument';
 import { PluginFileViewBody, type ResolvedPluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { ImageViewer } from '@/client/components/common/image-viewer';
+import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/editor/typography';
+import { RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
 
 interface FilePaneProps {
@@ -21,7 +23,8 @@ interface FilePaneProps {
   pluginFileView: ResolvedPluginFileView | null;
   wordWrap: boolean;
   setWordWrap: (next: boolean) => void;
-  isMd: boolean;
+  /** The surface this file's kind is drawn by (see `document-kind`). */
+  viewerKind: ViewerKind;
   isPreview: boolean;
   isMaximized: boolean;
   setIsMaximized: (next: boolean) => void;
@@ -42,14 +45,18 @@ interface FilePaneProps {
 
 /**
  * One plain (non-diff) file tab's body: the toolbar, then whichever surface the
- * file needs — the image viewer, a load state, a plugin's view, or the editor
- * document.
+ * file's kind selects.
  *
- * Extracted from `Editor` because the panel crossed the repository's per-file
- * line ceiling once the tab strip had to be told which files were deleted. The
- * split is by CONCERN, not by size: everything here is about drawing the active
- * file, while the panel above owns the tab strip, the session-level state and
- * the keyboard dispatch.
+ * The surface order is the dispatch, and every branch before the code surface
+ * exists because the code surface would render the file WRONG rather than
+ * merely worse:
+ *
+ * - a byte viewer (image, PDF, DOCX, workbook) fetches its own bytes and has no
+ *   text buffer to draw;
+ * - a rendered text view (markdown, CSV grid, SVG) is the same buffer drawn as
+ *   what the file IS, so it is gated on `isPreview` — the eye toggle;
+ * - a plugin's contributed view replaces the code surface for the files it
+ *   claims.
  */
 export function FilePane({
   activeFile,
@@ -59,7 +66,7 @@ export function FilePane({
   pluginFileView,
   wordWrap,
   setWordWrap,
-  isMd,
+  viewerKind,
   isPreview,
   isMaximized,
   setIsMaximized,
@@ -75,16 +82,22 @@ export function FilePane({
   revealActive,
   missing,
 }: FilePaneProps) {
+  // A byte viewer owns the whole surface and has no buffer, so Save, find,
+  // wrap and font zoom are all hidden — the toolbar reads this same flag.
+  const byteViewer = viewerKind === 'image' || viewerKind === 'pdf' || viewerKind === 'docx' || viewerKind === 'spreadsheet';
+  // The rendered text views are the ones the eye toggle switches.
+  const hasPreview = RENDERED_VIEWERS[viewerKind] === true;
+
   return (
     <>
       <EditorToolbar
         path={activeFile.path}
         saveStatus={editor.saveStatus}
         wordWrap={wordWrap}
-        isMd={isMd}
+        hasPreview={hasPreview}
         isPreview={isPreview}
         copied={editor.copied}
-        isImage={editor.isImage}
+        byteViewer={byteViewer}
         saveDisabled={Boolean(editor.loadError) || editor.handleMissing}
         unsupported={Boolean(editor.unsupported)}
         handleMissing={editor.handleMissing}
@@ -133,10 +146,22 @@ export function FilePane({
       )}
 
       {editor.isImage && editor.imageUrl ? (
-        // The picture owns its own pan/zoom, so it must NOT sit inside the
-        // scrolling text container — a wheel there would scroll the pane
-        // instead of zooming the image.
+        // A workspace image: the raw URL is what `<img>` paints, and the picture
+        // owns its own pan/zoom, so it must NOT sit inside the scrolling text
+        // container — a wheel there would scroll the pane instead of zooming it.
         <ImageViewer src={editor.imageUrl} name={activeFile.name} className="flex-1 min-h-0" />
+      ) : editor.isImage ? (
+        // A picture the OS handed over (a drop, a launch) has no server path:
+        // its bytes come from the live handle, so it goes through the viewer
+        // dispatch (which wraps them in an object URL).
+        <ViewerSurface
+          kind="image"
+          path={activeFile.path}
+          name={activeFile.name}
+          source={editor.byteSource}
+          content={editor.content}
+          revision={editor.revision}
+        />
       ) : editor.isLoading ? (
         <div className="flex-1 flex items-center justify-center gap-2 text-ink/40 text-xs font-mono">
           <Loader2 size={14} className="animate-spin" />
@@ -163,7 +188,22 @@ export function FilePane({
           <span className="text-[11px] text-ink/50 font-mono break-all">{editor.loadError}</span>
         </div>
       ) : pluginFileView && !editor.isImage ? (
+        // A plugin's contributed view keeps priority over the built-in viewers
+        // (its `fileOpener` is documented as "replace the editor's view for the
+        // files it claims"), so it sits here rather than after them.
         <PluginFileViewBody view={pluginFileView} />
+      ) : hasViewerSurface(viewerKind) && (byteViewer || isPreview) ? (
+        // The byte viewers always draw (there is no source form to toggle to);
+        // the rendered text views draw only in preview mode, because their
+        // "source" is the code surface below.
+        <ViewerSurface
+          kind={viewerKind}
+          path={activeFile.path}
+          name={activeFile.name}
+          source={editor.byteSource}
+          content={editor.content}
+          revision={editor.revision}
+        />
       ) : (
         <FileDocument
           activeFile={activeFile}
@@ -179,6 +219,7 @@ export function FilePane({
           occurrences={occurrences}
           onOccurrencesChange={setOccurrences}
           isPreview={isPreview}
+          viewerKind={viewerKind}
           revealActive={revealActive}
         />
       )}

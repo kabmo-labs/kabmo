@@ -3,13 +3,13 @@ import { FileIcon } from '@/client/components/common/file-icon';
 
 interface EditorHeaderProps {
   fileName: string;
-  /** Markdown files can toggle between source and rendered preview. */
-  isMarkdown: boolean;
+  /** The file has a rendered form (markdown prose, CSV grid, SVG), so the eye toggles. */
+  hasPreview: boolean;
   isPreview: boolean;
   wordWrap: boolean;
   copied: boolean;
-  /** Raster image: wrap and font zoom are text-only, so both are hidden. */
-  isImage?: boolean;
+  /** A byte-drawing viewer (image, PDF, DOCX, workbook): wrap and zoom are text-only, so both are hidden. */
+  byteViewer?: boolean;
   /** The file is gone from disk: the name goes red and struck through. */
   missing?: boolean;
   /** Save, offered ONLY while the file is missing. */
@@ -26,11 +26,11 @@ interface EditorHeaderProps {
 /** Mobile editor top bar: back/close, file identity, and the file actions. */
 export function EditorHeader({
   fileName,
-  isMarkdown,
+  hasPreview,
   isPreview,
   wordWrap,
   copied,
-  isImage = false,
+  byteViewer = false,
   missing = false,
   onSave,
   onClose,
@@ -86,18 +86,23 @@ export function EditorHeader({
           </button>
         )}
 
-        {isMarkdown && (
+        {hasPreview && (
           <button
             type="button"
             onClick={onTogglePreview}
             className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${isPreview ? 'bg-ink text-canvas' : ''}`}
-            title={isPreview ? 'View code' : 'Preview markdown'}
+            // The rendered form is not always markdown (a CSV grid, an SVG
+            // picture), so the words name the TOGGLE rather than one document
+            // kind — and the icon-only button carries an aria-label for the
+            // same reason every toolbar action does.
+            title={isPreview ? 'View source' : 'Show preview'}
+            aria-label={isPreview ? 'View source' : 'Show preview'}
           >
             {isPreview ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         )}
 
-        {!isImage && (
+        {!byteViewer && (
           <>
             <button
               type="button"
