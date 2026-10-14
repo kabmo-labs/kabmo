@@ -30,6 +30,7 @@
 
 import path from 'path';
 import { isWithinRoot } from '@/server/lib/fs/root';
+import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import type { GitChange } from '@/shared/types';
 
 export interface GitRunResult {
@@ -72,7 +73,16 @@ export async function runGit(args: string[], options: GitRunOptions): Promise<Gi
       maxBuffer: options.maxBuffer ?? 1024 * 1024,
       // No terminal to answer a credential prompt: without this a `pull` on a
       // private remote blocks until its timeout instead of reporting why.
-      env: { ...Bun.env, GIT_TERMINAL_PROMPT: '0' },
+      //
+      // `GIT_EDITOR=true` is the same fix for the other prompt git can raise: a
+      // merge, rebase or cherry-pick that needs a commit message opens an
+      // editor, and there is no terminal to draw one in. Measured twice on a
+      // resolved conflict — with `GIT_EDITOR` unset, `git merge --continue`
+      // fails with "error: Terminal is dumb, but EDITOR unset"; with a real
+      // `GIT_EDITOR=vim` inherited from the environment (and `core.editor=vim`
+      // configured), it BLOCKS on vim until the timeout kills it. `true`
+      // accepts the message git prepared, which is what `--no-edit` would do.
+      env: { ...Bun.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
     });
   } catch (error) {
     return {
@@ -170,7 +180,12 @@ export function parsePorcelainZ(out: string): GitChange[] {
     changes.push({
       status,
       file: record.slice(3),
-      staged: status[0] !== ' ' && status[0] !== '?',
+      // An unmerged pair is the two SIDES of a conflict, not an index/worktree
+      // pair: `UU` has no space in either column, so the test below marked every
+      // conflicted file as staged — and the list then rendered it under "Staged
+      // Changes" AND under "Changes" (the worktree half of the same test also
+      // passes for `UU`). A conflicted file is neither; it is its own section.
+      staged: !isUnmergedCode(status) && status[0] !== ' ' && status[0] !== '?',
       additions: 1,
       deletions: 0,
     });

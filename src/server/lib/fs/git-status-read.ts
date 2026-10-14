@@ -20,7 +20,8 @@
 import { runShell } from '@/server/lib/fs/shell';
 import { parsePorcelainZ } from '@/server/lib/fs/git-run';
 import { gitSyncCount, refreshRemoteRefs } from '@/server/lib/fs/git-sync';
-import type { GitChange } from '@/shared/types';
+import { readGitState } from '@/server/lib/fs/git-state';
+import type { GitChange, GitState } from '@/shared/types';
 
 export interface GitStatusPayload {
   changes: GitChange[];
@@ -28,6 +29,16 @@ export interface GitStatusPayload {
   branches: string[];
   remoteBranches: string[];
   syncCount?: { ahead: number; behind: number };
+  /**
+   * Whether an operation is in progress (merge/rebase/cherry-pick/revert/stash
+   * pop), the conflicted paths, and whether HEAD is detached.
+   *
+   * Travels on the payload rather than a second endpoint because the panel
+   * reads this from the `git:` realtime topic: a merge started by a tool call
+   * has to reach the panel the same way a change to the tree does, and a second
+   * read path is a second answer.
+   */
+  state?: GitState;
   error?: string;
 }
 
@@ -66,6 +77,10 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
     // of adding up. `local` deliberately starts nothing: the tracking ref is
     // read where it stands.
     const remoteRefresh = countMode === 'fetch' ? refreshRemoteRefs(targetDir) : Promise.resolve();
+    // The operation/conflict read runs alongside the status probe for the same
+    // reason: it is one `rev-parse` plus stats, and awaiting it serially would
+    // add a spawn to every panel refresh.
+    const stateRead = readGitState(targetDir);
 
     // `--porcelain=v1 -z -uall` so all individual edited/untracked files are
     // listed, and so a path holding a space, a quote or a non-ASCII byte
@@ -118,17 +133,33 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
     } catch {
       // ignore branch resolution errors
     }
-    // `main` remains the answer only when nothing could be read (a non-repo
-    // directory, git missing) — a real listing always supplies its own refs.
-    if (branches.length === 0) branches.push('main');
-    else if (!branches.includes(branch)) branches.unshift(branch);
 
     const changes: GitChange[] = parsePorcelainZ(statusOut);
+    const state = await stateRead;
+
+    // `main` remains the answer only when nothing could be read (a non-repo
+    // directory, git missing) — a real listing always supplies its own refs.
+    // A DETACHED checkout is the exception: `rev-parse` answers the literal
+    // string `HEAD`, which then listed as a branch the user can check out
+    // (measured: `branches: ["HEAD", "main"]`). The state read is what knows,
+    // so the literal is dropped from the list and the branch is reported as
+    // the detached head it is.
+    const detachedBranch = state.detached ? branch : '';
+    const localBranches = branches.filter((b) => !detachedBranch || b !== detachedBranch);
+    if (localBranches.length === 0) localBranches.push('main');
+    else if (!detachedBranch && !localBranches.includes(branch)) localBranches.unshift(branch);
 
     await remoteRefresh;
     const syncCount = countMode ? await gitSyncCount(targetDir) : undefined;
 
-    return { changes, branch: branch || 'main', branches: branches.length ? branches : ['main'], remoteBranches, syncCount };
+    return {
+      changes,
+      branch: branch || 'main',
+      branches: localBranches,
+      remoteBranches,
+      syncCount,
+      state,
+    };
   } catch (error) {
     return {
       changes: [],
@@ -136,6 +167,7 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
       branches: ['main'],
       remoteBranches: [],
       syncCount: { ahead: 0, behind: 0 },
+      state: { operation: null, conflicts: [], detached: false },
       error: error instanceof Error ? error.message : 'Git error',
     };
   }

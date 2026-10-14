@@ -1,4 +1,5 @@
 import type { GitChange } from '@/shared/types/git';
+import { UNMERGED_CODES, isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 
 export interface GitStatusInfo {
   charStatus: string;
@@ -6,6 +7,8 @@ export interface GitStatusInfo {
   colorClass: string;
   badgeBgClass: string;
   isStaged: boolean;
+  /** True for an unmerged porcelain pair — the file has a conflict to resolve. */
+  isConflicted?: boolean;
 }
 
 export interface FolderGitStatusInfo {
@@ -14,6 +17,8 @@ export interface FolderGitStatusInfo {
   hasUntracked: boolean;
   hasStaged: boolean;
   hasDeleted: boolean;
+  /** A conflicted file lives somewhere under this folder. */
+  hasConflicted?: boolean;
   colorClass: string;
 }
 
@@ -21,6 +26,24 @@ export interface FolderGitStatusInfo {
  * Get display info for a single git status code.
  */
 export function getGitStatusInfo(status: string, isStaged: boolean = false): GitStatusInfo {
+  // Unmerged pairs are answered FIRST and in full: their two letters are the
+  // two SIDES of a conflict, not an index/worktree pair, so every rule below
+  // reads them wrong — `UU` has no space in either column and therefore
+  // reported as staged, and its worktree letter `U` is the same token untracked
+  // uses, so it rendered as "Untracked". `isStaged` is deliberately ignored:
+  // a conflicted file is neither staged nor unstaged, and the caller's flag is
+  // derived from columns that do not mean that here.
+  if (isUnmergedCode(status)) {
+    return {
+      charStatus: '!',
+      label: UNMERGED_CODES[status],
+      colorClass: 'text-warning',
+      badgeBgClass: 'bg-warning/10 text-warning border-warning/25',
+      isStaged: false,
+      isConflicted: true,
+    };
+  }
+
   let charStatus = 'M';
   let label = 'Modified';
   let colorClass = 'text-info';
@@ -133,19 +156,31 @@ export function buildGitStatusMaps(changes: GitChange[]): {
       };
 
       existing.count += 1;
-      const isStaged = change.staged || (change.status && change.status[0] !== ' ' && change.status[0] !== '?');
-      if (isStaged) existing.hasStaged = true;
-
-      if (change.status === '??') {
-        existing.hasUntracked = true;
-      } else if (change.status?.includes('D')) {
-        existing.hasDeleted = true;
+      // A conflicted file is counted as conflicted and NOTHING else: its two
+      // porcelain letters are the two sides of a conflict, so the `status[0]`
+      // staged test below would mark every one of them staged — the roll-up
+      // that paints a collapsed folder's dot.
+      if (isUnmergedCode(change.status)) {
+        existing.hasConflicted = true;
       } else {
-        existing.hasModified = true;
+        const isStaged = change.staged || (change.status && change.status[0] !== ' ' && change.status[0] !== '?');
+        if (isStaged) existing.hasStaged = true;
+
+        if (change.status === '??') {
+          existing.hasUntracked = true;
+        } else if (change.status?.includes('D')) {
+          existing.hasDeleted = true;
+        } else {
+          existing.hasModified = true;
+        }
       }
 
-      // Priority of folder indicator color: Staged / Modified (info/blue) > Untracked (success/green) > Deleted (error/red)
-      if (existing.hasModified || existing.hasStaged) {
+      // Priority of folder indicator color: a conflict outranks everything (it
+      // is the one state that needs the reader's hand), then Staged / Modified
+      // (info/blue), then Untracked (success/green), then Deleted (error/red).
+      if (existing.hasConflicted) {
+        existing.colorClass = 'text-warning';
+      } else if (existing.hasModified || existing.hasStaged) {
         existing.colorClass = 'text-info';
       } else if (existing.hasUntracked) {
         existing.colorClass = 'text-success';

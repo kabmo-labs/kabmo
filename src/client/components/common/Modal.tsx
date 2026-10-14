@@ -53,7 +53,15 @@ export function Modal({
       }}
       onClick={onClose}
     >
+      {/* `role="dialog"` + `aria-modal`: every modal built on this shell (the
+          branch rename/delete dialogs, the provider dialogs, the folder
+          prompts) is a dialog to assistive tech, and a screen reader cannot
+          announce a panel it does not know is one. `GitPanel`'s own hand-rolled
+          shells already carry the pair; the shared shell was the one that
+          lacked it. */}
       <div
+        role="dialog"
+        aria-modal="true"
         className={`bg-paper border border-ink/15 rounded-xl shadow-2xl w-full ${maxWidthClass} max-h-full flex flex-col overflow-hidden text-ink`}
         onClick={(e) => e.stopPropagation()}
       >

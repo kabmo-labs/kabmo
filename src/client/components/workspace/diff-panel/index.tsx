@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import { useSessionUiState } from '@/client/hooks/workspace/session-state';
 import { parseUnifiedDiff } from '@/shared/lib/fs/diff-parser';
+import { isUnmergedCode, type ConflictMarkers } from '@/shared/lib/fs/git-unmerged';
+import { useFileDiff } from '@/client/hooks/workspace/diff-file';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
+import { ConflictBanner } from '@/client/components/workspace/diff-panel/ConflictBanner';
 import { UnifiedView } from '@/client/components/workspace/diff-panel/UnifiedView';
 import { SplitView } from '@/client/components/workspace/diff-panel/SplitView';
 import { usePluginDiffView } from '@/client/components/workspace/editor/plugin-file-view';
@@ -36,90 +39,30 @@ export function DiffPanel({
   const [wordWrap, setWordWrap] = useSessionUiState<boolean>('diff.wordWrap', true);
   const [ignoreWhitespace, setIgnoreWhitespace] = useSessionUiState<boolean>('diff.ignoreWhitespace', false);
 
-  const [rawDiff, setRawDiff] = useState<string>('');
-  const [currentStatus, setCurrentStatus] = useState<string>(status);
-  const [currentStaged, setCurrentStaged] = useState<boolean>(isStaged);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isBusy, setIsBusy] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
-
   /**
-   * The staged flag / status the next fetch must ask for. The state copies lag
-   * a click by a render, and keeping them in `fetchDiff`'s dependency list made
-   * every response re-key the callback and fire another fetch. Refs keep the
-   * callback stable and always read the post-action value.
+   * The side labels from the file's own conflict markers.
+   *
+   * Read only while the file IS conflicted, and only when the status says so —
+   * the read is the whole file, and `status` is what the caller already knows.
+   * A failed read leaves `{}`, which falls back to the words `ours`/`theirs`:
+   * the actions still work, only the naming is less precise.
    */
-  const stagedRef = useRef<boolean>(isStaged);
-  const statusRef = useRef<string>(status);
-  const fetchSeqRef = useRef(0);
+  const [markers, setMarkers] = useState<ConflictMarkers>({});
 
-  const fetchDiff = useCallback(async (overrides: { staged?: boolean; status?: string } = {}) => {
-    if (!filePath) return;
-    const seq = ++fetchSeqRef.current;
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const staged = overrides.staged ?? stagedRef.current;
-      const statusForFetch = overrides.status ?? statusRef.current;
-      const params = new URLSearchParams({
-        fileDiff: '1',
-        file: filePath,
-        staged: staged ? '1' : '0',
-        repo: repo || '.',
-      });
-      // `fullContext=1` makes git emit the whole file rather than the hunks.
-      // Only the user's own toggle changes it, so it is safe as a callback
-      // dependency (unlike the staged/status copies above, which the action
-      // path updates while a fetch of its own is already in flight).
-      if (contentMode === 'full') params.set('fullContext', '1');
-      if (statusForFetch) params.set('status', statusForFetch);
-      if (root) params.set('root', root);
-
-      const res = await fetch(`/api/fs/git?${params.toString()}`);
-      const data = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        diff?: string;
-        status?: string;
-        staged?: boolean;
-        error?: string;
-      } | null;
-      // A slower earlier read must not overwrite a newer one (the action path
-      // fires a fetch of its own while the initial one is still in flight).
-      if (seq !== fetchSeqRef.current) return;
-      if (data?.success) {
-        setRawDiff(data.diff || '');
-        if (data.status) {
-          statusRef.current = data.status;
-          setCurrentStatus(data.status);
-        }
-        if (typeof data.staged === 'boolean') {
-          stagedRef.current = data.staged;
-          setCurrentStaged(data.staged);
-        }
-      } else {
-        setErrorMessage(data?.error || `Failed to load file diff (HTTP ${res.status})`);
-      }
-    } catch (err: unknown) {
-      if (seq !== fetchSeqRef.current) return;
-      setErrorMessage(err instanceof Error ? err.message : 'Error fetching diff');
-    } finally {
-      if (seq === fetchSeqRef.current) setIsLoading(false);
-    }
-  }, [filePath, repo, root, contentMode]);
-
-  useEffect(() => {
-    setCurrentStatus(status);
-    setCurrentStaged(isStaged);
-    stagedRef.current = isStaged;
-    statusRef.current = status;
-  }, [status, isStaged, filePath]);
-
-  useEffect(() => {
-    void fetchDiff();
-  }, [fetchDiff]);
+  const {
+    rawDiff,
+    currentStatus,
+    currentStaged,
+    isLoading,
+    errorMessage,
+    fetchDiff,
+    adoptState,
+  } = useFileDiff({ filePath, status, isStaged, repo, root, contentMode });
+  const conflicted = isUnmergedCode(currentStatus);
 
   // Full-code mode parses the whole file, not the hunks, so the parse is keyed
   // to its inputs: every render used to re-walk the diff (measured 21 ms on an
@@ -202,8 +145,7 @@ export function DiffPanel({
         file: filePath,
       });
       if (!ok) return;
-      stagedRef.current = nextStaged;
-      setCurrentStaged(nextStaged);
+      adoptState({ staged: nextStaged });
       onFileSaved?.();
       await fetchDiff({ staged: nextStaged });
     } finally {
@@ -213,6 +155,46 @@ export function DiffPanel({
 
   const handleDiscard = () => {
     setShowDiscardConfirm(true);
+  };
+
+  // The marker labels are fetched when the file turns out to be conflicted, and
+  // re-fetched when the path changes. Keyed on the path and the status so a
+  // resolve (which changes the status away from `UU`) clears the banner.
+  useEffect(() => {
+    if (!conflicted) {
+      setMarkers({});
+      return;
+    }
+    let cancelled = false;
+    const params = new URLSearchParams({ conflictMarkers: '1', file: filePath, repo: repo || '.' });
+    if (root) params.set('root', root);
+    void fetch(`/api/fs/git?${params.toString()}`)
+      .then((res) => res.json() as Promise<{ markers?: ConflictMarkers }>)
+      .then((body) => {
+        if (!cancelled) setMarkers(body.markers ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setMarkers({});
+      });
+    return () => { cancelled = true; };
+  }, [conflicted, filePath, repo, root]);
+
+  /** Resolve this file: `ours`/`theirs` write a stage, `''` only stages. */
+  const handleResolve = async (side: 'ours' | 'theirs' | '') => {
+    if (isBusy) return;
+    setIsBusy(true);
+    try {
+      const ok = await runGitAction({
+        actionType: 'resolve_conflict',
+        file: filePath,
+        ...(side ? { side } : {}),
+      });
+      if (!ok) return;
+      onFileSaved?.();
+      await fetchDiff();
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const confirmDiscard = async () => {
@@ -266,7 +248,17 @@ export function DiffPanel({
         onCopyDiff={handleCopyDiff}
       />
 
-      {actionError && (
+      {conflicted && (
+        <ConflictBanner
+          markers={markers}
+          isBusy={isBusy}
+          error={actionError}
+          onResolve={handleResolve}
+          onDismissError={() => setActionError(null)}
+        />
+      )}
+
+      {actionError && !conflicted && (
         <div className="flex items-center gap-2 border-b border-error/25 bg-error/10 px-3 py-1.5 text-[11px] text-error flex-shrink-0">
           <AlertCircle size={13} className="flex-shrink-0" />
           <span className="min-w-0 flex-1 truncate" title={actionError}>{actionError}</span>

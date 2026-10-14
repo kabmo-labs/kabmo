@@ -1,7 +1,9 @@
 import { Minus, Plus, Undo2 } from 'lucide-preact';
 import type { GitChange } from '@/shared/types';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import { GitFileItem } from '@/client/components/workspace/git-panel/FileItem';
+import { GitConflictItem } from '@/client/components/workspace/git-panel/ConflictItem';
 import { GitTreeView } from '@/client/components/workspace/git-panel/TreeView';
 
 interface GitChangesListProps {
@@ -11,18 +13,35 @@ interface GitChangesListProps {
   repo?: string;
   rootPath?: string;
   onAction: (actionType: string, file?: string) => void;
+  /** Resolve one conflicted path — see `GitConflictItem`. */
+  onResolve?: (file: string, side: 'ours' | 'theirs' | '') => void;
 }
 
-export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, onAction }: GitChangesListProps) {
+export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, onAction, onResolve }: GitChangesListProps) {
   const [stagedExpanded, setStagedExpanded] = useSessionState<boolean>('git.stagedExpanded', true);
   const [unstagedExpanded, setUnstagedExpanded] = useSessionState<boolean>('git.unstagedExpanded', true);
+  const [conflictsExpanded, setConflictsExpanded] = useSessionState<boolean>('git.conflictsExpanded', true);
+
+  /**
+   * A conflicted path is its OWN section, and is excluded from both of the
+   * others.
+   *
+   * The two filters below read the porcelain columns, and an unmerged pair's
+   * columns are the two SIDES of a conflict rather than an index/worktree pair:
+   * `UU` has no space in either, so it satisfied BOTH filters and the same path
+   * rendered twice — once under "Staged Changes" and once under "Changes",
+   * neither saying it was conflicted. Measured over all seven pairs.
+   */
+  const conflictedChanges = changes.filter((c) => isUnmergedCode(c.status));
 
   const stagedChanges = changes.filter(c => {
+    if (isUnmergedCode(c.status)) return false;
     const status = c.status;
     return status && status[0] !== ' ' && status[0] !== '?';
   });
 
   const unstagedChanges = changes.filter(c => {
+    if (isUnmergedCode(c.status)) return false;
     const status = c.status;
     return (status && status[1] !== ' ' && status[1] !== '?') || status === '??';
   });
@@ -46,6 +65,36 @@ export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, o
   return (
     <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static font-mono text-[11px] text-ink/80">
       <div className="py-1">
+        {/* Conflicts first: while one exists it is the only thing the reader
+            has to act on, and it is the section that makes the operation bar's
+            count above drive to zero. */}
+        {conflictedChanges.length > 0 && (
+          <div className="mb-2">
+            <div
+              className="flex items-center justify-between px-3 py-1 group hover:bg-warning/5 cursor-pointer transition-colors"
+              onClick={() => setConflictsExpanded(!conflictsExpanded)}
+            >
+              <div className="flex items-center space-x-1 font-semibold text-warning text-xs">
+                <span className="w-3 text-center">{conflictsExpanded ? '▾' : '▸'}</span>
+                <span>Conflicts</span>
+                <span className="text-warning/70 font-normal ml-1 border border-warning/30 rounded-full px-1.5 text-[9px] bg-paper">
+                  {conflictedChanges.length}
+                </span>
+              </div>
+            </div>
+
+            {conflictsExpanded && conflictedChanges.map((c) => (
+              <GitConflictItem
+                key={`conflict-${c.file}`}
+                change={c}
+                repo={repo}
+                rootPath={rootPath}
+                onResolve={onResolve ?? (() => {})}
+              />
+            ))}
+          </div>
+        )}
+
         {stagedChanges.length > 0 && (
           <div className="mb-2">
             <div

@@ -15,7 +15,10 @@ workspace.db
 .playwright-mcp
 
 # Scratch git repositories written by the fs/git action tests.
-tmp-test-git-action/
+# `tmp-test-git-*` covers every suite's own root: the merge, branch and stash
+# suites each own a directory so a failure in one cannot leave a repository the
+# next one reads.
+tmp-test-git-*/
 
 # Playwright E2E artifacts (traces, screenshots, HTML report).
 test-results/

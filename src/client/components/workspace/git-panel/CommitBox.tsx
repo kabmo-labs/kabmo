@@ -4,18 +4,44 @@ interface GitCommitBoxProps {
   message: string;
   hasStagedChanges: boolean;
   isBusy?: boolean;
+  /** Rewrite the previous commit instead of adding one. */
+  amend?: boolean;
+  onToggleAmend?: (value: boolean) => void;
   onChangeMessage: (value: string) => void;
   onCommit: () => void;
 }
 
+/**
+ * The commit box.
+ *
+ * **Amend is a checkbox, never implied.** `git commit --amend` rewrites the
+ * previous commit rather than adding one, and it is the single most common
+ * commit-shaped mistake; a box that amended because the index happened to be
+ * empty would rewrite history the user did not ask to rewrite. It is offered
+ * explicitly and cleared after every commit (`GitPanel.executeAction`), so the
+ * next commit is a normal one.
+ *
+ * The button's enablement deliberately does NOT change with amend: an amend
+ * with nothing staged is legitimate (`git commit --amend` there only re-edits
+ * the message), and gating it on `hasStagedChanges` — which is what the plain
+ * commit path needs — would refuse the case the checkbox exists for.
+ */
 export function GitCommitBox({
   message,
   hasStagedChanges,
   isBusy = false,
+  amend = false,
+  onToggleAmend,
   onChangeMessage,
   onCommit,
 }: GitCommitBoxProps) {
-  const canCommit = hasStagedChanges && message.trim().length > 0 && !isBusy;
+  const canCommit = message.trim().length > 0 && !isBusy && (amend || hasStagedChanges);
+
+  const commitTitle = amend
+    ? 'Rewrite the previous commit with this message'
+    : hasStagedChanges
+      ? 'Commit staged changes'
+      : 'Stage changes first';
 
   return (
     <div className="border-t border-ink/10 bg-canvas/50 p-3 flex flex-col gap-2">
@@ -28,21 +54,33 @@ export function GitCommitBox({
             onCommit();
           }
         }}
-        placeholder="Commit message (⌘/Ctrl+Enter to commit)"
+        placeholder={amend ? 'New message for the previous commit (⌘/Ctrl+Enter to commit)' : 'Commit message (⌘/Ctrl+Enter to commit)'}
         rows={5}
         className="w-full resize-y min-h-[100px] max-h-[200px] bg-paper border border-ink/20 rounded px-2.5 py-1.5 text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 transition-colors font-mono"
       />
 
-      <button
-        type="button"
-        onClick={onCommit}
-        disabled={!canCommit}
-        title={hasStagedChanges ? 'Commit staged changes' : 'Stage changes first'}
-        className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-ink text-canvas hover:bg-ink/90 transition-colors cursor-pointer text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <Check size={12} />
-        Commit
-      </button>
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-1.5 text-[11px] text-ink/70 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={amend}
+            onChange={(e) => onToggleAmend?.(e.currentTarget.checked)}
+            className="accent-ink cursor-pointer"
+          />
+          Amend
+        </label>
+
+        <button
+          type="button"
+          onClick={onCommit}
+          disabled={!canCommit}
+          title={commitTitle}
+          className="ml-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-ink text-canvas hover:bg-ink/90 transition-colors cursor-pointer text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Check size={12} />
+          {amend ? 'Amend commit' : 'Commit'}
+        </button>
+      </div>
     </div>
   );
 }

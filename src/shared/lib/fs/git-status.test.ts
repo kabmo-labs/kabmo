@@ -86,12 +86,30 @@ describe('getGitStatusInfo: unstaged status codes', () => {
     expect(getGitStatusInfo(' a ').label).toBe('Added');
   });
 
-  test('unmerged porcelain pairs carry no dedicated branch', () => {
-    // 'UU' (both modified) and 'AU' (added by us) end in the worktree column
-    // 'U', which is the same token untracked uses; 'UA' ends in 'A'.
-    expect(getGitStatusInfo('UU').label).toBe('Untracked');
-    expect(getGitStatusInfo('AU').label).toBe('Untracked');
-    expect(getGitStatusInfo('UA').label).toBe('Added');
+  test('unmerged porcelain pairs get their own branch, not a fall-through', () => {
+    // Each pair's two letters are the two SIDES of a conflict, not an
+    // index/worktree pair. Before this table existed every one of them was read
+    // through the columns below, so `UU`/`UA`/`UD` fell through to the
+    // untracked branch (`U` is the worktree letter of both) and `AA`/`DD`/`AU`
+    // reported as staged — a conflicted file described as either a file git has
+    // never heard of or a change already staged.
+    const expected: Record<string, string> = {
+      UU: 'Conflicted — both modified',
+      AA: 'Conflicted — both added',
+      DD: 'Conflicted — both deleted',
+      AU: 'Conflicted — added by us',
+      UA: 'Conflicted — added by them',
+      DU: 'Conflicted — deleted by us',
+      UD: 'Conflicted — deleted by them',
+    };
+    for (const [code, label] of Object.entries(expected)) {
+      // Both call shapes: the list passes `false`, and a stale caller passing
+      // `true` (the flag the columns used to imply) must not change the answer.
+      expect(getGitStatusInfo(code).label).toBe(label);
+      expect(getGitStatusInfo(code, true).label).toBe(label);
+      expect(getGitStatusInfo(code).isConflicted).toBe(true);
+      expect(getGitStatusInfo(code).isStaged).toBe(false);
+    }
   });
 });
 

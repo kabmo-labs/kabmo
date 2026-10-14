@@ -6,6 +6,53 @@ export interface GitChange {
   deletions?: number;
 }
 
+/**
+ * A git operation that stopped and is waiting for a human.
+ *
+ * `stash-pop` is not a git state name: it is the one conflict shape with NO
+ * operation file, so its abort is `git reset --merge HEAD` rather than an
+ * `--abort` verb.
+ */
+export type GitOperation =
+  | 'merge'
+  | 'rebase'
+  | 'rebase-apply'
+  | 'cherry-pick'
+  | 'revert'
+  | 'stash-pop';
+
+/** The state a working tree is in, as the panel's banner reads it. */
+export interface GitState {
+  operation: GitOperation | null;
+  /** Repo-relative paths with unmerged index entries. */
+  conflicts: string[];
+  /** True when HEAD is detached — the branch read reports the literal `HEAD`. */
+  detached: boolean;
+}
+
+/** One branch row for the branch management modal. */
+export interface GitBranchDetail {
+  name: string;
+  current: boolean;
+  /** `origin/main`, or `''` when the branch has no upstream. */
+  upstream: string;
+  ahead: number;
+  behind: number;
+  /** The upstream ref no longer exists on the remote. */
+  gone: boolean;
+  subject: string;
+  date: string;
+}
+
+/** One stash entry. */
+export interface GitStashEntry {
+  /** The selector git accepts back — `stash@{0}`. */
+  ref: string;
+  subject: string;
+  date: string;
+}
+
+
 export interface GitCommitFile {
   file: string;
   status: string;

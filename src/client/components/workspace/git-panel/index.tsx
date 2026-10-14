@@ -1,17 +1,22 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { useFetcher } from '@/client/lib/router/fetcher';
 import type { CommitHistoryPage } from '@/shared/types';
-import { BranchPromptModal, ConfirmActionModal, GitOutputModal } from '@/client/components/workspace/git-panel/Modals';
 import { GitCommitBox } from '@/client/components/workspace/git-panel/CommitBox';
+import { GitOperationBar } from '@/client/components/workspace/git-panel/OperationBar';
 import { GitBranchToolbar } from '@/client/components/workspace/git-panel/BranchToolbar';
 import { GitRepoHeader } from '@/client/components/workspace/git-panel/RepoHeader';
 import { GitChangesList } from '@/client/components/workspace/git-panel/ChangesList';
+import { GitPanelModals } from '@/client/components/workspace/git-panel/PanelModals';
+import { GitStashSection } from '@/client/components/workspace/git-panel/StashSection';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitPanelData } from '@/client/hooks/workspace/git-panel-data';
+import { useGitActions } from '@/client/hooks/workspace/git-actions';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
+import { confirmRequestFor } from '@/client/components/workspace/git-panel/confirm-request';
+import type { ConfirmRequest } from '@/client/components/workspace/git-panel/confirm-request';
 
 interface GitPanelProps {
   className?: string;
@@ -40,7 +45,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // Mutations (commit/stage/checkout/sync, and the history/graph reads) go
   // through their own fetcher: a user-started action disables the controls,
   // which is the one thing a topic push must not do.
-  const actionFetcher = useFetcher<{ success: boolean, type?: string, data?: unknown[], hasMore?: boolean, total?: number, error?: string }>();
+  const actionFetcher = useGitActions(rootPath, activeRepo);
 
   const [message, setMessage] = useSessionState<string>('git.commitDraft', '');
   const [viewMode, setViewMode] = useSessionState<'flat' | 'tree'>('git.viewMode', 'flat');
@@ -55,10 +60,12 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   const branchRef = useRef<HTMLDivElement>(null);
 
   // Custom modal states
-  const [confirmModal, setConfirmModal] = useState<{ type: string, file?: string, message: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<ConfirmRequest | null>(null);
   const [branchPrompt, setBranchPrompt] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const newBranchInputRef = useRef<HTMLInputElement>(null);
+  const [branchModalOpen, setBranchModalOpen] = useState(false);
+  const [amend, setAmend] = useSessionState<boolean>('git.amend', false);
   
   // History and Graph states
   const [viewingOutput, setViewingOutput] = useState<CommitHistoryPage | null>(null);
@@ -120,35 +127,39 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   useOnClickOutside(repoRef, () => setShowRepoMenu(false));
   useOnClickOutside(branchRef, () => setShowBranchMenu(false));
 
-  const handleAction = (actionType: string, file?: string, additionalData?: Record<string, string>) => {
-    if (actionType === 'revert') {
-      setConfirmModal({ type: actionType, file, message: `Are you sure you want to discard changes in ${file}?` });
-      return;
-    }
-    
-    if (actionType === 'revert_all') {
-      setConfirmModal({ type: actionType, message: 'Are you sure you want to discard ALL unstaged changes? This cannot be undone.' });
-      return;
-    }
+  const executeAction = actionFetcher.execute;
 
+  /**
+   * Route one action through a confirmation when it is destructive.
+   *
+   * The set of confirming actions and their wording live in
+   * `confirm-request.ts` — see there for why those four and only those four.
+   */
+  const handleAction = (actionType: string, file?: string, additionalData?: Record<string, string>) => {
+    const request = confirmRequestFor(actionType, file, additionalData, data?.state?.operation ?? null);
+    if (request) {
+      setConfirmModal(request);
+      return;
+    }
     executeAction(actionType, file, additionalData);
   };
 
-  const executeAction = (actionType: string, file?: string, additionalData?: Record<string, string>) => {
-    const formData = new FormData();
-    formData.append('actionType', actionType);
-    formData.append('repo', activeRepo);
-    if (rootPath) formData.append('root', rootPath);
-    if (file) formData.append('file', file);
-    if (additionalData) {
-      Object.entries(additionalData).forEach(([key, val]) => formData.append(key, val));
-    }
-    
-    actionFetcher.submit(formData, { method: 'POST', action: '/api/fs/git' });
+  /**
+   * Resolve one conflicted path.
+   *
+   * A side (`ours`/`theirs`) writes that stage into the working tree and stages
+   * it; `''` is "mark resolved", which is only the `git add` — the file was
+   * edited by hand. The labels on the buttons come from the file's own conflict
+   * markers, never from the words ours/theirs (see `GitConflictItem`).
+   */
+  const handleResolveConflict = (file: string, side: 'ours' | 'theirs' | '') => {
+    executeAction('resolve_conflict', file, side ? { side } : undefined);
+  };
 
-    if (actionType === 'commit') {
-      setMessage('');
-    }
+  const commit = () => {
+    executeAction('commit', undefined, { message, ...(amend ? { amend: '1' } : {}) });
+    setMessage('');
+    setAmend(false);
   };
 
   const branch = data?.branch || 'main';
@@ -160,7 +171,12 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // commit box for a beat.
   const isBusy = isReading || actionFetcher.state !== 'idle';
 
+  // Unmerged pairs are excluded for the same reason `GitChangesList` excludes
+  // them: their two letters are the two SIDES of a conflict, so the column test
+  // below would count every conflicted file as staged and enable a Commit that
+  // git then refuses.
   const stagedChanges = changes.filter(c => {
+    if (isUnmergedCode(c.status)) return false;
     const status = c.status;
     return status && status[0] !== ' ' && status[0] !== '?';
   });
@@ -175,49 +191,55 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
 
   return (
     <div className={`flex flex-col h-full bg-paper relative ${className}`}>
-      {mounted && (
-        <>
-          <ConfirmActionModal 
-            modal={confirmModal}
-            onClose={() => setConfirmModal(null)}
-            onConfirm={() => {
-              if (confirmModal) {
-                executeAction(confirmModal.type, confirmModal.file);
-                setConfirmModal(null);
-              }
-            }}
-          />
-          <BranchPromptModal 
-            isOpen={branchPrompt}
-            branchName={newBranchName}
-            inputRef={newBranchInputRef}
-            onChange={setNewBranchName}
-            onClose={() => {
-              setBranchPrompt(false);
-              setNewBranchName('');
-            }}
-            onCreate={() => {
-              if (newBranchName.trim()) {
-                executeAction('create_branch', undefined, { branch: newBranchName.trim() });
-                setBranchPrompt(false);
-                setNewBranchName('');
-              }
-            }}
-          />
-          <GitOutputModal 
-            output={viewingOutput}
-            onClose={() => setViewingOutput(null)}
-            onRefresh={() => {
-              if (viewingOutput) {
-                executeAction(viewingOutput.title.toLowerCase().includes('graph') ? 'graph' : 'history');
-              }
-            }}
-            onExecuteAction={(actionType, file, extra) => executeAction(actionType, file, extra)}
-            rootPath={rootPath}
-            activeRepo={activeRepo}
-          />
-        </>
-      )}
+      <GitPanelModals
+        mounted={mounted}
+        confirmModal={confirmModal}
+        onCloseConfirm={() => setConfirmModal(null)}
+        onConfirm={() => {
+          if (confirmModal) {
+            executeAction(confirmModal.type, confirmModal.file, confirmModal.extra);
+            setConfirmModal(null);
+          }
+        }}
+        branchPrompt={branchPrompt}
+        newBranchName={newBranchName}
+        newBranchInputRef={newBranchInputRef}
+        onNewBranchNameChange={setNewBranchName}
+        onCloseBranchPrompt={() => {
+          setBranchPrompt(false);
+          setNewBranchName('');
+        }}
+        onCreateBranch={() => {
+          if (newBranchName.trim()) {
+            executeAction('create_branch', undefined, { branch: newBranchName.trim() });
+            setBranchPrompt(false);
+            setNewBranchName('');
+          }
+        }}
+        viewingOutput={viewingOutput}
+        onCloseOutput={() => setViewingOutput(null)}
+        onRefreshOutput={() => {
+          if (viewingOutput) {
+            executeAction(viewingOutput.title.toLowerCase().includes('graph') ? 'graph' : 'history');
+          }
+        }}
+        onExecuteAction={(actionType, file, extra) => executeAction(actionType, file, extra)}
+        branchModalOpen={branchModalOpen}
+        onCloseBranchModal={() => setBranchModalOpen(false)}
+        rootPath={rootPath}
+        activeRepo={activeRepo}
+        currentBranch={branch}
+        detached={data?.state?.detached ?? false}
+        isBusy={isBusy}
+        onBranchAction={(actionType, extra) => executeAction(actionType, undefined, extra)}
+        onConfirmDeleteBranch={(name, force) => {
+          // The modal's own `DeleteBranchDialog` IS the confirmation — it names
+          // the branch, its last commit and its date, and carries the force
+          // checkbox. Routing it through the panel's generic confirm modal too
+          // asked the same question twice and dropped the force flag.
+          executeAction('delete_branch', undefined, { branch: name, ...(force ? { force: '1' } : {}) });
+        }}
+      />
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
@@ -258,7 +280,9 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         branches={branches}
         remoteBranches={remoteBranches}
         onCheckout={(b: string) => executeAction('checkout', undefined, { branch: b })}
+        onMerge={(b: string) => executeAction('merge_branch', undefined, { branch: b })}
         onOpenBranchPrompt={() => setBranchPrompt(true)}
+        onManageBranches={() => { setBranchModalOpen(true); setShowBranchMenu(false); }}
         optionsRef={optionsRef}
         showOptions={showOptions}
         setShowOptions={setShowOptions}
@@ -269,15 +293,38 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         isBusy={isBusy}
         syncCount={syncCount}
         onSync={() => executeAction('sync')}
+        onFetch={() => executeAction('fetch')}
+        detached={data?.state?.detached ?? false}
       />
 
-      {/* Commit Box */}
-      <GitCommitBox 
-        message={message}
-        hasStagedChanges={stagedChanges.length > 0}
+      {/* While an operation is stopped, the operation bar takes the commit
+          box's place: a merge cannot be committed through it (git refuses),
+          and the two actions that exist only in that state live there. */}
+      {data?.state?.operation ? (
+        <GitOperationBar
+          operation={data.state.operation}
+          conflicts={data.state.conflicts}
+          isBusy={isBusy}
+          onAbort={() => handleAction('abort_operation')}
+          onContinue={() => executeAction('continue_operation')}
+        />
+      ) : (
+        <GitCommitBox 
+          message={message}
+          hasStagedChanges={stagedChanges.length > 0}
+          isBusy={isBusy}
+          amend={amend}
+          onToggleAmend={setAmend}
+          onChangeMessage={setMessage}
+          onCommit={commit}
+        />
+      )}
+
+      <GitStashSection
+        rootPath={rootPath}
+        repo={activeRepo}
         isBusy={isBusy}
-        onChangeMessage={setMessage}
-        onCommit={() => executeAction('commit', undefined, { message })}
+        onAction={(actionType, extra) => handleAction(actionType, undefined, extra)}
       />
       
       {/* Changes List / Tree */}
@@ -288,6 +335,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         repo={activeRepo}
         rootPath={rootPath}
         onAction={handleAction}
+        onResolve={handleResolveConflict}
       />
     </div>
   );
