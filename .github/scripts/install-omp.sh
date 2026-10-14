@@ -28,7 +28,15 @@ fi
 # panel entries). What it does change is session IDENTITY — a session marked
 # moved away now forks on resume, answering a new id and file — which is why
 # `registerSpawnedSession` exists; see the audit for the measurement.
-OMP_VERSION="${OMP_VERSION:-18.10.0}"
+#
+# 18.10.3 is what the committed schema was generated from, and the two MUST
+# agree: the schema gate regenerates from the version this script installs, so a
+# pin left behind reports a stale schema that is actually current. Measured at
+# 18.10.0: `task.structured` is absent and `snapcompact.toolResults` /
+# `task.softRequestBudget` differ, so the gate fails on a file that is in fact
+# current — exactly what `948f9e4` left behind when it refreshed the schema from
+# a local 18.10.3 without bumping this pin.
+OMP_VERSION="${OMP_VERSION:-18.10.3}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
