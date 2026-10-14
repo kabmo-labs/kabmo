@@ -5,6 +5,17 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.0](https://github.com/rajebdev/ompchamber/compare/v4.14.0...v4.15.0) — 2026-10-14
+
+### Added
+
+* **editor:** render documents, images and CSV/SVG in the editor panel ([521a04c](https://github.com/rajebdev/ompchamber/commit/521a04c8932d5748ef7a2209376bba6844cd0131))
+* **git:** add merge/conflict resolution and branch management to the Source Control panel ([d732fab](https://github.com/rajebdev/ompchamber/commit/d732fab3e4bb9b23ac5dfad68e601015e0e106c8))
+
+### Changed
+
+* **git:** record the Source Control research that the feature was built from ([668023d](https://github.com/rajebdev/ompchamber/commit/668023d3407500a66206075fc740de6d0e8b9d7c))
+
 ## [4.14.0](https://github.com/rajebdev/ompchamber/compare/v4.13.0...v4.14.0) — 2026-10-14
 
 ### Added
