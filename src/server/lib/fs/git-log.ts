@@ -1,5 +1,5 @@
 import path from 'path';
-import type { GitCommit } from '@/shared/types/git';
+import type { GitCommit, GitCommitFile } from '@/shared/types/git';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
 import { isMockMode } from '@/server/mock.server';
@@ -18,6 +18,38 @@ const HEADER_BODY_SEP = '\x1f';
 const COMMIT_RECORD_SEP = '\x1e';
 
 /**
+ * The status letters a `--raw` row can carry, folded to the four the file row
+ * draws.
+ *
+ * `C` (a detected copy) is a NEW file and `T` (a type change, file↔symlink) is
+ * a modification; anything else git may print (`U` unmerged, `X`) is reported
+ * as `M` rather than invented.
+ */
+const RAW_STATUS_LETTERS: Record<string, string> = { A: 'A', C: 'A', D: 'D', R: 'R' };
+
+/**
+ * Read the status letter off one `--raw` row:
+ * `:<srcmode> <dstmode> <srcsha> <dstsha> <status>\t<path>` — the rename form
+ * carries the old and new path after the same TAB, which is why only the field
+ * before it is read.
+ *
+ * This is the ONLY trustworthy source of a file's state. `--numstat` reports
+ * additions and deletions and nothing else, so a modified file that only lost
+ * lines (`0\t3\tf.txt`) is indistinguishable from a deletion by its counts —
+ * which is how an `M` came to render as a `D`.
+ */
+function parseRawStatus(line: string): string | null {
+  if (!line.startsWith(':')) return null;
+  const tab = line.indexOf('\t');
+  if (tab < 0) return null;
+  const meta = line.slice(0, tab).split(' ');
+  const code = meta[meta.length - 1] || '';
+  const letter = code.charAt(0).toUpperCase();
+  if (!letter) return null;
+  return RAW_STATUS_LETTERS[letter] ?? 'M';
+}
+
+/**
  * Context lines requested by "Expand all context".
  *
  * `git show`'s default is three, which is the whole patch a commit row can
@@ -32,6 +64,12 @@ export function parseGitLogOutput(stdout: string): GitCommit[] {
   let currentCommit: GitCommit | null = null;
   let bodyLines: string[] = [];
   let inBody = false;
+  // `--raw` and `--numstat` are emitted as two blocks per commit — one row per
+  // file in each, in the same order — so they are collected separately and
+  // zipped when the commit flushes. The status letter comes from git itself;
+  // only the counts and the rendered path come from numstat.
+  let rawStatuses: string[] = [];
+  let numstatRows: GitCommitFile[] = [];
 
   const flush = () => {
     if (!currentCommit) return;
@@ -41,6 +79,10 @@ export function parseGitLogOutput(stdout: string): GitCommit[] {
     // the row's expand affordance keys off.
     const body = bodyLines.join('\n').trimEnd();
     if (body) currentCommit.body = body;
+    currentCommit.files = numstatRows.map((row, i) => ({
+      ...row,
+      status: rawStatuses[i] ?? row.status,
+    }));
     commits.push(currentCommit);
   };
 
@@ -82,6 +124,8 @@ export function parseGitLogOutput(stdout: string): GitCommit[] {
         parents,
         files: [],
       };
+      rawStatuses = [];
+      numstatRows = [];
       // The header's last field is followed by the separator, so the body
       // begins on this same line (`%b`'s first line) and continues on the next
       // ones. A commit with no body still emits the record separator here, so
@@ -103,6 +147,12 @@ export function parseGitLogOutput(stdout: string): GitCommit[] {
       } else {
         bodyLines.push(line);
       }
+    } else if (currentCommit && line.startsWith(':')) {
+      // A `--raw` row. Read BEFORE the numstat branch: a raw RENAME row also
+      // holds three TAB-separated fields (the status, the old path, the new
+      // one), so it would otherwise be read as a numstat row.
+      const status = parseRawStatus(line);
+      if (status) rawStatuses.push(status);
     } else if (currentCommit && line.trim()) {
       const parts = line.split('\t');
       if (parts.length >= 3) {
@@ -112,20 +162,7 @@ export function parseGitLogOutput(stdout: string): GitCommit[] {
         if (file.startsWith('"') && file.endsWith('"')) {
           try { file = JSON.parse(file); } catch {}
         }
-        let status = 'M';
-        if (file.includes(' => ') || file.includes('=>')) {
-          status = 'R';
-        } else if (deletions > 0 && additions === 0) {
-          status = 'D';
-        } else if (additions > 0 && deletions === 0) {
-          status = 'A';
-        }
-        currentCommit.files?.push({
-          file,
-          status,
-          additions,
-          deletions,
-        });
+        numstatRows.push({ file, status: 'M', additions, deletions });
       }
     }
   }
@@ -160,7 +197,7 @@ export async function fetchGitCommits(
     }
 
     const result = await runShell(
-      `git log -n ${limit} --skip=${skip} --numstat --date-order --pretty=format:"COMMIT_SPLIT|~|%H|~|%h|~|%an|~|%ad|~|%s|~|%D|~|%p%x1f%b%x1e" --date=format:"%b %d, %Y, %I:%M %p"`,
+      `git log -n ${limit} --skip=${skip} --raw --numstat --date-order --pretty=format:"COMMIT_SPLIT|~|%H|~|%h|~|%an|~|%ad|~|%s|~|%D|~|%p%x1f%b%x1e" --date=format:"%b %d, %Y, %I:%M %p"`,
       { cwd: targetDir, timeout: 15000 }
     );
 

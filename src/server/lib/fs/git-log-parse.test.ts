@@ -40,9 +40,19 @@ describe('parseGitLogOutput', () => {
     ]);
   });
 
-  test('maps numstat rows to statuses, including binary and quoted paths', () => {
+  test('the raw row supplies the status and the numstat row the counts', () => {
+    // `--raw` and `--numstat` print one block each, in the same order, so the
+    // two are zipped. The status comes from git — a file that only LOST lines
+    // is `M`, and the numstat counts alone cannot say so (`0\t3\tf.txt` is a
+    // deletion's shape too).
     const stdout = [
       'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|msg|~||~|',
+      ':000000 100644 0000000 1111111 A\tadded.txt',
+      ':100644 000000 2222222 0000000 D\tgone.txt',
+      ':100644 100644 3333333 4444444 R100\told.txt\tnew.txt',
+      ':100644 100644 5555555 6666666 M\tboth.txt',
+      ':100644 100644 7777777 8888888 M\tlogo.png',
+      ':000000 100644 0000000 9999999 A\t"tab\\there.txt"',
       '1\t0\tadded.txt',
       '0\t3\tgone.txt',
       '0\t0\told.txt => new.txt',
@@ -62,8 +72,45 @@ describe('parseGitLogOutput', () => {
     ]);
   });
 
+  test('a modified file that only lost lines is M, never D', () => {
+    // The reported bug: `0\t1\tf.txt` is a shrink, and inferring the status
+    // from the counts rendered it as a deletion.
+    const stdout = [
+      'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|msg|~||~|',
+      ':100644 100644 aaa bbb M\tf.txt',
+      '0\t1\tf.txt',
+      '',
+    ].join('\n');
+    const [commit] = parseGitLogOutput(stdout);
+    expect(commit.files).toEqual([{ file: 'f.txt', status: 'M', additions: 0, deletions: 1 }]);
+  });
+
+  test('a copy is a new file, not a rename', () => {
+    const stdout = [
+      'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|msg|~||~|',
+      ':100644 100644 aaa bbb C100\tsrc/a.ts\tsrc/b.ts',
+      '0\t0\tsrc/{a.ts => b.ts}',
+      '',
+    ].join('\n');
+    const [commit] = parseGitLogOutput(stdout);
+    expect(commit.files).toEqual([
+      { file: 'src/{a.ts => b.ts}', status: 'A', additions: 0, deletions: 0 },
+    ]);
+  });
+
+  test('a numstat row without a raw status falls back to M rather than a guess', () => {
+    const stdout = 'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|msg|~||~|\n0\t3\tgone.txt\n';
+    const [commit] = parseGitLogOutput(stdout);
+    expect(commit.files).toEqual([{ file: 'gone.txt', status: 'M', additions: 0, deletions: 3 }]);
+  });
+
   test('ignores file rows before the first header and short rows', () => {
-    const stdout = '1\t0\tstray.txt\nCOMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|msg|~||~|\ngarbage\n1\t0\tok.txt\n';
+    const stdout =
+      '1\t0\tstray.txt\n' +
+      'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|msg|~||~|\n' +
+      'garbage\n' +
+      ':000000 100644 0000000 1111111 A\tok.txt\n' +
+      '1\t0\tok.txt\n';
     const commits = parseGitLogOutput(stdout);
     expect(commits).toHaveLength(1);
     expect(commits[0].files).toEqual([{ file: 'ok.txt', status: 'A', additions: 1, deletions: 0 }]);
@@ -82,7 +129,7 @@ describe('parseGitLogOutput', () => {
     // The body is fenced by \x1f/\x1e precisely because a body line can carry a
     // TAB, which the numstat branch would otherwise read as a changed file.
     const stdout =
-      'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|subject|~||~|\x1fpara one\n\n\tindented line\n\x1e\n1\t0\treal.txt\n';
+      'COMMIT_SPLIT|~|h1|~|s1|~|Ada|~|date|~|subject|~||~|\x1fpara one\n\n\tindented line\n\x1e\n:000000 100644 0000000 1111111 A\treal.txt\n1\t0\treal.txt\n';
     const [commit] = parseGitLogOutput(stdout);
     expect(commit.body).toBe('para one\n\n\tindented line');
     expect(commit.files).toEqual([{ file: 'real.txt', status: 'A', additions: 1, deletions: 0 }]);
