@@ -19,6 +19,7 @@
  */
 
 import { runGit } from '@/server/lib/fs/git-run';
+import { readGitState } from '@/server/lib/fs/git-state';
 
 export interface StashEntry {
   /** The selector git accepts back — `stash@{0}`. */
@@ -139,7 +140,17 @@ export interface StashApplyOptions {
  * stash is only dropped on success), which is what makes the retry possible.
  */
 export async function applyStash({ targetDir, ref, pop }: StashApplyOptions): Promise<void> {
-  await expectOk(['stash', pop ? 'pop' : 'apply', stashRefFor(ref)], targetDir, 60_000);
+  const result = await runGit(['stash', pop ? 'pop' : 'apply', stashRefFor(ref)], { cwd: targetDir, timeout: 60_000, maxBuffer: 1024 * 1024 });
+  if (result.error) throw result.error;
+  if (result.exitCode === 0) return;
+  // A `stash pop` that conflicts exits 1 with the changes applied and the
+  // conflict in the working tree — the `stash-pop` state the panel draws. It is
+  // not a failure, and reporting it as one hid the conflict it had just made.
+  // The state is the proof: a real error (a bad ref, a dirty tree) leaves no
+  // `stash-pop`.
+  const state = await readGitState(targetDir);
+  if (state.operation === 'stash-pop') return;
+  throw new Error(result.stderr.trim() || result.stdout.trim() || `git exited with code ${result.exitCode}`);
 }
 
 /** Drop one stash entry. */

@@ -100,9 +100,11 @@ describe('merge_branch', () => {
   test('a conflicted merge leaves the operation state the panel renders', async () => {
     const repo = makeConflictingRepo();
     const res = await post({ actionType: 'merge_branch', repo: '.', root: repo, branch: 'feature' });
-    // git exits 1 on a conflict and the route reports it as a failure — the
-    // STATE is what matters, and the panel reads it from the status payload.
-    expect(res.body.success).toBe(false);
+    // A conflict is the RESULT the panel exists to show, not a failure: git
+    // exits 1 while `MERGE_HEAD` is live on disk, and reporting that as an error
+    // put "failed" on screen beside the conflict it had just created. The STATE
+    // is what matters, and the panel reads it from the status payload.
+    expect(res.body.success).toBe(true);
     const state = await readGitState(repo);
     expect(state.operation).toBe('merge');
     expect(state.conflicts).toEqual(['f.txt']);

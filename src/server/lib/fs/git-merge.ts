@@ -32,6 +32,7 @@
  */
 
 import { runGit } from '@/server/lib/fs/git-run';
+import { readGitState } from '@/server/lib/fs/git-state';
 import type { GitOperation } from '@/shared/types';
 
 /** Runs a git command and throws with its stderr when it exits non-zero. */
@@ -42,6 +43,31 @@ async function expectOk(args: string[], cwd: string, timeout?: number): Promise<
     throw new Error(result.stderr.trim() || result.stdout.trim() || `git exited with code ${result.exitCode}`);
   }
   return result.stdout;
+}
+
+/**
+ * Run a command that STARTS an operation, and accept a conflict stop as success.
+ *
+ * `git merge`, `rebase`, `cherry-pick` and `revert` exit **1** when they stop on
+ * a conflict — that is the state the panel exists to show, not a failure. The
+ * bare `expectOk` reported it as an error, so the route answered 400 while the
+ * operation was in fact live on disk: the panel's own request said "failed"
+ * beside a conflict it had just created. Verified against a real conflicting
+ * merge: `git merge --no-edit -- feature` exits 1, `MERGE_HEAD` exists, and the
+ * old path surfaced `Auto-merging shared.txt / CONFLICT (content) …` as the
+ * error message.
+ *
+ * A non-zero exit is therefore only an error when NO operation was left behind
+ * (a bad branch name, a dirty tree, a missing ref). The operation name is passed
+ * in because the caller knows which one it started.
+ */
+async function expectStarted(args: string[], cwd: string, operation: GitOperation, timeout: number): Promise<string> {
+  const result = await runGit(args, { cwd, timeout, maxBuffer: 1024 * 1024 });
+  if (result.error) throw result.error;
+  if (result.exitCode === 0) return result.stdout;
+  const state = await readGitState(cwd);
+  if (state.operation === operation) return result.stdout;
+  throw new Error(result.stderr.trim() || result.stdout.trim() || `git exited with code ${result.exitCode}`);
 }
 
 /**
@@ -62,7 +88,7 @@ export async function mergeBranch(targetDir: string, branch: string): Promise<st
   if (check.exitCode !== 0) {
     throw new Error(check.stderr.trim() || `'${name}' is not a valid branch name`);
   }
-  await expectOk(['merge', '--no-edit', '--', name], targetDir, 120_000);
+  await expectStarted(['merge', '--no-edit', '--', name], targetDir, 'merge', 120_000);
   return `git merge ${name}`;
 }
 
@@ -85,28 +111,28 @@ export async function refResolves(targetDir: string, ref: string): Promise<boole
 export async function mergeCommit(targetDir: string, hash: string): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectOk(['merge', '--no-edit', '--', sha], targetDir, 120_000);
+  await expectStarted(['merge', '--no-edit', '--', sha], targetDir, 'merge', 120_000);
 }
 
 /** Cherry-pick one commit, with the same guard. */
 export async function cherryPick(targetDir: string, hash: string): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectOk(['cherry-pick', '--', sha], targetDir, 120_000);
+  await expectStarted(['cherry-pick', '--', sha], targetDir, 'cherry-pick', 120_000);
 }
 
 /** Revert one commit without opening an editor for the message. */
 export async function revertCommit(targetDir: string, hash: string): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectOk(['revert', '--no-edit', '--', sha], targetDir, 120_000);
+  await expectStarted(['revert', '--no-edit', '--', sha], targetDir, 'revert', 120_000);
 }
 
 /** Rebase onto a commit, with the same guard. */
 export async function rebaseOnto(targetDir: string, hash: string): Promise<void> {
   const sha = hash.trim();
   if (!/^[0-9a-f]{7,40}$/i.test(sha)) throw new Error(`'${sha}' is not a commit hash.`);
-  await expectOk(['rebase', '--', sha], targetDir, 120_000);
+  await expectStarted(['rebase', '--', sha], targetDir, 'rebase', 120_000);
 }
 
 /** Reset the current branch, with the mode and the hash both guarded. */

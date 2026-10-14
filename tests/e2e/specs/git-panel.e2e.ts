@@ -116,12 +116,27 @@ async function showSourceControl(page: import('@playwright/test').Page): Promise
  * Only legal AFTER `openGitPanel` has registered the folder — see there for why
  * an unregistered root silently redirects to the chamber's own repository.
  */
-async function gitAction(server: HarnessServer, repo: SeedWorkingRepo, fields: Record<string, string>): Promise<{ success?: boolean; error?: string }> {
+async function gitAction(
+  server: HarnessServer,
+  repo: SeedWorkingRepo,
+  fields: Record<string, string>,
+  /** A spec that drives a REFUSAL passes this, so the expected 400 is returned. */
+  options: { allowRefusal?: boolean } = {},
+): Promise<{ success?: boolean; error?: string }> {
   const response = await fetch(`${server.baseURL}/api/fs/git`, {
     method: 'POST',
     body: formBody({ ...fields, root: repo.path, repo: '.' }),
   });
-  return (await response.json()) as { success?: boolean; error?: string };
+  const body = (await response.json()) as { success?: boolean; error?: string };
+  // A refused action is reported, never swallowed. The spec used to ignore this
+  // response, so a merge that failed on the server left the fixture mid-flight
+  // and the spec died 20s later on a timeout that named nothing — the failure
+  // read as a flaky panel rather than a rejected git command. A spec that is
+  // TESTING a refusal opts out with `allowRefusal`.
+  if (!options.allowRefusal && (!response.ok || body.success === false)) {
+    throw new Error(`git action ${fields.actionType} failed (HTTP ${response.status}): ${body.error ?? JSON.stringify(body)}`);
+  }
+  return body;
 }
 
 /** git's own view of the working tree, read back over the API the panel uses. */
@@ -298,7 +313,7 @@ test.describe('Source Control — merge conflicts', () => {
     await gitAction(server, repo, { actionType: 'merge_branch', branch: 'feature' });
     // The API refuses; the panel surfaces the reason rather than destroying the
     // conflict and leaving MERGE_HEAD behind (the old behaviour).
-    const body = await gitAction(server, repo, { actionType: 'revert', file: 'shared.txt' });
+    const body = await gitAction(server, repo, { actionType: 'revert', file: 'shared.txt' }, { allowRefusal: true });
     expect(body.success).toBe(false);
     expect(body.error).toContain('conflicted');
     expect((await readState(server, repo)).operation).toBe('merge');
