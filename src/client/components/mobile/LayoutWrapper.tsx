@@ -15,7 +15,7 @@ import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
-import { EditorDropOverlay } from '@/client/components/workspace/editor/DropOverlay';
+import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 
 interface MobileLayoutWrapperProps {
   onDesktopToggle?: () => void;
@@ -182,10 +182,16 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     <div
       data-testid="app-root"
       className="flex flex-col h-dvh w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas relative"
-      {...editorDrop.dropProps}
     >
-      <EditorDropOverlay visible={editorDrop.isDragging} />
-      <div className={`flex-1 min-h-0 w-full ${currentScreen === 'main' ? 'block' : 'hidden'}`}>
+      {/* The drop target is the CHAT screen only, matching the desktop: the
+          session drawer and the right panel are their own screens here, and
+          "open this file" is not what either of them means. The full-screen
+          editor owns its own target (it covers this one when open). */}
+      <div
+        className={`flex-1 min-h-0 w-full relative ${currentScreen === 'main' ? 'block' : 'hidden'}`}
+        {...editorDrop.dropProps}
+      >
+        <EditorDropOverlay visible={editorDrop.isDragging} />
         <MobileMainView
           activeSessionId={sessionId}
           onSelectSession={handleSelectSession}

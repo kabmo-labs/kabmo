@@ -6,6 +6,8 @@ import { ChatTimeline } from '@/client/components/workspace/chat-timeline/index'
 import { usePanelCatalog, PluginPanelBody, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
 import { PanelHostProvider } from '@ompchamber/ui';
 import { RightActivityBar } from '@/client/components/layout/RightActivityBar';
+import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
+import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
 import { useAvailableWidth } from '@/client/hooks/workspace/available-width';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
@@ -59,6 +61,8 @@ interface WorkspacePanelsProps {
   onConvertDiffToEditor: (id: number | string) => void;
   onOpenFile: (file: any) => void;
   onRefreshWorkspace: () => void;
+  /** The outcome of a file dropped on the chat or the editor, for the toasts. */
+  onDropResult?: (result: EditorDropResult) => void;
   onChangeRightPanel: (panel: string) => void;
   onToggleRightPanel: () => void;
   onSessionTitle: (title: string | null) => void;
@@ -85,11 +89,27 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     onConvertDiffToEditor,
     onOpenFile,
     onRefreshWorkspace,
+    onDropResult,
     onChangeRightPanel,
     onToggleRightPanel,
     onSessionTitle,
     onPanelWidths,
   } = props;
+
+  /**
+   * Dropping a file opens it — but only over the CHAT or the EDITOR.
+   *
+   * The handlers sit on those two panels' own boxes, so a drop over the sidebar
+   * or the right panel never reaches them: the event bubbles past to the window
+   * and is ignored. A layout-wide target was the previous shape and it accepted
+   * a drop over both of those, where "open this file" is not what the surface
+   * means.
+   *
+   * `enabled` is gated on a workspace being active: a path resolves through the
+   * server's allow-list, so a drop with no workspace can only be refused, and a
+   * target that lights up to refuse is worse than one that stays dark.
+   */
+  const drop = useEditorDrop({ enabled: hasActiveContext, onResult: onDropResult });
 
   // The group's own area: the base every stored fraction is a share of, and the
   // budget the chat floor is subtracted from. Measured through the group's
@@ -217,12 +237,17 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
         }}
       >
         <Panel id="center-panel" filler minSize={MIN_CHAT_PANEL_WIDTH}>
-          <ChatTimeline className="w-full h-full" appSettings={appSettings} onSessionTitle={onSessionTitle} />
+          <div className="relative w-full h-full" {...drop.dropProps}>
+            <EditorDropOverlay visible={drop.isDragging} />
+            <ChatTimeline className="w-full h-full" appSettings={appSettings} onSessionTitle={onSessionTitle} />
+          </div>
         </Panel>
 
         {showEditor && <ResizeHandle />}
         <Panel panelRef={editorPanelRef} id="editor-panel" defaultSize={editorWidth} minSize={MIN_EDITOR_PANEL_WIDTH} maxSize={editorMaxSize} collapsed={!showEditor}>
-          <PanelSuspense>
+          <div className="relative w-full h-full" {...drop.dropProps}>
+            <EditorDropOverlay visible={drop.isDragging} />
+            <PanelSuspense>
             <Editor
               className="w-full h-full"
               activeEditorPanelKey={null}
@@ -234,7 +259,8 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               refreshKey={refreshKey}
               onFileSaved={onRefreshWorkspace}
             />
-          </PanelSuspense>
+            </PanelSuspense>
+          </div>
         </Panel>
 
         {showRightPanel && <ResizeHandle />}

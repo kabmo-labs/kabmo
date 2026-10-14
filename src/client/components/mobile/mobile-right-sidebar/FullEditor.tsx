@@ -5,6 +5,8 @@ import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
+import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
+import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
 import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
@@ -29,9 +31,11 @@ interface MobileFullEditorProps {
   missing?: boolean;
   /** Fired after a debounced write lands, so the workspace panels can refresh. */
   onFileSaved?: () => void;
+  /** The outcome of a file dropped on this editor, for the host's toast stack. */
+  onDropResult?: (result: { ok: boolean; message: string }) => void;
 }
 
-export function MobileFullEditor({ file, missing = false, onClose, onFileSaved }: MobileFullEditorProps) {
+export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, onDropResult }: MobileFullEditorProps) {
   const [isPreview, setIsPreview] = useState(file.name.endsWith('.md'));
   const [fontSize, setFontSize] = useState(EDITOR_DEFAULT_FONT_SIZE);
   const [wordWrap, setWordWrap] = useState(true);
@@ -39,6 +43,10 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved }
   const editorFontFamily = useEditorFontStack();
 
   const isMd = file.name.endsWith('.md');
+
+  // The full-screen editor is the phone's editor panel, so it is a drop target
+  // of its own — it covers the chat screen entirely while open.
+  const drop = useEditorDrop({ enabled: Boolean(file.root), onResult: onDropResult });
 
   const editor = useFileEditor(file, {
     flushOnUnmount: true,
@@ -76,7 +84,11 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved }
   const linesCount = content.split('\n').length;
 
   return (
-    <div className="fixed inset-x-0 top-0 h-dvh z-[60] bg-paper flex flex-col font-mono text-xs select-none">
+    <div
+      className="fixed inset-x-0 top-0 h-dvh z-[60] bg-paper flex flex-col font-mono text-xs select-none"
+      {...drop.dropProps}
+    >
+      <EditorDropOverlay visible={drop.isDragging} />
       
       <EditorHeader
         fileName={file.name}
