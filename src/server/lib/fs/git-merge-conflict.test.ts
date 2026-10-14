@@ -39,6 +39,12 @@ function makeRepo(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-merge-'));
   repos.push(dir);
   git(dir, 'init', '-q', '-b', 'main');
+  // The identity goes into the REPO's own config, not the spawn env: the code
+  // under test runs `git` through `runGit`, a SEPARATE process that inherits
+  // only `Bun.env` — an identity passed to this fixture's `spawnSync` would not
+  // reach it, and `git merge` needs one even to write the conflict state.
+  git(dir, 'config', 'user.email', 'e2e@example.invalid');
+  git(dir, 'config', 'user.name', 'E2E');
   return dir;
 }
 
@@ -46,16 +52,9 @@ function git(cwd: string, ...args: string[]): string {
   const result = Bun.spawnSync({
     cmd: ['git', ...args],
     cwd,
-    // Identity through the ENVIRONMENT, not `-c`: the CI runner has no global
-    // git identity, and a commit made by a fixture must not depend on one.
-    env: {
-      ...Bun.env,
-      GIT_EDITOR: 'true',
-      GIT_AUTHOR_NAME: 'E2E',
-      GIT_AUTHOR_EMAIL: 'e2e@example.invalid',
-      GIT_COMMITTER_NAME: 'E2E',
-      GIT_COMMITTER_EMAIL: 'e2e@example.invalid',
-    },
+    // Identity lives in the repo's config (see `makeRepo`); only the editor is
+    // forced here, so a command that would open one cannot block the run.
+    env: { ...Bun.env, GIT_EDITOR: 'true' },
   });
   if (result.exitCode !== 0) throw new Error(`git ${args.join(' ')} failed: ${result.stderr.toString()}`);
   return result.stdout.toString();
