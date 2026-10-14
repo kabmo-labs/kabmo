@@ -5,6 +5,23 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.14.0](https://github.com/rajebdev/ompchamber/compare/v4.13.0...v4.14.0) — 2026-10-14
+
+### Added
+
+* **cli:** add serve --tray and --startup for a tray icon and login start ([ef9db9d](https://github.com/rajebdev/ompchamber/commit/ef9db9ddb8ec242c7fd9ddc8da93a71c9ffd4c56))
+* **editor:** open dropped and OS-launched files, gate binary and oversize ([b9c7365](https://github.com/rajebdev/ompchamber/commit/b9c7365e5abca9abc33cd67b806c63d06aeb7852))
+* **panels:** drag-reorder the right-panel buttons ([a90f74b](https://github.com/rajebdev/ompchamber/commit/a90f74b46de19f47d76ab01da0d07f894c46c55e))
+* **sidebar:** add refresh, new folder and git clone to the New Workspace dialog ([e65961c](https://github.com/rajebdev/ompchamber/commit/e65961c290bdbe9754c7214ac7c825267f0801ef))
+* **stats:** add the Stats panel plugin and drop the navbar panel launcher ([e31f6bf](https://github.com/rajebdev/ompchamber/commit/e31f6bfc24e7c1a38f5742c55a14a0a02324132c))
+
+### Fixed
+
+* **chat:** show omp's option description on the grouped ask card ([061a0c2](https://github.com/rajebdev/ompchamber/commit/061a0c2e41f2d74b4b0fb72563e995a2d087d8cd))
+* **editor:** scope the drop target to the chat and editor panels ([43840a6](https://github.com/rajebdev/ompchamber/commit/43840a694fc1073fda197ceca629e3802449f941))
+* **git-panel:** read commit file status from git --raw, not numstat counts ([b1933d5](https://github.com/rajebdev/ompchamber/commit/b1933d5e94da5995a7980ae4c67b4dc88f2caeff))
+* **panels:** load a plugin's server half at install, not only at boot ([dda53f6](https://github.com/rajebdev/ompchamber/commit/dda53f6cb212dcc4a23f4c3b53caac50cc796fba))
+
 ## [4.13.0](https://github.com/rajebdev/ompchamber/compare/v4.12.0...v4.13.0) — 2026-10-13
 
 ### Added
