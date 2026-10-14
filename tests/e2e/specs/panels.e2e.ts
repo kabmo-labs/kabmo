@@ -84,4 +84,34 @@ test.describe('right panel', () => {
 
     workspace.dispose();
   });
+
+  test('dragging a button reorders the bar, and the order survives a reload', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-panels-order');
+    const url = `${server.baseURL}/?folderId=${workspace.id}`;
+    await openApp(page, url);
+
+    const buttons = page.locator('nav button[aria-label]');
+    await expect(buttons.first()).toHaveAttribute('aria-label', 'Context & Telemetry');
+
+    // The order is a GLOBAL setting, written on the drop itself (no session
+    // debounce), so the write is the condition to wait on rather than a sleep.
+    const persisted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/settings',
+    );
+    await page.getByRole('button', { name: 'Todos' }).dragTo(page.getByRole('button', { name: 'Context & Telemetry' }));
+    await persisted;
+
+    // Todos was dragged up onto Context, so it takes that slot and everything
+    // else keeps its relative order.
+    await expect(buttons.first()).toHaveAttribute('aria-label', 'Todos');
+
+    // And the order is what the NEXT load draws — a per-session slot would not
+    // survive a different session, which is why this is asserted after a reload.
+    await openApp(page, url);
+    await expect(page.locator('nav button[aria-label]').first()).toHaveAttribute('aria-label', 'Todos');
+
+    workspace.dispose();
+  });
 });

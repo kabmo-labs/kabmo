@@ -2,6 +2,7 @@ import { useMemo } from 'preact/hooks';
 import type { ComponentType, ReactNode } from 'preact/compat';
 import type { RightPanelProps } from '@ompchamber/plugin-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
+import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { pluginIdOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 import { resolvePluginPanelWidths } from '@/shared/lib/workspace/panel-widths';
 import { PluginIdProvider } from '@ompchamber/ui';
@@ -200,18 +201,23 @@ export interface ResolvedPanel {
  * The panel catalog the activity bar and the panel stack render.
  *
  * ONE list, two sources: the built-in views (in `RIGHT_PANEL_TYPES` order) and
- * the installed plugins (in the registry's order, below a divider). Enablement
- * is ONE set of ids — a built-in view is off by its bare id and a plugin by
- * `plugin:<id>` — so a view the user switched off disappears from the bar, the
- * phone's strip and the right-click menu alike, whichever kind it is.
+ * the installed plugins (in the registry's order). Enablement is ONE set of ids
+ * — a built-in view is off by its bare id and a plugin by `plugin:<id>` — so a
+ * view the user switched off disappears from the bar, the phone's strip and the
+ * right-click menu alike, whichever kind it is.
  *
- * Built-ins come first and keep their positions; the plugins follow. That order
- * is what makes the bar stable across reloads rather than following whichever
- * import finished first.
+ * The BASE order is built-ins then plugins, which is what makes the bar stable
+ * across reloads rather than following whichever import finished first; the
+ * user's own order (`usePanelOrder`) is laid over it, so a dragged button stays
+ * where it was put and a panel the order does not name keeps its base position.
+ * Applied HERE rather than in the bar, because the desktop stack and the phone's
+ * tab strip render from this same list — ordering at one call site would leave
+ * the other two drawing the base order.
  */
 export function usePanelCatalog(): ResolvedPanel[] {
   const { panels, disabledPanels } = usePanelRegistry();
   const { slots } = usePanelSlots();
+  const { apply } = usePanelOrder();
 
   return useMemo(() => {
     const out: ResolvedPanel[] = [];
@@ -252,6 +258,6 @@ export function usePanelCatalog(): ResolvedPanel[] {
       });
     }
 
-    return out;
-  }, [panels, slots, disabledPanels]);
+    return apply(out);
+  }, [panels, slots, disabledPanels, apply]);
 }
