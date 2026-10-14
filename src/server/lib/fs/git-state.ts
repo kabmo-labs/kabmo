@@ -47,8 +47,15 @@ import type { GitOperation, GitState } from '@/shared/types';
 // and the client cannot import a server module.
 export type { GitOperation, GitState };
 
-/** The paths git leaves behind, in the order they are checked. */
-const OPERATION_PATHS: Array<{ name: string; operation: GitOperation }> = [
+/**
+ * The paths git leaves behind, in the order they are checked.
+ *
+ * Exported because it is the vocabulary the state read is built on: a test
+ * asserts every operation except `stash-pop` has a file here (and that
+ * `stash-pop` deliberately does not), and the verb tables are keyed by the
+ * operations this list can produce.
+ */
+export const OPERATION_PATHS: Array<{ name: string; operation: GitOperation }> = [
   { name: 'MERGE_HEAD', operation: 'merge' },
   { name: 'rebase-merge', operation: 'rebase' },
   { name: 'rebase-apply', operation: 'rebase-apply' },
