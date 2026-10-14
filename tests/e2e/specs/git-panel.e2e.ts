@@ -99,6 +99,13 @@ async function openGitPanel(
  * flaky: it timed out waiting for a control inside a zero-width panel.
  */
 async function showSourceControl(page: import('@playwright/test').Page): Promise<void> {
+  // Wait for the app to MOUNT before reading anything. Every caller reaches here
+  // right after a reload, and a query issued against the pre-mount document
+  // finds no panel — the width reads 0, the toggle click lands on a button that
+  // does not exist yet, and the spec fails on a control it never had a chance to
+  // see (measured in CI: `getByPlaceholder(/commit message/i)` timed out on a
+  // reload that had not hydrated).
+  await expect(page.locator('[data-testid="app-root"]')).toBeVisible();
   const rightPanel = page.locator('[data-panel-id="right-panel"]');
   const width = (await rightPanel.boundingBox())?.width ?? 0;
   if (width === 0) {
@@ -107,7 +114,12 @@ async function showSourceControl(page: import('@playwright/test').Page): Promise
     await expect.poll(async () => (await rightPanel.boundingBox())?.width ?? 0).toBeGreaterThan(0);
   }
   await page.getByRole('button', { name: 'Source Control' }).click();
-  await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+  // The panel's own Refresh control, NOT the commit-message box: while a merge
+  // is stopped on a conflict the box is replaced by the operation bar, so
+  // anchoring on it failed exactly on the specs that had a conflict to show
+  // (measured in CI — the bar was on screen and the box was not). Refresh is in
+  // the repo header in every state.
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeVisible();
 }
 
 /**
