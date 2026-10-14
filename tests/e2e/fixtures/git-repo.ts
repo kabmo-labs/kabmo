@@ -105,6 +105,15 @@ export function seedWorkingRepo(name: string): SeedWorkingRepo {
     },
   };
   repo.git('init', '-q', '-b', 'main');
+  // The identity goes into the repository's OWN config, not only the `-c` flags
+  // `git()` passes per command. The code under test runs git through a separate
+  // process that inherits none of those flags, and git needs an identity for
+  // operations the fixture then drives through the API — a merge that stops on a
+  // conflict, a rebase, a stash pop — so on a runner with no global git identity
+  // those failed with "Committer identity unknown". A developer's machine has a
+  // global identity, which is why the suite passed locally and failed in CI.
+  repo.git('config', 'user.email', 'e2e@example.invalid');
+  repo.git('config', 'user.name', 'E2E');
   return repo;
 }
 
