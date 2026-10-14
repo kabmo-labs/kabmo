@@ -320,14 +320,8 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         />
       )}
 
-      <GitStashSection
-        rootPath={rootPath}
-        repo={activeRepo}
-        isBusy={isBusy}
-        onAction={(actionType, extra) => handleAction(actionType, undefined, extra)}
-      />
-      
-      {/* Changes List / Tree */}
+      {/* Changes List / Tree — the panel's `flex-1` member, so it takes every
+          pixel the fixed sections above and the stash below do not need. */}
       <GitChangesList
         changes={changes}
         isLoading={isBusy}
@@ -336,6 +330,17 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         rootPath={rootPath}
         onAction={handleAction}
         onResolve={handleResolveConflict}
+      />
+
+      {/* Last, and pinned to the panel's floor: `GitChangesList` shrinks to
+          make room, so opening the stash rises out of the bottom edge instead
+          of pushing the section further down a scroller the reader has to
+          chase. */}
+      <GitStashSection
+        rootPath={rootPath}
+        repo={activeRepo}
+        isBusy={isBusy}
+        onAction={(actionType, extra) => handleAction(actionType, undefined, extra)}
       />
     </div>
   );

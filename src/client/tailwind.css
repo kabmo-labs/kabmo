@@ -469,6 +469,39 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
 }
 
 
+/* Collapsible-section reveal (Source Control's stash section, and any other
+   disclosure whose content height is unknown). `0fr → 1fr` interpolates the
+   grid TRACK, so the wrapper animates to the content's own height — which
+   `max-height` cannot do without a magic number, and which `height: auto` does
+   not transition at all. The child is pinned by this rule rather than by the
+   call site: `min-height: 0` is what lets the track collapse below the item's
+   min-content size, and `overflow: hidden` is what clips it while it does —
+   forget either and the section renders at full height with no animation.
+
+   The collapsed body stays MOUNTED (that is the whole point — an unmounted
+   child has nothing to animate), so a caller must mark it `inert` to keep its
+   controls out of the tab order and off the accessibility tree. */
+.section-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 180ms ease-out;
+}
+
+.section-reveal > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.section-reveal[data-expanded='true'] {
+  grid-template-rows: 1fr;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-reveal {
+    transition: none;
+  }
+}
+
 /* Blocking extension-dialog enter animation — replaces the retired `motion`
    dependency. Exit is intentionally instant: a 160ms fade-out on a blocking
    modal is not load-bearing, and keeping the element mounted to animate it out

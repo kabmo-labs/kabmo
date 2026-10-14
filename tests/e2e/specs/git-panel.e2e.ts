@@ -28,6 +28,7 @@
  */
 
 import { test, expect, openApp } from '../fixtures/app';
+import type { Locator } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { seedWorkspace, waitUntil } from '../fixtures/seed';
@@ -418,11 +419,81 @@ test.describe('Source Control — stash and commit', () => {
     writeFileSync(join(repo.path, 'wip.txt'), 'work in progress\n');
     repo.git('add', '-A');
     repo.git('stash', 'push', '-q', '-m', 'e2e stash');
+    // ...and a change left BEHIND, so the change list renders its own
+    // `Changes` header. That header is the reference the glyph parity check
+    // below compares against, and on a clean tree it does not exist at all —
+    // the assertion then matched the stash glyph against ITSELF and passed
+    // whatever the markup said (measured: removing `font-mono` kept it green).
+    writeFileSync(join(repo.path, 'left-behind.txt'), 'still here\n');
 
     await openGitPanel(page, server, repo);
+
+    // The section is PINNED to the panel's floor, below the change list: the
+    // panel is a flex column whose list is the `flex-1` member, so opening the
+    // stash shrinks the list rather than pushing the section down a scroller
+    // the reader would have to chase. Both halves are asserted here because
+    // either alone is satisfied by the wrong layout — a section merely *after*
+    // the list in the DOM would still grow downwards if the list were not
+    // flexible.
+    const toggle = page.getByRole('button', { name: 'Stash', description: 'Show stashes' });
+    const commitBox = page.getByPlaceholder(/commit message/i);
+    const panel = page.locator('[data-panel-id="right-panel"]');
+    await expect(toggle).toBeVisible();
+    const commitBoxRect = await commitBox.boundingBox();
+    const toggleBox = await toggle.boundingBox();
+    const panelBox = await panel.boundingBox();
+    // Below the commit box (which itself sits above the change list)...
+    expect(toggleBox!.y).toBeGreaterThan(commitBoxRect!.y);
+    // ...and at the panel's own bottom edge, not somewhere in the middle.
+    expect(panelBox!.y + panelBox!.height - (toggleBox!.y + toggleBox!.height)).toBeLessThan(48);
+
+    // The disclosure glyph must be the SAME mark as the change list's, in the
+    // same face. It is a text character, so a header that does not inherit the
+    // list's `font-mono` draws the identical codepoint at the identical
+    // font-size a quarter smaller: measured ink 4.65px in `ui-monospace`
+    // against 3.49px in the app's sans stack, which is what "the icon is too
+    // small" was. The comparison is made against the live Changes glyph, so a
+    // future restyle of either header cannot silently re-open the gap.
+    const glyphStyle = async (locator: Locator) => locator.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const ctx = document.createElement('canvas').getContext('2d')!;
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const m = ctx.measureText(el.textContent!.trim());
+      return {
+        font: cs.fontFamily,
+        size: cs.fontSize,
+        weight: cs.fontWeight,
+        ink: +(m.actualBoundingBoxLeft + m.actualBoundingBoxRight).toFixed(2),
+      };
+    });
+    const stashGlyph = await glyphStyle(toggle.locator('span').first());
+    // The reference is the `Changes` section header's own glyph — addressed
+    // through its header row, never by position: on a tree with nothing left
+    // to list that header does not render, and a positional `.first()` would
+    // silently compare the stash glyph with itself.
+    const changesHeader = page
+      .locator('[data-panel-id="right-panel"] div')
+      .filter({ hasText: /^[▸▾]\s*Changes/ })
+      .first();
+    await expect(changesHeader).toBeVisible();
+    const changesGlyph = await glyphStyle(changesHeader.locator('span').first());
+    expect(stashGlyph.font).toBe(changesGlyph.font);
+    expect(stashGlyph.size).toBe(changesGlyph.size);
+    expect(stashGlyph.ink).toBeGreaterThan(changesGlyph.ink - 0.01);
+
     // Two buttons read `Stash`: the repo header's label and the section's
     // toggle. The toggle is the one carrying the disclosure title.
-    await page.getByRole('button', { name: 'Stash', description: 'Show stashes' }).click();
+    //
+    // It is clicked in the MIDDLE of the row, well to the right of the words
+    // `Stash` — the exact gesture that used to do nothing. The toggle wrapped
+    // the label alone, so the empty span between the label and `Save` was a
+    // measured 189px dead strip on a 334px-wide panel, and a reader who
+    // "clicked the section row" got nothing. A click on the label would pass
+    // even with that bug, so the label is deliberately NOT the target.
+    const labelBox = await toggle.locator('span', { hasText: 'Stash' }).boundingBox();
+    const midRowX = labelBox!.x + 160;
+    expect(midRowX).toBeLessThan(toggleBox!.x + toggleBox!.width);
+    await page.mouse.click(midRowX, toggleBox!.y + toggleBox!.height / 2);
 
     // The list is fetched when the section opens, and the row carries the
     // reflog subject git wrote — not the raw `stash@{0}` alone.

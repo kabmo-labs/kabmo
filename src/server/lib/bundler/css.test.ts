@@ -161,3 +161,26 @@ describe('css plugin — reveal-on-touch rules reach the browser', () => {
       .toEqual(['@media (hover:none)']);
   });
 });
+
+/**
+ * The collapsible-section reveal (Source Control's stash section).
+ *
+ * Its contract is spread over three rules that only work together: the wrapper
+ * is the grid, the CHILD carries `min-height: 0` + `overflow: hidden` (without
+ * which the track cannot collapse below the content's min-content size and the
+ * section renders at full height with no animation), and the open state is a
+ * `data-expanded` attribute rather than a swapped class. `grid-template-rows`
+ * is also the one property here a minifier could be tempted to rewrite, so the
+ * gate is the built sheet, not the source.
+ */
+describe('css plugin — the section reveal reaches the browser', () => {
+  test('the wrapper, the child clamp and the open state all survive the build', async () => {
+    const out = await buildProjectStylesheet();
+
+    expect(out).toContain('.section-reveal{display:grid;grid-template-rows:0fr');
+    expect(out).toContain('.section-reveal>*{overflow:hidden;min-height:0}');
+    expect(out).toContain('.section-reveal[data-expanded=true]{grid-template-rows:1fr}');
+    // Reduced motion turns off the transition, never the layout.
+    expect(out).toContain('@media (prefers-reduced-motion:reduce){.section-reveal{transition:none}}');
+  });
+});
