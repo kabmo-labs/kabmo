@@ -89,14 +89,26 @@ describe('byteSourceFor', () => {
   // to sit at that path in the default workspace.
   test('a handle-backed tab never gets a raw URL, even though it has a path', async () => {
     const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
-    const result = await openHandleAsTab(fakeHandle('shot.png', bytes), 'drop');
-    expect(result.ok).toBe(true);
-    // No `content` for a picture: the viewer reads the bytes itself.
-    expect(result.message).toContain('shot.png');
+    // The id is read from the event the open dispatches, never hardcoded: the
+    // handle counter is module state shared across the whole test run, so which
+    // id `openHandleAsTab` mints depends on how many files registered before it.
+    let handleId: string | undefined;
+    const capture = (event: Event) => {
+      handleId = (event as CustomEvent<{ handleId?: string }>).detail?.handleId;
+    };
+    window.addEventListener('omp:open-file', capture);
+    try {
+      const result = await openHandleAsTab(fakeHandle('shot.png', bytes), 'drop');
+      expect(result.ok).toBe(true);
+      // No `content` for a picture: the viewer reads the bytes itself.
+      expect(result.message).toContain('shot.png');
+    } finally {
+      window.removeEventListener('omp:open-file', capture);
+    }
+    if (!handleId) throw new Error('the open did not carry a handle id');
 
     // The editor's own source construction is what the hook does: a handle id
     // means no server path, so `rawUrl` is null and the handle is the source.
-    const handleId = 'drop-0';
     const source = byteSourceFor({ path: 'shot.png', handleId, rawUrl: null });
     expect(source.url).toBeNull();
     expect(source.id).toBe(handleId);
