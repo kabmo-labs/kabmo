@@ -1,0 +1,46 @@
+{
+  "name": "stats",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CPU and RAM used by the omp stack — the chamber, every omp child, the daemons and the shells.",
+  "type": "module",
+  "ompchamber": {
+    "id": "stats",
+    "name": "Stats",
+    "version": "1.0.0",
+    "description": "CPU and RAM used by the omp stack — the chamber, every omp child, the daemons and the shells.",
+    "app": "dist/app.js",
+    "server": "dist/server.js",
+    "icon": "icon.svg",
+    "settings": {
+      "sampleMs": {
+        "type": "number",
+        "label": "Sample interval (ms)",
+        "description": "How often the process table is sampled while a Stats panel is open. 1000 is the floor at which a CPU rate is meaningful.",
+        "default": 1000
+      },
+      "includeBrokers": {
+        "type": "boolean",
+        "label": "Include omp daemons",
+        "description": "Follow every registered omp daemon broker, even when its parent is no longer the chamber. A browser daemon outlives the omp process that started it, so this is the only way it is reachable.",
+        "default": true
+      },
+      "historyPoints": {
+        "type": "number",
+        "label": "History points",
+        "description": "Samples retained per series for the sparklines. 0 disables history.",
+        "default": 60
+      }
+    }
+  },
+  "peerDependencies": {
+    "@ompchamber/plugin-sdk": "*",
+    "@ompchamber/ui": "*",
+    "preact": "^10.29.8"
+  },
+  "peerDependenciesMeta": {
+    "@ompchamber/plugin-sdk": { "optional": true },
+    "@ompchamber/ui": { "optional": true },
+    "preact": { "optional": true }
+  }
+}

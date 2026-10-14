@@ -8,6 +8,12 @@
       "source": "plugins/session-info",
       "description": "Shows the active workspace and keeps a note per session.",
       "category": "utility"
+    },
+    {
+      "name": "stats",
+      "source": "plugins/stats",
+      "description": "CPU and RAM used by the omp stack — the chamber, every omp child, the daemons and the shells.",
+      "category": "utility"
     }
   ]
 }

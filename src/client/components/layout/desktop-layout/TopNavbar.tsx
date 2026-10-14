@@ -1,6 +1,5 @@
 import { LayoutTemplate, Loader2, MoreHorizontal, PanelLeft, PanelRight, PanelRightClose, RefreshCw, Smartphone } from 'lucide-preact';
 import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
-import { PanelLauncher } from '@/client/components/layout/desktop-layout/PanelLauncher';
 import { HeaderPanelButtons } from '@/client/components/layout/desktop-layout/HeaderPanelButtons';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
@@ -34,8 +33,6 @@ interface TopNavbarProps {
   onToggleEditor: () => void;
   onToggleRightPanel: () => void;
   onToggleLeftPanel: () => void;
-  /** Open a plugin's view in the editor column. */
-  onOpenPluginPanel: (panelKey: string) => void;
   /** Session-level actions for the title's overflow menu, when a session is on screen. */
   sessionActions?: {
     isArchived?: boolean;
@@ -59,7 +56,6 @@ export function TopNavbar({
   onToggleEditor,
   onToggleRightPanel,
   onToggleLeftPanel,
-  onOpenPluginPanel,
   sessionActions,
 }: TopNavbarProps) {
   // The title is renamed in place here, the way a sidebar row is: the overflow
@@ -157,7 +153,6 @@ export function TopNavbar({
       <div className="flex items-center space-x-3 titlebar-no-drag">
         <div className="flex items-center space-x-1">
           <HeaderPanelButtons />
-          <PanelLauncher onOpenPanel={onOpenPluginPanel} />
           {onSwitchToMobile && (
             <button
               type="button"

@@ -189,19 +189,6 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     setShowRightPanel(!showRightPanel);
   };
 
-  /**
-   * Open a plugin's view in the editor column.
-   *
-   * The column is the SECOND place a view can live, so this is the one place
-   * that knows about both: it makes the plugin the active right panel (which is
-   * what the column resolves against) and opens the editor column. There is no
-   * tab to add — the plugin takes the whole surface.
-   */
-  const handleOpenPluginPanel = (panelKey: string) => {
-    setActiveRightPanel(panelKey);
-    setUserToggledEditor(true);
-  };
-
   const handleToggleEditor = () => {
     setUserToggledEditor(!showEditor);
     // The editor panel keeps its own remembered width per tab kind, so a
@@ -244,7 +231,6 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 onToggleEditor={handleToggleEditor}
                 onToggleRightPanel={handleToggleRightPanel}
                 onToggleLeftPanel={() => handleToggleLeftPanel(!showLeftPanel)}
-                onOpenPluginPanel={handleOpenPluginPanel}
                 sessionActions={sessionActions}
               />
 

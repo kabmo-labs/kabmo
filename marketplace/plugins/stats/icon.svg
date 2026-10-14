@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Stats">
+  <title>Stats</title>
+  <g fill="none" stroke="#8a8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3.25" y="3.25" width="17.5" height="17.5" rx="2.5" />
+    <path d="M7 15.5v2" />
+    <path d="M11 11.5v6" />
+    <path d="M15 8.5v9" />
+    <path d="M19 12.5v5" />
+  </g>
+</svg>
