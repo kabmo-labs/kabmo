@@ -1,5 +1,5 @@
 import type { RefObject } from 'preact';
-import { AlertTriangle, Loader2 } from 'lucide-preact';
+import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
 import { EditorToolbar } from '@/client/components/workspace/editor/Toolbar';
 import { FileDocument } from '@/client/components/workspace/editor/FileDocument';
 import { PluginFileViewBody, type ResolvedPluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
@@ -85,7 +85,9 @@ export function FilePane({
         isPreview={isPreview}
         copied={editor.copied}
         isImage={editor.isImage}
-        saveDisabled={Boolean(editor.loadError)}
+        saveDisabled={Boolean(editor.loadError) || editor.handleMissing}
+        unsupported={Boolean(editor.unsupported)}
+        handleMissing={editor.handleMissing}
         isMaximized={isMaximized}
         findOpen={find.open}
         onToggleFind={() => (find.open ? find.close() : find.openFind())}
@@ -114,6 +116,22 @@ export function FilePane({
         </div>
       )}
 
+      {/* A launched file's handle dies with the page, so after a reload the tab
+          can read and edit but cannot write. Saying so is the whole point: the
+          Save button is disabled, and a user who is not told why would read it
+          as a broken file. */}
+      {editor.handleMissing && (
+        <div className="flex items-start gap-2 px-3 py-2 border-b border-warning/30 bg-warning/10 text-warning">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <div className="text-[11.5px] font-sans">This file was opened by the system, not from a workspace.</div>
+            <div className="text-[11px] font-sans text-warning/80">
+              Its write permission ended with the last page load. Reopen the file from the OS to edit it again.
+            </div>
+          </div>
+        </div>
+      )}
+
       {editor.isImage && editor.imageUrl ? (
         // The picture owns its own pan/zoom, so it must NOT sit inside the
         // scrolling text container — a wheel there would scroll the pane
@@ -123,6 +141,17 @@ export function FilePane({
         <div className="flex-1 flex items-center justify-center gap-2 text-ink/40 text-xs font-mono">
           <Loader2 size={14} className="animate-spin" />
           <span>Loading file content…</span>
+        </div>
+      ) : editor.unsupported ? (
+        // The server refused this file for its KIND, which is not the same fact
+        // as a read that failed — saying "Could not read" over a zip describes a
+        // problem the file does not have. Save is disabled for the same reason
+        // it is after any failed read (an empty buffer), which the toolbar's own
+        // title states.
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center">
+          <FileX size={20} className="text-ink/40" />
+          <span className="text-xs text-ink/70 font-sans">{activeFile.name} cannot be opened here</span>
+          <span className="text-[11px] text-ink/50 font-sans max-w-[42ch]">{editor.unsupported}</span>
         </div>
       ) : editor.loadError ? (
         // A read that failed must say so. Without this the pane rendered an

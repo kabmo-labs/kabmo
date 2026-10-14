@@ -12,6 +12,8 @@ export interface OpenFileInput {
   content?: string;
   root?: string;
   repo?: string;
+  /** The live handle a PWA launch opened this file through, when there is one. */
+  handleId?: string;
 }
 
 export function useFileTabs(
@@ -149,7 +151,7 @@ export function useFileTabs(
 
   // Global listeners for omp:open-file and omp:open-diff
   useChamberEvent('omp:open-file', (e) => {
-    const customEvent = e as CustomEvent<{ path: string; name?: string; id?: number; content?: string; root?: string; repo?: string }>;
+    const customEvent = e as CustomEvent<{ path: string; name?: string; id?: number; content?: string; root?: string; repo?: string; handleId?: string }>;
     if (!customEvent.detail || !customEvent.detail.path) return;
 
     const rawPath = customEvent.detail.path.replace(/^\/+/, '');
@@ -164,6 +166,7 @@ export function useFileTabs(
       // otherwise the file belongs to the active project.
       root: customEvent.detail.root,
       repo: customEvent.detail.repo,
+      handleId: customEvent.detail.handleId,
     });
   });
 

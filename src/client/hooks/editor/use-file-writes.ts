@@ -26,6 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { fileHandleFor } from '@/client/lib/launch/file-handlers';
 import type { LineEnding } from '@/shared/lib/code/line-endings';
 import { saveEditorFile } from '@/client/hooks/editor/save-file';
 import type { FileEditorTarget } from '@/client/hooks/editor/use-file-editor';
@@ -67,6 +68,12 @@ export interface FileWriteDeps {
   onSaved: (fileKey: string, text: string) => void;
   /** A write was refused or dropped. */
   onSaveFailed: () => void;
+  /**
+   * A handle-backed write needs the user to grant access, which only a click
+   * can do. Reported apart from a failure because it is not one — the buffer is
+   * intact and one Save fixes it.
+   */
+  onNeedsPermission: () => void;
 }
 
 export interface FileWrites {
@@ -97,6 +104,7 @@ export function useFileWrites({
   onSaveStart,
   onSaved,
   onSaveFailed,
+  onNeedsPermission,
 }: FileWriteDeps): FileWrites {
   const [saveMissingConfirm, setSaveMissingConfirm] = useState(false);
 
@@ -109,8 +117,12 @@ export function useFileWrites({
   const key = target ? targetKey(target) : '';
 
   const persist = useCallback(
-    async (file: FileEditorTarget, text: string, options: { allowMissing?: boolean } = {}) => {
-      if (!file.path) return;
+    async (file: FileEditorTarget, text: string, options: { allowMissing?: boolean; interactive?: boolean } = {}) => {
+      if (!file.path && !file.handleId) return;
+      // A handle-backed file whose handle is gone (a reload) has nowhere to
+      // write, and `saveEditorFile` would refuse anyway — bailing here keeps the
+      // queued write from arming a Save that cannot land.
+      if (file.handleId && !fileHandleFor(file.handleId)) return;
       // Writing the buffer back would CREATE a file that was deleted — see the
       // module doc. `confirmSaveMissing` is the only caller that allows it.
       if (missingRef.current && !options.allowMissing) return;
@@ -118,11 +130,18 @@ export function useFileWrites({
       const fileKey = targetKey(file);
       // The buffer is LF; the file's own ending is applied by the server, so an
       // untouched CRLF file stays byte-identical and an LF file stays LF.
-      const written = await saveEditorFile(file, text, lineEndingsRef.current[fileKey] ?? 'lf');
-      if (written) onSaved(fileKey, text);
+      //
+      // `interactive` travels with the write because a handle-backed file needs
+      // a USER GESTURE to grant write access: the explicit Save has one, the
+      // autosave does not, and asking from a timer is refused by the browser.
+      const outcome = await saveEditorFile(file, text, lineEndingsRef.current[fileKey] ?? 'lf', {
+        interactive: options.interactive === true,
+      });
+      if (outcome === 'written') onSaved(fileKey, text);
+      else if (outcome === 'needs-permission') onNeedsPermission();
       else onSaveFailed();
     },
-    [lineEndingsRef, onSaveFailed, onSaveStart, onSaved],
+    [lineEndingsRef, onNeedsPermission, onSaveFailed, onSaveStart, onSaved],
   );
 
   const persistRef = useRef(persist);
@@ -151,6 +170,10 @@ export function useFileWrites({
     // A file whose read failed has no trustworthy buffer: saving it would write
     // the empty placeholder over the real file. The user must reopen it first.
     if (loadError) return;
+    // A handle-backed tab whose handle is gone (a reload) has nowhere to write:
+    // falling through would post its display name to `/api/fs/action` and hit an
+    // unrelated file.
+    if (target.handleId && !fileHandleFor(target.handleId)) return;
     const text = contentsRef.current[targetKey(target)];
     if (text === undefined) return;
     // Cancel any queued autosave either way: the explicit Save owns the key now,
@@ -165,7 +188,9 @@ export function useFileWrites({
       setSaveMissingConfirm(true);
       return;
     }
-    void persistRef.current(target, text);
+    // Interactive: this runs from a click or Ctrl+S, which is the gesture a
+    // handle-backed file needs to grant write access.
+    void persistRef.current(target, text, { interactive: true });
   }, [target, contentsRef, isImage, loadError, pendingRef]);
 
   const confirmSaveMissing = useCallback(() => {
@@ -173,7 +198,8 @@ export function useFileWrites({
     if (!target || isImage || loadError) return;
     const text = contentsRef.current[targetKey(target)];
     if (text === undefined) return;
-    void persistRef.current(target, text, { allowMissing: true });
+    // The confirm dialog's button is itself the gesture.
+    void persistRef.current(target, text, { allowMissing: true, interactive: true });
   }, [target, contentsRef, isImage, loadError]);
 
   const cancelSaveMissing = useCallback(() => setSaveMissingConfirm(false), []);

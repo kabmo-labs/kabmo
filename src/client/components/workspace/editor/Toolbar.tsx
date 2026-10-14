@@ -1,6 +1,6 @@
 import { AlertCircle, Check, Copy, Download, Eye, EyeOff, Maximize, Minimize, Save, Search, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
 
-export type EditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type EditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'needs-permission';
 
 interface EditorToolbarProps {
   path: string;
@@ -14,6 +14,16 @@ interface EditorToolbarProps {
   isImage?: boolean;
   /** A read failure left no trustworthy buffer, so there is nothing to save. */
   saveDisabled?: boolean;
+  /**
+   * The refusal was about the file's KIND rather than a failed read, so the
+   * save title names that instead of blaming the read.
+   */
+  unsupported?: boolean;
+  /**
+   * A launched file whose write permission ended with the page load. Named
+   * separately from the other two: the file is fine, the CAPABILITY is gone.
+   */
+  handleMissing?: boolean;
   isMaximized?: boolean;
   /** Find/replace is open — the button reflects it and toggles the bar. */
   findOpen?: boolean;
@@ -46,6 +56,8 @@ export function EditorToolbar({
   copied,
   isImage = false,
   saveDisabled = false,
+  unsupported = false,
+  handleMissing = false,
   isMaximized = false,
   findOpen = false,
   onToggleFind,
@@ -60,12 +72,18 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const saveTitle =
     saveDisabled
-      ? 'Nothing to save — this file could not be read'
-      : saveStatus === 'saving'
-        ? 'Saving…'
-        : saveStatus === 'error'
-          ? 'Save failed — the file on disk was not changed'
-          : 'Save file (Ctrl+S)';
+      ? handleMissing
+        ? 'Cannot save — reopen the file from the system to restore write access'
+        : unsupported
+          ? 'Nothing to save — this file cannot be opened as a document'
+          : 'Nothing to save — this file could not be read'
+      : saveStatus === 'needs-permission'
+        ? 'Click Save to allow writing this file'
+        : saveStatus === 'saving'
+          ? 'Saving…'
+          : saveStatus === 'error'
+            ? 'Save failed — the file on disk was not changed'
+            : 'Save file (Ctrl+S)';
 
   return (
     // `@container`: the path below hides on a NARROW PANEL, not a narrow
@@ -99,6 +117,9 @@ export function EditorToolbar({
                 <Check size={14} className="text-success" />
               ) : saveStatus === 'error' ? (
                 <AlertCircle size={14} className="text-error" />
+              ) : saveStatus === 'needs-permission' ? (
+                // Not an error: the buffer is fine and one click grants access.
+                <Save size={14} className="text-warning" />
               ) : (
                 <Save size={14} className="hover:text-ink" />
               )}

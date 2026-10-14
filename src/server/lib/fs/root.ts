@@ -66,6 +66,48 @@ export async function resolveReferencedPath(rawPath: string): Promise<string | n
 }
 
 /**
+ * The scope an absolute path should be opened under, or null when it is not
+ * inside anything the chamber is allowed to read.
+ *
+ * The reverse direction of {@link resolveWithinRoot}: that one takes a client
+ * `root` + relative path, this one is handed a path a DROP produced — which is
+ * always absolute, because a file manager cannot know which workspace the page
+ * considers active. The allow-list is the same one, so the two cannot disagree
+ * about what is readable.
+ *
+ * The DEEPEST matching root wins, so a nested registered workspace answers for
+ * its own files rather than having the app root claim them (which would produce
+ * a relative path like `packages/app/src/x.ts` that no panel is scoped to).
+ */
+export async function resolveScopeForAbsolutePath(rawPath: string): Promise<{ root: string; path: string } | null> {
+  const candidate = rawPath.trim();
+  if (!candidate) return null;
+
+  const resolved = path.resolve(candidate);
+  const roots: string[] = [];
+
+  if (isWithinRoot(APP_ROOT, resolved)) roots.push(APP_ROOT);
+
+  try {
+    const db = await getDb();
+    const rows = (await db.all(
+      'SELECT project_path FROM workspace_folders WHERE project_path IS NOT NULL'
+    )) as { project_path: string }[];
+    for (const row of rows) {
+      const workspaceRoot = path.resolve(row.project_path);
+      if (isWithinRoot(workspaceRoot, resolved)) roots.push(workspaceRoot);
+    }
+  } catch {
+    // Database unavailable — only the app root can be verified.
+  }
+
+  if (roots.length === 0) return null;
+  // Longest first: a nested workspace beats the directory that contains it.
+  const root = roots.sort((a, b) => b.length - a.length)[0];
+  return { root, path: path.relative(root, resolved).split(path.sep).join('/') };
+}
+
+/**
  * Default browsing root when no session-bound project is active. Mock/demo
  * mode browses the bundled `examples` tree; real mode browses the app root.
  */

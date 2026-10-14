@@ -280,7 +280,7 @@ describe('saveEditorFile', () => {
     const writes = stubWrite({ ok: true, body: { success: true } });
     const ok = await saveEditorFile({ path: 'src/a.ts', root: '/repo' }, 'const a = 1;\n', 'lf');
 
-    expect(ok).toBe(true);
+    expect(ok).toBe('written');
     expect(writes.length).toBe(1);
     expect(writes[0].url).toBe('/api/fs/action');
     expect(writes[0].method).toBe('POST');
@@ -307,25 +307,25 @@ describe('saveEditorFile', () => {
 
   test('a file with no path is refused without touching the network', async () => {
     const writes = stubWrite({ ok: true, body: { success: true } });
-    expect(await saveEditorFile({}, 'x', 'lf')).toBe(false);
+    expect(await saveEditorFile({}, 'x', 'lf')).toBe('failed');
     expect(writes).toEqual([]);
   });
 
-  test('every refusal reports false: non-2xx, an error body, a non-JSON body, a dropped connection', async () => {
+  test('every refusal reports failed: non-2xx, an error body, a non-JSON body, a dropped connection', async () => {
     stubWrite({ ok: false, body: { success: true } });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe(false);
+    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
 
     stubWrite({ ok: true, body: { success: false } });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe(false);
+    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
 
     stubWrite({ ok: true, body: null });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe(false);
+    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
 
     stubWrite({ ok: true, throwOnJson: true });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe(false);
+    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
 
     globalThis.fetch = (async () => { throw new Error('offline'); }) as unknown as typeof fetch;
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe(false);
+    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
   });
 });
 

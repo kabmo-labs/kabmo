@@ -62,12 +62,22 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
     if (cleanFetchPath && !virtualPath && !isImage && !output && lazyContent === null && !loadingFile) {
       setLoadingFile(true);
       fetch(`/api/fs/read?path=${encodeURIComponent(cleanFetchPath)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setLazyContent(data && data.content !== undefined ? data.content : `// Loaded file: ${cleanFetchPath}`);
+        .then(async (res) => {
+          const data = (await res.json().catch(() => null)) as { content?: unknown; error?: unknown } | null;
+          // The route refuses a file it will not hand back as text — a binary
+          // or an oversized one — with its own sentence. Reporting the refusal
+          // is the point: `// Loaded file: <path>` used to be printed for those
+          // exactly as it was for a virtual URL, describing a file whose
+          // contents were never read.
+          if (!res.ok || !data || typeof data.content !== 'string') {
+            const reason = typeof data?.error === 'string' && data.error ? data.error : `HTTP ${res.status}`;
+            setLazyContent(`// ${reason}`);
+            return;
+          }
+          setLazyContent(data.content);
         })
         .catch(() => {
-          setLazyContent(`// Loaded file: ${cleanFetchPath}`);
+          setLazyContent(`// Could not read ${cleanFetchPath}`);
         })
         .finally(() => {
           setLoadingFile(false);

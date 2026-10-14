@@ -21,6 +21,8 @@ import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { WORKSPACE_KEY_BINDINGS } from '@/shared/lib/workspace/keymap';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { useToasts } from '@/client/hooks/ui/toasts';
+import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
+import { EditorDropOverlay } from '@/client/components/workspace/editor/DropOverlay';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { useSessionActions } from '@/client/hooks/workspace/session-actions';
@@ -111,6 +113,29 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   }, [folders, sessionId]);
   const sidebar = useSidebarData();
   const { toasts, pushToast, dismissToast } = useToasts();
+  // A drop on the workspace either opens a file or is refused, and the refusal
+  // has a reason worth reading ("outside every workspace", "not text") — a
+  // silent no-op would read as a broken drop target.
+  const handleDropResult = useCallback(
+    (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
+    [pushToast],
+  );
+
+  /**
+   * Dropping a file opens it — the whole workspace is the target, not the
+   * editor panel.
+   *
+   * The panel only MOUNTS once a file is open (`WorkspacePanels` renders it
+   * inside `showEditor`), so a drop target scoped to it could never receive the
+   * first drop — the one that would have opened the file. A workspace-level
+   * target is also what VS Code does, and it is what makes the gesture
+   * discoverable.
+   *
+   * `enabled` is gated on a workspace being active: a path resolves through the
+   * server's allow-list, so a drop with no workspace can only be refused, and a
+   * target that lights up to refuse is worse than one that stays dark.
+   */
+  const editorDrop = useEditorDrop({ enabled: hasActiveContext, onResult: handleDropResult });
   const { handleArchive, handleRename, handleRenameWithAi } = useSessionActions(sidebar.refresh, pushToast);
   const sessionDelete = useSessionDelete();
   // A pending `new-…` chat has no transcript anywhere yet, so rename and delete
@@ -198,8 +223,10 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   return (
     <div
       data-testid="app-root"
-      className="flex flex-col h-screen w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas"
+      className="relative flex flex-col h-screen w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas"
+      {...editorDrop.dropProps}
     >
+      <EditorDropOverlay visible={editorDrop.isDragging} />
 
       {/* Main Workspace: full-height left sidebar (resizable) + right stack */}
       <div className="flex flex-1 overflow-hidden">

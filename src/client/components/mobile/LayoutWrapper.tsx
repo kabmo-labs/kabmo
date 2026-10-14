@@ -12,6 +12,10 @@ import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
+import { useToasts } from '@/client/hooks/ui/toasts';
+import { ToastStack } from '@/client/components/common/ToastStack';
+import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
+import { EditorDropOverlay } from '@/client/components/workspace/editor/DropOverlay';
 
 interface MobileLayoutWrapperProps {
   onDesktopToggle?: () => void;
@@ -50,12 +54,23 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
       : [],
     refreshKey,
   );
+  const { toasts, pushToast, dismissToast } = useToasts();
+  const handleDropResult = useCallback(
+    (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
+    [pushToast],
+  );
   const mobileEditorMissing = mobileEditorMissingIds.size > 0;
 
   const { folder: sessionFolder } = activeProjectForSession(folders, sessionId);
   const contextFolder = sessionFolder ?? (folderId ? folders.find(f => String(f.id) === String(folderId)) ?? null : null);
   const activeProjectPath = contextFolder?.project_path ?? null;
   const hasContext = !!contextFolder;
+
+  // A phone drop is rare but real (an iPad with a trackpad). The target is the
+  // whole layout, for the same reason the desktop one is: the full-screen
+  // editor is mounted only once a file is open, so a target scoped to it could
+  // never receive the first drop.
+  const editorDrop = useEditorDrop({ enabled: hasContext, onResult: handleDropResult });
 
   // Listen to open-file event on mobile
   useChamberEvent('omp:open-file', (e) => {
@@ -167,7 +182,9 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     <div
       data-testid="app-root"
       className="flex flex-col h-dvh w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas relative"
+      {...editorDrop.dropProps}
     >
+      <EditorDropOverlay visible={editorDrop.isDragging} />
       <div className={`flex-1 min-h-0 w-full ${currentScreen === 'main' ? 'block' : 'hidden'}`}>
         <MobileMainView
           activeSessionId={sessionId}
@@ -239,6 +256,11 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
         autoOpenAddProvider={autoOpenAddProvider}
         appSettings={appSettings}
       />
+      {/* A drop on the full-screen editor either opens a file or is refused, and
+          the refusal names why. The phone's own toast stack lives in the
+          drawer, which is closed while the editor is up — so this layout needs
+          its own or the answer would go nowhere. */}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

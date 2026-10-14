@@ -13,11 +13,13 @@
  */
 
 import type { LineEnding } from '@/shared/lib/code/line-endings';
+import { writeThroughHandle, type HandleWriteResult } from '@/client/lib/launch/file-handlers';
 
 interface SavableFile {
   path?: string;
   root?: string;
   repo?: string;
+  handleId?: string;
 }
 
 /**
@@ -28,9 +30,33 @@ interface SavableFile {
  * The ending travels as its own field and the server rebuilds the bytes: a
  * multipart body normalizes bare LF to CRLF, so the payload cannot carry the
  * distinction itself.
+ *
+ * A file a PWA launch (or a Finder drop) handed over has NO server-reachable
+ * path — its `path` is only a display name — so the write goes through the live
+ * handle instead. Sending it to `/api/fs/action` would resolve that name
+ * against the default root and write an unrelated file, which is why the branch
+ * comes first and a missing handle is a REFUSAL rather than a fallback.
+ *
+ * `interactive` says whether a user gesture is behind this call (a click, a
+ * Ctrl+S) or a timer (the autosave). It is passed straight through because the
+ * handle write needs the distinction to decide between asking for permission
+ * and reporting that a click is required — see `writeThroughHandle`.
  */
-export async function saveEditorFile(file: SavableFile, lfText: string, eol: LineEnding): Promise<boolean> {
-  if (!file.path) return false;
+export async function saveEditorFile(
+  file: SavableFile,
+  lfText: string,
+  eol: LineEnding,
+  options: { interactive: boolean } = { interactive: false },
+): Promise<HandleWriteResult> {
+  if (file.handleId) {
+    // The disk bytes carry the file's own ending; the buffer is LF-only.
+    return writeThroughHandle(
+      file.handleId,
+      eol === 'crlf' ? lfText.replace(/\n/g, '\r\n') : lfText,
+      { interactive: options.interactive },
+    );
+  }
+  if (!file.path) return 'failed';
   const formData = new FormData();
   formData.append('actionType', 'save');
   formData.append('path', file.path);
@@ -41,9 +67,9 @@ export async function saveEditorFile(file: SavableFile, lfText: string, eol: Lin
   try {
     const res = await fetch('/api/fs/action', { method: 'POST', body: formData });
     const data = await res.json().catch(() => null);
-    return Boolean(res.ok && data?.success);
+    return res.ok && data?.success ? 'written' : 'failed';
   } catch {
-    return false;
+    return 'failed';
   }
 }
 

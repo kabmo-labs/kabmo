@@ -36,6 +36,11 @@ export interface FsState {
   body: string;
   /** The `eol` field of the last write — the ending the server is asked to use. */
   sentEol: string | null;
+  /**
+   * When set, a read is answered with this refusal instead of `body` — the
+   * shape `/api/fs/read` returns for a file it will not hand back as text.
+   */
+  readRefusal: { status: number; error: string; kind?: 'binary' | 'too-large' } | null;
 }
 
 /** Serves `state.body` for reads and records writes, without touching the network. */
@@ -43,19 +48,23 @@ export function stubFetch(state: FsState) {
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     if (String(input).startsWith('/api/fs/read')) {
       state.reads += 1;
-      return { ok: true, json: async () => ({ content: state.body }) };
+      if (state.readRefusal) {
+        const { status, error, kind } = state.readRefusal;
+        return { ok: false, status, json: async () => ({ error, kind }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ content: state.body }) };
     }
     const form = init?.body as FormData;
     state.writes += 1;
     state.body = String(form.get('content'));
     state.sentEol = form.get('eol') === null ? null : String(form.get('eol'));
-    return { ok: true, json: async () => ({ success: true }) };
+    return { ok: true, status: 200, json: async () => ({ success: true }) };
   }) as unknown as typeof fetch;
 }
 
 /** A fresh per-test state. */
 export function freshState(body: string = DISK): FsState {
-  return { reads: 0, writes: 0, sentEol: null, body };
+  return { reads: 0, writes: 0, sentEol: null, body, readRefusal: null };
 }
 
 /**

@@ -8,9 +8,8 @@ import { useEditorFontStack } from '@/client/hooks/editor/font';
 import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
-import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
-import { FilePane } from '@/client/components/workspace/editor/FilePane';
+import { EditorBody } from '@/client/components/workspace/editor/Body';
 import { PluginIdProvider } from '@ompchamber/ui';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
@@ -275,49 +274,32 @@ export function Editor({
         missingIds={missingIds}
       />
 
-      {activeFile ? (
-        activeFile.isDiff ? (
-          <DiffPanel
-            filePath={activeFile.path}
-            status={activeFile.diffStatus || 'M'}
-            isStaged={Boolean(activeFile.diffStaged)}
-            root={activeFile.root}
-            repo={activeFile.repo || '.'}
-            onOpenInEditor={() => onConvertDiffToEditor(activeFile.id)}
-            onFileSaved={onFileSaved}
-            className="flex-1"
-          />
-        ) : (
-          <FilePane
-            activeFile={activeFile}
-            editor={editor}
-            find={find}
-            surfaceRef={surfaceRef}
-            pluginFileView={pluginFileView}
-            wordWrap={wordWrap}
-            setWordWrap={setWordWrap}
-            isMd={isMd}
-            isPreview={Boolean(isPreview)}
-            isMaximized={isMaximized}
-            setIsMaximized={setIsMaximized}
-            zoomLevel={zoomLevel}
-            setZoomLevel={setZoomLevel}
-            occurrences={occurrences}
-            setOccurrences={setOccurrences}
-            paletteOpen={paletteOpen}
-            setPaletteOpen={setPaletteOpen}
-            runCommand={runCommand}
-            editorFontFamily={editorFontFamily}
-            togglePreview={togglePreview}
-            revealActive={Boolean(searchReveal)}
-            missing={activeFileMissing}
-          />
-        )
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-ink/40">
-          <p className="font-mono text-sm">Select a tab to view content</p>
-        </div>
-      )}
+      <EditorBody
+        activeFile={activeFile}
+        editor={editor}
+        find={find}
+        surfaceRef={surfaceRef}
+        pluginFileView={pluginFileView}
+        wordWrap={wordWrap}
+        setWordWrap={setWordWrap}
+        isMd={isMd}
+        isPreview={Boolean(isPreview)}
+        isMaximized={isMaximized}
+        setIsMaximized={setIsMaximized}
+        zoomLevel={zoomLevel}
+        setZoomLevel={setZoomLevel}
+        occurrences={occurrences}
+        setOccurrences={setOccurrences}
+        paletteOpen={paletteOpen}
+        setPaletteOpen={setPaletteOpen}
+        runCommand={runCommand}
+        editorFontFamily={editorFontFamily}
+        togglePreview={togglePreview}
+        revealActive={Boolean(searchReveal)}
+        missing={activeFileMissing}
+        onConvertDiffToEditor={onConvertDiffToEditor}
+        onFileSaved={onFileSaved}
+      />
 
       {/* Owned here, not by the pane: switching tabs must not close a question
           the user has not answered. The modal names the file it will recreate. */}

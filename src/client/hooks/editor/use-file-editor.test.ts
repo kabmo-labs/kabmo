@@ -117,3 +117,53 @@ describe('useFileEditor revalidation', () => {
     expect(state.sentEol).toBe('lf');
   });
 });
+
+describe('useFileEditor unsupported files', () => {
+  test('a kind refusal reports the server sentence as unsupported', async () => {
+    const state = freshState();
+    state.readRefusal = { status: 415, error: 'This file is not text, so it cannot be shown in the editor.', kind: 'binary' };
+    stubFetch(state);
+    await editor.mount();
+
+    // Both flags are set: `loadError` is the ONE gate the write path consults
+    // (a refused read leaves an empty buffer, so Save must stay disabled), and
+    // `unsupported` is what lets the surface say WHY without blaming the read.
+    expect(editor.mounted?.unsupported).toContain('not text');
+    expect(editor.mounted?.loadError).toContain('not text');
+  });
+
+  test('an oversized refusal carries the size wording', async () => {
+    const state = freshState();
+    state.readRefusal = { status: 415, error: 'This file is 9.00 MB — larger than the 5.00 MB the editor opens.', kind: 'too-large' };
+    stubFetch(state);
+    await editor.mount();
+
+    expect(editor.mounted?.unsupported).toContain('9.00 MB');
+  });
+
+  test('a transport failure is a loadError and NOT unsupported', async () => {
+    const state = freshState();
+    // A 500 with no kind: something went wrong, which is not a property of the
+    // file. The pane must word it as a failed read, not as an unopenable file.
+    state.readRefusal = { status: 500, error: 'boom' };
+    stubFetch(state);
+    await editor.mount();
+
+    expect(editor.mounted?.loadError).toBe('boom');
+    expect(editor.mounted?.unsupported).toBeNull();
+  });
+
+  test('a refusal still disables the write path', async () => {
+    const state = freshState();
+    state.readRefusal = { status: 415, error: 'This file is not text.', kind: 'binary' };
+    stubFetch(state);
+    await editor.mount();
+    await editor.run(() => editor.mounted?.saveNow());
+    await editor.settle();
+
+    // The buffer is empty after a refused read, so a Save would write that
+    // emptiness over the real file. Zero writes is the whole point of keeping
+    // the refusal on `loadError`.
+    expect(state.writes).toBe(0);
+  });
+});

@@ -22,6 +22,15 @@ export interface OpenedFile {
   isDiff?: boolean;
   diffStatus?: string;
   diffStaged?: boolean;
+  /**
+   * The live `FileSystemFileHandle` id a PWA launch opened this tab through.
+   *
+   * Present only for a file the OS handed over: it has no server-reachable
+   * path, so its Save must go through `createWritable` rather than
+   * `/api/fs/action`. It dies with the page (a handle cannot be persisted), and
+   * the tab says so after a reload.
+   */
+  handleId?: string;
 }
 
 export interface SearchResultItem {

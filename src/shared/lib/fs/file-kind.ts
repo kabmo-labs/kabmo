@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { formatBytes } from '@/shared/lib/format/number';
+
 /**
  * File-kind classification shared by the server read routes and every client
  * viewer (desktop editor, mobile editor, chat tool panels).
@@ -87,4 +89,71 @@ export function getImageMimeFromBytes(bytes: Uint8Array): string | null {
     if (matched) return mime;
   }
   return null;
+}
+
+/**
+ * The largest file the editor will open.
+ *
+ * Not a policy knob: the editor holds the whole file in one string and posts
+ * the whole thing back on every save, so a ceiling has to exist. 5 MiB is above
+ * any source file and well below the size at which a textarea stops responding.
+ */
+export const EDITOR_MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+/** How many leading bytes are inspected for binary content. */
+export const BINARY_SNIFF_BYTES = 8192;
+
+/**
+ * What the editor can do with a file, decided from the path, its size and its
+ * leading bytes — the ONE classification the read route, the editor surface and
+ * the drop target all branch on.
+ *
+ * `text` and `image` are openable; `binary` and `too-large` are not, and each
+ * says why so the refusal can name the actual reason instead of "could not
+ * read".
+ */
+export type EditorFileKind = 'image' | 'text' | 'binary' | 'too-large';
+
+/**
+ * Classify a file for the editor.
+ *
+ * An image is checked FIRST and stays openable whatever its size: `/api/fs/raw`
+ * streams it and the browser paints it, so a large picture costs no buffer.
+ * Everything else is refused for size before its bytes are looked at, because a
+ * file too large to hold is also too large to sniff.
+ *
+ * The binary test is a NUL byte in the leading bytes — git's own test, and the
+ * boring one: no encoding a source file uses puts a NUL inside a character,
+ * while every container format (zip, PNG, wasm, sqlite, a compiled object) has
+ * one early. Sniffing only the head keeps the check off the read path's
+ * critical section.
+ *
+ * `head` may be omitted when the caller has already refused on size or kind —
+ * a missing head is treated as text, which is the answer that opens the file.
+ */
+export function classifyEditorFile(options: {
+  path?: string | null;
+  size: number;
+  head?: Uint8Array;
+}): EditorFileKind {
+  if (getImageMimeType(options.path)) return 'image';
+  if (options.size > EDITOR_MAX_FILE_BYTES) return 'too-large';
+  if (options.head?.includes(0)) return 'binary';
+  return 'text';
+}
+
+/**
+ * The sentence shown where the document would have been.
+ *
+ * Shared so the drop target, the editor surface and the read route's refusal
+ * cannot word the same refusal three ways.
+ */
+export function unsupportedEditorMessage(kind: 'binary' | 'too-large', size?: number): string {
+  if (kind === 'too-large') {
+    const limit = formatBytes(EDITOR_MAX_FILE_BYTES);
+    return size === undefined
+      ? `This file is larger than the ${limit} the editor opens.`
+      : `This file is ${formatBytes(size)} — larger than the ${limit} the editor opens.`;
+  }
+  return 'This file is not text, so it cannot be shown in the editor.';
 }

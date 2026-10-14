@@ -12,7 +12,29 @@ import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveReferencedPath, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
-import { getImageMimeType } from '@/shared/lib/fs/file-kind';
+import {
+  BINARY_SNIFF_BYTES,
+  classifyEditorFile,
+  unsupportedEditorMessage,
+  type EditorFileKind,
+} from '@/shared/lib/fs/file-kind';
+
+/**
+ * Classify a file the way the editor will, reading only as many bytes as the
+ * sniff needs.
+ *
+ * The head is sliced rather than the whole file read, so the check costs 8 KiB
+ * on a 4 GiB archive. `size` is passed in because the caller already has the
+ * stat, and a file refused for size must not be read at all.
+ */
+async function classifyForEditor(fullPath: string, displayPath: string, size: number): Promise<EditorFileKind> {
+  // An image and an oversize file are both settled by path and size alone; only
+  // a candidate TEXT file needs its head.
+  const provisional = classifyEditorFile({ path: displayPath, size });
+  if (provisional !== 'text') return provisional;
+  const head = await Bun.file(fullPath).slice(0, BINARY_SNIFF_BYTES).bytes();
+  return classifyEditorFile({ path: displayPath, size, head });
+}
 
 /**
  * GET /api/fs/browse?path=<abs> — list subdirectories of a folder for the
@@ -219,8 +241,20 @@ export async function readFile({ request }: LoaderFunctionArgs) {
     // characters, which every reader painted as mojibake. Every in-repo reader
     // branches on the extension first and takes `/api/fs/raw`, so this answers
     // the remaining callers with the real reason instead of garbage.
-    if (getImageMimeType(cleanPath)) {
+    //
+    // A binary or oversized file is refused the same way, and the refusal is
+    // the point rather than a nicety: the editor's buffer is empty on a failed
+    // read, and Save is only disabled by `loadError`. Answering with mojibake
+    // left a buffer the next save wrote straight back over the real file.
+    const kind = await classifyForEditor(fullPath, cleanPath, stat.size);
+    if (kind === 'image') {
       return json({ error: 'Image files are served by /api/fs/raw' }, { status: 400 });
+    }
+    if (kind !== 'text') {
+      return json(
+        { error: unsupportedEditorMessage(kind, stat.size), kind },
+        { status: 415 },
+      );
     }
 
     const content = await file.text();
@@ -267,8 +301,14 @@ export async function readReferencedFile({ request }: LoaderFunctionArgs) {
     if (stat.isDirectory()) {
       return json({ error: 'Cannot read a directory' }, { status: 400 });
     }
-    if (getImageMimeType(filePath)) {
+    // Same classification as `/api/fs/read`: a binary or oversized reference is
+    // refused with its reason rather than handed back as mojibake.
+    const kind = await classifyForEditor(filePath, filePath, stat.size);
+    if (kind === 'image') {
       return json({ error: 'Image files are served by /api/fs/raw' }, { status: 400 });
+    }
+    if (kind !== 'text') {
+      return json({ error: unsupportedEditorMessage(kind, stat.size), kind }, { status: 415 });
     }
     return json({ content: await file.text(), name: path.basename(filePath) });
   } catch (error) {

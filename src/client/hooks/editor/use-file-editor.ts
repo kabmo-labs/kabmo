@@ -4,10 +4,12 @@ import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 import { buildFsRawUrl } from '@/shared/lib/fs/paths';
 import { detectLineEnding, toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
 import { retainKeys } from '@/client/hooks/editor/save-file';
+import { fileHandleFor } from '@/client/lib/launch/file-handlers';
+import { useFileRead } from '@/client/hooks/editor/use-file-read';
 import { useFileTransfer } from '@/client/hooks/editor/use-file-transfer';
 import { useFileWrites } from '@/client/hooks/editor/use-file-writes';
 
-export type FileEditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type FileEditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'needs-permission';
 
 /** The single file a code surface is editing; `id` keys the in-memory cache. */
 export interface FileEditorTarget {
@@ -17,6 +19,8 @@ export interface FileEditorTarget {
   content?: string;
   root?: string;
   repo?: string;
+  /** The live handle a PWA launch opened this file through, when there is one. */
+  handleId?: string;
 }
 
 export interface UseFileEditorOptions {
@@ -52,10 +56,24 @@ export interface UseFileEditorResult {
    */
   loaded: boolean;
   loadError: string | null;
+  /**
+   * The server refused this file as a document (binary, or larger than the
+   * editor opens), with its own sentence. Distinct from `loadError` only in
+   * WORDING — both leave an empty buffer and disable Save — but the difference
+   * is what the user needs: a zip was read fine and is simply not text.
+   */
+  unsupported: string | null;
   saveStatus: FileEditorSaveStatus;
   copied: boolean;
   isDirty: boolean;
   language: string;
+  /**
+   * A handle-backed tab whose live handle is gone — the page reloaded since the
+   * file was launched, and a `FileSystemFileHandle` cannot be persisted. Save
+   * is refused (there is nothing to write through), so the surface says why
+   * instead of showing a button that silently fails.
+   */
+  handleMissing: boolean;
   /** True for raster images: the surface renders `imageUrl`, not `content`. */
   isImage: boolean;
   /** Raw-byte URL of the active image (cache-busted per revision), else null. */
@@ -109,8 +127,6 @@ export function useFileEditor(
    * CRLF file would be rewritten as LF by a one-character edit.
    */
   const [lineEndings, setLineEndings] = useState<Record<string, LineEnding>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<FileEditorSaveStatus>('idle');
   /** Bumped by `reset()` to re-run the read effect for the active file. */
   const [revision, setRevision] = useState(0);
@@ -158,6 +174,22 @@ export function useFileEditor(
   }, []);
 
   /**
+   * The read path lives in its own hook — see `use-file-read.ts` for the two
+   * flags it reports and why the kind refusal is separate from a failed read.
+   */
+  const { isLoading, loadError, unsupported } = useFileRead({
+    target,
+    key,
+    isImage,
+    revision,
+    loadedRef,
+    contentsRef,
+    baselinesRef,
+    pendingRef,
+    remember,
+  });
+
+  /**
    * The write path (debounced autosave, explicit Save, the deleted-file
    * confirmation) lives in its own hook — see `use-file-writes.ts` for why a
    * deleted file is never written back by a timer.
@@ -181,86 +213,12 @@ export function useFileEditor(
       onFileSaved?.();
     },
     onSaveFailed: () => setSaveStatus(reportSaveError ? 'error' : 'idle'),
+    // Not a failure: the buffer is intact and one Save (a real gesture) grants
+    // the access a handle-backed file needs.
+    onNeedsPermission: () => setSaveStatus('needs-permission'),
   });
   const writesRef = useRef(writes);
   writesRef.current = writes;
-
-  // Read the active file once per key. A cancelled guard keeps a late response
-  // from a previous file from overwriting the one now on screen.
-  useEffect(() => {
-    if (!target) return;
-    const fileKey = targetKey(target);
-    if (loadedRef.current.has(fileKey)) return;
-    loadedRef.current.add(fileKey);
-
-    // An image has no text to read: the surface points an <img> at the raw
-    // bytes. Fetching here would only decode them into replacement characters
-    // and paint mojibake, so the key is marked loaded and left bufferless.
-    if (isImage) {
-      setLoadError(null);
-      setIsLoading(false);
-      return;
-    }
-
-    if (target.content !== undefined) {
-      remember(fileKey, target.content);
-      setLoadError(null);
-      return;
-    }
-
-    if (!target.path) {
-      // An attachment chip with no path has nothing to read and nothing to
-      // save; the message is the honest outcome.
-      setLoadError('No file path supplied for this attachment.');
-      return;
-    }
-
-    // Only a key with nothing on screen yet shows the loading state: a
-    // re-read (refreshKey / reset) must not flash a spinner over live content.
-    const firstLoad = contentsRef.current[fileKey] === undefined;
-    let cancelled = false;
-    if (firstLoad) setIsLoading(true);
-    setLoadError(null);
-    const params = new URLSearchParams({ path: target.path });
-    if (target.root) params.set('root', target.root);
-    if (target.repo && target.repo !== '.') params.set('repo', target.repo);
-    fetch(`/api/fs/read?${params.toString()}`)
-      .then(async (res) => {
-        const data = (await res.json().catch(() => null)) as { content?: unknown; error?: string } | null;
-        if (!res.ok || !data || typeof data.content !== 'string') {
-          throw new Error(data?.error || `HTTP ${res.status}`);
-        }
-        return data.content;
-      })
-      .then((text) => {
-        if (cancelled) return;
-        // These bytes were read before the response arrived, so anything typed
-        // since is newer. Applying them would replace those keystrokes (and,
-        // once a refresh is triggered by a save, wipe the editor back to an
-        // empty buffer) — instead let the queued write own the key.
-        const typed = contentsRef.current[fileKey];
-        if (typed !== undefined && typed !== baselinesRef.current[fileKey]) return;
-        const queued = pendingRef.current;
-        if (queued && targetKey(queued.file) === fileKey) return;
-        remember(fileKey, text);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        // A failed re-read keeps what is on screen; only a first load reports.
-        if (!firstLoad) return;
-        // An empty buffer, never a substitute: the next save would write the
-        // substitute over the real file.
-        remember(fileKey, '');
-        setLoadError(err instanceof Error ? err.message : 'Failed to read file');
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [key, target, remember, revision, isImage]);
 
   useEffect(() => {
     if (saveStatus !== 'saved') return;
@@ -323,12 +281,14 @@ export function useFileEditor(
     // hand; otherwise the key's entry exists only once the read resolved.
     loaded: target ? isImage || target.content !== undefined || contents[key] !== undefined : false,
     loadError,
+    unsupported,
     saveStatus,
     copied,
     isDirty,
     language: target ? getLanguageFromPath(target.name) : 'javascript',
     isImage,
     imageUrl,
+    handleMissing: Boolean(target?.handleId) && fileHandleFor(target?.handleId) === null,
     saveNow: writes.saveNow,
     copy,
     download,

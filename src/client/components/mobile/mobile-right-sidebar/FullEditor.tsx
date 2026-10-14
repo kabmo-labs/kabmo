@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { AlertTriangle, Loader2 } from 'lucide-preact';
+import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { ImageViewer } from '@/client/components/common/image-viewer';
@@ -122,6 +122,14 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved }
             <div className="flex items-center justify-center h-full text-ink/40 text-xs gap-2">
               <Loader2 size={14} className="animate-spin" />
               <span>Loading file content...</span>
+            </div>
+          ) : editor.unsupported ? (
+            // Same distinction the desktop pane draws: a file refused for its
+            // KIND was not a failed read, and saying so is the whole point.
+            <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
+              <FileX size={20} className="text-ink/40" />
+              <span className="text-xs text-ink/70 font-sans">{file.name} cannot be opened here</span>
+              <span className="text-[11px] text-ink/50 font-sans max-w-[42ch]">{editor.unsupported}</span>
             </div>
           ) : editor.loadError ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
