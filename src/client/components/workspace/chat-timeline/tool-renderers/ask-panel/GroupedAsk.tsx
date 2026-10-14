@@ -30,10 +30,11 @@
 
 import { useMemo, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { Check, CornerDownLeft } from 'lucide-preact';
+import { CornerDownLeft } from 'lucide-preact';
 import type { ExtensionAskQuestion, ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import type { AskAnswer } from '@/shared/lib/chat/ask-questions';
 import { AnswerList, QuestionCard } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/QuestionCard';
+import { OptionRow } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OptionRow';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 
 interface GroupedAskProps {
@@ -105,30 +106,24 @@ function QuestionRow({
         <AnswerList parts={answerParts(answer)} />
       ) : (
         <>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {question.options.map((option, optionIndex) => {
-              const chosen = draft.selected.includes(option.label);
-              return (
-                <button
-                  key={option.label}
-                  type="button"
-                  disabled={locked}
-                  title={option.description}
-                  onClick={() => onToggle(option.label)}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11.5px] transition-colors disabled:cursor-default ${
-                    chosen
-                      ? 'border-ink bg-ink text-paper'
-                      : 'border-ink/15 text-ink/75 hover:border-ink/35 hover:text-ink'
-                  }`}
-                >
-                  {chosen && <Check size={11} />}
-                  <span>{option.label}</span>
-                  {question.recommended === optionIndex && (
-                    <span className={`font-mono text-[9px] ${chosen ? 'text-paper/70' : 'text-ink/40'}`}>rec</span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Same rows the per-question `select` path draws (`FrameControl`):
+              a full-width option carrying omp's `description` as VISIBLE text.
+              A chip strip put it in a `title` tooltip only, so the tradeoff omp
+              writes for each choice was invisible until hovered — and invisible
+              entirely on a phone. */}
+          <div className="mt-2 space-y-1" role={question.multi === true ? 'group' : 'radiogroup'}>
+            {question.options.map((option, optionIndex) => (
+              <OptionRow
+                key={option.label}
+                label={option.label}
+                description={option.description}
+                multi={question.multi === true}
+                checked={draft.selected.includes(option.label)}
+                suggested={question.recommended === optionIndex}
+                disabled={locked}
+                onClick={() => onToggle(option.label)}
+              />
+            ))}
           </div>
 
           <input

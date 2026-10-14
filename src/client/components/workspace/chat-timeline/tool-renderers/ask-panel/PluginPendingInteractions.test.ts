@@ -119,7 +119,10 @@ function mount(tool: ToolCallData, groups: ExtensionUiDialogRequest[][]): void {
 }
 
 function button(text: string): HTMLElement {
-  const found = [...container.querySelectorAll('button')].find((node) => node.textContent === text);
+  // An option row's text content is its label followed by omp's description
+  // (which is visible text on the row), so an option is matched by its label
+  // prefix. Plain buttons ("Submit answers", "Dismiss") match exactly.
+  const found = [...container.querySelectorAll('button')].find((node) => node.textContent?.startsWith(text));
   if (!found) throw new Error(`no button labelled "${text}" in ${container.innerHTML}`);
   return found as HTMLElement;
 }

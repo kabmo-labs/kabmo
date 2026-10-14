@@ -18,6 +18,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { Check, CornerDownLeft } from 'lucide-preact';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { isOtherOption } from '@/shared/lib/chat/ask-questions';
+import { OptionRow } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OptionRow';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 
 interface FrameControlProps {
@@ -116,41 +117,19 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
         // A single-choice question resolves "Other" to the typed text, so the
         // row itself is a prompt to type — never a literal answer.
         if (!multi && isOtherOption(label)) return null;
-        const description = details[index]?.description;
         const checked = multi && selected.includes(label);
         const finish = multi && DONE_ROW.test(label);
         return (
-          <button
+          <OptionRow
             key={label}
-            type="button"
+            label={label}
+            description={details[index]?.description}
+            multi={multi}
+            checked={checked}
+            suggested={RECOMMENDED.test(label) && !multi}
+            emphasis={finish}
             onClick={() => (multi ? (finish ? onRespond({ value: label }) : onToggle(label)) : onAnswer(label))}
-            className={`flex w-full cursor-pointer items-start gap-2 rounded-md border px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
-              checked
-                ? 'border-ink/30 bg-ink/5 text-ink'
-                : finish
-                  ? 'border-ink/20 bg-canvas/60 font-medium text-ink hover:border-ink/40'
-                  : 'border-ink/8 bg-canvas/30 text-ink/80 hover:border-ink/25 hover:bg-ink/5 hover:text-ink'
-            }`}
-          >
-            <span
-              className={`mt-1 h-3 w-3 shrink-0 ${multi ? 'rounded-[3px]' : 'rounded-full'} border ${
-                checked ? 'border-ink bg-ink' : 'border-ink/30'
-              }`}
-            />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="truncate">{label}</span>
-                {RECOMMENDED.test(label) && !multi && (
-                  <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-ink/45">
-                    Suggested
-                  </span>
-                )}
-              </span>
-              {description && (
-                <span className="mt-0.5 block text-[10.5px] leading-relaxed text-ink/50">{description}</span>
-              )}
-            </span>
-          </button>
+          />
         );
       })}
 

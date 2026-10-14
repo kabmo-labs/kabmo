@@ -244,8 +244,24 @@ async function runAsk(text: string) {
   const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
   const questions = [
-    { id: 'q1', question: text, options: [{ label: 'Yes' }, { label: 'No' }], multi: false },
-    { id: 'q2', question: `${text} — which ones?`, options: [{ label: 'Alpha' }, { label: 'Beta' }], multi: true },
+    {
+      id: 'q1',
+      question: text,
+      options: [
+        { label: 'Yes', description: 'Go ahead with it' },
+        { label: 'No', description: 'Leave it alone' },
+      ],
+      multi: false,
+    },
+    {
+      id: 'q2',
+      question: `${text} — which ones?`,
+      options: [
+        { label: 'Alpha', description: 'The first one' },
+        { label: 'Beta', description: 'The second one' },
+      ],
+      multi: true,
+    },
   ];
   const args = { questions };
   const block = { type: 'toolCall', id: callId, name: 'ask', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };

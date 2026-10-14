@@ -43,9 +43,17 @@ test.describe('ask tool', () => {
     await expect(page.getByText('Choose a flavour').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Choose a flavour — which ones?')).toBeVisible();
 
-    // Pick one answer on each question, then submit the grouped dialog.
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
-    await page.getByRole('button', { name: 'Alpha', exact: true }).click();
+    // omp's own `description` for each choice is VISIBLE text on the row, not a
+    // hover tooltip: its ask prompt puts the tradeoff there, so a chip that hid
+    // it asked the user to pick blind (and a phone can never hover).
+    await expect(page.getByText('Go ahead with it')).toBeVisible();
+    await expect(page.getByText('The second one')).toBeVisible();
+
+    // Pick one answer on each question, then submit the grouped dialog. The
+    // option row's accessible name carries its description too (that is the
+    // point of the fix above), so these match on the label's prefix.
+    await page.getByRole('button', { name: /^Yes\b/ }).click();
+    await page.getByRole('button', { name: /^Alpha\b/ }).click();
     await page.getByRole('button', { name: 'Submit answers' }).click();
 
     // The answers must read back as their own rows, stacked — not one sideways

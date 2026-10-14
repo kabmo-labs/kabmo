@@ -109,4 +109,31 @@ describe('grouped ask frame end to end', () => {
     expect(rows).toEqual(['red', 'green', 'm', 'a typed answer']);
     expect(container.innerHTML).not.toContain('flex-wrap items-center gap-1.5');
   });
+
+  test("omp's option description is VISIBLE text, not a hover tooltip", () => {
+    // The reported symptom: the grouped card drew each option as a chip whose
+    // only description was a `title` attribute, so the tradeoff omp writes for
+    // every choice ("short labels, tradeoffs in `description`" is its own ask
+    // prompt) was invisible until hovered — and invisible entirely on a phone.
+    // Both ask shapes share `OptionRow`, so this is the per-question path's
+    // behaviour too; it is pinned once, on the card that drifted.
+    const DESCRIBED: ExtensionUiDialogRequest = {
+      ...GROUPED,
+      questions: [
+        {
+          id: 'q1',
+          question: 'Pick colors',
+          options: [
+            { label: 'red', description: 'the warm one' },
+            { label: 'green', description: 'the cool one' },
+          ],
+        },
+      ],
+    };
+    paint([DESCRIBED]);
+
+    expect(container.textContent).toContain('the warm one');
+    expect(container.textContent).toContain('the cool one');
+    expect(container.querySelector('[title="the warm one"]')).toBeNull();
+  });
 });
