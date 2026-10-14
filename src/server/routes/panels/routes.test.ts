@@ -26,9 +26,8 @@
  * whether the guard works.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { loader as bundleLoader } from '@/server/routes/panels/bundle';
@@ -37,61 +36,9 @@ import { loader as readmeLoader } from '@/server/routes/panels/readme';
 import { action as installAction } from '@/server/routes/panels/install';
 import { discoverPanelPlugins, getMarketplacePluginsDir, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { setPluginEnabled } from '@/server/lib/panels/state.server';
-import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { call, dirs, post, usePanelRouteFixtures, writePlugin } from '@/server/routes/panels/panel-routes.test-util';
 
-const MANIFEST = { id: 'demo', name: 'Demo', version: '1.0.0', app: 'dist/app.js', icon: 'icon.svg' };
-
-let root = '';
-let bundled = '';
-
-/** A plugin directory with a bundle, an icon and a README. */
-function writePlugin(dirName: string, dir: string, manifest: unknown = MANIFEST): string {
-  const pluginDir = join(dir, dirName);
-  fs.mkdirSync(join(pluginDir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(pluginDir, 'ompchamber.json'), JSON.stringify(manifest));
-  fs.writeFileSync(join(pluginDir, 'dist', 'app.js'), 'export default {};');
-  fs.writeFileSync(join(pluginDir, 'icon.svg'), '<svg></svg>');
-  fs.writeFileSync(join(pluginDir, 'README.md'), '# Demo\n\nHello.');
-  return pluginDir;
-}
-
-/** Call a loader with path params, as the router would. */
-function call(loader: (args: never) => unknown, params: Record<string, string>) {
-  return loader({ params, request: new Request('http://local/') } as never) as Promise<Response>;
-}
-
-/** POST a JSON body to an action, as the router would. */
-function post(action: (args: never) => unknown, body: unknown) {
-  return action({
-    request: new Request('http://local/api/panels/install', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
-    params: {},
-  } as never) as Promise<Response>;
-}
-
-beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'omc-panel-routes-'));
-  bundled = fs.mkdtempSync(join(tmpdir(), 'omc-panel-store-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
-  process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = bundled;
-  // A database of this suite's own, BEFORE the first scan: the scan reads the
-  // disabled set, and a path set while a cached handle exists is never read —
-  // which is how an earlier version of this file wrote into the real install.
-  isolateDb();
-  invalidatePanelScan();
-});
-
-afterEach(() => {
-  releaseDb();
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
-  delete process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
-  invalidatePanelScan();
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.rmSync(bundled, { recursive: true, force: true });
-});
+usePanelRouteFixtures();
 
 describe('the bundle route', () => {
   test('serves the built module as javascript', async () => {
@@ -199,9 +146,9 @@ describe('the install route', () => {
     // The reported state: the catalog names a directory that is not there, so
     // the scan rejects it and the pane has a dead-end row.
     writePlugin('other', getMarketplacePluginsDir());
-    fs.mkdirSync(root, { recursive: true });
+    fs.mkdirSync(dirs.root, { recursive: true });
     fs.writeFileSync(
-      join(root, 'marketplace.json'),
+      join(dirs.root, 'marketplace.json'),
       JSON.stringify({
         name: 'OMPChamber',
         plugins: [
@@ -221,7 +168,7 @@ describe('the install route', () => {
     // read that could race the write.
     expect(body.errors).toEqual([]);
 
-    const catalog = JSON.parse(fs.readFileSync(join(root, 'marketplace.json'), 'utf8')) as {
+    const catalog = JSON.parse(fs.readFileSync(join(dirs.root, 'marketplace.json'), 'utf8')) as {
       name: string;
       plugins: Array<{ source: string }>;
     };
@@ -238,9 +185,9 @@ describe('the install route', () => {
     // The repair for a MISSING directory must not become a delete: only the
     // remove action may touch files.
     const dir = writePlugin('demo', getMarketplacePluginsDir());
-    fs.mkdirSync(root, { recursive: true });
+    fs.mkdirSync(dirs.root, { recursive: true });
     fs.writeFileSync(
-      join(root, 'marketplace.json'),
+      join(dirs.root, 'marketplace.json'),
       JSON.stringify({ plugins: [{ name: 'demo', source: 'plugins/demo' }] }),
     );
 
@@ -256,7 +203,7 @@ describe('the bundled store is reachable', () => {
   test('an uninstalled store plugin serves its icon and README', async () => {
     // The store card has to draw the mark and open the details BEFORE the plugin
     // is installed — that is the entire purpose of the button.
-    writePlugin('offer', join(bundled, 'plugins'));
+    writePlugin('offer', join(dirs.bundled, 'plugins'));
     invalidatePanelScan();
 
     const payload = await discoverPanelPlugins();
@@ -272,8 +219,8 @@ describe('the bundled store is reachable', () => {
   test('the WORKING copy wins when a plugin exists in both', async () => {
     // Otherwise an installed plugin would keep showing the shipped icon after the
     // user replaced it.
-    writePlugin('demo', join(bundled, 'plugins'));
-    fs.writeFileSync(join(bundled, 'plugins', 'demo', 'README.md'), '# From the store');
+    writePlugin('demo', join(dirs.bundled, 'plugins'));
+    fs.writeFileSync(join(dirs.bundled, 'plugins', 'demo', 'README.md'), '# From the store');
 
     const installed = writePlugin('demo', getMarketplacePluginsDir());
     fs.writeFileSync(join(installed, 'README.md'), '# From the working copy');

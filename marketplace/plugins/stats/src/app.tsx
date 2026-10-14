@@ -75,10 +75,31 @@ function StatsPanel() {
   // in-flight flag — the RPC call's own `pending` is the honest spinner.
   const refreshing = sample.pending;
 
+  // The arm attempt is also the LIVENESS probe: a plugin whose server half is
+  // not loaded answers this route with a 404, which the kit reports as
+  // `plugin_not_loaded`. That is the state a plugin installed into a running
+  // chamber sits in until its server half loads — and the reason this panel
+  // used to open on "No sample yet." with nothing on screen to explain it.
+  const serverDown = watch.error?.code === 'plugin_not_loaded';
+
+  if (!snapshot && serverDown) {
+    return (
+      <Panel title="Stats">
+        <div class="flex flex-col gap-2 p-2">
+          <Note tone="error">The Stats server half is not running, so nothing is being measured.</Note>
+          <Note>
+            It loads at chamber startup. If you just installed or updated this plugin, restart OMPChamber — a fresh
+            start loads it. If it is already running, check the plugin is enabled in Settings → Panel Plugins.
+          </Note>
+        </div>
+      </Panel>
+    );
+  }
+
   if (!snapshot) {
     return (
       <Panel title="Stats">
-        <Empty>{realtime.isLoading ? 'Sampling the process table…' : 'No sample yet.'}</Empty>
+        <Empty>Sampling the process table…</Empty>
       </Panel>
     );
   }

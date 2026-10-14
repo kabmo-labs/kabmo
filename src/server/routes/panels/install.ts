@@ -27,6 +27,40 @@ import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/r
 import { installPanelPluginFromBundled, installPanelPluginFromGit, removePanelPlugin } from '@/server/lib/panels/install.server';
 import { forgetCatalogEntry } from '@/server/lib/panels/catalog.server';
 import { setPluginEnabled } from '@/server/lib/panels/state.server';
+import { disposePlugin, loadPluginServer, notePluginLoadFailure } from '@/server/lib/plugins/loader.server';
+
+/**
+ * Bring a plugin's SERVER half in line with its on-disk state, now.
+ *
+ * The server half is otherwise loaded once at boot (`loadPluginServers` in the
+ * entry), so installing or switching a plugin on used to leave its routes, RPC
+ * methods and realtime topic unregistered until the process restarted — a panel
+ * that installed cleanly and then answered "no plugin is loaded", or a Stats
+ * panel stuck on "No sample yet." with nothing on screen to explain it.
+ *
+ * Never throws: a plugin whose server half cannot load is a plugin whose PANEL
+ * still works, and the failure is recorded through `notePluginLoadFailure` —
+ * the same list `GET /api/plugins/state` serves to the pane — so the reader
+ * sees WHY. Folding it into a 400 here would hide a successful install behind
+ * an unrelated fault.
+ */
+async function syncPluginServer(pluginId: string, enabled: boolean): Promise<void> {
+  try {
+    if (enabled) {
+      await loadPluginServer(pluginId);
+      // A later success clears an earlier failure, or the pane would keep
+      // reporting a fault the user has already fixed.
+      notePluginLoadFailure(pluginId, null);
+      return;
+    }
+    await disposePlugin(pluginId);
+    notePluginLoadFailure(pluginId, null);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    notePluginLoadFailure(pluginId, reason);
+    console.error(`[plugins] ${pluginId}: server half ${enabled ? 'load' : 'unload'} failed — ${reason}`);
+  }
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params: {} });
@@ -50,12 +84,19 @@ export async function action({ request }: ActionFunctionArgs) {
     // 200 with the whole payload — the plugin IS there, and the payload's own
     // errors list carries what went wrong with the catalog.
     if (!result.ok) return json({ error: result.error, ...(await discoverPanelPlugins()) }, { status: 400 });
+    // The files are on disk; make them live before answering, so the panel the
+    // user opens next is the one that was just installed.
+    if (result.pluginId) await syncPluginServer(result.pluginId, true);
     return json({ ok: true, pluginId: result.pluginId, ...(await discoverPanelPlugins()) });
   }
 
   if (type === 'remove') {
     const pluginId = typeof body.pluginId === 'string' ? body.pluginId.trim() : '';
     if (!pluginId) return json({ error: 'A plugin id is required.' }, { status: 400 });
+    // Unload BEFORE the files go: the module is already imported and its
+    // registrations are live, and a disposer that reads its own bundle would
+    // otherwise race the removal.
+    await syncPluginServer(pluginId, false);
     const result = await removePanelPlugin(pluginId);
     // A removed plugin's disabled flag would otherwise outlive it and switch off
     // a future reinstall of the same id.
@@ -86,10 +127,14 @@ export async function action({ request }: ActionFunctionArgs) {
   if (type === 'enable' || type === 'disable') {
     const pluginId = typeof body.pluginId === 'string' ? body.pluginId.trim() : '';
     if (!pluginId) return json({ error: 'A plugin id is required.' }, { status: 400 });
-    await setPluginEnabled(pluginId, type === 'enable');
+    const enabled = type === 'enable';
+    await setPluginEnabled(pluginId, enabled);
     // The scan publishes a plugin's panels only while it is on, so the cached
     // scan is stale the moment the flag moves.
     invalidatePanelScan();
+    // Enablement gates the server half too: a disabled plugin must stop
+    // answering its routes and RPC methods, and a re-enabled one must resume.
+    await syncPluginServer(pluginId, enabled);
     return json({ ok: true, ...(await discoverPanelPlugins()) });
   }
 

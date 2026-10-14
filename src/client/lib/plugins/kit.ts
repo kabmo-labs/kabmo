@@ -85,6 +85,17 @@ async function callRpc(pluginId: string, method: string, input: unknown): Promis
     });
     const body = (await response.json().catch(() => null)) as PluginRpcOutcome | null;
     if (body && typeof body === 'object' && 'ok' in body) return body;
+    // A 404 on the ROUTE (not a method the plugin answered) means no plugin by
+    // this id is loaded on the server. That is the exact state a plugin
+    // installed into a running chamber is in until its server half loads, and
+    // naming it lets a panel say so instead of reporting "watch answered 404"
+    // — which reads as a broken plugin rather than one that is not live yet.
+    if (response.status === 404) {
+      return {
+        ok: false,
+        error: { code: 'plugin_not_loaded', message: `no plugin "${pluginId}" is loaded on the server` },
+      };
+    }
     return { ok: false, error: { code: 'bad_response', message: `${method} answered ${response.status}` } };
   } catch (cause) {
     return {

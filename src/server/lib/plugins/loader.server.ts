@@ -82,6 +82,25 @@ export function pluginLoadErrors(): PluginLoadError[] {
   return globalThis.__ompChamberPluginLoadErrors ?? [];
 }
 
+/**
+ * Record — or clear — a plugin's load failure, for the pane's error list.
+ *
+ * `loadPluginServers` writes this list once at boot, but a plugin is also loaded
+ * and unloaded at RUNTIME (the install route syncs a plugin's server half the
+ * moment it is installed or switched on). Without this, a runtime failure had no
+ * reader: the load threw, the route logged it, and `GET /api/plugins/state`
+ * still answered the boot-time list — so the pane showed nothing.
+ *
+ * A `null` reason CLEARS the entry, which is what makes a later success stop
+ * being reported as a failure (a plugin fixed by a rebuild, or re-enabled after
+ * a transient fault). The list is keyed by plugin id, so this is an upsert.
+ */
+export function notePluginLoadFailure(pluginId: string, reason: string | null): void {
+  const current = globalThis.__ompChamberPluginLoadErrors ?? [];
+  const without = current.filter((entry) => entry.pluginId !== pluginId);
+  globalThis.__ompChamberPluginLoadErrors = reason === null ? without : [...without, { pluginId, reason }];
+}
+
 /** The API as it stands, or undefined when the plugin is not loaded. */
 export function loadedPlugin(pluginId: string): LoadedPlugin | undefined {
   return loaded().get(pluginId);
