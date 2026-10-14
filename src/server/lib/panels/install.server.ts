@@ -26,6 +26,7 @@ import { mkdir, rename, rm, cp } from 'fs/promises';
 import { join } from 'path';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { gitRun, firstLine } from '@/server/lib/wiki/git';
+import { isGitUrl, repoSlug } from '@/shared/lib/git/url';
 import { toManifest } from '@/server/lib/panels/manifest';
 import { buildPanelPlugin } from '@/server/lib/panels/build.server';
 import { appendCatalogEntry, pruneCatalogEntry } from '@/server/lib/panels/catalog.server';
@@ -47,32 +48,6 @@ export interface InstallResult {
   /** The directory the plugin was installed into. */
   dir?: string;
   error?: string;
-}
-
-/**
- * A source `git clone` accepts: an https/ssh URL, the `git@host:path` scp form,
- * or a local path / `file://` URL.
- *
- * The local forms are allowed deliberately. `git clone` treats them as
- * first-class, and the chamber already gives the user a real shell in the
- * terminal panel — so a local clone grants nothing that was not already
- * reachable, while making an offline install and a test repository work.
- */
-export function isGitUrl(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed || /\s/.test(trimmed)) return false;
-  if (/^https?:\/\/\S+$/i.test(trimmed)) return true;
-  if (/^ssh:\/\/\S+$/i.test(trimmed)) return true;
-  if (/^git@[^:/\s]+:\S+$/.test(trimmed)) return true;
-  if (/^file:\/\/\S+$/i.test(trimmed)) return true;
-  if (trimmed.startsWith('/') || trimmed.startsWith('~')) return true;
-  return false;
-}
-
-/** Strip a `.git` suffix and any trailing slash, for a readable temp name. */
-function repoSlug(url: string): string {
-  const tail = url.replace(/[/\\]+$/, '').split(/[/:]/).pop() ?? 'plugin';
-  return tail.replace(/\.git$/i, '').replace(/[^a-z0-9._-]/gi, '-') || 'plugin';
 }
 
 /**

@@ -121,7 +121,12 @@ export function collectConsoleErrors(page: Page): string[] {
  * "Later" button appears, which is also what makes it correct on a reload.
  */
 export async function installOverlayHandler(page: Page): Promise<void> {
-  await page.addLocatorHandler(page.getByRole('button', { name: 'Later' }), async (button) => {
+  // `exact: true` is load-bearing. `getByRole(name:)` matches a SUBSTRING by
+  // default, so a plain `'Later'` also matched any other button whose name
+  // contains it — measured: a workspace row named `appeared-later` was matched
+  // and the handler CLICKED it, navigating the dialog into that folder and
+  // making the row vanish. The popup's own button is exactly "Later".
+  await page.addLocatorHandler(page.getByRole('button', { name: 'Later', exact: true }), async (button) => {
     await button.click();
   });
 }

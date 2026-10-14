@@ -152,19 +152,6 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     setCurrentScreen('main');
   };
 
-  const handleCreateFolder = async (input: { name: string; path?: string }) => {
-    const res = await fetch('/api/folders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || `HTTP ${res.status}`);
-    }
-    window.location.reload();
-  };
-
   const handleOpenFile = useCallback((file: any) => {
     const rawPath = (file?.path || '').replace(/^\/+/, '');
     const name = file?.name || rawPath.split('/').pop() || 'file';
@@ -198,7 +185,6 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
           onNewSessionForFolder={handleNewSessionForFolder}
-          onCreateFolder={handleCreateFolder}
           onClose={() => setCurrentScreen('main')}
           onDesktopToggle={onDesktopToggle}
           appSettings={appSettings}

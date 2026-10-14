@@ -16,6 +16,7 @@ import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
+import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
 export function SessionSidebar({ className = '', onClose, appSettings = {}, streamStatus }: { className?: string, onClose?: () => void, appSettings?: Record<string, any>, streamStatus?: AgentStreamStatus }) {
@@ -175,18 +176,8 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
       <NewWorkspaceModal
         isOpen={newWorkspaceOpen}
         onClose={() => setNewWorkspaceOpen(false)}
-        onCreate={async ({ name, path }) => {
-          const res = await fetch('/api/folders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, path }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.success) {
-            throw new Error(data.error || `HTTP ${res.status}`);
-          }
-          window.location.reload();
-        }}
+        onCreate={createWorkspaceFolder}
+        onClone={cloneWorkspaceFolder}
       />
 
       {/* Scheduler Modal */}

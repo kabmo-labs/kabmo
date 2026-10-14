@@ -13,19 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { FormEvent } from 'preact/compat';
 import { ChevronRight, Folder, FolderOpen, Home, Loader2, RefreshCw, X } from 'lucide-preact';
-
-interface DirectoryEntry {
-  name: string;
-  path: string;
-}
-
-interface BrowseResponse {
-  path?: string;
-  parentPath?: string | null;
-  directories?: DirectoryEntry[];
-  error?: string;
-  code?: string;
-}
+import { fetchDirectories, type DirectoryEntry } from '@/shared/lib/fs/browse';
 
 interface FolderPickerProps {
   /** The folder to start browsing from (defaults to home). */
@@ -36,15 +24,11 @@ interface FolderPickerProps {
   onClose: () => void;
 }
 
-async function browse(path?: string): Promise<BrowseResponse> {
-  const query = path ? `?path=${encodeURIComponent(path)}` : '';
-  const res = await fetch(`/api/fs/browse${query}`);
-  const data = (await res.json()) as BrowseResponse;
-  if (!res.ok || data.error) {
-    throw new Error(data.error || `HTTP ${res.status}`);
-  }
-  return data;
-}
+/**
+ * `/api/fs/browse` is read through the shared fetcher (`@/shared/lib/fs/browse`)
+ * rather than a local one, because the New Workspace modal renders the same
+ * listing and a second copy of the response shape is how the two drift.
+ */
 
 export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerProps) {
   const [currentPath, setCurrentPath] = useState(initialPath ?? '');
@@ -60,7 +44,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
     setLoading(true);
     setError(null);
     try {
-      const data = await browse(target);
+      const data = await fetchDirectories(target);
       setCurrentPath(data.path ?? target ?? '');
       setParentPath(data.parentPath ?? null);
       setPathInput(data.path ?? target ?? '');

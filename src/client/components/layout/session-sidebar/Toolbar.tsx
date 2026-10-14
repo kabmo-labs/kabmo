@@ -49,7 +49,15 @@ export function SessionSidebarToolbar({
     <div className="p-3 border-b border-ink/10 flex flex-col space-y-3">
       <div className="flex items-center justify-between px-1 text-ink/60">
         <div className="flex space-x-3 items-center">
-          <FolderPlus size={14} className="hover:text-ink cursor-pointer"  onClick={onNewWorkspace} />
+          <button
+            type="button"
+            title="New Workspace"
+            aria-label="New Workspace"
+            onClick={onNewWorkspace}
+            className="inline-flex cursor-pointer bg-transparent border-0 p-0 text-ink/60 hover:text-ink transition-colors"
+          >
+            <FolderPlus size={14} />
+          </button>
           <button
             type="button"
             title={scheduledCount > 0 ? `Scheduled tasks (${scheduledCount} armed)` : 'Scheduled tasks'}

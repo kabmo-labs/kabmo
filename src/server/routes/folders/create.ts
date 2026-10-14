@@ -16,19 +16,24 @@
  *
  * The path must exist and be a directory; no project discovery is implied —
  * the user explicitly chooses what to add.
+ *
+ * The insert lives in `lib/workspace/register-folder.server.ts`, shared with
+ * `POST /api/folders/clone`: both paths owe the same tombstone cleanup, watcher
+ * sync and sidebar signal. The directory is validated BEFORE the name
+ * collision is checked, so a path that does not exist is reported as such
+ * rather than as a duplicate of whatever name it would have derived.
  */
 
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { basename, resolve } from 'path';
+import { resolve } from 'path';
 import { homedir } from 'os';
 import { getDb } from '@/server/db.server';
-import { projectPathKey } from '@/server/lib/omp/core/paths';
-import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
-import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { defaultFolderName, registerWorkspaceFolder } from '@/server/lib/workspace/register-folder.server';
 
-function expandHome(value: string): string {
+/** `~` and `~/x` expanded against the OS home, then made absolute. */
+export function expandHome(value: string): string {
   if (value === '~') return homedir();
   if (value.startsWith('~/')) return resolve(homedir(), value.slice(2));
   return resolve(value);
@@ -49,16 +54,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const rawName = typeof body.name === 'string' ? body.name.trim() : '';
   const rawPath = typeof body.path === 'string' ? body.path.trim() : '';
 
-  const db = await getDb();
-
-  // Existing-name guard (case-insensitive) so the sidebar list stays unique.
-  const dup = await db.get('SELECT id FROM workspace_folders WHERE lower(name) = lower(?)', [
-    rawName || basename(expandHome(rawPath || '~')).toLowerCase(),
-  ]);
-  if (dup) {
-    return json({ error: 'A workspace with this name already exists', code: 'duplicate_name' }, { status: 400 });
-  }
-
   let name = rawName;
   let projectPath: string | null = null;
 
@@ -72,36 +67,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return json({ error: `Directory does not exist: ${rawPath}`, code: 'directory_not_found' }, { status: 400 });
     }
     projectPath = candidate;
-    if (!name) name = basename(candidate).toLowerCase();
+    if (!name) name = defaultFolderName(candidate);
   }
 
   if (!name) {
     return json({ error: 'Workspace name is required', code: 'name_required' }, { status: 400 });
   }
 
-  if (projectPath) {
-    // Tombstones may hold the unresolved spelling of the same directory, so
-    // clear by canonical key instead of an exact string match.
-    const stale = await db.all('SELECT project_path FROM deleted_workspaces');
-    const target = projectPathKey(projectPath);
-    for (const row of stale) {
-      if (typeof row.project_path !== 'string') continue;
-      if (projectPathKey(row.project_path) !== target) continue;
-      await db.run('DELETE FROM deleted_workspaces WHERE project_path = ?', [row.project_path]);
-    }
+  const db = await getDb();
+  const result = await registerWorkspaceFolder(db, { name, projectPath });
+  if (!result.ok) {
+    return json({ error: result.error, code: result.code }, { status: 400 });
   }
 
-  const result = await db.run(
-    'INSERT INTO workspace_folders (name, is_expanded, project_path) VALUES (?, 1, ?)',
-    [name, projectPath],
-  );
-
-  // A new workspace brings its own `.omp/skills` into scope, so the discovery
-  // watcher set has to grow with it — otherwise a skill created there stays
-  // invisible to a live session until the server restarts.
-  void syncDiscoveryRootsWatch();
-  // The sidebar lists workspaces, so a new folder is a structure change.
-  emitRealtimeSignal('sidebar-structure');
-
-  return json({ success: true, folder: { id: result.lastID, name, project_path: projectPath } });
+  return json({ success: true, folder: { id: result.id, name: result.name, project_path: projectPath } });
 }

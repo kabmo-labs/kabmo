@@ -14,6 +14,7 @@ import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
+import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
 
 interface MobileSessionSidebarProps {
@@ -21,7 +22,6 @@ interface MobileSessionSidebarProps {
   onSelectSession: (id: number | string) => void;
   onNewSession: () => void;
   onNewSessionForFolder: (folderId: number) => void;
-  onCreateFolder: (input: { name: string; path?: string }) => Promise<void> | void;
   onClose: () => void;
   onDesktopToggle?: () => void;
   appSettings?: Record<string, any>;
@@ -32,7 +32,6 @@ export function MobileSessionSidebar({
   onSelectSession,
   onNewSession,
   onNewSessionForFolder,
-  onCreateFolder,
   onClose,
   onDesktopToggle,
   appSettings = {}
@@ -182,7 +181,8 @@ export function MobileSessionSidebar({
       <NewWorkspaceModal
         isOpen={newWorkspaceOpen}
         onClose={() => setNewWorkspaceOpen(false)}
-        onCreate={onCreateFolder}
+        onCreate={createWorkspaceFolder}
+        onClone={cloneWorkspaceFolder}
       />
       <SchedulerModal
         isOpen={schedulerOpen}

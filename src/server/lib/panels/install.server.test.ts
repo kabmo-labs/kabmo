@@ -23,7 +23,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { discoverPanelPlugins, getMarketplaceCatalogPath, invalidatePanelScan } from '@/server/lib/panels/registry.server';
-import { installPanelPluginFromGit, isGitUrl } from '@/server/lib/panels/install.server';
+import { installPanelPluginFromGit } from '@/server/lib/panels/install.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 
 let root = '';
@@ -93,26 +93,6 @@ afterEach(() => {
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(work, { recursive: true, force: true });
-});
-
-describe('isGitUrl', () => {
-  test('accepts the three forms git clone understands', () => {
-    expect(isGitUrl('https://github.com/a/b.git')).toBe(true);
-    expect(isGitUrl('ssh://git@host/a/b.git')).toBe(true);
-    expect(isGitUrl('git@github.com:a/b.git')).toBe(true);
-  });
-
-  test('accepts a local path and a file:// URL, which git clone also accepts', () => {
-    expect(isGitUrl('/tmp/repo')).toBe(true);
-    expect(isGitUrl('~/repos/panel')).toBe(true);
-    expect(isGitUrl('file:///tmp/repo')).toBe(true);
-  });
-
-  test('refuses a bare name, an empty string and one with whitespace', () => {
-    expect(isGitUrl('some-plugin')).toBe(false);
-    expect(isGitUrl('   ')).toBe(false);
-    expect(isGitUrl('https://a b/c')).toBe(false);
-  });
 });
 
 describe('seedDefaultMarketplace', () => {
