@@ -5,6 +5,12 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.15.1](https://github.com/rajebdev/ompchamber/compare/v4.15.0...v4.15.1) — 2026-10-14
+
+### Fixed
+
+* **git:** a merge that stops on a conflict is a result, not a failure ([e6486a5](https://github.com/rajebdev/ompchamber/commit/e6486a5826b0105a223d08e45e535172772f1511))
+
 ## [4.15.0](https://github.com/rajebdev/ompchamber/compare/v4.14.0...v4.15.0) — 2026-10-14
 
 ### Added
