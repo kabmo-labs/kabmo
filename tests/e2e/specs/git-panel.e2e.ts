@@ -146,6 +146,13 @@ test.describe('Source Control — merge conflicts', () => {
     // the chamber's own repository.
     await openGitPanel(page, server, repo);
     await gitAction(server, repo, { actionType: 'merge_branch', branch: 'feature' });
+    // Wait for git's OWN state to report the merge before reloading. The merge
+    // action resolves when the command exits, but the panel reads its state from
+    // the realtime topic, which republishes on a coalesced schedule — a reload
+    // issued in that window rebuilt the panel from a snapshot taken before the
+    // merge, so the operation bar was absent and the spec failed. Waiting on the
+    // condition (not a duration) is what makes it deterministic.
+    await waitUntil(async () => (await readState(server, repo)).operation === 'merge');
     // The panel re-reads from the realtime topic; reload so the operation bar
     // is rendered from the state the merge just produced.
     await page.reload();
@@ -176,6 +183,9 @@ test.describe('Source Control — merge conflicts', () => {
 
     await openGitPanel(page, server, repo);
     await gitAction(server, repo, { actionType: 'merge_branch', branch: 'feature' });
+    // Same race as the conflict spec: wait for git's own state before reloading,
+    // or the panel rebuilds from a snapshot taken before the merge.
+    await waitUntil(async () => (await readState(server, repo)).operation === 'merge');
     await page.reload();
     await showSourceControl(page);
 
@@ -210,6 +220,8 @@ test.describe('Source Control — merge conflicts', () => {
 
     await openGitPanel(page, server, repo);
     await gitAction(server, repo, { actionType: 'merge_branch', branch: 'feature' });
+    // Wait for git's own state before reloading — see the conflict spec.
+    await waitUntil(async () => (await readState(server, repo)).operation === 'merge');
     await page.reload();
     await showSourceControl(page);
     // The merge was driven through the API, so the panel learns of it from the
@@ -236,6 +248,8 @@ test.describe('Source Control — merge conflicts', () => {
 
     await openGitPanel(page, server, repo);
     await gitAction(server, repo, { actionType: 'rebase_commit', hash: repo.git('rev-parse', 'feature').trim() });
+    // Wait for git's own state before reloading — a rebase reads as `rebase`.
+    await waitUntil(async () => (await readState(server, repo)).operation === 'rebase');
     await page.reload();
     await showSourceControl(page);
     // The bar names the operation it found — a rebase, not a merge.
