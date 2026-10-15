@@ -56,7 +56,9 @@ afterAll(() => {
 const PLUGIN_ID = 'plugin-under-test';
 
 /** Render the plugin's right panel the way the host does. */
-async function renderStatsPanel(harness: FakeChamberHarness): Promise<{ text: string; unmount: () => void }> {
+async function renderStatsPanel(
+  harness: FakeChamberHarness,
+): Promise<{ text: string; html: string; unmount: () => void }> {
   const registration = harness.registrations.rightPanel;
   if (!registration) throw new Error('the plugin registered no right panel');
   configureUiKit(harness.services);
@@ -85,6 +87,7 @@ async function renderStatsPanel(harness: FakeChamberHarness): Promise<{ text: st
 
   return {
     text: container.textContent ?? '',
+    html: container.innerHTML ?? '',
     unmount() {
       act(() => render(null, container));
       container.remove();
@@ -97,9 +100,30 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
     sampledAt: Date.now(),
     probe: { name: 'fake', supported: true },
     rows: [
-      { pid: 1, ppid: 0, category: 'chamber', command: 'index.ts', rss: 2 * 1024 * 1024, cpuPercent: 1.5, threads: 4 },
+      {
+        pid: 1,
+        ppid: 0,
+        title: 'OMPChamber server',
+        detail: 'the server itself · 1m',
+        groupKey: 'chamber',
+        depth: 0,
+        rss: 2 * 1024 * 1024,
+        cpuPercent: 1.5,
+        threads: 4,
+      },
     ],
-    totals: [{ category: 'chamber', processes: 1, rss: 2 * 1024 * 1024, cpuPercent: 1.5 }],
+    groups: [
+      {
+        key: 'chamber',
+        kind: 'chamber',
+        ownerPid: 1,
+        title: 'OMPChamber server',
+        detail: 'the server itself · 1m',
+        processes: 1,
+        rss: 2 * 1024 * 1024,
+        cpuPercent: 1.5,
+      },
+    ],
     total: { processes: 1, rss: 2 * 1024 * 1024, cpuPercent: 1.5 },
     machine: { totalMemBytes: 8 * 1024 ** 3, freeMemBytes: 1024 ** 3, cpuCount: 8, loadPerCore: 0.1 },
     daemons: [],
@@ -127,6 +151,19 @@ async function textFor(options: { live?: boolean; publish?: StatsSnapshot } = {}
   return text;
 }
 
+/** The rendered MARKUP, for assertions about classes rather than text. */
+async function htmlFor(options: { live?: boolean; publish?: StatsSnapshot } = {}): Promise<string> {
+  const { harness } = loadPluginApp(pluginDefinition);
+  if (options.live) harness.services.rpc.stub('watch', { watching: 1 });
+  if (options.publish) harness.services.publishTopic(options.publish);
+  const rendered = await renderStatsPanel(harness);
+  const html = rendered.html;
+  rendered.unmount();
+  harness.dispose();
+  configureUiKit(uiKitServices() ?? harness.services);
+  return html;
+}
+
 describe('StatsPanel server-half state', () => {
   test('a plugin_not_loaded arm refusal names the cause and the fix', async () => {
     const text = await textFor();
@@ -138,7 +175,7 @@ describe('StatsPanel server-half state', () => {
 
   test('a live arm call with a published snapshot renders the table', async () => {
     const text = await textFor({ live: true, publish: snapshot() });
-    expect(text).toContain('Chamber');
+    expect(text).toContain('OMPChamber server');
     expect(text).not.toContain('server half is not running');
   });
 
@@ -154,11 +191,38 @@ describe('StatsPanel server-half state', () => {
       publish: snapshot({
         probe: { name: 'win32', supported: false, reason: 'no subprocess-free route' },
         rows: [],
-        totals: [],
+        groups: [],
         total: { processes: 0, rss: 0, cpuPercent: 0 },
         error: 'no subprocess-free route',
       }),
     });
     expect(text).toContain('no subprocess-free route');
+  });
+
+  test('the sparkline legend is FORMATTED, never a raw byte count', async () => {
+    // The failure this pins: the legend printed `1332543488.0 – 1511997440.0`,
+    // 163px of unbreakable text, which forced the panel's minimum width to
+    // 359px and clipped the table's right-hand columns on a narrow panel.
+    const text = await textFor({
+      live: true,
+      publish: snapshot({
+        history: { rss: [1_400_000_000, 1_500_000_000], cpuPercent: [2.5, 12.0] },
+      }),
+    });
+    expect(text).not.toMatch(/\d{9,}\.\d/);
+    expect(text).toContain('GB');
+    expect(text).toContain('–');
+  });
+
+  test('the two least important columns collapse on a narrow panel', async () => {
+    // The failure this pins: five fixed columns summed to 228px, so below a
+    // ~280px panel the table overflowed and the right-hand columns sat under a
+    // horizontal scrollbar. The optional columns carry the `@container` query
+    // that drops them — asserted as MARKUP, because happy-dom does not run
+    // container queries, and a missing class is exactly the regression.
+    const html = await htmlFor({ live: true, publish: snapshot() });
+    expect(html).toContain('@container');
+    expect(html).toContain('@max-[360px]:hidden');
+    expect(html).toContain('@max-[300px]:hidden');
   });
 });

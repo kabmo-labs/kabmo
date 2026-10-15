@@ -37,15 +37,6 @@ import type { ChamberPluginApi, PluginJson } from '@ompchamber/plugin-sdk';
 import { createSampler, type StatsSnapshot } from './sampler';
 import { readDaemonRegistry } from './daemons';
 
-/**
- * Shell basenames a PTY shell may resolve to.
- *
- * Mirrors the terminal's own candidate list (`$SHELL` first, then the POSIX
- * fallbacks). A shell outside this set is still counted — as `other` — so an
- * unusual `$SHELL` degrades the label rather than dropping the process.
- */
-const SHELL_NAMES = ['zsh', 'bash', 'sh', 'dash', 'fish', 'ksh', 'nu', 'elvish', 'cmd.exe', 'powershell', 'pwsh'];
-
 /** The tick's floor: below this a CPU delta is noise against the clock. */
 const MIN_SAMPLE_MS = 200;
 
@@ -82,7 +73,6 @@ export default function plugin(api: ChamberPluginApi) {
   const abort = new AbortController();
   let sampler = createSampler({
     serverPid: process.pid,
-    shellNames: SHELL_NAMES,
     now: () => Date.now(),
   });
 
@@ -100,7 +90,6 @@ export default function plugin(api: ChamberPluginApi) {
     ]);
     sampler = createSampler({
       serverPid: process.pid,
-      shellNames: SHELL_NAMES,
       now: () => Date.now(),
       includeDaemons: includeDaemons !== false,
       historyPoints: typeof historyPoints === 'number' && Number.isFinite(historyPoints) ? historyPoints : 60,
@@ -123,7 +112,7 @@ export default function plugin(api: ChamberPluginApi) {
         sampledAt: Date.now(),
         probe: { name: 'unknown', supported: false, reason },
         rows: [],
-        totals: [],
+        groups: [],
         total: { processes: 0, rss: 0, cpuPercent: 0 },
         machine: {
           totalMemBytes: 0,
@@ -146,7 +135,7 @@ export default function plugin(api: ChamberPluginApi) {
       sampledAt: 0,
       probe: { name: 'pending', supported: true },
       rows: [],
-      totals: [],
+      groups: [],
       total: { processes: 0, rss: 0, cpuPercent: 0 },
       machine: { totalMemBytes: 0, freeMemBytes: 0, cpuCount: 0, loadPerCore: 0 },
       daemons: [],

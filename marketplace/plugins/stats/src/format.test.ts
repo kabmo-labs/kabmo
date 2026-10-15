@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { categoryLabel, categoryRank, formatAge, formatBytes, formatPercent } from './format';
+import { formatAge, formatBytes, formatPercent } from './format';
 import { procProbe } from './proc';
 import { readDaemonRegistry } from './daemons';
 
@@ -44,20 +44,6 @@ describe('formatPercent', () => {
     expect(formatPercent(0)).toBe('0.0%');
     expect(formatPercent(12.34)).toBe('12.3%');
     expect(formatPercent(140)).toBe('140%');
-  });
-});
-
-describe('category labels and order', () => {
-  test('a daemon category shows the daemon name, not the prefix', () => {
-    expect(categoryLabel('daemon:omp.browser.headless')).toBe('omp.browser.headless');
-    expect(categoryLabel('chamber')).toBe('Chamber');
-  });
-
-  test('known categories sort in a stable order and daemons sit after omp', () => {
-    expect(categoryRank('chamber')).toBeLessThan(categoryRank('omp'));
-    expect(categoryRank('omp')).toBeLessThan(categoryRank('daemon:omp.lsp.mux'));
-    expect(categoryRank('daemon:omp.lsp.mux')).toBeLessThan(categoryRank('terminal'));
-    expect(categoryRank('terminal')).toBeLessThan(categoryRank('other'));
   });
 });
 

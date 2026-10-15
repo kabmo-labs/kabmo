@@ -21,9 +21,19 @@ interface SparklineProps {
   /** A fixed colour class, so the line follows the theme. */
   tone?: string;
   label: string;
+  /**
+   * How the min/max legend is written.
+   *
+   * A formatter rather than a raw `toFixed`: an unformatted byte count
+   * (`1332543488.0 – 1511997440.0`) is 163px of unbreakable text, and it forced
+   * the panel's minimum width to 359px — which clipped the table's right-hand
+   * columns on a narrow panel. `1.3 GB – 1.4 GB` says the same thing in a third
+   * of the room.
+   */
+  format: (value: number) => string;
 }
 
-export function Sparkline({ values, tone = 'text-info', label }: SparklineProps) {
+export function Sparkline({ values, tone = 'text-info', label, format }: SparklineProps) {
   if (values.length < 2) {
     return (
       <div class="flex items-center gap-2">
@@ -62,8 +72,8 @@ export function Sparkline({ values, tone = 'text-info', label }: SparklineProps)
       >
         <polyline points={points} fill="none" stroke="currentColor" stroke-width="1.25" vector-effect="non-scaling-stroke" />
       </svg>
-      <span class="text-[10px] font-mono text-ink/45 whitespace-nowrap">
-        {min === max ? min.toFixed(1) : `${min.toFixed(1)} – ${max.toFixed(1)}`}
+      <span class="text-[10px] font-mono text-ink/45 truncate" title={`${format(min)} – ${format(max)}`}>
+        {min === max ? format(min) : `${format(min)} – ${format(max)}`}
       </span>
     </div>
   );

@@ -6,14 +6,15 @@
 /**
  * macOS: `libproc` + `sysctl`, no subprocess.
  *
- * Three calls per process, all through the same libraries the chamber's own
+ * Five calls per process, all through the same libraries the chamber's own
  * liveness probe already opens:
  *
  * | Question | Call | Measured |
  * |---|---|---|
  * | which pids exist | `proc_listpids(PROC_ALL_PIDS)` | two calls: a size probe, then the read |
- * | ppid | `proc_pidinfo(PROC_PIDTBSDINFO)` | 136-byte reply, ppid at offset 16 |
+ * | ppid, start time | `proc_pidinfo(PROC_PIDTBSDINFO)` | 136-byte reply, ppid at offset 16 |
  * | rss, cpu, threads | `proc_pidinfo(PROC_PIDTASKINFO)` | 96-byte reply |
+ * | cwd | `proc_pidinfo(PROC_PIDVNODEPATHINFO)` | 152-byte prefix, `vip_path` at 152 |
  * | argv | `sysctl(KERN_PROCARGS2)` | 256 KB ceiling, kernel truncates |
  *
  * Two traps, both measured on this machine and both silent when wrong:
@@ -59,11 +60,29 @@ const TASKINFO_BYTES = 96;
 /** Identity guard, so a struct-layout drift cannot hand back another process. */
 const BSDINFO_PID_OFFSET = 12;
 const BSDINFO_PPID_OFFSET = 16;
+/**
+ * `pbi_start_tvsec` / `pbi_start_tvusec` — when the process started.
+ *
+ * Verified against `ps -o lstart=` on this host: the seconds field alone
+ * matched to the second, and the usec field is what keeps a burst of children
+ * (a broker plus its daemons) from all reading the same age.
+ */
+const BSDINFO_START_SEC_OFFSET = 120;
+const BSDINFO_START_USEC_OFFSET = 128;
 /** `pti_resident_size`, `pti_total_user`, `pti_total_system`, `pti_threadnum`. */
 const TASKINFO_RSS_OFFSET = 8;
 const TASKINFO_USER_OFFSET = 16;
 const TASKINFO_SYSTEM_OFFSET = 24;
 const TASKINFO_THREADS_OFFSET = 84;
+/** `PROC_PIDVNODEPATHINFO`, and `pvi_cdir.vip_path` inside its reply. */
+const PROC_PIDVNODEPATHINFO = 9;
+/**
+ * `sizeof(struct proc_vnodepathinfo)` — TWO `vnode_info_path`s (the cwd and the
+ * root dir), so 2 × (152 + 1024) = 2352. A buffer of one `vnode_info_path` is
+ * too small and the call answers 0, which reads as "no cwd" for every process.
+ */
+const VNODE_PATH_BYTES = 2 * (152 + 1024);
+const CWD_PATH_OFFSET = 152;
 
 /** `sysctl` MIB pieces for a process's argv block. */
 const CTL_KERN = 1;
@@ -126,6 +145,7 @@ const argvBuffer = new Uint8Array(ARGV_BUFFER_BYTES);
 const argvView = new DataView(argvBuffer.buffer);
 const argvMib = new Int32Array([CTL_KERN, KERN_PROCARGS2, 0]);
 const argvSize = new BigUint64Array([BigInt(ARGV_BUFFER_BYTES)]);
+const cwdBuffer = new Uint8Array(VNODE_PATH_BYTES);
 const decoder = new TextDecoder();
 
 /** Every pid on the system, via the documented two-call sizing pattern. */
@@ -147,14 +167,32 @@ function allPids(bound: DarwinLibs): number[] {
   return out;
 }
 
-/** `{ ppid }` for one pid, or null. */
-function parentOf(bound: DarwinLibs, pid: number): number | null {
+/** `{ ppid, startedAt }` for one pid, or null. */
+function parentOf(bound: DarwinLibs, pid: number): { ppid: number; startedAt: number } | null {
   const written = bound.libproc.symbols.proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, ptr(bsdInfo), BSDINFO_BYTES);
   if (written < BSDINFO_BYTES) return null;
   // The reply's own pid is checked before any offset is trusted: a struct drift
   // would otherwise attribute one process's parent to another.
   if (bsdView.getUint32(BSDINFO_PID_OFFSET, true) !== pid) return null;
-  return bsdView.getUint32(BSDINFO_PPID_OFFSET, true);
+  const seconds = Number(bsdView.getBigUint64(BSDINFO_START_SEC_OFFSET, true));
+  const micros = Number(bsdView.getBigUint64(BSDINFO_START_USEC_OFFSET, true));
+  return {
+    ppid: bsdView.getUint32(BSDINFO_PPID_OFFSET, true),
+    // 0 is the honest answer for a start time the kernel did not report; a
+    // fabricated `Date.now()` would read as "just started" on every row.
+    startedAt: seconds > 0 ? seconds * 1000 + Math.floor(micros / 1000) : 0,
+  };
+}
+
+/** The process's working directory, or null. */
+function cwdOf(bound: DarwinLibs, pid: number): string | null {
+  if (bound.libproc.symbols.proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, ptr(cwdBuffer), VNODE_PATH_BYTES) <= 0) {
+    return null;
+  }
+  const end = cwdBuffer.indexOf(0, CWD_PATH_OFFSET);
+  const stop = end === -1 ? cwdBuffer.length : end;
+  const path = decoder.decode(cwdBuffer.subarray(CWD_PATH_OFFSET, stop));
+  return path.startsWith('/') ? path : null;
 }
 
 /** `{ rss, cpuNs, threads }` for one pid, or null. */
@@ -213,13 +251,16 @@ export const darwinProbe: ProcProbe = {
     for (const pid of allPids(bound)) {
       const usage = usageOf(bound, pid);
       if (!usage) continue;
+      const parent = parentOf(bound, pid);
       out.push({
         pid,
-        ppid: parentOf(bound, pid) ?? 0,
+        ppid: parent?.ppid ?? 0,
         rss: usage.rss,
         cpuNs: usage.cpuNs,
         threads: usage.threads,
         argv: argvOf(bound, pid),
+        cwd: cwdOf(bound, pid),
+        startedAt: parent?.startedAt ?? 0,
       });
     }
     return out;

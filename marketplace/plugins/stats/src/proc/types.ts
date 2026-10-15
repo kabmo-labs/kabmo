@@ -41,6 +41,23 @@ export interface ProcessInfo {
    * reason to drop the row.
    */
   argv: string[] | null;
+  /**
+   * The process's current working directory, or null when unreadable.
+   *
+   * This is what names the project for a process whose argv does not carry one
+   * — a `tsserver`, a Chromium helper, a `codegraph` MCP server. Null is a real
+   * answer (a kernel task, a process we may not inspect), never a reason to drop
+   * the row.
+   */
+  cwd: string | null;
+  /**
+   * Epoch milliseconds the process started, or 0 when the platform cannot say.
+   *
+   * Age is the one figure that makes a leak visible: a prewarmed host that has
+   * been idle for two hours is a different fact from one spawned a minute ago,
+   * and only the start time separates them.
+   */
+  startedAt: number;
 }
 
 /**

@@ -4,118 +4,29 @@
  */
 
 /**
- * The classifier and the sampler, against synthetic process tables.
+ * The sampler, against synthetic process tables.
  *
- * Both modules are pure over a `ProcessInfo[]`, so every rule can be pinned
- * without a live process table — and the rules pinned here are the ones that
- * fail SILENTLY in the app: a category that lands on `other` still renders a
- * row, and a CPU rate computed against the wrong baseline still renders a
- * number. Neither shows up as an error.
+ * It is pure over a `ProcessInfo[]`, so every rule can be pinned without a live
+ * process table — and the rules pinned here are the ones that fail SILENTLY: a
+ * CPU rate computed against the wrong baseline still renders a number, and a
+ * process in the wrong group still renders a row. Neither shows up as an error.
+ *
+ * Grouping and labelling have their own suites (`groups.test.ts`,
+ * `labels.test.ts`); what is pinned here is the sampler's own arithmetic — the
+ * process set, the rate, the rollups and the history.
  */
 
 import { describe, expect, test } from 'bun:test';
 
-import { classifyProcesses, type DaemonEntry } from './classify';
+import type { DaemonEntry } from './daemons';
 import type { ProcessInfo } from './proc/types';
 import { createSampler, type SampleDeps } from './sampler';
 
 const SERVER_PID = 100;
 
 function proc(pid: number, ppid: number, argv: string[] | null, extra: Partial<ProcessInfo> = {}): ProcessInfo {
-  return { pid, ppid, rss: 1024, cpuNs: 0, threads: 1, argv, ...extra };
+  return { pid, ppid, rss: 1024, cpuNs: 0, threads: 1, argv, cwd: null, startedAt: 1, ...extra };
 }
-
-function options(daemons: DaemonEntry[] = []) {
-  return { serverPid: SERVER_PID, shellNames: ['zsh', 'bash', 'sh'], daemons };
-}
-
-describe('classifyProcesses', () => {
-  test('names the chamber, an omp child, a daemon broker, a terminal and the worker', () => {
-    const list: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', 'dist/client/index.js', '--ompchamber-server']),
-      proc(101, SERVER_PID, ['bun', '/bin/omp', '--mode', 'rpc-ui', '--cwd', '/x']),
-      proc(102, SERVER_PID, ['/bin/zsh', '-i']),
-      proc(103, SERVER_PID, ['bun', 'dist/cli.js', '__omp_worker_stt']),
-      proc(104, 1, ['osascript', '-l', 'JavaScript', '/data/tray/host/darwin.js', '/data/tray/3000.config.json']),
-      proc(105, 1, ['/usr/bin/some-other-thing']),
-    ];
-    const categories = classifyProcesses(list, options());
-    expect(categories.get(SERVER_PID)).toBe('chamber');
-    expect(categories.get(101)).toBe('omp');
-    expect(categories.get(102)).toBe('terminal');
-    expect(categories.get(103)).toBe('dictation');
-    expect(categories.get(104)).toBe('tray');
-    expect(categories.get(105)).toBe('other');
-  });
-
-  test('the tree root is the chamber by identity, whatever its argv says', () => {
-    // The failure this pins: deciding the chamber from argv made the label
-    // depend on how the server was launched, so a wrapper (`bun run
-    // src/server/index.ts`) left the one process a reader looks for first
-    // unlabelled.
-    const list: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', 'run', 'src/server/index.ts']),
-      proc(101, SERVER_PID, ['/bin/zsh', '-i']),
-    ];
-    const categories = classifyProcesses(list, options());
-    expect(categories.get(SERVER_PID)).toBe('chamber');
-  });
-
-  test('a daemon label covers the whole subtree, named after the daemon', () => {
-    // The registered pid is the BROKER; the memory is in the Chromium it
-    // supervises. Labelling only the registered pid would report the browser's
-    // cost as `other`, which is the bug this test exists for.
-    const daemons: DaemonEntry[] = [
-      { name: 'omp.browser.headless', pid: 200, state: 'ready', projectDir: '/p', brokerPid: 199 },
-    ];
-    const list: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
-      proc(199, 1, ['bun', 'cli.js', '__omp_worker_daemon_broker']),
-      proc(200, 199, ['/path/Google Chrome for Testing', '--headless']),
-      proc(201, 200, ['/path/Google Chrome for Testing Helper', '--type=renderer']),
-      proc(202, 201, ['/path/Google Chrome for Testing Helper', '--type=gpu-process']),
-    ];
-    const categories = classifyProcesses(list, options(daemons));
-    expect(categories.get(199)).toBe('daemon:omp.browser.headless');
-    expect(categories.get(200)).toBe('daemon:omp.browser.headless');
-    expect(categories.get(201)).toBe('daemon:omp.browser.headless');
-    expect(categories.get(202)).toBe('daemon:omp.browser.headless');
-  });
-
-  test('a shell a tool call started is NOT a terminal', () => {
-    // The terminal test keys on the PARENT, not on the executable: an omp child
-    // runs `bash` constantly, and labelling those terminals would attribute a
-    // tool call's cost to the panel.
-    const list: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
-      proc(101, SERVER_PID, ['bun', '/bin/omp', '--mode', 'rpc-ui']),
-      proc(102, 101, ['bash', '-c', 'npm run build']),
-    ];
-    const categories = classifyProcesses(list, options());
-    expect(categories.get(102)).toBe('omp');
-  });
-
-  test('a process with an unreadable argv is counted, not dropped', () => {
-    const list: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
-      proc(101, 1, null),
-    ];
-    const categories = classifyProcesses(list, options());
-    expect(categories.get(101)).toBe('other');
-  });
-
-  test('a parent cycle terminates', () => {
-    // A recycled pid can produce a loop in the parent map; the walk must answer
-    // rather than hang.
-    const list: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
-      proc(101, 102, null),
-      proc(102, 101, null),
-    ];
-    const categories = classifyProcesses(list, options());
-    expect(categories.size).toBe(3);
-  });
-});
 
 /** A probe whose table the test controls, so the sampler's math is deterministic. */
 function fakeProbe(rows: ProcessInfo[]) {
@@ -123,15 +34,17 @@ function fakeProbe(rows: ProcessInfo[]) {
 }
 
 function deps(rows: ProcessInfo[], overrides: Partial<SampleDeps> = {}): SampleDeps {
-  let clock = 1_000;
+  const clock = 1_000;
   return {
     serverPid: SERVER_PID,
-    shellNames: ['zsh', 'bash'],
     now: () => clock,
     probe: fakeProbe(rows),
     readDaemons: () => [],
     includeDaemons: false,
     historyPoints: 5,
+    // No leases by default: every rpc-ui host reads as a prewarm unless a test
+    // supplies one, which is exactly what a fresh pool looks like.
+    readLease: () => null,
     ...overrides,
   };
 }
@@ -217,30 +130,48 @@ describe('createSampler', () => {
     expect(snapshot.rows.map((row) => row.pid)).toEqual([SERVER_PID]);
   });
 
-  test('a bun process is named by its script, not by the runtime', () => {
+  test('a session and its children roll up into ONE group', () => {
+    // The group's figures are the whole subtree's, which is the number a reader
+    // cannot get by adding rows up by eye.
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '/path/dist/client/index.js', '--ompchamber-server']),
-      proc(101, SERVER_PID, ['/bin/zsh', '-i']),
+      proc(SERVER_PID, 1, ['bun', '--ompchamber-server'], { rss: 100 }),
+      proc(101, SERVER_PID, ['bun', 'omp', '--mode', 'rpc-ui'], { rss: 200 }),
+      proc(102, 101, ['node', '/p/mcp.js'], { rss: 300 }),
     ];
-    const snapshot = createSampler(deps(rows)).sample();
-    expect(snapshot.rows.find((row) => row.pid === SERVER_PID)?.command).toBe('index.js');
-    expect(snapshot.rows.find((row) => row.pid === 101)?.command).toBe('zsh');
+    const sampler = createSampler(deps(rows));
+    const snapshot = sampler.sample();
+    const host = snapshot.groups.find((group) => group.key === 'prewarm:101');
+    expect(host).toBeDefined();
+    expect(host?.processes).toBe(2);
+    expect(host?.rss).toBe(500);
+    // The rows carry the same key, so the table can group them.
+    expect(snapshot.rows.find((row) => row.pid === 102)?.groupKey).toBe('prewarm:101');
   });
 
-  test('`bun run <script>` names the script, not the subcommand', () => {
-    // Measured on a real boot: `bun run src/server/index.ts` labelled the
-    // chamber's own row `run`.
+  test('a lease turns a host group into a session group', () => {
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', 'run', 'src/server/index.ts']),
-      proc(101, SERVER_PID, ['bun', 'run', '/abs/path/boot.ts', '--flag']),
-      proc(102, SERVER_PID, ['bun', '-e', 'console.log(1)']),
+      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
+      proc(101, SERVER_PID, ['bun', 'omp', '--mode', 'rpc-ui']),
     ];
-    const snapshot = createSampler(deps(rows)).sample();
-    const label = (pid: number) => snapshot.rows.find((row) => row.pid === pid)?.command;
-    expect(label(SERVER_PID)).toBe('index.ts');
-    expect(label(101)).toBe('boot.ts');
-    // No script to name: the runtime is the honest answer.
-    expect(label(102)).toBe('bun');
+    const leases = new Map([[101, '01a13ceb-bb58-7351-baa5-30abb45cad14']]);
+    const sampler = createSampler(deps(rows, { readLease: (pid) => leases.get(pid) ?? null }));
+    const snapshot = sampler.sample();
+    expect(snapshot.groups.find((group) => group.ownerPid === 101)?.kind).toBe('session');
+  });
+
+  test('a group header is the OWNER label, not the first member encountered', () => {
+    const rows: ProcessInfo[] = [
+      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
+      proc(101, SERVER_PID, ['bun', 'omp', '--mode', 'rpc-ui'], { cwd: '/Users/me/proj' }),
+      proc(102, 101, ['node', '/p/mcp.js']),
+    ];
+    const sampler = createSampler(deps(rows));
+    const snapshot = sampler.sample();
+    const host = snapshot.groups.find((group) => group.key === 'prewarm:101');
+    // The owner is an omp host, so its title is the prewarm wording — never
+    // `codegraph MCP`, which is what the child would have given it.
+    expect(host?.title).toBe('prewarm (idle host)');
+    expect(host?.ownerPid).toBe(101);
   });
 
   test('history is bounded and absent when disabled', () => {
@@ -262,6 +193,7 @@ describe('createSampler', () => {
     );
     const snapshot = sampler.sample();
     expect(snapshot.rows).toHaveLength(0);
+    expect(snapshot.groups).toHaveLength(0);
     expect(snapshot.error).toContain('no subprocess-free route');
     expect(snapshot.probe.supported).toBe(false);
   });

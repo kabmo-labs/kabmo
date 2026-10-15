@@ -41,82 +41,13 @@
 
 import os from 'node:os';
 
-import { classifyProcesses, type DaemonEntry, type ProcessCategory } from './classify';
-import { readDaemonRegistry } from './daemons';
+import { type DaemonEntry, readDaemonRegistry } from './daemons';
+import { assignGroups, type GroupKind } from './groups';
+import { describeProcess } from './labels';
+import { leaseOfPid } from './proc/identity';
 import { procProbe } from './proc';
 import type { ProcessInfo } from './proc/types';
-
-/** One process, as the panel renders its row. */
-export interface ProcessRow {
-  pid: number;
-  ppid: number;
-  category: ProcessCategory;
-  /** The executable basename, or the whole argv's head when that is a runtime. */
-  command: string;
-  /** Resident bytes. */
-  rss: number;
-  /** CPU percent over the last interval, or null on the first sighting. */
-  cpuPercent: number | null;
-  threads: number;
-}
-
-/** One category's totals. */
-export interface CategoryTotal {
-  category: ProcessCategory;
-  processes: number;
-  rss: number;
-  cpuPercent: number;
-}
-
-/** The machine-level context the totals are read against. */
-export interface MachineContext {
-  totalMemBytes: number;
-  freeMemBytes: number;
-  cpuCount: number;
-  /** 1-minute load average per core. */
-  loadPerCore: number;
-}
-
-/** One sample, as the plugin publishes it on its realtime topic. */
-export interface StatsSnapshot {
-  /** When this sample was taken (epoch ms). */
-  sampledAt: number;
-  /** The probe that answered, and whether it could. */
-  probe: { name: string; supported: boolean; reason?: string };
-  /** Every process in the union, heaviest first. */
-  rows: ProcessRow[];
-  /** Per-category rollups, heaviest first. */
-  totals: CategoryTotal[];
-  /** The whole union. */
-  total: { processes: number; rss: number; cpuPercent: number };
-  machine: MachineContext;
-  /** omp daemons the registry reports, so a row can be named by its daemon. */
-  daemons: DaemonEntry[];
-  /** The chamber's own pid, so the panel can mark it. */
-  serverPid: number;
-  /** Sparkline series, oldest first. Absent when history is disabled. */
-  history?: { rss: number[]; cpuPercent: number[] };
-  /** Why the table is empty, when it is. */
-  error?: string;
-}
-
-/** What the sampler needs to know about the chamber, injected so it is testable. */
-export interface SampleDeps {
-  /** The chamber's pid — the tree root. */
-  serverPid: number;
-  /** Shell basenames the terminal may have launched. */
-  shellNames: readonly string[];
-  /** Wall clock, for the rate denominator. */
-  now: () => number;
-  /** The probe to read. Defaults to the platform's own. */
-  probe?: { name: string; supported: boolean; reason?: string; list(): ProcessInfo[] };
-  /** The daemon registry read. Defaults to the on-disk reader. */
-  readDaemons?: () => DaemonEntry[];
-  /** Whether to follow the daemon registry at all. */
-  includeDaemons?: boolean;
-  /** Samples retained for the sparklines; 0 disables history. */
-  historyPoints?: number;
-}
+import type { GroupSummary, ProcessRow, SampleDeps, StatsSnapshot } from './snapshot';
 
 /** A previous reading, for the rate. */
 interface Baseline {
@@ -177,36 +108,31 @@ function collectProcessSet(
 }
 
 /**
- * The label a row shows.
+ * The order groups are listed in.
  *
- * A `bun` process's argv head is the runtime, not the program, so the SECOND
- * argument is the honest name when the first is a known runtime and the second
- * is a script path. Without this every omp child, the broker and the chamber
- * itself read as `bun`.
- *
- * `bun run <script>` needs one more step: the second argument is the
- * subcommand (`run`), not the program, so a label taken there names every
- * `bun run` process `run`. The first non-flag argument AFTER the subcommand is
- * the script — which is the same rule, applied one position later.
+ * The chamber first (it is the thing the panel is about), then the SESSIONS
+ * doing work, then idle capacity, then the shared daemons — which are usually
+ * the largest but belong to no session — and the terminal last. Sorting by size
+ * instead would reorder the panel on every sample and make it unreadable.
  */
-function commandLabel(process: ProcessInfo): string {
-  const argv = process.argv;
-  if (!argv || argv.length === 0) return '?';
-  const basename = (value: string) => {
-    const cut = value.lastIndexOf('/');
-    return cut === -1 ? value : value.slice(cut + 1);
-  };
-  const head = basename(argv[0]);
-  if (head !== 'bun' && head !== 'node') return head;
-  // `run`/`exec`/`x` are subcommands; the script is the argument after them.
-  const SUBCOMMANDS = new Set(['run', 'exec', 'x', 'test']);
-  let index = 1;
-  if (argv[index] !== undefined && SUBCOMMANDS.has(argv[index])) index += 1;
-  const candidate = argv[index];
-  // `-e` / `-p` / any flag means there is no script to name; keep the runtime.
-  if (candidate === undefined || candidate.startsWith('-')) return head;
-  return basename(candidate);
+const GROUP_ORDER: readonly GroupKind[] = [
+  'chamber',
+  'session',
+  'utility',
+  'prewarm',
+  'daemon',
+  'broker',
+  'terminal',
+  'other',
+];
+
+/** A group's position in `GROUP_ORDER`. */
+function groupRank(group: GroupSummary): number {
+  const index = GROUP_ORDER.indexOf(group.kind);
+  return index === -1 ? GROUP_ORDER.length : index;
 }
+
+export type { GroupSummary, ProcessRow, SampleDeps, StatsSnapshot } from './snapshot';
 
 export interface Sampler {
   /** Take one sample. */
@@ -222,6 +148,7 @@ export interface Sampler {
 export function createSampler(deps: SampleDeps): Sampler {
   const probe = deps.probe ?? procProbe;
   const readDaemons = deps.readDaemons ?? readDaemonRegistry;
+  const readLease = deps.readLease ?? leaseOfPid;
   const includeDaemons = deps.includeDaemons ?? true;
   const historyPoints = deps.historyPoints ?? 60;
 
@@ -240,21 +167,28 @@ export function createSampler(deps: SampleDeps): Sampler {
       const list = probe.supported ? probe.list() : [];
       const daemons = includeDaemons ? readDaemons() : [];
       const included = collectProcessSet(list, deps.serverPid, daemons, includeDaemons);
+      const kept = list.filter((process) => included.has(process.pid));
+
+      // The lease is read BEFORE grouping, because it is what separates a live
+      // session from an idle prewarm — argv cannot, since a host that adopted a
+      // prewarm keeps the prewarm's argv forever. Only an `omp` host can hold
+      // one, so the walk is paid for those alone. The flag test joins argv: the
+      // two tokens arrive separately (`--mode`, `rpc-ui`), never as one string.
+      const leases = new Map<number, string | null>();
+      for (const process of kept) {
+        const line = (process.argv ?? []).join(' ');
+        if (line.includes('--mode rpc-ui')) leases.set(process.pid, readLease(process.pid));
+      }
 
       const previous = baseline;
       const cpuNsNow = new Map<number, number>();
       const elapsed = previous ? Math.max(at - previous.at, 1) : 0;
 
       const rows: ProcessRow[] = [];
-      const byCategory = new Map<ProcessCategory, CategoryTotal>();
-      const categories = classifyProcesses(list, {
-        serverPid: deps.serverPid,
-        shellNames: deps.shellNames,
-        daemons,
-      });
+      const assignments = assignGroups(kept, { serverPid: deps.serverPid, daemons, leases });
+      const byGroup = new Map<string, GroupSummary>();
 
-      for (const process of list) {
-        if (!included.has(process.pid)) continue;
+      for (const process of kept) {
         cpuNsNow.set(process.pid, process.cpuNs);
         const before = previous?.cpuNs.get(process.pid);
         // A process with no baseline reports NO rate: it is either brand new or
@@ -264,32 +198,55 @@ export function createSampler(deps: SampleDeps): Sampler {
             ? null
             : Math.max(0, ((process.cpuNs - before) / 1e6 / elapsed) * 100);
 
-        const category = categories.get(process.pid) ?? 'other';
+        const assignment = assignments.get(process.pid) ?? { key: 'other', ownerPid: 0, depth: 0, kind: 'other' as const };
+        const label = describeProcess(process, {
+          now: at,
+          serverPid: deps.serverPid,
+          lease: leases.get(process.pid) ?? null,
+        });
+
         rows.push({
           pid: process.pid,
           ppid: process.ppid,
-          category,
-          command: commandLabel(process),
+          title: label.title,
+          detail: label.detail,
+          groupKey: assignment.key,
+          depth: assignment.depth,
           rss: process.rss,
           cpuPercent,
           threads: process.threads,
         });
 
-        const rollup = byCategory.get(category) ?? { category, processes: 0, rss: 0, cpuPercent: 0 };
-        rollup.processes += 1;
-        rollup.rss += process.rss;
-        rollup.cpuPercent += cpuPercent ?? 0;
-        byCategory.set(category, rollup);
+        // A group's header is the OWNER's own label, so a session group reads
+        // as the session rather than as whichever member happened to come first.
+        const group = byGroup.get(assignment.key) ?? {
+          key: assignment.key,
+          kind: assignment.kind,
+          ownerPid: assignment.ownerPid,
+          title: label.title,
+          detail: label.detail,
+          processes: 0,
+          rss: 0,
+          cpuPercent: 0,
+        };
+        group.processes += 1;
+        group.rss += process.rss;
+        group.cpuPercent += cpuPercent ?? 0;
+        if (process.pid === assignment.ownerPid) {
+          group.title = label.title;
+          group.detail = label.detail;
+        }
+        byGroup.set(assignment.key, group);
       }
 
       baseline = { at, cpuNs: cpuNsNow };
 
       rows.sort((a, b) => b.rss - a.rss);
-      const totals = [...byCategory.values()].sort((a, b) => b.rss - a.rss);
+      const groups = [...byGroup.values()].sort((a, b) => groupRank(a) - groupRank(b) || b.rss - a.rss);
       const total = {
         processes: rows.length,
-        rss: totals.reduce((sum, entry) => sum + entry.rss, 0),
-        cpuPercent: totals.reduce((sum, entry) => sum + entry.cpuPercent, 0),
+        rss: groups.reduce((sum, entry) => sum + entry.rss, 0),
+        cpuPercent: groups.reduce((sum, entry) => sum + entry.cpuPercent, 0),
       };
 
       let history: StatsSnapshot['history'];
@@ -305,7 +262,7 @@ export function createSampler(deps: SampleDeps): Sampler {
         sampledAt: at,
         probe: { name: probe.name, supported: probe.supported, ...(probe.reason ? { reason: probe.reason } : {}) },
         rows,
-        totals,
+        groups,
         total,
         machine: {
           totalMemBytes: os.totalmem(),

@@ -33,7 +33,7 @@ import { Empty, Note, Panel } from '@ompchamber/ui/components';
 import { ProcessTable } from './ProcessTable';
 import { Sparkline } from './Sparkline';
 import { MachineFacts, TotalsBar } from './TotalsBar';
-import { formatAge, formatBytes } from './format';
+import { formatAge, formatBytes, formatPercent } from './format';
 import type { StatsSnapshot } from './sampler';
 
 function StatsPanel() {
@@ -114,13 +114,13 @@ function StatsPanel() {
 
   return (
     <Panel title="Stats">
-      <div class="-m-3 flex flex-col">
+      <div class="-m-3 p-2 flex flex-col">
         <TotalsBar snapshot={snapshot} onRefresh={() => void sample.call({ force: true })} refreshing={refreshing} />
 
         {history ? (
           <div class="flex flex-col gap-1.5 border-b border-ink/10 px-3 py-2">
-            <Sparkline values={history.rss} label="rss" tone="text-info" />
-            <Sparkline values={history.cpuPercent} label="cpu" tone="text-warning" />
+            <Sparkline values={history.rss} label="rss" tone="text-info" format={formatBytes} />
+            <Sparkline values={history.cpuPercent} label="cpu" tone="text-warning" format={(value) => formatPercent(value)} />
           </div>
         ) : null}
 

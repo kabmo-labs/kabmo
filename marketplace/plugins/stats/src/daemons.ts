@@ -38,7 +38,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-import type { DaemonEntry } from './classify';
+/**
+ * One daemon omp's registry reports, with its live pid.
+ *
+ * Lives here rather than in a classifier, because the registry READER is the
+ * only producer of one and the reader's caller (the sampler, the grouper) is
+ * the only consumer. `state` matters to both: only `ready` with a live pid is a
+ * group root, since the registry keeps every daemon a project ever started.
+ */
+export interface DaemonEntry {
+  /** The daemon's own name, e.g. `omp.browser.headless`. */
+  name: string;
+  pid: number;
+  state: string;
+  /** The project the runtime dir belongs to, from `scope.json`. */
+  projectDir: string;
+  /** The broker supervising it, from `broker.pid`. */
+  brokerPid: number | null;
+}
 
 /** omp's config dir name, honouring the documented rename. */
 function configRoot(): string {

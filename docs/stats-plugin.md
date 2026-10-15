@@ -179,24 +179,66 @@ reason, and the panel shows it.
 
 | Path | Role |
 |---|---|
-| `src/proc/types.ts` | `ProcessInfo` (cumulative `cpuNs`, `rss` in bytes) and `ProcProbe` |
-| `src/proc/darwin.ts` | `libproc` + `sysctl`: taskinfo, bsdinfo, argv |
-| `src/proc/linux.ts` | `/proc/<pid>/stat` + `/status` + `cmdline` |
+| `src/proc/types.ts` | `ProcessInfo` (cumulative `cpuNs`, `rss` in bytes, `cwd`, `startedAt`) and `ProcProbe` |
+| `src/proc/darwin.ts` | `libproc` + `sysctl`: taskinfo, bsdinfo (+ start time), vnodepathinfo (cwd), argv |
+| `src/proc/linux.ts` | `/proc/<pid>/stat` (+ `starttime`, `btime`) + `/status` + `cmdline` + `/proc/<pid>/cwd` |
 | `src/proc/ps.ts` | the `ps` fallback, for a platform with no native probe |
+| `src/proc/identity.ts` | the two per-pid lookups the sweep cannot give: `cwdOf`, `leaseOfPid` |
 | `src/proc/index.ts` | the platform selector |
-| `src/classify.ts` | argv → category, daemon subtrees, ancestor inheritance |
+| `src/sessions.ts` | the session title (first JSONL line) and the id→file lookup |
+| `src/labels.ts` | `describeProcess` — the title and detail a row shows |
+| `src/groups.ts` | `assignGroups` — which processes belong to one session |
 | `src/daemons.ts` | omp's daemon registry, read off disk |
+| `src/snapshot.ts` | `ProcessRow` / `GroupSummary` / `StatsSnapshot` — the wire shapes |
 | `src/sampler.ts` | the union, the delta, the rollups, the history |
-| `src/format.ts` | the label/byte/percent formatters |
+| `src/format.ts` | the byte/percent/age formatters |
 | `src/server.ts` | the service, the RPC methods, the HTTP route, the topic, the settings |
 | `src/app.tsx` | the right-panel view |
 | `src/TotalsBar.tsx`, `src/ProcessTable.tsx`, `src/Sparkline.tsx` | the three render blocks |
-| `src/sampler.test.ts`, `src/format.test.ts` | the tests |
+| `src/labels.test.ts`, `src/groups.test.ts`, `src/sessions.test.ts`, `src/sampler.test.ts`, `src/format.test.ts` | the tests |
+
+## Rows say what a process IS, and belong to the session that owns them
+
+The first cut printed one column — the executable's basename — and bucketed by
+category. Measured on this machine, that made twelve of forty rows unreadable
+(`node` ten times, `cli.js` six, `omp` five) and put four prewarms, a live
+session, five js-eval sandboxes and a broker in ONE `omp` bucket. Every
+distinction was already in data the sweep had read.
+
+**Two facts are not in argv, and both are needed.**
+
+- **The session LEASE.** argv is fixed at spawn — `buildSessionSpawnArgs('')`
+  carries no `--resume` — so a host that ADOPTED a prewarm keeps the prewarm's
+  argv for its whole life. Measured: three rows that read as idle prewarms were
+  live sessions with titles and hundreds of messages. omp takes an OS `flock` on
+  `<configRoot>/run/session-owners/<id>.lock`, so an open descriptor on that file
+  is the answer (`leaseOfPid`, 0.70 ms for 9 pids). The same primitive the
+  chamber's own `lease-holder.server.ts` uses, walked in the other direction.
+- **The cwd.** A `tsserver`, a Chromium helper and a `codegraph` MCP server are
+  identical in argv, and the directory they run in is what names the checkout.
+  Darwin: `proc_pidinfo(PROC_PIDVNODEPATHINFO)`, `vip_path` at 152 of a 2352-byte
+  reply (TWO `vnode_info_path`s — a one-struct buffer answers 0 and reads as "no
+  cwd" for every process). Linux: `readlink /proc/<pid>/cwd`.
+
+**Grouping follows the ppid links.** A group root is a direct child of the
+chamber (a session host, a prewarm, a utility, a PTY shell), a daemon root from
+omp's registry, or a broker. Three orderings are load-bearing and each was
+measured: the direct-child test runs BEFORE the registry test (a session can
+spawn its own broker — pid 66310 — which must stay inside that session); daemon
+roots come from the registry, never from `broker.pid` (a broker supervises more
+daemons than that file names, and `omp.browser.headed` was dropped); and a broker
+gets its OWN group, because folding it into whichever daemon a map named first
+is arbitrary. A group's figures are the whole subtree's, and `depth` renders as
+indentation so the chain (host → broker → relay) is visible.
+
+Cost: the sweep went 3.9 → 6.5 ms for 410 pids (the cwd read), the lease walk
+0.40 ms for 5 hosts, and the title read 0.65 ms per file. Against a 1 s interval
+that is noise.
 
 ## Verification
 
 ```bash
-bun test marketplace/plugins/stats/src     # 25 tests: classification, the union, the delta, the live probe
+bun test marketplace/plugins/stats/src     # 64 tests: labels, groups, sessions, the union, the delta, the live probe
 bun run lint && bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
 bun run build
 bun src/cli/ompchamber.js plugin build marketplace/plugins/stats
@@ -206,21 +248,25 @@ Smoke, run end to end against a real server on a temp data dir:
 
 1. Installed from the bundled marketplace through `POST /api/panels/install`;
    the server logged `[plugin:stats] stats server half loaded`.
-2. `GET /api/plugins/stats/http/snapshot?refresh=1` → 20 rows, probe `darwin`,
-   totals grouped into `chamber`, `omp`, `daemon:omp.browser.headless`,
-   `daemon:omp.lsp.mux`, and the test servers' own daemons.
-3. `POST …/rpc/watch` → `{watching:1}`; `POST …/rpc/snapshot {force:true}` →
-   `cpu 14.3`, with the chamber's own row carrying a real CPU percent.
-4. In a real Chromium: the activity bar shows `Resources — Stats`; clicking it
-   renders 20 process rows across 7 category groups, live CPU percentages in
-   every cell (no `—` after the first sample), both sparklines, the machine
-   facts, and the daemon block.
+2. `GET /api/plugins/stats/http/snapshot?refresh=1` → 22 rows in 5 groups,
+   probe `darwin`: `chamber` (1 proc), `utility` (3), `daemon`
+   `omp.browser.headless` (8), `daemon` `omp.lsp.mux` (9), `broker` (1) — each
+   header carrying its own subtree rollup, each row its two lines.
+3. The chamber's own row read `OMPChamber server — the server itself · 34s`, not
+   `index.ts`: the label is decided by PID identity, because a dev boot
+   (`bun run src/server/index.ts`) carries no `--ompchamber-server`.
+4. In a real Chromium at a 420px panel: 31 rows across 5 groups, every group
+   header with its `⇄` marker and rollup, indentation rendering as 2 spaces per
+   depth, the chamber's row marked `self` under its pid, and titles in the UI
+   stack (`-apple-system`, i.e. `--font-sans` with the Nerd Font fallback) so a
+   session's card icon paints rather than tofu. `table.scrollWidth ===
+   clientWidth === 420` — no overflow.
 
-Two bugs were found by the tests and fixed before the smoke run: the ancestor
-walk treated an already-resolved ancestor as "no label" (so a `bash` under an
-omp child read as `Other` whenever the omp child was visited first), and the
-chamber's own row was labelled from argv (so a `bun run` boot left it `Other`,
-and its command read `run`).
+The lease rule was proved against the live machine before it was coded: three
+hosts whose argv said `prewarm` held open descriptors on
+`~/.omp/run/session-owners/<id>.lock`, and their session files carried titles
+(`Make PID process display informative`, 500 lines) and current mtimes. The same
+sweep with `--resume` alone reported them as idle hosts.
 
 The loop's termination was verified separately, against the built bundle: with
 the panel watching, samples published on every tick; after `onDispose` fired,

@@ -9,11 +9,10 @@
  * Pure functions in their own module because every one of them encodes a
  * decision that is invisible at the call site and wrong in a way a reader would
  * not notice: a byte count that rounds 0.4 MB to `0 MB`, a CPU percent that
- * prints `0.0%` for "no measurement yet", a category label that reads
+ * prints `0.0%` for "no measurement yet", a label that reads
  * `daemon:omp.browser.headless` in a table cell.
  */
 
-import type { ProcessCategory } from './classify';
 
 /** Bytes as a compact human string, with one decimal past a kilobyte. */
 export function formatBytes(bytes: number): string {
@@ -41,53 +40,6 @@ export function formatPercent(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
   // A single core's worth of work is 100%; more means threads in parallel.
   return value >= 100 ? `${Math.round(value)}%` : `${value.toFixed(1)}%`;
-}
-
-/** The short label a row or a rollup shows for a category. */
-export function categoryLabel(category: ProcessCategory): string {
-  if (category.startsWith('daemon:')) return category.slice('daemon:'.length);
-  switch (category) {
-    case 'chamber':
-      return 'Chamber';
-    case 'omp':
-      return 'omp';
-    case 'terminal':
-      return 'Terminal';
-    case 'dictation':
-      return 'Dictation';
-    case 'tray':
-      return 'Tray';
-    default:
-      return 'Other';
-  }
-}
-
-/**
- * The order categories are listed in.
- *
- * The chamber's own processes first (it is the thing the panel is about), then
- * the omp children, then the daemons — which are usually the largest — then the
- * peripheral spawns. A total that is sorted by size would reorder itself on
- * every sample and become unreadable.
- */
-export const CATEGORY_ORDER: readonly string[] = [
-  'chamber',
-  'omp',
-  'daemon:omp.browser.headless',
-  'daemon:omp.browser.headed',
-  'daemon:omp.lsp.mux',
-  'terminal',
-  'dictation',
-  'tray',
-  'other',
-];
-
-/** The rank of a category in `CATEGORY_ORDER`; unknown daemons sort after the
- *  known ones and before `other`. */
-export function categoryRank(category: ProcessCategory): number {
-  const index = CATEGORY_ORDER.indexOf(category);
-  if (index !== -1) return index;
-  return category.startsWith('daemon:') ? 3 : CATEGORY_ORDER.length;
 }
 
 /** A short time-ago label for a sample stamp. */

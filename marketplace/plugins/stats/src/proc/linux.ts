@@ -77,8 +77,8 @@ function statTail(pid: number): string[] | null {
   return raw.slice(close + 1).trim().split(/\s+/);
 }
 
-/** `{ ppid, cpuNs }` from one `stat` read, or null. */
-function statOf(pid: number): { ppid: number; cpuNs: number } | null {
+/** `{ ppid, cpuNs, startedAt }` from one `stat` read, or null. */
+function statOf(pid: number): { ppid: number; cpuNs: number; startedAt: number } | null {
   const fields = statTail(pid);
   if (!fields) return null;
   // `statTail` has dropped fields 1 (`pid`) and 2 (`(comm)`), so 1-indexed
@@ -86,9 +86,46 @@ function statOf(pid: number): { ppid: number; cpuNs: number } | null {
   const ppid = Number(fields[1]);
   const utime = Number(fields[11]);
   const stime = Number(fields[12]);
+  // Field 22, `starttime`, in `CLK_TCK` ticks since BOOT — not an epoch.
+  const startTicks = Number(fields[19]);
   if (!Number.isFinite(ppid) || !Number.isFinite(utime) || !Number.isFinite(stime)) return null;
   const nsPerTick = 1e9 / ticksPerSecond();
-  return { ppid: ppid > 0 ? ppid : 0, cpuNs: (utime + stime) * nsPerTick };
+  return {
+    ppid: ppid > 0 ? ppid : 0,
+    cpuNs: (utime + stime) * nsPerTick,
+    startedAt: bootMs() + (Number.isFinite(startTicks) ? (startTicks / ticksPerSecond()) * 1000 : 0),
+  };
+}
+
+/**
+ * Boot time in epoch milliseconds, or 0 when it cannot be read.
+ *
+ * `starttime` counts from boot, so the epoch conversion needs `btime` from
+ * `/proc/stat`. Read once: it cannot change while the machine is up. A host
+ * that answers nothing keeps 0, which the sampler reads as "start unknown"
+ * rather than as a process that began at the epoch.
+ */
+let bootMsCache: number | null = null;
+function bootMs(): number {
+  if (bootMsCache !== null) return bootMsCache;
+  bootMsCache = 0;
+  const raw = readFile('/proc/stat');
+  if (raw) {
+    const match = /^btime\s+(\d+)/m.exec(raw);
+    if (match) bootMsCache = Number(match[1]) * 1000;
+  }
+  return bootMsCache;
+}
+
+/** The process's working directory, or null. */
+function cwdOf(pid: number): string | null {
+  try {
+    const path = fs.readlinkSync(`/proc/${pid}/cwd`);
+    return path.startsWith('/') ? path : null;
+  } catch {
+    // Exited mid-sweep, or not ours to read.
+    return null;
+  }
 }
 
 /** `{ rss, threads }` from one `status` read. Both default to 0 when absent. */
@@ -140,6 +177,8 @@ export const linuxProbe: ProcProbe = {
         cpuNs: stat.cpuNs,
         threads: status.threads,
         argv: argvOf(pid),
+        cwd: cwdOf(pid),
+        startedAt: stat.startedAt,
       });
     }
     return out;
