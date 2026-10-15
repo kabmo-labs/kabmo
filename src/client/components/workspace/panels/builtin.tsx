@@ -18,6 +18,7 @@ import {
   DEFAULT_RIGHT_PANEL_FRACTION,
   DEFAULT_RIGHT_PANEL_WIDTHS,
   MIN_RIGHT_PANEL_WIDTHS,
+  PANEL_MARK_SIZE,
   RIGHT_PANEL_TYPES,
   type RightPanelType,
 } from '@/shared/lib/workspace/right-panels';
@@ -110,23 +111,23 @@ const META: Record<
   RightPanelType,
   { title: string; label: string; icon: ReactNode; requiresWorkspace: boolean; liveWhileHidden?: boolean }
 > = {
-  context: { title: 'Context & Telemetry', label: 'Context', icon: <Layers size={16} />, requiresWorkspace: true },
-  files: { title: 'Files', label: 'Files', icon: <Files size={16} />, requiresWorkspace: true },
-  search: { title: 'Search', label: 'Search', icon: <Search size={16} />, requiresWorkspace: true },
-  git: { title: 'Source Control', label: 'GIT', icon: <GitBranch size={16} />, requiresWorkspace: true },
-  wiki: { title: 'Wiki', label: 'Wiki', icon: <BookOpen size={16} />, requiresWorkspace: true },
+  context: { title: 'Context & Telemetry', label: 'Context', icon: <Layers size={PANEL_MARK_SIZE} />, requiresWorkspace: true },
+  files: { title: 'Files', label: 'Files', icon: <Files size={PANEL_MARK_SIZE} />, requiresWorkspace: true },
+  search: { title: 'Search', label: 'Search', icon: <Search size={PANEL_MARK_SIZE} />, requiresWorkspace: true },
+  git: { title: 'Source Control', label: 'GIT', icon: <GitBranch size={PANEL_MARK_SIZE} />, requiresWorkspace: true },
+  wiki: { title: 'Wiki', label: 'Wiki', icon: <BookOpen size={PANEL_MARK_SIZE} />, requiresWorkspace: true },
   terminal: {
     title: 'Terminal (Bun)',
     label: 'Terminal',
-    icon: <Terminal size={16} />,
+    icon: <Terminal size={PANEL_MARK_SIZE} />,
     requiresWorkspace: true,
     liveWhileHidden: true,
   },
-  'user-browser': { title: 'Browser (Anda)', label: 'Browser', icon: <Globe size={16} />, requiresWorkspace: false },
-  browser: { title: 'Browser Agent', label: 'Agent', icon: <Bot size={16} />, requiresWorkspace: false },
-  usage: { title: 'Usage', label: 'Usage', icon: <BarChart3 size={16} />, requiresWorkspace: false },
-  todo: { title: 'Todos', label: 'Todos', icon: <ListTodo size={16} />, requiresWorkspace: false },
-  plan: { title: 'Plan (sesi ini)', label: 'Plan', icon: <ClipboardList size={16} />, requiresWorkspace: false },
+  'user-browser': { title: 'Browser (Anda)', label: 'Browser', icon: <Globe size={PANEL_MARK_SIZE} />, requiresWorkspace: false },
+  browser: { title: 'Browser Agent', label: 'Agent', icon: <Bot size={PANEL_MARK_SIZE} />, requiresWorkspace: false },
+  usage: { title: 'Usage', label: 'Usage', icon: <BarChart3 size={PANEL_MARK_SIZE} />, requiresWorkspace: false },
+  todo: { title: 'Todos', label: 'Todos', icon: <ListTodo size={PANEL_MARK_SIZE} />, requiresWorkspace: false },
+  plan: { title: 'Plan (sesi ini)', label: 'Plan', icon: <ClipboardList size={PANEL_MARK_SIZE} />, requiresWorkspace: false },
 };
 
 const LAZY_VIEWS: Record<RightPanelType, ComponentType<PanelBodyProps>> = {

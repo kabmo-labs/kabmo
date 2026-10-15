@@ -63,17 +63,50 @@ function paint(node: ComponentChild) {
 }
 
 describe('PluginMark', () => {
-  test('draws the icon at the requested box, not the file’s own size', () => {
-    // A plugin's SVG may carry its own width/height attributes; trusting them
-    // would break the grid, so the element is constrained instead.
-    const el = paint(h(PluginMark, { name: 'Demo', iconUrl: '/api/panels/icon/demo/icon.svg', size: 16 }));
+  test('paints a vector mark through a currentColor mask, not an <img>', () => {
+    // An SVG loaded through `<img>` is a separate document and cannot resolve
+    // `currentColor`, so a plugin's mark kept one ink while every built-in view
+    // moved with the theme. A mask has no document to inherit into: the host
+    // supplies the paint and the file supplies only its alpha channel.
+    const el = paint(h(PluginMark, { name: 'Demo', iconUrl: '/api/panels/icon/demo/icon.svg?v=abc', size: 16 }));
+    const span = el.querySelector('span');
+
+    expect(el.querySelector('img')).toBeNull();
+    expect(span?.style.width).toBe('16px');
+    expect(span?.style.height).toBe('16px');
+    // Serialized lowercased by the engine (verified in Chrome and happy-dom).
+    expect(span?.style.backgroundColor).toBe('currentcolor');
+    // The extension is read off the PATH; the registry's URL carries a `?v=` hash.
+    expect(span?.style.maskImage).toContain('/api/panels/icon/demo/icon.svg?v=abc');
+    expect(span?.style.maskSize).toBe('contain');
+    // The component ALSO sets the `-webkit-` spellings, which Safari needs.
+    // happy-dom drops a prefixed property outright (`'webkitMaskImage' in style`
+    // is false, and `setProperty('-webkit-mask-image', …)` stores nothing), so
+    // that half is pinned against real Chrome in the browser instead of here.
+    // Decorative: the plugin's name is always rendered beside it.
+    expect(span?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('keeps an <img> for a raster mark, whose own colours and alpha matter', () => {
+    // Masking a PNG would throw its colour away, and a JPEG has no alpha to
+    // mask with — it would paint the box solid.
+    const el = paint(h(PluginMark, { name: 'Demo', iconUrl: '/api/panels/icon/demo/logo.png?v=abc', size: 16 }));
     const img = el.querySelector('img');
 
-    expect(img?.getAttribute('src')).toBe('/api/panels/icon/demo/icon.svg');
+    expect(el.querySelector('span')).toBeNull();
+    expect(img?.getAttribute('src')).toBe('/api/panels/icon/demo/logo.png?v=abc');
     expect(img?.style.width).toBe('16px');
     expect(img?.style.height).toBe('16px');
-    // Decorative: the plugin's name is always rendered beside it.
     expect(img?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('an extensionless mark URL takes the <img> path', () => {
+    // A mask of an unknown format either paints nothing or paints the box
+    // solid, so anything not named `.svg` stays a raster.
+    const el = paint(h(PluginMark, { name: 'Demo', iconUrl: '/api/panels/icon/demo/mark', size: 16 }));
+
+    expect(el.querySelector('img')).not.toBeNull();
+    expect(el.querySelector('span')).toBeNull();
   });
 
   test('falls back to the plugin initials when no icon is declared', () => {

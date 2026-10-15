@@ -6,6 +6,7 @@ import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
+import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 
 interface MobileRightSidebarProps {
   enabled?: boolean;
@@ -98,7 +99,7 @@ export function MobileRightSidebar({
               }`}
               title={panel.title}
             >
-              {panel.builtin ? panel.icon : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={14} />}
+              {panel.builtin ? panel.icon : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={PANEL_MARK_SIZE} />}
               {activeTab === panel.id && (
                 <span className={panel.id === 'git' ? 'tracking-wide' : undefined}>{panel.label}</span>
               )}

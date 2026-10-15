@@ -373,6 +373,35 @@ provider marks use — in the activity bar, the navbar, the editor tab, the stor
 card and the installed card. A blank box would read as a broken plugin rather
 than one that chose not to ship a mark.
 
+**An `.svg` icon is drawn as a MASK, so its own colours are discarded and the
+surrounding ink paints it.** The chamber's palette is monochrome
+(`DESIGN.md`), and a mark has to move with the theme the way every built-in
+view's icon does — the activity bar's buttons go from `text-ink/40` to
+`text-ink`. A file loaded through `<img>` cannot: it is a separate document, so
+`stroke="currentColor"` resolves to black and a baked colour stays that colour in
+every state (measured: one plugin's mark rendered `rgb(138,138,138)` while the
+view beside it moved `148,146,142` → `20,19,16`).
+
+So the host paints a vector mark with `background-color: currentColor` and cuts
+it out with `mask-image`. Two consequences for the file you ship:
+
+- **Its alpha channel is what you are drawing.** A shape that is opaque only
+  where you want ink works; a solid-background square masks to a solid square.
+- **Declare paint as `currentColor` anyway** (or omit it and take the SVG
+  default). The mask discards it, but the same file may be opened directly in a
+  browser, and a `currentColor` stroke renders correctly in both places.
+
+A **raster** icon (`.png`, `.jpg`, `.webp`, `.gif`) keeps the `<img>` and is
+drawn in its own colours: masking one would throw the colour away, and a JPEG has
+no alpha to mask with — it would paint the box solid.
+
+**Match the built-in views' geometry so your mark carries the same ink weight.**
+The chamber's own icons are Lucide: a `24×24` viewBox with the art inset `2/24`
+of the box and a `stroke-width` of `2/24`. An inset of `3.25` at `1.6` — a
+plausible-looking choice — measures ~6% smaller and ~20% lighter at the activity
+bar's 16px box, which is what makes one button look like a different size from
+its neighbours even though every box is exactly 16px.
+
 **A README is what a user judges a plugin by before installing it.** Ship one (or
 name another file with `readme`): the store card grows a **README** button that
 opens it in the pane's own reader, and an installed card gets the same button

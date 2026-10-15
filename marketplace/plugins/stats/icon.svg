@@ -1,10 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Stats">
   <title>Stats</title>
-  <g fill="none" stroke="#8a8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3.25" y="3.25" width="17.5" height="17.5" rx="2.5" />
-    <path d="M7 15.5v2" />
-    <path d="M11 11.5v6" />
-    <path d="M15 8.5v9" />
-    <path d="M19 12.5v5" />
+  <!-- Geometry follows the built-in views' convention (Lucide): the art is inset
+       2/24 of the box and strokes at 2/24, so a plugin's mark carries the same
+       ink weight as the icons it sits beside. An inset of 3.25 and a 1.6 stroke
+       read ~6% smaller and ~20% lighter at the activity bar's 16px box. Paint is
+       `currentColor`: the host draws a vector mark through a CSS mask, so the
+       file supplies the shape and the surrounding ink supplies the colour. -->
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M7 17v-2" />
+    <path d="M11 17v-6" />
+    <path d="M15 17v-9" />
+    <path d="M19 17v-5" />
   </g>
 </svg>

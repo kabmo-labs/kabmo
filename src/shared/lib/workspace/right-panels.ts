@@ -31,6 +31,18 @@ export const RIGHT_PANEL_TYPES = [
 export type RightPanelType = (typeof RIGHT_PANEL_TYPES)[number];
 
 /**
+ * The box an activity-bar mark is drawn in, on BOTH layouts.
+ *
+ * One constant rather than a literal per call site, because the two layouts drew
+ * a plugin's mark at different sizes (`size={16}` on the desktop bar, `size={14}`
+ * on the phone's tab strip) while every built-in view's icon is `<… size={16} />`
+ * in the shared meta table. A plugin's button was therefore 12.5% smaller than
+ * its neighbours on the phone, and matching them meant editing two files that had
+ * no reason to disagree.
+ */
+export const PANEL_MARK_SIZE = 16;
+
+/**
  * Share of the group's available area the right panel opens at.
  *
  * ONE default for every view, not a per-view table. The right panel is half of

@@ -8,6 +8,7 @@ import { usePanelPluginActions, usePanelRegistry } from '@/client/hooks/workspac
 import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { usePanelReorder } from '@/client/hooks/workspace/panel-reorder';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
 import { PanelVisibilityMenu, type PanelVisibilityItem } from '@/client/components/layout/PanelVisibilityMenu';
@@ -207,7 +208,7 @@ function PanelButton({
       title={panel.title}
       aria-label={panel.title}
     >
-      {panel.builtin ? panel.icon : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={16} />}
+      {panel.builtin ? panel.icon : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={PANEL_MARK_SIZE} />}
       {showGitDot ? (
         <span
           className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-info"
