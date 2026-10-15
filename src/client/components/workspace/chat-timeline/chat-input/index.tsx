@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ClipboardEvent, SetStateAction } from 'preact/compat';
 import { AlertTriangle, X } from 'lucide-preact';
 import type { Attachment } from '@/shared/types';
@@ -17,6 +17,8 @@ import { DropOverlay } from '@/client/components/workspace/chat-timeline/chat-in
 import { GoalSurfaces } from '@/client/components/workspace/chat-timeline/chat-input/GoalSurfaces';
 import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
 import { readChamberSetting } from '@/shared/lib/settings/client';
+import { useKeyboardInset } from '@/client/hooks/ui/keyboard-inset';
+import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';
 import type { ChatInputProps } from '@/client/components/workspace/chat-timeline/chat-input/props';
 
 export function ChatInput({ 
@@ -51,11 +53,18 @@ export function ChatInput({
   /** Pending pick from a previous turn; omits for non-streaming composers. */
   deferredComposerPickRef = NO_PENDING_PICK,
   chatRunning,
+  expandable = false,
 }: ChatInputProps) {
   const [internalAttachments, setInternalAttachments] = useState<Attachment[]>([]);
   // The Goal modal is owned here, not by the toolbar: the button is a toggle,
   // and the modal it opens needs the same `modes` slice the toolbar got.
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  // Stretched: on a phone the composer takes the viewport, on a desktop its
+  // textarea grows to a share of it. Local, like the Goal modal's flag — a
+  // layout preference for one draft, not a setting, and the URL is what carries
+  // the session it belongs to.
+  const [expanded, setExpanded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const { selectedModel, setSelectedModel, thinkingLevels, currentThinking, selectThinking } = useModelSelection({
     composerModelRef,
@@ -122,6 +131,35 @@ export function ChatInput({
     maxHeightPx: autoGrow?.maxHeightPx ?? Number.POSITIVE_INFINITY,
   });
 
+  // The soft keyboard's overlap with the viewport. Measured ONLY while
+  // stretched: that is the one state where the card is bottom-anchored to the
+  // screen and would otherwise sit behind the keys (a phone has no hardware
+  // Enter, so the covered toolbar would be the only way to send). Docked, the
+  // card is inside the chat's own column and the measurement is unused.
+  const keyboardInset = useKeyboardInset(cardRef, expandable && expanded);
+  const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset });
+
+  // Escape returns to the docked composer. Bound to the document rather than to
+  // the textarea so it works while the picker has focus — the picker consumes
+  // Escape only while it is OPEN, and a stretched composer with a closed popup
+  // would otherwise have no keyboard way out.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
+  // A send on a phone collapses the stretch: it covers the transcript, so
+  // staying stretched would hide the answer being streamed. On a desktop the
+  // chat is visible either way and the box stays where the user put it.
+  const handleSubmit = (options?: { steering?: boolean }) => {
+    if (isMobile) setExpanded(false);
+    submit(options);
+  };
+
   // Browser dictation, delegated to omp's own local STT worker. The hook owns
   // capture + the socket; this component owns where the text lands and the
   // status line while a first-run model download is still going.
@@ -141,9 +179,9 @@ export function ChatInput({
 
   return (
     <div
-      className={`@container relative border rounded-md bg-paper transition-colors flex flex-col shadow-sm ${
-        isDragging ? 'border-ink/40' : 'border-ink/20 focus-within:border-ink'
-      } ${className}`}
+      ref={cardRef}
+      className={`@container transition-colors flex flex-col ${layout.cardPositionClass} ${layout.cardClass} ${layout.cardLayoutClass} ${className}`}
+      style={layout.style}
       {...dropProps}
     >
       <DropOverlay visible={isDragging} />
@@ -166,6 +204,10 @@ export function ChatInput({
         // bottom toolbar, which has room. `showAccess` gates both hosts.
         modes={isMobile && showAccess ? modes : undefined}
         onOpenGoal={() => setGoalModalOpen(true)}
+        // Only the chat's own composer stretches; a caller that owns its size
+        // (the New Chat modal) gets no control and cannot be stretched.
+        expanded={expandable ? expanded : undefined}
+        onToggleExpand={expandable ? () => setExpanded((prev) => !prev) : undefined}
       />
 
       {/* Refused plan/goal command notice. */}
@@ -188,15 +230,15 @@ export function ChatInput({
       <ComposerTextarea
         value={value}
         onChange={onChange}
-        onSend={submit}
+        onSend={handleSubmit}
         disabled={disabled}
         appSettings={appSettings}
         rootPath={rootPath}
         enablePicker={enablePicker}
+        placement={layout.pickerPlacement}
+        wrapperClassName={layout.wrapperClass}
         placeholder={placeholder ?? (disabled ? "Please select a workspace above to start prompting..." : "@ for files/agents; / for commands and skills (Paste images/files here)")}
-        className={`w-full bg-transparent border-none focus:outline-none resize-none text-ink placeholder-ink/40 disabled:opacity-50 disabled:cursor-not-allowed ${
-          isMobile ? 'px-3 py-3 text-base min-h-[68px] max-h-40' : 'px-3 py-3 text-sm min-h-[80px]'
-        }`}
+        className={`w-full bg-transparent border-none focus:outline-none resize-none text-ink placeholder-ink/40 disabled:opacity-50 disabled:cursor-not-allowed ${layout.textareaClass}`}
         onPaste={handlePaste}
         variant={variant}
         textareaRef={autoGrow ? growRef : undefined}
@@ -221,7 +263,7 @@ export function ChatInput({
         isGenerating={isGenerating}
         chatRunning={chatRunning}
         onStop={onStop}
-        onSend={() => submit()}
+        onSend={() => handleSubmit()}
         sendDisabled={disabled || (!value.trim() && attachments.length === 0)}
         accessMode={accessMode}
         onSelectAccess={onAccessModeChange}

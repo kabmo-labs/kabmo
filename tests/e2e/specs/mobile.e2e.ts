@@ -109,4 +109,59 @@ test.describe('mobile layout', () => {
     await expect(page.getByText('Response to: hello from the phone').first()).toBeVisible({ timeout: 30_000 });
     workspace.dispose();
   });
+
+  test('stretches the composer to the viewport and collapses on send', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-stretch');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-mobile-stretch').first()).toBeVisible();
+
+    const card = () =>
+      page.evaluate(() => {
+        const input = document.querySelector('[data-testid="composer-input"]');
+        if (!input) return null;
+        const element = input.closest('div[class*="flex-col"]');
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return {
+          position: getComputedStyle(element).position,
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+        };
+      });
+
+    const docked = await card();
+    expect(docked).not.toBeNull();
+    expect(docked!.position).toBe('relative');
+    expect(docked!.height).toBeLessThan(docked!.viewport.height);
+
+    await page.getByRole('button', { name: /maximize composer/i }).click();
+    await expect(page.getByRole('button', { name: /restore composer/i })).toHaveAttribute('aria-pressed', 'true');
+
+    // The whole viewport, anchored at its origin. This is the assertion the
+    // class list alone cannot make: `relative` in the base list outranks the
+    // `fixed inset-0` that was added later, and the card stayed in the dock.
+    const stretched = await card();
+    expect(stretched!.position).toBe('fixed');
+    expect(stretched!.x).toBe(0);
+    expect(stretched!.y).toBe(0);
+    expect(stretched!.width).toBe(stretched!.viewport.width);
+    expect(stretched!.height).toBe(stretched!.viewport.height);
+
+    // Sending returns to the dock: the stretched composer covers the
+    // transcript, so staying open would hide the answer being streamed.
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await input.fill('stretch and send');
+    await page.getByRole('button', { name: /send message/i }).first().click();
+
+    await expect(page.getByText('Response to: stretch and send').first()).toBeVisible({ timeout: 30_000 });
+    const afterSend = await card();
+    expect(afterSend!.position).toBe('relative');
+
+    workspace.dispose();
+  });
 });

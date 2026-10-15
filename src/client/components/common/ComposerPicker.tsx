@@ -5,6 +5,14 @@ import type { ComposerMatchItem, ComposerPickItem, ComposerPickKind, ComposerTri
 export interface ComposerPickerProps {
   open: boolean;
   kind: ComposerPickKind;
+  /**
+   * Which way the popup opens. `up` (the default) is the docked composer's
+   * placement: the chat is above it, so the list grows into that space. `over`
+   * draws it INSIDE the textarea's own box, which is what a composer filling
+   * the viewport needs — its top edge is the screen's, so an upward list would
+   * be drawn off the viewport with nothing to scroll back to.
+   */
+  placement?: ComposerPickerPlacement;
   /** `args` swaps the header for the subcommand hint of the typed command. */
   phase?: ComposerTriggerPhase;
   items: ComposerMatchItem[];
@@ -16,6 +24,8 @@ export interface ComposerPickerProps {
   onSelect: (item: ComposerPickItem) => void;
   onHover: (index: number) => void;
 }
+
+export type ComposerPickerPlacement = 'up' | 'over';
 
 /** Hard cap on rendered rows so a huge catalog cannot blow up the DOM. */
 const MAX_OPTIONS = 100;
@@ -39,6 +49,7 @@ function OptionName({ item }: { item: ComposerMatchItem }) {
 export function ComposerPicker({
   open,
   kind,
+  placement = 'up',
   phase = 'name',
   items,
   activeIndex,
@@ -77,7 +88,9 @@ export function ComposerPicker({
       role="listbox"
       id={listboxId}
       aria-label={ariaLabel}
-      className="absolute left-0 right-0 bottom-full mb-1 z-50 min-w-[260px] flex max-h-60 flex-col rounded-md border border-ink/20 bg-paper shadow-lg text-sm"
+      className={`absolute left-0 right-0 z-50 min-w-[260px] flex max-h-60 flex-col rounded-md border border-ink/20 bg-paper shadow-lg text-sm ${
+        placement === 'over' ? 'top-2' : 'bottom-full mb-1'
+      }`}
     >
       <div className="shrink-0 text-[10px] uppercase tracking-wider text-ink/40 px-3 py-1.5 border-b border-ink/10">
         {headerText}

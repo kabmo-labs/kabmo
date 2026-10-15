@@ -158,6 +158,7 @@ export function ComposerDock({
             sessionModel={sessionModel}
             sessionThinkingLevel={sessionThinkingLevel}
             variant={variant}
+            expandable
           />
         )}
       </div>

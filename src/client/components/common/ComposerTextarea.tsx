@@ -2,7 +2,7 @@ import { useRef } from 'preact/hooks';
 import type { ClipboardEvent, KeyboardEvent, ReactElement, RefObject } from 'preact/compat';
 import { useComposerTrigger } from '@/client/hooks/chat/composer';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
-import { ComposerPicker } from '@/client/components/common/ComposerPicker';
+import { ComposerPicker, type ComposerPickerPlacement } from '@/client/components/common/ComposerPicker';
 import { resolveComposerKeybindings, type ComposerKeybinding } from '@/shared/lib/chat/composer/keybindings';
 
 export interface ComposerTextareaProps {
@@ -25,6 +25,18 @@ export interface ComposerTextareaProps {
    * model as a literal no prompt builder translates.
    */
   enablePicker?: boolean;
+  /**
+   * Where the popup opens (see `ComposerPickerProps.placement`). The docked
+   * composer opens upward; a composer filling the viewport opens over the top
+   * of its own textarea.
+   */
+  placement?: ComposerPickerPlacement;
+  /**
+   * Classes for the textarea's wrapper — the popup's positioning context. A
+   * stretched composer makes it the flex member that owns the leftover height,
+   * which is what lets the textarea be `h-full` inside it.
+   */
+  wrapperClassName?: string;
   /**
    * `mobile` makes a bare Enter insert a newline instead of sending: phone
    * keyboards have no Shift key, so the configured Enter-to-send binding would
@@ -61,6 +73,8 @@ export function ComposerTextarea({
   onPaste,
   rootPath,
   enablePicker = true,
+  placement = 'up',
+  wrapperClassName = '',
   variant = 'desktop',
   textareaRef: externalRef,
   onReady,
@@ -120,7 +134,7 @@ export function ComposerTextarea({
   };
 
   return (
-    <div className="relative" ref={wrapperRef}>
+    <div className={`relative ${wrapperClassName}`} ref={wrapperRef}>
       <textarea
         ref={setTextareaRef}
         data-testid="composer-input"
@@ -148,6 +162,7 @@ export function ComposerTextarea({
       <ComposerPicker
         open={composer.isOpen}
         kind={composer.trigger?.kind ?? 'mention'}
+        placement={placement}
         phase={composer.trigger?.phase ?? 'name'}
         items={composer.matches}
         activeIndex={composer.activeIndex}

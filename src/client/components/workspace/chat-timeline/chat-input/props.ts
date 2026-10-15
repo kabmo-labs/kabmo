@@ -89,4 +89,12 @@ export interface ChatInputProps {
    * disagreement `timelineRunning` exists to prevent.
    */
   chatRunning?: boolean;
+  /**
+   * Whether the composer offers its stretch control. On for the chat's own
+   * composer, which is docked into a column and can afford to cover it; off for
+   * a composer whose size the CALLER owns — the New Chat modal has its own
+   * maximize (it stretches the card, not the composer), and the side-question
+   * form lives inside a panel that is already sized to the answers beside it.
+   */
+  expandable?: boolean;
 }

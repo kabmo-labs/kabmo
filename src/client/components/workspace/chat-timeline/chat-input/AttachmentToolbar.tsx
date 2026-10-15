@@ -1,6 +1,6 @@
 import { useRef } from 'preact/hooks';
 import type { ChangeEvent } from 'preact/compat';
-import { File as FileIcon, Paperclip, X } from 'lucide-preact';
+import { File as FileIcon, Maximize2, Minimize2, Paperclip, X } from 'lucide-preact';
 import type { Attachment } from '@/shared/types';
 import { attachmentName } from '@/shared/lib/chat/attachments';
 import { ModeToggles } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
@@ -17,9 +17,16 @@ interface AttachmentToolbarProps {
    */
   modes?: ComposerModes;
   onOpenGoal?: () => void;
+  /**
+   * The stretch control, at the row's trailing edge. Omitted by a composer that
+   * must not stretch (the New Chat modal owns its own card size, and the
+   * side-question form sits inside a panel that is already sized).
+   */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal }: AttachmentToolbarProps) {
+export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand }: AttachmentToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +84,28 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
               planAvailable={modes.planAvailable}
             />
           </div>
+        )}
+
+        {/* The stretch control, always last on the row. `ml-auto` unless the
+            mode toggles already took it, so the two trailing groups stay apart
+            from the paperclip and the attachment chips. */}
+        {onToggleExpand && (
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-pressed={Boolean(expanded)}
+            // "Maximize", not "Expand": `chat.e2e.ts` collects the tool cards'
+            // titles with `[aria-label^="Expand "]` and requires every one to
+            // name its tool, so a second control spelled that way would be read
+            // as a tool card whose title is "composer".
+            aria-label={expanded ? 'Restore composer' : 'Maximize composer'}
+            title={expanded ? 'Restore composer' : 'Maximize composer'}
+            className={`${modes && onOpenGoal ? '' : 'ml-auto '}flex items-center justify-center p-1 rounded transition-colors shrink-0 ${
+              expanded ? 'bg-ink/10 text-ink' : 'text-ink/60 hover:bg-ink/5 hover:text-ink'
+            }`}
+          >
+            {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
         )}
       </div>
 

@@ -52,12 +52,19 @@ export function resolveKeyboardInset(panelBottom: number, visibleBottom: number)
   return Math.round(overlap);
 }
 
-export function useKeyboardInset(ref: PanelRef): number {
+export function useKeyboardInset(ref: PanelRef, enabled = true): number {
   const [inset, setInset] = useState(0);
 
   useEffect(() => {
     const element = ref.current;
-    if (!element) return;
+    if (!enabled || !element) {
+      // Disabled (or the panel is not mounted yet): report no keyboard rather
+      // than leaving a lift the caller is no longer applying. A docked composer
+      // measures only while it is stretched, so this keeps it from re-rendering
+      // on every visual-viewport scroll for a padding it never renders.
+      setInset((previous) => (previous === 0 ? previous : 0));
+      return;
+    }
 
     let frame: number | null = null;
     const measure = () => {
@@ -107,7 +114,7 @@ export function useKeyboardInset(ref: PanelRef): number {
       window.removeEventListener('resize', schedule);
       window.removeEventListener('orientationchange', schedule);
     };
-  }, [ref]);
+  }, [ref, enabled]);
 
   return inset;
 }

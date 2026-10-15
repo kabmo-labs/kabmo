@@ -253,6 +253,7 @@ export function EmptyWorkspacePrompt({
           composerModelRef={composerModelRef}
           deferredComposerPickRef={deferredComposerPickRef}
           variant={variant}
+          expandable
         />
       </div>
     </div>
