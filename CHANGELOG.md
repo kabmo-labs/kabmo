@@ -5,6 +5,13 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.1](https://github.com/rajebdev/ompchamber/compare/v4.16.0...v4.16.1) — 2026-10-15
+
+### Fixed
+
+* **chat:** read run ownership at both ends of the history fetch ([eea9419](https://github.com/rajebdev/ompchamber/commit/eea94199bc119fea8c66257c231f3758f4ace665))
+* **panels:** make a plugin's mark follow the ink and match the built-ins ([283802b](https://github.com/rajebdev/ompchamber/commit/283802bd2c6c2660e33a7bd28e6cc0179aede45b))
+
 ## [4.16.0](https://github.com/rajebdev/ompchamber/compare/v4.15.1...v4.16.0) — 2026-10-15
 
 ### Added
