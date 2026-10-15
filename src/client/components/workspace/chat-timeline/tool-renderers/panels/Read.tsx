@@ -5,7 +5,7 @@ import { highlightCode } from '@/shared/lib/code/syntax-highlight';
 import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
 import { parseDirListing, parseNumberedCode } from '@/shared/lib/code/parser';
 import { getImageMimeType } from '@/shared/lib/fs/file-kind';
-import { buildFsRawUrl, isVirtualPath } from '@/shared/lib/fs/paths';
+import { buildFsRawUrl, isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
 import { toolImageSrc } from '@/shared/lib/omp/session/tool-images';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import type { ToolCallData } from '@/shared/types/chat';
@@ -13,6 +13,7 @@ import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspa
 import { extractLineMeta } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/read-line-meta';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
+import { isXdDocRead } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
 interface ReadPanelProps {
   tool?: ToolCallData;
@@ -27,7 +28,7 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
 
   const inputPath = getToolInputPath(tool?.input);
   const filePath = targetFilePath || inputPath || tool?.target || '';
-  const cleanFetchPath = filePath.split('?')[0].split('#')[0].replace(/:\d+(?:-\d+)?$/, '');
+  const cleanFetchPath = stripReadSelector(filePath);
   // A `proc://`/`xd://` path names no file: pointing `/api/fs/read` at it made
   // the route refuse and the panel print `// Loaded file: proc://…` as if that
   // were the file's contents.
@@ -86,13 +87,32 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
   }, [cleanFetchPath, virtualPath, output, lazyContent, loadingFile, isImage]);
 
   const details = (tool?.details ?? {}) as Record<string, any>;
-  const rawContent =
-    output ||
-    (typeof details?.displayContent === 'object' && typeof details.displayContent?.text === 'string'
+  /** omp's own display text: the rows it drew, WITHOUT the `1|` line-number
+   *  gutter its raw output carries. omp's own reader prefers it the same way
+   *  (`details?.displayContent?.text ?? stripOutputNotice(rawText)`), and it is
+   *  what a markdown read must parse — the gutter stripper needs TWO numbered
+   *  rows to recognise the format, so a one-row document (`read xd://propose`)
+   *  kept its `1|` prefix and rendered as the paragraph `1|Write your plan…`. */
+  const displayText =
+    typeof details?.displayContent === 'object' && typeof details.displayContent?.text === 'string'
       ? details.displayContent.text
-      : '') ||
-    lazyContent ||
-    '';
+      : '';
+  const rawContent = output || displayText || lazyContent || '';
+  /**
+   * A `read` that answers with a DOCUMENT, and therefore renders as prose.
+   *
+   * omp tags a file read `text/markdown`, and it answers a `read xd://…` — the
+   * device's documentation: `# <name> — <label>`, `## Schema`, a ```ts fence —
+   * the same way except for the content type, which its `XdProtocolHandler`
+   * hardcodes to `text/plain`. The payload is markdown in both cases, so both
+   * take the markdown branch; only the content type has to be widened.
+   *
+   * A FAILED read is excluded: `read xd://nope` answers "No such tool: …",
+   * which is a message rather than a document and belongs in the code surface
+   * the failure already rendered in.
+   */
+  const isDocRead =
+    !readFailed && (details.contentType === 'text/markdown' || (tool ? isXdDocRead(tool) : false));
   const dirInfo = useMemo(() => parseDirListing(rawContent), [rawContent]);
 
   const lineMeta = useMemo(() => {
@@ -155,9 +175,16 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
   // (`details.contentType === 'text/markdown' ? md(text) : code`). The panel had
   // no markdown branch, so `read skill://diagnose` rendered `# Diagnose ## Steps
   // 1. Reproduce` as one code block — the whole point of the file (its headings,
-  // lists and links) came out as literal syntax.
-  const isMarkdown = details.contentType === 'text/markdown' && !isDir && !isImage;
+  // lists and links) came out as literal syntax. `isDocRead` widens that to the
+  // `xd://` device docs, whose payload is the same markdown behind a
+  // `text/plain` content type.
+  const isMarkdown = isDocRead && !isDir;
   const kindLabel = isDir ? 'Directory' : isImage ? 'Image' : isMarkdown ? 'Markdown' : lang;
+  /** The document a markdown read draws — and what Copy copies. omp's own
+   *  `displayContent.text` first: it is the gutter-free text, and the gutter
+   *  stripper that serves every other read keeps a one-row document's `1|`
+   *  prefix (it needs two numbered rows to recognise the format). */
+  const markdownContent = displayText || parsedCode.cleanCode || displayContent;
 
   const visibleEntries = dirInfo.entries.slice(-MAX_OUTPUT_LINES);
   const skippedEntries = dirInfo.entries.length - visibleEntries.length;
@@ -178,7 +205,15 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
         icon={isDir ? <FolderOpen size={12} /> : isImage ? <FileImage size={12} /> : <FileCode size={12} />}
         label={filePath || resultImage?.name || (isDir ? 'Directory Listing' : 'File Content')}
         badge={kindLabel}
-        copyText={rawContent && !isImage ? (parsedCode.hasLineNumbers ? parsedCode.cleanCode : rawContent) : undefined}
+        copyText={
+          rawContent && !isImage
+            ? isMarkdown
+              ? markdownContent
+              : parsedCode.hasLineNumbers
+                ? parsedCode.cleanCode
+                : rawContent
+            : undefined
+        }
         copyLabel="Copy file content"
       />
 
@@ -245,14 +280,17 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
           )}
         </div>
       ) : isMarkdown ? (
-        /* omp draws a `text/markdown` read as the document it is: headings,
-           lists, links and code fences, not a code block of markdown syntax.
-           The source is `parsedCode.cleanCode`, not `rawContent`: omp prefixes
-           every row with its file line number (`1|# Diagnose`), and a markdown
-           parser reads that prefix as content — the heading came out as the
-           paragraph `1|# Diagnose`. */
+        /* omp draws a `text/markdown` read (and an `xd://` doc read) as the
+           document it is: headings, lists, links and code fences, not a code
+           block of markdown syntax. The source is omp's own `displayContent.text`
+           — the rows it drew — and never the raw output: omp prefixes every row
+           there with its file line number (`1|# Diagnose`), which a markdown
+           parser reads as content, turning the heading into the paragraph
+           `1|# Diagnose`. The gutter stripper is the fallback because it needs
+           two numbered rows to recognise the format, so a one-row document
+           (`read xd://propose`) kept its prefix through it. */
         <div className="max-h-80 overflow-auto rounded-lg border border-ink/8 bg-paper px-3.5 py-3 select-text">
-          <MarkdownRenderer content={parsedCode.cleanCode || displayContent} className="text-[12.5px] text-ink/85" />
+          <MarkdownRenderer content={markdownContent} className="text-[12.5px] text-ink/85" />
         </div>
       ) : rawContent ? (
         /* Render Code Content with synchronized, straight line numbers and clean code */

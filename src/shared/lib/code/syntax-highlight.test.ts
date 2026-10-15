@@ -270,6 +270,21 @@ describe('getLanguageFromPath', () => {
     expect(getLanguageFromPath('src/a.ts:12-30')).toBe('typescript');
   });
 
+  test('a selector after the range does not hide the language', () => {
+    // `read src/Read.tsx:205-215:raw` — the extension read as
+    // `tsx:205-215:raw`, an unknown one, so the code surface rendered
+    // unhighlighted. Every selector shape omp accepts is peeled now.
+    expect(getLanguageFromPath('src/Read.tsx:205-215:raw')).toBe('tsx');
+    expect(getLanguageFromPath('src/Read.tsx:raw')).toBe('tsx');
+    expect(getLanguageFromPath('src/a.ts:50-')).toBe('typescript');
+    expect(getLanguageFromPath('src/a.ts:50+150')).toBe('typescript');
+    expect(getLanguageFromPath('src/a.ts:-60')).toBe('typescript');
+    expect(getLanguageFromPath('src/a.ts:5-16,960-973')).toBe('typescript');
+    expect(getLanguageFromPath('src/a.ts:19,59')).toBe('typescript');
+    expect(getLanguageFromPath('src/a.ts:conflicts')).toBe('typescript');
+    expect(getLanguageFromPath('a.py:10-20:raw')).toBe('python');
+  });
+
   test('strips query and hash fragments', () => {
     expect(getLanguageFromPath('src/a.ts?x=1#L4')).toBe('typescript');
   });

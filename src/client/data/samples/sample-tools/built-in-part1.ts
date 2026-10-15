@@ -31,6 +31,33 @@ export const builtInToolsPart1: ToolCallData[] = [
     duration: '18ms',
   },
   {
+    id: 'call_01b_read_selector',
+    name: 'read',
+    type: 'read',
+    // The path itself carries omp's read selector (`:23-300:raw`) — the shape a
+    // real call uses for a ranged verbatim read. The panel must still pick the
+    // language off `.tsx`; reading the extension off the raw string gave
+    // `tsx:23-300:raw`, an unknown one, so the surface rendered unhighlighted.
+    title: 'read — src/App.tsx:23-300:raw',
+    target: 'src/App.tsx:23-300:raw',
+    input: { path: 'src/App.tsx:23-300:raw' },
+    details: { contentType: 'text/plain', totalLines: 12, fileSize: 388 },
+    output: `23| export function App() {
+24|   return (
+25|     <div className="app">
+26|       <Header title="OMPChamber" />
+27|       <main>
+28|         <ChatTimeline sessionId={sessionId} />
+29|       </main>
+30|     </div>
+31|   );
+32| }
+33|
+34| export default App;`,
+    status: 'success',
+    duration: '14ms',
+  },
+  {
     id: 'call_02_bash',
     name: 'bash',
     type: 'bash',

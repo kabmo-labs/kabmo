@@ -76,6 +76,15 @@ describe('getFileExtension', () => {
     expect(getFileExtension('a?v=1.png')).toBe('');
   });
 
+  test('a read-tool selector is stripped, so the image sniff still sees the extension', () => {
+    // `read /tmp/x.png:raw` — the sniff read the extension as `png:raw` and
+    // answered "not an image", so the panel painted a code surface instead of
+    // the picture the result carried.
+    expect(getFileExtension('/tmp/x.png:raw')).toBe('png');
+    expect(getFileExtension('x.pdf:1-5')).toBe('pdf');
+    expect(getFileExtension('src/Read.tsx:205-215:raw')).toBe('tsx');
+  });
+
   test('a directory-only path has no extension', () => {
     expect(getFileExtension('src/lib/')).toBe('');
   });

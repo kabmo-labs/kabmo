@@ -124,20 +124,70 @@ describe('Read panel — lazy fallback', () => {
 });
 
 describe('Read panel — language and markdown', () => {
-  test('a document with no language carries no language badge', async () => {
-    // `read xd://eval/browser` is a device's docs — prose. It used to be badged
-    // `javascript` and tokenized as code, because the language detector defaulted
-    // to javascript for a path with no extension.
+  test('an xd:// doc read renders as prose, never as code', async () => {
+    // `read xd://eval/browser` is a device's docs — markdown (`# <name>`,
+    // `## Schema`, a ```ts fence) behind omp's `text/plain` content type. It
+    // was badged `javascript` (the language detector's default for a path with
+    // no extension) and rendered as one `<pre>` of literal syntax.
+    const text = '# eval — Eval\n\n- Static content? Use `read`.';
     const el = await mount(readTool({
-      target: 'xd://eval/browser',
-      input: { path: 'xd://eval/browser' },
-      output: '1|Drive real Chromium tabs.',
-      details: { contentType: 'text/plain', totalLines: 1, displayContent: { text: 'Drive real Chromium tabs.', startLine: 1 } },
+      target: 'xd://eval',
+      input: { path: 'xd://eval' },
+      output: text.split('\n').map((row, index) => `${index + 1}|${row}`).join('\n'),
+      details: {
+        contentType: 'text/plain',
+        totalLines: 3,
+        displayContent: { text, startLine: 1, lineNumbers: [1, 2, 3] },
+      },
     }));
-    const text = el.textContent ?? '';
-    expect(text).not.toContain('javascript');
-    expect(text).not.toContain('JAVASCRIPT');
-    expect(text).toContain('text');
+    const rendered = el.textContent ?? '';
+    expect(rendered).toContain('Markdown');
+    expect(rendered).not.toContain('javascript');
+    expect(rendered).not.toContain('Directory');
+    // Prose, not a listing: the markdown pipeline drew it (`.prose-content`,
+    // the `-` row became a list item) and the directory renderer — whose rows
+    // carry folder/file glyphs — did not.
+    expect(el.querySelector('.prose-content')).not.toBeNull();
+    expect(el.querySelector('ul li')).not.toBeNull();
+    expect(el.querySelector('svg.lucide-folder, svg.lucide-folder-open')).toBeNull();
+    expect(rendered).toContain('Static content? Use read.');
+  });
+
+  test('a one-row doc read keeps its line-number gutter out of the prose', async () => {
+    // omp's raw output prefixes every row with its line number, and the
+    // stripper needs two numbered rows to recognise the format — so the real
+    // `read xd://propose` payload (one row) rendered as the paragraph
+    // `1|Write your plan's <slug> …`.
+    const line = "Write your plan's <slug> as plain text to xd://propose to submit the plan for approval.";
+    const el = await mount(readTool({
+      target: 'xd://propose',
+      input: { path: 'xd://propose' },
+      output: `1|${line}`,
+      details: {
+        contentType: 'text/plain',
+        totalLines: 1,
+        displayContent: { text: line, startLine: 1, lineNumbers: [1] },
+      },
+    }));
+    const rendered = el.textContent ?? '';
+    expect(rendered).toContain('xd://propose');
+    expect(rendered).not.toContain('1|');
+  });
+
+  test('a failed xd:// read stays a message, not a document', async () => {
+    // `read xd://nope` answers "No such tool: xd://nope. Mounted devices: …",
+    // which is a refusal rather than a document; it keeps the code surface.
+    const el = await mount(readTool({
+      target: 'xd://nope',
+      input: { path: 'xd://nope' },
+      status: 'error',
+      isError: true,
+      output: 'No such tool: xd://nope. Mounted devices: ast_grep, lsp.',
+      details: { contentType: 'text/plain', totalLines: 1 },
+    }));
+    const rendered = el.textContent ?? '';
+    expect(rendered).toContain('No such tool');
+    expect(rendered).not.toContain('Markdown');
   });
 
   test('a text/markdown read renders as prose, not as a code block', async () => {

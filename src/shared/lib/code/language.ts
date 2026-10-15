@@ -14,6 +14,8 @@
  * have to pull one in.
  */
 
+import { stripReadSelector } from '@/shared/lib/fs/paths';
+
 /**
  * Map a path to a Shiki language id.
  *
@@ -25,10 +27,16 @@
  * loaded, no grammar fetched) and `highlightCode`/`highlightLines` emit it
  * escaped and uncoloured, which is what omp's own reader does for the same
  * input (`getLanguageFromPath('xd://…')` is `undefined` there).
+ *
+ * The read-tool SELECTOR comes off first (`stripReadSelector`). A `read` may
+ * name its lines on the path itself (`Read.tsx:205-215:raw`), and reading the
+ * extension off the raw string gave `tsx:205-215:raw` — an unknown extension,
+ * so `text`, so an unhighlighted code surface. Only a `:N-M` suffix used to be
+ * stripped; `:raw`, `:img` and comma lists were not.
  */
 export function getLanguageFromPath(filePath?: string): string {
   if (!filePath) return 'text';
-  const clean = filePath.split('?')[0].split('#')[0].replace(/:\d+(?:-\d+)?$/, '');
+  const clean = stripReadSelector(filePath);
   const ext = clean.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'ts': return 'typescript';

@@ -4,6 +4,7 @@
  */
 
 import { formatBytes } from '@/shared/lib/format/number';
+import { stripReadSelector } from '@/shared/lib/fs/paths';
 
 /**
  * File-kind classification shared by the server read routes and every client
@@ -37,7 +38,7 @@ export const IMAGE_MIME_BY_EXT: Record<string, string> = {
 /** Lower-cased extension of a path or name, query/fragment/line suffix removed. */
 export function getFileExtension(filePath: string | undefined | null): string {
   if (!filePath) return '';
-  const clean = filePath.split('?')[0].split('#')[0].split(/[/\\]/).pop() ?? '';
+  const clean = stripReadSelector(filePath).split(/[/\\]/).pop() ?? '';
   const dot = clean.lastIndexOf('.');
   return dot > 0 ? clean.slice(dot + 1).toLowerCase() : '';
 }
