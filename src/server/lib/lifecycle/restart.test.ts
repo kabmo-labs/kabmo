@@ -26,7 +26,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { RESTART_GRACE_MS, scheduleSelfRestart, skipRestartNote } from '@/server/lib/lifecycle/restart';
+import { RESTART_GRACE_MS, scheduleSelfRestart, selfRestartMessage, skipRestartNote, withRestartPlan } from '@/server/lib/lifecycle/restart';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { clearListener, listenerFetchOptions, listenerUrl, setListener } from '@/server/lib/lifecycle/listener';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
@@ -36,7 +36,7 @@ import { applyUpdate } from '@/server/lib/updates/apply';
 import { UpdateInProgressError } from '@/server/lib/updates/single-flight';
 import { isManualMethod, REPO_URL } from '@/server/lib/updates/install-method';
 import { checkAllUpdates, MOCK_CURRENT_VERSION, MOCK_LATEST_VERSION } from '@/server/lib/updates/check';
-import type { UpdateTarget } from '@/shared/types/updates';
+import type { UpdateApplyResult, UpdateTarget } from '@/shared/types/updates';
 
 const originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
 const originalOmpBin = Bun.env.OMPCHAMBER_OMP_BIN;
@@ -86,6 +86,32 @@ describe('skipRestartNote', () => {
 
   test('the grace period is the documented 1200 ms', () => {
     expect(RESTART_GRACE_MS).toBe(1200);
+  });
+
+  test('the armed restart says the PAGE reloads, not that the console reconnects', () => {
+    // The page waits for the replacement and reloads itself (`useUpdates`), so
+    // a message about a reconnecting socket would describe the wrong thing.
+    expect(selfRestartMessage(4242)).toBe('Restarting on port 4242 to apply it — this page reloads on its own.');
+  });
+});
+
+describe('withRestartPlan', () => {
+  const updated: UpdateApplyResult = { success: true, target: 'ompchamber', manual: false, message: 'OMPChamber updated to v2.0.0 (bun-global).' };
+
+  test('an armed plan sets the flag and appends the sentence', () => {
+    const result = withRestartPlan(updated, { restarting: true, message: selfRestartMessage(3000) });
+    expect(result.restarting).toBe(true);
+    expect(result.message).toBe(
+      'OMPChamber updated to v2.0.0 (bun-global). Restarting on port 3000 to apply it — this page reloads on its own.',
+    );
+  });
+
+  test('an unmanaged instance reports the flag as false with the reason appended', () => {
+    // The console must not wait for a replacement that was never armed, and the
+    // sentence is the only place the user learns why.
+    const result = withRestartPlan(updated, { restarting: false, message: skipRestartNote('direct') });
+    expect(result.restarting).toBe(false);
+    expect(result.message).toContain('runs from source');
   });
 });
 

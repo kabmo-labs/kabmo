@@ -86,4 +86,14 @@ export interface UpdateApplyResult {
   message: string;
   /** Captured command output for the omp update. */
   output?: string;
+  /**
+   * A detached restart of the server that answered this request is ARMED.
+   *
+   * The console reads this to know it must wait for the replacement rather than
+   * re-checking a server that is about to exit, and that the page has to reload
+   * to run the build the update just put on disk. Absent on every other
+   * outcome, including the "already up to date" success and the unmanaged
+   * instance that is left running.
+   */
+  restarting?: boolean;
 }

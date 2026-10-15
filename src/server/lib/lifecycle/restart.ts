@@ -27,6 +27,8 @@ import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { listInstanceRecords } from '@/server/lib/lifecycle/instance';
 import { isCliManaged, resolveLaunchMode, unmanagedReason } from '@/server/lib/lifecycle/launch-mode';
+import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
+import type { UpdateApplyResult } from '@/shared/types/updates';
 
 /**
  * Package root of the running copy — the directory holding its `package.json`
@@ -81,6 +83,33 @@ function restartCommand(port: number): string[] | null {
 }
 
 /**
+ * What the console is told when the restart is ARMED. Exported so the wording
+ * is pinned by a test: it is the only thing telling the user the page will
+ * reload itself, and the version it replaced said the console "reconnects on
+ * its own" — which was true of the socket and false of the page.
+ */
+export function selfRestartMessage(port: number): string {
+  return `Restarting on port ${port} to apply it — this page reloads on its own.`;
+}
+
+/**
+ * Folds a restart plan into the result the console reads.
+ *
+ * `restarting` and the sentence are one contract: the flag is what makes the
+ * console wait for the replacement and reload, and the sentence is what tells
+ * the user that is happening. Composed together so they cannot drift, and
+ * capitalized here because it is appended after the update's own message, which
+ * already ends in a period.
+ */
+export function withRestartPlan(result: UpdateApplyResult, plan: SelfRestartPlan): UpdateApplyResult {
+  return {
+    ...result,
+    restarting: plan.restarting,
+    message: `${result.message} ${capitalizeFirstLetter(plan.message)}`,
+  };
+}
+
+/**
  * Stop and start this port again, once the response has been delivered. The
  * helper is detached so this process exiting does not take it down, and it
  * removes this port's record itself (`stopInstance`) before serving.
@@ -109,5 +138,5 @@ export function scheduleSelfRestart(): SelfRestartPlan {
     }
   }, RESTART_GRACE_MS);
 
-  return { restarting: true, message: `Restarting OMPChamber on port ${self.port} to apply it — the console reconnects on its own.` };
+  return { restarting: true, message: selfRestartMessage(self.port) };
 }

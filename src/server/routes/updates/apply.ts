@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { scheduleSelfRestart } from '@/server/lib/lifecycle/restart';
+import { scheduleSelfRestart, withRestartPlan } from '@/server/lib/lifecycle/restart';
 import { createSseStream } from '@/server/lib/sse';
 import { isMockMode } from '@/server/mock.server';
 import { applyUpdate } from '@/server/lib/updates/apply';
@@ -92,7 +92,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       };
 
       try {
-        const { result, updated } = await applyUpdate(target, {
+        const applied = await applyUpdate(target, {
           onLine: (chunk) => {
             if (handlers.isClosed()) return;
             pending += chunk;
@@ -111,12 +111,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
         // own grace timer (`RESTART_GRACE_MS`) — long enough for the frames
         // below to reach the browser — and it is the only place that knows
         // whether this instance is one the CLI can restart at all. Its plan is
-        // folded into the message before the result is sent: "updated" over a
-        // server still on the old build would mislead.
-        if (target === 'ompchamber' && result.success && updated) {
-          const plan = scheduleSelfRestart();
-          result.message = `${result.message} ${plan.message}`;
-        }
+        // folded into the result before it is sent: "updated" over a server
+        // still on the old build would mislead, and `restarting` is what tells
+        // the console to wait for the replacement and reload.
+        const result = target === 'ompchamber' && applied.result.success && applied.updated
+          ? withRestartPlan(applied.result, scheduleSelfRestart())
+          : applied.result;
         handlers.send('result', result);
       } catch (err) {
         flush();
