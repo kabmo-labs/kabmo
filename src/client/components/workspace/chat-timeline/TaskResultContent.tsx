@@ -149,7 +149,7 @@ export function TaskResultContent({ task }: TaskResultContentProps) {
       {/* Tab: Raw Code/JSON View */}
       {activeTab === 'raw' && (
         <pre
-          className="max-h-64 overflow-auto rounded-lg border border-ink/8 bg-paper p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/80 scrollbar-overlay-container scrollbar-overlay-static"
+          className="max-h-64 overflow-auto rounded-lg border border-ink/8 bg-paper p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/80 scrollbar-overlay-container"
           dangerouslySetInnerHTML={{
             __html: highlightCode(
               task.formattedJson || task.rawOutput,

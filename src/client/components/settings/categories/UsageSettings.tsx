@@ -88,7 +88,7 @@ export function UsageSettings() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static p-3.5 space-y-4">
+            <div className="flex-1 overflow-y-auto scrollbar-overlay-container p-3.5 space-y-4">
               {error && <p className="text-error text-xs">{error}</p>}
 
               {selected ? (

@@ -88,7 +88,7 @@ export function ConfigTabs({
   return (
     <div className="w-full flex flex-col gap-3 text-xs">
       {/* Horizontal tab pills — mirror omp's own setting tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-overlay-container scrollbar-overlay-static">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-overlay-container">
         {tabs.map((tab) => (
           <button
             key={tab.id}

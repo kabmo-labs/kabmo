@@ -171,7 +171,7 @@ export function ProviderSelect({ providers, value, onChange }: ProviderSelectPro
             id={LISTBOX_ID}
             role="listbox"
             aria-label="Usage providers"
-            className="max-h-48 scrollbar-overlay-container scrollbar-overlay-static py-1"
+            className="max-h-48 scrollbar-overlay-container py-1"
           >
             {filtered.length === 0 ? (
               <div className="px-3 py-2 text-ink/40 italic">No providers found</div>

@@ -100,7 +100,7 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-lg border border-ink/20 bg-paper text-ink p-5 shadow-2xl space-y-4 max-h-full overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static">
+      <div className="w-full max-w-lg rounded-lg border border-ink/20 bg-paper text-ink p-5 shadow-2xl space-y-4 max-h-full overflow-y-auto scrollbar-overlay-container">
         <div className="flex items-center justify-between pb-3 border-b border-ink/10">
           <div className="flex items-center gap-2">
             <Code className="w-4 h-4 text-ink/70" />

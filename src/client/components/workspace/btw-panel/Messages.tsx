@@ -118,7 +118,7 @@ export function BtwMessages({ topic, liveMessages, error, provider, providerName
   return (
     <div
       ref={scrollRef}
-      className="flex-1 min-h-0 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static px-4 py-3"
+      className="flex-1 min-h-0 overflow-y-auto scrollbar-overlay-container px-4 py-3"
     >
       {error && (
         <div className="bg-error/10 border border-error/30 text-error rounded-lg px-3 py-2 text-[12px]">{error}</div>

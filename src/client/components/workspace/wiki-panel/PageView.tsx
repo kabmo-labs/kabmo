@@ -17,7 +17,6 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, ArrowLeft, ExternalLink, Loader2 } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import type { WikiEntry, WikiPagePayload, WikiRepoInfo } from '@/shared/types/wiki';
 
 interface WikiPageViewProps {
@@ -56,7 +55,6 @@ export function WikiPageView({
   onNavigate,
   onBack,
 }: WikiPageViewProps) {
-  const fade = useScrollbarFadeRef();
   const externalUrl = pageWebUrl(repo, path);
 
   // Stable identity: a new object per render re-parses the whole page.
@@ -96,8 +94,6 @@ export function WikiPageView({
       </div>
 
       <div
-        ref={fade.ref}
-        onScroll={fade.onScroll}
         className="flex-1 min-h-0 overflow-y-auto scrollbar-overlay-container"
       >
         {error ? (

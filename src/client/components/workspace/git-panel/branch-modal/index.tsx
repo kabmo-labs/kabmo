@@ -171,7 +171,7 @@ export function GitBranchModal({
           </button>
         </div>
 
-        <div className="min-h-[40vh] max-h-[60vh] overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static">
+        <div className="min-h-[40vh] max-h-[60vh] overflow-y-auto scrollbar-overlay-container">
           {isLoading && branches.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-12 text-xs text-ink/50 font-mono">
               <Loader2 size={14} className="animate-spin text-info" />

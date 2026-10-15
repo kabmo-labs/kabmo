@@ -218,7 +218,7 @@ export function MobileHeader({
               </button>
 
               <div className="px-2 py-1 text-[10px] uppercase font-bold text-ink/40">Recent Sessions</div>
-              <div className="max-h-64 scrollbar-overlay-container scrollbar-overlay-static space-y-0.5">
+              <div className="max-h-64 scrollbar-overlay-container space-y-0.5">
                 {recentSessions.length === 0 ? (
                   <div className="px-2.5 py-2 text-ink/40 italic">No sessions yet</div>
                 ) : (

@@ -56,7 +56,7 @@ export function ProjectSidebarList({
       </div>
 
       {/* Projects List */}
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-1.5 space-y-0.5">
+      <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-0.5">
         {projects.map((proj) => {
           const isSelected = proj.id === selectedProjectId;
           const IconComp = ICON_MAP[proj.icon] || Folder;

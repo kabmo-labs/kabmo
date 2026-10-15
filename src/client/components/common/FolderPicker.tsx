@@ -163,7 +163,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
         </div>
 
         {/* Directory list */}
-        <div className="flex-1 min-h-[240px] max-h-[360px] scrollbar-overlay-container scrollbar-overlay-static p-2">
+        <div className="flex-1 min-h-[240px] max-h-[360px] scrollbar-overlay-container p-2">
           {loading ? (
             <div className="flex items-center justify-center h-40 text-ink/40">
               <Loader2 size={18} className="animate-spin" />

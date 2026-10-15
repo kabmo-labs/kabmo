@@ -59,7 +59,7 @@ export function PluginMarketplacePane({
   }, [catalog, marketplaceFilter, query]);
 
   return (
-    <div className="flex-1 flex flex-col h-full scrollbar-overlay-container scrollbar-overlay-static bg-paper text-ink p-6 md:p-8 space-y-6">
+    <div className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
       <div className="pb-4 border-b border-ink/10">
         <h2 className="text-sm font-bold tracking-tight text-ink">Marketplaces</h2>
         <p className="text-xs text-ink/60 mt-0.5 leading-relaxed">
@@ -222,7 +222,7 @@ export function PluginMarketplacePane({
             </div>
           </div>
 
-          <div className="rounded-lg border border-ink/10 divide-y divide-ink/5 max-h-[420px] overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static">
+          <div className="rounded-lg border border-ink/10 divide-y divide-ink/5 max-h-[420px] overflow-y-auto scrollbar-overlay-container">
             {filtered.length === 0 ? (
               <p className="px-3 py-6 text-[11px] text-ink/50 text-center">No plugin matches this filter.</p>
             ) : (

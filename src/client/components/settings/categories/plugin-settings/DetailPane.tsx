@@ -53,7 +53,7 @@ export function PluginDetailPane({
   const scopeLabel = plugin.scope === 'project' ? 'this workspace' : 'all projects';
 
   return (
-    <div className="flex-1 flex flex-col h-full scrollbar-overlay-container scrollbar-overlay-static bg-paper text-ink p-6 md:p-8 space-y-6">
+    <div className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
       <div className="flex items-start justify-between gap-4 pb-4 border-b border-ink/10">
         <div className="min-w-0">
           <h2 className="text-sm font-bold tracking-tight text-ink truncate">{plugin.name}</h2>

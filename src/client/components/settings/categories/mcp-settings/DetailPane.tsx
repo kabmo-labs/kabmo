@@ -79,7 +79,7 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
   };
 
   return (
-    <form onSubmit={handleSave} className="flex-1 flex flex-col h-full scrollbar-overlay-container scrollbar-overlay-static bg-paper text-ink p-6 md:p-8 space-y-6">
+    <form onSubmit={handleSave} className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
       {/* Header & Title */}
       <div className="flex items-center justify-between pb-4 border-b border-ink/10">
         <div>

@@ -7,7 +7,6 @@ import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/He
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
 import {
@@ -43,7 +42,6 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   const [previewOverrides, setPreviewOverrides] = useState<Record<string, boolean>>({});
   const [fontSize, setFontSize] = useState(EDITOR_DEFAULT_FONT_SIZE);
   const [wordWrap, setWordWrap] = useState(true);
-  const fade = useScrollbarFadeRef();
   const editorFontFamily = useEditorFontStack();
 
   const isMd = viewerKind === 'markdown';
@@ -162,7 +160,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           revision={editor.revision}
         />
       ) : (
-        <div ref={fade.ref} onScroll={fade.onScroll} className="flex-1 min-h-0 overflow-auto relative bg-paper text-ink select-text">
+        <div className="flex-1 min-h-0 overflow-auto relative bg-paper text-ink select-text">
           {editor.isLoading ? (
             <div className="flex items-center justify-center h-full text-ink/40 text-xs gap-2">
               <Loader2 size={14} className="animate-spin" />

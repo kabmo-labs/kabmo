@@ -57,7 +57,7 @@ export function DeleteProviderModal({
       aria-label="Confirm provider deletion"
     >
       <div
-        className="bg-paper border border-ink/20 rounded-xl shadow-2xl w-[min(94vw,460px)] max-h-full overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static text-ink"
+        className="bg-paper border border-ink/20 rounded-xl shadow-2xl w-[min(94vw,460px)] max-h-full overflow-y-auto scrollbar-overlay-container text-ink"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-5 py-4 border-b border-ink/10">

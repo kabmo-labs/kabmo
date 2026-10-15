@@ -16,7 +16,6 @@ interface TimelineBodyProps {
   scrollRef: RefObject<HTMLDivElement>;
   contentRef: (node: HTMLDivElement | null) => void;
   handleScroll: () => void;
-  isScrolling: boolean;
   loadingOlder: boolean;
   hasMore: boolean;
   loadOlderError: boolean;
@@ -49,7 +48,6 @@ export function TimelineBody({
   scrollRef,
   contentRef,
   handleScroll,
-  isScrolling,
   loadingOlder,
   hasMore,
   loadOlderError,
@@ -84,8 +82,6 @@ export function TimelineBody({
         onScroll={handleScroll}
         className={`flex-1 scrollbar-overlay-container overscroll-contain scroll-smooth overflow-x-hidden ${
           isMobile ? 'px-3 py-3 pb-8' : 'p-4 pb-10'
-        } ${
-          isScrolling ? 'timeline-scrollbar-visible' : 'timeline-scrollbar-hidden'
         }`}
       >
         <div ref={contentRef} className="mx-auto w-full max-w-[970px]">

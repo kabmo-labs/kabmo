@@ -51,7 +51,6 @@ export interface ChatTimelineScrollResult {
   /** Attach to the timeline's inner content wrapper so its growth is observed. */
   contentRef: (node: HTMLDivElement | null) => void;
   showScrollBottom: boolean;
-  isScrolling: boolean;
   /** Streaming auto-scroll gates on this: pinned to the tail = true. */
   followRef: RefObject<boolean>;
   /** Bottom jumps issued so far. A paging request stamps its viewport anchor
@@ -83,8 +82,6 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimerRef = useRef<TimeoutHandle>();
   // True while the viewport is (or should stay) pinned to the tail. A ref, not
   // state: scroll chunks read it every frame and a flip must not re-render.
   const followRef = useRef(true);
@@ -139,9 +136,6 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
       if (el.scrollTop <= SCROLL_TOP_TRIGGER_PX) onScrollTopRef.current?.();
     }
     syncFollowBottom();
-    setIsScrolling(true);
-    clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => setIsScrolling(false), 600);
   }, [syncFollowBottom]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -215,7 +209,6 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   }, [contentNode, pinToBottom, syncFollowBottom]);
 
   useEffect(() => () => {
-    clearTimeout(scrollTimerRef.current);
     clearTimeout(jumpTimerRef.current);
   }, []);
 
@@ -223,7 +216,6 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     scrollRef,
     contentRef,
     showScrollBottom,
-    isScrolling,
     followRef,
     jumpCountRef,
     jumpActiveRef,

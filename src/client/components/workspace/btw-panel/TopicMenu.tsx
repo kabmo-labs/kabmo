@@ -59,7 +59,7 @@ export function BtwTopicMenu({ topics, activeTopicId, onSelectTopic, onDeleteTop
       ref={menuRef}
       role="menu"
       aria-label="Side question history"
-      className="absolute left-0 top-full mt-1 z-50 bg-paper border border-ink/15 rounded-lg shadow-xl min-w-[280px] max-h-72 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static p-1"
+      className="absolute left-0 top-full mt-1 z-50 bg-paper border border-ink/15 rounded-lg shadow-xl min-w-[280px] max-h-72 overflow-y-auto scrollbar-overlay-container p-1"
     >
       {topics.length === 0 && (
         <div className="px-2.5 py-2 text-[12px] text-ink/50">No side questions yet.</div>

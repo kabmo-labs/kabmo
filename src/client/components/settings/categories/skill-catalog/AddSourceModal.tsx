@@ -50,7 +50,7 @@ export function AddSourceModal({ isOpen, onClose, onAddSource }: AddSourceModalP
       onClick={onClose}
     >
       <div
-        className="bg-paper border border-ink/20 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-ink animate-in fade-in zoom-in-95 duration-150 max-h-full overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static"
+        className="bg-paper border border-ink/20 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-ink animate-in fade-in zoom-in-95 duration-150 max-h-full overflow-y-auto scrollbar-overlay-container"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-ink/10">

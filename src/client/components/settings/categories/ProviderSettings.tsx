@@ -96,7 +96,7 @@ export function ProviderSettings({
           />
         }
         detail={
-          <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-6 md:p-8 space-y-6">
+          <div className="flex-1 scrollbar-overlay-container p-6 md:p-8 space-y-6">
             {selectedProvider ? (
               <>
                 <ProviderHeader provider={selectedProvider} />

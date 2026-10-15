@@ -32,7 +32,7 @@ export function PresetPicker({ presets, selectedPresetId, onSelectPreset }: Pres
   }
 
   return (
-    <div className="max-h-52 scrollbar-overlay-container scrollbar-overlay-static pr-1 space-y-2">
+    <div className="max-h-52 scrollbar-overlay-container pr-1 space-y-2">
       {groups.map((entry) => {
         const isCollapsed = collapsed[entry.group] === true;
         return (

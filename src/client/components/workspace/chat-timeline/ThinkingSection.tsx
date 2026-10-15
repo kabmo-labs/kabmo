@@ -115,7 +115,7 @@ export function ThinkingSection({
 
           <div
             ref={thoughtBodyRef}
-            className="max-h-72 overflow-auto border-l-2 border-ink/15 py-1 pl-3 text-ink/80 scrollbar-overlay-container scrollbar-overlay-static select-text"
+            className="max-h-72 overflow-auto border-l-2 border-ink/15 py-1 pl-3 text-ink/80 scrollbar-overlay-container select-text"
           >
             <MarkdownRenderer
               content={cleanThought}

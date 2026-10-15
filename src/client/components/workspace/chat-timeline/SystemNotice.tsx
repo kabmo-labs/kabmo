@@ -279,7 +279,7 @@ export function SystemNotice({ notice, source }: SystemNoticeProps) {
             </div>
           ) : genericInfo.isCode ? (
             <pre
-              className="max-h-56 overflow-auto font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/75 scrollbar-overlay-container scrollbar-overlay-static"
+              className="max-h-56 overflow-auto font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/75 scrollbar-overlay-container"
               dangerouslySetInnerHTML={{
                 __html: highlightCode(genericInfo.rest || genericInfo.clean, 'javascript'),
               }}

@@ -9,6 +9,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import cssPlugin from '@/server/lib/bundler/css';
+import { SCROLLBAR_ACTIVE_ATTRIBUTE } from '@/client/lib/scrollbar-activity';
 
 /**
  * Build one stylesheet through the REAL plugin with the options the client
@@ -159,6 +160,56 @@ describe('css plugin — reveal-on-touch rules reach the browser', () => {
     // A control revealed by `hidden group-hover:flex`.
     expect(enclosingAtRules(out, '.touch-shown-flex{display:flex}'))
       .toEqual(['@media (hover:none)']);
+  });
+});
+
+/**
+ * The scrollbar system: one size, one palette, one reveal rule.
+ *
+ * Its two halves live in different files — `tailwind.css` paints the thumb for
+ * `[data-scrollbar-active]`, and `lib/scrollbar-activity.ts` sets that
+ * attribute — so the failure mode is silent: a rename on one side alone leaves
+ * a stylesheet that matches nothing, every bar painted at rest, and no error
+ * anywhere. The attribute is therefore asserted by the module's OWN constant,
+ * not a literal, so the two cannot drift.
+ *
+ * The rest is the uniformity the change exists for: the global size/palette
+ * variables are the only place a scrollbar width or colour is declared, and the
+ * terminal's own overrides are gone.
+ */
+describe('css plugin — the scrollbar system reaches the browser', () => {
+  test('the reveal attribute matches the one the controller sets', async () => {
+    const out = await buildProjectStylesheet();
+
+    expect(out).toContain(`[${SCROLLBAR_ACTIVE_ATTRIBUTE}]::-webkit-scrollbar-thumb`);
+  });
+
+  test('one size and one palette drive every bar', async () => {
+    const out = await buildProjectStylesheet();
+
+    // The variables are the single source, and the global rules read them.
+    expect(out).toContain('--scrollbar-size:8px');
+    expect(out).toContain('--scrollbar-radius:4px');
+    expect(out).toContain('::-webkit-scrollbar{width:var(--scrollbar-size);height:var(--scrollbar-size)}');
+    // Idle is transparent; the active state is the theme's own ink.
+    expect(out).toContain('--scrollbar-thumb-idle:transparent');
+    expect(out).toContain('::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-idle)');
+    // Hover is declared AFTER the active rule at equal specificity, so the
+    // thumb under the pointer wins in either state.
+    expect(out.indexOf('::-webkit-scrollbar-thumb:hover')).toBeGreaterThan(
+      out.indexOf(`[${SCROLLBAR_ACTIVE_ATTRIBUTE}]::-webkit-scrollbar-thumb`),
+    );
+  });
+
+  test('no container carries its own scrollbar width or colour', async () => {
+    const out = await buildProjectStylesheet();
+
+    // The terminal used to: 8px against the global 6px, with a painted track
+    // and its own ink percentages. Any per-container rule coming back means the
+    // drift has returned.
+    expect(out).not.toContain('.xterm .xterm-viewport::-webkit-scrollbar');
+    expect(out).not.toContain('scrollbar-overlay-static');
+    expect(out).not.toContain('timeline-scrollbar-visible');
   });
 });
 

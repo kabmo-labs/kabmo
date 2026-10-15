@@ -64,7 +64,6 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     scrollRef,
     contentRef,
     showScrollBottom,
-    isScrolling,
     handleScroll,
     jumpToBottom,
     handleSend,
@@ -247,7 +246,6 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   scrollRef={scrollRef}
                   contentRef={contentRef}
                   handleScroll={handleScroll}
-                  isScrolling={isScrolling}
                   loadingOlder={loadingOlder}
                   hasMore={hasMore}
                   loadOlderError={loadOlderError}

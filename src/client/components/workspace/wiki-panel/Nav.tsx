@@ -20,7 +20,6 @@
 
 import { useMemo, useState } from 'preact/hooks';
 import { ExternalLink, Search } from 'lucide-preact';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import type { WikiNavSection } from '@/shared/types/wiki';
 
 interface WikiNavProps {
@@ -31,7 +30,6 @@ interface WikiNavProps {
 
 export function WikiNav({ sections, selected, onSelect }: WikiNavProps) {
   const [query, setQuery] = useState('');
-  const fade = useScrollbarFadeRef();
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -69,8 +67,6 @@ export function WikiNav({ sections, selected, onSelect }: WikiNavProps) {
       </div>
 
       <div
-        ref={fade.ref}
-        onScroll={fade.onScroll}
         className="flex-1 min-h-0 overflow-y-auto scrollbar-overlay-container"
       >
         {filtered.length === 0 ? (

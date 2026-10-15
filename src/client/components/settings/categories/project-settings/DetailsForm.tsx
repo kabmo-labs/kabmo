@@ -23,7 +23,7 @@ export function ProjectDetailsForm({
   accentColorOptions,
 }: ProjectDetailsFormProps) {
   return (
-    <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-6 md:p-8 space-y-7">
+    <div className="flex-1 scrollbar-overlay-container p-6 md:p-8 space-y-7">
       {/* 1. Header with title, full path, and delete button */}
       <ProjectDetailsHeader
         project={project}

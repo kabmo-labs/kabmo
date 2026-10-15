@@ -3,7 +3,6 @@ import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { FindWidget } from '@/client/components/workspace/editor/FindWidget';
 import { CommandPalette } from '@/client/components/workspace/editor/CommandPalette';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
@@ -67,14 +66,12 @@ export function FileDocument({
   // SVG picture are drawn by the viewer dispatch instead (they replace the code
   // surface rather than living inside its scroller).
   const isMd = viewerKind === 'markdown';
-  // The document owns its scroller, so it owns the fade class.
-  const fade = useScrollbarFadeRef();
 
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
       {find.open ? <FindWidget find={find} /> : null}
       {paletteOpen ? <CommandPalette onRun={onRunCommand} onClose={onClosePalette} /> : null}
-      <div ref={fade.ref} onScroll={fade.onScroll} className="flex-1 overflow-auto bg-paper flex">
+      <div className="flex-1 overflow-auto bg-paper flex">
         {isMd && isPreview ? (
           // No `prose` wrapper: markdown is styled by `.prose-content` alone
           // (the same system the chat timeline uses). The typography plugin

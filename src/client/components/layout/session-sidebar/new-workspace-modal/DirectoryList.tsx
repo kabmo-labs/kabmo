@@ -108,7 +108,7 @@ export function DirectoryList({
         <p className="px-2.5 py-1.5 text-[11px] text-error border-b border-ink/10">{createError}</p>
       )}
 
-      <div className="max-h-52 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static">
+      <div className="max-h-52 overflow-y-auto scrollbar-overlay-container">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-ink/40">
             <Loader2 size={16} className="animate-spin" />

@@ -158,7 +158,7 @@ export function PluginSidebarList({
         </div>
       )}
 
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-1.5 space-y-0.5">
+      <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-0.5">
         {view === 'marketplaces' ? (
           <MarketplaceRows marketplaces={marketplaces} />
         ) : plugins.length === 0 ? (

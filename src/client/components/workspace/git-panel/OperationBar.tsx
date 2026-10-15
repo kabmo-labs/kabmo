@@ -53,7 +53,7 @@ export function GitOperationBar({ operation, conflicts, isBusy, onAbort, onConti
       </div>
 
       {!ready && (
-        <div className="max-h-20 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static font-mono text-[10px] text-warning/90 space-y-0.5">
+        <div className="max-h-20 overflow-y-auto scrollbar-overlay-container font-mono text-[10px] text-warning/90 space-y-0.5">
           {conflicts.map((file) => (
             <div key={file} className="truncate" title={file}>
               {file}

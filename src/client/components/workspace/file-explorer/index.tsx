@@ -5,7 +5,6 @@ import { GitRepoDropdown } from '@/client/components/workspace/file-explorer/Git
 import { FileTreeItem } from '@/client/components/workspace/file-explorer/TreeItem';
 import { RootContextMenu } from '@/client/components/workspace/file-explorer/RootMenu';
 import { FileCreateModal } from '@/client/components/workspace/file-explorer/Modals';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
@@ -23,7 +22,6 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(storedExpandedPaths));
   const { activeRepo, setActiveRepo } = useRepoScope(rootPath);
   const { repos, scanning: reposScanning, rescan: rescanRepos } = useRepoList(rootPath, enabled);
-  const fade = useScrollbarFadeRef();
   const { fileMap: gitFileMap, folderMap: gitFolderMap, refreshGitStatus } = useGitStatus(rootPath, activeRepo, enabled);
   /** The panel background's own menu — the only place a file can be created at the tree's root. */
   const [rootMenu, setRootMenu] = useState<{ x: number; y: number } | null>(null);
@@ -239,7 +237,6 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
       </div>
 
       <div
-        ref={fade.ref}
         className={`flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80 ${
           rootAcceptsDrop ? 'bg-info/[0.06]' : ''
         }`}
@@ -263,7 +260,6 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           e.preventDefault();
           clipboard.move(dragging!, rootTarget);
         }}
-        onScroll={fade.onScroll}
       >
         {listing.isLoading && files.length === 0 ? (
           <div className="p-4 text-center text-ink/40">

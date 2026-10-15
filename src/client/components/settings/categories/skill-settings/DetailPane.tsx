@@ -85,7 +85,7 @@ description: ""
   const lineCount = Math.max(lines.length, 6);
 
   return (
-    <div className="flex-1 flex flex-col h-full scrollbar-overlay-container scrollbar-overlay-static bg-paper text-ink p-6 md:p-8 space-y-6">
+    <div className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
       {/* Pane Header */}
       <div className="flex items-start justify-between pb-4 border-b border-ink/10 gap-4">
         <div>

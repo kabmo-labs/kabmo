@@ -187,7 +187,7 @@ export function GitStashSection({ rootPath, repo, isBusy, onAction }: GitStashSe
             ) : stashes.length === 0 ? (
               <div className="text-[10px] text-ink/40 italic py-1">No stash entries.</div>
             ) : (
-              <div className="max-h-40 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static flex flex-col">
+              <div className="max-h-40 overflow-y-auto scrollbar-overlay-container flex flex-col">
                 {stashes.map((entry) => (
                   // Grid, not flex: the date column is a fixed track so its left
                   // edge is the same in every row. As a flex child it sized to its

@@ -110,7 +110,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
       {/* Transcript */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-overlay-container timeline-scrollbar-visible p-4 pb-10"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-overlay-container p-4 pb-10"
       >
         <div className="mx-auto w-full max-w-[970px]">
           {isLoading && messages.length === 0 ? (

@@ -29,7 +29,7 @@ Two packages are provided by the chamber itself:
 | `@ompchamber/plugin-sdk/app` | The same app contract, as the runtime slot the build shims to. |
 | `@ompchamber/plugin-sdk/testing` | A fake host for the plugin's own tests — no chamber process needed. |
 | `@ompchamber/plugin-sdk/testing/app` | `loadPluginApp` / `renderSlot` / `renderPanel`, for testing the components. |
-| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useScrollbarFadeRef`, `useRpc`, `useRealtime`, `useComposer`, plus the two providers (`PanelHostProvider`, `PluginIdProvider`). |
+| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useRpc`, `useRealtime`, `useComposer`, plus the two providers (`PanelHostProvider`, `PluginIdProvider`). |
 | `@ompchamber/ui/components` | `Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`, and `Markdown` (rendered through the chamber's own pipeline). |
 
 They are published on npm (`@ompchamber/plugin-sdk`, `@ompchamber/ui`), and the
@@ -749,9 +749,14 @@ phone's drawer already carries every view.
 | `useSessionState(key, fallback)` | `[value, setValue, ready]` — per-session state of ANY JSON shape (a collapsed-phase map, a picked file). |
 | `useWorkspaceFile(relPath)` | `{ content, loading, error }` — a text file inside the active workspace. |
 | `useChamberFetch(url, opts?)` | `{ data, isLoading, error, reload }` — a direct read of the chamber's HTTP API: a poll that pauses while hidden, plus re-reads on the window events you name. |
-| `useScrollbarFadeRef(delayMs?)` | `{ ref, onScroll }` — attach to a `.scrollbar-overlay-container`; the fade class is toggled on the element, so a scroll does not re-render the rows it holds. |
 | `useSidebarThreads()` | `{ threads, isLoading, stale, refresh }` — the sessions the sidebar is showing. |
 | `useSidebarThreadActions()` | `{ open, rename, setArchived, markSeen, remove, openNew, error }` — the session actions, over the host's own routes. |
+
+Scrollbar reveal is **not** a hook any more. The host wires one document-level
+capture listener at boot, so every scroll container — including one a plugin
+renders — fades its own bar in and out with no wiring. `useScrollbarFadeRef` and
+the `.scrollbar-overlay-container` fade classes are gone; a container only needs
+to scroll.
 
 bb calls the sidebar's rows "threads"; the chamber calls the same thing a
 **session**, and these hooks use that word because it is what the host's own

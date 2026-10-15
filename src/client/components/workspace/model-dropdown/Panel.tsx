@@ -63,7 +63,7 @@ export function ModelDropdownPanel({
 
         {/* Scrollable Model Lists */}
         <div
-          className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-1.5 space-y-2 max-h-80"
+          className="flex-1 scrollbar-overlay-container p-1.5 space-y-2 max-h-80"
           onMouseLeave={onMouseLeave}
         >
           {isLoading ? (

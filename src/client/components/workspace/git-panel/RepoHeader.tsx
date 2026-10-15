@@ -95,7 +95,7 @@ export function GitRepoHeader({
                 <RotateCcw size={11} className={reposScanning ? 'animate-spin' : ''} />
               </button>
             </div>
-            <div className="max-h-48 scrollbar-overlay-container scrollbar-overlay-static py-1">
+            <div className="max-h-48 scrollbar-overlay-container py-1">
               {filteredRepos.length === 0 ? (
                 <div className="px-3 py-2 text-ink/40 italic">No repos found</div>
               ) : (

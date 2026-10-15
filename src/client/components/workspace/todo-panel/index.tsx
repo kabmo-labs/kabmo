@@ -118,7 +118,7 @@ export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
         </div>
       )}
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static p-3.5">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto scrollbar-overlay-container p-3.5">
         {stale && (
           <div className="flex items-start gap-2 rounded-lg border border-ink/15 bg-ink/5 px-3 py-2 text-[11px] text-ink/60">
             <AlertCircle size={13} className="mt-[1px] shrink-0" />

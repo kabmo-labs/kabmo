@@ -1,5 +1,4 @@
 import { MobileSessionCategory } from '@/client/components/mobile/mobile-session-sidebar/Item';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 interface MobileSessionListProps {
@@ -26,15 +25,11 @@ export function MobileSessionList({
   onToggleFolder,
   onToast,
 }: MobileSessionListProps) {
-  // The list owns the scroller, so it owns the fade class — driving it from the
-  // parent re-rendered every session row on every scroll event.
-  const fade = useScrollbarFadeRef();
+  // No fade wiring here: the app-wide scrollbar rule reveals this list's bar
+  // from the document's own capture-phase listener (`lib/scrollbar-activity`),
+  // so the list does not need a ref, a handler, or a re-render per scroll.
   return (
-    <div 
-      ref={fade.ref}
-      onScroll={fade.onScroll}
-      className="flex-1 scrollbar-overlay-container p-3"
-    >
+    <div className="flex-1 scrollbar-overlay-container p-3">
       {folders.length === 0 ? (
         <div className="text-center py-12 text-xs text-ink/50 italic">
           No matching sessions found

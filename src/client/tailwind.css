@@ -86,74 +86,88 @@
   background-size: 4px 4px;
 }
 
-/* Custom scrollbars matching e-ink monochrome */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ============================================================================
+ * Scrollbars — ONE size, ONE palette, ONE reveal rule, for every scroll
+ * container in the app (pages, panels, modals, dropdowns, the terminal).
+ *
+ * The three numbers below are the whole system. Nothing anywhere else in this
+ * file, or in a component, may restate a scrollbar width, radius or colour:
+ * that is what drifted — the global bar was 6px, the terminal's 8px, and three
+ * class variants carried their own ink percentages, so the same scrollbar
+ * looked like three different controls depending on where you were.
+ *
+ * Colour comes from `--theme-ink`, so every palette moves every bar, including
+ * one switched at runtime (the custom properties are inherited and re-resolved
+ * on the `[data-theme]` flip — verified by reading the computed
+ * `::-webkit-scrollbar-thumb` background back after a theme change).
+ *
+ * ## The reveal rule
+ *
+ * The thumb is TRANSPARENT by default and painted only while the user is
+ * scrolling that element. `installScrollbarActivity()` (see
+ * `src/client/lib/scrollbar-activity.ts`) puts `data-scrollbar-active` on the
+ * scroller itself for 10s after each of its own `scroll` events, and this
+ * stylesheet is the other half of that contract: a global `scroll` listener is
+ * one listener for every scroll container in the document, including ones that
+ * do not exist yet, which is why no component has to opt in.
+ *
+ * Hovering the thumb still reveals it (`:hover` is declared LAST, so it wins
+ * over the active state at equal specificity) — that is the only affordance a
+ * container gets before it has ever been scrolled, and the reason a hidden
+ * thumb is not a discoverability hole: the gutter is still there, and pointing
+ * at it paints the bar.
+ * ========================================================================== */
+:root {
+  --scrollbar-size: 8px;
+  --scrollbar-radius: 4px;
+  --scrollbar-thumb-idle: transparent;
+  --scrollbar-thumb: color-mix(in srgb, var(--theme-ink) 24%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--theme-ink) 48%, transparent);
 }
 
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+/* Transparent, not `--theme-canvas`: the bar floats over whatever surface the
+ * container is on, and a track that paints a colour would draw a stripe across
+ * a dropdown or a modal card. */
 ::-webkit-scrollbar-track {
-  background: var(--theme-canvas);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--theme-ink) 20%, transparent);
-  border-radius: 3px;
+  background: var(--scrollbar-thumb-idle);
+  border-radius: var(--scrollbar-radius);
 }
 
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* The element the user is scrolling right now. */
+[data-scrollbar-active]::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+/* Declared last on purpose: equal specificity to the rule above, so the thumb
+ * under the pointer wins whichever state the container is in. */
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--theme-ink) 40%, transparent);
+  background: var(--scrollbar-thumb-hover);
 }
 
-/* Chat timeline: side scrollbar floats over content (overlay), fades while scrolling */
-.timeline-scrollbar-hidden::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-
-.timeline-scrollbar-visible::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--theme-ink) 20%, transparent);
-  border-radius: 3px;
-}
-
-.timeline-scrollbar-visible::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--theme-ink) 40%, transparent);
-}
-
-/* Generic overlay scrollbar for any scrollable panel: the thumb fades out
- * when scrolled to rest and reappears while scrolling (same behavior as the
- * chat timeline). Pair with overflow-y-[overlay] and the useScrollbarFadeRef
- * hook, which toggles the class pair on the element itself. */
+/* The app's shared scroll-surface marker. It carries the axis a container
+ * scrolls on (30 of the ~70 sites below rely on it alone for that) and it is
+ * the selector the tests and the e2e specs address a panel's scroller by.
+ *
+ * `overflow-y: overlay` used to be declared here to float the bar over the
+ * content. That value is not supported by Chrome any more — it computes to
+ * `auto` (measured on Chrome 150), so the declaration had already stopped
+ * doing anything; the fade it was written for is now the rule above and
+ * applies to every container, not only the ones carrying this class. */
 .scrollbar-overlay-container {
-  overflow-y: overlay;
-}
-
-.scrollbar-overlay::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 3px;
-}
-
-.scrollbar-overlay::-webkit-scrollbar-track,
-.scrollbar-overlay-scrolling::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-overlay-scrolling::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--theme-ink) 20%, transparent);
-}
-
-.scrollbar-overlay-scrolling::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--theme-ink) 40%, transparent);
-}
-
-/* Static overlay thumb for small containers (dropdowns, modals) that don't
- * use the fade hook: always a thin visible thumb, no idle fade. */
-.scrollbar-overlay-static::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--theme-ink) 20%, transparent);
-  border-radius: 3px;
-}
-
-.scrollbar-overlay-static::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--theme-ink) 40%, transparent);
+  overflow-y: auto;
 }
 
 /* Reveal-on-hover controls are written `opacity-0 group-hover:opacity-100`
@@ -207,25 +221,13 @@
   display: none;
 }
 
-/* Terminal xterm custom scrollbars */
-.xterm .xterm-viewport::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
-}
-
-.xterm .xterm-viewport::-webkit-scrollbar-track {
-  background: var(--theme-canvas) !important;
-}
-
-.xterm .xterm-viewport::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--theme-ink) 22%, transparent) !important;
-  border-radius: 4px !important;
-}
-
-.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--theme-ink) 42%, transparent) !important;
-}
-
+/* The terminal keeps xterm's own `overflow-y: scroll` (its gutter is part of
+ * the grid's geometry), but it is deliberately NOT given its own scrollbar
+ * colours any more — it had 8px/22%/42% and a painted track while every other
+ * container had 6px/20%/40% and a transparent one, which is exactly the drift
+ * the block above exists to remove. It inherits the global rule, so the
+ * terminal's bar is the same bar as everywhere else, and follows the theme
+ * with it. The `touch-action`/momentum pair below is a separate concern. */
 .xterm .xterm-viewport {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;

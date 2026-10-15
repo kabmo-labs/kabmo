@@ -36,7 +36,6 @@ import { FileIcon } from '@/client/components/common/file-icon';
 import { Replace } from 'lucide-preact';
 
 import { SearchRow } from '@/client/components/workspace/search-panel/Row';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import {
   DEFAULT_SEARCH_ROW_METRICS,
   buildSearchRows,
@@ -69,7 +68,6 @@ export function SearchResults({
   onReplaceFile,
   replaceBusy,
 }: SearchResultsProps) {
-  const fade = useScrollbarFadeRef();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,13 +79,9 @@ export function SearchResults({
   // viewport as soon as the container can be measured.
   const [win, setWin] = useState(() => ({ start: 0, end: Math.min(rows.length, 60) }));
 
-  const attachContainer = useCallback(
-    (element: HTMLDivElement | null) => {
-      containerRef.current = element;
-      fade.ref(element);
-    },
-    [fade.ref],
-  );
+  const attachContainer = useCallback((element: HTMLDivElement | null) => {
+    containerRef.current = element;
+  }, []);
 
   const syncWindow = useCallback(() => {
     const element = containerRef.current;
@@ -96,10 +90,13 @@ export function SearchResults({
     setWin((previous) => (previous.start === next.start && previous.end === next.end ? previous : next));
   }, [layout]);
 
+  // Only the window: the scrollbar's own reveal is the app-wide rule's job
+  // (`lib/scrollbar-activity`), so this handler stays as cheap as the
+  // virtualization needs it to be — one state update per scroll, no class
+  // toggling on a list that re-renders thousands of rows.
   const handleScroll = useCallback(() => {
-    fade.onScroll();
     syncWindow();
-  }, [fade.onScroll, syncWindow]);
+  }, [syncWindow]);
 
   // Measure the real TEXT box heights once they are on screen, so a font or
   // zoom change is followed instead of being frozen into a constant. The

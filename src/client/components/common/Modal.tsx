@@ -81,11 +81,11 @@ export function Modal({
           // dialog is 832px of fields) is taller than a phone viewport, and
           // without a bounded, scrollable body its footer sat below the screen
           // with no way to reach it — the dialog could not be submitted.
-          <form onSubmit={form.onSubmit} className={`${form.className} min-h-0 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static`}>
+          <form onSubmit={form.onSubmit} className={`${form.className} min-h-0 overflow-y-auto scrollbar-overlay-container`}>
             {body}
           </form>
         ) : (
-          <div className="min-h-0 overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static">{body}</div>
+          <div className="min-h-0 overflow-y-auto scrollbar-overlay-container">{body}</div>
         )}
       </div>
     </div>

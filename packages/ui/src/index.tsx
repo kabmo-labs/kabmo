@@ -27,7 +27,7 @@
  * | Module | What it holds |
  * |---|---|
  * | `./services` | The injected services and the prop contracts |
- * | `./panels` | `usePanelInfo`, `usePanelHost`, `useSessionValue`, `useWorkspaceFile`, the scrollbar fade |
+ * | `./panels` | `usePanelInfo`, `usePanelHost`, `useSessionValue`, `useWorkspaceFile` |
  * | `./fetch` | `useChamberFetch` — a plugin's own read of the chamber's HTTP API (poll + events) |
  * | `./participant` | `useRpc`, `useRealtime`, `useComposer` — what lets a plugin ACT on the conversation |
  * | `./components` | The presentation kit (`Panel`, `Field`, `Button`, …) |
@@ -51,8 +51,6 @@ export {
   useSessionValue,
   useSessionState,
   useWorkspaceFile,
-  useScrollbarFadeRef,
-  type ScrollbarFadeProps,
   type SessionValue,
   type WorkspaceFile,
 } from './panels';

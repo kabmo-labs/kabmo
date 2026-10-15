@@ -8,7 +8,6 @@ import { ContextStatsGrid } from '@/client/components/workspace/context-panel/St
 import { LastMessageCard } from '@/client/components/workspace/context-panel/LastMessageCard';
 import { TokenDistributionBar } from '@/client/components/workspace/context-panel/TokenDistributionBar';
 import { RawMessagesList } from '@/client/components/workspace/context-panel/RawMessagesList';
-import { useScrollbarFadeRef } from '@/client/hooks/ui/scrollbar-fade';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { sessionTelemetryTopic } from '@/shared/lib/realtime/protocol';
 
@@ -26,7 +25,6 @@ export function ContextPanel({
 }: ContextPanelProps) {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
-  const fade = useScrollbarFadeRef();
 
   const [telemetry, setTelemetry] = useState<SessionContextTelemetry>(() =>
     emptyTelemetry(sessionId || 'default', 'Session not started')
@@ -128,7 +126,7 @@ export function ContextPanel({
       </div>
 
       {/* Scrollable Context Body */}
-      <div ref={fade.ref} onScroll={fade.onScroll} className="flex-1 scrollbar-overlay-container p-4 space-y-4">
+      <div className="flex-1 scrollbar-overlay-container p-4 space-y-4">
         {/* 1. Context Window Usage Progress Card */}
         <ContextWindowCard
           used={telemetry.contextUsed}

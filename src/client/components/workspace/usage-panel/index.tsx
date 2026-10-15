@@ -108,7 +108,7 @@ export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
         </div>
       )}
 
-      <div className="flex-1 min-w-0 min-h-0 w-full overflow-y-auto scrollbar-overlay-container scrollbar-overlay-static p-3.5 space-y-4">
+      <div className="flex-1 min-w-0 min-h-0 w-full overflow-y-auto scrollbar-overlay-container p-3.5 space-y-4">
         {error && <p className="text-error text-xs">{error}</p>}
         {selected ? (
           <ProviderDetail summary={selected.summary} />

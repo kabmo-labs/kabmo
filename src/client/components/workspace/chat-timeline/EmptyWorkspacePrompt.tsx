@@ -146,7 +146,7 @@ export function EmptyWorkspacePrompt({
               <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink/40 font-semibold border-b border-ink/5">
                 Target Workspace
               </div>
-              <div className="max-h-56 scrollbar-overlay-container scrollbar-overlay-static py-1">
+              <div className="max-h-56 scrollbar-overlay-container py-1">
                 {folders.length === 0 ? (
                   <div className="px-3 py-2 text-ink/40 italic">No workspaces available</div>
                 ) : (

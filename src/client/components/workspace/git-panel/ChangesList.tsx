@@ -48,7 +48,7 @@ export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, o
 
   if (isLoading && changes.length === 0) {
     return (
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static font-mono text-[11px] text-ink/80">
+      <div className="flex-1 scrollbar-overlay-container font-mono text-[11px] text-ink/80">
         <div className="p-4 text-center text-ink/40 italic">Loading...</div>
       </div>
     );
@@ -56,14 +56,14 @@ export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, o
 
   if (changes.length === 0) {
     return (
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static font-mono text-[11px] text-ink/80">
+      <div className="flex-1 scrollbar-overlay-container font-mono text-[11px] text-ink/80">
         <div className="p-4 text-center text-ink/40 italic">No changes found.</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static font-mono text-[11px] text-ink/80">
+    <div className="flex-1 scrollbar-overlay-container font-mono text-[11px] text-ink/80">
       <div className="py-1">
         {/* Conflicts first: while one exists it is the only thing the reader
             has to act on, and it is the section that makes the operation bar's

@@ -15,7 +15,7 @@
  * again or the renderer reuses the key of the row it just removed.
  *
  * Mounted with `h()` against happy-dom, the same way the other hook tests do.
- * The overlay-scrollbar fade lives in `scrollbar-fade.test.ts`.
+ * The overlay-scrollbar fade lives in `lib/scrollbar-activity.test.ts`.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, jest, test } from 'bun:test';

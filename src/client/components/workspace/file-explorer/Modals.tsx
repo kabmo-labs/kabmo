@@ -175,7 +175,7 @@ export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose 
           </button>
         </div>
         
-        <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static bg-paper p-2">
+        <div className="flex-1 scrollbar-overlay-container bg-paper p-2">
           {fetcherState === 'idle' ? (
             rows ? (
               rows.length > 0 ? (

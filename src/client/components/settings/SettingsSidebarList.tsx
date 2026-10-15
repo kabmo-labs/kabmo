@@ -101,7 +101,7 @@ export const SettingsSidebarList: FunctionComponent<SettingsSidebarListProps> = 
         </button>
       </div>
 
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-1.5 space-y-3 text-xs">
+      <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-3 text-xs">
         <div>
           <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold text-ink/50 uppercase tracking-wider">
             {builtInLabel}

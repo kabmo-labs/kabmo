@@ -69,7 +69,7 @@ export function ProjectModelDropdown({
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-1 w-52 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 z-50 max-h-56 scrollbar-overlay-container scrollbar-overlay-static">
+            <div className="absolute right-0 mt-1 w-52 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 z-50 max-h-56 scrollbar-overlay-container">
               {modelList.map((item) => (
                 <button
                   key={item}

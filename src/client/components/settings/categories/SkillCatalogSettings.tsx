@@ -84,7 +84,7 @@ export function SkillCatalogSettings() {
   const activeSource = sources.find((s) => s.id === selectedSourceId) || sources[0] || null;
 
   return (
-    <div className="flex-1 flex flex-col h-full w-full scrollbar-overlay-container scrollbar-overlay-static bg-paper text-ink p-6 md:p-8 space-y-6">
+    <div className="flex-1 flex flex-col h-full w-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
       {/* Subtitle Header */}
       <div>
         <p className="text-xs text-ink/70 leading-relaxed">

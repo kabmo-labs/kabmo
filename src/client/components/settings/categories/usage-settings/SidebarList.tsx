@@ -31,7 +31,7 @@ export function UsageSidebarList({
         </span>
       </div>
 
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-1.5 space-y-3 text-xs">
+      <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-3 text-xs">
         {providers.length === 0 ? (
           <p className="px-2.5 py-3 text-[11px] text-ink/50 leading-relaxed">
             No provider credentials detected. Add an API key in Settings → Providers.

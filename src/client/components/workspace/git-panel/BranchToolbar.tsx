@@ -69,7 +69,7 @@ export function GitBranchToolbar({
         
         {showBranchMenu && (
           <div className="absolute top-full left-0 mt-1 w-56 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
-            <div className="max-h-48 scrollbar-overlay-container scrollbar-overlay-static py-1">
+            <div className="max-h-48 scrollbar-overlay-container py-1">
               {branches.length > 0 && (
                 <>
                   <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-ink/40 font-semibold">Local</div>

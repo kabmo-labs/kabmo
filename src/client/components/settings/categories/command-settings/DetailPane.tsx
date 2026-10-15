@@ -72,7 +72,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
   const lineCount = Math.max(lines.length, 6);
 
   return (
-    <form onSubmit={handleSave} className="flex-1 flex flex-col h-full scrollbar-overlay-container scrollbar-overlay-static bg-paper text-ink p-6 md:p-8 space-y-6">
+    <form onSubmit={handleSave} className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
       {readOnly && (
         <div className="rounded-lg border border-ink/15 bg-ink/5 px-3 py-2 text-[11px] text-ink/70 leading-relaxed">
           {formData.filePath ? (

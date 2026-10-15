@@ -7,6 +7,7 @@ import { primeWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { installAuthFetchBridge, primeAuthState } from '@/client/hooks/ui/auth';
 import { installPluginRuntime } from '@/client/lib/plugins/runtime';
 import { installUiKit } from '@/client/lib/plugins/kit';
+import { installScrollbarActivity } from '@/client/lib/scrollbar-activity';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 
 import '@/client/tailwind.css';
@@ -45,6 +46,12 @@ initDocumentTheme();
 // read starts the imports as soon as the layout mounts.
 installPluginRuntime();
 installUiKit();
+
+// One document-level capture listener serves every scroll container, including
+// the ones mounted later — which is why this is a boot-time install and not a
+// hook. Before the first render so the first scroll of a restored session is
+// already covered.
+installScrollbarActivity();
 
 // A file the OS handed to the chamber (PWA File Handling) arrives as a
 // `FileSystemFileHandle` on `launchQueue`, and the consumer must be installed

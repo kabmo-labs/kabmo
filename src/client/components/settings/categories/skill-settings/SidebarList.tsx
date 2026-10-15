@@ -80,7 +80,7 @@ export function SkillSidebarList({
       </div>
 
       {/* Skills List */}
-      <div className="flex-1 scrollbar-overlay-container scrollbar-overlay-static p-1.5 space-y-2">
+      <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-2">
         {/* The picker above names the scope; the list is exactly that scope's
             skills, so a second scope claim here would only be able to lie. */}
         <div className="px-2 pt-1 pb-0.5 text-[10px] font-bold text-ink/50 uppercase tracking-wider">
