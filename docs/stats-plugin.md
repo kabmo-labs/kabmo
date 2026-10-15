@@ -169,6 +169,23 @@ as the rows it sums, so a total is never a number without a column. Verified in
 the browser: the header pins while the list scrolls, and the group labels stay
 below it.
 
+Two properties of that pinning are not visible in the class list and were both
+measured as real artifacts before they were fixed:
+
+- **The pin is `-top-3`, not `top-0`.** The host panel body is `overflow-auto
+  p-3`, and a sticky element sticks at the **content box** — 12px below the
+  scrollport edge. The header therefore left a 12px band above itself where rows
+  scrolled through, un-covered (measured: a dark text pixel at the very top of
+  the panel, above the pinned labels). Negating the host's own padding makes the
+  header cover that band, which is what the wrapper's `-m-3 p-2` already assumes.
+- **The bottom rule is a `box-shadow`, not `border-b`.** With
+  `border-collapse: collapse` a border on a sticky header does not travel with
+  it: pinned, the rule rendered as a broken run — **112 of 776px** — because each
+  cell drew its own edge against the rows scrolling under it. A shadow on the
+  `thead` paints one continuous line (**776/776px**) and sits above the rows
+  rather than between them. Verified by toggling the shadow off in place: the
+  same row read 46px.
+
 **D7 — Windows says it cannot measure.** No `/proc`, no `ps`, and the only
 subprocess-free route to a foreign process's CPU (`Get-Counter`) reports a
 *sampled* percentage with no cumulative counter and no resident size — a

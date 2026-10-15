@@ -186,8 +186,22 @@ export function ProcessTable({ snapshot }: ProcessTableProps) {
     // thing that must not be ambiguous.
     <TableShell>
       <table class="w-full table-fixed">
-        <thead class="sticky top-0 z-20 bg-paper">
-          <tr class="border-b border-ink/15">
+        {/* `-top-3` is the host scroller's own `p-3`, negated. A sticky `top-0`
+          sticks at the CONTENT box — below the container's padding — so the
+          12px band between the scrollport edge and the header stayed visible
+          and rows scrolled through it (measured: a dark text pixel at the very
+          top of the panel, above the pinned labels). Sticking at the padding
+          edge instead makes the header cover that band, which is what the
+          wrapper's own `-m-3 p-2` already assumes. */}
+        {/* The bottom rule is a `box-shadow`, not a `border-b`. With
+            `border-collapse: collapse` a border on a sticky header does not
+            travel with it: measured while pinned, the rule rendered as a
+            broken run (112 of 776px) because each cell draws its own edge
+            against the rows scrolling under it. A shadow on the `thead`
+            paints one continuous line (776/776px) and sits above the rows
+            rather than between them. */}
+        <thead class="sticky -top-3 z-20 bg-paper shadow-[0_1px_0_0_color-mix(in_srgb,var(--theme-ink)_15%,transparent)]">
+          <tr>
             <HeaderCell label="PID" align="right" title="Operating-system process id" class="w-14" />
             <HeaderCell label="Process" title="What it is, and the project, session and age behind it" />
             <HeaderCell label="Memory" align="right" title="Resident set size (RSS)" class="w-16" />
