@@ -151,6 +151,7 @@ describe('DocxView', () => {
       loadBytes: async () => {
         throw new Error('This is not a Word document.');
       },
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     };
     await mount(h(DocxView, { source, name: 'broken.docx' }));
     expect(container.textContent).toContain('Could not show broken.docx');
@@ -168,6 +169,7 @@ describe('DocxView', () => {
         reads += 1;
         throw new Error('stop here');
       },
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     };
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -175,7 +177,7 @@ describe('DocxView', () => {
     await act(async () => renderIt());
     for (let i = 0; i < 10; i += 1) await Promise.resolve();
     // Re-render with a FRESH source object (same id) — as every render produces.
-    const again: ByteSource = { id: 'once', url: null, loadBytes: source.loadBytes as () => Promise<ArrayBuffer> };
+    const again: ByteSource = { id: 'once', url: null, loadBytes: source.loadBytes as () => Promise<ArrayBuffer>, mimeType: null };
     await act(async () => render(h(DocxView, { source: again, name: 'x.docx' }), container));
     for (let i = 0; i < 10; i += 1) await Promise.resolve();
     expect(reads).toBe(1);
@@ -194,7 +196,7 @@ describe('hasViewerSurface', () => {
 });
 
 describe('ViewerSurface routing', () => {
-  const noSource: ByteSource = { id: 'none', url: null, loadBytes: null };
+  const noSource: ByteSource = { id: 'none', url: null, loadBytes: null, mimeType: null };
 
   // A CSV reads the TEXT buffer, so the grid renders with no byte source at all
   // — proving the dispatch routed to CsvGrid rather than to a byte viewer.
@@ -222,6 +224,7 @@ describe('SheetView', () => {
       loadBytes: async () => {
         throw new Error('This is not a workbook.');
       },
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
     await mount(h(SheetView, { source, name: 'broken.xlsx', revision: 0 }));
     expect(container.textContent).toContain('Could not show broken.xlsx');

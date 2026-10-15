@@ -90,7 +90,7 @@ function mount<T>(source: ByteSource, parse: (bytes: ArrayBuffer) => Promise<T>,
 }
 
 function source(loadBytes: ByteSource['loadBytes'], id = 'src-1'): ByteSource {
-  return { id, url: null, loadBytes };
+  return { id, url: null, loadBytes, mimeType: null };
 }
 
 describe('useByteDocument', () => {

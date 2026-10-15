@@ -7,7 +7,12 @@ import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
-import { getRawContentType } from '@/shared/lib/fs/file-kind';
+import {
+  EDITOR_MAX_BYTES_BY_EXT,
+  getFileExtension,
+  getRawContentType,
+  unsupportedEditorMessage,
+} from '@/shared/lib/fs/file-kind';
 
 /**
  * GET /api/fs/raw?path=<rel>&root=<abs>&repo=<rel> — the file's bytes, verbatim.
@@ -60,6 +65,26 @@ export async function serveRawFile({ request }: LoaderFunctionArgs) {
     const stat = await file.stat();
     if (stat.isDirectory()) {
       return json({ error: 'Cannot read a directory' }, { status: 400 });
+    }
+
+    // The per-extension ceilings are enforced HERE, at the one route every
+    // document viewer's bytes come through, so no entry point can bypass them.
+    // The tree's own click never checked a size at all (a 45 MB PDF opened from
+    // the Files panel), and a drop went through `/api/fs/scope`, which refuses
+    // the TAB rather than the stream — a stale tab, a second browser or a
+    // hand-typed URL reached the bytes anyway.
+    //
+    // The table decides which files are gated, so the gate and the sentence a
+    // user reads cannot name different limits. An extension with no entry (an
+    // image, an SVG, plain text) is streamed as it always was: an image is
+    // painted from the stream and an SVG is text the code surface reads, so
+    // neither was ever buffered and neither is refused here.
+    const ceiling = EDITOR_MAX_BYTES_BY_EXT[getFileExtension(cleanPath)];
+    if (ceiling !== undefined && stat.size > ceiling) {
+      return json(
+        { error: unsupportedEditorMessage('too-large', stat.size, cleanPath), kind: 'too-large' },
+        { status: 415 },
+      );
     }
 
     // `no-store` because a raw read is how a refreshed view sees a file that

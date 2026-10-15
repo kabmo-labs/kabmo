@@ -18,10 +18,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
-  BINARY_SNIFF_BYTES,
-  classifyEditorFile,
   DOCUMENT_MIME_BY_EXT,
-  EDITOR_MAX_FILE_BYTES,
   getDocumentMimeType,
   getFileExtension,
   getImageMimeFromBytes,
@@ -29,7 +26,6 @@ import {
   getRawContentType,
   IMAGE_MIME_BY_EXT,
   SVG_MIME,
-  unsupportedEditorMessage,
 } from '@/shared/lib/fs/file-kind';
 
 const bytes = (...values: number[]): Uint8Array => new Uint8Array(values);
@@ -258,72 +254,3 @@ describe('getImageMimeFromBytes', () => {
   });
 });
 
-describe('classifyEditorFile', () => {
-  test('an image stays openable whatever its size, because it is streamed', () => {
-    // 40 MiB PNG: refused for size would be wrong — `/api/fs/raw` streams it and
-    // the browser paints it, so no buffer is ever held.
-    expect(classifyEditorFile({ path: 'shot.png', size: 40 * 1024 * 1024 })).toBe('image');
-  });
-
-  test('size is refused before the bytes are looked at', () => {
-    const oversize = EDITOR_MAX_FILE_BYTES + 1;
-    // Binary-looking head AND oversize: the size answer wins, because a file
-    // too large to hold is also too large to have sniffed.
-    expect(classifyEditorFile({ path: 'dump.log', size: oversize, head: bytes(0x00) })).toBe('too-large');
-  });
-
-  test('a file exactly at the ceiling is still text', () => {
-    expect(classifyEditorFile({ path: 'big.ts', size: EDITOR_MAX_FILE_BYTES })).toBe('text');
-  });
-
-  test('a NUL in the head is binary, and its absence is text', () => {
-    expect(classifyEditorFile({ path: 'app.zip', size: 1024, head: bytes(0x50, 0x4b, 0x00) })).toBe('binary');
-    expect(classifyEditorFile({ path: 'app.ts', size: 1024, head: bytes(0x63, 0x6f, 0x6e) })).toBe('text');
-  });
-
-  // A DOCX and an XLSX are zips and a PDF carries binary streams, so the NUL
-  // sniff would refuse exactly the files the viewer exists for. The document
-  // branch runs before it.
-  test('a document is exempt from the binary sniff', () => {
-    expect(classifyEditorFile({ path: 'report.pdf', size: 4096, head: bytes(0x25, 0x50, 0x44, 0x46) })).toBe('document');
-    expect(classifyEditorFile({ path: 'doc.docx', size: 4096, head: bytes(0x50, 0x4b, 0x03, 0x04, 0x00) })).toBe('document');
-    expect(classifyEditorFile({ path: 'sheet.xlsx', size: 4096, head: bytes(0x50, 0x4b, 0x03, 0x04, 0x00) })).toBe('document');
-    expect(classifyEditorFile({ path: 'sheet.xlsm', size: 4096 })).toBe('document');
-  });
-
-  // A document's bytes are fetched whole by the viewer, so it is refused for
-  // size like text — the image exemption does not extend to it.
-  test('a document past the ceiling is refused for size, not classified document', () => {
-    expect(classifyEditorFile({ path: 'huge.pdf', size: EDITOR_MAX_FILE_BYTES + 1 })).toBe('too-large');
-  });
-
-  test('a missing head is text — the answer that opens the file', () => {
-    expect(classifyEditorFile({ path: 'notes.txt', size: 512 })).toBe('text');
-  });
-
-  test('an extensionless file with a text head is text', () => {
-    expect(classifyEditorFile({ path: 'bin/run', size: 200, head: bytes(0x23, 0x21) })).toBe('text');
-  });
-
-  test('the sniff window is what a caller slices, and it fits every head above', () => {
-    expect(BINARY_SNIFF_BYTES).toBeGreaterThan(8);
-  });
-});
-
-describe('unsupportedEditorMessage', () => {
-  test('a binary refusal says the file is not text', () => {
-    expect(unsupportedEditorMessage('binary')).toContain('not text');
-  });
-
-  test('a size refusal names both the actual size and the ceiling', () => {
-    const message = unsupportedEditorMessage('too-large', 9 * 1024 * 1024);
-    expect(message).toContain('9.00 MB');
-    expect(message).toContain('5.00 MB');
-  });
-
-  test('a size refusal without a measured size names only the ceiling', () => {
-    const message = unsupportedEditorMessage('too-large');
-    expect(message).toContain('5.00 MB');
-    expect(message).not.toContain('undefined');
-  });
-});

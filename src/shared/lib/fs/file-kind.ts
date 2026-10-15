@@ -143,13 +143,66 @@ export function getImageMimeFromBytes(bytes: Uint8Array): string | null {
 }
 
 /**
- * The largest file the editor will open.
+ * The largest file the editor will open when its bytes reach the page WHOLE.
  *
  * Not a policy knob: the editor holds the whole file in one string and posts
  * the whole thing back on every save, so a ceiling has to exist. 5 MiB is above
  * any source file and well below the size at which a textarea stops responding.
+ *
+ * A DOCX and an XLSX are parsed in the page too, but they get their own, higher
+ * number — see `DOCUMENT_MAX_FILE_BYTES`.
  */
 export const EDITOR_MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * The largest Word document or workbook the editor opens.
+ *
+ * `mammoth` and `read-excel-file` parse the fetched `ArrayBuffer` in the page,
+ * so the file does sit in memory — but it is unzipped and converted once and
+ * then released, where a text buffer is held for as long as the tab is open and
+ * re-posted on every save. That is why these get four times the text ceiling
+ * rather than the text ceiling itself: the reason the 5 MiB limit exists (a
+ * textarea that stops responding) does not apply to a read-only conversion.
+ *
+ * Measured on a 15 MB workbook: the fetch, the unzip and the grid render all
+ * complete, and the panel stays responsive.
+ */
+export const DOCUMENT_MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+/**
+ * The largest PDF the editor opens — above both, because a PDF is the one
+ * document the page never holds.
+ *
+ * `PdfView` points an `<iframe>` at `/api/fs/raw`, so the bytes go straight to
+ * Chrome's own viewer, which fetches them with range requests (verified: a
+ * `Range: bytes=0-1023` request answers `206` with `content-range` and
+ * `accept-ranges`, and the plugin issues its own ranges as the reader scrolls).
+ * Nothing in the chamber buffers the file, so the text ceiling has no reason to
+ * apply to it — and applying it was the bug: a 6 MB PDF dragged from Finder was
+ * refused as "larger than the 5.00 MB the editor opens" before the document
+ * branch was ever reached, because the size test runs first.
+ */
+export const PDF_MAX_FILE_BYTES = 30 * 1024 * 1024;
+
+/**
+ * Extensions whose ceiling differs from `EDITOR_MAX_FILE_BYTES`.
+ *
+ * One table, read by the size test, by the refusal sentence AND by
+ * `/api/fs/raw`, because the sentence names the number to the user and the raw
+ * route is the one place every viewer's bytes come through: two copies of the
+ * rule would let a file be refused against one limit, explained against another
+ * and streamed past a third.
+ *
+ * An extension absent from this table falls back to the text ceiling — except
+ * an image, which is exempt from the size test entirely because `/api/fs/raw`
+ * streams it to an `<img>` and nothing is ever buffered.
+ */
+export const EDITOR_MAX_BYTES_BY_EXT: Record<string, number> = {
+  pdf: PDF_MAX_FILE_BYTES,
+  docx: DOCUMENT_MAX_FILE_BYTES,
+  xlsx: DOCUMENT_MAX_FILE_BYTES,
+  xlsm: DOCUMENT_MAX_FILE_BYTES,
+};
 
 /** How many leading bytes are inspected for binary content. */
 export const BINARY_SNIFF_BYTES = 8192;
@@ -171,9 +224,14 @@ export type EditorFileKind = 'image' | 'document' | 'text' | 'binary' | 'too-lar
  * An image is checked FIRST and stays openable whatever its size: `/api/fs/raw`
  * streams it and the browser paints it, so a large picture costs no buffer.
  *
- * A document (PDF/DOCX/XLSX) is the opposite: the viewer fetches its bytes
- * whole and hands them to a parser, so it is refused for size exactly like text
- * — the same ceiling, applied before the bytes are looked at.
+ * A PDF is the same answer for the same reason, up to a higher ceiling: its
+ * viewer is an `<iframe>` on `/api/fs/raw`, so the bytes are streamed to
+ * Chrome's own plugin and never held in the page.
+ *
+ * A DOCX and an XLSX are the middle case: `mammoth` and `read-excel-file` parse
+ * the fetched `ArrayBuffer` in the page, so the file IS held — but only for the
+ * conversion, not for the life of the tab, which is what buys them
+ * `DOCUMENT_MAX_FILE_BYTES` (20 MiB) instead of the text ceiling.
  *
  * The binary test is a NUL byte in the leading bytes — git's own test, and the
  * boring one: no encoding a source file uses puts a NUL inside a character,
@@ -192,7 +250,9 @@ export function classifyEditorFile(options: {
   head?: Uint8Array;
 }): EditorFileKind {
   if (getImageMimeType(options.path)) return 'image';
-  if (options.size > EDITOR_MAX_FILE_BYTES) return 'too-large';
+  if (options.size > (EDITOR_MAX_BYTES_BY_EXT[getFileExtension(options.path)] ?? EDITOR_MAX_FILE_BYTES)) {
+    return 'too-large';
+  }
   if (getDocumentMimeType(options.path)) return 'document';
   if (options.head?.includes(0)) return 'binary';
   return 'text';
@@ -203,10 +263,18 @@ export function classifyEditorFile(options: {
  *
  * Shared so the drop target, the editor surface and the read route's refusal
  * cannot word the same refusal three ways.
+ *
+ * The limit is derived from `path`, so the number in the sentence is the number
+ * the classifier actually applied: a 31 MB PDF is refused against 30 MB, never
+ * against the 5 MB a text file would get.
  */
-export function unsupportedEditorMessage(kind: 'binary' | 'too-large', size?: number): string {
+export function unsupportedEditorMessage(
+  kind: 'binary' | 'too-large',
+  size?: number,
+  path?: string | null,
+): string {
   if (kind === 'too-large') {
-    const limit = formatBytes(EDITOR_MAX_FILE_BYTES);
+    const limit = formatBytes(EDITOR_MAX_BYTES_BY_EXT[getFileExtension(path)] ?? EDITOR_MAX_FILE_BYTES);
     return size === undefined
       ? `This file is larger than the ${limit} the editor opens.`
       : `This file is ${formatBytes(size)} — larger than the ${limit} the editor opens.`;

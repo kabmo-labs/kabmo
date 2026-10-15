@@ -19,6 +19,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
 import { resolveFileScope } from '@/server/routes/fs/scope';
+import { DOCUMENT_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
 
 const APP = process.cwd();
 const DIR = path.join(APP, 'tmp-scope-probe');
@@ -107,5 +108,59 @@ describe('fs scope route', () => {
     const res = await resolveFileScope({ request: new Request(url) } as never);
 
     expect(res.status).toBe(400);
+  });
+
+  // The drop target refuses a file the editor cannot open, using this route's
+  // `kind`. A PDF past the text ceiling must come back `document` — refusing it
+  // is what made a dropped 6 MB PDF report "larger than the 5.00 MB the editor
+  // opens" instead of opening, even though its viewer streams the bytes.
+  test('a PDF past the text ceiling is still openable, not refused', async () => {
+    const target = write('big.pdf', new Uint8Array(6 * 1024 * 1024).fill(0x25));
+    const { status, body } = await scope(target);
+
+    expect(status).toBe(200);
+    expect(body.kind).toBe('document');
+    expect(body.error).toBeUndefined();
+  });
+
+  test('a PDF past the PDF ceiling is refused against 30 MB', async () => {
+    const target = write('huge.pdf', new Uint8Array(PDF_MAX_FILE_BYTES + 1).fill(0x25));
+    const { status, body } = await scope(target);
+
+    expect(status).toBe(200);
+    expect(body.kind).toBe('too-large');
+    expect(body.error).toContain('30.00 MB');
+  });
+
+  // The document ceiling is not the text ceiling: a DOCX is parsed in the page,
+  // but only for the conversion, so it opens well past 5 MB and is refused
+  // against 20 MB.
+  test('a DOCX past the text ceiling is still openable', async () => {
+    const target = write('big.docx', new Uint8Array(6 * 1024 * 1024).fill(0x50));
+    const { status, body } = await scope(target);
+
+    expect(status).toBe(200);
+    expect(body.kind).toBe('document');
+    expect(body.error).toBeUndefined();
+  });
+
+  test('a DOCX past the document ceiling is refused against 20 MB', async () => {
+    const target = write('huge.docx', new Uint8Array(DOCUMENT_MAX_FILE_BYTES + 1).fill(0x50));
+    const { status, body } = await scope(target);
+
+    expect(status).toBe(200);
+    expect(body.kind).toBe('too-large');
+    expect(body.error).toContain('20.00 MB');
+  });
+
+  // Plain text keeps the text ceiling: a textarea holds that buffer for the
+  // life of the tab, which is why its limit did not move with the documents'.
+  test('a text file past the text ceiling is still refused', async () => {
+    const target = write('big.log', new Uint8Array(6 * 1024 * 1024).fill(0x61));
+    const { status, body } = await scope(target);
+
+    expect(status).toBe(200);
+    expect(body.kind).toBe('too-large');
+    expect(body.error).toContain('5.00 MB');
   });
 });

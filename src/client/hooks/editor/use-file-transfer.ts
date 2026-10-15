@@ -100,8 +100,9 @@ export function useFileTransfer({
     if (byteViewer) {
       const load = byteSource?.loadBytes;
       if (!load) return;
+      const mimeType = byteSource?.mimeType;
       void load()
-        .then((bytes) => saveBlob(new Blob([bytes]), target.name))
+        .then((bytes) => saveBlob(mimeType ? new Blob([bytes], { type: mimeType }) : new Blob([bytes]), target.name))
         .catch(() => {});
       return;
     }

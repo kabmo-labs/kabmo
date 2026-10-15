@@ -257,7 +257,7 @@ export async function readFile({ request }: LoaderFunctionArgs) {
     }
     if (kind !== 'text') {
       return json(
-        { error: unsupportedEditorMessage(kind, stat.size), kind },
+        { error: unsupportedEditorMessage(kind, stat.size, cleanPath), kind },
         { status: 415 },
       );
     }
@@ -315,7 +315,7 @@ export async function readReferencedFile({ request }: LoaderFunctionArgs) {
       return json({ error: 'This file is served by /api/fs/raw' }, { status: 400 });
     }
     if (kind !== 'text') {
-      return json({ error: unsupportedEditorMessage(kind, stat.size), kind }, { status: 415 });
+      return json({ error: unsupportedEditorMessage(kind, stat.size, filePath), kind }, { status: 415 });
     }
     return json({ content: await file.text(), name: path.basename(filePath) });
   } catch (error) {

@@ -90,7 +90,7 @@ export async function openHandleAsTab(
   const head = new Uint8Array(await file.slice(0, BINARY_SNIFF_BYTES).arrayBuffer());
   const kind = classifyEditorFile({ path: file.name, size: file.size, head });
   if (kind === 'binary' || kind === 'too-large') {
-    return { ok: false, message: unsupportedEditorMessage(kind, file.size) };
+    return { ok: false, message: unsupportedEditorMessage(kind, file.size, file.name) };
   }
 
   // A picture and a document are opened like any other file: the handle id is

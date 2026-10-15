@@ -100,7 +100,7 @@ export async function resolveFileScope({ request }: LoaderFunctionArgs) {
     kind,
     size: stat.size,
     ...(kind === 'binary' || kind === 'too-large'
-      ? { error: unsupportedEditorMessage(kind, stat.size) }
+      ? { error: unsupportedEditorMessage(kind, stat.size, scope.path) }
       : {}),
   });
 }

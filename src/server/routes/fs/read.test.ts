@@ -20,7 +20,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
 import { readFile } from '@/server/routes/fs/read';
-import { EDITOR_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
+import { EDITOR_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
 
 const DIR = path.join(process.cwd(), 'tmp-read-gate');
 
@@ -89,6 +89,29 @@ describe('fs read gate', () => {
     expect(status).toBe(415);
     expect(body.kind).toBe('too-large');
     expect(body.error).toContain('5.00 MB');
+  });
+
+  // A PDF is streamed to Chrome's own viewer through `/api/fs/raw`, so the text
+  // ceiling does not apply to it — the route must still point at the raw route
+  // for a PDF well past 5 MB rather than refusing it. Refusing it was the bug:
+  // the size test ran before the document branch, so a 6 MB PDF was answered
+  // "larger than the 5.00 MB the editor opens".
+  test('a PDF past the text ceiling is still served by the raw route', async () => {
+    write('report.pdf', new Uint8Array(EDITOR_MAX_FILE_BYTES + 1).fill(0x25));
+    const { status, body } = await read('report.pdf');
+
+    expect(status).toBe(400);
+    expect(body.error).toContain('/api/fs/raw');
+    expect(body.kind).toBeUndefined();
+  });
+
+  test('a PDF past the PDF ceiling is refused for size, naming 30 MB', async () => {
+    write('huge.pdf', new Uint8Array(PDF_MAX_FILE_BYTES + 1).fill(0x25));
+    const { status, body } = await read('huge.pdf');
+
+    expect(status).toBe(415);
+    expect(body.kind).toBe('too-large');
+    expect(body.error).toContain('30.00 MB');
   });
 
   test('an image is refused with the raw-route pointer, not the kind refusal', async () => {
