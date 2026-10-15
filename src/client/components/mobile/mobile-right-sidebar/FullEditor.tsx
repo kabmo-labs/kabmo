@@ -7,6 +7,7 @@ import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/He
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
+import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
 import {
@@ -16,6 +17,7 @@ import {
   EDITOR_MIN_FONT_SIZE,
 } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
+import { MOBILE_SCROLL_POSITIONS_KEY } from '@/shared/lib/workspace/scroll-positions';
 import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
 import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
 import type { MobileEditorFile } from '@/client/components/mobile/open-file-payload';
@@ -68,6 +70,20 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
     // The write path stands down on a deleted file (and asks before a Save
     // recreates it) — see `use-file-writes.ts`.
     missing,
+  });
+
+  // Closing and reopening the same file is a remount, so the offset is restored
+  // from the session's own state — the phone shows one file at a time, and its
+  // key is that file's path (a rendered view keeps its own offset, as on the
+  // desktop, because the prose and the source are different documents).
+  const scroll = useScrollRestore({
+    tabKey: fileKey,
+    surface: isMd && isPreview ? 'rendered' : 'code',
+    ready: editor.loaded,
+    // Its own slot: this editor is keyed by path, the desktop column by tab id,
+    // and the desktop drops entries when a tab closes — against ids that mean
+    // nothing here.
+    slot: MOBILE_SCROLL_POSITIONS_KEY,
   });
 
   // A search row on the phone opens this full-screen editor, so the hand-off
@@ -160,7 +176,11 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           revision={editor.revision}
         />
       ) : (
-        <div className="flex-1 min-h-0 overflow-auto relative bg-paper text-ink select-text">
+        <div
+          ref={scroll.ref}
+          onScroll={scroll.onScroll}
+          className="flex-1 min-h-0 overflow-auto relative bg-paper text-ink select-text"
+        >
           {editor.isLoading ? (
             <div className="flex items-center justify-center h-full text-ink/40 text-xs gap-2">
               <Loader2 size={14} className="animate-spin" />

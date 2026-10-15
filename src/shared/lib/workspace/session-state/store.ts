@@ -28,6 +28,14 @@
  * - editor.previewMode        Record<fileId, boolean>
  * - editor.wordWrap           boolean
  * - editor.zoomLevel          number
+ * - editor.scrollPositions    ScrollPositions — where each editor tab was left
+ *                             scrolled, per surface (`code`/`rendered` for a
+ *                             file tab, `unified`/`split` for a diff). A tab at
+ *                             the top carries no entry, and an entry is dropped
+ *                             where its tab closes. The phone editor has its own
+ *                             slot (`editor.mobileScrollPositions`, keyed by
+ *                             path), because the desktop column is keyed by tab
+ *                             id and drops entries against those ids.
  * - files.expandedPaths       string[]
  * - files.searchQuery         string
  * - browser.zoomLevel         number

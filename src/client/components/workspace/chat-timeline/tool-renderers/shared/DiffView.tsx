@@ -149,10 +149,12 @@ export function DiffView({ text, path = '', maxHeightClass = 'max-h-72' }: DiffV
           needs to resolve `h-full` (measured 288px), so the view scrolls its
           own content and this wrapper only bounds it. */}
       <div className={`flex ${maxHeightClass} min-h-0 flex-col overflow-hidden`}>
+        {/* No tab key: this diff lives inside a chat card, and the timeline —
+            not the card — is what the reader scrolls. */}
         {split ? (
-          <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} />
+          <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} tabKey={null} />
         ) : (
-          <UnifiedView lines={parsed.lines} language={language} wordWrap={wordWrap} />
+          <UnifiedView lines={parsed.lines} language={language} wordWrap={wordWrap} tabKey={null} />
         )}
       </div>
     </div>

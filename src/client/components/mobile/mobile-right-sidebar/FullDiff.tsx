@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
+import { diffTabId } from '@/shared/lib/workspace/file-tab-id';
 
 interface MobileFullDiffProps {
   diff: {
@@ -73,6 +74,9 @@ export function MobileFullDiff({ diff, onClose, onFileSaved }: MobileFullDiffPro
           root={diff.root}
           repo={diff.repo || '.'}
           onFileSaved={onFileSaved}
+          // The same id a desktop diff tab uses for this path+staged pair, so a
+          // diff read on the phone and one read on the desktop share an offset.
+          tabKey={diffTabId(diff.path, isStaged)}
         />
       </div>
     </div>

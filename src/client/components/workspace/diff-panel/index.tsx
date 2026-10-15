@@ -21,6 +21,11 @@ interface DiffPanelProps {
   onOpenInEditor?: () => void;
   onFileSaved?: () => void;
   className?: string;
+  /**
+   * The tab this diff belongs to, so the reader's scroll offset is remembered
+   * per tab (and per view shape). Null for a host with no tab of its own.
+   */
+  tabKey?: string | null;
 }
 
 export function DiffPanel({
@@ -32,6 +37,7 @@ export function DiffPanel({
   onOpenInEditor,
   onFileSaved,
   className = '',
+  tabKey = null,
 }: DiffPanelProps) {
   // Read and persist view mode & whitespace preference in session_ui_state
   const [viewMode, setViewMode] = useSessionUiState<DiffViewMode>('diff.viewMode', 'unified');
@@ -297,9 +303,9 @@ export function DiffPanel({
             <pluginDiffView.Component {...pluginDiffView.props} />
           </PluginIdProvider>
         ) : viewMode === 'split' ? (
-          <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} />
+          <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} tabKey={tabKey} />
         ) : (
-          <UnifiedView lines={parsed.lines} language={language} wordWrap={wordWrap} />
+          <UnifiedView lines={parsed.lines} language={language} wordWrap={wordWrap} tabKey={tabKey} />
         )}
       </div>
 

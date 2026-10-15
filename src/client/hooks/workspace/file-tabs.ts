@@ -3,6 +3,12 @@ import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { useChamberEvent } from '@/client/hooks/ui/window-event';
 import { diffTabId, diffTabName, fileTabId } from '@/shared/lib/workspace/file-tab-id';
+import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import {
+  SCROLL_POSITIONS_KEY,
+  dropScrollPosition,
+  type ScrollPositions,
+} from '@/shared/lib/workspace/scroll-positions';
 import type { OpenedFile } from '@/shared/types/fs';
 
 export interface OpenFileInput {
@@ -24,6 +30,28 @@ export function useFileTabs(
   const [openedFiles, setOpenedFiles] = useSessionState<OpenedFile[]>('layout.openedFiles', []);
   const [activeFileId, setActiveFileId] = useSessionState<number | string | null>('layout.activeFileId', null);
 
+  /**
+   * Forget the scroll offset of a tab that is going away.
+   *
+   * Here, at the mutation, and deliberately not in an effect watching
+   * `openedFiles`: an effect sees that list at moments that are not user
+   * actions — before the session's blob has restored the tabs, and while a
+   * workspace switch is mid-flight — and pruning against a transiently empty
+   * list deleted every stored position on the way in (measured: the offset
+   * persisted, then came back as `{}` after a reload). A closed tab's id is
+   * reused when the same file is opened again, so keeping the entry would apply
+   * a stale position.
+   */
+  const dropScrollFor = useCallback(
+    (ids: Array<number | string>) => {
+      const current = getSessionValue<ScrollPositions>(sessionId, SCROLL_POSITIONS_KEY);
+      let next = current;
+      for (const id of ids) next = dropScrollPosition(next, String(id));
+      if (next !== current) setSessionKey(sessionId, SCROLL_POSITIONS_KEY, next);
+    },
+    [sessionId],
+  );
+
   const activeRootRef = useRef<string | null | undefined>(undefined);
   const { ready: layoutReady } = useSessionStateContext();
   const wipedRootRef = useRef<string | null | undefined>(undefined);
@@ -33,6 +61,12 @@ export function useFileTabs(
     activeRootRef.current = activeProjectPath;
     if (!layoutReady || wipedRootRef.current === activeProjectPath) return;
     wipedRootRef.current = activeProjectPath;
+    // The tabs are dropped, but their scroll offsets deliberately are NOT: this
+    // wipe is not a user closing a tab. It fires on every load (the root is null
+    // until the folder resolves), so dropping here erased the offset the session
+    // blob had just restored — measured: the offset persisted as `900`, and came
+    // back as `{}` after a reload. The entry is keyed by the file's path hash, so
+    // it is reused when that file is opened again, which is the point.
     setOpenedFiles([]);
     setActiveFileId(null);
   }, [activeProjectPath, sessionId, layoutReady, setOpenedFiles, setActiveFileId]);
@@ -96,6 +130,7 @@ export function useFileTabs(
   }, [activeProjectPath, onOpenTab, setOpenedFiles, setActiveFileId]);
 
   const handleCloseFile = useCallback((id: number | string) => {
+    dropScrollFor([id]);
     setOpenedFiles(prev => {
       const next = prev.filter(f => f.id !== id);
       if (activeFileId === id) {
@@ -103,7 +138,7 @@ export function useFileTabs(
       }
       return next;
     });
-  }, [activeFileId, setOpenedFiles, setActiveFileId]);
+  }, [activeFileId, dropScrollFor, setOpenedFiles, setActiveFileId]);
 
   /**
    * Turn a diff tab into the plain editor tab for the same file.
@@ -146,8 +181,12 @@ export function useFileTabs(
       setActiveFileId(fileId);
       return next;
     });
+    // OUTSIDE the updater: a side effect that runs once per call, not once per
+    // updater invocation. The diff tab is gone either way (replaced, or dropped
+    // because the file already had a tab), so its offsets go with it.
+    dropScrollFor([diffId]);
     onOpenTab?.();
-  }, [onOpenTab, setOpenedFiles, setActiveFileId]);
+  }, [dropScrollFor, onOpenTab, setOpenedFiles, setActiveFileId]);
 
   // Global listeners for omp:open-file and omp:open-diff
   useChamberEvent('omp:open-file', (e) => {

@@ -2,16 +2,26 @@ import { useMemo } from 'preact/hooks';
 import type { DiffLine } from '@/shared/lib/fs/diff-parser';
 import { highlightLines } from '@/shared/lib/code/syntax-highlight';
 import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 
 interface UnifiedViewProps {
   lines: DiffLine[];
   language: string;
   /** Wrap long lines instead of scrolling horizontally. */
   wordWrap: boolean;
+  /**
+   * The diff tab these rows belong to, so its scroll offset is remembered — or
+   * null for a caller with no tab of its own (a diff inside a chat tool card,
+   * where the timeline owns the scrolling).
+   */
+  tabKey: string | null;
 }
 
-export function UnifiedView({ lines, language, wordWrap }: UnifiedViewProps) {
+export function UnifiedView({ lines, language, wordWrap, tabKey }: UnifiedViewProps) {
   const syntaxReady = useSyntaxReady();
+  // The unified and split shapes are different row counts and heights for the
+  // same diff, so each keeps its own offset (see `ScrollSurface`).
+  const scroll = useScrollRestore({ tabKey, surface: 'unified' });
 
   const htmlByIndex = useMemo(() => {
     const out = new Array<string>(lines.length).fill('');
@@ -39,7 +49,12 @@ export function UnifiedView({ lines, language, wordWrap }: UnifiedViewProps) {
   }
 
   return (
-    <div className="w-full h-full overflow-auto font-mono text-xs select-text bg-paper text-ink code-surface">
+    <div
+      ref={scroll.ref}
+      onScroll={scroll.onScroll}
+      data-testid="diff-scroller"
+      className="w-full h-full overflow-auto font-mono text-xs select-text bg-paper text-ink code-surface"
+    >
       {/* The room under the last row belongs to the content, not the scroller:
           a scroll container's own bottom padding is not part of its scrollable
           overflow, so the padding has to sit inside it to have any effect. */}

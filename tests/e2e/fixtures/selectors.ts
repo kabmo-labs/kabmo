@@ -38,6 +38,9 @@ export const TESTID = {
   chatTimeline: 'chat-timeline',
   composerInput: 'composer-input',
   rightPanel: 'right-panel',
+  /** The editor column's scroll container (and the diff views' — same id). */
+  editorScroller: 'editor-scroller',
+  diffScroller: 'diff-scroller',
 } as const;
 
 /** Locators for the shell and the chat surface, resolved per page. */

@@ -91,6 +91,9 @@ export function EditorBody({
         onOpenInEditor={() => onConvertDiffToEditor(activeFile.id)}
         onFileSaved={onFileSaved}
         className="flex-1"
+        // The tab's own id: a diff of `src/x.ts` and the file's editor tab are
+        // two different documents, and staged/unstaged diffs are two more.
+        tabKey={String(activeFile.id)}
       />
     );
   }
