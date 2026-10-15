@@ -74,6 +74,24 @@ test.describe('mobile layout', () => {
     expect((await sortTrigger.getAttribute('class')) ?? '').toBe(before);
   });
 
+  test('a new chat shows its row in the drawer before it has a transcript', async ({ app }) => {
+    // The phone never asked the controller for the pending placeholder, so a
+    // brand-new chat had NO row in the drawer until omp's transcript scan
+    // landed — the row appeared "after a while" with nothing explaining the gap.
+    await app.getByRole('button', { name: 'Open Sessions' }).click();
+
+    await app.getByRole('button', { name: 'New Session' }).first().click();
+    const pendingId = new URL(app.url()).searchParams.get('sessionId') ?? '';
+    expect(pendingId.startsWith('new-')).toBe(true);
+
+    // The drawer closes on the click so the user lands on the chat; reopening it
+    // is what a phone does to look at the list.
+    await app.getByRole('button', { name: 'Open Sessions' }).click();
+    await expect(
+      app.locator(`[data-testid="session-item"][data-session-id="${pendingId}"]`),
+    ).toBeVisible();
+  });
+
   test('sends a prompt from the phone composer', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-mobile');

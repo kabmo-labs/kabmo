@@ -12,29 +12,38 @@
  * session selection.
  *
  * The two sidebars differ in two places, both parameterised here rather than
- * forked: the desktop injects a pending-session placeholder and force-expands
- * search hits, while the mobile sidebar delegates selection to its layout and
- * closes the drawer afterwards.
+ * forked: the desktop force-expands search hits, while the mobile sidebar
+ * delegates selection to its layout and closes the drawer afterwards. A
+ * PENDING row is not one of the differences — it comes from the client-side
+ * store (`pending-sessions.ts`) for both layouts, because the row a new chat
+ * needs while omp has not written its transcript yet is the same row on a
+ * phone and on a desktop.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { DEFAULT_SESSION_SORT_OPTION, isValidSessionSortOption, sortFolders } from '@/shared/lib/workspace/sidebar-sort';
-import { pendingSessionCreatedAt, pendingSessionTitle, sessionIdEpochMs } from '@/shared/lib/omp/session/default-title';
 import { useSessionStatusAck } from '@/client/hooks/chat/omp/session-statuses';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
+import {
+  hydratePendingSession,
+  reconcilePendingSessions,
+  usePendingSessions,
+  withPendingRows,
+} from '@/client/hooks/chat/omp/pending-sessions';
 import { writeSetting } from '@/shared/lib/settings/client';
-import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 
 /** Debounce before the sort preference is POSTed to /api/settings (ms). */
 const SORT_PERSIST_DEBOUNCE_MS = 200;
 
 export interface SessionSidebarControllerOptions {
   /**
-   * Desktop only: inject a pending `new-…` session placeholder and force-expand
-   * search matches. Mobile filters without expanding.
+   * Desktop only: force-expand search matches and keep a folder whose name
+   * matched even when no session inside it did. The mobile drawer filters
+   * without expanding, and drops a folder that has nothing left to show.
    */
-  includePendingSessions?: boolean;
+  expandSearchMatches?: boolean;
   /**
    * Mobile only: hand selection to the layout (which owns the URL + screen),
    * instead of performing the URL swap here.
@@ -73,10 +82,14 @@ export function useSessionSidebarController(
   appSettings: Record<string, any> = {},
   options: SessionSidebarControllerOptions = {},
 ): SessionSidebarController {
-  const { includePendingSessions = false, onSelectSession, onAfterSelect } = options;
+  const { expandSearchMatches = false, onSelectSession, onAfterSelect } = options;
   const { folders, initializing, refresh, refreshNow, refreshing, isRefreshing, markSeen, hasSeen, streamStatusMap, titleHint } = useSidebarData();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionParam = searchParams.get('sessionId');
+  // Read as a string, never off the `searchParams` object: `useSearchParams`
+  // returns a fresh `URLSearchParams` every render, so an effect or memo keyed
+  // on it would re-run on every render instead of on the parameter moving.
+  const folderIdParam = searchParams.get('folderId');
   const activeSessionId = sessionParam
     ? (Number.isNaN(Number(sessionParam)) ? sessionParam : Number(sessionParam))
     : null;
@@ -122,15 +135,45 @@ export function useSessionSidebarController(
   // realtime socket. Spinner while `stream`; a one-shot terminal badge
   // (acknowledged server-side on open, dropped by the next snapshot).
   //
-  // The rows render from THIS map, not from an item's own `streamStatus`, and
-  // the pending placeholder is built in `processedFolders` — outside `folders` —
-  // so the map has to carry a session the structure has not scanned yet. It is
-  // the provider's authoritative map (status payload + structure), never a
+  // The rows render from THIS map, not from an item's own `streamStatus`, and a
+  // pending row is injected into `processedFolders` — outside `folders` — so the
+  // map has to carry a session the structure has not scanned yet. It is the
+  // provider's authoritative map (status payload + structure), never a
   // client-side guess: `stream` exists only where the server wrote it.
   const sessionStatus = streamStatusMap;
   // hasSeen: clicks already acked + optimistically stripped these badges, so
   // the effect must not re-POST while the authoritative list is still stale.
   useSessionStatusAck(sessionStatus, activeSessionId, revalidate, hasSeen);
+
+  // A chat omp has not written a transcript for yet. The store owns the row's
+  // whole life — see `pending-sessions.ts` — so the sidebar only reads it here.
+  const pendingEntries = usePendingSessions();
+  const runningIds = useMemo(
+    () => new Set(Object.entries(sessionStatus).filter(([, status]) => status === 'stream').map(([id]) => id)),
+    [sessionStatus],
+  );
+
+  // The URL is the other way a pending chat exists: a reload (or a second tab)
+  // re-enters `?sessionId=new-…` with an empty store. An id the structure does
+  // not carry and the store does not know is registered, so the row survives
+  // the reload and — when its run is live — a switch away from it.
+  useEffect(() => {
+    if (!sessionParam || initializing) return;
+    if (folders.some((folder) => (folder.sessions ?? []).some((s) => String(s.id) === sessionParam))) return;
+    hydratePendingSession(sessionParam, folderIdParam, sessionStatus[sessionParam] === 'stream');
+  }, [sessionParam, folders, initializing, folderIdParam, sessionStatus]);
+
+  // Drop what the authoritative list superseded, plus drafts the user left
+  // behind. Runs BEFORE the render below reads the entries, so a row omp has
+  // just written is never drawn twice.
+  useEffect(() => {
+    if (initializing) return;
+    const listed = new Set<string>();
+    for (const folder of folders) {
+      for (const session of folder.sessions ?? []) listed.add(String(session.id));
+    }
+    reconcilePendingSessions({ listed, running: runningIds });
+  }, [folders, initializing, runningIds]);
 
   const handleSelectSession = (id: number | string) => {
     // One-shot terminal badge (check) clears on open: optimistic strip + server
@@ -151,61 +194,19 @@ export function useSessionSidebarController(
 
   // Filter and sort folders
   const processedFolders = useMemo(() => {
-    let result = [...folders];
-
-    if (includePendingSessions) {
-      // The active session may not be in the sidebar list yet: a pending
-      // "new-…" session, or a freshly spawned omp session whose JSONL has not
-      // been scanned (the realtime sidebar topic surfaces it once it is).
-      // Render it with the timestamped default title so there is never a gap
-      // between sending a chat and the session appearing with its real title.
-      const sessionExists = result.some(f => f.sessions?.some((s) => String(s.id) === String(sessionParam)));
-      const pendingId = sessionParam && !sessionExists ? sessionParam : null;
-      if (pendingId) {
-        const folderIdParam = searchParams.get('folderId');
-        const target = folderIdParam
-          ? result.find(f => String(f.id) === String(folderIdParam))
-          : result[0];
-        // The placeholder only bridges the gap before the JSONL scan surfaces
-        // the real row; rendering it alongside a row the folder already lists
-        // is what made the item blink.
-        const alreadyListed = Boolean(
-          target?.sessions?.some((s) => String(s.id) === String(pendingId)),
-        );
-        if (target && !alreadyListed) {
-          // The stamp is the session's own creation clock, never `Date.now()`:
-          // a re-stamp on every revalidate advanced the title's seconds on each
-          // list refresh and made the row perpetually newest, re-shuffling
-          // LATEST_SESSION ordering mid-run. A pending id carries its epoch
-          // directly; an adopted omp UUID carries one in its v7 prefix, which
-          // is what the row needs while omp's transcript scan cannot see the
-          // session yet (the file appears only at the first assistant message).
-          const epochMs = pendingSessionCreatedAt(pendingId);
-          const stableMs = Number.isFinite(epochMs) ? epochMs : sessionIdEpochMs(pendingId);
-          const stamp = new Date(Number.isFinite(stableMs) ? stableMs : Date.now()).toISOString();
-          result = result.map(f => {
-            if (f.id !== target.id) return f;
-            const pending: SessionItemData = {
-              id: pendingId,
-              folder_id: f.id,
-              // The text the user just sent beats a clock: omp's own title is
-              // ~17s away (its first write), and the operator's words are
-              // already known here.
-              title: titleHint(pendingId) ?? pendingSessionTitle(pendingId),
-              // Read by @/shared/lib/workspace/sidebar-sort to rank this folder newest.
-              created_at: stamp,
-              updated_at: stamp,
-            };
-            return { ...f, isExpanded: true, sessions: [pending, ...(f.sessions || [])] };
-          });
-        }
-      }
-    }
+    // A pending row joins the list BEFORE the filter: the row exists because
+    // omp's transcript scan cannot see the session yet, and a row that the
+    // user's own search hides is a row the search never offered to find.
+    let result = withPendingRows(folders, pendingEntries, {
+      activeId: sessionParam,
+      urlFolderId: folderIdParam,
+      titleFor: titleHint,
+    });
 
     // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      if (includePendingSessions) {
+      if (expandSearchMatches) {
         result = result.filter(folder => {
           const matchFolder = folder.name.toLowerCase().includes(q);
           const matchSession = folder.sessions?.some((s) => s.title.toLowerCase().includes(q));
@@ -233,7 +234,7 @@ export function useSessionSidebarController(
     result = sortFolders(result, sortOption);
 
     return result;
-  }, [folders, searchQuery, sortOption, sessionParam, searchParams, includePendingSessions, titleHint]);
+  }, [folders, pendingEntries, searchQuery, sortOption, sessionParam, folderIdParam, expandSearchMatches, titleHint]);
 
   return {
     folders,

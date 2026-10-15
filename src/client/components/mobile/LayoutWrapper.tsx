@@ -12,6 +12,7 @@ import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
+import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
@@ -134,13 +135,11 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     setSearchParams(prev => {
       const currentSessionId = prev.get('sessionId');
       const next = new URLSearchParams(prev);
-      next.set('sessionId', `new-${Date.now()}`);
-      if (currentSessionId) {
-        const currentFolder = folders.find(f =>
-          f.sessions?.some((s) => String(s.id) === String(currentSessionId))
-        );
-        if (currentFolder) next.set('folderId', currentFolder.id.toString());
-      }
+      const currentFolder = currentSessionId
+        ? folders.find(f => f.sessions?.some((s) => String(s.id) === String(currentSessionId)))
+        : undefined;
+      next.set('sessionId', startPendingSession(currentFolder?.id ?? folderId ?? null));
+      if (currentFolder) next.set('folderId', currentFolder.id.toString());
       return next;
     }, { replace: true });
     setCurrentScreen('main');
@@ -154,7 +153,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     if (cwd) triggerSessionPrewarm(cwd);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      next.set('sessionId', `new-${Date.now()}`);
+      next.set('sessionId', startPendingSession(targetFolderId));
       next.set('folderId', targetFolderId.toString());
       return next;
     }, { replace: true });

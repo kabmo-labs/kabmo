@@ -54,6 +54,41 @@ test.describe('sidebar', () => {
     workspace.dispose();
   });
 
+  test('a new chat keeps its sidebar row when the user switches away', async ({ harness, page }) => {
+    // A brand-new chat has no transcript yet — omp writes the session file only
+    // when the first assistant message settles (~17s) — so its row exists only
+    // because the client draws it. The row used to be derived from
+    // `?sessionId=`, which meant clicking another session deleted it and it
+    // reappeared seconds later once omp's scan caught up.
+    //
+    // Mounted on the `page` fixture rather than `app`: the demo session ids the
+    // mock seed writes have no mode record, so clicking one makes the chat's
+    // own `/api/sessions/:id/modes` probe answer 404 — a pre-existing console
+    // error unrelated to the list, and one `app`'s no-errors assertion fails on.
+    const server = await harness('mock');
+    await openApp(page, server.baseURL);
+
+    // The session to switch TO is addressed by its own id, never by `.first()`:
+    // the pending row is injected at the TOP of its folder, so a positional
+    // locator resolves to that row at click time and the click would re-select
+    // the pending chat — a spec that passes with the bug still in place.
+    const firstItem = page.locator('[data-testid="session-item"]').first();
+    await expect(firstItem).toBeVisible();
+    const otherId = await firstItem.getAttribute('data-session-id');
+    expect(otherId).toBeTruthy();
+
+    await page.getByRole('button', { name: /^new session$/i }).first().click();
+    const pendingId = new URL(page.url()).searchParams.get('sessionId') ?? '';
+    expect(pendingId.startsWith('new-')).toBe(true);
+    expect(pendingId).not.toBe(otherId);
+
+    const pending = page.locator(`[data-testid="session-item"][data-session-id="${pendingId}"]`);
+    await expect(pending).toBeVisible();
+
+    await page.locator(`[data-testid="session-item"][data-session-id="${otherId}"]`).click();
+    await expect(pending).toBeVisible();
+  });
+
   test('the app root is present and the sidebar is rendered', async ({ app }) => {
     await expect(app.locator(`[data-testid="${TESTID.appRoot}"]`)).toBeVisible();
     await expect(app.getByRole('button', { name: /new session/i }).first()).toBeVisible();

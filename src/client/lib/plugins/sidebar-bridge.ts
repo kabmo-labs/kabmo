@@ -26,6 +26,7 @@ import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import { pluginContext } from '@/client/lib/plugins/context';
 import { publishClientSignal } from '@/client/lib/signals';
+import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 import type { WorkspaceFolderData } from '@/shared/types';
 
@@ -196,7 +197,7 @@ export function sidebarActions(): SidebarThreadActions {
     },
     openNew: (options) => {
       const url = new URL(window.location.href);
-      url.searchParams.set('sessionId', `new-${Date.now()}`);
+      url.searchParams.set('sessionId', startPendingSession(options?.folderId ?? null));
       if (options?.folderId) url.searchParams.set('folderId', options.folderId);
       else url.searchParams.delete('folderId');
       window.history.pushState(null, '', url);

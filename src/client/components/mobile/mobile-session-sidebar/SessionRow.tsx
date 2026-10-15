@@ -89,6 +89,8 @@ export function MobileSessionRow({
   return (
     <>
       <div
+        data-testid="session-item"
+        data-session-id={String(session.id)}
         onContextMenu={hasActions ? menu.openAtCursor : undefined}
         className={`w-full rounded-lg flex items-center transition-colors ${
           isActive ? 'bg-ink/10 font-medium text-ink' : 'hover:bg-ink/5 text-ink/85'

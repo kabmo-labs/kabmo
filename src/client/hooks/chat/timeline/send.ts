@@ -14,18 +14,12 @@ import { useCallback } from 'preact/hooks';
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { AgentImage, Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import { streamChatResponse } from '@/client/hooks/chat/stream';
 import type { SessionSeed } from '@/client/hooks/chat/timeline/session-load';
 import { buildPromptText } from '@/client/hooks/chat/timeline/prompt-text';
 import { flushDeferredPick, type DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
-import {
-  attachmentImage,
-  attachmentName,
-  attachmentSize,
-  attachmentType,
-  readTextAttachments,
-} from '@/shared/lib/chat/attachments';
-import { createMockStreamCallbacks } from '@/shared/lib/chat/timeline/stream-callbacks';
+import { readTextAttachments } from '@/shared/lib/chat/attachments';
+import { buildOptimisticRows, collectImages, streamMockFallback } from '@/client/hooks/chat/timeline/send-helpers';
+import { adoptPendingSession, markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
 import { formatClock } from '@/shared/lib/format/time';
@@ -124,10 +118,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     const textFiles = await readTextAttachments(attachments);
     const promptText = await buildPromptText(text, textFiles);
     pendingUserDisplaysRef.current = [...pendingUserDisplaysRef.current.slice(-7), { sent: promptText, display: text }];
-    const images = attachments
-      .map(attachmentImage)
-      .filter((image): image is AgentImage => image !== null);
-    return { promptText, images: images.length ? images : undefined };
+    return { promptText, images: collectImages(attachments) };
   }, []);
 
   // Steer the running omp agent (interrupt-and-reply). Returns the outcome so
@@ -168,33 +159,15 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     const textContentById = new Map(textFiles.map((file) => [file.id, file.content]));
 
     const now = Date.now();
-    const newUserMsg: ChatMessageData = {
-      id: userMsgId,
-      role: 'user',
-      date: `Today, ${time}`,
-      // Precise epoch anchor: the footer run-duration measures from here until
-      // the last AI message. The display `date` label is minute-granular, so a
-      // string fallback would inflate the measured span by up to 59s.
-      startedAt: now,
-      content: text,
-      attachments: attachments.map(a => ({
-        name: attachmentName(a),
-        // The blob URL only lives as long as this page, so the data URL wins
-        // where it exists — a persisted turn re-renders its images from it.
-        preview: a.dataBase64 ? `data:${attachmentType(a)};base64,${a.dataBase64}` : a.preview,
-        type: attachmentType(a),
-        size: attachmentSize(a),
-        content: textContentById.get(a.id),
-      }))
-    };
-
-    const initialAiMsg: ChatMessageData = {
-      id: aiPlaceholderId,
-      role: 'ai',
-      date: `Today, ${time}`,
-      startedAt: now,
-      content: '',
-    };
+    const { newUserMsg, initialAiMsg } = buildOptimisticRows({
+      text,
+      attachments,
+      textContentById,
+      time,
+      now,
+      userMsgId,
+      aiPlaceholderId,
+    });
 
     setLocalMessages(prev => {
       const next = [...prev, newUserMsg, initialAiMsg];
@@ -222,6 +195,10 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
 
     // Real mode: route through the omp agent RPC bridge + event stream.
     if (isOmpSession) {
+      // This chat now has a prompt in flight, so its sidebar row must survive a
+      // switch away: omp's transcript — which would draw the row for real — is
+      // seconds behind. A no-op for a session the store does not know.
+      if (sessionId) markPendingSessionSent(sessionId);
       optimisticUserIdRef.current = userMsgId;
       // A model/thinking pick made while the previous turn streamed was held
       // back so it could not re-target that answer. A queued delivery does NOT
@@ -237,13 +214,11 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           await ompAgent.setThinkingLevel(modelOverride.thinkingLevel);
         }
       }
-      const images = attachments
-        .map(attachmentImage)
-        .filter((image): image is AgentImage => image !== null);
+      const images = collectImages(attachments);
       // Inline text-file contents into the prompt: the model sees the full file
       // content as fenced blocks, not just the filename.
       const promptText = await buildPromptText(text, textFiles);
-      const result = await ompAgent.sendPrompt(promptText, images.length ? images : undefined, { accessMode: effectiveAccessMode });
+      const result = await ompAgent.sendPrompt(promptText, images, { accessMode: effectiveAccessMode });
       if (!result.ok) {
         // Roll back the optimistic bubbles on a failed send.
         setLocalMessages(prev => prev.filter(m => m.id !== userMsgId && m.id !== aiPlaceholderId));
@@ -261,9 +236,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       const currentFolder = folders.find(f => String(f.id) === String(selectedFolderId));
       const cwd = currentFolder?.project_path || currentFolder?.name;
       if (cwd) {
-        const images = attachments
-          .map(attachmentImage)
-          .filter((image): image is AgentImage => image !== null);
+        const images = collectImages(attachments);
         const promptText = await buildPromptText(text, textFiles);
         optimisticUserIdRef.current = userMsgId;
         const composerModel = pendingComposerModelRef.current;
@@ -275,12 +248,18 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
         const spawned = await ompAgent.sendNewPrompt(
           promptText,
           cwd,
-          images.length ? images : undefined,
+          images,
           { model: composerModel, thinkingLevel: composerThinking, accessMode: accessModeRef.current, modes: spawnModes },
         );
         if (spawned) {
           spawnSelectionRef.current = null;
           adoptedSessionIdRef.current = spawned.sessionId;
+          // The sidebar's row moves with the id: `new-…` was the client's own
+          // placeholder, and the spawn answers with omp's real one, which omp
+          // has still not written a transcript for. Without this the row
+          // vanished at exactly the moment the URL stopped naming the pending
+          // id, which is the gap this store exists to close.
+          adoptPendingSession(sessionId, spawned.sessionId, currentFolder?.id ?? null);
           // The placeholder ref is already armed (with its row) before the
           // spawn — see the note at the assignment; re-arming here would be
           // harmless but is redundant.
@@ -310,37 +289,22 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     }
 
     // Mock / chamber-created session: existing simulated SSE path.
-    // Cancel any previous stream
-    optimisticUserIdRef.current = null;
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
     const currentFolder = folders.find(f => String(f.id) === String(selectedFolderId));
-    const workspaceName = currentFolder?.name || 'Workspace';
-
-    await streamChatResponse(
-      {
-        sessionId: sessionId || `session-${Date.now()}`,
-        prompt: text,
-        workspaceName,
-        attachments,
-        signal: abortController.signal,
-      },
-      createMockStreamCallbacks({
-        aiPlaceholderId,
-        setLocalMessages,
-        persistMessages,
-        setGenerating,
-        setGeneratingVerb,
-        abortControllerRef,
-        appSettings,
-        scrollToBottom,
-      })
-    );
-    return { ok: true, busy: false };
+    return streamMockFallback({
+      sessionId,
+      text,
+      attachments,
+      workspaceName: currentFolder?.name || 'Workspace',
+      aiPlaceholderId,
+      abortControllerRef,
+      optimisticUserIdRef,
+      appSettings,
+      setLocalMessages,
+      persistMessages,
+      setGenerating,
+      setGeneratingVerb,
+      scrollToBottom,
+    });
   }, [appSettings, folders, isOmpSession, ompAgent, selectedFolderId, sessionId, scrollToBottom, jumpToBottom, persistMessages, seedSession, pendingComposerModelRef, pendingThinkingLevelRef, deferredComposerPickRef, accessModeRef, setLocalMessages]);
   return { steerOmpAgent, executeSend };
 }

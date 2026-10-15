@@ -80,6 +80,8 @@ export function SessionItem({
   return (
     <>
       <div
+        data-testid="session-item"
+        data-session-id={String(sessionId)}
         onClick={isEditing ? undefined : onClick}
         onContextMenu={hasActions && !isEditing ? menu.openAtCursor : undefined}
         className={`group/item relative flex items-center w-full rounded-lg px-2 py-1.5 cursor-pointer text-xs transition-colors select-none ${

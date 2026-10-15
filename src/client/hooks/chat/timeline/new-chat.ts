@@ -26,6 +26,7 @@ import type { Dispatch, SetStateAction } from 'preact/compat';
 import type { Attachment, ChatMessageData, PromptDispatchResult, WorkspaceFolderData } from '@/shared/types';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
 import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
+import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 
 export interface NewChatSubmitDeps {
   /** Session the dialog was opened from — the scope this send must NOT use. */
@@ -54,9 +55,10 @@ export function useNewChatSubmit(deps: NewChatSubmitDeps): (text: string, attach
   }, [sessionId, executeSend]);
 
   return useCallback((text, attachments) => {
-    // Client-side pending session id: the sidebar/navbar show a default title
-    // immediately; the real omp session id replaces it on first send.
-    const pendingId = `new-${Date.now()}`;
+    // The store mints the pending id and owns the row it stands for: the
+    // sidebar/navbar show a default title immediately, and the row survives the
+    // `new-…` → omp-UUID switch when the first send spawns.
+    const pendingId = startPendingSession(activeProjectForSession(folders, sessionId).folder?.id ?? selectedFolderId);
     parkedRef.current = { pendingId, text, attachments };
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);

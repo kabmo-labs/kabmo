@@ -15,6 +15,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
+import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
@@ -38,7 +39,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
     processedFolders,
     sessionStatus,
     handleSelectSession,
-  } = useSessionSidebarController(appSettings, { includePendingSessions: true });
+  } = useSessionSidebarController(appSettings, { expandSearchMatches: true });
   const [, setSearchParams] = useSearchParams();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -80,14 +81,15 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
     setSearchParams(prev => {
       const currentSessionId = prev.get('sessionId');
       const next = new URLSearchParams(prev);
-      // Client-side pending session: shown immediately with a default title;
-      // the real omp session id replaces it on first send.
-      next.set('sessionId', `new-${Date.now()}`);
-      if (currentSessionId) {
-        const currentFolder = folders.find(f => f.sessions?.some((s: any) => String(s.id) === String(currentSessionId)));
-        if (currentFolder) {
-          next.set('folderId', currentFolder.id.toString());
-        }
+      // The row this chat will show in the sidebar while omp has not written
+      // its transcript yet. The store mints the id (and keeps the row), so the
+      // URL carries what the sidebar reads rather than a second source.
+      const currentFolder = currentSessionId
+        ? folders.find(f => f.sessions?.some((s) => String(s.id) === String(currentSessionId)))
+        : undefined;
+      next.set('sessionId', startPendingSession(currentFolder?.id ?? null));
+      if (currentFolder) {
+        next.set('folderId', currentFolder.id.toString());
       } else {
         next.delete('folderId');
       }
@@ -99,7 +101,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
     prewarmForNewSession(folderId);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      next.set('sessionId', `new-${Date.now()}`);
+      next.set('sessionId', startPendingSession(folderId));
       next.set('folderId', folderId.toString());
       return next;
     }, { replace: true });

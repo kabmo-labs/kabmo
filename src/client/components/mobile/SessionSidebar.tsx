@@ -103,9 +103,21 @@ export function MobileSessionSidebar({
       });
   };
 
+  // Seeded from the list the drawer RENDERS, not from the raw server payload:
+  // the controller force-opens a folder that hosts a pending row (a chat whose
+  // transcript omp has not written yet), and a seed taken from the raw folders
+  // would collapse it again — hiding the one row the user cannot get back by
+  // expanding, because nothing else knows it exists.
+  //
+  // Keyed on the flags themselves rather than the array: `processedFolders` is
+  // a new array on every sidebar push (a tool call republishes the structure),
+  // and re-seeding on identity would discard every expansion the user just
+  // made, several times a minute.
+  const expansionSeed = processedFolders.map(folder => `${folder.id}:${folder.isExpanded}`).join('|');
   useEffect(() => {
-    setExpandedFolders(Object.fromEntries(folders.map(folder => [folder.id, folder.isExpanded])));
-  }, [folders]);
+    setExpandedFolders(Object.fromEntries(processedFolders.map(folder => [folder.id, folder.isExpanded])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expansionSeed]);
 
   const handleNewSessionAndClose = () => {
     onNewSession();
