@@ -11,6 +11,7 @@ import { useChatTimelineSend } from '@/client/hooks/chat/timeline/send';
 import type { ComposerModelPick } from '@/client/hooks/chat/timeline/deferred-model';
 import { useSessionLoad } from '@/client/hooks/chat/timeline/session-load';
 import { useUserTurns } from '@/client/hooks/chat/timeline/user-turns';
+import { useRailJump } from '@/client/hooks/chat/timeline/rail-jump';
 import { useBrowserPageContextInsert } from '@/client/hooks/chat/timeline/browser-context';
 import { createOmpAgentCallbacks } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { cancelStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coalescer';
@@ -48,7 +49,7 @@ export function useChatTimeline({
   // without re-creating it (useSessionLoad is defined below the scroll hook).
   const loadOlderRef = useRef<() => void>(() => {});
 
-  const { scrollRef, contentRef, showScrollBottom, handleScroll, scrollToBottom, jumpToBottom, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
+  const { scrollRef, contentRef, showScrollBottom, handleScroll, scrollToBottom, jumpToBottom, followRef, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
     onScrollTop: () => loadOlderRef.current(),
   });
 
@@ -148,13 +149,15 @@ export function useChatTimeline({
   });
   loadOlderRef.current = loadOlder;
 
-  // Jump rail: the full-history turn index (the mounted window is only a page
-  // of a long session) plus the paging walk that reaches a turn outside it.
-  const { turns: userTurns, jumping: jumpingTurn, jumpToTurn: jumpToUserTurn } = useUserTurns({
+  // Jump rail: the full-history turn index plus the paging walk that reaches a
+  // turn outside the mounted window. The walk is wrapped so follow mode stands
+  // down until the jump lands (see rail-jump.ts).
+  const { turns: userTurns, jumping: jumpingTurn, jumpToTurn: pagedJumpToTurn } = useUserTurns({
     sessionId,
     messages: localMessages,
     jumpToTurn,
   });
+  const jumpToUserTurn = useRailJump(pagedJumpToTurn, { followRef, scrollRef });
 
   // Composer picks made BEFORE the omp session exists (pending "new-…" view):
   // there is no live session to receive the RPC yet, so the selection is held

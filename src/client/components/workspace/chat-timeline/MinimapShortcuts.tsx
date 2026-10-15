@@ -56,15 +56,27 @@ export function MinimapShortcuts({ turns, jumping, onJumpTurn }: MinimapShortcut
         return (
           <div
             key={`minimap-${turn.id}`}
-            className="relative flex min-h-0 items-center justify-center w-full cursor-pointer"
+            className="relative flex min-h-0 items-center justify-center w-full"
             style={{ height: rowPitch }}
             onMouseEnter={() => setHoveredIdx(idx)}
-            onClick={() => onJumpTurn(turn)}
           >
+            {/* The row IS the control. The tick is a 1px line at the row's
+                vertical centre — the obvious thing to aim at — so leaving it
+                as its own element put a dead, `cursor: default` 12x1 box over
+                the middle of a 24x7 target: the tooltip appeared (the row's
+                own mouseenter) while the cursor stayed an arrow and the click
+                landed on an element with no handler. One absolutely-positioned
+                button spans the whole row, so every pixel of it — the line
+                included — is a pointer target and a keyboard stop. */}
             <button
               type="button"
-              className={`block h-px rounded-full transition-all duration-200 ease-out ${lineWidth(idx)} ${isHovered ? 'bg-ink h-[2px]' : 'bg-ink/25'}`}
-              aria-label={`Jump to your message #${idx + 1}`}
+              className="absolute inset-0 cursor-pointer"
+              aria-label={`Jump to your message #${idx + 1} of ${turns.length}`}
+              onClick={() => onJumpTurn(turn)}
+            />
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none block h-px rounded-full transition-all duration-200 ease-out ${lineWidth(idx)} ${isHovered ? 'bg-ink h-[2px]' : 'bg-ink/25'}`}
             />
             <div
               className={`absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-3 bg-ink text-canvas text-xs rounded-md shadow-lg pointer-events-none transition-opacity duration-200 z-30 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
