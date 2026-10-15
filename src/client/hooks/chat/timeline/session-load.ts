@@ -247,6 +247,18 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
       prevSessionIdRef.current = sessionId;
     }
     if (sessionId) {
+      // Ownership is read at BOTH ends of the flight, never at resolve alone.
+      // A run this page started can END between the two — measured on a real CI
+      // run: the fetch was issued mid-run (`ownRunRef` true), `agent_end`
+      // landed, and the response arrived ~1 ms later carrying `messages: []`
+      // because omp had not flushed its JSONL yet. Reading the guard at resolve
+      // alone saw no run and emptied the timeline, discarding the turn that had
+      // just streamed. The mirror case is just as real: a fetch issued BEFORE a
+      // run started carries the pre-run transcript, and applying it would wipe
+      // the optimistic rows the send just mounted. Either end owning the rows
+      // means this payload is a lagging snapshot of a timeline the stream owns.
+      const ownedAtIssue = timelineOwnedByLiveRun();
+      const ownedByLiveRun = () => ownedAtIssue || timelineOwnedByLiveRun();
       fetch(`/api/chat/${sessionId}`)
         .then(res => res.json())
         .then(data => {
@@ -259,7 +271,7 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
             // rows: a committed fetch is a lagging snapshot and applying one
             // mid-run either empties the list or renders a second copy of the
             // operator's turn (see `timelineOwnedByLiveRun`).
-            if (!timelineOwnedByLiveRun()) {
+            if (!ownedByLiveRun()) {
               if (fetched.length > 0) setLocalMessages(fetched);
               // A pending "new-…" session has nothing committed by definition.
               else if (!sessionId.startsWith('new-')) setLocalMessages([]);
@@ -267,13 +279,13 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
             applyWindow(data.hasMore, data.oldestIndex);
           } else {
             setSessionData(seededSessionData());
-            if (!timelineOwnedByLiveRun()) setLocalMessages([]);
+            if (!ownedByLiveRun()) setLocalMessages([]);
           }
         })
         .catch(err => {
           console.error('Error loading session from API:', err);
           if (active) setSessionLoading(false);
-          if (active && !timelineOwnedByLiveRun()) {
+          if (active && !ownedByLiveRun()) {
             setSessionData(seededSessionData());
             setLocalMessages([]);
           }

@@ -153,13 +153,27 @@ async function mount(sessionId: string, api: ProbeApi): Promise<void> {
 }
 
 /** Land the registered fetch, as the server's response would. */
-async function resolveLoad(messages: unknown[]): Promise<void> {
-  const gate = gates[0];
+async function resolveLoad(messages: unknown[], index = 0): Promise<void> {
+  const gate = gates[index];
   if (!gate) throw new Error('no session fetch was registered');
   await act(async () => {
     gate.resolve({ session: { id: 'sess-1', messages }, hasMore: false, oldestIndex: 0 });
   });
   for (let i = 0; i < 3; i += 1) await act(async () => {});
+}
+
+/**
+ * Re-render the mounted Probe with a new session id, which is what the spawn
+ * adoption (`new-…` → UUID) does when the URL flips while the child streams:
+ * the session-load effect re-runs and ISSUES its history fetch at that moment,
+ * mid-run. The fetch registered before this call is `gates[0]`; the one this
+ * issues is `gates[1]`.
+ */
+async function switchSession(sessionId: string, api: ProbeApi): Promise<void> {
+  await act(async () => {
+    render(h(Probe, { sessionId, api }), container as HTMLElement);
+  });
+  await act(async () => {});
 }
 
 /** A run this page started, with its optimistic rows already on screen. */
@@ -218,6 +232,42 @@ describe('a committed fetch while a run this page started is live', () => {
 
     expect(api.generatingCalls.length).toBe(before);
     expect(api.isGeneratingRef.current).toBe(true);
+  });
+
+  test('survives a fetch issued mid-run whose run ENDED before it landed', async () => {
+    // The CI failure this pins, measured on a real run: the spawn adoption
+    // re-ran the load effect and issued `/api/chat/:id` while the child was
+    // streaming (ownership true), `agent_end` landed ~1 ms before the response,
+    // and the payload carried `messages: []` because omp had not flushed its
+    // JSONL yet. Reading the guard at RESOLVE alone saw no run, took the
+    // "genuinely gone" branch, and emptied the timeline — the answer that had
+    // just streamed vanished. Ownership is about the rows the payload would
+    // replace, so the answer from when it was ASKED still holds.
+    stubChatFetch();
+    const api = makeApi();
+    await mount('new-1', api);
+    // The send: optimistic rows mounted, run owned by this page.
+    await act(async () => {
+      api.isGeneratingRef.current = true;
+      api.ownRunRef.current = true;
+      api.optimisticUserIdRef.current = OPTIMISTIC_USER.id;
+      api.setMessages([OPTIMISTIC_USER, AI_PLACEHOLDER]);
+    });
+    // Spawn adoption: the URL flips to the real id, so the effect re-runs and
+    // issues the history fetch NOW, while the run is still live.
+    await switchSession('sess-1', api);
+    expect(gates.length).toBe(2);
+
+    // The run ends before the response arrives (the ordering in the trace).
+    await act(async () => {
+      api.isGeneratingRef.current = false;
+      api.ownRunRef.current = false;
+    });
+
+    // The lagging snapshot: omp has not written the transcript yet.
+    await resolveLoad([], 1);
+
+    expect(ids(api)).toEqual([OPTIMISTIC_USER.id, AI_PLACEHOLDER.id]);
   });
 });
 
