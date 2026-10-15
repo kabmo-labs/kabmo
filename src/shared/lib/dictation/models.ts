@@ -9,15 +9,26 @@
  *
  * The keys are omp's (`STT_MODELS` in the CLI bundle) — passing anything else
  * to the worker answers `Unknown stt model`. Labels and size hints mirror the
- * `stt.modelName` options omp shows in its own settings, so the two surfaces
- * describe the same four models.
+ * options omp shows in its own settings, so the two surfaces describe the same
+ * set of models.
+ *
+ * `nemotron-streaming-en-0.6b` was added in omp 18.11.0. It is the one key the
+ * worker decodes through an ONLINE recognizer (`mode: "online"`), but that is
+ * omp's own streaming path (`stream_start`/`stream_audio`/`stream_stop`), which
+ * the chamber does not drive — its socket sends one utterance per `transcribe`
+ * call. `decodeSegment` handles the online model on the BATCH path too
+ * (measured at 18.11.0: it feeds the utterance plus a terminal padding frame
+ * and returns the recognizer's text), so the key is offered here without a
+ * transport change; the label says what it is for so a user does not pick it
+ * expecting live words in this console.
  */
 
 export type SttModelKey =
   | 'whisper-base'
   | 'whisper-small'
   | 'whisper-large-v3-turbo'
-  | 'parakeet-tdt-0.6b-v3';
+  | 'parakeet-tdt-0.6b-v3'
+  | 'nemotron-streaming-en-0.6b';
 
 export interface SttModel {
   key: SttModelKey;
@@ -50,6 +61,12 @@ export const STT_MODELS: readonly SttModel[] = [
     key: 'parakeet-tdt-0.6b-v3',
     label: 'Parakeet TDT v3 (SoTA)',
     sizeHint: '~465 MB',
+    multilingual: false,
+  },
+  {
+    key: 'nemotron-streaming-en-0.6b',
+    label: 'Nemotron 0.6B (English, live in omp TUI)',
+    sizeHint: '~630 MB',
     multilingual: false,
   },
 ];

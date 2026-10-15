@@ -3,6 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { isMockMode } from '@/server/mock.server';
 import { getOmpConfigValue, listOmpConfig, resetOmpConfigKey, setOmpConfigValue } from '@/server/lib/omp/config/config-cli';
+import { onOmpConfigWritten } from '@/server/lib/dictation/language.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const mock = isMockMode();
@@ -30,6 +31,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
     if (body.action === 'reset') {
       const value = await resetOmpConfigKey(body.key);
+      onOmpConfigWritten(body.key);
       return json({ success: true, key: body.key, value: value ?? null });
     }
     if (!('value' in body) || body.value === null) {
@@ -40,6 +42,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return json({ error: 'value must be a string, number, boolean, array, or record' }, { status: 400 });
     }
     const value = await setOmpConfigValue(body.key, body.value);
+    onOmpConfigWritten(body.key);
     return json({ success: true, key: body.key, value: value ?? null });
   } catch (error: any) {
     return json({ error: error.message }, { status: 500 });

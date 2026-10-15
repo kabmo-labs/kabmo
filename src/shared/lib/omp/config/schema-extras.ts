@@ -75,6 +75,28 @@ export const SCHEMA_EXTRAS: Record<string, SchemaEntry> = {
     ui: { tab: 'model', group: 'Thinking', label: 'Max Thinking Budget', description: 'Token budget for the max thinking level.' },
   },
 
+  // ── Speech ───────────────────────────────────────────────────────────────
+  /**
+   * Upstream declares `stt.language` with no `ui` block, so its own panel hides
+   * it while its OWN dictation reads it (`cfgSttLanguage`, default `"en"`). The
+   * chamber drives the same worker and previously sent no language at all,
+   * which left every decode auto-detecting — the one setting that decides
+   * whether a non-English utterance transcribes correctly was unreachable from
+   * either surface. The row restores it; the dictation route reads it as the
+   * default when the client sends none (see `dictation/ws.ts`).
+   */
+  'stt.language': {
+    type: 'string',
+    default: 'en',
+    ui: {
+      tab: 'interaction',
+      group: 'Speech',
+      label: 'Speech-to-Text Language',
+      description:
+        'Source language for dictation (ISO-639-1, e.g. "id", "en"). Sent to the recognizer as a hint; leave it as "en" only if your dictation is English.',
+    },
+  },
+
   // ── Model roles / tags / cycles ──────────────────────────────────────────
   modelTags: {
     type: 'record',

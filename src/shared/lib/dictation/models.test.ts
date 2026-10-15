@@ -14,7 +14,43 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { summarizeProgress } from '@/shared/lib/dictation/models';
+import { STT_MODELS, isSttModelKey, summarizeProgress } from '@/shared/lib/dictation/models';
+
+/**
+ * omp 18.11.0 `STT_MODEL_VALUES`. The worker answers `Unknown stt model` for
+ * anything outside this set, and a key missing here is unreachable from the
+ * composer — `nemotron-streaming-en-0.6b` (added in 18.11.0) was exactly that.
+ */
+const OMP_STT_MODEL_KEYS: readonly string[] = [
+  'whisper-base',
+  'whisper-small',
+  'whisper-large-v3-turbo',
+  'parakeet-tdt-0.6b-v3',
+  'nemotron-streaming-en-0.6b',
+];
+
+describe('STT model keys mirror omp’s registry', () => {
+  test('every key omp serves is offered, and none omp would reject', () => {
+    const offered: string[] = STT_MODELS.map((model) => model.key);
+    expect(offered.sort()).toEqual([...OMP_STT_MODEL_KEYS].sort());
+  });
+
+  test('the 18.11.0 addition is accepted by the guard, not silently defaulted', () => {
+    expect(isSttModelKey('nemotron-streaming-en-0.6b')).toBe(true);
+    expect(isSttModelKey('whisper-base')).toBe(true);
+    expect(isSttModelKey('not-a-model')).toBe(false);
+  });
+
+  test('the two English-only tiers are marked as such', () => {
+    // Parakeet v3 is 25 European languages; Nemotron is English. Both ignore a
+    // `language` hint, so a user picking either for another language is
+    // choosing a model that cannot serve it.
+    const byKey = Object.fromEntries(STT_MODELS.map((model) => [model.key, model]));
+    expect(byKey['nemotron-streaming-en-0.6b'].multilingual).toBe(false);
+    expect(byKey['parakeet-tdt-0.6b-v3'].multilingual).toBe(false);
+    expect(byKey['whisper-base'].multilingual).toBe(true);
+  });
+});
 
 describe('summarizeProgress', () => {
   test('a progress_total value is already a percent', () => {

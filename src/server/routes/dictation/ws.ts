@@ -19,6 +19,7 @@
 import { Elysia } from 'elysia';
 import { isSameOriginUpgrade } from '@/server/lib/http/same-origin';
 import { sttWorker } from '@/server/lib/dictation/omp-stt-worker';
+import { resolveDictationLanguage } from '@/server/lib/dictation/language.server';
 import { pcm16ToFloat32 } from '@/shared/lib/dictation/audio';
 import { summarizeProgress, type SttProgressSummary } from '@/shared/lib/dictation/models';
 import {
@@ -83,9 +84,13 @@ export const dictationWsRoutes = new Elysia({ prefix: '/api/dictation' }).ws('/w
     const samples = pcm16ToFloat32(new Uint8Array(Buffer.from(frame.audio, 'base64')));
 
     try {
+      // A language the CLIENT sent wins (nothing sends one today, but the frame
+      // carries the field); otherwise the session's configured `stt.language`
+      // decides. An absent value means auto-detect, which is what the worker
+      // does with no `language`.
       const text = await sttWorker().transcribe(samples, {
         modelKey: frame.modelKey,
-        language: frame.language,
+        language: frame.language ?? (await resolveDictationLanguage()),
         onProgress: (event) => {
           const summary = summarizeProgress(event);
           if (!shouldEmitProgress(state, summary)) return;
