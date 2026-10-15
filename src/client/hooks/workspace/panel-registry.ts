@@ -27,10 +27,12 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import type {
   PanelCatalogEntry,
+  PanelGitStatus,
   PanelMarketplaceItem,
   PanelPluginStatus,
   PanelRegistryEntry,
   PanelRegistryPayload,
+  PanelSyncBlocked,
 } from '@/shared/types';
 import { loadPluginBundles } from '@/client/lib/plugins/loader';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
@@ -56,11 +58,27 @@ interface PanelRegistryState {
    * of "is this panel on", shared with the Panel Plugins switches.
    */
   disabledPanels: string[];
+  /** The last known freshness of each git-installed plugin, by plugin id. */
+  gitStatus: Record<string, PanelGitStatus>;
+  /** Whether git-installed plugins are updated automatically. */
+  autoUpdate: boolean;
+  /** The bundled plugins a local edit stopped from syncing, by plugin id. */
+  syncBlocked: Record<string, PanelSyncBlocked>;
   /** False until the first read settles, so a view can hold its placeholder. */
   ready: boolean;
 }
 
-const EMPTY: PanelRegistryPayload = { panels: [], marketplaces: [], errors: [], plugins: [], catalog: [], disabledPanels: [] };
+const EMPTY: PanelRegistryPayload = {
+  panels: [],
+  marketplaces: [],
+  errors: [],
+  plugins: [],
+  catalog: [],
+  disabledPanels: [],
+  gitStatus: {},
+  autoUpdate: false,
+  syncBlocked: {},
+};
 
 /**
  * The shared registry state, module-level so a payload is adopted once (its
@@ -139,6 +157,9 @@ export function usePanelRegistry(): PanelRegistryState {
     plugins: payload.plugins ?? [],
     catalog: payload.catalog ?? [],
     disabledPanels: payload.disabledPanels ?? [],
+    gitStatus: payload.gitStatus ?? {},
+    autoUpdate: payload.autoUpdate === true,
+    syncBlocked: payload.syncBlocked ?? {},
     ready: host.ready || topic.data !== null,
   };
 }
@@ -208,6 +229,14 @@ export interface PanelPluginActions {
   build: (pluginId: string) => Promise<boolean>;
   /** Switch a plugin's contributions on or off; its files stay on disk. */
   setEnabled: (pluginId: string, enabled: boolean) => Promise<boolean>;
+  /** Probe every git-installed plugin's remote for a newer commit. */
+  checkUpdates: () => Promise<boolean>;
+  /** Bring one git-installed plugin up to its remote, and rebuild it. */
+  updateGit: (pluginId: string) => Promise<boolean>;
+  /** Turn automatic updating of git-installed plugins on or off. */
+  setAutoUpdate: (enabled: boolean) => Promise<boolean>;
+  /** Replace a blocked bundled plugin's edited files with the store's copy. */
+  forceSync: (pluginId: string) => Promise<boolean>;
 }
 
 /**
@@ -274,6 +303,27 @@ export function usePanelPluginActions(): PanelPluginActions {
       run(`${enabled ? 'enable' : 'disable'}:${pluginId}`, { type: enabled ? 'enable' : 'disable', pluginId }),
     [run],
   );
+  const checkUpdates = useCallback(() => run('check_updates', { type: 'check_updates' }), [run]);
+  const updateGit = useCallback((pluginId: string) => run(`update_git:${pluginId}`, { type: 'update_git', pluginId }), [run]);
+  const setAutoUpdate = useCallback(
+    (enabled: boolean) => run('set_auto_update', { type: 'set_auto_update', enabled }),
+    [run],
+  );
+  const forceSync = useCallback((pluginId: string) => run(`force_sync:${pluginId}`, { type: 'force_sync', pluginId }), [run]);
 
-  return { busy, error, clearError: () => setError(null), install, installBundled, remove, forget, build, setEnabled };
+  return {
+    busy,
+    error,
+    clearError: () => setError(null),
+    install,
+    installBundled,
+    remove,
+    forget,
+    build,
+    setEnabled,
+    checkUpdates,
+    updateGit,
+    setAutoUpdate,
+    forceSync,
+  };
 }

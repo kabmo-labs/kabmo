@@ -34,17 +34,17 @@
 
 import { homedir } from 'os';
 import { join, resolve } from 'path';
-import type {
-  PanelCatalogEntry,
-  PanelPluginStatus,
-  PanelRegistryPayload,
-} from '@/shared/types';
+import type { PanelPluginStatus, PanelRegistryPayload } from '@/shared/types';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { packageDir } from '@/server/lib/fs/package-root';
-import { readDisabledPlugins } from '@/server/lib/panels/state.server';
+import { readDisabledPlugins, readPluginAutoUpdate } from '@/server/lib/panels/state.server';
+import { readAllGitStatuses } from '@/server/lib/panels/git-status.server';
+import { readBlockedSyncs } from '@/server/lib/panels/baseline.server';
+import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { readJsonBody, readPluginManifest, subdirectories } from '@/server/lib/panels/files.server';
 import { toManifest, toMarketplaceCatalog } from '@/server/lib/panels/manifest';
 import { basenameOf, bundleUrl, cssUrl, iconUrl, readmeUrlFor } from '@/server/lib/panels/assets.server';
+import { readBundledCatalog } from '@/server/lib/panels/bundled-catalog.server';
 import { describeIncompatibility, runningVersions } from '@/server/lib/panels/compat.server';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 
@@ -113,7 +113,18 @@ export function invalidatePanelScan(): void {
 async function runPanelScan(): Promise<PanelScan> {
   const root = getMarketplaceDir();
   const pluginsRoot = getMarketplacePluginsDir();
-  const scan: PanelScan = { panels: [], marketplaces: [], errors: [], plugins: [], catalog: [], disabledPanels: [], dirs: {} };
+  const scan: PanelScan = {
+    panels: [],
+    marketplaces: [],
+    errors: [],
+    plugins: [],
+    catalog: [],
+    disabledPanels: [],
+    gitStatus: {},
+    autoUpdate: false,
+    syncBlocked: {},
+    dirs: {},
+  };
 
   // Rejections are tagged with the marketplace id so the pane groups by a value
   // rather than by matching on a path.
@@ -204,16 +215,21 @@ async function runPanelScan(): Promise<PanelScan> {
       }
     }
     const built = missingEntry === undefined;
+    // The clone's own origin is what makes a plugin updatable. Read here rather
+    // than stored at install time: the directory is the install, so a URL kept
+    // beside it could disagree with it.
+    const gitOrigin = await readGitOrigin(pluginDir);
     pluginStatus.push({
       pluginId: manifest.id,
       name: manifest.name,
+      version: manifest.version,
       isPackage,
       built,
       enabled,
       bundled: false,
+      gitOrigin,
       ...(missingEntry ? { reason: `the build produced no ${missingEntry}` } : {}),
     });
-
     // A switched-off plugin contributes NOTHING: no button, no tab, and no
     // bundle for the route to serve. Its files stay on disk, which is the whole
     // difference between disabling and removing.
@@ -247,52 +263,26 @@ async function runPanelScan(): Promise<PanelScan> {
   // FROM. They are never scanned as contributions and never built: installing
   // copies one into the working marketplace, where the loop above picks it up.
   const installed = new Set(pluginStatus.map((plugin) => plugin.pluginId));
-  scan.catalog = await readBundledCatalog(installed);
+  scan.catalog = await readBundledCatalog(getBundledMarketplaceDir(), installed);
   // `bundled` is a property of the SOURCE, not of the install: it is what makes
   // the pane offer "Remove" for a bundled plugin rather than "Uninstall", and
   // it is read off the store's own list so a plugin id that exists in both
   // places cannot report the wrong one.
+  //
+  // A git CLONE is excluded however its id reads: the store offers a plugin
+  // under that id, but the directory on disk is the user's own repository — and
+  // the sync that keeps bundled installs current selects on this same flag, so
+  // attributing a clone to the store would overwrite it on the next boot.
   const bundledIds = new Set(scan.catalog.map((entry) => entry.pluginId));
-  for (const plugin of pluginStatus) plugin.bundled = bundledIds.has(plugin.pluginId);
+  for (const plugin of pluginStatus) plugin.bundled = bundledIds.has(plugin.pluginId) && plugin.gitOrigin === null;
 
   scan.marketplaces.push({ id: MARKETPLACE_ID, name, description, panelCount: scan.panels.length, errors: [] });
   scan.plugins = pluginStatus;
+  scan.gitStatus = readAllGitStatuses();
+  scan.autoUpdate = await readPluginAutoUpdate();
+  scan.syncBlocked = await readBlockedSyncs();
 
   return scan;
-}
-
-/**
- * The bundled marketplace's offers, in directory order.
- *
- * A store entry is a plugin DIRECTORY with a valid manifest — the same rule the
- * working scan follows, so the two agree about what a plugin is. An entry whose
- * manifest is broken is skipped here rather than reported: the store is the
- * app's own shipping list, so a broken entry is a packaging fault, and the pane
- * has no install action that could repair it.
- */
-async function readBundledCatalog(installed: ReadonlySet<string>): Promise<PanelCatalogEntry[]> {
-  const bundledRoot = join(getBundledMarketplaceDir(), 'plugins');
-  const entries: PanelCatalogEntry[] = [];
-  for (const pluginName of await subdirectories(bundledRoot)) {
-    const pluginDir = join(bundledRoot, pluginName);
-    const read = await readPluginManifest(pluginDir);
-    if (read.kind !== 'manifest') continue;
-    const manifest = toManifest(read.value, pluginDir);
-    if ('error' in manifest) continue;
-    entries.push({
-      pluginId: manifest.id,
-      name: manifest.name,
-      version: manifest.version,
-      ...(manifest.description ? { description: manifest.description } : {}),
-      // The store's OWN icon and README, so a card can show the mark and the
-      // details before the plugin is installed. Both come from the bundled
-      // directory, which the routes resolve through the same registry.
-      ...(manifest.icon ? { iconUrl: await iconUrl(pluginDir, manifest.icon) } : {}),
-      ...(await readmeUrlFor(pluginDir, manifest)),
-      installed: installed.has(manifest.id),
-    });
-  }
-  return entries;
 }
 
 async function cachedScan(): Promise<PanelScan> {
@@ -306,8 +296,8 @@ async function cachedScan(): Promise<PanelScan> {
 
 /** The client payload: the marketplace, its panels, and its rejections. */
 export async function discoverPanelPlugins(): Promise<PanelRegistryPayload> {
-  const { panels, marketplaces, errors, plugins, catalog, disabledPanels } = await cachedScan();
-  return { panels, marketplaces, errors, plugins, catalog, disabledPanels };
+  const { dirs: _dirs, ...payload } = await cachedScan();
+  return payload;
 }
 
 /**

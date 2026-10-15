@@ -197,6 +197,64 @@ describe('the install route', () => {
     invalidatePanelScan();
     expect((await discoverPanelPlugins()).plugins.map((plugin) => plugin.pluginId)).toEqual(['demo']);
   });
+
+  test('set_auto_update flips the flag and answers with the payload', async () => {
+    const on = await post(installAction, { type: 'set_auto_update', enabled: true });
+    expect(on.status).toBe(200);
+    const body = (await on.json()) as { ok: boolean; autoUpdate: boolean };
+    expect(body.ok).toBe(true);
+    expect(body.autoUpdate).toBe(true);
+
+    const off = await post(installAction, { type: 'set_auto_update', enabled: false });
+    expect(((await off.json()) as { autoUpdate: boolean }).autoUpdate).toBe(false);
+  });
+
+  test('check_updates answers even with nothing to probe', async () => {
+    // The button is disabled with no git plugins, but the route must not throw
+    // for a stale client that asks anyway.
+    writePlugin('demo', getMarketplacePluginsDir());
+    invalidatePanelScan();
+
+    const response = await post(installAction, { type: 'check_updates' });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { ok: boolean; gitStatus: Record<string, unknown> };
+    expect(body.ok).toBe(true);
+    expect(body.gitStatus).toEqual({});
+  });
+
+  test('update_git refuses a plugin that is not a clone', async () => {
+    writePlugin('demo', getMarketplacePluginsDir());
+    invalidatePanelScan();
+
+    const response = await post(installAction, { type: 'update_git', pluginId: 'demo' });
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: string }).error).toContain('not a git clone');
+  });
+
+  test('update_git requires a plugin id', async () => {
+    expect((await post(installAction, { type: 'update_git' })).status).toBe(400);
+  });
+
+  test('force_sync refuses a plugin that is not a bundled install', async () => {
+    writePlugin('demo', getMarketplacePluginsDir());
+    invalidatePanelScan();
+
+    const response = await post(installAction, { type: 'force_sync', pluginId: 'demo' });
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: string }).error).toContain('No bundled plugin');
+  });
+
+  test('force_sync requires a plugin id', async () => {
+    expect((await post(installAction, { type: 'force_sync' })).status).toBe(400);
+  });
+
+  test('the payload carries an empty syncBlocked by default', async () => {
+    writePlugin('demo', getMarketplacePluginsDir());
+    invalidatePanelScan();
+    // The field is always present, so the pane's notice has one shape to read
+    // rather than two (absent versus empty).
+    expect((await discoverPanelPlugins()).syncBlocked).toEqual({});
+  });
 });
 
 describe('the bundled store is reachable', () => {

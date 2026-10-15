@@ -1,9 +1,10 @@
 import { useState } from 'preact/hooks';
 import { BookOpen, Hammer, Loader2 } from 'lucide-preact';
-import type { PanelPluginStatus } from '@/shared/types';
+import type { PanelGitStatus, PanelPluginStatus } from '@/shared/types';
 import { RemovePluginButton } from '@/client/components/settings/categories/panel-plugins/InstallForm';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
 import { PluginReadmeModal } from '@/client/components/settings/categories/panel-plugins/ReadmeModal';
+import { GitFreshness } from '@/client/components/settings/categories/panel-plugins/GitFreshness';
 import type { PluginSlots, SlotName } from '@/client/lib/plugins/slots';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 
@@ -24,6 +25,9 @@ interface InstalledGridProps {
   onBuild: (pluginId: string) => Promise<boolean>;
   onRemove: (pluginId: string) => Promise<boolean>;
   onSetEnabled: (pluginId: string, enabled: boolean) => Promise<boolean>;
+  /** The last known freshness of each git-installed plugin. */
+  gitStatus: Record<string, PanelGitStatus>;
+  onUpdateGit: (pluginId: string) => Promise<boolean>;
 }
 
 /**
@@ -49,6 +53,8 @@ export function InstalledList({
   onBuild,
   onRemove,
   onSetEnabled,
+  gitStatus,
+  onUpdateGit,
 }: InstalledGridProps) {
   const [reading, setReading] = useState<PanelPluginStatus | null>(null);
 
@@ -183,6 +189,19 @@ export function InstalledList({
                 <p className="text-[11px] text-warning">
                   Not built{plugin.reason ? ` — ${plugin.reason}` : ''}. The bundle will 404 until it is built.
                 </p>
+              ) : null}
+
+              {/* A git-installed plugin's freshness. Rendered for a clone only —
+                  a bundled install is kept current by the chamber's own update,
+                  so a git row there would describe a remote it does not have. */}
+              {plugin.gitOrigin ? (
+                <GitFreshness
+                  status={gitStatus[plugin.pluginId]}
+                  origin={plugin.gitOrigin}
+                  busy={busy}
+                  pluginId={plugin.pluginId}
+                  onUpdate={onUpdateGit}
+                />
               ) : null}
             </article>
           );

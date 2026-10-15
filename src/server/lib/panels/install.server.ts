@@ -37,6 +37,8 @@ import {
   invalidatePanelScan,
 } from '@/server/lib/panels/registry.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';
+import { hashTrackedFiles } from '@/server/lib/panels/local-edits.server';
+import { clearBaseline, writeBaseline, writeBlockedSync } from '@/server/lib/panels/baseline.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 const CLONE_TIMEOUT_MS = 120_000;
@@ -95,6 +97,10 @@ async function commitStagedInstall(stagingDir: string): Promise<InstallResult> {
   const build = await buildPanelPlugin(destination, manifest);
   if (build.status === 'failed') {
     invalidatePanelScan();
+    // The baseline is recorded even here: the files WERE written, and the sync's
+    // edit check is about the user's changes, not about whether the build
+    // succeeded. The pane's own Rebuild is the repair for this state.
+    await writeBaseline(manifest.id, await hashTrackedFiles(destination));
     return { ok: true, pluginId: manifest.id, dir: destination, error: build.reason ?? 'the plugin did not build' };
   }
 
@@ -106,6 +112,9 @@ async function commitStagedInstall(stagingDir: string): Promise<InstallResult> {
   });
 
   invalidatePanelScan();
+  // The reference the bundled sync compares against. Taken AFTER the build, so
+  // the tree it describes is the one the install actually produced.
+  await writeBaseline(manifest.id, await hashTrackedFiles(destination));
   if (!catalog.ok) {
     // The plugin IS installed — the directory is in place and the scan will
     // find it. Only the catalog entry failed, and the pane reports a missing
@@ -212,6 +221,11 @@ export async function removePanelPlugin(pluginId: string): Promise<{ ok: boolean
   if (!(await pathExists(dir))) return { ok: false, error: `No installed plugin with id "${pluginId}".` };
   try {
     await rm(dir, { recursive: true, force: true });
+    // The baseline and any refusal describe files that no longer exist, and a
+    // reinstall must start from a clean reference rather than inherit the
+    // previous install's — or it would read as edited on its first pass.
+    await clearBaseline(pluginId);
+    await writeBlockedSync(pluginId, null);
     const pruned = await pruneCatalogEntry(`plugins/${pluginId}`);
     invalidatePanelScan();
     emitRealtimeSignal('panels-changed');

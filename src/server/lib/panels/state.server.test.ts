@@ -18,7 +18,12 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { readDisabledPlugins, setPluginEnabled } from '@/server/lib/panels/state.server';
+import {
+  readDisabledPlugins,
+  readPluginAutoUpdate,
+  setPluginAutoUpdate,
+  setPluginEnabled,
+} from '@/server/lib/panels/state.server';
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
@@ -85,5 +90,42 @@ describe('hiddenRightPanels migration', () => {
     // A value that is not a list is not a list of ids: the key stays, and the
     // next read takes the same no-op path rather than half-adopting it.
     expect((await readChamberBlob()).hiddenRightPanels).toBe('files');
+  });
+});
+
+/**
+ * The auto-update flag shares the blob with the disabled set, so each writer has
+ * to carry the other's value — a `writeSettingsJson` of one field alone would
+ * silently drop what it did not name.
+ */
+describe('the auto-update flag', () => {
+  test('defaults to OFF, because a pass rewrites plugin directories', async () => {
+    expect(await readPluginAutoUpdate()).toBe(false);
+  });
+
+  test('survives a disabled-set write', async () => {
+    await setPluginAutoUpdate(true);
+    await setPluginEnabled('plugin:demo', false);
+
+    expect(await readPluginAutoUpdate()).toBe(true);
+    expect(await readDisabledPlugins()).toEqual(['plugin:demo']);
+  });
+
+  test('a disabled-set write does not clear it, and vice versa', async () => {
+    await setPluginEnabled('plugin:demo', false);
+    await setPluginAutoUpdate(true);
+
+    expect(await readDisabledPlugins()).toEqual(['plugin:demo']);
+    expect(await readPluginAutoUpdate()).toBe(true);
+  });
+
+  test('the hidden-panels migration carries it through', async () => {
+    await setPluginAutoUpdate(true);
+    await writeHiddenPanels(['files']);
+
+    // The fold rewrites the whole blob, so it has to preserve a value written
+    // before it ran.
+    expect(await readDisabledPlugins()).toEqual(['files']);
+    expect(await readPluginAutoUpdate()).toBe(true);
   });
 });

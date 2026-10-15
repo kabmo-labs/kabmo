@@ -182,6 +182,33 @@ export interface PanelPluginError {
 }
 
 /**
+ * The last known freshness of a git-installed plugin.
+ *
+ * A plugin installed from a git URL is a CLONE, so its `.git` directory is the
+ * only record of where it came from — the marketplace catalog names a relative
+ * path, not a URL. That is why the origin is derived from the clone itself (see
+ * `git-origin.server.ts`) rather than stored beside the catalog entry: a value
+ * the user could edit into disagreement with the directory would be a second
+ * answer to the same question.
+ *
+ * `current` and `latest` are commit SHAs, not versions: a plugin repository
+ * publishes no release, so the only honest comparison is the commit the working
+ * copy sits on against the commit the remote's HEAD names.
+ */
+export interface PanelGitStatus {
+  /** The commit the installed clone is at, or null when it could not be read. */
+  current: string | null;
+  /** The commit the remote's HEAD names, or null when the probe failed. */
+  latest: string | null;
+  /** True when the two differ — the clone is behind the remote. */
+  updateAvailable: boolean;
+  /** When the probe last ran, or null when it never has. */
+  checkedAt: number | null;
+  /** Why the probe failed. Absent when it succeeded. */
+  error?: string;
+}
+
+/**
  * One installed plugin's build state.
  *
  * A plugin is a Bun package, so its UI is served from a BUILD output (`dist/`)
@@ -193,6 +220,15 @@ export interface PanelPluginError {
 export interface PanelPluginStatus {
   pluginId: string;
   name: string;
+  /**
+   * The version the INSTALLED manifest declares.
+   *
+   * Read here rather than at render time because the freshness question needs
+   * both sides in one place: the store's copy and the installed copy are
+   * different directories, and a row that showed only one of them could not say
+   * whether the install is behind.
+   */
+  version: string;
   /** True when the bundle its manifest names exists on disk. */
   built: boolean;
   /** Why the last build did not produce the bundle, when it did not. */
@@ -212,6 +248,15 @@ export interface PanelPluginStatus {
   enabled: boolean;
   /** Whether the plugin came from the bundled marketplace rather than a git URL. */
   bundled: boolean;
+  /**
+   * The clone's `origin` URL, or null when the plugin is not a git clone.
+   *
+   * Read off the plugin's own `.git` rather than recorded at install time: the
+   * directory IS the install, so a URL that could be edited apart from it would
+   * be a second answer to the same question. A non-null value is what makes the
+   * pane offer Update and what the auto-update pass selects on.
+   */
+  gitOrigin: string | null;
 }
 
 /**
@@ -258,4 +303,32 @@ export interface PanelRegistryPayload {
    * so the two surfaces cannot disagree about whether a panel is on.
    */
   disabledPanels: string[];
+  /**
+   * The last known freshness of each git-installed plugin, by plugin id.
+   *
+   * A separate map rather than a field on the status row because it is a
+   * DIFFERENT read: the status comes from the marketplace scan (local, always
+   * current), while this is the result of the last network probe. A plugin that
+   * was never probed is simply absent, which the pane renders as "not checked".
+   */
+  gitStatus: Record<string, PanelGitStatus>;
+  /** Whether git-installed plugins are updated automatically. */
+  autoUpdate: boolean;
+  /**
+   * The bundled plugins a local edit has stopped from syncing, by plugin id.
+   *
+   * A refusal, not a fault: the user changed files in a plugin the chamber
+   * installed, so the chamber leaves them alone. It travels on the payload
+   * because the alternative is a plugin that silently stays on an old version
+   * with nothing on screen to say why.
+   */
+  syncBlocked: Record<string, PanelSyncBlocked>;
+}
+
+/** A bundled plugin whose sync a local edit refused. */
+export interface PanelSyncBlocked {
+  /** When the sync was refused. */
+  at: number;
+  /** The tracked files that differ from what the install wrote, sorted. */
+  changed: string[];
 }

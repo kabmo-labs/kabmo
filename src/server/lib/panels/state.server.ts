@@ -36,16 +36,31 @@ const CHAMBER_SETTINGS_KEY = 'omp_chamber_settings';
 interface PanelPluginState {
   /** Plugin ids whose contributions are switched off. */
   disabled: string[];
+  /**
+   * Whether git-installed plugins are updated automatically.
+   *
+   * Chamber state, like the disabled set, and stored in the same blob: it is a
+   * preference about what the CHAMBER does, not a property of any plugin
+   * directory, and writing it into a plugin's own files would put it where that
+   * plugin's tooling could rewrite it.
+   *
+   * Absent means OFF. An automatic update runs `git fetch` and a hard reset
+   * against a remote, so it must be something the user turned on rather than
+   * something that starts happening on upgrade.
+   */
+  autoUpdate: boolean;
 }
 
-const EMPTY: PanelPluginState = { disabled: [] };
+const EMPTY: PanelPluginState = { disabled: [], autoUpdate: false };
 
 function normalize(raw: unknown): PanelPluginState {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return EMPTY;
-  if (!('disabled' in raw)) return EMPTY;
-  const list = raw.disabled;
-  if (!Array.isArray(list)) return EMPTY;
-  return { disabled: list.filter((id): id is string => typeof id === 'string' && id.length > 0) };
+  const record = raw as Record<string, unknown>;
+  const list = record.disabled;
+  return {
+    disabled: Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string' && id.length > 0) : [],
+    autoUpdate: record.autoUpdate === true,
+  };
 }
 
 /**
@@ -76,16 +91,42 @@ async function migrateHiddenPanels(state: PanelPluginState): Promise<PanelPlugin
   }
 
   await writeSettingsJson(db, CHAMBER_SETTINGS_KEY, rest);
-  const next = { disabled: [...merged] };
+  const next = { disabled: [...merged], autoUpdate: state.autoUpdate };
   await writeSettingsJson(db, PANEL_PLUGINS_KEY, next);
   return next;
 }
 
-/** The ids switched off, in the order they were written. */
-export async function readDisabledPlugins(): Promise<string[]> {
+/**
+ * The whole stored state, after the one-time migration.
+ *
+ * Read as a unit rather than per field: the blob is a single row, so two
+ * readers would parse it twice and one of them would run the migration twice.
+ */
+async function readState(): Promise<PanelPluginState> {
   const db = await getDb();
   const stored = normalize(await readSettingsJson<unknown>(db, PANEL_PLUGINS_KEY, EMPTY));
-  return (await migrateHiddenPanels(stored)).disabled;
+  return migrateHiddenPanels(stored);
+}
+
+/** The ids switched off, in the order they were written. */
+export async function readDisabledPlugins(): Promise<string[]> {
+  return (await readState()).disabled;
+}
+
+/** Whether git-installed plugins are updated automatically. */
+export async function readPluginAutoUpdate(): Promise<boolean> {
+  return (await readState()).autoUpdate;
+}
+
+/** Turn automatic updating of git-installed plugins on or off. */
+export async function setPluginAutoUpdate(enabled: boolean): Promise<boolean> {
+  // Republished from here for the same reason the disabled set is: the flag
+  // decides whether a background pass runs, and every open tab renders it.
+  const current = await readState();
+  const db = await getDb();
+  await writeSettingsJson(db, PANEL_PLUGINS_KEY, { disabled: current.disabled, autoUpdate: enabled } satisfies PanelPluginState);
+  emitRealtimeSignal('panels-changed');
+  return enabled;
 }
 
 /**
@@ -99,14 +140,15 @@ export async function setPluginEnabled(pluginId: string, enabled: boolean): Prom
   // The `panels` topic is republished from here rather than at each route: a
   // switch flipped in one tab must move every other tab's catalog, and this is
   // the one writer of that state.
-  const current = await readDisabledPlugins();
+  const current = await readState();
+  const disabled = current.disabled;
   const next = enabled
-    ? current.filter((id) => id !== pluginId)
-    : current.includes(pluginId)
-      ? current
-      : [...current, pluginId];
+    ? disabled.filter((id) => id !== pluginId)
+    : disabled.includes(pluginId)
+      ? disabled
+      : [...disabled, pluginId];
   const db = await getDb();
-  await writeSettingsJson(db, PANEL_PLUGINS_KEY, { disabled: next } satisfies PanelPluginState);
+  await writeSettingsJson(db, PANEL_PLUGINS_KEY, { disabled: next, autoUpdate: current.autoUpdate } satisfies PanelPluginState);
   emitRealtimeSignal('panels-changed');
   return next;
 }

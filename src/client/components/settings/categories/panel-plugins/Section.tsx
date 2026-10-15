@@ -1,4 +1,4 @@
-import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-preact';
+import { AlertTriangle, Trash2, X } from 'lucide-preact';
 import type { PanelPluginError } from '@/shared/types';
 import {
   refreshPanelRegistry,
@@ -10,6 +10,8 @@ import { InstallForm } from '@/client/components/settings/categories/panel-plugi
 import { AvailableList } from '@/client/components/settings/categories/panel-plugins/AvailableList';
 import { InstalledList } from '@/client/components/settings/categories/panel-plugins/InstalledList';
 import { BuiltinList } from '@/client/components/settings/categories/panel-plugins/BuiltinList';
+import { PluginToolbar } from '@/client/components/settings/categories/panel-plugins/Toolbar';
+import { SyncBlockedNotice } from '@/client/components/settings/categories/panel-plugins/SyncBlockedNotice';
 
 /**
  * One rejection, with the repair it has when there is one.
@@ -79,7 +81,8 @@ function RejectionRow({
  * on.
  */
 export function PanelPluginsSection() {
-  const { panels, errors, plugins, catalog, disabledPanels, ready } = usePanelRegistry();
+  const { panels, errors, plugins, catalog, disabledPanels, gitStatus, autoUpdate, syncBlocked, ready } =
+    usePanelRegistry();
   const { slots, failures } = usePanelSlots();
   const actions = usePanelPluginActions();
 
@@ -92,6 +95,7 @@ export function PanelPluginsSection() {
   // content-addressed server-side.
   const iconUrls = new Map(panels.map((panel) => [panel.pluginId, panel.iconUrl]));
   const readmeUrls = new Map(panels.map((panel) => [panel.pluginId, panel.readmeUrl]));
+  const gitCount = plugins.filter((plugin) => plugin.gitOrigin).length;
 
   return (
     <div className="space-y-4">
@@ -101,20 +105,29 @@ export function PanelPluginsSection() {
           chamber loads into this page and renders in its own tree, so it looks and behaves like the rest of the
           app — treat it the way you would a VS Code extension.
         </p>
-        <button
-          type="button"
-          onClick={refresh}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-ink/15 hover:bg-ink/5 flex-shrink-0"
-          title="Re-read the marketplace from disk"
-        >
-          <RefreshCw size={13} />
-          Refresh
-        </button>
       </div>
+
+      <PluginToolbar
+        autoUpdate={autoUpdate}
+        busy={actions.busy}
+        gitCount={gitCount}
+        onSetAutoUpdate={actions.setAutoUpdate}
+        onCheckUpdates={actions.checkUpdates}
+        onRefresh={refresh}
+      />
+
+      {actions.error ? (
+        <div className="flex items-start gap-1.5 px-3 py-2 rounded-lg border border-error/30 bg-error/5 text-[11px] text-error leading-snug">
+          <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
+          <span className="flex-1 break-words">{actions.error}</span>
+          <button type="button" onClick={actions.clearError} aria-label="Dismiss" className="cursor-pointer">
+            <X size={12} />
+          </button>
+        </div>
+      ) : null}
 
       <InstallForm
         busy={actions.busy === 'install'}
-        error={actions.error}
         onInstall={actions.install}
         onClearError={actions.clearError}
       />
@@ -138,6 +151,11 @@ export function PanelPluginsSection() {
 
       <AvailableList entries={available} busy={actions.busy} onInstall={actions.installBundled} />
 
+      {/* A blocked bundled update, above the list it explains: the plugin is in
+          the Installed grid below, and a notice underneath it would be read after
+          the row it is about. */}
+      <SyncBlockedNotice blocked={syncBlocked} busy={actions.busy} onForceSync={actions.forceSync} />
+
       {plugins.length > 0 ? (
         <InstalledList
           plugins={plugins}
@@ -149,6 +167,8 @@ export function PanelPluginsSection() {
           onBuild={actions.build}
           onRemove={actions.remove}
           onSetEnabled={actions.setEnabled}
+          gitStatus={gitStatus}
+          onUpdateGit={actions.updateGit}
         />
       ) : null}
 

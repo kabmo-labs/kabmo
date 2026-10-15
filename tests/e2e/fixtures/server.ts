@@ -128,6 +128,13 @@ export async function startHarnessServer(options: {
   const runRoot = mkdtempSync(join(tmpdir(), 'omc-e2e-'));
   const dataDir = join(runRoot, 'data');
   const agentDir = join(runRoot, 'agent');
+  // The panel-plugin marketplace is a SECOND root the server writes, and it
+  // defaults to `~/.ompchamber/marketplace` — NOT under the data directory. A
+  // spec that installed a plugin therefore installed it into the developer's own
+  // marketplace: measured, running this suite left an `e2e-plugin` row in the
+  // real `marketplace.json` pointing at a temp repository that had been deleted.
+  const marketplaceDir = join(runRoot, 'marketplace');
+  const bundledDir = join(runRoot, 'bundled');
   const port = await pickFreePort();
 
   // Real mode drives the scripted child. `OMPCHAMBER_OMP_BIN` must be an
@@ -157,6 +164,10 @@ export async function startHarnessServer(options: {
       OMPCHAMBER_DATA_DIR: dataDir,
       OMPCHAMBER_DB_PATH: join(dataDir, 'db.sqlite'),
       PI_CODING_AGENT_DIR: agentDir,
+      // Both plugin-marketplace roots, or a spec's install lands in the real
+      // `~/.ompchamber/marketplace` and the bundled store is the checkout's own.
+      OMPCHAMBER_MARKETPLACE_DIR: marketplaceDir,
+      OMPCHAMBER_BUNDLED_MARKETPLACE_DIR: bundledDir,
       ...(ompBin ? { OMPCHAMBER_OMP_BIN: ompBin } : {}),
       // Never inherit a developer's sync/credential choices.
       SYNC_WORKSPACE: 'false',

@@ -25,9 +25,13 @@ import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { installPanelPluginFromBundled, installPanelPluginFromGit, removePanelPlugin } from '@/server/lib/panels/install.server';
+import { probeGitUpdate, updateGitPlugin } from '@/server/lib/panels/git-update.server';
+import { forceSyncBundledPlugin } from '@/server/lib/panels/sync.server';
+import { writeGitStatus } from '@/server/lib/panels/git-status.server';
 import { forgetCatalogEntry } from '@/server/lib/panels/catalog.server';
-import { setPluginEnabled } from '@/server/lib/panels/state.server';
+import { setPluginAutoUpdate, setPluginEnabled } from '@/server/lib/panels/state.server';
 import { disposePlugin, loadPluginServer, notePluginLoadFailure } from '@/server/lib/plugins/loader.server';
+import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 /**
  * Bring a plugin's SERVER half in line with its on-disk state, now.
@@ -121,6 +125,100 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!source) return json({ error: 'A catalog source is required.' }, { status: 400 });
     const result = await forgetCatalogEntry(source);
     if (!result.ok) return json({ error: result.error, ...(await discoverPanelPlugins()) }, { status: 400 });
+    return json({ ok: true, ...(await discoverPanelPlugins()) });
+  }
+
+  if (type === 'check_updates') {
+    // Probes run for EVERY git-installed plugin, sequentially: the probe is a
+    // network round trip, and a fan-out of one process per plugin would burst
+    // the same remote — which some hosts answer with a rate limit that then
+    // reports itself as "unreachable". The answer is the whole payload, so the
+    // freshness badges and the rows that carry them land together.
+    const { plugins } = await discoverPanelPlugins();
+    for (const plugin of plugins) {
+      if (!plugin.gitOrigin) continue;
+      writeGitStatus(plugin.pluginId, await probeGitUpdate(plugin.pluginId));
+    }
+    // The statuses travel ON the scan payload, so the cached scan still holds
+    // the previous (or empty) map. Without this the response would report every
+    // plugin as never probed for up to the cache's five seconds.
+    invalidatePanelScan();
+    // The topic must be republished, not only the response seeded: the client
+    // reads `topic.data ?? host.payload`, so a stale topic snapshot WINS over
+    // the fresh response and the row keeps rendering the old status. Measured in
+    // the browser: the freshness row stayed "not checked" after a check that had
+    // succeeded server-side.
+    emitRealtimeSignal('panels-changed');
+    return json({ ok: true, ...(await discoverPanelPlugins()) });
+  }
+
+  if (type === 'update_git') {
+    const pluginId = typeof body.pluginId === 'string' ? body.pluginId.trim() : '';
+    if (!pluginId) return json({ error: 'A plugin id is required.' }, { status: 400 });
+
+    // Unload BEFORE the files move, for the same reason a removal does: the
+    // module is already imported and its registrations are live, so a server
+    // half that kept running would answer from code the directory no longer
+    // holds. Reloaded below, after the update.
+    await syncPluginServer(pluginId, false);
+    const result = await updateGitPlugin(pluginId);
+    if (!result.ok) {
+      // The plugin is still installed and still on its previous commit — the
+      // refusal is about what an update WOULD do. Its server half goes back up
+      // either way, or a failed update would leave a working plugin inert.
+      await syncPluginServer(pluginId, true);
+      return json({ error: result.error, ...(await discoverPanelPlugins()) }, { status: 400 });
+    }
+    await syncPluginServer(pluginId, true);
+    // The freshness this update just achieved is written rather than probed
+    // again: the commit is known, and a second round trip could only disagree
+    // with the reset that already happened.
+    writeGitStatus(pluginId, {
+      current: result.commit ?? null,
+      latest: result.commit ?? null,
+      updateAvailable: false,
+      checkedAt: Date.now(),
+    });
+    // The statuses and the rebuilt bundle both travel on the scan payload, and
+    // the server-half reload above may have scanned in between — so the cache is
+    // dropped once more here, right before the read that answers the caller, and
+    // the topic is republished for the same reason `check_updates` does it: a
+    // stale topic snapshot wins over the response on the client.
+    invalidatePanelScan();
+    emitRealtimeSignal('panels-changed');
+    const payload = await discoverPanelPlugins();
+    if (result.warning) return json({ ok: true, error: result.warning, ...payload });
+    return json({ ok: true, updated: result.updated, ...payload });
+  }
+
+  if (type === 'force_sync') {
+    // The escape hatch for a blocked bundled sync: the user has seen which files
+    // differ and asked for the store's copy anyway. Answered with the whole
+    // payload, and the scan is invalidated because the plugin's files and its
+    // refusal record both moved.
+    const pluginId = typeof body.pluginId === 'string' ? body.pluginId.trim() : '';
+    if (!pluginId) return json({ error: 'A plugin id is required.' }, { status: 400 });
+    await syncPluginServer(pluginId, false);
+    const result = await forceSyncBundledPlugin(pluginId);
+    if (!result.ok) {
+      await syncPluginServer(pluginId, true);
+      invalidatePanelScan();
+      return json({ error: result.error, ...(await discoverPanelPlugins()) }, { status: 400 });
+    }
+    await syncPluginServer(pluginId, true);
+    invalidatePanelScan();
+    emitRealtimeSignal('panels-changed');
+    const payload = await discoverPanelPlugins();
+    if (result.warning) return json({ ok: true, error: result.warning, ...payload });
+    return json({ ok: true, ...payload });
+  }
+
+  if (type === 'set_auto_update') {
+    const enabled = body.enabled === true;
+    // `setPluginAutoUpdate` republishes the topic itself (the one writer of that
+    // state owns the signal), so only the scan cache is dropped here.
+    await setPluginAutoUpdate(enabled);
+    invalidatePanelScan();
     return json({ ok: true, ...(await discoverPanelPlugins()) });
   }
 

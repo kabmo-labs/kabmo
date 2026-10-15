@@ -24,7 +24,9 @@ import { isMockMode } from '@/server/mock.server';
 import { stopDiscoveryRootsWatch, syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
-import { loadPluginServers } from '@/server/lib/plugins/loader.server';
+import { syncBundledPlugins } from '@/server/lib/panels/sync.server';
+import { startPanelAutoUpdate } from '@/server/lib/panels/auto-update.server';
+import { disposeAllPluginsOnShutdown, loadPluginServers } from '@/server/lib/plugins/loader.server';
 
 // Refuse to run without a resolvable omp binary — before the listener opens and
 // before the first request can reach a route that shells out to it. The database
@@ -261,6 +263,39 @@ try {
 }
 
 /**
+ * Bring installed BUNDLED plugins up to the copy this package ships.
+ *
+ * An OMPChamber update replaces the store and leaves the install — it is a
+ * copied directory of ordinary files — so this is the only thing that notices.
+ * It is version-gated and skips git clones, so a plugin the user installed from
+ * a URL is never overwritten by a store entry that happens to share its id.
+ *
+ * AFTER the server halves load, and it reloads nothing itself: a plugin whose
+ * sources moved has a new bundle the browser fetches on the next load, while its
+ * server half was loaded from the OLD sources a moment ago. That half is left
+ * running until the next restart on purpose — replacing a module a live plugin
+ * registered routes from is the one thing this pass must not do unannounced —
+ * and the pane reports the plugin as updated, which is where a user looks.
+ */
+try {
+  const synced = await syncBundledPlugins();
+  for (const item of synced.updated) {
+    console.log(`[ompchamber] plugins:        synced ${item.pluginId} ${item.from} → ${item.to}`);
+    if (item.warning) console.error(`[plugins] ${item.pluginId}: rebuild after sync failed — ${item.warning}`);
+  }
+  for (const failure of synced.failed) console.error(`[plugins] ${failure.pluginId}: bundled sync failed — ${failure.error}`);
+} catch (error) {
+  console.error('[plugins] bundled sync skipped:', error);
+}
+
+/**
+ * The git-plugin freshness clock. Opt-in, and started after the plugin platform
+ * so its first pass sees the plugins that are actually installed — the setting
+ * is read on every pass, so switching it off in the pane stops the next one.
+ */
+startPanelAutoUpdate();
+
+/**
  * The tray icon, when `--tray` was passed (`serve --tray`, or the login entry
  * the CLI writes for `--startup`). After the listener is up, because the config
  * it writes carries the URL the icon opens and the login row it draws, and both
@@ -306,6 +341,9 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     stopDiscoveryRootsWatch();
     stopScheduleRuntime();
     void app.stop();
-    process.exit(0);
+    // Plugins own children and listeners nothing else releases, and a detached
+    // child outlives its parent — so this is awaited BEFORE the exit. It is
+    // bounded internally, so a plugin that hangs cannot hold the port.
+    void disposeAllPluginsOnShutdown().finally(() => process.exit(0));
   });
 }

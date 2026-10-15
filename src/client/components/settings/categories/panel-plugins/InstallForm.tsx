@@ -3,7 +3,6 @@ import { Download, Loader2, Trash2 } from 'lucide-preact';
 
 interface InstallFormProps {
   busy: boolean;
-  error: string | null;
   onInstall: (url: string) => Promise<boolean>;
   onClearError: () => void;
 }
@@ -16,8 +15,13 @@ interface InstallFormProps {
  * `ompchamber.json`. The field therefore validates the URL SHAPE before sending
  * it, so an obvious mistake is answered instantly instead of after a clone
  * timeout.
+ *
+ * Only its OWN validation is rendered here. A server error belongs to whichever
+ * action produced it — install, update, or the auto-update switch — so the pane
+ * reports those in one banner above the form rather than in the field that
+ * happens to sit nearest.
  */
-export function InstallForm({ busy, error, onInstall, onClearError }: InstallFormProps) {
+export function InstallForm({ busy, onInstall, onClearError }: InstallFormProps) {
   const [url, setUrl] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -39,7 +43,7 @@ export function InstallForm({ busy, error, onInstall, onClearError }: InstallFor
     if (ok) setUrl('');
   };
 
-  const shown = localError ?? error;
+  const shown = localError;
 
   return (
     <form onSubmit={submit} className="border border-ink/15 rounded p-3 space-y-2">
