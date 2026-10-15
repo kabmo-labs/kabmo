@@ -19,7 +19,7 @@ import path from 'path';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { resolveRoot } from '@/server/lib/fs/root';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
-import { fetchGitCommits } from '@/server/lib/fs/git-log';
+import { fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
 import { repoRelative, resolveRepoPath } from '@/server/lib/fs/git-run';
 import { parseConflictMarkers } from '@/shared/lib/fs/git-unmerged';
@@ -98,6 +98,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // the status payload for the same reason as the branch list.
   if (url.searchParams.get('stashes') === '1') {
     return json({ success: true, stashes: await listStashes(targetDir) });
+  }
+
+  // The amend draft's read: the message the checkbox would rewrite. On demand
+  // for the same reason the branch list and the stash are — the status read
+  // travels on the realtime `git:` topic and is republished on every tool call,
+  // so a payload nobody asked for would pay one `git log` per tool call.
+  if (url.searchParams.get('headMessage') === '1') {
+    return json({ success: true, message: await readHeadCommitMessage(targetDir) });
   }
 
   // The side labels a resolve button is named from, read on demand.

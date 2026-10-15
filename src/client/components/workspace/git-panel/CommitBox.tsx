@@ -6,6 +6,12 @@ interface GitCommitBoxProps {
   isBusy?: boolean;
   /** Rewrite the previous commit instead of adding one. */
   amend?: boolean;
+  /**
+   * The draft is exactly the text Amend's pre-fill loaded, untouched — the
+   * panel uses it to say so rather than letting an auto-filled box read as a
+   * stale draft. Cleared by the first edit.
+   */
+  seeded?: boolean;
   onToggleAmend?: (value: boolean) => void;
   onChangeMessage: (value: string) => void;
   onCommit: () => void;
@@ -25,12 +31,20 @@ interface GitCommitBoxProps {
  * with nothing staged is legitimate (`git commit --amend` there only re-edits
  * the message), and gating it on `hasStagedChanges` — which is what the plain
  * commit path needs — would refuse the case the checkbox exists for.
+ *
+ * **Ticking Amend pre-fills the draft with the message it is about to
+ * rewrite**, because `--amend` REPLACES the message: an empty box asks the user
+ * to retype what is already in the repository, and the common amend is a tweak
+ * to the previous subject. The seeding lives in `useCommitBox` (see there for
+ * why it never overwrites a draft the user typed); the placeholder says what
+ * happened so an auto-filled box does not read as a stale draft.
  */
 export function GitCommitBox({
   message,
   hasStagedChanges,
   isBusy = false,
   amend = false,
+  seeded = false,
   onToggleAmend,
   onChangeMessage,
   onCommit,
@@ -69,6 +83,14 @@ export function GitCommitBox({
           />
           Amend
         </label>
+        {/* Names the pre-fill, so an auto-filled draft is not mistaken for a
+            stale one the user left behind. It disappears on the first edit —
+            the draft is theirs from then on. */}
+        {amend && seeded && (
+          <span className="text-[10px] text-ink/40" title="The previous commit's message, loaded as an editable starting point">
+            previous message loaded
+          </span>
+        )}
 
         <button
           type="button"

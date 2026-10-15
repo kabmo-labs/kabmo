@@ -13,6 +13,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitPanelData } from '@/client/hooks/workspace/git-panel-data';
 import { useGitActions } from '@/client/hooks/workspace/git-actions';
+import { useCommitBox } from '@/client/hooks/workspace/commit-box';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import { confirmRequestFor } from '@/client/components/workspace/git-panel/confirm-request';
@@ -47,7 +48,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // which is the one thing a topic push must not do.
   const actionFetcher = useGitActions(rootPath, activeRepo);
 
-  const [message, setMessage] = useSessionState<string>('git.commitDraft', '');
   const [viewMode, setViewMode] = useSessionState<'flat' | 'tree'>('git.viewMode', 'flat');
   
   const [showOptions, setShowOptions] = useState(false);
@@ -65,7 +65,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   const [newBranchName, setNewBranchName] = useState('');
   const newBranchInputRef = useRef<HTMLInputElement>(null);
   const [branchModalOpen, setBranchModalOpen] = useState(false);
-  const [amend, setAmend] = useSessionState<boolean>('git.amend', false);
   
   // History and Graph states
   const [viewingOutput, setViewingOutput] = useState<CommitHistoryPage | null>(null);
@@ -128,6 +127,14 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   useOnClickOutside(branchRef, () => setShowBranchMenu(false));
 
   const executeAction = actionFetcher.execute;
+  // The draft, the amend checkbox and the pre-fill that seeds it with HEAD's
+  // message — see `commit-box.ts` for the three rules that keep the seeding
+  // from overwriting a draft the user typed.
+  const { message, setMessage, amend, seeded, toggleAmend, commit } = useCommitBox({
+    rootPath,
+    repo: activeRepo,
+    execute: executeAction,
+  });
 
   /**
    * Route one action through a confirmation when it is destructive.
@@ -154,12 +161,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
    */
   const handleResolveConflict = (file: string, side: 'ours' | 'theirs' | '') => {
     executeAction('resolve_conflict', file, side ? { side } : undefined);
-  };
-
-  const commit = () => {
-    executeAction('commit', undefined, { message, ...(amend ? { amend: '1' } : {}) });
-    setMessage('');
-    setAmend(false);
   };
 
   const branch = data?.branch || 'main';
@@ -314,7 +315,8 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
           hasStagedChanges={stagedChanges.length > 0}
           isBusy={isBusy}
           amend={amend}
-          onToggleAmend={setAmend}
+          seeded={seeded}
+          onToggleAmend={toggleAmend}
           onChangeMessage={setMessage}
           onCommit={commit}
         />

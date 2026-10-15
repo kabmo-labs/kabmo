@@ -20,7 +20,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fetchFileDiff, fetchGitCommits } from '@/server/lib/fs/git-log';
+import { fetchFileDiff, fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
 
 const tempDirs: string[] = [];
@@ -207,6 +207,37 @@ describe('a commit body travels with the page', () => {
     const { commits } = await fetchGitCommits(repo, 10, 0);
     const single = commits.find((c) => c.message === 'one line only');
     expect(single?.body).toBeUndefined();
+  });
+});
+
+describe('readHeadCommitMessage', () => {
+  test('a multi-line HEAD message round-trips whole, subject and body', async () => {
+    const repo = tempDir();
+    initRepo(repo);
+    write(repo, 'a.txt', 'a\n');
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '-q', '-m', 'the subject', '-m', 'the body para');
+    // The amend REPLACES the message, so seeding only the subject would drop
+    // the body it replaced.
+    expect(await readHeadCommitMessage(repo)).toBe('the subject\n\nthe body para');
+  });
+
+  test('HEAD is the newest commit, not the first', async () => {
+    const repo = tempDir();
+    initRepo(repo);
+    write(repo, 'a.txt', 'a\n');
+    commitAll(repo, 'oldest');
+    write(repo, 'b.txt', 'b\n');
+    commitAll(repo, 'newest');
+    expect(await readHeadCommitMessage(repo)).toBe('newest');
+  });
+
+  test('a repository with no commits answers null, not an empty draft', async () => {
+    const repo = tempDir();
+    initRepo(repo);
+    // `git log` exits 128 on an unborn HEAD; the panel must leave the draft
+    // alone rather than seeding an empty message over the placeholder.
+    expect(await readHeadCommitMessage(repo)).toBeNull();
   });
 });
 

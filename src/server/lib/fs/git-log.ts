@@ -4,6 +4,7 @@ import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
 import { isMockMode } from '@/server/mock.server';
 import { runShell, shellOk } from '@/server/lib/fs/shell';
+import { runGit } from '@/server/lib/fs/git-run';
 
 /**
  * Header/body and record separators in the `git log` format below.
@@ -233,6 +234,34 @@ export async function fetchGitCommits(
 async function hasNoCommits(targetDir: string): Promise<boolean> {
   const out = await runShell('git rev-parse --verify HEAD', { cwd: targetDir, timeout: 5000 });
   return !shellOk(out);
+}
+
+/**
+ * The message of the commit `--amend` would rewrite — the draft the panel
+ * pre-fills when the user ticks Amend.
+ *
+ * Read ON DEMAND, never off the status payload: that read is republished on
+ * every tool call, and this is one `git log` per tick of a checkbox.
+ *
+ * `%B` is the raw body, so a multi-line message (and a merge commit's own
+ * message) round-trips intact — the amend replaces the whole message, so
+ * seeding only the subject would silently drop the body it replaced.
+ *
+ * `null` in a repository whose HEAD is unborn (`git log` exits 128 there):
+ * there is nothing to amend, so there is nothing to pre-fill. The panel leaves
+ * the draft alone rather than seeding an empty message.
+ */
+export async function readHeadCommitMessage(targetDir: string): Promise<string | null> {
+  const result = await runGit(['log', '-1', '--pretty=format:%B'], {
+    cwd: targetDir,
+    timeout: 5000,
+    maxBuffer: 1024 * 1024,
+  });
+  if (result.exitCode !== 0 || result.error) return null;
+  // Trailing whitespace only: git terminates `%B` with a newline, and leading
+  // indentation inside the message is the author's.
+  const message = result.stdout.replace(/\s+$/, '');
+  return message.length > 0 ? message : null;
 }
 
 /**

@@ -525,7 +525,17 @@ test.describe('Source Control — stash and commit', () => {
 
     await openGitPanel(page, server, repo);
     await page.getByLabel('Amend').check();
-    await page.getByPlaceholder(/new message for the previous commit/i).fill('amended subject');
+    // Ticking Amend loads the message it is about to rewrite — the whole
+    // message, editable, so the common amend is a tweak rather than a retype.
+    const draft = page.getByPlaceholder(/new message for the previous commit/i);
+    await expect(draft).toHaveValue('first commit');
+    // The box says where the text came from, so an auto-filled draft is not
+    // read as a stale one the user left behind.
+    await expect(page.getByText('previous message loaded')).toBeVisible();
+    // And it is ordinary text: replacing it entirely is the user's call.
+    await draft.fill('amended subject');
+    // Edited, so the note is gone — the draft is theirs from here on.
+    await expect(page.getByText('previous message loaded')).toBeHidden();
     await page.getByRole('button', { name: 'Amend commit' }).click();
 
     await waitUntil(async () => repo.git('log', '-1', '--pretty=%s').trim() === 'amended subject');
