@@ -14,8 +14,9 @@ import { useSessionStateContext } from '@/client/hooks/workspace/session-state/c
 import {
   DEFAULT_EDITOR_FRACTIONS,
   DEFAULT_EDITOR_WIDTHS,
-  MIN_CHAT_PANEL_WIDTH,
+  HANDLE_WIDTH,
   MIN_EDITOR_PANEL_WIDTH,
+  fillerMinWidth,
   pairMaxSize,
   panelFraction,
   resolvePanelWidth,
@@ -236,7 +237,17 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
           onPanelWidths(readPanelWidths());
         }}
       >
-        <Panel id="center-panel" filler minSize={MIN_CHAT_PANEL_WIDTH}>
+        <Panel
+          id="center-panel"
+          filler
+          minSize={fillerMinWidth({
+            available,
+            reservedPx:
+              (showEditor ? editorWidth : 0) +
+              (showRightPanel ? rightWidth : 0) +
+              handleCount * HANDLE_WIDTH,
+          })}
+        >
           <div className="relative w-full h-full" {...drop.dropProps}>
             <EditorDropOverlay visible={drop.isDragging} />
             <ChatTimeline className="w-full h-full" appSettings={appSettings} onSessionTitle={onSessionTitle} />

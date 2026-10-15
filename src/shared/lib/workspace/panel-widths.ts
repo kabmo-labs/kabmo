@@ -205,6 +205,44 @@ export function resolvePanelWidth(args: ResolveWidthArgs): number {
 }
 
 /**
+ * The floor the FILLER panel (the chat column) may actually hold, in px.
+ *
+ * `MIN_CHAT_PANEL_WIDTH` is a WISH, not a guarantee: it is only satisfiable
+ * while the group can spare it. A fixed floor on the filler is what pushes the
+ * whole group past its own box on a narrow window — the filler keeps 400px, the
+ * right panel keeps its own floor (420 for Stats), the handles keep 3, and
+ * `400 + 420 + 3 > 595` makes the flex row overflow its container. The group
+ * itself is `flex-1 min-w-0`, so its clientWidth stays put and only its
+ * `scrollWidth` grows: the right panel is laid out PAST the viewport edge, and
+ * its own scroller and right-hand columns sit under (and beyond) the activity
+ * bar with no scrollbar reachable to bring them back. Measured at 922x1568:
+ * group clientWidth 595, scrollWidth 821, Stats table right edge 182px past the
+ * viewport.
+ *
+ * The filler is the panel that must give way, because it is the only one whose
+ * content reflows gracefully — a chat column narrows, while a telemetry table
+ * below its floor clips. So its floor becomes "as much as is left over", capped
+ * at the wish: `min(MIN_CHAT_PANEL_WIDTH, available − the other panels)`. At a
+ * healthy width the cap never binds and the floor is the wish; on a cramped
+ * group the chat narrows (down to 0 in the worst case) so the fixed panels stay
+ * on screen. Without a measured area there is nothing to divide, so the wish
+ * stands — the same convention `resolvePanelWidth` uses.
+ *
+ * `reservedPx` is the widths the non-filler panels actually took plus the
+ * separators between them, all of which are already resolved when this runs.
+ */
+export function fillerMinWidth(args: {
+  /** Measured area of the group, or null before the observer reports. */
+  available: number | null;
+  /** Px the non-filler panels and their separators already occupy. */
+  reservedPx: number;
+}): number {
+  const { available, reservedPx } = args;
+  if (available === null || available <= 0) return MIN_CHAT_PANEL_WIDTH;
+  return Math.max(0, Math.min(MIN_CHAT_PANEL_WIDTH, Math.floor(available - reservedPx)));
+}
+
+/**
  * The `maxSize` one of the coupled pair may be DRAGGED to, in px.
  *
  * `resolvePanelWidth` caps the widths it hands to `defaultSize`, but a

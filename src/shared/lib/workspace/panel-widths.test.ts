@@ -7,9 +7,11 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   DEFAULT_EDITOR_FRACTIONS,
+  MIN_CHAT_PANEL_WIDTH,
   MIN_EDITOR_PANEL_WIDTH,
   PAIR_MAX_FRACTION,
   PAIR_MAX_TOTAL_FRACTION,
+  fillerMinWidth,
   mergePanelWidths,
   pairMaxSize,
   resolvePanelWidth,
@@ -219,6 +221,28 @@ describe('the editor/right-panel pair', () => {
       handleCount: 1,
     });
     expect(editor).toBe(Math.round(PAIR_MAX_FRACTION * available));
+  });
+});
+
+describe('fillerMinWidth (the chat floor that actually fits)', () => {
+  test('a healthy group leaves the wish untouched', () => {
+    // 1400 − (right 420 + handle 3) leaves far more than the wish.
+    expect(fillerMinWidth({ available: 1400, reservedPx: 423 })).toBe(MIN_CHAT_PANEL_WIDTH);
+  });
+
+  test('a cramped group lowers the floor to what is left over', () => {
+    // The 922px-window case: group 595, right panel 420 + one handle 3.
+    expect(fillerMinWidth({ available: 595, reservedPx: 423 })).toBe(172);
+  });
+
+  test('a group with nothing left gives the filler no floor', () => {
+    // Reserving past the group must never yield a negative min-width.
+    expect(fillerMinWidth({ available: 300, reservedPx: 500 })).toBe(0);
+  });
+
+  test('no measured area means the wish stands', () => {
+    expect(fillerMinWidth({ available: null, reservedPx: 423 })).toBe(MIN_CHAT_PANEL_WIDTH);
+    expect(fillerMinWidth({ available: 0, reservedPx: 423 })).toBe(MIN_CHAT_PANEL_WIDTH);
   });
 });
 
