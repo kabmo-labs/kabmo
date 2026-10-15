@@ -568,3 +568,204 @@ is needed; the generic path is correct here because the entry IS a notice.
 | R9 | eight surfaces still correct | none needed | live ping, key sets, flags, slot size, CLI probes |
 | R10 | forked resume re-spawned | `registerSpawnedSession` + alias signal | `forked-resume.test.ts` 1 child; fails with 2 pre-fix |
 | R11 | transfer markers | none needed | real reader: notice + `noticeSource` |
+
+---
+
+# omp 18.11.0 adoption (2026-10-15)
+
+The pin sat at **18.10.3** while **18.11.0** was installed and published
+(2026-10-14T22:10Z, npm `latest`). That is the F9/R4 failure repeating a third
+time, and this round it had a live consequence: two rows the committed schema
+still offered had been **removed upstream in 18.10.4**, so `omp config set` on
+them exited 1 with `Unknown setting` — and the CI schema gate could not see it,
+because the gate installs the PIN and the pin was behind.
+
+## Method
+
+- `rpc-wire.schema.json` from the installed 18.11.0, diffed against the
+  `v18.10.3`, `v18.10.0` and `v18.8.3` tags (downloaded from the registry).
+- `orderedSettings()` from the installed package, generated into a temp file and
+  compared entry by entry with the committed schema.
+- `omp config list --json` (550 keys) against the chamber's merged table.
+- `STT_MODELS` / `MODEL_ROLE_IDS` / `session-entries.ts` from the installed
+  package.
+- Live probes: `omp config set/get/reset`, `omp usage reset [--json]`,
+  `omp --mode rpc-ui --restore`, `omp __omp_worker_stt` frames.
+
+## Findings
+
+### R12 — Two settings the panel offered no longer exist (fixed)
+
+`providers.openai-codex.codeMode` and `.codeModeDirectTools` were **removed in
+18.10.4** ("Removed Codex Code Mode…"). The committed schema was generated from
+18.10.3 and still carried both, so the Providers → Services group rendered two
+editors whose every write was guaranteed to fail.
+
+Measured:
+
+```
+$ omp config set providers.openai-codex.codeMode off
+Unknown setting: providers.openai-codex.codeMode
+
+Run 'omp config list' to see available keys
+(exit 1)
+```
+
+`omp config get` and `omp config reset` fail the same way. Regenerated:
+**414 → 412 entries**, 0 added, plus three description-only updates
+(`contextPromotion.enabled`, `retry.modelFallback`, `task.structured`).
+
+Of the 550 live keys, 138 have no `ui` block and are therefore deliberately not
+carried (matching upstream's own panel); **0** ui-bearing settings were missing.
+So the drift was exactly these two zombie rows.
+
+### R13 — The failure sentence was thrown away (fixed)
+
+`config-cli.ts` captured `stderr: 'pipe'` and never read it, throwing
+`omp config failed: exited with code 1`. omp writes the reason to **stderr**, so
+a stale key, a bad value and a timeout all arrived as the same string — and the
+panel rendered all three as a bare `save failed` badge, because
+`applyWriteResult` kept only a boolean.
+
+`plugin-cli.ts` already did this right (both streams, `pluginCliError` prefers
+stderr); the config bridge is now the same shape, with one deliberate
+difference: it reads the **FIRST** non-empty line, not the last, because omp
+puts the reason first and a generic hint after it.
+
+```
+$ omp config set stt.enabled notabool
+Error: Invalid boolean value: notabool. Use true/false, yes/no, on/off, or 1/0
+```
+
+That sentence now reaches the row (the badge plus the message under it).
+Pinned by `config-cli.test.ts` against a stub `omp`.
+
+### R14 — `nemotron-streaming-en-0.6b` was unreachable (fixed)
+
+18.11.0 added a fifth STT model. The chamber's `SttModelKey` union held four, and
+`isSttModelKey` gates the worker call — so the key could not be selected at all
+(the worker would have answered `Unknown stt model` anyway). Added.
+
+It is the one key omp decodes through an ONLINE recognizer, but that is omp's
+own streaming path (`stream_start`/`stream_audio`/`stream_stop`), which the
+chamber does not drive — its socket sends one utterance per `transcribe` call.
+`decodeSegment` handles the online model on the batch path too (feeds the
+utterance plus a terminal padding frame), so no transport change was needed; the
+label says "live in omp TUI" so the difference is stated rather than implied.
+
+### R15 — `stt.language` was unreachable AND unused (fixed)
+
+Upstream declares `stt.language` (default `"en"`) with **no `ui` block**, so its
+own panel hides it — while its own dictation reads it. The chamber drove the
+same worker and passed **no language at all**, leaving every decode
+auto-detecting: the setting that decides whether a non-English utterance
+transcribes correctly was reachable from neither surface.
+
+Two halves: a chamber-documented row in `schema-extras.ts`, and
+`language.server.ts` resolving the value (60 s cache, dropped by the config
+write route) which the dictation socket uses when the client sends none. The
+worker applies `language` only for a non-`englishOnly` model, which is exactly
+the multilingual tiers the chamber defaults to.
+
+### R16 — Six of omp's fifteen model roles were unreachable (fixed)
+
+`MODEL_ROLE_IDS` is `default smol slow vision plan commit tiny memory task
+advisor image web speech dictation judge`; `RoleEditor` offered 9. `memory`,
+`image`, `web`, `speech`, `dictation` and `judge` could not be set from the
+console even though `omp config set`/`modelRoles` accept them. `dictation` is
+the one with a feature behind it (it is how a local STT model is chosen).
+
+The editor now lists all 15, split by omp's own sections — the first ten accept
+a chat model, the last five a model of that kind only, which is information the
+user needs (a chat model in `judge` is silently unusable). Pinned by
+`RoleEditor.test.ts`, which asserts the full role set against omp's list.
+
+### R17 — Saved rate-limit resets had no surface (feature)
+
+18.9.0 added `omp usage reset` (list stored Codex/Claude reset credits, spend
+one) plus expiry warnings. The chamber's Usage surfaces showed quota windows and
+balances only, so a saved reset could be seen nowhere and spent nowhere.
+
+New: `reset.server.ts` (both halves are omp's own command), route
+`/api/settings/usage/reset` (GET list, POST spend), and `SavedResetsSection`
+rendered in **both** Usage surfaces. Three rules carried from omp's own
+behaviour: a row without a `credentialId` is dropped (the target grammar is
+`<provider>/<credential id>`, so its button could never work); a failed LIST is
+reported rather than answered as an empty list (omp exits 1 for "no accounts"
+AND for a real failure, and the two look identical on screen); and a spend
+refusal keeps omp's sentence, because `already_redeemed` and `nothing_to_reset`
+are outcomes the user acts on differently.
+
+Verified end to end against a booted server with a stub `omp`: the list parsed,
+a spend returned omp's sentence, a malformed target answered 400, a wrong verb
+405, and a failing stub reported its own message in `error` rather than an empty
+list.
+
+### R18 — `--restore` is interactive-only (no action possible)
+
+18.10.0 added `omp --restore <session>`: resume, then continue what the last
+process left unfinished (the interrupted turn and its subagents). It is **not
+reachable from the chamber** — measured:
+
+```
+$ omp --mode rpc-ui --restore /tmp/s/t.jsonl
+Error: --restore requires an interactive terminal (not --print or --mode).
+```
+
+`main.ts` wires `restoreSession` only inside the `isInteractive` branch; both
+RPC modes are excluded. The chamber spawns `--mode rpc-ui`, so this is not a gap
+that can be closed from here — recorded so it is not "fixed" later.
+
+### R19 — The approval flow now diverges from omp (documented, not changed)
+
+18.10.4 changed the approval prompt to replace the composer; 18.11.0 went
+further — **sending a message while an approval is pending DENIES the call and
+steers the turn with that message**, so the agent learns why. (`denyingSteering`
+exists in 18.11.0 and in neither 18.10.3 nor 18.8.3.)
+
+The chamber does the opposite, deliberately and for a measured reason: a pending
+dialog parks omp's whole RPC command loop, so `abort`/`abort_and_prompt` are
+refused up front (`refuseWhenBlockedOnDialog`, 409 `session_blocked_on_dialog`)
+instead of hanging the request, and the dialog is a modal that covers the
+composer. Both are correct for their transport; the divergence is recorded so a
+future reader does not "align" them by removing the refusal and reintroducing the
+hang.
+
+### R20 — Verified still correct at 18.11.0 (do not "fix")
+
+- **RPC wire schema: UNCHANGED since 18.8.3.** 67 commands, `ADDED: []`,
+  `REMOVED: []`, 0 command signatures changed. Event unions identical: 31 agent
+  events, 20 notifications, 4 inbound frames. `ExtensionUiRequest` still has its
+  12 variants. Four defs changed across the whole range and all are inert here:
+  `CompactionResult.providerReplayThroughEntryId` (the chamber reads only
+  `summary`/`tokensBefore`), `QueueUpdateEvent`/`QueuedMessagesState.liveSteered`
+  and `SessionState.queuedMessages` (the chamber does not adopt omp's queue —
+  P4b–d).
+- **TUI-only guard: still exact.** omp has 44 TUI-only names; the chamber lists
+  42, and the two absent are `plan`/`goal`, which the chamber owns through its
+  extension.
+- **Builtin tools: identical.** 30 + 3 hidden, unchanged 18.8.3 → 18.11.0.
+  `tern-media.ts` is new but is a `read.ts` helper, not a tool.
+- **The `runtime` session-entry field is new and harmless.** 18.11.0 stamps
+  every entry with the writing build (`{version, commit?, branch?, diff?,
+  label?}`); the chamber's parser ignores unknown fields, and no surface displays
+  it.
+- **Chamber schema extras: 0 rejected.** All 15 documented keys answer
+  `omp config get`; the merged table's only rejections were the two R12 rows.
+- **STT worker transport.** `omp __omp_worker_stt` still exists
+  (`src/cli.ts`); `transcribe`/`download`/`ping` unchanged. The streaming frames
+  are new and unused.
+
+## 18.11.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R12 | 2 rows removed upstream, still offered | regenerated schema (414 → 412) | `omp:schema:check` passes; live `config set` refuses them |
+| R13 | stderr dropped, reason lost | `config-cli.ts` reads both streams; first line wins | `config-cli.test.ts` (stub omp), 9 tests |
+| R14 | 5th STT key unreachable | added to `STT_MODELS` | `models.test.ts` asserts the key set against omp's |
+| R15 | `stt.language` hidden AND unused | schema row + `language.server.ts` + socket default | `language.server.test.ts` (stub omp), 5 tests |
+| R16 | 9 of 15 roles editable | `RoleEditor` lists all 15, sectioned | `RoleEditor.test.ts`, 4 tests |
+| R17 | saved resets had no surface | `reset.server.ts` + route + section in both panels | `reset.server.test.ts` (11) + live HTTP smoke |
+| R18 | `--restore` unreachable | none possible — interactive-only | `omp --mode rpc-ui --restore` exits 1 |
+| R19 | approval flow diverges | documented, not changed | 18.11.0 `denyingSteering`; chamber 409 by design |
+| R20 | wire/tools/guard unchanged | none needed | wire diff 67/67, role diff 0, tool diff 0 |
