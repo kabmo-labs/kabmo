@@ -53,9 +53,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   const [showOptions, setShowOptions] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);
 
-  const [showRepoMenu, setShowRepoMenu] = useState(false);
-  const repoRef = useRef<HTMLDivElement>(null);
-
   const [showBranchMenu, setShowBranchMenu] = useState(false);
   const branchRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +120,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   }, [actionFetcher.state, actionFetcher.data, loadRepo]);
 
   useOnClickOutside(optionsRef, () => setShowOptions(false));
-  useOnClickOutside(repoRef, () => setShowRepoMenu(false));
   useOnClickOutside(branchRef, () => setShowBranchMenu(false));
 
   const executeAction = actionFetcher.execute;
@@ -246,9 +242,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
 
       {/* Repo Switcher Header */}
       <GitRepoHeader 
-        repoRef={repoRef}
-        showRepoMenu={showRepoMenu}
-        setShowRepoMenu={setShowRepoMenu}
         activeRepo={activeRepo}
         repos={repos}
         isRefreshing={isRefreshing}

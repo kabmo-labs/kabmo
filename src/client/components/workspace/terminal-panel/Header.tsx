@@ -1,5 +1,5 @@
 import { Loader2, RotateCw, Terminal } from 'lucide-preact';
-import { GitRepoDropdown } from '@/client/components/workspace/file-explorer/GitRepoDropdown';
+import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import type { TerminalStatus } from '@/client/hooks/workspace/terminal';
 
 interface TerminalHeaderProps {
@@ -68,7 +68,7 @@ export function TerminalHeader({
           <span>{status === 'exited' && exitCode !== null ? `EXIT ${exitCode}` : STATUS_LABEL[status]}</span>
         </span>
 
-        <GitRepoDropdown
+        <GitRepoPicker
           rootPath={rootPath}
           activeRepo={activeRepo}
           onSelectRepo={onSelectRepo}

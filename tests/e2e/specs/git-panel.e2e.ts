@@ -28,11 +28,11 @@
  */
 
 import { test, expect, openApp } from '../fixtures/app';
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { seedWorkspace, waitUntil } from '../fixtures/seed';
-import { seedWorkingRepo, seedConflictingBranches, type SeedWorkingRepo } from '../fixtures/git-repo';
+import { seedWorkingRepo, seedWorkingRepoIn, seedConflictingBranches, type SeedWorkingRepo } from '../fixtures/git-repo';
 import type { HarnessServer } from '../fixtures/server';
 
 /**
@@ -71,7 +71,7 @@ function makeRepo(name: string): SeedWorkingRepo {
  * app root — it would run the merge against THE CHAMBER REPOSITORY.
  */
 async function openGitPanel(
-  page: import('@playwright/test').Page,
+  page: Page,
   server: HarnessServer,
   repo: SeedWorkingRepo,
 ): Promise<void> {
@@ -99,7 +99,7 @@ async function openGitPanel(
  * through this first. A click on a hidden button is what made the conflict spec
  * flaky: it timed out waiting for a control inside a zero-width panel.
  */
-async function showSourceControl(page: import('@playwright/test').Page): Promise<void> {
+async function showSourceControl(page: Page): Promise<void> {
   // Wait for the app to MOUNT before reading anything. Every caller reaches here
   // right after a reload, and a query issued against the pre-mount document
   // finds no panel — the width reads 0, the toggle click lands on a button that
@@ -545,9 +545,139 @@ test.describe('Source Control — stash and commit', () => {
   });
 });
 
+test.describe('Source Control — repository management', () => {
+  /**
+   * The picker of the panel actually on screen.
+   *
+   * The desktop stack keeps every built-in view mounted and hides the inactive
+   * ones with CSS, so the right panel holds ALL five pickers (files, search,
+   * git, terminal, wiki) at once, each with the same `title`. `:visible` is what
+   * selects the one the user is looking at — and it is also what makes this work
+   * on the phone, whose drawer renders the same views without the desktop
+   * panel's `data-panel-id` wrapper.
+   */
+  function visiblePicker(page: Page) {
+    return page.locator('button[title="Switch git project"]:visible');
+  }
+
+  /**
+   * A workspace that is a FOLDER OF REPOSITORIES, which is the shape the modal
+   * exists for. `openGitPanel` binds a folder to one repo; here the folder is
+   * the parent and three repos live under it.
+   *
+   * `mobile` opens the app at a phone viewport from the START and reaches the
+   * panel through the drawer. Resizing a mounted desktop app is NOT the same
+   * thing: the layout swap unmounts the right panel mid-flight, so the picker a
+   * locator just resolved is detached before the click lands.
+   */
+  async function openNestedWorkspace(
+    page: Page,
+    server: HarnessServer,
+    options: { mobile?: boolean } = {},
+  ): Promise<{ parent: string; alpha: SeedWorkingRepo; conflicted: SeedWorkingRepo }> {
+    const parent = await seedWorkspace(server, `e2e-repos-${Date.now()}`);
+    scratch.push(parent);
+    // The workspace dir `seedWorkspace` mints is the PARENT; each repo is a
+    // child of it, so discovery finds them all under one root — the shape the
+    // modal exists for.
+    const alpha = seedWorkingRepoIn(join(parent.path, 'alpha'), 'alpha');
+    const conflicted = seedWorkingRepoIn(join(parent.path, 'conflicted'), 'conflicted');
+    scratch.push(alpha, conflicted);
+    // Uncommitted work in `alpha` — a MODIFIED tracked file and an untracked
+    // one, so a row's state badge exercises both numbers rather than one.
+    writeFileSync(join(parent.path, 'alpha', 'f.txt'), 'modified\n');
+    writeFileSync(join(parent.path, 'alpha', 'untracked.txt'), 'uncommitted\n');
+
+    if (options.mobile) await page.setViewportSize({ width: 390, height: 844 });
+    await openApp(page, `${server.baseURL}/?folderId=${parent.id}`);
+    if (options.mobile) {
+      await expect(page.locator('[data-testid="app-root"]')).toBeVisible();
+      await page.getByRole('button', { name: 'Open Right Panel' }).click();
+      await page.locator('button[title="Source Control"]:visible').click();
+    } else {
+      await showSourceControl(page);
+    }
+    // Discovery runs in the background; the picker's own list is the gate. The
+    // dropdown is toggled CLOSED after each read — it has no Escape handler, so
+    // leaving it open would make the spec's own click close it instead of
+    // opening it.
+    await expect(visiblePicker(page)).toBeVisible();
+    await expect.poll(async () => {
+      await visiblePicker(page).click();
+      const rows = await page.locator('div.absolute.top-full button').allTextContents();
+      await visiblePicker(page).click();
+      return rows.filter((row) => row.includes('alpha')).length;
+    }).toBeGreaterThan(0);
+    return { parent: parent.path, alpha, conflicted };
+  }
+
+  test('the modal lists every repo with its state, and switches the panel', async ({ harness, page }) => {
+    const server = await harness('real');
+    await openNestedWorkspace(page, server);
+
+    await visiblePicker(page).click();
+    await page.getByRole('button', { name: 'Manage repositories…' }).click();
+
+    // The modal, by its own heading.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+    // The dropdown is gone: two lists at once is what closing it prevents.
+    await expect(page.locator('input[title="Search repositories"]')).toBeHidden();
+
+    // A row per discovered repo, each naming its branch.
+    const alphaRow = dialog.getByTitle('Show alpha');
+    await expect(alphaRow).toBeVisible();
+    // The dirty repo says so — the whole reason a modal beats a dropdown.
+    await expect(dialog.getByTitle('1 changed, 1 untracked')).toBeVisible();
+    // A clean repo says so explicitly rather than showing an empty strip.
+    await expect(dialog.getByTitle('Nothing to report — clean and in sync').first()).toBeVisible();
+
+    // Switching from the modal closes it and moves the panel.
+    await alphaRow.click();
+    await expect(dialog).toBeHidden();
+    await expect(visiblePicker(page)).toContainText('alpha');
+  });
+
+  test('the modal rows fit a phone, where the dropdown columns would not', async ({ harness, page }) => {
+    const server = await harness('real');
+    await openNestedWorkspace(page, server, { mobile: true });
+
+    await visiblePicker(page).click();
+    await page.getByRole('button', { name: 'Manage repositories…' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+    // The rows come from a per-repo read; wait for one before measuring, or the
+    // measurement lands on the loading state.
+    await expect(dialog.locator('[title^="Show "], [title^="Already showing"]').first()).toBeVisible();
+
+    // The row grid must not overflow its scroller, and the NAME must keep real
+    // width. The first shape was five fixed columns totalling 384px of a 358px
+    // dialog, which collapsed the name track to zero — invisible to any unit
+    // test and measured only in a browser.
+    const measured = await dialog.evaluate((node) => {
+      const scroller = node.querySelector('.scrollbar-overlay-container') as HTMLElement;
+      const showBtn = node.querySelector('[title^="Show "]') as HTMLElement;
+      const nameSpan = showBtn?.querySelector('span') as HTMLElement | null;
+      return {
+        scrollerOverflow: scroller.scrollWidth - scroller.clientWidth,
+        nameWidth: nameSpan?.getBoundingClientRect().width ?? 0,
+        docOverflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+    expect(measured.scrollerOverflow).toBeLessThanOrEqual(0);
+    expect(measured.docOverflow).toBeLessThanOrEqual(0);
+    // A name track crushed to zero is the failure this pins. The threshold is
+    // generous on purpose: `alpha` measures 31px in the 12px face, so anything
+    // above zero would pass — but a broken track measures exactly 0.
+    expect(measured.nameWidth).toBeGreaterThan(20);
+  });
+});
+
 /** A FormData body for the git route, as the panel submits it. */
 function formBody(fields: Record<string, string>): FormData {
   const body = new FormData();
   for (const [key, value] of Object.entries(fields)) body.append(key, value);
   return body;
 }
+
+

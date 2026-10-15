@@ -1,9 +1,34 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * The repo picker every right-panel view shares: a compact dropdown for the
+ * common case (two or three repositories) plus the modal that opens from its
+ * footer for the case it cannot serve (dozens, with state to compare).
+ *
+ * **One component, four panels.** Files, Search, Git, Terminal and Wiki all
+ * describe the same working tree through the same shared selection
+ * (`workspace.activeRepo`), so a per-panel copy of the picker is a second place
+ * for the label, the filter and the "manage" affordance to drift. It lives
+ * beside those panels rather than inside `file-explorer/`, which is where it
+ * started and which was never where it belonged.
+ *
+ * **The modal is opened from INSIDE the dropdown, and the dropdown closes as it
+ * opens.** The two are one surface at two scales, so the entry belongs where the
+ * list is — a reader who has just scrolled past twenty repositories is the one
+ * who wants the manage view — and leaving the dropdown open behind the modal
+ * would put two lists on screen at once.
+ */
 
 import { useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, FolderGit2, RotateCcw, Search } from 'lucide-preact';
+import { Check, ChevronDown, FolderGit2, RotateCcw, Search, Settings2 } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { RepoModal } from '@/client/components/workspace/repo-picker/Modal';
+import { repoLabel, repoShortLabel } from '@/shared/lib/fs/repo-label';
 
-interface GitRepoDropdownProps {
+interface GitRepoPickerProps {
   rootPath?: string;
   activeRepo: string;
   onSelectRepo: (repo: string) => void;
@@ -14,32 +39,24 @@ interface GitRepoDropdownProps {
   onRefreshRepos: () => void;
 }
 
-function workspaceFolderName(rootPath?: string): string {
-  if (!rootPath) return 'workspace root';
-  const parts = rootPath.replace(/\\/g, '/').split('/').filter(Boolean);
-  return parts.length > 0 ? parts[parts.length - 1] : 'workspace root';
-}
-
-export function GitRepoDropdown({
+export function GitRepoPicker({
   rootPath,
   activeRepo,
   onSelectRepo,
   repos,
   scanning,
   onRefreshRepos,
-}: GitRepoDropdownProps) {
+}: GitRepoPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const rootLabel = workspaceFolderName(rootPath);
-
-  const label = (r: string) => (r === '.' ? rootLabel : r);
 
   useOnClickOutside(ref, () => setOpen(false));
 
-  const filteredRepos = repos.filter(r => {
+  const filteredRepos = repos.filter((repo) => {
     if (!query.trim()) return true;
-    return label(r).toLowerCase().includes(query.toLowerCase());
+    return repoLabel(repo, rootPath).toLowerCase().includes(query.toLowerCase());
   });
 
   return (
@@ -51,7 +68,7 @@ export function GitRepoDropdown({
         className="flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium"
       >
         <FolderGit2 size={12} className="text-ink/60" />
-        <span className="truncate max-w-[110px]">{activeRepo === '.' ? rootLabel : activeRepo.split('/').pop()}</span>
+        <span className="truncate max-w-[110px]">{repoShortLabel(activeRepo, rootPath)}</span>
         <ChevronDown size={12} className="text-ink/40" />
       </button>
 
@@ -92,26 +109,51 @@ export function GitRepoDropdown({
             {filteredRepos.length === 0 ? (
               <div className="px-3 py-2 text-ink/40 italic">No repos found</div>
             ) : (
-              filteredRepos.map(r => (
+              filteredRepos.map((repo) => (
                 <button
-                  key={r}
+                  key={repo}
                   type="button"
                   onClick={() => {
-                    onSelectRepo(r);
+                    onSelectRepo(repo);
                     setOpen(false);
                     setQuery('');
                   }}
-                  title={label(r)}
+                  title={repoLabel(repo, rootPath)}
                   className="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center justify-between transition-colors"
                 >
-                  <span className="truncate">{label(r)}</span>
-                  {activeRepo === r && <Check size={12} className="text-ink" />}
+                  <span className="truncate">{repoLabel(repo, rootPath)}</span>
+                  {activeRepo === repo && <Check size={12} className="text-ink flex-shrink-0" />}
                 </button>
               ))
             )}
           </div>
+          <div className="border-t border-ink/10">
+            <button
+              type="button"
+              onClick={() => {
+                setModalOpen(true);
+                setOpen(false);
+                setQuery('');
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center space-x-2 transition-colors text-ink/80"
+            >
+              <Settings2 size={12} />
+              <span>Manage repositories…</span>
+            </button>
+          </div>
         </div>
       )}
+
+      <RepoModal
+        isOpen={modalOpen}
+        rootPath={rootPath}
+        activeRepo={activeRepo}
+        repos={repos}
+        scanning={scanning}
+        onSelectRepo={onSelectRepo}
+        onRefreshRepos={onRefreshRepos}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 }

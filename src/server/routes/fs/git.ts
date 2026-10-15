@@ -19,6 +19,7 @@ import path from 'path';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { resolveRoot } from '@/server/lib/fs/root';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
+import { readRepoDetails } from '@/server/lib/fs/git-repo-details';
 import { fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
 import { repoRelative, resolveRepoPath } from '@/server/lib/fs/git-run';
@@ -44,6 +45,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Lightweight polling endpoint: just the discovered repos, no git status.
   if (url.searchParams.get('reposOnly') === '1') {
     return json({ repos, reposPending: pending, activeRepo: (url.searchParams.get('repo') || '.') });
+  }
+
+  // The repo management modal's read: one row per discovered repository, each
+  // with the facts a row shows (branch, upstream track, uncommitted counts,
+  // stopped operation). Kept off the status payload and off the realtime topic
+  // for the same reason the branch list is — the status read is republished on
+  // every tool call, while this is opened by hand and costs a spawn per repo.
+  //
+  // `reposPending` travels WITH the rows: discovery is a background walk, and a
+  // modal opened while it runs would otherwise list only the root and look
+  // finished. The client re-reads when the walk reports done.
+  if (url.searchParams.get('repoDetails') === '1') {
+    return json({ success: true, repos, reposPending: pending, details: await readRepoDetails(rootDir, repos) });
   }
 
   // An explicitly requested repo is honored even while a rescan is pending

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { RefreshCw, Search } from 'lucide-preact';
 import type { FsNode } from '@/shared/types';
-import { GitRepoDropdown } from '@/client/components/workspace/file-explorer/GitRepoDropdown';
+import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { FileTreeItem } from '@/client/components/workspace/file-explorer/TreeItem';
 import { RootContextMenu } from '@/client/components/workspace/file-explorer/RootMenu';
 import { FileCreateModal } from '@/client/components/workspace/file-explorer/Modals';
@@ -208,7 +208,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     <div className={`flex flex-col h-full bg-paper ${className}`}>
       <div className="p-3 border-b border-ink/10 flex flex-col space-y-2">
         <div className="flex items-center justify-between">
-          <GitRepoDropdown
+          <GitRepoPicker
             rootPath={rootPath}
             activeRepo={activeRepo}
             onSelectRepo={handleSelectRepo}

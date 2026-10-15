@@ -18,7 +18,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -114,6 +114,46 @@ export function seedWorkingRepo(name: string): SeedWorkingRepo {
   // global identity, which is why the suite passed locally and failed in CI.
   repo.git('config', 'user.email', 'e2e@example.invalid');
   repo.git('config', 'user.name', 'E2E');
+  return repo;
+}
+
+/**
+ * A scratch working repository at a CHOSEN path, with an identity that cannot leak.
+ *
+ * `seedWorkingRepo` mints its own temp directory, which is right when the repo
+ * IS the workspace. This one seeds INTO a directory that already exists — the
+ * shape the repository modal exists for: a workspace folder that is a parent of
+ * several repositories rather than a repository itself.
+ *
+ * The directory is created if missing and REMOVED on dispose, so a caller that
+ * hands over a child of its own temp root still cleans up after itself.
+ */
+export function seedWorkingRepoIn(dir: string, name: string): SeedWorkingRepo {
+  mkdirSync(dir, { recursive: true });
+  const env = { ...process.env, GIT_EDITOR: 'true' };
+  const identity = ['-c', 'user.email=e2e@example.invalid', '-c', 'user.name=E2E'];
+  const repo: SeedWorkingRepo = {
+    path: dir,
+    git: (...args: string[]): string =>
+      execFileSync('git', [...identity, ...args], { cwd: dir, stdio: 'pipe', env }).toString(),
+    gitAllowFail: (...args: string[]): string => {
+      try {
+        return execFileSync('git', [...identity, ...args], { cwd: dir, stdio: 'pipe', env }).toString();
+      } catch (error) {
+        const failed = error as { stdout?: Buffer; stderr?: Buffer };
+        return `${failed.stdout?.toString() ?? ''}${failed.stderr?.toString() ?? ''}`;
+      }
+    },
+    dispose() {
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+  repo.git('init', '-q', '-b', 'main');
+  repo.git('config', 'user.email', 'e2e@example.invalid');
+  repo.git('config', 'user.name', 'E2E');
+  writeFileSync(join(dir, 'f.txt'), 'base\n');
+  repo.git('add', '-A');
+  repo.git('commit', '-q', '-m', `${name} base`);
   return repo;
 }
 

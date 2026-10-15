@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AlertCircle, BookOpen, ExternalLink, Loader2, RefreshCw } from 'lucide-preact';
-import { GitRepoDropdown } from '@/client/components/workspace/file-explorer/GitRepoDropdown';
+import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { WikiNav } from '@/client/components/workspace/wiki-panel/Nav';
 import { WikiPageView } from '@/client/components/workspace/wiki-panel/PageView';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -135,7 +135,7 @@ export function WikiPanel({ className = '', enabled = true, active = true, rootP
     <div className={`@container flex h-full min-h-0 w-full flex-col bg-paper text-xs text-ink ${className}`}>
       <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-ink/10 px-2 py-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
-          <GitRepoDropdown
+          <GitRepoPicker
             rootPath={rootPath}
             activeRepo={activeRepo}
             onSelectRepo={setActiveRepo}

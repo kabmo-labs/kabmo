@@ -1,11 +1,7 @@
-import type { RefObject } from 'preact/compat';
-import { Check, ChevronDown, FolderGit2, RotateCcw, Search } from 'lucide-preact';
-import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { FolderGit2, RotateCcw } from 'lucide-preact';
+import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 
 interface GitRepoHeaderProps {
-  repoRef: RefObject<HTMLDivElement>;
-  showRepoMenu: boolean;
-  setShowRepoMenu: (show: boolean) => void;
   activeRepo: string;
   repos: string[];
   /** Spins the refresh icon: an in-flight HTTP read OR a topic push. */
@@ -17,16 +13,22 @@ interface GitRepoHeaderProps {
   onRefreshRepos: () => void;
 }
 
-function workspaceFolderName(rootPath?: string): string {
-  if (!rootPath) return 'workspace root';
-  const parts = rootPath.replace(/\\/g, '/').split('/').filter(Boolean);
-  return parts.length > 0 ? parts[parts.length - 1] : 'workspace root';
-}
-
+/**
+ * The Source Control panel's header: the repo picker and the panel's own
+ * Refresh.
+ *
+ * **The picker is the SHARED one, not a second dropdown.** This header used to
+ * carry its own copy — its own trigger, its own filter, its own per-session
+ * query slot, and a list of `<button>`s identical to the one the other four
+ * panels render. Two implementations of one control is how the git panel came
+ * to be the only surface without a way to manage a long repo list, and how a
+ * label or a filter fix could land in one of them and not the other.
+ *
+ * The `GIT •` prefix the trigger used to draw is gone with it: the panel's own
+ * title is directly above, so the word named the panel rather than the
+ * repository, and the picker's label is the repository's name.
+ */
 export function GitRepoHeader({
-  repoRef,
-  showRepoMenu,
-  setShowRepoMenu,
   activeRepo,
   repos,
   isRefreshing,
@@ -36,101 +38,29 @@ export function GitRepoHeader({
   onRefresh,
   onRefreshRepos,
 }: GitRepoHeaderProps) {
-  const [repoQuery, setRepoQuery] = useSessionState<string>('git.repoQuery', '');
-  const rootLabel = workspaceFolderName(rootPath);
-
-  const filterLabel = (r: string) => (r === '.' ? rootLabel : r);
-
-  const filteredRepos = repos.filter(r => {
-    if (!repoQuery.trim()) return true;
-    return filterLabel(r).toLowerCase().includes(repoQuery.toLowerCase());
-  });
-
   return (
     <div className="p-3 border-b border-ink/10 flex items-center justify-between">
-      <div className="relative" ref={repoRef}>
-        <button 
-          onClick={() => setShowRepoMenu(!showRepoMenu)}
-          className="flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 -ml-2 rounded transition-colors text-xs text-ink/80 font-medium"
-        >
-          <FolderGit2 size={12} className="text-ink/60" />
-          <span className="flex items-center space-x-1 truncate max-w-[150px]">
-            <span className="text-ink/50 font-normal uppercase tracking-wider text-[10px]">GIT</span>
-            <span className="text-ink/30">•</span>
-            <span>{activeRepo === '.' ? rootLabel : activeRepo.split('/').pop()}</span>
-          </span>
-          <ChevronDown size={12} className="text-ink/40" />
-        </button>
-        
-        {showRepoMenu && (
-          <div className="absolute top-full left-0 mt-1 w-52 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
-            <div className="px-2 py-1.5 border-b border-ink/10 flex items-center space-x-1.5">
-              <Search size={11} className="text-ink/40 flex-shrink-0" />
-              <input
-                type="text"
-                value={repoQuery}
-                onChange={(e) => setRepoQuery(e.currentTarget.value)}
-                placeholder="Search repos..."
-                title="Search repositories"
-                className="w-full bg-transparent outline-none text-xs text-ink placeholder-ink/40"
-                autoFocus
-              />
-              {repoQuery && (
-                <button
-                  type="button"
-                  onClick={() => setRepoQuery('')}
-                  title="Clear search"
-                  className="text-ink/40 hover:text-ink flex-shrink-0"
-                >
-                  ×
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onRefreshRepos}
-                title="Refresh nested repos"
-                disabled={reposScanning}
-                className="text-ink/40 hover:text-ink flex-shrink-0 transition-colors disabled:opacity-40 disabled:hover:text-ink/40"
-              >
-                <RotateCcw size={11} className={reposScanning ? 'animate-spin' : ''} />
-              </button>
-            </div>
-            <div className="max-h-48 scrollbar-overlay-container py-1">
-              {filteredRepos.length === 0 ? (
-                <div className="px-3 py-2 text-ink/40 italic">No repos found</div>
-              ) : (
-                filteredRepos.map(r => (
-                  <button 
-                    key={r}
-                    onClick={() => { 
-                      onSelectRepo(r);
-                      setShowRepoMenu(false); 
-                      setRepoQuery('');
-                    }}
-                    title={filterLabel(r)}
-                    className="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center justify-between transition-colors"
-                  >
-                    <span className="truncate">{filterLabel(r)}</span>
-                    {activeRepo === r && <Check size={12} className="text-ink" />}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <FolderGit2 size={12} className="text-ink/50 flex-shrink-0" aria-hidden />
+        <GitRepoPicker
+          rootPath={rootPath}
+          activeRepo={activeRepo}
+          onSelectRepo={onSelectRepo}
+          repos={repos}
+          scanning={reposScanning}
+          onRefreshRepos={onRefreshRepos}
+        />
       </div>
 
       <div className="flex space-x-2 text-ink/40">
         <button
           type="button"
-          onClick={onRefresh} 
+          onClick={onRefresh}
           title="Refresh"
+          aria-label="Refresh"
           className="hover:text-ink cursor-pointer inline-flex"
         >
-          <RotateCcw 
-            size={14} 
-            className={isRefreshing ? 'animate-spin' : ''} 
-          />
+          <RotateCcw size={14} className={isRefreshing ? 'animate-spin' : ''} />
         </button>
       </div>
     </div>

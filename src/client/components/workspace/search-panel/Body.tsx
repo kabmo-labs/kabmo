@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'preact/hooks';
 import { CaseSensitive, Check, MoreHorizontal, Regex, ReplaceAll, Search, WholeWord } from 'lucide-preact';
 import type { RefObject } from 'preact';
-import { GitRepoDropdown } from '@/client/components/workspace/file-explorer/GitRepoDropdown';
+import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { SearchResults } from '@/client/components/workspace/search-panel/Results';
 import { setSearchReveal } from '@/client/lib/search-reveal';
 import { groupSearchResults, MAX_SEARCH_RESULTS } from '@/shared/lib/fs/search-list';
@@ -115,7 +115,7 @@ export function SearchPanelBody({
       <div className="p-3 border-b border-ink/10 flex items-center justify-between">
         <div className="flex items-center space-x-2 min-w-0">
           <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">Search</h2>
-          <GitRepoDropdown
+          <GitRepoPicker
             rootPath={rootPath}
             activeRepo={activeRepo}
             onSelectRepo={setActiveRepo}

@@ -44,6 +44,45 @@ export interface GitBranchDetail {
   date: string;
 }
 
+/**
+ * One repository row for the repo management modal.
+ *
+ * The counts are the Source Control panel's own quantities — `changed` excludes
+ * untracked files, exactly as the panel's "Changes" section does — so the modal
+ * and the panel cannot describe one working tree two ways.
+ */
+export interface GitRepoDetail {
+  /** Root-relative POSIX path; `.` is the workspace root itself. */
+  path: string;
+  /** False when the directory holds no `.git` (the root may be a folder of repos). */
+  isRepo: boolean;
+  /** The checked-out branch; the short sha when HEAD is detached. */
+  branch: string;
+  detached: boolean;
+  /** Staged + unstaged + unmerged paths. */
+  changed: number;
+  /** Paths git has never seen. */
+  untracked: number;
+  /** Commits ahead of the upstream; 0 with no upstream. */
+  ahead: number;
+  /** Commits behind the upstream; 0 with no upstream. */
+  behind: number;
+  /** The upstream's short name (`origin/main`), or `''` when there is none. */
+  upstream: string;
+  /** The upstream ref no longer exists on the remote. */
+  gone: boolean;
+  /** An operation stopped and waiting for a human. */
+  operation: GitOperation | null;
+  /** Conflicted paths waiting for a resolve. */
+  conflicts: number;
+  /** HEAD's commit subject, or `''` on an unborn branch. */
+  subject: string;
+  /** HEAD's relative commit date. */
+  date: string;
+  /** Set when git could not read the tree at all. */
+  error?: string;
+}
+
 /** One stash entry. */
 export interface GitStashEntry {
   /** The selector git accepts back — `stash@{0}`. */
