@@ -29,14 +29,19 @@ fi
 # moved away now forks on resume, answering a new id and file — which is why
 # `registerSpawnedSession` exists; see the audit for the measurement.
 #
-# 18.10.3 is what the committed schema was generated from, and the two MUST
+# 18.11.0 is what the committed schema was generated from, and the two MUST
 # agree: the schema gate regenerates from the version this script installs, so a
 # pin left behind reports a stale schema that is actually current. Measured at
 # 18.10.0: `task.structured` is absent and `snapcompact.toolResults` /
 # `task.softRequestBudget` differ, so the gate fails on a file that is in fact
 # current — exactly what `948f9e4` left behind when it refreshed the schema from
-# a local 18.10.3 without bumping this pin.
-OMP_VERSION="${OMP_VERSION:-18.10.3}"
+# a local 18.10.3 without bumping this pin. The same drift repeated one version
+# later in reverse: the pin stayed at 18.10.3 while 18.11.0 was installed, so CI
+# (which installs the pin) stayed green over two rows — `providers.openai-codex.
+# codeMode` and `.codeModeDirectTools`, removed upstream in 18.10.4 — that
+# `omp config set` refuses with `Unknown setting`. A pin that disagrees with the
+# schema's source of truth is the failure mode this comment exists to prevent.
+OMP_VERSION="${OMP_VERSION:-18.11.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

@@ -1559,31 +1559,6 @@
         "description": "Maximum concurrent LLM requests per provider id (for example \"openai\" or \"anthropic\"), shared across local OMP processes with this config root. Omitted providers are unlimited."
       }
     },
-    "providers.openai-codex.codeMode": {
-      "type": "enum",
-      "default": "off",
-      "values": [
-        "off",
-        "on",
-        "auto"
-      ],
-      "ui": {
-        "tab": "providers",
-        "group": "Services",
-        "label": "Codex Code Mode",
-        "description": "Route Codex code_mode_only models (GPT-5.6) through eval. The direct tools are eval, ask, todo, yield, think, checkpoint, and rewind. Use eval cells for other session tools. Mirrors codex-rs Code Mode. 'auto' follows the model catalog flag."
-      }
-    },
-    "providers.openai-codex.codeModeDirectTools": {
-      "type": "array",
-      "default": [],
-      "ui": {
-        "tab": "providers",
-        "group": "Services",
-        "label": "Codex Code Mode Direct Tools",
-        "description": "Extra direct tools for Codex Code Mode. The standard direct tools are eval, ask, todo, yield, think, checkpoint, and rewind."
-      }
-    },
     "images.describeForTextModels": {
       "type": "boolean",
       "default": true,
@@ -2426,7 +2401,7 @@
         "tab": "model",
         "group": "Retry & Fallback",
         "label": "Retry Model Fallback",
-        "description": "Allow retry recovery to switch to configured fallback models"
+        "description": "Allow retry recovery to switch to models in retry.fallbackChains after provider errors. Independent of Auto-Promote Context"
       }
     },
     "retry.fallbackOn": {
@@ -3984,7 +3959,7 @@
         "tab": "context",
         "group": "General",
         "label": "Auto-Promote Context",
-        "description": "Promote to a larger-context model on context overflow instead of compacting"
+        "description": "Promote to the model's contextPromotionTarget on context overflow instead of compacting. Retry fallback switches are controlled by Retry Model Fallback"
       }
     },
     "extendedContext": {
@@ -7034,7 +7009,7 @@
         "tab": "tasks",
         "group": "Subagents",
         "label": "Structured Task Results",
-        "description": "Expose outputSchema/schemaMode on the task tool and return subagent results through the yield tool, validated against caller or agent output schemas. Off: task subagents have no yield tool and return their final message as plain text. Eval agent()/workpool spawns always keep structured results."
+        "description": "Expose outputSchema/schemaMode on the task tool and return subagent results through the yield tool, validated against caller or agent output schemas. Off: task subagents have no yield tool and return their final message as plain text, except agents whose definition sets structured: true. Eval agent()/workpool spawns always keep structured results."
       }
     },
     "task.speculativeLaunch": {
