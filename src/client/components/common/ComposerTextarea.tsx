@@ -1,20 +1,19 @@
 import { useRef } from 'preact/hooks';
 import type { ClipboardEvent, KeyboardEvent, ReactElement, RefObject } from 'preact/compat';
-import type { SettingsState } from '@/shared/types';
 import { useComposerTrigger } from '@/client/hooks/chat/composer';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { ComposerPicker } from '@/client/components/common/ComposerPicker';
-
-type KeybindingSetting = SettingsState['keybindingSend'];
+import { resolveComposerKeybindings, type ComposerKeybinding } from '@/shared/lib/chat/composer/keybindings';
 
 export interface ComposerTextareaProps {
   value: string;
   onChange: (value: string) => void;
   onSend: (options?: { steering?: boolean }) => void;
   disabled?: boolean;
-  appSettings?: Partial<
-    Pick<SettingsState, 'keybindingSend' | 'keybindingNewLine' | 'keybindingSteering'>
-  >;
+  /** The server-injected settings map. The bindings are read out of it through
+   *  `resolveComposerKeybindings`, which knows they live in the
+   *  `omp_chamber_settings` blob rather than at the top level. */
+  appSettings?: Record<string, any>;
   placeholder?: string;
   className?: string;
   onPaste?: (e: ClipboardEvent<HTMLTextAreaElement>) => void;
@@ -85,15 +84,14 @@ export function ComposerTextarea({
     if (composer.handleKeyDown(e)) return;
     if (e.key !== 'Enter') return;
 
-    const sendBinding = appSettings?.keybindingSend || 'Enter';
-    const newLineBinding = appSettings?.keybindingNewLine || 'Shift + Enter';
-    const steeringBinding = appSettings?.keybindingSteering || 'Ctrl / Cmd + Enter';
+    const { send: sendBinding, newLine: newLineBinding, steering: steeringBinding } =
+      resolveComposerKeybindings(appSettings);
 
     const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     const isCtrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
     const isShift = e.shiftKey;
 
-    const checkBinding = (binding: KeybindingSetting) => {
+    const checkBinding = (binding: ComposerKeybinding) => {
       if (binding === 'Enter' && !isShift && !isCtrlOrCmd && !e.altKey) return true;
       if (binding === 'Shift + Enter' && isShift && !isCtrlOrCmd && !e.altKey) return true;
       if (binding === 'Ctrl / Cmd + Enter' && !isShift && isCtrlOrCmd && !e.altKey) return true;
