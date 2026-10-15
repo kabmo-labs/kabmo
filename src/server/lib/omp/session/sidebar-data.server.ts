@@ -153,8 +153,10 @@ export async function loadSidebarStatus(
   awaitingInput?: boolean;
   runModel?: SessionRunModel;
 }>> {
-  if (isMockMode()) return {};
-
+  // No MOCK short-circuit: the simulated stream writes the same `stream` row a
+  // real run does (`routes/chat/stream.ts`), so the sidebar spinner and the
+  // chat's generating indicator have one source in every mode. Returning `{}`
+  // here is what kept the two from ever agreeing under `MOCK=true`.
   if (options.repair !== false) {
     // The database is shared by every chamber instance on the machine, so a
     // `stream` row may belong to a process this one cannot see. Ownership is

@@ -205,8 +205,8 @@ export function ComposerToolbar({
           className={`flex items-center justify-center rounded bg-ink text-canvas hover:bg-ink/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 ${
             isMobile ? 'w-10 h-10 rounded-lg' : 'w-7 h-7'
           }`}
-          title={isGenerating ? 'Queue follow-up message' : 'Send message'}
-          aria-label={isGenerating ? 'Queue follow-up message' : 'Send message'}
+          title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
+          aria-label={chatInFlight ? 'Queue follow-up message' : 'Send message'}
         >
           <Send size={isMobile ? 16 : 12} className="ml-px" />
         </button>

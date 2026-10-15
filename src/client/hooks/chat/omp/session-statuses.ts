@@ -59,6 +59,26 @@ export function isSessionStreaming(
 }
 
 /**
+ * Whether a CHAT has a run in flight — the one definition the docked
+ * generating indicator, the Stop button and the withheld run footer read.
+ *
+ * The server's `stream` row is the answer, exactly as it is for the sidebar
+ * spinner: one source, so the two surfaces cannot disagree. The single
+ * exception is a run the server cannot NAME yet — a pending `new-…` chat has no
+ * omp id until the spawn answers, so there is no row to carry and nothing on
+ * the server can report it. `pendingRun` covers exactly that window and is
+ * supplied by the caller, which is the only place that knows the id is still
+ * pending; it is never a general-purpose optimistic mark.
+ */
+export function isChatRunning(
+  statusMap: Record<string, SessionStreamStatus | undefined> | null | undefined,
+  sessionId: string | number | null | undefined,
+  pendingRun: boolean,
+): boolean {
+  return pendingRun || isSessionStreaming(statusMap, sessionId);
+}
+
+/**
  * Opening a session with a terminal badge acknowledges it on the server
  * (one POST per session+status) so the check shows EXACTLY ONCE: the badge
  * keeps rendering on this pass — stripping it here would suppress the paint

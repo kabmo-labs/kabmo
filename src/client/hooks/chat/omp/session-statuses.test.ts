@@ -33,6 +33,7 @@ import { act } from 'preact/test-utils';
 
 import {
   buildSidebarSessionStatus,
+  isChatRunning,
   isSessionStreaming,
   useSessionStatusAck,
 } from '@/client/hooks/chat/omp/session-statuses';
@@ -134,6 +135,37 @@ describe('isSessionStreaming', () => {
     // the provider gets the same shape. Neither may read as a live run.
     expect(isSessionStreaming(null, 'a')).toBe(false);
     expect(isSessionStreaming(undefined, 'a')).toBe(false);
+  });
+});
+
+/**
+ * The CHAT-level flag. One source is the point: the server's `stream` row, the
+ * same one the sidebar spinner reads. The only other term is a run the server
+ * cannot name yet (a pending `new-…` chat, no omp id until the spawn answers),
+ * and the caller supplies that — never a general optimistic mark.
+ */
+describe('isChatRunning', () => {
+  const statusMap = { a: 'stream', b: 'finish' } as const;
+
+  test('follows the server row, with no local flag involved', () => {
+    expect(isChatRunning(statusMap, 'a', false)).toBe(true);
+    expect(isChatRunning(statusMap, 'b', false)).toBe(false);
+    expect(isChatRunning({}, 'a', false)).toBe(false);
+  });
+
+  test('counts a run the server cannot name yet (a pending new-… chat)', () => {
+    // No row can exist for a session omp has not created, so the caller's
+    // pending term is the only thing that can report the spawn window.
+    expect(isChatRunning({}, 'new-1750000000000', true)).toBe(true);
+  });
+
+  test('never invents a run the server has already settled', () => {
+    // The pending term is for the spawn window only. With it false — which is
+    // what every real session passes — a terminal row is the answer, and the
+    // indicator cannot outlive the run.
+    expect(isChatRunning(statusMap, 'b', false)).toBe(false);
+    expect(isChatRunning({ b: 'finish' }, 'b', false)).toBe(false);
+    expect(isChatRunning(null, 'a', false)).toBe(false);
   });
 });
 

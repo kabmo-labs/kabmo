@@ -17,7 +17,7 @@ import { cancelStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coal
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
-import { isSessionStreaming } from '@/client/hooks/chat/omp/session-statuses';
+import { isChatRunning } from '@/client/hooks/chat/omp/session-statuses';
 
 interface UseChatTimelineOptions {
   folders?: any[];
@@ -116,15 +116,14 @@ export function useChatTimeline({
   // only a UUID routes through the live agent bridge.
   const isOmpSession = Boolean(sessionId) && !String(sessionId).startsWith('new-') && Number.isNaN(Number(sessionId));
 
-  // One "a run is in flight" state for the whole chat: this client's own
-  // dispatch window OR the server's `stream` row (`sidebar:status`), the exact
-  // status the sidebar's spinner is drawn from. Every consumer that describes
-  // the RUN (the docked indicator, the streaming row's marker, the withheld run
-  // footer, queue-vs-send, Stop) reads this one flag. The removed
-  // `stream-pending` mark was a third source and is why a finished run kept
-  // spinning: it forced `stream` into `folders`, and a mark armed under one
-  // session id and released under another was never released at all.
-  const timelineRunning = isGenerating || isSessionStreaming(streamStatusMap, sessionId);
+  // One "a run is in flight" state for the whole chat, and it comes from the
+  // SERVER: the `stream` row written at prompt dispatch, published on the
+  // `sidebar:status` topic the sidebar's spinner is drawn from — so no consumer
+  // of this flag (indicator, streaming row, withheld run footer, queue-vs-send,
+  // Stop) can disagree with the sidebar. The one exception is a run the server
+  // cannot NAME yet: a pending `new-…` chat has no omp id until the spawn
+  // answers, so no row can carry it. `isChatRunning` owns that rule.
+  const timelineRunning = isChatRunning(streamStatusMap, sessionId, isPendingSession && isGenerating);
 
   const aiPlaceholderIdRef = useRef<string | null>(null);
 

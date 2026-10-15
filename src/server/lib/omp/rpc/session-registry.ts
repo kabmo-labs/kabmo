@@ -16,6 +16,7 @@ import { buildSessionSpawnArgs } from '@/server/lib/omp/rpc/constants';
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { localRuns } from '@/server/lib/omp/session/local-runs.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
@@ -79,21 +80,20 @@ export function getAwaitingInputSessionIds(): string[] {
  * genuinely live.
  *
  * Deliberately the reader's OWN registry, unlike the staleness rule, which is
- * judged from the row's `owner_pid` and OS liveness so every instance agrees.
- * The two answer different questions and must not be conflated:
- *
- *   - `isStaleStreamRow` asks "did the process that wrote this row die?" —
- *     answerable from the row alone, so all instances reach one verdict;
- *   - this asks "does THIS process still hold a run for the session it claims?"
- *     — only this process can answer, and it is the only thing that can release
- *     a row whose owner is alive but whose run is gone (a dropped prompt, a
- *     lost `agent_end`). No other instance can see it, and the OS cannot help.
+ * judged from the row's `owner_pid` and OS liveness so every instance agrees:
+ * `isStaleStreamRow` asks "did the writer die?" (answerable from the row alone),
+ * while this asks "does THIS process still hold a run?" — which only this
+ * process can answer, and which is the only thing that can release a row whose
+ * owner is alive but whose run is gone (a dropped prompt, a lost `agent_end`).
  *
  * `isRunning()` is the same predicate `GET /api/agent/:id` reports as `busy`,
  * so the sidebar's spinner and the attach probe cannot disagree.
  */
 export function getLiveRunSessionIds(): Set<string> {
-  const ids = new Set<string>();
+  // Starts from the LOCAL runs: a simulated stream (MOCK mode) is a run this
+  // process drives with no omp child behind it, so the loop below cannot see it
+  // and the self-heal would read its row as an orphan. See `local-runs.server`.
+  const ids = new Set(localRuns());
   for (const [sessionId, session] of getRegistry()) {
     if (session.isAlive() && session.isRunning()) ids.add(session.sessionId || sessionId);
   }
