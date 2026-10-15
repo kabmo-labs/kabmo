@@ -5,6 +5,31 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.16.0](https://github.com/rajebdev/ompchamber/compare/v4.15.1...v4.16.0) — 2026-10-15
+
+### Added
+
+* **git-panel:** pin the stash section to the panel floor with an animated reveal ([a67b31a](https://github.com/rajebdev/ompchamber/commit/a67b31aeefb97d9e183a9b535687e755c6011b4a))
+* **git-panel:** pre-fill the commit draft with HEAD's message on amend ([67b7918](https://github.com/rajebdev/ompchamber/commit/67b79189934cdb54cc65422d5d7655470d9de462))
+* **settings:** reach omp 18.11.0's STT model, dictation language, and every role ([3333082](https://github.com/rajebdev/ompchamber/commit/333308219c59f9ca4557c9a4dbbd6355d7471427))
+* **stats:** label each process by session, project and age ([0564a58](https://github.com/rajebdev/ompchamber/commit/0564a58b5c4568ad5725773ab10b96cb518d8d05))
+* **updates:** reload the console after a self-restarting update ([684de93](https://github.com/rajebdev/ompchamber/commit/684de931f6e987f6b601aa6c1e5dc5825bc1a707))
+* **usage:** list and spend saved rate-limit resets ([98f95aa](https://github.com/rajebdev/ompchamber/commit/98f95aad7c3f935a4450d8d381fdb8ed6d621a94))
+
+### Changed
+
+* **omp:** record the 18.11.0 adoption audit ([05ddb6e](https://github.com/rajebdev/ompchamber/commit/05ddb6ef6b23113c2da79be8f4f0aa4dd8f11511))
+
+### Fixed
+
+* **chat:** source the run state from the server row alone ([6888bf8](https://github.com/rajebdev/ompchamber/commit/6888bf8926d9c13bd3dd4f0f95f350887b2865d8))
+* **fs:** open PDFs up to 30 MB and documents up to 20 MB ([c098acc](https://github.com/rajebdev/ompchamber/commit/c098acce1fd9729f86a551b9d94adb437bed3af1))
+* **layout:** let the chat column give way so fixed panels stay on screen ([ad5162f](https://github.com/rajebdev/ompchamber/commit/ad5162fc3078ca508c6dd3b978f05160dbda70d2))
+* **omp:** regenerate the settings schema from 18.11.0 and pin the version ([6b43c9d](https://github.com/rajebdev/ompchamber/commit/6b43c9d1fe1fa8ac4556bd613e41066051063f1d))
+* **settings:** surface omp's own refusal instead of a bare exit code ([ceda466](https://github.com/rajebdev/ompchamber/commit/ceda466171728a5ebd409c3c35043bb3ed049c4a))
+* **stats:** stop the sticky header leaking rows and losing its rule ([09e097f](https://github.com/rajebdev/ompchamber/commit/09e097faf6ec84afb4f3db3c611f07f4b216ae99))
+* **tool-renderers:** strip the read selector so the code surface keeps its language ([414600e](https://github.com/rajebdev/ompchamber/commit/414600ec1f1435c1bb8542e58f8b302bb94d27ad))
+
 ## [4.15.1](https://github.com/rajebdev/ompchamber/compare/v4.15.0...v4.15.1) — 2026-10-14
 
 ### Fixed

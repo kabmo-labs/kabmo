@@ -1,6 +1,6 @@
 {
   "name": "ompchamber",
-  "version": "4.15.1",
+  "version": "4.16.0",
   "description": "Developer web console and diagnostic chamber for AI Oh-My-Pi — Elysia + Preact on Bun.",
   "license": "UNLICENSED",
   "author": "Wijanarko Putra Rajeb <wijanarko.rajeb@gmail.com>",
