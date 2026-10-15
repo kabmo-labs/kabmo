@@ -58,7 +58,7 @@ export function OmpSettings(_props: OmpSettingsProps) {
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
-  const [saveErrors, setSaveErrors] = useState<Set<string>>(new Set());
+  const [saveErrors, setSaveErrors] = useState<Map<string, string>>(new Map());
 
   const load = useCallback(() => {
     setLoading(true);
@@ -86,7 +86,15 @@ export function OmpSettings(_props: OmpSettingsProps) {
     setTimeout(() => setSavedKey((current) => (current === key ? null : current)), 2000);
   };
 
-  const applyWriteResult = (key: string, ok: boolean, returned?: unknown) => {
+  /**
+   * Apply one write's outcome. A failure keeps omp's OWN sentence, not just a
+   * flag: `omp config set` refuses a stale key with "Unknown setting: <key>",
+   * a bad value with "Invalid value: …", and a timeout with nothing at all, and
+   * a bare "save failed" badge made all three read the same. The server already
+   * returns the sentence (`configFailureLine`); this is where it stops being
+   * dropped.
+   */
+  const applyWriteResult = (key: string, ok: boolean, returned?: unknown, errorMessage?: string) => {
     setSavingKeys((prev) => {
       const next = new Set(prev);
       next.delete(key);
@@ -99,7 +107,8 @@ export function OmpSettings(_props: OmpSettingsProps) {
     });
     if (ok) {
       setSaveErrors((prev) => {
-        const next = new Set(prev);
+        if (!prev.has(key)) return prev;
+        const next = new Map(prev);
         next.delete(key);
         return next;
       });
@@ -108,7 +117,7 @@ export function OmpSettings(_props: OmpSettingsProps) {
       }
       flashSaved(key);
     } else {
-      setSaveErrors((prev) => new Set(prev).add(key));
+      setSaveErrors((prev) => new Map(prev).set(key, errorMessage ?? 'omp rejected the write'));
     }
   };
 
@@ -128,11 +137,11 @@ export function OmpSettings(_props: OmpSettingsProps) {
       });
       const data = await res.json();
       const ok = Boolean(data.success);
-      applyWriteResult(key, ok, data.value);
+      applyWriteResult(key, ok, data.value, typeof data.error === 'string' ? data.error : undefined);
       return ok;
     } catch (err) {
       console.error('Failed to save omp config:', err);
-      applyWriteResult(key, false);
+      applyWriteResult(key, false, undefined, err instanceof Error ? err.message : undefined);
       return false;
     }
   }, []);
@@ -147,11 +156,11 @@ export function OmpSettings(_props: OmpSettingsProps) {
       });
       const data = await res.json();
       const ok = Boolean(data.success);
-      applyWriteResult(key, ok, data.value);
+      applyWriteResult(key, ok, data.value, typeof data.error === 'string' ? data.error : undefined);
       return ok;
     } catch (err) {
       console.error('Failed to reset omp config:', err);
-      applyWriteResult(key, false);
+      applyWriteResult(key, false, undefined, err instanceof Error ? err.message : undefined);
       return false;
     }
   }, []);

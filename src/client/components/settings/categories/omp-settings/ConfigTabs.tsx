@@ -26,7 +26,7 @@ interface ConfigTabsProps {
   searchQuery: string;
   dirtyKeys: Set<string>;
   savingKeys: Set<string>;
-  saveErrors: Set<string>;
+  saveErrors: Map<string, string>;
   onCommit: (key: string, value: unknown) => Promise<boolean>;
   onReset: (key: string) => Promise<boolean>;
   onDirty: (key: string, dirty: boolean, revert: () => void) => void;
@@ -158,7 +158,7 @@ interface GroupedRowsProps {
   groupLabel: string;
   dirtyKeys: Set<string>;
   savingKeys: Set<string>;
-  saveErrors: Set<string>;
+  saveErrors: Map<string, string>;
   onCommit: (key: string, value: unknown) => Promise<boolean>;
   onReset: (key: string) => Promise<boolean>;
   onDirty: (key: string, dirty: boolean, revert: () => void) => void;
@@ -186,7 +186,7 @@ function GroupedRows({
         const liveValue = entries[key]?.value;
         const isDirty = dirtyKeys.has(key);
         const saving = savingKeys.has(key);
-        const hasError = saveErrors.has(key);
+        const errorMessage = saveErrors.get(key);
         return (
           <div key={key} className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="min-w-0 flex-1">
@@ -199,12 +199,23 @@ function GroupedRows({
                 {saving && (
                   <span className="shrink-0 text-[9px] text-ink/40">saving…</span>
                 )}
-                {hasError && !saving && (
-                  <span className="shrink-0 rounded bg-error/10 px-1 py-px text-[9px] font-semibold text-error">save failed</span>
+                {errorMessage && !saving && (
+                  <span
+                    className="shrink-0 rounded bg-error/10 px-1 py-px text-[9px] font-semibold text-error"
+                    title={errorMessage}
+                  >
+                    save failed
+                  </span>
                 )}
               </div>
               {schemaEntry.ui.description && (
                 <div className="text-[10px] text-ink/40 leading-snug">{schemaEntry.ui.description}</div>
+              )}
+              {/* omp's own refusal, in full: a stale key ("Unknown setting: …"),
+                  a bad value ("Invalid value: …"), or the server's message. The
+                  badge above only says a failure happened. */}
+              {errorMessage && !saving && (
+                <div className="text-[10px] text-error leading-snug">{errorMessage}</div>
               )}
               {schemaEntry.ui.warning && (
                 <div className="text-[10px] text-error/80 leading-snug">{schemaEntry.ui.warning}</div>
@@ -219,7 +230,7 @@ function GroupedRows({
                 onChangeDirty={onDirty}
                 onCommit={onCommit}
                 saving={saving}
-                saveError={hasError}
+                saveError={Boolean(errorMessage)}
               />
               <button
                 type="button"
