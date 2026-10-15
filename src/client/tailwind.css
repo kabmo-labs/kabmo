@@ -277,7 +277,23 @@
 }
 .prose-content hr { margin: 0.75rem 0; border-top: 1px solid color-mix(in srgb, var(--theme-ink) 15%, transparent); }
 .prose-content table { width: 100%; border-collapse: collapse; margin: 0.625rem 0; font-size: 0.75rem; border: 1px solid color-mix(in srgb, var(--theme-ink) 15%, transparent); }
-.prose-content td, .prose-content th { line-height: inherit; }
+/* The scroll container `renderMarkdown` puts around every table. `width: 100%`
+ * on a table is a FLOOR, not a ceiling — an auto-layout table cannot be
+ * narrowed below its columns' min-content width, so one long unbreakable token
+ * (a path, a hash, a URL) makes the table wider than the message it sits in.
+ * The timeline scroller is `overflow-x-hidden`, so the right columns used to be
+ * cut off on desktop and phone alike; now the table scrolls inside this wrapper
+ * while its `width: 100%` look stays intact whenever it fits. */
+.prose-content .md-table-scroll {
+  margin: 0.625rem 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+/* The wrapper's own margin is the block's spacing — a child's margin cannot
+ * collapse out of a scroll container (its overflow makes a BFC), so leaving the
+ * table's 0.625rem would draw it twice. */
+.prose-content .md-table-scroll > table { margin: 0; }
+.prose-content td, .prose-content th { line-height: inherit; overflow-wrap: break-word; }
 .prose-content th { background: color-mix(in srgb, var(--theme-ink) 5%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--theme-ink) 15%, transparent); padding: 0.375rem 0.75rem; font-weight: 600; }
 .prose-content td { border-bottom: 1px solid color-mix(in srgb, var(--theme-ink) 10%, transparent); padding: 0.375rem 0.75rem; }
 .prose-content code.inline-code {

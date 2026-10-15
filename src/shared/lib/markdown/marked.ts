@@ -27,7 +27,7 @@
  * where markup is data) unless `allowHtml` says the source is a document.
  */
 
-import { Marked } from 'marked';
+import { Marked, Renderer, type Tokens } from 'marked';
 import { codeSafeAutolink } from '@/shared/lib/markdown/autolink';
 import remend from 'remend';
 import { highlightCode } from '@/shared/lib/code/syntax-highlight';
@@ -102,6 +102,13 @@ const marked = new Marked({
 
 marked.use(codeSafeAutolink());
 
+/**
+ * Class of the scroll container `marked` puts around every table (styled by
+ * `.prose-content .md-table-scroll` in `tailwind.css`). Exported so the
+ * renderer and the CSS cannot drift apart unobserved.
+ */
+export const TABLE_SCROLL_CLASS = 'md-table-scroll';
+
 interface CodeToken {
   type: string;
   text?: string;
@@ -146,6 +153,10 @@ function codeBlockRenderer(token: CodeToken): string {
   return directiveBlockHtml(lang, parseDirectiveAttributes(info.slice(lang.length)), block);
 }
 
+/** The base table renderer, captured before the override below replaces it: the
+ *  wrapper must not re-implement marked's own `<table>`/`<thead>` output. */
+const renderTable = Renderer.prototype.table;
+
 marked.use({
   renderer: {
     code(this: unknown, token: CodeToken) {
@@ -162,6 +173,19 @@ marked.use({
     // v18 — render it with the same styled inline-code class.
     codespan(this: unknown, token: CodeToken) {
       return `<code class="inline-code">${escapeHtml(token.text ?? '')}</code>`;
+    },
+    /**
+     * A GFM table is the one block with no wrapping rule: an auto-layout table
+     * is sized to `max(100%, the sum of its columns' min-content widths)`, so a
+     * table holding long unbreakable tokens (paths, hashes, URLs) lands WIDER
+     * than its box — and the chat timeline's scroller is `overflow-x-hidden`, so
+     * its right columns were clipped outright on desktop and phone alike. Every
+     * table gets its own scroll container: `width: 100%` while it fits, scrolls
+     * itself when it does not. Delegating to the base renderer keeps marked's
+     * own output (cell alignment, escaping) the authority inside the wrapper.
+     */
+    table(this: Renderer, token: Tokens.Table): string {
+      return `<div class="${TABLE_SCROLL_CLASS}">${renderTable.call(this, token)}</div>`;
     },
   },
 });
