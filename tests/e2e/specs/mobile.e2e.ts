@@ -36,6 +36,44 @@ test.describe('mobile layout', () => {
     await expect(app.getByRole('button', { name: /new session/i }).first()).toBeVisible();
   });
 
+  /**
+   * The Archive toggle is a standalone control, not a row inside the sort menu.
+   *
+   * It used to live in that dropdown under a "Filter" heading, which made a
+   * view filter read as a sort mode and hid it one tap deeper than the control
+   * that reorders the list. A unit test can assert the markup; only this layer
+   * proves the button is on the phone's screen at all — the desktop toolbar has
+   * an Archive glyph of its own, so a mobile tree that never rendered the
+   * button would still pass a source-level check.
+   */
+  test('the archive toggle is its own control, not a sort-menu row', async ({ app }) => {
+    await app.getByRole('button', { name: 'Open Sessions' }).click();
+
+    const archive = app.getByRole('button', { name: 'Show archived sessions' });
+    await expect(archive).toBeVisible();
+    await expect(archive).toHaveAttribute('aria-pressed', 'false');
+
+    // The sort menu carries the four sort options and nothing else.
+    const sortTrigger = app.getByRole('button', { name: 'Sort workspaces' });
+    await sortTrigger.click();
+    const menu = app.locator('button[aria-label="Sort workspaces"] + div');
+    await expect(menu.getByText('Sort Workspaces')).toBeVisible();
+    await expect(menu.getByText('Show Archived')).toHaveCount(0);
+
+    // Pick A-Z (the only sort the trigger does NOT highlight) so the baseline
+    // is unambiguous, then compare the trigger's classes across the archive
+    // click. They used to share one condition, so turning the filter on lit up
+    // the sort button; with A-Z in force, any lighting is the archive's doing.
+    await menu.getByText('A-Z', { exact: true }).click();
+    await expect(menu).toHaveCount(0);
+    const before = (await sortTrigger.getAttribute('class')) ?? '';
+    expect(before).not.toContain('bg-ink/10');
+
+    await archive.click();
+    await expect(app.getByRole('button', { name: 'Hide archived sessions' })).toHaveAttribute('aria-pressed', 'true');
+    expect((await sortTrigger.getAttribute('class')) ?? '').toBe(before);
+  });
+
   test('sends a prompt from the phone composer', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-mobile');

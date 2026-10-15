@@ -1,9 +1,9 @@
 import type { RefObject } from 'preact/compat';
-import { Archive, ArrowUpDown, Calendar, Check, FolderPlus, Plus, RefreshCw, Search, X } from 'lucide-preact';
+import { Archive, ArrowUpDown, Calendar, FolderPlus, Plus, RefreshCw, Search, X } from 'lucide-preact';
 import type { SessionSortOption } from '@/shared/types';
 import { SortMenu } from '@/client/components/common/sort-menu';
 
-interface MobileSessionToolbarProps {
+export interface MobileSessionToolbarProps {
   searchQuery: string;
   sortOption: SessionSortOption;
   optionsOpen: boolean;
@@ -47,17 +47,29 @@ export function MobileSessionToolbar({
   onClearSearch,
 }: MobileSessionToolbarProps) {
   return (
-    <div className="p-3 border-b border-ink/10 flex flex-col space-y-2.5 flex-shrink-0 bg-canvas">
+    <div className="@container p-3 border-b border-ink/10 flex flex-col space-y-2.5 flex-shrink-0 bg-canvas">
       {/* Row 1: Primary + New Session Button & Quick Utility Buttons */}
       <div className="flex items-center space-x-2">
-        {/* Large Ergonomic New Session Button */}
+        {/* Large Ergonomic New Session Button. Its label drops below a narrow
+            drawer (@container, not the viewport) so the five fixed-size utility
+            buttons beside it can never squeeze it past the row's own width.
+            Measured: the row needs 356px of CONTAINER for the label to fit
+            (190px of buttons + 40px of gaps + 51px of icon/padding + the 75px
+            label), and the container is the viewport minus the toolbar's 12px
+            of padding each side — so 360px of container (a 384px viewport)
+            is the point the label stops fitting. The `aria-label` is not
+            optional: hiding the visible text would otherwise leave the button
+            with no accessible name at all, which is what a phone-width
+            screen reader reads first. */}
         <button
           type="button"
           onClick={onNewSession}
-          className="flex-1 h-9.5 flex items-center justify-center space-x-2 px-3.5 rounded-xl bg-ink text-canvas hover:bg-ink/90 active:scale-[0.98] text-xs font-semibold transition-all shadow-xs"
+          aria-label="New Session"
+          title="New Session"
+          className="flex-1 min-w-0 h-9.5 flex items-center justify-center space-x-2 px-3.5 rounded-xl bg-ink text-canvas hover:bg-ink/90 active:scale-[0.98] text-xs font-semibold transition-all shadow-xs"
         >
           <Plus size={15} strokeWidth={2.4} />
-          <span>New Session</span>
+          <span className="hidden @[360px]:inline whitespace-nowrap">New Session</span>
         </button>
 
         {/* New Workspace / Folder button */}
@@ -89,6 +101,28 @@ export function MobileSessionToolbar({
           )}
         </button>
 
+        {/* Archive toggle — its own button, the same shape as Scheduler's.
+            It used to live inside the sort dropdown under a "Filter" heading,
+            which made a view filter look like a sort mode: the control that
+            decides whether archived rows are on screen was hidden one tap
+            deeper than the control that reorders them. The pressed state is
+            carried by the button itself (and by the pill in row 3), so the
+            dropdown no longer needs to report it. */}
+        <button
+          type="button"
+          onClick={onToggleArchived}
+          aria-pressed={showArchived}
+          className={`w-9.5 h-9.5 rounded-xl border active:scale-95 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-xs ${
+            showArchived
+              ? 'bg-amber-500/15 border-amber-500/40 text-amber-900'
+              : 'border-ink/15 bg-paper hover:bg-ink/5 text-ink/80 hover:text-ink'
+          }`}
+          title={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}
+          aria-label={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}
+        >
+          <Archive size={16} strokeWidth={1.8} />
+        </button>
+
         {/* Refresh sessions button — same action the desktop toolbar's
             RefreshCw performs: refetch the session list from the server.
             The icon spins for the duration of that fetch, so the click has a
@@ -104,18 +138,20 @@ export function MobileSessionToolbar({
           <RefreshCw size={15} strokeWidth={1.8} className={refreshing ? 'animate-spin' : undefined} />
         </button>
 
-        {/* Sort & Filter Dropdown */}
+        {/* Sort Dropdown. Archive is NOT in here any more — it has its own
+            button in this row, so this control means one thing (the order of
+            the list) and its pressed state reads the sort alone. */}
         <div className="relative flex-shrink-0" ref={optionsRef}>
           <button
             type="button"
             onClick={onToggleOptions}
             className={`w-9.5 h-9.5 rounded-xl border active:scale-95 flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-              optionsOpen || sortOption !== 'A-Z' || showArchived
+              optionsOpen || sortOption !== 'A-Z'
                 ? 'bg-ink/10 text-ink border-ink/30' 
                 : 'border-ink/15 bg-paper hover:bg-ink/5 text-ink/80 hover:text-ink'
             }`}
-            title="Sort & Filter"
-            aria-label="Sort & Filter"
+            title="Sort workspaces"
+            aria-label="Sort workspaces"
           >
             <ArrowUpDown size={15} strokeWidth={1.8} />
           </button>
@@ -123,25 +159,6 @@ export function MobileSessionToolbar({
           {optionsOpen && (
             <div className="absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 rounded-xl shadow-xl z-50 p-2 text-xs">
               <SortMenu variant="mobile" sortOption={sortOption} onSortChange={onSortChange} />
-
-              <div className="border-t border-ink/10 my-1.5"></div>
-
-              <div className="px-2 py-1 text-[10px] uppercase font-bold text-ink/40 font-mono">Filter</div>
-              <button
-                type="button"
-                onClick={onToggleArchived}
-                className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors ${
-                  showArchived 
-                    ? 'bg-amber-500/15 text-amber-950 font-semibold' 
-                    : 'hover:bg-ink/5 text-ink/80'
-                }`}
-              >
-                <span className="flex items-center space-x-1.5">
-                  <Archive size={13} />
-                  <span>Show Archived</span>
-                </span>
-                {showArchived && <Check size={13} />}
-              </button>
             </div>
           )}
         </div>

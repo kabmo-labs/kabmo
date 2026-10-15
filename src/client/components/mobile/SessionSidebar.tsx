@@ -119,9 +119,12 @@ export function MobileSessionSidebar({
     onClose();
   };
 
+  // The Archive button is a sibling of the sort dropdown, not a row inside it,
+  // so this no longer has to dismiss the dropdown itself — clicking anywhere
+  // outside the menu does that already (`useOnClickOutside` below), and doing
+  // it here as well would be a second answer to the same question.
   const handleToggleArchived = () => {
     setShowArchived(!showArchived);
-    setOptionsOpen(false);
   };
 
   return (
