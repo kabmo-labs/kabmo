@@ -4,6 +4,7 @@ import { ProviderDetail } from '@/client/components/settings/categories/usage-se
 import { buildProviders, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
 import { formatDateTime } from '@/client/components/settings/categories/usage-settings/format';
 import { ProviderSelect } from '@/client/components/workspace/usage-panel/ProviderSelect';
+import { SavedResetsSection } from '@/client/components/settings/categories/usage-settings/SavedResetsSection';
 import { newestUsageReport } from '@/client/components/workspace/usage-panel/report';
 import { useUsageReport } from '@/client/hooks/settings/useUsageReport';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -116,6 +117,7 @@ export function UsagePanel({ className = '', active = true }: UsagePanelProps) {
             No provider credentials detected. Add an API key in Settings → Providers and it will appear here.
           </p>
         )}
+        <SavedResetsSection />
       </div>
     </div>
   );

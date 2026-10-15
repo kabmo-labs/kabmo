@@ -3,6 +3,7 @@ import { AlertCircle, RefreshCw } from 'lucide-preact';
 import { UsageSidebarList } from '@/client/components/settings/categories/usage-settings/SidebarList';
 import { buildProviders, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
 import { ProviderDetail } from '@/client/components/settings/categories/usage-settings/ProviderDetail';
+import { SavedResetsSection } from '@/client/components/settings/categories/usage-settings/SavedResetsSection';
 import { formatDateTime } from '@/client/components/settings/categories/usage-settings/format';
 import { useUsageReport } from '@/client/hooks/settings/useUsageReport';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
@@ -97,6 +98,8 @@ export function UsageSettings() {
                   No provider credentials detected. Add an API key in Settings → Providers and it will appear here.
                 </p>
               )}
+
+              <SavedResetsSection />
             </div>
           </div>
         }

@@ -15,6 +15,7 @@ import { logoutAction } from '@/server/routes/settings/provider-logout';
 import * as settingsPlugins from '@/server/routes/settings/plugins';
 import * as settingsSkills from '@/server/routes/settings/skills';
 import * as settingsUsage from '@/server/routes/settings/usage';
+import * as settingsUsageReset from '@/server/routes/settings/usage-reset';
 
 export const settingsBindings: HandlerBinding[] = [
   ...bindingsFor(settingsRoot, '/api/settings'),
@@ -34,4 +35,5 @@ export const settingsBindings: HandlerBinding[] = [
   ...bindingsFor(settingsPlugins, '/api/settings/plugins'),
   ...bindingsFor(settingsSkills, '/api/settings/skills'),
   ...bindingsFor(settingsUsage, '/api/settings/usage'),
+  ...bindingsFor(settingsUsageReset, '/api/settings/usage/reset'),
 ];

@@ -171,3 +171,67 @@ export interface UsageReport {
   /** Every provider with a detected credential, ordered by display name. */
   providers: UsageProviderSummary[];
 }
+
+/**
+ * One saved rate-limit reset credit, from `omp usage reset --json`.
+ *
+ * Codex and Claude issue these when a window is constrained; spending one
+ * clears the covered window. Everything but `id` is optional because omp
+ * reports different subsets per provider.
+ */
+export interface UsageResetCredit {
+  id: string;
+  title?: string;
+  program?: string;
+  status?: string;
+  remainingCount?: number;
+  /** False when the provider will not let this credit be spent right now. */
+  usable?: boolean;
+  requiresLimit?: boolean;
+  /** Windows this credit clears, e.g. `["anthropic:5h"]`. */
+  clears?: string[];
+  blocking?: boolean;
+  usedFractions?: number[];
+  grantedAt?: number;
+  expiresAt?: number;
+}
+
+/**
+ * One account holding saved resets. `provider` + `credentialId` is exactly the
+ * target grammar `omp usage reset <provider>/<credential id>` takes, which is
+ * why a row without either is dropped rather than rendered.
+ */
+export interface UsageResetAccount {
+  provider: string;
+  credentialId: string;
+  email?: string;
+  accountId?: string;
+  orgId?: string;
+  orgName?: string;
+  /** Credits the provider reports on the account. */
+  availableCount?: number;
+  /** Of those, the ones a spend may actually use. */
+  redeemableCount?: number;
+  nextCreditId?: string;
+  /** Epoch ms of the soonest expiry — omp warns as one approaches. */
+  soonestExpiry?: number;
+  /** Why nothing can be spent right now (set by omp when redeemable is 0). */
+  unavailableReason?: string;
+  error?: string;
+  credits: UsageResetCredit[];
+}
+
+/** Response body of `GET /api/settings/usage/reset`. */
+export interface UsageResetList {
+  generatedAt: number;
+  accounts: UsageResetAccount[];
+  /** omp's own reason when the LIST failed; absent on a successful read. */
+  error?: string;
+}
+
+/** Response body of `POST /api/settings/usage/reset`. */
+export interface UsageResetSpendResult {
+  ok: boolean;
+  /** omp's own sentence either way — it names the outcome, including refusals. */
+  message: string;
+}
