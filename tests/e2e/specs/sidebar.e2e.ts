@@ -54,12 +54,12 @@ test.describe('sidebar', () => {
     workspace.dispose();
   });
 
-  test('a new chat keeps its sidebar row when the user switches away', async ({ harness, page }) => {
-    // A brand-new chat has no transcript yet — omp writes the session file only
-    // when the first assistant message settles (~17s) — so its row exists only
-    // because the client draws it. The row used to be derived from
-    // `?sessionId=`, which meant clicking another session deleted it and it
-    // reappeared seconds later once omp's scan caught up.
+  test('an EMPTY new chat leaves the sidebar when the user switches away', async ({ harness, page }) => {
+    // The reported behaviour: click New Session, type nothing, click another
+    // session — and the empty chat stayed in the sidebar for good, with nothing
+    // behind it. The row exists for a DRAFT (omp writes no transcript until the
+    // first assistant message settles, ~17s), so an empty composer is the
+    // negative answer and the row goes with the switch.
     //
     // Mounted on the `page` fixture rather than `app`: the demo session ids the
     // mock seed writes have no mode record, so clicking one makes the chat's
@@ -86,7 +86,39 @@ test.describe('sidebar', () => {
     await expect(pending).toBeVisible();
 
     await page.locator(`[data-testid="session-item"][data-session-id="${otherId}"]`).click();
+    await expect(pending).toHaveCount(0);
+  });
+
+  test('a new chat with a TYPED draft keeps its row across the switch', async ({ harness, page }) => {
+    // The other half of the same rule, and the one the row exists for: the
+    // draft lives in that session's UI state, so the row is the only way back
+    // to it. A regression here silently strands the user's text.
+    const server = await harness('mock');
+    await openApp(page, server.baseURL);
+
+    // Open a real session FIRST, so New Session inherits its folder and the
+    // composer is enabled — the draft is what this spec is about.
+    const firstItem = page.locator('[data-testid="session-item"]').first();
+    await expect(firstItem).toBeVisible();
+    const otherId = await firstItem.getAttribute('data-session-id');
+    expect(otherId).toBeTruthy();
+    await firstItem.click();
+
+    await page.getByRole('button', { name: /^new session$/i }).first().click();
+    const pendingId = new URL(page.url()).searchParams.get('sessionId') ?? '';
+    expect(pendingId.startsWith('new-')).toBe(true);
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeEnabled();
+    await input.fill('draft yang belum dikirim');
+
+    const pending = page.locator(`[data-testid="session-item"][data-session-id="${pendingId}"]`);
+    await page.locator(`[data-testid="session-item"][data-session-id="${otherId}"]`).click();
     await expect(pending).toBeVisible();
+
+    // And the row is a way BACK: reopening it restores what was typed.
+    await pending.click();
+    await expect(page.locator(`[data-testid="${TESTID.composerInput}"]`)).toHaveValue('draft yang belum dikirim');
   });
 
   test('the app root is present and the sidebar is rendered', async ({ app }) => {

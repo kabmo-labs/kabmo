@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { useTimelineScope } from '@/client/hooks/chat/timeline/scope';
-import type { Attachment, ChatMessageData } from '@/shared/types';
+import type { ChatMessageData } from '@/shared/types';
 import { useOmpAgent } from '@/client/hooks/chat/omp';
 import { useChatTimelineQueue } from '@/client/hooks/chat/timeline/queue';
 import { useExtensionDialogQueue } from '@/client/hooks/chat/timeline/extension-dialog';
@@ -12,12 +12,11 @@ import type { ComposerModelPick } from '@/client/hooks/chat/timeline/deferred-mo
 import { useSessionLoad } from '@/client/hooks/chat/timeline/session-load';
 import { useUserTurns } from '@/client/hooks/chat/timeline/user-turns';
 import { useRailJump } from '@/client/hooks/chat/timeline/rail-jump';
-import { useBrowserPageContextInsert } from '@/client/hooks/chat/timeline/browser-context';
 import { createOmpAgentCallbacks } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { cancelStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coalescer';
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
-import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { useComposerDraft } from '@/client/hooks/chat/composer/use-draft';
 import { isChatRunning } from '@/client/hooks/chat/omp/session-statuses';
 
 interface UseChatTimelineOptions {
@@ -53,9 +52,7 @@ export function useChatTimeline({
     onScrollTop: () => loadOlderRef.current(),
   });
 
-  const [inputValue, setInputValue] = useSessionState<string>('chat.draft', '');
-  useBrowserPageContextInsert(setInputValue);
-  const [inputAttachments, setInputAttachments] = useSessionState<Attachment[]>('chat.draftAttachments', []);
+  const { inputValue, setInputValue, inputAttachments, setInputAttachments } = useComposerDraft();
   const [localMessages, setLocalMessages] = useState<ChatMessageData[]>([]);
 
   // A pending "new-…" session renders the workspace picker, which owns its own

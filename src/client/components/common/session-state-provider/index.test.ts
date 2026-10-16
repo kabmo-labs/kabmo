@@ -88,6 +88,14 @@ async function mountPending(sessionId: string) {
   return container;
 }
 
+/** Re-render the same mount on another session id, the way a click does. */
+async function switchTo(el: HTMLElement, sessionId: string): Promise<void> {
+  await act(async () => {
+    render(h(SessionStateProvider, { sessionId, children: h(Probe, null) }), el);
+  });
+  for (let i = 0; i < 20; i += 1) await act(async () => {});
+}
+
 describe('SessionStateProvider on a pending session', () => {
   test('restores the stored blob a reloaded pending chat already has', async () => {
     stored = { 'git.activeRepo': { root: '/ws', repo: 'projects/a' }, 'layout.activeRightPanel': 'git' };
@@ -115,5 +123,20 @@ describe('SessionStateProvider on a pending session', () => {
       'git.activeRepo': { root: '/ws', repo: 'projects/a' },
       'layout.activeRightPanel': 'git',
     });
+  });
+
+  test('a plain switch away from a pending chat is NOT an adoption', async () => {
+    // Only a spawn may carry the transient slot's UI state onto another id.
+    // Every move away from a pending chat looks the same from the URL, so the
+    // ungated version copied the pending chat's draft into whatever session the
+    // user clicked next and persisted it there — measured as a POST for that
+    // session carrying `chat.draft`.
+    const el = await mountPending('new-test-switch');
+    await switchTo(el, 'real-9');
+
+    // The other session is LOADED, never migrated onto: no write for it is
+    // issued by the transition itself, and the stored blob it owns is read.
+    expect(calls.some((c) => c.url === '/api/sessions/real-9/state' && c.method === 'GET')).toBe(true);
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
   });
 });

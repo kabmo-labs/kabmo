@@ -29,9 +29,11 @@ import {
   hydratePendingSession,
   reconcilePendingSessions,
   usePendingSessions,
-  withPendingRows,
 } from '@/client/hooks/chat/omp/pending-sessions';
+import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
 import { writeSetting } from '@/shared/lib/settings/client';
+import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
+import { CHAT_DRAFT_ATTACHMENTS_KEY, CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 
 /** Debounce before the sort preference is POSTed to /api/settings (ms). */
@@ -163,17 +165,40 @@ export function useSessionSidebarController(
     hydratePendingSession(sessionParam, folderIdParam, sessionStatus[sessionParam] === 'stream');
   }, [sessionParam, folders, initializing, folderIdParam, sessionStatus]);
 
+  // A pending chat's row is kept only while its draft still holds something,
+  // so the reconcile below has to re-run when a draft SLOT moves — the blob
+  // arriving is the common case (a chat opened and left empty has its entry
+  // seeded by that fetch, and the row must go), and a deletion of the last
+  // character is the other. Only the two draft keys are watched: any other slot
+  // of a pending chat says nothing about its row.
+  const [draftRevision, setDraftRevision] = useState(0);
+  // Keyed on the ID LIST, not on the array: `usePendingSessions` hands back a
+  // fresh array on every store emit, so depending on it directly would tear
+  // down and re-add every subscription on each unrelated notification.
+  const pendingIdsKey = pendingEntries.map((entry) => String(entry.id)).join('\n');
+  useEffect(() => {
+    const bump = () => setDraftRevision((n) => n + 1);
+    const unsubscribes = pendingIdsKey.split('\n').filter(Boolean).flatMap((id) => [
+      subscribeSessionKey(id, CHAT_DRAFT_KEY, bump),
+      subscribeSessionKey(id, CHAT_DRAFT_ATTACHMENTS_KEY, bump),
+    ]);
+    return () => {
+      for (const unsubscribe of unsubscribes) unsubscribe();
+    };
+  }, [pendingIdsKey]);
+
   // Drop what the authoritative list superseded, plus drafts the user left
   // behind. Runs BEFORE the render below reads the entries, so a row omp has
-  // just written is never drawn twice.
+  // just written is never drawn twice — and the open session's own row is
+  // exempt, because that is the row the user is looking at.
   useEffect(() => {
     if (initializing) return;
     const listed = new Set<string>();
     for (const folder of folders) {
       for (const session of folder.sessions ?? []) listed.add(String(session.id));
     }
-    reconcilePendingSessions({ listed, running: runningIds });
-  }, [folders, initializing, runningIds]);
+    reconcilePendingSessions({ listed, running: runningIds, activeId: sessionParam });
+  }, [folders, initializing, runningIds, sessionParam, draftRevision]);
 
   const handleSelectSession = (id: number | string) => {
     // One-shot terminal badge (check) clears on open: optimistic strip + server

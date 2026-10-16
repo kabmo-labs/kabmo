@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import { flushSession, loadSession, migrateSessionState, recordSessionOpen } from '@/shared/lib/workspace/session-state/store';
+import { consumeAdoption } from '@/client/hooks/chat/omp/pending-sessions';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
 
 /**
@@ -32,8 +33,12 @@ export function SessionStateProvider({ sessionId, children }: { sessionId: strin
     recordSessionOpen(effectiveSessionId);
 
     // Spawn adoption ("new-…" → real UUID): carry the pending state over
-    // instead of loading (nothing is stored under the real id yet).
-    if (prev && prev.startsWith('new-') && !effectiveSessionId.startsWith('new-')) {
+    // instead of loading (nothing is stored under the real id yet). Gated on a
+    // RECORDED adoption, because every move away from a pending id looks the
+    // same here — clicking another session is not an adoption, and migrating on
+    // it copied the pending chat's draft into that session (measured: a POST for
+    // the other session carrying `chat.draft`).
+    if (prev && prev.startsWith('new-') && !effectiveSessionId.startsWith('new-') && consumeAdoption(prev, effectiveSessionId)) {
       migrateSessionState(prev, effectiveSessionId);
       setReady(true);
       return;

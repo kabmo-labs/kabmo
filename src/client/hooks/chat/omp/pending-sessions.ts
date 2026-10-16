@@ -30,16 +30,21 @@
  *   - a SENT entry outlives the switch, because its transcript is seconds away
  *     — with `PENDING_SETTLE_MS` as the bound, so a child that died before
  *     writing one cannot leave a row behind for the life of the tab;
- *   - an UNSENT draft keeps its row too, which is the reported behaviour: the
- *     row was derived from `?sessionId=`, so switching sessions deleted a chat
- *     the user had just opened. Its content is real (the draft lives in that
- *     session's UI state), so the row is what makes the draft reachable again.
- *     `MAX_UNSENT_DRAFTS` is the bound on repeated New Session clicks.
+ *   - an UNSENT draft keeps its row only while there IS a draft to get back to
+ *     (`hasUnsavedDraft`), because the row was derived from `?sessionId=` and
+ *     switching sessions deleted a chat the user had just opened. Its content
+ *     is real — the draft lives in that session's UI state — so the row is what
+ *     makes the draft reachable again. A chat opened and left EMPTY has no
+ *     content, so its row goes with the switch: the unconditional version of
+ *     this rule turned every stray New Session click into a permanent sidebar
+ *     entry with nothing behind it. `MAX_UNSENT_DRAFTS` remains the bound on
+ *     how many real drafts are held at once.
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import type { SessionItemData, WorkspaceFolderData } from '@/shared/types';
-import { pendingSessionCreatedAt, pendingSessionTitle, sessionIdEpochMs } from '@/shared/lib/omp/session/default-title';
+import { pendingSessionCreatedAt, sessionIdEpochMs } from '@/shared/lib/omp/session/default-title';
+import { getSessionState } from '@/shared/lib/workspace/session-state/store';
+import { hasComposerDraft } from '@/shared/lib/chat/composer/draft';
 
 export interface PendingSessionEntry {
   /** Client-side `new-<epoch>` id, or the omp UUID a spawn adopted. */
@@ -63,6 +68,11 @@ export const PENDING_SETTLE_MS = 30_000;
 export const MAX_UNSENT_DRAFTS = 3;
 
 const entries = new Map<string, PendingSessionEntry>();
+/** `toId → fromId` for a spawn adoption, consumed by the session-state
+ *  provider so a plain switch away from a pending chat cannot be mistaken for
+ *  one. Bounded by the pending store itself: an entry is written where an
+ *  adoption happens and dropped the moment it is claimed. */
+const adoptions = new Map<string, string>();
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -141,12 +151,33 @@ export function adoptPendingSession(
   if (!toId) return;
   const from = fromId ? entries.get(fromId) : undefined;
   if (from && fromId) entries.delete(fromId);
+  // Recorded for the session-state provider, which must NOT carry the pending
+  // slot's UI state onto just any id the URL moves to — only onto the one a
+  // spawn answered with. See `consumeAdoption`.
+  if (fromId) adoptions.set(toId, fromId);
   upsert({
     id: toId,
     folderId: from?.folderId ?? folderId ?? null,
     createdAt: from?.createdAt ?? createdAtFor(toId),
     sentAt: from?.sentAt ?? Date.now(),
   });
+}
+
+/**
+ * Whether `toId` is the id a spawn answered with for `fromId` — consuming the
+ * record so one adoption is claimed once.
+ *
+ * The session-state provider used to treat EVERY move away from a `new-…` id as
+ * an adoption and migrate the transient slot's whole UI state onto whatever the
+ * URL now named. Clicking another session from a pending chat is the same
+ * transition, so the pending chat's DRAFT was copied into that session and
+ * persisted there (measured: a POST for the other session carrying
+ * `chat.draft`). Only a real spawn may carry the state across.
+ */
+export function consumeAdoption(fromId: string | null | undefined, toId: string): boolean {
+  if (!fromId || adoptions.get(toId) !== fromId) return false;
+  adoptions.delete(toId);
+  return true;
 }
 
 /**
@@ -177,16 +208,20 @@ export function listPendingSessions(): PendingSessionEntry[] {
   return [...entries.values()];
 }
 
-/** Drop the entries the authoritative list has superseded, and stale sends. */
+/** Drop the entries the authoritative list has superseded, plus stale sends. */
 export function reconcilePendingSessions(input: {
   /** Session ids the structure's own payload carries. */
   listed: Set<string>;
   /** Ids whose run is in flight (the sidebar's `stream` rows). */
   running: Set<string>;
+  /** The session the URL has open, if any: its own row is never dropped here —
+   *  it is the row the user is looking at, whatever it holds. */
+  activeId?: string | null;
   /** Clock override, so a test can age a sent entry past its grace. */
   now?: number;
 }): void {
   const now = input.now ?? Date.now();
+  const active = input.activeId ? String(input.activeId) : null;
   let changed = false;
   for (const [id, entry] of [...entries]) {
     // The structure's own row is the real thing — the pending entry existed
@@ -199,10 +234,21 @@ export function reconcilePendingSessions(input: {
     // A live run holds its row wherever the user navigates: the spinner and
     // the row it belongs to are the same fact.
     if (input.running.has(id)) continue;
-    // An unsent draft is not aged out — its row is how the user gets back to
-    // the draft, and `MAX_UNSENT_DRAFTS` is what bounds how many exist.
-    if (entry.sentAt === null) continue;
-    if (now - entry.sentAt > PENDING_SETTLE_MS) {
+    if (entry.sentAt !== null) {
+      if (now - entry.sentAt > PENDING_SETTLE_MS) {
+        entries.delete(id);
+        changed = true;
+      }
+      continue;
+    }
+    // An UNSENT draft keeps its row only while there IS a draft to get back to.
+    // The row used to be unconditional, which made every stray New Session
+    // click — open, type nothing, click another session — a permanent entry in
+    // the sidebar with nothing behind it. What must survive is the CONTENT: a
+    // chat the user typed into and walked away from still has its text in that
+    // session's UI state, and the row is the only way back to it.
+    if (active !== null && String(id) === active) continue;
+    if (!hasComposerDraft(getSessionState(id))) {
       entries.delete(id);
       changed = true;
     }
@@ -229,89 +275,4 @@ export function usePendingSessions(): PendingSessionEntry[] {
     return subscribePendingSessions(() => setSnapshot(listPendingSessions()));
   }, []);
   return snapshot;
-}
-
-export interface PendingRowOptions {
-  /** The session the URL has open; its folder is the fallback host. */
-  activeId: string | null;
-  /** `?folderId=`, the last resort before the first folder. */
-  urlFolderId?: string | null;
-  /** The title hint the send path published for a session omp cannot name. */
-  titleFor?: (id: string) => string | undefined;
-}
-
-/**
- * Fold the pending entries into the sidebar's folders as real rows.
- *
- * Returns the SAME array when there is nothing to add, so an idle sidebar does
- * not re-render on every store notification. The row lands at the TOP of its
- * folder — it is the newest activity there, which is the ordering the server
- * payload already uses — and the host folder is forced open, because a row the
- * user cannot see is not a row (desktop reads `isExpanded` from the folder;
- * the phone seeds its expansion from the same list).
- */
-export function withPendingRows(
-  folders: WorkspaceFolderData[],
-  entries: PendingSessionEntry[],
-  options: PendingRowOptions,
-): WorkspaceFolderData[] {
-  if (entries.length === 0 || folders.length === 0) return folders;
-
-  const listed = new Set<string>();
-  for (const folder of folders) {
-    for (const session of folder.sessions ?? []) listed.add(String(session.id));
-  }
-  const missing = entries.filter((entry) => !listed.has(String(entry.id)));
-  if (missing.length === 0) return folders;
-
-  let result = folders;
-  for (const entry of missing) {
-    const target = resolvePendingFolder(result, entry, options);
-    if (!target) continue;
-    const stamp = new Date(entry.createdAt).toISOString();
-    const row: SessionItemData = {
-      id: entry.id,
-      folder_id: target.id,
-      title: options.titleFor?.(String(entry.id)) ?? pendingSessionTitle(entry.id),
-      // The id's own clock, never `Date.now()`: the row is ranked by
-      // `updated_at`, and a re-stamp on every revalidate kept it perpetually
-      // newest and reshuffled LATEST_SESSION ordering mid-run.
-      created_at: stamp,
-      updated_at: stamp,
-    };
-    result = result.map((folder) => (
-      folder.id === target.id
-        ? { ...folder, isExpanded: true, sessions: [row, ...(folder.sessions ?? [])] }
-        : folder
-    ));
-  }
-  return result;
-}
-
-/**
- * Which folder a pending row belongs to: the one it was started in, else the
- * one owning the session on screen, else the URL's pick, else the first folder.
- * An entry whose folder no longer exists falls through the same chain rather
- * than dropping the row.
- */
-function resolvePendingFolder(
-  folders: WorkspaceFolderData[],
-  entry: PendingSessionEntry,
-  options: PendingRowOptions,
-): WorkspaceFolderData | undefined {
-  if (entry.folderId !== null && entry.folderId !== undefined) {
-    const byEntry = folders.find((folder) => String(folder.id) === String(entry.folderId));
-    if (byEntry) return byEntry;
-  }
-  if (options.activeId) {
-    const byActive = folders.find((folder) => (
-      (folder.sessions ?? []).some((session) => String(session.id) === String(options.activeId))
-    ));
-    if (byActive) return byActive;
-  }
-  if (options.urlFolderId) {
-    const byUrl = folders.find((folder) => String(folder.id) === String(options.urlFolderId));
-    if (byUrl) return byUrl;
-  }
-  return folders[0];
 }

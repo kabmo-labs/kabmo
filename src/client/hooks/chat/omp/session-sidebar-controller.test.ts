@@ -27,6 +27,8 @@ import { act } from 'preact/test-utils';
 
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
 import { listPendingSessions, releasePendingSession, startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { forgetSession, setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import { SidebarDataProvider } from '@/client/hooks/chat/omp/session-list';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
@@ -166,6 +168,29 @@ describe('a new chat shows in the sidebar before omp writes its transcript', () 
     expect(renderedIds(harness.holder.api)).toEqual([id, 'real-1']);
 
     releasePendingSession(id);
+    harness.server.stop();
+  });
+
+  test('the row goes when the user leaves a chat they never typed into', async () => {
+    // The reported behaviour: click New Session, type nothing, click another
+    // session — and the empty chat stayed in the sidebar for good. The row is
+    // kept for a DRAFT, so an empty composer is the negative answer.
+    const harness = await mountController('?sessionId=real-1');
+    const id = startPendingSession(7);
+    await harness.setUrl(`?sessionId=${id}&folderId=7`);
+    expect(renderedIds(harness.holder.api)).toContain(id);
+
+    // What the timeline writes once the chat's blob has loaded and the composer
+    // is blank — the state on screen right after the click.
+    await act(async () => {
+      setSessionKey(id, CHAT_DRAFT_KEY, '');
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+
+    await harness.setUrl('?sessionId=real-1');
+    expect(renderedIds(harness.holder.api)).toEqual(['real-1']);
+
+    forgetSession(id);
     harness.server.stop();
   });
 

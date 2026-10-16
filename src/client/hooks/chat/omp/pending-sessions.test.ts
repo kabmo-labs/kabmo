@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 
 import {
   adoptPendingSession,
+  consumeAdoption,
   hydratePendingSession,
   listPendingSessions,
   markPendingSessionSent,
@@ -28,9 +29,11 @@ import {
   reconcilePendingSessions,
   releasePendingSession,
   startPendingSession,
-  withPendingRows,
 } from '@/client/hooks/chat/omp/pending-sessions';
+import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { forgetSession, getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 /** One folder holding the given session ids. */
@@ -58,16 +61,32 @@ function state(): Record<string, number | null> {
   return Object.fromEntries(listPendingSessions().map((entry) => [entry.id, entry.sentAt]));
 }
 
-/** Drop whatever the previous case left, without exporting a test-only reset. */
+/** Ids this case minted. The id is `new-<epochMs>`, and a released entry lets
+ *  the next case in the same millisecond mint the SAME one — so teardown has to
+ *  know what to forget rather than trusting the live entry list. */
+const touched = new Set<string>();
+
+/** `startPendingSession`, recorded for teardown. */
+function start(folderId: number | string | null): string {
+  const id = startPendingSession(folderId);
+  touched.add(id);
+  return id;
+}
+
+/** Drop whatever the previous case left, without exporting a test-only reset.
+ *  The session-state entries go too: whether a chat still holds a draft is what
+ *  decides if its row survives, so a leaked draft would keep a row alive. */
 function clear(): void {
   for (const entry of listPendingSessions()) releasePendingSession(entry.id);
+  for (const id of touched) forgetSession(id);
+  touched.clear();
 }
 
 beforeEach(clear);
 
 describe('a new chat keeps its sidebar row', () => {
   test('the row is drawn for an id the structure does not carry', () => {
-    const id = startPendingSession(1);
+    const id = start(1);
     const out = withPendingRows(folders('real-1'), [{ id, folderId: 1, createdAt: Date.now(), sentAt: null }], {
       activeId: id,
     });
@@ -81,31 +100,75 @@ describe('a new chat keeps its sidebar row', () => {
   });
 
   test('a SENT chat survives switching to another session', () => {
-    const id = startPendingSession(1);
+    const id = start(1);
     markPendingSessionSent(id);
     // The user clicks another session: the pending chat is no longer the URL's.
     reconcilePendingSessions({ listed: new Set(), running: new Set() });
     expect(state()).toEqual({ [id]: expect.any(Number) });
   });
 
-  test('an UNSENT draft keeps its row too, so the draft stays reachable', () => {
-    // The reported bug: the row was derived from `?sessionId=`, so switching
-    // sessions deleted a chat the user had just opened — and with it the only
-    // way back to the draft stored under that id.
-    const id = startPendingSession(1);
+  test('a chat the user TYPED into keeps its row, so the draft stays reachable', () => {
+    // The reported bug this rule exists for: the row was derived from
+    // `?sessionId=`, so switching sessions deleted a chat the user had just
+    // opened — and with it the only way back to the draft stored under that id.
+    const id = start(1);
+    setSessionKey(id, CHAT_DRAFT_KEY, 'perbaiki tombol kirim');
     reconcilePendingSessions({ listed: new Set(), running: new Set() });
     expect(state()).toEqual({ [id]: null });
   });
 
+  test('a chat opened and left EMPTY loses its row on the switch', () => {
+    // The other half of the same rule, and the reported "new session yang tidak
+    // dikirim tidak hilang": an unconditional row made every stray New Session
+    // click a permanent sidebar entry with nothing behind it. The draft slot is
+    // the difference — `chat.draft` is what the composer writes, and a blank one
+    // is the negative answer.
+    const id = start(1);
+    setSessionKey(id, CHAT_DRAFT_KEY, '');
+    reconcilePendingSessions({ listed: new Set(), running: new Set() });
+    expect(state()).toEqual({});
+  });
+
+  test('an attachment alone is a draft too', () => {
+    const id = start(1);
+    setSessionKey(id, CHAT_DRAFT_KEY, '   ');
+    setSessionKey(id, 'chat.draftAttachments', [{ id: 'a', name: 'shot.png' }]);
+    reconcilePendingSessions({ listed: new Set(), running: new Set() });
+    expect(state()).toEqual({ [id]: null });
+  });
+
+  test('the OPEN chat keeps its row whatever its draft holds', () => {
+    // The row the user is looking at is never dropped by this pass: a new chat
+    // whose composer is empty is exactly the state on screen after the click.
+    const id = start(1);
+    setSessionKey(id, CHAT_DRAFT_KEY, '');
+    reconcilePendingSessions({ listed: new Set(), running: new Set(), activeId: id });
+    expect(state()).toEqual({ [id]: null });
+
+    // And leaving it is what retires the row.
+    reconcilePendingSessions({ listed: new Set(), running: new Set(), activeId: 'other' });
+    expect(state()).toEqual({});
+  });
+
+  test('a draft that has not been READ yet keeps its row', () => {
+    // No session-state entry at all: the blob is still in flight, so "empty" is
+    // unknown rather than true. Dropping the row here would lose the way back to
+    // a draft that does exist — the same shape as the reload case.
+    const id = start(1);
+    expect(getSessionValue(id, CHAT_DRAFT_KEY)).toBeUndefined();
+    reconcilePendingSessions({ listed: new Set(), running: new Set(), activeId: 'other' });
+    expect(state()).toEqual({ [id]: null });
+  });
+
   test('repeated New Session clicks do not accumulate rows', () => {
-    const ids = [1, 2, 3, 4, 5].map(() => startPendingSession(1));
+    const ids = [1, 2, 3, 4, 5].map(() => start(1));
     const kept = listPendingSessions().map((entry) => entry.id);
     expect(kept).toEqual(ids.slice(-MAX_UNSENT_DRAFTS));
     // A SENT entry is never the one evicted: its transcript is on the way.
     const sent = kept[0];
     expect(sent).toBeDefined();
     markPendingSessionSent(sent as string);
-    startPendingSession(1);
+    start(1);
     expect(listPendingSessions().map((entry) => entry.id)).toContain(sent as string);
   });
 
@@ -118,7 +181,7 @@ describe('a new chat keeps its sidebar row', () => {
   });
 
   test('a sent row whose transcript never arrived is released after the grace', () => {
-    const id = startPendingSession(1);
+    const id = start(1);
     markPendingSessionSent(id);
     adoptPendingSession(id, 'omp-never-writes', 1);
     const entry = listPendingSessions()[0];
@@ -145,7 +208,7 @@ describe('a new chat keeps its sidebar row', () => {
   });
 
   test('an authoritative row supersedes the pending one, whatever its state', () => {
-    const id = startPendingSession(1);
+    const id = start(1);
     markPendingSessionSent(id);
     reconcilePendingSessions({ listed: new Set([id]), running: new Set([id]) });
     expect(state()).toEqual({});
@@ -154,7 +217,7 @@ describe('a new chat keeps its sidebar row', () => {
 
 describe('a spawn moves the row onto the id omp answered with', () => {
   test('the entry follows the id, keeping its folder and its clock', () => {
-    const pending = startPendingSession(2);
+    const pending = start(2);
     markPendingSessionSent(pending);
     const before = listPendingSessions()[0];
 
@@ -173,11 +236,26 @@ describe('a spawn moves the row onto the id omp answered with', () => {
     adoptPendingSession(null, 'omp-2', 1);
     expect(state()).toEqual({ 'omp-2': expect.any(Number) });
   });
+
+  test('only a real adoption is claimable, and only once', () => {
+    // The session-state provider carries the transient slot's UI state onto an
+    // adopted id. Clicking away from a pending chat is the SAME transition from
+    // the URL's point of view, so the provider must ask here first — otherwise
+    // the pending chat's draft is copied into the session the user clicked
+    // (measured: a POST for that session carrying `chat.draft`).
+    const pending = start(2);
+    adoptPendingSession(pending, 'omp-3', 2);
+    expect(consumeAdoption(pending, 'omp-3')).toBe(true);
+    // One adoption is claimed once: a second look is a plain switch.
+    expect(consumeAdoption(pending, 'omp-3')).toBe(false);
+    // And an unrelated pair never claims anything.
+    expect(consumeAdoption(pending, 'omp-4')).toBe(false);
+  });
 });
 
 describe('withPendingRows', () => {
   test('routes the row to the folder the chat was started in', () => {
-    const id = startPendingSession(2);
+    const id = start(2);
     const out = withPendingRows(twoFolders(), listPendingSessions(), { activeId: id });
 
     expect(out[1]?.sessions?.[0]?.id).toBe(id);
@@ -185,7 +263,7 @@ describe('withPendingRows', () => {
   });
 
   test('falls back to the folder owning the session on screen', () => {
-    const id = startPendingSession(null);
+    const id = start(null);
     const out = withPendingRows(twoFolders(), listPendingSessions(), { activeId: id });
     // Nothing owns it, and no URL pick: the first folder hosts the row rather
     // than dropping it, because a row the user cannot see is not a row.
@@ -197,14 +275,14 @@ describe('withPendingRows', () => {
     expect(withPendingRows(base, [], { activeId: null })).toBe(base);
     // And when the structure already carries the session: the row is the real
     // one, so injecting a second copy is what would make the item blink.
-    const id = startPendingSession(1);
+    const id = start(1);
     expect(withPendingRows(base, [{ id: 'real-1', folderId: 1, createdAt: Date.now(), sentAt: null }], {
       activeId: id,
     })).toBe(base);
   });
 
   test('the row is named by the sent text, else by the id clock', () => {
-    const id = startPendingSession(1);
+    const id = start(1);
     const entry = listPendingSessions()[0];
     expect(entry).toBeDefined();
     const hinted = withPendingRows(folders(), listPendingSessions(), { activeId: id, titleFor: () => 'Perbaiki tombol' });

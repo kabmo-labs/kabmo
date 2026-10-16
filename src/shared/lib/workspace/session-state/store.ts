@@ -153,6 +153,22 @@ export function getSessionValue<T>(sessionId: string | null, key: string): T | u
   return cache.get(sessionId)?.[key] as T | undefined;
 }
 
+/**
+ * A session's whole UI-state entry, or `undefined` when this tab has not read
+ * it yet.
+ *
+ * The distinction matters to a reader that must tell "the stored blob says
+ * there is nothing" apart from "the answer is still unknown": `loadSession`
+ * seeds an entry (even an empty one) the moment the fetch settles, so an
+ * ABSENT entry is a pending read, not a negative answer. Returns the live entry
+ * as READ-ONLY — write through `setSessionKey` so the persist debounce and the
+ * change notification stay on one path.
+ */
+export function getSessionState(sessionId: string | null): Readonly<Record<string, unknown>> | undefined {
+  if (!sessionId) return undefined;
+  return cache.get(sessionId);
+}
+
 export function setSessionKey(sessionId: string | null, key: string, value: unknown): void {
   if (!sessionId) return;
   const state = cache.get(sessionId) ?? {};
