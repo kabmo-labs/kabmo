@@ -5,6 +5,16 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/rajebdev/ompchamber/compare/ui/v2.2.1...ui/v2.3.0) — 2026-10-16
+
+### Added
+
+* **marketplace:** add the command-runner plugin with 14 toolchains and custom commands ([665b8fc](https://github.com/rajebdev/ompchamber/commit/665b8fcdc10d015f84006f3869472d3393ec743b))
+
+### Changed
+
+* **scrollbars:** fade every bar from one listener, unify size and colour ([79c4a51](https://github.com/rajebdev/ompchamber/commit/79c4a51e56a24e328382b93936bd0607b9e7edc6)), closes [#141310](https://github.com/rajebdev/ompchamber/issues/141310) [#EDECEE](https://github.com/rajebdev/ompchamber/issues/EDECEE)
+
 ## [2.2.1](https://github.com/rajebdev/ompchamber/compare/ui/v2.2.0...ui/v2.2.1) — 2026-10-12
 
 ### Fixed
