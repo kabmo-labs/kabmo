@@ -153,13 +153,26 @@ describe('the gate contract', () => {
     }
   });
 
-  test('the app release still waits for the packages', async () => {
-    // The ordering is load-bearing (a `workspace:` spec is substituted from
-    // `bun.lock`, which the packages job commits), and it is the one edge the
-    // transitive check above cannot see: `app` could depend on the gates
-    // directly and still race the lockfile refresh.
+  test('the app release still waits for the packages, through the marketplace bumps', async () => {
+    // The ordering is load-bearing and it is the one thing the transitive check
+    // above cannot see: `app` could depend on the gates directly and still race
+    // the lockfile refresh.
+    //
+    // The chain is `packages -> marketplace -> app`, and BOTH hops matter.
+    // `packages` commits the refreshed `bun.lock`, and a `workspace:` spec is
+    // substituted from that record, so the app must not pack before it.
+    // `marketplace` bumps the bundled plugins' versions into the same branch, and
+    // the app's tarball is what carries them — so a bump landing after the app
+    // packed would reach existing installs one release late.
     const doc = await load('release.yml');
-    expect(doc.jobs.app.needs).toContain('packages');
+    const needsOf = (id: string): string[] => {
+      const value = doc.jobs[id]?.needs;
+      if (value === undefined) return [];
+      return Array.isArray(value) ? value : [value];
+    };
+
+    expect(needsOf('marketplace')).toContain('packages');
+    expect(needsOf('app')).toContain('marketplace');
   });
 
   test('nothing publishes before the gates in a publish workflow', async () => {
