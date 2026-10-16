@@ -625,17 +625,30 @@ test.describe('Source Control — repository management', () => {
     await expect(page.locator('input[title="Search repositories"]')).toBeHidden();
 
     // A row per discovered repo, each naming its branch.
-    const alphaRow = dialog.getByTitle('Show alpha');
-    await expect(alphaRow).toBeVisible();
+    const rows = dialog.locator('[title^="Show "], [title^="Already showing"]');
+    await expect(rows.first()).toBeVisible();
+    await expect(rows.filter({ hasText: 'alpha' })).toHaveCount(1);
+    await expect(rows.filter({ hasText: 'conflicted' })).toHaveCount(1);
     // The dirty repo says so — the whole reason a modal beats a dropdown.
     await expect(dialog.getByTitle('1 changed, 1 untracked')).toBeVisible();
     // A clean repo says so explicitly rather than showing an empty strip.
     await expect(dialog.getByTitle('Nothing to report — clean and in sync').first()).toBeVisible();
 
     // Switching from the modal closes it and moves the panel.
-    await alphaRow.click();
+    //
+    // The row clicked is the one that is NOT currently showing — `Show <path>`
+    // is only its title while it is not the active repo, and the active row's
+    // button is `disabled`. Which repo leads is discovery's business (the list
+    // is sorted, so `alpha` does), and asserting `Show alpha` here made this
+    // spec depend on the panel having defaulted to the OTHER one: true while
+    // `readdir` order happened to put `conflicted` first, false once the list
+    // was sorted — and false in CI on the commit that added the modal.
+    const otherRow = dialog.locator('[title^="Show "]');
+    await expect(otherRow).toHaveCount(1);
+    const otherName = (await otherRow.textContent())?.trim() ?? '';
+    await otherRow.click();
     await expect(dialog).toBeHidden();
-    await expect(visiblePicker(page)).toContainText('alpha');
+    await expect(visiblePicker(page)).toContainText(otherName);
   });
 
   test('the modal rows fit a phone, where the dropdown columns would not', async ({ harness, page }) => {

@@ -23,7 +23,7 @@ import { h, render } from 'preact';
 import type { ComponentChild } from 'preact';
 import { act } from 'preact/test-utils';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
-import { useRepoScope } from '@/client/hooks/workspace/repo-scope';
+import { resolveRepoForPanel, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { flushSession } from '@/shared/lib/workspace/session-state/store';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
@@ -179,5 +179,35 @@ describe('useRepoScope', () => {
     stored = { 'git.activeRepo': { root: OTHER_ROOT, repo: 'projects/elsewhere' } };
     await mount(h(Consumer, { id: 'reader', rootPath: ROOT }), 'new-repo-scope-stale');
     expect(read('reader')).toBe('.');
+  });
+});
+
+describe('resolveRepoForPanel', () => {
+  test('keeps the pick when the workspace root is not a repo', () => {
+    // The user chose a nested repo; nothing about the root being a folder of
+    // repositories changes that.
+    expect(resolveRepoForPanel('projects/a', ['.', 'projects/a', 'projects/b'])).toBe('projects/a');
+    expect(resolveRepoForPanel('projects/a', ['projects/a', 'projects/b'])).toBe('projects/a');
+  });
+
+  test('keeps the root when the root IS a repo', () => {
+    // `.` is a real repository here, so it is a legitimate answer rather than
+    // "no pick" — falling through to a nested one would move the panel off the
+    // repo the user is looking at.
+    expect(resolveRepoForPanel('.', ['.', 'projects/a'])).toBe('.');
+  });
+
+  test('falls back to the FIRST repo, which is the sorted one', () => {
+    // No pick, and the root is not a repo: the fallback is the list's first
+    // entry. The list arrives sorted from the server (`getRepos`), which is what
+    // makes this deterministic — measured, `readdir` order differs between
+    // machines and after a directory is rewritten, so an unsorted list made the
+    // default repository differ between two reads of the same workspace.
+    expect(resolveRepoForPanel('.', ['alpha', 'conflicted'])).toBe('alpha');
+    expect(resolveRepoForPanel('.', ['conflicted', 'alpha'])).toBe('conflicted');
+  });
+
+  test('answers the root when there is nothing to fall back to', () => {
+    expect(resolveRepoForPanel('.', [])).toBe('.');
   });
 });

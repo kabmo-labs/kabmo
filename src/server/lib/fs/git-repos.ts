@@ -62,7 +62,17 @@ async function findGitDirs(dir: string, rel: string, depth: number, out: string[
 async function getRepos(rootDir: string): Promise<string[]> {
   const found: string[] = [];
   await findGitDirs(rootDir, '', 0, found);
-  const uniqueRepos = Array.from(new Set(found));
+  // SORTED, because `readdir` is filesystem order and everything downstream
+  // picks a DEFAULT from this list. Two consumers take `repos[0]` when the
+  // session has no pick — the git route's implicit repo and the panel's
+  // `resolveRepoForPanel` — so an unsorted list made "which repository am I
+  // looking at" differ between two machines reading the same workspace, and
+  // between two reads of the same one. Measured: `readdir` returned
+  // `['conflicted', 'alpha']` for a directory created in the other order, which
+  // is what made the repository-modal spec select `alpha` and then find its row
+  // labelled "Already showing" instead of "Show alpha". `groupRepos` already
+  // sorts for display, so this only makes the SOURCE agree with it.
+  const uniqueRepos = Array.from(new Set(found)).sort((a, b) => a.localeCompare(b));
   if (uniqueRepos.includes('.')) {
     return ['.', ...uniqueRepos.filter((r) => r !== '.')];
   }
