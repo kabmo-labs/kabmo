@@ -18,17 +18,55 @@ function getSignalExitCode(signal) {
   return typeof signalNumber === 'number' ? 128 + signalNumber : 1;
 }
 
-export function killChildTree(child, force, platform = process.platform, gracefulSignal = 'SIGTERM') {
+/**
+ * Whether `process.kill(-pid, …)` may be used on this PID.
+ *
+ * The negative form signals a process GROUP, and POSIX reserves `-1` for "every
+ * process this user may signal" — so a pid of 1 or 0 must never reach it. A
+ * stale instance record naming such a PID would otherwise turn `ompchamber stop`
+ * into a signal to the whole session, which is a far worse outcome than a stop
+ * that fails. Kept as a named predicate so the rule is testable WITHOUT
+ * signalling anything.
+ */
+export function isGroupKillable(pid) {
+  return Number.isInteger(pid) && pid > 1;
+}
+
+/**
+ * End a process (and, on Windows, its tree).
+ *
+ * `spawn` is injectable for the same reason `platform` is: the Windows branch
+ * runs `taskkill`, and the host this project is developed on has no such binary
+ * — so the branch's failure modes (a missing binary, a non-zero exit, a success)
+ * could not be exercised at all. Bun resolves a child's executable from the PATH
+ * snapshot taken at process start, so a stub placed on PATH afterwards is NOT
+ * found (verified), and the seam is the only way to reach those paths.
+ */
+export function killChildTree(child, force, platform = process.platform, gracefulSignal = 'SIGTERM', spawn = Bun.spawn) {
   if (platform === 'win32' && child.pid) {
-    const reaper = Bun.spawn({
-      cmd: ['taskkill', '/pid', String(child.pid), '/t', ...(force ? ['/f'] : [])],
-      stdout: 'ignore',
-      stderr: 'ignore',
-      windowsHide: true,
-    });
     const fallback = () => {
       try { child.kill(force ? 'SIGKILL' : 'SIGTERM'); } catch {}
     };
+    // `taskkill` is the only way to end a whole tree on Windows, but spawning it
+    // can fail on its own: measured, `Bun.spawn` THROWS `Executable not found in
+    // $PATH: "taskkill"` when the binary is missing, and that throw escaped as an
+    // exception from a stop that was otherwise working — the caller's escalation
+    // never ran. The fallback is the single-PID kill, which on Windows is
+    // forceful either way (POSIX signals do not exist there, so Node maps it to
+    // TerminateProcess): a host without taskkill loses the tree kill, not the
+    // stop.
+    let reaper;
+    try {
+      reaper = spawn({
+        cmd: ['taskkill', '/pid', String(child.pid), '/t', ...(force ? ['/f'] : [])],
+        stdout: 'ignore',
+        stderr: 'ignore',
+        windowsHide: true,
+      });
+    } catch {
+      fallback();
+      return;
+    }
     void reaper.exited.then((code) => {
       if (code !== 0) fallback();
     }, fallback);
@@ -37,7 +75,7 @@ export function killChildTree(child, force, platform = process.platform, gracefu
   }
 
   const signal = force ? 'SIGKILL' : gracefulSignal;
-  if (platform !== 'win32' && child.pid) {
+  if (platform !== 'win32' && isGroupKillable(child.pid)) {
     try {
       process.kill(-child.pid, signal);
       return;
@@ -65,10 +103,10 @@ function waitForChildExit(child, timeoutMs) {
   });
 }
 
-export async function terminateChildProcess(child, timeoutMs = STOP_TIMEOUT_MS, platform = process.platform) {
+export async function terminateChildProcess(child, timeoutMs = STOP_TIMEOUT_MS, platform = process.platform, spawn = Bun.spawn) {
   if (childHasExited(child)) return true;
   const exited = waitForChildExit(child, timeoutMs);
-  killChildTree(child, true, platform);
+  killChildTree(child, true, platform, 'SIGTERM', spawn);
   return exited;
 }
 

@@ -7,7 +7,8 @@
 // own launcher).
 
 import { color, configure, error, log, ok, warn, printJson, isJson, isQuiet } from '@/cli/lib/output.js';
-import { listLiveInstances, stopInstance } from '@/cli/lib/runtime.js';
+import { listLiveInstances } from '@/cli/lib/runtime.js';
+import { stopInstance } from '@/cli/lib/stop-instance.js';
 import { selectRestartTargets } from '@/cli/lib/restart-scope.js';
 import { STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
 import { run as runServe } from '@/cli/lib/commands/serve.js';
@@ -27,6 +28,7 @@ async function liveInstances(options) {
 async function restartInstances(options, ctx) {
   const restarted = [];
   const skipped = [];
+  const failed = [];
   for (const entry of await liveInstances(options)) {
     if (!isCliManaged(entry.launchMode)) {
       skipped.push({ port: entry.port, pid: entry.pid, launchMode: entry.launchMode });
@@ -35,7 +37,15 @@ async function restartInstances(options, ctx) {
     }
 
     log(`Restarting OMPChamber on port ${entry.port} (pid ${entry.pid})...`);
-    await stopInstance(entry, { timeoutMs: STOP_TIMEOUT_MS });
+    // The stop decides whether a start can happen: a server still holding the
+    // port would make the spawn fail on the port guard, which reads as the
+    // restart's own failure. Name the real cause instead.
+    const gone = await stopInstance(entry, { timeoutMs: STOP_TIMEOUT_MS });
+    if (!gone) {
+      warn(`OMPChamber on port ${entry.port} (pid ${entry.pid}) is still running — it was not restarted.`);
+      failed.push({ port: entry.port, pid: entry.pid });
+      continue;
+    }
     await runServe(
       {
         ...options,
@@ -50,7 +60,7 @@ async function restartInstances(options, ctx) {
     );
     restarted.push(entry.port);
   }
-  return { restarted, skipped };
+  return { restarted, skipped, failed };
 }
 
 async function runCheck(pkgRoot, json) {
@@ -100,11 +110,11 @@ export async function run(options, ctx) {
     // Restarting prints through the serve command; silence it so stdout stays
     // one JSON document.
     if (result.success && result.updated && shouldRestart) configure({ json: false, quiet: true });
-    const { restarted, skipped } = result.success && result.updated && shouldRestart
+    const { restarted, skipped, failed } = result.success && result.updated && shouldRestart
       ? await restartInstances(options, ctx)
-      : { restarted: [], skipped: [] };
-    printJson({ ...result, restarted, skipped });
-    if (!result.success) process.exitCode = 1;
+      : { restarted: [], skipped: [], failed: [] };
+    printJson({ ...result, restarted, skipped, failed });
+    if (!result.success || failed.length > 0) process.exitCode = 1;
     return;
   }
 
@@ -122,8 +132,9 @@ export async function run(options, ctx) {
     return;
   }
 
-  const { restarted, skipped } = await restartInstances(options, ctx);
+  const { restarted, skipped, failed } = await restartInstances(options, ctx);
   if (restarted.length === 0 && skipped.length === 0) {
     log('No running instance to restart.');
   }
+  if (failed.length > 0) process.exitCode = 1;
 }

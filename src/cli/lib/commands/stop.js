@@ -9,9 +9,10 @@
 // explicit forms that do end one — naming an instance is a deliberate call,
 // not a default.
 
-import { listLiveInstances, findLiveInstance, stopInstance } from '@/cli/lib/runtime.js';
+import { listLiveInstances, findLiveInstance } from '@/cli/lib/runtime.js';
+import { stopInstance } from '@/cli/lib/stop-instance.js';
 import { STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
-import { ok, warn, log, printJson, isJson, isQuiet } from '@/cli/lib/output.js';
+import { ok, warn, error, log, printJson, isJson, isQuiet } from '@/cli/lib/output.js';
 import { unmanagedReason } from '@/server/lib/lifecycle/launch-mode';
 import { partitionStopTargets } from '@/cli/lib/stop-scope.js';
 
@@ -60,6 +61,7 @@ export async function run(options) {
   }
 
   const stopped = [];
+  let failures = 0;
   for (const entry of targets) {
     const gone = await stopInstance(entry, { timeoutMs: STOP_TIMEOUT_MS });
     stopped.push({ port: entry.port, pid: entry.pid, stopped: gone });
@@ -67,9 +69,27 @@ export async function run(options) {
     if (gone) {
       ok(`Stopped OMPChamber on port ${entry.port} (pid ${entry.pid}).`);
     } else {
-      warn(`OMPChamber on port ${entry.port} (pid ${entry.pid}) did not exit cleanly.`);
+      // A failure the caller must be able to see: the instance is still
+      // serving, its record is still on disk (so the next `status` finds it),
+      // and this command's exit code says the stop did not happen. Verified
+      // before the fix: this branch was unreachable on Windows, because
+      // `stopInstance` answered `true` for a process it never signalled.
+      failures += 1;
+      warn(`OMPChamber on port ${entry.port} (pid ${entry.pid}) is still running — the stop did not take.`);
     }
   }
 
-  if (json) printJson({ stopped, skipped: skippedReport });
+  if (json) {
+    printJson({ stopped, skipped: skippedReport });
+    if (failures > 0) process.exitCode = 1;
+    return;
+  }
+
+  if (failures > 0) {
+    error(
+      `Could not stop ${failures} instance${failures === 1 ? '' : 's'}.`
+      + ` The instance record is kept, so \`ompchamber status\` still reports it.`,
+    );
+    process.exitCode = 1;
+  }
 }
