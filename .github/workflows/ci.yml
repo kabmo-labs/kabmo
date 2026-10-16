@@ -15,8 +15,11 @@ name: CI
 # `needs:` a job in another file — and a release that merely re-ran the commands
 # would be a second copy that can drift from this one.
 #
-# The caller job is named `Gates` so the check that appears on a commit, and the
-# one branch protection would require, is the same name it has always been.
+# The caller job is named `Gates`, but the check a commit receives is
+# `Gates / Checks` and `Gates / Settings schema` — a reusable workflow's checks
+# are namespaced by the CALLER's job name. This repository's `main` ruleset
+# requires no status checks, so the rename is inert here; see `gates.yml` for the
+# measurement and what a repository with required checks would have to do.
 #
 # Nothing here is a release: no tag, no version, no changelog. `release.yml` owns
 # that, and it runs the same reusable workflow because a gate that only ever ran on

@@ -12,9 +12,17 @@ name: Gates
 # distinguished from "no run exists"), and a release that reads a red main as a
 # missing run is exactly the failure this shape prevents.
 #
-# A reusable workflow is called by a job, so the caller names the check: the
-# caller job's `name:` is what appears as the status check (and as a `needs:`
-# target), which is why `ci.yml`'s job is still named `Gates`.
+# A reusable workflow is called by a job, and the check a caller reports is
+# `<caller job name> / <callee job name>` — measured on this repository: the
+# single job `Gates` in `ci.yml` now reports `Gates / Checks` and
+# `Gates / Settings schema`, where it used to report `Gates` and
+# `Settings schema`. That is a RENAME of the check, and it is safe here only
+# because this repository's `main` ruleset requires no status checks (verified:
+# its rules are `deletion` and `non_fast_forward`). A repository whose branch
+# protection DID require those names would need the ruleset updated in the same
+# change, or every pull request would wait forever on a check that no longer
+# reports. Nothing can prevent the rename — the callee's job name is not
+# configurable from the caller — so it is a fact to plan around, not a bug.
 #
 # Nothing here reads a secret, and nothing here writes to the repository: every
 # step is a read of the checked-out commit. That is what makes it safe to call
