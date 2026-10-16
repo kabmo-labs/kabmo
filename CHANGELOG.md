@@ -5,6 +5,31 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.17.0](https://github.com/rajebdev/ompchamber/compare/v4.16.1...v4.17.0) — 2026-10-16
+
+### Added
+
+* **composer:** add a stretch control that goes full screen on a phone ([7dbf8b2](https://github.com/rajebdev/ompchamber/commit/7dbf8b24196a2b6ba1393dccc8e7da9826272c38))
+* **editor:** remember each tab's scroll offset per surface ([f291135](https://github.com/rajebdev/ompchamber/commit/f291135623ac893cfcf47e7f24dcf8faf3f42cc0))
+* **git:** add a repository management modal beside the repo dropdown ([09ba6bf](https://github.com/rajebdev/ompchamber/commit/09ba6bf56f1e6537ea58f575ca522f7daba000cd))
+* **marketplace:** add the command-runner plugin with 14 toolchains and custom commands ([665b8fc](https://github.com/rajebdev/ompchamber/commit/665b8fcdc10d015f84006f3869472d3393ec743b))
+* **panels:** bundled plugin auto-sync and git-plugin update detection ([58b9a48](https://github.com/rajebdev/ompchamber/commit/58b9a483e531d509451f8786feae030dcc20a5f8))
+* **sidebar:** promote the phone's archive toggle to its own toolbar button ([69b412c](https://github.com/rajebdev/ompchamber/commit/69b412ce0bcaa99ed8bf786c216edd35aac5585e))
+
+### Changed
+
+* **composer:** restore the stretch-control note dropped by a concurrent commit ([3deff78](https://github.com/rajebdev/ompchamber/commit/3deff781484e2b271aafaec3923255feb6a7761f))
+* **marketplace:** document the command-runner plugin and reconcile its claims ([2f7cd86](https://github.com/rajebdev/ompchamber/commit/2f7cd86c8a44a6c93f17b0fa20e1e6dca960f676))
+* **scrollbars:** fade every bar from one listener, unify size and colour ([79c4a51](https://github.com/rajebdev/ompchamber/commit/79c4a51e56a24e328382b93936bd0607b9e7edc6)), closes [#141310](https://github.com/rajebdev/ompchamber/issues/141310) [#EDECEE](https://github.com/rajebdev/ompchamber/issues/EDECEE)
+
+### Fixed
+
+* **chat:** honour the composer's stored send and steering keybindings ([54802d4](https://github.com/rajebdev/ompchamber/commit/54802d4821c8812f305f0ad6e593aa8600fb95af))
+* **chat:** make the jump rail clickable and land its jump ([4b2915a](https://github.com/rajebdev/ompchamber/commit/4b2915a6bdb36bffa9443f9fe41b81ec0f4c5b11)), closes [#1](https://github.com/rajebdev/ompchamber/issues/1)
+* **markdown:** wrap rendered tables in their own scroll container ([1e6f16b](https://github.com/rajebdev/ompchamber/commit/1e6f16b7db161b37939c55381b99cc0f9f19329c))
+* **search:** keep symbol queries working and report rg failures ([4b4e820](https://github.com/rajebdev/ompchamber/commit/4b4e8203d94dab6c9eb5f67aae896eef66c71128))
+* **sidebar:** own a new chat's row in a client store, not the URL ([7bb8b20](https://github.com/rajebdev/ompchamber/commit/7bb8b200a58f838d2c866497552fa38e3c966036))
+
 ## [4.16.1](https://github.com/rajebdev/ompchamber/compare/v4.16.0...v4.16.1) — 2026-10-15
 
 ### Fixed
