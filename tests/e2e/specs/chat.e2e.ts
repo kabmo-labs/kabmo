@@ -120,4 +120,76 @@ test.describe('chat', () => {
 
     workspace.dispose();
   });
+
+  /**
+   * The run footer must never paint over a row that carries no answer.
+   *
+   * `resolveRunFooters(messages, isGenerating)` withholds the footer while the
+   * run streams, and the flag it is handed is `timelineRunning` — the server's
+   * `stream` row. That row reaches the client over the `sidebar:status` topic a
+   * beat AFTER the send arms the optimistic user + AI-placeholder pair, so for
+   * ~120-250 ms a real session reported `isGenerating: false` and the run looked
+   * settled: a model/duration footer landed on the EMPTY placeholder row and was
+   * withdrawn the moment the row arrived. That is the footer that "appears for an
+   * instant" on every prompt.
+   *
+   * The assertion is the reader's own: no footer is ever attached to a row whose
+   * text is blank. A final-state check cannot see it — the settled transcript is
+   * identical either way — so the DOM is sampled across the whole run.
+   */
+  test('never paints the run footer over an empty row while a prompt starts', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-chat-footer');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-chat-footer').first()).toBeVisible();
+
+    // Record the owner row of every footer the DOM ever shows, with that row's
+    // text at that instant. Sampled per animation frame (a flash shorter than a
+    // task's own duration would slip past a MutationObserver alone) and once
+    // more from the observer, so a paint cannot be missed between frames.
+    await page.evaluate(() => {
+      const holder = window as unknown as Record<string, unknown>;
+      const seen: Array<{ id: string; text: string }> = [];
+      holder.__footerRows = seen;
+      const sample = () => {
+        for (const button of document.querySelectorAll('[aria-label="Retry response"]')) {
+          const wrapper = button.closest('div.mt-2') ?? button.parentElement;
+          const row = wrapper?.previousElementSibling as HTMLElement | null;
+          seen.push({ id: row?.id ?? '', text: (row?.textContent ?? '').trim() });
+        }
+      };
+      sample();
+      let running = true;
+      const tick = () => {
+        if (!running) return;
+        sample();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      holder.__stopSampling = () => { running = false; };
+    });
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeVisible();
+    await input.fill('delay:600 footer flash probe');
+    await input.press('Enter');
+
+    // Wait for the run to settle, so the sampling covers the dispatch window,
+    // the stream and the settle.
+    await expect(page.getByText('Response to: delay:600 footer flash probe').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/thinking/i)).toHaveCount(0, { timeout: 30_000 });
+    await page.evaluate(() => (window as unknown as Record<string, () => void>).__stopSampling?.());
+
+    const samples = await page.evaluate(() => (window as unknown as Record<string, Array<{ id: string; text: string }>>).__footerRows ?? []);
+    // The footer does render once the run settles — otherwise this spec would
+    // pass on a broken timeline that never draws one.
+    expect(samples.length).toBeGreaterThan(0);
+    // ...and never over a row with no answer in it. The optimistic placeholder
+    // row is exactly that: an `id` with an empty body.
+    const blank = samples.filter((sample) => sample.text.length === 0);
+    expect(blank, `footer painted over a blank row: ${JSON.stringify(blank)}`).toEqual([]);
+
+    workspace.dispose();
+  });
 });

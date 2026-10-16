@@ -5,6 +5,7 @@ import { useOmpAgent } from '@/client/hooks/chat/omp';
 import { useChatTimelineQueue } from '@/client/hooks/chat/timeline/queue';
 import { useExtensionDialogQueue } from '@/client/hooks/chat/timeline/extension-dialog';
 import { useChatTimelineScroll } from '@/client/hooks/chat/timeline/scroll';
+import { useGeneratingState } from '@/client/hooks/chat/timeline/generating';
 import { useTimelineAutoScroll } from '@/client/hooks/chat/timeline/auto-scroll';
 import { useChatTimelineActions } from '@/client/hooks/chat/timeline/actions';
 import { useChatTimelineSend } from '@/client/hooks/chat/timeline/send';
@@ -69,34 +70,20 @@ export function useChatTimeline({
     enabled: !isPendingSession,
   });
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const isGeneratingRef = useRef(false);
-  // True only for a run THIS PAGE dispatched: the mount probe that resumes a
-  // live run's generating UI sets `isGenerating` too, so reading that as
-  // ownership discarded the transcript of every session opened mid-stream.
-  const ownRunRef = useRef(false);
+  const {
+    isGenerating,
+    isGeneratingRef,
+    ownRun,
+    ownRunRef,
+    setGenerating,
+    generatingVerb,
+    setGeneratingVerb,
+  } = useGeneratingState();
   const localMessagesRef = useRef<ChatMessageData[]>([]);
   localMessagesRef.current = localMessages;
-  const [generatingVerb, setGeneratingVerb] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
-  // Stable identity is load-bearing: this is a dependency of the session-load
-  // effect, which re-fetches history and replaces the timeline. A fresh
-  // function per render made that effect re-run every render, and its
-  // setLocalMessages(fetched) then re-rendered again — an unbounded fetch loop.
-  //
-  // `owned` marks a run THIS PAGE dispatched, which lets a committed history
-  // fetch stand down while it streams. Only the SEND path passes it: every
-  // other `setGenerating(true)` (a mount probe resuming a live run, an adopted
-  // stream) must leave ownership alone, or a session opened mid-run loses its
-  // whole transcript. Settling releases it.
-  const setGenerating = useCallback((v: boolean, owned = false) => {
-    isGeneratingRef.current = v;
-    if (!v) ownRunRef.current = false;
-    else if (owned) ownRunRef.current = true;
-    setIsGenerating(v);
-  }, []);
   // Armed by Stop so a stopped run does NOT trigger the next queued item
   // (stop-all semantics); disarmed by any explicit send.
   const stopHoldRef = useRef(false);
@@ -114,14 +101,27 @@ export function useChatTimeline({
   // only a UUID routes through the live agent bridge.
   const isOmpSession = Boolean(sessionId) && !String(sessionId).startsWith('new-') && Number.isNaN(Number(sessionId));
 
-  // One "a run is in flight" state for the whole chat, and it comes from the
+  // One "a run is in flight" state for the whole chat, and its base is the
   // SERVER: the `stream` row written at prompt dispatch, published on the
   // `sidebar:status` topic the sidebar's spinner is drawn from — so no consumer
   // of this flag (indicator, streaming row, withheld run footer, queue-vs-send,
-  // Stop) can disagree with the sidebar. The one exception is a run the server
-  // cannot NAME yet: a pending `new-…` chat has no omp id until the spawn
-  // answers, so no row can carry it. `isChatRunning` owns that rule.
-  const timelineRunning = isChatRunning(streamStatusMap, sessionId, isPendingSession && isGenerating);
+  // Stop) can disagree with the sidebar.
+  //
+  // Two windows the row cannot cover, and BOTH must be reported or a run reads
+  // as already settled while it is still starting: (1) a pending `new-…` chat
+  // has no omp id until the spawn answers, so no row can ever carry it; (2) a
+  // run THIS PAGE dispatched, in the beat between the send arming the optimistic
+  // rows and the row reaching this client over the topic — measured ~120-250 ms,
+  // and the reason the run footer "appeared for an instant" on every prompt:
+  // handed `isGenerating: false` for that window, `resolveRunFooters` settled the
+  // run and painted a model/duration footer over the EMPTY placeholder row, then
+  // withdrew it when the row arrived.
+  //
+  // The second term is `ownRun` — armed by the SEND path alone, released by the
+  // same settle paths as the run — NOT the raw local flag: an ADOPTED run (the
+  // mount probe resuming a live run's UI) leaves it alone, so a run this page did
+  // not start is still reported by the server row and never by client state.
+  const timelineRunning = isChatRunning(streamStatusMap, sessionId, ownRun);
 
   const aiPlaceholderIdRef = useRef<string | null>(null);
 
