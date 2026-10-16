@@ -157,9 +157,9 @@ describe('installScrollbarActivity', () => {
     expect(jest.getTimerCount()).toBe(1);
   });
 
-  test('the idle window is ten seconds', () => {
+  test('the idle window is five seconds', () => {
     // The user-facing number, stated once: a change here is a deliberate
     // change to how long a bar lingers, not a tuning tweak.
-    expect(SCROLLBAR_IDLE_MS).toBe(10_000);
+    expect(SCROLLBAR_IDLE_MS).toBe(5_000);
   });
 });

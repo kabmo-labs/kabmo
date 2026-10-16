@@ -44,7 +44,7 @@
 export const SCROLLBAR_ACTIVE_ATTRIBUTE = 'data-scrollbar-active';
 
 /** How long a container keeps its thumb after the user stops scrolling it. */
-export const SCROLLBAR_IDLE_MS = 10_000;
+export const SCROLLBAR_IDLE_MS = 5_000;
 
 /**
  * Documents already wired, on `globalThis` rather than in a module binding.
