@@ -13,6 +13,21 @@ name: Publish
 # `tsconfig.json` (Bun resolves the `@/` alias from the package's own tsconfig).
 # See the `files` field in package.json. `dist/` is gitignored, so the build step
 # below is what puts it in the tarball.
+#
+# THE GATES AND THE BROWSER SPECS RUN HERE, against the tag being published, and
+# the publish job `needs:` them. `release.yml` already gated the commit it tagged,
+# so this looks redundant — it is not, and both halves are load-bearing:
+#
+#   - A tag can be pushed by hand, or a release published from a commit that
+#     never went through `release.yml`. Nothing else would have gated it.
+#   - `release.yml` gates the commit it starts from; the tag it cuts is a LATER
+#     commit (the release commit, written by the bot and pushed with the tag), so
+#     the exact bytes npm receives have never been checked by anything.
+#   - `workflow_dispatch` exists to RE-RUN a failed publish, and a re-run that
+#     skips the gates publishes on whatever the branch says today.
+#
+# The gates are called with `ref:` set to the tag, which is what makes them run
+# against the published commit rather than `main`'s tip.
 
 on:
   release:
@@ -34,8 +49,24 @@ permissions:
   contents: read
 
 jobs:
+  # The four gates plus the generated settings schema, on the tag.
+  gates:
+    name: Gates
+    uses: ./.github/workflows/gates.yml
+    with:
+      ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
+
+  # The browser layer, on the same ref. A `release: published` run is not a push
+  # to `main`, so no `e2e.yml` run exists for this event to wait on at all.
+  e2e:
+    name: E2E specs
+    uses: ./.github/workflows/e2e-specs.yml
+    with:
+      ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
+
   publish:
     name: Publish to npm
+    needs: [gates, e2e]
     runs-on: ubuntu-latest
     # The npm token lives as an environment secret on `NPM_TOKEN` (the name is
     # the secret's, not a deployment target). Environment scope rather than a
@@ -81,12 +112,7 @@ jobs:
           fi
           echo "Publishing ompchamber $version from tag $tag"
 
-      - name: Typecheck
-        run: bun run lint
-
-      - name: Test
-        run: bun test
-
+      # Typecheck and tests are the `gates` job above, on this same ref.
       - name: Build the client bundle
         # `scripts/build-client.ts` bundles the server plus the HTML route's
         # assets into dist/client. `serve --prod` runs that bundle, so the build

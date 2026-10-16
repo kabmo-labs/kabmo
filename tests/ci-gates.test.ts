@@ -1,8 +1,9 @@
 /**
  * The release pipeline's gate contract, asserted.
  *
- * `release.yml` can tag and publish, so it must run the gates and the browser
- * specs and must not reach a release job without them. That is a fact about YAML, and the failure mode is
+ * `release.yml`, `publish.yml` and `publish-plugins.yml` can tag and publish, so
+ * each of them must run the gates and the browser specs and must not reach a
+ * release job without them. That is a fact about YAML, and the failure mode is
  * silent: a job added without `needs`, a renamed reusable workflow, an input
  * spelled one way in the caller and another in the callee — none of them is
  * visible until the day a red `main` gets tagged.
@@ -24,7 +25,7 @@ const GATES = './.github/workflows/gates.yml';
 const E2E = './.github/workflows/e2e-specs.yml';
 
 /** Every workflow that can tag or publish, and therefore must be gated. */
-const RELEASING = ['release.yml'];
+const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
 
 /** The trigger files, which call the reusable workflows but release nothing. */
 const TRIGGERS: Record<string, string> = {
@@ -161,4 +162,29 @@ describe('the gate contract', () => {
     expect(doc.jobs.app.needs).toContain('packages');
   });
 
+  test('nothing publishes before the gates in a publish workflow', async () => {
+    for (const [file, job] of [
+      ['publish.yml', 'publish'],
+      ['publish-plugins.yml', 'publish'],
+    ] as const) {
+      const doc = await load(file);
+      const needs = doc.jobs[job].needs ?? [];
+      expect(needs, `${file}:${job} must need both gate jobs`).toContain('gates');
+      expect(needs, `${file}:${job} must need both gate jobs`).toContain('e2e');
+    }
+  });
+
+  test('the publish workflow gates the tag it publishes, not the branch', async () => {
+    // A publish is dispatched with a TAG. Gating it against `main`'s tip would
+    // verify a different commit than the one about to reach npm, and it is a
+    // silent mistake: the gates pass, and the wrong tree was checked.
+    const doc = await load('publish.yml');
+    const checkout = (doc.jobs.publish.steps as Array<any>).find((step) => step.uses?.startsWith('actions/checkout'));
+    expect(checkout?.with?.ref).toBeTruthy();
+    for (const id of ['gates', 'e2e']) {
+      // The SAME expression as the publish job's own checkout, so the ref that
+      // is verified and the ref that is published cannot drift apart.
+      expect(doc.jobs[id].with?.ref, `${id} gates a different ref than the publish checkout`).toBe(checkout.with.ref);
+    }
+  });
 });

@@ -28,6 +28,17 @@ name: Publish Plugin Packages
 # on BOTH @ompchamber packages, or an automation token. Bun reads it from
 # NPM_CONFIG_TOKEN, so the token never lands in a file.
 #
+# THE GATES AND THE BROWSER SPECS RUN HERE, and the publish job `needs:` them.
+# A tag push is a bare `git push` of a ref nobody gated: `release.yml` gates the
+# commit it tags, but these tags are pushed BY `release.yml` (or by hand, which
+# is the documented manual path) onto a commit whose browser specs may never
+# have run — `e2e.yml` skips them on a pull request without the `e2e` label. The
+# same two reusable workflows the pull request runs are called here against
+# `github.sha`, the exact commit about to be published, so a library cannot
+# reach npm on a commit the browser layer never saw. `workflow_dispatch` — the
+# re-run path — is gated too, because a re-run that skipped them would publish
+# whatever the branch says today.
+#
 # Both packages are published PUBLIC: a scoped package defaults to restricted,
 # which would make the SDK uninstallable by anyone but the owner. That is set in
 # each package.json's `publishConfig.access`, not as a flag here, so a manual
@@ -69,8 +80,22 @@ permissions:
   contents: read
 
 jobs:
+  # The four gates plus the generated settings schema, on the commit this run
+  # publishes. `release.yml` already gated the commit it started from; these
+  # tags land on a LATER commit (the release commit) that no gate has seen, and
+  # a hand-pushed tag was never gated at all.
+  gates:
+    name: Gates
+    uses: ./.github/workflows/gates.yml
+
+  # The browser layer, on the same commit.
+  e2e:
+    name: E2E specs
+    uses: ./.github/workflows/e2e-specs.yml
+
   publish:
     name: Publish to npm
+    needs: [gates, e2e]
     runs-on: ubuntu-latest
     environment: npm
     steps:
@@ -100,14 +125,10 @@ jobs:
             exit 1
           }
 
-      # The gates the app runs, because these packages are part of the same tree
-      # and the same typecheck: a plugin author installs what this publishes, so a
-      # package that does not typecheck must not reach the registry.
-      - name: Typecheck
-        run: bun run lint
-
-      - name: Test
-        run: bun test
+      # Typecheck and tests are the `gates` job above — the same reusable
+      # workflow the pull request runs, on this same commit. A second copy here
+      # is what drifts: it was already the same two commands, so the copy bought
+      # nothing and would have gone stale the first time a gate was added.
 
       # Which packages this run publishes, in the order they must go up.
       #
