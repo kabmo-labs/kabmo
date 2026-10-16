@@ -37,6 +37,8 @@ interface SearchPanelBodyProps {
   isSearching: boolean;
   /** The server stopped the run at its cap; `results` is not the whole answer. */
   truncated: boolean;
+  /** rg's own refusal — a regex it could not compile, or a pattern it read as a flag. */
+  error: string | null;
   onOpenFile?: (file: unknown) => void;
   handleReplace: (file?: string) => void;
   replaceBusy: boolean;
@@ -78,6 +80,7 @@ export function SearchPanelBody({
   results,
   isSearching,
   truncated,
+  error,
   onOpenFile,
   handleReplace,
   replaceBusy,
@@ -219,7 +222,22 @@ export function SearchPanelBody({
         )}
       </div>
 
-      {isSearching && results.length === 0 ? (
+      {error && results.length === 0 ? (
+        // rg refused the query. Saying so is the whole point: this state used to
+        // render as "No results found.", which reports a broken regex as an
+        // empty workspace.
+        <div className="flex-1 px-3 py-3" role="alert">
+          <div className="rounded border border-error/30 bg-error/5 px-2.5 py-2">
+            <div className="text-[11px] font-semibold text-error">Search failed</div>
+            <div className="mt-1 whitespace-pre-wrap break-words font-mono text-[10.5px] text-ink/70">{error}</div>
+            {useRegex && (
+              <div className="mt-1 text-[10.5px] text-ink/50">
+                Regex is on — escape metacharacters such as <code className="font-mono">( ) [ ] * ? +</code> or turn it off to search literally.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : isSearching && results.length === 0 ? (
         <div className="flex-1 text-ink/40 italic text-center py-4">Searching...</div>
       ) : query.trim().length <= 2 ? (
         <div className="flex-1 text-ink/40 italic text-center py-4">Type at least 3 characters to search.</div>
@@ -227,6 +245,11 @@ export function SearchPanelBody({
         <div className="flex-1 text-ink/40 italic text-center py-4">No results found.</div>
       ) : (
         <>
+          {error && (
+            <div className="px-3 pt-2 text-[10.5px] text-error" role="alert">
+              Search failed: <span className="font-mono">{error}</span>
+            </div>
+          )}
           {isSearching && <div className="px-3 pt-2 text-ink/40 italic">Searching…</div>}
           {truncated && (
             // The run stopped at the server's cap, so the list below is not the

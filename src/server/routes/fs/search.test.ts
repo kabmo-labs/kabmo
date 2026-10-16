@@ -5,7 +5,8 @@
 
 /**
  * The search route's line parser: what a hit's text and its highlight ranges
- * become by the time the panel sees them.
+ * become by the time the panel sees them — plus the argument vector the route
+ * hands ripgrep, which is where a symbol query used to break.
  *
  * Two rules are asserted here because both fail silently on screen — the row
  * paints the wrong word rather than erroring:
@@ -14,11 +15,136 @@
  *   character before the match shifts every range after it.
  * - `content` is trimmed before it travels, so the ranges must be shifted onto
  *   the trimmed text rather than left as offsets into the raw line.
+ *
+ * The `buildArgs` block is the regression net for a third: rg's positional
+ * parser reads a `-`-leading token as a FLAG, so `-webkit-transform` searched
+ * for `bkit-transform`, `--help` printed rg's help, and `->` exited 2. The
+ * assertions are on the ARGUMENT VECTOR and on a real run, because the failure
+ * mode was a plausible-looking empty result rather than an exception.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { parseRgLine } from '@/server/routes/fs/search';
+import { buildArgs, parseRgLine } from '@/server/routes/fs/search';
+import { runRipgrep } from '@/server/lib/fs/ripgrep';
+
+const tempDirs: string[] = [];
+
+function tempDir(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-search-'));
+  tempDirs.push(dir);
+  return dir;
+}
+
+/** Run `buildArgs`' output the way the route does, collecting match frames. */
+async function runQuery(dir: string, q: string, opts: { useRegex?: boolean; wholeWord?: boolean; matchCase?: boolean; includeFiles?: string } = {}) {
+  let stdout = '';
+  let stderr = '';
+  const decoder = new TextDecoder();
+  const code = await runRipgrep(
+    buildArgs(q, opts.matchCase ?? false, opts.wholeWord ?? false, opts.useRegex ?? false, opts.includeFiles ?? ''),
+    dir,
+    {
+      onStdout(chunk) {
+        stdout += decoder.decode(chunk, { stream: true });
+      },
+      onStderr(chunk) {
+        stderr += decoder.decode(chunk, { stream: true });
+      },
+    },
+  );
+  const matches = stdout.split('\n').filter((line) => line.includes('"type":"match"'));
+  return { code, matches, stderr, jsonOnly: stdout.trim() === '' || stdout.trimStart().startsWith('{') };
+}
+
+afterAll(() => {
+  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+describe('buildArgs', () => {
+  test('the pattern rides the --regexp flag, never the positional slot', () => {
+    const args = buildArgs('useFoo(', false, false, false, '');
+    expect(args).toContain('--regexp=useFoo(');
+    // The positional slot is what let rg read a `-`-leading query as a flag.
+    expect(args).not.toContain('useFoo(');
+    expect(args.at(-1)).toBe('.');
+  });
+
+  test('literal mode adds -F; regex mode adds neither -F nor -e', () => {
+    expect(buildArgs('x', false, false, false, '')).toContain('-F');
+    const regex = buildArgs('x', false, false, true, '');
+    expect(regex).not.toContain('-F');
+    expect(regex).not.toContain('-e');
+    expect(regex).toContain('--regexp=x');
+  });
+
+  test('the flags still travel', () => {
+    expect(buildArgs('x', true, false, false, '')).not.toContain('-i');
+    expect(buildArgs('x', false, false, false, '')).toContain('-i');
+    expect(buildArgs('x', false, true, false, '')).toContain('-w');
+  });
+
+  test('includeFiles becomes one glob per comma-separated entry, trimmed', () => {
+    const base = buildArgs('x', false, false, false, '');
+    const args = buildArgs('x', false, false, false, '*.ts, src/*.md ,');
+    // Three exclusion globs ride every search; the two include entries add two.
+    expect(args.filter((a) => a === '--glob')).toHaveLength(base.filter((a) => a === '--glob').length + 2);
+    expect(args).toContain('*.ts');
+    expect(args).toContain('src/*.md');
+  });
+});
+
+describe('dash-leading queries reach ripgrep as a pattern', () => {
+  const dir = tempDir();
+  fs.writeFileSync(
+    path.join(dir, 'code.ts'),
+    ['const webkit = "-webkit-transform: none;",', 'const help = "--help flag",', 'const arrow = (a) -> b;', 'const flag = "-i literal";', ''].join('\n'),
+  );
+
+  for (const q of ['-webkit-transform', '--help', '->', '-i']) {
+    test(`a literal search for ${JSON.stringify(q)} returns its line`, async () => {
+      const run = await runQuery(dir, q);
+      // Exit 2 is rg refusing the vector; a non-JSON stdout is rg printing help
+      // or its version instead of match frames.
+      expect(run.jsonOnly).toBe(true);
+      expect(run.code).not.toBe(2);
+      expect(run.matches.length).toBeGreaterThan(0);
+    });
+  }
+
+  test('a query that is only dashes still searches literally', async () => {
+    const dashDir = tempDir();
+    fs.writeFileSync(path.join(dashDir, 'd.txt'), 'a - b\nc -- d\n');
+    const single = await runQuery(dashDir, '-');
+    expect(single.code).not.toBe(2);
+    expect(single.matches.length).toBeGreaterThan(0);
+  });
+});
+
+describe('symbol queries are literal by default', () => {
+  const dir = tempDir();
+  fs.writeFileSync(path.join(dir, 'code.ts'), ['const x = useFoo();', 'const y = arr[i];', 'const p = a ** b;', 'const o = obj?.field;', 'class Foo(Bar) {}', ''].join('\n'));
+
+  for (const q of ['useFoo(', 'arr[i]', '**', '?.', 'Foo(Bar)']) {
+    test(`${JSON.stringify(q)} matches without being read as a regex`, async () => {
+      const run = await runQuery(dir, q);
+      // Exit 2 here would be rg's "regex parse error" — the shape the panel
+      // used to render as "No results found.".
+      expect(run.code).not.toBe(2);
+      expect(run.jsonOnly).toBe(true);
+      expect(run.matches.length).toBeGreaterThan(0);
+    });
+  }
+
+  test('regex mode still refuses an unescaped metacharacter, quoting rg verbatim', async () => {
+    const run = await runQuery(dir, 'useFoo(', { useRegex: true });
+    expect(run.code).toBe(2);
+    expect(run.stderr).toContain('regex parse error');
+  });
+});
 
 /** One rg match frame, as `rg --json` emits it. */
 function frame(lineText: string, submatches: { start: number; end: number }[]) {

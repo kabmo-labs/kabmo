@@ -27,7 +27,7 @@ export function SearchPanel({ className = '', enabled = true, rootPath, onOpenFi
   // The tree being searched: the workspace root plus the selected repo. Every
   // result is relative to it, so a switch must not keep the previous tree's
   // hits on screen — `useSearchStream` tags them with this scope.
-  const { results, isSearching, truncated, start: startSearch } = useSearchStream(`${rootPath ?? ''}\u0000${activeRepo}`);
+  const { results, isSearching, truncated, error, start: startSearch } = useSearchStream(`${rootPath ?? ''}\u0000${activeRepo}`);
 
   useOnClickOutside(menuRef, () => setShowMenu(false));
 
@@ -123,6 +123,7 @@ export function SearchPanel({ className = '', enabled = true, rootPath, onOpenFi
       results={results}
       isSearching={isSearching}
       truncated={truncated}
+      error={error}
       onOpenFile={onOpenFile}
       handleReplace={handleReplace}
       replaceBusy={replaceFetcher.state !== 'idle'}

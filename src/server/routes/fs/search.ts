@@ -69,16 +69,26 @@ function trimWithRanges(raw: string, submatches: RgSubmatch[] | undefined): { co
  * Builds the rg argument vector from the search form fields. Flag semantics
  * match the previous `grep -r` call: literal search by default, `-e` opts into
  * regex, `-w` whole word, `-i` case-insensitive.
+ *
+ * The pattern travels as `--regexp=<q>`, never as the bare positional. rg's
+ * positional parser reads a token starting with `-` as a FLAG, so the queries a
+ * developer most often searches for by hand were the ones that broke, and they
+ * broke silently: `-webkit-transform` was taken as flags `-w`/`-e`/`-b`… with
+ * `bkit-transform` left as the pattern (exit 1, "No results found"), `--help`
+ * printed rg's help to stdout (exit 0, no match frames), and `->` exited 2 with
+ * "unrecognized flag". Attaching the value to the flag removes the positional
+ * slot entirely, so no query can be mistaken for an option. `-F` keeps literal
+ * mode; `--regexp` is rg's long spelling of `-e`, so regex mode is unchanged.
  */
-function buildArgs(q: string, matchCase: boolean, wholeWord: boolean, useRegex: boolean, includeFiles: string): string[] {
+export function buildArgs(q: string, matchCase: boolean, wholeWord: boolean, useRegex: boolean, includeFiles: string): string[] {
   const args: string[] = ['--json', '--glob', '!node_modules/**', '--glob', '!.git/**', '--glob', '!dist/**'];
   if (!matchCase) args.push('-i');
   if (wholeWord) args.push('-w');
-  args.push(useRegex ? '-e' : '-F');
+  if (!useRegex) args.push('-F');
   if (includeFiles) {
     includeFiles.split(',').map(p => p.trim()).filter(Boolean).forEach(p => args.push('--glob', p));
   }
-  args.push(q, '.');
+  args.push(`--regexp=${q}`, '.');
   return args;
 }
 

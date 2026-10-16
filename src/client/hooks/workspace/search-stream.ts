@@ -7,6 +7,14 @@ interface SearchStreamState {
   isSearching: boolean;
   /** The run stopped at the server's cap; `results` is not the whole answer. */
   truncated: boolean;
+  /**
+   * rg's own refusal — a regex it cannot compile, a pattern it read as a flag.
+   *
+   * It used to be dropped, so a run that exited 2 rendered as "No results
+   * found.": the user typed `useFoo(` with Regex on, rg answered `regex parse
+   * error: unclosed group`, and the panel reported the workspace as empty.
+   */
+  error: string | null;
 }
 
 /**
@@ -27,7 +35,7 @@ interface SearchStreamState {
 export function useSearchStream(scope: string): SearchStreamState & {
   start: (body: Record<string, string>) => Promise<void>;
 } {
-  const [state, setState] = useState<{ scope: string; results: SearchResultItem[]; truncated: boolean }>({ scope, results: [], truncated: false });
+  const [state, setState] = useState<{ scope: string; results: SearchResultItem[]; truncated: boolean; error: string | null }>({ scope, results: [], truncated: false, error: null });
   const [isSearching, setIsSearching] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const aliveRef = useRef(true);
@@ -49,7 +57,7 @@ export function useSearchStream(scope: string): SearchStreamState & {
     abortRef.current = controller;
     const requested = scopeRef.current;
 
-    setState({ scope: requested, results: [], truncated: false });
+    setState({ scope: requested, results: [], truncated: false, error: null });
     setIsSearching(true);
     try {
       const response = await fetch('/api/fs/search', {
@@ -75,6 +83,19 @@ export function useSearchStream(scope: string): SearchStreamState & {
               // A malformed summary leaves the flag off; the results are still shown.
             }
             setState(prev => (prev.scope === requested ? { ...prev, truncated } : prev));
+            return;
+          }
+          if (event === 'error') {
+            // rg's own message, surfaced verbatim: it names the offending
+            // character and the reason, which is the only thing that tells a
+            // failed regex apart from a workspace with no hits.
+            let message = 'Search failed';
+            try {
+              message = JSON.parse(data)?.error || message;
+            } catch {
+              // A malformed frame keeps the generic wording.
+            }
+            setState(prev => (prev.scope === requested ? { ...prev, error: message } : prev));
             return;
           }
           if (event !== 'matches') return;
@@ -106,6 +127,7 @@ export function useSearchStream(scope: string): SearchStreamState & {
     // A run in flight for another scope is not searching THIS one.
     isSearching: isSearching && state.scope === scope,
     truncated: state.scope === scope && state.truncated,
+    error: state.scope === scope ? state.error : null,
     start,
   };
 }
