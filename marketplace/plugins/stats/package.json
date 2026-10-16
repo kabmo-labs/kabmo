@@ -1,13 +1,13 @@
 {
   "name": "stats",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "CPU and RAM used by the omp stack — the chamber, every omp child, the daemons and the shells.",
   "type": "module",
   "ompchamber": {
     "id": "stats",
     "name": "Stats",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "CPU and RAM used by the omp stack — the chamber, every omp child, the daemons and the shells.",
     "app": "dist/app.js",
     "server": "dist/server.js",
