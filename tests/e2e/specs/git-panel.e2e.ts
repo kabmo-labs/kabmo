@@ -545,6 +545,161 @@ test.describe('Source Control — stash and commit', () => {
   });
 });
 
+test.describe('Source Control — commit history graph alignment', () => {
+  /**
+   * A repository with `count` commits.
+   *
+   * `bodies: true` gives every commit a multi-line body, so a row has something
+   * to expand; `bodies: false` gives one-line subjects, so a click only SELECTS.
+   *
+   * The distinction is load-bearing for the spec, not decoration. Selecting a
+   * row moves the action strip from the previous selection to the new one, so
+   * one row grows by the strip's height while another shrinks by exactly the
+   * same — a NET-ZERO change to the container's height, which is the state that
+   * used to leave every node at its pre-click `y`. A commit with a body ALSO
+   * expands on that same click, which grows the container and re-triggers the
+   * measurement by itself: a fixture of multi-line commits therefore hides the
+   * bug it is meant to catch (measured — the first version of this spec passed
+   * with the fix reverted for exactly that reason).
+   */
+  function seedHistoryRepo(name: string, count: number, options: { bodies: boolean }): SeedWorkingRepo {
+    const repo = makeRepo(name);
+    for (let i = 0; i < count; i++) {
+      writeFileSync(join(repo.path, `f${i}.txt`), `content ${i}\n`);
+      repo.git('add', '-A');
+      repo.git(
+        'commit',
+        '-q',
+        '-m',
+        `subject ${i}`,
+        ...(options.bodies ? ['-m', `body line one for ${i}\nbody line two for ${i}`] : []),
+      );
+    }
+    return repo;
+  }
+
+  /** Open the commit history modal and wait for its rows. */
+  async function openHistory(page: Page, server: HarnessServer, repo: SeedWorkingRepo): Promise<void> {
+    await openGitPanel(page, server, repo);
+    await page.getByRole('button', { name: 'Commit History', exact: true }).click();
+    await expect(page.getByRole('dialog').locator('[data-testid="commit-row"]').first()).toBeVisible();
+  }
+
+  /**
+   * The vertical distance between each row's SUBJECT LINE and its graph node.
+   *
+   * Both are read in viewport coordinates through `getBoundingClientRect`, so
+   * the comparison needs no knowledge of the scroller's own offset — which is
+   * the point: the panel computes the node position by subtracting the
+   * container rect and adding `scrollTop`, and a bug in that arithmetic is
+   * exactly what this catches.
+   *
+   * A node is matched to its row by HASH (`data-commit-node` /
+   * `data-commit-hash`), never by index: the two lists are built from the same
+   * array today, and an index match would silently pair the wrong two the day
+   * one of them filters.
+   */
+  async function nodeTitleOffsets(page: Page): Promise<Array<{ hash: string; delta: number }>> {
+    return page.getByRole('dialog').evaluate((dialog) => {
+      const rows = Array.from(dialog.querySelectorAll<HTMLElement>('[data-testid="commit-row"]'));
+      const offsets: Array<{ hash: string; delta: number }> = [];
+      for (const row of rows) {
+        const hash = row.dataset.commitHash ?? '';
+        const node = dialog.querySelector<SVGGraphicsElement>(`[data-commit-node="${hash}"] [data-commit-dot]`);
+        const title = row.querySelector<HTMLElement>('[data-commit-title]');
+        if (!node || !title) continue;
+        const nodeRect = node.getBoundingClientRect();
+        const titleRect = title.getBoundingClientRect();
+        offsets.push({
+          hash: hash.slice(0, 8),
+          delta: nodeRect.top + nodeRect.height / 2 - (titleRect.top + titleRect.height / 2),
+        });
+      }
+      return offsets;
+    });
+  }
+
+  /** Every row's node must sit on its subject line. */
+  async function expectNodesOnTitles(page: Page, context: string): Promise<void> {
+    // Let the measurement settle. The panel re-measures in a layout effect and
+    // again on the next frame, so the invariant holds within a frame or two of
+    // any change — but this assertion is about the STATE, not the timing, so it
+    // reads after the row's own transition has landed rather than racing it.
+    await page.waitForTimeout(400);
+    const offsets = await nodeTitleOffsets(page);
+    expect(offsets.length).toBeGreaterThan(4);
+    const drifted = offsets.filter((row) => Math.abs(row.delta) > 1);
+    expect(drifted, `${context}: node off its subject line — ${JSON.stringify(drifted)}`).toEqual([]);
+  }
+
+  test('a selected commit keeps its node on its own title line', async ({ harness, page }) => {
+    const server = await harness('real');
+    // ONE-LINE commits on purpose: a click then only SELECTS, which moves the
+    // action strip between rows and leaves the container's total height
+    // unchanged. With a body on every commit the same click also expands, the
+    // container grows, and the measurement re-fires by itself — see
+    // `seedHistoryRepo` for why that would hide the bug.
+    const repo = seedHistoryRepo('git-graph-select', 12, { bodies: false });
+    await openHistory(page, server, repo);
+
+    // Baseline: the first row is selected on open (the panel seeds the
+    // selection from the first commit), and every node sits on its title.
+    await expectNodesOnTitles(page, 'initial');
+
+    // Selecting MOVES the rows: the action strip renders under the newly
+    // selected row's subject line and leaves the previous one, so the rows
+    // between them shift by that strip's height. The container's total height
+    // is unchanged, which is why a container-only ResizeObserver never noticed
+    // — measured, the node for the third row sat 48.5px below its title.
+    for (const index of [3, 6, 1, 9]) {
+      await page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(index).click();
+      await expectNodesOnTitles(page, `after selecting row ${index}`);
+    }
+  });
+
+  test('an expanded commit body keeps every node on its title line', async ({ harness, page }) => {
+    const server = await harness('real');
+    const repo = seedHistoryRepo('git-graph-expand', 12, { bodies: true });
+    await openHistory(page, server, repo);
+
+    // Expanding a body is a per-row growth with no matching shrink elsewhere —
+    // a case the container observer DOES see. Pinned here because the two
+    // mechanisms (the row observer, and re-measuring on the selection change)
+    // must not be able to disagree about it.
+    //
+    // The subject is read OFF THE ROW rather than derived from the index: git
+    // logs newest-first, so `nth(4)` is not `subject 4`, and a spec that
+    // assumed the ordering would assert against a body that is not there.
+    const row = page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(4);
+    const subject = ((await row.locator('[data-commit-title]').textContent()) ?? '').trim();
+    const index = subject.replace('subject ', '');
+    expect(subject).toMatch(/^subject \d+$/);
+
+    await row.click();
+    await expect(row.getByText(`body line one for ${index}`)).toBeVisible();
+    await expectNodesOnTitles(page, 'after expanding a body');
+
+    await row.click();
+    await expect(row.getByText(`body line one for ${index}`)).toBeHidden();
+    await expectNodesOnTitles(page, 'after collapsing a body');
+  });
+
+  test('the graph view keeps its nodes on the title lines after a selection', async ({ harness, page }) => {
+    const server = await harness('real');
+    const repo = seedHistoryRepo('git-graph-mode', 12, { bodies: false });
+    await openHistory(page, server, repo);
+
+    // Graph mode draws the action strip on EVERY row (`isSelected || isGraphMode`),
+    // so the row heights there are a different shape from History's — the mode
+    // is a separate measurement, not a re-run of the same one.
+    await page.getByRole('dialog').getByTitle('Graph view').click();
+    await expectNodesOnTitles(page, 'graph mode, initial');
+
+    await page.getByRole('dialog').locator('[data-testid="commit-row"]').nth(5).click();
+    await expectNodesOnTitles(page, 'graph mode, after selecting row 5');
+  });
+});
+
 test.describe('Source Control — repository management', () => {
   /**
    * The picker of the panel actually on screen.

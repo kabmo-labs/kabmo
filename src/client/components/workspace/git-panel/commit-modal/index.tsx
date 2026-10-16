@@ -148,14 +148,49 @@ export function GitCommitModal({
     setTotalHeight(Math.max(contentH, containerRef.current.clientHeight, 600));
   }, [filteredCommits]);
 
+  /**
+   * `selectedHash` is a dependency because SELECTING a row MOVES the rows
+   * below it: the action strip renders under the selected subject line, so the
+   * row it lands on grows by that strip's height while the row that had it
+   * shrinks by exactly the same — the container's TOTAL height does not move,
+   * so the ResizeObserver below never fires and every node keeps its
+   * pre-selection `y`.
+   *
+   * Measured in the browser on a 50-commit page: with the first row selected
+   * and the third clicked, row 0 went 170.1px → 121.6px and row 2 went
+   * 152.9px → 201.4px, the total stayed put, and the node for row 1 sat
+   * 48.5px BELOW the subject line it names — the reported "point tidak lurus
+   * dengan commit title". The measurement reads live rects, so re-running it
+   * is the whole fix; the effect is layout-timed, so the re-measured node is
+   * painted in the same frame as the row that moved.
+   */
   useLayoutEffect(() => {
     measurePositions();
     const rafId = requestAnimationFrame(() => {
       measurePositions();
     });
     return () => cancelAnimationFrame(rafId);
-  }, [measurePositions, filteredCommits, fileDiffs, expandedFiles, isGraphMode]);
+  }, [measurePositions, filteredCommits, fileDiffs, expandedFiles, isGraphMode, selectedHash]);
 
+  /**
+   * Observe the container AND every row inside it.
+   *
+   * The container alone is not enough, and that is the bug this fixes. A row's
+   * box can change while the container's does not: selecting a commit renders
+   * the action strip under its subject line, so the row that gains the strip
+   * grows by exactly what the row that loses it shrinks by. The total is
+   * unchanged, no container resize is reported, and every node keeps the `y` it
+   * was measured at before the click.
+   *
+   * Measured in the browser on a 50-commit page: with the first row selected
+   * and the third clicked, row 0 went 170.1px → 121.6px and row 2 went
+   * 152.9px → 201.4px, the container total stayed put, and the node for row 1
+   * sat 48.5px BELOW the subject line it names — the reported "point tidak
+   * lurus dengan commit title". `selectedHash` in the effect's dependencies is
+   * what fixes that case immediately; observing the rows is what keeps the
+   * invariant true for the NEXT per-row change that happens to net out, rather
+   * than requiring this list to name every prop that can move a row.
+   */
   useEffect(() => {
     const el = rowsContainerRef.current;
     if (!el) return;
@@ -163,8 +198,9 @@ export function GitCommitModal({
       measurePositions();
     });
     observer.observe(el);
+    for (const row of Array.from(el.children)) observer.observe(row);
     return () => observer.disconnect();
-  }, [measurePositions]);
+  }, [measurePositions, filteredCommits]);
 
   // Lane calculations
   const laneMap = useMemo(() => computeCommitLanes(filteredCommits), [filteredCommits]);

@@ -121,7 +121,7 @@ export function GraphCanvas({
             : 'var(--theme-success)'; // Theme success variable in History mode
 
           return (
-            <g key={`node-${commit.hash}`}>
+            <g key={`node-${commit.hash}`} data-commit-node={commit.hash}>
               {/* Outer halo when active or hovered */}
               {(isSelected || isHovered) && (
                 <circle
@@ -135,8 +135,11 @@ export function GraphCanvas({
                 />
               )}
 
-              {/* Solid commit node */}
+              {/* Solid commit node. `data-commit-dot` is what a spec measures
+                  against its row's own title: the halo is a different radius,
+                  and reading "the circle at cy" off `r` would be layout detail. */}
               <circle
+                data-commit-dot=""
                 cx={cx}
                 cy={cy}
                 r={isGraphMode ? 4 : 4.5}

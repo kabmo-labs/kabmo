@@ -69,6 +69,8 @@ export function CommitRow({
   return (
     <div
       onClick={handleRowClick}
+      data-testid="commit-row"
+      data-commit-hash={commit.hash}
       className={`border-b border-ink/5 transition-colors cursor-pointer ${
         isSelected ? 'bg-ink/[0.03]' : 'hover:bg-ink/[0.015]'
       }`}
@@ -105,7 +107,16 @@ export function CommitRow({
             ref={headerRef}
             className="flex items-start gap-1.5"
           >
-            <span className="text-[13px] font-semibold text-ink leading-snug break-words flex-1 min-w-0">
+            {/* `data-commit-title` is the anchor the graph node is aligned
+                against, and it has to be on the SUBJECT: the changed-file rows
+                below carry `flex-1` spans of their own, so "the flex-1 span in
+                this row" resolves to two elements — measured, and a locator
+                that picks the first is a locator that silently measures a
+                different element the day the row is reordered. */}
+            <span
+              data-commit-title=""
+              className="text-[13px] font-semibold text-ink leading-snug break-words flex-1 min-w-0"
+            >
               {commit.message}
             </span>
             {hasBody && (
