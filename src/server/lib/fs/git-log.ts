@@ -4,7 +4,7 @@ import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
 import { isMockMode } from '@/server/mock.server';
 import { runShell, shellOk } from '@/server/lib/fs/shell';
-import { runGit } from '@/server/lib/fs/git-run';
+import { GIT_ENV, runGit } from '@/server/lib/fs/git-run';
 
 /**
  * Header/body and record separators in the `git log` format below.
@@ -191,7 +191,7 @@ export async function fetchGitCommits(
   try {
     let total = 0;
     try {
-      const countOut = await runShell('git rev-list --count HEAD', { cwd: targetDir, timeout: 5000 });
+      const countOut = await runShell('git rev-list --count HEAD', { cwd: targetDir, timeout: 5000, env: GIT_ENV });
       if (shellOk(countOut)) total = parseInt(countOut.stdout.trim(), 10) || 0;
     } catch {
       total = 0;
@@ -232,7 +232,7 @@ export async function fetchGitCommits(
 
 /** True when `HEAD` resolves to nothing — a repository with no commits yet. */
 async function hasNoCommits(targetDir: string): Promise<boolean> {
-  const out = await runShell('git rev-parse --verify HEAD', { cwd: targetDir, timeout: 5000 });
+  const out = await runShell('git rev-parse --verify HEAD', { cwd: targetDir, timeout: 5000, env: GIT_ENV });
   return !shellOk(out);
 }
 
@@ -291,15 +291,15 @@ export async function fetchFileDiff(
   }
 
   // 1. Try standard git show with pretty format patch
-  const showPatch = await runShell(`git show --pretty=format:"" --patch${ctx} "${hash}" -- "${cleanFile}"`, { cwd: targetDir, timeout: 10000 });
+  const showPatch = await runShell(`git show --pretty=format:"" --patch${ctx} "${hash}" -- "${cleanFile}"`, { cwd: targetDir, timeout: 10000, env: GIT_ENV });
   if (showPatch.stdout.trim()) return showPatch.stdout.trim();
 
   // 2. Try git diff-tree with root support
-  const diffTree = await runShell(`git diff-tree -r -p --root${ctx} "${hash}" -- "${cleanFile}"`, { cwd: targetDir, timeout: 10000 });
+  const diffTree = await runShell(`git diff-tree -r -p --root${ctx} "${hash}" -- "${cleanFile}"`, { cwd: targetDir, timeout: 10000, env: GIT_ENV });
   if (diffTree.stdout.trim()) return diffTree.stdout.trim();
 
   // 3. If it is an added file or root commit, show file content directly from git blob
-  const showBlob = await runShell(`git show "${hash}:${cleanFile}"`, { cwd: targetDir, timeout: 10000 });
+  const showBlob = await runShell(`git show "${hash}:${cleanFile}"`, { cwd: targetDir, timeout: 10000, env: GIT_ENV });
   if (showBlob.stdout.length > 0) {
     const lines = showBlob.stdout.split('\n');
     const diffLines = lines.map((l) => `+${l}`).join('\n');
@@ -307,7 +307,7 @@ export async function fetchFileDiff(
   }
 
   // 4. Try previous parent blob for deleted file
-  const showParent = await runShell(`git show "${hash}^:${cleanFile}"`, { cwd: targetDir, timeout: 10000 });
+  const showParent = await runShell(`git show "${hash}^:${cleanFile}"`, { cwd: targetDir, timeout: 10000, env: GIT_ENV });
   if (showParent.stdout.length > 0) {
     const lines = showParent.stdout.split('\n');
     const diffLines = lines.map((l) => `-${l}`).join('\n');

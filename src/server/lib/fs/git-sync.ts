@@ -1,4 +1,5 @@
 import { runShell, shellOk } from '@/server/lib/fs/shell';
+import { GIT_ENV } from '@/server/lib/fs/git-run';
 
 /**
  * Ahead/behind counts behind the git panel's Sync button.
@@ -106,6 +107,7 @@ async function readUpstreamRemote(cwd: string): Promise<string | null> {
     const result = await runShell('git rev-parse --abbrev-ref --symbolic-full-name @{upstream}', {
       cwd,
       timeout: 5_000,
+      env: GIT_ENV,
     });
     if (!shellOk(result)) return null;
     const upstream = result.stdout.trim();
@@ -191,6 +193,7 @@ export async function gitSyncCount(cwd: string): Promise<GitSyncCount> {
     const result = await runShell('git rev-list --left-right --count HEAD...@{upstream}', {
       cwd,
       timeout: 8_000,
+      env: GIT_ENV,
     });
     if (shellOk(result)) {
       const [ahead, behind] = result.stdout.trim().split(/\s+/).map(Number);
@@ -203,6 +206,7 @@ export async function gitSyncCount(cwd: string): Promise<GitSyncCount> {
     const unpushed = await runShell('git rev-list --count HEAD --not --remotes', {
       cwd,
       timeout: 8_000,
+      env: GIT_ENV,
     });
     if (!shellOk(unpushed)) return { ahead: 0, behind: 0 };
     return { ahead: Number(unpushed.stdout.trim()) || 0, behind: 0 };

@@ -43,6 +43,40 @@ export interface GitRunResult {
   error?: Error;
 }
 
+/**
+ * The environment every `git` invocation gets, whether it is spawned as argv
+ * (`runGit`) or through a shell (`runShell`).
+ *
+ * Three variables, each the fix for a failure measured in this repository:
+ *
+ * - `GIT_TERMINAL_PROMPT=0` — no terminal to answer a credential prompt, so a
+ *   `pull` on a private remote would otherwise block to its timeout.
+ * - `GIT_EDITOR=true` — no terminal for the editor a merge/rebase/cherry-pick
+ *   opens for its commit message. Measured: unset, `git merge --continue` fails
+ *   with "Terminal is dumb, but EDITOR unset"; a real `GIT_EDITOR=vim` inherited
+ *   from the environment BLOCKS until the timeout kills it.
+ * - `GIT_OPTIONAL_LOCKS=0` — a READ must not take `.git/index.lock`. `git status`
+ *   is not read-only: with a STALE index (a working file newer than the stat the
+ *   index recorded — i.e. right after a checkout or a merge) it refreshes the
+ *   index and writes it back. The panel runs those reads on its own schedule
+ *   (the repo modal's per-repo read, the status payload on every tool call), so
+ *   a merge issued while one was in flight lost the race and failed with
+ *   `Unable to create '.git/index.lock': File exists` — reproduced: 8 of 8
+ *   rounds with a concurrent `git status` on a stale index, 0 of 10 with this
+ *   set. That is the `git action merge_branch failed (HTTP 400)` the browser
+ *   specs caught. The lock is only an optimization (it lets the next read skip
+ *   re-stat'ing); a mutating command takes it either way, which is correct.
+ *
+ * It is exported rather than inlined at each spawn so a new git call site cannot
+ * silently miss it — the status read goes through `runShell`, not `runGit`, and
+ * that split is exactly how one of the two paths would have kept the bug.
+ */
+export const GIT_ENV = {
+  GIT_TERMINAL_PROMPT: '0',
+  GIT_EDITOR: 'true',
+  GIT_OPTIONAL_LOCKS: '0',
+} as const;
+
 export interface GitRunOptions {
   cwd: string;
   /** Signal the process group after this many milliseconds. */
@@ -71,18 +105,9 @@ export async function runGit(args: string[], options: GitRunOptions): Promise<Gi
       stderr: 'pipe',
       detached: groupKill,
       maxBuffer: options.maxBuffer ?? 1024 * 1024,
-      // No terminal to answer a credential prompt: without this a `pull` on a
-      // private remote blocks until its timeout instead of reporting why.
-      //
-      // `GIT_EDITOR=true` is the same fix for the other prompt git can raise: a
-      // merge, rebase or cherry-pick that needs a commit message opens an
-      // editor, and there is no terminal to draw one in. Measured twice on a
-      // resolved conflict — with `GIT_EDITOR` unset, `git merge --continue`
-      // fails with "error: Terminal is dumb, but EDITOR unset"; with a real
-      // `GIT_EDITOR=vim` inherited from the environment (and `core.editor=vim`
-      // configured), it BLOCKS on vim until the timeout kills it. `true`
-      // accepts the message git prepared, which is what `--no-edit` would do.
-      env: { ...Bun.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
+      // `GIT_TERMINAL_PROMPT`, `GIT_EDITOR` and `GIT_OPTIONAL_LOCKS` — see
+      // `GIT_ENV` above for what each one prevents and how it was measured.
+      env: { ...Bun.env, ...GIT_ENV },
     });
   } catch (error) {
     return {

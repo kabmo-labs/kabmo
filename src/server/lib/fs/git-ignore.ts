@@ -24,6 +24,8 @@
  * nothing at all.
  */
 
+import { GIT_ENV } from '@/server/lib/fs/git-run';
+
 const CACHE_TTL_MS = 5_000;
 /** Bound on remembered paths; the oldest answer is evicted past this. */
 const CACHE_MAX_ENTRIES = 20_000;
@@ -63,6 +65,10 @@ export async function collectIgnoredPaths(dir: string, relPaths: string[]): Prom
       stdout: 'pipe',
       stderr: 'ignore',
       timeout: 10_000,
+      // The same three variables every other git spawn gets — `GIT_ENV` in
+      // `lib/fs/git-run.ts` names what each prevents. This call site spawns
+      // directly rather than through `runGit`/`runShell`, so it has to opt in.
+      env: { ...Bun.env, ...GIT_ENV },
     });
 
     // Drain stdout while the listing is written: a directory big enough to

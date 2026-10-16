@@ -18,7 +18,7 @@
  */
 
 import { runShell } from '@/server/lib/fs/shell';
-import { parsePorcelainZ } from '@/server/lib/fs/git-run';
+import { GIT_ENV, parsePorcelainZ } from '@/server/lib/fs/git-run';
 import { gitSyncCount, refreshRemoteRefs } from '@/server/lib/fs/git-sync';
 import { readGitState } from '@/server/lib/fs/git-state';
 import type { GitChange, GitState } from '@/shared/types';
@@ -86,7 +86,7 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
     // listed, and so a path holding a space, a quote or a non-ASCII byte
     // arrives VERBATIM. The non-`-z` form quotes those and octal-escapes the
     // non-ASCII ones, which no decode reverses — see `parsePorcelainZ`.
-    const statusOut = (await runShell('git status --porcelain=v1 -z -uall', { cwd: targetDir, maxBuffer: 4 * 1024 * 1024 })).stdout;
+    const statusOut = (await runShell('git status --porcelain=v1 -z -uall', { cwd: targetDir, maxBuffer: 4 * 1024 * 1024, env: GIT_ENV })).stdout;
 
     let branch = 'main';
     // Seeded empty, not `['main']`: the seed used to be pushed as a real local
@@ -127,7 +127,7 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
       // `rev-parse --abbrev-ref HEAD` prints. Ask for it rather than reporting
       // a branch the checkout is not on.
       if (!sawHead) {
-        const headOut = await runShell('git rev-parse --abbrev-ref HEAD', { cwd: targetDir });
+        const headOut = await runShell('git rev-parse --abbrev-ref HEAD', { cwd: targetDir, env: GIT_ENV });
         branch = headOut.stdout.trim() || 'main';
       }
     } catch {

@@ -17,6 +17,7 @@
 import { promises as fsp } from 'fs';
 import { dirname, join } from 'path';
 import { pathExists } from '@/server/lib/omp/core/paths';
+import { GIT_ENV } from '@/server/lib/fs/git-run';
 
 declare global {
   var __ompChamberProjectCache: Map<string, { root: string; expiresAt: number }> | undefined;
@@ -44,7 +45,7 @@ async function git(cwd: string, args: string[]): Promise<string> {
     stderr: 'pipe',
     timeout: 10_000,
     maxBuffer: 1024 * 1024,
-    env: { ...Bun.env, LC_ALL: 'C' },
+    env: { ...Bun.env, LC_ALL: 'C', ...GIT_ENV },
   });
   const stdout = await new Response(proc.stdout).text();
   const exitCode = await proc.exited;
