@@ -12,6 +12,8 @@
  * `$SHELL` first, then the platform's usual suspects.
  */
 
+import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+
 const POSIX_FALLBACKS = ['/bin/zsh', '/bin/bash', '/bin/sh'];
 
 /** Candidate executables, most preferred first. */
@@ -101,12 +103,22 @@ export function shellLaunch(executable: string, platform: NodeJS.Platform = proc
  * Environment for the PTY child. `TERM`/`COLORTERM` describe the renderer on
  * the other end of the socket; `COLORFGBG` carries the active chamber theme so
  * prompts that read it (zsh themes, vim) pick readable colors.
+ *
+ * The chamber's OWN variables are removed by the shared SDK rule, for the same
+ * reason `NODE_CHANNEL_FD` and the password are: this shell must behave like the
+ * one on the operator's desktop, and `PORT` here is the port the CHAMBER is
+ * serving (the CLI sets it on the server process) — measured, a PTY under a
+ * chamber on 3001 reported `PORT=3001 NODE_ENV=production`, so a `bun run dev`
+ * typed into this panel hit "Port 3001 is already served by OMPChamber" while
+ * the same command in a plain terminal ran on 3000. `NODE_ENV` matters beyond
+ * the port: it decides dev vs production for whatever the user runs, and
+ * `production` makes `bun install`/`npm install` skip devDependencies.
  */
 export function terminalEnv(
   base: Record<string, string | undefined>,
   theme: 'light' | 'dark' = 'dark',
 ): Record<string, string | undefined> {
-  const env: Record<string, string | undefined> = { ...base };
+  const env: Record<string, string | undefined> = stripChamberHostEnv(base, process.platform);
   // The chamber's own IPC descriptor is host-private and meaningless inside the
   // PTY; an inherited value makes Node CLIs fail to parse their IPC channel.
   delete env.NODE_CHANNEL_FD;

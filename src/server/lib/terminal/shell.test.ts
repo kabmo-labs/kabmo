@@ -97,6 +97,19 @@ describe('terminalEnv', () => {
     expect('NODE_CHANNEL_FD' in env).toBe(false);
     expect(env.COLORFGBG).toBe('15;0');
   });
+
+  test('the chamber host env does not reach the shell', () => {
+    // Measured before this: a PTY under a chamber serving 3001 reported
+    // `PORT=3001 NODE_ENV=production`, so `bun run dev` typed into the terminal
+    // panel failed with "Port 3001 is already served by OMPChamber" while the
+    // same command in a plain terminal ran on 3000.
+    const env = terminalEnv({ PATH: '/usr/bin', PORT: '3001', NODE_ENV: 'production', NEXT_PUBLIC_X: '1' }, 'dark');
+    expect('PORT' in env).toBe(false);
+    expect('NODE_ENV' in env).toBe(false);
+    expect('NEXT_PUBLIC_X' in env).toBe(false);
+    // The rest of the environment still passes through, or the shell loses PATH.
+    expect(env.PATH).toBe('/usr/bin');
+  });
 });
 
 describe('resolveShellExecutable', () => {

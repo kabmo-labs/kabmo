@@ -26,8 +26,8 @@
  * window it occupies is real time the UI can honestly report as "evaluating".
  */
 
+import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { sanitizeProjectCommandEnvironment } from '@/server/lib/omp/rpc/process-helpers';
 
 export interface GoalAuditAnswers {
   allDone: boolean;
@@ -156,7 +156,7 @@ export async function runGoalAudit(
       cwd: request.cwd,
       // The auditor is a reader: no session, no tools, no title, and the
       // chamber's own port/password must not leak into it.
-      env: sanitizeProjectCommandEnvironment({ ...Bun.env, PI_NO_TITLE: '1' }),
+      env: stripChamberHostEnv({ ...Bun.env, PI_NO_TITLE: '1' }, process.platform),
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',

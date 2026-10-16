@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { resolveRunPassword, UI_PASSWORD_FLAG } from '@/server/lib/auth/env-password';
-import { sanitizeProjectCommandEnvironment } from '@/server/lib/omp/rpc/process-helpers';
+import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
 import { terminalEnv } from '@/server/lib/terminal/shell';
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
@@ -89,13 +89,13 @@ describe('the password never reaches a child process', () => {
   });
 
   test('the omp child environment strips it', () => {
-    const env = sanitizeProjectCommandEnvironment({ PATH: '/usr/bin', [UI_PASSWORD_ENV]: PASSWORD });
+    const env = stripChamberHostEnv({ PATH: '/usr/bin', [UI_PASSWORD_ENV]: PASSWORD }, process.platform);
     expect(env[UI_PASSWORD_ENV]).toBeUndefined();
     expect(env.PATH).toBe('/usr/bin');
   });
 
   test('the strip is case-insensitive on Windows, where env names are', () => {
-    const env = sanitizeProjectCommandEnvironment(
+    const env = stripChamberHostEnv(
       { PATH: 'C:\\Windows', [UI_PASSWORD_ENV]: PASSWORD },
       'win32',
     );
@@ -107,6 +107,6 @@ describe('the password never reaches a child process', () => {
     // removed it would be a silent misconfiguration.
     const base = { PATH: '/usr/bin', OMPCHAMBER_UI_PASSWORD_FILE: '/tmp/x' };
     expect(terminalEnv(base, 'dark').OMPCHAMBER_UI_PASSWORD_FILE).toBe('/tmp/x');
-    expect(sanitizeProjectCommandEnvironment(base).OMPCHAMBER_UI_PASSWORD_FILE).toBe('/tmp/x');
+    expect(stripChamberHostEnv(base, process.platform).OMPCHAMBER_UI_PASSWORD_FILE).toBe('/tmp/x');
   });
 });

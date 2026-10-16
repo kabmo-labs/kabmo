@@ -250,6 +250,44 @@ describe('RunRegistry', () => {
     expect(log.text.length).toBeLessThanOrEqual(64 * 1024);
   }, 30_000);
 
+  test('the chamber host env is not inherited by the command', async () => {
+    // The reported bug: the Runner panel's `bun run dev` failed with "Port 3001
+    // is already served by OMPChamber" because this plugin's server half runs
+    // INSIDE the chamber's process, so the `Bun.env` it spawns with is the
+    // CHAMBER's — `PORT` was the port the chamber itself listens on. The same
+    // command in a plain terminal (where `PORT` is unset) ran on 3000.
+    const saved = { PORT: Bun.env.PORT, NODE_ENV: Bun.env.NODE_ENV };
+    Bun.env.PORT = '3001';
+    Bun.env.NODE_ENV = 'production';
+    try {
+      const { registry } = makeRegistry();
+      await registry.start({
+        id: 'env',
+        sessionId: null,
+        scopeKey: SCOPE,
+        commandId: 'x#package:dev',
+        file: 'package.json',
+        cwd: process.cwd(),
+        argv: ['sh', '-c', 'echo "PORT=[$PORT] NODE_ENV=[$NODE_ENV] PATH_SET=[${PATH:+yes}]"'],
+        label: 'env probe',
+        background: false,
+      });
+      await waitFor(() => onlyRun(registry.state()).status !== 'running');
+
+      const text = registry.log('env', 4096)!.text;
+      // The command must see what a plain terminal would: no PORT, no NODE_ENV.
+      expect(text).toContain('PORT=[] NODE_ENV=[]');
+      // And the rest of the environment still passes through, or PATH would be
+      // gone and every command in the panel would fail to resolve.
+      expect(text).toContain('PATH_SET=[yes]');
+    } finally {
+      if (saved.PORT === undefined) delete Bun.env.PORT;
+      else Bun.env.PORT = saved.PORT;
+      if (saved.NODE_ENV === undefined) delete Bun.env.NODE_ENV;
+      else Bun.env.NODE_ENV = saved.NODE_ENV;
+    }
+  }, 20_000);
+
   test('an unknown run id answers null, so the route can 404', async () => {
     const { registry } = makeRegistry();
     expect(registry.log('nope', 1024)).toBeNull();

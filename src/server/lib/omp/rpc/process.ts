@@ -15,12 +15,13 @@
  */
 
 import type { Subprocess } from 'bun';
+import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrames, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
 import { killProcessTree } from '@/server/lib/omp/rpc/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
-import { RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, sanitizeProjectCommandEnvironment, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
+import { RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
 
 export { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process-helpers';
 export type { RpcFrame, RpcProcessOptions, RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
@@ -55,7 +56,7 @@ export class RpcProcess {
     const args = ['--mode', 'rpc-ui', '--cwd', options.cwd, ...(options.extraArgs ?? [])];
     // Strip named profiles (OMP_PROFILE/PI_PROFILE) so the child resolves the
     // same default agent dir. An explicit options.env entry still wins.
-    const childEnv = sanitizeProjectCommandEnvironment({ ...Bun.env, ...options.env });
+    const childEnv = stripChamberHostEnv({ ...Bun.env, ...options.env }, process.platform);
     if (options.env?.OMP_PROFILE === undefined) delete childEnv.OMP_PROFILE;
     if (options.env?.PI_PROFILE === undefined) delete childEnv.PI_PROFILE;
     // A spawn fails synchronously when the process is out of descriptors, and

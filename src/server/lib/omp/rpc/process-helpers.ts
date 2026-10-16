@@ -68,18 +68,3 @@ export interface RpcProcessOptions {
 }
 
 export const STDERR_TAIL_LIMIT = 8 * 1024;
-
-/** Remove variables owned by the chamber host before starting an omp process. */
-export function sanitizeProjectCommandEnvironment(
-  baseEnvironment: NodeJS.ProcessEnv,
-  platform: NodeJS.Platform = process.platform,
-): NodeJS.ProcessEnv {
-  const environment = { ...baseEnvironment };
-  for (const name of Object.keys(environment)) {
-    const comparableName = platform === 'win32' ? name.toUpperCase() : name;
-    if (comparableName === 'PORT' || comparableName === 'NODE_ENV' || comparableName === 'OMPCHAMBER_UI_PASSWORD' || comparableName.startsWith('NEXT_')) {
-      delete environment[name];
-    }
-  }
-  return environment;
-}

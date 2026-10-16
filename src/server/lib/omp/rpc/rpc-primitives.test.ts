@@ -13,8 +13,8 @@
  *    because it sits directly on the frame path.
  *  - `PendingUiDialogs` remembers the ids omp is blocked on, and reports
  *    whether the set CHANGED so a caller does not republish on a `notify`.
- *  - `sanitizeProjectCommandEnvironment` strips the chamber host's own PORT /
- *    NODE_ENV / password from a spawned project command.
+ *  - `stripChamberHostEnv` strips the chamber host's own PORT / NODE_ENV /
+ *    password from a spawned project command.
  *  - `recordSpawnProvenance` / `reconcileSpawnApprovalMode` decide whether a
  *    live session must be respawned for a new `--approval-mode`.
  */
@@ -32,8 +32,8 @@ import {
   RpcCommandError,
   RpcCommandTimeoutError,
   STDERR_TAIL_LIMIT,
-  sanitizeProjectCommandEnvironment,
 } from '@/server/lib/omp/rpc/process-helpers';
+import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
 import {
   getSpawnApprovalMode,
   getSpawnModeEnv,
@@ -193,22 +193,22 @@ describe('PendingUiDialogs', () => {
   });
 });
 
-describe('sanitizeProjectCommandEnvironment', () => {
+describe('stripChamberHostEnv', () => {
   const base = { PATH: '/bin', PORT: '3000', NODE_ENV: 'production', OMPCHAMBER_UI_PASSWORD: 'secret', NEXT_PUBLIC_X: '1', KEEP: 'yes' };
 
   test('removes the chamber host variables and keeps everything else', () => {
-    expect(sanitizeProjectCommandEnvironment(base, 'linux')).toEqual({ PATH: '/bin', KEEP: 'yes' });
+    expect(stripChamberHostEnv(base, 'linux')).toEqual({ PATH: '/bin', KEEP: 'yes' });
   });
 
   test('does not mutate the base environment', () => {
-    sanitizeProjectCommandEnvironment(base, 'linux');
+    stripChamberHostEnv(base, 'linux');
     expect(base.PORT).toBe('3000');
   });
 
   test('matches names case-insensitively only on win32', () => {
     const mixed = { port: '1', Node_Env: 'x', next_private: '1', keep: 'ok' };
-    expect(sanitizeProjectCommandEnvironment(mixed, 'win32')).toEqual({ keep: 'ok' });
-    expect(sanitizeProjectCommandEnvironment(mixed, 'linux')).toEqual(mixed);
+    expect(stripChamberHostEnv(mixed, 'win32')).toEqual({ keep: 'ok' });
+    expect(stripChamberHostEnv(mixed, 'linux')).toEqual(mixed);
   });
 });
 

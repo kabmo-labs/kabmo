@@ -13,9 +13,9 @@
  */
 
 import type { Subprocess } from 'bun';
+import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
 import { killProcessTree } from '@/server/lib/omp/rpc/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
-import { sanitizeProjectCommandEnvironment } from '@/server/lib/omp/rpc/process-helpers';
 import { isMockMode } from '@/server/mock.server';
 import type { McpServerItem } from '@/shared/types';
 import { isRecord } from '@/shared/lib/util/guards';
@@ -77,7 +77,7 @@ function initializeRequest(): Record<string, unknown> {
 /** Merge configured env vars over the sanitized env, skipping empty values and
  * the redaction sentinel so masked credentials are never replayed. */
 function mergeEnvVars(server: McpServerItem): NodeJS.ProcessEnv {
-  const env = sanitizeProjectCommandEnvironment(Bun.env);
+  const env = stripChamberHostEnv(Bun.env, process.platform);
   for (const item of server.envVars ?? []) {
     const key = item?.key?.trim();
     const value = item?.value;
