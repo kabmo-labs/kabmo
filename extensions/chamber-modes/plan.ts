@@ -17,6 +17,17 @@
  * behaviours and not chamber behaviours. The plan body is read through
  * `resolveLocalRoot` — omp's own mapping for `local://` — so the chamber never
  * keeps a second copy of the resolution rules.
+ *
+ * ## Every choice must SETTLE the parked proposal
+ *
+ * The promise `parkProposal` holds is the model's open tool call: omp awaits the
+ * handler's return value as the `write xd://propose` result. A choice that
+ * returns without resolving leaves that call open, and the planning turn then
+ * never ends — the child streams forever, `agent_end` never arrives, and the
+ * next prompt is refused `agent_busy`. So a branch that resolves is the rule,
+ * not an implementation detail of `Refine`/`Save and quit`: `decidePlan` is the
+ * only consumer of the slot, and a `null` from `takeParkedProposal` means
+ * somebody else already answered it.
  */
 
 import { PLAN_MODE_APPROVED_PROMPT, PLAN_MODE_COMPACT_INSTRUCTIONS_PROMPT, renderPrompt } from './prompts';
@@ -219,6 +230,41 @@ export async function decidePlan(
       // plan is still handed over inline below.
     }
   }
+
+  // The approval has to SETTLE the parked `xd://propose`: the model's tool call
+  // is `await handler(title)` (omp's `dispatchResolutionDevice`), so an
+  // unsettled promise is a planning turn that never ends. Measured on omp
+  // 18.11.2 through the real RPC path with the approve branches returning
+  // without a resolve: the child reported `isStreaming: true` for the life of
+  // the session, no `agent_end` ever arrived, the transcript stopped at the
+  // `xd://propose` tool call, and the next prompt was refused `agent_busy` —
+  // recoverable only by Stop. Twice per variant, on every variant that returns
+  // without settling.
+  //
+  // `execute` and `compact context` MASKED it rather than escaping it:
+  // `ctx.newSession()` and `ctx.compact()` reset the agent's own streaming
+  // state, so the run looked finished while the promise stayed pending (both
+  // measured `isStreaming: false` on the unfixed code). `keep context` touches
+  // no session state, which is why the hang was reported for that variant
+  // alone.
+  //
+  // The result mirrors omp's own approve shape (`{ planFilePath, title,
+  // planExists }`, as `preparePlanForReview` and plan-yolo both return) — the
+  // model reads it as the tool output, so it names the plan rather than
+  // describing the review.
+  //
+  // The ORDER is load-bearing: settling resumes the planning turn, and a model
+  // that wakes up still in plan mode is required to end its turn with a tool
+  // call — so it would write `xd://propose` again and re-park the review it just
+  // got an answer to. `leavePlanMode()` and the handler teardown above run
+  // first, so the turn resumes outside plan mode, where the queued
+  // `plan-mode-reference` steer (below) is what it acts on. That is the same
+  // hazard omp's own review surface guards with a silent turn abort
+  // (`#abortPlanApprovalTurnSilently`).
+  current.resolve({
+    content: [{ type: 'text', text: `Plan approved: ${current.title}. Executing now.` }],
+    details: { planFilePath: current.planFilePath, title: current.title, planExists: true },
+  });
 
   const prompt = renderPrompt(PLAN_MODE_APPROVED_PROMPT, {
     planFilePath: current.planFilePath,

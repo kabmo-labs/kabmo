@@ -42,6 +42,9 @@ interface Harness {
   /** Delays any timer the extension armed would have fired at. */
   timerArms: number[];
   planEnabled: () => boolean;
+  /** The promise omp awaits as the `write xd://propose` tool result. Set by
+   *  `propose`, and the thing every choice must settle. */
+  toolCall: Promise<unknown> | null;
 }
 
 function harness(): Harness {
@@ -105,6 +108,7 @@ function harness(): Harness {
     sent,
     timerArms,
     planEnabled: () => planState?.enabled === true,
+    toolCall: null,
   };
   Object.defineProperty(exposed, 'handler', {
     get: () => host.handler,
@@ -116,12 +120,13 @@ function harness(): Harness {
  *
  *  Awaits the parked state rather than a duration: the handler reads the plan
  *  file first, so the return of `installPlanProposal` says nothing about when
- *  the slot is filled. */
+ *  the slot is filled. The handler's promise is kept on the harness because it
+ *  IS the model's open tool call — the thing every choice has to settle. */
 async function propose(h: Harness): Promise<void> {
   installPlanProposal(h.session, h.ctx);
   const handler = (h as Harness & HandlerHost).handler;
   if (!handler) throw new Error('proposal handler was not installed');
-  void handler('migrate-importer');
+  h.toolCall = handler('migrate-importer');
   await awaitParkedProposal();
 }
 
@@ -147,6 +152,17 @@ function decisionOf(h: Harness): Record<string, unknown> | undefined {
   return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : undefined;
 }
 
+/** The `details` bag of a settled `xd://propose` result, narrowed rather than
+ *  asserted: the promise's value is `unknown`, so the read is checked. */
+function planDetailsOf(result: unknown): { planFilePath?: string; title?: string } | undefined {
+  if (!result || typeof result !== 'object' || !('details' in result)) return undefined;
+  const { details } = result;
+  if (!details || typeof details !== 'object') return undefined;
+  const planFilePath = 'planFilePath' in details && typeof details.planFilePath === 'string' ? details.planFilePath : undefined;
+  const title = 'title' in details && typeof details.title === 'string' ? details.title : undefined;
+  return { planFilePath, title };
+}
+
 describe('decidePlan', () => {
   test('a proposal is announced to the console', async () => {
     const h = harness();
@@ -169,7 +185,11 @@ describe('decidePlan', () => {
   });
 
   test('each approve variant reports the decision and leaves plan mode', async () => {
-    for (const choice of ['Approve and execute', 'Approve and keep context']) {
+    for (const choice of [
+      'Approve and execute',
+      'Approve and compact context',
+      'Approve and keep context',
+    ]) {
       const h = harness();
       await propose(h);
       expect(await decidePlan(h.api, h.session, h.ctx, choice, '')).toBe(true);
@@ -179,6 +199,50 @@ describe('decidePlan', () => {
       // plan without a visible "Plan approved." bubble.
       expect(h.sent).toHaveLength(1);
       expect(h.sent[0]?.content).toContain('Plan approved');
+    }
+  });
+
+  /**
+   * The invariant the approve branches were missing.
+   *
+   * The parked promise IS the model's open `write xd://propose` tool call —
+   * omp awaits the handler's return value as that call's result. A choice that
+   * returns without resolving leaves the call open, so the planning turn never
+   * ends: the child streams forever, `agent_end` never arrives, and the next
+   * prompt is refused. Measured on omp 18.11.2 through the real RPC path before
+   * this was fixed: `Approve and keep context` left the session
+   * `isStreaming: true` indefinitely (transcript stopped at the tool call, a
+   * follow-up prompt refused), while `Approve and execute` and
+   * `Approve and compact context` only MASKED it — their `newSession` /
+   * `compact` reset the agent's streaming state, so the run looked finished
+   * with the promise still pending.
+   *
+   * The race is what makes an unsettled promise observable: `toolCall` resolves
+   * before this runs when the choice settled it, so its reaction is queued
+   * first and wins against an already-resolved sentinel — and the sentinel wins
+   * when it never settles.
+   */
+  test('every choice SETTLES the parked tool call', async () => {
+    const NOT_SETTLED = Symbol('not-settled');
+    for (const [choice, feedback] of [
+      ['Approve and execute', ''],
+      ['Approve and compact context', ''],
+      ['Approve and keep context', ''],
+      ['Refine plan', 'shorter'],
+      ['Save and quit', ''],
+    ] as const) {
+      const h = harness();
+      await propose(h);
+      const toolCall = h.toolCall;
+      if (!toolCall) throw new Error('propose did not expose the tool call');
+      expect(await decidePlan(h.api, h.session, h.ctx, choice, feedback)).toBe(true);
+      const result: unknown = await Promise.race([toolCall, Promise.resolve(NOT_SETTLED)]);
+      expect(result).not.toBe(NOT_SETTLED);
+      // The result is the tool output the model reads, so it must name the plan
+      // the way omp's own `preparePlanForReview` does.
+      const details = planDetailsOf(result);
+      expect(details?.title).toBe('migrate-importer');
+      expect(details?.planFilePath).toContain('migrate-importer');
     }
   });
 
