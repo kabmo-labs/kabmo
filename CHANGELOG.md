@@ -5,6 +5,24 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.18.0](https://github.com/rajebdev/ompchamber/compare/v4.17.0...v4.18.0) — 2026-10-16
+
+### Added
+
+* **release:** bump marketplace plugins from their own commits ([cfc99e5](https://github.com/rajebdev/ompchamber/commit/cfc99e55c60699e66e61e6bc361f5e46d1c57c55))
+* **release:** bump the marketplace plugins between the packages and the app ([7642e5a](https://github.com/rajebdev/ompchamber/commit/7642e5aab12b1099e306bb3031313b372aea0af5))
+
+### Changed
+
+* **ci:** correct the status-check name a reusable workflow reports ([aaa267f](https://github.com/rajebdev/ompchamber/commit/aaa267f8e8716982fff57257bd23dbdd1b1c7165))
+* record the release gates and the marketplace plugin bumps ([de49799](https://github.com/rajebdev/ompchamber/commit/de497993119e68b9358386d9995f8aaf95eecce2))
+
+### Fixed
+
+* **fs:** sort the discovered repositories, because a default is picked from it ([f676b3c](https://github.com/rajebdev/ompchamber/commit/f676b3c820f52e45d44ca3bab7456a8383d3c923))
+* **fs:** stop a git read taking the index lock ([57c38aa](https://github.com/rajebdev/ompchamber/commit/57c38aad2c8a42f1f0374ee95dc3a2b9a09ab292))
+* **plugins:** stop the chamber's own env reaching a project command ([fe54637](https://github.com/rajebdev/ompchamber/commit/fe54637c605040264bc01d27b0fc450de7e15b86))
+
 ## [4.17.0](https://github.com/rajebdev/ompchamber/compare/v4.16.1...v4.17.0) — 2026-10-16
 
 ### Added
