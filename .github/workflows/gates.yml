@@ -1,0 +1,129 @@
+name: Gates
+
+# The four gates every change is required to pass (CONTRIBUTING.md §1) plus the
+# generated settings schema, as a REUSABLE workflow — so they can be a
+# REQUIREMENT of a release instead of being restated inside it.
+#
+# `ci.yml` is the trigger: it runs this file on every pull request and on `main`.
+# `release.yml`, `publish.yml` and `publish-plugins.yml` CALL it and `needs:` it,
+# which is what makes the gate binding. The alternative — reading the CI run's
+# conclusion over the API — races with the run it is waiting for (the release run
+# starts at the same instant as the CI run, so "no run found yet" has to be
+# distinguished from "no run exists"), and a release that reads a red main as a
+# missing run is exactly the failure this shape prevents.
+#
+# A reusable workflow is called by a job, so the caller names the check: the
+# caller job's `name:` is what appears as the status check (and as a `needs:`
+# target), which is why `ci.yml`'s job is still named `Gates`.
+#
+# Nothing here reads a secret, and nothing here writes to the repository: every
+# step is a read of the checked-out commit. That is what makes it safe to call
+# from a job whose caller holds `contents: write` for its own release steps.
+on:
+  workflow_call:
+    inputs:
+      # Which commit to gate. Empty means the caller's own commit — what
+      # `ci.yml` (a pushed commit), `release.yml` (the pushed commit) and
+      # `e2e.yml` (the pull request's head) all want. `publish.yml` is the one
+      # caller that names a ref: a publish is dispatched with a TAG, and gating
+      # it against `main`'s tip would verify a different commit than the one
+      # about to reach npm.
+      ref:
+        description: Git ref to check out; empty means the caller's commit.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run lint
+
+      # `noUnusedLocals`/`noUnusedParameters` catch what `tsc --noEmit` alone does
+      # not: an import, prop or destructured field a change left behind. The two are
+      # separate steps so the log says which gate failed.
+      - name: Typecheck without unused code
+        run: bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
+
+      # The E2E layer has its own tsconfig (it runs under Playwright/Node, not
+      # Bun) and is deliberately outside the root program. Typechecking it here
+      # means a broken spec is caught by the cheap gate rather than by the
+      # label-gated browser job — or by neither.
+      - name: Typecheck the E2E layer
+        run: bun run typecheck:e2e
+
+      - name: Test
+        run: bun test
+
+      # The production build is a gate of its own: it is the artifact `serve --prod`
+      # runs, and it is the one step that executes the CSS/Tailwind bundling plugin
+      # rather than merely typechecking it.
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: bun run build
+
+      # The file-size ceiling (AGENTS.md §1) is a rule about the source tree, so it is
+      # checked against the tree rather than through the build.
+      - name: Check the file-size ceiling
+        run: |
+          over="$(find src -name '*.ts' -o -name '*.tsx' | xargs wc -l | grep -v total | awk '$1>350')"
+          if [ -n "$over" ]; then
+            echo "::error::Files over the 350-line ceiling:"
+            echo "$over"
+            exit 1
+          fi
+          echo "No file over 350 lines."
+
+  # The settings panel is driven by a GENERATED table, so its staleness is a
+  # gate rather than a review note: `bun run omp:schema:check` regenerates from
+  # the installed omp and exits non-zero when the committed JSON differs. A
+  # stale schema is otherwise silent — the panel simply stops offering the rows
+  # upstream added (measured: 9 settings behind at 18.9.2, and the file had been
+  # frozen since the Remix→Elysia migration before the generator existed).
+  #
+  # A separate job, not a step in `checks`: the generator imports the INSTALLED
+  # `@oh-my-pi/pi-coding-agent`, which this repo does not depend on, so this job
+  # must install omp first — a Bun global install is minutes on a cold runner
+  # and would otherwise sit in front of every other gate.
+  #
+  # The pin lives in `.github/scripts/install-omp.sh` (shared with the bot
+  # workflows); this job deliberately does not restate it, so the two cannot
+  # disagree about which omp the schema was generated from.
+  schema:
+    name: Settings schema
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install the pinned omp
+        run: bash .github/scripts/install-omp.sh
+
+      - name: Check the settings schema is current
+        run: bun run omp:schema:check

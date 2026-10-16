@@ -16,6 +16,18 @@ name: E2E
 # mode (a scripted fake `omp` speaking omp's own RPC wire protocol — no model,
 # no network, no token spend). Chromium is the required leg; firefox/webkit are
 # opt-in via `--project` and are not run here yet.
+#
+# This file is a TRIGGER, not the implementation: the job lives in
+# `e2e-specs.yml`, which `release.yml`, `publish.yml` and `publish-plugins.yml`
+# call and `needs:`. Those runs are raised by the same push as this one (or by
+# the tag it produced), so a release that only re-ran the suite would race this
+# run and could publish from a commit whose specs had not finished failing —
+# calling the same reusable workflow is what makes the browser layer a
+# requirement rather than a parallel opinion.
+#
+# The `e2e` label condition stays HERE, on the trigger: it decides whether a
+# pull request pays for the job, and it is the one context where a label exists.
+# A release calls the reusable workflow directly and always runs it.
 on:
   push:
     branches: [main]
@@ -36,58 +48,10 @@ permissions:
 jobs:
   chromium:
     name: Chromium specs
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
     # Push, nightly and manual runs always go; a pull request only with the
     # label. A fork PR has no label from us, which is also the right default —
     # the job is not free.
     if: >-
       github.event_name != 'pull_request'
       || contains(github.event.pull_request.labels.*.name, 'e2e')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # The browser download is the slow half of the job; the cache key is the
-      # resolved Playwright version, so a bump refetches and a source change
-      # does not. Pinned by the lockfile — the version is not repeated here.
-      - name: Cache the Playwright browser
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-
-      - name: Install Chromium
-        run: bunx playwright install --with-deps chromium
-
-      # A separate gate so a type error in the specs is reported as one, not as
-      # a mysterious "project not found" three steps later.
-      - name: Typecheck the E2E layer
-        run: bun run typecheck:e2e
-
-      - name: Run the specs
-        run: bun run test:e2e --project=chromium
-        env:
-          CI: "true"
-
-      # Traces, screenshots and the HTML report are the evidence a failing spec
-      # owes the reader; a red run with no artifact is a red run nobody can act
-      # on. Uploaded only on failure, because the report is large.
-      - name: Upload the failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
-          if-no-files-found: ignore
+    uses: ./.github/workflows/e2e-specs.yml

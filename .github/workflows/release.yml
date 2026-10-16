@@ -3,6 +3,22 @@ name: Release
 # A push to `main` cuts every release this repository makes, in ONE run, in a
 # fixed order: the published packages first, then the app.
 #
+# NOTHING IS TAGGED UNTIL THE GATES AND THE BROWSER SPECS HAVE PASSED. The two
+# gate jobs below CALL `.github/workflows/gates.yml` and
+# `.github/workflows/e2e-specs.yml` — the same reusable workflows `ci.yml` and
+# `e2e.yml` call — and `packages`/`app` `needs:` them. Re-running the commands
+# inside this file would be a second copy that can drift from the gates a pull
+# request runs, and reading the parallel CI run's conclusion over the API races
+# with the run it is waiting for (a release run starts at the same instant as the
+# CI run, so "no run yet" has to be told apart from "no run exists" — and a red
+# `main` read as a missing run is exactly the failure this shape prevents).
+#
+# The browser layer is a RELEASE gate, not only a `main` gate: `e2e.yml` skips it
+# on a pull request without the `e2e` label, so the merge that produced this
+# commit may never have run a browser at all. Waiting on the parallel `e2e.yml`
+# run for the same push would race it; calling the reusable workflow is a
+# requirement, and a requirement cannot be won by finishing first.
+#
 # The order is the point, not a preference. The app does NOT ship `packages/`
 # (see the `files` list in package.json) — at runtime it resolves
 # `@ompchamber/plugin-sdk` and `@ompchamber/ui` out of its own `node_modules`,
@@ -29,14 +45,22 @@ name: Release
 # (only `workflow_dispatch` and `repository_dispatch` are exempt — see
 # "Triggering a workflow" in the Actions docs), and dispatching keeps the npm
 # side in one place — the `npm` environment's approval gate, the production
-# build and the tarball verification all stay in those two files.
+# build and the tarball verification all stay in those two files. Both of them
+# ALSO call the two gate workflows, so a publish cannot start on a commit whose
+# gates or specs are red.
 #
-# The two release jobs repeat their setup steps rather than sharing them through
+# The release jobs repeat their setup steps rather than sharing them through
 # YAML anchors. GitHub does support anchors, but an alias that carries an entire
 # step into a DIFFERENT job is not a shape the documented examples cover, and
 # this is a release pipeline: a parser that rejects it means no release at all,
 # silently, on the push that needed one. Six short steps duplicated is the
 # cheaper failure mode.
+#
+# The gates deliberately run BEFORE the `Sync to the current remote` step of each
+# release job, so what they verified is the commit that was pushed. A sync can
+# only fast-forward onto a release commit this same workflow produced, and that
+# commit's own run gated its own starting point — so nothing ungated reaches the
+# tag through the sync.
 #
 # `push` is the only trigger, which means a commit message can silently switch
 # this workflow off: GitHub skips the run entirely when the message carries a
@@ -86,10 +110,22 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # 0. The gates. Nothing below runs until both of these pass.
+  # ---------------------------------------------------------------------------
+  gates:
+    name: Gates
+    uses: ./.github/workflows/gates.yml
+
+  e2e:
+    name: E2E specs
+    uses: ./.github/workflows/e2e-specs.yml
+
+  # ---------------------------------------------------------------------------
   # 1. The published packages. Runs first because the app is pinned to them.
   # ---------------------------------------------------------------------------
   packages:
     name: Release the plugin packages
+    needs: [gates, e2e]
     runs-on: ubuntu-latest
     outputs:
       any: ${{ steps.release.outputs.any }}
@@ -145,15 +181,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Never tag a red main. Both publish workflows re-run these against the
-      # tarball before a token is used, but by then the tag and the release
-      # already exist.
-      - name: Typecheck
-        run: bun run lint
-
-      - name: Test
-        run: bun test
-
+      # Typecheck and tests are the `gates` job above, not a step here: the
+      # commands are identical, and a copy that drifts is a release tagged on a
+      # commit the gates never saw.
       - name: Release the packages
         id: release
         env:
@@ -205,6 +235,8 @@ jobs:
   # ---------------------------------------------------------------------------
   app:
     name: Release the app
+    # Only `packages` is named: it already `needs:` both gate jobs, so the app
+    # cannot run until they have passed either.
     needs: packages
     runs-on: ubuntu-latest
     outputs:
@@ -247,12 +279,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck
-        run: bun run lint
-
-      - name: Test
-        run: bun test
-
+      # Typecheck and tests are the gate jobs at the top of this file.
       - name: Release
         id: release
         env:

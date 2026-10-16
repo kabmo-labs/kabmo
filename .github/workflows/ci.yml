@@ -9,9 +9,18 @@ name: CI
 # Running them here means the pull request is where a broken change is caught, and
 # the release job re-running them is what keeps a tag from being cut on a red main.
 #
+# This file is a TRIGGER, not the implementation: the steps live in `gates.yml`,
+# which `release.yml`, `publish.yml` and `publish-plugins.yml` call and `needs:`.
+# A gate defined here could only be a gate for this workflow — a release cannot
+# `needs:` a job in another file — and a release that merely re-ran the commands
+# would be a second copy that can drift from this one.
+#
+# The caller job is named `Gates` so the check that appears on a commit, and the
+# one branch protection would require, is the same name it has always been.
+#
 # Nothing here is a release: no tag, no version, no changelog. `release.yml` owns
-# that, and it runs the same commands because a gate that only ever ran on the pull
-# request could still be skipped by a direct push.
+# that, and it runs the same reusable workflow because a gate that only ever ran on
+# the pull request could still be skipped by a direct push.
 
 on:
   push:
@@ -32,87 +41,9 @@ permissions:
 jobs:
   gates:
     name: Gates
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Typecheck
-        run: bun run lint
-
-      # `noUnusedLocals`/`noUnusedParameters` catch what `tsc --noEmit` alone does
-      # not: an import, prop or destructured field a change left behind. The two are
-      # separate steps so the log says which gate failed.
-      - name: Typecheck without unused code
-        run: bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
-
-      # The E2E layer has its own tsconfig (it runs under Playwright/Node, not
-      # Bun) and is deliberately outside the root program. Typechecking it here
-      # means a broken spec is caught by the cheap gate rather than by the
-      # label-gated browser job — or by neither.
-      - name: Typecheck the E2E layer
-        run: bun run typecheck:e2e
-
-      - name: Test
-        run: bun test
-
-      # The production build is a gate of its own: it is the artifact `serve --prod`
-      # runs, and it is the one step that executes the CSS/Tailwind bundling plugin
-      # rather than merely typechecking it.
-      - name: Build
-        env:
-          NODE_ENV: production
-        run: bun run build
-
-      # The file-size ceiling (AGENTS.md §1) is a rule about the source tree, so it is
-      # checked against the tree rather than through the build.
-      - name: Check the file-size ceiling
-        run: |
-          over="$(find src -name '*.ts' -o -name '*.tsx' | xargs wc -l | grep -v total | awk '$1>350')"
-          if [ -n "$over" ]; then
-            echo "::error::Files over the 350-line ceiling:"
-            echo "$over"
-            exit 1
-          fi
-          echo "No file over 350 lines."
-
-  # The settings panel is driven by a GENERATED table, so its staleness is a
-  # gate rather than a review note: `bun run omp:schema:check` regenerates from
-  # the installed omp and exits non-zero when the committed JSON differs. A
-  # stale schema is otherwise silent — the panel simply stops offering the rows
-  # upstream added (measured: 9 settings behind at 18.9.2, and the file had been
-  # frozen since the Remix→Elysia migration before the generator existed).
-  #
-  # A separate job, not a step in `gates`: the generator imports the INSTALLED
-  # `@oh-my-pi/pi-coding-agent`, which this repo does not depend on, so this job
-  # must install omp first — a Bun global install is minutes on a cold runner
-  # and would otherwise sit in front of every other gate.
-  #
-  # The pin lives in `.github/scripts/install-omp.sh` (shared with the bot
-  # workflows); this job deliberately does not restate it, so the two cannot
-  # disagree about which omp the schema was generated from.
-  schema:
-    name: Settings schema
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Install the pinned omp
-        run: bash .github/scripts/install-omp.sh
-
-      - name: Check the settings schema is current
-        run: bun run omp:schema:check
+    # `./` resolves the called file from the SAME commit as this caller, so the
+    # gates a pull request runs are the ones it ships. (`$/…` says the same
+    # thing on current GitHub, but it is newer than the `./` form and a parser
+    # that rejects it fails the whole workflow — a release pipeline must not
+    # depend on the newer spelling.)
+    uses: ./.github/workflows/gates.yml

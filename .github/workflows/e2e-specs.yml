@@ -1,0 +1,89 @@
+name: E2E specs
+
+# The browser end-to-end suite (Playwright) as a REUSABLE workflow, so a release
+# can REQUIRE it instead of hoping a parallel run passed.
+#
+# `e2e.yml` is the trigger: every push to `main`, a pull request only when the
+# `e2e` label is applied, nightly, and manual dispatch. `release.yml`,
+# `publish.yml` and `publish-plugins.yml` CALL this file and `needs:` it — which
+# is the whole point: those runs are triggered by the same push (or by the tag
+# that push produced), so a red `main` and a release used to be decided by two
+# independent runs, and the release could win.
+#
+# The PR label condition deliberately does NOT live here. A reusable workflow's
+# job `if:` is evaluated in the CALLER's context, but the condition is a property
+# of the `e2e.yml` trigger, not of the suite: a release must run the browser
+# specs whatever labels a pull request carried. It stays on `e2e.yml`'s caller
+# job, which is the only place a label exists.
+#
+# `timeout-minutes` and `runs-on` are also absent from the caller jobs on purpose:
+# a job that calls a reusable workflow accepts only `name`, `uses`, `with`,
+# `secrets`, `strategy`, `needs`, `if`, `concurrency`, `permissions` and
+# `cache-mode` — everything else belongs here.
+on:
+  workflow_call:
+    inputs:
+      # See `gates.yml`: empty is the caller's own commit, and `publish.yml`
+      # names the tag it is about to publish.
+      ref:
+        description: Git ref to check out; empty means the caller's commit.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  chromium:
+    name: Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The browser download is the slow half of the job; the cache key is the
+      # resolved Playwright version, so a bump refetches and a source change
+      # does not. Pinned by the lockfile — the version is not repeated here.
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
+      # A separate gate so a type error in the specs is reported as one, not as
+      # a mysterious "project not found" three steps later.
+      - name: Typecheck the E2E layer
+        run: bun run typecheck:e2e
+
+      - name: Run the specs
+        run: bun run test:e2e --project=chromium
+        env:
+          CI: "true"
+
+      # Traces, screenshots and the HTML report are the evidence a failing spec
+      # owes the reader; a red run with no artifact is a red run nobody can act
+      # on. Uploaded only on failure, because the report is large.
+      - name: Upload the failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
