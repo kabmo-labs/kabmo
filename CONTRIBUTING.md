@@ -25,9 +25,11 @@ bun run test:e2e       # Playwright browser specs (needs `bunx playwright instal
 real Chromium, real streaming. It is a separate runner from `bun test` on purpose
 (the specs need a per-file browser context and server), and the two own disjoint
 globs — `*.spec.ts` is Bun's, `*.e2e.ts` is Playwright's — so neither picks up the
-other's files. It is NOT part of the four gates below, but
-`.github/workflows/e2e.yml` runs it on every push to `main`, on a pull request
-only when the `e2e` label is applied, and nightly.
+other's files. It is NOT part of the four gates below, but it **is** a requirement
+of every release: `.github/workflows/e2e.yml` runs it on every push to `main`, on
+a pull request only when the `e2e` label is applied, and nightly, and
+`release.yml`, `publish.yml` and `publish-plugins.yml` each call the same reusable
+workflow and `needs:` it before they tag or publish anything.
 
 The server is the only entry point. It imports `index.html`, so Bun bundles that page's script,
 styles and assets on demand in development (with HMR) and serves them from its own routing table —
@@ -48,7 +50,11 @@ All four verification gates are mandatory for every change:
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs all four on every pull request and on
 `main`, so a red change is caught at the pull request rather than by the release job that would
-otherwise tag it.
+otherwise tag it. The steps themselves live in [`.github/workflows/gates.yml`](.github/workflows/gates.yml),
+a reusable workflow `ci.yml` calls — which is also what makes them a **requirement** rather than a
+parallel opinion: `release.yml`, `publish.yml` and `publish-plugins.yml` call the same file and
+`needs:` it, so no tag and no publish happens until the gates have passed on the commit being
+released. Do not restate the commands inside a releasing workflow; a second copy is what drifts.
 
 Never write a skip marker (`[skip ci]`, `[ci skip]`, `[no ci]`) anywhere in a commit message pushed to
 `main` — **including inside prose that merely mentions it**. GitHub matches the token in the whole
@@ -56,6 +62,17 @@ message, so a sentence like "the release commits carry `[skip ci]`" skips CI *an
 that push. Verified the hard way: a commit whose body explained the marker triggered no CI, no E2E and
 no Release, and the only way back is another push, because `main` is protected against force-push.
 `CHANGELOG.md` is written by the release pipeline only, never by hand.
+
+**Bundled marketplace plugins are versioned by the pipeline, not by you.** The three plugins under
+`marketplace/plugins/` are `private: true` and reach users inside the app's tarball, so their manifest
+version is the only signal an installed copy compares — `syncBundledPlugins` applies the new files
+only when the store's version is strictly newer. The `marketplace` job in `release.yml` bumps them from
+your own commits (a `fix` is a patch, a `feat` a minor, a `BREAKING CHANGE:` a major), between the
+package release and the app's, so the bump is inside the tarball. **Do not bump a plugin by hand**: a
+manual bump only makes the pipeline skip it. What you do have to keep true is that `package.json`'s
+`version` and its `ompchamber.version` agree — `release/marketplace.test.js` fails the gates when they
+drift, when a plugin directory has no entry in `release/marketplace.js`, or when a plugin stops being
+private.
 
 ## 2. Pull request expectations
 

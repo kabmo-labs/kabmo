@@ -191,6 +191,16 @@ gets the full run, the same as the other gates. Linux (ubuntu-latest, Chromium)
 is the required leg; a macOS leg is opt-in, since the app is developed on darwin
 and one platform would otherwise hide a webkit/safari-only regression.
 
+Both of those are now REUSABLE workflows (`gates.yml`, `e2e-specs.yml`) that
+`ci.yml` and `e2e.yml` call as triggers, and that `release.yml`, `publish.yml`
+and `publish-plugins.yml` call and `needs:` — so a release cannot be tagged or
+published until the gates and the browser specs have passed on the commit being
+released. The label condition stays on `e2e.yml`'s own job, because it is a
+property of the pull-request trigger: a release always runs the browser layer,
+which is the point (a merge whose PR never carried the label was never
+browser-verified). `tests/ci-gates.test.ts` asserts the graph, so a new publish
+job that forgets its `needs` fails a test instead of shipping.
+
 ## Architecture
 
 Three layers, each with one job:
