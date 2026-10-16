@@ -39,6 +39,7 @@ import { resetContentScripts } from '@/client/lib/plugins/content-scripts';
 import { resetPluginSlots } from '@/client/lib/plugins/slots';
 import { resetPluginStylesheets } from '@/client/lib/plugins/stylesheets';
 import { resetLoadedBundles } from '@/client/lib/plugins/loader';
+import { pluginContext } from '@/client/lib/plugins/context';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_PANELS } from '@/shared/lib/realtime/protocol';
 import type { ContentScriptContext } from '@ompchamber/plugin-sdk';
@@ -204,5 +205,54 @@ describe('PluginBootstrap', () => {
 
     expect(generations()).toHaveLength(1);
     expect(document.querySelector('[data-plugin-surface="demo"]')).not.toBeNull();
+  });
+
+  /**
+   * The workspace the bootstrap was HANDED reaches the plugin context.
+   *
+   * This is what the phone layout was missing entirely: it mounted no
+   * `PluginBootstrap`, so `usePanelInfo()` answered the kit's module default
+   * (`workspacePath: null`) and every plugin panel drew "no workspace" over a
+   * real one — while the panel itself still rendered, because the panel catalog
+   * loads bundles on its own. The failure therefore looked like a plugin that
+   * half worked rather than a missing mount.
+   *
+   * `workspacePath` is asserted through the context the KIT reads, not through
+   * the bootstrap's own props, because the context is the only thing a plugin
+   * can see.
+   */
+  test('publishes the workspace it was given into the plugin context', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    await act(async () => {
+      render(
+        h(SessionStateProvider, { sessionId: 's1', children: h(PluginBootstrap, { workspacePath: '/tmp/ws-demo' }) }),
+        container,
+      );
+    });
+
+    // Read through the module the kit's services are installed from — the same
+    // value `usePanelInfo()` returns to a plugin.
+    expect(pluginContext()).toEqual({ sessionId: 's1', workspacePath: '/tmp/ws-demo', theme: expect.any(String) });
+  });
+
+  test('a later workspace change reaches the context', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const renderWith = (workspacePath: string | null) =>
+      act(async () => {
+        render(
+          h(SessionStateProvider, { sessionId: 's1', children: h(PluginBootstrap, { workspacePath }) }),
+          container,
+        );
+      });
+
+    await renderWith('/tmp/ws-a');
+    expect(pluginContext().workspacePath).toBe('/tmp/ws-a');
+
+    // Re-rendered with a different root: the effect republishes, so a plugin
+    // that reads the hook sees the new workspace without a reload.
+    await renderWith('/tmp/ws-b');
+    expect(pluginContext().workspacePath).toBe('/tmp/ws-b');
   });
 });

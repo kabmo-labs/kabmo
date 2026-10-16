@@ -134,7 +134,12 @@ export async function startHarnessServer(options: {
   // marketplace: measured, running this suite left an `e2e-plugin` row in the
   // real `marketplace.json` pointing at a temp repository that had been deleted.
   const marketplaceDir = join(runRoot, 'marketplace');
-  const bundledDir = join(runRoot, 'bundled');
+  // The BUNDLED store stays the checkout's own: it is the read-only list of what
+  // the package offers (an offer, not an install), and a spec that installs a
+  // bundled plugin must find the real one there. Pointing this at an empty temp
+  // directory made every bundled install fail with "No bundled plugin with id
+  // …" — the store was empty by construction.
+  const bundledDir = join(options.repoRoot, 'marketplace');
   const port = await pickFreePort();
 
   // Real mode drives the scripted child. `OMPCHAMBER_OMP_BIN` must be an

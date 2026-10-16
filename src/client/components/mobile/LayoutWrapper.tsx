@@ -17,6 +17,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
+import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { mobileEditorFileFrom, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
 
 interface MobileLayoutWrapperProps {
@@ -170,6 +171,15 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
       data-testid="app-root"
       className="flex flex-col h-dvh w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas relative"
     >
+      {/* The plugin system's boot, on the PHONE too. It is mounted at the top of
+          the workspace on the desktop (`desktop-layout/index.tsx`), and without
+          it here a phone had no plugin CONTEXT (so `usePanelInfo()` answered
+          `{ sessionId: null, workspacePath: null }` and every plugin panel drew
+          "no workspace" over a real one) and no content scripts at all — the
+          panel still rendered, because the panel catalog loads the bundles on
+          its own, so the failure looked like a plugin that half worked.
+          `activeProjectPath` is the same value the desktop passes. */}
+      <PluginBootstrap workspacePath={activeProjectPath} />
       {/* The drop target is the CHAT screen only, matching the desktop: the
           session drawer and the right panel are their own screens here, and
           "open this file" is not what either of them means. The full-screen

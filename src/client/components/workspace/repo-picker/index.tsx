@@ -4,27 +4,30 @@
  */
 
 /**
- * The repo picker every right-panel view shares: a compact dropdown for the
- * common case (two or three repositories) plus the modal that opens from its
- * footer for the case it cannot serve (dozens, with state to compare).
+ * The repo picker the right-panel views render.
  *
- * **One component, four panels.** Files, Search, Git, Terminal and Wiki all
- * describe the same working tree through the same shared selection
- * (`workspace.activeRepo`), so a per-panel copy of the picker is a second place
- * for the label, the filter and the "manage" affordance to drift. It lives
- * beside those panels rather than inside `file-explorer/`, which is where it
- * started and which was never where it belonged.
+ * A THIN WRAPPER over the kit's `RepoPicker`, and deliberately so: a plugin
+ * panel's header and this one describe the same working tree, and the kit
+ * already ships the control — a second implementation here is how the label, the
+ * filter and the checkmark drift between a plugin's picker and the host's. The
+ * kit's component is the one place that draws it; this file only supplies what
+ * is HOST-specific.
  *
- * **The modal is opened from INSIDE the dropdown, and the dropdown closes as it
- * opens.** The two are one surface at two scales, so the entry belongs where the
- * list is — a reader who has just scrolled past twenty repositories is the one
- * who wants the manage view — and leaving the dropdown open behind the modal
- * would put two lists on screen at once.
+ * Two host-only pieces remain, and they are why this wrapper exists at all:
+ *
+ * - **The modal.** A workspace with dozens of repositories cannot be managed
+ *   from a 208px dropdown, so the list's footer opens a larger surface with
+ *   grouping and per-repo state. The kit takes that as an optional `onManage`
+ *   row, so a plugin — which has no such surface — draws no row and promises
+ *   nothing.
+ * - **The scope handle.** The host's panels own their own `useRepoScope` and
+ *   pass the parts down (this component stays presentational so a test can drive
+ *   it without a session), so the handle is assembled here from the props the
+ *   panel already holds.
  */
 
-import { useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, FolderGit2, RotateCcw, Search, Settings2 } from 'lucide-preact';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { useCallback, useMemo, useState } from 'preact/hooks';
+import { RepoPicker } from '@ompchamber/ui';
 import { RepoModal } from '@/client/components/workspace/repo-picker/Modal';
 import { repoLabel, repoShortLabel } from '@/shared/lib/fs/repo-label';
 
@@ -47,103 +50,33 @@ export function GitRepoPicker({
   scanning,
   onRefreshRepos,
 }: GitRepoPickerProps) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
-  useOnClickOutside(ref, () => setOpen(false));
+  // The rows carry their own labels, because the naming rule is the host's (see
+  // `repo-label`): the root reads as its folder's name, a list row keeps its
+  // whole root-relative path, and the trigger truncates to the last segment.
+  const scope = useMemo(
+    () => ({
+      root: rootPath ?? null,
+      repo: activeRepo,
+      rows: repos.map((repo) => ({
+        repo,
+        label: repoLabel(repo, rootPath),
+        short: repoShortLabel(repo, rootPath),
+      })),
+      scanning,
+      ready: true,
+      setRepo: onSelectRepo,
+      refresh: onRefreshRepos,
+    }),
+    [rootPath, activeRepo, repos, scanning, onSelectRepo, onRefreshRepos],
+  );
 
-  const filteredRepos = repos.filter((repo) => {
-    if (!query.trim()) return true;
-    return repoLabel(repo, rootPath).toLowerCase().includes(query.toLowerCase());
-  });
+  const openModal = useCallback(() => setModalOpen(true), []);
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        title="Switch git project"
-        className="flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium"
-      >
-        <FolderGit2 size={12} className="text-ink/60" />
-        <span className="truncate max-w-[110px]">{repoShortLabel(activeRepo, rootPath)}</span>
-        <ChevronDown size={12} className="text-ink/40" />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 mt-1 w-52 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
-          <div className="px-2 py-1.5 border-b border-ink/10 flex items-center space-x-1.5">
-            <Search size={11} className="text-ink/40 flex-shrink-0" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.currentTarget.value)}
-              placeholder="Search repos..."
-              title="Search repositories"
-              className="w-full bg-transparent outline-none text-xs text-ink placeholder-ink/40"
-              autoFocus
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                title="Clear search"
-                className="text-ink/40 hover:text-ink flex-shrink-0"
-              >
-                ×
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onRefreshRepos}
-              title="Refresh nested repos"
-              disabled={scanning}
-              className="text-ink/40 hover:text-ink flex-shrink-0 transition-colors disabled:opacity-40 disabled:hover:text-ink/40"
-            >
-              <RotateCcw size={11} className={scanning ? 'animate-spin' : ''} />
-            </button>
-          </div>
-          <div className="max-h-48 scrollbar-overlay-container py-1">
-            {filteredRepos.length === 0 ? (
-              <div className="px-3 py-2 text-ink/40 italic">No repos found</div>
-            ) : (
-              filteredRepos.map((repo) => (
-                <button
-                  key={repo}
-                  type="button"
-                  onClick={() => {
-                    onSelectRepo(repo);
-                    setOpen(false);
-                    setQuery('');
-                  }}
-                  title={repoLabel(repo, rootPath)}
-                  className="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center justify-between transition-colors"
-                >
-                  <span className="truncate">{repoLabel(repo, rootPath)}</span>
-                  {activeRepo === repo && <Check size={12} className="text-ink flex-shrink-0" />}
-                </button>
-              ))
-            )}
-          </div>
-          <div className="border-t border-ink/10">
-            <button
-              type="button"
-              onClick={() => {
-                setModalOpen(true);
-                setOpen(false);
-                setQuery('');
-              }}
-              className="w-full text-left px-3 py-2 hover:bg-ink/5 flex items-center space-x-2 transition-colors text-ink/80"
-            >
-              <Settings2 size={12} />
-              <span>Manage repositories…</span>
-            </button>
-          </div>
-        </div>
-      )}
-
+    <div className="relative">
+      <RepoPicker scope={scope} onManage={openModal} />
       <RepoModal
         isOpen={modalOpen}
         rootPath={rootPath}

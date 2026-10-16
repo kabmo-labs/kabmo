@@ -169,6 +169,85 @@ export interface UiKitServices {
    * editor cannot drift.
    */
   sidebarActions?(): SidebarThreadActions;
+
+  // -------------------------------------------------------------------------
+  // The repo scope: the nested repository the right-panel views operate on.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The nested-repo scope the workspace panels share, as it stands.
+   *
+   * The host owns this value: it is a path RELATIVE to the active workspace
+   * root (`projects/api`), validated by the host's own routes, and the Files,
+   * Search, Source Control and Terminal panels all read and write the SAME
+   * slot. A plugin that reads it therefore describes the tree those panels
+   * describe, and a write moves them — which is the whole point of exposing it
+   * rather than letting a plugin keep its own picker.
+   *
+   * It is a SERVICE rather than `useSessionState('workspace.activeRepo')`
+   * because the kit's session services carry a `plugin.` prefix (a plugin's
+   * keys live in its own namespace), so the shared slot is unreachable from
+   * them. And the stored value is a `{ root, repo }` PAIR, not a bare string:
+   * the root it was picked under is part of its meaning, and resolving it here
+   * is what keeps a plugin from showing another workspace's repo.
+   *
+   * Optional, like every additive service: a host built before this seam still
+   * runs a newer kit, and the hook then reports no scope rather than throwing.
+   */
+  repoScope?(): RepoScope;
+  /** Set the shared pick. `repo` is root-relative; `'.'` means the root itself. */
+  setRepoScope?(repo: string): void;
+  /**
+   * Subscribe to scope changes. Returns an unsubscribe.
+   *
+   * Fires for a pick AND for a session or workspace change, because the slot is
+   * per-session: switching sessions changes the effective scope while the stored
+   * key is untouched, so a subscriber wired only to the key would keep reporting
+   * the previous session's repo.
+   */
+  subscribeRepoScope?(listener: () => void): () => void;
+  /** Force a fresh nested-repo walk for the current root (the picker's ⟳). */
+  rescanRepoScope?(): void;
+}
+
+/**
+ * One row of the repo picker.
+ *
+ * The LABELS travel with the row rather than being derived in the kit, because
+ * the naming rule is the host's: `.` reads as the workspace folder's own name,
+ * a list row keeps its whole root-relative path (so `jns6_5/token` and
+ * `jns7/token` are distinguishable), and a trigger truncates to the last
+ * segment. The kit is a published package that cannot import the host's
+ * `repo-label` module, and a second copy of those three rules is exactly how one
+ * repo comes to be labelled two ways in two places.
+ */
+export interface RepoScopeRow {
+  /** The root-relative path — what a selection sends back. `'.'` is the root. */
+  repo: string;
+  /** What the row reads in the list. */
+  label: string;
+  /** The short form for the trigger, where the space is a few characters. */
+  short: string;
+}
+
+/**
+ * The nested-repo scope, as a plugin sees it.
+ *
+ * `rows` always contains the root itself (`'.'` first), because browsing the
+ * workspace root is legitimate even when it is not a repository — a folder of
+ * nested repos is a normal workspace.
+ */
+export interface RepoScope {
+  /** The active workspace root, or null when there is none. */
+  root: string | null;
+  /** The picked repo, root-relative. `'.'` is the root. */
+  repo: string;
+  /** Every choice, `'.'` first, then discovery's order. */
+  rows: RepoScopeRow[];
+  /** Discovery is still running — the picker's refresh spins. */
+  scanning: boolean;
+  /** False until the session's stored state has loaded, so a picker can hold. */
+  ready: boolean;
 }
 
 /**

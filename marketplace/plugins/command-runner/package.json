@@ -1,0 +1,41 @@
+{
+  "name": "command-runner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
+  "type": "module",
+  "ompchamber": {
+    "id": "command-runner",
+    "name": "Runner",
+    "version": "1.0.0",
+    "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
+    "app": "dist/app.js",
+    "server": "dist/server.js",
+    "icon": "icon.svg",
+    "capabilities": ["server", "storage", "rpc", "realtime", "repo-scope"],
+    "settings": {
+      "logTailKb": {
+        "type": "number",
+        "label": "Log tail (KB)",
+        "description": "How much of a run's output the panel reads at a time. The full buffer is kept server-side; this is only what one read returns.",
+        "default": 64
+      },
+      "maxRuns": {
+        "type": "number",
+        "label": "Concurrent runs",
+        "description": "A run beyond this is refused with a reason rather than queued, so a runaway script cannot start a hundred processes.",
+        "default": 8
+      }
+    }
+  },
+  "peerDependencies": {
+    "@ompchamber/plugin-sdk": "*",
+    "@ompchamber/ui": "*",
+    "preact": "^10.29.8"
+  },
+  "peerDependenciesMeta": {
+    "@ompchamber/plugin-sdk": { "optional": true },
+    "@ompchamber/ui": { "optional": true },
+    "preact": { "optional": true }
+  }
+}

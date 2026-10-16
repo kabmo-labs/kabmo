@@ -42,6 +42,8 @@ export type {
   PluginRpcOutcome,
   ComposerState,
   ComposerService,
+  RepoScope,
+  RepoScopeRow,
 } from './services';
 export { configureUiKit, uiKitServices, requireServices } from './services';
 
@@ -54,6 +56,9 @@ export {
   type SessionValue,
   type WorkspaceFile,
 } from './panels';
+
+export { useRepoScope, type RepoScopeHandle } from './repo';
+export { RepoPicker, type RepoPickerProps } from './repo-picker';
 
 export { PanelHostProvider, usePanelHost } from './panel-host';
 export { PluginIdProvider, usePluginId } from './plugin-id';

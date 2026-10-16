@@ -2,6 +2,11 @@ node_modules/
 build/
 dist/
 coverage/
+
+# A plugin's own lockfile is written by the `bun install` the chamber runs
+# before building it (see lib/panels/build.server.ts), not by a plugin
+# author — the shipped plugins commit none.
+marketplace/plugins/*/bun.lock
 .DS_Store
 *.log
 .env*

@@ -110,6 +110,47 @@ test.describe('mobile layout', () => {
     workspace.dispose();
   });
 
+  /**
+   * The phone boots the plugin system, which it did not.
+   *
+   * `PluginBootstrap` was mounted only by the desktop layout, so on a phone
+   * `usePanelInfo()` answered the kit's module default (`sessionId: null`,
+   * `workspacePath: null`) and no content script ever mounted — while plugin
+   * PANELS still rendered, because the panel catalog loads bundles on its own.
+   * A plugin therefore half worked with nothing on screen to explain it.
+   *
+   * The proof is a stylesheet `<link>`: `usePluginStylesheets` is called from
+   * `PluginBootstrap` and nowhere else, and it loads a plugin's CSS only while
+   * that plugin has a live content-script generation — so one `<link>` asserts
+   * the bootstrap mounted, the content script mounted and the stylesheet was
+   * reconciled. `session-info` is the fixture because it is the one bundled
+   * plugin declaring BOTH a `contentScript` and a `css`.
+   *
+   * The mobile tree's own controls are asserted first: they do not exist on the
+   * desktop tree, so a pass cannot be the desktop layout rendering.
+   */
+  test('boots the plugin system — context, content script and stylesheet', async ({ harness, page }) => {
+    const server = await harness('real');
+
+    // Through the real route, the same call the Panel Plugins pane makes. A
+    // hand-copied directory would skip the build the route performs (measured:
+    // 29ms for this plugin).
+    const installed = await fetch(`${server.baseURL}/api/panels/install`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'install', pluginId: 'session-info' }),
+    });
+    expect(installed.ok).toBe(true);
+
+    await openApp(page, server.baseURL);
+
+    await expect(page.getByRole('button', { name: 'Open Sessions' })).toBeVisible();
+    await expect(page.locator('link[data-plugin-stylesheet="session-info"]')).toHaveCount(1);
+    // The surface the content script mounted into — what the plugin's own CSS
+    // is scoped to.
+    await expect(page.locator('[data-plugin-surface="session-info"]')).toHaveCount(1);
+  });
+
   test('stretches the composer to the viewport and collapses on send', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-mobile-stretch');

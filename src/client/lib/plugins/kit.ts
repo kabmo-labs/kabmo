@@ -41,6 +41,7 @@ import {
   sidebarThreads,
   subscribeSidebarThreads,
 } from '@/client/lib/plugins/sidebar-bridge';
+import { repoScopeServices } from '@/client/lib/plugins/repo-scope-service';
 
 /**
  * Read a text file inside the active workspace, through the chamber's own fs
@@ -149,5 +150,11 @@ export function installUiKit(): void {
     subscribeSidebarThreads,
     refreshSidebarThreads,
     sidebarActions,
+
+    // The nested-repo scope the four browsing panels share. Exposed as a service
+    // because the kit's own session services are namespaced under `plugin.`, so
+    // the host's shared slot is unreachable from them — and because the value is
+    // a `{ root, repo }` pair that only the host can resolve.
+    ...repoScopeServices(),
   });
 }
