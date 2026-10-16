@@ -3,10 +3,43 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * The CLI's own path helpers, on both platforms' path spellings.
+ *
+ * These are not cosmetic: `ompchamber.js` derives the package root from
+ * `import.meta.dir`, and every entry the CLI runs — the built server, the dev
+ * entry, the build script, the login-entry argv — hangs off that root. A
+ * resolver that recognizes only a leading `/` treats a Windows path as
+ * relative, prefixes the cwd twice and answers a path that exists nowhere:
+ * measured against the published tarball, `ompchamber serve` reported "This
+ * install is incomplete" for an install that ships `dist/client`.
+ *
+ * The Windows cases therefore assert on the SHAPE of the answer (an absolute
+ * path, the cwd not re-prefixed, a drive letter appearing once) rather than on
+ * `fs.existsSync` — the suite runs on macOS, so the cwd is stubbed for them.
+ */
+
 import { describe, expect, test } from 'bun:test';
 import { homedir } from 'node:os';
 
-import { dirnameOf, homeDir, joinPath, resolvePath } from '@/cli/lib/path-utils.js';
+import { homeDir, isAbsolutePath, joinPath, resolvePath } from '@/cli/lib/path-utils.js';
+
+/**
+ * Run `fn` with `process.cwd()` answering `value`.
+ *
+ * The only way to pin a Windows resolution without a Windows host: the helpers
+ * read the cwd through that one call, and every branch under test is decided by
+ * the SEGMENTS, so a stubbed cwd exercises the real code path.
+ */
+function withCwd(value, fn) {
+  const original = process.cwd;
+  Object.defineProperty(process, 'cwd', { value: () => value, configurable: true });
+  try {
+    return fn();
+  } finally {
+    Object.defineProperty(process, 'cwd', { value: original, configurable: true });
+  }
+}
 
 describe('homeDir', () => {
   // The CLI must resolve the same data directory as the server (which uses
@@ -29,6 +62,25 @@ describe('homeDir', () => {
   });
 });
 
+describe('isAbsolutePath', () => {
+  test('recognizes both platforms’ spellings', () => {
+    expect(isAbsolutePath('/tmp/x')).toBe(true);
+    expect(isAbsolutePath('C:\\Users\\x')).toBe(true);
+    expect(isAbsolutePath('C:/Users/x')).toBe(true);
+    expect(isAbsolutePath('\\\\server\\share')).toBe(true);
+    expect(isAbsolutePath('//server/share')).toBe(true);
+  });
+
+  test('rejects relative spellings, including a bare drive', () => {
+    expect(isAbsolutePath('rel/dir')).toBe(false);
+    expect(isAbsolutePath('..')).toBe(false);
+    expect(isAbsolutePath('')).toBe(false);
+    expect(isAbsolutePath(undefined)).toBe(false);
+    // `C:` with no separator is drive-RELATIVE on Windows, not absolute.
+    expect(isAbsolutePath('C:')).toBe(false);
+  });
+});
+
 describe('joinPath', () => {
   test('keeps a single separator between segments', () => {
     expect(joinPath('/a', 'b', 'c')).toBe('/a/b/c');
@@ -38,6 +90,12 @@ describe('joinPath', () => {
 
   test('skips empty segments', () => {
     expect(joinPath('/a', '', 'b')).toBe('/a/b');
+  });
+
+  test('normalizes Windows separators so a joined path is comparable', () => {
+    expect(joinPath('C:\\a', 'b', 'c')).toBe('C:/a/b/c');
+    expect(joinPath('C:\\Users\\x\\ompchamber', 'dist', 'client', 'index.js'))
+      .toBe('C:/Users/x/ompchamber/dist/client/index.js');
   });
 });
 
@@ -51,6 +109,15 @@ describe('resolvePath', () => {
     expect(resolvePath('rel/dir')).toBe(joinPath(process.cwd(), 'rel/dir'));
   });
 
+  test('a `.` segment contributes nothing', () => {
+    expect(resolvePath(process.cwd(), '.')).toBe(process.cwd());
+  });
+
+  test('an absolute segment discards everything before it', () => {
+    expect(resolvePath('/cwd/here', '/tmp/x')).toBe('/tmp/x');
+    expect(resolvePath('/cwd/here', 'rel')).toBe('/cwd/here/rel');
+  });
+
   test('the data dir derived from homeDir is always absolute', () => {
     const saved = Bun.env.HOME;
     try {
@@ -60,12 +127,47 @@ describe('resolvePath', () => {
       if (saved !== undefined) Bun.env.HOME = saved;
     }
   });
-});
 
-describe('dirnameOf', () => {
-  test('returns the parent of an absolute path', () => {
-    expect(dirnameOf('/a/b/c')).toBe('/a/b');
-    expect(dirnameOf('/a')).toBe('/');
-    expect(dirnameOf('/')).toBe('/');
+  // The issue #5 regression. `ompchamber.js` calls exactly this shape with
+  // `import.meta.dir`, which on Windows is a drive-rooted backslash path.
+  describe('on Windows', () => {
+    const WIN_DIR = 'C:\\Users\\Administrator\\.bun\\install\\global\\node_modules\\ompchamber\\src\\cli';
+
+    test('the package root keeps one drive letter and is not cwd-prefixed', () => {
+      const pkgRoot = withCwd('C:\\', () => resolvePath(WIN_DIR, '..', '..'));
+      // The bug answered `C:\/C:\/C:\Users\...\src\cli/../..`.
+      expect(pkgRoot.startsWith('C:/')).toBe(true);
+      expect(pkgRoot.indexOf('C:', 1)).toBe(-1);
+      expect(pkgRoot).not.toContain('C:\\');
+      expect(pkgRoot).toBe('C:/Users/Administrator/.bun/install/global/node_modules/ompchamber/src/cli/../..');
+    });
+
+    test('every path derived from the package root stays inside it', () => {
+      const pkgRoot = withCwd('C:\\', () => resolvePath(WIN_DIR, '..', '..'));
+      expect(joinPath(pkgRoot, 'dist', 'client', 'index.js'))
+        .toBe('C:/Users/Administrator/.bun/install/global/node_modules/ompchamber/src/cli/../../dist/client/index.js');
+      expect(joinPath(pkgRoot, 'scripts', 'build-client.ts')).toContain('/ompchamber/src/cli/../../scripts/');
+    });
+
+    test('a drive-rooted segment is absolute, so it discards the cwd', () => {
+      expect(withCwd('C:\\proj', () => resolvePath('C:\\other'))).toBe('C:/other');
+      expect(withCwd('C:\\proj', () => resolvePath('C:\\proj', 'sub'))).toBe('C:/proj/sub');
+    });
+
+    test('a relative segment still resolves against a Windows cwd', () => {
+      expect(withCwd('C:\\proj', () => resolvePath('sub'))).toBe('C:/proj/sub');
+      expect(withCwd('C:\\proj', () => resolvePath('.'))).toBe('C:/proj');
+    });
+
+    test('a UNC path keeps its double-slash prefix', () => {
+      expect(withCwd('C:\\', () => resolvePath('\\\\server\\share', 'dir'))).toBe('//server/share/dir');
+      expect(withCwd('C:\\', () => resolvePath('//server/share/'))).toBe('//server/share');
+    });
+
+    test('an absolute POSIX path is still absolute there', () => {
+      // A git-bash style argument on Windows: absolute, so it must not be
+      // relocated under the cwd.
+      expect(withCwd('C:\\proj', () => resolvePath('/tmp/x'))).toBe('/tmp/x');
+    });
   });
 });

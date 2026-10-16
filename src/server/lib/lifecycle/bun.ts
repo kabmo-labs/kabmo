@@ -13,6 +13,8 @@
  */
 export function resolveBunBin(): string {
   const execPath = process.execPath;
-  if (/(^|[\\/])bun$/.test(execPath)) return execPath;
+  // `bun.exe` on Windows: the launcher carries the extension there, and without
+  // it this fell through to a PATH lookup for a runtime already running.
+  if (/(^|[\\/])bun(\.exe)?$/.test(execPath)) return execPath;
   return Bun.which('bun') ?? 'bun';
 }
