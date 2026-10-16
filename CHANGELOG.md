@@ -5,6 +5,18 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.18.1](https://github.com/rajebdev/ompchamber/compare/v4.18.0...v4.18.1) — 2026-10-16
+
+### Changed
+
+* **scrollbars:** fade the scrollbar thumb back after 5s ([2798b07](https://github.com/rajebdev/ompchamber/commit/2798b07332ec7e599efdd3bd0cff57259c411d71))
+
+### Fixed
+
+* **chat:** withhold the run footer through the dispatch window ([5c4a67d](https://github.com/rajebdev/ompchamber/commit/5c4a67d91fbcc51bc4494bf7ff351c3460adfd0a))
+* **git-panel:** keep a commit's graph node on its own title line ([b17d88a](https://github.com/rajebdev/ompchamber/commit/b17d88a28d4f4590742c5af84cf48fccf1e61f01))
+* **sidebar:** retire a pending row with no draft, and stop a switch copying it ([03353a0](https://github.com/rajebdev/ompchamber/commit/03353a018d1830bc3eda5ef0fdb81a6373944777))
+
 ## [4.18.0](https://github.com/rajebdev/ompchamber/compare/v4.17.0...v4.18.0) — 2026-10-16
 
 ### Added
