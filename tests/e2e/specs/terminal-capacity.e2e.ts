@@ -26,10 +26,16 @@
  * with `ready: true`. Each shell therefore runs `sleep`, which moves the PTY's
  * foreground group onto that command and makes it count.
  *
- * Readiness is a CONDITION, never a delay: the inventory endpoint reports each
- * shell's `busy` flag from the same registry the cap budgets, so the spec polls
- * until the shells it opened are counted. A sleep would be both slower and
- * wrong — under load the shell may not have forked `sleep` yet.
+ * Readiness is a CONDITION, never a delay, and the condition is the CAP's own
+ * input rather than a proxy for it. That input differs by platform, because the
+ * cap deliberately does: `busy` is what the platform can tell (a foreground
+ * process group, from `tpgid`), and Windows has none, so there the cap budgets
+ * every running shell instead. Polling `busy` on Windows therefore waits for a
+ * number that is always 0 by design and times out — measured on the Windows leg,
+ * where the shells were open and the count sat at 0 for the whole budget. So
+ * POSIX polls the busy count (which is what its cap counts), Windows polls the
+ * running count, and the `sleep` still runs on both: it is what makes the POSIX
+ * half meaningful, and harmless where it is not consulted.
  */
 
 import { test, expect, openApp } from '../fixtures/app';
@@ -107,12 +113,16 @@ test.describe('terminal capacity', () => {
         makeBusy(shell);
       }
 
-      // Wait until the registry COUNTS them. `busy` is the cap's own input, so
-      // this is the exact precondition rather than a proxy for it.
+      // Wait until the registry COUNTS them, using the same rule the cap does:
+      // a foreground group on POSIX, every running shell where the platform
+      // cannot tell idle from busy (`countLiveTerminals`).
+      const countsTowardCap = process.platform === 'win32'
+        ? (terminal: Inventory['terminals'][number]) => terminal.status === 'running'
+        : (terminal: Inventory['terminals'][number]) => terminal.busy === true;
       await expect
         .poll(async () => {
           const inventory = await readInventory();
-          return inventory.terminals.filter((terminal) => terminal.busy).length;
+          return inventory.terminals.filter(countsTowardCap).length;
         }, { timeout: 20_000 })
         .toBe(MAX_TERMINALS);
 
