@@ -107,6 +107,7 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
       type?: unknown;
       text?: unknown;
       thinking?: unknown;
+      narration?: unknown;
       id?: unknown;
       name?: unknown;
       toolCallId?: unknown;
@@ -114,8 +115,19 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
       input?: unknown;
     };
     if (block.type === 'thinking') {
-      if (typeof block.thinking === 'string') result.thinking = block.thinking;
-      else if (typeof block.text === 'string') result.thinking = block.text;
+      const body = typeof block.thinking === 'string'
+        ? block.thinking
+        : typeof block.text === 'string'
+          ? block.text
+          : undefined;
+      // omp 18.12.0 marks a thinking block whose text is prose addressed to the
+      // USER (`narration`), and its own surfaces present it as answer text
+      // (`presentNarrationAsAnswer`, used by the TUI, print mode and ACP).
+      // Folding it into `thinking` hid the reply inside a collapsed "Thinking"
+      // accordion; the two render paths share this parser, so the rule is
+      // stated once here.
+      if (body !== undefined && block.narration === true) result.textParts.push(body);
+      else if (body !== undefined) result.thinking = body;
     } else if (block.type === 'toolCall') {
       // The child streams FULL accumulated messages (`child-config.ts`), so the
       // block carries omp's own `id` and `name` from the first delta. The
