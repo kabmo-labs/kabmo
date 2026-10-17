@@ -112,12 +112,10 @@ describe('resolveProjectRoot', () => {
 
   test('a non-git directory resolves to its realpath', async () => {
     const dir = tempDir('omp-plain');
-    // Compare through `realpathSync` on BOTH sides. On Windows the temp root has
-    // two spellings — the 8.3 SHORT one `tmpdir()` hands out
-    // (`C:\Users\RUNNER~1\…`) and the long one `realpathSync` answers
-    // (`C:\Users\runneradmin\…`) — and which one `mkdtempSync` returns is not
-    // something a test should depend on.
-    expect(await resolveProjectRoot(dir)).toBe(fs.realpathSync(dir));
+    // Compare through the SAME resolver the code uses: the two realpath flavours
+    // disagree on Windows (`realpathSync` answers the 8.3 SHORT spelling,
+    // `fsp.realpath` the long one), and `resolveProjectRoot` uses the async one.
+    expect(await resolveProjectRoot(dir)).toBe(await fs.promises.realpath(dir));
   });
 
   test('the result is cached per cwd, so a deleted directory still answers', async () => {
@@ -132,12 +130,12 @@ describe('resolveProjectRoot', () => {
     const root = tempDir('omp-repo');
     expect(Bun.spawnSync(['git', 'init', '-q', root]).exitCode).toBe(0);
     // The repository root itself resolves through git rev-parse.
-    expect(await resolveProjectRoot(root)).toBe(fs.realpathSync(root));
+    expect(await resolveProjectRoot(root)).toBe(await fs.promises.realpath(root));
     // A subdirectory has no .git of its own, so the check is per-directory
     // rather than an ancestor walk and the fallback returns the cwd itself.
     const nested = join(root, 'src', 'deep');
     fs.mkdirSync(nested, { recursive: true });
-    expect(await resolveProjectRoot(nested)).toBe(fs.realpathSync(nested));
+    expect(await resolveProjectRoot(nested)).toBe(await fs.promises.realpath(nested));
   });
 
   test('a linked worktree resolves to the MAIN repository root', async () => {
@@ -162,7 +160,7 @@ describe('resolveProjectRoot', () => {
     const worktree = join(tempDir('omp-wt-parent'), 'wt');
     const added = Bun.spawnSync(['git', '-C', root, 'worktree', 'add', '--detach', worktree]);
     if (added.exitCode !== 0) return;
-    expect(await resolveProjectRoot(worktree)).toBe(fs.realpathSync(root));
+    expect(await resolveProjectRoot(worktree)).toBe(await fs.promises.realpath(root));
   });
 });
 

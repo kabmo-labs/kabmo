@@ -66,9 +66,11 @@ beforeAll(async () => {
   Bun.env.PI_CODING_AGENT_DIR = AGENT;
   Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
   Bun.env.MOCK = 'false';
-  // The db handle is process-wide; drop any handle a sibling suite opened so
-  // this file resolves the temp path, and leave the temp file on disk so a
+  // The db handle is process-wide; CLOSE the one a sibling suite left before
+  // dropping it — an abandoned connection keeps its file locked, and on Windows
+  // the teardown delete then fails with EBUSY. The temp file stays on disk so a
   // later suite that inherits the slot cannot fall back to the real database.
+  globalThis.__ompChamberDb?.resolved?.raw.close();
   globalThis.__ompChamberDb = undefined;
   clearSessionFileCaches();
   invalidateOmpSidebarData();
