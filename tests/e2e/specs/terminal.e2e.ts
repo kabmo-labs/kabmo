@@ -20,12 +20,22 @@
  * than the transport. The frames are the contract: bytes out on a keystroke,
  * the shell's answer back on the same socket.
  *
- * SKIPPED ON WINDOWS, and there is nothing to weaken here: the server's
- * terminal is a `Bun.Terminal`, and that API — the PTY — is not implemented on
- * Windows at all (`Bun.Terminal` is POSIX-only). The panel therefore cannot
- * open a shell there for any spec to observe, so this is a platform limit
- * rather than an untested case. The panel itself still renders on Windows; what
- * is unverified there is the PTY behind it.
+ * SKIPPED ON WINDOWS for a HARNESS reason, not a product one — and an earlier
+ * version of this comment said otherwise, which was wrong. `Bun.Terminal` is
+ * supported on Windows through ConPTY (Bun's own docs: "uses `openpty()` on
+ * Linux and macOS, and ConPTY (`CreatePseudoConsole`) on Windows"), so the
+ * panel's PTY does work there.
+ *
+ * What does not work is this spec's ASSERTION. It reads the terminal socket's
+ * raw bytes and expects the shell's reply to arrive verbatim; ConPTY "renders
+ * the child's output to a virtual screen and emits whatever VT sequences
+ * describe the result", so the frames are "semantically equivalent, but not
+ * byte-identical" — it also emits an init sequence before any child output. A
+ * byte-for-byte assertion would fail on a working terminal.
+ *
+ * Making it pass would mean asserting on the RENDERED text rather than the
+ * frames, which is a different test of a different layer. Until then, what is
+ * unverified on Windows is the PTY behind the panel, not whether it exists.
  */
 
 import { test, expect, openApp } from '../fixtures/app';
