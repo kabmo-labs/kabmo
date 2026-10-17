@@ -114,7 +114,9 @@ describe('resolveProjectRoot', () => {
 
   test('a non-git directory resolves to its realpath', async () => {
     const dir = tempDir('omp-plain');
-    expect(await resolveProjectRoot(dir)).toBe(fs.realpathSync(dir));
+    // The fixture is already realpathed; re-applying `realpathSync` here would
+    // answer the 8.3 SHORT spelling on Windows and disagree with itself.
+    expect(await resolveProjectRoot(dir)).toBe(dir);
   });
 
   test('the result is cached per cwd, so a deleted directory still answers', async () => {
@@ -129,12 +131,12 @@ describe('resolveProjectRoot', () => {
     const root = tempDir('omp-repo');
     expect(Bun.spawnSync(['git', 'init', '-q', root]).exitCode).toBe(0);
     // The repository root itself resolves through git rev-parse.
-    expect(await resolveProjectRoot(root)).toBe(fs.realpathSync(root));
+    expect(await resolveProjectRoot(root)).toBe(root);
     // A subdirectory has no .git of its own, so the check is per-directory
     // rather than an ancestor walk and the fallback returns the cwd itself.
     const nested = join(root, 'src', 'deep');
     fs.mkdirSync(nested, { recursive: true });
-    expect(await resolveProjectRoot(nested)).toBe(fs.realpathSync(nested));
+    expect(await resolveProjectRoot(nested)).toBe(nested);
   });
 
   test('a linked worktree resolves to the MAIN repository root', async () => {
@@ -159,7 +161,7 @@ describe('resolveProjectRoot', () => {
     const worktree = join(tempDir('omp-wt-parent'), 'wt');
     const added = Bun.spawnSync(['git', '-C', root, 'worktree', 'add', '--detach', worktree]);
     if (added.exitCode !== 0) return;
-    expect(await resolveProjectRoot(worktree)).toBe(fs.realpathSync(root));
+    expect(await resolveProjectRoot(worktree)).toBe(root);
   });
 });
 

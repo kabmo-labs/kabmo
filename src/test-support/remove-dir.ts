@@ -33,8 +33,8 @@
 import { rmSync } from 'node:fs';
 
 /** How long to keep retrying a Windows delete before giving up. */
-const RETRY_DEADLINE_MS = 1_000;
-const RETRY_INTERVAL_MS = 20;
+const RETRY_DEADLINE_MS = 5_000;
+const RETRY_INTERVAL_MS = 25;
 
 /**
  * Delete a directory, tolerating the transient lock Windows holds on a
