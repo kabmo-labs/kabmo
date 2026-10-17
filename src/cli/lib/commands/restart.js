@@ -9,9 +9,10 @@
 // replacing it would break a loop OMPChamber does not manage. `ompchamber stop
 // --port <port>` (or `--all`) is the deliberate way to end one.
 
-import { findLiveInstance, listLiveInstances, stopInstance } from '@/cli/lib/runtime.js';
+import { findLiveInstance, listLiveInstances } from '@/cli/lib/runtime.js';
+import { stopInstance } from '@/cli/lib/stop-instance.js';
 import { STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
-import { log, isJson, isQuiet } from '@/cli/lib/output.js';
+import { log, warn, isJson, isQuiet } from '@/cli/lib/output.js';
 import { run as runServe } from '@/cli/lib/commands/serve.js';
 import { skipRestartNote } from '@/server/lib/lifecycle/restart';
 import { isCliManaged } from '@/server/lib/lifecycle/launch-mode';
@@ -34,6 +35,7 @@ export async function run(options, ctx) {
 
   if (targets.length === 0) return runServe(options, ctx);
 
+  let failures = 0;
   for (const live of targets) {
     if (!isCliManaged(live.launchMode)) {
       if (!json && !quiet) log(`Skipping OMPChamber on port ${live.port}: ${skipRestartNote(live.launchMode)}.`);
@@ -41,7 +43,15 @@ export async function run(options, ctx) {
     }
 
     if (!json && !quiet) log(`Stopping OMPChamber on port ${live.port} (pid ${live.pid})...`);
-    await stopInstance(live, { timeoutMs: STOP_TIMEOUT_MS });
+    // A stop that did not take must not be followed by a start: the port is
+    // still held, so `serve` would fail on the port guard and read as the
+    // restart's own failure. Report it here, where the cause is.
+    const gone = await stopInstance(live, { timeoutMs: STOP_TIMEOUT_MS });
+    if (!gone) {
+      warn(`OMPChamber on port ${live.port} (pid ${live.pid}) is still running — not restarting it.`);
+      failures += 1;
+      continue;
+    }
 
     // Reuse the recorded port/host/mode so an instance started on a non-default
     // port, or bound to the LAN, comes back the way it was found. Production is
@@ -59,4 +69,6 @@ export async function run(options, ctx) {
       ctx,
     );
   }
+
+  if (failures > 0) process.exitCode = 1;
 }

@@ -11,7 +11,6 @@
 import fs from 'node:fs';
 
 import { ensureDataDirs, getLogFilePath } from '@/cli/lib/paths.js';
-import { killChildTree, STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
 import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
 import { launchModeArg } from '@/server/lib/lifecycle/launch-mode';
 import { TLS_FLAG } from '@/server/lib/lifecycle/tls';
@@ -114,10 +113,13 @@ export function resolveBunBin() {
   if (isBun(override)) return override;
 
   const execDir = process.execPath;
-  if (/(^|[\\/])bun$/.test(execDir) && isBun(execDir)) return execDir;
+  // `bun` and `bun.exe`: on Windows the launcher carries the extension, and the
+  // path separator there is `\` — both already covered by the character class.
+  if (/(^|[\\/])bun(\.exe)?$/.test(execDir) && isBun(execDir)) return execDir;
 
   const candidates = [
     joinPath(homeDir(), '.bun', 'bin', 'bun'),
+    joinPath(homeDir(), '.bun', 'bin', 'bun.exe'),
     '/opt/homebrew/bin/bun',
     '/usr/local/bin/bun',
     '/usr/bin/bun',
@@ -248,62 +250,4 @@ export async function waitForHealth(port, host, timeoutMs = HEALTH_TIMEOUT_MS, t
     await sleep(HEALTH_INTERVAL_MS);
   }
   return null;
-}
-
-function waitForProcessExit(pid, timeoutMs) {
-  if (!isProcessAlive(pid)) return Promise.resolve(true);
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve) => {
-    const tick = () => {
-      if (!isProcessAlive(pid)) {
-        resolve(true);
-        return;
-      }
-      if (Date.now() >= deadline) {
-        resolve(false);
-        return;
-      }
-      setTimeout(tick, 100);
-    };
-    tick();
-  });
-}
-
-/**
- * SIGTERM the process, escalate to SIGKILL after the timeout, then drop the
- * instance record. Resolves true once the PID is gone.
- *
- * Identity is re-checked before signalling: an entry discovered by probe was
- * confirmed by the server itself, but a record-only entry whose PID has since
- * been recycled belongs to a stranger and is never signalled — the stale record
- * is simply removed.
- */
-export async function stopInstance(entry, { timeoutMs = STOP_TIMEOUT_MS } = {}) {
-  const port = entry?.port;
-  const pid = Number(entry?.pid);
-  const dropRecord = async () => {
-    if (port !== undefined && port !== null) removeInstanceRecord(port);
-  };
-
-  if (!Number.isInteger(pid) || pid <= 0 || !isProcessAlive(pid)) {
-    await dropRecord();
-    return true;
-  }
-
-  const confirmedByProbe = entry?.source === 'probe' || entry?.source === 'registry+probe';
-  if (!confirmedByProbe && getProcessState(pid) !== 'matched') {
-    await dropRecord();
-    return true;
-  }
-
-  const target = { pid, kill: (signal) => process.kill(pid, signal) };
-  killChildTree(target, false);
-  let gone = await waitForProcessExit(pid, timeoutMs);
-  if (!gone) {
-    killChildTree(target, true);
-    gone = await waitForProcessExit(pid, timeoutMs);
-  }
-
-  await dropRecord();
-  return gone;
 }

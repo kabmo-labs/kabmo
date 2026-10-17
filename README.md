@@ -244,6 +244,15 @@ or `--foreground`. `launchMode` is derived from the process's **argv**, never fr
 variable — env is inherited, so a `bun run dev` started inside an OMPChamber shell would otherwise be
 replaced by an update. Records left by a killed server are pruned once their PID stops answering.
 
+- `stop` reports what actually happened. The record is dropped only once the process is gone, so a
+  stop that could not end the server keeps it — `ompchamber status` still finds the instance, the
+  message says so, and the command exits non-zero. Deleting the record over a live process was how a
+  failed stop turned into a deadlock: `status` said "not running" while `serve` refused the port.
+- A PID whose identity cannot be read (Windows cannot read another process's command line, so every
+  PID there reads back as unverified) is resolved through the **port** instead: `/api/health` names
+  the instance serving it. Only when the port names a different PID — a recycled PID, a foreign
+  listener — is the record treated as stale and cleared without signalling anything.
+
 ## Configuration
 
 Environment variables, read from `.env` (see [`.env.example`](.env.example)):

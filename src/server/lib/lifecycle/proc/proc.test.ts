@@ -90,6 +90,16 @@ describe('win32Probe', () => {
     expect(win32Probe.foregroundGroup(process.pid)).toBeNull();
   });
 
+  test('a null command line is what makes identity `unknown`, never `matched`', () => {
+    // This is the fact `stopInstance` had to be taught: on Windows the probe
+    // cannot read a PID's command line, so identity degrades to `unknown` for
+    // every PID — the server's own included. A caller that treats anything but
+    // `matched` as "not ours" therefore never signals an OMPChamber server
+    // there, which is what made `ompchamber stop` report success over a process
+    // that was still listening.
+    expect(win32Probe.commandLine(process.pid)).toBeNull();
+  });
+
   test('reduces liveness to signal 0', () => {
     expect(win32Probe.liveness(process.pid)).toBe('alive');
     expect(win32Probe.isAlive(process.pid)).toBe(true);
