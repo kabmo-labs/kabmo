@@ -5,6 +5,17 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.18.2](https://github.com/rajebdev/ompchamber/compare/v4.18.1...v4.18.2) — 2026-10-17
+
+### Fixed
+
+* accept Windows local paths and CRLF git configs ([cce630b](https://github.com/rajebdev/ompchamber/commit/cce630bc2feed147d7d17106b4d968a268acec70))
+* **chamber-modes:** settle the parked plan proposal on approve ([5888f4c](https://github.com/rajebdev/ompchamber/commit/5888f4c1f1138973ff12911ccc5f00415d7b3dad)), closes [#7](https://github.com/rajebdev/ompchamber/issues/7)
+* **cli:** resolve Windows paths in the CLI's own path helpers ([b3b804d](https://github.com/rajebdev/ompchamber/commit/b3b804de5059d666663bcc4a26f3698008459fdc)), closes [#5](https://github.com/rajebdev/ompchamber/issues/5)
+* **cli:** stop only reports a stop it actually performed ([6832a8a](https://github.com/rajebdev/ompchamber/commit/6832a8a91b07d66047166b3780cecc6ea49e43b8)), closes [#6](https://github.com/rajebdev/ompchamber/issues/6)
+* make the suite and the plugin loader work on Windows ([6c65ba5](https://github.com/rajebdev/ompchamber/commit/6c65ba5ac10d1a22c624dd0746a70b7ee1126f7c))
+* unescape git config values and stop slugging a Windows path as a whole ([16b7e01](https://github.com/rajebdev/ompchamber/commit/16b7e01d17b5cd7ba81ea23d32549b1b81427040))
+
 ## [4.18.1](https://github.com/rajebdev/ompchamber/compare/v4.18.0...v4.18.1) — 2026-10-16
 
 ### Changed
