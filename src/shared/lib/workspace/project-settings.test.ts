@@ -13,7 +13,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
@@ -26,6 +26,7 @@ import {
   type WorkspaceFolderRow,
 } from '@/shared/lib/workspace/project-settings';
 import { migrateLegacyProjectSettings } from '@/shared/lib/workspace/project-settings-migration';
+import { removeDir } from '@/test-support/remove-dir';
 
 const SCHEMA = `
   CREATE TABLE workspace_folders (
@@ -52,13 +53,20 @@ beforeAll(() => {
   workRoot = mkdtempSync(path.join(os.tmpdir(), 'omp-project-settings-'));
 });
 
+/** Every connection this file opened, closed before the tree is deleted. */
+const opened: DbClient[] = [];
+
 afterAll(() => {
-  rmSync(workRoot, { recursive: true, force: true });
+  // Close, then delete: an open SQLite handle makes a Windows delete fail with
+  // EBUSY, and a throw from `afterAll` reports a failure of the file.
+  for (const db of opened.splice(0)) db.raw.close();
+  removeDir(workRoot);
 });
 
 /** A fresh database on its own file so one test's rows cannot reach another. */
 async function freshDb(): Promise<DbClient> {
   const db = createDb(path.join(workRoot, `db-${dbCounter++}.sqlite`));
+  opened.push(db);
   await db.exec(SCHEMA);
   return db;
 }

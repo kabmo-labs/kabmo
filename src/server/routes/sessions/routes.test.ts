@@ -29,6 +29,7 @@ import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
+import { removeDir } from '@/test-support/remove-dir';
 import {
   archiveSession,
   getSessionModes,
@@ -54,7 +55,7 @@ let priorSlot: typeof globalThis.__ompChamberDb;
 let priorSessions: typeof globalThis.__ompSessions;
 
 beforeAll(async () => {
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
   const project = path.join(AGENT, 'sessions', 'proj');
   fs.mkdirSync(project, { recursive: true });
   // One real session file, with a plan-mode entry, so the id resolver and the
@@ -102,10 +103,14 @@ afterAll(() => {
   else Bun.env.OMPCHAMBER_DB_PATH = priorDbPath;
   if (priorMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = priorMock;
+  // Close before restoring the slot and deleting: a live connection makes a
+  // Windows delete fail with EBUSY, and a throw from `afterAll` reports a
+  // failure of the file.
+  globalThis.__ompChamberDb?.resolved?.raw.close();
   globalThis.__ompChamberDb = priorSlot;
   if (priorSessions === undefined) delete globalThis.__ompSessions;
   else globalThis.__ompSessions = priorSessions;
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
 });
 
 function formPost(body: Record<string, string>, url = 'http://localhost/api/x'): Request {

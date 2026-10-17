@@ -16,6 +16,7 @@ import path from 'path';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
+import { removeDir } from '@/test-support/remove-dir';
 import {
   addQueueItem,
   editQueueItem,
@@ -35,7 +36,7 @@ let priorAgentDir: string | undefined;
 let priorSlot: typeof globalThis.__ompChamberDb;
 
 beforeAll(async () => {
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
   const project = path.join(AGENT, 'sessions', 'proj');
   fs.mkdirSync(project, { recursive: true });
   // One real session file, with a plan-mode entry, so the id resolver and the
@@ -78,8 +79,12 @@ afterAll(() => {
   else Bun.env.OMPCHAMBER_DB_PATH = priorDbPath;
   if (priorMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = priorMock;
+  // Close before restoring the slot and deleting: a live connection makes a
+  // Windows delete fail with EBUSY, and a throw from `afterAll` reports a
+  // failure of the file.
+  globalThis.__ompChamberDb?.resolved?.raw.close();
   globalThis.__ompChamberDb = priorSlot;
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
 });
 
 function arrayOf(body: unknown, key: string): unknown[] {

@@ -56,8 +56,14 @@ describe('formatAge', () => {
   });
 });
 
+// POSIX-only: `procProbe` reads `/proc` or `ps`, neither of which exists on
+// Windows, so `supported` is false there and every case below would assert
+// against an empty list. The plugin reports `supported: false` rather than
+// guessing, which is the behaviour the Windows host gets.
+const testPosix = process.platform === 'win32' ? test.skip : test;
+
 describe('procProbe against this machine', () => {
-  test('the probe is supported here and finds this process', () => {
+  testPosix('the probe is supported here and finds this process', () => {
     expect(procProbe.supported).toBe(true);
     const rows = procProbe.list();
     expect(rows.length).toBeGreaterThan(1);
@@ -74,7 +80,7 @@ describe('procProbe against this machine', () => {
     expect(self?.argv?.[0]).toContain('bun');
   });
 
-  test('rss agrees with ps for this process', () => {
+  testPosix('rss agrees with ps for this process', () => {
     const ps = Bun.spawnSync(['ps', '-o', 'rss=', '-p', String(process.pid)]);
     const psBytes = Number(ps.stdout.toString().trim()) * 1024;
     const self = procProbe.list().find((row) => row.pid === process.pid);
@@ -86,7 +92,7 @@ describe('procProbe against this machine', () => {
     expect(ratio).toBeLessThan(1.25);
   });
 
-  test('cpu time advances for a busy process', async () => {
+  testPosix('cpu time advances for a busy process', async () => {
     // The one genuine wall-clock wait in this suite, and it cannot be faked:
     // the assertion is that the KERNEL's cumulative counter for a real process
     // moves, which no fake timer can produce. 500 ms is far longer than the

@@ -15,10 +15,11 @@
  */
 
 import { afterAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb, type DbClient } from '@/server/lib/db/client';
+import { removeDir } from '@/test-support/remove-dir';
 import { initSchema } from '@/server/lib/db/schema';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
 
@@ -39,9 +40,14 @@ const CHAMBER = [
   { id: 'local-ai', role: 'ai', content: 'answer' },
 ];
 
+/** Every connection this file opened, closed before its tree is deleted. */
+const opened: DbClient[] = [];
 const cleanup: string[] = [];
 afterAll(() => {
-  for (const target of cleanup) rmSync(target, { recursive: true, force: true });
+  // Close, then delete: an open SQLite handle makes a Windows delete fail with
+  // EBUSY, and a throw from `afterAll` reports a failure of the file.
+  for (const db of opened.splice(0)) db.raw.close();
+  for (const target of cleanup) removeDir(target);
 });
 
 function tempDir(label: string): string {
@@ -65,6 +71,7 @@ function sessionsRoot(): string {
 
 async function seededDb() {
   const db = createDb(join(tempDir('db'), 'db.sqlite'));
+  opened.push(db);
   await initSchema(db);
   const put = (sessionId: string, messages: unknown[]) =>
     db.run('INSERT OR REPLACE INTO chat_sessions (session_id, title, messages) VALUES (?, ?, ?)', [
