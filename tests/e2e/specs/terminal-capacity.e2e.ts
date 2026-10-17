@@ -93,16 +93,7 @@ interface Inventory {
   terminals: { id: string; status: string; busy?: boolean }[];
 }
 
-// POSIX-only, matching `terminal.e2e.ts`: the PTY path has never been
-// validated on Windows, so a failure here reports the platform's shell support
-// rather than anything about the cap. The cap's Windows branch — counting every
-// running shell where the platform cannot tell idle from busy — is pinned by
-// `store-liveness.test.ts` with an injected platform, and THAT suite runs on
-// Windows. A skip with a reason is visible in the run's output; a spec that
-// cannot pass is not a gate.
-const describeCapacity = process.platform === 'win32' ? test.describe.skip : test.describe;
-
-describeCapacity('terminal capacity', () => {
+test.describe('terminal capacity', () => {
   test(`the ${MAX_TERMINALS + 1}th busy shell is refused with capacity`, async ({ harness }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal-cap');
