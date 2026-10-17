@@ -19,6 +19,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { testPosix } from '@/test-support/platform';
 import { parsePorcelainZ } from '@/server/lib/fs/git-run';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 
@@ -39,6 +40,10 @@ function write(rel: string, content: string): void {
 
 beforeAll(() => {
   git('init', '-q', '-b', 'main');
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+  // rewrites every checked-out file to CRLF.
+  git('config', 'core.autocrlf', 'false');
+  git('config', 'core.eol', 'lf');
   git('config', 'user.email', 'test@example.invalid');
   git('config', 'user.name', 'Test');
   write('plain.sh', 'p\n');
@@ -107,7 +112,10 @@ describe('readGitStatus', () => {
     expect(hit?.file).toBe('ünïcode.xml');
   });
 
-  test('a filename holding a backslash arrives unquoted', async () => {
+  // `\` is a path separator on Windows, so a file literally named `a\b.sh` cannot
+  // exist there to be reported back unquoted; the quoting it exercises is a
+  // POSIX git behaviour.
+  testPosix('a filename holding a backslash arrives unquoted', async () => {
     const status = await readGitStatus(repo);
     const hit = status.changes.find((c) => c.file.includes('b.sh'));
     expect(hit?.file).toBe('a\\b.sh');

@@ -59,6 +59,11 @@ beforeAll(() => {
   fs.mkdirSync(PROJECTS, { recursive: true });
   fs.mkdirSync(ORIGIN, { recursive: true });
   git(['init', '-q', '-b', 'main'], ORIGIN);
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+  // rewrites every checked-out file to CRLF — and a clone copies that setting
+  // into the clone's own config.
+  git(['config', 'core.autocrlf', 'false'], ORIGIN);
+  git(['config', 'core.eol', 'lf'], ORIGIN);
   git(['config', 'user.email', 'test@example.invalid'], ORIGIN);
   git(['config', 'user.name', 'Test'], ORIGIN);
   fs.writeFileSync(path.join(ORIGIN, 'README.md'), '# origin\n');

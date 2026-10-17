@@ -16,6 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { chamberExtensionArgs, chamberExtensionEntry, chamberModeEnv } from '@/server/lib/omp/extensions/locator';
 
 describe('chamberExtensionEntry', () => {
@@ -23,7 +24,8 @@ describe('chamberExtensionEntry', () => {
     const entry = chamberExtensionEntry();
     expect(entry).not.toBeNull();
     expect(existsSync(entry as string)).toBe(true);
-    expect(entry?.endsWith('chamber-modes/index.ts')).toBe(true);
+    // `join`, not a `/`-spelled tail: the host's separator can be `\`.
+    expect(entry?.endsWith(join('chamber-modes', 'index.ts'))).toBe(true);
   });
 
   test('the spawn args load it with -e', () => {

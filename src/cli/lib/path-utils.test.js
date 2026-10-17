@@ -114,7 +114,11 @@ describe('resolvePath', () => {
   });
 
   test('a `.` segment contributes nothing', () => {
-    expect(resolvePath(process.cwd(), '.')).toBe(process.cwd());
+    // `resolvePath` normalises separators to `/` (that is what makes a joined
+    // path comparable across platforms), so the expectation normalises the cwd
+    // the same way — on Windows `process.cwd()` is `D:\\a\\b` and the answer is
+    // `D:/a/b`, which is the same path, not a different one.
+    expect(resolvePath(process.cwd(), '.')).toBe(process.cwd().replace(/\\/g, '/'));
   });
 
   test('an absolute segment discards everything before it', () => {

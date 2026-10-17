@@ -32,6 +32,11 @@ function makeRepo(): string {
   const dir = fs.mkdtempSync(path.join(FIXTURE_ROOT, 'stash-'));
   repos.push(dir);
   git(dir, 'init', '-q', '-b', 'main', '.');
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true,
+  // which rewrites every checked-out file to CRLF and makes the content
+  // assertions below fail on `\r` rather than on the git operation.
+  git(dir, 'config', 'core.autocrlf', 'false');
+  git(dir, 'config', 'core.eol', 'lf');
   git(dir, 'config', 'user.email', 'test@example.invalid');
   git(dir, 'config', 'user.name', 'Test');
   fs.writeFileSync(path.join(dir, 'f.txt'), 'a\n');

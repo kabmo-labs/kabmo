@@ -94,7 +94,9 @@ describe('instance record round-trip', () => {
     expect(readInstanceRecord('4101')).toEqual(value);
   });
 
-  test('writes 0600 and leaves no temp file behind', () => {
+  // `statSync().mode` has no meaning on Windows (a synthesised 0o666/0o444), so
+  // the 0600 assertion is POSIX-only; the round-trip itself is covered above.
+  testPosix('writes 0600 and leaves no temp file behind', () => {
     writeInstanceRecord(record(4102));
     expect(fs.statSync(getInstancePath(4102)).mode & 0o777).toBe(0o600);
     expect(fs.readdirSync(getRunDir()).some((name) => name.endsWith('.tmp'))).toBe(false);

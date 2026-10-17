@@ -23,10 +23,11 @@
  * requested and the reported id can arise.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { describePosix } from '@/test-support/platform';
 
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
@@ -88,7 +89,9 @@ function spawnedChildren(): ForkRecord[] {
     .map((line) => JSON.parse(line) as ForkRecord);
 }
 
-describe('a forked resume is adopted under the requested id', () => {
+// The scripted omp is spawned from a `#!/usr/bin/env bun` `.ts` file; Windows
+// can start a real executable, not a shebang file, so `uv_spawn` answers EFTYPE.
+describePosix('a forked resume is adopted under the requested id', () => {
   test('two sends on one session file reuse the forked child instead of spawning again', async () => {
     invalidateOmpCliCache();
     const cwd = join(root, 'ws');

@@ -27,6 +27,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:tes
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { testPosix } from '@/test-support/platform';
 
 import {
   projectPluginsDir,
@@ -198,7 +199,11 @@ describe('readPluginManifest', () => {
 });
 
 describe('readMarketplaces', () => {
-  test('reports a catalog size, and null plus an error when it is unreadable', async () => {
+  // The marketplace registry hides under the XDG data root, which the plugin
+  // data-layout code honours only on linux/darwin; on Windows `userPluginsDir`/
+  // `getMarketplacesRegistryPath` fall back to `~/.omp`, so a fixture written to
+  // `$XDG_DATA_HOME` is never read there.
+  testPosix('reports a catalog size, and null plus an error when it is unreadable', async () => {
     const catalog = writeJson(join(root, 'catalogs', 'one.json'), { plugins: [{ name: 'a' }, { name: 'b' }] });
     writeJson(join(xdg, 'omp', 'marketplaces.json'), {
       marketplaces: [
@@ -223,7 +228,7 @@ describe('readMarketplaces', () => {
 });
 
 describe('readCatalogPlugins', () => {
-  test('shapes entries, drops nameless ones, and marks installed by name@marketplace', async () => {
+  testPosix('shapes entries, drops nameless ones, and marks installed by name@marketplace', async () => {
     const catalog = writeJson(join(root, 'catalogs', 'two.json'), {
       plugins: [
         { name: 'alpha', description: 'A', category: 'cat', homepage: 'https://x', version: '1.2.3' },
@@ -247,7 +252,7 @@ describe('readCatalogPlugins', () => {
     ]);
   });
 
-  test('serves a catalog rewrite of the same byte size from the path+size cache', async () => {
+  testPosix('serves a catalog rewrite of the same byte size from the path+size cache', async () => {
     const catalog = join(root, 'catalogs', 'cached.json');
     writeJson(catalog, { plugins: [{ name: 'one' }] });
     writeJson(join(xdg, 'omp', 'marketplaces.json'), { marketplaces: [{ name: 'mkt', catalogPath: catalog }] });
@@ -260,7 +265,7 @@ describe('readCatalogPlugins', () => {
 });
 
 describe('plugin roots', () => {
-  test('userPluginsDir follows the XDG data root', () => {
+  testPosix('userPluginsDir follows the XDG data root', () => {
     expect(userPluginsDir()).toBe(join(xdg, 'omp', 'plugins'));
   });
 

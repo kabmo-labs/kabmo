@@ -65,8 +65,27 @@ describe('strokeOf', () => {
 
   test('uses the Windows override only where it exists', () => {
     // Windows redoes with Ctrl+Y while Linux keeps Ctrl+Shift+Z; one `other`
-    // stroke cannot express both.
-    expect(strokeOf(BINDINGS[2], false)).toEqual({ code: 'KeyZ', ctrl: true, shift: true });
+    // stroke cannot express both — so `strokeOf` consults the PLATFORM for the
+    // override and the `other` chord for everything else. `isWindowsPlatform()`
+    // reads `navigator.platform`, which is whatever host the suite runs on, so
+    // the override branch has to be selected explicitly rather than assumed: on
+    // a Windows runner this assertion was reading the override's answer.
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    Object.defineProperty(globalThis, 'navigator', { value: { platform: 'Win32' }, configurable: true });
+    try {
+      expect(strokeOf(BINDINGS[2], false)).toEqual({ code: 'KeyY', ctrl: true });
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'navigator', original);
+      else delete (globalThis as { navigator?: unknown }).navigator;
+    }
+    // Off Windows the Linux chord stands.
+    Object.defineProperty(globalThis, 'navigator', { value: { platform: 'Linux x86_64' }, configurable: true });
+    try {
+      expect(strokeOf(BINDINGS[2], false)).toEqual({ code: 'KeyZ', ctrl: true, shift: true });
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'navigator', original);
+      else delete (globalThis as { navigator?: unknown }).navigator;
+    }
   });
 });
 

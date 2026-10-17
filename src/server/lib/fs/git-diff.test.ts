@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
+import { isWindows, testPosix } from '@/test-support/platform';
 
 const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitdiff-'));
 
@@ -41,6 +42,10 @@ const EIGHT_LINES = 'l1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\n';
 
 beforeAll(() => {
   git('init', '-q', '-b', 'main');
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+  // rewrites every checked-out file to CRLF.
+  git('config', 'core.autocrlf', 'false');
+  git('config', 'core.eol', 'lf');
   git('config', 'user.email', 'test@example.invalid');
   git('config', 'user.name', 'Test');
   write('mod.txt', EIGHT_LINES);
@@ -56,7 +61,8 @@ beforeAll(() => {
   // double quote. Each used to be EXECUTED or to break the quoting outright.
   write('sub$(touch PWNED_SUBST).sh', 'x\n');
   write('tick`touch PWNED_TICK`.sh', 'x\n');
-  write('quote"; touch PWNED_QUOTE; echo ".sh', 'x\n');
+  // A double quote is not a legal Windows filename, so this case is POSIX-only.
+  if (!isWindows) write('quote"; touch PWNED_QUOTE; echo ".sh', 'x\n');
   // Non-ASCII, which porcelain escapes as octal in its non-`-z` form.
   write('ünïcode.xml', '<a>1</a>\n');
   write('a\\b.sh', 'x\n');
@@ -74,7 +80,7 @@ beforeAll(() => {
   write('.env', 'K=2\n');
   write('sub$(touch PWNED_SUBST).sh', 'y\n');
   write('tick`touch PWNED_TICK`.sh', 'y\n');
-  write('quote"; touch PWNED_QUOTE; echo ".sh', 'y\n');
+  if (!isWindows) write('quote"; touch PWNED_QUOTE; echo ".sh', 'y\n');
   write('ünïcode.xml', '<a>2</a>\n');
   write('a\\b.sh', 'y\n');
 });
@@ -185,7 +191,9 @@ describe('tracked changes', () => {
     expect(fs.existsSync(path.join(process.cwd(), 'PWNED_TICK'))).toBe(false);
   });
 
-  test('a filename holding a double quote keeps its quoting intact', async () => {
+  // A double quote cannot exist in a Windows filename at all, so the fixture's
+  // write would throw before the probe could say anything.
+  testPosix('a filename holding a double quote keeps its quoting intact', async () => {
     const name = 'quote"; touch PWNED_QUOTE; echo ".sh';
     const result = await fetchWorkingFileDiff(repo, name);
     expect(result.status).toBe('M');
@@ -209,7 +217,7 @@ describe('tracked changes', () => {
 
   // A backslash is an ordinary filename character on POSIX, so it must survive
   // the normalization; only Windows folds it into a separator.
-  test('a POSIX filename holding a backslash keeps it', async () => {
+  testPosix('a POSIX filename holding a backslash keeps it', async () => {
     const result = await fetchWorkingFileDiff(repo, 'a\\b.sh');
     expect(result.file).toBe('a\\b.sh');
     expect(result.status).toBe('M');

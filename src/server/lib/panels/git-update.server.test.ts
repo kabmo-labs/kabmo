@@ -45,6 +45,10 @@ function makeRepo(manifest: unknown = VALID): string {
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
   git(dir, ['init', '-q']);
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+  // rewrites every checked-out file to CRLF.
+  git(dir, ['config', 'core.autocrlf', 'false']);
+  git(dir, ['config', 'core.eol', 'lf']);
   git(dir, ['config', 'user.email', 'test@example.com']);
   git(dir, ['config', 'user.name', 'Test']);
   git(dir, ['add', '-A']);

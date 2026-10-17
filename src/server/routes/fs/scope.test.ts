@@ -18,6 +18,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
+import { testPosix } from '@/test-support/platform';
 import { resolveFileScope } from '@/server/routes/fs/scope';
 import { DOCUMENT_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
 
@@ -54,7 +55,11 @@ describe('fs scope route', () => {
     expect(body.kind).toBe('text');
   });
 
-  test('a file:// URL is decoded, spaces and all', async () => {
+  // A `file://` reference decodes to a `/`-rooted pathname (`pathFromReference`
+  // returns `new URL(reference).pathname`); on Windows that `/` is resolved
+  // against the current drive, so a dropped `C:\…` path never lands under the
+  // app root and the route answers 403 rather than the scope it means.
+  testPosix('a file:// URL is decoded, spaces and all', async () => {
     const target = write('My Notes.md', '# spaced\n');
     const { status, body } = await scope(`file://${target.replace(/ /g, '%20')}`);
 

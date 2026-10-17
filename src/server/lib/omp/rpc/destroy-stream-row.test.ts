@@ -22,9 +22,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeDir } from '@/test-support/remove-dir';
 
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
@@ -57,10 +58,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // CLOSE the db handle before dropping it and deleting the tree, or Windows
+  // fails the `rm` with EBUSY on the still-open connection.
+  globalThis.__ompChamberDb?.resolved?.raw.close();
   delete globalThis.__ompChamberDb;
   if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
   else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
-  rmSync(root, { recursive: true, force: true });
+  removeDir(root);
 });
 
 /** A wrapper with a live run and a matching `stream` row behind it. */

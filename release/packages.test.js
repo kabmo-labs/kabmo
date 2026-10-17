@@ -18,6 +18,11 @@ import { RELEASE_PACKAGES, tagPrefix } from './packages.js';
 import { packageReleaseConfig, scopeCommits } from './packages.mjs';
 import { versionPackagePlugin } from './version-package.mjs';
 
+// The exact Bun that is running these tests: on Windows `bun` on PATH can be a
+// `.cmd` shim that libuv's `CreateProcess` cannot start, while `process.execPath`
+// is the real `bun.exe` already executing.
+const bunBin = process.execPath;
+
 /**
  * `git` with the machine's own config out of the way: a global `core.hooksPath`
  * or `commit.gpgsign` would otherwise change what a commit records.
@@ -200,7 +205,7 @@ function makeWorkspace(prefix) {
   write('packages/b/package.json', manifest({ name: 'b', version: '1.0.0', dependencies: { a: 'workspace:*' } }));
   write('packages/b/src/index.js', 'export const b = 1;\n');
 
-  const installed = spawnSync('bun', ['install'], { cwd: dir, encoding: 'utf8' });
+  const installed = spawnSync(bunBin, ['install'], { cwd: dir, encoding: 'utf8' });
 
   if (installed.status !== 0) {
     throw new Error(`bun install failed:\n${installed.stderr}`);
@@ -212,7 +217,7 @@ function makeWorkspace(prefix) {
 /** The version `b` declares for `a` in the tarball `bun pm pack` produces. */
 function packedDependency(dir) {
   const cwd = join(dir, 'packages/b');
-  const pack = spawnSync('bun', ['pm', 'pack'], { cwd, encoding: 'utf8' });
+  const pack = spawnSync(bunBin, ['pm', 'pack'], { cwd, encoding: 'utf8' });
 
   if (pack.status !== 0) {
     throw new Error(`bun pm pack failed:\n${pack.stderr}`);

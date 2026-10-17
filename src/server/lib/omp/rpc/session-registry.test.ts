@@ -20,9 +20,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeDir } from '@/test-support/remove-dir';
 
 import {
   getAwaitingInputSessionIds,
@@ -100,6 +101,10 @@ afterEach(() => {
   delete globalThis.__ompSessions;
   delete globalThis.__ompStartLocks;
   delete globalThis.__ompPrewarmed;
+  // CLOSE the db handle before dropping it and deleting the tree: a bare
+  // `delete` abandons the connection, and on Windows the still-open handle makes
+  // the `rm` fail with EBUSY.
+  globalThis.__ompChamberDb?.resolved?.raw.close();
   delete globalThis.__ompChamberDb;
   if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
   else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
@@ -107,7 +112,7 @@ afterEach(() => {
   else Bun.env.PI_CODING_AGENT_DIR = savedAgentDir;
   if (savedSyncWorkspace === undefined) delete Bun.env.SYNC_WORKSPACE;
   else Bun.env.SYNC_WORKSPACE = savedSyncWorkspace;
-  rmSync(root, { recursive: true, force: true });
+  removeDir(root);
 });
 
 function registry(): Map<string, AgentSessionWrapper> {

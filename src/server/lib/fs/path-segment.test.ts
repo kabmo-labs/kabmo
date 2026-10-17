@@ -20,6 +20,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import { tmpdir } from 'node:os';
 import path from 'path';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { purgeBtwForSession } from '@/server/lib/btw/purge.server';
@@ -49,7 +50,7 @@ describe('isSinglePathSegment', () => {
     // The property that matters: whenever the guard says yes, joining onto a
     // root stays directly inside it. Asserted against `path.join` itself rather
     // than a restatement of the rule.
-    const root = '/tmp/root';
+    const root = path.join(tmpdir(), 'omc-path-segment-root');
     for (const id of ['11111111-2222-3333-4444-555555555555', '3', 'new-1', 'session.v2']) {
       expect(isSinglePathSegment(id)).toBe(true);
       expect(path.join(root, id).startsWith(`${root}${path.sep}`)).toBe(true);

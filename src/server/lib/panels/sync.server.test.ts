@@ -135,6 +135,10 @@ describe('syncBundledPlugins', () => {
     writePlugin(repo, MANIFEST, { 'src/marker.txt': 'clone' });
     const run = (args: string[]) => Bun.spawnSync(['git', '-C', repo, ...args], { stdout: 'pipe', stderr: 'pipe' });
     run(['init', '-q']);
+    // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+    // rewrites every checked-out file to CRLF.
+    run(['config', 'core.autocrlf', 'false']);
+    run(['config', 'core.eol', 'lf']);
     run(['config', 'user.email', 'test@example.com']);
     run(['config', 'user.name', 'Test']);
     run(['add', '-A']);

@@ -20,7 +20,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import { titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
 
 import {
@@ -223,6 +223,7 @@ describe('buildSessionSpawnArgs', () => {
   test('the extension load is the `-e <existing absolute file>` pair', () => {
     const args = chamberExtensionArgs();
     expect(args.length === 0 || args[0] === '-e').toBe(true);
-    if (args.length > 0) expect(args[1].startsWith('/')).toBe(true);
+    // `isAbsolute`, not `startsWith('/')`: a Windows checkout names it `C:\…`.
+    if (args.length > 0) expect(isAbsolute(args[1])).toBe(true);
   });
 });

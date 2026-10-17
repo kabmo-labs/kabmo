@@ -52,6 +52,10 @@ function makePluginRepo(manifest: unknown, extra: Record<string, string> = {}): 
   }
   const run = (args: string[]) => Bun.spawnSync(['git', '-C', dir, ...args], { stdout: 'pipe', stderr: 'pipe' });
   run(['init', '-q']);
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+  // rewrites every checked-out file to CRLF.
+  run(['config', 'core.autocrlf', 'false']);
+  run(['config', 'core.eol', 'lf']);
   run(['config', 'user.email', 'test@example.com']);
   run(['config', 'user.name', 'Test']);
   run(['add', '-A']);
@@ -189,6 +193,9 @@ describe('installPanelPluginFromGit', () => {
     fs.writeFileSync(join(dir, 'README.md'), 'not a plugin');
     const run = (args: string[]) => Bun.spawnSync(['git', '-C', dir, ...args], { stdout: 'pipe', stderr: 'pipe' });
     run(['init', '-q']);
+    // Pin the line ending: a Windows host defaults `core.autocrlf` to true.
+    run(['config', 'core.autocrlf', 'false']);
+    run(['config', 'core.eol', 'lf']);
     run(['config', 'user.email', 't@e.com']);
     run(['config', 'user.name', 'T']);
     run(['add', '-A']);

@@ -31,6 +31,7 @@
 import { afterAll, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { testPosix } from '@/test-support/platform';
 import { action } from '@/server/routes/fs/git';
 
 /**
@@ -62,6 +63,10 @@ function makeRepo(commits = 1): string {
   fs.mkdirSync(dir);
   repos.push(base);
   git(dir, 'init', '-q', '-b', 'main');
+  // Pin the line ending: a Windows host defaults `core.autocrlf` to true, which
+  // rewrites every checked-out file to CRLF.
+  git(dir, 'config', 'core.autocrlf', 'false');
+  git(dir, 'config', 'core.eol', 'lf');
   git(dir, 'config', 'user.email', 'test@example.invalid');
   git(dir, 'config', 'user.name', 'Test');
   if (commits > 0) {
@@ -128,7 +133,9 @@ describe('git action operands are argv, never shell text', () => {
     expect(subject).toBe(message);
   });
 
-  test('a filename holding a double quote can be staged and unstaged', async () => {
+  // `"` is not a legal Windows filename character (`writeFileSync` answers ENOENT),
+  // so a git fixture holding one can only exist on POSIX.
+  testPosix('a filename holding a double quote can be staged and unstaged', async () => {
     const repo = makeRepo();
     const name = 'a"b.txt';
     fs.writeFileSync(path.join(repo, name), 'x\n');

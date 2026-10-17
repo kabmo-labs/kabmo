@@ -107,7 +107,7 @@ describe('buildTrayConfig', () => {
       pidFile: '/data/tray/host/tray-3999.pid',
       loginInstalled: false,
     });
-    expect(config.cli).toContain('/src/cli/ompchamber.js');
+    expect(config.cli).toContain(join('src', 'cli', 'ompchamber.js'));
     expect(config.cli).not.toContain('..');
     expect(config.url).toBe('http://127.0.0.1:3999');
     expect(config.logFile).toBe('/data/logs/ompchamber-3999.log');

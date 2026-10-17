@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeDir } from '@/test-support/remove-dir';
 
 import { GENERATED_PASSWORD_LENGTH, PASSWORD_ALPHABET, UI_PASSWORD_ENV, generatePassword } from '@/shared/lib/auth/password';
 import { withTransaction } from '@/shared/lib/db/transaction.server';
@@ -286,6 +287,10 @@ describe('loadPersistedAccessMode', () => {
   });
 
   afterAll(() => {
+    // CLOSE the handle this block opened through `getDb()` before restoring the
+    // slot and deleting the tree; a bare slot restore abandons it, and Windows
+    // then fails the delete with EBUSY on the still-open connection.
+    globalThis.__ompChamberDb?.resolved?.raw.close();
     (globalThis as Record<string, unknown>)[slotKey] = savedSlot;
     const restore = (key: 'OMPCHAMBER_DB_PATH' | 'DB_PATH' | 'MOCK' | 'SYNC_WORKSPACE', value: string | undefined) => {
       if (value === undefined) delete Bun.env[key];
@@ -295,7 +300,7 @@ describe('loadPersistedAccessMode', () => {
     restore('DB_PATH', env.db);
     restore('MOCK', env.mock);
     restore('SYNC_WORKSPACE', env.sync);
-    rmSync(dir, { recursive: true, force: true });
+    removeDir(dir);
   });
 
   test('a missing row falls back to the default', async () => {

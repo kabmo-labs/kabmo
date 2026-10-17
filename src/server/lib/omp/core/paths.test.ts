@@ -21,6 +21,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { testPosix } from '@/test-support/platform';
 
 import {
   canonicalize,
@@ -197,7 +198,10 @@ describe('canonicalize / pathExists / projectPathKey', () => {
   test('projectPathKey strips trailing separators from a missing path', () => {
     const missing = path.join(tmpdir(), 'ompchamber-missing-key', 'sub');
     expect(projectPathKey(`${missing}///`)).toBe(missing);
-    expect(projectPathKey('/')).toBe('/');
+    // The root path itself is never reduced to empty; the HOST's root spelling
+    // (`/` on POSIX, a drive such as `C:\` on Windows) is what a caller passes.
+    const root = path.parse(tmpdir()).root;
+    expect(projectPathKey(root)).toBe(root);
   });
 });
 
@@ -211,12 +215,15 @@ describe('getSessionDirNameForCwd', () => {
     expect(getSessionDirNameForCwd(path.join(homedir(), 'proj', 'sub'))).toBe('-proj-sub');
   });
 
-  test('a path under tmpdir uses the -tmp prefix', () => {
+  // On Windows `tmpdir()` lives UNDER `homedir()` (`%USERPROFILE%\AppData\Local\Temp`),
+  // so the home branch wins and there is no observable "under tmpdir but not home"
+  // shape; both encodings the cases pin are POSIX-only path shapes.
+  testPosix('a path under tmpdir uses the -tmp prefix', () => {
     const dir = tempDir();
     expect(getSessionDirNameForCwd(dir)).toBe(`-tmp-${path.basename(dir)}`);
   });
 
-  test('a path outside home and tmp falls back to the legacy absolute encoding', () => {
+  testPosix('a path outside home and tmp falls back to the legacy absolute encoding', () => {
     expect(getSessionDirNameForCwd('/opt/ompchamber-proj')).toBe('--opt-ompchamber-proj--');
   });
 });

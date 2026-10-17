@@ -24,6 +24,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { testPosix } from '@/test-support/platform';
 
 import {
   getRealtimeHub,
@@ -173,7 +174,9 @@ describe('peer session relay', () => {
     detach();
   });
 
-  test('a session owned elsewhere resolves to the OWNER payload, not the local one', async () => {
+  // `holdLeaseInForeignProcess` holds a real lease from a detached `sh -c` child
+  // (`flock(2)`, `/bin/sh` — neither exists on Windows).
+  testPosix('a session owned elsewhere resolves to the OWNER payload, not the local one', async () => {
     const sessionId = `peer-owned-${Date.now()}`;
     const topic = sessionTopic(sessionId);
 
@@ -207,7 +210,7 @@ describe('peer session relay', () => {
     }
   });
 
-  test('a subscribe made BEFORE the owner claims the session still attaches', async () => {
+  testPosix('a subscribe made BEFORE the owner claims the session still attaches', async () => {
     const sessionId = `peer-late-${Date.now()}`;
     const topic = sessionTopic(sessionId);
     peer = startFakePeer();

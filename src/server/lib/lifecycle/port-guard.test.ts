@@ -23,6 +23,7 @@ import type { Server } from 'bun';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { testPosix } from '@/test-support/platform';
 
 import { flockAvailable } from '@/server/lib/lifecycle/flock';
 import type { FlockHandle } from '@/server/lib/lifecycle/flock';
@@ -153,7 +154,10 @@ describe('acquirePortLock', () => {
     expect(track(await acquirePortLock(4211, 0))).not.toBeNull();
   });
 
-  test('a second acquire while held follows the active mechanism', async () => {
+  // The `flock(2)` half of this comparison does not exist on Windows: there the
+  // PID-file fallback is the only mechanism, so "follows the active mechanism"
+  // has no second mechanism to contrast against (and `flock` refcounts).
+  testPosix('a second acquire while held follows the active mechanism', async () => {
     const first = track(await acquirePortLock(4212, 0));
     expect(first).not.toBeNull();
     const second = await acquirePortLock(4212, 0);
@@ -182,7 +186,11 @@ describe('acquirePortLock', () => {
     expect(fs.existsSync(lockPath)).toBe(false);
   });
 
-  test('reclaims a lock whose PID was recycled to a stranger', async () => {
+  // A "stranger" vs "ours" verdict reads the process command line
+  // (`getProcessState`); on Windows `commandLine` returns null, so every live
+  // pid reads `unknown` and neither the reclaim nor the refusal below is
+  // observable there.
+  testPosix('reclaims a lock whose PID was recycled to a stranger', async () => {
     usePidFileFallback();
     // A live PID that is not OMPChamber means the recorded instance is gone;
     // refusing here would block startup on a free port forever.
@@ -194,7 +202,7 @@ describe('acquirePortLock', () => {
     expect(track(await acquirePortLock(4214, 0))).not.toBeNull();
   });
 
-  test('refuses a lock held by a live OMPChamber process', async () => {
+  testPosix('refuses a lock held by a live OMPChamber process', async () => {
     usePidFileFallback();
     const holder = await spawnChamberHolder();
     const lockPath = getLockPath(4215);
@@ -228,7 +236,7 @@ describe('claimPort', () => {
     expect(binds).toBe(1);
   });
 
-  test('names an OMPChamber occupant held by another process', async () => {
+  testPosix('names an OMPChamber occupant held by another process', async () => {
     const holder = await spawnChamberHolder();
     const port = occupy(() => Response.json({ service: 'ompchamber', pid: holder.pid, version: '9.9.9' }));
     let binds = 0;

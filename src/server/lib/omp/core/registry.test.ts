@@ -146,8 +146,13 @@ describe('mergeProjects', () => {
   });
 
   test('discovered extras follow the registered ones, sorted by path', () => {
-    const merged = mergeProjects(registry([{ path: '/z' }]), ['/m', '/a']);
-    expect(merged.map((p) => p.path)).toEqual(['/z', '/a', '/m']);
+    // The discovered paths route through `canonicalize` (realpath); a bare `/a`
+    // on Windows resolves against the CURRENT drive and, on the runner, collides
+    // with the real `D:\a`. A temp-rooted path that does not exist stays verbatim
+    // on every host, so the sort/cull under test is what the case observes.
+    const [z, a, m] = ['z', 'a', 'm'].map((s) => path.join(tmpdir(), `ompchamber-merge-${s}`));
+    const merged = mergeProjects(registry([{ path: z }]), [m, a]);
+    expect(merged.map((p) => p.path)).toEqual([z, a, m]);
   });
 
   test('a discovered path already registered is not repeated', () => {
@@ -157,8 +162,9 @@ describe('mergeProjects', () => {
   });
 
   test('duplicate and blank discovered paths collapse', () => {
-    const merged = mergeProjects(registry([]), ['/a', '/a', '', '/b']);
-    expect(merged.map((p) => p.path)).toEqual(['/a', '/b']);
+    const [a, b] = ['a', 'b'].map((s) => path.join(tmpdir(), `ompchamber-merge-${s}`));
+    const merged = mergeProjects(registry([]), [a, a, '', b]);
+    expect(merged.map((p) => p.path)).toEqual([a, b]);
   });
 });
 

@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isSeq, parseDocument } from 'yaml';
+import { testPosix } from '@/test-support/platform';
 
 import {
   OmpConfigError,
@@ -110,7 +111,7 @@ describe('document node readers', () => {
 });
 
 describe('withOmpYamlDocument', () => {
-  test('a missing file is created 0600 and the edit result is returned', async () => {
+  test('a missing file is created and the edit result is returned', async () => {
     const path = join(root, 'created', 'config.yml');
     const result = await withOmpYamlDocument(path, (doc) => {
       doc.set('key', 'value');
@@ -118,6 +119,16 @@ describe('withOmpYamlDocument', () => {
     });
     expect(result).toBe('ok');
     expect(read(path)).toContain('key: value');
+  });
+
+  // `statSync().mode` is a POSIX property (Windows reports a synthesised 0o666),
+  // so the create- and kept-mode assertions are POSIX-only.
+  testPosix('a missing file is created 0600', async () => {
+    const path = join(root, 'created-0600', 'config.yml');
+    await withOmpYamlDocument(path, (doc) => {
+      doc.set('key', 'value');
+      return { result: 'ok', changed: true };
+    });
     expect(fs.statSync(path).mode & 0o777).toBe(0o600);
   });
 
@@ -132,7 +143,7 @@ describe('withOmpYamlDocument', () => {
     expect(fs.existsSync(absent)).toBe(false);
   });
 
-  test('comments and unrelated keys survive an edit, and the file mode is kept', async () => {
+  test('comments and unrelated keys survive an edit', async () => {
     const path = write(join(root, 'kept', 'config.yml'), '# top comment\nkeep: 1\n', 0o640);
     await withOmpYamlDocument(path, (doc) => {
       doc.set('added', true);
@@ -142,6 +153,14 @@ describe('withOmpYamlDocument', () => {
     expect(after).toContain('# top comment');
     expect(after).toContain('keep: 1');
     expect(after).toContain('added: true');
+  });
+
+  testPosix('the file mode is kept across an edit', async () => {
+    const path = write(join(root, 'kept-mode', 'config.yml'), '# top comment\nkeep: 1\n', 0o640);
+    await withOmpYamlDocument(path, (doc) => {
+      doc.set('added', true);
+      return { result: null, changed: true };
+    });
     expect(fs.statSync(path).mode & 0o777).toBe(0o640);
   });
 

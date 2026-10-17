@@ -15,6 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
 import { resolveDiscoveryScope } from '@/server/lib/omp/config/scope';
 import { getAgentDir } from '@/server/lib/omp/core/paths';
@@ -36,7 +37,10 @@ describe('resolveDiscoveryScope', () => {
   });
 
   test('a real directory under the app root is the workspace it names', async () => {
-    const sub = `${APP_ROOT}/src`;
+    // `join`, not a `${APP_ROOT}/src` literal: a `/`-spelled child cannot be
+    // inside a `\`-spelled root on Windows, so the resolver falls back to the
+    // user scope and the case fails for a reason the code under test lacks.
+    const sub = join(APP_ROOT, 'src');
     expect(await resolveDiscoveryScope(sub)).toEqual({ workspace: sub, cwd: sub });
   });
 

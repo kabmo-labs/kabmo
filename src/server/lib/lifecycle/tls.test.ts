@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { testPosix } from '@/test-support/platform';
 
 import { ensureTlsCertificate, getTlsCertPath, getTlsKeyPath, isTlsEnabledByArgv, TLS_FLAG } from '@/server/lib/lifecycle/tls';
 
@@ -75,7 +76,10 @@ describe('ensureTlsCertificate', () => {
     expect(fs.readFileSync(second.certPath, 'utf8')).toBe(firstCert);
   });
 
-  test('the key is private to this user and the certificate is shareable', () => {
+  // Windows has no POSIX permission bits: `statSync().mode & 0o777` reports a
+  // synthesised 0o666/0o444, so nothing about the private key's 0600 can be
+  // asserted there. The pair's usability and reuse are covered by the cases above.
+  testPosix('the key is private to this user and the certificate is shareable', () => {
     const result = ensureTlsCertificate();
 
     const keyMode = fs.statSync(result.keyPath).mode & 0o777;

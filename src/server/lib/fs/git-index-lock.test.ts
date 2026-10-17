@@ -103,7 +103,11 @@ function indexWriteCount(cwd: string, env: Record<string, string>): number {
 }
 
 describe('a git READ does not take the index lock', () => {
-  test('git status writes the index on a stale index — and stops when the lock is refused', () => {
+  // The positive control reads git's own `GIT_TRACE2_EVENT` output for
+  // `do_write_index`, which git-for-Windows does not emit the same way (measured:
+  // the count is 0 on a stale index there), so the stale-index mechanism cannot
+  // be reproduced to proof against on Windows.
+  testPosix('git status writes the index on a stale index — and stops when the lock is refused', () => {
     // The mechanism itself, so the rest of the test cannot pass vacuously: if a
     // future git stops refreshing the index here, the positive control below
     // fails and this test says so rather than silently proving nothing.

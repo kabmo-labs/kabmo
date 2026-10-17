@@ -4,13 +4,15 @@
  */
 
 import { test, expect, describe } from 'bun:test';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
-// Built with `join`, not a POSIX literal: `resolveInsideRoot` returns a RESOLVED
-// path, so on Windows a `/plugins/demo` fixture can never equal what it answers
-// (`D:\plugins\demo`) and every case fails on the fixture rather than the guard.
-const ROOT = join('/', 'plugins', 'demo');
+// `resolve`d, not a POSIX literal: `resolveInsideRoot` answers a RESOLVED path,
+// so on Windows a `/plugins/demo` fixture can never equal what it returns
+// (`D:\plugins\demo`) and every case would fail on the fixture rather than the
+// guard. Resolving the fixture here is the same normalisation the function
+// applies, so the expectations are host-agnostic.
+const ROOT = resolve('/plugins', 'demo');
 
 describe('resolveInsideRoot', () => {
   test('resolves a plain relative path inside the root', () => {

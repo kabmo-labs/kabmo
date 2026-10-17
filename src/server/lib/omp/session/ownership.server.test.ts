@@ -25,6 +25,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { testPosix } from '@/test-support/platform';
 
 import {
   resolveSessionOwnership,
@@ -173,12 +174,16 @@ describe('sessionLeasePath', () => {
 });
 
 describe('leaseHeldByAnother', () => {
-  test('a file held by this process reads as held', () => {
+  // Every case that names a HOLDER reaches `flock(2)` (`holdLeaseForTest` throws
+  // `flock unavailable on this host` on Windows), and a lease file that EXISTS
+  // but is not held reads back `null` (cannot answer) rather than "free". Only
+  // the missing-file case is portable: absence is free on every host.
+  testPosix('a file held by this process reads as held', () => {
     const lease = holdLease('flock-held');
     expect(leaseHeldByAnother(lease)).toBe(true);
   });
 
-  test('an existing file with no holder reads as free', () => {
+  testPosix('an existing file with no holder reads as free', () => {
     expect(leaseHeldByAnother(makeLeaseFile('flock-free'))).toBe(false);
   });
 
@@ -188,7 +193,10 @@ describe('leaseHeldByAnother', () => {
 });
 
 describe('fileHolderPid', () => {
-  test('names the process holding the descriptor', () => {
+  // The descriptor walk runs over libproc/`/proc`; on Windows neither exists and
+  // the holder cannot be named ("null" is also the no-holder answer, so only the
+  // NULL case below is portable).
+  testPosix('names the process holding the descriptor', () => {
     const lease = holdLease('holder-pid');
     expect(fileHolderPid(lease)).toBe(process.pid);
   });
@@ -210,12 +218,14 @@ describe('resolveSessionOwnership', () => {
     expect(await resolveSessionOwnership('stale-session', 1)).toBeNull();
   });
 
-  test('a lease held by THIS process is our own child, not a conflict', async () => {
+  // Both of these hold a real lease (`holdLease` → `flock`, `holdLeaseInChild` →
+  // a detached `sh -c` holder): `flock(2)` does not exist on Windows.
+  testPosix('a lease held by THIS process is our own child, not a conflict', async () => {
     holdLease('own-child');
     expect(await resolveSessionOwnership('own-child', process.pid)).toBeNull();
   });
 
-  test('a lease held by another process is reported with the holder pid', async () => {
+  testPosix('a lease held by another process is reported with the holder pid', async () => {
     const id = 'foreign-holder';
     const lease = sessionLeasePath(id);
     const childPid = await holdLeaseInChild(id);
@@ -227,7 +237,8 @@ describe('resolveSessionOwnership', () => {
 });
 
 describe('startRpcSession refuses a foreign-owned session', () => {
-  test('throws before spawning when the lease is held elsewhere', async () => {
+  // Holds the lease from a detached `sh -c` child; no `sh`/`flock` on Windows.
+  testPosix('throws before spawning when the lease is held elsewhere', async () => {
     const id = 'foreign-owned';
     const lease = sessionLeasePath(id);
     await holdLeaseInChild(id);
