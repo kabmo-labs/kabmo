@@ -29,7 +29,7 @@ fi
 # moved away now forks on resume, answering a new id and file — which is why
 # `registerSpawnedSession` exists; see the audit for the measurement.
 #
-# 18.11.0 is what the committed schema was generated from, and the two MUST
+# 18.11.3 is what the committed schema was generated from, and the two MUST
 # agree: the schema gate regenerates from the version this script installs, so a
 # pin left behind reports a stale schema that is actually current. Measured at
 # 18.10.0: `task.structured` is absent and `snapcompact.toolResults` /
@@ -41,7 +41,14 @@ fi
 # codeMode` and `.codeModeDirectTools`, removed upstream in 18.10.4 — that
 # `omp config set` refuses with `Unknown setting`. A pin that disagrees with the
 # schema's source of truth is the failure mode this comment exists to prevent.
-OMP_VERSION="${OMP_VERSION:-18.11.0}"
+#
+# 18.11.3 (2026-10-18): `0ab4c33` regenerated the schema from a local 18.11.3
+# (415 entries / 553 settings) and left the pin at 18.11.0, which registers 412
+# entries / 550 settings — so the gate failed on `prewalk.auto`,
+# `prewalk.autoTarget` and `lsp.requestTimeout`, the three rows 18.11.1–18.11.3
+# added, plus a reworded `lsp.shared`. Verified: generating from 18.11.3
+# reproduces the committed file byte for byte, from 18.11.0 it does not.
+OMP_VERSION="${OMP_VERSION:-18.11.3}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
