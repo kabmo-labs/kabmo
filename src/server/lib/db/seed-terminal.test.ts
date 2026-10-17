@@ -40,6 +40,7 @@ import {
   type TerminalViewer,
 } from '@/server/lib/terminal/session.server';
 import { clampTerminalSize } from '@/shared/lib/workspace/terminal/protocol';
+import { testPosix } from '@/test-support/platform';
 describe('clampTerminalSize and session constants', () => {
   test('the termination grace period is one second', () => {
     expect(TERMINATION_GRACE_MS).toBe(1000);
@@ -152,6 +153,35 @@ describe('signalGroup / closeTerminalStream', () => {
       } as never,
     });
     expect(() => signalGroup(session, 'SIGKILL')).not.toThrow();
+  });
+
+  // A real pid goes through `killProcessTree`, not the child handle — that is
+  // the whole point of the change: on POSIX the group is addressed, and on
+  // Windows the tree is walked, while `proc.kill` reaches only the shell. This
+  // asserts the routing, which is what a `proc.kill`-only implementation fails:
+  // a session whose handle would accept a kill must NOT have it called when a
+  // pid is present.
+  testPosix('a child WITH a pid is terminated by its process group, not its handle', async () => {
+    const child = Bun.spawn({ cmd: ['sleep', '30'], detached: true, stdout: 'ignore', stderr: 'ignore' });
+    let handleKills = 0;
+    const session = fakeSession([], {
+      proc: {
+        pid: child.pid,
+        kill: () => void (handleKills += 1),
+      } as never,
+    });
+    try {
+      signalGroup(session, 'SIGKILL');
+      // The group signal is what makes the real child exit; awaiting it is the
+      // assertion, and bun's per-test timeout fails the case if it never lands.
+      const code = await child.exited;
+      expect(typeof code).toBe('number');
+      expect(handleKills).toBe(0);
+    } finally {
+      try {
+        process.kill(child.pid, 'SIGKILL');
+      } catch {}
+    }
   });
 
   test('closing the terminal stream is best-effort', () => {

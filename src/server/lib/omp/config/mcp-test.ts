@@ -14,7 +14,7 @@
 
 import type { Subprocess } from 'bun';
 import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
-import { killProcessTree } from '@/server/lib/omp/rpc/kill-tree';
+import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
 import { isMockMode } from '@/server/mock.server';
 import type { McpServerItem } from '@/shared/types';

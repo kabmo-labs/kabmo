@@ -19,7 +19,7 @@ import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrames, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
-import { killProcessTree } from '@/server/lib/omp/rpc/kill-tree';
+import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
 import { RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
 

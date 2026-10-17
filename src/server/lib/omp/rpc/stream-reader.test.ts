@@ -22,7 +22,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { readLines } from '@/server/lib/omp/rpc/lines';
-import { killProcessTree } from '@/server/lib/omp/rpc/kill-tree';
+import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 
 function streamOf(...chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();

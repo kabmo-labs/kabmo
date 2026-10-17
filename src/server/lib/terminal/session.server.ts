@@ -30,6 +30,7 @@
 import { resolveRoot } from '@/server/lib/fs/root';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
+import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { createTerminalHistory, type TerminalHistory } from '@/server/lib/terminal/history';
 import { resolveShellExecutable, shellCandidates, shellLaunch, terminalEnv } from '@/server/lib/terminal/shell';
 import {
@@ -213,15 +214,25 @@ export function snapshotOf(session: TerminalSession): TerminalSnapshot {
 }
 
 /**
- * Signal the shell's whole process group.
+ * Signal the shell's whole process group — and, on Windows, its whole tree.
  *
- * `detached: true` made the shell a session leader, so the group holds every
- * command it started — a build, a dev server, a suspended job. Signalling the
- * pid alone would leave those behind.
+ * `detached: true` made the shell a session leader on POSIX, so the group holds
+ * every command it started: a build, a dev server, a suspended job. Signalling
+ * the pid alone would leave those behind, and one of them holding the PTY open
+ * keeps the panel attached to a shell that is already dead.
+ *
+ * Windows has no process group to signal, and this used to fall through to
+ * `proc.kill` — the direct child only — which left the same grandchildren
+ * running there with nothing to reap them. `killProcessTree` is the module that
+ * already solves this for the omp child (`taskkill /t`, falling back to the
+ * direct kill), and a shell's foreground command is the same problem.
  */
 export function signalGroup(session: TerminalSession, signal: NodeJS.Signals): void {
   const pid = session.proc?.pid;
-  if (!pid || process.platform === 'win32') {
+  if (!pid) {
+    // No pid to address, but a handle that can still signal itself. A real
+    // `Bun.Subprocess` always has one; this keeps a fake (and a child that has
+    // already been reaped) behaving the way it did before the tree kill.
     try {
       session.proc?.kill(signal);
     } catch {
@@ -229,11 +240,7 @@ export function signalGroup(session: TerminalSession, signal: NodeJS.Signals): v
     }
     return;
   }
-  try {
-    process.kill(-pid, signal);
-  } catch {
-    // The group is gone: the shell exited on its own.
-  }
+  killProcessTree(pid, signal === 'SIGKILL', signal);
 }
 
 export function closeTerminalStream(session: TerminalSession): void {

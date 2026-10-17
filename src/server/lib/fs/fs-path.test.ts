@@ -242,4 +242,52 @@ describe('runShell', () => {
     expect(killed.signalCode).toBe('SIGTERM');
     expect(shellOk(killed)).toBe(false);
   });
+
+  // The WINDOWS branch. It used to be a no-op there: `groupKill` was false, so
+  // the timeout called `proc.kill` on the shell and left a forked child
+  // running — and with `detached` also false there was no group to reach even
+  // if the code had tried.
+  //
+  // The OUTCOME cannot be asserted from a POSIX host: the Windows branch spawns
+  // `taskkill`, which does not exist here, and `detached` is off by design so
+  // there is no group either — a measured probe took the full 30 s, which is
+  // the absence of `taskkill` talking, not the code. What IS assertable is the
+  // ROUTING, and that is the whole change: the timeout must reach the tree-kill
+  // seam rather than the child handle. The seam's own Windows behaviour
+  // (argv, `/f`, the fallback) is pinned in `kill-tree.test.ts`.
+  testPosix('a timeout routes through the tree kill, not the child handle', async () => {
+    const calls: { pid: number | undefined; force: boolean; signal: NodeJS.Signals }[] = [];
+
+    const run = runShell('sleep 30', {
+      timeout: 100,
+      platform: 'win32',
+      killTree: (pid, force, signal) => {
+        calls.push({ pid, force, signal });
+        // Do what `taskkill /t` does on Windows: terminate the WHOLE tree.
+        // Signalling the shell alone is not enough here either — dash forks a
+        // `sleep`, so the grandchild keeps the pipe open and the reads below
+        // never resolve (measured: the case hangs to its 5 s timeout on
+        // Debian, while it passes on macOS where `sh` execs a lone command).
+        if (!pid) return;
+        try {
+          process.kill(-pid, 'SIGKILL');
+        } catch {
+          try {
+            process.kill(pid, 'SIGKILL');
+          } catch {
+            // Already gone.
+          }
+        }
+      },
+      // The shell must lead a group for the fake to reach its grandchild; on a
+      // real Windows host `taskkill /t` walks the OS's recorded tree instead.
+      detachForTest: true,
+    });
+
+    const result = await run;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ force: false, signal: 'SIGTERM' });
+    expect(typeof calls[0]?.pid).toBe('number');
+    expect(shellOk(result)).toBe(false);
+  });
 });

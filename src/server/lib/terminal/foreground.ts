@@ -26,6 +26,16 @@
  * for the platforms with no probe (the BSDs) and for the case where a probe
  * declines to answer, so the answer never depends on the fast path working.
  *
+ * WINDOWS ANSWERS "NOT BUSY" FOR EVERY SHELL, and that is deliberate rather
+ * than a gap: a ConPTY has no `tpgid`, no `ps`, and no `/proc`, so the question
+ * is not answerable there without walking the process table through `ntdll`.
+ * This function therefore reports what it KNOWS (nothing), which keeps the
+ * panel's `busy` badge honest — an idle-looking shell is not claimed to be
+ * running work. The CAP is a different question and does not use this answer
+ * on Windows: `countLiveTerminals` bounds the budget by every live shell
+ * instead, because a bound that never triggers is not a bound. See
+ * `liveness.server.ts`.
+ *
  * Advisory either way: any failure resolves to "not busy", because refusing a
  * shell to save a slot is worse than letting one extra through.
  */
@@ -33,6 +43,11 @@
 import { processProbe } from '@/server/lib/lifecycle/proc';
 
 const PS_TIMEOUT_MS = 1500;
+
+/** Overridable so the Windows branch is reachable from a POSIX test. */
+export interface BusyShellOptions {
+  platform?: NodeJS.Platform;
+}
 
 /** `pid` is the shell's process (it is the PTY session leader, so pgid === pid). */
 export interface ShellProcess {
@@ -85,9 +100,13 @@ async function busyShellsViaPs(shells: ShellProcess[]): Promise<Set<string>> {
   return busy;
 }
 
-export async function detectBusyShells(shells: ShellProcess[]): Promise<Set<string>> {
+export async function detectBusyShells(
+  shells: ShellProcess[],
+  options: BusyShellOptions = {},
+): Promise<Set<string>> {
   const busy = new Set<string>();
-  if (shells.length === 0 || process.platform === 'win32') return busy;
+  const platform = options.platform ?? process.platform;
+  if (shells.length === 0 || platform === 'win32') return busy;
 
   // All-or-nothing: one shell the probe cannot answer for sends the whole set
   // through `ps`, which keeps a single answer for a single question instead of

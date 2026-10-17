@@ -28,7 +28,7 @@
 import { afterAll, describe, expect, test } from 'bun:test';
 import { attachTerminal, disposeAllTerminals } from '@/server/lib/terminal/runtime.server';
 import { terminalStore, type TerminalStore, type TerminalTimeout } from '@/server/lib/terminal/store';
-import { countLiveTerminals, listTerminals } from '@/server/lib/terminal/liveness.server';
+import { countLiveTerminals, distinguishesIdleShells, listTerminals } from '@/server/lib/terminal/liveness.server';
 import type { TerminalSession, TerminalViewer } from '@/server/lib/terminal/session.server';
 import { join } from 'node:path';
 import { describePosix, testPosix } from '@/test-support/platform';
@@ -165,13 +165,16 @@ describe('countLiveTerminals', () => {
    * The store is process-wide, so whatever another suite (or this file's other
    * describe) left behind would otherwise be counted as this test's shells.
    */
-  async function countingOnly(...sessions: TerminalSession[]): Promise<number> {
+  async function countingOnly(
+    sessions: TerminalSession[],
+    platform?: NodeJS.Platform,
+  ): Promise<number> {
     const store = terminalStore();
     const saved = new Map(store.sessions);
     store.sessions.clear();
     for (const session of sessions) store.sessions.set(session.id, session);
     try {
-      return await countLiveTerminals();
+      return await countLiveTerminals(platform ? { platform } : {});
     } finally {
       store.sessions.clear();
       for (const [id, session] of saved) store.sessions.set(id, session);
@@ -191,15 +194,15 @@ describe('countLiveTerminals', () => {
   });
 
   test('no sessions means nothing is live', async () => {
-    expect(await countingOnly()).toBe(0);
+    expect(await countingOnly([])).toBe(0);
   });
 
   test('exited shells and shells with no process are not budgeted', async () => {
     expect(
-      await countingOnly(
+      await countingOnly([
         fakeSession({ id: 'corpse', status: 'exited', exitCode: 0 }),
         fakeSession({ id: 'record-only', proc: null }),
-      ),
+      ]),
     ).toBe(0);
   });
 
@@ -210,6 +213,36 @@ describe('countLiveTerminals', () => {
       fakeSession({ id: 'corpse-2', status: 'exited' }),
     );
     expect(await countLiveTerminals()).toBe(1);
+  });
+
+  // The Windows answer, driven from here because the platform it describes
+  // cannot run this suite: a ConPTY exposes no `tpgid`, so `detectBusyShells`
+  // reports nothing busy and a cap built on that answer never fires. Measured
+  // against the old shape: eight live shells, `countLiveTerminals() === 0`,
+  // `MAX_TERMINALS` unreachable.
+  test('a platform with no foreground group budgets EVERY live shell', async () => {
+    expect(
+      await countingOnly(
+        [
+          fakeSession({ id: 'w1', proc: { pid: 900_001 } as unknown as Bun.Subprocess }),
+          fakeSession({ id: 'w2', proc: { pid: 900_002 } as unknown as Bun.Subprocess }),
+          fakeSession({ id: 'w3', proc: { pid: 900_003 } as unknown as Bun.Subprocess }),
+          // A corpse and a record with no process are still not candidates: the
+          // fallback widens what COUNTS, never what is a candidate.
+          fakeSession({ id: 'w-corpse', status: 'exited', proc: { pid: 900_004 } as unknown as Bun.Subprocess }),
+          fakeSession({ id: 'w-no-proc', proc: null }),
+        ],
+        'win32',
+      ),
+    ).toBe(3);
+  });
+
+  test('the platform predicate is the one the cap reads', () => {
+    // Both directions, because a predicate that answers `true` everywhere is
+    // the same bug as one that answers `false` everywhere.
+    expect(distinguishesIdleShells('win32')).toBe(false);
+    expect(distinguishesIdleShells('darwin')).toBe(true);
+    expect(distinguishesIdleShells('linux')).toBe(true);
   });
 });
 

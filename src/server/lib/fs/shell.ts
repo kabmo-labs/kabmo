@@ -17,8 +17,16 @@
  * killing only the shell leaves the reads below blocked until the child exits
  * on its own — measured at the full 5s instead of the 100ms timeout. Bun's own
  * `timeout` option signals the shell alone, which is why the kill is ours.
- * Windows has no POSIX process group and gets the single kill.
+ *
+ * Windows has no POSIX process group, and this used to say so and stop there —
+ * which meant a timed-out command there kept running, because the shell was
+ * signalled and its child was not. `killProcessTree` closes that: `taskkill /t`
+ * walks the tree the OS recorded, and the direct kill remains its fallback.
+ * `detached` stays POSIX-only (it is what makes `-pid` addressable, and Windows
+ * has no equivalent), so the Windows branch passes the shell's own pid.
  */
+
+import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 
 export interface ShellResult {
   stdout: string;
@@ -36,30 +44,52 @@ export interface ShellOptions {
   /** Kill the process once it has emitted more than this many bytes (Bun-native). */
   maxBuffer?: number;
   env?: Record<string, string | undefined>;
+  /**
+   * Overridable so the Windows timeout branch is reachable from a POSIX test.
+   * Production omits it; the process's own platform is the answer.
+   */
+  platform?: NodeJS.Platform;
+  /**
+   * How the timeout terminates the child. Production omits it and gets
+   * `killProcessTree`, which is the whole point of the change: the shell alone
+   * is not enough when it forked. A test injects a spy, because the Windows
+   * branch's `taskkill` cannot be observed from a POSIX host — there is no such
+   * binary and no process group, so asserting the outcome would test the
+   * absence of `taskkill` rather than the routing.
+   */
+  killTree?: (pid: number, force: boolean, signal: NodeJS.Signals) => void;
+  /**
+   * TEST ONLY: lead a process group on a platform whose branch would not.
+   *
+   * A POSIX host cannot reproduce the Windows branch's outcome without it —
+   * `dash` forks a lone `sleep`, so the grandchild keeps the pipe open and a
+   * shell-only signal never resolves the reads. The Windows branch itself does
+   * NOT detach (there is no group to address; `taskkill /t` walks the OS tree),
+   * so production must never set this.
+   */
+  detachForTest?: boolean;
 }
 
 export function runShell(command: string, options: ShellOptions = {}): Promise<ShellResult> {
   const timeout = options.timeout;
-  const groupKill = timeout !== undefined && process.platform !== 'win32';
+  const platform = options.platform ?? process.platform;
+  // Only POSIX needs the shell to lead a group that `-pid` can address.
+  const detached = timeout !== undefined && (platform !== 'win32' || options.detachForTest === true);
   const proc = Bun.spawn({
     cmd: ['sh', '-c', command],
     cwd: options.cwd,
     stdout: 'pipe',
     stderr: 'pipe',
-    // Only a timeout needs the shell to lead a group that can be signalled.
-    detached: groupKill,
+    detached,
     maxBuffer: options.maxBuffer,
     env: options.env ? { ...Bun.env, ...options.env } : undefined,
   });
   const timer = timeout === undefined
     ? undefined
     : setTimeout(() => {
-        try {
-          if (groupKill) process.kill(-proc.pid, 'SIGTERM');
-          else proc.kill('SIGTERM');
-        } catch {
-          // Already gone: the command finished inside its own timeout.
-        }
+        // The tree, not the shell alone: a forked child holding the pipe open
+        // is exactly what makes a single kill look like a hang.
+        (options.killTree ?? killProcessTree)(proc.pid, false, 'SIGTERM');
       }, timeout);
   return (async () => {
     let error: Error | undefined;
