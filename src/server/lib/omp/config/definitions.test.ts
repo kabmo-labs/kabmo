@@ -14,11 +14,11 @@
  * of only whitespace REMOVES the file, or an empty AGENTS.md would still claim
  * the context scope; plugin wrappers pass `--scope` only where omp accepts it,
  * and `pluginCliError` prefers stderr. `PI_CODING_AGENT_DIR` points at a temp
- * dir and `OMPCHAMBER_OMP_BIN` at a stub recording its argv — no real process; POSIX-only (`describePosix`): the stub is a shebang script Windows cannot start.
+ * dir and `OMPCHAMBER_OMP_BIN` at a stub recording its argv — no real process (the stub is a compiled executable, so it spawns on both platforms).
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
+import { executableStub } from '@/test-support/executable-stub';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -69,7 +69,7 @@ function write(file: string, content: string): string {
   return file;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-definitions-'));
   agentDir = join(root, 'agent');
   userAgents = join(agentDir, 'agents');
@@ -83,11 +83,10 @@ beforeAll(() => {
   Bun.env.MOCK = 'true';
 
   logFile = join(root, 'argv.log');
-  const stub = join(root, 'bin', 'omp');
-  fs.mkdirSync(join(root, 'bin'), { recursive: true });
-  fs.writeFileSync(stub, `#!/bin/sh\nprintf '%s\\n' "$@" > "${logFile}"\n`);
-  fs.chmodSync(stub, 0o755);
-  Bun.env.OMPCHAMBER_OMP_BIN = stub;
+  const stubSource = `import { writeFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(logFile)}, process.argv.slice(2).map((arg) => arg + '\\n').join(''));
+`;
+  Bun.env.OMPCHAMBER_OMP_BIN = await executableStub(stubSource, 'fake-omp-argv');
   // `resolveOmpBin` memoizes the FIRST binary it resolves for the process.
   invalidateOmpCliCache();
 });
@@ -113,7 +112,7 @@ afterAll(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-describePosix('discoverNativeAgents', () => {
+describe('discoverNativeAgents', () => {
   test('shapes frontmatter, defaults malformed fields, and skips non-markdown entries', async () => {
     write(join(userAgents, 'one.md'), [
       '---',
@@ -170,7 +169,7 @@ describePosix('discoverNativeAgents', () => {
   });
 });
 
-describePosix('writeAgentDefinition', () => {
+describe('writeAgentDefinition', () => {
   test('refuses an unsafe file name and an empty system prompt', async () => {
     await expect(writeAgentDefinition({ fileName: '../escape', systemPrompt: 'x' })).rejects.toThrow(/may contain letters/);
     await expect(writeAgentDefinition({ fileName: 'ok', systemPrompt: '   ' })).rejects.toThrow(/cannot be empty/);
@@ -205,7 +204,7 @@ describePosix('writeAgentDefinition', () => {
   });
 });
 
-describePosix('instruction files', () => {
+describe('instruction files', () => {
   test('narrows the kind and resolves the two omp basenames', () => {
     expect(isInstructionFileKind('agents')).toBe(true);
     expect(isInstructionFileKind('rules')).toBe(true);
@@ -247,7 +246,7 @@ describePosix('instruction files', () => {
   });
 });
 
-describePosix('plugin action scope flags', () => {
+describe('plugin action scope flags', () => {
   /** Run one wrapper against the stub binary and return the argv it received. */
   async function recorded(call: () => Promise<unknown>): Promise<string[]> {
     await call();
@@ -313,7 +312,7 @@ describe('pluginCliError', () => {
   });
 });
 
-describePosix('skills catalog', () => {
+describe('skills catalog', () => {
   test('search degrades to an empty list in mock mode, and results map to the UI contract', async () => {
     expect(await searchSkillCatalog('anything')).toEqual([]);
     expect(toCatalogSkills([

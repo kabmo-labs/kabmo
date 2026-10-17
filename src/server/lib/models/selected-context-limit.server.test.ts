@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * The window a session with no turn yet should be measured against.
  *
@@ -24,9 +22,9 @@
  * harness as `registry.server.test.ts`.
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { ompRpcStub } from '@/test-support/executable-stub';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -39,28 +37,6 @@ import { resolveSelectedModelContextLimit } from '@/server/lib/models/selected-c
 import { removeDir } from '@/test-support/remove-dir';
 
 const SELECTED_MODEL_KEY = 'omp_selected_model';
-
-/** Answers the utility RPC with the canned model list below. */
-const STUB_SOURCE = `#!/usr/bin/env bun
-const responses = JSON.parse(process.env.FAKE_OMP_RESPONSES || '{}');
-const encoder = new TextEncoder();
-const write = (value) => process.stdout.write(encoder.encode(JSON.stringify(value) + '\\n'));
-write({ type: 'ready' });
-const decoder = new TextDecoder();
-let buffer = '';
-for await (const chunk of Bun.stdin.stream()) {
-  buffer += decoder.decode(chunk);
-  let index = buffer.indexOf('\\n');
-  while (index >= 0) {
-    const line = buffer.slice(0, index);
-    buffer = buffer.slice(index + 1);
-    index = buffer.indexOf('\\n');
-    if (!line.trim()) continue;
-    const frame = JSON.parse(line);
-    write({ type: 'response', id: frame.id, command: frame.type, success: true, data: responses[frame.type] ?? {} });
-  }
-}
-`;
 
 /** Two models with distinct windows, so a wrong pick cannot pass by accident. */
 const REGISTRY_MODELS = {
@@ -84,10 +60,8 @@ function tempDir(): string {
   return dir;
 }
 
-beforeAll(() => {
-  const stubPath = join(tempDir(), 'fake-omp');
-  writeFileSync(stubPath, STUB_SOURCE);
-  chmodSync(stubPath, 0o755);
+beforeAll(async () => {
+  const stubPath = await ompRpcStub();
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = tempDir();
@@ -135,7 +109,7 @@ async function registryModel(): Promise<{ provider: string; id: string; contextW
   return { provider: hit.provider, id: hit.id, contextWindow: hit.contextWindow };
 }
 
-describePosix('resolveSelectedModelContextLimit', () => {
+describe('resolveSelectedModelContextLimit', () => {
   test("resolves the persisted pick to that model's window", async () => {
     const model = await registryModel();
     const db = await getDb();

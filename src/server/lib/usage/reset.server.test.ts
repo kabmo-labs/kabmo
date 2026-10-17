@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * Saved rate-limit resets: the parse, the list, and the spend.
  *
@@ -22,8 +20,8 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { executableStub } from '@/test-support/executable-stub';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -32,8 +30,7 @@ import { listUsageResets, parseUsageResetList, spendUsageReset } from '@/server/
 
 /** Answers `omp usage reset …` from a file the test rewrites. */
 function stubSource(responseFile: string): string {
-  return `#!/usr/bin/env bun
-const raw = (await Bun.file(${JSON.stringify(responseFile)}).text()).trim();
+  return `const raw = (await Bun.file(${JSON.stringify(responseFile)}).text()).trim();
 const { stdout = '', stderr = '', exit = 0 } = raw ? JSON.parse(raw) : {};
 if (stdout) process.stdout.write(stdout);
 if (stderr) process.stderr.write(stderr);
@@ -52,14 +49,12 @@ function stubResult(result: { stdout?: string; stderr?: string; exit?: number })
   writeFileSync(responseFile, JSON.stringify(result));
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'omp-usage-reset-'));
   dirs.push(dir);
-  stubBin = join(dir, 'fake-omp');
   responseFile = join(dir, 'response.json');
   stubResult({ stdout: '{"generatedAt":1,"accounts":[]}' });
-  writeFileSync(stubBin, stubSource(responseFile));
-  chmodSync(stubBin, 0o755);
+  stubBin = await executableStub(stubSource(responseFile), 'fake-omp-reset');
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
   invalidateOmpCliCache();
@@ -121,7 +116,7 @@ describe('parseUsageResetList', () => {
   });
 });
 
-describePosix('listUsageResets', () => {
+describe('listUsageResets', () => {
   test('parses a successful read', async () => {
     stubResult({
       stdout: JSON.stringify({
@@ -145,7 +140,7 @@ describePosix('listUsageResets', () => {
   });
 });
 
-describePosix('spendUsageReset', () => {
+describe('spendUsageReset', () => {
   test('a success keeps omp’s own sentence', async () => {
     stubResult({ stdout: "Reset applied for a@b.c (Codex) — Claude's 5h session limit has been refreshed; weekly limits are unchanged.\n" });
     const result = await spendUsageReset('openai-codex/cred-1');
@@ -168,7 +163,7 @@ describePosix('spendUsageReset', () => {
   });
 });
 
-describePosix('mock mode', () => {
+describe('mock mode', () => {
   test('lists a deterministic demo and refuses a spend', async () => {
     Bun.env.MOCK = 'true';
     const list = await listUsageResets();

@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * The wiki read path is a git spawn plus a cache, and both fail silently when
  * they are wrong: a wiki path with a space that reaches a shell as a string is
@@ -14,15 +12,16 @@
  * tests pin the argv/env shape of `gitRun`, the four ways a fetch is classified,
  * the host→provider decision, and the reads that come back out of the mirror.
  *
- * No network: `git` is replaced by a script on PATH for the spawn-shape tests,
- * and the mirror-read tests use a local bare repository built in a temp dir.
+ * No network: `git` is replaced by a stub binary on PATH for the spawn-shape
+ * tests, and the mirror-read tests use a local bare repository built in a temp
+ * dir.
  */
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { executableStub } from '@/test-support/executable-stub';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 
 import { firstLine, gitRun } from '@/server/lib/wiki/git';
 import { detectWikiProvider } from '@/server/lib/wiki/provider.server';
@@ -44,40 +43,44 @@ function tempDir(prefix: string): string {
 }
 
 /** A `git` that records its argv and answers init/fetch/log deterministically. */
-const FAKE_GIT = `#!/bin/sh
-if [ -n "$FAKE_GIT_LOG" ]; then
-  { printf 'CALL'; for a in "$@"; do printf '\\t%s' "$a"; done; printf '\\n'; } >> "$FAKE_GIT_LOG"
-fi
-if [ -n "$FAKE_GIT_SIGNAL" ]; then kill -s "$FAKE_GIT_SIGNAL" $$; fi
-case "$1" in
-  init) mkdir -p "$4"; : > "$4/HEAD"; exit 0 ;;
-esac
-if [ "$3" = "fetch" ]; then
-  if [ -n "$FAKE_GIT_FETCH_KILL" ]; then kill -TERM $$; fi
-  if [ -n "$FAKE_GIT_FETCH_FAIL" ]; then printf '%s\\n' "$FAKE_GIT_FETCH_FAIL" >&2; exit 128; fi
-  exit 0
-fi
-if [ "$3" = "log" ]; then
-  if [ -n "$FAKE_GIT_LOG_FAIL" ]; then exit 1; fi
-  printf '%s\\n%s\\n' "\${FAKE_GIT_REVISION:-abc123}" "\${FAKE_GIT_UPDATED:-2026-01-02T03:04:05Z}"
-  exit 0
-fi
-for a in "$@"; do printf '%s\\n' "$a"; done
-printf 'ENV=%s\\n' "$GIT_TERMINAL_PROMPT"
-exit 0
+const FAKE_GIT_SOURCE = `import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const args = process.argv.slice(2);
+const log = process.env.FAKE_GIT_LOG;
+if (log) appendFileSync(log, 'CALL' + (args.length ? '\\t' + args.join('\\t') : '') + '\\n');
+const signal = process.env.FAKE_GIT_SIGNAL;
+if (signal) process.kill(process.pid, signal.startsWith('SIG') ? signal : 'SIG' + signal);
+if (args[0] === 'init') {
+  mkdirSync(args[3], { recursive: true });
+  writeFileSync(join(args[3], 'HEAD'), '');
+  process.exit(0);
+}
+if (args[2] === 'fetch') {
+  if (process.env.FAKE_GIT_FETCH_KILL) process.kill(process.pid, 'SIGTERM');
+  if (process.env.FAKE_GIT_FETCH_FAIL) {
+    process.stderr.write(process.env.FAKE_GIT_FETCH_FAIL + '\\n');
+    process.exit(128);
+  }
+  process.exit(0);
+}
+if (args[2] === 'log') {
+  if (process.env.FAKE_GIT_LOG_FAIL) process.exit(1);
+  process.stdout.write((process.env.FAKE_GIT_REVISION || 'abc123') + '\\n');
+  process.stdout.write((process.env.FAKE_GIT_UPDATED || '2026-01-02T03:04:05Z') + '\\n');
+  process.exit(0);
+}
+for (const arg of args) process.stdout.write(arg + '\\n');
+process.stdout.write('ENV=' + (process.env.GIT_TERMINAL_PROMPT ?? '') + '\\n');
 `;
 
 let gitLog = '';
 
-/** Put the recording script first on PATH; every spawn below reaches it. */
-function useFakeGit(): void {
-  const bin = join(tempDir('omp-fake-git-'), 'bin');
-  mkdirSync(bin, { recursive: true });
-  const script = join(bin, 'git');
-  writeFileSync(script, FAKE_GIT);
-  chmodSync(script, 0o755);
+/** Put the recording stub first on PATH; every spawn below reaches it. */
+async function useFakeGit(): Promise<void> {
+  const fakeGit = await executableStub(FAKE_GIT_SOURCE, 'git');
   gitLog = join(tempDir('omp-git-log-'), 'calls.log');
-  process.env.PATH = `${bin}:${realPath}`;
+  process.env.PATH = `${dirname(fakeGit)}${delimiter}${realPath}`;
   process.env.FAKE_GIT_LOG = gitLog;
 }
 
@@ -126,9 +129,9 @@ afterAll(() => {
   for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
-describePosix('gitRun', () => {
+describe('gitRun', () => {
   test('passes every argument as argv, so no shell can rewrite a path', async () => {
-    useFakeGit();
+    await useFakeGit();
 
     const result = await gitRun(['log', 'Setting up notes.md', 'a b"c$d'], { timeoutMs: 5_000 });
 
@@ -137,7 +140,7 @@ describePosix('gitRun', () => {
   });
 
   test('sets GIT_TERMINAL_PROMPT=0 so a private wiki cannot block on a prompt', async () => {
-    useFakeGit();
+    await useFakeGit();
 
     const result = await gitRun(['fetch', 'origin'], { timeoutMs: 5_000 });
 
@@ -161,7 +164,7 @@ describePosix('gitRun', () => {
   });
 
   test('reports a signalled process as failed', async () => {
-    useFakeGit();
+    await useFakeGit();
     process.env.FAKE_GIT_SIGNAL = 'TERM';
 
     const result = await gitRun(['log'], { timeoutMs: 5_000 });
@@ -181,7 +184,7 @@ describe('firstLine', () => {
 
 // Portable: `byName` answers the two public hosts without a request, and the
 // probe for an unknown host is a `fetch`, not a `git` spawn — so nothing here
-// reaches the `#!/bin/sh` stub the rest of this file needs.
+// reaches the compiled stub the rest of this file needs.
 describe('detectWikiProvider', () => {
   test('decides the two public hosts by name, with no request', async () => {
     for (const host of ['github.com', 'GitHub.com', 'www.github.com']) {
@@ -201,9 +204,9 @@ describe('detectWikiProvider', () => {
   });
 });
 
-describePosix('ensureWikiMirror', () => {
+describe('ensureWikiMirror', () => {
   test('fetches into a bare mirror keyed by host and slug', async () => {
-    useFakeGit();
+    await useFakeGit();
     useWikiDataDir();
 
     const result = await ensureWikiMirror('github.com', 'o/n', 'https://github.com/o/n.wiki.git');
@@ -232,7 +235,7 @@ describePosix('ensureWikiMirror', () => {
   });
 
   test('shares one mirror between the https and ssh spellings of a remote', async () => {
-    useFakeGit();
+    await useFakeGit();
     useWikiDataDir();
 
     const first = await ensureWikiMirror('gitlab.com', 'g/p', 'https://gitlab.com/g/p.wiki.git');
@@ -248,7 +251,7 @@ describePosix('ensureWikiMirror', () => {
   });
 
   test('classifies a missing repository as no-wiki', async () => {
-    useFakeGit();
+    await useFakeGit();
     useWikiDataDir();
     process.env.FAKE_GIT_FETCH_FAIL =
       "remote: Repository not found.\nfatal: repository 'https://github.com/o/n.wiki.git/' not found";
@@ -259,7 +262,7 @@ describePosix('ensureWikiMirror', () => {
   });
 
   test('classifies a transport failure as unreachable', async () => {
-    useFakeGit();
+    await useFakeGit();
     useWikiDataDir();
     process.env.FAKE_GIT_FETCH_FAIL = "fatal: unable to access 'https://x/': Could not resolve host: x";
 
@@ -273,7 +276,7 @@ describePosix('ensureWikiMirror', () => {
   });
 
   test('classifies a killed fetch as unreachable with a timeout detail', async () => {
-    useFakeGit();
+    await useFakeGit();
     useWikiDataDir();
     process.env.FAKE_GIT_FETCH_KILL = '1';
 
@@ -283,7 +286,7 @@ describePosix('ensureWikiMirror', () => {
   });
 
   test('reports an empty wiki when the fetched ref holds no revision', async () => {
-    useFakeGit();
+    await useFakeGit();
     useWikiDataDir();
     process.env.FAKE_GIT_LOG_FAIL = '1';
 
@@ -293,7 +296,7 @@ describePosix('ensureWikiMirror', () => {
   });
 });
 
-describePosix('mirror reads', () => {
+describe('mirror reads', () => {
   test('lists every path in the tree, keeping a space in the name', async () => {
     await buildFixture();
 

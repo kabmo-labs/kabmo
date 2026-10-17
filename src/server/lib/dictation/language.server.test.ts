@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the stub `omp` is a shebang script Windows cannot start. */
-
 /**
  * The dictation language resolver.
  *
@@ -22,9 +20,9 @@
  *    up to a minute later.
  */
 
-import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { executableStub } from '@/test-support/executable-stub';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -46,8 +44,7 @@ import {
  * which the bridge does not do).
  */
 function stubSource(langFile: string): string {
-  return `#!/usr/bin/env bun
-const args = process.argv.slice(2);
+  return `const args = process.argv.slice(2);
 const value = (await Bun.file(${JSON.stringify(langFile)}).text()).trim();
 if (args[0] === 'config' && args[1] === 'get' && args[2] === 'stt.language') {
   process.stdout.write(JSON.stringify(value));
@@ -69,14 +66,12 @@ function setStubLanguage(value: string): void {
   writeFileSync(langFile, value);
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'omp-lang-'));
   dirs.push(dir);
-  stubBin = join(dir, 'fake-omp');
   langFile = join(dir, 'language.txt');
   setStubLanguage('en');
-  writeFileSync(stubBin, stubSource(langFile));
-  chmodSync(stubBin, 0o755);
+  stubBin = await executableStub(stubSource(langFile), 'fake-omp-language');
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
   // A sibling suite may have cached the real `omp` path for the process
@@ -98,7 +93,7 @@ afterEach(() => {
   invalidateDictationLanguage();
 });
 
-describePosix('resolveDictationLanguage', () => {
+describe('resolveDictationLanguage', () => {
   test('mock mode reports no language, so the recognizer auto-detects', async () => {
     Bun.env.MOCK = 'true';
     expect(await resolveDictationLanguage()).toBeUndefined();

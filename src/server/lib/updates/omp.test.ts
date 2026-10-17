@@ -3,20 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * The oh-my-pi (`omp`) update check: the version the binary reports, compared
  * against the version npm serves. Both halves are decidable without a network or
- * a real omp install — a stub script answers `omp --version`, and the registry
+ * a real omp install — a stub binary answers `omp --version`, and the registry
  * read is an injected `fetch` — so the two failure modes that matter are pinned:
  * an unreadable npm answer must not claim an update, and a binary that prints no
  * version must not either.
  */
 
-import { afterEach, beforeEach, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { executableStub } from '@/test-support/executable-stub';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -26,16 +23,13 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;
 
-describePosix('omp update check', () => {
+describe('omp update check', () => {
   const realOverride = Bun.env.OMPCHAMBER_OMP_BIN;
 
-  /** A stand-in binary: the check only reads `omp --version` from it. */
-  function stubOmp(script: string): string {
-    const dir = mkdtempSync(join(tmpdir(), 'ompchamber-omp-'));
-    const path = join(dir, 'omp');
-    writeFileSync(path, script);
-    chmodSync(path, 0o755);
-    return path;
+  /** A stand-in binary: the check only reads `omp --version` from it. The answer
+   * is baked into the source (the check spawns without passing `env:`). */
+  function stubOmp(output: string): Promise<string> {
+    return executableStub(`process.stdout.write(${JSON.stringify(output)});`, 'fake-omp-version');
   }
 
   /** The registry answering one fixed version. */
@@ -73,7 +67,7 @@ describePosix('omp update check', () => {
   });
 
   test('compares the binary’s own version against the npm latest', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = stubOmp('#!/bin/sh\necho "omp/18.6.0"\n');
+    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('omp/18.6.0\n');
     invalidateOmpCliCache();
     stubRegistry('18.7.0');
 
@@ -87,7 +81,7 @@ describePosix('omp update check', () => {
   });
 
   test('the installed version being the newest is not an update', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = stubOmp('#!/bin/sh\necho "omp/18.6.0"\n');
+    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('omp/18.6.0\n');
     invalidateOmpCliCache();
     stubRegistry('18.6.0');
 
@@ -101,7 +95,7 @@ describePosix('omp update check', () => {
   });
 
   test('an npm read that fails is reported, and no update is claimed', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = stubOmp('#!/bin/sh\necho "omp/18.6.0"\n');
+    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('omp/18.6.0\n');
     invalidateOmpCliCache();
     globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
 
@@ -111,7 +105,7 @@ describePosix('omp update check', () => {
   });
 
   test('a binary that prints no version is an error, not an available update', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = stubOmp('#!/bin/sh\nexit 0\n');
+    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('');
     invalidateOmpCliCache();
     stubRegistry('18.7.0');
 

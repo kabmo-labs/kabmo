@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * Restart decisions, the listener reference, and applying an update.
  *
@@ -17,14 +15,14 @@
  *
  * `apply.ts` turns one update run into `{ result, updated }`. `updated: false`
  * for the "already up to date" phrase is load-bearing: it is a SUCCESS that must
- * not bounce a healthy server, so it is pinned with a fixture `omp` script
+ * not bounce a healthy server, so it is pinned with a fixture `omp` binary
  * (never the real binary, never the network). The concurrency refusal is pinned
  * too, because a second run replacing the same install in place is the failure
  * the slot exists to prevent.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
+import { executableStub } from '@/test-support/executable-stub';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -52,13 +50,21 @@ function useDataDir(): void {
   Bun.env.OMPCHAMBER_DATA_DIR = dir;
 }
 
-/** A stand-in for the `omp` binary; the real one is never spawned. */
-function useFixtureOmp(output: string, exitCode = 0): void {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-omp-fixture-'));
-  fixtures.push(dir);
-  const bin = path.join(dir, 'omp');
-  fs.writeFileSync(bin, `#!/bin/sh\necho "${output}"\nexit ${exitCode}\n`, { mode: 0o755 });
-  Bun.env.OMPCHAMBER_OMP_BIN = bin;
+/** A stand-in for the `omp` binary; the real one is never spawned. The answer is
+ * read from the environment, which `applyOmpUpdate` passes to the child. */
+const RESTART_OMP_SOURCE = `const output = process.env.FAKE_OMP_OUTPUT || '';
+const exit = Number(process.env.FAKE_OMP_EXIT || '0');
+if (output) process.stdout.write(output + '\\n');
+process.exit(exit);
+`;
+
+let restartOmpBin = '';
+
+async function useFixtureOmp(output: string, exitCode = 0): Promise<void> {
+  if (!restartOmpBin) restartOmpBin = await executableStub(RESTART_OMP_SOURCE, 'fake-omp-restart');
+  Bun.env.OMPCHAMBER_OMP_BIN = restartOmpBin;
+  Bun.env.FAKE_OMP_OUTPUT = output;
+  Bun.env.FAKE_OMP_EXIT = String(exitCode);
   invalidateOmpCliCache();
 }
 
@@ -70,6 +76,8 @@ afterEach(() => {
   invalidateOmpCliCache();
   if (originalPort === undefined) delete Bun.env.PORT;
   else Bun.env.PORT = originalPort;
+  delete Bun.env.FAKE_OMP_OUTPUT;
+  delete Bun.env.FAKE_OMP_EXIT;
   for (const dir of fixtures.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -98,7 +106,7 @@ describe('skipRestartNote', () => {
   });
 });
 
-describePosix('withRestartPlan', () => {
+describe('withRestartPlan', () => {
   const updated: UpdateApplyResult = { success: true, target: 'ompchamber', manual: false, message: 'OMPChamber updated to v2.0.0 (bun-global).' };
 
   test('an armed plan sets the flag and appends the sentence', () => {
@@ -118,7 +126,7 @@ describePosix('withRestartPlan', () => {
   });
 });
 
-describePosix('scheduleSelfRestart', () => {
+describe('scheduleSelfRestart', () => {
   test('refuses when the instance cannot be identified', () => {
     // No record for this PID and no PORT to fall back to: guessing a port would
     // stop a server that is not this one.
@@ -157,7 +165,7 @@ describePosix('scheduleSelfRestart', () => {
   });
 });
 
-describePosix('listener reference', () => {
+describe('listener reference', () => {
   // The reference is module state shared by the whole `bun test` process, so
   // each case starts and ends with it unpublished.
   beforeEach(clearListener);
@@ -184,7 +192,7 @@ describePosix('listener reference', () => {
   });
 });
 
-describePosix('bun binary and shell route', () => {
+describe('bun binary and shell route', () => {
   test('prefers the runtime this install was started with', () => {
     // The test process IS Bun, so `process.execPath` is the answer, and it must
     // be an existing absolute path rather than a PATH guess.
@@ -198,7 +206,7 @@ describePosix('bun binary and shell route', () => {
   });
 });
 
-describePosix('install-method helpers', () => {
+describe('install-method helpers', () => {
   test('names the repository the only fast-forwardable checkout tracks', () => {
     expect(REPO_URL).toBe('https://github.com/rajebdev/ompchamber.git');
   });
@@ -211,7 +219,7 @@ describePosix('install-method helpers', () => {
   });
 });
 
-describePosix('checkAllUpdates', () => {
+describe('checkAllUpdates', () => {
   const originalMock = Bun.env.MOCK;
 
   afterEach(() => {
@@ -238,7 +246,7 @@ describePosix('checkAllUpdates', () => {
   });
 });
 
-describePosix('applyUpdate', () => {
+describe('applyUpdate', () => {
   test('an unknown target is a manual failure that changed nothing', async () => {
     const applied = await applyUpdate('sideways' as UpdateTarget);
     if (applied.updated !== false) throw new Error('expected updated === false');
@@ -252,7 +260,7 @@ describePosix('applyUpdate', () => {
 
   test('the already-current phrase is a success with updated: false', async () => {
     // Nothing on disk moved, so the caller must not restart the server.
-    useFixtureOmp('Already up to date');
+    await useFixtureOmp('Already up to date');
     const applied = await applyUpdate('omp');
     if (applied.updated !== false) throw new Error('expected updated === false');
     expect(applied.result.success).toBe(true);
@@ -260,7 +268,7 @@ describePosix('applyUpdate', () => {
   });
 
   test('a moved install reports updated: true', async () => {
-    useFixtureOmp('Switching to omp 18.4.0');
+    await useFixtureOmp('Switching to omp 18.4.0');
     const applied = await applyUpdate('omp');
     expect(applied.updated).toBe(true);
     expect(applied.result.message).toBe('oh-my-pi updated');

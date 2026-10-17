@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * The merge behind the Plugins pane: one list out of omp's two registries.
  *
@@ -23,12 +21,12 @@
  *   user lockfile), so it must carry `featuresEditable: false`.
  * - `omp` itself and entries without a name are not plugins.
  *
- * The `omp` CLI is replaced by a stub script (via `OMPCHAMBER_OMP_BIN`) that
+ * The `omp` CLI is replaced by a stub binary (via `OMPCHAMBER_OMP_BIN`) that
  * prints a fixture — no real omp process, no network.
  */
 
-import { afterAll, beforeAll, beforeEach, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { executableStub } from '@/test-support/executable-stub';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -57,7 +55,7 @@ function manifestPackage(dir: string, pkg: Record<string, unknown>): string {
   return dir;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-plugins-'));
   xdg = join(root, 'xdg');
   cwd = join(root, 'workspace');
@@ -152,10 +150,10 @@ beforeAll(() => {
     ],
   });
 
-  const stub = join(root, 'bin', 'omp');
-  fs.writeFileSync(stub, `#!/bin/sh\ncat "${listFixture}"\n`);
-  fs.chmodSync(stub, 0o755);
-  Bun.env.OMPCHAMBER_OMP_BIN = stub;
+  const stubSource = `import { readFileSync } from 'node:fs';
+process.stdout.write(readFileSync(${JSON.stringify(listFixture)}));
+`;
+  Bun.env.OMPCHAMBER_OMP_BIN = await executableStub(stubSource, 'fake-omp-plugin-list');
   invalidateOmpCliCache();
   // `resolveOmpBin` memoizes the FIRST binary it resolves for the process, so a
   // sibling suite's value would otherwise answer every call here.
@@ -177,7 +175,7 @@ beforeEach(() => {
   globalThis.__ompPluginCatalogCache = undefined;
 });
 
-describePosix('listPlugins', () => {
+describe('listPlugins', () => {
   test('skips omp itself and nameless entries, keeping npm order then marketplace order', async () => {
     const items = await listPlugins(cwd);
     expect(items.map((item) => item.id)).toEqual([

@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * `usage/provider-key.ts` answers "which providers may the usage UI show, and
  * where did each key come from". Getting it wrong shows a provider with no
@@ -24,10 +22,10 @@
  * credentials and the real agent are never touched.
  */
 
-import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { ompRpcStub } from '@/test-support/executable-stub';
 import { Database } from 'bun:sqlite';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -36,28 +34,6 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { kenariProviderSlugs, listCredentialedProviders, loadProviderEntries, resolveDeepSeekApiKey, resolveKenariApiKey } from '@/server/lib/usage/provider-key';
 import { removeDir } from '@/test-support/remove-dir';
-
-/** Answers the two registry commands from FAKE_OMP_RESPONSES; never the real agent. */
-const STUB_SOURCE = `#!/usr/bin/env bun
-const responses = JSON.parse(process.env.FAKE_OMP_RESPONSES || '{}');
-const encoder = new TextEncoder();
-const write = (value) => process.stdout.write(encoder.encode(JSON.stringify(value) + '\\n'));
-write({ type: 'ready' });
-const decoder = new TextDecoder();
-let buffer = '';
-for await (const chunk of Bun.stdin.stream()) {
-  buffer += decoder.decode(chunk);
-  let index = buffer.indexOf('\\n');
-  while (index >= 0) {
-    const line = buffer.slice(0, index);
-    buffer = buffer.slice(index + 1);
-    index = buffer.indexOf('\\n');
-    if (!line.trim()) continue;
-    const frame = JSON.parse(line);
-    write({ type: 'response', id: frame.id, command: frame.type, success: true, data: responses[frame.type] ?? {} });
-  }
-}
-`;
 
 const dirs: string[] = [];
 let agentDir = '';
@@ -71,11 +47,13 @@ function tempDir(): string {
   return dir;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   agentDir = tempDir();
-  stubBin = join(tempDir(), 'fake-omp');
-  writeFileSync(stubBin, STUB_SOURCE);
-  chmodSync(stubBin, 0o755);
+  // A COMPILED executable, not a `#!/bin/sh` script: `Bun.spawn` on Windows
+  // resolves only `.com`/`.exe` through libuv's `search_path`, so a shebang
+  // script is unspawnable there however it is chmod-ed — which is why this suite
+  // used to be skipped on Windows. The compiled stub is a real program on both.
+  stubBin = await ompRpcStub();
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
@@ -145,7 +123,7 @@ function writeOmpStores(options: { yml?: Record<string, string>; agentDb?: Recor
   db.close();
 }
 
-describePosix('loadProviderEntries', () => {
+describe('loadProviderEntries', () => {
   test('rows are normalized and non-object entries dropped', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([
@@ -171,7 +149,7 @@ describePosix('loadProviderEntries', () => {
   });
 });
 
-describePosix('listCredentialedProviders', () => {
+describe('listCredentialedProviders', () => {
   test('the three stores are merged per slug with every source reported', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([{ name: 'Kenari', slug: 'kenari', baseUrl: '', apiKey: 'app-key' }]));
@@ -249,7 +227,7 @@ describePosix('listCredentialedProviders', () => {
   });
 });
 
-describePosix('resolveKenariApiKey / resolveDeepSeekApiKey', () => {
+describe('resolveKenariApiKey / resolveDeepSeekApiKey', () => {
   test('the overlay key wins over omp models.yml', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([{ name: 'Kenari', slug: 'kenari', baseUrl: 'https://kenari.id/v1', apiKey: 'app-key' }]));
@@ -317,7 +295,7 @@ describePosix('resolveKenariApiKey / resolveDeepSeekApiKey', () => {
   });
 });
 
-describePosix('kenariProviderSlugs', () => {
+describe('kenariProviderSlugs', () => {
   test('the slug spelling alone identifies an account', async () => {
     useTempDb();
     writeOmpStores({});

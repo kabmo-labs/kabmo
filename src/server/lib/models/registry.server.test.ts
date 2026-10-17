@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * `registry.server.ts` assembles the model list `GET /api/models` serves, and
  * every rule it applies is invisible in the response when it is wrong:
@@ -22,8 +20,8 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { ompRpcStub } from '@/test-support/executable-stub';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -38,27 +36,6 @@ import {
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { removeDir } from '@/test-support/remove-dir';
 
-const STUB_SOURCE = `#!/usr/bin/env bun
-const responses = JSON.parse(process.env.FAKE_OMP_RESPONSES || '{}');
-const encoder = new TextEncoder();
-const write = (value) => process.stdout.write(encoder.encode(JSON.stringify(value) + '\\n'));
-write({ type: 'ready' });
-const decoder = new TextDecoder();
-let buffer = '';
-for await (const chunk of Bun.stdin.stream()) {
-  buffer += decoder.decode(chunk);
-  let index = buffer.indexOf('\\n');
-  while (index >= 0) {
-    const line = buffer.slice(0, index);
-    buffer = buffer.slice(index + 1);
-    index = buffer.indexOf('\\n');
-    if (!line.trim()) continue;
-    const frame = JSON.parse(line);
-    write({ type: 'response', id: frame.id, command: frame.type, success: true, data: responses[frame.type] ?? {} });
-  }
-}
-`;
-
 const dirs: string[] = [];
 let agentDir = '';
 let realAgentDir: string | undefined;
@@ -70,11 +47,12 @@ function tempDir(): string {
   return dir;
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   agentDir = tempDir();
-  const stubPath = join(tempDir(), 'fake-omp');
-  writeFileSync(stubPath, STUB_SOURCE);
-  chmodSync(stubPath, 0o755);
+  // A COMPILED executable, not a `#!/bin/sh` script: `Bun.spawn` on Windows
+  // resolves only `.com`/`.exe` through libuv's `search_path`, so a shebang
+  // script is unspawnable there however it is chmod-ed.
+  const stubPath = await ompRpcStub();
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
@@ -159,7 +137,7 @@ describe('readStoredProvidersForModels', () => {
   });
 });
 
-describePosix('loadModelsWithCache', () => {
+describe('loadModelsWithCache', () => {
   test('a fresh cached snapshot is returned without rebuilding it', async () => {
     const sentinel = { ...EMPTY_MODELS, models: { 'x:y': 'sentinel' } };
     globalThis.__ompChamberModelsCache = { data: sentinel, expiresAt: Date.now() + 60_000 };
@@ -187,7 +165,7 @@ describePosix('loadModelsWithCache', () => {
   });
 });
 
-describePosix('loadModels', () => {
+describe('loadModels', () => {
   test('a provider disabled in config.yml leaves the list; a hidden model is removed alone', async () => {
     useTempDb();
     writeFileSync(join(agentDir, 'config.yml'), 'disabledProviders:\n  - openai\n');

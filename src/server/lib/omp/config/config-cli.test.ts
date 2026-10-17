@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * The `omp config` CLI bridge's failure surfacing.
  *
@@ -31,10 +29,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { executableStub } from '@/test-support/executable-stub';
 
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import {
@@ -49,8 +44,7 @@ import {
  * Answers `omp config …` from the invocation itself, so each test states the
  * shape it is exercising. Never touches the real agent.
  */
-const STUB_SOURCE = `#!/usr/bin/env bun
-const args = process.argv.slice(2);
+const STUB_SOURCE = `const args = process.argv.slice(2);
 const [, action, key] = args;
 const fail = (message) => {
   process.stderr.write(message + '\\n');
@@ -77,17 +71,12 @@ switch (action) {
 }
 `;
 
-const dirs: string[] = [];
 let stubBin = '';
 let realBin: string | undefined;
 const originalMock = Bun.env.MOCK;
 
-beforeAll(() => {
-  const dir = mkdtempSync(join(tmpdir(), 'omp-config-cli-'));
-  dirs.push(dir);
-  stubBin = join(dir, 'fake-omp');
-  writeFileSync(stubBin, STUB_SOURCE);
-  chmodSync(stubBin, 0o755);
+beforeAll(async () => {
+  stubBin = await executableStub(STUB_SOURCE, 'fake-omp-config');
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
   // A sibling suite may have cached the real `omp` path for the process
@@ -101,7 +90,6 @@ afterAll(() => {
   if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
   else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
   invalidateOmpCliCache();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 describe('configFailureLine', () => {
@@ -124,7 +112,7 @@ describe('configFailureLine', () => {
   });
 });
 
-describePosix('a rejected key reports omp’s own sentence', () => {
+describe('a rejected key reports omp’s own sentence', () => {
   test('set on an unknown key carries "Unknown setting" and the key', async () => {
     Bun.env.MOCK = 'false';
     await expect(setOmpConfigValue('providers.openai-codex.codeMode', 'off'))
@@ -148,7 +136,7 @@ describePosix('a rejected key reports omp’s own sentence', () => {
   });
 });
 
-describePosix('an accepted call is unchanged', () => {
+describe('an accepted call is unchanged', () => {
   test('list parses the snapshot and get reads a known key', async () => {
     Bun.env.MOCK = 'false';
     expect(await listOmpConfig()).toEqual({

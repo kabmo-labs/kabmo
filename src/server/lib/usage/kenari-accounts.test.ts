@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
-
 /**
  * Two Kenari accounts must stay two providers, end to end.
  *
@@ -19,9 +17,9 @@
  * request headers are exercised together rather than one at a time.
  */
 
-import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
-import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { executableStub, OMP_RPC_STUB_SOURCE } from '@/test-support/executable-stub';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -38,33 +36,18 @@ const calls: Array<{ url: string; auth: string | null }> = [];
 
 /**
  * A stub agent. `usage --json` is spawned directly with that argv, so the stub
- * has to answer it on stdout; every other command arrives as an RPC frame.
+ * has to answer it on stdout; every other command arrives as an RPC frame. It
+ * extends the shared RPC responder with that one direct-argv answer.
  */
-const STUB_SOURCE = `#!/usr/bin/env bun
-const args = process.argv.slice(2);
+const STUB_SOURCE = OMP_RPC_STUB_SOURCE.replace(
+  '#!/usr/bin/env bun\n',
+  `const args = process.argv.slice(2);
 if (args.includes('usage')) {
   process.stdout.write(JSON.stringify({ reports: [], accountsWithoutUsage: [] }));
   process.exit(0);
 }
-const responses = JSON.parse(process.env.FAKE_OMP_RESPONSES || '{}');
-const encoder = new TextEncoder();
-const write = (value) => process.stdout.write(encoder.encode(JSON.stringify(value) + '\\n'));
-write({ type: 'ready' });
-const decoder = new TextDecoder();
-let buffer = '';
-for await (const chunk of Bun.stdin.stream()) {
-  buffer += decoder.decode(chunk);
-  let index = buffer.indexOf('\\n');
-  while (index >= 0) {
-    const line = buffer.slice(0, index);
-    buffer = buffer.slice(index + 1);
-    index = buffer.indexOf('\\n');
-    if (!line.trim()) continue;
-    const frame = JSON.parse(line);
-    write({ type: 'response', id: frame.id, command: frame.type, success: true, data: responses[frame.type] ?? {} });
-  }
-}
-`;
+`,
+);
 
 const dirs: string[] = [];
 let agentDir = '';
@@ -83,11 +66,12 @@ function toolResponse(text: string): Response {
   return Response.json({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text }] } });
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   agentDir = tempDir();
-  stubBin = join(tempDir(), 'fake-omp');
-  writeFileSync(stubBin, STUB_SOURCE);
-  chmodSync(stubBin, 0o755);
+  // A COMPILED executable, not a `#!/bin/sh` script: `Bun.spawn` on Windows
+  // resolves only `.com`/`.exe` through libuv's `search_path`, so a shebang
+  // script is unspawnable there however it is chmod-ed.
+  stubBin = await executableStub(STUB_SOURCE, 'fake-omp');
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   realBin = Bun.env.OMPCHAMBER_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
@@ -152,7 +136,7 @@ async function seedTwoKenariAccounts(): Promise<void> {
   ]);
 }
 
-describePosix('two Kenari accounts', () => {
+describe('two Kenari accounts', () => {
   test('each keeps its own row, its own key and its own report', async () => {
     await seedTwoKenariAccounts();
 
