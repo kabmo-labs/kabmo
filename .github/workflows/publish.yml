@@ -1,41 +1,44 @@
 name: Publish
 
-# Publishing is driven by GitHub releases, never by a push:
+# Publishing the APP is driven by GitHub releases, never by a push:
 # `v0.3.0` tag + release published -> the exact tag is built and published to npm.
 # `workflow_dispatch` re-runs a failed publish without recreating the release.
 #
-# Required repo secret: NPM_TOKEN — a granular access token with
-# "Read and write" permission on the ompchamber package (or an automation token).
-# Bun reads it from NPM_CONFIG_TOKEN, so the token never lands in a file.
+# This file is a TRIGGER, not the implementation. The steps live in
+# `publish-app.yml`, which is called from here and — since publishing moved into
+# the release run — from `release.yml` as the last job of a release. Two callers,
+# one body, so neither can drift from the other and the gate requirement is
+# stated once.
+#
+# `release.yml` is now the normal path: the run that cut the tag is the run that
+# publishes it, and it is not finished until npm has the bytes. What remains
+# HERE is the two cases a release run cannot cover:
+#
+#   - A tag pushed by hand, or a release published from a commit that never went
+#     through `release.yml`. Nothing else would have built it.
+#   - A publish that FAILED. The release run already finished, so a re-run has
+#     to be its own run.
+#
+# Both of those are why this file still exists rather than being deleted with the
+# dispatch it used to be triggered by.
+#
+# Required: NPM_TOKEN — a granular access token with "Read and write" permission
+# on the ompchamber package (or an automation token), as a repository secret or
+# on the `npm` environment. Bun reads it from NPM_CONFIG_TOKEN, so the token
+# never lands in a file.
 #
 # The published tarball is the runnable app, not a bundle: `src/**` (Bun executes
 # the TypeScript directly), `dist/client` (the bundle the SSR shell reads) and
 # `tsconfig.json` (Bun resolves the `@/` alias from the package's own tsconfig).
 # See the `files` field in package.json. `dist/` is gitignored, so the build step
-# below is what puts it in the tarball.
-#
-# THE GATES AND THE BROWSER SPECS RUN HERE, against the tag being published, and
-# the publish job `needs:` them. `release.yml` already gated the commit it tagged,
-# so this looks redundant — it is not, and both halves are load-bearing:
-#
-#   - A tag can be pushed by hand, or a release published from a commit that
-#     never went through `release.yml`. Nothing else would have gated it.
-#   - `release.yml` gates the commit it starts from; the tag it cuts is a LATER
-#     commit (the release commit, written by the bot and pushed with the tag), so
-#     the exact bytes npm receives have never been checked by anything.
-#   - `workflow_dispatch` exists to RE-RUN a failed publish, and a re-run that
-#     skips the gates publishes on whatever the branch says today.
-#
-# The gates are called with `ref:` set to the tag, which is what makes them run
-# against the published commit rather than `main`'s tip.
-
+# inside `publish-app.yml` is what puts it in the tarball.
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to publish (defaults to the release tag)
+        description: Tag to publish (defaults to the release tag, then the branch)
         required: false
         type: string
 
@@ -49,98 +52,17 @@ permissions:
   contents: read
 
 jobs:
-  # The four gates plus the generated settings schema, on the tag.
-  gates:
-    name: Gates
-    uses: ./.github/workflows/gates.yml
-    with:
-      ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
-
-  # The browser layer, on the same ref. A `release: published` run is not a push
-  # to `main`, so no `e2e.yml` run exists for this event to wait on at all.
-  e2e:
-    name: E2E specs
-    uses: ./.github/workflows/e2e-specs.yml
-    with:
-      ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
-
   publish:
-    name: Publish to npm
-    needs: [gates, e2e]
-    runs-on: ubuntu-latest
-    # The npm token lives as an environment secret on `NPM_TOKEN` (the name is
-    # the secret's, not a deployment target). Environment scope rather than a
-    # repo secret keeps the token readable only by jobs that declare it, and is
-    # where required reviewers can be added to gate a publish.
-    environment: npm
-    steps:
-      - name: Checkout the released tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # Fail fast: an unset token would otherwise surface as a bare 401 after
-      # the whole build.
-      - name: Check the npm token is configured
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          test -n "$NPM_TOKEN" || {
-            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on ompchamber (Settings -> Secrets and variables -> Actions)."
-            exit 1
-          }
-
-      # A release whose tag and package.json version disagree would publish the
-      # wrong version number to npm; fail before anything is built.
-      - name: Verify the tag matches package.json
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-        run: |
-          version=$(bun -e 'console.log((await Bun.file("package.json").json()).version)')
-          tag="${RELEASE_TAG:-v$version}"
-          if [ "$tag" != "v$version" ]; then
-            echo "::error::Tag $tag does not match package.json version v$version"
-            exit 1
-          fi
-          echo "Publishing ompchamber $version from tag $tag"
-
-      # Typecheck and tests are the `gates` job above, on this same ref.
-      - name: Build the client bundle
-        # `scripts/build-client.ts` bundles the server plus the HTML route's
-        # assets into dist/client. `serve --prod` runs that bundle, so the build
-        # has to happen here — the server can also bundle its HTML route on the
-        # fly, but a published package must ship the assets.
-        env:
-          NODE_ENV: production
-        run: bun run build
-
-      # The tarball must carry both halves: the built server (which
-      # `serve --prod` executes) and the sources `serve` runs in dev. `bun pm
-      # pack` needs no registry credentials (unlike `bun publish --dry-run`), so
-      # this guard runs before the token is used at all, and it asserts the
-      # files are inside the tarball, not merely on disk.
-      - name: Verify the publish payload
-        run: |
-          bun pm pack --dry-run > /tmp/pack.txt
-          for required in dist/client/index.js index.html bunfig.toml src/server/index.ts; do
-            grep -q "$required" /tmp/pack.txt || {
-              echo "::error::$required is missing from the tarball"
-              exit 1
-            }
-          done
-          tail -3 /tmp/pack.txt
-
-      - name: Publish to npm
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # Add `--access public` here if the package is ever renamed to a scope
-        # (`@user/ompchamber`): scoped packages default to restricted.
-        run: bun publish
+    name: Publish the app
+    # The gates, the browser specs, the build and the tarball check all live in
+    # the called workflow, against the tag — see its header. Passing the tag as
+    # an input is what makes them verify the published commit rather than
+    # `main`'s tip; an empty one (a dispatch with no tag) falls back to this
+    # run's own commit inside the callee.
+    uses: ./.github/workflows/publish-app.yml
+    with:
+      tag: ${{ github.event.release.tag_name || inputs.tag || '' }}
+    # `npm` is an environment on the CALLEE's publish job, so its secret is
+    # injected there; inheriting costs nothing and keeps a repository-level
+    # NPM_TOKEN working too.
+    secrets: inherit

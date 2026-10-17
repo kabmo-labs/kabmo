@@ -1,0 +1,256 @@
+name: Publish the plugin packages
+
+# The publish BODY for `@ompchamber/plugin-sdk` and `@ompchamber/ui`, as a
+# REUSABLE workflow — the same two callers `publish-app.yml` serves:
+#
+#   - `publish-plugins.yml` is the TRIGGER: a `plugin-sdk/v*` or `ui/v*` tag
+#     push, or a manual dispatch. The documented manual path (bump the version,
+#     push the tag) has to stand on its own.
+#   - `release.yml` CALLS this file after the `packages` job, which is what
+#     makes the packages publish part of the release run instead of a separate
+#     run dispatched off to the side.
+#
+# Deliberately separate from `publish-app.yml`, which ships the app. The two have
+# different cadences and different blast radii: the app is what users install,
+# while these packages are a library surface a plugin author depends on. Folding
+# them into ONE workflow would republish a library on every app release for no
+# reason, and a library fix would have to wait for one. They are two bodies with
+# two triggers each; that is the split, not a fork.
+#
+# THE GATES AND THE BROWSER SPECS RUN HERE, and the publish job `needs:` them.
+# A tag push is a bare `git push` of a ref nobody gated: `release.yml` gates the
+# commit it tags, but these tags are pushed BY `release.yml` (or by hand) onto a
+# commit whose browser specs may never have run — `e2e.yml` skips them on a pull
+# request without the `e2e` label. `workflow_dispatch` — the re-run path — is
+# gated too, because a re-run that skipped them would publish whatever the
+# branch says today.
+#
+# Both packages are published PUBLIC: a scoped package defaults to restricted,
+# which would make the SDK uninstallable by anyone but the owner. That is set in
+# each package.json's `publishConfig.access`, not as a flag here, so a manual
+# `bun publish` from a maintainer's machine behaves identically.
+#
+# `environment: npm` lives on the publish job below (a job that CALLS a reusable
+# workflow may not use the keyword, so this is the only place it can), and the
+# same two consequences apply as in `publish-app.yml`: the environment injects
+# `NPM_TOKEN` into that job, and a required reviewer holds the CALLER's run open
+# for as long as the review takes.
+
+on:
+  workflow_call:
+    inputs:
+      # Space-separated package directories, as `release.yml` names them. Its
+      # order is catalog order (SDK before UI), which is what the UI's pin needs.
+      packages:
+        description: 'Space-separated package directories'
+        required: false
+        type: string
+      # One package, named by its tag, e.g. `plugin-sdk/v2.0.0`. What a tag push
+      # and a manual re-run of a failed publish both supply.
+      tag:
+        description: 'Tag naming the package to publish'
+        required: false
+        type: string
+      # The hand-run fallback, used when neither of the above is given.
+      package:
+        description: 'Which package to publish (used when neither of the above is given)'
+        required: false
+        type: string
+      # Which ref to publish FROM. Empty means the caller's own ref, which is
+      # what a tag push and a dispatch both want.
+      #
+      # `release.yml` is the caller that must name one, and the reason is an
+      # ordering fact rather than a preference: its `packages` job COMMITS the
+      # version bump and the refreshed `bun.lock`, and that commit is on the
+      # branch, not on the ref this run was triggered by. Checking out the
+      # caller's `github.ref` would read the manifests from BEFORE the bump —
+      # where the version is the previous one — and the publish script would
+      # skip every package as "already at its version", publishing nothing while
+      # reporting success. It passes `main`, which `actions/checkout` resolves
+      # against the remote and therefore lands on the bump.
+      ref:
+        description: Git ref to publish from; empty means the caller's ref.
+        required: false
+        type: string
+    secrets:
+      # See `publish-app.yml`: declared so a caller can pass it by name, with the
+      # value normally arriving from the `npm` environment on the job below.
+      NPM_TOKEN:
+        description: npm access token with read/write on both @ompchamber packages.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  # The four gates plus the generated settings schema, on the commit this run
+  # publishes. `release.yml` already gated the commit it started from; these
+  # tags land on a LATER commit (the release commit) that no gate has seen, and
+  # a hand-pushed tag was never gated at all.
+  gates:
+    name: Gates
+    uses: ./.github/workflows/gates.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+
+  # The browser layer, on the same commit.
+  e2e:
+    name: E2E specs
+    uses: ./.github/workflows/e2e-specs.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+
+  publish:
+    name: Publish to npm
+    needs: [gates, e2e]
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The caller's ref by default: the tag on a tag push, the branch on a
+          # dispatch — exactly what each of them wants to publish from. A caller
+          # that names `ref` overrides it, which is how `release.yml` reaches the
+          # version-bump commit its own packages job made. (`github` is the
+          # caller's context inside a reusable workflow, so the default needs no
+          # input.)
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Fail fast: an unset token would otherwise surface as a bare 401 after the
+      # whole gate run.
+      - name: Check the npm token is configured
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NPM_TOKEN" || {
+            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on @ompchamber/plugin-sdk and @ompchamber/ui (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
+            exit 1
+          }
+
+      # Which packages this run publishes, in the order they must go up.
+      #
+      # Most specific first: a tag names one package and its version must match;
+      # `packages` is what the release workflow passes, already a directory list
+      # in catalog order (SDK before UI, which pins it); `package` is the
+      # fallback for a hand-run publish.
+      - name: Resolve the target packages
+        id: target
+        env:
+          # Read through env rather than interpolated into the script: these are
+          # caller-supplied strings, and a `run:` block is shell text.
+          IN_TAG: ${{ inputs.tag }}
+          IN_PACKAGES: ${{ inputs.packages }}
+          IN_PACKAGE: ${{ inputs.package }}
+        run: |
+          dirs=""
+          if [ -n "$IN_TAG" ]; then
+            pkg="${IN_TAG%%/*}"
+            dirs="packages/$pkg"
+          elif [ -n "$IN_PACKAGES" ]; then
+            for dir in $IN_PACKAGES; do
+              test -d "$dir" || { echo "::error::$dir is not a directory"; exit 1; }
+              dirs="$dirs $dir"
+            done
+          else
+            case "$IN_PACKAGE" in
+              plugin-sdk) dirs="packages/plugin-sdk" ;;
+              ui)         dirs="packages/ui" ;;
+              *)          dirs="packages/plugin-sdk packages/ui" ;;
+            esac
+          fi
+          dirs="${dirs# }"
+          test -n "$dirs" || { echo "::error::No package resolved from the inputs"; exit 1; }
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+      # A tag names a version, and the version in package.json is what npm
+      # receives. A mismatch would publish something nobody asked for.
+      - name: Verify the tag matches the package version
+        if: inputs.tag != ''
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          pkg="${TAG%%/*}"                       # plugin-sdk/v1.2.3 -> plugin-sdk
+          want="${TAG#*/}"                       # plugin-sdk/v1.2.3 -> v1.2.3
+          dir="packages/$pkg"
+          test -d "$dir" || { echo "::error::Tag $TAG names no package directory ($dir)"; exit 1; }
+          have="v$(bun -e "console.log((await Bun.file('$dir/package.json').json()).version)")"
+          if [ "$want" != "$have" ]; then
+            echo "::error::Tag $TAG expects $want but $dir/package.json says $have"
+            exit 1
+          fi
+          echo "Publishing $pkg at $have"
+
+      # What npm receives, asserted before the token is used: a package that
+      # resolves locally but ships without its entry points installs and then
+      # fails to import.
+      #
+      # The assertion reads the package's OWN `exports` map rather than naming
+      # files, because a hard-coded list goes stale in silence. It did: the UI
+      # kit's stylesheet was removed when panels moved in-process, the import went
+      # with it, and this step kept demanding `styles.d.css.ts` — so the next
+      # publish would have failed on a file that no longer had a reason to exist.
+      #
+      # The check `cd`s into each package. `bun pm pack --dry-run <dir>` does NOT
+      # pack that directory: measured on 1.4.2 it ignores the argument and packs
+      # the CWD, which here is the repo root — a 1467-file, 21 MB tarball that
+      # would pass this check while the real payload was never inspected.
+      - name: Verify the publish payload
+        env:
+          DIRS: ${{ steps.target.outputs.dirs }}
+        run: |
+          for dir in $DIRS; do
+            (cd "$dir" && bun pm pack --dry-run) > /tmp/pack.txt
+            targets="$(bun -e "
+              const pkg = await Bun.file('$dir/package.json').json();
+              const found = new Set();
+              const walk = (value) => {
+                if (typeof value === 'string') found.add(value);
+                else if (value && typeof value === 'object') for (const child of Object.values(value)) walk(child);
+              };
+              walk(pkg.exports ?? {});
+              console.log([...found].map((t) => t.replace(/^\.\//, '')).join(' '));
+            ")"
+            test -n "$targets" || { echo "::error::$dir declares no exports"; exit 1; }
+            for target in $targets; do
+              grep -qF "$target" /tmp/pack.txt || {
+                echo "::error::$dir packs no $target, which its exports map names"
+                exit 1
+              }
+            done
+            echo "--- $dir ($targets)"; tail -3 /tmp/pack.txt
+          done
+
+      # `ui` depends on `plugin-sdk` at the exact version, so the target list is
+      # in catalog order (SDK before UI) and the script stops at the first
+      # failure rather than publishing a UI whose SDK is not on npm.
+      - name: Publish
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DIRS: ${{ steps.target.outputs.dirs }}
+        run: bash .github/scripts/publish-plugin-packages.sh $DIRS
+
+      - name: Summary
+        env:
+          DIRS: ${{ steps.target.outputs.dirs }}
+        run: |
+          {
+            echo "### Published plugin packages"
+            echo
+            echo "| package | version |"
+            echo "|---|---|"
+            for dir in $DIRS; do
+              v="$(bun -e "console.log((await Bun.file('$dir/package.json').json()).version)")"
+              n="$(bun -e "console.log((await Bun.file('$dir/package.json').json()).name)")"
+              echo "| \`$n\` | \`$v\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

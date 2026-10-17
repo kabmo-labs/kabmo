@@ -1,7 +1,8 @@
 name: Release
 
 # A push to `main` cuts every release this repository makes, in ONE run, in a
-# fixed order: the published packages first, then the app.
+# fixed order: the published packages first, then the app — and each of them is
+# PUBLISHED by this same run, as its last action.
 #
 # NOTHING IS TAGGED UNTIL THE GATES AND THE BROWSER SPECS HAVE PASSED. The two
 # gate jobs below CALL `.github/workflows/gates.yml` and
@@ -40,14 +41,23 @@ name: Release
 # grows, and sharing one across workflows let each cancel the other's releases.
 # A single workflow with a single group has nothing to cancel.
 #
-# `publish.yml` and `publish-plugins.yml` stay separate and are DISPATCHED, not
-# called: GitHub creates no workflow run for an event raised by `GITHUB_TOKEN`
-# (only `workflow_dispatch` and `repository_dispatch` are exempt — see
-# "Triggering a workflow" in the Actions docs), and dispatching keeps the npm
-# side in one place — the `npm` environment's approval gate, the production
-# build and the tarball verification all stay in those two files. Both of them
-# ALSO call the two gate workflows, so a publish cannot start on a commit whose
-# gates or specs are red.
+# `publish-app.yml` and `publish-packages.yml` hold the publish BODIES, and both
+# are CALLED from here as the last jobs of the run — so publishing is the last
+# action of a release rather than a second run dispatched off to the side. It
+# used to be a `gh workflow run` dispatch, which meant this run reported a
+# successful release while the publish was still queued, still waiting on the
+# `npm` environment's approval, or already failed: measured on this pipeline, an
+# app release that published nothing looked exactly like one that worked. The
+# dispatch is still available on those two trigger files for the cases a release
+# run cannot cover — a hand-pushed tag, and a publish that failed and has to be
+# re-run on its own.
+#
+# `publish.yml` and `publish-plugins.yml` are now the TRIGGERS for those two
+# bodies: `release: published` plus `workflow_dispatch` for the app, a
+# `plugin-sdk/v*` / `ui/v*` tag push plus `workflow_dispatch` for the packages.
+# Both of them ALSO call the two gate workflows inside the body they call, so a
+# publish cannot start on a commit whose gates or specs are red — whichever path
+# asked for it.
 #
 # The release jobs repeat their setup steps rather than sharing them through
 # YAML anchors. GitHub does support anchors, but an alias that carries an entire
@@ -207,29 +217,38 @@ jobs:
         # dispatched to publish.
         run: node release/release-packages.mjs
 
+  # The packages were TAGGED by the job above; this publishes them. It is a call
+  # rather than a `gh workflow run` dispatch, which is the whole point of this
+  # change: a dispatch starts a SEPARATE run, so this one used to finish — and
+  # report a successful release — while the publish was still queued, still
+  # waiting on the `npm` environment's approval, or already failed. Calling it
+  # makes publishing the last action OF the release run.
+  #
+  # `ref: main` is required, not a convenience. `packages` committed the version
+  # bump and the refreshed `bun.lock` to the branch, so the manifests on the
+  # commit this run was triggered by still carry the OLD versions — the publish
+  # script would skip every package as already published and report success
+  # having published nothing. `main` resolves against the remote, so it lands on
+  # the bump.
+  #
+  # `needs: packages` plus the `if:` is what keeps a run that released nothing
+  # from calling it at all: `packages` reports `any` from its own output, because
+  # a package that did not release must not be published.
+  #
+  # `permissions` is restated (read-only) because a calling job may set it and
+  # the callee can only inherit it downgraded. The publish itself needs no
+  # `contents: write`: it reads a commit and pushes to npm.
   packages-publish:
     name: Publish the released packages
     needs: packages
     if: needs.packages.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    # `actions: write` is what `gh workflow run` needs. `workflow_dispatch` is
-    # the one event GITHUB_TOKEN is allowed to raise.
     permissions:
-      actions: write
-    steps:
-      - name: Dispatch publish-plugins.yml for ${{ needs.packages.outputs.released }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # This job never checks out, so there is no `.git` for gh to read the
-          # repository out of; GH_REPO is what it would otherwise infer.
-          GH_REPO: ${{ github.repository }}
-          PACKAGES: ${{ needs.packages.outputs.released }}
-        # Fire and report, never wait: publish-plugins.yml waits on the `npm`
-        # environment, which may require review, and a reviewer should not be
-        # holding this run open. Its own run is separate and re-runnable — and it
-        # re-runs the gates and the browser specs itself before it publishes:
-        #   gh workflow run publish-plugins.yml -f packages="packages/plugin-sdk"
-        run: gh workflow run publish-plugins.yml --ref main -f packages="$PACKAGES"
+      contents: read
+    uses: ./.github/workflows/publish-packages.yml
+    with:
+      packages: ${{ needs.packages.outputs.released }}
+      ref: main
+    secrets: inherit
 
   # ---------------------------------------------------------------------------
   # 1b. The bundled marketplace plugins. Between `packages` and `app`, and that
@@ -405,17 +424,29 @@ jobs:
             echo "tag=$after" >> "$GITHUB_OUTPUT"
           fi
 
+  # The last job of the run, and now the last action of the release rather than
+  # a second run dispatched beside it. `app` tagged `vX.Y.Z`; this publishes it.
+  #
+  # `needs: app` and the `if:` mean a run whose commits ask for no version bump
+  # (`release/release-rules.js`) stops here, having published nothing — which is
+  # the correct outcome for a push of chores/tests/docs alone.
+  #
+  # Unlike the packages call above, no `ref` is passed: the tag IS the ref to
+  # publish from, and the callee resolves it from the input. The gates it runs
+  # inside are pointed at that same tag, so the bytes npm receives are the bytes
+  # that were verified.
+  #
+  # A required reviewer on the `npm` environment holds THIS run open until they
+  # approve, which is intended: the release is not finished until npm has it.
+  # `release.yml`'s `cancel-in-progress: false` is what keeps a queued push from
+  # cancelling a run that is sitting on that approval.
   app-publish:
     name: Publish the app release
     needs: app
     if: needs.app.outputs.released == 'true'
-    runs-on: ubuntu-latest
     permissions:
-      actions: write
-    steps:
-      - name: Dispatch publish.yml for ${{ needs.app.outputs.tag }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ needs.app.outputs.tag }}
-        run: gh workflow run publish.yml --ref main -f tag="$TAG"
+      contents: read
+    uses: ./.github/workflows/publish-app.yml
+    with:
+      tag: ${{ needs.app.outputs.tag }}
+    secrets: inherit

@@ -379,9 +379,11 @@ A push to `main` cuts the release — there is no manual version bump
 1. `semantic-release` reads the Conventional Commits since the last tag, decides the next
    version, writes it into `package.json` and a `## [x.y.z]` section of `CHANGELOG.md`, commits
    both, then creates the tag and the GitHub Release.
-2. The same run dispatches [`publish.yml`](.github/workflows/publish.yml), which checks out the tag,
-   verifies it against `package.json`, typechecks, runs `bun test`, builds `dist/client`, packs a
-   dry run, and runs `bun publish`.
+2. The same run then publishes it: [`publish-app.yml`](.github/workflows/publish-app.yml) checks out
+   the tag, verifies it against `package.json`, typechecks, runs `bun test`, builds `dist/client`,
+   packs a dry run, and runs `bun publish`. Publishing is the **last action of the release run**
+   rather than a second run dispatched beside it, so a release cannot report success while its
+   publish is still queued, still waiting on the `npm` environment, or already failed.
 
 What a commit does to the version is one table, in
 [`release/release-rules.js`](release/release-rules.js), and `release/bump.test.js` asserts it:
@@ -410,7 +412,8 @@ Two things to set up once and one to never do:
   `ompchamber`, 2FA bypass enabled and the `publish and stage` action (a stage-only token is
   rejected — Bun has no `npm stage publish`).
 - A failed publish is retried with `gh workflow run publish.yml -f tag=vX.Y.Z`, which leaves the
-  release itself untouched.
+  release itself untouched. `publish.yml` is now only a TRIGGER (a published release, or that
+  dispatch); the steps it runs live in `publish-app.yml`, which `release.yml` also calls.
 - **Never** write a skip marker (`[skip ci]`, `[ci skip]`, `[no ci]`) into a message pushed to
   `main` — it scans the whole message and silently skips the release run. Only the bot's release
   commit carries one, so that it does not re-trigger the workflow.

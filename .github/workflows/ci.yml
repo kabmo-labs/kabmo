@@ -10,16 +10,23 @@ name: CI
 # the release job re-running them is what keeps a tag from being cut on a red main.
 #
 # This file is a TRIGGER, not the implementation: the steps live in `gates.yml`,
-# which `release.yml`, `publish.yml` and `publish-plugins.yml` call and `needs:`.
+# which `release.yml`, `publish-app.yml` and `publish-packages.yml` call and
+# `needs:`.
 # A gate defined here could only be a gate for this workflow — a release cannot
 # `needs:` a job in another file — and a release that merely re-ran the commands
 # would be a second copy that can drift from this one.
 #
 # The caller job is named `Gates`, but the check a commit receives is
-# `Gates / Checks` and `Gates / Settings schema` — a reusable workflow's checks
-# are namespaced by the CALLER's job name. This repository's `main` ruleset
-# requires no status checks, so the rename is inert here; see `gates.yml` for the
-# measurement and what a repository with required checks would have to do.
+# `Gates / Checks`, `Gates / Checks (Windows)` and `Gates / Settings schema` — a
+# reusable workflow's checks are namespaced by the CALLER's job name. This
+# repository's `main` ruleset requires no status checks, so the rename is inert
+# here; see `gates.yml` for the measurement and what a repository with required
+# checks would have to do.
+#
+# One of those jobs runs on `windows-latest`, and it is not a formality: the
+# chamber ships a Windows CLI, and the win32 branches in its path helpers,
+# `stop`'s ownership guard and the process-tree kill are otherwise never
+# executed by any gate on a macOS-developed repository.
 #
 # Nothing here is a release: no tag, no version, no changelog. `release.yml` owns
 # that, and it runs the same reusable workflow because a gate that only ever ran on

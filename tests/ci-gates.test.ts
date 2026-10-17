@@ -24,10 +24,20 @@ const WORKFLOWS = join(ROOT, '.github/workflows');
 const GATES = './.github/workflows/gates.yml';
 const E2E = './.github/workflows/e2e-specs.yml';
 
+/**
+ * The publish BODIES, called by both their trigger file and `release.yml`.
+ *
+ * They are not gates themselves — they CALL the two gate workflows — but they
+ * are the reason a release run now publishes instead of dispatching: a `uses:`
+ * reference to one of these from `release.yml` is what makes publishing the
+ * last action of the run rather than a second run beside it.
+ */
+const PUBLISH_BODIES = ['publish-app.yml', 'publish-packages.yml'];
+
 /** Every workflow that can tag or publish, and therefore must be gated. */
 const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
 
-/** The trigger files, which call the reusable workflows but release nothing. */
+/** The trigger files, which call the reusable workflows they replace. */
 const TRIGGERS: Record<string, string> = {
   'ci.yml': GATES,
   'e2e.yml': E2E,
@@ -41,7 +51,7 @@ async function load(file: string): Promise<Record<string, any>> {
 
 describe('the gate contract', () => {
   test('the reusable workflows exist and are callable', async () => {
-    for (const file of ['gates.yml', 'e2e-specs.yml']) {
+    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES]) {
       expect(existsSync(join(WORKFLOWS, file))).toBe(true);
       const doc = await load(file);
       // `workflow_call` is what makes a file callable at all. Without it the
@@ -52,7 +62,7 @@ describe('the gate contract', () => {
 
   test('every local reusable-workflow reference resolves and declares workflow_call', async () => {
     const seen = new Set<string>();
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS)]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -65,14 +75,15 @@ describe('the gate contract', () => {
         expect(callee.on?.workflow_call, `${uses} does not declare workflow_call`).toBeDefined();
       }
     }
-    expect(seen.size).toBe(2);
+    // Four: the two gates, plus the two publish bodies a release calls.
+    expect(seen.size).toBe(4);
   });
 
   test('a caller passes only inputs the callee declares', async () => {
     // An input the callee does not declare is a run-time failure ("Invalid
     // input, ... is not defined in the referenced workflow"), and it is exactly
     // the kind of typo a rename produces.
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS)]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         if (typeof job?.uses !== 'string' || !job.uses.startsWith('./')) continue;
@@ -95,27 +106,37 @@ describe('the gate contract', () => {
   });
 
   test('a releasing workflow gates every job that acts', async () => {
+    // A job is a GATE PROVIDER when it calls a gate workflow directly, or when
+    // it calls one of the publish bodies (which call both gates themselves —
+    // see `publish-app.yml`). The second form is how the publish bodies keep
+    // the requirement uniform: a caller cannot forget a gate it does not name.
+    const isProvider = (uses: unknown): boolean =>
+      typeof uses === 'string' &&
+      (uses === GATES || uses === E2E || PUBLISH_BODIES.some((body) => uses === `./.github/workflows/${body}`));
+
     for (const file of RELEASING) {
       const doc = await load(file);
       const jobs = doc.jobs ?? {};
 
-      // The two gate jobs themselves, by the workflow they call.
-      const gateJobs = Object.entries<any>(jobs)
-        .filter(([, job]) => job?.uses === GATES)
-        .map(([id]) => id);
-      const e2eJobs = Object.entries<any>(jobs)
-        .filter(([, job]) => job?.uses === E2E)
-        .map(([id]) => id);
-      expect(gateJobs.length, `${file} does not call ${GATES}`).toBe(1);
-      expect(e2eJobs.length, `${file} does not call ${E2E}`).toBe(1);
+      const gateProviders = new Set(
+        Object.entries<any>(jobs)
+          .filter(([, job]) => isProvider(job?.uses))
+          .map(([id]) => id),
+      );
+      expect(gateProviders.size, `${file} reaches no gate from any job`).toBeGreaterThan(0);
 
       // A gate with a condition is a gate that can be skipped, which is not a
-      // gate. `if:` is deliberately allowed nowhere on these two jobs.
-      for (const id of [...gateJobs, ...e2eJobs]) {
+      // gate. `if:` is deliberately allowed nowhere on a job whose `uses` IS a
+      // gate workflow. A job that calls a publish body may carry one —
+      // publishing only when the release produced a tag is the point — because
+      // the body's own gate jobs are unconditional.
+      for (const id of gateProviders) {
+        const uses = jobs[id]?.uses;
+        if (uses !== GATES && uses !== E2E) continue;
         expect(jobs[id].if, `${file}:${id} is a gate job with an if: condition`).toBeUndefined();
       }
 
-      // Transitive closure: every other job must reach BOTH gates. This is the
+      // Transitive closure: every other job must reach a provider. This is the
       // assertion that catches a publish job added without `needs`.
       //
       // `needs` is a string when a job names one dependency and an array when it
@@ -145,11 +166,33 @@ describe('the gate contract', () => {
       };
 
       for (const id of Object.keys(jobs)) {
-        if (gateJobs.includes(id) || e2eJobs.includes(id)) continue;
+        if (gateProviders.has(id)) continue;
         const needs = reach(id);
-        expect(needs.has(gateJobs[0]), `${file}:${id} does not depend on the gates`).toBe(true);
-        expect(needs.has(e2eJobs[0]), `${file}:${id} does not depend on the browser specs`).toBe(true);
+        const gated = [...needs].some((dep) => gateProviders.has(dep));
+        expect(gated, `${file}:${id} does not depend on the gates`).toBe(true);
       }
+    }
+  });
+
+  test('both gates run on Windows as well as Linux', async () => {
+    // The chamber ships a Windows CLI, and the win32 branches in its path
+    // helpers, `stop`'s ownership guard and the process-tree kill are otherwise
+    // never executed by any gate: the repository is developed on macOS and the
+    // runners are Linux. Three of the last five commits on `main` are Windows
+    // fixes that were written and verified on a Mac.
+    //
+    // Asserted rather than left to review because a runner removed from a job
+    // is invisible: the job keeps passing on the platform that remained.
+    for (const [file, jobs] of [
+      ['gates.yml', ['checks', 'windows']],
+      ['e2e-specs.yml', ['chromium', 'chromium-windows']],
+    ] as const) {
+      const doc = await load(file);
+      // Bracket notation: `runs-on` contains a hyphen, so `doc.jobs[x].runs-on`
+      // parses as a subtraction.
+      const runners = jobs.map((id) => doc.jobs?.[id]?.['runs-on'] as string | undefined);
+      expect(runners, `${file} must run on both Linux and Windows`).toContain('ubuntu-latest');
+      expect(runners, `${file} must run on both Linux and Windows`).toContain('windows-latest');
     }
   });
 
@@ -176,49 +219,69 @@ describe('the gate contract', () => {
   });
 
   test('nothing publishes before the gates in a publish workflow', async () => {
-    for (const [file, job] of [
-      ['publish.yml', 'publish'],
-      ['publish-plugins.yml', 'publish'],
-    ] as const) {
+    // Every publish body's own publish job must need both gate jobs. A release
+    // run reaches these through `release.yml`, but a tag push and a manual
+    // re-run reach them directly — and a publish that skipped the gates would
+    // ship bytes nothing verified.
+    for (const file of PUBLISH_BODIES) {
       const doc = await load(file);
-      const needs = doc.jobs[job].needs ?? [];
-      expect(needs, `${file}:${job} must need both gate jobs`).toContain('gates');
-      expect(needs, `${file}:${job} must need both gate jobs`).toContain('e2e');
+      const needs = doc.jobs.publish.needs ?? [];
+      expect(needs, `${file}:publish must need both gate jobs`).toContain('gates');
+      expect(needs, `${file}:publish must need both gate jobs`).toContain('e2e');
     }
   });
 
-  test('the publish workflow gates the tag it publishes, not the branch', async () => {
-    // A publish is dispatched with a TAG. Gating it against `main`'s tip would
-    // verify a different commit than the one about to reach npm, and it is a
-    // silent mistake: the gates pass, and the wrong tree was checked.
-    const doc = await load('publish.yml');
+  test('the app publish gates the tag it publishes, not the branch', async () => {
+    // A publish names a TAG. Gating it against `main`'s tip would verify a
+    // different commit than the one about to reach npm, and it is a silent
+    // mistake: the gates pass, and the wrong tree was checked.
+    //
+    // The expression is `inputs.tag || github.sha` in BOTH the checkout and the
+    // two gate calls, so the ref that is verified and the ref that is published
+    // cannot drift apart — and the `|| github.sha` fallback is what a
+    // `workflow_dispatch` with no tag wants (see `publish.yml`, which passes an
+    // empty string in that case).
+    const doc = await load('publish-app.yml');
     const checkout = (doc.jobs.publish.steps as Array<any>).find((step) => step.uses?.startsWith('actions/checkout'));
-    expect(checkout?.with?.ref).toBeTruthy();
+    const expected = '${{ inputs.tag || github.sha }}';
+    expect(checkout?.with?.ref).toBe(expected);
     for (const id of ['gates', 'e2e']) {
-      // The SAME expression as the publish job's own checkout, so the ref that
-      // is verified and the ref that is published cannot drift apart.
-      expect(doc.jobs[id].with?.ref, `${id} gates a different ref than the publish checkout`).toBe(checkout.with.ref);
+      expect(doc.jobs[id].with?.ref, `${id} gates a different ref than the publish checkout`).toBe(expected);
     }
   });
-  test('both gates run on Windows as well as Linux', async () => {
-    // The chamber ships a Windows CLI, and the win32 branches in its path
-    // helpers, `stop`'s ownership guard and the process-tree kill are otherwise
-    // never executed by any gate: the repository is developed on macOS and the
-    // runners are Linux. Three of the last five commits on `main` are Windows
-    // fixes that were written and verified on a Mac.
-    //
-    // Asserted rather than left to review because a runner removed from a job
-    // is invisible: the job keeps passing on the platform that remained.
-    for (const [file, jobs] of [
-      ['gates.yml', ['checks', 'windows']],
-      ['e2e-specs.yml', ['chromium', 'chromium-windows']],
-    ] as const) {
-      const doc = await load(file);
-      // Bracket notation: `runs-on` contains a hyphen, so `doc.jobs[x].runs-on`
-      // parses as a subtraction.
-      const runners = jobs.map((id) => doc.jobs?.[id]?.['runs-on'] as string | undefined);
-      expect(runners, `${file} must run on both Linux and Windows`).toContain('ubuntu-latest');
-      expect(runners, `${file} must run on both Linux and Windows`).toContain('windows-latest');
-    }
+
+  test('a release PUBLISHES instead of dispatching, and only after it tagged', async () => {
+    // The point of folding the publish into the release run: `release.yml`
+    // calls both publish bodies itself, so the run that cut a tag is the run
+    // that publishes it and is not finished until npm has it. A `gh workflow
+    // run` dispatch — what this replaced — starts a SEPARATE run, so the
+    // release could report success while its publish was still queued, still
+    // waiting on the `npm` environment, or already failed.
+    const doc = await load('release.yml');
+    const jobs = doc.jobs ?? {};
+
+    const appPublish = jobs['app-publish'];
+    const packagesPublish = jobs['packages-publish'];
+    expect(appPublish?.uses, 'app-publish must call the app publish body').toBe('./.github/workflows/publish-app.yml');
+    expect(packagesPublish?.uses, 'packages-publish must call the packages publish body').toBe(
+      './.github/workflows/publish-packages.yml',
+    );
+
+    // Neither may be conditional on anything but a release having happened, and
+    // each must wait for the job that produced its tag.
+    expect(appPublish.needs, 'app-publish must wait for the app release').toContain('app');
+    expect(packagesPublish.needs, 'packages-publish must wait for the packages release').toContain('packages');
+
+    // The packages publish MUST name `ref: main`, and this is not a
+    // convenience: the `packages` job commits the version bump and the
+    // refreshed `bun.lock` to the BRANCH, so the manifests on the commit this
+    // run was triggered by still carry the old versions — the publish script
+    // would skip every package as already published and report success having
+    // published nothing. `main` resolves against the remote, so it lands on the
+    // bump.
+    expect(packagesPublish.with?.ref, 'packages-publish must publish from main, past the bump commit').toBe('main');
+
+    // The app publish names the TAG the release job cut, not a branch.
+    expect(appPublish.with?.tag).toBe('${{ needs.app.outputs.tag }}');
   });
 });

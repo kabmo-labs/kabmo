@@ -1,0 +1,166 @@
+name: Publish the app
+
+# The publish BODY for the app, as a REUSABLE workflow — so the same steps are
+# reachable from both places a publish can be asked for, and neither is a copy
+# that can drift:
+#
+#   - `publish.yml` is the TRIGGER: a published GitHub release, or a manual
+#     dispatch to re-run a publish that failed. That path has to stand on its
+#     own — a tag can be pushed by hand, and a release can be published from a
+#     commit that never went through `release.yml`, so nothing else would have
+#     gated or built it.
+#   - `release.yml` CALLS this file as the last job of its run, which is what
+#     makes publishing the last action of a release instead of a separate run
+#     dispatched off to the side: the run that cut the tag is the run that
+#     publishes it, and it is not finished until npm has it.
+#
+# THE GATES AND THE BROWSER SPECS RUN HERE, against the tag being published, and
+# the publish job `needs:` them. `release.yml` already gated the commit it
+# tagged, so this looks redundant — it is not, and both halves are load-bearing:
+#
+#   - `release.yml` gates the commit it starts from; the tag it cuts is a LATER
+#     commit (the release commit, written by the bot and pushed with the tag), so
+#     the exact bytes npm receives have never been checked by anything.
+#   - A hand-pushed tag, or a `workflow_dispatch` re-run, has no release run
+#     behind it at all. A re-run that skipped the gates would publish on
+#     whatever the branch says today.
+#
+# Calling the gates from HERE rather than from each caller is what keeps the
+# requirement uniform: a caller cannot forget it, and there is no second copy of
+# the commands to go stale. The `ref` they are given is the tag, which is what
+# makes them run against the published commit rather than `main`'s tip.
+#
+# `environment: npm` lives on the publish job below, and that is the only place
+# it can: a job that CALLS a reusable workflow may not use the `environment`
+# keyword. Two consequences worth knowing before folding this into a release —
+#
+#   - the environment's secret (`NPM_TOKEN`) is injected into the job that
+#     declares it, so the value does not have to survive the call; a caller may
+#     still pass it by name (`secrets: NPM_TOKEN: ${{ secrets.NPM_TOKEN }}`) or
+#     with `secrets: inherit`.
+#   - if the `npm` environment requires reviewers, the CALLER's run waits on
+#     that approval. That is the intended shape now — a release that reports
+#     success while its publish is still pending review is the split this file
+#     exists to remove — but it also means a queued release (see `release.yml`'s
+#     `cancel-in-progress: false`) is held for as long as the review takes.
+
+on:
+  workflow_call:
+    inputs:
+      # Which tag to publish. Empty falls back to the caller's own commit, which
+      # is what a `workflow_dispatch` without a tag wants.
+      tag:
+        description: Tag to publish; empty means the caller's commit.
+        required: false
+        type: string
+    secrets:
+      # Declared so a caller can pass it by name. The value is normally the
+      # `npm` environment's secret, which the publish job receives directly —
+      # hence `required: false`, and hence the explicit presence check in the
+      # steps below rather than a bare 401 after the whole build.
+      NPM_TOKEN:
+        description: npm access token with read/write on ompchamber.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  # The four gates plus the generated settings schema, on the tag.
+  #
+  # The ref expression is `inputs.tag || github.sha` and MUST match the publish
+  # job's own checkout below, character for character: gating `inputs.tag` alone
+  # would check out an EMPTY ref when a `workflow_dispatch` names no tag, which
+  # is a failure at checkout time — or worse, a fallback to the default branch
+  # that verifies a different commit than the one published. Pinned by
+  # `tests/ci-gates.test.ts`.
+  gates:
+    name: Gates
+    uses: ./.github/workflows/gates.yml
+    with:
+      ref: ${{ inputs.tag || github.sha }}
+
+  # The browser layer, on the same ref. A `release: published` run is not a push
+  # to `main`, so no `e2e.yml` run exists for this event to wait on at all.
+  e2e:
+    name: E2E specs
+    uses: ./.github/workflows/e2e-specs.yml
+    with:
+      ref: ${{ inputs.tag || github.sha }}
+
+  publish:
+    name: Publish to npm
+    needs: [gates, e2e]
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Checkout the released tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Fail fast: an unset token would otherwise surface as a bare 401 after
+      # the whole build.
+      - name: Check the npm token is configured
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NPM_TOKEN" || {
+            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on ompchamber (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
+            exit 1
+          }
+
+      # A release whose tag and package.json version disagree would publish the
+      # wrong version number to npm; fail before anything is built.
+      - name: Verify the tag matches package.json
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          version=$(bun -e 'console.log((await Bun.file("package.json").json()).version)')
+          tag="${RELEASE_TAG:-v$version}"
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::Tag $tag does not match package.json version v$version"
+            exit 1
+          fi
+          echo "Publishing ompchamber $version from tag $tag"
+
+      # Typecheck and tests are the `gates` job above, on this same ref.
+      - name: Build the client bundle
+        # `scripts/build-client.ts` bundles the server plus the HTML route's
+        # assets into dist/client. `serve --prod` runs that bundle, so the build
+        # has to happen here — the server can also bundle its HTML route on the
+        # fly, but a published package must ship the assets.
+        env:
+          NODE_ENV: production
+        run: bun run build
+
+      # The tarball must carry both halves: the built server (which
+      # `serve --prod` executes) and the sources `serve` runs in dev. `bun pm
+      # pack` needs no registry credentials (unlike `bun publish --dry-run`), so
+      # this guard runs before the token is used at all, and it asserts the
+      # files are inside the tarball, not merely on disk.
+      - name: Verify the publish payload
+        run: |
+          bun pm pack --dry-run > /tmp/pack.txt
+          for required in dist/client/index.js index.html bunfig.toml src/server/index.ts; do
+            grep -q "$required" /tmp/pack.txt || {
+              echo "::error::$required is missing from the tarball"
+              exit 1
+            }
+          done
+          tail -3 /tmp/pack.txt
+
+      - name: Publish to npm
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Add `--access public` here if the package is ever renamed to a scope
+        # (`@user/ompchamber`): scoped packages default to restricted.
+        run: bun publish

@@ -28,8 +28,11 @@ globs — `*.spec.ts` is Bun's, `*.e2e.ts` is Playwright's — so neither picks 
 other's files. It is NOT part of the four gates below, but it **is** a requirement
 of every release: `.github/workflows/e2e.yml` runs it on every push to `main`, on
 a pull request only when the `e2e` label is applied, and nightly, and
-`release.yml`, `publish.yml` and `publish-plugins.yml` each call the same reusable
-workflow and `needs:` it before they tag or publish anything.
+`release.yml`, `publish-app.yml` and `publish-packages.yml` each call the same
+reusable workflow and `needs:` it before they tag or publish anything. It runs on
+**Windows as well as Linux**, because the chamber ships a Windows CLI and the
+win32 branches in its path helpers, `stop`'s ownership guard and the process-tree
+kill are otherwise never executed by any gate on this macOS-developed repository.
 
 The server is the only entry point. It imports `index.html`, so Bun bundles that page's script,
 styles and assets on demand in development (with HMR) and serves them from its own routing table —
@@ -52,9 +55,10 @@ All four verification gates are mandatory for every change:
 `main`, so a red change is caught at the pull request rather than by the release job that would
 otherwise tag it. The steps themselves live in [`.github/workflows/gates.yml`](.github/workflows/gates.yml),
 a reusable workflow `ci.yml` calls — which is also what makes them a **requirement** rather than a
-parallel opinion: `release.yml`, `publish.yml` and `publish-plugins.yml` call the same file and
-`needs:` it, so no tag and no publish happens until the gates have passed on the commit being
+parallel opinion: `release.yml`, `publish-app.yml` and `publish-packages.yml` call the same file
+and `needs:` it, so no tag and no publish happens until the gates have passed on the commit being
 released. Do not restate the commands inside a releasing workflow; a second copy is what drifts.
+The unit suite runs on **Windows** there too (`Checks (Windows)`), for the reason the E2E layer does.
 
 Never write a skip marker (`[skip ci]`, `[ci skip]`, `[no ci]`) anywhere in a commit message pushed to
 `main` — **including inside prose that merely mentions it**. GitHub matches the token in the whole

@@ -18,8 +18,8 @@ name: E2E
 # opt-in via `--project` and are not run here yet.
 #
 # This file is a TRIGGER, not the implementation: the job lives in
-# `e2e-specs.yml`, which `release.yml`, `publish.yml` and `publish-plugins.yml`
-# call and `needs:`. Those runs are raised by the same push as this one (or by
+# `e2e-specs.yml`, which `release.yml`, `publish-app.yml` and
+# `publish-packages.yml` call and `needs:`. Those runs are raised by the same push as this one (or by
 # the tag it produced), so a release that only re-ran the suite would race this
 # run and could publish from a commit whose specs had not finished failing —
 # calling the same reusable workflow is what makes the browser layer a
