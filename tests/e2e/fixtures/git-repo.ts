@@ -18,9 +18,10 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeDirWhenFree } from './remove-dir';
 
 export interface SeedRepo {
   /** The directory to hand `git clone` — a local path, not a `file://` URL. */
@@ -48,7 +49,7 @@ export function seedRepo(name: string): SeedRepo {
     url: dir,
     slug: dir.split('/').pop() ?? name,
     dispose() {
-      rmSync(dir, { recursive: true, force: true });
+      removeDirWhenFree(dir);
     },
   };
 }
@@ -59,7 +60,7 @@ export function seedCloneParent(name: string): { path: string; dispose(): void }
   return {
     path: dir,
     dispose() {
-      rmSync(dir, { recursive: true, force: true });
+      removeDirWhenFree(dir);
     },
   };
 }
@@ -101,7 +102,7 @@ export function seedWorkingRepo(name: string): SeedWorkingRepo {
       }
     },
     dispose() {
-      rmSync(dir, { recursive: true, force: true });
+      removeDirWhenFree(dir);
     },
   };
   repo.git('init', '-q', '-b', 'main');
@@ -145,7 +146,7 @@ export function seedWorkingRepoIn(dir: string, name: string): SeedWorkingRepo {
       }
     },
     dispose() {
-      rmSync(dir, { recursive: true, force: true });
+      removeDirWhenFree(dir);
     },
   };
   repo.git('init', '-q', '-b', 'main');

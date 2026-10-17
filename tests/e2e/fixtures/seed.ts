@@ -13,9 +13,10 @@
  * arrives at the state the same way a user's click would.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeDirWhenFree } from './remove-dir';
 import type { HarnessServer } from './server';
 
 export interface SeededWorkspace {
@@ -46,7 +47,7 @@ export async function seedWorkspace(server: HarnessServer, name = 'e2e-workspace
     id,
     path: dir,
     dispose() {
-      rmSync(dir, { recursive: true, force: true });
+      removeDirWhenFree(dir);
     },
   };
 }

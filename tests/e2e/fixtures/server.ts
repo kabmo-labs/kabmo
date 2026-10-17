@@ -30,10 +30,11 @@
  */
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { removeDirWhenFree } from './remove-dir';
 import { fileURLToPath } from 'node:url';
 
 /** This file's directory, so the fake `omp` is found relative to it. */
@@ -83,7 +84,7 @@ function compiledFakeOmp(): Promise<string> {
     const outfile = join(dir, process.platform === 'win32' ? 'fake-omp.exe' : 'fake-omp');
     process.once('exit', () => {
       try {
-        rmSync(dir, { recursive: true, force: true });
+        removeDirWhenFree(dir);
       } catch {
         // Best effort: the OS reclaims the temp dir regardless.
       }
@@ -270,7 +271,7 @@ export async function startHarnessServer(options: {
           await exited;
         }
       }
-      rmSync(runRoot, { recursive: true, force: true });
+      removeDirWhenFree(runRoot);
     },
   };
 
