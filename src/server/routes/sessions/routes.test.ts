@@ -21,6 +21,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@/server/lib/db/client';
@@ -39,7 +40,10 @@ import {
   renameSession,
 } from '@/server/routes/sessions/session';
 
-const ROOT = `/tmp/omc-sessions-routes-${process.pid}`;
+// `tmpdir()`, not `/tmp`: there is no `/tmp` on Windows, so the literal
+// resolved against the current drive and the tree was never where the suite
+// (or the delete) looked for it.
+const ROOT = path.join(os.tmpdir(), `omc-sessions-routes-${process.pid}`);
 const AGENT = path.join(ROOT, 'agent');
 const SESSION_ID = '11111111-2222-3333-4444-555555555555';
 const UNKNOWN = '00000000-0000-0000-0000-000000000000';

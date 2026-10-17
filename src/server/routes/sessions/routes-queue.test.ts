@@ -12,6 +12,7 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
@@ -26,7 +27,10 @@ import {
   reorderQueueItems,
 } from '@/server/routes/sessions/queue';
 
-const ROOT = `/tmp/omc-sessions-routes-queue-${process.pid}`;
+// `tmpdir()`, not `/tmp`: there is no `/tmp` on Windows, so the literal
+// resolved against the current drive and the tree was never where the suite
+// (or the delete) looked for it.
+const ROOT = path.join(os.tmpdir(), `omc-sessions-routes-queue-${process.pid}`);
 const AGENT = path.join(ROOT, 'agent');
 const SESSION_ID = '11111111-2222-3333-4444-555555555555';
 
