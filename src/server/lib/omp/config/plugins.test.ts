@@ -27,6 +27,7 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { executableStub } from '@/test-support/executable-stub';
+import { testPosix } from '@/test-support/platform';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -175,6 +176,16 @@ beforeEach(() => {
   globalThis.__ompPluginCatalogCache = undefined;
 });
 
+/**
+ * Three cases below are POSIX-only, and not because of the stub binary: they
+ * assert what the USER lockfile says, and omp resolves the user plugin root
+ * through `$XDG_DATA_HOME` only on linux/darwin. On Windows `pluginDataRoot()`
+ * falls back to the real `~/.omp` — omp's own rule, mirrored here — so a fixture
+ * written under `$XDG_DATA_HOME` is never read, the lockfile looks absent, and
+ * the CLI's flag answers instead. Pointing the fixture at `~/.omp` would write
+ * to the developer's real plugin state, which no test may do. The cases that do
+ * not depend on the user lock keep running on both platforms.
+ */
 describe('listPlugins', () => {
   test('skips omp itself and nameless entries, keeping npm order then marketplace order', async () => {
     const items = await listPlugins(cwd);
@@ -188,7 +199,7 @@ describe('listPlugins', () => {
     ]);
   });
 
-  test('a package plugin takes its lockfile state, and the lockfile wins over the CLI', async () => {
+  testPosix('a package plugin takes its lockfile state, and the lockfile wins over the CLI', async () => {
     const alpha = (await listPlugins(cwd)).find((item) => item.id === 'alpha');
     expect(alpha).toMatchObject({
       name: 'alpha',
@@ -218,14 +229,14 @@ describe('listPlugins', () => {
     expect(beta).not.toHaveProperty('secretSet');
   });
 
-  test('a secret setting is reported set, and its plaintext value never leaves the server', async () => {
+  testPosix('a secret setting is reported set, and its plaintext value never leaves the server', async () => {
     const alpha = (await listPlugins(cwd)).find((item) => item.id === 'alpha');
     expect(alpha?.secretSet).toEqual(['apiKey']);
     expect(alpha?.settingValues).toEqual({ region: 'eu' });
     expect(JSON.stringify(alpha)).not.toContain('SECRET-VALUE');
   });
 
-  test('a project marketplace plugin is keyed by package name and cannot edit features', async () => {
+  testPosix('a project marketplace plugin is keyed by package name and cannot edit features', async () => {
     const item = (await listPlugins(cwd)).find((id) => id.id === 'mkt-plugin@local-mkt');
     expect(item).toMatchObject({
       name: 'mkt-plugin',

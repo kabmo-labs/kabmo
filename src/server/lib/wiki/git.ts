@@ -39,7 +39,6 @@ export async function gitRun(args: string[], { cwd, timeoutMs }: GitRunOptions):
       stdin: 'ignore',
       stdout: 'pipe',
       stderr: 'pipe',
-      timeout: timeoutMs,
       env: { ...Bun.env, GIT_TERMINAL_PROMPT: '0' },
     });
   } catch (error) {
@@ -48,12 +47,30 @@ export async function gitRun(args: string[], { cwd, timeoutMs }: GitRunOptions):
     return { stdout: '', stderr: error instanceof Error ? error.message : String(error), exitCode: null, failed: true };
   }
 
+  // The timeout is OURS, not `Bun.spawn`'s `timeout` option, because the kill it
+  // performs is only observable through `signalCode` on POSIX. Windows has no
+  // signals: a `TerminateProcess` there reports an ordinary exit code, so
+  // `signalCode` stays null and a timed-out `git` would read as a success — the
+  // wiki fetch would be classified `unreachable` with no timeout detail, and
+  // `ensureWikiMirror` would cache the empty mirror it never got. A flag we set
+  // ourselves is the one thing both platforms agree on.
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    try {
+      proc.kill('SIGTERM');
+    } catch {
+      // Already gone: the command finished inside its own budget.
+    }
+  }, timeoutMs);
+
   const [stdout, stderr] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
   ]);
   const exitCode = await proc.exited;
-  return { stdout, stderr, exitCode, failed: exitCode === null || proc.signalCode != null };
+  clearTimeout(timer);
+  return { stdout, stderr, exitCode, failed: timedOut || exitCode === null || proc.signalCode != null };
 }
 
 /** One line of git's own message, for a response's `detail`. */

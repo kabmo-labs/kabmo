@@ -11,7 +11,7 @@
  */
 
 import fs from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
 import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
 import { parseFrontmatter } from '@/server/lib/omp/config/yaml';
@@ -41,7 +41,7 @@ async function parseAgentFile(filePath: string, sourceRoot: 'user' | 'project'):
     if ((await file.stat()).size > 512 * 1024) return undefined;
     const text = await file.text();
     const { data, body } = parseFrontmatter(text);
-    const base = filePath.split('/').pop()?.replace(/\.md$/, '') || filePath;
+    const base = basename(filePath).replace(/\.md$/, '') || filePath;
     const name = data.name || base;
     if (!name) return undefined;
     const temperature = data.temperature !== undefined && data.temperature !== '' ? Number(data.temperature) : null;
@@ -87,11 +87,11 @@ export async function discoverNativeAgents(projectDir?: string): Promise<Discove
   const userDir = join(getAgentDir(), 'agents');
   const byBase = new Map<string, DiscoveredAgent>();
   for (const agent of await scanAgentsDir(userDir, 'user')) {
-    byBase.set(agent.filePath.split('/').pop() ?? agent.id, agent);
+    byBase.set(basename(agent.filePath) || agent.id, agent);
   }
   if (projectDir) {
     for (const agent of await scanAgentsDir(projectDir, 'project')) {
-      const base = agent.filePath.split('/').pop() ?? agent.id;
+      const base = basename(agent.filePath) || agent.id;
       if (!byBase.has(base)) byBase.set(base, agent);
     }
   }

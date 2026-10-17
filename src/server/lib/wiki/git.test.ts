@@ -9,124 +9,45 @@
  * mangled, a credential prompt with no terminal to answer it hangs the read to
  * its timeout, and a mirror keyed by the remote URL rather than by host+slug
  * would fetch the same wiki twice under its https and ssh spellings. These
- * tests pin the argv/env shape of `gitRun`, the four ways a fetch is classified,
- * the host→provider decision, and the reads that come back out of the mirror.
+ * tests pin the argv/env shape of `gitRun` and the four ways a fetch is
+ * classified; the reads that come back out of the mirror are `mirror-reads`.
  *
- * No network: `git` is replaced by a stub binary on PATH for the spawn-shape
- * tests, and the mirror-read tests use a local bare repository built in a temp
- * dir.
+ * No network: `git` is replaced by a compiled stub on PATH (`@/test-support/
+ * fake-git`), which starts on Windows too.
  */
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { executableStub } from '@/test-support/executable-stub';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
 
 import { firstLine, gitRun } from '@/server/lib/wiki/git';
 import { detectWikiProvider } from '@/server/lib/wiki/provider.server';
-import { removeDir } from '@/test-support/remove-dir';
+import { testPosix } from '@/test-support/platform';
 import {
-  ensureWikiMirror,
-  listWikiPaths,
-  readWikiAsset,
-  readWikiPage,
-} from '@/server/lib/wiki/mirror.server';
-
-const dirs: string[] = [];
-const realPath = process.env.PATH;
-
-function tempDir(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
-  dirs.push(dir);
-  return dir;
-}
-
-/** A `git` that records its argv and answers init/fetch/log deterministically. */
-const FAKE_GIT_SOURCE = `import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-
-const args = process.argv.slice(2);
-const log = process.env.FAKE_GIT_LOG;
-if (log) appendFileSync(log, 'CALL' + (args.length ? '\\t' + args.join('\\t') : '') + '\\n');
-const signal = process.env.FAKE_GIT_SIGNAL;
-if (signal) process.kill(process.pid, signal.startsWith('SIG') ? signal : 'SIG' + signal);
-if (args[0] === 'init') {
-  mkdirSync(args[3], { recursive: true });
-  writeFileSync(join(args[3], 'HEAD'), '');
-  process.exit(0);
-}
-if (args[2] === 'fetch') {
-  if (process.env.FAKE_GIT_FETCH_KILL) process.kill(process.pid, 'SIGTERM');
-  if (process.env.FAKE_GIT_FETCH_FAIL) {
-    process.stderr.write(process.env.FAKE_GIT_FETCH_FAIL + '\\n');
-    process.exit(128);
-  }
-  process.exit(0);
-}
-if (args[2] === 'log') {
-  if (process.env.FAKE_GIT_LOG_FAIL) process.exit(1);
-  process.stdout.write((process.env.FAKE_GIT_REVISION || 'abc123') + '\\n');
-  process.stdout.write((process.env.FAKE_GIT_UPDATED || '2026-01-02T03:04:05Z') + '\\n');
-  process.exit(0);
-}
-for (const arg of args) process.stdout.write(arg + '\\n');
-process.stdout.write('ENV=' + (process.env.GIT_TERMINAL_PROMPT ?? '') + '\\n');
-`;
-
-let gitLog = '';
-
-/** Put the recording stub first on PATH; every spawn below reaches it. */
-async function useFakeGit(): Promise<void> {
-  const fakeGit = await executableStub(FAKE_GIT_SOURCE, 'git');
-  gitLog = join(tempDir('omp-git-log-'), 'calls.log');
-  process.env.PATH = `${dirname(fakeGit)}${delimiter}${realPath}`;
-  process.env.FAKE_GIT_LOG = gitLog;
-}
-
-/** Every recorded argv, in call order. */
-function gitCalls(): string[][] {
-  return readFileSync(gitLog, 'utf8')
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => line.split('\t').slice(1));
-}
+  cleanupFakeGit,
+  FAKE_GIT_ENV_KEYS,
+  fakeGitTempDir,
+  gitCalls,
+  realPath,
+  useFakeGit,
+} from '@/test-support/fake-git';
+import { ensureWikiMirror } from '@/server/lib/wiki/mirror.server';
 
 /** Point the mirror cache at a throwaway data directory. */
 function useWikiDataDir(): void {
-  process.env.OMPCHAMBER_DATA_DIR = tempDir('omp-wiki-data-');
+  process.env.OMPCHAMBER_DATA_DIR = fakeGitTempDir('omp-wiki-data-');
 }
-
-/** Real-git helper for the local fixture repository. */
-function git(cwd: string, args: string[]): void {
-  const proc = Bun.spawnSync(['git', '-C', cwd, ...args], { stdout: 'pipe', stderr: 'pipe' });
-  if (proc.exitCode !== 0) throw new Error(`git ${args.join(' ')}: ${proc.stderr.toString()}`);
-}
-
-const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
-let bareRepo = '';
 
 afterEach(() => {
   process.env.PATH = realPath;
   globalThis.__ompChamberWikiCache = undefined;
   globalThis.__ompChamberWikiProviders = undefined;
-  for (const key of [
-    'FAKE_GIT_LOG',
-    'FAKE_GIT_SIGNAL',
-    'FAKE_GIT_FETCH_KILL',
-    'FAKE_GIT_FETCH_FAIL',
-    'FAKE_GIT_LOG_FAIL',
-    'FAKE_GIT_REVISION',
-    'FAKE_GIT_UPDATED',
-  ]) {
-    delete process.env[key];
-  }
+  for (const key of FAKE_GIT_ENV_KEYS) delete process.env[key];
 });
 
 afterAll(() => {
   delete process.env.OMPCHAMBER_DATA_DIR;
-  for (const dir of dirs.splice(0)) removeDir(dir);
+  cleanupFakeGit();
 });
 
 describe('gitRun', () => {
@@ -163,13 +84,33 @@ describe('gitRun', () => {
     expect(result.stderr.length).toBeGreaterThan(0);
   });
 
-  test('reports a signalled process as failed', async () => {
+  // POSIX-only: the case asserts that a CHILD killed by a signal is reported as
+  // failed, and Windows has no signals — `TerminateProcess` reports an ordinary
+  // exit code with `signalCode` null. The portable half of the same rule (our own
+  // timeout kill) is the case below, which is detected by a flag rather than by
+  // `signalCode` for exactly this reason.
+  testPosix('reports a signalled process as failed', async () => {
     await useFakeGit();
     process.env.FAKE_GIT_SIGNAL = 'TERM';
 
     const result = await gitRun(['log'], { timeoutMs: 5_000 });
 
     expect(result.failed).toBe(true);
+  });
+
+  // Portable, and the half that Windows needs: the budget is enforced by a kill
+  // WE perform, so the failure is a flag we set rather than a `signalCode` only
+  // POSIX reports. Without it a timed-out `git` on Windows reads as a success
+  // and the wiki fetch is cached as an empty mirror.
+  test('reports a process that outlived its budget as failed on every platform', async () => {
+    await useFakeGit();
+    process.env.FAKE_GIT_SLEEP = '5000';
+
+    const started = Date.now();
+    const result = await gitRun(['log'], { timeoutMs: 200 });
+
+    expect(result.failed).toBe(true);
+    expect(Date.now() - started).toBeLessThan(4_000);
   });
 });
 
@@ -275,7 +216,9 @@ describe('ensureWikiMirror', () => {
     });
   });
 
-  test('classifies a killed fetch as unreachable with a timeout detail', async () => {
+  // POSIX-only for the same reason as `reports a signalled process as failed`:
+  // the stub kills ITSELF with SIGTERM, which Windows cannot express.
+  testPosix('classifies a killed fetch as unreachable with a timeout detail', async () => {
     await useFakeGit();
     useWikiDataDir();
     process.env.FAKE_GIT_FETCH_KILL = '1';
@@ -295,41 +238,3 @@ describe('ensureWikiMirror', () => {
     expect(result).toEqual({ ok: false, reason: 'no-wiki', detail: 'The wiki repository holds no pages' });
   });
 });
-
-describe('mirror reads', () => {
-  test('lists every path in the tree, keeping a space in the name', async () => {
-    await buildFixture();
-
-    expect((await listWikiPaths(bareRepo)).sort()).toEqual(['Home.md', 'Setting up notes.md', 'images/schema.png']);
-  });
-
-  test('reads a page at the ref and reports a missing one', async () => {
-    await buildFixture();
-
-    expect(await readWikiPage(bareRepo, 'Home.md')).toEqual({ ok: true, text: 'Home\n', truncated: false });
-    expect(await readWikiPage(bareRepo, 'Nope.md')).toEqual({ ok: false, error: 'Page not found: Nope.md' });
-  });
-
-  test('reads an asset as bytes and refuses a missing one', async () => {
-    await buildFixture();
-
-    expect(await readWikiAsset(bareRepo, 'images/schema.png')).toEqual(PNG_BYTES);
-    expect(await readWikiAsset(bareRepo, 'images/nope.png')).toBe(null);
-  });
-});
-
-async function buildFixture(): Promise<void> {
-  if (bareRepo) return;
-  const work = join(tempDir('omp-wiki-work-'), 'repo');
-  mkdirSync(join(work, 'images'), { recursive: true });
-  writeFileSync(join(work, 'Home.md'), 'Home\n');
-  writeFileSync(join(work, 'Setting up notes.md'), 'notes\n');
-  writeFileSync(join(work, 'images', 'schema.png'), PNG_BYTES);
-  git(work, ['init', '-q']);
-  git(work, ['add', '-A']);
-  git(work, ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'init']);
-  bareRepo = join(tempDir('omp-wiki-bare-'), 'bare.git');
-  const clone = Bun.spawnSync(['git', 'clone', '-q', '--bare', work, bareRepo], { stdout: 'pipe', stderr: 'pipe' });
-  if (clone.exitCode !== 0) throw new Error(clone.stderr.toString());
-  git(bareRepo, ['update-ref', 'refs/wiki/latest', 'HEAD']);
-}
