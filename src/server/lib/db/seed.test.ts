@@ -59,6 +59,18 @@ const DRREALHANDLER_TITLES = [
   'Gitlab wiki clone isi kosong',
 ];
 
+/**
+ * Budget for one seeding case.
+ *
+ * `seedMockData` writes the whole demo dataset — folders, three session lists,
+ * the sample transcripts and a nine-entry file tree per session — and on a
+ * Windows runner that crossed Bun's default 5 s per-test budget: measured, the
+ * filler case took 6.9 s while the same assertion is ~0.3 s on macOS and Linux,
+ * so the failure named a timeout rather than anything about the code. The
+ * budget is the FIXTURE's, not the assertion's.
+ */
+const SEED_TIMEOUT_MS = 60_000;
+
 let workRoot = '';
 /** Every client this file opened, so teardown can close them before deleting. */
 const opened: DbClient[] = [];
@@ -103,7 +115,7 @@ describe('seedMockData — fresh mock database', () => {
     expect(await titlesIn(db, 1)).toEqual(CHAT_TITLES);
     expect(await titlesIn(db, 2)).toEqual(WORKSPACE_TITLES);
     expect(await titlesIn(db, 3)).toEqual(DRREALHANDLER_TITLES);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('marks the third chat session active and leaves the rest idle', async () => {
     const db = await freshDb('active');
@@ -112,7 +124,7 @@ describe('seedMockData — fresh mock database', () => {
       'SELECT title, is_active FROM sessions WHERE folder_id = 1 ORDER BY id',
     );
     expect(rows.map((r) => r.is_active)).toEqual([0, 0, 1, 0, 0]);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('seeds the bundled sample transcripts into chat_sessions', async () => {
     const db = await freshDb('chats');
@@ -122,7 +134,7 @@ describe('seedMockData — fresh mock database', () => {
     expect(await count(db, 'chat_sessions')).toBe(6);
     const stored = await db.get<{ messages: string }>('SELECT messages FROM chat_sessions WHERE session_id = ?', ['1']);
     expect(Array.isArray(JSON.parse(stored!.messages))).toBe(true);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('gives every session the same 9-entry demo file tree', async () => {
     const db = await freshDb('files');
@@ -140,7 +152,7 @@ describe('seedMockData — fresh mock database', () => {
       { name: 'package.json', type: 'file' },
       { name: 'README.md', type: 'file' },
     ]);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('running twice re-asserts the same rows instead of duplicating them', async () => {
     const db = await freshDb('twice');
@@ -160,7 +172,7 @@ describe('seedMockData — fresh mock database', () => {
       files: await count(db, 'files'),
     }).toEqual(first);
     expect(await titlesIn(db, 1)).toEqual(CHAT_TITLES);
-  });
+  }, SEED_TIMEOUT_MS);
 });
 
 describe('seedMockData — existing database', () => {
@@ -173,7 +185,7 @@ describe('seedMockData — existing database', () => {
 
     const folders = await db.all<{ id: number; name: string }>('SELECT id, name FROM workspace_folders ORDER BY id');
     expect(folders.map((f) => f.name)).toEqual(['ompchamber', 'Keep', 'drrealhandler']);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('a folder that already has sessions gets no workspace list', async () => {
     const db = await freshDb('existing-sessions');
@@ -185,7 +197,7 @@ describe('seedMockData — existing database', () => {
     const titles = await titlesIn(db, 2);
     expect(titles[0]).toBe('Mine');
     expect(titles.filter((title) => WORKSPACE_TITLES.includes(title))).toEqual([]);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('the file tree is not re-seeded when any file row exists', async () => {
     const db = await freshDb('existing-files');
@@ -196,7 +208,7 @@ describe('seedMockData — existing database', () => {
     await seedMockData(db);
 
     expect(await count(db, 'files')).toBe(1);
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('filler sessions are added while the total is under 15', async () => {
     const db = await freshDb('filler');
@@ -210,5 +222,5 @@ describe('seedMockData — existing database', () => {
     expect(await count(db, 'sessions')).toBe(1 + 7 + 5 + 9);
     const filler = await db.all<{ title: string }>('SELECT title FROM sessions WHERE folder_id = 3 ORDER BY id');
     expect(filler.slice(5).every((row) => /#\d+$/.test(row.title))).toBe(true);
-  });
+  }, SEED_TIMEOUT_MS);
 });
