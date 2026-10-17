@@ -46,6 +46,7 @@ const RETRY_INTERVAL_MS = 25;
  */
 export function removeDir(dir: string): boolean {
   const deadline = Date.now() + RETRY_DEADLINE_MS;
+  let attempt = 0;
   for (;;) {
     try {
       rmSync(dir, { recursive: true, force: true });
@@ -61,6 +62,13 @@ export function removeDir(dir: string): boolean {
           { cause: error },
         );
       }
+      // A caller that dropped a connection without closing it leaves the OS to
+      // collect it, and only a collection releases the handle. Forcing one after
+      // a couple of plain retries is what turns "the object is garbage but not
+      // yet finalised" into a deletable file — measured on a Windows runner,
+      // where a suite that cleared `globalThis.__ompChamberDb` instead of
+      // closing it held the tree for the whole retry window.
+      if (attempt++ >= 2) Bun.gc(true);
       // A synchronous spin, because the callers are `afterEach` hooks that may
       // not be async. `Bun.sleepSync` is the runtime's own primitive and does
       // not need a promise the hook would have to await.
