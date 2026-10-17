@@ -301,6 +301,21 @@ describe('loadSessionMessages — ordering and thinking-level stamping', () => {
     expect(messages[1]?.notice).toBe('mid');
   });
 
+  test('an injected entry in a session file keeps its row in the timeline', async () => {
+    // omp writes these for the model (a todo nudge, the eval runtime snapshot)
+    // with `display:false`. The chamber renders them anyway: they are part of
+    // the session record, and a reader who wants the full transcript gets it.
+    const messages = await loadSessionMessages(writeSession([
+      { type: 'message', id: 'u1', timestamp: at(1), message: { role: 'user', content: 'run it' } },
+      { type: 'custom_message', id: 'ctx', customType: 'eval-state-context', timestamp: at(2), display: false, content: '<system-reminder>Eval runtime state is host-retained.</system-reminder>' },
+      { type: 'custom_message', id: 'nudge', customType: 'mid-run-todo-nudge', timestamp: at(3), display: false, content: '<system-reminder>7 todo items still open.</system-reminder>' },
+      { type: 'message', id: 'a1', timestamp: at(4), message: { role: 'assistant', content: 'done' } },
+    ]));
+    expect(messages.map((msg) => msg.id)).toEqual(['u1', 'ctx', 'nudge', 'a1']);
+    expect(messages[1]?.noticeSource).toBe('eval-state-context');
+    expect(messages[2]?.noticeSource).toBe('mid-run-todo-nudge');
+  });
+
   test('folds a later toolResult entry into the assistant tool call and marks it errored', async () => {
     const messages = await loadSessionMessages(writeSession([
       { type: 'message', id: 'a1', timestamp: at(1), message: { role: 'assistant', content: [{ type: 'toolCall', id: 'c1', name: 'bash', arguments: { command: 'ls' } }] } },
