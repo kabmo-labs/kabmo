@@ -22,7 +22,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 
 import { invalidateOmpCliCache, resolveOmpBin } from '@/server/lib/omp/core/cli';
@@ -41,7 +41,10 @@ const realEnv = {
 };
 
 function tempDir(prefix: string): string {
-  const dir = fs.mkdtempSync(join(Bun.env.TMPDIR || '/tmp', `${prefix}-`));
+  // `os.tmpdir()`, not a `/tmp` fallback: there is no `/tmp` on Windows, and a
+  // POSIX-literal root resolves against the current drive — the fixture then
+  // never lands where the assertion looks for it.
+  const dir = fs.mkdtempSync(join(tmpdir(), `${prefix}-`));
   tempDirs.push(dir);
   return dir;
 }

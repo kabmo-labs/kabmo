@@ -106,5 +106,35 @@ export async function readGitOrigin(pluginDir: string): Promise<string | null> {
   const gitDir = await resolveGitDir(pluginDir);
   if (!gitDir) return null;
   const config = await readTextOrNull(join(gitDir, 'config'));
-  return config ? originUrlFromConfig(config) : null;
+  if (!config) return null;
+  const url = originUrlFromConfig(config);
+  return url === null ? null : unescapeConfigValue(url);
+}
+
+/**
+ * Undo the C-style escaping git applies to a config VALUE.
+ *
+ * A Windows path is written as `C:\\Users\\x\\repo` — the backslashes are
+ * escaped because a config value is a quoted string, and git unescapes them on
+ * read. A hand parse has to do the same: without this the origin reads back with
+ * doubled separators, so it never equals the path the clone was made from, and
+ * a git-installed plugin's update check reports "no update" forever. Measured on
+ * the fourth Windows run: `C:\\Users\\…\\repo` where `C:\\Users\\…\\repo` was
+ * expected — the same string with each separator doubled.
+ *
+ * Only the escapes git documents are handled; an unknown `\\x` is left alone
+ * rather than silently dropped, because a wrong answer here is a wrong remote.
+ */
+function unescapeConfigValue(value: string): string {
+  if (!value.includes('\\')) return value;
+  return value.replace(/\\(.)/g, (whole, next: string) => {
+    switch (next) {
+      case 'n': return '\n';
+      case 't': return '\t';
+      case 'b': return '\b';
+      case '"': return '"';
+      case '\\': return '\\';
+      default: return whole;
+    }
+  });
 }

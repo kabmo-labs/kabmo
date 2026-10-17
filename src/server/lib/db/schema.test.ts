@@ -81,7 +81,12 @@ describe('session secret persistence', () => {
     expect(raw.version).toBe(2);
     expect(raw.sessionSecret).toBe('fixture-secret');
     expect(typeof raw.updatedAt).toBe('string');
-    expect(fs.statSync(getAuthPath()).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX permission bits: `statSync().mode` reports a
+    // synthesised 0o666, so the 0600 claim is only meaningful on POSIX. The
+    // write/read round-trip above is the portable half of this case.
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(getAuthPath()).mode & 0o777).toBe(0o600);
+    }
     expect(await readSessionSecret()).toBe('fixture-secret');
   });
 

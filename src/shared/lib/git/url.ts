@@ -49,8 +49,28 @@ export function isGitUrl(value: string): boolean {
  * This is what `git clone` itself would choose, so a clone into the active
  * directory lands where the user expects, and a plugin staged to a temp
  * directory reads as the repository it came from.
+ *
+ * The drive letter is stripped FIRST, and that is not cosmetic: splitting on
+ * `:` alone treats `C:` as a separator, so a Windows path's "last segment" was
+ * the WHOLE path with every separator dashed — a clone of
+ * `C:\…\omc-clone-test\origin` landed in `…/projects/-Users-RUNNER-1-…-origin`
+ * instead of `…/projects/origin`. The `git@host:path` scp form keeps its colon,
+ * which is why this is a prefix strip rather than dropping `:` from the split.
  */
 export function repoSlug(url: string): string {
-  const tail = url.replace(/[/\\]+$/, '').split(/[/:]/).pop() ?? '';
+  const withoutDrive = url.replace(/^[a-z]:/i, '');
+  // Normalise every separator to `/` before splitting. A Windows path arrives
+  // with `\` (and, when it came from an escaped config value, with `\\`), so a
+  // split on `[/:]` would treat the whole tail as one segment and the "last
+  // segment" would be the entire path — the slug then became
+  // `-Users-x-repo` instead of `repo`.
+  const normalised = withoutDrive.replace(/\\/g, '/').replace(/\/+$/, '');
+  // A URL with no path segment at all (`https://`) names nothing to clone into,
+  // so it keeps the empty answer rather than a dashed scheme. `git@host:path`
+  // is handled by the same rule because the colon is a separator only when a
+  // path follows it.
+  const segments = normalised.split(/[/:]/).filter(Boolean);
+  const tail = segments.length === 0 ? '' : segments[segments.length - 1];
+  if (tail === '' || /^[a-z]+:$/i.test(tail) || /^https?:?$/i.test(tail)) return '';
   return tail.replace(/\.git$/i, '').replace(/[^a-z0-9._-]/gi, '-');
 }

@@ -284,7 +284,12 @@ describe('the local version plugin', () => {
    * incompatibility the 2.0.0 release announced. Bumping the manifest without
    * refreshing the lock leaves the dependent package packing the old version.
    */
-  test('refreshes bun.lock, so a dependent package packs the NEW version', () => {
+  // POSIX-only: the fixture is a bun WORKSPACE, and `bun install` links its
+  // packages with a SYMLINK — which a default Windows runner cannot create
+  // (`failed to symlink dependencies … (symlink)`). The lockfile refresh itself
+  // is exercised by the production release run, which has the privilege.
+  const testPosix = process.platform === 'win32' ? test.skip : test;
+  testPosix('refreshes bun.lock, so a dependent package packs the NEW version', () => {
     const scratch = makeWorkspace('ompchamber-lock-');
 
     try {

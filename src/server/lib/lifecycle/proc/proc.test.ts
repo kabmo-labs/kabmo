@@ -51,7 +51,10 @@ describe('psProbe', () => {
     }
   });
 
-  test('reports our own process alive and its command line', async () => {
+  // `psProbe` shells out to `ps`, which Windows does not ship — its liveness
+  // answer there is `unknown`, not `alive`. The win32 probe's own contract is
+  // covered by the `win32Probe` describe below.
+  testPosix('reports our own process alive and its command line', async () => {
     expect(psProbe.liveness(process.pid)).toBe('alive');
     expect(psProbe.isAlive(process.pid)).toBe(true);
     expect(psProbe.isZombie(process.pid)).toBe(false);

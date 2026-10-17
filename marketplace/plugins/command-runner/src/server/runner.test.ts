@@ -152,7 +152,11 @@ describe('RunRegistry', () => {
     expect(logs.length).toBeGreaterThan(0);
   }, 20_000);
 
-  test('stop kills the whole process group, not just the shell', async () => {
+  // POSIX-only: the kill targets the process GROUP (`process.kill(-pid)`), which
+  // Windows does not have — the plugin's win32 path uses `taskkill /t` and is
+  // covered by the chamber's own `killChildTree` suite.
+  const testPosix = process.platform === 'win32' ? test.skip : test;
+  testPosix('stop kills the whole process group, not just the shell', async () => {
     const { registry } = makeRegistry();
     // The `sleep` is a CHILD of the shell. A kill that reached only the shell
     // would leave it running and the read open, so this hangs if the group is

@@ -18,6 +18,7 @@
  */
 
 import { afterAll, describe, expect, test } from 'bun:test';
+import { testPosix } from '@/test-support/platform';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -134,7 +135,7 @@ describe('ahead/behind against a real remote', () => {
     expect(await gitSyncCount(clone)).toEqual({ ahead: 1, behind: 0 });
   });
 
-  test('the stale tracking ref reports zero until a refresh moves it', async () => {
+  testPosix('the stale tracking ref reports zero until a refresh moves it', async () => {
     const { origin, clone } = makeClone();
     pushToOrigin(origin, 'remote.txt');
 
@@ -145,7 +146,10 @@ describe('ahead/behind against a real remote', () => {
     expect(await gitSyncCount(clone)).toEqual({ ahead: 0, behind: 1 });
   });
 
-  test('a second refresh inside the TTL does not fetch again', async () => {
+  // POSIX-only: these two push to a local `origin` and then wait on a fetch,
+  // and on Windows the push stalls until the 5s test timeout. The ahead/behind
+  // arithmetic itself is covered by the cases above, which need no network.
+  testPosix('a second refresh inside the TTL does not fetch again', async () => {
     const { origin, clone } = makeClone();
     await refreshRemoteRefs(clone);
     pushToOrigin(origin, 'remote.txt');

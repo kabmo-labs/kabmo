@@ -23,6 +23,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import { dirname, join } from 'path';
+import { tmpdir } from 'node:os';
 
 import { findSessionFileById, resolveSessionFileOr404, resolveSessionPathOr404, sessionNotFoundResponse } from '@/server/lib/omp/session/locator';
 import { scanSessionInfo } from '@/server/lib/omp/session/scan';
@@ -32,7 +33,10 @@ import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 const tempDirs: string[] = [];
 
 function tempDir(prefix: string): string {
-  const dir = fs.mkdtempSync(join(Bun.env.TMPDIR || '/tmp', `${prefix}-`));
+  // `os.tmpdir()`, not a `/tmp` fallback: there is no `/tmp` on Windows, and a
+  // POSIX-literal root resolves against the current drive — the fixture tree then
+  // never exists where the scan looks for it.
+  const dir = fs.mkdtempSync(join(tmpdir(), `${prefix}-`));
   tempDirs.push(dir);
   return dir;
 }
