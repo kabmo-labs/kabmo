@@ -21,7 +21,18 @@ import type { HarnessServer } from './server';
 export interface SeededWorkspace {
   /** The folder's id, for `?folderId=`. */
   id: number;
-  /** The directory the folder is bound to; a session spawns in it. */
+  /**
+   * The directory the folder is bound to, AS THE SERVER RESOLVED IT.
+   *
+   * Not the raw `mkdtemp` result: the route runs the path through `resolve()`
+   * before storing it, and every scope check downstream (`resolveRoot`, the
+   * terminal's `?root=`, the git/files panels) compares against that stored
+   * spelling exactly. Handing a spec the un-resolved string makes those checks
+   * depend on the two spellings agreeing, which they do not on Windows — where
+   * a temp directory is reachable under both an 8.3 short name and its long
+   * form. Measured: `terminal-capacity` attached eight ready shells and the
+   * `?root=`-filtered inventory answered an empty list for the whole 20 s poll.
+   */
   path: string;
   dispose(): void;
 }
@@ -37,14 +48,20 @@ export async function seedWorkspace(server: HarnessServer, name = 'e2e-workspace
   if (!response.ok) {
     throw new Error(`seedWorkspace failed: ${response.status} ${await response.text()}`);
   }
-  const payload = (await response.json()) as { id?: unknown; folder?: { id?: unknown } };
+  const payload = (await response.json()) as {
+    id?: unknown;
+    folder?: { id?: unknown; project_path?: unknown };
+  };
   const id = Number(payload.id ?? payload.folder?.id);
   if (!Number.isFinite(id)) {
     throw new Error(`seedWorkspace: no id in response ${JSON.stringify(payload)}`);
   }
+  // The route `resolve()`s the path before storing it; hand the caller the
+  // stored spelling, never the one this fixture happened to build.
+  const stored = payload.folder?.project_path;
   return {
     id,
-    path: dir,
+    path: typeof stored === 'string' && stored ? stored : dir,
     dispose() {
       // Queue it rather than deleting now: the server has this directory open
       // (it scanned it), so a delete here races the process on Windows.
