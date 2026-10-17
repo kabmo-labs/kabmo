@@ -26,6 +26,19 @@ import { removeDir } from '@/test-support/remove-dir';
 
 const tempDirs: string[] = [];
 
+/**
+ * Budget for a hook that SEEDS a repository.
+ *
+ * Each one runs a dozen `git` spawns back to back (`init`, `add`, `commit`,
+ * `rev-parse`, …), and on a Windows runner a single spawn costs an order of
+ * magnitude more than on Linux — measured: the diff fixture crossed Bun's
+ * default 5 s hook budget on `Gates / Checks (Windows)` and the suite failed
+ * with "a beforeEach/afterEach hook timed out", which names the wrong thing and
+ * hides the cause. The budget is the fixture's, not the code's: every assertion
+ * still runs on its own default timeout.
+ */
+const SEED_TIMEOUT_MS = 120_000;
+
 function tempDir(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitlog-'));
   tempDirs.push(dir);
@@ -99,7 +112,7 @@ describe('fetchGitCommits against a real repository', () => {
     write(repo, 'main-only.txt', 'm\n');
     commitAll(repo, 'c8 main only');
     git(repo, 'merge', '-q', '--no-ff', 'feature', '-m', 'c9 merge feature');
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('the first page is the newest commits and carries the real total', async () => {
     const page = await fetchGitCommits(repo, 2, 0);
@@ -196,7 +209,7 @@ describe('a commit body travels with the page', () => {
     git(repo, 'commit', '-q', '-m', 'subject line', '-m', 'body para one\n\nbody para two with a tab:\n\tindented');
     write(repo, 'b.txt', 'b\n');
     commitAll(repo, 'one line only');
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('the multi-line body is parsed out of the log format', async () => {
     const { commits } = await fetchGitCommits(repo, 10, 0);
@@ -265,7 +278,7 @@ describe('fetchFileDiff commit patches', () => {
     git(repo, 'mv', 'old.txt', 'new.txt');
     commitAll(repo, 'rename old');
     renameHash = git(repo, 'rev-parse', 'HEAD').trim();
-  });
+  }, SEED_TIMEOUT_MS);
 
   test('an added file yields its creation patch', async () => {
     const diff = await fetchFileDiff(repo, addedHash, 'added.txt');
