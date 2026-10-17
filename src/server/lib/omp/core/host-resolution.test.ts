@@ -41,14 +41,8 @@ const realEnv = {
 };
 
 function tempDir(prefix: string): string {
-  // `os.tmpdir()`, not a `/tmp` fallback: there is no `/tmp` on Windows, and a
-  // POSIX-literal root resolves against the current drive — the fixture then
-  // never lands where the assertion looks for it.
-  // `realpathSync` on the way out, not just at the assertion. On Windows
-  // `os.tmpdir()` names the 8.3 SHORT form (`C:\Users\RUNNER~1\…`) while
-  // `realpathSync` answers the long form (`C:\Users\runneradmin\…`), so a
-  // fixture that compared the two spellings of one directory failed on the
-  // spelling rather than on the resolution being tested.
+  // `tmpdir()` (no `/tmp` on Windows) and realpathed at creation: `tmpdir()`
+  // names the 8.3 SHORT form there while `realpathSync` answers the long one.
   const dir = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), `${prefix}-`)));
   tempDirs.push(dir);
   return dir;

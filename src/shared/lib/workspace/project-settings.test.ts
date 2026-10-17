@@ -48,22 +48,16 @@ const SCHEMA = `
 
 let workRoot = '';
 let dbCounter = 0;
-
 beforeAll(() => {
   workRoot = mkdtempSync(path.join(os.tmpdir(), 'omp-project-settings-'));
 });
-
-/** Every connection this file opened, closed before the tree is deleted. */
+/** Connections this file opened; closed first (Windows EBUSY on delete). */
 const opened: DbClient[] = [];
-
 afterAll(() => {
-  // Close, then delete: an open SQLite handle makes a Windows delete fail with
-  // EBUSY, and a throw from `afterAll` reports a failure of the file.
   for (const db of opened.splice(0)) db.raw.close();
   removeDir(workRoot);
 });
-
-/** A fresh database on its own file so one test's rows cannot reach another. */
+/** A fresh database so one test's rows cannot reach another. */
 async function freshDb(): Promise<DbClient> {
   const db = createDb(path.join(workRoot, `db-${dbCounter++}.sqlite`));
   opened.push(db);
