@@ -4,17 +4,21 @@
  */
 
 import { test, expect, describe } from 'bun:test';
+import { join } from 'node:path';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
-const ROOT = '/plugins/demo';
+// Built with `join`, not a POSIX literal: `resolveInsideRoot` returns a RESOLVED
+// path, so on Windows a `/plugins/demo` fixture can never equal what it answers
+// (`D:\plugins\demo`) and every case fails on the fixture rather than the guard.
+const ROOT = join('/', 'plugins', 'demo');
 
 describe('resolveInsideRoot', () => {
   test('resolves a plain relative path inside the root', () => {
-    expect(resolveInsideRoot(ROOT, 'index.html')).toBe('/plugins/demo/index.html');
+    expect(resolveInsideRoot(ROOT, 'index.html')).toBe(join(ROOT, 'index.html'));
   });
 
   test('resolves a nested path', () => {
-    expect(resolveInsideRoot(ROOT, 'assets/logo.svg')).toBe('/plugins/demo/assets/logo.svg');
+    expect(resolveInsideRoot(ROOT, 'assets/logo.svg')).toBe(join(ROOT, 'assets', 'logo.svg'));
   });
 
   test('allows the root itself', () => {
@@ -39,7 +43,7 @@ describe('resolveInsideRoot', () => {
   });
 
   test('allows a filename that merely contains two dots', () => {
-    expect(resolveInsideRoot(ROOT, 'a..b.html')).toBe('/plugins/demo/a..b.html');
+    expect(resolveInsideRoot(ROOT, 'a..b.html')).toBe(join(ROOT, 'a..b.html'));
   });
 
   test('refuses a deep escape', () => {
@@ -55,14 +59,14 @@ describe('resolveInsideRoot', () => {
     // plugin manifest was refused with "escapes the plugin directory" and no
     // plugin could load at all. This case fails with the old comparison on both
     // platforms.
-    expect(resolveInsideRoot('/plugins/demo/', 'index.html')).toBe('/plugins/demo/index.html');
-    expect(resolveInsideRoot('/plugins//demo', 'index.html')).toBe('/plugins/demo/index.html');
-    expect(resolveInsideRoot('/plugins/demo/', '.')).toBe('/plugins/demo');
+    expect(resolveInsideRoot(ROOT + '/', 'index.html')).toBe(join(ROOT, 'index.html'));
+    expect(resolveInsideRoot(ROOT + '//', 'index.html')).toBe(join(ROOT, 'index.html'));
+    expect(resolveInsideRoot(ROOT + '/', '.')).toBe(ROOT);
   });
 
   test('an escape is still refused when the root needs normalising', () => {
     // The fix must not widen the guard: a normalised root is still a boundary.
-    expect(resolveInsideRoot('/plugins/demo/', '../secret.html')).toBeNull();
-    expect(resolveInsideRoot('/plugins//demo', '../demo-evil/x.html')).toBeNull();
+    expect(resolveInsideRoot(ROOT + '/', '../secret.html')).toBeNull();
+    expect(resolveInsideRoot(ROOT + '//', '../demo-evil/x.html')).toBeNull();
   });
 });

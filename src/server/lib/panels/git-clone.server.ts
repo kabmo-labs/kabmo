@@ -79,10 +79,16 @@ async function resolveGitDir(pluginDir: string): Promise<string | null> {
  * bare `url =` under any other section (a `[submodule …]` block holds one) is
  * ignored: a clone with no origin is a clone the updater must refuse rather than
  * guess a remote for.
+ *
+ * Split on `\r?\n`, not `\n`: git writes the config with the platform's line
+ * ending, so on Windows every line arrives with a trailing `\r` and
+ * `[remote "origin"]\r` does not match the anchored section regex. Measured on
+ * the first Windows run: every clone read as "no origin", so a git-installed
+ * plugin reported no update and `probeGitUpdate` claimed its directory was gone.
  */
 function originUrlFromConfig(text: string): string | null {
   let inOrigin = false;
-  for (const raw of text.split('\n')) {
+  for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (line.startsWith('[')) {
       inOrigin = /^\[remote\s+"origin"\]$/.test(line);

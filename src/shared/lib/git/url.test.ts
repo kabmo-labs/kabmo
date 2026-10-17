@@ -27,6 +27,23 @@ describe('isGitUrl', () => {
     expect(isGitUrl('file:///tmp/repo')).toBe(true);
   });
 
+  test('accepts a Windows local path, drive-rooted and UNC', () => {
+    // A local clone from disk is the documented behaviour, and on Windows the
+    // spelling of "a path on disk" is a drive letter. Without this the Clone
+    // button could never enable there and the route refused a repository the
+    // user had just browsed to (measured: all four clone cases failed with 400).
+    expect(isGitUrl('C:\\Users\\x\\repo')).toBe(true);
+    expect(isGitUrl('C:/Users/x/repo')).toBe(true);
+    expect(isGitUrl('d:\\repo')).toBe(true);
+    expect(isGitUrl('\\\\server\\share\\repo')).toBe(true);
+  });
+
+  test('refuses a drive-RELATIVE path, which is not a location on disk', () => {
+    // `C:repo` means "the current directory on drive C", not `C:\repo` — the
+    // same distinction `isAbsolutePath` makes in the CLI's path helpers.
+    expect(isGitUrl('C:repo')).toBe(false);
+  });
+
   test('refuses a bare name, an empty string and one with whitespace', () => {
     expect(isGitUrl('some-plugin')).toBe(false);
     expect(isGitUrl('   ')).toBe(false);

@@ -27,6 +27,18 @@ export function isGitUrl(value: string): boolean {
   if (/^git@[^:/\s]+:\S+$/.test(trimmed)) return true;
   if (/^file:\/\/\S+$/i.test(trimmed)) return true;
   if (trimmed.startsWith('/') || trimmed.startsWith('~')) return true;
+  // A drive-rooted Windows path is a local source too, and the whole point of
+  // allowing local paths is that a clone from disk works. Without this the
+  // New Workspace modal's Clone button could never enable on Windows and
+  // `POST /api/folders/clone` answered `invalid_url` for a path the user had
+  // just browsed to — measured on the first Windows run, where all four clone
+  // route cases failed with 400 for a real repository in a temp directory.
+  //
+  // `C:relative` is drive-RELATIVE on Windows, not absolute, so a colon with no
+  // separator after it is refused — the same distinction `isAbsolutePath` in the
+  // CLI's own path helpers makes.
+  if (/^[a-z]:[\\/]/i.test(trimmed)) return true;
+  if (/^\\\\[^\\]+\\/.test(trimmed)) return true; // UNC: \\server\share
   return false;
 }
 
