@@ -33,6 +33,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import { DEFAULT_AGENTS_LIST } from '@/client/data/agent-data';
@@ -43,7 +44,11 @@ import { action as projectsAction, loader as projectsLoader } from '@/server/rou
 import { action as providersAction, loader as providersLoader } from '@/server/routes/settings/providers';
 import { action as rootAction, loader as rootLoader } from '@/server/routes/settings/root';
 
-const ROOT = '/tmp/omc-settings-store-routes-test';
+// `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
+// POSIX-literal root makes every write land at a path the OS resolves against
+// the current drive — the fixture directories never exist where the route looks
+// for them, and the request fails for a reason unrelated to what is under test.
+const ROOT = path.join(os.tmpdir(), 'omc-settings-store-routes-test');
 const API = 'http://localhost/api/settings';
 
 beforeAll(async () => {

@@ -70,8 +70,12 @@ afterAll(() => {
   for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
 });
 
+// The three `mode` cases are POSIX-only: Windows has no permission bits, so
+// `statSync().mode` reports a synthesised `0o666`/`0o444` and every assertion
+// about `0o644`/`0o600`/`0o640` fails on a platform that stores no such thing.
+// The write behaviour itself is covered by the portable cases here.
 describe('writeFileAtomic', () => {
-  test('a new file lands with the default mode', async () => {
+  testPosix('a new file lands with the default mode', async () => {
     const target = join(tempDir('atomic'), 'fresh.txt');
     await writeFileAtomic(target, 'hello');
     expect(readFileSync(target, 'utf8')).toBe('hello');
@@ -79,7 +83,7 @@ describe('writeFileAtomic', () => {
     expect(readdirSync(dirname(target)).filter((name) => name.includes('.tmp-'))).toEqual([]);
   });
 
-  test('an existing 0600 file keeps its mode when replaced', async () => {
+  testPosix('an existing 0600 file keeps its mode when replaced', async () => {
     const target = join(tempDir('atomic'), 'secret.yml');
     writeFileSync(target, 'old');
     chmodSync(target, 0o600);
@@ -88,7 +92,7 @@ describe('writeFileAtomic', () => {
     expect(statSync(target).mode & 0o777).toBe(0o600);
   });
 
-  test('createMode applies only to a brand-new file', async () => {
+  testPosix('createMode applies only to a brand-new file', async () => {
     const dir = tempDir('atomic');
     const fresh = join(dir, 'created.txt');
     await writeFileAtomic(fresh, 'x', { createMode: 0o600 });

@@ -44,6 +44,7 @@
 
 import { existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
+import { homedir } from 'os';
 import { getAgentDir } from '@/server/lib/omp/core/paths';
 
 /** How far up from a cwd the ancestor scan looks. omp's own walk stops at the
@@ -92,15 +93,35 @@ function userSharedRoots(): Array<{ dir: string; managed: boolean }> {
   ];
 }
 
+/**
+ * The home directory, with `$HOME` as an OVERRIDE and the OS as the fallback.
+ *
+ * The fallback is the fix, and the override is why it is a fallback rather than
+ * a replacement. `Bun.env.HOME` is EMPTY on Windows (the variable there is
+ * `USERPROFILE`), so `join('', '.agents', 'skills')` produced the RELATIVE path
+ * `.agents\skills` — a root resolved against whatever cwd the server happened to
+ * have, which on a Windows runner is the checkout. Measured on the first Windows
+ * run: the skill and command roots listed `.agents\skills` where they should
+ * have listed `C:\Users\runneradmin\.agents\skills`. `os.homedir()` falls
+ * back to `USERPROFILE` there and to `getpwuid()` on POSIX, which is why
+ * `omp/core/paths.ts` already uses it for every other derived directory.
+ *
+ * `$HOME` still wins when it is set, because the suite points it at a temp
+ * directory to keep the real `~/.claude` and `~/.agents` out of a test — and
+ * `homedir()` reads the OS, not the environment, so it would ignore that.
+ */
+function homeDir(): string {
+  return Bun.env.HOME || homedir();
+}
+
 /** User-scope roots only skills use. */
 function userSkillOnlyRoots(): string[] {
-  const home = Bun.env.HOME ?? '';
-  return [join(home, '.agents', 'skills')];
+  return [join(homeDir(), '.agents', 'skills')];
 }
 
 /** User-scope roots only commands use. */
 function userCommandOnlyRoots(): Array<{ dir: string; suffix: string }> {
-  const home = Bun.env.HOME ?? '';
+  const home = homeDir();
   return [
     { dir: join(home, '.claude', 'commands'), suffix: '.md' },
     { dir: join(home, '.codex', 'commands'), suffix: '.md' },

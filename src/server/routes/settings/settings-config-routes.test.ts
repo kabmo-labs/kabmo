@@ -28,13 +28,18 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { parse as parseYaml } from 'yaml';
 import { action as modelOverrideAction } from '@/server/routes/settings/model-override';
 import { action as ompConfigAction, loader as ompConfigLoader } from '@/server/routes/settings/omp-config';
 import { action as providerModelAction } from '@/server/routes/settings/provider-model';
 
-const ROOT = '/tmp/omc-settings-config-routes-test';
+// `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
+// POSIX-literal root makes every write land at a path the OS resolves against
+// the current drive — the fixture directories never exist where the route looks
+// for them, and the request fails for a reason unrelated to what is under test.
+const ROOT = path.join(os.tmpdir(), 'omc-settings-config-routes-test');
 const AGENT_DIR = path.join(ROOT, 'agent');
 const MODELS_YML = path.join(AGENT_DIR, 'models.yml');
 const API = 'http://localhost/api/settings';

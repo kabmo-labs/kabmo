@@ -22,12 +22,17 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import { action as createAction } from '@/server/routes/folders/create';
 import { action as mkdirAction } from '@/server/routes/folders/mkdir';
 
-const ROOT = '/tmp/omc-folders-routes-test';
+// `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
+// POSIX-literal root makes every write land at a path the OS resolves against
+// the current drive — the fixture directories never exist where the route looks
+// for them, and the request fails for a reason unrelated to what is under test.
+const ROOT = path.join(os.tmpdir(), 'omc-folders-routes-test');
 const WORKSPACE = path.join(ROOT, 'projects');
 
 function post(url: string, body: unknown): Request {

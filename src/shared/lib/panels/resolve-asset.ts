@@ -27,8 +27,19 @@ import { resolve, sep } from 'path';
  * filename containing two dots. Equality with the root is allowed (a request for
  * the directory itself), and a sibling whose name merely starts with the root's
  * name (`/a/bc` against `/a/b`) is refused by comparing against `root + sep`.
+ *
+ * The ROOT must be resolved too, and that is not cosmetic: `resolve(root, '.')`
+ * collapses a trailing separator and normalises separators, so comparing a
+ * resolved target against a raw root fails for any root that does not happen to
+ * be spelled exactly the way `resolve` would spell it. On POSIX a plain
+ * `/plugins/demo` survives untouched, which is why the bug was invisible there —
+ * on Windows every call compared `C:\plugins\demo\x` against `C:\plugins\demo\`
+ * and refused it, so every plugin manifest was rejected with "escapes the plugin
+ * directory" and no plugin could load at all. Measured: the same call returns
+ * null for `index.html` under a Windows root.
  */
 export function resolveInsideRoot(root: string, relative: string): string | null {
-  const target = resolve(root, relative);
-  return target === root || target.startsWith(root + sep) ? target : null;
+  const base = resolve(root);
+  const target = resolve(base, relative);
+  return target === base || target.startsWith(base + sep) ? target : null;
 }

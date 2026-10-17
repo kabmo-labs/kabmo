@@ -30,7 +30,11 @@ import { attachTerminal, disposeAllTerminals } from '@/server/lib/terminal/runti
 import { terminalStore, type TerminalStore, type TerminalTimeout } from '@/server/lib/terminal/store';
 import { countLiveTerminals, listTerminals } from '@/server/lib/terminal/liveness.server';
 import type { TerminalSession, TerminalViewer } from '@/server/lib/terminal/session.server';
+import { join } from 'node:path';
 import { describePosix, testPosix } from '@/test-support/platform';
+
+/** A root to hang POSIX-agnostic fixture paths off; `join` supplies the separator. */
+const SRV = join('/', 'srv');
 
 /** A record shaped enough for `snapshotOf`/liveness; no PTY is involved. */
 function fakeSession(over: Partial<TerminalSession> & { id: string }): TerminalSession {
@@ -238,28 +242,34 @@ describe('listTerminals', () => {
   });
 
   test('a scope keeps the root, its children, and drops a name-prefix sibling', async () => {
-    seed(fakeSession({ id: 'sc-root', cwd: '/srv/work' }));
-    seed(fakeSession({ id: 'sc-child', cwd: '/srv/work/app' }));
-    seed(fakeSession({ id: 'sc-sibling', cwd: '/srv/work-other' }));
+    // Built with `join`, not a literal `/srv/work`: the scope test compares
+    // against `path.sep`, so a POSIX-spelled fixture can never be inside a
+    // Windows-spelled scope and the case fails for a reason the code under test
+    // does not have.
+    const root = join(SRV, 'work');
+    seed(fakeSession({ id: 'sc-root', cwd: root }));
+    seed(fakeSession({ id: 'sc-child', cwd: join(root, 'app') }));
+    seed(fakeSession({ id: 'sc-sibling', cwd: join(SRV, 'work-other') }));
 
-    const listed = (await listTerminals('/srv/work', null)).map((snapshot) => snapshot.id);
+    const listed = (await listTerminals(root, null)).map((snapshot) => snapshot.id);
     expect(listed).toContain('sc-root');
     expect(listed).toContain('sc-child');
     expect(listed).not.toContain('sc-sibling');
   });
 
   test('a repo narrows the scope to that subdirectory', async () => {
-    seed(fakeSession({ id: 'rp-in', cwd: '/srv/work/pkg' }));
-    seed(fakeSession({ id: 'rp-out', cwd: '/srv/work/pkg2' }));
+    const work = join(SRV, 'work');
+    seed(fakeSession({ id: 'rp-in', cwd: join(work, 'pkg') }));
+    seed(fakeSession({ id: 'rp-out', cwd: join(work, 'pkg2') }));
     // Seeded HERE: the `.` case needs a session at the root itself, and taking
     // it from another test would make this one depend on that test having run.
-    const root = seed(fakeSession({ id: 'rp-root', cwd: '/srv/work' }));
+    const root = seed(fakeSession({ id: 'rp-root', cwd: work }));
 
-    const listed = (await listTerminals('/srv/work', 'pkg')).map((snapshot) => snapshot.id);
+    const listed = (await listTerminals(work, 'pkg')).map((snapshot) => snapshot.id);
     expect(listed).toContain('rp-in');
     expect(listed).not.toContain('rp-out');
     // `.` means the root itself, not a child named `.`.
-    expect((await listTerminals('/srv/work', '.')).map((snapshot) => snapshot.id)).toContain(root.id);
+    expect((await listTerminals(work, '.')).map((snapshot) => snapshot.id)).toContain(root.id);
   });
 
   testPosix('a running shell with a live process is reported busy', async () => {

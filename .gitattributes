@@ -1,0 +1,42 @@
+# Line endings, pinned for every checkout.
+#
+# The chamber is developed on macOS, gated on Linux, and SHIPS a Windows CLI, so
+# the same working tree is checked out on all three. Without this file git uses
+# each platform's default, and Windows defaults to `core.autocrlf=true` — which
+# rewrites every text file to CRLF in the working tree. That is not cosmetic
+# here: a large part of the suite compares file CONTENT byte for byte (git
+# operations, the editor, the diff panel, markdown), and a CRLF checkout makes
+# every one of those assertions fail for a reason that has nothing to do with
+# the code under test. Measured on the first Windows run: the git merge, stash,
+# discard and status suites all reported `- Expected - 0 / + Received + 0` — a
+# diff whose only difference is the invisible `\r`.
+#
+# `text=auto` normalises to LF in the repository and lets git decide per file,
+# so a genuinely binary asset is still stored as-is. `*.sh` and the CLI's own
+# scripts are pinned to LF because a CRLF shebang line makes a shell script
+# unrunnable on POSIX (`#!/bin/sh\r` names an interpreter that does not exist).
+#
+# Do not add a per-file `-text` override for anything the suite reads as text.
+* text=auto
+
+# Shell scripts and anything else executed through a shebang: LF, always.
+*.sh text eol=lf
+*.bash text eol=lf
+src/cli/** text eol=lf
+
+# Images and other binary assets: never touch them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.gz binary
+*.sqlite binary
+*.sqlite-wal binary
+*.sqlite-shm binary

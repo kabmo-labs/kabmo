@@ -10,9 +10,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeDir } from '@/test-support/remove-dir';
 
 import {
   loadStreamStates,
@@ -35,10 +36,16 @@ describe('run model on the stream row', () => {
   });
 
   afterEach(() => {
+    // CLOSE the handle before dropping the reference and deleting the tree. A
+    // bare `delete globalThis.__ompChamberDb` abandons the connection without
+    // closing it, so the file stays locked; on Windows the delete then fails
+    // with EBUSY and reports the PREVIOUS test as failed (measured on the first
+    // Windows run: every case in this file).
+    globalThis.__ompChamberDb?.resolved?.raw.close();
     delete globalThis.__ompChamberDb;
     if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
     else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
-    rmSync(root, { recursive: true, force: true });
+    removeDir(root);
   });
 
   test('a dispatch write stores the pair, and a status-only re-mark keeps it', async () => {

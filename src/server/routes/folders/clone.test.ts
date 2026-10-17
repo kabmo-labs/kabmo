@@ -23,11 +23,16 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import { action as cloneAction } from '@/server/routes/folders/clone';
 
-const ROOT = '/tmp/omc-folders-clone-test';
+// `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
+// POSIX-literal root makes every write land at a path the OS resolves against
+// the current drive — the fixture directories never exist where the route looks
+// for them, and the request fails for a reason unrelated to what is under test.
+const ROOT = path.join(os.tmpdir(), 'omc-folders-clone-test');
 const PROJECTS = path.join(ROOT, 'projects');
 const ORIGIN = path.join(ROOT, 'origin');
 

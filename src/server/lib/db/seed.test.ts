@@ -22,11 +22,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 
 import { createDb, type DbClient } from '@/server/lib/db/client';
+import { removeDir } from '@/test-support/remove-dir';
 import { initSchema } from '@/server/lib/db/schema';
 import { seedMockData } from '@/server/lib/db/seed';
 
@@ -59,17 +60,27 @@ const DRREALHANDLER_TITLES = [
 ];
 
 let workRoot = '';
+/** Every client this file opened, so teardown can close them before deleting. */
+const opened: DbClient[] = [];
 
 beforeEach(() => {
   workRoot = mkdtempSync(path.join(tmpdir(), 'ompchamber-test-'));
 });
 
 afterEach(() => {
-  rmSync(workRoot, { recursive: true, force: true });
+  // CLOSE FIRST, then delete. `force: true` only suppresses ENOENT, so on
+  // Windows an open connection makes the delete fail with EBUSY — and because
+  // the throw happens in `afterEach`, it reports the PREVIOUS test as failed and
+  // cascades through the rest of the file. Measured on the first Windows run:
+  // every case in this file failed this way while the assertions themselves
+  // passed.
+  for (const db of opened.splice(0)) db.raw.close();
+  removeDir(workRoot);
 });
 
 async function freshDb(name: string): Promise<DbClient> {
   const db = createDb(path.join(workRoot, `${name}.sqlite`));
+  opened.push(db);
   await initSchema(db);
   return db;
 }

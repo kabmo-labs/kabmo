@@ -30,6 +30,7 @@ import { clientAddressFor, rememberClientAddress } from '@/server/lib/auth/clien
 import { UNKNOWN_CLIENT_KEY } from '@/server/lib/auth/rate-limit';
 import { getAuthPath } from '@/server/lib/lifecycle/paths';
 import { createDb } from '@/server/lib/db/client';
+import { removeDir } from '@/test-support/remove-dir';
 import { initSchema } from '@/server/lib/db/schema';
 
 let workRoot = '';
@@ -41,14 +42,23 @@ beforeAll(() => {
   Bun.env.OMPCHAMBER_DATA_DIR = workRoot;
 });
 
+/** Every connection this file opened, closed before the directory is deleted. */
+const opened: Array<{ close(): void }> = [];
+
 afterAll(() => {
   if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
   else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
-  fs.rmSync(workRoot, { recursive: true, force: true });
+  for (const db of opened.splice(0)) db.close();
+  removeDir(workRoot);
 });
 
 afterEach(() => {
-  fs.rmSync(workRoot, { recursive: true, force: true });
+  // Close, then delete. On Windows an open SQLite handle makes the delete fail
+  // with EBUSY, and a throw from `afterEach` reports the PREVIOUS test as failed
+  // — measured on the first Windows run, where all eight cases here failed on
+  // the teardown of the one before.
+  for (const db of opened.splice(0)) db.close();
+  removeDir(workRoot);
   fs.mkdirSync(workRoot, { recursive: true });
 });
 
@@ -120,7 +130,9 @@ describe('client address', () => {
 
 describe('database client', () => {
   async function freshDb(name: string) {
-    return createDb(path.join(workRoot, `${name}.sqlite`));
+    const db = createDb(path.join(workRoot, `${name}.sqlite`));
+    opened.push(db.raw);
+    return db;
   }
 
   test('opens with the pragmas a shared database needs', async () => {
@@ -166,6 +178,7 @@ describe('database client', () => {
 describe('schema bootstrap', () => {
   test('creates the chamber tables and is idempotent', async () => {
     const db = createDb(path.join(workRoot, 'schema.sqlite'));
+    opened.push(db.raw);
     await initSchema(db);
     const tableNames = async () => (await db.all<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
@@ -189,10 +202,12 @@ describe('schema bootstrap', () => {
   test('a second connection to the same file sees the same schema', async () => {
     const file = path.join(workRoot, 'shared.sqlite');
     const first = createDb(file);
+    opened.push(first.raw);
     await initSchema(first);
     await first.run("INSERT INTO app_settings (key, value) VALUES ('k', 'v')");
 
     const second = createDb(file);
+    opened.push(second.raw);
     expect(await second.get<{ value: string }>("SELECT value FROM app_settings WHERE key = 'k'")).toEqual({ value: 'v' });
     expect(await second.get<{ name: string }>("SELECT name FROM sqlite_master WHERE name = 'files'")).toEqual({ name: 'files' });
   });

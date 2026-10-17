@@ -25,7 +25,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { getDb } from '@/server/db.server';
@@ -33,6 +33,8 @@ import { getDefaultFsRoot, isWithinRoot, resolveReferencedPath, resolveRoot, res
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { runShell, shellOk } from '@/server/lib/fs/shell';
+import { removeDir } from '@/test-support/remove-dir';
+import { testPosix } from '@/test-support/platform';
 
 const tempDirs: string[] = [];
 
@@ -125,12 +127,17 @@ describe('resolveRoot / resolveReferencedPath / getDefaultFsRoot', () => {
   });
 
   afterAll(() => {
+    // Close the connection this block opened BEFORE restoring the slot and
+    // deleting the tree. Restoring first loses the only reference to it, and on
+    // Windows the still-open handle makes the delete fail with EBUSY — which a
+    // throw from `afterAll` reports as a failure of this block.
+    globalThis.__ompChamberDb?.resolved?.raw.close();
     globalThis.__ompChamberDb = savedSlot;
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete Bun.env[key];
       else Bun.env[key] = value;
     }
-    rmSync(dbDir, { recursive: true, force: true });
+    removeDir(dbDir);
   });
 
   test('an exact registered project_path is honored', async () => {
@@ -196,6 +203,10 @@ describe('revealInFileManager verdicts', () => {
   // deterministic half of the contract.
 });
 
+// `runShell` runs `sh -c`, and on Windows that `sh` is Git-for-Windows' — which
+// reports POSIX-style paths from `pwd` and needs a POSIX process group for the
+// timeout kill. The portable cases stay; the two that assert either of those
+// behaviours are POSIX-only.
 describe('runShell', () => {
   test('exit 0, stdout and stderr are reported without throwing', async () => {
     const ok = await runShell('printf out; printf err 1>&2');
@@ -213,7 +224,7 @@ describe('runShell', () => {
     expect(bad.error).toBeUndefined();
   });
 
-  test('cwd and env are applied to the child', async () => {
+  testPosix('cwd and env are applied to the child', async () => {
     const dir = tempDir('shell');
     const pwd = await runShell('pwd', { cwd: dir });
     expect(pwd.stdout.trim()).toBe(realpathSync(dir));
@@ -221,7 +232,7 @@ describe('runShell', () => {
     expect(env.stdout).toBe('bar');
   });
 
-  test('a timeout kills the child and is surfaced as a signal', async () => {
+  testPosix('a timeout kills the child and is surfaced as a signal', async () => {
     // `sh -c 'sleep 5'` forks on Linux (dash), so the shell's grandchild is what
     // holds stdout open: the timeout must signal the whole process GROUP, or
     // this read blocks until `sleep` finishes on its own and the case times out

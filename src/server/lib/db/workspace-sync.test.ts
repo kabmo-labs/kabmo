@@ -84,10 +84,14 @@ function invalidateDiscovery(): void {
   invalidateOmpSidebarData();
 }
 
+/** Every client this file opened, closed before the tree is deleted. */
+const opened: DbClient[] = [];
+
 /** A fresh database on its own file, so one test's rows cannot reach another. */
 async function freshDb(name: string): Promise<DbClient> {
   const dbPath = path.join(workRoot, `${name}.sqlite`);
   const db = createDb(dbPath);
+  opened.push(db);
   await db.exec(SCHEMA);
   return db;
 }
@@ -125,6 +129,10 @@ beforeEach(() => {
 afterAll(async () => {
   delete process.env.PI_CODING_AGENT_DIR;
   invalidateDiscovery();
+  // Close every connection before the tree goes: an open SQLite handle makes a
+  // Windows delete fail with EBUSY, and a throw from `afterAll` reports a
+  // failure of this file.
+  for (const db of opened.splice(0)) db.raw.close();
   await fsp.rm(workRoot, { recursive: true, force: true });
 });
 
