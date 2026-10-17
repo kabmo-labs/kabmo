@@ -7,6 +7,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
+import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { formatCompactTokens } from '@/shared/lib/format/number';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
@@ -249,8 +250,12 @@ export function MobileHeader({
         </div>
       </div>
 
-      {/* Right: context telemetry & right panel toggle */}
+      {/* Right: reload, context telemetry & right panel toggle */}
       <div className="flex items-center space-x-1 text-ink">
+        <ReloadPageButton
+          size={18}
+          className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
+        />
         <div className="relative flex items-center" ref={telemetryRef}>
           <button
             type="button"

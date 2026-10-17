@@ -27,6 +27,10 @@ test.describe('mobile layout', () => {
     // "Open Sessions" and "Open Right Panel" do not exist on the desktop tree.
     await expect(app.getByRole('button', { name: 'Open Sessions' })).toBeVisible();
     await expect(app.getByRole('button', { name: 'Open Right Panel' })).toBeVisible();
+    // Reload is the desktop navbar's control too, so a phone that never drew it
+    // would pass every other assertion here — the label is the one thing both
+    // layouts share.
+    await expect(app.getByRole('button', { name: 'Reload page' })).toBeVisible();
   });
 
   test('opens the sessions drawer', async ({ app }) => {
