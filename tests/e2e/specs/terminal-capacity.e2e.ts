@@ -100,11 +100,13 @@ test.describe('terminal capacity', () => {
     const root = workspace.path;
 
     const opened: LiveShell[] = [];
-    // Scoped the way the panel scopes it, AND matched on the ids this spec
-    // opened: the scope is what a real client asks for, while the id set keeps
-    // an unrelated shell from satisfying the precondition.
+    // Read UNFILTERED and match on the ids this spec opened. `?root=` is a
+    // PANEL concern — "which shells can this client adopt" — and it compares a
+    // shell's cwd against the resolved root; the cap counts shells and asks no
+    // directory question at all, so the precondition must not inherit one. The
+    // id set is what keeps an unrelated shell from satisfying it.
     const readInventory = async (): Promise<Inventory> => {
-      const response = await fetch(`${server.baseURL}/api/terminal/sessions?root=${encodeURIComponent(root)}`);
+      const response = await fetch(`${server.baseURL}/api/terminal/sessions`);
       expect(response.ok).toBe(true);
       return (await response.json()) as Inventory;
     };
