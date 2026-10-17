@@ -50,6 +50,16 @@ export interface HarnessServer {
   port: number;
   /** The temp root this server owns; removed by `stop`. */
   runRoot: string;
+  /**
+   * Register a directory to delete AFTER this server has stopped.
+   *
+   * A workspace a spec seeds is scanned by the server, so its handles can
+   * outlive the spec body. Deleting it in the spec's own `dispose()` loses the
+   * race on Windows (`EBUSY … rmdir`) — measured as 19 failing specs. Queuing it
+   * here moves the delete after the process is gone, which is the only point at
+   * which the OS is guaranteed to have released them.
+   */
+  removeAfterStop(dir: string): void;
   /** Boot output so far, for a failing spec's report. */
   log(): string;
   stop(): Promise<void>;
@@ -249,6 +259,8 @@ export async function startHarnessServer(options: {
   });
 
   let alive = true;
+  /** Directories a spec asked to delete, swept after the server exits. */
+  const pendingRemovals: string[] = [];
   const exitGate = Promise.withResolvers<void>();
   const exited = exitGate.promise;
   child.once('exit', () => {
@@ -262,6 +274,9 @@ export async function startHarnessServer(options: {
     port,
     runRoot,
     log: () => output,
+    removeAfterStop(dir) {
+      pendingRemovals.push(dir);
+    },
     async stop() {
       if (alive) {
         signalGroup(child, 'SIGTERM');
@@ -271,6 +286,9 @@ export async function startHarnessServer(options: {
           await exited;
         }
       }
+      // After the process is gone: a workspace the server scanned is only
+      // deletable once IT has released the handles.
+      for (const dir of pendingRemovals.splice(0)) removeDirWhenFree(dir);
       removeDirWhenFree(runRoot);
     },
   };

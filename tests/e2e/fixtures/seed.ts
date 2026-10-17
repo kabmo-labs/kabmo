@@ -16,7 +16,6 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { removeDirWhenFree } from './remove-dir';
 import type { HarnessServer } from './server';
 
 export interface SeededWorkspace {
@@ -47,7 +46,9 @@ export async function seedWorkspace(server: HarnessServer, name = 'e2e-workspace
     id,
     path: dir,
     dispose() {
-      removeDirWhenFree(dir);
+      // Queue it rather than deleting now: the server has this directory open
+      // (it scanned it), so a delete here races the process on Windows.
+      server.removeAfterStop(dir);
     },
   };
 }
