@@ -144,9 +144,16 @@ describe('settling a run omp no longer owns', () => {
   test('a run that is still talking is not even probed', async () => {
     const { host, sent } = makeHost(sessionState());
     const clock = new RunSettle(host, { silenceMs: 30_000, retrySlackMs: 0 });
-    clock.noteFrame({ type: 'message_update' } as AgentEvent);
-    expect(await clock.reconcile('request')).toBe(false);
-    expect(sent).toEqual([]);
+    try {
+      clock.noteFrame({ type: 'message_update' } as AgentEvent);
+      expect(await clock.reconcile('request')).toBe(false);
+      expect(sent).toEqual([]);
+    } finally {
+      // A clock that is not stopped leaves a live 30s timer, which keeps the
+      // process (and the database handle it opened) alive past the test — and
+      // on Windows that is what made the teardown delete fail with EBUSY.
+      clock.stop();
+    }
   });
 
   test('an announced retry wait is not probed inside, and is probed once it lands', async () => {
@@ -268,7 +275,12 @@ describe('settling a run omp no longer owns', () => {
     wrapper.onEvent((event) => events.push(event));
 
     // A short silence window: the wrapper's own clock uses the production 30s.
-    expect(await new RunSettle(wrapper, { silenceMs: 0, retrySlackMs: 0 }).reconcile('request')).toBe(true);
+    const clock = new RunSettle(wrapper, { silenceMs: 0, retrySlackMs: 0 });
+    try {
+      expect(await clock.reconcile('request')).toBe(true);
+    } finally {
+      clock.stop();
+    }
     expect((await loadStreamStates())[sessionId]?.status).toBe('finish');
     expect(wrapper.isRunning()).toBe(false);
     expect(events).toContainEqual({ type: 'agent_end', isTerminal: true, messages: [] });

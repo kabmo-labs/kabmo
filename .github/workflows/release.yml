@@ -248,6 +248,9 @@ jobs:
     with:
       packages: ${{ needs.packages.outputs.released }}
       ref: main
+      # This run's own `gates`/`e2e` jobs verified the starting commit, and the
+      # bump commit differs from it by manifests and a lockfile only.
+      run-gates: false
     secrets: inherit
 
   # ---------------------------------------------------------------------------
@@ -449,4 +452,10 @@ jobs:
     uses: ./.github/workflows/publish-app.yml
     with:
       tag: ${{ needs.app.outputs.tag }}
+      # The tag differs from the commit this run already gated by CHANGELOG.md,
+      # the version field and a bundled plugin's manifest — no code. Re-running
+      # the full matrix on that delta bought no coverage and cost a release:
+      # v4.18.2 was tagged and never published because one unrelated test's
+      # teardown flaked.
+      run-gates: false
     secrets: inherit

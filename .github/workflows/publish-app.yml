@@ -53,6 +53,26 @@ on:
         description: Tag to publish; empty means the caller's commit.
         required: false
         type: string
+      # Run the gates and the browser specs before publishing.
+      #
+      # TRUE for the trigger file (`publish.yml`): a tag can be pushed by hand,
+      # and a release can be published from a commit that never went through
+      # `release.yml` — so on that path nothing else would have verified it.
+      #
+      # FALSE for `release.yml`, and that is not a shortcut. Its own `gates` and
+      # `e2e` jobs have just passed, and the tag it publishes differs from the
+      # commit they verified by exactly the release metadata — CHANGELOG.md, the
+      # version field, and a bundled plugin's manifest. Measured on v4.18.2: three
+      # files, none of them code. Re-running the suite on that delta costs the
+      # full browser matrix (measured 9m38s on the Windows leg alone) and buys no
+      # coverage, while a flake in it BLOCKS a release that is already tagged —
+      # which is exactly what happened on this pipeline: v4.18.2 was tagged and
+      # never reached npm because one unrelated test's teardown tripped.
+      run-gates:
+        description: Verify the ref before publishing; false when the caller already did.
+        required: false
+        type: boolean
+        default: true
     secrets:
       # Declared so a caller can pass it by name. The value is normally the
       # `npm` environment's secret, which the publish job receives directly —
@@ -76,6 +96,10 @@ jobs:
   # `tests/ci-gates.test.ts`.
   gates:
     name: Gates
+    # Skipped — not skipped-and-still-called — when the caller already verified.
+    # A called workflow cannot be omitted per-call, so the job's own `if:` is
+    # what expresses it; `always()` keeps the publish job's `needs` satisfiable.
+    if: ${{ inputs.run-gates }}
     uses: ./.github/workflows/gates.yml
     with:
       ref: ${{ inputs.tag || github.sha }}
@@ -84,13 +108,18 @@ jobs:
   # to `main`, so no `e2e.yml` run exists for this event to wait on at all.
   e2e:
     name: E2E specs
+    if: ${{ inputs.run-gates }}
     uses: ./.github/workflows/e2e-specs.yml
     with:
       ref: ${{ inputs.tag || github.sha }}
 
   publish:
     name: Publish to npm
+    # `always()` so a skipped gate does not skip the publish with it: a skipped
+    # job in `needs` makes the dependent job skip by default, which would turn
+    # `run-gates: false` into "publish nothing".
     needs: [gates, e2e]
+    if: ${{ always() && (needs.gates.result == 'success' || needs.gates.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: npm
     steps:

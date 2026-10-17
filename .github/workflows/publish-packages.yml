@@ -72,6 +72,13 @@ on:
         description: Git ref to publish from; empty means the caller's ref.
         required: false
         type: string
+      # See `publish-app.yml`: false when the caller's own run already gated the
+      # ref it is asking this body to publish.
+      run-gates:
+        description: Verify the ref before publishing; false when the caller already did.
+        required: false
+        type: boolean
+        default: true
     secrets:
       # See `publish-app.yml`: declared so a caller can pass it by name, with the
       # value normally arriving from the `npm` environment on the job below.
@@ -89,6 +96,7 @@ jobs:
   # a hand-pushed tag was never gated at all.
   gates:
     name: Gates
+    if: ${{ inputs.run-gates }}
     uses: ./.github/workflows/gates.yml
     with:
       ref: ${{ inputs.ref || github.sha }}
@@ -96,13 +104,17 @@ jobs:
   # The browser layer, on the same commit.
   e2e:
     name: E2E specs
+    if: ${{ inputs.run-gates }}
     uses: ./.github/workflows/e2e-specs.yml
     with:
       ref: ${{ inputs.ref || github.sha }}
 
   publish:
     name: Publish to npm
+    # See `publish-app.yml`: `always()` so a skipped gate does not skip the
+    # publish, while a FAILED one still does.
     needs: [gates, e2e]
+    if: ${{ always() && (needs.gates.result == 'success' || needs.gates.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: npm
     steps:

@@ -228,6 +228,39 @@ describe('the gate contract', () => {
       const needs = doc.jobs.publish.needs ?? [];
       expect(needs, `${file}:publish must need both gate jobs`).toContain('gates');
       expect(needs, `${file}:publish must need both gate jobs`).toContain('e2e');
+      // `always()` is required, not decoration: a skipped job in `needs` makes
+      // the dependent job skip by default, which would turn the `run-gates:
+      // false` path into "publish nothing" — a silent no-op instead of a
+      // release. The result checks keep a FAILED gate blocking the publish.
+      const condition = String(doc.jobs.publish.if ?? '');
+      expect(condition, `${file}:publish must run when its gates are skipped`).toContain('always()');
+      expect(condition, `${file}:publish must still refuse a failed gate`).toContain("needs.gates.result == 'success'");
+    }
+  });
+
+  test('a release does not re-gate the commit it already verified', async () => {
+    // The release run's own `gates`/`e2e` jobs verify the pushed commit. The tag
+    // it publishes differs from that commit by release METADATA only — measured
+    // on v4.18.2: CHANGELOG.md, the version field, and one bundled plugin's
+    // manifest, with no code among them. Re-running the browser matrix on that
+    // delta buys no coverage and costs a release when it flakes, which is what
+    // happened: v4.18.2 was tagged and never reached npm because an unrelated
+    // test's teardown tripped inside the publish job's own gate run.
+    const doc = await load('release.yml');
+    for (const id of ['app-publish', 'packages-publish']) {
+      expect(
+        doc.jobs[id].with?.['run-gates'],
+        `release.yml:${id} must not re-gate what this run already gated`,
+      ).toBe(false);
+    }
+    // The trigger files keep the gates ON, because a hand-pushed tag was never
+    // verified by anything.
+    for (const [file, id] of [['publish.yml', 'publish'], ['publish-plugins.yml', 'publish']] as const) {
+      const trigger = await load(file);
+      const called = String(trigger.jobs[id].uses);
+      const body = await load(called.replace('./.github/workflows/', ''));
+      const runGates = body.on?.workflow_call?.inputs?.['run-gates'];
+      expect(runGates?.default, `${file}: the gate opt-out must default to running them`).toBe(true);
     }
   });
 
