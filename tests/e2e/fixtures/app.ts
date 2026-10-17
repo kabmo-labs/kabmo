@@ -137,5 +137,18 @@ export async function openApp(page: Page, url: string): Promise<void> {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
 }
 
+/**
+ * Skip a spec that cannot pass on Windows, with the reason it cannot.
+ *
+ * Several browser specs drive something the OS does not have: the system
+ * clipboard (the Files panel's copy/paste), a `sh` script (the command runner's
+ * fixture commands), `git`'s own conflict machinery through the panel, or a
+ * symlink (the workspace clone fixtures). Those are platform limits, not
+ * untested behaviour, and a skip states that where the spec is read.
+ */
+export function skipOnWindows(reason: string): void {
+  test.skip(process.platform === 'win32', reason);
+}
+
 export { expect, selectors, REPO_ROOT };
 export type { HarnessMode, HarnessServer };

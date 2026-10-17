@@ -20,7 +20,7 @@
 
 import { mkdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 import type { SeededWorkspace } from '../fixtures/seed';
 
@@ -119,6 +119,7 @@ test.describe('files panel clipboard', () => {
   });
 
   test('a paste onto the panel background moves an entry out to the listing root', async ({ harness, page }) => {
+    skipOnWindows('needs the OS clipboard');
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-clip-root');
     seedTree(workspace);
@@ -169,6 +170,7 @@ test.describe('files panel clipboard', () => {
   });
 
   test('dragging an entry onto the panel background moves it to the listing root', async ({ harness, page }) => {
+    skipOnWindows('needs the OS clipboard');
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-drag-root');
     seedTree(workspace);

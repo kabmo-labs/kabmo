@@ -35,7 +35,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
 /** The visible picker trigger — one per on-screen panel. */
@@ -45,6 +45,7 @@ function picker(page: Page) {
 
 test.describe('repo picker', () => {
   test('every browsing panel renders the kit picker', async ({ harness, page }) => {
+    skipOnWindows('builds nested repositories with a shell fixture');
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-repo-picker');
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);

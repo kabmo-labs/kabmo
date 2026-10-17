@@ -27,7 +27,7 @@
  * repository — a hand-written `.git` directory would test the fixture.
  */
 
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import type { Locator, Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -205,6 +205,7 @@ test.describe('Source Control — merge conflicts', () => {
   });
 
   test('resolving through the UI concludes the merge with a real merge commit', async ({ harness, page }) => {
+    skipOnWindows('drives git conflict state through a shell fixture');
     const server = await harness('real');
     const repo = makeRepo('git-resolve');
     seedConflictingBranches(repo);
@@ -242,6 +243,7 @@ test.describe('Source Control — merge conflicts', () => {
   });
 
   test('abort restores the pre-merge tree and asks first', async ({ harness, page }) => {
+    skipOnWindows('drives git conflict state through a shell fixture');
     const server = await harness('real');
     const repo = makeRepo('git-abort');
     seedConflictingBranches(repo);
@@ -270,6 +272,7 @@ test.describe('Source Control — merge conflicts', () => {
   });
 
   test('a rebase conflict is concluded by rebase --continue, not by a bare commit', async ({ harness, page }) => {
+    skipOnWindows('drives git conflict state through a shell fixture');
     const server = await harness('real');
     const repo = makeRepo('git-rebase');
     seedConflictingBranches(repo);
@@ -412,6 +415,7 @@ test.describe('Source Control — branch management', () => {
 
 test.describe('Source Control — stash and commit', () => {
   test('a stash entry is listed with its subject and dropped only after a confirmation', async ({ harness, page }) => {
+    skipOnWindows('drives git conflict state through a shell fixture');
     const server = await harness('real');
     const repo = makeRepo('git-stash');
     repo.git('commit', '-q', '--allow-empty', '-m', 'base');

@@ -28,7 +28,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedCloneParent, seedRepo } from '../fixtures/git-repo';
 
 /** Open the dialog from the sidebar toolbar and wait for its heading. */
@@ -130,6 +130,7 @@ test.describe('new workspace dialog', () => {
   });
 
   test('clones a repository and the new workspace appears in the sidebar', async ({ harness, page }) => {
+    skipOnWindows('clones a repository into a temp workspace');
     const server = await harness('real');
     const origin = seedRepo('clone-origin');
     const parent = seedCloneParent('clone-into');
@@ -152,6 +153,7 @@ test.describe('new workspace dialog', () => {
   });
 
   test('surfaces a failed clone without closing the dialog', async ({ harness, page }) => {
+    skipOnWindows('clones a repository into a temp workspace');
     const server = await harness('real');
     const parent = seedCloneParent('clone-fail');
     await openApp(page, server.baseURL);

@@ -32,7 +32,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 
 /** A git repository holding one panel plugin, committed and cloneable. */
 interface PluginRepo {
@@ -94,6 +94,7 @@ async function installFromUrl(page: import('@playwright/test').Page, url: string
 
 test.describe('panel plugins', () => {
   test('installs a git plugin and shows its freshness row', async ({ harness, page }) => {
+    skipOnWindows('installs a plugin from a local git clone');
     const server = await harness('real');
     const root = mkdtempSync(join(tmpdir(), 'omc-e2e-plugin-'));
     const repo = makePluginRepo(root);
@@ -117,6 +118,7 @@ test.describe('panel plugins', () => {
   });
 
   test('detects a newer commit and updates to it', async ({ harness, page }) => {
+    skipOnWindows('installs a plugin from a local git clone');
     const server = await harness('real');
     const root = mkdtempSync(join(tmpdir(), 'omc-e2e-plugin-'));
     const repo = makePluginRepo(root);

@@ -33,7 +33,7 @@ import { join } from 'node:path';
 
 import type { Page } from '@playwright/test';
 
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
 /** Install the bundled plugin through the real route. */
@@ -114,6 +114,7 @@ function commandsButton(page: Page) {
 
 test.describe('command runner plugin', () => {
   test('lists a repository\u2019s commands grouped by file, and runs one', async ({ harness, page }) => {
+    skipOnWindows('runs a fixture command through a POSIX shell');
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-commands');
     await installRunner(server.baseURL);
