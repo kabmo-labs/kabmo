@@ -200,4 +200,25 @@ describe('the gate contract', () => {
       expect(doc.jobs[id].with?.ref, `${id} gates a different ref than the publish checkout`).toBe(checkout.with.ref);
     }
   });
+  test('both gates run on Windows as well as Linux', async () => {
+    // The chamber ships a Windows CLI, and the win32 branches in its path
+    // helpers, `stop`'s ownership guard and the process-tree kill are otherwise
+    // never executed by any gate: the repository is developed on macOS and the
+    // runners are Linux. Three of the last five commits on `main` are Windows
+    // fixes that were written and verified on a Mac.
+    //
+    // Asserted rather than left to review because a runner removed from a job
+    // is invisible: the job keeps passing on the platform that remained.
+    for (const [file, jobs] of [
+      ['gates.yml', ['checks', 'windows']],
+      ['e2e-specs.yml', ['chromium', 'chromium-windows']],
+    ] as const) {
+      const doc = await load(file);
+      // Bracket notation: `runs-on` contains a hyphen, so `doc.jobs[x].runs-on`
+      // parses as a subtraction.
+      const runners = jobs.map((id) => doc.jobs?.[id]?.['runs-on'] as string | undefined);
+      expect(runners, `${file} must run on both Linux and Windows`).toContain('ubuntu-latest');
+      expect(runners, `${file} must run on both Linux and Windows`).toContain('windows-latest');
+    }
+  });
 });

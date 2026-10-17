@@ -14,15 +14,16 @@ name: Gates
 #
 # A reusable workflow is called by a job, and the check a caller reports is
 # `<caller job name> / <callee job name>` — measured on this repository: the
-# single job `Gates` in `ci.yml` now reports `Gates / Checks` and
-# `Gates / Settings schema`, where it used to report `Gates` and
-# `Settings schema`. That is a RENAME of the check, and it is safe here only
-# because this repository's `main` ruleset requires no status checks (verified:
-# its rules are `deletion` and `non_fast_forward`). A repository whose branch
-# protection DID require those names would need the ruleset updated in the same
-# change, or every pull request would wait forever on a check that no longer
-# reports. Nothing can prevent the rename — the callee's job name is not
-# configurable from the caller — so it is a fact to plan around, not a bug.
+# single job `Gates` in `ci.yml` now reports `Gates / Checks`,
+# `Gates / Checks (Windows)` and `Gates / Settings schema`, where it used to
+# report `Gates` and `Settings schema`. That is a RENAME of the check, and it is
+# safe here only because this repository's `main` ruleset requires no status
+# checks (verified: its rules are `deletion` and `non_fast_forward`). A
+# repository whose branch protection DID require those names would need the
+# ruleset updated in the same change, or every pull request would wait forever
+# on a check that no longer reports. Nothing can prevent the rename — the
+# callee's job name is not configurable from the caller — so it is a fact to
+# plan around, not a bug.
 #
 # Nothing here reads a secret, and nothing here writes to the repository: every
 # step is a read of the checked-out commit. That is what makes it safe to call
@@ -100,6 +101,63 @@ jobs:
             exit 1
           fi
           echo "No file over 350 lines."
+
+  # ---------------------------------------------------------------------------
+  # The SAME gates on Windows, because the chamber ships a Windows CLI and the
+  # repository is developed on macOS.
+  #
+  # This job exists because of what a macOS-only gate cannot see: the CLI's
+  # path helpers, `stop`'s ownership guard and the process-tree kill all carry
+  # win32 branches (three of the last five commits on `main` are Windows fixes),
+  # and every one of them was written and verified on a Mac. A branch that only
+  # runs on Windows is a branch the default gate never executes.
+  #
+  # What is covered here is deliberately the same list as `checks`, minus the
+  # steps that are platform-independent or POSIX-bound by nature:
+  #
+  #   - `bun run lint` and the no-unused typecheck: type errors are not
+  #     platform-specific, and `tsc` on a second runner buys nothing.
+  #   - the build: `Bun.build` output does not vary by platform, and it is the
+  #     one step that executes the Tailwind/CSS plugin (see `checks`).
+  #   - the file-size ceiling: a `find | xargs | awk` pipeline, i.e. POSIX shell
+  #     that does not exist on a Windows runner.
+  #
+  # What IS here is the unit suite, which is where the platform branches live.
+  # Suites that genuinely cannot run on Windows — a PTY (`Bun.Terminal` is
+  # POSIX-only), `flock(2)`, a `#!/bin/sh` stub binary, `/bin/sh` itself — skip
+  # themselves through `src/test-support/platform.ts` and say so in their own
+  # header, so a skip is visible in the log rather than silently absent.
+  #
+  # A separate JOB rather than a matrix over `checks`: the two do not run the
+  # same steps, and a matrix that expressed both would need a condition on
+  # almost every step — which is a gate whose coverage depends on an `if:`.
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Checks (Windows)
+    runs-on: windows-latest
+    # The Windows runner is markedly slower per file than the Linux one on this
+    # suite, and a timeout that a slow runner trips reads as a failure of the
+    # change rather than of the machine.
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The suite itself. `bun test` on Windows needs no shell gymnastics: Bun
+      # runs the TypeScript directly, and the POSIX-bound suites skip
+      # themselves.
+      - name: Test
+        run: bun test
 
   # The settings panel is driven by a GENERATED table, so its staleness is a
   # gate rather than a review note: `bun run omp:schema:check` regenerates from

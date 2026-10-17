@@ -15,15 +15,19 @@
  * against a real second process (a throwaway `bun -e`, never an `omp` server)
  * instead of a fake. The same-inode/different-path case uses a symlink: it
  * bypasses the module's re-entrancy shortcut and asks `flock(2)` directly.
+ *
+ * POSIX-only (`describePosix`): `flock(2)` has no Windows equivalent, so every
+ * lease semantics the module exposes is unreachable there.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import { flockAvailable, tryFlock } from '@/server/lib/lifecycle/flock';
 import type { FlockHandle } from '@/server/lib/lifecycle/flock';
+import { describePosix } from '@/test-support/platform';
 
 /** Without `flock(2)` every lease test would assert the unavailability path. */
 const flockWorks = flockAvailable();
@@ -84,7 +88,7 @@ afterEach(async () => {
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
-describe('flockAvailable', () => {
+describePosix('flockAvailable', () => {
   test('answers with a boolean and caches the answer', () => {
     const first = flockAvailable();
     expect(typeof first).toBe('boolean');
@@ -94,7 +98,7 @@ describe('flockAvailable', () => {
   });
 });
 
-describe('tryFlock', () => {
+describePosix('tryFlock', () => {
   test('grants a free lock and records this process in the file', () => {
     if (!flockWorks) return;
     const file = path.join(tempDir, 'port.lock');

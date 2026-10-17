@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * `registry.server.ts` assembles the model list `GET /api/models` serves, and
  * every rule it applies is invisible in the response when it is wrong:
@@ -20,6 +22,7 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -155,7 +158,7 @@ describe('readStoredProvidersForModels', () => {
   });
 });
 
-describe('loadModelsWithCache', () => {
+describePosix('loadModelsWithCache', () => {
   test('a fresh cached snapshot is returned without rebuilding it', async () => {
     const sentinel = { ...EMPTY_MODELS, models: { 'x:y': 'sentinel' } };
     globalThis.__ompChamberModelsCache = { data: sentinel, expiresAt: Date.now() + 60_000 };
@@ -183,7 +186,7 @@ describe('loadModelsWithCache', () => {
   });
 });
 
-describe('loadModels', () => {
+describePosix('loadModels', () => {
   test('a provider disabled in config.yml leaves the list; a hidden model is removed alone', async () => {
     useTempDb();
     writeFileSync(join(agentDir, 'config.yml'), 'disabledProviders:\n  - openai\n');

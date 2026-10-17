@@ -29,8 +29,8 @@
  * app runs in, so a `Bun.spawn` here is a ReferenceError.
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -52,6 +52,49 @@ export interface HarnessServer {
   /** Boot output so far, for a failing spec's report. */
   log(): string;
   stop(): Promise<void>;
+}
+
+/**
+ * A REAL executable that runs `fake-omp.ts`, compiled once per run.
+ *
+ * It used to be a `#!/bin/sh\nexec bun …` script chmod-ed `0o755`, which is
+ * exactly the shape Windows cannot start. Measured in libuv's
+ * `src/win/process.c` (`search_path` → `path_search_walk_ext`), the Windows
+ * spawn resolves ONLY `.com` and `.exe` — "Since CreateProcess can start only
+ * .com and .exe files, only those extensions are tried" — so neither a shell
+ * script nor a `.cmd` can be spawned by `Bun.spawn`, whatever its mode bits
+ * say. A compiled binary sidesteps the question entirely and is also the more
+ * faithful fixture: a real `omp` is a real executable.
+ *
+ * Compiled ONCE per process and cached: it is ~70 MB, every spec boots its own
+ * server, and the source cannot change under a running suite. The directory is
+ * removed on process exit, because a suite that leaves 70 MB in the temp dir
+ * per run is a leak that only shows up as a full disk.
+ *
+ * `--compile` carries the Bun runtime, so the result needs no `bun` on the
+ * child's PATH — which matters for the server under test, not for this caller.
+ */
+let fakeOmpBinary: Promise<string> | undefined;
+
+function compiledFakeOmp(): Promise<string> {
+  fakeOmpBinary ??= (() => {
+    const dir = mkdtempSync(join(tmpdir(), 'omc-e2e-omp-'));
+    // `.exe` on Windows: the extension is what makes it startable there.
+    const outfile = join(dir, process.platform === 'win32' ? 'fake-omp.exe' : 'fake-omp');
+    process.once('exit', () => {
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch {
+        // Best effort: the OS reclaims the temp dir regardless.
+      }
+    });
+    const result = spawnSync('bun', ['build', FAKE_OMP, '--compile', '--outfile', outfile], { stdio: 'pipe' });
+    if (result.status !== 0) {
+      throw new Error(`could not compile the fake omp:\n${result.stderr?.toString() ?? ''}`);
+    }
+    return Promise.resolve(outfile);
+  })();
+  return fakeOmpBinary;
 }
 
 /** A port the OS just handed back, so two servers cannot collide. */
@@ -102,9 +145,29 @@ async function waitForHealth(port: number, log: () => string, isAlive: () => boo
   }
 }
 
-/** Signal the whole process group, falling back to the direct child. */
+/**
+ * End the server and everything it started.
+ *
+ * POSIX signals the process GROUP: the server is spawned detached, so its
+ * grandchildren (a PTY shell, an omp child) die with it. Windows has no
+ * negative-pid equivalent — `process.kill(-pid)` is not a thing there — so it
+ * uses `taskkill /t`, the same mechanism the chamber's own
+ * `killProcessTree` takes. Falling back to the direct child alone would leave
+ * a detached `omp` behind on every Windows spec.
+ */
 function signalGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (typeof child.pid !== 'number') return;
+  if (process.platform === 'win32') {
+    const args = ['/pid', String(child.pid), '/t'];
+    if (signal === 'SIGKILL') args.push('/f');
+    try {
+      spawnSync('taskkill', args, { stdio: 'ignore', windowsHide: true });
+    } catch {
+      // taskkill missing: the direct child is the only reachable target.
+      child.kill(signal);
+    }
+    return;
+  }
   try {
     // Negative pid targets the group; the server is spawned detached so its
     // grandchildren (a PTY shell, an omp child) die with it.
@@ -143,19 +206,15 @@ export async function startHarnessServer(options: {
   const port = await pickFreePort();
 
   // Real mode drives the scripted child. `OMPCHAMBER_OMP_BIN` must be an
-  // EXECUTABLE path (the server spawns it directly), so a shim is written that
-  // execs the TypeScript source under Bun — `fake-omp.ts` is not chmod-able as
-  // itself, and the shebang is not enough on a machine where the file's mode
-  // did not survive a checkout.
-  let ompBin: string | undefined;
-  if (options.mode === 'real') {
-    ompBin = join(runRoot, 'fake-omp');
-    writeFileSync(ompBin, `#!/bin/sh\nexec bun ${JSON.stringify(FAKE_OMP)} "$@"\n`, { mode: 0o755 });
-    chmodSync(ompBin, 0o755);
-  }
+  // EXECUTABLE path — the server spawns it directly — so it is a compiled
+  // binary, not a shell script (see `compiledFakeOmp` for why a `#!/bin/sh`
+  // shim cannot work on Windows).
+  const ompBin = options.mode === 'real' ? await compiledFakeOmp() : undefined;
 
   const child = spawn('bun', ['run', 'src/server/index.ts', '--ompchamber-server'], {
     cwd: options.repoRoot,
+    // Windows has no process groups; the server is killed through `taskkill /t`
+    // instead (see `signalGroup`), so detaching would only create a console.
     detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {

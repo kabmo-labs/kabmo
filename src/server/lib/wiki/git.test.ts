@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * The wiki read path is a git spawn plus a cache, and both fail silently when
  * they are wrong: a wiki path with a space that reaches a shell as a string is
@@ -17,6 +19,7 @@
  */
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -122,7 +125,7 @@ afterAll(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('gitRun', () => {
+describePosix('gitRun', () => {
   test('passes every argument as argv, so no shell can rewrite a path', async () => {
     useFakeGit();
 
@@ -175,6 +178,9 @@ describe('firstLine', () => {
   });
 });
 
+// Portable: `byName` answers the two public hosts without a request, and the
+// probe for an unknown host is a `fetch`, not a `git` spawn — so nothing here
+// reaches the `#!/bin/sh` stub the rest of this file needs.
 describe('detectWikiProvider', () => {
   test('decides the two public hosts by name, with no request', async () => {
     for (const host of ['github.com', 'GitHub.com', 'www.github.com']) {
@@ -194,7 +200,7 @@ describe('detectWikiProvider', () => {
   });
 });
 
-describe('ensureWikiMirror', () => {
+describePosix('ensureWikiMirror', () => {
   test('fetches into a bare mirror keyed by host and slug', async () => {
     useFakeGit();
     useWikiDataDir();
@@ -286,7 +292,7 @@ describe('ensureWikiMirror', () => {
   });
 });
 
-describe('mirror reads', () => {
+describePosix('mirror reads', () => {
   test('lists every path in the tree, keeping a space in the name', async () => {
     await buildFixture();
 

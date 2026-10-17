@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * The oh-my-pi (`omp`) update check: the version the binary reports, compared
  * against the version npm serves. Both halves are decidable without a network or
@@ -12,7 +14,8 @@
  * version must not either.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,7 +26,7 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;
 
-describe('omp update check', () => {
+describePosix('omp update check', () => {
   const realOverride = Bun.env.OMPCHAMBER_OMP_BIN;
 
   /** A stand-in binary: the check only reads `omp --version` from it. */

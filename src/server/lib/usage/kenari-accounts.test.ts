@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * Two Kenari accounts must stay two providers, end to end.
  *
@@ -17,7 +19,8 @@
  * request headers are exercised together rather than one at a time.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -148,7 +151,7 @@ async function seedTwoKenariAccounts(): Promise<void> {
   ]);
 }
 
-describe('two Kenari accounts', () => {
+describePosix('two Kenari accounts', () => {
   test('each keeps its own row, its own key and its own report', async () => {
     await seedTwoKenariAccounts();
 

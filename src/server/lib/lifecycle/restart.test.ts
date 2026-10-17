@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * Restart decisions, the listener reference, and applying an update.
  *
@@ -22,6 +24,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -95,7 +98,7 @@ describe('skipRestartNote', () => {
   });
 });
 
-describe('withRestartPlan', () => {
+describePosix('withRestartPlan', () => {
   const updated: UpdateApplyResult = { success: true, target: 'ompchamber', manual: false, message: 'OMPChamber updated to v2.0.0 (bun-global).' };
 
   test('an armed plan sets the flag and appends the sentence', () => {
@@ -115,7 +118,7 @@ describe('withRestartPlan', () => {
   });
 });
 
-describe('scheduleSelfRestart', () => {
+describePosix('scheduleSelfRestart', () => {
   test('refuses when the instance cannot be identified', () => {
     // No record for this PID and no PORT to fall back to: guessing a port would
     // stop a server that is not this one.
@@ -154,7 +157,7 @@ describe('scheduleSelfRestart', () => {
   });
 });
 
-describe('listener reference', () => {
+describePosix('listener reference', () => {
   // The reference is module state shared by the whole `bun test` process, so
   // each case starts and ends with it unpublished.
   beforeEach(clearListener);
@@ -181,7 +184,7 @@ describe('listener reference', () => {
   });
 });
 
-describe('bun binary and shell route', () => {
+describePosix('bun binary and shell route', () => {
   test('prefers the runtime this install was started with', () => {
     // The test process IS Bun, so `process.execPath` is the answer, and it must
     // be an existing absolute path rather than a PATH guess.
@@ -195,7 +198,7 @@ describe('bun binary and shell route', () => {
   });
 });
 
-describe('install-method helpers', () => {
+describePosix('install-method helpers', () => {
   test('names the repository the only fast-forwardable checkout tracks', () => {
     expect(REPO_URL).toBe('https://github.com/rajebdev/ompchamber.git');
   });
@@ -208,7 +211,7 @@ describe('install-method helpers', () => {
   });
 });
 
-describe('checkAllUpdates', () => {
+describePosix('checkAllUpdates', () => {
   const originalMock = Bun.env.MOCK;
 
   afterEach(() => {
@@ -235,7 +238,7 @@ describe('checkAllUpdates', () => {
   });
 });
 
-describe('applyUpdate', () => {
+describePosix('applyUpdate', () => {
   test('an unknown target is a manual failure that changed nothing', async () => {
     const applied = await applyUpdate('sideways' as UpdateTarget);
     if (applied.updated !== false) throw new Error('expected updated === false');

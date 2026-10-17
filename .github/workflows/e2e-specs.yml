@@ -20,6 +20,13 @@ name: E2E specs
 # a job that calls a reusable workflow accepts only `name`, `uses`, `with`,
 # `secrets`, `strategy`, `needs`, `if`, `concurrency`, `permissions` and
 # `cache-mode` — everything else belongs here.
+#
+# TWO jobs run the same suite on two operating systems, because the chamber's
+# Windows-only code paths are otherwise never executed by a browser: the CLI's
+# path helpers, `stop`'s ownership guard and the `taskkill` tree kill. See the
+# `chromium-windows` job for what the harness had to change to make that
+# possible (it is not a portability nicety — `Bun.spawn` cannot start a shell
+# script on Windows at all) and for the two specs that skip themselves there.
 on:
   workflow_call:
     inputs:
@@ -82,6 +89,88 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # The same browser specs on Windows.
+  #
+  # The specs drive a REAL chamber server, and the parts of that server a Mac
+  # never exercises are exactly the ones a browser spec is best at catching: the
+  # CLI's path handling, `stop`'s ownership guard, the process-tree kill
+  # (`taskkill` rather than a group signal) and the spawn of an `omp` child.
+  # Three of the last five commits on `main` are Windows fixes to those paths.
+  #
+  # The harness itself had to change for this to be possible, and the change is
+  # a fact about Windows rather than a preference: `Bun.spawn` there resolves a
+  # program through libuv's `search_path`, which tries only `.com` and `.exe`
+  # ("Since CreateProcess can start only .com and .exe files, only those
+  # extensions are tried"). The scripted `omp` the specs drive is therefore a
+  # `bun build --compile` binary, not the `#!/bin/sh` shim it used to be — a
+  # shell script and a `.cmd` are both unspawnable there however they are
+  # chmod-ed. Teardown uses `taskkill /t`, since Windows has no process groups.
+  #
+  # Two specs skip themselves on Windows and both say why in their own header:
+  # the terminal spec (the server's PTY is a `Bun.Terminal`, which is POSIX-only)
+  # and the command-runner stop case (it needs a `#!/bin/sh` marker script and
+  # `pgrep`). Everything else runs.
+  #
+  # `--project=chromium` only. A cross-platform browser difference is not what
+  # this leg is for; the OS is the variable under test.
+  # ---------------------------------------------------------------------------
+  chromium-windows:
+    name: Chromium (Windows)
+    runs-on: windows-latest
+    # The Windows runner is slower per spec than the Linux one, and a timeout
+    # that a slow runner trips reads as a failure of the change.
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The browser download is the slow half of the job; the cache key is the
+      # resolved Playwright version, so a bump refetches and a source change
+      # does not. Separate from the Linux cache: the archives are per-platform.
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      # No `--with-deps` here: that flag installs Linux system packages through
+      # apt, which does not exist on Windows. The browser download is all this
+      # leg needs.
+      - name: Install Chromium
+        run: bunx playwright install chromium
+
+      # A separate gate so a type error in the specs is reported as one, not as
+      # a mysterious "project not found" three steps later.
+      - name: Typecheck the E2E layer
+        run: bun run typecheck:e2e
+
+      - name: Run the specs
+        run: bun run test:e2e --project=chromium
+        env:
+          CI: "true"
+
+      - name: Upload the failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-windows
           path: |
             playwright-report/
             test-results/

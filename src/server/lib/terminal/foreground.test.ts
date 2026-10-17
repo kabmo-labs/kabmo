@@ -20,13 +20,12 @@
  * foreground group has moved, so the assertions never race a guessed delay.
  */
 
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, expect, test } from 'bun:test';
 
 import { processProbe } from '@/server/lib/lifecycle/proc';
 import { shellLaunch } from '@/server/lib/terminal/shell';
 import { detectBusyShells, type ShellProcess } from '@/server/lib/terminal/foreground';
-
-const describePosix = process.platform === 'win32' ? describe.skip : describe;
+import { describePosix } from '@/test-support/platform';
 
 /** The shell the test drives, and the prompt it announces itself with. */
 const SHELL = '/bin/sh';

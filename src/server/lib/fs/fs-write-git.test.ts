@@ -49,6 +49,7 @@ import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
 import { withConfigLock } from '@/server/lib/fs/config-lock';
 import { discoveredRepos, rescanRepos, startRepoScan } from '@/server/lib/fs/git-repos';
 import { collectIgnoredPaths } from '@/server/lib/fs/git-ignore';
+import { testPosix } from '@/test-support/platform';
 
 const tempDirs: string[] = [];
 
@@ -99,7 +100,7 @@ describe('writeFileAtomic', () => {
     expect(statSync(existing).mode & 0o777).toBe(0o640);
   });
 
-  test('writing through a symlink updates the target and keeps the link', async () => {
+  testPosix('writing through a symlink updates the target and keeps the link', async () => {
     const dir = tempDir('atomic');
     const real = join(dir, 'real.yml');
     const link = join(dir, 'link.yml');
@@ -110,7 +111,7 @@ describe('writeFileAtomic', () => {
     expect(readFileSync(real, 'utf8')).toBe('new');
   });
 
-  test('a failed write leaves the original intact and no temp file', async () => {
+  testPosix('a failed write leaves the original intact and no temp file', async () => {
     const dir = tempDir('atomic');
     const target = join(dir, 'config.yml');
     writeFileSync(target, 'original');

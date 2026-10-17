@@ -45,6 +45,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { runGit } from '@/server/lib/fs/git-run';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
+import { testPosix } from '@/test-support/platform';
 
 const repos: string[] = [];
 
@@ -115,7 +116,7 @@ describe('a git READ does not take the index lock', () => {
     expect(indexWriteCount(repo, { GIT_OPTIONAL_LOCKS: '0' })).toBe(0);
   });
 
-  test('the chamber spawns git with the lock refused, on both the argv and the shell path', async () => {
+  testPosix('the chamber spawns git with the lock refused, on both the argv and the shell path', async () => {
     // The status read goes through `runShell` (a `sh -c` string), the repo-modal
     // read through `runGit` (argv) — the split is exactly how one of the two
     // paths would have kept the bug. A shim on PATH records what each child was

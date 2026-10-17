@@ -30,12 +30,13 @@ import { darwinProbe } from '@/server/lib/lifecycle/proc/darwin';
 import { linuxProbe } from '@/server/lib/lifecycle/proc/linux';
 import { psProbe } from '@/server/lib/lifecycle/proc/ps';
 import { win32Probe } from '@/server/lib/lifecycle/proc/win32';
+import { testPosix } from '@/test-support/platform';
 
 /** Beyond every OS pid ceiling (macOS 99999, Linux pid_max <= 2^22). */
 const IMPOSSIBLE_PID = 2_147_483_646;
 
 describe('psProbe', () => {
-  test('reads a live process command line with its spaces intact', async () => {
+  testPosix('reads a live process command line with its spaces intact', async () => {
     // `ps -ax -o command=` prints the command column to end of line, so a
     // parser that stopped at the first whitespace would lose `sleep 30`.
     const child = Bun.spawn(['/bin/sh', '-c', 'sleep 30'], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
@@ -120,7 +121,7 @@ describe('processProbe selection', () => {
     expect(processProbe).toBe(expected);
   });
 
-  test('reads the command line of a real child, spaces preserved', async () => {
+  testPosix('reads the command line of a real child, spaces preserved', async () => {
     // The platform probe (libproc on macOS, /proc on Linux) must join argv and
     // keep an argument that itself contains a space.
     //

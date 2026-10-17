@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * `usage/provider-key.ts` answers "which providers may the usage UI show, and
  * where did each key come from". Getting it wrong shows a provider with no
@@ -22,7 +24,8 @@
  * credentials and the real agent are never touched.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { Database } from 'bun:sqlite';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -141,7 +144,7 @@ function writeOmpStores(options: { yml?: Record<string, string>; agentDb?: Recor
   db.close();
 }
 
-describe('loadProviderEntries', () => {
+describePosix('loadProviderEntries', () => {
   test('rows are normalized and non-object entries dropped', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([
@@ -167,7 +170,7 @@ describe('loadProviderEntries', () => {
   });
 });
 
-describe('listCredentialedProviders', () => {
+describePosix('listCredentialedProviders', () => {
   test('the three stores are merged per slug with every source reported', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([{ name: 'Kenari', slug: 'kenari', baseUrl: '', apiKey: 'app-key' }]));
@@ -245,7 +248,7 @@ describe('listCredentialedProviders', () => {
   });
 });
 
-describe('resolveKenariApiKey / resolveDeepSeekApiKey', () => {
+describePosix('resolveKenariApiKey / resolveDeepSeekApiKey', () => {
   test('the overlay key wins over omp models.yml', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([{ name: 'Kenari', slug: 'kenari', baseUrl: 'https://kenari.id/v1', apiKey: 'app-key' }]));
@@ -313,7 +316,7 @@ describe('resolveKenariApiKey / resolveDeepSeekApiKey', () => {
   });
 });
 
-describe('kenariProviderSlugs', () => {
+describePosix('kenariProviderSlugs', () => {
   test('the slug spelling alone identifies an account', async () => {
     useTempDb();
     writeOmpStores({});

@@ -21,6 +21,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { duplicateEntry, moveEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
+import { testPosix } from '@/test-support/platform';
 
 const DIR = path.join(process.cwd(), 'tmp-transfer-probe');
 
@@ -110,7 +111,7 @@ describe('pasteEntry', () => {
     expect(fs.existsSync(abs('src/deep'))).toBe(false);
   });
 
-  test('refuses a destination that is a SYMLINK back into the source', async () => {
+  testPosix('refuses a destination that is a SYMLINK back into the source', async () => {
     // The containment check `resolveWithinRoot` cannot make: the destination
     // path is inside the root and outside the source, but the DIRECTORY it
     // resolves to is the source itself — a copy would recurse forever.

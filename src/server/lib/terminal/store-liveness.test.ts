@@ -30,8 +30,7 @@ import { attachTerminal, disposeAllTerminals } from '@/server/lib/terminal/runti
 import { terminalStore, type TerminalStore, type TerminalTimeout } from '@/server/lib/terminal/store';
 import { countLiveTerminals, listTerminals } from '@/server/lib/terminal/liveness.server';
 import type { TerminalSession, TerminalViewer } from '@/server/lib/terminal/session.server';
-
-const describePosix = process.platform === 'win32' ? describe.skip : describe;
+import { describePosix, testPosix } from '@/test-support/platform';
 
 /** A record shaped enough for `snapshotOf`/liveness; no PTY is involved. */
 function fakeSession(over: Partial<TerminalSession> & { id: string }): TerminalSession {
@@ -200,7 +199,7 @@ describe('countLiveTerminals', () => {
     ).toBe(0);
   });
 
-  test('a running shell with a live process is counted', async () => {
+  testPosix('a running shell with a live process is counted', async () => {
     liveChild = Bun.spawn(['sleep', '30'], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
     withSessions(
       fakeSession({ id: 'busy', proc: { pid: liveChild.pid } as unknown as Bun.Subprocess }),
@@ -263,7 +262,7 @@ describe('listTerminals', () => {
     expect((await listTerminals('/srv/work', '.')).map((snapshot) => snapshot.id)).toContain(root.id);
   });
 
-  test('a running shell with a live process is reported busy', async () => {
+  testPosix('a running shell with a live process is reported busy', async () => {
     const child = Bun.spawn(['sleep', '30'], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
     try {
       const id = seed(

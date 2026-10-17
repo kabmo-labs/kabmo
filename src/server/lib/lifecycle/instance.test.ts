@@ -34,6 +34,7 @@ import {
   type InstanceRecord,
 } from '@/server/lib/lifecycle/instance';
 import { describeOccupant, findOccupant } from '@/server/lib/lifecycle/occupant';
+import { testPosix } from '@/test-support/platform';
 
 let workRoot = '';
 let originalDataDir: string | undefined;
@@ -178,7 +179,7 @@ describe('process identity', () => {
     expect(getProcessState(2_147_483_646)).toBe('dead');
   });
 
-  test('a live process whose command line names ompchamber is matched', async () => {
+  testPosix('a live process whose command line names ompchamber is matched', async () => {
     const child = spawnMatched();
     try {
       expect(isProcessAlive(child.pid)).toBe(true);
@@ -190,7 +191,7 @@ describe('process identity', () => {
     }
   });
 
-  test('a live process that is not OMPChamber is mismatched', async () => {
+  testPosix('a live process that is not OMPChamber is mismatched', async () => {
     const child = spawnMismatched();
     try {
       expect(isProcessAlive(child.pid)).toBe(true);
@@ -212,7 +213,7 @@ describe('findOccupant with no listener on the port', () => {
     expect(await findOccupant(FREE_PORT)).toBeNull();
   });
 
-  test('a live but mismatched PID is not an occupant', async () => {
+  testPosix('a live but mismatched PID is not an occupant', async () => {
     // A recycled PID: alive, but demonstrably not an OMPChamber server.
     const child = spawnMismatched();
     try {
@@ -228,7 +229,7 @@ describe('findOccupant with no listener on the port', () => {
     expect(await findOccupant(FREE_PORT)).toBeNull();
   });
 
-  test('a live record is reported from the registry alone', async () => {
+  testPosix('a live record is reported from the registry alone', async () => {
     // The case a deaf server (hung, suspended, still starting) depends on: the
     // record is the only source, and it must read as unconfirmed.
     const child = spawnMatched();

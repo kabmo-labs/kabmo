@@ -24,6 +24,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { isGroupKillable, killChildTree, terminateChildProcess } from '@/cli/lib/process-lifecycle.js';
+import { describePosix } from '@/test-support/platform';
 
 const children = [];
 
@@ -129,7 +130,7 @@ describe('killChildTree on win32', () => {
   });
 });
 
-describe('terminateChildProcess', () => {
+describePosix('terminateChildProcess', () => {
   test('ends a real child through the win32 fallback', async () => {
     const child = spawnSleep();
 

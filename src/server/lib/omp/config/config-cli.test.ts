@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * The `omp config` CLI bridge's failure surfacing.
  *
@@ -29,6 +31,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -121,7 +124,7 @@ describe('configFailureLine', () => {
   });
 });
 
-describe('a rejected key reports omp’s own sentence', () => {
+describePosix('a rejected key reports omp’s own sentence', () => {
   test('set on an unknown key carries "Unknown setting" and the key', async () => {
     Bun.env.MOCK = 'false';
     await expect(setOmpConfigValue('providers.openai-codex.codeMode', 'off'))
@@ -145,7 +148,7 @@ describe('a rejected key reports omp’s own sentence', () => {
   });
 });
 
-describe('an accepted call is unchanged', () => {
+describePosix('an accepted call is unchanged', () => {
   test('list parses the snapshot and get reads a known key', async () => {
     Bun.env.MOCK = 'false';
     expect(await listOmpConfig()).toEqual({

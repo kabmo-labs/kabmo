@@ -175,7 +175,18 @@ test.describe('command runner plugin', () => {
     workspace.dispose();
   });
 
+  // SKIPPED ON WINDOWS, and both halves of the mechanism are the reason: the
+  // marker is a `#!/bin/sh` script whose PATH must stay in the process's argv
+  // (Windows cannot spawn a `sh` script at all — see the harness note on
+  // libuv's `search_path`), and the liveness probe is `pgrep`, which Windows
+  // does not ship. The sweep being tested is the plugin's own `stop-others`;
+  // the unit suite covers its matching rules directly.
   test('switching repo force-stops a background run', async ({ harness, page }) => {
+    // Inside the body, not at the describe level: this file has other tests
+    // that DO run on Windows, and a top-level `test.skip(condition)` would take
+    // them with it.
+    test.skip(process.platform === 'win32', 'needs a POSIX shell script and pgrep');
+
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-commands-stop');
     await installRunner(server.baseURL);

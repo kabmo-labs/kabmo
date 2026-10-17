@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * Saved rate-limit resets: the parse, the list, and the spend.
  *
@@ -20,6 +22,7 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -118,7 +121,7 @@ describe('parseUsageResetList', () => {
   });
 });
 
-describe('listUsageResets', () => {
+describePosix('listUsageResets', () => {
   test('parses a successful read', async () => {
     stubResult({
       stdout: JSON.stringify({
@@ -142,7 +145,7 @@ describe('listUsageResets', () => {
   });
 });
 
-describe('spendUsageReset', () => {
+describePosix('spendUsageReset', () => {
   test('a success keeps omp’s own sentence', async () => {
     stubResult({ stdout: "Reset applied for a@b.c (Codex) — Claude's 5h session limit has been refreshed; weekly limits are unchanged.\n" });
     const result = await spendUsageReset('openai-codex/cred-1');
@@ -165,7 +168,7 @@ describe('spendUsageReset', () => {
   });
 });
 
-describe('mock mode', () => {
+describePosix('mock mode', () => {
   test('lists a deterministic demo and refuses a spend', async () => {
     Bun.env.MOCK = 'true';
     const list = await listUsageResets();

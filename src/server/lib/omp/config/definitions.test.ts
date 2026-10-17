@@ -4,8 +4,7 @@
  */
 
 /**
- * The definition files the chamber owns (agents, instruction files) and the
- * plugin CLI wrapper. Agent discovery is read-only and forgiving: a malformed
+ * The definition files the chamber owns (agents, instruction files) and the plugin CLI wrapper. Agent discovery is read-only and forgiving: a malformed
  * frontmatter field becomes a default (`mode: all`, `temperature: null`) rather
  * than dropping the agent, a non-`.md` entry and an oversized file are skipped,
  * and a USER agent wins over a project agent with the same base name.
@@ -15,10 +14,11 @@
  * of only whitespace REMOVES the file, or an empty AGENTS.md would still claim
  * the context scope; plugin wrappers pass `--scope` only where omp accepts it,
  * and `pluginCliError` prefers stderr. `PI_CODING_AGENT_DIR` points at a temp
- * dir and `OMPCHAMBER_OMP_BIN` at a stub recording its argv — no real process.
+ * dir and `OMPCHAMBER_OMP_BIN` at a stub recording its argv — no real process; POSIX-only (`describePosix`): the stub is a shebang script Windows cannot start.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -113,7 +113,7 @@ afterAll(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-describe('discoverNativeAgents', () => {
+describePosix('discoverNativeAgents', () => {
   test('shapes frontmatter, defaults malformed fields, and skips non-markdown entries', async () => {
     write(join(userAgents, 'one.md'), [
       '---',
@@ -170,7 +170,7 @@ describe('discoverNativeAgents', () => {
   });
 });
 
-describe('writeAgentDefinition', () => {
+describePosix('writeAgentDefinition', () => {
   test('refuses an unsafe file name and an empty system prompt', async () => {
     await expect(writeAgentDefinition({ fileName: '../escape', systemPrompt: 'x' })).rejects.toThrow(/may contain letters/);
     await expect(writeAgentDefinition({ fileName: 'ok', systemPrompt: '   ' })).rejects.toThrow(/cannot be empty/);
@@ -205,7 +205,7 @@ describe('writeAgentDefinition', () => {
   });
 });
 
-describe('instruction files', () => {
+describePosix('instruction files', () => {
   test('narrows the kind and resolves the two omp basenames', () => {
     expect(isInstructionFileKind('agents')).toBe(true);
     expect(isInstructionFileKind('rules')).toBe(true);
@@ -247,7 +247,7 @@ describe('instruction files', () => {
   });
 });
 
-describe('plugin action scope flags', () => {
+describePosix('plugin action scope flags', () => {
   /** Run one wrapper against the stub binary and return the argv it received. */
   async function recorded(call: () => Promise<unknown>): Promise<string[]> {
     await call();
@@ -313,7 +313,7 @@ describe('pluginCliError', () => {
   });
 });
 
-describe('skills catalog', () => {
+describePosix('skills catalog', () => {
   test('search degrades to an empty list in mock mode, and results map to the UI contract', async () => {
     expect(await searchSkillCatalog('anything')).toEqual([]);
     expect(toCatalogSkills([

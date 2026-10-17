@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { nativeRipgrepPath, runRipgrep } from '@/server/lib/fs/ripgrep';
+import { testPosix } from '@/test-support/platform';
 
 const tempDirs: string[] = [];
 
@@ -182,7 +183,7 @@ describe('PATH resolution', () => {
     return JSON.parse(result.stdout.toString().trim());
   }
 
-  test('a script on PATH is skipped for the next real binary', () => {
+  testPosix('a script on PATH is skipped for the next real binary', () => {
     const scriptDir = tempDir();
     write(scriptDir, 'rg', '#!/usr/bin/env node\nconsole.log("shim");\n');
     fs.chmodSync(path.join(scriptDir, 'rg'), 0o755);
@@ -194,7 +195,7 @@ describe('PATH resolution', () => {
     expect(probe.binary).toBe(path.join(nativeDir, 'rg'));
   });
 
-  test('a PATH of scripts only resolves to null and still searches via WASI', () => {
+  testPosix('a PATH of scripts only resolves to null and still searches via WASI', () => {
     const scriptDir = tempDir();
     write(scriptDir, 'rg', '#!/usr/bin/env node\nconsole.log("shim");\n');
     fs.chmodSync(path.join(scriptDir, 'rg'), 0o755);

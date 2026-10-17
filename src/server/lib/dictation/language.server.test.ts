@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the stub `omp` is a shebang script Windows cannot start. */
+
 /**
  * The dictation language resolver.
  *
@@ -20,7 +22,8 @@
  *    up to a minute later.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -95,7 +98,7 @@ afterEach(() => {
   invalidateDictationLanguage();
 });
 
-describe('resolveDictationLanguage', () => {
+describePosix('resolveDictationLanguage', () => {
   test('mock mode reports no language, so the recognizer auto-detects', async () => {
     Bun.env.MOCK = 'true';
     expect(await resolveDictationLanguage()).toBeUndefined();

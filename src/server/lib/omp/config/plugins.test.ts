@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * The merge behind the Plugins pane: one list out of omp's two registries.
  *
@@ -25,7 +27,8 @@
  * prints a fixture — no real omp process, no network.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -174,7 +177,7 @@ beforeEach(() => {
   globalThis.__ompPluginCatalogCache = undefined;
 });
 
-describe('listPlugins', () => {
+describePosix('listPlugins', () => {
   test('skips omp itself and nameless entries, keeping npm order then marketplace order', async () => {
     const items = await listPlugins(cwd);
     expect(items.map((item) => item.id)).toEqual([

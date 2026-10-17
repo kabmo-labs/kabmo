@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** POSIX-only (`describePosix`): the suite spawns a stub binary written as a shebang script, which Windows cannot start. */
+
 /**
  * The window a session with no turn yet should be measured against.
  *
@@ -22,7 +24,8 @@
  * harness as `registry.server.test.ts`.
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from 'bun:test';
+import { describePosix } from '@/test-support/platform';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -131,7 +134,7 @@ async function registryModel(): Promise<{ provider: string; id: string; contextW
   return { provider: hit.provider, id: hit.id, contextWindow: hit.contextWindow };
 }
 
-describe('resolveSelectedModelContextLimit', () => {
+describePosix('resolveSelectedModelContextLimit', () => {
   test("resolves the persisted pick to that model's window", async () => {
     const model = await registryModel();
     const db = await getDb();

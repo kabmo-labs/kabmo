@@ -23,6 +23,7 @@ import { describe, expect, test } from 'bun:test';
 import { homedir } from 'node:os';
 
 import { homeDir, isAbsolutePath, joinPath, resolvePath } from '@/cli/lib/path-utils.js';
+import { isWindows } from '@/test-support/platform';
 
 /**
  * Run `fn` with `process.cwd()` answering `value`.
@@ -51,7 +52,10 @@ describe('homeDir', () => {
     try {
       delete Bun.env.HOME;
       expect(homeDir()).toBe(homedir());
-      expect(homeDir().startsWith('/')).toBe(true);
+      // The invariant is ABSOLUTENESS, not a leading `/`: a Windows home is
+      // `C:\Users\x`, which is absolute and not `/`-rooted. Asserting the
+      // portable predicate keeps the case meaningful on both platforms.
+      expect(isAbsolutePath(homeDir())).toBe(true);
     } finally {
       if (saved !== undefined) Bun.env.HOME = saved;
     }
@@ -122,7 +126,10 @@ describe('resolvePath', () => {
     const saved = Bun.env.HOME;
     try {
       delete Bun.env.HOME;
-      expect(joinPath(homeDir(), '.ompchamber').startsWith('/')).toBe(true);
+      if (!isWindows) expect(joinPath(homeDir(), '.ompchamber').startsWith('/')).toBe(true);
+      // The claim in the name is absoluteness, and that holds on both
+      // platforms — `C:/Users/x/.ompchamber` is as absolute as `/Users/x/…`.
+      expect(isAbsolutePath(joinPath(homeDir(), '.ompchamber'))).toBe(true);
     } finally {
       if (saved !== undefined) Bun.env.HOME = saved;
     }
