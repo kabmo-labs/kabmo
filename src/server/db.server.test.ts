@@ -28,6 +28,7 @@ import { homedir, tmpdir } from 'node:os';
 import * as path from 'node:path';
 
 import { getDatabasePath } from '@/server/db.server';
+import { removeDir } from '@/test-support/remove-dir';
 
 const saved = {
   mock: Bun.env.MOCK,
@@ -57,7 +58,7 @@ afterEach(() => {
     if (value === undefined) delete Bun.env[key];
     else Bun.env[key] = value;
   }
-  for (const dir of roots.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of roots.splice(0)) removeDir(dir);
 });
 
 describe('getDatabasePath', () => {

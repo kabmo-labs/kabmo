@@ -22,7 +22,7 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb } from '@/server/lib/db/client';
@@ -42,6 +42,7 @@ import {
   updateBtwTurn,
 } from '@/server/lib/btw/store.server';
 import type { ChatMessageData } from '@/shared/types';
+import { removeDir } from '@/test-support/remove-dir';
 
 const dirs: string[] = [];
 
@@ -69,7 +70,7 @@ afterEach(() => {
   globalThis.__ompChamberDb = undefined;
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 describe('topic CRUD', () => {

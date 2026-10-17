@@ -30,6 +30,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { action } from '@/server/routes/fs/git';
 import { listBranchDetails } from '@/server/lib/fs/git-branch';
+import { removeDir } from '@/test-support/remove-dir';
 
 const FIXTURE_ROOT = path.join(process.cwd(), 'tmp-test-git-branch');
 const repos: string[] = [];
@@ -87,8 +88,8 @@ async function post(fields: Record<string, string>) {
 }
 
 afterAll(() => {
-  for (const dir of repos) fs.rmSync(dir, { recursive: true, force: true });
-  fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
+  for (const dir of repos) removeDir(dir);
+  removeDir(FIXTURE_ROOT);
 });
 
 describe('listBranchDetails', () => {

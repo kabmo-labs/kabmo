@@ -20,7 +20,7 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getDb } from '@/server/db.server';
@@ -36,6 +36,7 @@ import {
   subscribeBtw,
 } from '@/server/lib/btw/registry.server';
 import type { BtwFrame, ChatMessageData } from '@/shared/types';
+import { removeDir } from '@/test-support/remove-dir';
 
 const dirs: string[] = [];
 
@@ -62,7 +63,7 @@ afterEach(() => {
   globalThis.__ompBtwRegistry = undefined;
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 describe('runtime registry', () => {

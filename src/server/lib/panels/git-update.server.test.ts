@@ -25,6 +25,7 @@ import { installPanelPluginFromGit } from '@/server/lib/panels/install.server';
 import { probeGitUpdate, updateGitPlugin } from '@/server/lib/panels/git-update.server';
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/registry.server';
+import { removeDir } from '@/test-support/remove-dir';
 
 const hasGit = Boolean(Bun.which('git'));
 
@@ -73,8 +74,8 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
   invalidatePanelScan();
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.rmSync(work, { recursive: true, force: true });
+  removeDir(root);
+  removeDir(work);
 });
 
 describe('readGitOrigin', () => {

@@ -22,7 +22,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { testPosix } from '@/test-support/platform';
@@ -36,6 +36,7 @@ import {
 import { holdLeaseForTest, leaseHeldByAnother } from '@/server/lib/omp/session/lease-flock.server';
 import { fileHolderPid } from '@/server/lib/omp/session/lease-holder.server';
 import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-registry';
+import { removeDir } from '@/test-support/remove-dir';
 
 let root: string;
 let savedXdg: string | undefined;
@@ -155,7 +156,7 @@ afterEach(() => {
   delete globalThis.__ompChamberDb;
   delete globalThis.__ompSessions;
   delete globalThis.__ompStartLocks;
-  rmSync(root, { recursive: true, force: true });
+  removeDir(root);
 });
 
 describe('sessionLeasePath', () => {

@@ -19,6 +19,7 @@
 
 import { afterAll, describe, expect, test } from 'bun:test';
 import { testPosix } from '@/test-support/platform';
+import { removeDir } from '@/test-support/remove-dir';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -79,7 +80,7 @@ function pushToOrigin(origin: string, name: string): void {
 }
 
 afterAll(() => {
-  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+  for (const dir of tempDirs) removeDir(dir);
 });
 
 describe('gitSyncCount without an upstream', () => {

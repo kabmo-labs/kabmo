@@ -22,6 +22,7 @@ import path from 'node:path';
 import { testPosix } from '@/test-support/platform';
 import { parsePorcelainZ } from '@/server/lib/fs/git-run';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
+import { removeDir } from '@/test-support/remove-dir';
 
 const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-status-'));
 
@@ -63,7 +64,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
+  removeDir(repo);
 });
 
 describe('parsePorcelainZ', () => {

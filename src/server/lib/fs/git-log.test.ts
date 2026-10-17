@@ -22,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fetchFileDiff, fetchGitCommits, readHeadCommitMessage } from '@/server/lib/fs/git-log';
 import { SAMPLE_GIT_COMMITS } from '@/client/data/mock/git-commits';
+import { removeDir } from '@/test-support/remove-dir';
 
 const tempDirs: string[] = [];
 
@@ -71,7 +72,7 @@ function commitAll(dir: string, message: string): void {
 }
 
 afterAll(() => {
-  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+  for (const dir of tempDirs) removeDir(dir);
 });
 
 describe('fetchGitCommits against a real repository', () => {

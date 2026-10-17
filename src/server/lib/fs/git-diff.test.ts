@@ -22,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
 import { isWindows, testPosix } from '@/test-support/platform';
+import { removeDir } from '@/test-support/remove-dir';
 
 const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitdiff-'));
 
@@ -86,7 +87,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
+  removeDir(repo);
 });
 
 describe('tracked changes', () => {
@@ -297,7 +298,7 @@ describe('no-change and fallback paths', () => {
       expect(result.deletions).toBe(0);
       expect(result.diff).toBe('No differences found');
     } finally {
-      fs.rmSync(outside, { recursive: true, force: true });
+      removeDir(outside);
     }
   });
 });

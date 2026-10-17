@@ -23,7 +23,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -36,6 +36,7 @@ import {
   readStoredProvidersForModels,
 } from '@/server/lib/models/registry.server';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
+import { removeDir } from '@/test-support/remove-dir';
 
 const STUB_SOURCE = `#!/usr/bin/env bun
 const responses = JSON.parse(process.env.FAKE_OMP_RESPONSES || '{}');
@@ -89,7 +90,7 @@ afterAll(() => {
   if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
   else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
   invalidateOmpCliCache();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 afterEach(() => {

@@ -26,6 +26,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { abortArgsFor, readGitState } from '@/server/lib/fs/git-state';
+import { removeDir } from '@/test-support/remove-dir';
 
 const roots: string[] = [];
 
@@ -62,7 +63,7 @@ function makeConflictingRepo(): string {
 }
 
 afterAll(() => {
-  for (const dir of roots) fs.rmSync(dir, { recursive: true, force: true });
+  for (const dir of roots) removeDir(dir);
 });
 
 describe('readGitState: no operation', () => {

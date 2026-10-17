@@ -27,6 +27,7 @@ import path from 'path';
 import { getDb } from '@/server/db.server';
 import { action as createAction } from '@/server/routes/folders/create';
 import { action as mkdirAction } from '@/server/routes/folders/mkdir';
+import { removeDir } from '@/test-support/remove-dir';
 
 // `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
 // POSIX-literal root makes every write land at a path the OS resolves against
@@ -58,7 +59,7 @@ function folderName(body: Record<string, unknown>): string {
 }
 
 beforeAll(async () => {
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
   fs.mkdirSync(WORKSPACE, { recursive: true });
   Bun.env.PI_CODING_AGENT_DIR = path.join(ROOT, 'agent');
   Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
@@ -87,7 +88,7 @@ afterAll(() => {
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
 });
 
 describe('POST /api/folders/mkdir', () => {

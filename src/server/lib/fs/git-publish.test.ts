@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pullBranch, pushBranch } from '@/server/lib/fs/git-publish';
+import { removeDir } from '@/test-support/remove-dir';
 
 const tempDirs: string[] = [];
 
@@ -66,7 +67,7 @@ function upstreamOf(cwd: string): string {
 }
 
 afterAll(() => {
-  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+  for (const dir of tempDirs) removeDir(dir);
 });
 
 describe('pushBranch', () => {

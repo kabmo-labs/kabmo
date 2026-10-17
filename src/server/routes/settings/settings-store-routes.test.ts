@@ -43,6 +43,7 @@ import { action as behaviorAction, loader as behaviorLoader } from '@/server/rou
 import { action as projectsAction, loader as projectsLoader } from '@/server/routes/settings/projects';
 import { action as providersAction, loader as providersLoader } from '@/server/routes/settings/providers';
 import { action as rootAction, loader as rootLoader } from '@/server/routes/settings/root';
+import { removeDir } from '@/test-support/remove-dir';
 
 // `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
 // POSIX-literal root makes every write land at a path the OS resolves against
@@ -52,7 +53,7 @@ const ROOT = path.join(os.tmpdir(), 'omc-settings-store-routes-test');
 const API = 'http://localhost/api/settings';
 
 beforeAll(async () => {
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
   fs.mkdirSync(path.join(ROOT, 'agent'), { recursive: true });
   Bun.env.PI_CODING_AGENT_DIR = path.join(ROOT, 'agent');
   Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
@@ -73,7 +74,7 @@ afterAll(() => {
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
 });
 
 type Handler = (args: never) => unknown;

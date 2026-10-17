@@ -31,7 +31,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -40,6 +40,7 @@ import { RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
 import { WebRpcError } from '@/server/lib/omp/rpc/constants';
 import { cancelQueuedDelivery } from '@/server/lib/queue/delivery.server';
 import { makeHarness, rejectionOf } from '@/server/lib/omp/rpc/session-commands-harness';
+import { removeDir } from '@/test-support/remove-dir';
 
 let root: string;
 let savedDbPath: string | undefined;
@@ -58,7 +59,7 @@ afterEach(() => {
   delete globalThis.__ompChamberDb;
   if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
   else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
-  rmSync(root, { recursive: true, force: true });
+  removeDir(root);
 });
 
 describe('steer and follow_up', () => {

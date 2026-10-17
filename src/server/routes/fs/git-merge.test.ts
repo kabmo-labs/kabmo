@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { action } from '@/server/routes/fs/git';
 import { readGitState } from '@/server/lib/fs/git-state';
+import { removeDir } from '@/test-support/remove-dir';
 
 /**
  * Scratch fixtures, under a directory this file owns.
@@ -78,8 +79,8 @@ async function post(fields: Record<string, string>) {
 }
 
 afterAll(() => {
-  for (const dir of repos) fs.rmSync(dir, { recursive: true, force: true });
-  fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
+  for (const dir of repos) removeDir(dir);
+  removeDir(FIXTURE_ROOT);
 });
 
 describe('merge_branch', () => {

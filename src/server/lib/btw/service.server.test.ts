@@ -18,13 +18,14 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { appendBtwTurn, createBtwTopic, getBtwTopic, setBtwTopicPromoted, updateBtwTurn } from '@/server/lib/btw/store.server';
 import { ensureBtwRuntime } from '@/server/lib/btw/registry.server';
 import { BtwError } from '@/server/lib/btw/runtime.server';
 import { abortBtw, askBtw, assertBtwIdle, getBtwState, promoteBtw, removeBtw } from '@/server/lib/btw/service.server';
+import { removeDir } from '@/test-support/remove-dir';
 
 const dirs: string[] = [];
 
@@ -48,7 +49,7 @@ afterEach(() => {
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 describe('getBtwState', () => {

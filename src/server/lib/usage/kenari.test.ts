@@ -24,12 +24,13 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { getDb } from '@/server/db.server';
 import { buildKenariReport } from '@/server/lib/usage/kenari';
+import { removeDir } from '@/test-support/remove-dir';
 
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const realFetch = Bun.fetch;
@@ -73,7 +74,7 @@ afterAll(() => {
   globalThis.fetch = realFetch;
   if (realAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = realAgentDir;
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 afterEach(() => {

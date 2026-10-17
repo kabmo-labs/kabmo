@@ -23,6 +23,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { loader } from '@/server/routes/fs/git';
+import { removeDir } from '@/test-support/remove-dir';
 
 /**
  * Inside the app root, because that is the route's own allow-list: `resolveRoot`
@@ -74,7 +75,7 @@ async function read(root: string, params: Record<string, string> = {}) {
 }
 
 afterAll(() => {
-  fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
+  removeDir(FIXTURE_ROOT);
 });
 
 describe('the git loader repoDetails read', () => {

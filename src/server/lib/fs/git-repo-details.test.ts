@@ -31,6 +31,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parsePorcelainV2 } from '@/server/lib/fs/git-porcelain-v2';
 import { readRepoDetail, readRepoDetails } from '@/server/lib/fs/git-repo-details';
+import { removeDir } from '@/test-support/remove-dir';
 
 const FIXTURE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-repo-details-'));
 
@@ -57,7 +58,7 @@ function makeRepo(name: string, branch = 'main'): string {
 }
 
 afterAll(() => {
-  fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
+  removeDir(FIXTURE_ROOT);
 });
 
 describe('parsePorcelainV2', () => {

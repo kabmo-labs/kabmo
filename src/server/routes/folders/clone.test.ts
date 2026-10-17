@@ -27,6 +27,7 @@ import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import { action as cloneAction } from '@/server/routes/folders/clone';
+import { removeDir } from '@/test-support/remove-dir';
 
 // `tmpdir()` rather than a literal `/tmp`: on Windows there is no `/tmp`, so a
 // POSIX-literal root makes every write land at a path the OS resolves against
@@ -55,7 +56,7 @@ function git(args: string[], cwd: string): void {
 }
 
 beforeAll(() => {
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
   fs.mkdirSync(PROJECTS, { recursive: true });
   fs.mkdirSync(ORIGIN, { recursive: true });
   git(['init', '-q', '-b', 'main'], ORIGIN);
@@ -93,7 +94,7 @@ afterAll(() => {
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
-  fs.rmSync(ROOT, { recursive: true, force: true });
+  removeDir(ROOT);
 });
 
 describe('POST /api/folders/clone', () => {

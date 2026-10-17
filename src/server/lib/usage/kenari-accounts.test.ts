@@ -21,7 +21,7 @@
 
 import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test';
 import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -30,6 +30,7 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { invalidateUsageCache } from '@/server/lib/usage/omp-usage.server';
 import { buildUsageProviders } from '@/server/lib/usage/providers.server';
+import { removeDir } from '@/test-support/remove-dir';
 
 /** The runner's own fetch, reached through `Bun` so a leaked stub is visible. */
 const realFetch = Bun.fetch;
@@ -121,7 +122,7 @@ afterAll(() => {
   else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
   delete Bun.env.FAKE_OMP_RESPONSES;
   invalidateOmpCliCache();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 afterEach(() => {

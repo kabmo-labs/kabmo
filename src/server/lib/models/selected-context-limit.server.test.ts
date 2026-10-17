@@ -26,7 +26,7 @@
 
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from 'bun:test';
 import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -36,6 +36,7 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
 import { resolveSelectedModelContextLimit } from '@/server/lib/models/selected-context-limit.server';
+import { removeDir } from '@/test-support/remove-dir';
 
 const SELECTED_MODEL_KEY = 'omp_selected_model';
 
@@ -102,7 +103,7 @@ afterAll(() => {
   if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
   else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
   invalidateOmpCliCache();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 beforeEach(() => {

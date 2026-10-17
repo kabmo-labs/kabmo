@@ -20,12 +20,13 @@
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { describePosix } from '@/test-support/platform';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { firstLine, gitRun } from '@/server/lib/wiki/git';
 import { detectWikiProvider } from '@/server/lib/wiki/provider.server';
+import { removeDir } from '@/test-support/remove-dir';
 import {
   ensureWikiMirror,
   listWikiPaths,
@@ -122,7 +123,7 @@ afterEach(() => {
 
 afterAll(() => {
   delete process.env.OMPCHAMBER_DATA_DIR;
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 describePosix('gitRun', () => {

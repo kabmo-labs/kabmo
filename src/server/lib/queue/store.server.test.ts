@@ -20,7 +20,7 @@
  */
 
 import { afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getDb } from '@/server/db.server';
@@ -38,6 +38,7 @@ import {
 } from '@/server/lib/queue/store.server';
 import { restoreStore } from '@/server/lib/queue/delivery-harness';
 import type { QueuedMessage } from '@/shared/types/chat';
+import { removeDir } from '@/test-support/remove-dir';
 
 /**
  * `delivery-harness` registers a `mock.module` stand-in for this store for the
@@ -86,7 +87,7 @@ afterEach(() => {
   globalThis.__ompChamberDb = undefined;
   delete Bun.env.OMPCHAMBER_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 describe('row decoding', () => {

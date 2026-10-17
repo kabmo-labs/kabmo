@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { testPosix } from '@/test-support/platform';
 import { action } from '@/server/routes/fs/git';
+import { removeDir } from '@/test-support/remove-dir';
 
 /**
  * Scratch fixtures, under a directory this file owns.
@@ -109,10 +110,10 @@ function porcelain(cwd: string): string {
 }
 
 afterAll(() => {
-  for (const dir of repos) fs.rmSync(dir, { recursive: true, force: true });
+  for (const dir of repos) removeDir(dir);
   // The whole scratch root goes, not just the repos this run made: a previous
   // crashed run would otherwise leave fixtures inside the working tree.
-  fs.rmSync(FIXTURE_ROOT, { recursive: true, force: true });
+  removeDir(FIXTURE_ROOT);
 });
 
 describe('git action operands are argv, never shell text', () => {

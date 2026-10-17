@@ -35,6 +35,7 @@ import { getDb } from '@/server/db.server';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { disposeUtilityRpc } from '@/server/lib/omp/rpc/utility';
 import { kenariProviderSlugs, listCredentialedProviders, loadProviderEntries, resolveDeepSeekApiKey, resolveKenariApiKey } from '@/server/lib/usage/provider-key';
+import { removeDir } from '@/test-support/remove-dir';
 
 /** Answers the two registry commands from FAKE_OMP_RESPONSES; never the real agent. */
 const STUB_SOURCE = `#!/usr/bin/env bun
@@ -91,7 +92,7 @@ afterAll(() => {
   if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
   else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
   invalidateOmpCliCache();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 afterEach(() => {
