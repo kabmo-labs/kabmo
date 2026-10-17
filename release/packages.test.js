@@ -30,7 +30,14 @@ const bunBin = process.execPath;
 function git(dir, ...args) {
   const result = spawnSync('git', ['-C', dir, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' },
+    // `NUL` on Windows: there is no `/dev/null`, and git treats the path as a
+    // CONFIG FILE — a missing one is an error, so `git add` failed with an empty
+    // stderr and took the whole release-tooling suite with it.
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
+      GIT_CONFIG_SYSTEM: process.platform === 'win32' ? 'NUL' : '/dev/null',
+    },
   });
 
   if (result.status !== 0) {

@@ -19,9 +19,11 @@
  * while the old handle is still cached is never consulted.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { removeDir } from '@/test-support/remove-dir';
 
 let dir: string | null = null;
 
@@ -41,6 +43,9 @@ export function releaseDb(): void {
   globalThis.__ompChamberDb?.resolved?.raw.close();
   globalThis.__ompChamberDb = undefined;
   delete Bun.env.OMPCHAMBER_DB_PATH;
-  if (dir) rmSync(dir, { recursive: true, force: true });
+  // `removeDir`, not a bare `rmSync`: a closed SQLite handle is released by the
+  // OS asynchronously on Windows, so the delete races it and fails with EBUSY —
+  // which, thrown from an `afterEach`, reports the PREVIOUS test as failed.
+  if (dir) removeDir(dir);
   dir = null;
 }
