@@ -47,11 +47,25 @@ export function handleTurnStart(_deps: OmpAgentCallbacksDeps): void {
  * Reload recovery: the omp process kept running server-side, so the event
  * stream is reattached and the generating UI must resume (the timeline fetch
  * already loaded the committed messages; live updates continue).
+ *
+ * The phrase is only NAMED when nothing is named yet. A reattach knows one
+ * thing — a run is live — and nothing about what the run is doing, so writing
+ * `Thinking` unconditionally overwrote a phrase a frame had already published.
+ * That is not a cosmetic flicker, because the phrase has a SECOND mirror: the
+ * fold dedupes against `activityRef`, which this write never touched. The two
+ * then disagree, every later frame carrying the same phrase is dropped as a
+ * repeat, and the indicator stays on `Thinking…` for the whole tool call.
+ * Measured on a cold spawn: the tool's phrase appeared at t+45 and the spawn
+ * path's topic republish called this at t+72 — 27 ms later — after which the
+ * phrase never returned for the remaining 4.5 s of the call.
+ *
+ * A real reload has no phrase yet (`activityRef` and the screen are both
+ * empty), so this still names the wait there.
  */
 export function handleResumeStream(deps: OmpAgentCallbacksDeps): void {
-  const { setGenerating, setGeneratingVerb, scrollToBottom } = deps;
+  const { setGenerating, setGeneratingVerb, activityRef, scrollToBottom } = deps;
   setGenerating(true);
-  setGeneratingVerb(PHASE_VERBS.thinking);
+  if (!activityRef.current) setGeneratingVerb(PHASE_VERBS.thinking);
   setTimeout(() => scrollToBottom('smooth'), 50);
   // No sidebar signal: the run is live server-side, so its `stream` row is in
   // the status payload and the sidebar's spinner (and this indicator, through

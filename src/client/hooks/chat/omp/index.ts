@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import type { RefObject } from 'preact/compat';
 import type { AgentImage, ChatMessageData, OmpAgentCallbacks, OmpAgentHandle, OmpAgentState, PromptDispatchResult } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { type ToolResultRecord, useOmpAgentStream } from '@/client/hooks/chat/omp/stream';
@@ -27,7 +28,18 @@ const STEER_REQUEST_TIMEOUT_MS = 25_000;
 export type { ExtensionUiDialogMethod, ExtensionUiDialogRequest, IncomingExtensionUiRequest } from '@/shared/types/omp/agent';
 export type { OmpAgentCallbacks, OmpAgentEvent, OmpAgentState } from '@/shared/types/omp/agent';
 
-export function useOmpAgent(sessionId: string | null, callbacks: OmpAgentCallbacks): OmpAgentHandle {
+/**
+ * `activityRef` is the caller's mirror of the phrase the indicator shows, and
+ * it is REQUIRED rather than owned here on purpose: the same ref is the fold's
+ * dedupe key, so a private copy would let the screen and the key disagree. That
+ * is exactly how a resume wrote `Thinking` over a live tool phrase and every
+ * later frame carrying the real phrase was then dropped as a repeat.
+ */
+export function useOmpAgent(
+  sessionId: string | null,
+  callbacks: OmpAgentCallbacks,
+  activityRef: RefObject<string>,
+): OmpAgentHandle {
   const [state, setState] = useState<OmpAgentState>({ isGenerating: false, connected: false, error: null });
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
@@ -40,9 +52,6 @@ export function useOmpAgent(sessionId: string | null, callbacks: OmpAgentCallbac
   // Last assistant message that carried tool calls, so tool_execution_end
   // events arriving after message_end can re-emit it with the result paired.
   const lastToolMessageRef = useRef<ChatMessageData | null>(null);
-  // Last phrase handed to the indicator; the fold compares against it so
-  // per-token frames cannot spam state updates with the same string.
-  const activityRef = useRef('');
   const currentThinkingLevelRef = useRef<string | undefined>(undefined); // live thinking level (last `thinking_level_changed`)
   // Phrase for an open provider-retry saga; while set it outranks the activity
   // the doomed attempt names (see `fold-deps.ts`).

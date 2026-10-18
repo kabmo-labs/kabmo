@@ -23,6 +23,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
+import { useRef } from 'preact/hooks';
 import { act } from 'preact/test-utils';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import { useOmpAgent } from '@/client/hooks/chat/omp/index';
@@ -94,7 +95,7 @@ function stubProbe(answer: unknown): ProbeCall[] {
 function mountAgent(callbacks: OmpAgentCallbacks) {
   const seen: { handle: OmpAgentHandle | null } = { handle: null };
   function Probe({ id }: { id: string | null }) {
-    seen.handle = useOmpAgent(id, callbacks);
+    seen.handle = useOmpAgent(id, callbacks, useRef(''));
     return null;
   }
   container ??= document.body.appendChild(document.createElement('div'));

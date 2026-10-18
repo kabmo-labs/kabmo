@@ -32,7 +32,7 @@ afterAll(() => restoreDomGlobals());
 function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogRequest[] {
   const queue: ExtensionUiDialogRequest[] = [];
   const deps = {
-    setGenerating: () => {}, setGeneratingVerb: () => {}, scrollToBottom: () => {},
+    setGenerating: () => {}, setGeneratingVerb: () => {}, activityRef: { current: '' }, scrollToBottom: () => {},
     adoptedSessionIdRef: { current: null }, sessionIdRef: { current: 'sess' },
     metaRefreshedRef: { current: null }, refreshSessionMeta: () => {},
     setLocalMessages: () => {}, aiPlaceholderIdRef: { current: null },

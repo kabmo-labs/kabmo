@@ -43,6 +43,26 @@ export interface GeneratingState {
   setGenerating: (v: boolean, owned?: boolean) => void;
   /** Live activity phrase for the docked indicator (phase or tool call). */
   generatingVerb: string;
+  /**
+   * Non-reactive mirror of `generatingVerb` — and the SAME ref the fold
+   * dedupes against (`OmpAgentFoldDeps.activityRef`).
+   *
+   * One mirror, not two. When the screen and the dedupe key were separate
+   * values, a writer that only set the screen (the resume path) made them
+   * disagree: every later frame carrying the phrase the fold already had was
+   * dropped as a repeat, and the indicator stayed on the stale phrase for the
+   * rest of the run. Writing through `setGeneratingVerb` updates both, so the
+   * two cannot drift.
+   *
+   * A session switch clears this ref alone (`useOmpAgent`), without touching
+   * the rendered phrase — the same thing the old private ref did. That is
+   * deliberate: the reset exists so the new session's first frame is not
+   * deduped against the old session's last phrase, and the indicator is hidden
+   * or about to be replaced at that moment. An empty ref therefore means "no
+   * phrase has been published for this session yet", which is what the resume
+   * guard needs.
+   */
+  activityRef: { current: string };
   setGeneratingVerb: (v: string) => void;
 }
 
@@ -51,7 +71,8 @@ export function useGeneratingState(): GeneratingState {
   const isGeneratingRef = useRef(false);
   const ownRunRef = useRef(false);
   const [ownRun, setOwnRun] = useState(false);
-  const [generatingVerb, setGeneratingVerb] = useState('');
+  const [generatingVerb, setGeneratingVerbState] = useState('');
+  const activityRef = useRef('');
 
   // Stable identity is load-bearing: this is a dependency of the session-load
   // effect, which re-fetches history and replaces the timeline. A fresh function
@@ -67,6 +88,11 @@ export function useGeneratingState(): GeneratingState {
     setIsGenerating(v);
   }, []);
 
+  const setGeneratingVerb = useCallback((v: string) => {
+    activityRef.current = v;
+    setGeneratingVerbState(v);
+  }, []);
+
   return {
     isGenerating,
     isGeneratingRef,
@@ -74,6 +100,7 @@ export function useGeneratingState(): GeneratingState {
     ownRunRef,
     setGenerating,
     generatingVerb,
+    activityRef,
     setGeneratingVerb,
   };
 }

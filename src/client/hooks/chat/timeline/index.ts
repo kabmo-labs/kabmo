@@ -77,6 +77,7 @@ export function useChatTimeline({
     ownRunRef,
     setGenerating,
     generatingVerb,
+    activityRef,
     setGeneratingVerb,
   } = useGeneratingState();
   const localMessagesRef = useRef<ChatMessageData[]>([]);
@@ -203,6 +204,7 @@ export function useChatTimeline({
   const ompAgent = useOmpAgent(isOmpSession ? sessionId : null, createOmpAgentCallbacks({
     setGenerating,
     setGeneratingVerb,
+    activityRef,
     scrollToBottom,
     adoptedSessionIdRef,
     sessionIdRef,
@@ -217,7 +219,7 @@ export function useChatTimeline({
     appSettings,
     enqueueExtensionDialog,
     withdrawExtensionDialog,
-  }));
+  }), activityRef);
   const { steerOmpAgent, executeSend } = useChatTimelineSend({
     folders,
     selectedFolderId,

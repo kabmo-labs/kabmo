@@ -30,6 +30,11 @@ import { isAnswerableUiRequest } from '@/shared/lib/omp/dialog-methods';
 export interface OmpAgentCallbacksDeps {
   setGenerating: (v: boolean) => void;
   setGeneratingVerb: (v: string) => void;
+  /** Non-reactive mirror of the phrase the indicator is showing, shared with
+   *  the fold's dedupe key. The resume path consults it: a reattach knows only
+   *  that a run is live, not what the run is doing, so it must not overwrite a
+   *  phrase a frame already named. */
+  activityRef: { current: string };
   scrollToBottom: (behavior?: ScrollBehavior) => void;
   adoptedSessionIdRef: { current: string | null };
   sessionIdRef: { current: string | null };

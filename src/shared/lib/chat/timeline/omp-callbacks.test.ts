@@ -40,6 +40,7 @@ function makeCallbacks(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgent
   const deps: OmpAgentCallbacksDeps = {
     setGenerating: () => {},
     setGeneratingVerb: () => {},
+    activityRef: { current: '' },
     scrollToBottom: () => {},
     adoptedSessionIdRef: { current: null },
     sessionIdRef: { current: 'sess-1' },
@@ -68,13 +69,22 @@ describe('createOmpAgentCallbacks run boundaries', () => {
   beforeEach(() => {
     generating.length = 0;
     verbs.length = 0;
+    activityRef = { current: '' };
   });
+
+  /**
+   * The phrase mirror, SHARED by the callbacks and the fold — exactly as the
+   * real hook shares one ref between `setGeneratingVerb` and the fold's dedupe
+   * key. Two separate refs here would reproduce the bug being tested against.
+   */
+  let activityRef: { current: string };
 
   /** The callbacks with the two observable sinks recorded. */
   function recordingCallbacks(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgentCallbacks {
     return makeCallbacks({
       setGenerating: (v) => { generating.push(v); },
-      setGeneratingVerb: (v) => { verbs.push(v); },
+      setGeneratingVerb: (v) => { activityRef.current = v; verbs.push(v); },
+      activityRef,
       ...overrides,
     });
   }
@@ -89,7 +99,7 @@ describe('createOmpAgentCallbacks run boundaries', () => {
       callbacksRef: { current: callbacks },
       toolResultsRef: { current: new Map<string, { output: string }>() },
       lastToolMessageRef: { current: null },
-      activityRef: { current: '' },
+      activityRef,
       providerRetryVerbRef: { current: null },
       currentThinkingLevelRef: { current: undefined },
       };
@@ -136,6 +146,7 @@ describe('createOmpAgentCallbacks run boundaries', () => {
     // it — a second `true` here would be a second run boundary for one run.
     expect(generating).toEqual([true]);
   });
+
 });
 
 /**

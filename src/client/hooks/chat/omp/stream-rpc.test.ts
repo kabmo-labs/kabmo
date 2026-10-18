@@ -11,6 +11,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
+import { useRef } from 'preact/hooks';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import { act } from 'preact/test-utils';
 import { useOmpAgent } from '@/client/hooks/chat/omp/index';
@@ -106,7 +107,7 @@ function mountAgent(sessionId: string | null, callbacks: OmpAgentCallbacks = {})
   const seen: { handle: OmpAgentHandle | null } = { handle: null };
 
   function Probe({ id }: { id: string | null }) {
-    seen.handle = useOmpAgent(id, callbacks);
+    seen.handle = useOmpAgent(id, callbacks, useRef(''));
     return null;
   }
 
