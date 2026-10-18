@@ -5,6 +5,20 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.20.0](https://github.com/rajebdev/ompchamber/compare/v4.19.0...v4.20.0) — 2026-10-18
+
+### Added
+
+* **chat:** give the wait tool its own panel with a clock and a progress bar ([0421389](https://github.com/rajebdev/ompchamber/commit/04213891552874dd362af7b8710fa7cbd89749fe))
+
+### Fixed
+
+* **chat:** carry a tool call's progress details and its real span ([7335fc7](https://github.com/rajebdev/ompchamber/commit/7335fc7345bb1d73d5ed5931a0a98929d0b9fcc3))
+* **chat:** keep a run's tool bookkeeping when a spawn answers with its id ([c0464ba](https://github.com/rajebdev/ompchamber/commit/c0464ba9d84b1ae0e42a9cad50a1ad2d67f057df))
+* **chat:** keep the run's tool bookkeeping across a spawn adoption ([3aab45f](https://github.com/rajebdev/ompchamber/commit/3aab45f262e797a6442cb30cc151241ea5297bff))
+* **chat:** keep the session-arrival probe when the arrival is the same conversation ([58e7a85](https://github.com/rajebdev/ompchamber/commit/58e7a851bc1e3d0cf7c3fe6aa32926ca3fefb7b3))
+* **terminal:** spawn the PTY shell detached on POSIX only ([05b59d6](https://github.com/rajebdev/ompchamber/commit/05b59d6c6da9cd3d7c7b89ac2dd9e0381bbf0bbe))
+
 ## [4.19.0](https://github.com/rajebdev/ompchamber/compare/v4.18.2...v4.19.0) — 2026-10-18
 
 ### Added
