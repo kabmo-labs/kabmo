@@ -260,8 +260,15 @@ describe('RunRegistry', () => {
     // INSIDE the chamber's process, so the `Bun.env` it spawns with is the
     // CHAMBER's — `PORT` was the port the chamber itself listens on. The same
     // command in a plain terminal (where `PORT` is unset) ran on 3000.
-    const saved = { PORT: Bun.env.PORT, NODE_ENV: Bun.env.NODE_ENV };
+    //
+    // `HOST` rides along for the same reason and was missed: the CLI sets it
+    // beside PORT (`buildServeInvocation`), so a command inherited the chamber's
+    // bind address. Measured through a live chamber started with
+    // `HOST=127.0.0.1`: a run reported `HOST=127.0.0.1` while a plain terminal
+    // had it unset.
+    const saved = { PORT: Bun.env.PORT, HOST: Bun.env.HOST, NODE_ENV: Bun.env.NODE_ENV };
     Bun.env.PORT = '3001';
+    Bun.env.HOST = '0.0.0.0';
     Bun.env.NODE_ENV = 'production';
     try {
       const { registry } = makeRegistry();
@@ -272,21 +279,24 @@ describe('RunRegistry', () => {
         commandId: 'x#package:dev',
         file: 'package.json',
         cwd: process.cwd(),
-        argv: ['sh', '-c', 'echo "PORT=[$PORT] NODE_ENV=[$NODE_ENV] PATH_SET=[${PATH:+yes}]"'],
+        argv: ['sh', '-c', 'echo "PORT=[$PORT] HOST=[$HOST] NODE_ENV=[$NODE_ENV] PATH_SET=[${PATH:+yes}]"'],
         label: 'env probe',
         background: false,
       });
       await waitFor(() => onlyRun(registry.state()).status !== 'running');
 
       const text = registry.log('env', 4096)!.text;
-      // The command must see what a plain terminal would: no PORT, no NODE_ENV.
-      expect(text).toContain('PORT=[] NODE_ENV=[]');
+      // The command must see what a plain terminal would: no PORT, no HOST, no
+      // NODE_ENV.
+      expect(text).toContain('PORT=[] HOST=[] NODE_ENV=[]');
       // And the rest of the environment still passes through, or PATH would be
       // gone and every command in the panel would fail to resolve.
       expect(text).toContain('PATH_SET=[yes]');
     } finally {
       if (saved.PORT === undefined) delete Bun.env.PORT;
       else Bun.env.PORT = saved.PORT;
+      if (saved.HOST === undefined) delete Bun.env.HOST;
+      else Bun.env.HOST = saved.HOST;
       if (saved.NODE_ENV === undefined) delete Bun.env.NODE_ENV;
       else Bun.env.NODE_ENV = saved.NODE_ENV;
     }

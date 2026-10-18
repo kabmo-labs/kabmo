@@ -194,10 +194,18 @@ describe('PendingUiDialogs', () => {
 });
 
 describe('stripChamberHostEnv', () => {
-  const base = { PATH: '/bin', PORT: '3000', NODE_ENV: 'production', OMPCHAMBER_UI_PASSWORD: 'secret', NEXT_PUBLIC_X: '1', KEEP: 'yes' };
+  const base = { PATH: '/bin', PORT: '3000', HOST: '127.0.0.1', NODE_ENV: 'production', OMPCHAMBER_UI_PASSWORD: 'secret', NEXT_PUBLIC_X: '1', KEEP: 'yes' };
 
   test('removes the chamber host variables and keeps everything else', () => {
     expect(stripChamberHostEnv(base, 'linux')).toEqual({ PATH: '/bin', KEEP: 'yes' });
+  });
+
+  test('removes HOST, the bind address the CLI sets beside PORT', () => {
+    // Measured: a Runner command under a chamber started with `HOST=127.0.0.1`
+    // reported `HOST=127.0.0.1` in its own environment, while a plain terminal
+    // had it unset — so a project script that reads HOST as a default bound to
+    // the chamber's address instead of its own.
+    expect(stripChamberHostEnv({ HOST: '0.0.0.0', PATH: '/bin' }, 'linux')).toEqual({ PATH: '/bin' });
   });
 
   test('does not mutate the base environment', () => {
@@ -206,7 +214,7 @@ describe('stripChamberHostEnv', () => {
   });
 
   test('matches names case-insensitively only on win32', () => {
-    const mixed = { port: '1', Node_Env: 'x', next_private: '1', keep: 'ok' };
+    const mixed = { port: '1', host: 'x', Node_Env: 'x', next_private: '1', keep: 'ok' };
     expect(stripChamberHostEnv(mixed, 'win32')).toEqual({ keep: 'ok' });
     expect(stripChamberHostEnv(mixed, 'linux')).toEqual(mixed);
   });

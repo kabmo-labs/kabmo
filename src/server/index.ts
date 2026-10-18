@@ -246,23 +246,6 @@ try {
 startScheduleRuntime();
 
 /**
- * The plugin platform's server half. After the listener is up and the
- * scheduled-task clock exists — a plugin's own schedules are registered with
- * the same runtime, so starting a plugin before it would race the schema and
- * the timer. Never throws: one broken plugin must not stop the server from
- * booting, and its reason is reported here and by `GET /api/plugins`.
- */
-try {
-  const result = await loadPluginServers();
-  if (result.loaded.length > 0) {
-    console.log(`[ompchamber] plugins:        ${result.loaded.length} server half(s) loaded (${result.loaded.join(', ')})`);
-  }
-  for (const failure of result.errors) console.error(`[plugins] ${failure.pluginId}: ${failure.reason}`);
-} catch (error) {
-  console.error('[plugins] server halves skipped:', error);
-}
-
-/**
  * Bring installed BUNDLED plugins up to the copy this package ships.
  *
  * An OMPChamber update replaces the store and leaves the install — it is a
@@ -270,12 +253,14 @@ try {
  * It is version-gated and skips git clones, so a plugin the user installed from
  * a URL is never overwritten by a store entry that happens to share its id.
  *
- * AFTER the server halves load, and it reloads nothing itself: a plugin whose
- * sources moved has a new bundle the browser fetches on the next load, while its
- * server half was loaded from the OLD sources a moment ago. That half is left
- * running until the next restart on purpose — replacing a module a live plugin
- * registered routes from is the one thing this pass must not do unannounced —
- * and the pane reports the plugin as updated, which is where a user looks.
+ * BEFORE the server halves load, and that order is the whole point: a plugin's
+ * server half is `import()`ed from its BUILT bundle, so whichever copy is on
+ * disk when that import runs is the code this process runs until it restarts.
+ * Running the sync second meant the boot that shipped a fix loaded the OLD
+ * bundle (measured: a boot logging `synced command-runner 1.0.1 → 1.0.2` had
+ * already loaded the 1.0.1 half, so the panel kept spawning with the pre-fix
+ * environment until a manual restart). Syncing first makes the boot that
+ * installs a fix the boot that runs it.
  */
 try {
   const synced = await syncBundledPlugins();
@@ -289,10 +274,24 @@ try {
 }
 
 /**
- * The git-plugin freshness clock. Opt-in, and started after the plugin platform
- * so its first pass sees the plugins that are actually installed — the setting
- * is read on every pass, so switching it off in the pane stops the next one.
+ * The plugin platform's server half. After the listener is up, the scheduled-task
+ * clock exists — a plugin's own schedules register with that runtime — and the
+ * bundled sync above, so the module imported here is the copy this package
+ * ships. Never throws: one broken plugin must not stop the boot, and its reason
+ * is reported here and by `GET /api/plugins`.
  */
+try {
+  const result = await loadPluginServers();
+  if (result.loaded.length > 0) {
+    console.log(`[ompchamber] plugins:        ${result.loaded.length} server half(s) loaded (${result.loaded.join(', ')})`);
+  }
+  for (const failure of result.errors) console.error(`[plugins] ${failure.pluginId}: ${failure.reason}`);
+} catch (error) {
+  console.error('[plugins] server halves skipped:', error);
+}
+
+/** The git-plugin freshness clock. Opt-in, started after the plugin platform so
+ *  its first pass sees the installed plugins; the setting is re-read each pass. */
 startPanelAutoUpdate();
 
 /**

@@ -1,13 +1,13 @@
 {
   "name": "command-runner",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
   "type": "module",
   "ompchamber": {
     "id": "command-runner",
     "name": "Runner",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
     "app": "dist/app.js",
     "server": "dist/server.js",

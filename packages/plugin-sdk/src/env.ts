@@ -30,6 +30,18 @@
 export const CHAMBER_HOST_ENV_NAMES: readonly string[] = [
   /** The port THIS chamber listens on. */
   'PORT',
+  /**
+   * The bind address THIS chamber listens on — the CLI sets it beside `PORT`
+   * (`buildServeInvocation`, from `--lan`/`--host`/`OMPCHAMBER_HOST`), so a
+   * project command that inherits it binds to the chamber's own address instead
+   * of the one its script chose. Measured: a run from the Runner panel under a
+   * chamber started with `HOST=127.0.0.1` reported `HOST=127.0.0.1` while a plain
+   * terminal had it unset. `bun run dev:lan` is the visible case — its own
+   * `HOST=0.0.0.0` prefix is a plain shell assignment and still wins, but a
+   * script that only sets `PORT` (or reads `HOST` as a default) inherited the
+   * wrong one, and `HOST` is not a variable any project owns.
+   */
+  'HOST',
   /** `production` for a chamber serving its AOT bundle, which is not the mode a
    *  project's own `dev` script is asking for. */
   'NODE_ENV',
