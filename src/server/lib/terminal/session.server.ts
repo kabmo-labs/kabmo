@@ -11,11 +11,15 @@
  * Each fails *silently* when broken, which is why they are stated rather than
  * implied by the code:
  *
- * 1. **`detached: true` is mandatory.** Without it the child stays in the
- *    server's own process group: an interactive shell reports "no job control
- *    in this shell" (Ctrl+Z and `fg` stop working), `process.kill(-pid, …)`
+ * 1. **`detached: true` is mandatory — on POSIX.** Without it the child stays in
+ *    the server's own process group: an interactive shell reports "no job
+ *    control in this shell" (Ctrl+Z and `fg` stop working), `process.kill(-pid, …)`
  *    fails with ESRCH, and a group signal aimed at the *server's* group would
- *    take the chamber down with it.
+ *    take the chamber down with it. **Windows is the exception and must NOT
+ *    detach**: there `detached` becomes `DETACHED_PROCESS`, the child gets no
+ *    console at all, and `cmd.exe` exits 1 immediately (measured on the CI
+ *    runner — every shell `status: "exited"`). Windows has no process group to
+ *    address; `killProcessTree` uses `taskkill /t`.
  * 2. **The shell must re-acquire the PTY as its controlling terminal.** `setsid`
  *    drops it, and a shell without one disables job control regardless of
  *    `-i`. `shellLaunch` performs the re-open; see that module.
@@ -33,6 +37,7 @@ import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { createTerminalHistory, type TerminalHistory } from '@/server/lib/terminal/history';
 import { resolveShellExecutable, shellCandidates, shellLaunch, terminalEnv } from '@/server/lib/terminal/shell';
+import { shellSpawnOptions } from '@/server/lib/terminal/spawn';
 import {
   clampTerminalSize,
   type TerminalErrorCode,
@@ -154,12 +159,11 @@ export async function createSession(request: AttachRequest): Promise<TerminalSes
 
   let proc: Bun.Subprocess;
   try {
-    proc = Bun.spawn(shellLaunch(executable), {
+    proc = Bun.spawn(shellLaunch(executable), shellSpawnOptions({
       terminal: term,
-      detached: true,
       cwd,
       env: terminalEnv(Bun.env, request.theme ?? 'dark'),
-    });
+    }));
   } catch (error) {
     closeTerminalStream(session);
     // `describeSpawnFailure` keeps Bun's own message and adds the real cause
