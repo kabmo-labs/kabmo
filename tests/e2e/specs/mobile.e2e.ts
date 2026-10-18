@@ -20,6 +20,7 @@
 import { test, expect, openApp } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 import { TESTID } from '../fixtures/selectors';
+import { expectIndicatorSurvivesLongPhrase } from '../fixtures/indicator';
 
 test.describe('mobile layout', () => {
   test('renders the mobile tree with its header controls', async ({ app }) => {
@@ -111,6 +112,40 @@ test.describe('mobile layout', () => {
     await page.getByRole('button', { name: /send message/i }).first().click();
 
     await expect(page.getByText('Response to: hello from the phone').first()).toBeVisible({ timeout: 30_000 });
+    workspace.dispose();
+  });
+
+  /**
+   * The phone is where the reported break was worst: a 412px viewport leaves
+   * the docked indicator a little over 380px, so a real `bash` command is many
+   * times the row. The verb must give up its width — ending in an ellipsis —
+   * and the provider, the model and the loading dots must all stay on screen.
+   * Measured in the browser because a class list proves nothing about which
+   * member flexbox actually shrank.
+   */
+  test('keeps the provider, model and dots when the activity phrase is long', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-indicator');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-mobile-indicator').first()).toBeVisible();
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeVisible();
+
+    // Warm the session: the first prompt spawns the child, and the spawn path
+    // republishes the session topic whose snapshot resets the phrase (see the
+    // helper's note). A warm session keeps the tool's own phrase.
+    await input.fill('warm up');
+    await page.getByRole('button', { name: /send message/i }).first().click();
+    await expect(page.getByText('Response to: warm up').first()).toBeVisible({ timeout: 30_000 });
+
+    const command = 'rg -n --hidden --glob "!node_modules" "someVeryLongPatternThatKeepsGoing" src/client/components/workspace';
+    await input.fill(`tool:bash cmd:${command} then answer`);
+    await page.getByRole('button', { name: /send message/i }).first().click();
+
+    await expectIndicatorSurvivesLongPhrase(page, command);
+
     workspace.dispose();
   });
 

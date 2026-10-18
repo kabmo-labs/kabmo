@@ -22,6 +22,7 @@
 import { test, expect, openApp } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 import { TESTID } from '../fixtures/selectors';
+import { expectIndicatorSurvivesLongPhrase } from '../fixtures/indicator';
 import type { Page } from '@playwright/test';
 
 /**
@@ -117,6 +118,56 @@ test.describe('chat', () => {
     // Every title seen must name the tool: the placeholder `Tool` never appears.
     for (const title of titles) expect(title).toMatch(/^Bash/);
     expect(titles.some((title) => title.startsWith('Bash'))).toBe(true);
+
+    workspace.dispose();
+  });
+
+  /**
+   * A long activity phrase must never cost the indicator its identity or its
+   * dots.
+   *
+   * The reported bug, on desktop and phone alike: the verb was a non-shrinking
+   * span, so `Running <a long command>` took its full width, the provider and
+   * model spans (shrinkable, `min-w-0`) collapsed to zero, and the trailing
+   * dots were clipped by the row's `truncate` — a busy run showed neither who
+   * was answering nor that anything was happening. Only a real browser has
+   * layout, so this is measured, not asserted on a class list.
+   *
+   * The chat column is narrowed for the same reason: the dock is 970px wide on
+   * a 1440px viewport, where a 150-character command still fits. The width the
+   * contract has to hold at is the one the panel actually gives it — and on a
+   * phone it is a third of that.
+   */
+  test('keeps the provider, model and dots when the activity phrase is long', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-chat-indicator');
+
+    // Above the 768px mobile breakpoint (so this runs the desktop tree) but
+    // narrow enough that the dock cannot fit a 72-character phrase beside its
+    // identity. Measured: at 1024 with both panels open the chat column is
+    // 453px against a 477px phrase.
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-chat-indicator').first()).toBeVisible();
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeVisible();
+
+    // Warm the session first. The FIRST prompt spawns the child, and the spawn
+    // path republishes the session topic, whose snapshot calls
+    // `onResumeStream` — a write that must not clobber a live phrase (pinned
+    // in `omp-callbacks.test.ts`, since the ordering there is a race a browser
+    // spec cannot hold). A warm session never re-attaches, so this spec
+    // measures the truncation contract without depending on that race.
+    await input.fill('warm up');
+    await input.press('Enter');
+    await expect(page.getByText('Response to: warm up').first()).toBeVisible({ timeout: 30_000 });
+
+    const command = 'rg -n --hidden --glob "!node_modules" "someVeryLongPatternThatKeepsGoing" src/client/components/workspace';
+    await input.fill(`tool:bash cmd:${command} then answer`);
+    await input.press('Enter');
+
+    await expectIndicatorSurvivesLongPhrase(page, command);
 
     workspace.dispose();
   });

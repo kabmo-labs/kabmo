@@ -24,10 +24,17 @@ const COOL_VERBS = [
   'Compiling edge routes'
 ];
 
-/** The trailing ellipsis every state shares. */
+/**
+ * The trailing ellipsis every state shares.
+ *
+ * `shrink-0` is load-bearing: the dots are the indicator's only sign of life,
+ * so they must never be the thing a long activity phrase squeezes out. They sit
+ * BESIDE the truncated verb, never inside it — a sibling of a `truncate`
+ * element is the only way they survive.
+ */
 function Dots() {
   return (
-    <span className="inline-flex tracking-wider text-ink/80 ml-0.5">
+    <span className="inline-flex shrink-0 tracking-wider text-ink/80 ml-0.5">
       <span className="dot-anim-1 inline-block">.</span>
       <span className="dot-anim-2 inline-block">.</span>
       <span className="dot-anim-3 inline-block">.</span>
@@ -78,7 +85,7 @@ export function GeneratingIndicator({ modelName, generatingVerb, provider, provi
       `}</style>
 
       {/* Left info: Animated Rainbow Spinner Ring + Bot Badge + Model Name + Dynamic Action Verb */}
-      <div className="flex items-center space-x-2 min-w-0">
+      <div className="flex items-center space-x-2 min-w-0 flex-1">
         
         {/* Bot Icon with Animated Colorful Gradient Spinner */}
         <div className="relative w-4 h-4 rounded flex items-center justify-center shrink-0">
@@ -98,23 +105,41 @@ export function GeneratingIndicator({ modelName, generatingVerb, provider, provi
 
         {/* Provider & model name with dynamic verb + dots. When neither half is
             known yet (a spawn still in flight) the slot names the WAIT rather
-            than drawing a bullet with an empty identity in front of it. */}
-        <div className="flex items-center space-x-1.5 min-w-0 truncate">
+            than drawing a bullet with an empty identity in front of it.
+
+            Shrink priority is the whole layout contract here. The activity
+            phrase is the ONLY shrinkable member (it is `flex-1` with a 0%
+            basis and `min-w-0`), so a long command — a `bash` line, a grep
+            pattern, a file path — gives up its width first and ends in an
+            ellipsis. The identity spans keep their natural width and only
+            ellipsize when the row cannot fit them at all, and the dots are a
+            `shrink-0` SIBLING of the truncated phrase rather than part of it:
+            when the phrase was one non-shrinking span, a long command pushed
+            the provider, the model and the dots out of the row entirely —
+            which is the reported "provider and model and the loading dots are
+            not visible". */}
+        <div className="flex items-center space-x-1.5 min-w-0 flex-1">
           {identityKnown ? (
             <>
               {providerText && (
-                <span className="text-ink/55 truncate shrink">{providerText}</span>
+                <span className="text-ink/55 truncate shrink min-w-0">{providerText}</span>
               )}
               {modelText && (
-                <span className="font-semibold text-ink truncate">
+                <span className="font-semibold text-ink truncate shrink min-w-0">
                   {modelText}
                 </span>
               )}
               {/* The separator belongs to the PAIR: a provider-only identity has
                   nothing for it to separate. */}
               {providerText && modelText && <span className="text-ink/40 shrink-0">•</span>}
-              <span className="text-ink/75 flex items-center space-x-1 shrink-0 font-medium">
-                <span className="transition-all duration-300">{displayVerb}</span>
+              {/* `min-w-[4rem]` is the floor that keeps the phrase READABLE: a
+                  row too narrow for even that gives the identity its room back
+                  (both identity spans are `min-w-0`), so the verb can never be
+                  squeezed to nothing while a truncated phrase is the point. */}
+              <span className="text-ink/75 flex items-center space-x-1 min-w-[4rem] flex-1 font-medium">
+                <span className="truncate min-w-0 transition-all duration-300" title={displayVerb}>
+                  {displayVerb}
+                </span>
                 <Dots />
               </span>
             </>

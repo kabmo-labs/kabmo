@@ -87,9 +87,12 @@ export function createFrameWriters({ write }: FrameWriterDeps) {
    * fixture emits that shape. A fixture that skipped the message would leave the
    * timeline with nothing to render and any spec's assertion vacuous.
    */
-  async function streamToolCall(toolName: string) {
+  async function streamToolCall(toolName: string, command?: string) {
     const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
-    const args = { command: `echo ${toolName}` };
+    // A caller may hand over the command so the activity phrase is long enough
+    // to overflow a narrow composer row — the only way a spec can observe the
+    // indicator's truncation contract.
+    const args = { command: command ?? `echo ${toolName}` };
     const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
     const block = { type: 'toolCall', id: callId, name: toolName, arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
     const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };

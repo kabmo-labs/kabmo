@@ -167,6 +167,9 @@ async function runTurn(prompt: string, requestId: string) {
   streaming = true;
   const delay = /delay:(\d+)/.exec(prompt);
   const tool = /tool:([\w.-]+)/.exec(prompt);
+  // The command a `tool:` call carries. Long on purpose in the indicator specs:
+  // the phrase has to overflow the composer row for truncation to be observable.
+  const cmd = /cmd:(.+)/.exec(prompt);
   const wait = /wait:(\d+)/.exec(prompt);
   const waitLimit = prompt.includes('waitcap');
   const ask = /ask:(.+)/.exec(prompt);
@@ -188,7 +191,7 @@ async function runTurn(prompt: string, requestId: string) {
   if (delay) await sleep(Number(delay[1]));
   if (waitLimit) await streamWaitLimit();
   else if (wait) await streamWait(Number(wait[1]));
-  if (tool) await streamToolCall(tool[1]);
+  if (tool) await streamToolCall(tool[1], cmd?.[1].trim());
   if (ask) await runAsk(ask[1].trim());
 
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
