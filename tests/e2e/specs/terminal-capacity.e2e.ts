@@ -90,7 +90,7 @@ function makeBusy(shell: LiveShell): void {
 }
 
 interface Inventory {
-  terminals: { id: string; status: string; busy?: boolean }[];
+  terminals: { id: string; status: string; busy?: boolean; exitCode?: number | null }[];
 }
 
 test.describe('terminal capacity', () => {
@@ -125,26 +125,35 @@ test.describe('terminal capacity', () => {
         ? (terminal: Inventory['terminals'][number]) => terminal.status === 'running'
         : (terminal: Inventory['terminals'][number]) => terminal.busy === true;
       const mine = new Set(opened.map((shell) => shell.id));
-      // The last inventory read, reported in the failure message. A bare
-      // "expected 8, received 0" says nothing about WHICH half broke: no
-      // shells in the registry at all, shells under ids this spec did not
-      // mint, or shells the platform's rule does not count.
+      // Polled by hand rather than through `expect.poll`, because a bare
+      // "expected 8, received 0" cannot distinguish the ways this precondition
+      // fails: no shells in the registry, shells under ids this spec did not
+      // mint, or shells whose `status`/`busy` the platform's rule does not
+      // count. The throw carries the last inventory it saw.
+      const deadline = Date.now() + 20_000;
+      let counted = 0;
       let lastSeen = '';
-      await expect
-        .poll(async () => {
-          const inventory = await readInventory();
-          lastSeen = JSON.stringify({
-            platform: process.platform,
-            opened: [...mine],
-            seen: inventory.terminals.map((terminal) => ({
-              id: terminal.id,
-              status: terminal.status,
-              busy: terminal.busy ?? null,
-            })),
-          });
-          return inventory.terminals.filter((terminal) => mine.has(terminal.id) && countsTowardCap(terminal)).length;
-        }, { timeout: 20_000 })
-        .toBe(MAX_TERMINALS);
+      for (;;) {
+        const inventory = await readInventory();
+        const seen = inventory.terminals.filter((terminal) => mine.has(terminal.id));
+        counted = seen.filter(countsTowardCap).length;
+        lastSeen = JSON.stringify({
+          platform: process.platform,
+          opened: [...mine],
+          seen: seen.map((terminal) => ({
+            id: terminal.id,
+            status: terminal.status,
+            busy: terminal.busy ?? null,
+            exitCode: terminal.exitCode ?? null,
+          })),
+          others: inventory.terminals.length - seen.length,
+        });
+        if (counted === MAX_TERMINALS) break;
+        if (Date.now() >= deadline) {
+          throw new Error(`only ${counted} of ${MAX_TERMINALS} shells counted toward the cap: ${lastSeen}`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
 
       const overflow = await attach(server.baseURL, `cap-overflow-${Date.now()}`, root).catch(
         (error: Error & { code?: string }) => error,
