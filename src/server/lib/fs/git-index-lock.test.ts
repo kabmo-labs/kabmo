@@ -82,35 +82,66 @@ function seedTracked(cwd: string, files = 200): void {
 }
 
 /**
- * Make the index STALE: every tracked file is rewritten with a newer mtime than
- * the stat the index recorded, which is what makes `git status` want to write.
+ * Make the index STALE: every tracked file gets an mtime well ahead of the stat
+ * the index recorded, which is what makes `git status` want to write it back.
+ *
+ * The mtime is moved EXPLICITLY rather than left to "the rewrite happens after
+ * the commit". Those differ by filesystem timestamp granularity: on a runner
+ * whose clock or FS rounds to the second, a rewrite inside the same second as
+ * the index write leaves the entry "racily clean", and git may then decline to
+ * refresh — measured on the release gate, where the positive control below
+ * reported no index write and the suite failed on a commit that had passed CI
+ * minutes earlier. A minute of headroom is unambiguous on every filesystem git
+ * supports.
  */
 function staleIndex(cwd: string, files = 200): void {
   for (let i = 0; i < files; i += 1) {
-    fs.writeFileSync(path.join(cwd, `f${i}.txt`), `line ${i} rewritten\n`);
+    const file = path.join(cwd, `f${i}.txt`);
+    fs.writeFileSync(file, `line ${i} rewritten\n`);
+    const future = new Date(Date.now() + 60_000);
+    fs.utimesSync(file, future, future);
   }
 }
 
-/** True when git recorded a `do_write_index` for this run — i.e. it took the lock. */
+/** The index's identity: git replaces it atomically, so either field moves. */
+function indexStamp(cwd: string): string {
+  const stat = fs.statSync(path.join(cwd, '.git', 'index'));
+  return `${stat.mtimeMs}:${stat.size}`;
+}
+
+/**
+ * Whether a `git status` run rewrote the index — i.e. took the lock.
+ *
+ * Read from the index FILE rather than from git's `GIT_TRACE2_EVENT` stream.
+ * The trace was the original probe and it is version- and platform-sensitive:
+ * the region name (`do_write_index`) is an implementation detail, git-for-Windows
+ * does not emit it at all, and a `trace2` config in the environment can redirect
+ * the stream away from stderr. The file is the thing the assertion is actually
+ * about — `index.lock` is taken so the index can be replaced — and it is
+ * observable on every platform and version.
+ */
 function indexWriteCount(cwd: string, env: Record<string, string>): number {
+  const before = indexStamp(cwd);
   const result = Bun.spawnSync({
     cmd: ['git', 'status', '--porcelain'],
     cwd,
-    env: { ...Bun.env, GIT_TRACE2_EVENT: '1', ...env },
+    env: { ...Bun.env, ...env },
   });
-  const trace = result.stderr.toString();
-  return trace.split('do_write_index').length - 1;
+  // A failed run proves nothing either way; the caller's assertion would read a
+  // crash as "no write", which is the vacuous pass this control exists to stop.
+  if (result.exitCode !== 0) throw new Error(`git status failed: ${result.stderr.toString()}`);
+  return indexStamp(cwd) === before ? 0 : 1;
 }
 
 describe('a git READ does not take the index lock', () => {
-  // The positive control reads git's own `GIT_TRACE2_EVENT` output for
-  // `do_write_index`, which git-for-Windows does not emit the same way (measured:
-  // the count is 0 on a stale index there), so the stale-index mechanism cannot
-  // be reproduced to proof against on Windows.
+  // The positive control watches the INDEX FILE, which is what the lock exists
+  // to replace. That keeps it meaningful on every git version and platform; the
+  // `testPosix` guard stays because the shim-based case below writes a `#!/bin/sh`
+  // stub, which Windows cannot execute.
   testPosix('git status writes the index on a stale index — and stops when the lock is refused', () => {
     // The mechanism itself, so the rest of the test cannot pass vacuously: if a
-    // future git stops refreshing the index here, the positive control below
-    // fails and this test says so rather than silently proving nothing.
+    // future git stops refreshing the index here, this assertion fails and says
+    // so rather than silently proving nothing.
     const repo = makeRepo();
     seedTracked(repo);
     staleIndex(repo);
