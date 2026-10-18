@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-preact';
-import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Library, MessageSquare, Palette, Plug, Puzzle, RefreshCw, Search, Sliders, Terminal, X } from 'lucide-preact';
+import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Library, MessageSquare, Palette, Plug, Power, Puzzle, RefreshCw, Search, Sliders, Terminal, X } from 'lucide-preact';
 import type { SettingsCategoryId } from '@/shared/types';
 
 export interface CategoryDef {
@@ -39,8 +39,10 @@ interface SettingsSidebarProps {
   onSelectCategory: (id: SettingsCategoryId) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  onReloadOmpEngine: () => void;
+  onReloadOmp: () => void;
   isReloading: boolean;
+  onRestartChamber: () => void;
+  isRestarting: boolean;
   className?: string;
 }
 
@@ -49,8 +51,10 @@ export function SettingsSidebar({
   onSelectCategory,
   searchQuery,
   onSearchChange,
-  onReloadOmpEngine,
+  onReloadOmp,
   isReloading,
+  onRestartChamber,
+  isRestarting,
   className = ''
 }: SettingsSidebarProps) {
   const filteredCategories = SETTINGS_CATEGORIES.filter(cat => {
@@ -138,16 +142,29 @@ export function SettingsSidebar({
         )}
       </div>
 
-      {/* Bottom Action: Reload OMP Engine */}
-      <div className="p-2 border-t border-ink/10 flex-shrink-0 bg-canvas">
+      {/* Bottom Actions: Reload OMP + Restart OMPChamber */}
+      <div className="p-2 border-t border-ink/10 flex-shrink-0 bg-canvas flex items-center gap-0.5">
         <button
           type="button"
-          onClick={onReloadOmpEngine}
-          disabled={isReloading}
-          className="w-full flex items-center space-x-2 px-2.5 py-1.5 text-xs text-ink/75 hover:text-ink hover:bg-ink/5 rounded-lg transition-colors font-medium cursor-pointer"
+          onClick={onReloadOmp}
+          disabled={isReloading || isRestarting}
+          title="Recycle the standby omp processes so the next command uses the installed binary"
+          aria-label="Reload OMP"
+          className="shrink-0 flex items-center space-x-1 px-1 py-1.5 text-[11px] text-ink/75 hover:text-ink hover:bg-ink/5 rounded-lg transition-colors font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <RefreshCw size={13} className={`${isReloading ? 'animate-spin text-warning' : 'text-ink/60'}`} />
-          <span>{isReloading ? 'Reloading OMP Engine...' : 'Reload OMP Engine'}</span>
+          <RefreshCw size={12} className={`shrink-0 ${isReloading ? 'animate-spin text-warning' : 'text-ink/60'}`} />
+          <span className="whitespace-nowrap">{isReloading ? 'Reloading…' : 'Reload OMP'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onRestartChamber}
+          disabled={isReloading || isRestarting}
+          title="Stop and start this OMPChamber instance"
+          aria-label="Restart OMPChamber"
+          className="flex-1 min-w-0 flex items-center space-x-1 px-1 py-1.5 text-[11px] text-ink/75 hover:text-ink hover:bg-ink/5 rounded-lg transition-colors font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <Power size={12} className={`shrink-0 ${isRestarting ? 'animate-pulse text-warning' : 'text-ink/60'}`} />
+          <span className="truncate">{isRestarting ? 'Restarting…' : 'Restart OMPChamber'}</span>
         </button>
       </div>
     </div>

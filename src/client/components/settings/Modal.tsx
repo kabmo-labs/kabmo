@@ -5,6 +5,7 @@ import { mergeChamberSettings } from '@/shared/lib/settings/client';
 import { diffSettings } from '@/shared/lib/settings/diff';
 import { useChamberSettingsWriter } from '@/client/hooks/settings/use-chamber-setting';
 import { useReloadOmpEngine } from '@/client/hooks/settings/reload-engine';
+import { useRestartChamber } from '@/client/hooks/settings/restart-chamber';
 import { applyDocumentTheme } from '@/client/hooks/ui/theme';
 import { DEFAULT_THEME_ID } from '@/shared/lib/theme/catalog';
 import { EDITOR_DEFAULT_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
@@ -67,6 +68,7 @@ export function SettingsModal({
   const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
   const writeChamberSettings = useChamberSettingsWriter();
   const { isReloading, reload: reloadEngine } = useReloadOmpEngine();
+  const { isRestarting, restart: restartChamber } = useRestartChamber();
 
   /** One toast slot for the whole modal: a later message replaces the earlier
    *  one rather than queueing, and the tone is carried so a failed action
@@ -131,8 +133,16 @@ export function SettingsModal({
     showToast('Setting was saved');
   };
 
-  const handleReloadOmpEngine = async () => {
+  const handleReloadOmp = async () => {
     const outcome = await reloadEngine();
+    showToast(outcome.message, outcome.ok ? 'success' : 'error');
+  };
+
+  const handleRestartChamber = async () => {
+    const outcome = await restartChamber();
+    // A successful restart navigates, so this toast is only ever seen when the
+    // replacement could not be reached or the instance refused the restart —
+    // both of which the user has to act on.
     showToast(outcome.message, outcome.ok ? 'success' : 'error');
   };
 
@@ -211,8 +221,10 @@ export function SettingsModal({
             onSelectCategory={(catId) => setActiveCategory(catId)}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onReloadOmpEngine={handleReloadOmpEngine}
+            onReloadOmp={handleReloadOmp}
             isReloading={isReloading}
+            onRestartChamber={handleRestartChamber}
+            isRestarting={isRestarting}
             className="w-full"
           />
         </div>
@@ -306,8 +318,10 @@ export function SettingsModal({
               onSelectCategory={handleSelectCategory}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              onReloadOmpEngine={handleReloadOmpEngine}
+              onReloadOmp={handleReloadOmp}
               isReloading={isReloading}
+              onRestartChamber={handleRestartChamber}
+              isRestarting={isRestarting}
               className="w-full border-r-0"
             />
           </div>

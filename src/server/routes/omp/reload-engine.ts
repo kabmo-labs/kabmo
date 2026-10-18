@@ -7,7 +7,7 @@
  * POST /api/omp/reload-engine — dispose every standby omp process and drop the
  * caches built from the previous binary.
  *
- * The settings sidebar's "Reload OMP Engine" button used to be a 1200 ms
+ * The settings sidebar's "Reload OMP" button used to be a 1200 ms
  * spinner with no request behind it. A reload has to mean something, and the
  * only processes the chamber may bounce without destroying work are the ones
  * with no session and no turn: the pooled utility children that answer the

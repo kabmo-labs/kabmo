@@ -54,14 +54,24 @@ export interface SelfRestartPlan {
 }
 
 /**
+ * Why the restart was asked for. The only difference is the wording: an update
+ * restart tells the user to start the instance again "to apply the update",
+ * while the console's own Restart button has no update to apply.
+ */
+export type SelfRestartPurpose = 'update' | 'restart';
+
+/**
  * One-line reason an instance is left running, shared by the CLI and console.
  * The clause comes from `unmanagedReason` so `stop`, `restart` and `update`
  * cannot classify the same `launchMode` differently.
  */
-export function skipRestartNote(launchMode: string | null | undefined): string {
-  const nextStep = launchMode === 'direct'
-    ? 'start it again to apply the update'
-    : 'restart it yourself to apply the update';
+export function skipRestartNote(
+  launchMode: string | null | undefined,
+  purpose: SelfRestartPurpose = 'update',
+): string {
+  const nextStep = purpose === 'restart'
+    ? (launchMode === 'direct' ? 'start it again' : 'restart it yourself')
+    : (launchMode === 'direct' ? 'start it again to apply the update' : 'restart it yourself to apply the update');
   return `this instance ${unmanagedReason(launchMode)} — ${nextStep}`;
 }
 
@@ -88,8 +98,9 @@ function restartCommand(port: number): string[] | null {
  * reload itself, and the version it replaced said the console "reconnects on
  * its own" — which was true of the socket and false of the page.
  */
-export function selfRestartMessage(port: number): string {
-  return `Restarting on port ${port} to apply it — this page reloads on its own.`;
+export function selfRestartMessage(port: number, purpose: SelfRestartPurpose = 'update'): string {
+  const reason = purpose === 'restart' ? '' : ' to apply it';
+  return `Restarting on port ${port}${reason} — this page reloads on its own.`;
 }
 
 /**
@@ -114,19 +125,21 @@ export function withRestartPlan(result: UpdateApplyResult, plan: SelfRestartPlan
  * helper is detached so this process exiting does not take it down, and it
  * removes this port's record itself (`stopInstance`) before serving.
  */
-export function scheduleSelfRestart(): SelfRestartPlan {
+export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): SelfRestartPlan {
   const self = ownInstance();
   if (!self) {
-    return { restarting: false, message: 'This instance could not be identified — restart it yourself to apply the update.' };
+    const nextStep = purpose === 'restart' ? 'restart it yourself' : 'restart it yourself to apply the update';
+    return { restarting: false, message: `This instance could not be identified — ${nextStep}.` };
   }
 
   if (!isCliManaged(self.launchMode)) {
-    return { restarting: false, message: skipRestartNote(self.launchMode) };
+    return { restarting: false, message: skipRestartNote(self.launchMode, purpose) };
   }
 
   const cmd = restartCommand(self.port);
   if (!cmd) {
-    return { restarting: false, message: `The ompchamber CLI is missing from ${PKG_ROOT} — restart it yourself to apply the update.` };
+    const nextStep = purpose === 'restart' ? 'restart it yourself' : 'restart it yourself to apply the update';
+    return { restarting: false, message: `The ompchamber CLI is missing from ${PKG_ROOT} — ${nextStep}.` };
   }
 
   setTimeout(() => {
@@ -138,5 +151,5 @@ export function scheduleSelfRestart(): SelfRestartPlan {
     }
   }, RESTART_GRACE_MS);
 
-  return { restarting: true, message: selfRestartMessage(self.port) };
+  return { restarting: true, message: selfRestartMessage(self.port, purpose) };
 }

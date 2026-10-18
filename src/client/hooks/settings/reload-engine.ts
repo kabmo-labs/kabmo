@@ -4,7 +4,7 @@
  */
 
 /**
- * The settings sidebar's "Reload OMP Engine" action.
+ * The settings sidebar's "Reload OMP" action.
  *
  * A reload here means RECYCLE, not re-read: the server disposes every standby
  * omp process — the pooled utility children that answer the provider and model

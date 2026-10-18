@@ -104,6 +104,18 @@ describe('skipRestartNote', () => {
     // a message about a reconnecting socket would describe the wrong thing.
     expect(selfRestartMessage(4242)).toBe('Restarting on port 4242 to apply it — this page reloads on its own.');
   });
+
+  test('the console Restart button has nothing to "apply", so its wording drops that clause', () => {
+    // Both messages come from one function so they cannot drift, but a restart
+    // that is not an update must not claim it is applying one.
+    expect(selfRestartMessage(4242, 'restart')).toBe('Restarting on port 4242 — this page reloads on its own.');
+    expect(skipRestartNote('direct', 'restart')).toBe(
+      'this instance runs from source (`bun run dev` / `bun run start`) — start it again',
+    );
+    expect(skipRestartNote('daemon', 'restart')).toBe(
+      'this instance is not managed by the ompchamber CLI — restart it yourself',
+    );
+  });
 });
 
 describe('withRestartPlan', () => {
@@ -152,6 +164,25 @@ describe('scheduleSelfRestart', () => {
     const plan = scheduleSelfRestart();
     expect(plan.restarting).toBe(false);
     expect(plan.message).toBe(skipRestartNote('direct'));
+  });
+
+  test('the console Restart button refuses a direct instance with the restart wording', () => {
+    // Same decision, different reason: there is no update to apply, so the
+    // sentence must not tell the user to start again "to apply the update".
+    useDataDir();
+    writeInstanceRecord({
+      pid: process.pid,
+      port: 4203,
+      host: 'localhost',
+      mode: 'dev',
+      launchMode: 'direct',
+      startedAt: '2026-10-01T10:00:00.000Z',
+      version: '0.5.0',
+    });
+    const plan = scheduleSelfRestart('restart');
+    expect(plan.restarting).toBe(false);
+    expect(plan.message).toBe(skipRestartNote('direct', 'restart'));
+    expect(plan.message).not.toContain('apply the update');
   });
 
   test('falls back to the launch mode in argv when there is no record', () => {
