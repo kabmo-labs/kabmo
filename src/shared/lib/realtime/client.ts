@@ -30,16 +30,19 @@ import {
   type RealtimeServerFrame,
 } from '@/shared/lib/realtime/protocol';
 import {
-  configureConnection,
   connectIfNeeded,
+  notePong,
+  resetConnection,
+} from '@/shared/lib/realtime/connection';
+import {
+  configureConnection,
   currentStatus,
   onStatusChange,
-  resetConnection,
   send,
   setSocketConstructor,
   setWanted,
   type RealtimeStatus,
-} from '@/shared/lib/realtime/connection';
+} from '@/shared/lib/realtime/state';
 
 export type { RealtimeStatus };
 
@@ -197,6 +200,8 @@ function handleFrame(raw: string): void {
       }
       break;
     case 'pong':
+      // A resume probe's answer: the socket that LOOKED open really is.
+      notePong(frame.id);
       break;
   }
 }
