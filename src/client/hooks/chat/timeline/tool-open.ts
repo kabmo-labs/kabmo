@@ -30,10 +30,23 @@ export const TOOL_OPEN_STATE_KEY = 'chat.toolOpen';
  * Default openness for a call nobody has toggled: an error is worth showing
  * without a click, a skipped call is not, and everything else starts closed.
  * `autoOpenFirst` is the section-level default for a follow-up tool block.
+ *
+ * A `wait` is ALWAYS open, in both states, and the second half is the one that
+ * was learned the hard way. While it blocks, its whole content is a clock and a
+ * progress bar — a collapsed card hides the only thing the reader is watching.
+ * Gating the default on `status === 'running'` made the card open for the run
+ * and then CLOSE ITSELF the instant the call returned, which is precisely the
+ * moment the reader wants the result: measured in a browser spec, the settled
+ * panel (bar, job rows, outcome) vanished under the reader's cursor. It also
+ * differs from its siblings for a real reason — a `bash` body is a long log and
+ * belongs folded, while a wait's is three short rows.
+ *
+ * A stored choice still wins, so closing it stays closed.
  */
 function defaultOpen(tool: ToolCallData, autoOpenFirst: boolean, index: number): boolean {
   if (isSkippedTool(tool)) return false;
   if (tool.status === 'error') return true;
+  if ((tool.name || tool.type) === 'wait') return true;
   return autoOpenFirst && index === 0;
 }
 

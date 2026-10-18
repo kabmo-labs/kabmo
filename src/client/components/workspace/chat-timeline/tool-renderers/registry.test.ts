@@ -183,9 +183,16 @@ describe('toolPanelKind — device and MCP calls', () => {
 
 describe('toolPanelKind — no panel', () => {
   test('returns null for a tool with only generic rendering', () => {
-    expect(toolPanelKind(tool({ type: 'wait' }))).toBeNull();
     expect(toolPanelKind(tool({ type: 'browser' }))).toBeNull();
     expect(toolPanelKind(tool({ type: 'report_issue' }))).toBeNull();
+  });
+
+  test('a wait call reaches its own panel', () => {
+    // `wait` blocks on background jobs for up to 30 minutes and its result is
+    // the only place their status and elapsed time exist. Without a panel it
+    // rendered as a title and an empty Output block.
+    expect(toolPanelKind(tool({ type: 'wait' }))).toBe('wait');
+    expect(toolPanelKind(tool({ type: 'wait', name: 'wait' }))).toBe('wait');
   });
 
   test('returns null for an unknown custom tool', () => {

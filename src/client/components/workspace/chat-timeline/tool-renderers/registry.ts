@@ -51,7 +51,7 @@ export type ToolPanelKind =
   | 'todo' | 'task' | 'web_search' | 'lsp' | 'ast_edit'
   | 'resolve' | 'reject' | 'proc' | 'github' | 'checkpoint'
   | 'security_scan' | 'debug' | 'manage_skill' | 'context_notes'
-  | 'memory_edit' | 'goal' | 'ask' | 'think' | 'mcp';
+  | 'memory_edit' | 'goal' | 'ask' | 'think' | 'mcp' | 'wait';
 
 /** Keys that have a panel — a lookup, not a branch. */
 const PANEL_KINDS: Record<string, ToolPanelKind> = {
@@ -66,6 +66,11 @@ const PANEL_KINDS: Record<string, ToolPanelKind> = {
   security_scan: 'security_scan', debug: 'debug', manage_skill: 'manage_skill',
   context_notes: 'context_notes', memory_edit: 'memory_edit', goal: 'goal',
   ask: 'ask', think: 'think',
+  // `wait` blocks on background jobs and services the agent started, and its
+  // result is the only place their status and elapsed time exist. It had no
+  // panel at all, so a call that can occupy 30 minutes rendered as a title and
+  // an empty Output block.
+  wait: 'wait',
 };
 
 /** Devices whose panel is not named after the device itself. */

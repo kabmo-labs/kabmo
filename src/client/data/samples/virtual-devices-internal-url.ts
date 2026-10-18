@@ -14,6 +14,45 @@ import type { ToolCallData } from '@/shared/types';
  */
 export const internalUrlCalls: ToolCallData[] = [
   {
+    // The blocking `wait` — the only call whose content is a clock and a
+    // progress bar. The `details` below are a real result measured off this
+    // install (`bg_8`, a 2m 6s background bash job), so the demo exercises the
+    // panel's elapsed time, its job rows and its settled bar.
+    id: 'call_dev_wait',
+    type: 'wait',
+    name: 'wait',
+    title: 'wait — background jobs snapshot',
+    input: { i: 'Waiting for the restart idempotency job' },
+    intent: 'Waiting for the restart idempotency job',
+    status: 'success',
+    durationMs: 126_589,
+    details: {
+      op: 'wait',
+      meta: { source: { type: 'report', value: 'background jobs snapshot' } },
+      jobs: [
+        {
+          id: 'bg_8',
+          type: 'bash',
+          status: 'completed',
+          label: 'for i in 1 2 3; do\n  lsof -ti:3100 | xargs -r kill 2>/dev/null; sleep 1\n  set -a; . /tmp/test-env-mariadb.sh; set +a',
+          durationMs: 126_589,
+          resultText: '--- restart 1:\n--- restart 2:\n--- restart 3:\n=== state setelah 3x restart ===\ngrades\tenroll\tyears\tstudents\tnotes\twali\n804\t67\t1\t67\t15\t5',
+        },
+        {
+          id: 'bg_9',
+          type: 'task',
+          status: 'completed',
+          label: 'Verify migrations are idempotent across restarts',
+          durationMs: 74_120,
+          resolvedModel: 'deepseek-v4-1-flash',
+          completionPercent: 100,
+        },
+      ],
+    },
+    output:
+      '## Completed (2)\n\n### bg_8 [bash] — completed\n### bg_9 [task] — completed\n\nWall time: 126.59 seconds',
+  },
+  {
     id: 'call_dev_proc_read',
     type: 'read',
     name: 'read',

@@ -548,3 +548,25 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
     animation: none;
   }
 }
+
+/* Indeterminate progress for a blocking tool call (`wait`).
+ *
+ * A `wait` reports a duration but often no completion percentage — a `bash`
+ * job has none at all — so the bar must not claim a position it cannot know.
+ * The band sweeps instead, and `prefers-reduced-motion` parks it mid-track:
+ * the bar still reads as "in progress" without the motion. */
+@keyframes wait-bar-sweep {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(320%); }
+}
+
+.wait-bar-sweep {
+  animation: wait-bar-sweep 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-bar-sweep {
+    animation: none;
+    transform: translateX(33%);
+  }
+}

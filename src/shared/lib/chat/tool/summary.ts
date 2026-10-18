@@ -28,6 +28,7 @@ import type { ToolCallData } from '@/shared/types/chat';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
 import { isExcerptFurniture } from '@/shared/lib/chat/excerpt';
 import { bashServiceFacts, procFacts } from '@/shared/lib/chat/tool/proc-facts';
+import { waitFacts } from '@/shared/lib/chat/tool/wait-facts';
 import {
   countPhrase,
   diffLabel,
@@ -281,6 +282,9 @@ export function toolSummary(tool: ToolCallData): ToolSummary | null {
   // The outcome a reader wants first is the PROCESS's, not the transport's:
   // `stop · exited · ran 16m`, `stdin · ready · pid 22985`, `3 jobs · 1 running`.
   if (isProc) facts.push(...procFacts(tool));
+
+  // ── wait ──────────────────────────────────────────────────────────────────
+  if (key === 'wait') facts.push(...waitFacts(tool));
 
   // ── web_search ────────────────────────────────────────────────────────────
   if (key === 'web_search') {

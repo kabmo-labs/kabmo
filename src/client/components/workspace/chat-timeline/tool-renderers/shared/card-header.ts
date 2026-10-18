@@ -21,6 +21,7 @@ import type { ToolCallData } from '@/shared/types/chat';
 import { toTitleCase } from '@/shared/lib/chat/title-case';
 import { parseAskQuestions } from '@/shared/lib/chat/ask-questions';
 import { procOpLabel, procPathOf, procViewOf } from '@/shared/lib/omp/session/proc';
+import { waitViewOf } from '@/shared/lib/omp/session/wait';
 import { isXdDocRead, xdDocPath } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 import { resolveTargetFile } from '@/client/components/workspace/chat-timeline/tool-renderers';
 import {
@@ -107,6 +108,18 @@ export function toolCardHeader(tool: ToolCallData, toolKey: string): ToolCardHea
   if (mcpName) {
     const subject = mcpSubjectOf(tool);
     return { title: toTitleCase(mcpName), subtitle: subject ? clip(subject) : undefined };
+  }
+
+  // ── wait: the card says WHAT it blocks on, not just "Wait" ────────────────
+  // The generic path printed the tool name and nothing else, so a card that
+  // blocked for two minutes was indistinguishable from a call that never ran.
+  // The subtitle names the job (or the message) the wait was for; the clock is
+  // a fact chip, not a title line.
+  if (toolKey === 'wait') {
+    const view = waitViewOf(tool);
+    const job = view?.jobs[0];
+    const subject = job?.label?.split('\n')[0]?.trim() || job?.id || view?.waited?.from;
+    return { title: 'Wait', subtitle: subject ? clip(subject) : undefined };
   }
 
   // ── generic: a "name — subject" title splits, otherwise the name stands ──

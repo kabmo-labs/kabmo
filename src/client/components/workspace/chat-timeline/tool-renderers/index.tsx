@@ -39,6 +39,7 @@ import { Think } from '@/client/components/workspace/chat-timeline/tool-renderer
 import { Read } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Read';
 import { Edit } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Edit';
 import { Mcp } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Mcp';
+import { Wait } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Wait';
 import { hashlineTargetPath } from '@/shared/lib/omp/session/hashline-patch';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
@@ -75,6 +76,7 @@ const PANELS: Record<ToolPanelKind, (props: { tool: ToolCallData }) => ReactNode
   ask: AskPanel,
   think: Think,
   mcp: Mcp,
+  wait: Wait,
 };
 
 /** File a tool call targets: explicit `target`, result details, its arguments
