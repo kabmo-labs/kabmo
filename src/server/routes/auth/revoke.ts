@@ -22,7 +22,7 @@ import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { loadAuthConfig, revokeAllSessions } from '@/server/lib/auth/guard';
-import { issueSessionToken, isSecureRequest, sessionCookieHeader, sessionCookieName, SESSION_TTL_MS } from '@/server/lib/auth/token';
+import { issueSessionToken, isSecureRequest, readSessionCookie, sessionCookieHeader, sessionCookieName, sessionRemainingMs, SESSION_TTL_MS } from '@/server/lib/auth/token';
 
 export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params });
@@ -31,16 +31,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: 'UI authentication is not enabled' }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
+  // Read BEFORE the rotation: revoking rotates the signing secret, so the
+  // presented token stops verifying the moment it happens — reading afterwards
+  // always answered "unusable" and fell back to the default, which is how a
+  // 7-day session silently became a 12-hour one.
+  const before = loadAuthConfig()!;
+  const ttlMs = sessionRemainingMs(readSessionCookie(request), {
+    sessionSecret: before.sessionSecret,
+    credentialKey: before.credentialKey,
+  }) ?? SESSION_TTL_MS;
+
   const { persisted } = await revokeAllSessions();
   const updated = loadAuthConfig();
   if (!updated) {
     return json({ error: 'Could not revoke sessions' }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
+  // The user's own choice at the login screen, carried across the reissue.
   const token = issueSessionToken({
     sessionSecret: updated.sessionSecret,
     credentialKey: updated.credentialKey,
-    ttlMs: SESSION_TTL_MS,
+    ttlMs,
   });
 
   return json(
@@ -55,7 +66,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     {
       headers: {
         ...NO_STORE_HEADERS,
-        'set-cookie': sessionCookieHeader(sessionCookieName(request.headers), token, SESSION_TTL_MS, isSecureRequest(request)),
+        'set-cookie': sessionCookieHeader(sessionCookieName(request.headers), token, ttlMs, isSecureRequest(request)),
       },
     },
   );

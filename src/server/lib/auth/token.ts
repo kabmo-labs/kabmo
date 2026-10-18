@@ -151,6 +151,29 @@ export function verifySessionToken(
 }
 
 /**
+ * Remaining lifetime of a VALID token, in ms, or null when it is unusable.
+ *
+ * Reissuing a session (after a password change, after a revocation) has to
+ * preserve what the user chose at the login screen. Measured: a 7-day session
+ * came back as `Max-Age=43200` after a revoke, because those routes minted a
+ * fresh token with the DEFAULT ttl — a silent downgrade from a week to 12 hours
+ * that the user could only discover by being signed out early.
+ *
+ * The deadline is the token's own signed `expiresAt`, so this cannot be talked
+ * into extending a session beyond what was issued.
+ */
+export function sessionRemainingMs(
+  token: string | null | undefined,
+  { sessionSecret, credentialKey, now = Date.now() }: Omit<SessionIssueOptions, 'ttlMs'>,
+): number | null {
+  if (!verifySessionToken(token, { sessionSecret, credentialKey, now })) return null;
+  // `verifySessionToken` proves the token is a string with a numeric expiry.
+  const expiry = Number((token as string).split('.')[1]);
+  if (!Number.isFinite(expiry) || expiry <= now) return null;
+  return expiry - now;
+}
+
+/**
  * `Set-Cookie` value for a session.
  *
  * `SameSite=Lax` rather than `Strict`: this app's own document navigations must

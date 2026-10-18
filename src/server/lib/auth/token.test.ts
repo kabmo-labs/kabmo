@@ -21,6 +21,7 @@ import {
   readSessionCookie,
   sessionCookieHeader,
   sessionCookieName,
+  sessionRemainingMs,
   SESSION_TTL_MS,
   verifySessionToken,
 } from '@/server/lib/auth/token';
@@ -204,5 +205,32 @@ describe('session cookie attributes', () => {
     const header = clearSessionCookieHeader('omp_session_3000', false);
     expect(header).toContain('Max-Age=0');
     expect(header).toContain('Expires=Thu, 01 Jan 1970');
+  });
+});
+
+describe('sessionRemainingMs', () => {
+  // Reissuing a session must preserve the lifetime the user chose. Measured:
+  // a 7-day session came back as `Max-Age=43200` after a password change,
+  // because the route read the TTL from a token that had just stopped verifying.
+  test('reports what is left of a valid token', () => {
+    const token = issue({ ttlMs: 60_000 });
+    expect(sessionRemainingMs(token, { sessionSecret: SECRET, credentialKey: KEY, now: NOW })).toBe(60_000);
+    expect(sessionRemainingMs(token, { sessionSecret: SECRET, credentialKey: KEY, now: NOW + 45_000 })).toBe(15_000);
+  });
+
+  test('is null for an expired, foreign or missing token', () => {
+    const token = issue({ ttlMs: 1_000 });
+    expect(sessionRemainingMs(token, { sessionSecret: SECRET, credentialKey: KEY, now: NOW + 1_000 })).toBeNull();
+    expect(sessionRemainingMs(token, { sessionSecret: 'other', credentialKey: KEY, now: NOW })).toBeNull();
+    expect(sessionRemainingMs(token, { sessionSecret: SECRET, credentialKey: 'other', now: NOW })).toBeNull();
+    expect(sessionRemainingMs(null, { sessionSecret: SECRET, credentialKey: KEY, now: NOW })).toBeNull();
+    expect(sessionRemainingMs('garbage', { sessionSecret: SECRET, credentialKey: KEY, now: NOW })).toBeNull();
+  });
+
+  // The deadline is the token's OWN signed expiry, so this cannot be used to
+  // extend a session beyond what was issued.
+  test('never exceeds the token\'s own deadline', () => {
+    const token = issue({ ttlMs: 5_000 });
+    expect(sessionRemainingMs(token, { sessionSecret: SECRET, credentialKey: KEY, now: NOW })).toBe(5_000);
   });
 });

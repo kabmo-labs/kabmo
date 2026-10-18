@@ -28,7 +28,7 @@ import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed, parseJsonBody } from '@/server/lib/route-adapter';
 import { verifyPassword } from '@/server/lib/auth/config';
 import { loadAuthConfig, replaceActivePassword } from '@/server/lib/auth/guard';
-import { issueSessionToken, isSecureRequest, sessionCookieHeader, sessionCookieName, SESSION_TTL_MS } from '@/server/lib/auth/token';
+import { issueSessionToken, isSecureRequest, readSessionCookie, sessionCookieHeader, sessionCookieName, sessionRemainingMs, SESSION_TTL_MS } from '@/server/lib/auth/token';
 
 /** Shortest accepted password. Below this the argon2 cost stops being the weak link. */
 export const MIN_PASSWORD_LENGTH = 8;
@@ -62,16 +62,26 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: 'New password must differ from the current one' }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
+  // Read BEFORE the change: the new password derives a new credential key, so
+  // the presented token stops verifying the moment it is applied — reading
+  // afterwards always answered "unusable" and fell back to the default, which is
+  // how a 7-day session silently became a 12-hour one.
+  const ttlMs = sessionRemainingMs(readSessionCookie(request), {
+    sessionSecret: config.sessionSecret,
+    credentialKey: config.credentialKey,
+  }) ?? SESSION_TTL_MS;
+
   await replaceActivePassword(newPassword);
   const updated = loadAuthConfig();
   if (!updated) {
     return json({ error: 'Could not apply the new password' }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
+  // The user's own choice at the login screen, carried across the reissue.
   const token = issueSessionToken({
     sessionSecret: updated.sessionSecret,
     credentialKey: updated.credentialKey,
-    ttlMs: SESSION_TTL_MS,
+    ttlMs,
   });
 
   return json(
@@ -85,7 +95,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     {
       headers: {
         ...NO_STORE_HEADERS,
-        'set-cookie': sessionCookieHeader(sessionCookieName(request.headers), token, SESSION_TTL_MS, isSecureRequest(request)),
+        'set-cookie': sessionCookieHeader(sessionCookieName(request.headers), token, ttlMs, isSecureRequest(request)),
       },
     },
   );

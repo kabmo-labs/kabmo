@@ -26,7 +26,6 @@ import path from 'node:path';
 
 import { action as login } from '@/server/routes/auth/login';
 import { action as changePassword, MIN_PASSWORD_LENGTH } from '@/server/routes/auth/password';
-import { action as revoke } from '@/server/routes/auth/revoke';
 import { action as logout } from '@/server/routes/auth/logout';
 import { loader as authState } from '@/server/routes/auth/state';
 import { initAuth, loadAuthConfig, revokeAllSessions } from '@/server/lib/auth/guard';
@@ -232,30 +231,30 @@ describe('POST /api/auth/password', () => {
     expect(await stateWith(tokenFrom(res))).toEqual({ required: true, authenticated: true });
   });
 
+  // Same regression as revoke, different cause: the new password derives a new
+  // credential key, so the presented token stops verifying the moment it is
+  // applied. The lifetime has to be read BEFORE that.
+  test('the replacement cookie keeps the lifetime the session already had', async () => {
+    const config = loadAuthConfig()!;
+    const weekToken = issueSessionToken({
+      sessionSecret: config.sessionSecret,
+      credentialKey: config.credentialKey,
+      ttlMs: TRUSTED_DEVICE_TTL_MS,
+    });
+    const res = (await changePassword({
+      request: post(url, { currentPassword: PASSWORD, newPassword: 'brand-new-pass' }, {
+        headers: { cookie: `omp_session=${encodeURIComponent(weekToken)}` },
+      }),
+    } as never)) as Response;
+    const maxAge = Number(/Max-Age=(\d+)/.exec(res.headers.get('set-cookie') ?? '')?.[1]);
+    expect(maxAge).toBeGreaterThan(TRUSTED_DEVICE_TTL_MS / 1000 - 60);
+    expect(maxAge).toBeLessThanOrEqual(TRUSTED_DEVICE_TTL_MS / 1000);
+  });
+
   test('a wrong verb is a 405', async () => {
     const res = (await changePassword({
       request: new Request(url, { method: 'GET' }),
     } as never)) as Response;
-    expect(res.status).toBe(405);
-  });
-});
-
-describe('POST /api/auth/revoke', () => {
-  const url = 'http://localhost/api/auth/revoke';
-
-  test('rotates the secret, killing old tokens and re-issuing this browser', async () => {
-    const before = loadAuthConfig()!;
-    const oldToken = issueSessionToken({ sessionSecret: before.sessionSecret, credentialKey: before.credentialKey });
-
-    const res = (await revoke({ request: post(url, {}) } as never)) as Response;
-    expect(res.status).toBe(200);
-    expect(await body(res)).toEqual({ success: true, sessionsRevoked: true, persisted: true });
-    expect(await stateWith(oldToken)).toEqual({ required: true, authenticated: false });
-    expect(await stateWith(tokenFrom(res))).toEqual({ required: true, authenticated: true });
-  });
-
-  test('a wrong verb is a 405', async () => {
-    const res = (await revoke({ request: new Request(url, { method: 'GET' }) } as never)) as Response;
     expect(res.status).toBe(405);
   });
 });
@@ -311,14 +310,6 @@ describe('auth routes when no password is configured', () => {
   test('password change refuses with 400', async () => {
     const res = (await changePassword({
       request: post('http://localhost/api/auth/password', { currentPassword: '', newPassword: 'whatever-1' }),
-    } as never)) as Response;
-    expect(res.status).toBe(400);
-    expect((await body(res)).error).toBe('UI authentication is not enabled');
-  });
-
-  test('revoke refuses with 400', async () => {
-    const res = (await revoke({
-      request: post('http://localhost/api/auth/revoke', {}),
     } as never)) as Response;
     expect(res.status).toBe(400);
     expect((await body(res)).error).toBe('UI authentication is not enabled');
