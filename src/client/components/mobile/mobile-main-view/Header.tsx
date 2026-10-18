@@ -7,6 +7,7 @@ import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
+import { SignOutButton } from '@/client/components/common/SignOutButton';
 import { ContextUsageButton } from '@/client/components/common/context-usage-button';
 
 interface MobileHeaderProps {
@@ -209,6 +210,12 @@ export function MobileHeader({
         <ContextUsageButton
           sessionId={activeSessionId == null ? null : String(activeSessionId)}
           layout="mobile"
+        />
+        {/* Same control as the desktop navbar, and the same rule for when it
+            appears: a password is in force and this browser holds a session. */}
+        <SignOutButton
+          size={18}
+          className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
         />
 
         <button

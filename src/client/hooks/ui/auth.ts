@@ -53,9 +53,41 @@ function getSnapshot(): AuthState {
   return state;
 }
 
-/** Seed from the server-rendered bootstrap. Called once, before the first render. */
-export function primeAuthState(authenticated: boolean | undefined): void {
+/**
+ * Whether the SERVING instance requires a password at all.
+ *
+ * Separate from `state`, which says whether THIS browser has a session. A
+ * chamber running open is `authenticated` for every visitor, so `state` alone
+ * cannot answer "is there a session to sign out of" — the sign-out control would
+ * either never appear or appear on an instance with nothing to sign out of.
+ */
+let enabled = false;
+
+/**
+ * Seed from the server-rendered bootstrap. Called once, before the first render.
+ *
+ * `authEnabled` is a separate argument rather than a second boolean derived from
+ * `authenticated`: the shell is served to an unauthenticated visitor too, and
+ * that visitor still needs to know the instance is password-protected (so the
+ * login screen's framing is right) without being told it is signed in.
+ */
+export function primeAuthState(authenticated: boolean | undefined, authEnabled = false): void {
   state = authenticated === false ? 'required' : 'authenticated';
+  enabled = authEnabled;
+}
+
+/** Whether this instance requires a password. */
+export function isAuthEnabled(): boolean {
+  return enabled;
+}
+
+/**
+ * Whether a sign-out control applies: the instance has a password AND this
+ * browser currently holds a session. Both halves are required — an open instance
+ * has nothing to sign out of, and the login screen is not a place to offer it.
+ */
+export function useAuthEnabled(): boolean {
+  return useSyncExternalStore(subscribe, () => enabled);
 }
 
 /** Mark the session as gone — called by the fetch bridge and by a failed check. */

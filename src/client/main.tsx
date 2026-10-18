@@ -21,7 +21,7 @@ const bootstrap = window.__OMP_BOOTSTRAP__;
 // Both before the first render: the auth state decides whether the app or the
 // login screen is mounted, and the fetch bridge must be in place before any
 // hook issues a request, or a 401 during startup would go unnoticed.
-primeAuthState(bootstrap?.authenticated);
+primeAuthState(bootstrap?.authenticated, bootstrap?.authEnabled === true);
 installAuthFetchBridge();
 
 primeChamberSettings(bootstrap?.appSettings);

@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { getDb } from '@/server/db.server';
-import { isAuthenticatedRequest } from '@/server/lib/auth/guard';
+import { isAuthEnabled, isAuthenticatedRequest } from '@/server/lib/auth/guard';
 import { tryServeStatic } from '@/server/plugins/static';
 import { renderShell, SHELL_MARKER } from '@/server/plugins/shell.server';
 import {
@@ -158,7 +158,11 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // `production` is the same predicate the dev-asset proxy runs on
   // (`NODE_ENV !== 'production'`), so the client's dev-only chrome and the
   // server's dev-only asset route can never disagree about which build this is.
-  const bootstrap = JSON.stringify({ initialIsMobile, authenticated, production: !DEV_ASSETS_ENABLED, appSettings: settings }).replace(/</g, '\\u003c');
+  // `authEnabled` travels beside `authenticated` because they answer different
+  // questions: "this browser has a session" versus "there is a session to have".
+  // A chamber running open answers `authenticated: true` for every visitor, so
+  // the navbar cannot use it to decide whether a sign-out control applies.
+  const bootstrap = JSON.stringify({ initialIsMobile, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: settings }).replace(/</g, '\\u003c');
   // The template's own `<meta name="theme-color">` is REWRITTEN, not joined by
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
