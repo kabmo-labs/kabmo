@@ -13,8 +13,8 @@
  * size ceiling.
  */
 
-import type { IncomingExtensionUiRequest, OmpAgentEvent, ToolCallData } from '@/shared/types';
-import { extractTextFromContent, toChatMessage, toolResultText } from '@/shared/lib/omp/session/mapper';
+import type { IncomingExtensionUiRequest, OmpAgentEvent } from '@/shared/types';
+import { extractTextFromContent, toChatMessage } from '@/shared/lib/omp/session/mapper';
 import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
 import { parseChamberMarker } from '@/shared/lib/omp/mode/markers';
 import { emitChamberModeSignal } from '@/shared/lib/omp/mode/client-signal';
@@ -25,16 +25,14 @@ import { normalizeThinkingLevel } from '@/shared/lib/models/thinking-levels';
 import { endRetrySaga, foldAutoRetry } from '@/shared/lib/chat/timeline/provider-retry';
 import { foldTransportFrame } from '@/shared/lib/chat/omp/transport-frames';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
-import { describeAssistantPhase, describeToolActivity } from '@/shared/lib/chat/timeline/tool-verbs';
-import { extractToolImages } from '@/shared/lib/omp/session/tool-images';
+import { describeAssistantPhase } from '@/shared/lib/chat/timeline/tool-verbs';
 import { publishSubagentFrame } from '@/shared/lib/chat/omp/subagent-frames';
 import {
   pairToolOutputs,
-  putToolResult,
   recordToolResult,
   refreshToolMessage,
-  resultDetails,
 } from '@/shared/lib/chat/omp/tool-results';
+import { foldToolEnd, foldToolStart, foldToolUpdate } from '@/shared/lib/chat/omp/tool-frames';
 
 // Re-exported so stream.ts and the timeline hook keep their existing import
 // site; the implementation lives in tool-results.ts.
@@ -124,55 +122,17 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
       break;
     }
 
-    case 'tool_execution_start': {
-      const callId = typeof data.toolCallId === 'string' ? data.toolCallId : undefined;
-      setActivity(describeToolActivity({
-        name: typeof data.toolName === 'string' ? data.toolName : undefined,
-        args: data.args,
-        intent: typeof data.intent === 'string' ? data.intent : undefined,
-      }), deps);
-      if (callId) deps.toolResultsRef.current?.set(callId, { output: '' });
-      const last = deps.lastToolMessageRef.current;
-      if (last?.toolCalls?.some(tc => tc.id === callId)) {
-        deps.lastToolMessageRef.current = {
-          ...last,
-          toolCalls: last.toolCalls.map(tc => ({ ...tc, status: 'running' as ToolCallData['status'] })),
-        };
-        callbacks?.onMessageUpdate?.(deps.lastToolMessageRef.current);
-      }
+    case 'tool_execution_start':
+      foldToolStart(data as Record<string, unknown>, deps);
       break;
-    }
 
-    case 'tool_execution_update': {
-      const callId = typeof data.toolCallId === 'string' ? data.toolCallId : undefined;
-      const partial = toolResultText(data.partialResult);
-      if (!callId || !partial) break;
-      // `partialResult` is the tool's output SO FAR, not the fragment since the
-      // last update — omp hands over a full snapshot on every frame (measured
-      // on 18.3.0 and 18.8.3: a bash loop echoing one line a second reports
-      // "L1", then "L1\nL2", then "L1\nL2\nL3"). Appending the snapshot to what
-      // is already stored renders the running card as interleaved text
-      // ("L1\nL1\nL2\nL1\nL2\nL3"), which is what a long command looked like
-      // until its `tool_execution_end` overwrote the record.
-      putToolResult(deps, callId, { output: partial });
-      refreshToolMessage(callId, toolHost(deps));
+    case 'tool_execution_update':
+      foldToolUpdate(data as Record<string, unknown>, deps);
       break;
-    }
 
-    case 'tool_execution_end': {
-      const callId = typeof data.toolCallId === 'string' ? data.toolCallId : undefined;
-      if (!callId) break;
-      setActivity(PHASE_VERBS.thinking, deps);
-      const images = extractToolImages(data.result);
-      putToolResult(deps, callId, {
-        output: toolResultText(data.result),
-        isError: data.isError === true,
-        details: resultDetails(data),
-        ...(images.length > 0 ? { images } : {}),
-      });
-      refreshToolMessage(callId, toolHost(deps));
+    case 'tool_execution_end':
+      foldToolEnd(data as Record<string, unknown>, deps);
       break;
-    }
 
     case 'agent_end': {
       // A NON-TERMINAL `agent_end` is not the end of the run: omp emits it when

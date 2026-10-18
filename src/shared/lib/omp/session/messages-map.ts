@@ -126,6 +126,12 @@ export interface CollectedToolResult {
   output: string;
   details?: Record<string, unknown>;
   isError?: boolean;
+  /** Wall time of the call, from its `tool_execution_start` entry to its
+   *  result entry. The only duration a reloaded call has: omp writes none on
+   *  the toolResult itself. */
+  durationMs?: number;
+  /** When the call started, from its `tool_execution_start` entry. */
+  startedAt?: number;
   /** Pictures the result returned (a `read` of an image). */
   images?: ToolImageRef[];
 }
@@ -142,6 +148,24 @@ export interface SequenceState {
  */
 export function collectToolOutputs(records: Record<string, unknown>[]): Map<string, CollectedToolResult> {
   const outputs = new Map<string, CollectedToolResult>();
+  // omp records each call's start as its own `custom` entry — the ONLY place a
+  // tool's begin time exists in the JSONL:
+  //   {"type":"custom","customType":"tool_execution_start",
+  //    "data":{"toolCallId":"call_…","toolName":"wait","startedAt":"…"},"timestamp":"…"}
+  // The toolResult entry carries no duration at all, so without this pass a
+  // reloaded `wait` (measured: 323 results in the author's store) knew how long
+  // it blocked only from its own output prose. 114,642 such entries exist, so
+  // the map is cheap and the join is exact by call id.
+  const startedAt = new Map<string, number>();
+  for (const record of records) {
+    if (record?.type !== 'custom' || record.customType !== 'tool_execution_start') continue;
+    const data = isRecord(record.data) ? record.data : undefined;
+    const id = typeof data?.toolCallId === 'string' ? data.toolCallId : undefined;
+    if (!id) continue;
+    const at = toEpochMs(data?.startedAt) ?? toEpochMs(record.timestamp);
+    if (at !== undefined) startedAt.set(id, at);
+  }
+
   for (const record of records) {
     if (record?.type !== 'message') continue;
     const msg = (record as unknown as OmpMessageEntry).message;
@@ -163,10 +187,16 @@ export function collectToolOutputs(records: Record<string, unknown>[]): Map<stri
     const details = (isRecord(msg.details) ? (msg.details as Record<string, unknown>) : undefined) || existing?.details;
     const isError = msg.isError === true || existing?.isError;
     const images = extractToolImages(msg.content);
+    // The result's own timestamp closes the span the start entry opened.
+    const started = startedAt.get(callId);
+    const ended = toEpochMs(msg.timestamp) ?? toEpochMs(record.timestamp);
+    const durationMs = started !== undefined && ended !== undefined && ended >= started ? ended - started : undefined;
     outputs.set(callId, {
       output,
       details,
       isError,
+      ...(durationMs !== undefined ? { durationMs } : {}),
+      ...(started !== undefined ? { startedAt: started } : {}),
       ...(images.length > 0 ? { images } : existing?.images ? { images: existing.images } : {}),
     });
   }

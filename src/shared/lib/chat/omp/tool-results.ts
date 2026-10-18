@@ -27,6 +27,18 @@ export interface ToolResultRecord {
   output: string;
   isError?: boolean;
   details?: Record<string, any>;
+  /** When the call started, from `tool_execution_start`. omp reports no
+   *  duration on the live frames either — `tool_execution_end` carries the
+   *  result, not a span — so the card's elapsed time is this clock against
+   *  the end frame. */
+  startedAt?: number;
+  /** Wall time the call took, filled on the end frame. */
+  durationMs?: number;
+  /** The call has NOT finished: a progress frame wrote this entry, not a
+   *  result. `pairToolOutputs` reads it to keep the card `running`, because the
+   *  map holds an entry from `tool_execution_start` onward and treating any
+   *  entry as a result marked a streaming call "Done" on its first update. */
+  pending?: boolean;
   /** Pictures the result returned (a `read` of an image). */
   images?: ToolImageRef[];
 }
@@ -50,13 +62,31 @@ function capToolOutput(output: string): string {
   return `…[truncated]\n${output.slice(-MAX_TOOL_OUTPUT_CHARS)}`;
 }
 
-/** Write a tool result into the map, enforcing both caps. */
+/** Write a tool result into the map, enforcing both caps.
+ *
+ *  The write REPLACES the entry, so the start clock the `tool_execution_start`
+ *  frame recorded is carried forward: progress frames and the end frame each
+ *  overwrite the record, and losing it there would leave a finished call with
+ *  no duration at all. */
 function storeToolResult(
   map: Map<string, ToolResultRecord>,
   callId: string,
   record: ToolResultRecord,
 ): void {
-  map.set(callId, { ...record, output: capToolOutput(record.output) });
+  const previous = map.get(callId);
+  const startedAt = record.startedAt ?? previous?.startedAt;
+  const durationMs = record.durationMs ?? previous?.durationMs;
+  // An end frame clears it; a progress frame sets it. Carried forward like the
+  // clock, because a snapshot with no flag must not silently settle the call.
+  const pending = record.pending ?? previous?.pending;
+  const merged: ToolResultRecord = {
+    ...record,
+    output: capToolOutput(record.output),
+    ...(startedAt !== undefined ? { startedAt } : {}),
+    ...(durationMs !== undefined ? { durationMs } : {}),
+    ...(pending !== undefined ? { pending } : {}),
+  };
+  map.set(callId, merged);
   while (map.size > MAX_TRACKED_TOOL_RESULTS) {
     const oldest = map.keys().next().value;
     if (oldest === undefined) break;
@@ -97,10 +127,21 @@ export function recordToolResult(raw: Record<string, unknown>, host: ToolResultH
   const callId = typeof raw.toolCallId === 'string' ? raw.toolCallId : undefined;
   if (!callId) return;
   const images = extractToolImages(raw.content);
-  host.toolResultsRef.current?.set(callId, {
+  // `message_end` arrives AFTER `tool_execution_end` and writes the same entry.
+  // The span measured there is the call's real duration, so it is kept rather
+  // than re-measured against a clock that has since moved on; only a result
+  // whose end frame never arrived is timed here, from the start clock.
+  const previous = host.toolResultsRef.current?.get(callId);
+  putToolResult(host, callId, {
     output: extractTextFromContent(raw.content),
     isError: raw.isError === true,
     details: resultDetails(raw),
+    pending: false,
+    ...(previous?.durationMs !== undefined
+      ? { durationMs: previous.durationMs }
+      : previous?.startedAt !== undefined
+        ? { durationMs: Math.max(0, Date.now() - previous.startedAt) }
+        : {}),
     ...(images.length > 0 ? { images } : {}),
   });
 }
@@ -115,8 +156,15 @@ export function pairToolOutputs(msg: ChatMessageData, host: ToolResultHost): Cha
           ...tc,
           output: res.output,
           details: tc.details || res.details || undefined,
+          ...(res.durationMs !== undefined ? { durationMs: res.durationMs } : {}),
+          ...(res.startedAt !== undefined ? { startedAt: res.startedAt } : {}),
           ...(res.images && res.images.length > 0 ? { images: res.images } : {}),
-          status: (res.isError ? 'error' : 'success') as ToolCallData['status'],
+          // A progress frame leaves an entry in this map from the call's START
+          // onward, so "an entry exists" is not "the call returned". Treating it
+          // as one settled the card on its first update: a `wait` that blocks for
+          // minutes rendered as `Done` with a 0:00 clock from the moment omp sent
+          // its first snapshot (measured in a browser spec).
+          status: (res.pending ? 'running' : res.isError ? 'error' : 'success') as ToolCallData['status'],
         }
       : tc;
   });

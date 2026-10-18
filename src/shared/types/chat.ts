@@ -117,6 +117,10 @@ export interface ToolCallData {
   duration?: string;
   /** Raw duration ms dari toolResult (untuk format ulang). */
   durationMs?: number;
+  /** When the call STARTED. The only clock a still-running call has: omp
+   *  reports no elapsed time on the start frame, and a watched job's
+   *  `durationMs` is the JOB's age, which routinely predates the call. */
+  startedAt?: number;
   diff?: ToolDiffChunk;
   /** RAW details toolResult — dipakai renderer diff/task/usage. */
   details?: Record<string, any>;

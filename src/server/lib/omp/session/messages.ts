@@ -120,6 +120,8 @@ export async function loadSessionMessages(filePath: string): Promise<ChatMessage
           ...call,
           output: call.output || collected?.output || undefined,
           details: (call.details || collected?.details || undefined) as Record<string, any> | undefined,
+          ...(collected?.durationMs !== undefined ? { durationMs: collected.durationMs } : {}),
+          ...(collected?.startedAt !== undefined ? { startedAt: collected.startedAt } : {}),
           ...(images && images.length > 0 ? { images } : {}),
           status: collected?.isError ? 'error' : call.status,
         };
