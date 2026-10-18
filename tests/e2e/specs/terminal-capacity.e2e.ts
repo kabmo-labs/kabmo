@@ -38,7 +38,7 @@
  * half meaningful, and harmless where it is not consulted.
  */
 
-import { test, expect, openApp } from '../fixtures/app';
+import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
 /** Must match `MAX_TERMINALS` in `runtime.server.ts`. */
@@ -95,6 +95,19 @@ interface Inventory {
 
 test.describe('terminal capacity', () => {
   test(`the ${MAX_TERMINALS + 1}th busy shell is refused with capacity`, async ({ harness }) => {
+    // MEASURED, not assumed: on the Windows runner the shells this spec attaches
+    // come back `status: "exited"`, `exitCode: 1` within a second, so nothing
+    // ever counts toward the cap — the inventory dump the poll throws reports
+    // exactly that for all eight ids. The same spec passes on POSIX, and the
+    // Windows leg is flaky in the other direction too (a Release run failed it
+    // and passed on retry), which points at the PTY child rather than the cap.
+    // `terminal.e2e.ts` skips on Windows for the neighbouring reason (ConPTY
+    // renders rather than relays bytes), so the panel's PTY is not otherwise
+    // proven there either. The cap's WINDOWS BRANCH — counting every running
+    // shell where the platform cannot tell idle from busy — stays covered by
+    // `store-liveness.test.ts`, which injects the platform and runs everywhere.
+    skipOnWindows('the PTY shell exits with code 1 on the Windows runner, so no shell counts toward the cap');
+
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal-cap');
     const root = workspace.path;
