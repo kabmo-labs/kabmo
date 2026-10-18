@@ -67,16 +67,24 @@ export function useOmpAgent(sessionId: string | null, callbacks: OmpAgentCallbac
     // the SAME conversation under a new id — see `run-switch.ts` for why the
     // stream attachment is the evidence, and for what breaks when this is read
     // as a switch (a card frozen at `Running` for the rest of the session).
+    //
+    // Only the REFS are skipped here. The probe below still has to run for every
+    // arrival: it is what replays `pendingUiRequests`, and the dialog queue is
+    // reset whenever the session id changes (`useExtensionDialogQueue`). An `ask`
+    // frame that lands in that window would otherwise be lost with nothing left
+    // to re-deliver it — the card then renders its options as inert rows on
+    // "Waiting for the previous answer…" while omp blocks forever (measured in
+    // `ask.e2e.ts`: `/^Yes\b/` matched no button at all).
     const previous = preparedSessionRef.current;
     preparedSessionRef.current = sessionId;
-    if (!isRunSwitch({ previous, sessionId, attached: attachedSession() })) return;
-
-    // Session changed (or first mount): drop the previous session's tool
-    // results. The refs are empty on a genuine first mount, so this cannot
-    // disturb a resumed session's reattach below.
-    toolResultsRef.current.clear();
-    lastToolMessageRef.current = null;
-    activityRef.current = '';
+    if (isRunSwitch({ previous, sessionId, attached: attachedSession() })) {
+      // Session changed: drop the previous session's tool results. The refs are
+      // empty on a genuine first mount, so this cannot disturb a resumed
+      // session's reattach below.
+      toolResultsRef.current.clear();
+      lastToolMessageRef.current = null;
+      activityRef.current = '';
+    }
     // Do NOT auto-connect here: the stream endpoint refuses (409) until the
     // session's omp process is spawned (POST /api/agent/:id), and a client
     // dialing a refused endpoint loops network errors in the console.
