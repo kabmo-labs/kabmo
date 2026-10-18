@@ -22,10 +22,11 @@
   <a href="AGENTS.md">Architecture</a> ·
   <a href="DESIGN.md">Design</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="docs/plugin-platform-plan.md">Plugins</a> ·
   <a href="https://github.com/rajebdev/ompchamber/issues">Issues</a>
 </p>
 
-![OMPChamber — session sidebar, streaming timeline and the Files panel](docs/assets/hero-dark.png)
+![OMPChamber — session sidebar, streaming timeline with tool cards, and the Files panel](docs/assets/hero-dark.png)
 
 ## What it is
 
@@ -34,62 +35,86 @@ omp's own session JSONL, project registry, config and subagent transcripts, fold
 live view, and writes back through omp's RPC mode.
 
 ```bash
-bun run src/server/index.ts    # API + WebSocket + static client on :3000
+ompchamber serve                # production server + prebuilt client on :3000
+bun run dev                     # source checkout: one process, HMR, no build step
 ```
 
 - **One process.** Elysia serves the API and the client bundle, and the agent event stream is a
-  first-class WebSocket route on that same listener (SSE as fallback) — no second server, no proxy.
+  first-class WebSocket route on that same listener (SSE as fallback) — no second server, no proxy,
+  no separate client watcher.
 - **Two data modes.** `MOCK=false` (the default, also when unset) runs on the real SQLite database
   and your real workspace; `MOCK=true` swaps in bundled demo datasets. Every screenshot and
   recording on this page was captured in `MOCK=true`.
-- **Bun only.** The server imports `bun:sqlite`, and sessions, config and updates shell out to the
-  `omp` binary.
+- **Bun only.** The server imports `bun:sqlite` and `Bun.YAML`, the client is bundled by `Bun.build`,
+  and sessions, config and updates shell out to the `omp` binary.
 
 ## Feature tour
 
-![Feature tour — panels, search, terminal, telemetry](docs/assets/tour.gif)
+![Feature tour — timeline, Files, Search, Source Control, a real PTY, Context & Telemetry, Wiki, and the theme cycle](docs/assets/tour.gif)
 
-<sub>Full-quality recording (MP4, 27s): [docs/assets/tour.mp4](docs/assets/tour.mp4) · theme cycle in motion: [docs/assets/themes.gif](docs/assets/themes.gif)</sub>
+<sub>Full-quality recording (MP4, 57s): [docs/assets/tour.mp4](docs/assets/tour.mp4) · theme cycle in motion: [docs/assets/themes.gif](docs/assets/themes.gif)</sub>
 
 | | |
 |---|---|
-| ![Files panel](docs/assets/panel-files.png)<br>**Files** — project tree, opened-file tabs, one repo picker shared with the other panels | ![Search panel](docs/assets/panel-search.png)<br>**Search** — ripgrep-backed streaming results, scoped to the picked repo |
-| ![Source control](docs/assets/panel-git.png)<br>**Source control** — staged/unstaged changes, commits, branches, tracking state | ![Editor and diff](docs/assets/panel-diff.png)<br>**Editor &amp; diff** — split or unified diffs, Shiki highlighting, images as pictures |
-| ![Terminal](docs/assets/panel-terminal.png)<br>**Terminal** — a real PTY (one shell per terminal id, scrollback replayed on reload) | ![Context and telemetry](docs/assets/panel-context.png)<br>**Context &amp; telemetry** — context window use, cache hit rate, cost, per-turn breakdown |
-| ![Usage](docs/assets/panel-usage.png)<br>**Usage** — provider balance, plan windows, per-model token spend | ![Appearance settings](docs/assets/settings-themes.png)<br>**Settings** — appearance, chats, OMP engine, providers, agents, commands, MCP, skills |
-| ![Mobile view — chat, sessions drawer and the panel rail on a phone](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, the full panel rail | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 45 light and dark themes, applied to the whole console |
+| ![Files panel](docs/assets/panel-files.png)<br>**Files** — project tree with git markers, cut/copy/paste, drag-to-move, and a file open in the editor | ![Search panel](docs/assets/panel-search.png)<br>**Search** — ripgrep-backed streaming results, virtualized list, in-file jump and replace preview |
+| ![Source control](docs/assets/panel-git.png)<br>**Source Control** — changes, commits, branches, tracking, stash, and merge/rebase conflict resolution | ![Editor and diff](docs/assets/panel-diff.png)<br>**Editor & diff** — split or unified, full-code or diff-only, word wrap, find/replace, command palette |
+| ![Terminal](docs/assets/panel-terminal.png)<br>**Terminal** — a real PTY (one shell per terminal id, scrollback replayed on reload) | ![Context and telemetry](docs/assets/panel-context.png)<br>**Context & telemetry** — context window use, cache hit rate, cost, per-message breakdown |
+| ![Wiki](docs/assets/panel-wiki.png)<br>**Wiki** — reads a project's GitHub/GitLab wiki over git, with its own `_Sidebar` as navigation | ![Todos](docs/assets/panel-todo.png)<br>**Todos** — the session's live list, all five omp statuses, blockers and per-phase progress |
+| ![Plan](docs/assets/panel-plan.png)<br>**Plan** — the plan artifact an omp session is working from, rendered as a document | ![Usage](docs/assets/panel-usage.png)<br>**Usage** — provider balance, plan windows, saved resets, per-model token spend |
+| ![Your browser](docs/assets/panel-user-browser.png)<br>**Browser (yours)** — a private iframe with real history and device presets | ![Agent browser](docs/assets/panel-agent-browser.png)<br>**Browser agent** — a live screencast of the tab the agent is driving |
+| ![Panel plugins](docs/assets/settings-panel-plugins.png)<br>**Panel plugins** — every view is a plugin, including the eleven bundled ones | ![Providers](docs/assets/settings-providers.png)<br>**Providers** — dialects, discovery, hand-added models, credential removal |
+| ![Mobile view](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, and the panel drawer | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 45 light and dark themes, applied to the whole console |
 
-- **Chat timeline** — streaming thinking blocks, tool-call cards with a structured renderer per tool
-  (bash, LSP, AST edit, hub tasks, mermaid diagrams you can zoom), usage footers, a persistent
-  follow-up queue, a jump rail that reaches any user turn, drag-and-drop attachments, one-shot
-  auto-titling, and in-place undo that rewinds a session by truncating its JSONL behind a
-  confirmation step.
+- **Chat timeline** — streaming thinking blocks (with omp's narrated prose promoted to answer
+  text), a structured renderer per tool (bash, LSP, AST edit, `proc://` services, `wait` with a
+  clock and progress, mermaid diagrams you can zoom), usage footers, a persistent follow-up queue,
+  a jump rail that reaches any user turn, drag-and-drop attachments, one-shot auto-titling, and
+  in-place undo that rewinds a session by truncating its JSONL behind a confirmation step.
+- **Steering, not cancelling** — a mid-run prompt is delivered INTO the running turn
+  (`POST /api/agent/:id {type:'steer'}`); the answer you were watching survives. A subagent can be
+  steered or stopped on its own, from the roster or its transcript.
 - **Side questions** (`/btw [question]`) — replaces the composer with a panel that answers from a
   private copy of the session file, so the parent transcript is never written; a topic can be
   promoted into a session of its own, and it runs the same tool cards, thinking and usage rows as
   the chat.
 - **Workspace sidebar** — folder → session tree off omp's project registry, with search, sort,
-  archive, per-session stream status and subagent rows.
-- **Nine right-panel views** — files, search, git, terminal, context &amp; telemetry, your browser,
-  the agent browser, usage and wiki, each remembering its own width per session.
-- **Full omp settings surface** — engine config keys, providers, agents, `AGENTS.md` / `RULES.md`,
-  slash commands, MCP servers with live connection tests, skills and the skills catalog, token
-  usage and notifications.
+  archive, per-session stream status, subagent rows, scheduled tasks, and a New Workspace dialog
+  that can register a directory or clone a repository.
+- **Eleven right-panel views** — context & telemetry, files, search, source control, wiki,
+  terminal, your browser, the agent browser, usage, todos and plan; each remembers its own width
+  per session, and the bar is drag-reorderable.
+- **A plugin platform, not a fixed panel list** — a panel plugin can ship a Preact view, a server
+  half, its own storage, RPC methods, a realtime topic and declared settings. Three are bundled
+  (`Runner` — 18 command sources across 15 toolchains — plus `Stats` and `Session Info`),
+  and they are auto-synced on upgrade.
+- **Full omp settings surface** — engine config keys (generated from omp's own schema, 554
+  settings across 10 tabs), providers, agents, `AGENTS.md` / `RULES.md`, slash commands, MCP
+  servers with live connection tests, skills and the skills catalog, token usage, notifications,
+  and dictation.
 - **Self-update** — `ompchamber update` installs the latest version from npm, and **About → Updates**
-  does the same from the console, restart included.
+  does the same from the console, restarting the server and reloading the page into the new build.
 - **Opt-in password, HTTPS and session revocation** — the UI is open by default and locked only when
   you ask for it (`--ui-password` / `OMPCHAMBER_UI_PASSWORD`), with `--tls` for a self-signed HTTPS
   listener and `POST /api/auth/revoke` to end every session at once. See [Security](#security).
+- **Tray icon and start at login** — `serve --tray` / `--startup`, with the icon as a child of the
+  server so it can never outlive it.
+- **Dictation** — the composer's mic button runs omp's own speech-to-text worker (no API key, a
+  local model) and streams the transcript into the draft.
 
 ## Themes
 
-![Six of the 45 palettes](docs/assets/theme-grid.png)
+![The palette picker in Settings → Appearance](docs/assets/settings-themes.png)
+
+![Eight of the 45 palettes, same surface](docs/assets/theme-grid.png)
 
 45 palettes in one catalog (`src/shared/lib/theme/`): the chamber's own three (`paper`, `contrast`,
 `one-dark-pro-soft`) and 21 light/dark pairs — Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula,
-Solarized, Kanagawa, Vesper and more. Switching repaints everything, syntax highlighting and
-Mermaid diagrams included, through one writer (`applyDocumentTheme`) that sets `data-theme` and
-announces it.
+Solarized, Kanagawa, Vesper, Ayu, Monokai and more. Switching repaints everything, syntax
+highlighting and Mermaid diagrams included, through one writer (`applyDocumentTheme`) that sets
+`data-theme` and announces it — so an open editor, a live terminal and a diagram in the transcript
+all follow with no reload.
+
+![Theme cycle in motion](docs/assets/themes.gif)
 
 ## Install
 
@@ -141,8 +166,8 @@ which command to run.
 A server OMPChamber did not start is never restarted: `bun run dev`, `bun run start`, a manual
 `bun src/server/index.ts` and instances owned by a supervisor (systemd, pm2, a container) all record
 themselves as `direct`, so the update leaves them running and says so. `--no-restart` turns the
-restart off entirely. The console's **About → Updates** runs the same install and restarts the
-instance serving that console.
+restart off entirely. The console's **About → Updates** runs the same install, restarts the instance
+serving that console, and reloads the page once the replacement answers on the same port.
 
 ## CLI
 
@@ -263,19 +288,21 @@ Environment variables, read from `.env` (see [`.env.example`](.env.example)):
 | `HOST` | `localhost` | Server bind address |
 | `MOCK` | `false` | `true` = demo datasets, `false` = real SQLite + workspace only |
 | `SYNC_WORKSPACE` | `true` | Seed the workspace list from discovered omp projects — only while the list is still empty (one-time bootstrap; a curated list is never appended to) |
-| `OMPCHAMBER_DATA_DIR` | `~/.ompchamber` | CLI registry, logs, database and TLS certificate root |
+| `OMPCHAMBER_DATA_DIR` | `~/.ompchamber` | CLI registry, logs, database, wiki mirrors and TLS certificate root |
 | `OMPCHAMBER_PORT` / `OMPCHAMBER_HOST` | — | Defaults for the CLI when no flag is passed |
 | `OMPCHAMBER_UI_PASSWORD` | — | Require a UI password (see [Security](#security)); erased from the environment at boot |
 | `OMPCHAMBER_DB_PATH` (`DB_PATH`) | `~/.ompchamber/db.sqlite` | SQLite database path |
-| `OMPCHAMBER_DEV_SERVER` | `http://localhost:3100` | Rsbuild asset origin used in dev |
 | `OMPCHAMBER_BUN` | — | Explicit Bun binary for the CLI to spawn |
-| `PI_CONFIG_DIR` / `PI_CODING_AGENT_DIR` | `~/.omp` | Oh-My-Pi config root overrides |
 | `OMPCHAMBER_OMP_BIN` | — | Explicit `omp` binary path |
+| `OMPCHAMBER_MARKETPLACE_DIR` / `OMPCHAMBER_BUNDLED_MARKETPLACE_DIR` | — | Override where plugin marketplaces are read from |
+| `PI_CONFIG_DIR` / `PI_CODING_AGENT_DIR` | `~/.omp` | Oh-My-Pi config root overrides |
 | `SKILLS_API_URL` | `https://skills.sh` | Skills catalog source |
 | `NPM_CONFIG_REGISTRY` | `https://registry.npmjs.org` | Registry the update check reads |
 
 Runtime state, sessions and settings live in SQLite (`~/.ompchamber/db.sqlite`), the single source
-of truth for persisted settings.
+of truth for persisted settings. Per-session UI state (open tabs, panel widths, the picked repo,
+drafts) lives beside it, keyed by session id, so a reload restores the layout that session was left
+in.
 
 ## Security
 
@@ -297,7 +324,8 @@ ompchamber serve --tls --ui-password …      # HTTPS, cookie gains Secure
   browsers key a cookie jar by host and ignore the port. `HttpOnly`, `SameSite=Lax`, and `Secure`
   whenever the request arrived over https — including through a proxy that sets
   `x-forwarded-proto`. Changing the password or calling `POST /api/auth/revoke` rotates the signing
-  secret and ends every session everywhere.
+  secret and ends every session everywhere. The token binds to a key derived from the password, so a
+  restart with the same password keeps your session and a different one kills it.
 - **TLS** — `--tls` generates a self-signed certificate (SAN covering `localhost`, `127.0.0.1` and
   the machine's LAN addresses) into `~/.ompchamber/tls/`. Your browser warns once, then the
   connection is encrypted. Without it, a password and the session cookie cross the network in
@@ -305,6 +333,8 @@ ompchamber serve --tls --ui-password …      # HTTPS, cookie gains Secure
 - **No TLS locally?** A tunnel terminates TLS at the edge and needs no certificate:
   `cloudflared tunnel --url http://127.0.0.1:3000`. Verified end to end — login, the API gate, SSE
   and the terminal WebSocket all work through the public URL, in dev and in the production build.
+- **Local sockets are origin-checked.** The terminal PTY and dictation WebSockets verify the
+  upgrade's origin with the same predicate, because both trigger real work on this machine.
 
 Bind to loopback (the default) and reach it over SSH port-forwarding, a VPN, or a tunnel. Exposing
 the port directly is the option with the least margin for error.
@@ -320,10 +350,19 @@ src/
 │  └─ tailwind.css  theme tokens (--theme-ink, --theme-paper, …)
 ├─ server/    Bun-only — Elysia routes, SQLite, omp RPC bridge, fs/git/terminal
 │  ├─ routes/       one plugin per domain, mounted in routes/index.ts
-│  ├─ lib/          omp session/subagent/config, updates, browser runtime, port lifecycle
+│  ├─ lib/          omp session/subagent/config, panels, wiki, updates, lifecycle
 │  └─ plugins/      SSR shell, static assets, compression, dev assets
 ├─ shared/    Imported by both — types, chat timeline folding, pure helpers
 └─ cli/       ompchamber command (plain ESM, runs under Bun)
+
+packages/
+├─ plugin-sdk/  the panel-plugin contract (types, backend API, slots)
+└─ ui/          the Preact kit a plugin builds against
+
+marketplace/plugins/
+├─ command-runner/  a repository's commands, 18 sources across 15 toolchains
+├─ stats/           CPU and RAM of the whole omp stack
+└─ session-info/    active workspace and a note per session
 ```
 
 Non-obvious invariants worth reading before you edit:
@@ -334,9 +373,12 @@ Non-obvious invariants worth reading before you edit:
   codes stay identical; `action` owns method dispatch and returns its own `405`.
 - **Every internal import uses the `@/` alias**, folders mirror component names in kebab-case, and
   every `.ts`/`.tsx` file stays under 350 lines.
+- **Every right-panel view is a plugin**, including the eleven the chamber ships: one catalog merges
+  the built-ins and the installed ones, so a view cannot be a table in one layout and a fetch in the
+  other.
 
 [`AGENTS.md`](AGENTS.md) is the normative reference for all of the above — the invariants behind the
-panels, the BTW subsystem, the PTY terminal and the build/dev loop.
+panels, the BTW subsystem, the PTY terminal, the plugin platform and the build/dev loop.
 
 ## Development
 
@@ -348,6 +390,9 @@ bun run dev:lan        # same, bound to the LAN
 One process. Bun serves the HTML shell and bundles its assets itself, so there is no separate
 client watcher to run and no build step before the first request: saving a server file restarts the
 server, saving a client file is pushed to the browser over HMR (`import.meta.hot`, wired by Bun).
+A dev server keeps the whole module graph open for HMR (~3.5k descriptors after one page load), so
+`GET /api/health` reports `fds.open` and `ompchamber status` prints it — a long-lived session belongs
+on a production server.
 
 `bun run build` produces the production bundle — `scripts/build-client.ts` writes `dist/client`, which
 `ompchamber serve` runs. The CLI builds it on demand the first time when it is missing, so a source
@@ -359,13 +404,17 @@ Verification gates, all mandatory:
 bun run lint                                                  # tsc --noEmit
 bunx tsc --noEmit --noUnusedLocals --noUnusedParameters        # no dead code
 bun run build                                                 # production bundle
-bun test                                                      # bun test
+bun test                                                      # unit + route suites
+bun run typecheck:e2e                                         # the Playwright specs
 ```
 
+The browser layer is Playwright (`tests/e2e/`, 22 specs, `*.e2e.ts`) and boots a real server
+subprocess against an isolated temp root per spec; `bun run test:e2e` runs it, and CI runs it on
+every push to `main` plus label-gated pull requests.
+
 The screenshots, GIFs and the MP4 in [`docs/assets`](docs/assets) are captured from a scratch
-checkout running `MOCK=true` (`PORT=3123`) with Playwright, so they contain demo data only — never a
-real workspace.
-The three logos in the badge row at the top live in
+checkout running `MOCK=true` with Playwright, so they contain demo data only — never a real
+workspace. The three logos in the badge row at the top live in
 [`docs/assets/brand`](docs/assets/brand) — Elysia and Shiki have no Simple Icons slug and shields
 rejects a remote `logo=` URL, so each mark is inlined in the badge as a base64 data URI. Their
 provenance, licences and recolouring are documented beside them, and
@@ -374,16 +423,27 @@ provenance, licences and recolouring are documented beside them, and
 ## Releasing
 
 A push to `main` cuts the release — there is no manual version bump
-([`.github/workflows/release.yml`](.github/workflows/release.yml)):
+([`.github/workflows/release.yml`](.github/workflows/release.yml)). The workflow calls the same
+reusable gates a pull request runs, then publishes as the last jobs of its own run:
+
+```text
+gates → e2e → packages → packages-publish
+                       → marketplace → app → app-publish
+```
 
 1. `semantic-release` reads the Conventional Commits since the last tag, decides the next
    version, writes it into `package.json` and a `## [x.y.z]` section of `CHANGELOG.md`, commits
    both, then creates the tag and the GitHub Release.
-2. The same run then publishes it: [`publish-app.yml`](.github/workflows/publish-app.yml) checks out
-   the tag, verifies it against `package.json`, typechecks, runs `bun test`, builds `dist/client`,
-   packs a dry run, and runs `bun publish`. Publishing is the **last action of the release run**
-   rather than a second run dispatched beside it, so a release cannot report success while its
-   publish is still queued, still waiting on the `npm` environment, or already failed.
+2. `publish-app.yml` checks out the tag, verifies it against `package.json`, typechecks, runs
+   `bun test`, builds `dist/client`, packs a dry run, and runs `bun publish`. Publishing is the
+   **last action of the release run** rather than a second run dispatched beside it, so a release
+   cannot report success while its publish is still queued, still waiting on the `npm` environment,
+   or already failed.
+3. The same run releases `@ompchamber/plugin-sdk` and `@ompchamber/ui` FIRST (the app pins them, and
+   a `workspace:` spec is substituted from `bun.lock`), then bumps the bundled marketplace plugins
+   by their own commit history — a bundled plugin's manifest version is the whole delivery
+   mechanism, since `syncBundledPlugins` applies a new copy only when the store's version is
+   strictly newer.
 
 What a commit does to the version is one table, in
 [`release/release-rules.js`](release/release-rules.js), and `release/bump.test.js` asserts it:
@@ -409,8 +469,8 @@ A `BREAKING CHANGE:` footer is therefore read only in uppercase, and only where 
 Two things to set up once and one to never do:
 
 - GitHub environment **`npm`** with a secret `NPM_TOKEN`: a granular npm token with read/write on
-  `ompchamber`, 2FA bypass enabled and the `publish and stage` action (a stage-only token is
-  rejected — Bun has no `npm stage publish`).
+  `ompchamber` (and the two packages), 2FA bypass enabled and the `publish and stage` action (a
+  stage-only token is rejected — Bun has no `npm stage publish`).
 - A failed publish is retried with `gh workflow run publish.yml -f tag=vX.Y.Z`, which leaves the
   release itself untouched. `publish.yml` is now only a TRIGGER (a published release, or that
   dispatch); the steps it runs live in `publish-app.yml`, which `release.yml` also calls.
