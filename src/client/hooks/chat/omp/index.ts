@@ -4,6 +4,7 @@ import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { type ToolResultRecord, useOmpAgentStream } from '@/client/hooks/chat/omp/stream';
 import { useOmpPromptSender } from '@/client/hooks/chat/omp/prompt-send';
 import { stopAgentSession } from '@/shared/lib/chat/omp/abort';
+import { isSpawnAdoption } from '@/client/hooks/chat/omp/pending-sessions';
 
 /**
  * Client-side cap on a steer request, above the server's own `STEER_ACK_TIMEOUT_MS`
@@ -56,8 +57,24 @@ export function useOmpAgent(sessionId: string | null, callbacks: OmpAgentCallbac
     providerRetryVerbRef,
   });
 
+  /** The session id this hook last prepared refs for, so an ADOPTION can be
+   *  told from a real switch. */
+  const preparedSessionRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!sessionId) return;
+    // A spawn adoption is the SAME conversation under a new id: the first send
+    // created `new-…`, the spawn answered with omp's UUID, and the URL moved.
+    // Clearing here threw away the run's own bookkeeping in the middle of the
+    // first turn — measured in a browser spec, the tool-call map was emptied
+    // between two progress frames, so every later `tool_execution_update`/`_end`
+    // had no target to pair onto and the card froze at `running` for the rest of
+    // the session. The stream is not re-dialled either: the frames for the
+    // adopted id are already arriving on the subscription this hook holds.
+    const previous = preparedSessionRef.current;
+    preparedSessionRef.current = sessionId;
+    if (previous && isSpawnAdoption(previous, sessionId)) return;
+
     // Session changed (or first mount): drop the previous session's tool
     // results. On first mount the refs are already empty, so this cannot disturb
     // a resumed session's reattach below.

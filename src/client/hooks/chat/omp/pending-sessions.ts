@@ -181,6 +181,24 @@ export function consumeAdoption(fromId: string | null | undefined, toId: string)
 }
 
 /**
+ * Whether `toId` is the id a spawn answered with for `fromId`, WITHOUT claiming
+ * the record.
+ *
+ * The agent hook asks a different question from the session-state provider's:
+ * not "may I carry this UI state across", but "is this the SAME conversation
+ * under a new id". A spawn adoption is exactly that, and treating it as a
+ * session switch threw away the run's own bookkeeping — `toolResultsRef` and
+ * `lastToolMessageRef` — in the middle of the first turn: measured in a browser
+ * spec, the tool-call map was cleared between two progress frames, so every
+ * later `tool_execution_update`/`_end` had no target to pair onto and the card
+ * froze at `running` for the rest of the session. The provider still owns the
+ * single claim (`consumeAdoption`), so peeking here cannot steal it.
+ */
+export function isSpawnAdoption(fromId: string | null | undefined, toId: string): boolean {
+  return Boolean(fromId) && adoptions.get(toId) === fromId;
+}
+
+/**
  * Register an id the URL names but this store does not know.
  *
  * The URL is the other way a pending chat exists: a reload (or a second tab)

@@ -21,6 +21,7 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import {
   adoptPendingSession,
   consumeAdoption,
+  isSpawnAdoption,
   hydratePendingSession,
   listPendingSessions,
   markPendingSessionSent,
@@ -250,6 +251,22 @@ describe('a spawn moves the row onto the id omp answered with', () => {
     expect(consumeAdoption(pending, 'omp-3')).toBe(false);
     // And an unrelated pair never claims anything.
     expect(consumeAdoption(pending, 'omp-4')).toBe(false);
+  });
+
+  test('a peek identifies an adoption without spending the claim', () => {
+    // The agent hook asks "is this the SAME conversation under a new id" so it
+    // can keep the run's tool-call bookkeeping. It must not consume the record,
+    // or the session-state provider — which owns the single claim — would then
+    // refuse to migrate the pending slot's UI state.
+    const pending = start(2);
+    adoptPendingSession(pending, 'omp-5', 2);
+    expect(isSpawnAdoption(pending, 'omp-5')).toBe(true);
+    expect(isSpawnAdoption(pending, 'omp-5')).toBe(true);
+    // Clicking another session is not an adoption, from either side.
+    expect(isSpawnAdoption(pending, 'omp-6')).toBe(false);
+    expect(isSpawnAdoption(null, 'omp-5')).toBe(false);
+    // …and the claim is still there for the provider.
+    expect(consumeAdoption(pending, 'omp-5')).toBe(true);
   });
 });
 
