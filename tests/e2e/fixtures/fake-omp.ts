@@ -25,6 +25,9 @@
  *
  *   `delay:<ms>`     hold the turn open before the answer streams
  *   `tool:<name>`    emit a `tool_execution_start/update/end` triple first
+ *   `wait:<seconds>` block on a background job for that long, re-emitting its
+ *                    `CoordinationDetails` snapshot every 500 ms (the real
+ *                    `wait` tool's progress frames)
  *   `ask:<text>`     raise an `extension_ui_request` and wait for the reply
  *   `error:<text>`   fail the turn with a provider error
  *   `retry:<n>`      emit `auto_retry_start`/`auto_retry_end` around the turn
@@ -116,7 +119,7 @@ let sessionName = 'Fake session';
  *  this keeps the in-flight window wide enough for a spec to observe. */
 const RENAME_DELAY_MS = 600;
 
-const { streamAnswer, streamToolCall } = createFrameWriters({ write });
+const { streamAnswer, streamToolCall, streamWait, streamWaitLimit } = createFrameWriters({ write });
 
 const MODEL = {
   id: 'fake-model',
@@ -164,6 +167,8 @@ async function runTurn(prompt: string, requestId: string) {
   streaming = true;
   const delay = /delay:(\d+)/.exec(prompt);
   const tool = /tool:([\w.-]+)/.exec(prompt);
+  const wait = /wait:(\d+)/.exec(prompt);
+  const waitLimit = prompt.includes('waitcap');
   const ask = /ask:(.+)/.exec(prompt);
   const error = /error:(.+)/.exec(prompt);
   const retry = /retry:(\d+)/.exec(prompt);
@@ -181,6 +186,8 @@ async function runTurn(prompt: string, requestId: string) {
   }
 
   if (delay) await sleep(Number(delay[1]));
+  if (waitLimit) await streamWaitLimit();
+  else if (wait) await streamWait(Number(wait[1]));
   if (tool) await streamToolCall(tool[1]);
   if (ask) await runAsk(ask[1].trim());
 

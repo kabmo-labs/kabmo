@@ -140,7 +140,121 @@ export function createFrameWriters({ write }: FrameWriterDeps) {
     });
   }
 
-  return { streamAnswer, streamToolCall };
+  /**
+   * A BLOCKING `wait`, in the shape omp actually sends.
+   *
+   * Two things make this different from `streamToolCall`, and both are what the
+   * panel exists for:
+   *   - the turn stays open for `seconds`, so the card is observed while it is
+   *     still RUNNING rather than only after it settles;
+   *   - `tool_execution_update` carries a full `CoordinationDetails` snapshot
+   *     every 500 ms (`PROGRESS_INTERVAL_MS` in omp's wait tool), with the job's
+   *     live `durationMs` — the only progress such a call reports. omp's real
+   *     `partialResult` nests `details` beside `content`, and the frame carries
+   *     no duration of its own.
+   */
+  async function streamWait(seconds: number) {
+    const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
+    const jobId = 'bg_1';
+    const label = 'bun run probe.ts';
+    const args = { i: 'Waiting for the probe job' };
+    const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+    const block = { type: 'toolCall', id: callId, name: 'wait', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+    const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+
+    write({ type: 'message_start', messageId, message });
+    write({
+      type: 'message_update',
+      messageId,
+      message,
+      assistantMessageEvent: { type: 'toolcall_end', contentIndex: 0, toolCall: block, partial: message },
+    });
+    write({ type: 'message_end', messageId, message });
+    write({ type: 'turn_end', message, toolResults: [] });
+
+    write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'wait', args });
+
+    const startedAt = Date.now();
+    const totalMs = seconds * 1000;
+    // The first snapshot lands immediately (omp emits one before its interval
+    // loop), then one per 500 ms, exactly like the real tool.
+    for (;;) {
+      const elapsed = Date.now() - startedAt;
+      const done = elapsed >= totalMs;
+      write({
+        type: 'tool_execution_update',
+        toolCallId: callId,
+        toolName: 'wait',
+        args,
+        partialResult: {
+          content: [{ type: 'text', text: '' }],
+          details: {
+            op: 'wait',
+            meta: { source: { type: 'report', value: 'background jobs snapshot' } },
+            jobs: [{
+              id: jobId,
+              type: 'bash',
+              status: done ? 'completed' : 'running',
+              label,
+              durationMs: Math.min(elapsed, totalMs),
+              ...(done ? { exitCode: 0 } : {}),
+            }],
+          },
+        },
+      });
+      if (done) break;
+      await sleep(500);
+    }
+
+    const details = {
+      op: 'wait',
+      meta: { source: { type: 'report', value: 'background jobs snapshot' } },
+      jobs: [{ id: jobId, type: 'bash', status: 'completed', label, durationMs: totalMs, exitCode: 0 }],
+    };
+    write({
+      type: 'tool_execution_end',
+      toolCallId: callId,
+      toolName: 'wait',
+      result: {
+        content: [{ type: 'text', text: '## Completed (1)\n\n### bg_1 [bash] — completed\nLabel: bun run probe.ts' }],
+        details,
+      },
+      isError: false,
+    });
+  }
+
+  /**
+   * A `wait` whose 30-minute cap FIRED.
+   *
+   * omp answers it `{op:'wait', jobs:[]}` — the same shape a service wake
+   * returns — plus the sentence that is the only thing telling them apart. The
+   * card must report a limit, not "no jobs".
+   */
+  async function streamWaitLimit() {
+    const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
+    const args = { i: 'Waiting for the probe job' };
+    const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+    const block = { type: 'toolCall', id: callId, name: 'wait', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+    const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+
+    write({ type: 'message_start', messageId, message });
+    write({ type: 'message_update', messageId, message, assistantMessageEvent: { type: 'toolcall_end', contentIndex: 0, toolCall: block, partial: message } });
+    write({ type: 'message_end', messageId, message });
+    write({ type: 'turn_end', message, toolResults: [] });
+    write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'wait', args });
+    write({
+      type: 'tool_execution_end',
+      toolCallId: callId,
+      toolName: 'wait',
+      result: {
+        content: [{ type: 'text', text: 'Wait limit reached; background work may still be running. Read proc:// for status.' }],
+        details: { op: 'wait', jobs: [] },
+      },
+      isError: false,
+    });
+  }
+
+  return { streamAnswer, streamToolCall, streamWait, streamWaitLimit };
 }
 
 export { sleep };
