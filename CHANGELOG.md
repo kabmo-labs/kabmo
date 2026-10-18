@@ -5,6 +5,25 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.0](https://github.com/rajebdev/ompchamber/compare/v4.18.2...v4.19.0) — 2026-10-18
+
+### Added
+
+* **mobile:** add reload page button to the phone header ([56f8cc4](https://github.com/rajebdev/ompchamber/commit/56f8cc413b4e9d57ac4ac878d48c6bc63abb793d))
+
+### Changed
+
+* **e2e:** correct a false claim — Bun.Terminal works on Windows ([3b0074f](https://github.com/rajebdev/ompchamber/commit/3b0074fc408738ee2b17de8c63a6b5ad1b980bae))
+* record how injected entries and narration reach the timeline ([72f45a1](https://github.com/rajebdev/ompchamber/commit/72f45a1568b9de878a93c14f6d35c268462caae5))
+
+### Fixed
+
+* **chat:** present narrated thinking blocks as answer text ([794325c](https://github.com/rajebdev/ompchamber/commit/794325ca964979d620388bc99dcd0a34e47be88a))
+* **e2e:** hand specs the path the server stored, and poll by id ([b809207](https://github.com/rajebdev/ompchamber/commit/b8092077ab262d72df74bf45a58491aeabeac6aa))
+* **e2e:** read the cap's input unscoped, and give the seed suite a budget ([fcd8825](https://github.com/rajebdev/ompchamber/commit/fcd882530cc9c952df8ef6c1dfb1e098b6669337))
+* **terminal:** make the shell cap and both tree kills work on Windows ([f793c4d](https://github.com/rajebdev/ompchamber/commit/f793c4d1d83c30cf1985ff4bb6f41e12f2f8c569))
+* **win:** resolve the five causes behind the nine Windows gate failures ([3693f19](https://github.com/rajebdev/ompchamber/commit/3693f1932272f93b0d4e202c4a9b953a93a1e118))
+
 ## [4.18.2](https://github.com/rajebdev/ompchamber/compare/v4.18.1...v4.18.2) — 2026-10-17
 
 ### Fixed
