@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import { Check, ChevronDown, Loader2, Menu, PanelRight, Plus } from 'lucide-preact';
-import type { SessionContextTelemetry } from '@/shared/types/context';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getLastOpenedAt } from '@/shared/lib/workspace/session-state/store';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
@@ -8,10 +7,7 @@ import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
-import { formatCompactTokens } from '@/shared/lib/format/number';
-import { useModelNames } from '@/client/hooks/models/use-model-names';
-import { useProviderNames } from '@/client/hooks/models/use-provider-names';
-import { providerLabel } from '@/shared/lib/models/provider/label';
+import { ContextUsageButton } from '@/client/components/common/context-usage-button';
 
 interface MobileHeaderProps {
   activeSessionTitle: string;
@@ -49,39 +45,10 @@ export function MobileHeader({
   // The drawer's row spins from the same store, so the two surfaces cannot
   // disagree about whether a rename is running.
   const renaming = useSessionRenaming(activeSessionId);
-  const modelNames = useModelNames();
-  const providerNames = useProviderNames();
   const [showSessionPicker, setShowSessionPicker] = useState(false);
-  const [showTelemetry, setShowTelemetry] = useState(false);
-  const [telemetry, setTelemetry] = useState<SessionContextTelemetry | null>(null);
 
   const sessionPickerRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(sessionPickerRef, () => setShowSessionPicker(false));
-
-  const telemetryRef = useRef<HTMLDivElement>(null);
-  useOnClickOutside(telemetryRef, () => setShowTelemetry(false));
-
-  // Real context telemetry for the active session (the same source the Context
-  // panel reads). No session → nothing to report, so the readout stays empty
-  // instead of showing invented runtime numbers.
-  useEffect(() => {
-    if (!activeSessionId) {
-      setTelemetry(null);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/telemetry/context?sessionId=${encodeURIComponent(String(activeSessionId))}`)
-      .then(res => (res.ok ? res.json() : null))
-      .then((data: { telemetry?: SessionContextTelemetry } | null) => {
-        if (!cancelled) setTelemetry(data?.telemetry ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setTelemetry(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSessionId]);
 
   // Recent sessions: archived rows are hidden. A session the user actually
   // opened in this tab within the last 10 minutes ranks by that open time
@@ -118,23 +85,6 @@ export function MobileHeader({
   const displayTitle = activeSessionTitle
     ? activeSessionTitle.charAt(0).toUpperCase() + activeSessionTitle.slice(1)
     : 'New session';
-
-  // The telemetry reports the model as `provider/modelId` (omp's own selector).
-  // Split once here so the popover can print the provider and the model on
-  // separate lines and resolve each to its display name — the raw slug reads as
-  // "kenari-jatis/deepseek-v4-1-flash", which names neither the vendor nor the
-  // model as the user picked them.
-  const { providerName, modelName } = useMemo(() => {
-    const selector = telemetry?.modelId ?? '';
-    const slash = selector.indexOf('/');
-    if (slash <= 0) return { providerName: selector, modelName: '' };
-    const providerSlug = selector.slice(0, slash);
-    const modelId = selector.slice(slash + 1);
-    return {
-      providerName: providerLabel(providerSlug, providerNames),
-      modelName: modelNames[modelId] ?? modelId,
-    };
-  }, [telemetry?.modelId, providerNames, modelNames]);
 
   return (
     <header
@@ -256,61 +206,10 @@ export function MobileHeader({
           size={18}
           className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
         />
-        <div className="relative flex items-center" ref={telemetryRef}>
-          <button
-            type="button"
-            onClick={() => setShowTelemetry(!showTelemetry)}
-            className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
-            title="Context usage"
-            aria-label="Context usage"
-          >
-            <span className="w-4 h-4 rounded-full border-[1.5px] border-ink/60 hover:border-ink transition-colors" />
-          </button>
-          {showTelemetry && (
-            <div className="absolute top-full right-0 mt-2 w-56 bg-paper border border-ink/20 rounded-xl shadow-xl z-50 p-3 text-xs font-mono">
-              <div className="font-semibold text-ink font-sans pb-1.5 border-b border-ink/10 flex items-center justify-between">
-                <span>Context</span>
-                {telemetry && telemetry.messagesCount > 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                )}
-              </div>
-              {!telemetry || telemetry.messagesCount === 0 ? (
-                <div className="pt-2 text-[11px] text-ink/50 italic font-sans">Session not started</div>
-              ) : (
-                <div className="pt-2 space-y-1.5 text-[11px] text-ink/80">
-                  <div className="flex justify-between gap-2">
-                    <span className="text-ink/50 flex-shrink-0">Provider:</span>
-                    <span className="truncate text-right">{providerName || '—'}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-ink/50 flex-shrink-0">Model:</span>
-                    <span className="truncate text-right">{modelName || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-ink/50">Context:</span>
-                    <span>
-                      {formatCompactTokens(telemetry.contextUsed) ?? '0'} / {formatCompactTokens(telemetry.contextLimit) ?? '0'} ({telemetry.contextPercent}%)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-ink/50">Messages:</span>
-                    <span>{telemetry.messagesCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-ink/50">Cost:</span>
-                    <span>{telemetry.costFormatted}</span>
-                  </div>
-                  {typeof telemetry.cacheHitAverage === 'number' && (
-                    <div className="flex justify-between">
-                      <span className="text-ink/50">Cache hit:</span>
-                      <span>{telemetry.cacheHitAverage.toFixed(1)}%</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <ContextUsageButton
+          sessionId={activeSessionId == null ? null : String(activeSessionId)}
+          layout="mobile"
+        />
 
         <button
           type="button"

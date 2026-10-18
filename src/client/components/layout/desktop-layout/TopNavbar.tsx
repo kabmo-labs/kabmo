@@ -1,6 +1,7 @@
 import { LayoutTemplate, Loader2, MoreHorizontal, PanelLeft, PanelRight, PanelRightClose, Smartphone } from 'lucide-preact';
 import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
 import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
+import { ContextUsageButton } from '@/client/components/common/context-usage-button';
 import { HeaderPanelButtons } from '@/client/components/layout/desktop-layout/HeaderPanelButtons';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
@@ -176,6 +177,10 @@ export function TopNavbar({
           >
             <LayoutTemplate size={16} />
           </button>
+          {/* The phone's header has carried this readout since it was built; a
+              desktop had no way to see how close a run is to its window without
+              opening the Context panel in the right column. */}
+          <ContextUsageButton sessionId={sessionId ?? null} />
           <button
             type="button"
             onClick={onToggleRightPanel}
