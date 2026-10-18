@@ -64,6 +64,9 @@ function record(port: number, overrides: Partial<InstanceRecord> = {}): Instance
     host: 'localhost',
     mode: 'dev',
     launchMode: 'daemon',
+    tray: false,
+    tls: false,
+    auth: false,
     startedAt: '2026-10-01T10:00:00.000Z',
     version: '0.5.0',
     ...overrides,
@@ -135,9 +138,23 @@ describe('instance record round-trip', () => {
       host: 'localhost',
       mode: 'dev',
       launchMode: 'direct',
+      // Not recorded by the older install that wrote this file: `false` is the
+      // honest answer, and never a guess that the instance had a tray or TLS.
+      tray: false,
+      tls: false,
+      auth: false,
       startedAt: '',
       version: '',
     });
+  });
+
+  test('a recorded tray and tls survive the round trip', () => {
+    const value = record(4108, { tray: true, tls: true });
+    expect(writeInstanceRecord(value)).toBe(true);
+    expect(readInstanceRecord(4108)).toEqual(value);
+    // A non-boolean is not a flag: only a literal `true` turns either on.
+    fs.writeFileSync(getInstancePath(4119), JSON.stringify({ pid: 1, port: 4119, tray: 'yes', tls: 1 }));
+    expect(readInstanceRecord(4119)).toMatchObject({ tray: false, tls: false });
   });
 
   test('removeInstanceRecord drops the record', () => {

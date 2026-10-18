@@ -9,7 +9,7 @@
 import { color, configure, error, log, ok, warn, printJson, isJson, isQuiet } from '@/cli/lib/output.js';
 import { listLiveInstances } from '@/cli/lib/runtime.js';
 import { stopInstance } from '@/cli/lib/stop-instance.js';
-import { selectRestartTargets } from '@/cli/lib/restart-scope.js';
+import { restartAuthWarning, restartServeOptions, selectRestartTargets } from '@/cli/lib/restart-scope.js';
 import { STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
 import { run as runServe } from '@/cli/lib/commands/serve.js';
 import { skipRestartNote } from '@/server/lib/lifecycle/restart';
@@ -46,18 +46,9 @@ async function restartInstances(options, ctx) {
       failed.push({ port: entry.port, pid: entry.pid });
       continue;
     }
-    await runServe(
-      {
-        ...options,
-        port: entry.port,
-        host: entry.host,
-        lan: entry.host === '0.0.0.0',
-        prod: entry.mode === 'prod',
-        foreground: false,
-        all: false,
-      },
-      ctx,
-    );
+    const authWarning = restartAuthWarning(entry, options?.handoverPayload);
+    if (authWarning) warn(authWarning);
+    await runServe(restartServeOptions(entry, options), ctx);
     restarted.push(entry.port);
   }
   return { restarted, skipped, failed };

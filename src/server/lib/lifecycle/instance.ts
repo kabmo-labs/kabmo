@@ -26,6 +26,28 @@ export interface InstanceRecord {
   host: string;
   mode: InstanceMode;
   launchMode: InstanceLaunchMode;
+  /**
+   * Whether this run was started with `--tray`.
+   *
+   * Recorded because a replacement is spawned from the CLI's OWN argv, which
+   * carries none of the flags the original run had: `restart` builds its
+   * `serve` invocation from the command line of `ompchamber restart`, so a
+   * server started with `--tray` (a login entry, `serve --tray`) came back
+   * without an icon after every update. The record is the only description of
+   * the instance that survives the process, so the flags live here.
+   */
+  tray: boolean;
+  /** Whether this run serves TLS (`--tls`). Lost the same way `tray` was. */
+  tls: boolean;
+  /**
+   * Whether this run requires a UI password.
+   *
+   * Recorded so a restart that CANNOT reproduce the credential says so instead
+   * of quietly starting an open server. The plaintext is never stored (only a
+   * hash lives in memory), so a manual `ompchamber restart` genuinely cannot
+   * recover it — the replacement has to be told, not guessed at.
+   */
+  auth: boolean;
   startedAt: string;
   version: string;
 }
@@ -47,6 +69,13 @@ export function readInstanceRecord(port: number | string): InstanceRecord | null
       host: typeof record.host === 'string' ? record.host : 'localhost',
       mode: record.mode === 'prod' ? 'prod' : 'dev',
       launchMode: isLaunchMode(record.launchMode) ? record.launchMode : 'direct',
+      // Absent on a record written before these fields existed. `false` is the
+      // honest answer there: an instance whose flags nobody recorded is not
+      // known to have had an icon or TLS, and re-adding either would be a
+      // guess about how the user started it.
+      tray: record.tray === true,
+      tls: record.tls === true,
+      auth: record.auth === true,
       startedAt: typeof record.startedAt === 'string' ? record.startedAt : '',
       version: typeof record.version === 'string' ? record.version : '',
     };

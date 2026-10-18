@@ -184,6 +184,7 @@ describe('fetchHealth', () => {
       port: 1234,
       host: '127.0.0.1',
       tls: false,
+      tray: true,
       authEnabled: true,
       fds: { open: 3352, highest: 3351, limit: 61_440, nearCliff: false },
       extra: 'dropped',
@@ -203,6 +204,7 @@ describe('fetchHealth', () => {
       port: 1234,
       host: '127.0.0.1',
       tls: false,
+      tray: true,
       authEnabled: true,
       // Carried, not dropped: `status` prints this as its warning line, and
       // whitelisting it away left the report without one.

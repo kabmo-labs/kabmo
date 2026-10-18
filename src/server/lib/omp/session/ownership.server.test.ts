@@ -256,7 +256,7 @@ describe('SessionOwnedElsewhereError', () => {
   test('names the owning instance when one is known', () => {
     const error = new SessionOwnedElsewhereError('sess-1', {
       holderPid: 4242,
-      owner: { pid: 4242, port: 3001, host: '0.0.0.0', mode: 'dev', launchMode: 'daemon', startedAt: '', version: '1' },
+      owner: { pid: 4242, port: 3001, host: '0.0.0.0', mode: 'dev', launchMode: 'daemon', tray: false, tls: false, auth: false, startedAt: '', version: '1' },
       source: 'lease',
     });
     expect(error.message).toContain('port 3001');

@@ -81,6 +81,9 @@ describe('POST /api/chamber/restart', () => {
       host: 'localhost',
       mode: 'dev',
       launchMode: 'direct',
+      tray: false,
+      tls: false,
+      auth: false,
       startedAt: '2026-10-01T10:00:00.000Z',
       version: '0.5.0',
     });

@@ -3,6 +3,7 @@ import pkg from '@/../package.json';
 import { isAuthEnabled } from '@/server/lib/auth/guard';
 import { countOpenFileDescriptors } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
+import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
 import { isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
 import { isMockMode } from '@/server/mock.server';
 
@@ -47,6 +48,10 @@ export async function loader() {
       // Reported so discovery does not have to guess the scheme: `status` and
       // `findLiveInstance` read it to build the URL they print and probe.
       tls: isTlsEnabledByArgv(),
+      // Whether this run raises a tray icon. Reported so discovery can carry it
+      // into a replacement's argv: a restart is spawned by a different process,
+      // and the flag is not recoverable from the running server any other way.
+      tray: isTrayEnabledByArgv(),
       fds: countOpenFileDescriptors(),
     },
     { headers: NO_STORE_HEADERS },

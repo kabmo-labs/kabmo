@@ -22,6 +22,15 @@
  */
 export const TRAY_FLAG = '--tray';
 
+/**
+ * The credential FILE a login entry points at (`serve --ui-password-file <path>`).
+ *
+ * A path rather than the secret: the entry itself (a plist, a `.desktop` file, a
+ * Run value) is world-readable and outlives the run that wrote it, while the
+ * file it names lives in the data directory at mode 0600.
+ */
+export const UI_PASSWORD_FILE_FLAG = '--ui-password-file';
+
 export function isTrayEnabledByArgv(argv: readonly string[] = Bun.argv): boolean {
   return argv.includes(TRAY_FLAG);
 }

@@ -48,3 +48,20 @@ describe('parseArgs', () => {
     expect(parseArgs(['serve', '--nope']).unknown).toEqual(['--nope']);
   });
 });
+
+describe('--ui-password-file', () => {
+  // The flag a login entry uses instead of the secret: the entry file is
+  // world-readable, the file it names is 0600.
+  test('takes a path', () => {
+    const { options } = parseArgs(['serve', '--ui-password-file', '/data/cred']);
+    expect(options.uiPasswordFile).toBe('/data/cred');
+  });
+
+  test('defaults to null, so an entry without one is distinguishable', () => {
+    expect(parseArgs(['serve']).options.uiPasswordFile).toBeNull();
+  });
+
+  test('a bare flag is not a path', () => {
+    expect(parseArgs(['serve', '--ui-password-file']).options.uiPasswordFile).toBeNull();
+  });
+});

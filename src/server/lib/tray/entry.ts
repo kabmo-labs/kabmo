@@ -28,7 +28,7 @@
 
 import fs from 'node:fs';
 
-import { PROD_FLAG, TRAY_FLAG } from '@/server/lib/lifecycle/argv-flags';
+import { PROD_FLAG, TRAY_FLAG, UI_PASSWORD_FILE_FLAG } from '@/server/lib/lifecycle/argv-flags';
 
 /**
  * Resolve `..`/symlinks, falling back to the input when the path does not exist.
@@ -60,6 +60,14 @@ export interface LoginEntryInput {
   tls: boolean;
   /** Bind to every interface, matching the registering invocation. */
   lan: boolean;
+  /**
+   * Path to the stored credential, when the registering run had a password.
+   *
+   * The entry carries this PATH rather than the secret itself: the plist, the
+   * `.desktop` file and the Run value are all world-readable and outlive the
+   * run that wrote them.
+   */
+  credentialPath?: string | null;
 }
 
 /**
@@ -74,5 +82,8 @@ export function buildLoginEntryArgv(input: LoginEntryInput): string[] {
   argv.push('--host', input.lan ? '0.0.0.0' : input.host);
   if (input.tray) argv.push(TRAY_FLAG);
   if (input.tls) argv.push('--tls');
+  // A PATH, never the secret: the entry file is world-readable and outlives the
+  // run, while the credential file beside `auth.json` is 0600.
+  if (input.credentialPath) argv.push(UI_PASSWORD_FILE_FLAG, input.credentialPath);
   return argv;
 }

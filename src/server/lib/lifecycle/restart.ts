@@ -28,6 +28,8 @@ import { packageDir } from '@/server/lib/fs/package-root';
 import { listInstanceRecords } from '@/server/lib/lifecycle/instance';
 import { isCliManaged, resolveLaunchMode, unmanagedReason } from '@/server/lib/lifecycle/launch-mode';
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
+import { loadAuthConfig } from '@/server/lib/auth/guard';
+import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN, serializeHandover } from '@/shared/lib/auth/handover';
 import type { UpdateApplyResult } from '@/shared/types/updates';
 
 /**
@@ -142,10 +144,43 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
     return { restarting: false, message: `The ompchamber CLI is missing from ${PKG_ROOT} — ${nextStep}.` };
   }
 
+  // The replacement must come up with the SAME credential this process is
+  // serving under. Without it, a restart silently disables authentication —
+  // measured: a server started with `--ui-password` came back answering
+  // `required: false` after both a manual and a self-restart.
+  //
+  // The hashed pair is handed over, not the plaintext: this process has no
+  // plaintext (it hashed it at boot), and respawning one would put it back on a
+  // command line. `credentialKey` is only meaningful with the secret it was
+  // derived from, so all three travel together.
+  const credential = loadAuthConfig();
+
   setTimeout(() => {
     console.log(`[ompchamber] restarting on port ${self.port}: ${cmd.join(' ')}`);
     try {
-      Bun.spawn({ cmd, cwd: PKG_ROOT, stdin: 'ignore', stdout: 'inherit', stderr: 'inherit', detached: true }).unref();
+      const child = Bun.spawn({
+        cmd,
+        cwd: PKG_ROOT,
+        stdin: credential ? 'pipe' : 'ignore',
+        stdout: 'inherit',
+        stderr: 'inherit',
+        detached: true,
+        // A marker with no secret in it. The value travels down the pipe: the
+        // CLI forwards it to the server it spawns, which is the only place it
+        // is ever read.
+        env: credential
+          ? { ...Bun.env, [PASSWORD_HANDOVER_ENV]: PASSWORD_HANDOVER_STDIN }
+          : Bun.env,
+      });
+      if (credential && child.stdin) {
+        child.stdin.write(serializeHandover({
+          passwordHash: credential.passwordHash,
+          credentialKey: credential.credentialKey,
+          sessionSecret: credential.sessionSecret,
+        }));
+        child.stdin.end();
+      }
+      child.unref();
     } catch (err) {
       console.error(`[ompchamber] restart helper could not be started: ${err instanceof Error ? err.message : String(err)}`);
     }

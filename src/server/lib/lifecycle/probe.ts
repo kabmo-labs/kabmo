@@ -118,6 +118,12 @@ export interface HealthPayload {
   host?: string;
   /** Whether the listener speaks HTTPS. Reported by the server, never guessed. */
   tls?: boolean;
+  /**
+   * Whether the listener raises a tray icon. Read by the CLI when it restarts
+   * an instance: the replacement is a fresh spawn, and this flag is the only
+   * record of the icon the previous run had.
+   */
+  tray?: boolean;
   /** Whether a UI password is in force. Drives the `status` auth line. */
   authEnabled?: boolean;
   /**
@@ -168,6 +174,7 @@ async function probeHealthOver(
       port: typeof payload.port === 'number' ? payload.port : undefined,
       host: typeof payload.host === 'string' ? payload.host : undefined,
       tls: typeof payload.tls === 'boolean' ? payload.tls : undefined,
+      tray: typeof payload.tray === 'boolean' ? payload.tray : undefined,
       authEnabled: typeof payload.authEnabled === 'boolean' ? payload.authEnabled : undefined,
       fds: isFdPressure(payload.fds) ? payload.fds : null,
     };

@@ -84,6 +84,7 @@ export function parseArgs(argv) {
     foreground: false,
     tls: false,
     uiPassword: null,
+    uiPasswordFile: null,
     noUiPassword: false,
     all: false,
     follow: false,
@@ -113,6 +114,11 @@ export function parseArgs(argv) {
       // an empty string so `null` keeps meaning "not mentioned".
       const { value, nextIndex } = takeValue(tokens, index, inline);
       options.uiPassword = typeof value === 'string' && value.length > 0 ? value : '';
+      return nextIndex;
+    }
+    if (name === 'ui-password-file') {
+      const { value, nextIndex } = takeValue(tokens, index, inline);
+      options.uiPasswordFile = typeof value === 'string' && value.length > 0 ? value : null;
       return nextIndex;
     }
     if (name === 'lines') {
@@ -229,6 +235,7 @@ OPTIONS:
   --startup               Start the server at login (and show the tray icon now)
   --no-startup            Remove the login entry
   --ui-password [value]   Require a password for the browser UI (generates one when omitted)
+  --ui-password-file <p>  Read the password from a file (used by a login entry)
   --no-ui-password        Disable the UI password for this start
   --prod                  Accepted for compatibility; production is the default
   --dev                   Run the dev server from source (HMR, unminified)

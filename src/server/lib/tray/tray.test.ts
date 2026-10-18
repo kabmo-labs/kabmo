@@ -164,3 +164,24 @@ describe('autostart filesystem round trip', () => {
     }
   });
 });
+
+describe('the login entry carries a credential PATH, never the secret', () => {
+  const base = { bun: '/bun', cli: '/pkg/src/cli/ompchamber.js', port: 3000, host: '127.0.0.1', tray: true, tls: false, lan: false };
+
+  // A plist is mode 0644 and outlives the run that wrote it, so a password in
+  // its argv is published to every user on the machine — measured: the value
+  // appeared verbatim in the CLI's own `ps` line. The entry therefore names a
+  // FILE (0600, beside auth.json) and the CLI reads it on the way in.
+  test('names the credential file when the registering run had a password', () => {
+    const argv = buildLoginEntryArgv({ ...base, credentialPath: '/data/autostart-credential' });
+    expect(argv).toContain('--ui-password-file');
+    expect(argv[argv.indexOf('--ui-password-file') + 1]).toBe('/data/autostart-credential');
+    // The secret itself must not be representable here at all.
+    expect(argv.some((value) => value === '--ui-password')).toBe(false);
+  });
+
+  test('omits the flag when there is no stored credential', () => {
+    expect(buildLoginEntryArgv(base)).not.toContain('--ui-password-file');
+    expect(buildLoginEntryArgv({ ...base, credentialPath: null })).not.toContain('--ui-password-file');
+  });
+});

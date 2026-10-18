@@ -14,8 +14,10 @@ import { stopInstance } from '@/cli/lib/stop-instance.js';
 import { STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
 import { log, warn, isJson, isQuiet } from '@/cli/lib/output.js';
 import { run as runServe } from '@/cli/lib/commands/serve.js';
+import { restartAuthWarning, restartServeOptions } from '@/cli/lib/restart-scope.js';
 import { skipRestartNote } from '@/server/lib/lifecycle/restart';
 import { isCliManaged } from '@/server/lib/lifecycle/launch-mode';
+import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN } from '@/shared/lib/auth/handover';
 
 function explicitPort(options) {
   const raw = options?.port;
@@ -24,16 +26,41 @@ function explicitPort(options) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * The credential payload a restarting server wrote to our stdin, verbatim.
+ *
+ * Null when no marker was set — a plain `ompchamber restart` from a shell has a
+ * terminal there, and reading it would hang the command. `Bun.stdin.text()`
+ * ends at EOF, which the writer always produces.
+ */
+async function readStdinHandoverPayload() {
+  if (Bun.env[PASSWORD_HANDOVER_ENV] !== PASSWORD_HANDOVER_STDIN) return null;
+  delete Bun.env[PASSWORD_HANDOVER_ENV];
+  try {
+    const text = await Bun.stdin.text();
+    return text.trim().length > 0 ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function run(options, ctx) {
   const json = isJson();
   const quiet = isQuiet();
   const requested = explicitPort(options);
 
+  // A restarting SERVER hands its already-hashed credential over on stdin (see
+  // `lib/lifecycle/restart.ts`). It must survive this process and reach the
+  // server spawned below, or every restart would silently drop authentication:
+  // measured, a run started with `--ui-password` came back `required: false`.
+  // The payload is forwarded verbatim — this process never needs to parse it.
+  const handoverPayload = await readStdinHandoverPayload();
+
   const targets = requested !== null
     ? [await findLiveInstance(requested)].filter(Boolean)
     : await listLiveInstances();
 
-  if (targets.length === 0) return runServe(options, ctx);
+  if (targets.length === 0) return runServe({ ...options, handoverPayload }, ctx);
 
   let failures = 0;
   for (const live of targets) {
@@ -53,21 +80,14 @@ export async function run(options, ctx) {
       continue;
     }
 
-    // Reuse the recorded port/host/mode so an instance started on a non-default
-    // port, or bound to the LAN, comes back the way it was found. Production is
-    // the default, so only a recorded dev instance asks for `--dev`.
-    await runServe(
-      {
-        ...options,
-        port: live.port,
-        host: live.host,
-        lan: live.host === '0.0.0.0',
-        dev: live.mode === 'dev',
-        foreground: false,
-        all: false,
-      },
-      ctx,
-    );
+    // Reuse the recorded port/host/mode/flags so an instance started on a
+    // non-default port, bound to the LAN, serving TLS or showing a tray icon
+    // comes back the way it was found. Production is the default, so only a
+    // recorded dev instance asks for `--dev`.
+    const authWarning = restartAuthWarning(live, handoverPayload);
+    if (authWarning && !json) warn(authWarning);
+
+    await runServe({ ...restartServeOptions(live, options), handoverPayload }, ctx);
   }
 
   if (failures > 0) process.exitCode = 1;
