@@ -11,6 +11,8 @@
 import fs from 'node:fs';
 
 import { ensureDataDirs, getLogFilePath } from '@/cli/lib/paths.js';
+import { uiPasswordHandover } from '@/cli/lib/ui-password.js';
+import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN } from '@/shared/lib/auth/handover';
 import { getProcessState, isProcessAlive } from '@/server/lib/lifecycle/identity';
 import { launchModeArg } from '@/server/lib/lifecycle/launch-mode';
 import { TLS_FLAG } from '@/server/lib/lifecycle/tls';
@@ -29,7 +31,7 @@ const HEALTH_TIMEOUT_MS = 30_000;
  * knowable from its health payload — so `status` builds the URL from that rather
  * than trusting a value assembled before the probe ran.
  */
-function toLiveInstance({ pid, port, host, mode, launchMode, startedAt, source }) {
+function toLiveInstance({ pid, port, host, mode, launchMode, tray, tls, auth, startedAt, source }) {
   const resolvedHost = host || 'localhost';
   return {
     pid,
@@ -37,6 +39,13 @@ function toLiveInstance({ pid, port, host, mode, launchMode, startedAt, source }
     host: resolvedHost,
     mode: mode ?? 'unknown',
     launchMode: launchMode ?? 'unknown',
+    // Carried so a restart can reproduce the invocation: `restart` and `update`
+    // spawn a NEW `serve`, and their own argv says nothing about the flags the
+    // original run had. Without these, an update dropped the tray icon (and TLS)
+    // of an instance started with `--tray` / `--tls`.
+    tray: tray === true,
+    tls: tls === true,
+    auth: auth === true,
     startedAt,
     source: source ?? 'registry',
     logFile: getLogFilePath(port),
@@ -92,6 +101,11 @@ export async function findLiveInstance(port) {
     host: health.host ?? record?.host,
     mode: health.mode,
     launchMode: health.launchMode ?? record?.launchMode,
+    // A server started outside the CLI writes no record the CLI trusts, but it
+    // still reports its own flags. Absent means false, never inherited.
+    tray: health.tray ?? record?.tray,
+    tls: health.tls ?? record?.tls,
+    auth: health.authEnabled ?? record?.auth,
     startedAt: health.startedAt,
     source: 'probe',
   });
@@ -189,26 +203,38 @@ export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = '
  * actually owns the port, so a spawn that fails (port lost to something else)
  * cannot leave a record pointing at a process that never served.
  */
-export function spawnDetachedServer({ pkgRoot, mode, port, host, launchMode = 'daemon', resolvedPassword = null, tls = false, tray = false }) {
+export function spawnDetachedServer({ pkgRoot, mode, port, host, launchMode = 'daemon', resolvedPassword = null, tls = false, tray = false, handoverPayload = null }) {
   ensureDataDirs();
   const logFile = getLogFilePath(port);
   const fd = fs.openSync(logFile, 'a');
-  const { file, args, env, cwd } = buildServeInvocation({ pkgRoot, mode, port, host, launchMode, tls, tray });
+  const invocation = buildServeInvocation({ pkgRoot, mode, port, host, launchMode, tls, tray });
+  // A payload from a restarting server wins: it is already hashed, and the
+  // plaintext it stands for no longer exists anywhere.
+  const { env, payload } = handoverPayload
+    ? { env: { ...invocation.env, [PASSWORD_HANDOVER_ENV]: PASSWORD_HANDOVER_STDIN }, payload: handoverPayload }
+    : uiPasswordHandover(resolvedPassword, invocation.env);
 
   let child;
   try {
     child = Bun.spawn({
-      cmd: [file, ...args],
-      cwd,
-      stdin: 'ignore',
+      cmd: [invocation.file, ...invocation.args],
+      cwd: invocation.cwd,
+      // A pipe, not `ignore`: the credential arrives on stdin. `ignore` here
+      // would leave a run with a password starting unauthenticated.
+      stdin: payload ? 'pipe' : 'ignore',
       stdout: fd,
       stderr: fd,
-      // The password rides in the environment, never argv: a value on the command
-      // line is readable by every user on the machine through `ps`, and on Linux
-      // through `/proc/<pid>/cmdline`. The server erases the variable as it reads
-      // it, before anything it spawns can inherit it.
-      env: resolvedPassword?.password ? { ...env, OMPCHAMBER_UI_PASSWORD: resolvedPassword.password } : env,
+      // Never argv: a value on the command line is readable by every user on the
+      // machine through `ps`, and on Linux through `/proc/<pid>/cmdline`. Never
+      // the environment either — the server's `delete Bun.env.X` does not reach
+      // the OS environ, so every grandchild would inherit it.
+      env,
     });
+    if (payload && child.stdin) {
+      child.stdin.write(payload);
+      // Closed so the server's read ends: it waits for EOF, not a newline.
+      child.stdin.end();
+    }
     child.unref();
   } finally {
     fs.closeSync(fd);

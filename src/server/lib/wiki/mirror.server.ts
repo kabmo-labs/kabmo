@@ -41,6 +41,7 @@ import path from 'path';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { firstLine, gitRun, type GitRun } from '@/server/lib/wiki/git';
 import type { WikiUnavailableReason } from '@/shared/types/wiki';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 /** How long a mirror is trusted before a read re-fetches it. */
 const MIRROR_TTL_MS = 60_000;
@@ -233,6 +234,7 @@ export async function readWikiAsset(repoDir: string, assetPath: string): Promise
   let proc: Bun.Subprocess<'ignore', 'pipe', 'ignore'>;
   try {
     proc = Bun.spawn({
+      env: childEnv(),
       cmd: ['git', '--git-dir', repoDir, 'show', `${REF}:${assetPath}`],
       stdin: 'ignore',
       stdout: 'pipe',

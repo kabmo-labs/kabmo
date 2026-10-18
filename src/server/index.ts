@@ -4,8 +4,9 @@ import shell from '@/../index.html';
 import { apiRoutes } from '@/server/routes';
 import { initRealtimeTopics } from '@/server/lib/realtime/topics.server';
 import { startSessionsWatch } from '@/server/lib/omp/session/sessions-watch.server';
-import { authGate, initAuth } from '@/server/lib/auth/guard';
+import { authGate, initAuth, initAuthFromHandover, isAuthEnabled } from '@/server/lib/auth/guard';
 import { resolveRunPassword } from '@/server/lib/auth/env-password';
+import { readHandoverFromStdin } from '@/shared/lib/auth/handover';
 import { ssrRoutes } from '@/server/plugins/ssr';
 import { setListener } from '@/server/lib/lifecycle/listener';
 import { getDatabasePath, getDb } from '@/server/db.server';
@@ -38,13 +39,16 @@ if (startupError) {
 }
 
 // Authentication is armed here, before the listener opens and before anything
-// can spawn a child. The password comes from `--ui-password` or
-// `OMPCHAMBER_UI_PASSWORD` for THIS run only — the environment variable is
-// erased as it is read, so neither the terminal panel's PTY nor an agent-run
-// command can see it. With neither source given, the server runs open, which is
-// the default.
+// can spawn a child. The credential arrives by argv, by a handover on stdin
+// (from the CLI, or from the instance being replaced), or through the legacy
+// `OMPCHAMBER_UI_PASSWORD` — which is NOT a safe channel: `delete Bun.env.X`
+// leaves the value in the OS environ a child inherits (measured on Bun 1.4.3).
+// No source means the server runs open, which is the default.
 const runPassword = resolveRunPassword();
-const authNotice = await initAuth(runPassword.password);
+const handover = await readHandoverFromStdin();
+const authNotice = handover
+  ? await initAuthFromHandover(handover)
+  : await initAuth(runPassword.password);
 
 // Which omp the chamber drives, which ~/.omp tree it reads and which SQLite file
 // it writes — the paths every session/agent diagnostic traces back to. The data
@@ -183,11 +187,10 @@ try {
   lock.release();
 }
 
-// The record is written by the process that owns the port, so `status`, `stop`
-// and the next `serve` see dev, foreground and daemon servers alike. A hot
-// reload re-runs this entry in the same process: keeping the first `startedAt`
-// for a PID that already recorded this port is what makes `status` report real
-// uptime instead of resetting it on every save.
+// Written by the process that owns the port, so `status`, `stop` and the next
+// `serve` see dev, foreground and daemon servers alike. A hot reload re-runs
+// this entry in the same process, so a PID that already recorded this port keeps
+// its first `startedAt` and `status` reports real uptime.
 const previousRecord = readInstanceRecord(port);
 if (!writeInstanceRecord({
   pid: process.pid,
@@ -195,6 +198,8 @@ if (!writeInstanceRecord({
   host,
   mode,
   launchMode,
+  // The flags this run was given — a replacement's own argv cannot recover them.
+  tray: isTrayEnabledByArgv(), tls: tlsRequested, auth: isAuthEnabled(),
   startedAt: previousRecord?.pid === process.pid ? previousRecord.startedAt : new Date().toISOString(),
   version: pkg.version,
 })) {
@@ -211,12 +216,10 @@ console.log(`[ompchamber] listening on ${tlsOptions ? 'https' : 'http'}://${host
 
 /**
  * One-time rewrite of the overlay rows written before `overlayRowsForOmpSession`
- * existed — see the module. Deliberately HERE, after the banner, and NOT inside
- * `getDb()`: the test suite and the CLI reach `getDb()` in real mode too, and
- * merely opening the database must not be able to launch a rewrite of every
- * mirrored conversation. (It could: a `bun test` run compacted a live database.)
- * The pass is marker-keyed, so from the second start it is one indexed SELECT,
- * and it reports its own per-row failures rather than throwing.
+ * existed. Deliberately HERE and NOT inside `getDb()`: the test suite reaches
+ * `getDb()` in real mode, and opening a database must not launch a rewrite of
+ * every mirrored conversation (measured: a `bun test` run compacted a live one).
+ * Marker-keyed, so from the second start it is one indexed SELECT.
  */
 try {
   await compactChatOverlayRows(await getDb());
@@ -297,9 +300,8 @@ startPanelAutoUpdate();
 /**
  * The tray icon, when `--tray` was passed (`serve --tray`, or the login entry
  * the CLI writes for `--startup`). After the listener is up, because the config
- * it writes carries the URL the icon opens and the login row it draws, and both
- * must describe a server that is actually serving. Never throws: a machine with
- * no tray client (Linux without yad/zenity) reports why and keeps serving.
+ * carries the URL the icon opens. Never throws: a machine with no tray client
+ * (Linux without yad/zenity) reports why and keeps serving.
  */
 if (isTrayEnabledByArgv()) {
   const result = ensureTray({ port, host, tls: Boolean(tlsOptions), pkgRoot: packageDir() });

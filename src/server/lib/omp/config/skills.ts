@@ -34,6 +34,7 @@ import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
 import { parseFrontmatter } from '@/server/lib/omp/config/yaml';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 const MAX_SKILL_MD_BYTES = 512 * 1024;
 const SKILL_LIST_TIMEOUT_MS = 30_000;
@@ -132,6 +133,7 @@ async function runSkillList(bin: string, cwd: string, projectDir: string | null)
   let stdout: string;
   try {
     const proc = Bun.spawn({
+      env: childEnv(),
       cmd: [bin, 'skill', 'list', cwd, '--json'],
       stdout: 'pipe',
       stderr: 'pipe',

@@ -27,6 +27,7 @@
  */
 
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
+import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
 export interface ShellResult {
   stdout: string;
@@ -75,6 +76,14 @@ export function runShell(command: string, options: ShellOptions = {}): Promise<S
   const platform = options.platform ?? process.platform;
   // Only POSIX needs the shell to lead a group that `-pid` can address.
   const detached = timeout !== undefined && (platform !== 'win32' || options.detachForTest === true);
+  // An explicit env is what makes a removal REAL. Bun builds a child's
+  // environment from the OS environ, so `delete Bun.env.X` in this process does
+  // not reach it — measured: with the password inherited at startup, a child
+  // spawned with no `env` still saw it, and this is the path that runs a
+  // plugin's own `bun install` / `bun run build`. Every other spawn in the
+  // server already passes one; this was the exception.
+  const childEnv: Record<string, string | undefined> = { ...Bun.env, ...options.env };
+  delete childEnv[UI_PASSWORD_ENV];
   const proc = Bun.spawn({
     cmd: ['sh', '-c', command],
     cwd: options.cwd,
@@ -82,7 +91,7 @@ export function runShell(command: string, options: ShellOptions = {}): Promise<S
     stderr: 'pipe',
     detached,
     maxBuffer: options.maxBuffer,
-    env: options.env ? { ...Bun.env, ...options.env } : undefined,
+    env: childEnv,
   });
   const timer = timeout === undefined
     ? undefined

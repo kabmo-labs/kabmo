@@ -27,6 +27,7 @@ import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { isMockMode } from '@/server/mock.server';
 import { isRecord } from '@/shared/lib/util/guards';
 import type { UsageResetAccount, UsageResetCredit, UsageResetList, UsageResetSpendResult } from '@/shared/types';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 const LIST_TIMEOUT_MS = 30_000;
 const SPEND_TIMEOUT_MS = 30_000;
@@ -107,6 +108,7 @@ async function runUsageCli(args: string[], timeoutMs: number): Promise<{ ok: boo
   if (!bin) return { ok: false, stdout: '', stderr: 'omp binary not found' };
   try {
     const proc = Bun.spawn({
+      env: childEnv(),
       cmd: [bin, 'usage', ...args],
       stdout: 'pipe',
       stderr: 'pipe',

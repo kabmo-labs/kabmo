@@ -18,6 +18,7 @@
  */
 
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 export const LIST_TIMEOUT_MS = 30_000;
 export const INSTALL_TIMEOUT_MS = 300_000;
@@ -35,6 +36,7 @@ export async function runPluginCli(args: string[], cwd: string, timeout: number)
   if (!bin) return { ok: false, stdout: '', stderr: 'omp binary not found' };
   try {
     const proc = Bun.spawn({
+      env: childEnv(),
       cmd: [bin, 'plugin', ...args],
       cwd,
       stdout: 'pipe',

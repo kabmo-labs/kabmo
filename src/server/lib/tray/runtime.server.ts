@@ -37,6 +37,7 @@ import {
   type TrayConfig,
 } from '@/server/lib/tray/config';
 import { installHostScript, resolveHostScript } from '@/server/lib/tray/hosts';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 /** A live tray host: the child process and the config it was started with. */
 interface TrayRuntime {
@@ -114,6 +115,8 @@ export function ensureTray({ port, host, tls, pkgRoot, platform = process.platfo
       stdin: 'ignore',
       stdout: 'inherit',
       stderr: 'inherit',
+      // The host shells back into the CLI; the credential is not its business.
+      env: childEnv(),
     });
     const runtime: TrayRuntime = { child, config };
     slot().current = runtime;

@@ -105,7 +105,7 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
       // would otherwise be listed as a local branch.
       const refsOut = (await runShell(
         'git for-each-ref --format="%(refname)%09%(refname:short)%09%(HEAD)" refs/heads refs/remotes',
-        { cwd: targetDir },
+        { cwd: targetDir, env: GIT_ENV },
       )).stdout;
       let sawHead = false;
       for (const line of refsOut.split('\n')) {

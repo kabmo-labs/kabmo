@@ -29,6 +29,8 @@
  */
 
 /** What the Windows branch needs from the outside, so a test can drive it. */
+import { childEnv } from '@/server/lib/fs/child-env';
+
 export interface KillTreeDeps {
   platform?: NodeJS.Platform;
   /**
@@ -59,6 +61,7 @@ function killTreeWindows(pid: number, force: boolean, signal: NodeJS.Signals, de
         stdout: 'ignore',
         stderr: 'ignore',
         windowsHide: true,
+        env: childEnv(),
       });
     } catch {
       return null;

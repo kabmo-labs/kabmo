@@ -22,6 +22,7 @@
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { isRecord } from '@/shared/lib/util/guards';
 import type { UsageLimitWindow, UsageUnit, UsageWindowStatus } from '@/shared/types';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 const TIMEOUT_MS = 30_000;
 const CACHE_TTL_MS = 60_000;
@@ -175,6 +176,7 @@ export async function fetchOmpUsageSnapshot(options: { force?: boolean } = {}): 
     if (!bin) return emptySnapshot();
     try {
       const proc = Bun.spawn({
+        env: childEnv(),
         cmd: [bin, 'usage', '--json'],
         stdout: 'pipe',
         stderr: 'pipe',

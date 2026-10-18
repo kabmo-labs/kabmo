@@ -23,6 +23,7 @@
 
 import { join } from 'path';
 import { ripgrep } from 'ripgrep';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 /** Bytes that open a script rather than an executable (`#!`). */
 const SHEBANG_MAGIC = [0x23, 0x21] as const;
@@ -84,6 +85,7 @@ export async function runRipgrep(args: string[], cwd: string, sink: RipgrepSink)
   if (binary) {
     try {
       const proc = Bun.spawn({
+        env: childEnv(),
         cmd: [binary, ...args],
         cwd,
         stdout: 'pipe',

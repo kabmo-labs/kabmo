@@ -22,6 +22,7 @@
  */
 
 import path from 'path';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 /** How long the opener gets before it is treated as hung. */
 const REVEAL_TIMEOUT_MS = 5000;
@@ -64,6 +65,7 @@ export async function revealInFileManager(dir: string): Promise<RevealResult> {
   let proc: Bun.Subprocess<'ignore', 'ignore', 'pipe'>;
   try {
     proc = Bun.spawn({
+      env: childEnv(),
       cmd: [opener, target],
       stdin: 'ignore',
       stdout: 'ignore',

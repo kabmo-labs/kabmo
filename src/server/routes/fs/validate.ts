@@ -10,6 +10,7 @@
  */
 
 import { json } from '@/server/lib/remix-compat';
+import { childEnv } from '@/server/lib/fs/child-env';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { join, resolve } from 'path';
@@ -17,7 +18,7 @@ import { pathExists } from '@/server/lib/omp/core/paths';
 
 async function hasGitCommand(): Promise<boolean> {
   try {
-    return (await Bun.spawn(['git', '--version']).exited) === 0;
+    return (await Bun.spawn(['git', '--version'], { env: childEnv() }).exited) === 0;
   } catch {
     // Bun.spawn throws ENOENT when the binary is missing from PATH.
     return false;
@@ -26,7 +27,7 @@ async function hasGitCommand(): Promise<boolean> {
 
 async function isInsideGitWorkTree(target: string): Promise<boolean> {
   try {
-    return (await Bun.spawn(['git', '-C', target, 'rev-parse', '--is-inside-work-tree']).exited) === 0;
+    return (await Bun.spawn(['git', '-C', target, 'rev-parse', '--is-inside-work-tree'], { env: childEnv() }).exited) === 0;
   } catch {
     return false;
   }

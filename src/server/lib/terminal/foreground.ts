@@ -41,6 +41,7 @@
  */
 
 import { processProbe } from '@/server/lib/lifecycle/proc';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 const PS_TIMEOUT_MS = 1500;
 
@@ -70,6 +71,7 @@ async function busyShellsViaPs(shells: ShellProcess[]): Promise<Set<string>> {
   const ps = Bun.spawn(['ps', '-o', 'pid=,tpgid=', '-p', shells.map((s) => s.pid).join(',')], {
     stdout: 'pipe',
     stderr: 'ignore',
+    env: childEnv(),
   });
 
   let output = '';

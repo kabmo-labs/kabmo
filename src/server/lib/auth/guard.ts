@@ -29,6 +29,7 @@
 import { hashPassword, deriveCredentialKey, readSessionSecret, writeSessionSecret, type ActiveAuthConfig } from '@/server/lib/auth/config';
 import { readSessionCookie, verifySessionToken } from '@/server/lib/auth/token';
 import { rememberClientAddress } from '@/server/lib/auth/client-address';
+import type { CredentialHandover } from '@/shared/lib/auth/handover';
 
 /**
  * The login screen's path. One constant because three places depend on the same
@@ -123,6 +124,35 @@ export async function initAuth(password: string | null | undefined): Promise<str
   return existingSecret
     ? 'enabled (password from this run)'
     : 'enabled (password from this run; new session secret generated)';
+}
+
+/**
+ * Arm authentication from a credential a PREVIOUS process already hashed.
+ *
+ * This is the self-restart path. The replacement is spawned by
+ * `ompchamber restart`, which never had the plaintext — the server that armed
+ * the restart did, and it has already hashed it. Handing the hash over instead
+ * of the password is what keeps the plaintext from being respawned at all: a
+ * `--ui-password` given to the original run never has to exist again, and the
+ * sessions it signed stay valid because the credential key and the secret it
+ * was derived from travel together.
+ *
+ * The secret is used as given rather than re-read from disk: if the file were
+ * unreadable, reading it would mint a new secret, compute a different key, and
+ * sign every session out on a restart the user did not ask for.
+ */
+export async function initAuthFromHandover(handover: CredentialHandover): Promise<string> {
+  if (!handover.passwordHash || !handover.credentialKey || !handover.sessionSecret) {
+    return initAuth(handover.password);
+  }
+  const existingSecret = await readSessionSecret();
+  if (existingSecret !== handover.sessionSecret) await writeSessionSecret(handover.sessionSecret);
+  active = {
+    passwordHash: handover.passwordHash,
+    credentialKey: handover.credentialKey,
+    sessionSecret: handover.sessionSecret,
+  };
+  return 'enabled (credential handed over by the restarting instance)';
 }
 
 /**

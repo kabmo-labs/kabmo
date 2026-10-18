@@ -27,6 +27,7 @@
 
 import { isMockMode } from '@/server/mock.server';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 export interface ConfigEntry {
   value?: unknown;
@@ -50,6 +51,7 @@ async function runOmp(args: string[], timeoutMs: number): Promise<ConfigCommandR
   if (!bin) return { ok: false, stdout: '', stderr: 'omp binary not found' };
   try {
     const proc = Bun.spawn({
+      env: childEnv(),
       cmd: [bin, 'config', ...args],
       stdout: 'pipe',
       stderr: 'pipe',

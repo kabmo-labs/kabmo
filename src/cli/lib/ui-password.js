@@ -10,8 +10,11 @@
 // spawned server through the environment (never argv, which is world-readable in
 // `ps`). The server erases it as it reads it, before any child can inherit it.
 
+import fs from 'node:fs';
+
 import { generatePassword } from '@/shared/lib/auth/password';
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN, serializeHandover } from '@/shared/lib/auth/handover';
 import { isLoopbackHost } from '@/server/lib/lifecycle/probe';
 import { log, warn } from '@/cli/lib/output.js';
 
@@ -87,6 +90,17 @@ export async function resolveUiPassword(options) {
   if (typeof flag === 'string' && flag.length > 0) return { password: flag, generated: false, source: 'flag' };
   if (flag === '') return { password: generatePassword(), generated: true, source: 'generated' };
 
+  // A login entry names a FILE, never the secret: the entry itself is
+  // world-readable and outlives the run that wrote it.
+  if (typeof options?.uiPasswordFile === 'string' && options.uiPasswordFile.length > 0) {
+    const stored = readAutostartCredential(options.uiPasswordFile);
+    // Reported as `none` when the file is gone, so the caller starts open and
+    // says so — a login entry whose credential was deleted must not look armed.
+    return stored
+      ? { password: stored, generated: false, source: 'file' }
+      : { password: null, generated: false, source: 'none' };
+  }
+
   const fromEnv = (Bun.env[UI_PASSWORD_ENV] ?? '').trim();
   if (fromEnv.length > 0) return { password: fromEnv, generated: false, source: 'env' };
 
@@ -96,20 +110,39 @@ export async function resolveUiPassword(options) {
   return { password: null, generated: false, source: 'none' };
 }
 
+/** Read a credential file the login entry points at, or null. */
+function readAutostartCredential(target) {
+  try {
+    const value = fs.readFileSync(target, 'utf8').trim();
+    return value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The environment a spawned server needs, with the password added when there is
- * one.
+ * The environment a spawned server needs, and the payload it must read.
  *
- * The variable rather than argv: a value on the command line is readable by
- * every user on the machine through `ps`, and on Linux through
- * `/proc/<pid>/cmdline`. The server deletes it before spawning anything of its
- * own, so it survives only as long as the handover.
+ * The password does NOT travel in the environment. `delete Bun.env.X` inside
+ * the server removes the name from the JS view only — the OS environ keeps it,
+ * and a `Bun.spawn` with no `env` hands it to every child (measured on Bun
+ * 1.4.3, including the `runShell` path that builds a third-party plugin). So the
+ * environment carries a marker with no secret in it, and the value goes down
+ * the child's stdin before it reads it.
+ *
+ * The return shape is `{ env, payload }`: `payload` is null when the run has no
+ * password, and the caller closes stdin either way (a pipe left open blocks a
+ * child that is waiting for EOF).
  */
-export function uiPasswordEnv(resolved, baseEnv) {
+export function uiPasswordHandover(resolved, baseEnv) {
   const env = { ...baseEnv };
-  if (resolved?.password) env[UI_PASSWORD_ENV] = resolved.password;
-  else delete env[UI_PASSWORD_ENV];
-  return env;
+  // Even the legacy variable is removed from the child's environment: a value
+  // inherited from the operator's shell would otherwise reach every grandchild.
+  delete env[UI_PASSWORD_ENV];
+  delete env[PASSWORD_HANDOVER_ENV];
+  if (!resolved?.password) return { env, payload: null };
+  env[PASSWORD_HANDOVER_ENV] = PASSWORD_HANDOVER_STDIN;
+  return { env, payload: serializeHandover({ password: resolved.password }) };
 }
 
 /**

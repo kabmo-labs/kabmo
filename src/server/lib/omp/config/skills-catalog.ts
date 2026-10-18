@@ -11,6 +11,7 @@
 
 import { isMockMode } from '@/server/mock.server';
 import type { CatalogSkillItem } from '@/shared/types';
+import { childEnv } from '@/server/lib/fs/child-env';
 
 const SEARCH_API_BASE = Bun.env.SKILLS_API_URL || 'https://skills.sh';
 const SEARCH_TIMEOUT_MS = 15_000;
@@ -61,6 +62,7 @@ export function toCatalogSkills(results: CatalogSearchResult[], sourceId: string
 
 async function runBunxSkills(args: string[]): Promise<string> {
   const proc = Bun.spawn({
+    env: childEnv(),
     cmd: ['bunx', 'skills', ...args],
     stdout: 'pipe',
     stderr: 'pipe',
