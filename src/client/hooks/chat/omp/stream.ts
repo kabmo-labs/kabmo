@@ -133,7 +133,17 @@ export function useOmpAgentStream({
   // disconnect, so an unmount has to release it explicitly.
   useEffect(() => () => disconnect(), [disconnect]);
 
-  return { connect, disconnect };
+  /** The session this hook is streaming right now, or null.
+   *
+   *  `useOmpAgent` reads it to tell a session SWITCH from the arrival of the id
+   *  a spawn just answered with: the spawn path calls `connect(sid)` before the
+   *  URL carries that id, so "already attached to this exact session" is proof
+   *  the frames on screen belong to the conversation being opened — a
+   *  distinction no pending-id bookkeeping can make for a send that started
+   *  with no `?sessionId=` at all. */
+  const attachedSession = useCallback(() => attachedRef.current, []);
+
+  return { connect, disconnect, attachedSession };
 }
 
 export type { ToolResultRecord };
