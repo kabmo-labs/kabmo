@@ -31,12 +31,35 @@ import type { ExtensionUiDialogRequest, OmpAgentCallbacks, OmpAgentHandle } from
 
 let container: HTMLElement | null = null;
 let originalFetch: unknown;
+let originalWebSocket: unknown;
+let originalEventSource: unknown;
+
+/** A socket double: the probe calls `connect` on a live run, and a real dial
+ *  would leave an unhandled `error` event (measured: the suite reported
+ *  `0 fail` and still exited 1). */
+class StubSocket {
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: string }) => void) | null = null;
+  onclose: (() => void) | null = null;
+  onerror: unknown = null;
+  constructor(public url: string) {}
+  close() {}
+}
+
+class StubEventSource extends StubSocket {
+  static readonly CLOSED = 2;
+  readyState = 0;
+}
 /** Pending ids this file minted, released after each case. */
 const created: string[] = [];
 
 beforeAll(() => {
   installDomGlobals(new Window({ url: 'http://localhost' }));
   originalFetch = Reflect.get(globalThis, 'fetch');
+  originalWebSocket = Reflect.get(globalThis, 'WebSocket');
+  originalEventSource = Reflect.get(globalThis, 'EventSource');
+  Reflect.set(globalThis, 'WebSocket', StubSocket);
+  Reflect.set(globalThis, 'EventSource', StubEventSource);
 });
 
 afterEach(() => {
@@ -45,6 +68,8 @@ afterEach(() => {
   container = null;
   for (const id of created.splice(0)) releasePendingSession(id);
   Reflect.set(globalThis, 'fetch', originalFetch);
+  Reflect.set(globalThis, 'WebSocket', originalWebSocket);
+  Reflect.set(globalThis, 'EventSource', originalEventSource);
 });
 
 afterAll(() => {
