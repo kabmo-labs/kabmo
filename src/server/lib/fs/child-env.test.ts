@@ -19,11 +19,24 @@ import { childEnv } from '@/server/lib/fs/child-env';
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
 describe('childEnv', () => {
+  /**
+   * The PATH entry as the running platform spells it.
+   *
+   * Windows env names are case-insensitive and the OS normally spells it
+   * `Path`, so `env.PATH` is undefined there — measured on the Windows leg,
+   * where the assertion below failed on a `childEnv()` that was correct. The
+   * variable is still present; only the casing differs.
+   */
+  function pathEntry(env: Record<string, string | undefined>): string | undefined {
+    const key = Object.keys(env).find((name) => name.toUpperCase() === 'PATH');
+    return key === undefined ? undefined : env[key];
+  }
+
   test('withholds the credential and keeps everything else', () => {
     const env = childEnv();
     expect(env[UI_PASSWORD_ENV]).toBeUndefined();
     // The child still needs a PATH, or nothing it runs can be found.
-    expect(typeof env.PATH).toBe('string');
+    expect(typeof pathEntry(env)).toBe('string');
   });
 
   test('caller overrides are applied, but cannot re-introduce the credential', () => {
@@ -39,5 +52,15 @@ describe('childEnv', () => {
     childEnv();
     expect(Bun.env.OMPCHAMBER_CHILD_ENV_PROBE).toBe('keep');
     delete Bun.env.OMPCHAMBER_CHILD_ENV_PROBE;
+  });
+
+  test('a differently-cased spelling of the credential is withheld on Windows', () => {
+    // Env names are case-insensitive there, so this IS the withheld variable —
+    // an exact-name delete would hand the secret to the child. Injected because
+    // a POSIX runner cannot observe the branch otherwise.
+    const env = childEnv({ [UI_PASSWORD_ENV.toLowerCase()]: 'leaked' }, 'win32');
+    expect(env[UI_PASSWORD_ENV.toLowerCase()]).toBeUndefined();
+    // On POSIX the name is a different variable and is left alone.
+    expect(childEnv({ [UI_PASSWORD_ENV.toLowerCase()]: 'kept' }, 'linux')[UI_PASSWORD_ENV.toLowerCase()]).toBe('kept');
   });
 });

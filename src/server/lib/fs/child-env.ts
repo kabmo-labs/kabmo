@@ -21,16 +21,30 @@
 
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
-/** Names that must never reach a child, whatever the parent's environ holds. */
-const WITHHELD = [UI_PASSWORD_ENV] as const;
+/**
+ * Names that must never reach a child, whatever the parent's environ holds,
+ * keyed by their upper-case spelling (Windows env names are case-insensitive).
+ */
+const WITHHELD: Record<string, true> = { [UI_PASSWORD_ENV.toUpperCase()]: true };
 
 /**
  * A copy of the current environment with the credential removed, plus any
  * caller overrides applied ON TOP (so a caller that genuinely needs a variable
  * set for its child still can).
+ *
+ * `platform` is a parameter rather than a read of `process` for the reason
+ * `stripChamberHostEnv` takes one: Windows env names are case-insensitive, so
+ * `Ompchamber_Ui_Password` IS the withheld variable there, and the only way to
+ * exercise that branch on a POSIX runner is to hand it in. An exact-name delete
+ * leaves a differently-cased spelling in the child's environment.
  */
-export function childEnv(overrides: Record<string, string | undefined> = {}): Record<string, string | undefined> {
+export function childEnv(
+  overrides: Record<string, string | undefined> = {},
+  platform: string = process.platform,
+): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = { ...Bun.env, ...overrides };
-  for (const name of WITHHELD) delete env[name];
+  for (const name of Object.keys(env)) {
+    if (WITHHELD[platform === 'win32' ? name.toUpperCase() : name] === true) delete env[name];
+  }
   return env;
 }

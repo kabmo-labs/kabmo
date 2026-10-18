@@ -285,4 +285,17 @@ describe('realtime channel retry lifecycle', () => {
     resumeTab();
     expect(FakeSocket.instances).toHaveLength(before);
   });
+
+  test('a reset after the DOM globals are gone does not throw', () => {
+    // The teardown seam runs in a suite's `afterEach` and its globals are
+    // restored in `afterAll`, so the order is not always the one this file
+    // uses. Dereferencing `document` when the cleanup runs threw
+    // `ReferenceError: document is not defined` and failed the NEXT file — a
+    // suite that names none of the files responsible. Measured on CI, where it
+    // took out 17 cases across two files.
+    subscribe();
+    lastSocket().open();
+    restoreDomGlobals();
+    expect(() => resetRealtimeClient()).not.toThrow();
+  });
 });

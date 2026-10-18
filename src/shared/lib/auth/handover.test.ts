@@ -111,16 +111,21 @@ describe('the environment is not a channel a child can be trusted with', () => {
   // at runtime is genuinely removed. A server spawned with the password in its
   // environment is therefore the case that leaks — which is exactly how the CLI
   // used to hand it over.
+  //
+  // The probes read the variable with `Bun.env` rather than a shell expansion:
+  // these assertions are about the environment a child INHERITS, which has
+  // nothing to do with the platform, and `/bin/sh` does not exist on the Windows
+  // leg. Measured on CI: all three failed there with `uv_spawn '/bin/sh'`.
   test('a value inherited at startup survives `delete Bun.env.X` for a child', async () => {
-    // Built by concatenation rather than a nested template: the shell expansion
-    // `${...}` inside a template literal would be interpolated by Bun.
+    // Built by concatenation rather than a nested template: `${...}` inside a
+    // template literal would be interpolated by Bun.
     const script = [
       'delete Bun.env.OMPCHAMBER_TEST_LEAK;',
-      'const child = Bun.spawn(["/bin/sh","-c","printf %s \\"\\${OMPCHAMBER_TEST_LEAK:-<unset>}\\""], { stdout: "pipe" });',
+      'const child = Bun.spawn([process.execPath,"-e","console.log(Bun.env.OMPCHAMBER_TEST_LEAK ?? \\"<unset>\\")"], { stdout: "pipe" });',
       'await child.exited;',
       'console.log(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer()));',
     ].join('\n');
-    const probe = Bun.spawn(['bun', '-e', script], {
+    const probe = Bun.spawn([process.execPath, '-e', script], {
       stdout: 'pipe',
       env: { ...Bun.env, OMPCHAMBER_TEST_LEAK: PASSWORD },
     });
@@ -131,18 +136,18 @@ describe('the environment is not a channel a child can be trusted with', () => {
   test('a value set at runtime IS removed by delete, and the child agrees', async () => {
     Bun.env.OMPCHAMBER_TEST_LEAK = PASSWORD;
     delete Bun.env.OMPCHAMBER_TEST_LEAK;
-    const child = Bun.spawn(['/bin/sh', '-c', 'printf %s "${OMPCHAMBER_TEST_LEAK:-<unset>}"'], { stdout: 'pipe' });
+    const child = Bun.spawn([process.execPath, '-e', 'console.log(Bun.env.OMPCHAMBER_TEST_LEAK ?? "<unset>")'], { stdout: 'pipe' });
     await child.exited;
-    expect(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer())).toBe('<unset>');
+    expect(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer()).trim()).toBe('<unset>');
   });
 
   test('an explicit env replaces the child environment, so a removal there is real', async () => {
     Bun.env.OMPCHAMBER_TEST_LEAK = PASSWORD;
     const env = { ...Bun.env };
     delete env.OMPCHAMBER_TEST_LEAK;
-    const child = Bun.spawn(['/bin/sh', '-c', 'printf %s "${OMPCHAMBER_TEST_LEAK:-<unset>}"'], { stdout: 'pipe', env });
+    const child = Bun.spawn([process.execPath, '-e', 'console.log(Bun.env.OMPCHAMBER_TEST_LEAK ?? "<unset>")'], { stdout: 'pipe', env });
     await child.exited;
-    expect(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer())).toBe('<unset>');
+    expect(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer()).trim()).toBe('<unset>');
     delete Bun.env.OMPCHAMBER_TEST_LEAK;
   });
 });

@@ -169,23 +169,36 @@ function wake(): void {
   dial();
 }
 
-/** Install the resume listeners once. A no-op outside a document. */
+/**
+ * Install the resume listeners once. A no-op outside a document.
+ *
+ * The cleanup closes over the `document`/`window` it REGISTERED on rather than
+ * reading the globals again when it runs. Those are not necessarily the same
+ * objects: a test suite replaces them per case and deletes them when it is
+ * done, and `resetConnection` (the teardown seam) would then dereference an
+ * absent `document` and throw — measured on CI, where a suite that reset the
+ * client after its own `restoreDomGlobals` failed the NEXT file with
+ * `ReferenceError: document is not defined`. In a browser the two are always
+ * the same object, so this changes nothing there.
+ */
 function ensureWakeListeners(): void {
   const host = state();
   if (host.wakeCleanup) return;
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const doc = document;
+  const win = window;
   const onVisible = (): void => {
-    if (!document.hidden) wake();
+    if (!doc.hidden) wake();
   };
   const onOnline = (): void => wake();
   const onPageShow = (): void => wake();
-  document.addEventListener('visibilitychange', onVisible);
-  window.addEventListener('online', onOnline);
-  window.addEventListener('pageshow', onPageShow);
+  doc.addEventListener('visibilitychange', onVisible);
+  win.addEventListener('online', onOnline);
+  win.addEventListener('pageshow', onPageShow);
   host.wakeCleanup = () => {
-    document.removeEventListener('visibilitychange', onVisible);
-    window.removeEventListener('online', onOnline);
-    window.removeEventListener('pageshow', onPageShow);
+    doc.removeEventListener('visibilitychange', onVisible);
+    win.removeEventListener('online', onOnline);
+    win.removeEventListener('pageshow', onPageShow);
   };
 }
 
@@ -282,7 +295,12 @@ export function connectIfNeeded(): void {
 /** Test seam: close the socket and forget the connection state. */
 export function resetConnection(): void {
   const host = state();
-  host.wakeCleanup?.();
+  // Nulled BEFORE the call: a cleanup that throws (a listener target that is
+  // already gone) must not leave the slot set, or the next reset retries the
+  // same throw and the state below is never cleared.
+  const cleanup = host.wakeCleanup;
+  host.wakeCleanup = null;
+  cleanup?.();
   clearTimeout(host.retryTimer);
   clearTimeout(host.probeTimer);
   const socket = host.socket;
