@@ -20,33 +20,24 @@
  * than the transport. The frames are the contract: bytes out on a keystroke,
  * the shell's answer back on the same socket.
  *
- * SKIPPED ON WINDOWS for a HARNESS reason, not a product one — and an earlier
- * version of this comment said otherwise, which was wrong. `Bun.Terminal` is
- * supported on Windows through ConPTY (Bun's own docs: "uses `openpty()` on
- * Linux and macOS, and ConPTY (`CreatePseudoConsole`) on Windows"), so the
- * panel's PTY does work there.
+ * RUNS ON WINDOWS TOO, and the comment that said otherwise was wrong twice.
+ * `Bun.Terminal` is supported there through ConPTY, and the reason this spec was
+ * skipped was an ASSERTION limit that the assertions below do not actually have:
+ * neither of them compares bytes. The prompt check is a character class
+ * (`cmd.exe`'s `C:\…>` satisfies it) and the command check is `toContain` on a
+ * unique marker, which ConPTY renders like any other output. What ConPTY does
+ * NOT preserve is the exact escape stream, so a spec asserting the raw frames
+ * verbatim would fail on a working terminal — that is a different test.
  *
- * What does not work is this spec's ASSERTION. It reads the terminal socket's
- * raw bytes and expects the shell's reply to arrive verbatim; ConPTY "renders
- * the child's output to a virtual screen and emits whatever VT sequences
- * describe the result", so the frames are "semantically equivalent, but not
- * byte-identical" — it also emits an init sequence before any child output. A
- * byte-for-byte assertion would fail on a working terminal.
- *
- * Making it pass would mean asserting on the RENDERED text rather than the
- * frames, which is a different test of a different layer. Until then, what is
- * unverified on Windows is the PTY behind the panel, not whether it exists.
+ * The panel itself was genuinely broken on Windows until the spawn was fixed:
+ * `detached: true` there means `DETACHED_PROCESS`, so the child had no console
+ * and `cmd.exe` exited 1 immediately. See `session.server.ts`.
  */
 
 import { test, expect, openApp } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
-// Playwright's own skip, not a hand-rolled `if`: it reports the reason in the
-// run's output, so a Windows leg that skipped this is visible rather than
-// silently absent.
-const describeTerminal = process.platform === 'win32' ? test.describe.skip : test.describe;
-
-describeTerminal('terminal', () => {
+test.describe('terminal', () => {
   test('opens a shell and the shell answers a command', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal');

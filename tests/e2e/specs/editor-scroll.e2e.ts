@@ -163,14 +163,20 @@ test.describe('editor scroll memory', () => {
     // change, which fires on every load because the root is null until the
     // folder resolves), so a tab opened during that window is cleared again —
     // measured: the file row was there and the editor read `Select a file to
-    // open`. The state GET plus that empty state are the gates the click needs.
+    // open`. The state GET is that gate.
+    //
+    // The empty editor state is deliberately NOT asserted as a second gate: the
+    // tab list is itself persisted (`layout.openedFiles`), so whether the panel
+    // shows `Select a file to open` or the file it had open depends on whether
+    // the wipe or the restored blob landed last — a race this spec does not own
+    // and does not need, since reopening a file that already has a tab reuses
+    // that tab (measured on the failing CI leg: the empty state was simply never
+    // drawn and the assertion timed out while the panel was already correct).
     const blob = page.waitForResponse(
       (response) => response.request().method() === 'GET' && new URL(response.url()).pathname.endsWith('/state'),
     );
     await page.reload({ waitUntil: 'domcontentloaded' });
     await blob;
-    const panel = page.locator('[data-panel-id="editor-panel"]');
-    await expect(panel.getByText('Select a file to open')).toBeVisible({ timeout: 15_000 });
     // Reopened from the tree on purpose: whether the TAB LIST survives a reload
     // is a different question, and this spec is about the OFFSET — the tab id
     // is a hash of the path, so reopening the same file reads the same key.

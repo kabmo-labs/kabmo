@@ -19,7 +19,7 @@
  * Rendered with `h()` against happy-dom, following `panels/Proc.test.ts`.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, setSystemTime, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -145,14 +145,26 @@ describe('Wait panel — the 30-minute cap', () => {
     // omp caps one `wait` at 30 minutes and takes no argument to raise it, so
     // the ceiling belongs on the card: without it "still waiting" and "waiting
     // for something that can never arrive" look the same.
-    const el = await mount({
-      ...BLOCKING,
-      startedAt: Date.now() - 60_000,
-      details: { op: 'wait', jobs: [{ id: 'bg_1', type: 'bash', status: 'running', label: 'bun run e2e.ts', durationMs: 60_000 }] },
-    });
-    const text = el.textContent ?? '';
-    expect(text).toContain('left of 30:00');
-    expect(text).toContain('29:00');
+    //
+    // A FROZEN clock, not a start value chosen to be safe. The panel counts
+    // `now - startedAt`, so a real clock makes the rendered figure a function of
+    // how long the mount took: `Date.now() - 60_000` reads `28:59` a few
+    // milliseconds later and failed on every run (measured on both CI legs:
+    // expected "29:00", received "28:59"). Pinning `Date.now` to one instant
+    // makes the budget exact.
+    const now = Date.now();
+    setSystemTime(new Date(now));
+    try {
+      const el = await mount({
+        ...BLOCKING,
+        startedAt: now - 60_000,
+        details: { op: 'wait', jobs: [{ id: 'bg_1', type: 'bash', status: 'running', label: 'bun run e2e.ts', durationMs: 60_000 }] },
+      });
+      const text = el.textContent ?? '';
+      expect(text).toContain('29:00 left of 30:00');
+    } finally {
+      setSystemTime();
+    }
   });
 
   test('a capped wait is named as such, not as “no jobs”', async () => {

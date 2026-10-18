@@ -38,7 +38,7 @@
  * half meaningful, and harmless where it is not consulted.
  */
 
-import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
+import { test, expect, openApp } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 
 /** Must match `MAX_TERMINALS` in `runtime.server.ts`. */
@@ -83,10 +83,20 @@ function attach(baseURL: string, id: string, root: string): Promise<LiveShell> {
   });
 }
 
-/** Run a long-lived command so the shell's foreground group leaves the shell. */
+/**
+ * Run a long-lived command so the shell's foreground group leaves the shell.
+ *
+ * The command differs by platform because the SHELL does: `sleep` is a POSIX
+ * utility and `cmd.exe` has no equivalent, so on Windows it would answer
+ * "not recognized" and return to the prompt immediately. There the cap counts
+ * every RUNNING shell anyway (ConPTY exposes no `tpgid`), so the command only
+ * has to keep the shell alive, which `ping` does without needing a busy group.
+ */
 function makeBusy(shell: LiveShell): void {
-  // `sleep 120` outlives this spec; the shell is killed in `finally`.
-  shell.socket.send(new TextEncoder().encode('sleep 120\n'));
+  const command = process.platform === 'win32'
+    ? 'ping -n 121 127.0.0.1 > nul\n'
+    : 'sleep 120\n';
+  shell.socket.send(new TextEncoder().encode(command));
 }
 
 interface Inventory {
@@ -95,19 +105,15 @@ interface Inventory {
 
 test.describe('terminal capacity', () => {
   test(`the ${MAX_TERMINALS + 1}th busy shell is refused with capacity`, async ({ harness }) => {
-    // MEASURED, not assumed: on the Windows runner the shells this spec attaches
-    // come back `status: "exited"`, `exitCode: 1` within a second, so nothing
-    // ever counts toward the cap — the inventory dump the poll throws reports
-    // exactly that for all eight ids. The same spec passes on POSIX, and the
-    // Windows leg is flaky in the other direction too (a Release run failed it
-    // and passed on retry), which points at the PTY child rather than the cap.
-    // `terminal.e2e.ts` skips on Windows for the neighbouring reason (ConPTY
-    // renders rather than relays bytes), so the panel's PTY is not otherwise
-    // proven there either. The cap's WINDOWS BRANCH — counting every running
-    // shell where the platform cannot tell idle from busy — stays covered by
-    // `store-liveness.test.ts`, which injects the platform and runs everywhere.
-    skipOnWindows('the PTY shell exits with code 1 on the Windows runner, so no shell counts toward the cap');
-
+    // The shells must actually STAY ALIVE for this precondition to exist, and
+    // that is what was broken on Windows rather than the cap: the PTY child was
+    // spawned `detached: true`, which on Windows is `DETACHED_PROCESS` — no
+    // console at all — so `cmd.exe` exited 1 within a second and nothing ever
+    // counted. `session.server.ts` now detaches on POSIX only, which is the
+    // platform where a process group exists to be addressed. This spec therefore
+    // runs everywhere; `busy` still differs by platform (a foreground process
+    // group on POSIX, every running shell where there is none), and the poll
+    // below asks each platform the question its cap actually counts.
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal-cap');
     const root = workspace.path;
@@ -192,6 +198,9 @@ test.describe('terminal capacity', () => {
 
 test.describe('terminal panel', () => {
   test('a shell the panel opens is counted by the same registry the cap reads', async ({ harness, page }) => {
+    // Runs on every platform: the Windows failure this used to skip for was the
+    // PTY child dying instantly (spawned `DETACHED_PROCESS`, which has no
+    // console), not the registry. See the cap spec above.
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-terminal-open');
 
