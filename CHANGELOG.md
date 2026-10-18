@@ -5,6 +5,30 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.21.0](https://github.com/rajebdev/ompchamber/compare/v4.20.0...v4.21.0) — 2026-10-18
+
+### Added
+
+* **auth:** sign out from either navbar, when a password is in force ([c73fc7d](https://github.com/rajebdev/ompchamber/commit/c73fc7da8f93566808338095f002b2d250a2d735))
+* **cli:** let a login entry carry the UI password ([3daba4d](https://github.com/rajebdev/ompchamber/commit/3daba4df7d7a1fe234564cd7daa7f1128695ab60))
+* **settings:** add Restart OMPChamber action beside Reload OMP ([4fa577d](https://github.com/rajebdev/ompchamber/commit/4fa577d11fc68a19c0349cf7edf346ea2a7a54a7))
+* **ui:** context-usage ring on both headers, filling clockwise by band ([7f9a23e](https://github.com/rajebdev/ompchamber/commit/7f9a23e2d58206427c2dd5e6e21907509a700f89))
+
+### Changed
+
+* **readme:** rebuild the page around the current feature set and new captures ([7aba04c](https://github.com/rajebdev/ompchamber/commit/7aba04ce33867341ef6b3253fbc5c65538d75403))
+
+### Fixed
+
+* **auth:** hand the credential over on stdin, and keep it across a restart ([9f110ae](https://github.com/rajebdev/ompchamber/commit/9f110ae78a0376ecddca6716454c38ba551e6498))
+* **auth:** keep the session lifetime a reissue was given ([1e879e0](https://github.com/rajebdev/ompchamber/commit/1e879e0737bcd1889e0fe23f3907f02c46ae55fe))
+* **chat:** stop a reattach from overwriting the live activity phrase ([e9bdf9b](https://github.com/rajebdev/ompchamber/commit/e9bdf9b9461b4ddb8b061b52202cd57ea3ef0bf8))
+* **chat:** truncate the activity phrase so the indicator keeps its identity and dots ([605c900](https://github.com/rajebdev/ompchamber/commit/605c90036ababd1ee1e6415cd999e3cc288a3359))
+* **lifecycle:** keep tray and tls across a restart ([7c4b0b9](https://github.com/rajebdev/ompchamber/commit/7c4b0b9368957f2bacb26d308e3c9f9bee350aeb))
+* **plugins:** apply bundled plugin fixes on the boot that installs them ([ccf45ea](https://github.com/rajebdev/ompchamber/commit/ccf45eac8deaf4d9220071be60636cafe4201ce7))
+* **realtime:** never give up the socket, and wake it when the tab returns ([b60bb41](https://github.com/rajebdev/ompchamber/commit/b60bb410ad893d7eb5c11af7970e4af7dc898439))
+* **test:** make the gates pass on Linux and Windows again ([5aa649e](https://github.com/rajebdev/ompchamber/commit/5aa649e107c9a143ab11114fc287372cc9a46617))
+
 ## [4.20.0](https://github.com/rajebdev/ompchamber/compare/v4.19.0...v4.20.0) — 2026-10-18
 
 ### Added
