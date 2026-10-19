@@ -31,9 +31,8 @@
  * spawn environment: a fake child would prove nothing about which variables git
  * was given.
  *
- * The assertion is git's own trace, not a race: `do_write_index` is either
- * recorded or it is not, so the test is deterministic and does not depend on two
- * processes landing in the same microsecond. The race itself is deliberately NOT
+ * The assertion is the index FILE's identity (mtime + size), not a race: git
+ * either replaced it or it did not. The race itself is deliberately NOT
  * asserted — measured, spawning the reads and the merge together does not
  * reproduce it reliably enough to be a test (0 of 6 runs failed with the fix
  * reverted), and a test that passes with the bug present is worse than no test.
@@ -72,7 +71,7 @@ function makeRepo(): string {
   return dir;
 }
 
-/** One commit of `files` tracked files, so a rewrite below makes the index stale. */
+/** One commit of `files` tracked files, so a changed stat below makes the index stale. */
 function seedTracked(cwd: string, files = 200): void {
   for (let i = 0; i < files; i += 1) {
     fs.writeFileSync(path.join(cwd, `f${i}.txt`), `line ${i}\n`);
@@ -82,23 +81,32 @@ function seedTracked(cwd: string, files = 200): void {
 }
 
 /**
- * Make the index STALE: every tracked file gets an mtime well ahead of the stat
- * the index recorded, which is what makes `git status` want to write it back.
+ * Make the index STAT-STALE without changing any file's content: every tracked
+ * file's mtime is moved well ahead of the stat the index recorded.
+ *
+ * **The content must stay identical, and that is the whole point.** `git status`
+ * only writes the index back when it can REFRESH an entry (`cache_changed`), and
+ * an entry whose CONTENT changed is dirty — git cannot refresh it, so the write
+ * then depends on `has_racy_timestamp` instead: the index's own mtime second
+ * against the entry's recorded one. That is a clock race against the fixture's
+ * setup, and it is what made this control flake (measured on macOS: every run
+ * whose `git add`/`git commit` stayed inside one second wrote the index, and the
+ * one run that crossed a second boundary did not — `git status` reported the
+ * same 200 modified files either way). Touching the mtime with the content
+ * intact makes the refresh SUCCEED, so `cache_changed` is set on every git build
+ * and every platform, independent of timestamps.
  *
  * The mtime is moved EXPLICITLY rather than left to "the rewrite happens after
  * the commit". Those differ by filesystem timestamp granularity: on a runner
  * whose clock or FS rounds to the second, a rewrite inside the same second as
- * the index write leaves the entry "racily clean", and git may then decline to
- * refresh — measured on the release gate, where the positive control below
- * reported no index write and the suite failed on a commit that had passed CI
- * minutes earlier. A minute of headroom is unambiguous on every filesystem git
- * supports.
+ * the index write leaves the entry "racily clean". A minute of headroom is
+ * unambiguous on every filesystem git supports, and each call takes a larger
+ * offset so a second pass is stale against the stat the first one wrote back.
  */
-function staleIndex(cwd: string, files = 200): void {
+function staleIndex(cwd: string, secondsAhead: number, files = 200): void {
   for (let i = 0; i < files; i += 1) {
     const file = path.join(cwd, `f${i}.txt`);
-    fs.writeFileSync(file, `line ${i} rewritten\n`);
-    const future = new Date(Date.now() + 60_000);
+    const future = new Date(Date.now() + secondsAhead * 1000);
     fs.utimesSync(file, future, future);
   }
 }
@@ -144,10 +152,10 @@ describe('a git READ does not take the index lock', () => {
     // so rather than silently proving nothing.
     const repo = makeRepo();
     seedTracked(repo);
-    staleIndex(repo);
+    staleIndex(repo, 60);
     expect(indexWriteCount(repo, {})).toBeGreaterThan(0);
 
-    staleIndex(repo);
+    staleIndex(repo, 120);
     expect(indexWriteCount(repo, { GIT_OPTIONAL_LOCKS: '0' })).toBe(0);
   });
 
