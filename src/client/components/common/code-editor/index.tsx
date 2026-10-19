@@ -147,16 +147,21 @@ export function CodeEditor({
       pendingSelectionRef.current = { start, end, focus };
       return;
     }
+    // Focus BEFORE the range: a textarea that is not the active element still
+    // stores `selectionStart`/`selectionEnd`, but paints neither a caret nor a
+    // selection band — which is why an outline jump scrolled and then looked
+    // like it had selected nothing (measured: the range was correct and the
+    // field was not focused). `preventScroll` is load-bearing: the editor's
+    // `<textarea>` spans the whole document (only the highlighted layer is
+    // windowed), so a plain `focus()` makes the browser scroll the container to
+    // the caret's position at the END of the buffer region it can see — which
+    // clamped the scroller to its maximum and left a search jump showing the
+    // file's tail (measured: a hit on line 800 of 900 landed at the bottom with
+    // its own highlight unpainted). The surface's own `revealOffset` is the
+    // only thing that scrolls.
+    if (focus) input.focus({ preventScroll: true });
     input.selectionStart = start;
     input.selectionEnd = end;
-    // `preventScroll` is load-bearing: the editor's `<textarea>` spans the whole
-    // document (only the highlighted layer is windowed), so a plain `focus()`
-    // makes the browser scroll the container to the caret's position at the END
-    // of the buffer region it can see — which clamped the scroller to its
-    // maximum and left a search jump showing the file's tail (measured: a hit on
-    // line 800 of 900 landed at the bottom with its own highlight unpainted).
-    // The surface's own `revealOffset` is the only thing that scrolls.
-    if (focus) input.focus({ preventScroll: true });
   };
 
   useImperativeHandle(

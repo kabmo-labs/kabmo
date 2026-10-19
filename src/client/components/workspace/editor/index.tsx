@@ -20,6 +20,7 @@ import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useEditorFind } from '@/client/hooks/editor/use-editor-find';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
+import { useEditorOutlineBridge } from '@/client/hooks/editor/use-editor-outline-bridge';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
 import type { OpenedFile } from '@/shared/types/fs';
 
@@ -132,6 +133,23 @@ export function Editor({
   // find state), so it is kept in a ref and the listener attached once.
   const findRef = useRef(find);
   findRef.current = find;
+
+  /**
+   * Publish what this editor is drawing (for the Files panel's outline), and
+   * serve an outline row's jump: caret on the line, scrolled into view, NO find
+   * bar. See `use-line-jump.ts` for the four rules the jump encodes.
+   */
+  useEditorOutlineBridge({
+    file: activeFile,
+    editor,
+    surfaceRef,
+    isPreview: activeFile ? previewMode[activeFile.id] === true : false,
+    exitPreview: () => {
+      const id = activeFile?.id;
+      if (id === undefined || id === null) return;
+      setPreviewMode(prev => ({ ...prev, [id]: false }));
+    },
+  });
 
   useEffect(() => {
     if (refreshKey > 0) editor.reset();

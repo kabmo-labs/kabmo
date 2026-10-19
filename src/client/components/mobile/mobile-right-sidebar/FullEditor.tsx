@@ -5,11 +5,15 @@ import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
+import { EditorStatusBar } from '@/client/components/mobile/mobile-right-sidebar/StatusBar';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
 import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
+import { useEditorOutlineBridge } from '@/client/hooks/editor/use-editor-outline-bridge';
+import { MobileOutlineButton } from '@/client/components/mobile/mobile-right-sidebar/OutlineButton';
+import { useOutlineView } from '@/client/hooks/editor/use-outline-view';
 import {
   EDITOR_DEFAULT_FONT_SIZE,
   EDITOR_LINE_HEIGHT,
@@ -110,6 +114,35 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   const content = editor.content;
   const lang = editor.language;
   const linesCount = content.split('\n').length;
+
+  /**
+   * Serve an outline row's jump: caret on the line, scrolled into view.
+   *
+   * Served here rather than by the desktop editor because this is the surface
+   * holding the buffer while the sheet is open. `publish: false` — the phone's
+   * outline is drawn from this buffer directly, and publishing would claim the
+   * slot the desktop panel reads. See `use-line-jump.ts`.
+   */
+  useEditorOutlineBridge({
+    file: { id: fileKey, name: file.name, path: file.path ?? fileKey },
+    editor,
+    surfaceRef,
+    isPreview,
+    exitPreview: () => setPreviewOverrides((prev) => ({ ...prev, [fileKey]: false })),
+    publish: false,
+  });
+
+  // The sheet's own list, from the LIVE buffer — the same derivation the
+  // desktop section uses, so the two cannot disagree about what a state means.
+  // A byte viewer has no text buffer to scan, which is its own sentence.
+  const { symbols: outlineSymbols, notice: outlineNotice } = useOutlineView({
+    content,
+    language: lang,
+    state: byteViewer ? 'not-a-document' : editor.loadError ? 'error' : editor.loaded ? 'ready' : 'loading',
+    note: byteViewer
+      ? `${VIEWER_LABELS[viewerKind]} files have no text outline.`
+      : editor.loadError,
+  });
 
   return (
     <div
@@ -249,54 +282,26 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         </div>
       )}
 
-      {/* Bottom Status Bar - Desktop styled: bg-canvas border-t border-ink/10 */}
-      <footer
-        className="bg-canvas border-t border-ink/10 px-3 flex items-center justify-between text-[10px] text-ink/60 flex-shrink-0 font-mono"
-        style={{
-          height: 'calc(1.75rem + env(safe-area-inset-bottom, 0px))',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-        }}
-      >
-        <div className="flex items-center space-x-3">
-          {editor.isImage ? (
-            <span className="uppercase">Image</span>
-          ) : byteViewer ? (
-            // A byte viewer has no text buffer, so the line/char counts would
-            // describe an empty string: a PDF reported `1 lines · 0 chars` over
-            // the document it was drawing. The viewer's own name is the fact.
-            <span className="uppercase">{VIEWER_LABELS[viewerKind]}</span>
-          ) : (
-            <>
-              <span>{linesCount} lines</span>
-              <span>{content.length} chars</span>
-              <span className="uppercase">{lang}</span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          {editor.saveStatus === 'saving' && (
-            <>
-              <Loader2 size={10} className="animate-spin" />
-              <span>Saving…</span>
-            </>
-          )}
-          {editor.saveStatus === 'saved' && (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
-              <span>Saved</span>
-            </>
-          )}
-          {editor.saveStatus === 'error' && (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-error"></span>
-              <span className="text-error">Save failed</span>
-            </>
-          )}
-          {editor.saveStatus === 'idle' && file.path && <span className="truncate max-w-[140px]">{file.path}</span>}
-        </div>
-      </footer>
+      {/* The outline is a floating control rather than a panel section: on a
+          phone the drawer and this editor are separate screens, so a section
+          pinned to the drawer's floor would have no editor to jump into. Same
+          shape as the chat's "jump to your message" button — a tap-sized round
+          target over the content, list in a sheet. Hidden for a byte viewer,
+          which has no text to outline. */}
+      {!byteViewer && (
+        <MobileOutlineButton path={file.path ?? null} symbols={outlineSymbols} emptyNotice={outlineNotice} />
+      )}
+
+      <EditorStatusBar
+        isImage={editor.isImage}
+        byteViewer={byteViewer}
+        viewerKind={viewerKind}
+        lineCount={linesCount}
+        charCount={content.length}
+        language={lang}
+        saveStatus={editor.saveStatus}
+        path={file.path}
+      />
 
       {editor.saveMissingConfirm && file.path && (
         <SaveDeletedFileModal

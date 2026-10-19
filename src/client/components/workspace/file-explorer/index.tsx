@@ -5,6 +5,7 @@ import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { FileTreeItem } from '@/client/components/workspace/file-explorer/TreeItem';
 import { RootContextMenu } from '@/client/components/workspace/file-explorer/RootMenu';
 import { FileCreateModal } from '@/client/components/workspace/file-explorer/Modals';
+import { OutlineSection } from '@/client/components/workspace/file-explorer/OutlineSection';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
@@ -296,6 +297,11 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           ))
         )}
       </div>
+
+      {/* Pinned below the tree: the tree is the `flex-1` member, so opening this
+          shrinks it instead of pushing the section off the bottom of a scroller
+          the reader would have to chase — the git panel's stash section rule. */}
+      <OutlineSection />
 
       {mounted && rootMenu && (
         <RootContextMenu
