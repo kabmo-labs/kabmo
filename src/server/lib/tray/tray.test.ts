@@ -181,9 +181,14 @@ describe('a pre-rename login entry is removed', () => {
     const before = process.env.XDG_CONFIG_HOME;
     process.env.XDG_CONFIG_HOME = home;
     try {
-      const dir = join(home, 'autostart');
+      // The expected path is spelled the way the SOURCE spells it, with `/`:
+      // these are Linux XDG paths, and `join()` would hand back `\` on a
+      // Windows runner — the test then failed on the separator rather than on
+      // whether the entry was removed. `installAutostart` writes through the
+      // same builder, so a real Linux host sees `/` either way.
+      const dir = `${home}/autostart`;
       await mkdir(dir, { recursive: true });
-      const legacy = join(dir, 'ompchamber-tray.desktop');
+      const legacy = `${dir}/ompchamber-tray.desktop`;
       await writeFile(legacy, '[Desktop Entry]\nName=OMPChamber\n');
 
       expect(removeLegacyAutostart({ platform: 'linux' })).toBe(legacy);
