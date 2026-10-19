@@ -1,27 +1,11 @@
-import { LayoutTemplate, Loader2, MoreHorizontal, PanelLeft, PanelRight, PanelRightClose, Smartphone } from 'lucide-preact';
-import { PWAInstallButton } from '@/client/components/common/PWAInstallButton';
-import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
-import { SignOutButton } from '@/client/components/common/SignOutButton';
-import { ContextUsageButton } from '@/client/components/common/context-usage-button';
-import { HeaderPanelButtons } from '@/client/components/layout/desktop-layout/HeaderPanelButtons';
+import { Loader2, MoreHorizontal, PanelLeft } from 'lucide-preact';
+import { HeaderControls } from '@/client/components/common/header-controls';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
-import { WORKSPACE_KEY_BINDINGS, type WorkspaceCommand } from '@/shared/lib/workspace/keymap';
-import { describeBinding } from '@/shared/lib/ui/key-binding';
-
-/**
- * A tooltip's text with the chord that actually invokes it. Derived from the
- * workspace keymap rather than typed out, because a hand-written "⌘B" beside a
- * binding that listens for something else is exactly the drift the keymap
- * table exists to prevent.
- */
-function withChord(command: WorkspaceCommand, label: string): string {
-  const binding = WORKSPACE_KEY_BINDINGS.find((entry) => entry.command === command);
-  return binding ? `${label} (${describeBinding(binding)})` : label;
-}
+import { withChord } from '@/client/lib/ui/with-chord';
 
 interface TopNavbarProps {
   sessionTitle: string | null;
@@ -154,48 +138,17 @@ export function TopNavbar({
       </div>
 
       <div className="flex items-center space-x-3 titlebar-no-drag">
-        <div className="flex items-center space-x-1">
-          <HeaderPanelButtons />
-          {onSwitchToMobile && (
-            <button
-              type="button"
-              onClick={onSwitchToMobile}
-              className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer"
-              title="Switch to Mobile View"
-            >
-              <Smartphone size={16} />
-            </button>
-          )}
-          <PWAInstallButton />
-          <ReloadPageButton className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer" />
-          {/* Renders itself only when this instance requires a password and this
-              browser holds a session — see the component. */}
-          <SignOutButton className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer" />
-          <button
-            type="button"
-            onClick={onToggleEditor}
-            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${showEditor ? 'text-ink' : 'text-ink/40'}`}
-            title={withChord('toggleEditorPanel', 'Toggle Editor Layout')}
-            aria-label={withChord('toggleEditorPanel', 'Toggle Editor Layout')}
-            aria-pressed={showEditor}
-          >
-            <LayoutTemplate size={16} />
-          </button>
-          {/* The phone's header has carried this readout since it was built; a
-              desktop had no way to see how close a run is to its window without
-              opening the Context panel in the right column. */}
-          <ContextUsageButton sessionId={sessionId ?? null} />
-          <button
-            type="button"
-            onClick={onToggleRightPanel}
-            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${showRightPanel ? 'text-ink' : 'text-ink/40'}`}
-            title={withChord('toggleRightPanel', 'Toggle Right Panel')}
-            aria-label={withChord('toggleRightPanel', 'Toggle Right Panel')}
-            aria-pressed={showRightPanel}
-          >
-            {showRightPanel ? <PanelRightClose size={16} /> : <PanelRight size={16} />}
-          </button>
-        </div>
+        {/* One cluster, one order, shared with the phone's header. Each layout
+            passes only what it has; the order is stated in `HeaderControls`. */}
+        <HeaderControls
+          layout="desktop"
+          sessionId={sessionId ?? null}
+          showRightPanel={showRightPanel}
+          onToggleRightPanel={onToggleRightPanel}
+          showEditor={showEditor}
+          onToggleEditor={onToggleEditor}
+          onSwitchToMobile={onSwitchToMobile}
+        />
       </div>
 
       {menu.anchor && sessionActions && (

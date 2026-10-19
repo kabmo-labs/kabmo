@@ -17,7 +17,7 @@ interface HeaderEntry {
 }
 
 /**
- * The navbar entries a plugin's `header` panel contributes — DESKTOP ONLY.
+ * The navbar entries a plugin's `header` panel contributes — on BOTH layouts.
  *
  * Two components, and the split is the contract: the TRIGGER is whatever the
  * entry should read (`10tps ⛁10GB`, an icon, a word), and the DROPDOWN is what
@@ -25,17 +25,19 @@ interface HeaderEntry {
  * host then renders it as inert text rather than as a button, so a plugin cannot
  * promise an interaction it does not have.
  *
- * It is a desktop shape: a phone's navbar has no room for it, and the phone's
- * right-side drawer already carries every view. The navbars are separate
- * components for that reason, and this one is simply not rendered on the mobile
- * layout.
+ * The phone renders these too, in the same slot of the same order as the
+ * desktop: a plugin's readout is not a desktop-only fact, and a phone that
+ * dropped it left the user with a navbar whose controls moved when they
+ * switched layouts. `layout` only decides where the dropdown opens — anchored
+ * under its trigger on the desktop, pinned to the viewport on a phone, which
+ * has no room for a 320px panel hanging off a control near the right edge.
  *
  * Exactly ONE dropdown is open at a time, across every plugin. Two open entries
  * would overlap (each is anchored to its own trigger, but the navbar is a single
  * row) and the second would cover the first, so the open one is held here as one
  * id rather than as a flag per entry.
  */
-export function HeaderPanelButtons() {
+export function HeaderPanelButtons({ layout = 'desktop' }: { layout?: 'desktop' | 'mobile' }) {
   const { panels } = usePanelRegistry();
   const { slots } = usePanelSlots();
   const { sessionId } = useSessionStateContext();
@@ -71,6 +73,7 @@ export function HeaderPanelButtons() {
         <HeaderPanelEntry
           key={entry.pluginId}
           entry={entry}
+          layout={layout}
           sessionId={sessionId ?? null}
           open={openKey === entry.pluginId}
           onToggle={() => setOpenKey((current) => (current === entry.pluginId ? null : entry.pluginId))}
@@ -83,6 +86,7 @@ export function HeaderPanelButtons() {
 
 interface HeaderPanelEntryProps {
   entry: HeaderEntry;
+  layout: 'desktop' | 'mobile';
   sessionId: string | null;
   open: boolean;
   onToggle: () => void;
@@ -98,7 +102,7 @@ interface HeaderPanelEntryProps {
  * a button would advertise an interaction that does not exist, and a readout
  * like `10tps ⛁10GB` is not something a user should be able to "press".
  */
-function HeaderPanelEntry({ entry, sessionId, open, onToggle, onClose }: HeaderPanelEntryProps) {
+function HeaderPanelEntry({ entry, layout, sessionId, open, onToggle, onClose }: HeaderPanelEntryProps) {
   const ref = useRef<HTMLDivElement>(null);
   useOnClickOutside(ref, onClose);
 
@@ -127,14 +131,29 @@ function HeaderPanelEntry({ entry, sessionId, open, onToggle, onClose }: HeaderP
     );
   }
 
+  // The dropdown's geometry is the ONLY thing the layout decides. A phone has
+  // no room for a 320px panel hanging off a control near the right edge, so it
+  // is pinned to the viewport the way the context popover is; the desktop
+  // anchors it under its own trigger.
+  const panelClass = layout === 'mobile'
+    ? 'fixed z-50 bg-paper border border-ink/15 rounded-xl shadow-lg overflow-auto w-80 max-h-96'
+    : 'absolute right-0 top-full mt-1 w-80 max-h-96 overflow-auto bg-paper border border-ink/15 rounded shadow-lg z-50';
+  const panelStyle = layout === 'mobile'
+    ? {
+        top: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.375rem)',
+        right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+      }
+    : undefined;
+  const triggerClass = layout === 'mobile'
+    ? 'flex items-center gap-1 w-8 h-8 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer'
+    : 'flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer';
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={onToggle}
-        className={`flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer ${
-          open ? 'text-ink' : 'text-ink/70 hover:text-ink'
-        }`}
+        className={`${triggerClass} ${open ? 'text-ink' : 'text-ink/70 hover:text-ink'}`}
         title={entry.title}
         aria-label={`${entry.title} (plugin ${entry.pluginId})`}
         aria-expanded={open}
@@ -146,7 +165,7 @@ function HeaderPanelEntry({ entry, sessionId, open, onToggle, onClose }: HeaderP
         // The plugin's own component, not a summary the host draws: it owns its
         // markup, exactly as it does for a right-panel view. Mounted ONLY while
         // open, so a closed header renders nothing.
-        <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-auto bg-paper border border-ink/15 rounded shadow-lg z-50">
+        <div className={panelClass} style={panelStyle}>
           <PluginIdProvider pluginId={entry.pluginId}>
             <entry.Dropdown sessionId={sessionId} workspacePath={null} />
           </PluginIdProvider>

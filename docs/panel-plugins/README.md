@@ -487,7 +487,7 @@ module error.
 |---|---|---|
 | `app.rightPanel({ id, title, component, minWidth?, defaultFraction? })` | A button in the right-panel activity bar; the view opens in the right panel. | `{ sessionId, workspacePath }` |
 | `app.panel({ id, title, component, minWidth?, defaultFraction? })` | The editor COLUMN, taken over whole. | `{ sessionId, workspacePath }` |
-| `app.headerPanel({ id, title, component, dropdown? })` | An entry in the DESKTOP navbar. | `{ sessionId, workspacePath }` |
+| `app.headerPanel({ id, title, component, dropdown? })` | An entry in the navbar, on BOTH layouts. | `{ sessionId, workspacePath }` |
 | `app.settingsSection({ id, title, component })` | A block in Settings → Panel Plugins, under the plugin's row. | `{ pluginId }` |
 
 **One registration per slot.** A second call THROWS: the layout gives a plugin
@@ -735,8 +735,11 @@ app.headerPanel({
   deliberately not a button: making it one would advertise an interaction that
   does not exist.
 
-Header entries are DESKTOP ONLY — a phone's navbar has no room for them, and the
-phone's drawer already carries every view.
+Header entries render on BOTH layouts, in the same position of the same row
+(see the control order in `HeaderControls`). The only difference is where a
+dropdown opens: anchored under its trigger on the desktop, pinned to the
+viewport on a phone, which has no room for a 320px panel hanging off a control
+near the right edge.
 
 ### Hooks
 

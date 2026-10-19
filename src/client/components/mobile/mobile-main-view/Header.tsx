@@ -1,14 +1,12 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, Loader2, Menu, PanelRight, Plus } from 'lucide-preact';
+import { Check, ChevronDown, Loader2, Menu, Plus } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getLastOpenedAt } from '@/shared/lib/workspace/session-state/store';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
-import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
-import { SignOutButton } from '@/client/components/common/SignOutButton';
-import { ContextUsageButton } from '@/client/components/common/context-usage-button';
+import { HeaderControls } from '@/client/components/common/header-controls';
 
 interface MobileHeaderProps {
   activeSessionTitle: string;
@@ -201,33 +199,13 @@ export function MobileHeader({
         </div>
       </div>
 
-      {/* Right: reload, context telemetry & right panel toggle */}
-      <div className="flex items-center space-x-1 text-ink">
-        <ReloadPageButton
-          size={18}
-          className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
-        />
-        <ContextUsageButton
-          sessionId={activeSessionId == null ? null : String(activeSessionId)}
-          layout="mobile"
-        />
-        {/* Same control as the desktop navbar, and the same rule for when it
-            appears: a password is in force and this browser holds a session. */}
-        <SignOutButton
-          size={18}
-          className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
-        />
-
-        <button
-          type="button"
-          onClick={onOpenRightSidebar}
-          className="w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer"
-          title="Right Panel"
-          aria-label="Open Right Panel"
-        >
-          <PanelRight size={18} strokeWidth={1.8} />
-        </button>
-      </div>
+      {/* Right: the same cluster, in the same order as the desktop navbar. */}
+      <HeaderControls
+        layout="mobile"
+        sessionId={activeSessionId == null ? null : String(activeSessionId)}
+        showRightPanel={false}
+        onToggleRightPanel={onOpenRightSidebar}
+      />
     </header>
   );
 }
