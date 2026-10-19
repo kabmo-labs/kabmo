@@ -88,7 +88,9 @@ function updatesFetch(input: RequestInfo | URL): Promise<Response> {
   // The update check asks the renamed package FIRST. Answering it with a
   // version would make this copy look renamed; the stub speaks for the one
   // package actually installed here.
-  if (!url.includes(`/${packageJson.name}/latest`)) {
+  // The scoped name is escaped the way `fetchNpmLatest` escapes it
+  // (`@scope%2fname`), so the stub has to spell it the same way.
+  if (!url.includes(`/${packageJson.name.replace('/', '%2f')}/latest`)) {
     return Promise.resolve(new Response('{}', { status: 404 }));
   }
   return Promise.resolve(

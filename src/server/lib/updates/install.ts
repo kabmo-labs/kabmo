@@ -4,7 +4,7 @@
  * Resolves the newest published release, works out how this copy was installed
  * (./install-method), then replaces it in place:
  *
- * - `bun-global` — `bun add -g kabmo@<version>`.
+ * - `bun-global` — `bun add -g @kabmo-labs/kabmo@<version>`.
  * - `git` — fetch, fast-forward to the release tag, then `bun install` and a
  *   client rebuild (`dist/` is gitignored, so a source checkout must rebuild).
  *
@@ -139,7 +139,7 @@ export async function readInstalledPackageName(pkgRoot = DEFAULT_PKG_ROOT): Prom
  * Installed version + newest published version on npm, never throws.
  *
  * The comparison is against npm rather than the GitHub release list because npm
- * is what the install comes from: `bun add -g kabmo@<version>` can only
+ * is what the install comes from: `bun add -g @kabmo-labs/kabmo@<version>` can only
  * install a published version, and a release tag that never reached the registry
  * would be offered and then fail to install.
  */

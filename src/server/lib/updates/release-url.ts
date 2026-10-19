@@ -2,7 +2,7 @@
  * Where Kabmo's release notes live.
  *
  * Two questions, two sources, deliberately. The VERSION an install can move to
- * comes from npm (see ./npm) — that is the channel `bun add -g kabmo@…`
+ * comes from npm (see ./npm) — that is the channel `bun add -g @kabmo-labs/kabmo@…`
  * installs from. The NOTES are published on GitHub: every release tag carries the
  * same `CHANGELOG.md` section the popup renders, with its compare range, commit
  * hashes and contributor credits, and the release page is where a reader can

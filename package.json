@@ -1,5 +1,5 @@
 {
-  "name": "kabmo",
+  "name": "@kabmo-labs/kabmo",
   "version": "0.0.1",
   "description": "Web console and diagnostic workbench for AI coding agents — Elysia + Preact on Bun.",
   "license": "UNLICENSED",
@@ -7,6 +7,9 @@
   "type": "module",
   "engines": {
     "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "bin": {
     "kabmo": "./src/cli/kabmo.js"
