@@ -43,9 +43,9 @@ const note = (version: string, body = '', date: string | null = null): ReleaseNo
 const CHANGELOG = [
   '# Changelog',
   '',
-  'All notable changes to OMPChamber are documented in this file.',
+  'All notable changes to Kabmo are documented in this file.',
   '',
-  '## [3.14.0](https://github.com/rajebdev/ompchamber/compare/v3.13.1...v3.14.0) — 2026-10-04',
+  '## [3.14.0](https://github.com/kabmo-labs/kabmo/compare/v3.13.1...v3.14.0) — 2026-10-04',
   '',
   '### Added',
   '',
@@ -55,7 +55,7 @@ const CHANGELOG = [
   '',
   '* **chat:** stop listing a sent turn twice in the timeline rail',
   '',
-  '## [3.13.1](https://github.com/rajebdev/ompchamber/compare/v3.13.0...v3.13.1) — 2026-10-03',
+  '## [3.13.1](https://github.com/kabmo-labs/kabmo/compare/v3.13.0...v3.13.1) — 2026-10-03',
   '',
   '### Fixed',
   '',
@@ -65,8 +65,8 @@ const CHANGELOG = [
   '',
   'A heading without a compare link or a date.',
   '',
-  '[3.14.0]: https://github.com/rajebdev/ompchamber/compare/v3.13.1...v3.14.0',
-  '[3.13.1]: https://github.com/rajebdev/ompchamber/compare/v3.13.0...v3.13.1',
+  '[3.14.0]: https://github.com/kabmo-labs/kabmo/compare/v3.13.1...v3.14.0',
+  '[3.13.1]: https://github.com/kabmo-labs/kabmo/compare/v3.13.0...v3.13.1',
   '',
 ].join('\n');
 
@@ -76,7 +76,7 @@ describe('parseChangelogSections', () => {
     expect(notes.map((entry) => entry.version)).toEqual(['3.14.0', '3.13.1', '3.13.0']);
     expect(notes[0]!.date).toBe('2026-10-04');
     expect(notes[0]!.body).toBe('### Added\n\n* **agent:** route a peer-owned session through its instance\n\n### Fixed\n\n* **chat:** stop listing a sent turn twice in the timeline rail');
-    expect(notes[0]!.url).toBe('https://github.com/rajebdev/ompchamber/releases/tag/v3.14.0');
+    expect(notes[0]!.url).toBe('https://github.com/kabmo-labs/kabmo/releases/tag/v3.14.0');
   });
 
   test('accepts a plain heading with neither link nor date', () => {

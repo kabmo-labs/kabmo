@@ -19,7 +19,7 @@
  * listener the chamber registered for its own `ready`.
  */
 
-import type { PluginEventsApi, PluginJson } from '@ompchamber/plugin-sdk';
+import type { PluginEventsApi, PluginJson } from '@kabmo-labs/plugin-sdk';
 
 type Listener = (payload: PluginJson | undefined) => void;
 

@@ -131,7 +131,7 @@ async function runPanelScan(): Promise<PanelScan> {
   const fail = (dir: string, reason: string, source?: string) =>
     scan.errors.push({ dir, reason, marketplace: MARKETPLACE_ID, ...(source ? { source } : {}) });
 
-  let name = 'OMPChamber';
+  let name = 'Kabmo';
   let description: string | undefined;
 
   const catalogRead = await readJsonBody(getMarketplaceCatalogPath());

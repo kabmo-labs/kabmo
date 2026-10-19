@@ -23,7 +23,7 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, ListTodo, RefreshCw } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { useSessionState } from '@ompchamber/ui';
+import { useSessionState } from '@kabmo-labs/ui';
 import { TodoPhaseGroup } from '@/client/components/workspace/todo-panel/PhaseGroup';
 import { currentTaskLocation, todoProgressLabel, todoProgressPercent } from '@/shared/lib/chat/todo/progress';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';

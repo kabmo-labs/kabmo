@@ -122,7 +122,7 @@ beforeEach(() => {
   originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-test-port-guard-'));
   Bun.env.OMPCHAMBER_DATA_DIR = tempDir;
-  // `claimPort` asks the occupant whether it is an OMPChamber server, over the
+  // `claimPort` asks the occupant whether it is an Kabmo server, over the
   // global fetch. A stub another file left installed would answer for it.
   globalThis.fetch = realFetch;
 });
@@ -192,7 +192,7 @@ describe('acquirePortLock', () => {
   // observable there.
   testPosix('reclaims a lock whose PID was recycled to a stranger', async () => {
     usePidFileFallback();
-    // A live PID that is not OMPChamber means the recorded instance is gone;
+    // A live PID that is not Kabmo means the recorded instance is gone;
     // refusing here would block startup on a free port forever.
     const stranger = Bun.spawn({ cmd: ['bun', '-e', 'await new Promise(() => {})'], stdout: 'ignore', stderr: 'ignore' });
     children.push(stranger);
@@ -202,7 +202,7 @@ describe('acquirePortLock', () => {
     expect(track(await acquirePortLock(4214, 0))).not.toBeNull();
   });
 
-  testPosix('refuses a lock held by a live OMPChamber process', async () => {
+  testPosix('refuses a lock held by a live Kabmo process', async () => {
     usePidFileFallback();
     const holder = await spawnChamberHolder();
     const lockPath = getLockPath(4215);
@@ -236,7 +236,7 @@ describe('claimPort', () => {
     expect(binds).toBe(1);
   });
 
-  testPosix('names an OMPChamber occupant held by another process', async () => {
+  testPosix('names an Kabmo occupant held by another process', async () => {
     const holder = await spawnChamberHolder();
     const port = occupy(() => Response.json({ service: 'ompchamber', pid: holder.pid, version: '9.9.9' }));
     let binds = 0;
@@ -246,7 +246,7 @@ describe('claimPort', () => {
 
     expect(error).toBeInstanceOf(PortInUseError);
     const message = (error as Error).message;
-    expect(message).toContain(`Port ${port} is already served by OMPChamber`);
+    expect(message).toContain(`Port ${port} is already served by Kabmo`);
     expect(message).toContain(`pid ${holder.pid}`);
     expect(message).toContain('v9.9.9');
     expect(message).toContain('Nothing was stopped');
@@ -254,7 +254,7 @@ describe('claimPort', () => {
     expect(binds).toBe(0);
   });
 
-  test('names a foreign listener as not OMPChamber, without a bind error', async () => {
+  test('names a foreign listener as not Kabmo, without a bind error', async () => {
     // Nothing answers `/api/health` and nothing identifies itself, so the probe
     // fails first and `listen` is never attempted.
     const port = occupy(() => new Response('not ompchamber'));

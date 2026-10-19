@@ -7,7 +7,7 @@
  * The app-side harness: load a plugin's bundle and render what it registered.
  *
  * This is the half that needs a DOM, which is why it is a separate subpath
- * (`@ompchamber/plugin-sdk/testing/app`) from the backend half: a test of a
+ * (`@kabmo-labs/plugin-sdk/testing/app`) from the backend half: a test of a
  * plugin's `setup` alone must not have to install happy-dom.
  *
  * Two properties it exists to hold:
@@ -33,7 +33,7 @@ import {
   uiKitServices,
   type PanelContext,
   type UiKitServices,
-} from '@ompchamber/ui';
+} from '@kabmo-labs/ui';
 import { isPluginAppDefinition, type PluginAppDefinition, type RightPanelProps } from '../app';
 import {
   NO_DEFAULT_EXPORT,

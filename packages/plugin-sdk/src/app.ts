@@ -17,7 +17,7 @@
  *
  * This file is TYPES ONLY apart from `definePluginApp`, and that is what makes
  * it safe to bundle into every plugin: the runtime half (`preact`, `preact/hooks`,
- * `preact/jsx-runtime`, `@ompchamber/ui`, and the host hooks) is NOT bundled —
+ * `preact/jsx-runtime`, `@kabmo-labs/ui`, and the host hooks) is NOT bundled —
  * the build marks those specifiers external and the host answers them from
  * `globalThis.__ompchamberPluginRuntime`. One Preact for the host and every
  * plugin is what keeps hooks working; two copies produce the
@@ -190,7 +190,7 @@ export function pluginRuntime(): PluginRuntimeSlots {
   const runtime = (globalThis as { __ompchamberPluginRuntime?: PluginRuntimeSlots }).__ompchamberPluginRuntime;
   if (!runtime) {
     throw new Error(
-      'The OMPChamber plugin runtime is unavailable — this bundle must be loaded by the OMPChamber app.',
+      'The Kabmo plugin runtime is unavailable — this bundle must be loaded by the Kabmo app.',
     );
   }
   return runtime;

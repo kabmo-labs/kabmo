@@ -1,6 +1,6 @@
 /**
  * Applies a requested update. oh-my-pi is updated through the omp binary;
- * OMPChamber through the shared self-update engine, which replaces the running
+ * Kabmo through the shared self-update engine, which replaces the running
  * install in place (bun global install, or git fast-forward + rebuild).
  *
  * Neither branch restarts anything: this module only reports what happened.

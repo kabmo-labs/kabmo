@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { configureUiKit, useSessionValue, type PanelContext, type UiKitServices } from '@ompchamber/ui';
+import { configureUiKit, useSessionValue, type PanelContext, type UiKitServices } from '@kabmo-labs/ui';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

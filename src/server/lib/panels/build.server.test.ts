@@ -63,7 +63,7 @@ describe('buildPanelPlugin', () => {
     writeFile(
       'src/app.tsx',
       [
-        "import { definePluginApp } from '@ompchamber/plugin-sdk/app';",
+        "import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';",
         "import { useState } from 'preact/hooks';",
         'export default definePluginApp((app) => { app.rightPanel({ id: "x", component: () => useState(0) && null }); });',
       ].join('\n'),
@@ -144,7 +144,7 @@ describe('linkChamberPackages', () => {
     const scope = join(root, 'node_modules', '@ompchamber');
     if (!fs.existsSync(scope)) return; // no chamber packages resolvable in this environment
     const entries = fs.readdirSync(scope).sort();
-    // `@ompchamber/ui` and `@ompchamber/ui/components` are ONE package, so the
+    // `@kabmo-labs/ui` and `@kabmo-labs/ui/components` are ONE package, so the
     // second must not have replaced the first with its own directory.
     expect(entries).toEqual([...new Set(entries)]);
     for (const entry of entries) {
@@ -201,7 +201,7 @@ describe('describeInstallFailure', () => {
     const stderr = [
       'error: GET https://registry.npmjs.org/@ompchamber%2Fui - 404',
       '',
-      'error: @ompchamber/ui@^1.0.0 failed to resolve',
+      'error: @kabmo-labs/ui@^1.0.0 failed to resolve',
       '',
       'Bun v1.4.2 (macOS arm64)',
       '',
@@ -223,15 +223,15 @@ describe('describeInstallFailure', () => {
 });
 
 describe('optional peer dependencies', () => {
-  test('a plugin declaring @ompchamber/* as optional peers builds against the links', async () => {
+  test('a plugin declaring @kabmo-labs/* as optional peers builds against the links', async () => {
     writeFile(
       'package.json',
       JSON.stringify({
         name: 'x',
         version: '1.0.0',
         scripts: { build: 'bun build src/entry.ts --outfile dist/app.js --target browser' },
-        peerDependencies: { '@ompchamber/ui': '*' },
-        peerDependenciesMeta: { '@ompchamber/ui': { optional: true } },
+        peerDependencies: { '@kabmo-labs/ui': '*' },
+        peerDependenciesMeta: { '@kabmo-labs/ui': { optional: true } },
       }),
     );
     writeFile('src/entry.ts', 'export default { ok: true };');
@@ -253,8 +253,8 @@ describe('peer dependency declaration', () => {
         name: 'x',
         version: '1.0.0',
         scripts: { build: 'bun build src/entry.ts --outfile dist/app.js --target browser' },
-        peerDependencies: { '@ompchamber/definitely-not-published': '*' },
-        peerDependenciesMeta: { '@ompchamber/definitely-not-published': { optional: true } },
+        peerDependencies: { '@kabmo-labs/definitely-not-published': '*' },
+        peerDependenciesMeta: { '@kabmo-labs/definitely-not-published': { optional: true } },
       }),
     );
     writeFile('src/entry.ts', 'export default { ok: true };');
@@ -270,7 +270,7 @@ describe('chamberPackageDirs', () => {
     // Resolved at runtime, not listed as paths: a source checkout keeps them
     // under `packages/` while a published install has them in `node_modules`,
     // and `packages/` is not shipped at all. `Bun.resolveSync` answers both.
-    expect(Object.keys(dirs).sort()).toEqual(['@ompchamber/plugin-sdk', '@ompchamber/ui']);
+    expect(Object.keys(dirs).sort()).toEqual(['@kabmo-labs/plugin-sdk', '@kabmo-labs/ui']);
     for (const dir of Object.values(dirs)) {
       expect(fs.existsSync(join(dir, 'package.json'))).toBe(true);
     }

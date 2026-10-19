@@ -3,7 +3,7 @@
  * that runs it.
  *
  * The apply is a POST whose response is an SSE stream, not a JSON body. An
- * `omp update` or an OMPChamber install runs for minutes; a buffered response
+ * `omp update` or an Kabmo install runs for minutes; a buffered response
  * left the console with a spinner and nothing else until it finished, and
  * discarded the command output the server had already collected. Every frame
  * the stream carries is folded into `progress`, which survives the modal being
@@ -109,7 +109,7 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
     // so a narrowed `null` would be read back here as a value that can never be
     // set.
     const applied: { result: UpdateApplyResult | null } = { result: null };
-    // Who is serving this page BEFORE the run. Only an OMPChamber update can
+    // Who is serving this page BEFORE the run. Only an Kabmo update can
     // replace that process, and the replacement is recognised by answering with
     // a different `pid`/`startedAt` — so the baseline has to be read while the
     // old process is still the one answering.

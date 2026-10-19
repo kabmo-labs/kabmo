@@ -6,7 +6,7 @@
 /**
  * Linking the chamber's own packages into a plugin's `node_modules`.
  *
- * A plugin declares `@ompchamber/*` as OPTIONAL PEER dependencies: the host
+ * A plugin declares `@kabmo-labs/*` as OPTIONAL PEER dependencies: the host
  * provides them, so the plugin must never fetch them from a registry. The
  * `optional` flag is the load-bearing half — measured on Bun 1.4.2 with the
  * package absent from the registry, `dependencies` exits 1, a plain
@@ -25,7 +25,7 @@ import { mkdir, rm, symlink } from 'fs/promises';
 import { dirname, join } from 'path';
 
 /**
- * The `@ompchamber/*` packages a plugin may import, as installed on THIS machine.
+ * The `@kabmo-labs/*` packages a plugin may import, as installed on THIS machine.
  *
  * Resolved at runtime rather than listed as paths, because the two install shapes
  * put them in different places: a source checkout has `packages/`, while a
@@ -39,7 +39,7 @@ import { dirname, join } from 'path';
  */
 export function chamberPackageDirs(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const name of ['@ompchamber/plugin-sdk', '@ompchamber/ui']) {
+  for (const name of ['@kabmo-labs/plugin-sdk', '@kabmo-labs/ui', '@ompchamber/plugin-sdk', '@ompchamber/ui']) {
     try {
       out[name] = dirname(Bun.resolveSync(`${name}/package.json`, import.meta.dir));
     } catch {

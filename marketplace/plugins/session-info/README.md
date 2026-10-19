@@ -1,6 +1,6 @@
 # Session Info
 
-The example panel plugin bundled with OMPChamber, and the reference for the
+The example panel plugin bundled with Kabmo, and the reference for the
 plugin API.
 
 ## What it adds

@@ -113,7 +113,7 @@ substitute for reading the diff — both are required.
 reach at run time — a type-only refactor, a fixture — change no reachable behavior, so no live run and
 no screenshot is demanded for them. The sections still have to be filled in.
 
-**Two axes worth stating explicitly.** OMPChamber runs in two data modes (`MOCK=true` uses simulated
+**Two axes worth stating explicitly.** Kabmo runs in two data modes (`MOCK=true` uses simulated
 data and needs no `omp` install; `MOCK=false` shells out to the real `omp` binary), and a bug can exist
 in one without existing in the other. It also runs in more than one shape — a daemon from
 `ompchamber serve`, a `bun run dev` server, a production build — and those hold different process

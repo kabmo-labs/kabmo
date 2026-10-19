@@ -1,8 +1,8 @@
 {
-  "name": "@ompchamber/ui",
-  "version": "2.3.0",
+  "name": "@kabmo-labs/ui",
+  "version": "1.0.0",
   "type": "module",
-  "description": "Preact hooks and components for OMPChamber panel plugins.",
+  "description": "Preact hooks and components for Kabmo panel plugins.",
   "exports": {
     ".": "./src/index.tsx",
     "./components": "./src/components.tsx"
@@ -12,17 +12,17 @@
   ],
   "dependencies": {
     "preact": "^10.29.8",
-    "@ompchamber/plugin-sdk": "workspace:*"
+    "@kabmo-labs/plugin-sdk": "workspace:*"
   },
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rajebdev/ompchamber.git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
     "directory": "packages/ui"
   },
-  "homepage": "https://github.com/rajebdev/ompchamber#readme",
+  "homepage": "https://github.com/kabmo-labs/kabmo#readme",
   "bugs": {
-    "url": "https://github.com/rajebdev/ompchamber/issues"
+    "url": "https://github.com/kabmo-labs/kabmo/issues"
   },
   "keywords": [
     "ompchamber",

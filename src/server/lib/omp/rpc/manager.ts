@@ -4,7 +4,7 @@
  */
 
 /**
- * Session RPC manager for OMPChamber — the analog of omp-web's
+ * Session RPC manager for Kabmo — the analog of omp-web's
  * lib/rpc-manager.ts. Wraps one spawned `omp --mode rpc-ui` process per
  * session with the command surface the chamber chat needs: prompt, abort,
  * abort_and_prompt, set_model, set_thinking_level, get_state, and the

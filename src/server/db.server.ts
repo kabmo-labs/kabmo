@@ -4,7 +4,7 @@
  */
 
 /**
- * Database lifecycle for OMPChamber: resolve the SQLite path, open the
+ * Database lifecycle for Kabmo: resolve the SQLite path, open the
  * `bun:sqlite` client once, bootstrap the schema, and seed demo data in mock
  * mode. The DDL lives in `./db/schema`, the mock presets in `./db/seed` and
  * the workspace discovery sync in `./db/workspace-sync`. The one-time overlay

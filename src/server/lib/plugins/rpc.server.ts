@@ -24,7 +24,7 @@ import type {
   PluginRpcMethod,
   PluginSchema,
   PluginSchemaIssue,
-} from '@ompchamber/plugin-sdk';
+} from '@kabmo-labs/plugin-sdk';
 
 /** A registered method, with the plugin it belongs to already resolved. */
 export interface RegisteredRpcMethod {

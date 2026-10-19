@@ -14,7 +14,7 @@ function failureResult(message: string): UpdateCheckResult {
 }
 
 /**
- * GET /api/updates/check — latest OMPChamber release + oh-my-pi status.
+ * GET /api/updates/check — latest Kabmo release + oh-my-pi status.
  * Always returns a valid UpdateCheckResult so the client never sees a 500.
  */
 export async function loader() {

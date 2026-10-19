@@ -52,7 +52,7 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
 
         {/* OMP Chamber Brand Logo */}
         <div className="flex justify-center pt-2 pb-1">
-          <img src="/icon.svg" alt="OMPChamber" width={96} height={96} draggable={false} />
+          <img src="/icon.svg" alt="Kabmo" width={96} height={96} draggable={false} />
         </div>
 
         {/* Title */}
@@ -63,7 +63,7 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
 
         {/* App & Agent Versions */}
         <div className="text-xs text-ink/60 space-y-1 mt-1.5 font-mono">
-          <p>OMPChamber v{packageJson.version}</p>
+          <p>Kabmo v{packageJson.version}</p>
           <p>Oh-My-Pi {updates.info?.omp.current ?? '…'}</p>
         </div>
 

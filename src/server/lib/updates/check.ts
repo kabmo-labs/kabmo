@@ -1,5 +1,5 @@
 /**
- * Orchestrates the "Check for updates" flow: OMPChamber and oh-my-pi (`omp`).
+ * Orchestrates the "Check for updates" flow: Kabmo and oh-my-pi (`omp`).
  * Both probes read npm — the registry each install comes from — and run
  * concurrently, and neither is allowed to reject, so the endpoint always returns
  * a complete UpdateCheckResult.
@@ -56,7 +56,7 @@ async function checkOmpChamber(): Promise<UpdateTargetInfo> {
       latest: null,
       updateAvailable: false,
       installed: true,
-      error: err instanceof Error ? err.message : 'Failed to check OMPChamber updates',
+      error: err instanceof Error ? err.message : 'Failed to check Kabmo updates',
       releaseName: null,
       releaseUrl: null,
     };

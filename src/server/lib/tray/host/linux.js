@@ -76,7 +76,7 @@ export function buildMenuModel(config) {
     { separator: true },
     { id: 'login', title: config.loginInstalled ? 'Disable Start at Login' : 'Start at Login' },
     { separator: true },
-    { id: 'quit', title: 'Quit OMPChamber' },
+    { id: 'quit', title: 'Quit Kabmo' },
   ];
 }
 

@@ -13,7 +13,7 @@
  * the password therefore revokes every session, with no session table to sweep.
  *
  * The cookie NAME carries the request port. Browsers key cookies by host and
- * ignore the port (RFC 6265), so two OMPChamber instances on one machine share a
+ * ignore the port (RFC 6265), so two Kabmo instances on one machine share a
  * jar: without the port in the name, logging into the second silently overwrote
  * the first instance's cookie. This install routinely has several ports live at
  * once, so the collision is the normal case rather than an edge one.

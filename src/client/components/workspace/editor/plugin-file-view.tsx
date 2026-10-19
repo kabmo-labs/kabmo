@@ -34,9 +34,9 @@ import type {
   FileOpenerRegistration,
   SourceCodeRendererProps,
   SourceCodeRendererRegistration,
-} from '@ompchamber/plugin-sdk';
+} from '@kabmo-labs/plugin-sdk';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
-import { PluginIdProvider } from '@ompchamber/ui';
+import { PluginIdProvider } from '@kabmo-labs/ui';
 
 /** What a non-diff file carries into resolution. */
 export interface PluginFileViewFile {

@@ -12,7 +12,7 @@
  * decides dev vs production for THIS package) and its own credential. A child
  * that inherits them misreads them as its own: measured, a `bun run dev` started
  * from the Runner panel under a chamber serving 3001 inherited `PORT=3001` and
- * refused to boot ("Port 3001 is already served by OMPChamber"), and inherited
+ * refused to boot ("Port 3001 is already served by Kabmo"), and inherited
  * `NODE_ENV=production` and would have come up in production mode — while the
  * same command in a plain terminal, where `PORT` is unset, ran on 3000.
  *

@@ -86,7 +86,7 @@ export class RunRegistry extends RunStore {
         // server's environment — `PORT` is the port the CHAMBER listens on, and
         // `NODE_ENV=production` is how the chamber itself was started. Inheriting
         // them made `bun run dev` from this panel fail with "Port 3001 is already
-        // served by OMPChamber" while the same command in a plain terminal (where
+        // served by Kabmo" while the same command in a plain terminal (where
         // `PORT` is unset) ran on 3000. The rule is the SDK's, shared with the
         // host's own child spawns so the two cannot drift.
         env: stripChamberHostEnv(Bun.env, process.platform),

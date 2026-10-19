@@ -79,7 +79,7 @@ on:
       # hence `required: false`, and hence the explicit presence check in the
       # steps below rather than a bare 401 after the whole build.
       NPM_TOKEN:
-        description: npm access token with read/write on ompchamber.
+        description: npm access token with read/write on kabmo.
         required: false
 
 permissions:
@@ -143,7 +143,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NPM_TOKEN" || {
-            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on ompchamber (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
+            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on kabmo (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
             exit 1
           }
 
@@ -159,7 +159,7 @@ jobs:
             echo "::error::Tag $tag does not match package.json version v$version"
             exit 1
           fi
-          echo "Publishing ompchamber $version from tag $tag"
+          echo "Publishing kabmo $version from tag $tag"
 
       # Typecheck and tests are the `gates` job above, on this same ref.
       - name: Build the client bundle

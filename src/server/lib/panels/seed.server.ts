@@ -39,9 +39,9 @@ export interface SeedResult {
 
 /** The minimal catalog an empty working marketplace starts with. */
 const EMPTY_CATALOG = {
-  name: 'OMPChamber',
+  name: 'Kabmo',
   description: 'Panels you installed from the bundled marketplace or a git URL.',
-  owner: { name: 'OMPChamber' },
+  owner: { name: 'Kabmo' },
   plugins: [],
 };
 

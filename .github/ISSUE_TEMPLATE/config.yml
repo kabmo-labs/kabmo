@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Install, update, ports and the CLI
-    url: https://github.com/rajebdev/ompchamber/blob/main/README.md#install
+    url: https://github.com/kabmo-labs/kabmo/blob/main/README.md#install
     about: The Bun and omp requirements, MOCK mode, ports and multiple instances, and `ompchamber update`.
   - name: Architecture and running from source
-    url: https://github.com/rajebdev/ompchamber/blob/main/README.md#architecture
+    url: https://github.com/kabmo-labs/kabmo/blob/main/README.md#architecture
     about: How the server, the client and the omp bridge fit together, and how to run the app from a checkout.

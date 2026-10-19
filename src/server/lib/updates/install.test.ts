@@ -9,7 +9,7 @@ import { detectInstallMethod, manualUpdateCommand } from '@/server/lib/updates/i
 const checkout = {
   pkgRoot: '/Users/dev/ompchamber',
   gitWorkTree: true,
-  gitRemote: 'https://github.com/rajebdev/ompchamber.git',
+  gitRemote: 'https://github.com/kabmo-labs/kabmo.git',
 };
 
 describe('detectInstallMethod', () => {
@@ -34,7 +34,7 @@ describe('detectInstallMethod', () => {
   test('leaves a package-manager install manual', () => {
     const info = detectInstallMethod({ pkgRoot: '/usr/local/lib/node_modules/ompchamber', gitWorkTree: false, gitRemote: null });
     expect(info.method).toBe('npm');
-    // The command is bun's in both manual branches: OMPChamber is a Bun package.
+    // The command is bun's in both manual branches: Kabmo is a Bun package.
     expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g ompchamber@0.3.0');
     // The resolved target is the package an update actually installs; after the
     // rename that is `kabmo`, and a copy on the old name must still be told so.
@@ -43,7 +43,7 @@ describe('detectInstallMethod', () => {
 
   test('treats a checkout of the repository as updatable over git', () => {
     expect(detectInstallMethod(checkout).method).toBe('git');
-    expect(detectInstallMethod({ ...checkout, gitRemote: 'git@github.com:rajebdev/ompchamber.git' }).method).toBe('git');
+    expect(detectInstallMethod({ ...checkout, gitRemote: 'git@github.com:kabmo-labs/kabmo.git' }).method).toBe('git');
   });
 
   test('recognizes the renamed repository in both spellings', () => {
@@ -52,7 +52,7 @@ describe('detectInstallMethod', () => {
   });
 
   test('leaves a checkout tracking another remote manual', () => {
-    const info = detectInstallMethod({ ...checkout, gitRemote: 'https://github.com/rajebdev/ompchamber-fork.git' });
+    const info = detectInstallMethod({ ...checkout, gitRemote: 'https://github.com/kabmo-labs/kabmo-fork.git' });
     expect(info.method).toBe('unmanaged');
     expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g ompchamber@0.3.0');
   });

@@ -17,7 +17,7 @@
  * - **The build runs in the plugin's own directory.** Bun resolves `node_modules`
  *   and `package.json` from the cwd of the build, so building elsewhere would
  *   silently fail to resolve the plugin's own dependencies.
- * - **`@ompchamber/*` is linked into the plugin's `node_modules` before the
+ * - **`@kabmo-labs/*` is linked into the plugin's `node_modules` before the
  *   build.** The SDK and the UI kit are installed packages, so a plugin cloned
  *   into the marketplace cannot resolve them from its own install — `bun install`
  *   would have to fetch them from a registry, and the chamber must link the
@@ -26,7 +26,7 @@
  *   resolver was measured NOT to reach the CLI's build at all (Bun 1.4.2), and
  *   `BUN_OPTIONS` breaks `bun run` itself.
  * - **The shared runtime is EXTERNAL.** `preact`, its hooks and JSX runtimes,
- *   `@ompchamber/plugin-sdk/app` and `@ompchamber/ui` are rewritten to read the
+ *   `@kabmo-labs/plugin-sdk/app` and `@kabmo-labs/ui` are rewritten to read the
  *   host's `globalThis.__ompchamberPluginRuntime` (see `shim.ts`). A plugin that
  *   bundled its own Preact would create components the host's tree cannot
  *   render, which is why this is a correctness rule and not a size optimisation.

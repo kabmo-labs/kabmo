@@ -19,7 +19,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { definePluginApp, isPluginAppDefinition } from '@ompchamber/plugin-sdk/app';
+import { definePluginApp, isPluginAppDefinition } from '@kabmo-labs/plugin-sdk/app';
 
 describe('definePluginApp', () => {
   test('wraps a setup function in a frozen definition', () => {

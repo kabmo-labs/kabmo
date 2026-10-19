@@ -28,6 +28,9 @@ describe('RUNTIME_SLOT_BY_SPECIFIER', () => {
     // has to be caught here rather than at load in a browser.
     expect(Object.keys(RUNTIME_SLOT_BY_SPECIFIER).sort()).toEqual(
       [
+        '@kabmo-labs/plugin-sdk/app',
+        '@kabmo-labs/ui',
+        '@kabmo-labs/ui/components',
         '@ompchamber/plugin-sdk/app',
         '@ompchamber/ui',
         '@ompchamber/ui/components',
@@ -47,7 +50,7 @@ describe('shimModuleSource', () => {
 
     expect(source).toContain('globalThis.__ompchamberPluginRuntime');
     expect(source).toContain('runtime.hooks == null');
-    expect(source).toContain('must be loaded by the OMPChamber app');
+    expect(source).toContain('must be loaded by the Kabmo app');
     // The specifier is named in the error, so the failing import is identifiable.
     expect(source).toContain('preact/hooks');
   });
@@ -63,7 +66,7 @@ describe('shimModuleSource', () => {
   test('emits a valid named-export list for an empty module', () => {
     // An empty list still has to parse: `export const { } = mod;` is not valid
     // syntax on its own line shape, so the generated text must stay well formed.
-    const source = shimModuleSource('@ompchamber/ui/components', 'uiComponents', []);
+    const source = shimModuleSource('@kabmo-labs/ui/components', 'uiComponents', []);
     expect(source).toContain('export const {');
     expect(source.trimEnd().endsWith('} = mod;')).toBe(true);
   });

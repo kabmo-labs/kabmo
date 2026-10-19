@@ -19,7 +19,7 @@
  * `/status`.
  */
 
-import type { PluginHttpApi } from '@ompchamber/plugin-sdk';
+import type { PluginHttpApi } from '@kabmo-labs/plugin-sdk';
 
 /** One registered route: the path as the plugin wrote it, and its handler. */
 export interface RegisteredHttpRoute {

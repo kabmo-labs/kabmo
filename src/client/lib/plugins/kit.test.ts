@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import { installUiKit } from '@/client/lib/plugins/kit';
-import { uiKitServices } from '@ompchamber/ui';
+import { uiKitServices } from '@kabmo-labs/ui';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
 const saved = new Map<string, unknown>();

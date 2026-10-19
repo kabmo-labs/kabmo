@@ -13,8 +13,8 @@
  * "above the input" means here: between the attachment row and the textarea.
  */
 
-import type { ComposerActionRegistration, ComposerBannerRegistration } from '@ompchamber/plugin-sdk';
-import { PluginIdProvider } from '@ompchamber/ui';
+import type { ComposerActionRegistration, ComposerBannerRegistration } from '@kabmo-labs/plugin-sdk';
+import { PluginIdProvider } from '@kabmo-labs/ui';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
 interface PluginComposerActionsProps {

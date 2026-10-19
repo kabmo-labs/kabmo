@@ -140,7 +140,7 @@ export interface HealthPayload {
  * One health request over `scheme`.
  *
  * `rejectUnauthorized: false` is required for the self-signed certificate this
- * project generates: the probe is asking "is an OMPChamber server answering
+ * project generates: the probe is asking "is an Kabmo server answering
  * here", and a certificate this machine generated for itself is not evidence
  * against that. It is safe here specifically because the caller is on the same
  * host and the answer is only used to identify a local process.
@@ -184,10 +184,10 @@ async function probeHealthOver(
 }
 
 /**
- * `GET /api/health` for an OMPChamber listener, or null.
+ * `GET /api/health` for an Kabmo listener, or null.
  *
- * Only payloads that identify themselves as OMPChamber are returned — every
- * caller here is asking "is an OMPChamber server on this port", so a foreign
+ * Only payloads that identify themselves as Kabmo are returned — every
+ * caller here is asking "is an Kabmo server on this port", so a foreign
  * HTTP service answers null rather than a half-trusted object.
  *
  * `tls: 'auto'` (the default) tries HTTPS first, then HTTP. Discovery cannot

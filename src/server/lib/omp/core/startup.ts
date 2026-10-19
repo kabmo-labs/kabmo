@@ -27,7 +27,7 @@ export function ompStartupError(): string | null {
   if (isMockMode()) return null;
   if (resolveOmpBin()) return null;
   return [
-    'omp binary not found — OMPChamber cannot start.',
+    'omp binary not found — Kabmo cannot start.',
     'Agent sessions, omp config, session state and updates all run through the `omp` CLI,',
     'so the binary must be resolvable before the server starts.',
     'Install AI Oh-My-Pi and put `omp` on your PATH, or set OMPCHAMBER_OMP_BIN=/path/to/omp.',

@@ -15,7 +15,7 @@
    *
    * The order is the whole point, and it is the terminal's: the installed
    * families come FIRST, so a machine that already has one renders from it and
-   * never reaches the bundled face; `'OMPChamber Nerd Symbols'` is LAST, so
+   * never reaches the bundled face; `'Kabmo Nerd Symbols'` is LAST, so
    * only a device with none fetches its bytes. Verified: with `FiraCode Nerd
    * Font Mono` installed the glyph paints from that family and the bundled
    * face stays unloaded; with no local family the face is fetched once and the
@@ -26,7 +26,7 @@
    * The family names are literals here because Tailwind's `@theme` cannot
    * import a TS constant; they must stay equal to `XTERM_GLYPH_FALLBACKS` and
    * `NERD_SYMBOLS_FAMILY`, which `nerd-symbols.test.ts` asserts. */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "FiraCode Nerd Font Mono", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "JetBrainsMono NF", "JetBrains Mono Nerd Font", "Hack Nerd Font", "MesloLGS NF", "MesloLGM Nerd Font", "CaskaydiaCove Nerd Font", "SauceCodePro Nerd Font", "Symbols Nerd Font Mono", "Symbols Nerd Font", "PowerlineSymbols", "OMPChamber Nerd Symbols";
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "FiraCode Nerd Font Mono", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "JetBrainsMono NF", "JetBrains Mono Nerd Font", "Hack Nerd Font", "MesloLGS NF", "MesloLGM Nerd Font", "CaskaydiaCove Nerd Font", "SauceCodePro Nerd Font", "Symbols Nerd Font Mono", "Symbols Nerd Font", "PowerlineSymbols", "Kabmo Nerd Symbols";
   --color-ink: var(--theme-ink);
   --color-paper: var(--theme-paper);
   --color-canvas: var(--theme-canvas);

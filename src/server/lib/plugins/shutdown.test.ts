@@ -30,7 +30,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import { disposeAllPluginsOnShutdown, loadedPluginIds } from '@/server/lib/plugins/loader.server';
-import type { ChamberPluginApi } from '@ompchamber/plugin-sdk';
+import type { ChamberPluginApi } from '@kabmo-labs/plugin-sdk';
 
 /** The registry `disposePlugin` reads, process-wide and anchored on globalThis. */
 function seed(pluginId: string, disposers: Array<() => void | Promise<void>>): void {

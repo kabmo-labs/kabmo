@@ -15,7 +15,7 @@
  *   3. merge: registered first (sortOrder, then most-recently-added), hidden
  *      entries excluded, discovered extras follow sorted by path.
  *
- * OMPChamber only READS this file — it never writes the agent's registry.
+ * Kabmo only READS this file — it never writes the agent's registry.
  */
 
 import { canonicalize, getProjectsRegistryPath } from '@/server/lib/omp/core/paths';

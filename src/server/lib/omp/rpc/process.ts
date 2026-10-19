@@ -15,7 +15,7 @@
  */
 
 import type { Subprocess } from 'bun';
-import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrames, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';

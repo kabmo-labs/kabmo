@@ -105,7 +105,7 @@ export async function run(options) {
       printJson(requested !== null ? { running: false, port: requested } : { running: false, instances: [] });
       return;
     }
-    log(requested !== null ? `No OMPChamber instance on port ${requested}.` : 'OMPChamber is not running.');
+    log(requested !== null ? `No Kabmo instance on port ${requested}.` : 'Kabmo is not running.');
     return;
   }
 
@@ -122,7 +122,7 @@ export async function run(options) {
     return;
   }
 
-  ok(reported.length === 1 ? 'OMPChamber is running' : `OMPChamber is running — ${reported.length} instances`);
+  ok(reported.length === 1 ? 'Kabmo is running' : `Kabmo is running — ${reported.length} instances`);
   for (const [index, entry] of reported.entries()) {
     if (index > 0) log('');
     printInstance(entry);

@@ -10,7 +10,7 @@
  * the property a startup lock wants — no PID readback, no stale-holder
  * classification, and no polling loop to detect a dead holder. The previous
  * PID-file scheme needed all three: it wrote a PID, re-read it on every retry,
- * asked the OS whether that PID was still OMPChamber (four `sysctl` calls per
+ * asked the OS whether that PID was still Kabmo (four `sysctl` calls per
  * question on macOS), and deleted the file to release.
  *
  * `flock` is exported by `libc.dylib` / `libSystem.B.dylib` / `libc.so.6`, so it

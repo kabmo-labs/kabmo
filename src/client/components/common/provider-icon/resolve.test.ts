@@ -19,7 +19,7 @@ import { describe, expect, test } from 'bun:test';
 import { parseRegisteredGlyph, resolveProviderMark } from '@/client/components/common/provider-icon/resolve';
 import { PROVIDER_GLYPHS } from '@/client/components/common/provider-icon/glyphs';
 import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
-import type { ProviderIconRegistration } from '@ompchamber/plugin-sdk';
+import type { ProviderIconRegistration } from '@kabmo-labs/plugin-sdk';
 
 const CUSTOM = '<svg viewBox="0 0 32 32"><path d="M4 4h24v24H4z"/></svg>';
 const OTHER = "<svg viewBox='0 0 10 10'><circle cx='5' cy='5' r='4'/></svg>";

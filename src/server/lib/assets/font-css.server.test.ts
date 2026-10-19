@@ -37,7 +37,7 @@ function urls(css: string): string[] {
 
 describe('/fonts.css is assembled from source, not from a build artifact', () => {
   test('it declares the bundled Nerd symbols face', () => {
-    expect(sheet).toContain('OMPChamber Nerd Symbols');
+    expect(sheet).toContain('Kabmo Nerd Symbols');
     expect(urls(sheet)).toContain('/fonts/symbols-nerd-font-mono.woff2');
     // The range is what keeps the 1.1 MB face off every machine that has a
     // Nerd Font of its own, so a sheet without it is a different contract.

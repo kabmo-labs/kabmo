@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useMemo } from 'preact/hooks';
-import type { MessageDirectiveRegistration, SlotContextProps } from '@ompchamber/plugin-sdk';
+import type { MessageDirectiveRegistration, SlotContextProps } from '@kabmo-labs/plugin-sdk';
 import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 import type { DirectiveRenderer } from '@/client/lib/plugins/directives';

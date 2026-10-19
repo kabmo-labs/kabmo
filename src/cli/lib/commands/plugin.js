@@ -145,13 +145,13 @@ async function scaffold(dir, ctx) {
           server: 'dist/server.js',
         },
         peerDependencies: {
-          '@ompchamber/plugin-sdk': '*',
-          '@ompchamber/ui': '*',
+          '@kabmo-labs/plugin-sdk': '*',
+          '@kabmo-labs/ui': '*',
           preact: '^10.29.8',
         },
         peerDependenciesMeta: {
-          '@ompchamber/plugin-sdk': { optional: true },
-          '@ompchamber/ui': { optional: true },
+          '@kabmo-labs/plugin-sdk': { optional: true },
+          '@kabmo-labs/ui': { optional: true },
           preact: { optional: true },
         },
       },
@@ -179,12 +179,12 @@ async function scaffold(dir, ctx) {
           // TypeScript 7 deprecates it, and `paths` resolves relative to the
           // tsconfig without it.
           paths: {
-            '@ompchamber/plugin-sdk': ['./bundled-types/plugin-sdk/index.ts'],
-            '@ompchamber/plugin-sdk/app': ['./bundled-types/plugin-sdk/app.ts'],
-            '@ompchamber/plugin-sdk/testing': ['./bundled-types/plugin-sdk/testing/index.ts'],
-            '@ompchamber/plugin-sdk/testing/app': ['./bundled-types/plugin-sdk/testing/app.tsx'],
-            '@ompchamber/ui': ['./bundled-types/ui/index.tsx'],
-            '@ompchamber/ui/components': ['./bundled-types/ui/components.tsx'],
+            '@kabmo-labs/plugin-sdk': ['./bundled-types/plugin-sdk/index.ts'],
+            '@kabmo-labs/plugin-sdk/app': ['./bundled-types/plugin-sdk/app.ts'],
+            '@kabmo-labs/plugin-sdk/testing': ['./bundled-types/plugin-sdk/testing/index.ts'],
+            '@kabmo-labs/plugin-sdk/testing/app': ['./bundled-types/plugin-sdk/testing/app.tsx'],
+            '@kabmo-labs/ui': ['./bundled-types/ui/index.tsx'],
+            '@kabmo-labs/ui/components': ['./bundled-types/ui/components.tsx'],
           },
         },
         include: ['src'],
@@ -210,9 +210,9 @@ async function scaffold(dir, ctx) {
   log('Build with:     ompchamber plugin build .');
 }
 
-const APP_TEMPLATE = `import { definePluginApp } from '@ompchamber/plugin-sdk/app';
-import { usePanelInfo } from '@ompchamber/ui';
-import { Panel, Field, FieldList } from '@ompchamber/ui/components';
+const APP_TEMPLATE = `import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';
+import { usePanelInfo } from '@kabmo-labs/ui';
+import { Panel, Field, FieldList } from '@kabmo-labs/ui/components';
 
 function MyPanel() {
   const info = usePanelInfo();
@@ -231,7 +231,7 @@ export default definePluginApp((app) => {
 });
 `;
 
-const SERVER_TEMPLATE = `import type { ChamberPluginApi } from '@ompchamber/plugin-sdk';
+const SERVER_TEMPLATE = `import type { ChamberPluginApi } from '@kabmo-labs/plugin-sdk';
 
 export default function plugin(api: ChamberPluginApi) {
   api.log.info('loaded');

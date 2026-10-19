@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/icon-512x512.png" alt="OMPChamber" width="140" height="140">
+  <img src="public/icon-512x512.png" alt="Kabmo" width="140" height="140">
 </p>
 
-<h1 align="center">OMPChamber</h1>
+<h1 align="center">Kabmo</h1>
 
 <p align="center">
   Browser console and diagnostic chamber for <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) agent sessions.<br>
@@ -10,12 +10,12 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/ompchamber"><img alt="npm version" src="https://img.shields.io/npm/v/ompchamber?logo=npm&logoColor=white&color=cb3837"></a>
+  <a href="https://www.npmjs.com/package/kabmo"><img alt="npm version" src="https://img.shields.io/npm/v/kabmo?logo=npm&logoColor=white&color=cb3837"></a>
   <a href="https://bun.sh"><img alt="Bun &ge; 1.4" src="https://img.shields.io/badge/Bun-%E2%89%A51.4-000000?logo=bun&logoColor=white"></a>
-  <a href="https://elysiajs.com"><img alt="Elysia" src="https://img.shields.io/github/package-json/dependency-version/rajebdev/ompchamber/elysia?color=6f42c1&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MjQgNDcxQTI1NSAyNTUgMCAwIDAgMjU2IDIyIDI1NiAyNTYgMCAwIDAgODMgNDY3di0ybDMzNi0xMTB6TTIwMyAyMTkgNzIgNDUzaC0zbC0yLTItMTEtMTMtOC05LTE3LTI3LTEtMnEtOC0xNS0xNC0zMmwtMy0xMHEtOS0zMC00LTU5di0xcTItMTMgNi0yNWw2LTE3IDQtMTBxMTAtMjEgMjgtMzdsNS02cTE3LTE1IDQxLTIybC0xMSAyLTcgMWgtNmwtNiAxLTYgMWgtN2wtMS0xaDFsNC0ycTIwLTExIDMwLTI5bDQtN3E5LTEzIDIxLTIxbDItMSAxMC01IDE1LTVxNS0yIDctNnYtMWE5IDkgMCAwIDAtMi0xMGwtMy0ydi0xbC0xOC0yMy0xNC0yMHEtNS02LTUtMTMgMC0yIDItMWwxNSA3cTIwIDEwIDQzIDRsMTAtMiA3LTFxMjYtMyA1MyA1aDFsMTcgNnEzMyAxMyA0NiA0NWwzIDE0YTU2IDU2IDAgMCAwIDIyIDMybDkgNiAxMiA3IDIwIDEwIDEgM3EtOSAxMC0yMSAxNmwtMTIgNS0xNCA1LTggMnEtMTggNS0zNiA1aC0yMWwtMTItMmMtMTUtNi0zMyAwLTQxIDE0Ii8%2BPC9zdmc%2B"></a>
-  <a href="https://preactjs.com"><img alt="Preact" src="https://img.shields.io/github/package-json/dependency-version/rajebdev/ompchamber/preact?logo=preact&logoColor=white&color=673ab7"></a>
-  <a href="https://shiki.style"><img alt="Shiki" src="https://img.shields.io/github/package-json/dependency-version/rajebdev/ompchamber/shiki?color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNjYgMjY2Ij48Y2lyY2xlIGN4PSIyMjAiIGN5PSI0NyIgcj0iNDciIGZpbGw9IiNmZmYiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCA0OGgyNjZ2NjVIMHoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTA5IDE0NHEwLTgtNi0xMy02LTQtMTctNGwtMTIgMS03IDUtMiA3IDEgNSA1IDUgNyAzIDExIDMgMTQgMyAyNCA4IDE3IDEycTcgOCAxMCAxNWE1MyA1MyAwIDAgMS02IDQ3cS03IDEyLTI0IDE4LTE1IDYtMzggNi0yMiAwLTM5LTYtMTctNy0yNi0yMXQtOS0zNWg0NGw0IDEzcTQgNiAxMCA4IDcgMyAxNiAzbDEyLTIgOC01cTMtMyAzLTggMC0zLTMtN2wtOC01LTE1LTUtMTctM3EtMjQtNS0zNy0xNy0xMy0xMS0xMy0zMiAwLTE3IDktMjl0MjUtMTkgMzYtNyAzNiA3IDI0IDIwcTkgMTIgOCAyOXoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjE3IDB2MjY2aC02NVYweiIvPjwvc3ZnPg%3D%3D"></a>
-  <a href="package.json"><img alt="Version" src="https://img.shields.io/github/package-json/v/rajebdev/ompchamber?label=version&color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjExNyAxMzMgMjc4IDI3OCI%2BPGcgZmlsbD0iI2Y5NzMxNiI%2BPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTQ1IDE4NGMtMTYgMC0yOCAxNC0yOCAzMnY0NGMwIDE4IDEyIDMyIDI4IDMyaDI0YzE2IDAgMjgtMTQgMjgtMzJ2LTQ0YzAtMTgtMTItMzItMjgtMzJabTAgMjZoMjRxNCAwIDQgNnY0NHEwIDYtNCA2aC0yNHEtNCAwLTQtNnYtNDRxMC02IDQtNiIvPjxwYXRoIGQ9Ik0yMTEgMTg0aDI2bDIxIDU0IDIxLTU0aDI2djEwOGgtMjR2LTcybC0xNiA0MGgtMTRsLTE2LTQwdjcyaC0yNFoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMTkgMTg0aDQ0cTI5IDEgMzAgMzF2OHEtMSAzMC0zMCAzMWgtMjB2MzhoLTI0Wm0yNCAyNGgxN3E5IDAgOSA4djZxMCA5LTkgOGgtMTdaIi8%2BPC9nPjwvc3ZnPg%3D%3D"></a>
+  <a href="https://elysiajs.com"><img alt="Elysia" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/elysia?color=6f42c1&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MjQgNDcxQTI1NSAyNTUgMCAwIDAgMjU2IDIyIDI1NiAyNTYgMCAwIDAgODMgNDY3di0ybDMzNi0xMTB6TTIwMyAyMTkgNzIgNDUzaC0zbC0yLTItMTEtMTMtOC05LTE3LTI3LTEtMnEtOC0xNS0xNC0zMmwtMy0xMHEtOS0zMC00LTU5di0xcTItMTMgNi0yNWw2LTE3IDQtMTBxMTAtMjEgMjgtMzdsNS02cTE3LTE1IDQxLTIybC0xMSAyLTcgMWgtNmwtNiAxLTYgMWgtN2wtMS0xaDFsNC0ycTIwLTExIDMwLTI5bDQtN3E5LTEzIDIxLTIxbDItMSAxMC01IDE1LTVxNS0yIDctNnYtMWE5IDkgMCAwIDAtMi0xMGwtMy0ydi0xbC0xOC0yMy0xNC0yMHEtNS02LTUtMTMgMC0yIDItMWwxNSA3cTIwIDEwIDQzIDRsMTAtMiA3LTFxMjYtMyA1MyA1aDFsMTcgNnEzMyAxMyA0NiA0NWwzIDE0YTU2IDU2IDAgMCAwIDIyIDMybDkgNiAxMiA3IDIwIDEwIDEgM3EtOSAxMC0yMSAxNmwtMTIgNS0xNCA1LTggMnEtMTggNS0zNiA1aC0yMWwtMTItMmMtMTUtNi0zMyAwLTQxIDE0Ii8%2BPC9zdmc%2B"></a>
+  <a href="https://preactjs.com"><img alt="Preact" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/preact?logo=preact&logoColor=white&color=673ab7"></a>
+  <a href="https://shiki.style"><img alt="Shiki" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/shiki?color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNjYgMjY2Ij48Y2lyY2xlIGN4PSIyMjAiIGN5PSI0NyIgcj0iNDciIGZpbGw9IiNmZmYiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCA0OGgyNjZ2NjVIMHoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTA5IDE0NHEwLTgtNi0xMy02LTQtMTctNGwtMTIgMS03IDUtMiA3IDEgNSA1IDUgNyAzIDExIDMgMTQgMyAyNCA4IDE3IDEycTcgOCAxMCAxNWE1MyA1MyAwIDAgMS02IDQ3cS03IDEyLTI0IDE4LTE1IDYtMzggNi0yMiAwLTM5LTYtMTctNy0yNi0yMXQtOS0zNWg0NGw0IDEzcTQgNiAxMCA4IDcgMyAxNiAzbDEyLTIgOC01cTMtMyAzLTggMC0zLTMtN2wtOC01LTE1LTUtMTctM3EtMjQtNS0zNy0xNy0xMy0xMS0xMy0zMiAwLTE3IDktMjl0MjUtMTkgMzYtNyAzNiA3IDI0IDIwcTkgMTIgOCAyOXoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjE3IDB2MjY2aC02NVYweiIvPjwvc3ZnPg%3D%3D"></a>
+  <a href="package.json"><img alt="Version" src="https://img.shields.io/github/package-json/v/kabmo-labs/kabmo?label=version&color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjExNyAxMzMgMjc4IDI3OCI%2BPGcgZmlsbD0iI2Y5NzMxNiI%2BPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTQ1IDE4NGMtMTYgMC0yOCAxNC0yOCAzMnY0NGMwIDE4IDEyIDMyIDI4IDMyaDI0YzE2IDAgMjgtMTQgMjgtMzJ2LTQ0YzAtMTgtMTItMzItMjgtMzJabTAgMjZoMjRxNCAwIDQgNnY0NHEwIDYtNCA2aC0yNHEtNCAwLTQtNnYtNDRxMC02IDQtNiIvPjxwYXRoIGQ9Ik0yMTEgMTg0aDI2bDIxIDU0IDIxLTU0aDI2djEwOGgtMjR2LTcybC0xNiA0MGgtMTRsLTE2LTQwdjcyaC0yNFoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMTkgMTg0aDQ0cTI5IDEgMzAgMzF2OHEtMSAzMC0zMCAzMWgtMjB2MzhoLTI0Wm0yNCAyNGgxN3E5IDAgOSA4djZxMCA5LTkgOGgtMTdaIi8%2BPC9nPjwvc3ZnPg%3D%3D"></a>
 </p>
 
 <p align="center">
@@ -23,10 +23,10 @@
   <a href="DESIGN.md">Design</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="docs/plugin-platform-plan.md">Plugins</a> ·
-  <a href="https://github.com/rajebdev/ompchamber/issues">Issues</a>
+  <a href="https://github.com/kabmo-labs/kabmo/issues">Issues</a>
 </p>
 
-![OMPChamber — session sidebar, streaming timeline with tool cards, and the Files panel](docs/assets/hero-dark.png)
+![Kabmo — session sidebar, streaming timeline with tool cards, and the Files panel](docs/assets/hero-dark.png)
 
 ## What it is
 
@@ -35,7 +35,7 @@ omp's own session JSONL, project registry, config and subagent transcripts, fold
 live view, and writes back through omp's RPC mode.
 
 ```bash
-ompchamber serve                # production server + prebuilt client on :3000
+kabmo serve                # production server + prebuilt client on :3000
 bun run dev                     # source checkout: one process, HMR, no build step
 ```
 
@@ -91,7 +91,7 @@ bun run dev                     # source checkout: one process, HMR, no build st
   settings across 10 tabs), providers, agents, `AGENTS.md` / `RULES.md`, slash commands, MCP
   servers with live connection tests, skills and the skills catalog, token usage, notifications,
   and dictation.
-- **Self-update** — `ompchamber update` installs the latest version from npm, and **About → Updates**
+- **Self-update** — `kabmo update` installs the latest version from npm, and **About → Updates**
   does the same from the console, restarting the server and reloading the page into the new build.
 - **Opt-in password, HTTPS and session revocation** — the UI is open by default and locked only when
   you ask for it (`--ui-password` / `OMPCHAMBER_UI_PASSWORD`), with `--tls` for a self-signed HTTPS
@@ -118,7 +118,7 @@ all follow with no reload.
 
 ## Install
 
-OMPChamber is published to npm and runs on Bun, not Node:
+Kabmo is published to npm and runs on Bun, not Node:
 
 > **Bun only** — the server imports `bun:sqlite` and `Bun.YAML`, neither of which Node can load.
 > Bun 1.4 or newer is required.
@@ -128,24 +128,27 @@ OMPChamber is published to npm and runs on Bun, not Node:
 > `OMPCHAMBER_OMP_BIN`). `MOCK=true` is the only mode that runs without a real omp install.
 
 ```bash
-bun add -g ompchamber     # puts the `ompchamber` command on your PATH
-ompchamber serve         # start the server on :3000
+bun add -g kabmo     # puts the `kabmo` command on your PATH (`ompchamber` remains an alias)
+kabmo serve         # start the server on :3000
 ```
 
+The `ompchamber` bin and the `OMPCHAMBER_*` environment names remain as aliases, and the data
+directory is still `~/.ompchamber` — an existing install keeps its database, login and sessions.
+
 The published tarball carries the source, the CLI and the prebuilt client bundle, so there is no
-build step after install. `npm install -g ompchamber` works too — the `ompchamber` bin is a Bun
+build step after install. `npm install -g kabmo` works too — the `kabmo` bin is a Bun
 script, so Bun still has to be on `PATH`.
 
 ### From source
 
 ```bash
-git clone https://github.com/rajebdev/ompchamber.git
-cd ompchamber
+git clone https://github.com/kabmo-labs/kabmo.git
+cd kabmo
 bun install
 bun run build                        # dist/client — the only build artifact
 
 bun run start                        # NODE_ENV=production bun run src/server/index.ts
-bun link                             # then: ompchamber status
+bun link                             # then: kabmo status
 ```
 
 > Without `dist/client` the server answers `503` with the exact command to run — never a bare `500`.
@@ -153,17 +156,17 @@ bun link                             # then: ompchamber status
 ### Updating
 
 ```bash
-ompchamber update --check        # report only: current version, latest release
-ompchamber update                # install it, then restart a running instance
-ompchamber update --force        # reinstall even when already up to date
+kabmo update --check        # report only: current version, latest release
+kabmo update                # install it, then restart a running instance
+kabmo update --force        # reinstall even when already up to date
 ```
 
-A **bun global** install is refreshed with `bun add -g ompchamber@<version>`; a **git checkout** is
+A **bun global** install is refreshed with `bun add -g kabmo@<version>`; a **git checkout** is
 fast-forwarded to the release tag and rebuilt. Uncommitted work is never merged over (the update asks
 you to commit or stash first), and an install owned by another package manager is left alone and told
 which command to run.
 
-A server OMPChamber did not start is never restarted: `bun run dev`, `bun run start`, a manual
+A server Kabmo did not start is never restarted: `bun run dev`, `bun run start`, a manual
 `bun src/server/index.ts` and instances owned by a supervisor (systemd, pm2, a container) all record
 themselves as `direct`, so the update leaves them running and says so. `--no-restart` turns the
 restart off entirely. The console's **About → Updates** runs the same install, restarts the instance
@@ -171,7 +174,7 @@ serving that console, and reloads the page once the replacement answers on the s
 
 ## CLI
 
-`ompchamber [COMMAND] [OPTIONS]` — `serve` is the default command.
+`kabmo [COMMAND] [OPTIONS]` — `serve` is the default command.
 
 | Command | Purpose |
 |---|---|
@@ -206,21 +209,21 @@ serving that console, and reloads the page once the replacement answers on the s
 
 ### Tray icon and start at login
 
-`ompchamber serve --tray` puts an OMPChamber icon in the menu bar (macOS) or the notification area
+`kabmo serve --tray` puts a Kabmo icon in the menu bar (macOS) or the notification area
 (Windows, Linux). `--startup` additionally registers the server to start at every login, and
 `--no-startup` removes that registration:
 
 ```bash
-ompchamber serve --tray          # start the server with a tray icon
-ompchamber serve --startup       # also start at every login
-ompchamber serve --no-startup    # remove the login entry
+kabmo serve --tray          # start the server with a tray icon
+kabmo serve --startup       # also start at every login
+kabmo serve --no-startup    # remove the login entry
 ```
 
 The icon's menu reflects the server as it is **right now** — rebuilt on every open: Open Console,
-Open Logs, Start at Login / Disable Start at Login, Quit OMPChamber.
+Open Logs, Start at Login / Disable Start at Login, Quit Kabmo.
 
 - **The tray is a child of the server.** It exits when the server does (it watches its parent), so a
-  killed or crashed server leaves no orphan icon, and **Quit OMPChamber signals the server** — the
+  killed or crashed server leaves no orphan icon, and **Quit Kabmo signals the server** — the
   icon and the console end together. There is no pid file, no `status`/`stop` for the icon, and
   nothing to keep in sync: the process tree is the registration.
 - **The login entry runs `serve --foreground`.** launchd reaps a job's whole process tree when the
@@ -242,35 +245,35 @@ Open Logs, Start at Login / Disable Start at Login, Quit OMPChamber.
 
 ### Ports and multiple instances
 
-One port is served by exactly one process, and `bun run dev`, `ompchamber serve` and the production
+One port is served by exactly one process, and `bun run dev`, `kabmo serve` and the production
 server all default to `3000`. **A starting instance never stops another one** — if the port is taken
-by OMPChamber, the newcomer reports who holds it and exits non-zero so you can pick another port:
+by Kabmo, the newcomer reports who holds it and exits non-zero so you can pick another port:
 
 ```bash
-ompchamber serve --port 3001        # CLI flag
-OMPCHAMBER_PORT=3001 ompchamber serve
+kabmo serve --port 3001        # CLI flag
+OMPCHAMBER_PORT=3001 kabmo serve
 PORT=3001 bun run dev              # or: PORT=3001 bun run start
 ```
 
-- Nothing is ever signalled to free a port; `ompchamber stop --port 3000` is the deliberate way.
-- A process that is **not** OMPChamber is never signalled either: the server names the port and
+- Nothing is ever signalled to free a port; `kabmo stop --port 3000` is the deliberate way.
+- A process that is **not** Kabmo is never signalled either: the server names the port and
   prints the `lsof -nP -iTCP:<port> -sTCP:LISTEN` command to identify it.
 - `bun run dev` hot reload is unaffected: `--hot` re-evaluates the entry inside the running
   process, and a port held by that process is recognized as its own.
 - `status` and `logs` report **every** live instance by default; `--port <port>` narrows them to one.
   `stop` acts on the instances the CLI started, and `restart`/`update` skip the rest: `bun run dev`
   is a supervisor whose only job is to mirror the script under it, so stopping that server exits
-  the dev loop with it. Name the instance — `ompchamber stop --port <port>`, or `--all` — to end
+  the dev loop with it. Name the instance — `kabmo stop --port <port>`, or `--all` — to end
   one anyway.
 
 The server writes `~/.ompchamber/run/<port>.json` (`pid`, `host`, `mode`, `launchMode`, `startedAt`)
 once it owns the port, which is how `status`/`stop`/`logs` also see servers started by `bun run dev`
 or `--foreground`. `launchMode` is derived from the process's **argv**, never from an environment
-variable — env is inherited, so a `bun run dev` started inside an OMPChamber shell would otherwise be
+variable — env is inherited, so a `bun run dev` started inside an Kabmo shell would otherwise be
 replaced by an update. Records left by a killed server are pruned once their PID stops answering.
 
 - `stop` reports what actually happened. The record is dropped only once the process is gone, so a
-  stop that could not end the server keeps it — `ompchamber status` still finds the instance, the
+  stop that could not end the server keeps it — `kabmo status` still finds the instance, the
   message says so, and the command exits non-zero. Deleting the record over a live process was how a
   failed stop turned into a deadlock: `status` said "not running" while `serve` refused the port.
 - A PID whose identity cannot be read (Windows cannot read another process's command line, so every
@@ -312,9 +315,9 @@ the password is supplied per run and hashed in memory. Only a session *signing* 
 nothing durable can enable authentication on its own.
 
 ```bash
-ompchamber serve --ui-password my-secret    # or OMPCHAMBER_UI_PASSWORD
-ompchamber serve --ui-password              # generates one and prints it once
-ompchamber serve --tls --ui-password …      # HTTPS, cookie gains Secure
+kabmo serve --ui-password my-secret    # or OMPCHAMBER_UI_PASSWORD
+kabmo serve --ui-password              # generates one and prints it once
+kabmo serve --tls --ui-password …      # HTTPS, cookie gains Secure
 ```
 
 - **Password** — argon2id, verified in constant time. Login is throttled per socket address
@@ -391,11 +394,11 @@ One process. Bun serves the HTML shell and bundles its assets itself, so there i
 client watcher to run and no build step before the first request: saving a server file restarts the
 server, saving a client file is pushed to the browser over HMR (`import.meta.hot`, wired by Bun).
 A dev server keeps the whole module graph open for HMR (~3.5k descriptors after one page load), so
-`GET /api/health` reports `fds.open` and `ompchamber status` prints it — a long-lived session belongs
+`GET /api/health` reports `fds.open` and `kabmo status` prints it — a long-lived session belongs
 on a production server.
 
 `bun run build` produces the production bundle — `scripts/build-client.ts` writes `dist/client`, which
-`ompchamber serve` runs. The CLI builds it on demand the first time when it is missing, so a source
+`kabmo serve` runs. The CLI builds it on demand the first time when it is missing, so a source
 checkout needs no manual build; `--dev` skips the bundle entirely.
 
 Verification gates, all mandatory:
@@ -439,7 +442,7 @@ gates → e2e → packages → packages-publish
    **last action of the release run** rather than a second run dispatched beside it, so a release
    cannot report success while its publish is still queued, still waiting on the `npm` environment,
    or already failed.
-3. The same run releases `@ompchamber/plugin-sdk` and `@ompchamber/ui` FIRST (the app pins them, and
+3. The same run releases `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` FIRST (the app pins them, and
    a `workspace:` spec is substituted from `bun.lock`), then bumps the bundled marketplace plugins
    by their own commit history — a bundled plugin's manifest version is the whole delivery
    mechanism, since `syncBundledPlugins` applies a new copy only when the store's version is

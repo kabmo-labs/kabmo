@@ -15,7 +15,7 @@ const ROOMY_TABLE = { open: 400, highest: 402, limit: SPAWN_CLIFF, nearCliff: fa
  * The message Bun actually produced on the real condition, kept verbatim: it
  * names a missing dependency and is what sent the reader to `bun install`.
  */
-const MISLEADING_DETAIL = 'runtime.ts:32:25  Could not resolve: "@ompchamber/plugin-sdk/app". Maybe you need to "bun install"?';
+const MISLEADING_DETAIL = 'runtime.ts:32:25  Could not resolve: "@kabmo-labs/plugin-sdk/app". Maybe you need to "bun install"?';
 
 describe('composeShellFailureReason', () => {
   test('leads with descriptor exhaustion, not the dependency it blames', () => {
@@ -31,7 +31,7 @@ describe('composeShellFailureReason', () => {
     expect(reason).toContain('restart the instance');
     // The build detail survives as evidence, labelled as the consequence.
     expect(reason).toContain('consequence of the same exhaustion');
-    expect(reason).toContain('@ompchamber/plugin-sdk/app');
+    expect(reason).toContain('@kabmo-labs/plugin-sdk/app');
   });
 
   test('blames the bundle only when the table has room', () => {

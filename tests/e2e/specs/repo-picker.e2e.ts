@@ -6,7 +6,7 @@
 /**
  * The repo picker: ONE shared selection across the browsing panels.
  *
- * The picker was moved into `@ompchamber/ui` so a plugin panel and the host's
+ * The picker was moved into `@kabmo-labs/ui` so a plugin panel and the host's
  * own panels draw the same control, and this spec is what proves the move kept
  * the behaviour a unit test cannot reach:
  *

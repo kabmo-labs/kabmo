@@ -155,7 +155,7 @@ export function describeProcess(process: ProcessInfo, context: LabelContext): Pr
   const cwdArg = projectOf(argOf(argv, '--cwd'));
 
   if (line.includes('--ompchamber-server') || (context.serverPid !== undefined && process.pid === context.serverPid)) {
-    return { title: 'OMPChamber server', detail: detailOf(['the server itself', age]) };
+    return { title: 'Kabmo server', detail: detailOf(['the server itself', age]) };
   }
   if (line.includes('__omp_worker_daemon_broker')) {
     return { title: 'daemon broker', detail: detailOf([project, age]) };

@@ -150,7 +150,7 @@ describe('the install route', () => {
     fs.writeFileSync(
       join(dirs.root, 'marketplace.json'),
       JSON.stringify({
-        name: 'OMPChamber',
+        name: 'Kabmo',
         plugins: [
           { name: 'ghost', source: 'plugins/ghost' },
           { name: 'other', source: 'plugins/other' },
@@ -173,7 +173,7 @@ describe('the install route', () => {
       plugins: Array<{ source: string }>;
     };
     expect(catalog.plugins.map((entry) => entry.source)).toEqual(['plugins/other']);
-    expect(catalog.name).toBe('OMPChamber');
+    expect(catalog.name).toBe('Kabmo');
   });
 
   test('forget refuses a source that is missing or escapes the marketplace', async () => {

@@ -29,7 +29,7 @@ function row(overrides: Partial<ProcessRow> = {}): ProcessRow {
   return {
     pid: 100,
     ppid: 1,
-    title: 'OMPChamber server',
+    title: 'Kabmo server',
     detail: 'the server itself',
     groupKey: 'chamber',
     depth: 0,
@@ -50,7 +50,7 @@ function snapshot(rows: ProcessRow[]): StatsSnapshot {
         key: 'chamber',
         kind: 'chamber',
         ownerPid: 100,
-        title: 'OMPChamber server',
+        title: 'Kabmo server',
         detail: 'the server itself',
         processes: rows.length,
         rss: 1024 * 1024,

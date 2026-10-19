@@ -10,7 +10,7 @@ const notesConfig = config.plugins.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/release-notes-generator',
 )[1];
 
-const MAINTAINER = '38524221+rajebdev@users.noreply.github.com';
+const MAINTAINER = '12345+kabmo-labs@users.noreply.github.com';
 
 /** A commit shaped like the ones semantic-release collects from `git log`. */
 const rawCommit = (hash, message, email) => ({
@@ -25,7 +25,7 @@ const render = (commits) => generateNotes(notesConfig, {
   commits,
   lastRelease: { gitTag: 'v0.6.0', gitHead: 'a'.repeat(40) },
   nextRelease: { version: '0.7.0', gitTag: 'v0.7.0', gitHead: 'b'.repeat(40) },
-  options: { repositoryUrl: 'https://github.com/rajebdev/ompchamber.git' },
+  options: { repositoryUrl: 'https://github.com/kabmo-labs/kabmo.git' },
   cwd,
 });
 
@@ -39,8 +39,8 @@ test('credits a contributor, drops the maintainer, and keeps hidden types out', 
   ]);
 
   expect(bullets(notes)).toEqual([
-    '* **session:** mark the live stream status at prompt dispatch, not agent_start ([c148bc5](https://github.com/rajebdev/ompchamber/commit/c148bc5631cfcd2a034e05d650ee2a3ff0ea352a)) (thanks [@octocat](https://github.com/octocat))',
-    '* **lifecycle:** record the launch mode from argv, never from the environment ([9697514](https://github.com/rajebdev/ompchamber/commit/9697514c3a32135308178e0025fb2a47d675bb43))',
+    '* **session:** mark the live stream status at prompt dispatch, not agent_start ([c148bc5](https://github.com/kabmo-labs/kabmo/commit/c148bc5631cfcd2a034e05d650ee2a3ff0ea352a)) (thanks [@octocat](https://github.com/octocat))',
+    '* **lifecycle:** record the launch mode from argv, never from the environment ([9697514](https://github.com/kabmo-labs/kabmo/commit/9697514c3a32135308178e0025fb2a47d675bb43))',
   ]);
 });
 
@@ -62,8 +62,8 @@ test('resolves a contributor whose address is a real mailbox through the API', a
       rawCommit(hash, 'feat(update): restart the updated instance and leave servers started from source alone', 'mona@example.com'),
     ]));
 
-    expect(calls).toEqual([[`https://api.github.com/repos/rajebdev/ompchamber/commits/${hash}`, 'Bearer token']]);
-    expect(bullet).toBe(`* **update:** restart the updated instance and leave servers started from source alone ([a25f8ca](https://github.com/rajebdev/ompchamber/commit/${hash})) (thanks [@mona](https://github.com/mona))`);
+    expect(calls).toEqual([[`https://api.github.com/repos/kabmo-labs/kabmo/commits/${hash}`, 'Bearer token']]);
+    expect(bullet).toBe(`* **update:** restart the updated instance and leave servers started from source alone ([a25f8ca](https://github.com/kabmo-labs/kabmo/commit/${hash})) (thanks [@mona](https://github.com/mona))`);
   } finally {
     globalThis.fetch = fetchImpl;
 

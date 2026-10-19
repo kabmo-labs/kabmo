@@ -14,7 +14,7 @@ const ROOTS = [PUBLIC_DIR] as const;
 beforeAll(() => {
   mkdirSync(PUBLIC_DIR, { recursive: true });
   writeFileSync(join(PUBLIC_DIR, 'icon.svg'), '<svg id="public"/>');
-  writeFileSync(join(PUBLIC_DIR, 'manifest.webmanifest'), '{"name":"OMPChamber"}');
+  writeFileSync(join(PUBLIC_DIR, 'manifest.webmanifest'), '{"name":"Kabmo"}');
   writeFileSync(join(PUBLIC_DIR, 'sw.js'), 'self.addEventListener("fetch", () => {});');
   writeFileSync(join(PUBLIC_DIR, 'index.html'), '<!doctype html><title>shell</title>');
 });

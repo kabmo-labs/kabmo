@@ -5,7 +5,7 @@
 
 /**
  * `probe.ts` answers two questions a starting server depends on: "can I bind
- * this address" and "is an OMPChamber server answering here". Getting either
+ * this address" and "is an Kabmo server answering here". Getting either
  * wrong is expensive — a false "free" turns into an EADDRINUSE after the
  * server has already announced itself, and a false "occupied" blocks startup
  * on a port nobody holds — so the tests drive real listeners on ephemeral
@@ -171,7 +171,7 @@ describe('waitForPortFree', () => {
 });
 
 describe('fetchHealth', () => {
-  test('returns the payload of an OMPChamber listener, keeping only known fields', async () => {
+  test('returns the payload of an Kabmo listener, keeping only known fields', async () => {
     const full = occupy(() => Response.json({
       service: 'ompchamber',
       pid: 4242,
@@ -235,7 +235,7 @@ describe('fetchHealth', () => {
     expect(health?.tls).toBeUndefined();
   });
 
-  test('ignores a listener that is not OMPChamber', async () => {
+  test('ignores a listener that is not Kabmo', async () => {
     const foreign = occupy(() => Response.json({ service: 'something-else', pid: process.pid }));
     expect(await fetchHealth(foreign.port, '127.0.0.1', 1000, false)).toBeNull();
   });

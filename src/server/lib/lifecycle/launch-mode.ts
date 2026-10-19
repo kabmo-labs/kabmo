@@ -9,9 +9,9 @@
  *
  * The marker travels as an argv flag, never as an environment variable. Env is
  * inherited by every descendant, so a server started from a shell *inside* an
- * OMPChamber tree — the chamber's own terminal panel runs commands with the
+ * Kabmo tree — the chamber's own terminal panel runs commands with the
  * server's environment — would inherit `daemon` and then be swapped out by the
- * next update, killing a `bun run dev` loop OMPChamber does not own. argv
+ * next update, killing a `bun run dev` loop Kabmo does not own. argv
  * belongs to the process alone.
  */
 

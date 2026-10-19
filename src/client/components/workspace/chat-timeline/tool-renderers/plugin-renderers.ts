@@ -18,7 +18,7 @@
  * must reach it without a reload.
  */
 
-import type { TimelineRendererRegistration } from '@ompchamber/plugin-sdk';
+import type { TimelineRendererRegistration } from '@kabmo-labs/plugin-sdk';
 import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 

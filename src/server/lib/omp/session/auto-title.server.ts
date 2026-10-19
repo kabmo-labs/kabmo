@@ -4,7 +4,7 @@
  */
 
 /**
- * Auto session titles for OMPChamber.
+ * Auto session titles for Kabmo.
  *
  * Chamber spawns omp with `--mode rpc-ui`, and that mode force-sets
  * `PI_NO_TITLE=1` (omp's main.ts). The flag gates only the two AUTOMATIC title

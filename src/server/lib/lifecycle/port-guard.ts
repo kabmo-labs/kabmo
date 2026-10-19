@@ -4,11 +4,11 @@
  */
 
 /**
- * Port guarding for a starting OMPChamber server.
+ * Port guarding for a starting Kabmo server.
  *
  * One port is served by exactly one process, and **a starting instance never
  * stops another one** — not a CLI server, not a dev run. An occupant that
- * identifies itself as OMPChamber makes the newcomer exit with the ways to pick
+ * identifies itself as Kabmo makes the newcomer exit with the ways to pick
  * a different port; freeing a port is what `ompchamber stop --port <port>` is
  * for, done deliberately and per port.
  *
@@ -110,7 +110,7 @@ export interface ClaimPortOptions {
   host: string;
   /**
    * Binds the port; must throw when the OS refuses. Retried while the port
-   * looks occupied by something that is not an identified OMPChamber instance.
+   * looks occupied by something that is not an identified Kabmo instance.
    */
   listen: () => Promise<void>;
 }
@@ -170,7 +170,7 @@ async function buildPortInUseError(port: number, host: string, bindError: unknow
 
   if (occupant) {
     return new PortInUseError(
-      `Port ${port} is already served by OMPChamber ${describeOccupant(occupant)}.\n`
+      `Port ${port} is already served by Kabmo ${describeOccupant(occupant)}.\n`
       + `  Nothing was stopped — a starting instance never stops another one.\n`
       + `  Stop it first:  ompchamber stop --port ${port}\n`
       + `  Or start on another port:\n${portGuidance()}`,
@@ -178,7 +178,7 @@ async function buildPortInUseError(port: number, host: string, bindError: unknow
   }
 
   return new PortInUseError(
-    `Port ${port} is in use by another process (no OMPChamber instance answered on it).${bindDetail}\n`
+    `Port ${port} is in use by another process (no Kabmo instance answered on it).${bindDetail}\n`
     + `  Find it with:  lsof -nP -iTCP:${port} -sTCP:LISTEN\n`
     + `  Start on another port:\n${portGuidance()}`,
   );

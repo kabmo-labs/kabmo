@@ -33,7 +33,7 @@ import {
   RpcCommandTimeoutError,
   STDERR_TAIL_LIMIT,
 } from '@/server/lib/omp/rpc/process-helpers';
-import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
 import {
   getSpawnApprovalMode,
   getSpawnModeEnv,

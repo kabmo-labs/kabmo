@@ -35,7 +35,7 @@ export function AvailableList({ entries, busy, onInstall }: AvailableListProps) 
     <section>
       <header className="flex items-center gap-2 mb-2">
         <Store size={14} className="text-ink/50 flex-shrink-0" />
-        <h3 className="text-sm font-medium text-ink">Available from OMPChamber</h3>
+        <h3 className="text-sm font-medium text-ink">Available from Kabmo</h3>
         <span className="ml-auto text-[11px] text-ink/50">
           {entries.length} plugin{entries.length === 1 ? '' : 's'}
         </span>

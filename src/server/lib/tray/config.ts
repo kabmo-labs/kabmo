@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
 
 /** The tray's own name, shown in the menu and the tooltip. */
-export const TRAY_LABEL = 'OMPChamber';
+export const TRAY_LABEL = 'Kabmo';
 
 /** Directory holding the tray's config and the extracted host scripts. */
 export function getTrayDir(): string {

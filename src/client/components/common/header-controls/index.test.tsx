@@ -24,7 +24,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { definePluginApp } from '@ompchamber/plugin-sdk/app';
+import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';
 import { HeaderControls } from '@/client/components/common/header-controls';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { registerPluginBundle, resetPluginSlots } from '@/client/lib/plugins/slots';
@@ -194,7 +194,7 @@ describe('HeaderControls', () => {
     await mount('desktop', { editor: true, switch: true });
 
     expect(controlNames()).toEqual([
-      'Install OMPChamber',
+      'Install Kabmo',
       'Demo Stats',
       'Reload page',
       'Context usage',

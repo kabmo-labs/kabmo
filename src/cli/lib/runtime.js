@@ -1,4 +1,4 @@
-// Runtime helpers for the OMPChamber CLI: instance discovery, process identity,
+// Runtime helpers for the Kabmo CLI: instance discovery, process identity,
 // server entry resolution, health probing and detached spawning.
 //
 // The instance record is written by the server that owns the port (see
@@ -155,10 +155,10 @@ export function resolveBunBin() {
  * differ only by NODE_ENV — the client bundle in `dist/client` is required by
  * the SSR shell either way. `--ompchamber-server` is an identity marker: it
  * makes this process recognizable in `ps` output, which is how a starting
- * server decides whether a busy port belongs to OMPChamber before signalling
+ * server decides whether a busy port belongs to Kabmo before signalling
  * anything. The launch mode rides along as argv (`--launch-mode=`), never as an
  * environment variable: env is inherited by descendants, so a `bun run dev`
- * started from an OMPChamber shell would otherwise be labelled `daemon` and
+ * started from an Kabmo shell would otherwise be labelled `daemon` and
  * replaced by the next update.
  */
 export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = 'daemon', tls = false, tray = false }) {

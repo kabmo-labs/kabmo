@@ -1,5 +1,5 @@
 /**
- * Where the running OMPChamber package lives, and where its dependencies live.
+ * Where the running Kabmo package lives, and where its dependencies live.
  *
  * Two questions, deliberately separate, because the install shapes put them in
  * different directories:
@@ -18,7 +18,7 @@
  * depth is wrong the moment the layout differs from the one it was written for:
  * four `..` from `dist/client` lands on `~/.bun/install/global`, a directory
  * that holds a `package.json` belonging to the GLOBAL INSTALL ROOT — not to
- * OMPChamber. Reading the installed version there returned `null`, the update
+ * Kabmo. Reading the installed version there returned `null`, the update
  * check reported no update, and the self-update classified the copy as
  * "unmanaged" and refused to replace it. Walking up finds the real package in
  * every layout instead.

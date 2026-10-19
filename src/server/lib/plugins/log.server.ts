@@ -17,7 +17,7 @@
  * logger.
  */
 
-import type { PluginJson, PluginLogger } from '@ompchamber/plugin-sdk';
+import type { PluginJson, PluginLogger } from '@kabmo-labs/plugin-sdk';
 
 function describe(detail: PluginJson | undefined): string {
   if (detail === undefined) return '';

@@ -100,7 +100,7 @@ describe('discoverPanelPlugins', () => {
   });
 
   test('a plugin is loaded and attributed to the marketplace', async () => {
-    writeCatalog({ name: 'OMPChamber' });
+    writeCatalog({ name: 'Kabmo' });
     writePlugin('demo', VALID);
     invalidatePanelScan();
     const { panels, marketplaces, errors } = await discoverPanelPlugins();
@@ -121,7 +121,7 @@ describe('discoverPanelPlugins', () => {
   });
 
   test('a plugin absent from the catalog still loads', async () => {
-    writeCatalog({ name: 'OMPChamber', plugins: [] });
+    writeCatalog({ name: 'Kabmo', plugins: [] });
     writePlugin('demo', VALID);
     invalidatePanelScan();
     const { panels, errors } = await discoverPanelPlugins();
@@ -134,7 +134,7 @@ describe('discoverPanelPlugins', () => {
     invalidatePanelScan();
     const { panels, marketplaces } = await discoverPanelPlugins();
     expect(panels).toHaveLength(1);
-    expect(marketplaces[0].name).toBe('OMPChamber');
+    expect(marketplaces[0].name).toBe('Kabmo');
   });
 
   test('a catalog entry pointing at a missing directory is reported', async () => {

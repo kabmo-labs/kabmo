@@ -97,7 +97,7 @@ describe('ompchamber plugin', () => {
       expect(existsSync(join(target, 'bundled-types/plugin-sdk/app.test.ts'))).toBe(false);
 
       const tsconfig = JSON.parse(await readFile(join(target, 'tsconfig.json'), 'utf8'));
-      expect(tsconfig.compilerOptions.paths['@ompchamber/plugin-sdk/app']).toEqual([
+      expect(tsconfig.compilerOptions.paths['@kabmo-labs/plugin-sdk/app']).toEqual([
         './bundled-types/plugin-sdk/app.ts',
       ]);
       // `baseUrl` is deliberately absent: TypeScript 7 deprecates it, and

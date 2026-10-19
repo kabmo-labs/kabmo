@@ -19,7 +19,7 @@
 
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@/server/lib/db/client';
-import type { PluginJson, PluginKvStorage, PluginRecordStorage } from '@ompchamber/plugin-sdk';
+import type { PluginJson, PluginKvStorage, PluginRecordStorage } from '@kabmo-labs/plugin-sdk';
 
 /**
  * Serialize a value, refusing what JSON cannot carry.

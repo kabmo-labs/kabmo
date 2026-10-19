@@ -21,7 +21,7 @@ import type { UpdateTarget } from '@/shared/types/updates';
 
 /** What the console is told when a second run is refused. */
 export function updateBusyMessage(target: UpdateTarget): string {
-  return `An ${target === 'omp' ? 'Oh-My-Pi' : 'OMPChamber'} update is already running.`;
+  return `An ${target === 'omp' ? 'Oh-My-Pi' : 'Kabmo'} update is already running.`;
 }
 
 export class UpdateInProgressError extends Error {

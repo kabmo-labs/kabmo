@@ -24,7 +24,7 @@ import type {
   PluginRpcError,
   PluginRpcOutcome,
   UiKitServices,
-} from '@ompchamber/ui';
+} from '@kabmo-labs/ui';
 import type { SidebarThread } from '../slots-sidebar';
 import { createFakeSidebar, type FakeSidebarHandle } from './sidebar';
 

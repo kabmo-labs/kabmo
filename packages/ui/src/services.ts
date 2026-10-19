@@ -6,7 +6,7 @@
 /**
  * The host services the kit reads, and the seam that installs them.
  *
- * `@ompchamber/ui` is a published package, so it cannot import the chamber's own
+ * `@kabmo-labs/ui` is a published package, so it cannot import the chamber's own
  * source. The host therefore INJECTS its services once at boot via
  * `configureUiKit`, and every hook in this package reads them from here.
  *
@@ -17,7 +17,7 @@
  */
 
 import type { ComponentType } from 'preact';
-import type { SidebarThread, SidebarThreadActions } from '@ompchamber/plugin-sdk';
+import type { SidebarThread, SidebarThreadActions } from '@kabmo-labs/plugin-sdk';
 
 /** What the host seeds every plugin component with. */
 export interface PanelContext {
@@ -297,7 +297,7 @@ export function configureUiKit(next: UiKitServices): void {
 export function requireServices(): UiKitServices {
   if (!services) {
     throw new Error(
-      'The OMPChamber UI kit has no host services — this component must be rendered by the OMPChamber app.',
+      'The Kabmo UI kit has no host services — this component must be rendered by the Kabmo app.',
     );
   }
   return services;

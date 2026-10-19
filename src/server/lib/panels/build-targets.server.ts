@@ -19,7 +19,7 @@
  *   what keeps one Preact instance across the host and every plugin.
  * - **The server bundle runs in BUN, in the chamber's own process**, so there is
  *   nothing to shim — no runtime global is published there. It bundles
- *   everything it imports, `@ompchamber/plugin-sdk` included: the entry is
+ *   everything it imports, `@kabmo-labs/plugin-sdk` included: the entry is
  *   imported by absolute path from the plugin's directory, and a self-contained
  *   file cannot fail to resolve a dependency at load time.
  */

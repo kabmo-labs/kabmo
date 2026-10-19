@@ -13,9 +13,9 @@ const commit = (email, over = {}) => ({
 
 /** The changelog context the writer builds, plus a fetch that must not be reached. */
 const request = (over = {}) => ({
-  owner: 'rajebdev',
+  owner: 'kabmo-labs',
   host: 'https://github.com',
-  repository: 'ompchamber',
+  repository: 'kabmo',
   token: 'token',
   fetchImpl: () => {
     throw new Error('unexpected request');
@@ -44,7 +44,7 @@ test('credits a contributor whose privacy address carries the login', async () =
 });
 
 test('never credits the repository owner', async () => {
-  const mine = commit('38524221+rajebdev@users.noreply.github.com');
+  const mine = commit('12345+kabmo-labs@users.noreply.github.com');
 
   expect(await attachThanks([mine], request())).toBe(0);
   expect(mine.thanks).toBeUndefined();
@@ -55,7 +55,7 @@ test('asks the API about a real mailbox and credits the login it reports', async
   const author = commit('mona@example.com');
 
   expect(await attachThanks([author], request({ fetchImpl }))).toBe(1);
-  expect(calls).toEqual([`https://api.github.com/repos/rajebdev/ompchamber/commits/${HASH}`]);
+  expect(calls).toEqual([`https://api.github.com/repos/kabmo-labs/kabmo/commits/${HASH}`]);
   expect(author.thanks).toBe('[@mona](https://github.com/mona)');
 });
 

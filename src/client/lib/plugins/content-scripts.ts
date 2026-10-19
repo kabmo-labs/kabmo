@@ -31,8 +31,8 @@
  * own DOM by it and a stale generation can be recognised rather than guessed at.
  */
 
-import type { ContentScriptRegistration } from '@ompchamber/plugin-sdk';
-import { PLUGIN_SURFACE_ATTR } from '@ompchamber/plugin-sdk';
+import type { ContentScriptRegistration } from '@kabmo-labs/plugin-sdk';
+import { PLUGIN_SURFACE_ATTR } from '@kabmo-labs/plugin-sdk';
 
 /** One mounted generation, held so it can be taken down in order. */
 interface MountedScript {

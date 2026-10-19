@@ -16,7 +16,7 @@
  * accident:
  *
  * - **The entry is BUILT, not imported from source.** A plugin's `server.ts` is
- *   TypeScript importing `@ompchamber/plugin-sdk`; the chamber's process runs
+ *   TypeScript importing `@kabmo-labs/plugin-sdk`; the chamber's process runs
  *   the bundle the plugin's build produced, exactly as the browser runs the
  *   `app` bundle. One build path, one artifact, no `tsx` in the server.
  * - **Disposal is exact-once and LIFO.** A reload that runs a disposer twice (or
@@ -40,7 +40,7 @@ import { createPluginRealtime, clearPluginTopic } from '@/server/lib/plugins/rea
 import { createPluginEvents, clearPluginEvents } from '@/server/lib/plugins/events.server';
 import { createPluginBackground, type PluginBackgroundHandle } from '@/server/lib/plugins/background.server';
 import { createPluginLogger } from '@/server/lib/plugins/log.server';
-import type { ChamberPluginApi, ChamberPluginFactory } from '@ompchamber/plugin-sdk';
+import type { ChamberPluginApi, ChamberPluginFactory } from '@kabmo-labs/plugin-sdk';
 
 /** One loaded plugin, as the runtime holds it. */
 export interface LoadedPlugin {

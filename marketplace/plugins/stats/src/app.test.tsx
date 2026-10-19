@@ -103,7 +103,7 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
       {
         pid: 1,
         ppid: 0,
-        title: 'OMPChamber server',
+        title: 'Kabmo server',
         detail: 'the server itself · 1m',
         groupKey: 'chamber',
         depth: 0,
@@ -117,7 +117,7 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
         key: 'chamber',
         kind: 'chamber',
         ownerPid: 1,
-        title: 'OMPChamber server',
+        title: 'Kabmo server',
         detail: 'the server itself · 1m',
         processes: 1,
         rss: 2 * 1024 * 1024,
@@ -168,14 +168,14 @@ describe('StatsPanel server-half state', () => {
   test('a plugin_not_loaded arm refusal names the cause and the fix', async () => {
     const text = await textFor();
     expect(text).toContain('server half is not running');
-    expect(text).toContain('restart OMPChamber');
+    expect(text).toContain('restart Kabmo');
     // It must not claim the stack is idle or empty.
     expect(text).not.toContain('No sample yet');
   });
 
   test('a live arm call with a published snapshot renders the table', async () => {
     const text = await textFor({ live: true, publish: snapshot() });
-    expect(text).toContain('OMPChamber server');
+    expect(text).toContain('Kabmo server');
     expect(text).not.toContain('server half is not running');
   });
 

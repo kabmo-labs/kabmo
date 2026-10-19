@@ -160,7 +160,7 @@ describe('package release pipeline', () => {
     expect(config.plugins).not.toContainEqual(['@semantic-release/npm', expect.anything()]);
     expect(config.plugins).toContainEqual([
       '@semantic-release/changelog',
-      { changelogFile: 'packages/plugin-sdk/CHANGELOG.md', changelogTitle: expect.stringContaining('# @ompchamber/plugin-sdk') },
+      { changelogFile: 'packages/plugin-sdk/CHANGELOG.md', changelogTitle: expect.stringContaining('# @kabmo-labs/plugin-sdk') },
     ]);
 
     // `bun.lock` rides along, because the version plugin rewrites it and
@@ -193,7 +193,7 @@ describe('package catalog', () => {
 
 /**
  * A two-package workspace where `b` depends on `a` at `workspace:*` — the shape
- * `@ompchamber/ui` has on `@ompchamber/plugin-sdk`. Built from scratch so the
+ * `@kabmo-labs/ui` has on `@kabmo-labs/plugin-sdk`. Built from scratch so the
  * test does not depend on this repository's own versions.
  */
 function makeWorkspace(prefix) {
@@ -285,8 +285,8 @@ describe('the local version plugin', () => {
    *
    * `bun.lock` records a version per workspace package, and `bun publish`
    * substitutes a `workspace:` spec from THAT record rather than from the
-   * manifest. Measured in production: `@ompchamber/ui@2.0.0` went to npm
-   * declaring `"@ompchamber/plugin-sdk": "1.0.0"` while the SDK was 2.0.0 on the
+   * manifest. Measured in production: `@kabmo-labs/ui@2.0.0` went to npm
+   * declaring `"@kabmo-labs/plugin-sdk": "1.0.0"` while the SDK was 2.0.0 on the
    * registry — an install that resolves the old SDK, which is precisely the
    * incompatibility the 2.0.0 release announced. Bumping the manifest without
    * refreshing the lock leaves the dependent package packing the old version.

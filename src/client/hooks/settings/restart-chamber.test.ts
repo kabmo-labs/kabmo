@@ -4,7 +4,7 @@
  */
 
 /**
- * The console's "Restart OMPChamber" action.
+ * The console's "Restart Kabmo" action.
  *
  * Three outcomes have to be told apart, and each was a way to get this wrong:
  * an ARMED restart must wait for a process with a different identity and then
@@ -97,7 +97,7 @@ afterAll(() => {
 
 const ARMED = { success: true, restarting: true, message: 'Restarting on port 4242 — this page reloads on its own.' };
 
-describe('restarting OMPChamber from the console', () => {
+describe('restarting Kabmo from the console', () => {
   test('waits for the replacement, then reloads the page', async () => {
     let probe = 0;
     const harness = await mount(

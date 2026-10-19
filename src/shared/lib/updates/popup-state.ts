@@ -31,7 +31,7 @@ export const UPDATE_POPUP_SETTING_KEY = 'omp_update_popup_version';
 export const UPDATE_POPUP_OPEN_EVENT = 'omp:update-popup';
 
 /**
- * Window event that opens the About modal and starts the OMPChamber update.
+ * Window event that opens the About modal and starts the Kabmo update.
  *
  * The popup's "Update now" does not run the update itself: the About modal is
  * where an update is driven from, and it owns the live output and the per-target

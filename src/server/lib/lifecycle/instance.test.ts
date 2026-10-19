@@ -82,7 +82,7 @@ function spawnMatched(): { pid: number; kill: () => void; exited: Promise<unknow
   return { pid: child.pid, kill: () => child.kill(), exited: child.exited, dir };
 }
 
-/** Spawn a live child whose command line is demonstrably not OMPChamber. */
+/** Spawn a live child whose command line is demonstrably not Kabmo. */
 function spawnMismatched(): { pid: number; kill: () => void; exited: Promise<unknown> } {
   const child = Bun.spawn(['/bin/sh', '-c', 'sleep 30'], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
   return { pid: child.pid, kill: () => child.kill(), exited: child.exited };
@@ -210,7 +210,7 @@ describe('process identity', () => {
     }
   });
 
-  testPosix('a live process that is not OMPChamber is mismatched', async () => {
+  testPosix('a live process that is not Kabmo is mismatched', async () => {
     const child = spawnMismatched();
     try {
       expect(isProcessAlive(child.pid)).toBe(true);
@@ -233,7 +233,7 @@ describe('findOccupant with no listener on the port', () => {
   });
 
   testPosix('a live but mismatched PID is not an occupant', async () => {
-    // A recycled PID: alive, but demonstrably not an OMPChamber server.
+    // A recycled PID: alive, but demonstrably not an Kabmo server.
     const child = spawnMismatched();
     try {
       writeInstanceRecord(record(FREE_PORT, { pid: child.pid }));

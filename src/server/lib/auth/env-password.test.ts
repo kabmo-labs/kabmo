@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { resolveRunPassword, UI_PASSWORD_FLAG } from '@/server/lib/auth/env-password';
-import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
 import { terminalEnv } from '@/server/lib/terminal/shell';
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 

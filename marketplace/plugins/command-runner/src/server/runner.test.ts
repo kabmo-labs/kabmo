@@ -256,7 +256,7 @@ describe('RunRegistry', () => {
 
   test('the chamber host env is not inherited by the command', async () => {
     // The reported bug: the Runner panel's `bun run dev` failed with "Port 3001
-    // is already served by OMPChamber" because this plugin's server half runs
+    // is already served by Kabmo" because this plugin's server half runs
     // INSIDE the chamber's process, so the `Bun.env` it spawns with is the
     // CHAMBER's — `PORT` was the port the chamber itself listens on. The same
     // command in a plain terminal (where `PORT` is unset) ran on 3000.

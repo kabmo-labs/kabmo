@@ -29,22 +29,22 @@
       "elkjs": [
         "./src/client/stubs/elkjs.ts"
       ],
-      "@ompchamber/plugin-sdk": [
+      "@kabmo-labs/plugin-sdk": [
         "./packages/plugin-sdk/src/index.ts"
       ],
-      "@ompchamber/plugin-sdk/app": [
+      "@kabmo-labs/plugin-sdk/app": [
         "./packages/plugin-sdk/src/app.ts"
       ],
-      "@ompchamber/plugin-sdk/testing": [
+      "@kabmo-labs/plugin-sdk/testing": [
         "./packages/plugin-sdk/src/testing/index.ts"
       ],
-      "@ompchamber/plugin-sdk/testing/app": [
+      "@kabmo-labs/plugin-sdk/testing/app": [
         "./packages/plugin-sdk/src/testing/app.tsx"
       ],
-      "@ompchamber/ui": [
+      "@kabmo-labs/ui": [
         "./packages/ui/src/index.tsx"
       ],
-      "@ompchamber/ui/components": [
+      "@kabmo-labs/ui/components": [
         "./packages/ui/src/components.tsx"
       ]
     },

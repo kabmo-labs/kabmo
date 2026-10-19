@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import type { CommandPaletteRegistration } from '@ompchamber/plugin-sdk';
+import type { CommandPaletteRegistration } from '@kabmo-labs/plugin-sdk';
 import type { ComposerPickItem, ComposerPickKind } from '@/shared/types';
 import { loadComposerItems } from '@/shared/lib/chat/composer/client';
 import type { ListSlotRows } from '@/client/lib/plugins/list-slots';

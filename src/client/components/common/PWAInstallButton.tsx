@@ -71,7 +71,7 @@ export const PWAInstallButton: FunctionComponent = () => {
       <button
         onClick={install}
         className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink"
-        title="Install OMPChamber"
+        title="Install Kabmo"
       >
         <Download size={16} />
       </button>

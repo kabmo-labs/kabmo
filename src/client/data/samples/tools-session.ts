@@ -13,7 +13,7 @@ export const allSampleTools = [
 
 export const sampleUserPrompt = `call tool all of this
 
-# Tool Calling Types — OMPChamber (38)
+# Tool Calling Types — Kabmo (38)
 
 ## Built-in omp (29)
 read  bash  edit  write  ast_grep  ast_edit  ask  debug  eval  github
@@ -47,7 +47,7 @@ export function getSampleToolsSession() {
       thinking: {
         duration: '3.4s',
         summary: 'Execute and render all 38 tool calling types across built-in, hidden, legacy, and dynamic categories.',
-        thought: `1. Received request to demonstrate all 38 tool calling types supported by OMPChamber.
+        thought: `1. Received request to demonstrate all 38 tool calling types supported by Kabmo.
 2. Built-in omp tools (29): read, bash, edit, write, ast_grep, ast_edit, ask, debug, eval, github, glob, grep, lsp, checkpoint, rewind, context_notes, new_context, security_scan, task, hub, todo, web_search, memory_edit, retain, recall, reflect, learn, manage_skill.
 3. Hidden tools (3): think, yield, goal.
 4. Legacy MOCK aliases (5): edit_file, read_file, view_file, create_file, search_fs.

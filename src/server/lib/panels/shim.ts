@@ -29,6 +29,11 @@ export const RUNTIME_SLOT_BY_SPECIFIER: Readonly<Record<string, string>> = {
   'preact/jsx-runtime': 'jsxRuntime',
   'preact/jsx-dev-runtime': 'jsxDevRuntime',
   'preact/compat': 'compat',
+  '@kabmo-labs/plugin-sdk/app': 'sdkApp',
+  '@kabmo-labs/ui': 'ui',
+  '@kabmo-labs/ui/components': 'uiComponents',
+  // Pre-rename bundles and plugin authors still spell these; the host publishes
+  // the same slots under both names, so an old bundle keeps loading.
   '@ompchamber/plugin-sdk/app': 'sdkApp',
   '@ompchamber/ui': 'ui',
   '@ompchamber/ui/components': 'uiComponents',
@@ -55,7 +60,7 @@ export function shimModuleSource(specifier: string, slot: string, names: readonl
     'const runtime = globalThis.__ompchamberPluginRuntime;',
     `if (runtime == null || runtime.${slot} == null) {`,
     `  throw new Error(${JSON.stringify(
-      `Cannot load "${specifier}": this bundle must be loaded by the OMPChamber app, which provides the shared plugin runtime.`,
+      `Cannot load "${specifier}": this bundle must be loaded by the Kabmo app, which provides the shared plugin runtime.`,
     )});`,
     '}',
     `const mod = runtime.${slot};`,

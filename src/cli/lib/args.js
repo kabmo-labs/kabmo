@@ -1,5 +1,5 @@
 /**
- * Command-line argument parsing for the OMPChamber CLI.
+ * Command-line argument parsing for the Kabmo CLI.
  *
  * Pure and side-effect free: it never throws, never exits and never writes
  * to a stream. Callers decide how to react to `unknown` flags.
@@ -210,14 +210,14 @@ export function parseArgs(argv) {
  * Full multi-line help text. Returned (not printed) so the caller owns output.
  */
 export function helpText(bin = 'ompchamber') {
-  return `OMPChamber - Developer web console and diagnostic chamber for AI Oh-My-Pi
+  return `Kabmo - Developer web console and diagnostic chamber for AI Oh-My-Pi
 
 USAGE:
   ${bin} [COMMAND] [OPTIONS]
 
 COMMANDS:
-  serve          Start the OMPChamber web server (default when no command is given)
-  update         Update OMPChamber to the latest version on npm
+  serve          Start the Kabmo web server (default when no command is given)
+  update         Update Kabmo to the latest version on npm
   stop           Stop the instances the CLI started (--port/--all to stop any)
   restart        Stop and start again (every CLI-started instance, or --port <port>)
   status         Show running instances (every one, or --port <port>)

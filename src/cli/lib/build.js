@@ -26,7 +26,7 @@ export function buildProductionBundle(pkgRoot, { onLine } = {}) {
   if (!fs.existsSync(script)) {
     throw new Error(
       `No production build and no build script at ${script}.\n`
-      + 'This install is incomplete — reinstall OMPChamber, or run `ompchamber serve --dev`.',
+      + 'This install is incomplete — reinstall Kabmo, or run `ompchamber serve --dev`.',
     );
   }
 

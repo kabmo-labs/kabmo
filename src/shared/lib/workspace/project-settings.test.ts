@@ -318,8 +318,8 @@ describe('migrateLegacyProjectSettings', () => {
 
   test('falls back to a case-insensitive name match', async () => {
     const db = await freshDb();
-    const id = await insertFolder(db, 'OMPChamber', null);
-    await seedLegacy(db, JSON.stringify([{ name: 'ompchamber', model: 'DeepSeek-R1' }]));
+    const id = await insertFolder(db, 'Kabmo', null);
+    await seedLegacy(db, JSON.stringify([{ name: 'kabmo', model: 'DeepSeek-R1' }]));
 
     await migrateLegacyProjectSettings(db);
     expect((await folderRow(db, id))?.model).toBe('DeepSeek-R1');

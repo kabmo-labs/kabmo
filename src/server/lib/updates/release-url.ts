@@ -1,5 +1,5 @@
 /**
- * Where OMPChamber's release notes live.
+ * Where Kabmo's release notes live.
  *
  * Two questions, two sources, deliberately. The VERSION an install can move to
  * comes from npm (see ./npm) — that is the channel `bun add -g ompchamber@…`
@@ -11,12 +11,10 @@
  */
 
 /**
- * OMPChamber's own repository.
- *
- * Flip this to `kabmo-labs/kabmo` in the same change that transfers the
- * repository; every release and changelog link is built from it.
+ * Kabmo's own repository — the one every release and changelog link is built
+ * from, and the origin a checkout can fast-forward.
  */
-export const REPO = 'rajebdev/ompchamber';
+export const REPO = 'kabmo-labs/kabmo';
 
 /** The releases index. */
 export const RELEASES_URL = `https://github.com/${REPO}/releases`;

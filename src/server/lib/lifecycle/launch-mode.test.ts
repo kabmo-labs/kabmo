@@ -41,7 +41,7 @@ describe('isCliManaged', () => {
     expect(isCliManaged('foreground')).toBe(true);
   });
 
-  test('leaves every instance OMPChamber did not start alone', () => {
+  test('leaves every instance Kabmo did not start alone', () => {
     // `bun run dev`, `bun run start`, a manual run, a systemd/pm2 unit.
     expect(isCliManaged('direct')).toBe(false);
     // A probed or unreadable record never authorises a kill either.

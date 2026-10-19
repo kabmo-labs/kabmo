@@ -24,7 +24,7 @@ import { afterEach, beforeAll, afterAll, describe, expect, test } from 'bun:test
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import type { CommandActionContext } from '@ompchamber/plugin-sdk';
+import type { CommandActionContext } from '@kabmo-labs/plugin-sdk';
 import type { Attachment, ChatMessageData } from '@/shared/types';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { setPluginContext } from '@/client/lib/plugins/context';

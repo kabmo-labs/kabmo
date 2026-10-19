@@ -1,7 +1,7 @@
 {
-  "name": "ompchamber",
-  "version": "4.22.0",
-  "description": "Developer web console and diagnostic chamber for AI Oh-My-Pi — Elysia + Preact on Bun.",
+  "name": "kabmo",
+  "version": "1.0.0",
+  "description": "Web console and diagnostic chamber for AI coding agents — Elysia + Preact on Bun.",
   "license": "UNLICENSED",
   "author": "Wijanarko Putra Rajeb <wijanarko.rajeb@gmail.com>",
   "type": "module",
@@ -14,15 +14,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rajebdev/ompchamber.git"
+    "url": "git+https://github.com/kabmo-labs/kabmo.git"
   },
-  "homepage": "https://github.com/rajebdev/ompchamber#readme",
+  "homepage": "https://github.com/kabmo-labs/kabmo#readme",
   "bugs": {
-    "url": "https://github.com/rajebdev/ompchamber/issues"
+    "url": "https://github.com/kabmo-labs/kabmo/issues"
   },
   "keywords": [
-    "omp",
-    "oh-my-pi",
+    "kabmo",
+    "coding-agent",
     "agent",
     "console",
     "elysia",
@@ -56,8 +56,8 @@
   },
   "dependencies": {
     "@fontsource/fira-code": "^5.3.0",
-    "@ompchamber/plugin-sdk": "workspace:*",
-    "@ompchamber/ui": "workspace:*",
+    "@kabmo-labs/plugin-sdk": "workspace:*",
+    "@kabmo-labs/ui": "workspace:*",
     "@shikijs/langs": "^4.4.3",
     "@shikijs/themes": "^4.4.3",
     "@tailwindcss/postcss": "^4.1.14",

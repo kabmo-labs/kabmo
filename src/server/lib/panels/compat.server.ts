@@ -43,7 +43,8 @@ async function readPackageVersion(dir: string): Promise<string | null> {
 
 /** The running chamber's own versions, resolved once per scan. */
 export async function runningVersions(): Promise<RunningVersions> {
-  const sdkDir = chamberPackageDirs()['@ompchamber/plugin-sdk'];
+  const dirs = chamberPackageDirs();
+  const sdkDir = dirs['@kabmo-labs/plugin-sdk'] ?? dirs['@ompchamber/plugin-sdk'];
   return {
     ompchamber: await readPackageVersion(packageDir()),
     pluginSdk: sdkDir ? await readPackageVersion(sdkDir) : null,

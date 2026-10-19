@@ -34,7 +34,7 @@ export async function loader() {
       runtime: 'bun',
       bun: Bun.version,
       // Identity of the listener itself, read by the CLI and by a starting
-      // server deciding whether this port belongs to OMPChamber: `mode` and
+      // server deciding whether this port belongs to Kabmo: `mode` and
       // `launchMode` are what `status` prints, and the pair with `pid` is what
       // separates a dev server from a stale published build.
       mode: Bun.env.NODE_ENV === 'production' ? 'prod' : 'dev',

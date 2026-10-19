@@ -4,7 +4,7 @@ import { usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
 import { setPluginContext } from '@/client/lib/plugins/context';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
-import type { ContentScriptRegistration } from '@ompchamber/plugin-sdk';
+import type { ContentScriptRegistration } from '@kabmo-labs/plugin-sdk';
 import {
   mountContentScripts,
   unmountAllContentScripts,

@@ -1,7 +1,7 @@
 {
-  "name": "OMPChamber",
-  "description": "Panels bundled with OMPChamber, plus the ones you install from a git URL.",
-  "owner": { "name": "OMPChamber" },
+  "name": "Kabmo",
+  "description": "Panels bundled with Kabmo, plus the ones you install from a git URL.",
+  "owner": { "name": "Kabmo" },
   "plugins": [
     {
       "name": "session-info",

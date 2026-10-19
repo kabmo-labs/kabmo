@@ -45,7 +45,7 @@ export const builtInToolsPart1: ToolCallData[] = [
     output: `23| export function App() {
 24|   return (
 25|     <div className="app">
-26|       <Header title="OMPChamber" />
+26|       <Header title="Kabmo" />
 27|       <main>
 28|         <ChatTimeline sessionId={sessionId} />
 29|       </main>
@@ -210,7 +210,7 @@ Line 68: export interface ToolCallData {
       title: 'Open localhost:3000 and read its title',
       timeout: 30,
     },
-    output: '{"title": "OMPChamber", "url": "http://localhost:3000/", "status": 200, "ready": true}',
+    output: '{"title": "Kabmo", "url": "http://localhost:3000/", "status": 200, "ready": true}',
     status: 'success',
     duration: '420ms',
   },

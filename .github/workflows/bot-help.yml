@@ -23,7 +23,7 @@ jobs:
   help:
     name: help command
     if: |
-      (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo') &&
+      (github.repository == 'kabmo-labs/kabmo' || github.repository == 'kabmo-labs/kabmo') &&
       github.event.comment.user.type != 'Bot' &&
       (github.event.comment.body == format('@{0} help', vars.BOT_MENTION || 'ompchamber-bot') ||
        startsWith(github.event.comment.body, format('@{0} help ', vars.BOT_MENTION || 'ompchamber-bot')))
@@ -79,7 +79,7 @@ jobs:
           - <code>@${MENTION} reproduce [focus]</code> — attempt to reproduce an issue.
           - <code>@${MENTION} help</code> — show this message.
 
-          Automated review verdicts are advisory. They are published as one <code>review:*</code> label and never fail the pull request check, and only <code>review:ready</code> means the pull request is ready for maintainer review. Read <a href="https://github.com/rajebdev/ompchamber/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> before opening one.
+          Automated review verdicts are advisory. They are published as one <code>review:*</code> label and never fail the pull request check, and only <code>review:ready</code> means the pull request is ready for maintainer review. Read <a href="https://github.com/kabmo-labs/kabmo/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> before opening one.
           HELP
 
           if [ -n "$REACTION_ID" ]; then

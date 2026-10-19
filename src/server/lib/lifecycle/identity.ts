@@ -6,7 +6,7 @@
 /**
  * Process identity for a PID recorded for a port.
  *
- * Liveness alone cannot answer "is this PID still an OMPChamber server": after
+ * Liveness alone cannot answer "is this PID still an Kabmo server": after
  * an ungraceful exit the PID can be recycled to an unrelated process, and a
  * liveness-only check then reports a live instance nobody is serving — which
  * either blocks startup on a free port or, worse, lets a stale record name a

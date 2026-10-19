@@ -1,5 +1,5 @@
 /**
- * The "What's new" range: every OMPChamber release between the version installed
+ * The "What's new" range: every Kabmo release between the version installed
  * on disk and the newest one npm serves, newest first, ready to render.
  *
  * The range is the whole point of the popup. A user three releases behind must
@@ -119,7 +119,7 @@ export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
     install,
   };
 
-  if (!latest) return { ...base, error: error ?? 'No OMPChamber release could be resolved' };
+  if (!latest) return { ...base, error: error ?? 'No Kabmo release could be resolved' };
   // The version restarts at 1.0.0, so there is no release RANGE to show: every
   // changelog entry belongs to the old lineage. One synthetic note explains the
   // switch, and the apply path installs the resolved package.
@@ -139,7 +139,7 @@ export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
       error: null,
     };
   }
-  if (!current) return { ...base, error: 'The installed OMPChamber version could not be read' };
+  if (!current) return { ...base, error: 'The installed Kabmo version could not be read' };
   // Nothing to announce. The client only opens the popup when a check reported an
   // update, so this is the race where the install moved between the two reads.
   if (!isNewer(latest, current)) return { ...base, error: null };

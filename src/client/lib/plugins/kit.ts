@@ -6,7 +6,7 @@
 /**
  * Wiring the UI kit to the chamber's own services.
  *
- * `@ompchamber/ui` is a published package, so it cannot import the chamber's
+ * `@kabmo-labs/ui` is a published package, so it cannot import the chamber's
  * source. This module is the host half of that seam: it hands the kit the few
  * services a plugin genuinely cannot reach itself, and it is called ONCE at
  * boot, before any plugin component can mount.
@@ -22,7 +22,7 @@
  *   URL.
  */
 
-import { configureUiKit, type PluginRpcOutcome } from '@ompchamber/ui';
+import { configureUiKit, type PluginRpcOutcome } from '@kabmo-labs/ui';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { pluginContext, subscribePluginContext } from '@/client/lib/plugins/context';

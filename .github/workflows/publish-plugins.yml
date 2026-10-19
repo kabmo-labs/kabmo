@@ -1,6 +1,6 @@
 name: Publish Plugin Packages
 
-# Publishes `@ompchamber/plugin-sdk` and `@ompchamber/ui` — the packages a panel
+# Publishes `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` — the packages a panel
 # plugin imports — to npm.
 #
 # This file is a TRIGGER, not the implementation. The steps live in

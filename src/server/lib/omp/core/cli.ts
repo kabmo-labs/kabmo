@@ -4,7 +4,7 @@
  */
 
 /**
- * Locating the user's installed `omp` CLI. OMPChamber never embeds the
+ * Locating the user's installed `omp` CLI. Kabmo never embeds the
  * (Bun-only) @oh-my-pi SDK — every live-agent capability goes through the
  * omp binary, so its absence is a first-class, user-visible state.
  *

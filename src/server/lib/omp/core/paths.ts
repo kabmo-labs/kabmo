@@ -7,7 +7,7 @@
  * Read-only port of omp-web's agent-directory resolution
  * (omp-web/lib/omp/paths.ts → oh-my-pi packages/utils/src/dirs.ts).
  *
- * Resolves where oh-my-pi keeps its agent state so OMPChamber can *discover*
+ * Resolves where oh-my-pi keeps its agent state so Kabmo can *discover*
  * the same workspaces and sessions the omp agent writes, without owning or
  * mutating them. Covered: PI_CODING_AGENT_DIR override, PI_CONFIG_DIR rename,
  * and the XDG data layout (used only when $XDG_DATA_HOME/omp already exists).

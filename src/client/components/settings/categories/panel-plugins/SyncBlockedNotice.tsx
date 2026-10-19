@@ -62,7 +62,7 @@ export function SyncBlockedNotice({ blocked, busy, onForceSync }: SyncBlockedNot
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void onForceSync(pluginId)}
-                title={`Replace ${record.changed.length} changed file(s) with the copy OMPChamber ships — your edits are lost`}
+                title={`Replace ${record.changed.length} changed file(s) with the copy Kabmo ships — your edits are lost`}
                 className="flex items-center gap-1.5 px-2 py-1 text-[11px] rounded border border-warning/50 text-warning hover:bg-warning/10 disabled:opacity-50"
               >
                 {busy === `force_sync:${pluginId}` ? (

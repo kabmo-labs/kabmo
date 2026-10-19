@@ -18,9 +18,9 @@
  * facts (id, role, text), so they share one component instead of three.
  */
 
-import type { MessageActionRegistration } from '@ompchamber/plugin-sdk';
+import type { MessageActionRegistration } from '@kabmo-labs/plugin-sdk';
 import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
-import { PluginIdProvider } from '@ompchamber/ui';
+import { PluginIdProvider } from '@kabmo-labs/ui';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
 interface PluginMessageActionsProps {

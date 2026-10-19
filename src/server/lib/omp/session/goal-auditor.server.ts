@@ -26,7 +26,7 @@
  * window it occupies is real time the UI can honestly report as "evaluating".
  */
 
-import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 
 export interface GoalAuditAnswers {

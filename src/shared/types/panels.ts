@@ -13,7 +13,7 @@
  * makes when it loads.
  */
 
-import type { PluginSettingDefinition } from '@ompchamber/plugin-sdk';
+import type { PluginSettingDefinition } from '@kabmo-labs/plugin-sdk';
 
 /** Where a contributed panel renders. One panel per position, per plugin. */
 export type PanelPosition = 'right' | 'editor' | 'header';
@@ -61,7 +61,7 @@ export interface PanelPluginManifest {
   /**
    * Host versions this plugin declares it works with. Absent means "any".
    *
-   * `ompchamber` is the app's own version, `pluginSdk` the `@ompchamber/plugin-sdk`
+   * `ompchamber` is the app's own version, `pluginSdk` the `@kabmo-labs/plugin-sdk`
    * version — the two move independently, and a plugin built against a newer
    * contract must be refused rather than allowed to load and misbehave.
    */

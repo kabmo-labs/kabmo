@@ -96,7 +96,7 @@ function run(argv) {
             { separator: true },
             { title: config.loginInstalled ? 'Disable Start at Login' : 'Start at Login', action: toggleLogin },
             { separator: true },
-            { title: 'Quit OMPChamber', action: quit },
+            { title: 'Quit Kabmo', action: quit },
           ];
           for (let index = 0; index < rows.length; index += 1) {
             const row = rows[index];

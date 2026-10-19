@@ -20,7 +20,7 @@
 /** Where a package is published unless the environment redirects the read. */
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
 
-/** OMPChamber's package name before the rename — the fallback and the legacy install. */
+/** Kabmo's package name before the rename — the fallback and the legacy install. */
 export const OMPCHAMBER_PACKAGE = 'ompchamber';
 
 /** The package the product ships as after the rename; asked FIRST. */

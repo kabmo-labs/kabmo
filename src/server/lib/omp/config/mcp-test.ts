@@ -13,7 +13,7 @@
  */
 
 import type { Subprocess } from 'bun';
-import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
 import { isMockMode } from '@/server/mock.server';

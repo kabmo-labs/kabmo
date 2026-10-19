@@ -48,8 +48,8 @@ function readManifest(cwd, dir) {
  * substitutes a `workspace:` spec from THAT record rather than from the
  * manifest on disk. So bumping a package's version and packing a dependent
  * package in the same run publishes the dependency at its PREVIOUS version:
- * measured, `@ompchamber/ui@2.0.0` went to npm declaring
- * `"@ompchamber/plugin-sdk": "1.0.0"` while the SDK was 2.0.0 on the registry —
+ * measured, `@kabmo-labs/ui@2.0.0` went to npm declaring
+ * `"@kabmo-labs/plugin-sdk": "1.0.0"` while the SDK was 2.0.0 on the registry —
  * an install that resolves the old SDK, which is exactly the incompatibility
  * the 2.0.0 release existed to announce.
  *

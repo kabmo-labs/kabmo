@@ -100,7 +100,7 @@ export async function stopInstance(entry, { timeoutMs = STOP_TIMEOUT_MS, deps = 
   if (!confirmedByProbe && deps.getProcessState(pid) !== 'matched') {
     const occupant = port === undefined || port === null ? null : await deps.findOccupant(port, entry?.host);
     if (occupant?.pid !== pid) {
-      // The PID is alive but is not the OMPChamber serving this port (a
+      // The PID is alive but is not the Kabmo serving this port (a
       // recycled PID, a foreign listener, or a port nothing holds): a stranger
       // is never signalled, and the stale record is the only thing to remove.
       await dropRecord();

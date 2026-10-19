@@ -133,7 +133,7 @@ export function ensureTlsCertificate(): EnsureTlsResult {
       '-keyout', keyPath,
       '-out', certPath,
       '-days', '3650',
-      '-subj', '/CN=OMPChamber',
+      '-subj', '/CN=Kabmo',
       // One SAN entry per name; openssl rejects a duplicate list.
       '-addext', `subjectAltName=${subjectAltNames().join(',')}`,
     ],

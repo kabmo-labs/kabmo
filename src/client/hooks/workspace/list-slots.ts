@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import type { KeyedRegistration, ListSlotName, SlotContextProps } from '@ompchamber/plugin-sdk';
+import type { KeyedRegistration, ListSlotName, SlotContextProps } from '@kabmo-labs/plugin-sdk';
 import { listSlotRows, subscribeListSlots, type ListSlotRows } from '@/client/lib/plugins/list-slots';
 import { pluginContext, subscribePluginContext } from '@/client/lib/plugins/context';
 

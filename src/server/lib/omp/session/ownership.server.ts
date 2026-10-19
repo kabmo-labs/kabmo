@@ -74,7 +74,7 @@ export class SessionOwnedElsewhereError extends Error {
   readonly ownership: SessionOwnership;
 
   constructor(sessionId: string, ownership: SessionOwnership) {
-    const where = ownership.owner ? ` (OMPChamber on port ${ownership.owner.port})` : '';
+    const where = ownership.owner ? ` (Kabmo on port ${ownership.owner.port})` : '';
     super(`This session is being run by another process${where}. Open it there instead of starting a second writer.`);
     this.name = 'SessionOwnedElsewhereError';
     this.sessionId = sessionId;

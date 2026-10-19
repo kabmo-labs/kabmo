@@ -6,7 +6,7 @@
 /**
  * POST /api/chamber/restart — stop this instance and serve it again.
  *
- * The settings sidebar's "Restart OMPChamber" button. It is the same operation
+ * The settings sidebar's "Restart Kabmo" button. It is the same operation
  * `ompchamber restart --port <port>` performs, armed as a detached child once
  * the response has left (`RESTART_GRACE_MS`), because a process cannot replace
  * itself while it still holds the port. The console then waits for a process

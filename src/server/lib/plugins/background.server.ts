@@ -20,7 +20,7 @@
 
 import { parseCron, parseInterval, nextRunAfter, validateSchedule } from '@/shared/lib/schedule/parse';
 import type { ScheduleKind } from '@/shared/types/schedule';
-import type { PluginBackgroundApi } from '@ompchamber/plugin-sdk';
+import type { PluginBackgroundApi } from '@kabmo-labs/plugin-sdk';
 
 /** One declared service, with the plugin it belongs to. */
 export interface PluginService {

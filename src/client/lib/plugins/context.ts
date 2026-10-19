@@ -19,7 +19,7 @@
  * settings pane — each of which would be a place to forget it.
  */
 
-import type { PanelContext } from '@ompchamber/ui';
+import type { PanelContext } from '@kabmo-labs/ui';
 import { THEME_CHANGED_EVENT, currentThemeId } from '@/client/hooks/ui/theme';
 
 type Listener = (context: PanelContext) => void;

@@ -87,7 +87,7 @@ describe('projectOf', () => {
 describe('describeProcess', () => {
   test('the chamber server names itself, not its entry file', () => {
     const label = describeProcess(proc(1, ['bun', '/path/index.js', '--ompchamber-server']), { now: NOW });
-    expect(label.title).toBe('OMPChamber server');
+    expect(label.title).toBe('Kabmo server');
     expect(label.detail).toContain('the server itself');
   });
 

@@ -1,8 +1,8 @@
 {
-  "name": "@ompchamber/plugin-sdk",
-  "version": "2.1.3",
+  "name": "@kabmo-labs/plugin-sdk",
+  "version": "1.0.0",
   "type": "module",
-  "description": "The contract between a panel plugin and the OMPChamber host.",
+  "description": "The contract between a panel plugin and the Kabmo host.",
   "exports": {
     ".": "./src/index.ts",
     "./app": "./src/app.ts",
@@ -10,12 +10,12 @@
     "./testing/app": "./src/testing/app.tsx"
   },
   "peerDependencies": {
-    "@ompchamber/ui": "*",
+    "@kabmo-labs/ui": "*",
     "happy-dom": "*",
     "preact": "^10.29.8"
   },
   "peerDependenciesMeta": {
-    "@ompchamber/ui": {
+    "@kabmo-labs/ui": {
       "optional": true
     },
     "happy-dom": {
@@ -31,12 +31,12 @@
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rajebdev/ompchamber.git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
     "directory": "packages/plugin-sdk"
   },
-  "homepage": "https://github.com/rajebdev/ompchamber#readme",
+  "homepage": "https://github.com/kabmo-labs/kabmo#readme",
   "bugs": {
-    "url": "https://github.com/rajebdev/ompchamber/issues"
+    "url": "https://github.com/kabmo-labs/kabmo/issues"
   },
   "keywords": [
     "ompchamber",

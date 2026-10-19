@@ -21,7 +21,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { requireServices, uiKitServices } from '@ompchamber/ui';
+import { requireServices, uiKitServices } from '@kabmo-labs/ui';
 import { definePluginApp } from '../app';
 import {
   createFakeChamberHost,

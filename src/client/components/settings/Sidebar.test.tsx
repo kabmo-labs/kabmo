@@ -77,7 +77,7 @@ describe('SettingsSidebar bottom actions', () => {
     expect(button(root, 'Reload OMP').textContent).toContain('Reload OMP');
     // The restart button sits beside it at 11px; a truncated label would read
     // "Restart" and lose which thing is being restarted.
-    expect(button(root, 'Restart OMPChamber').textContent).toContain('Restart OMPChamber');
+    expect(button(root, 'Restart Kabmo').textContent).toContain('Restart Kabmo');
   });
 
   test('each button reaches its own action', () => {
@@ -87,7 +87,7 @@ describe('SettingsSidebar bottom actions', () => {
     act(() => button(root, 'Reload OMP').click());
     expect(clicked).toEqual({ reload: 1, restart: 0 });
 
-    act(() => button(root, 'Restart OMPChamber').click());
+    act(() => button(root, 'Restart Kabmo').click());
     expect(clicked).toEqual({ reload: 1, restart: 1 });
   });
 
@@ -113,6 +113,6 @@ describe('SettingsSidebar bottom actions', () => {
     );
 
     expect(button(container, 'Reload OMP').disabled).toBe(true);
-    expect(button(container, 'Restart OMPChamber').disabled).toBe(true);
+    expect(button(container, 'Restart Kabmo').disabled).toBe(true);
   });
 });

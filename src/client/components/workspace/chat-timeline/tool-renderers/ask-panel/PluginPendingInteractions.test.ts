@@ -27,8 +27,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from '
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import type { PendingInteractionProps } from '@ompchamber/plugin-sdk';
-import { usePluginId } from '@ompchamber/ui';
+import type { PendingInteractionProps } from '@kabmo-labs/plugin-sdk';
+import { usePluginId } from '@kabmo-labs/ui';
 import { AskPanel } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel';
 import { GroupedAsk } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/GroupedAsk';
 import { PluginPendingInteractions } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/PluginPendingInteractions';

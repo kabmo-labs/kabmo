@@ -33,17 +33,17 @@ async function restartInstances(options, ctx) {
   for (const entry of await liveInstances(options)) {
     if (!isCliManaged(entry.launchMode)) {
       skipped.push({ port: entry.port, pid: entry.pid, launchMode: entry.launchMode });
-      log(`Skipping OMPChamber on port ${entry.port}: ${skipRestartNote(entry.launchMode)}.`);
+      log(`Skipping Kabmo on port ${entry.port}: ${skipRestartNote(entry.launchMode)}.`);
       continue;
     }
 
-    log(`Restarting OMPChamber on port ${entry.port} (pid ${entry.pid})...`);
+    log(`Restarting Kabmo on port ${entry.port} (pid ${entry.pid})...`);
     // The stop decides whether a start can happen: a server still holding the
     // port would make the spawn fail on the port guard, which reads as the
     // restart's own failure. Name the real cause instead.
     const gone = await stopInstance(entry, { timeoutMs: STOP_TIMEOUT_MS });
     if (!gone) {
-      warn(`OMPChamber on port ${entry.port} (pid ${entry.pid}) is still running — it was not restarted.`);
+      warn(`Kabmo on port ${entry.port} (pid ${entry.pid}) is still running — it was not restarted.`);
       failed.push({ port: entry.port, pid: entry.pid });
       continue;
     }

@@ -80,7 +80,7 @@ async function handleStreamingRequest(request: Request) {
           model: modelName,
         });
 
-        // Simulated intelligent streaming — the MOCK-only path for OMPChamber.
+        // Simulated intelligent streaming — the MOCK-only path for Kabmo.
         await handleSimulatedStreaming({
           prompt,
           modelName,

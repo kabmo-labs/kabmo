@@ -142,7 +142,7 @@ export function SettingsSidebar({
         )}
       </div>
 
-      {/* Bottom Actions: Reload OMP + Restart OMPChamber */}
+      {/* Bottom Actions: Reload OMP + Restart Kabmo */}
       <div className="p-2 border-t border-ink/10 flex-shrink-0 bg-canvas flex items-center gap-0.5">
         <button
           type="button"
@@ -159,12 +159,12 @@ export function SettingsSidebar({
           type="button"
           onClick={onRestartChamber}
           disabled={isReloading || isRestarting}
-          title="Stop and start this OMPChamber instance"
-          aria-label="Restart OMPChamber"
+          title="Stop and start this Kabmo instance"
+          aria-label="Restart Kabmo"
           className="flex-1 min-w-0 flex items-center space-x-1 px-1 py-1.5 text-[11px] text-ink/75 hover:text-ink hover:bg-ink/5 rounded-lg transition-colors font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Power size={12} className={`shrink-0 ${isRestarting ? 'animate-pulse text-warning' : 'text-ink/60'}`} />
-          <span className="truncate">{isRestarting ? 'Restarting…' : 'Restart OMPChamber'}</span>
+          <span className="truncate">{isRestarting ? 'Restarting…' : 'Restart Kabmo'}</span>
         </button>
       </div>
     </div>

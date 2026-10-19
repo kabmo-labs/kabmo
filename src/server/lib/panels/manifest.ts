@@ -24,7 +24,7 @@ import type {
   PanelMarketplacePluginEntry,
   PanelPluginManifest,
 } from '@/shared/types';
-import type { PluginSettingDefinition } from '@ompchamber/plugin-sdk';
+import type { PluginSettingDefinition } from '@kabmo-labs/plugin-sdk';
 import { isRecord } from '@/shared/lib/util/guards';
 import { isValidRange } from '@/shared/lib/updates/semver';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';

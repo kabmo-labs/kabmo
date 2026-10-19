@@ -12,8 +12,8 @@
  * `packages.test.js` is what holds them together. Reading the manifest here
  * would make the agreement untestable.
  *
- * **Order is load-bearing.** `@ompchamber/ui` declares
- * `"@ompchamber/plugin-sdk": "workspace:*"`, which Bun rewrites to an exact
+ * **Order is load-bearing.** `@kabmo-labs/ui` declares
+ * `"@kabmo-labs/plugin-sdk": "workspace:*"`, which Bun rewrites to an exact
  * version at publish time from the version `bun.lock` records for the workspace
  * package — not from the manifest on disk. So a `ui` release pins whatever SDK
  * version the lock says, which is why the version plugin refreshes the lock and
@@ -25,11 +25,11 @@ export const RELEASE_PACKAGES = [
   {
     /** Directory under `packages/`, which is also the tag's prefix. */
     dir: 'packages/plugin-sdk',
-    name: '@ompchamber/plugin-sdk',
+    name: '@kabmo-labs/plugin-sdk',
   },
   {
     dir: 'packages/ui',
-    name: '@ompchamber/ui',
+    name: '@kabmo-labs/ui',
   },
 ];
 
@@ -45,7 +45,7 @@ export function tagPrefix(entry) {
  * reads from package.json's `repository` field — NOT from the clone's `origin`.
  * A rehearsal in a scratch clone therefore still writes to the REAL remote.
  * Measured: a scratch-clone run pushed two release commits and two tags to
- * `github.com/rajebdev/ompchamber`, because the scratch remote was never
+ * `github.com/kabmo-labs/kabmo`, because the scratch remote was never
  * consulted. Nothing was published (the tag push raises no workflow run, and
  * this pipeline does not publish), but the remote branch moved and had to be
  * reverted by hand.

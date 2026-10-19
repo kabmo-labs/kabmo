@@ -26,9 +26,9 @@ import * as hooks from 'preact/hooks';
 import * as jsxRuntime from 'preact/jsx-runtime';
 import * as jsxDevRuntime from 'preact/jsx-dev-runtime';
 import * as compat from 'preact/compat';
-import * as ui from '@ompchamber/ui';
-import * as uiComponents from '@ompchamber/ui/components';
-import { configureUiKit, uiKitServices, type PanelContext, type UiKitServices } from '@ompchamber/ui';
+import * as ui from '@kabmo-labs/ui';
+import * as uiComponents from '@kabmo-labs/ui/components';
+import { configureUiKit, uiKitServices, type PanelContext, type UiKitServices } from '@kabmo-labs/ui';
 import * as sdkApp from '../app';
 import {
   isPluginAppDefinition,

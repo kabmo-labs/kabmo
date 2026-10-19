@@ -67,7 +67,7 @@ export function getXtermTheme(themeId: string) {
  * face that is absent is simply skipped by the normal fallback chain, so
  * listing many costs nothing.
  *
- * `'OMPChamber Nerd Symbols'` is the one the chamber bundles itself
+ * `'Kabmo Nerd Symbols'` is the one the chamber bundles itself
  * (`src/shared/lib/fonts/nerd-symbols.css`), and it is deliberately LAST: a
  * machine that already has a Nerd Font renders from it and never fetches these
  * bytes, while a phone — which has none — falls through to it instead of
@@ -92,7 +92,7 @@ export const XTERM_GLYPH_FALLBACKS =
  * `@font-face` in `nerd-symbols.css` — the two are one contract, which is why
  * the name is a constant rather than a literal in each file.
  */
-export const NERD_SYMBOLS_FAMILY = 'OMPChamber Nerd Symbols';
+export const NERD_SYMBOLS_FAMILY = 'Kabmo Nerd Symbols';
 
 export const XTERM_FONT_FAMILY =
   `'Fira Code', ${XTERM_GLYPH_FALLBACKS}, '${NERD_SYMBOLS_FAMILY}', Menlo, Monaco, 'Courier New', monospace`;

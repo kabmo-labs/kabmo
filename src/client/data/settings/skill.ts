@@ -117,7 +117,7 @@ description: "Comprehensive integration toolkit for Microsoft Foundry AI ecosyst
 
 ## Foundry Integration
 - Authenticate using Azure Managed Identity or API secret tokens.
-- Telemetry events stream directly into OMPChamber Inspector.`,
+- Telemetry events stream directly into Kabmo Inspector.`,
   },
   {
     id: 'skill-security-research',

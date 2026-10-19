@@ -6,8 +6,8 @@
       "name": "ompchamber",
       "dependencies": {
         "@fontsource/fira-code": "^5.3.0",
-        "@ompchamber/plugin-sdk": "workspace:*",
-        "@ompchamber/ui": "workspace:*",
+        "@kabmo-labs/plugin-sdk": "workspace:*",
+        "@kabmo-labs/ui": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
         "@tailwindcss/postcss": "^4.1.14",
@@ -49,24 +49,24 @@
       },
     },
     "packages/plugin-sdk": {
-      "name": "@ompchamber/plugin-sdk",
-      "version": "2.1.3",
+      "name": "@kabmo-labs/plugin-sdk",
+      "version": "1.0.0",
       "peerDependencies": {
-        "@ompchamber/ui": "*",
+        "@kabmo-labs/ui": "*",
         "happy-dom": "*",
         "preact": "^10.29.8",
       },
       "optionalPeers": [
-        "@ompchamber/ui",
+        "@kabmo-labs/ui",
         "happy-dom",
         "preact",
       ],
     },
     "packages/ui": {
-      "name": "@ompchamber/ui",
-      "version": "2.3.0",
+      "name": "@kabmo-labs/ui",
+      "version": "1.0.0",
       "dependencies": {
-        "@ompchamber/plugin-sdk": "workspace:*",
+        "@kabmo-labs/plugin-sdk": "workspace:*",
         "preact": "^10.29.8",
       },
     },
@@ -120,6 +120,10 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
+    "@kabmo-labs/plugin-sdk": ["@kabmo-labs/plugin-sdk@workspace:packages/plugin-sdk"],
+
+    "@kabmo-labs/ui": ["@kabmo-labs/ui@workspace:packages/ui"],
+
     "@mermaid-js/parser": ["@mermaid-js/parser@2.0.0", "", { "dependencies": { "@chevrotain/types": "~11.1.2" } }, "sha512-K8BeapFUfrfxbRAUQAG5oBOCwo1+bNWzaVnPxTCutkfrTBn6T/j91FIhqxWJ32SUeQ9T3iy1zcmPZ5ROZEvDrg=="],
 
     "@octokit/auth-token": ["@octokit/auth-token@6.0.0", "", {}, "sha512-P4YJBPdPSpWTQ1NU4XYdvHvXJJDxM6YwpS0FZHRgP7YFkdVxsWcpWGy/NVqlAA7PcPCnMacXlRm1y2PFZRWL/w=="],
@@ -143,10 +147,6 @@
     "@octokit/request-error": ["@octokit/request-error@7.1.2", "", { "dependencies": { "@octokit/types": "^18.0.0" } }, "sha512-XZRuT3xZ84D3gYErI1DZvhJ33dCWVV6uzBtWkaBB4TvA/L6eOeTZodxLFVB44bBEEo3vEx7y00UfX1tBLrtLRg=="],
 
     "@octokit/types": ["@octokit/types@18.0.0", "", { "dependencies": { "@octokit/openapi-types": "^29.0.1" } }, "sha512-l6bAF43PNxkJp6g+W4PjoUSSkxHomXw2nOum5CTftJz1NlV3vu93NImgOYtLf6CbBUb5j+fiuzW0PPQ5JTSvZA=="],
-
-    "@ompchamber/plugin-sdk": ["@ompchamber/plugin-sdk@workspace:packages/plugin-sdk"],
-
-    "@ompchamber/ui": ["@ompchamber/ui@workspace:packages/ui"],
 
     "@playwright/test": ["@playwright/test@1.64.0", "", { "dependencies": { "playwright": "1.64.0" }, "bin": { "playwright": "cli.js" } }, "sha512-oTN9FNYuN6bqQMwiho6jJKLCG2/QOYCixGXuCjRmzOq23eODeukuY2XiAVoVpAECbuezMt1MHQjAiQxK8F+Y+g=="],
 

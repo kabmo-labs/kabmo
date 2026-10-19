@@ -20,7 +20,7 @@
 
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { pluginTopic } from '@/shared/lib/plugins/protocol';
-import type { PluginJson, PluginRealtimeApi } from '@ompchamber/plugin-sdk';
+import type { PluginJson, PluginRealtimeApi } from '@kabmo-labs/plugin-sdk';
 
 /**
  * The last value each plugin topic holds, process-wide.

@@ -61,9 +61,9 @@ DOCKERFILE
 # Every `node_modules` in the tree is OVERLAID with a volume, and that is not a
 # speed trick — it is a correctness one. The host's install is a Bun workspace
 # whose member symlinks are ABSOLUTE macOS paths (`marketplace/plugins/…/
-# node_modules/@ompchamber/ui -> /Users/<name>/…/packages/ui`), so a container
+# node_modules/@kabmo-labs/ui -> /Users/<name>/…/packages/ui`), so a container
 # that mounts the tree read-write resolves them to nothing: six suites died with
-# `ENOENT reading "…/node_modules/@ompchamber/ui"` while the same suites passed
+# `ENOENT reading "…/node_modules/@kabmo-labs/ui"` while the same suites passed
 # on the host. The overlay also keeps `bun install` inside the container from
 # rewriting the host's tree, which it did once (the whole install was deleted).
 NODE_MODULES_OVERLAYS=(

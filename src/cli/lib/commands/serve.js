@@ -1,4 +1,4 @@
-// `ompchamber serve` — start the OMPChamber server.
+// `ompchamber serve` — start the Kabmo server.
 //
 // Two flags live here beyond the server's own options, and both are about the
 // process tree rather than about the listener:
@@ -147,7 +147,7 @@ export async function run(options, ctx) {
     // CLI reports it immediately instead of spawning a child that exits during
     // the health wait. Nothing is stopped: freeing a port is `ompchamber stop`.
     fail(
-      `Port ${port} is already served by OMPChamber (pid ${existing.pid}, ${existing.mode}).`
+      `Port ${port} is already served by Kabmo (pid ${existing.pid}, ${existing.mode}).`
       + '\n  Nothing was stopped — a starting instance never stops another one.'
       + `\n  Stop it first:  ompchamber stop --port ${port}`
       + '\n  Or start on another port:  ompchamber serve --port <port>',
@@ -191,7 +191,7 @@ export async function run(options, ctx) {
     const written = installAutostart({ argv, port, logFile: getLogFilePath(port) });
     if (json) printJson({ startup: true, entry: written.path ?? 'windows-run-key' });
     else if (written.path) ok(`Registered login entry: ${written.path}`);
-    else ok('Registered the OMPChamber tray to start at login (Windows Run key).');
+    else ok('Registered the Kabmo tray to start at login (Windows Run key).');
     if (resolvedPassword?.password && !credentialPath) {
       warn(
         `The login entry could not store your UI password, so it will start WITHOUT one.`
@@ -219,7 +219,7 @@ export async function run(options, ctx) {
   });
 
   if (!quiet && !json) {
-    log(`Starting OMPChamber (${mode}) on ${entry.url} (pid ${entry.pid})...`);
+    log(`Starting Kabmo (${mode}) on ${entry.url} (pid ${entry.pid})...`);
   }
 
   const health = await waitForHealth(port, host, undefined, tls);
@@ -234,7 +234,7 @@ export async function run(options, ctx) {
     return;
   }
 
-  ok(`OMPChamber ${mode} server ready`);
+  ok(`Kabmo ${mode} server ready`);
   log(`  url:   ${entry.url}`);
   log(`  pid:   ${entry.pid}`);
   log(`  logs:  ${entry.logFile}`);
@@ -247,7 +247,7 @@ function runForeground({ pkgRoot, mode, port, host, quiet, resolvedPassword, tls
     : uiPasswordHandover(resolvedPassword, invocation.env);
   const url = `${tls ? 'https' : 'http'}://${probeHost(host)}:${port}`;
   if (!quiet) {
-    log(`Running OMPChamber (${mode}) in the foreground on ${url} (Ctrl+C to stop)...`);
+    log(`Running Kabmo (${mode}) in the foreground on ${url} (Ctrl+C to stop)...`);
   }
   const child = Bun.spawn({
     cmd: [invocation.file, ...invocation.args],

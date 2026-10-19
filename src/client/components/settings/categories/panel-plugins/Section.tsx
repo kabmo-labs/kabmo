@@ -101,7 +101,7 @@ export function PanelPluginsSection() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs text-ink/60 max-w-xl">
-          Panels bundled with OMPChamber, plus the ones you install from a git URL. A plugin is local code the
+          Panels bundled with Kabmo, plus the ones you install from a git URL. A plugin is local code the
           chamber loads into this page and renders in its own tree, so it looks and behaves like the rest of the
           app — treat it the way you would a VS Code extension.
         </p>

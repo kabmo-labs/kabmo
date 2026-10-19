@@ -1,5 +1,5 @@
 /**
- * OMPChamber self-update.
+ * Kabmo self-update.
  *
  * Resolves the newest published release, works out how this copy was installed
  * (./install-method), then replaces it in place:
@@ -19,7 +19,7 @@ import { packageDir } from '@/server/lib/fs/package-root';
 import { OMPCHAMBER_PACKAGE, resolveUpdatePackage } from '@/server/lib/updates/npm';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import {
-  KABMO_REPO_URL,
+  REPO_URL,
   detectInstallMethod,
   isManualMethod,
   manualUpdateCommand,
@@ -157,7 +157,7 @@ export async function resolveOmpChamberVersion(pkgRoot = DEFAULT_PKG_ROOT): Prom
     package: target.latest ? target.name : null,
     renamed,
     updateAvailable: renamed || Boolean(current && target.latest && isNewer(target.latest, current)),
-    error: target.latest ? null : 'No OMPChamber release could be resolved',
+    error: target.latest ? null : 'No Kabmo release could be resolved',
   };
 }
 
@@ -278,7 +278,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
   const resolved = { current: info.current, latest: info.latest, package: info.package, releaseUrl: info.latest ? releaseTagUrl(info.latest) : null };
 
   if (!info.latest) {
-    return fail(info.error ?? 'No OMPChamber release could be resolved', resolved);
+    return fail(info.error ?? 'No Kabmo release could be resolved', resolved);
   }
 
   if (!info.updateAvailable && !force && info.current) {
@@ -287,7 +287,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
       ...base,
       ...resolved,
       version: info.latest,
-      message: `OMPChamber ${info.current} is already up to date.`,
+      message: `Kabmo ${info.current} is already up to date.`,
     };
   }
 
@@ -296,7 +296,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     // to. Re-cloning is the only safe move: `reset --hard` would discard local
     // commits a clean work tree can still hold.
     return fail(
-      `This checkout predates the rename to ${info.package}. Re-clone it: git clone ${KABMO_REPO_URL}`,
+      `This checkout predates the rename to ${info.package}. Re-clone it: git clone ${REPO_URL}`,
       { ...resolved, manual: true, version: info.latest },
     );
   }
@@ -344,7 +344,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     version: info.latest,
     message: info.renamed
       ? `Switched to ${info.package} v${info.latest} (${context.method}).`
-      : `OMPChamber updated to v${info.latest} (${context.method}).`,
+      : `Kabmo updated to v${info.latest} (${context.method}).`,
     output: tail(collected.join('\n\n')),
   };
 }

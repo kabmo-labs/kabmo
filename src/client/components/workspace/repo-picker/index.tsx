@@ -27,7 +27,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'preact/hooks';
-import { RepoPicker } from '@ompchamber/ui';
+import { RepoPicker } from '@kabmo-labs/ui';
 import { RepoModal } from '@/client/components/workspace/repo-picker/Modal';
 import { repoLabel, repoShortLabel } from '@/shared/lib/fs/repo-label';
 

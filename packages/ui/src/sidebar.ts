@@ -24,7 +24,7 @@
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { requireServices } from './services';
-import type { SidebarThread, SidebarThreadActions, SidebarThreadsState } from '@ompchamber/plugin-sdk';
+import type { SidebarThread, SidebarThreadActions, SidebarThreadsState } from '@kabmo-labs/plugin-sdk';
 
 /**
  * The sessions the sidebar is showing.

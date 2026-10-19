@@ -1,5 +1,5 @@
 /**
- * Shared shapes for the "Check for updates" feature: OMPChamber and the
+ * Shared shapes for the "Check for updates" feature: Kabmo and the
  * oh-my-pi (`omp`) binary, both resolved from npm — the registry each install
  * actually comes from. The client depends on these field names and null
  * semantics, so keep them stable.
@@ -17,7 +17,7 @@ export interface UpdateTargetInfo {
   installed: boolean;
   /** Human-readable error/status note, or null. */
   error: string | null;
-  /** OMPChamber only: release title/url when a release was found. */
+  /** Kabmo only: release title/url when a release was found. */
   releaseName?: string | null;
   releaseUrl?: string | null;
 }
@@ -46,7 +46,7 @@ export interface ReleaseNote {
 }
 
 /**
- * How this OMPChamber copy can replace itself, so the popup knows whether to
+ * How this Kabmo copy can replace itself, so the popup knows whether to
  * offer a button or a command. `install.method` is what the manual-command
  * branch keys off, and `install.command` is the exact command to run (null for
  * the methods that update themselves).
@@ -81,7 +81,7 @@ export interface UpdateChangelog {
 export interface UpdateApplyResult {
   success: boolean;
   target: UpdateTarget;
-  /** true when the update must be done manually (OMPChamber for now). */
+  /** true when the update must be done manually (Kabmo for now). */
   manual: boolean;
   message: string;
   /** Captured command output for the omp update. */

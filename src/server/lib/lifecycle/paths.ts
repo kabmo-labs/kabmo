@@ -4,7 +4,7 @@
  */
 
 /**
- * Where OMPChamber keeps per-port runtime state.
+ * Where Kabmo keeps per-port runtime state.
  *
  * Both the server and the CLI need these paths, and they must agree: the server
  * owns the record for the port it listens on, and the CLI reads that same record
@@ -18,7 +18,7 @@ import os from 'os';
 import path from 'path';
 
 /**
- * Root of OMPChamber's own state (~/.ompchamber, or OMPCHAMBER_DATA_DIR).
+ * Root of Kabmo's own state (~/.ompchamber, or OMPCHAMBER_DATA_DIR).
  *
  * `os.homedir()` rather than HOME: a process started without a shell (cron,
  * launchd, a service) has no HOME, and an empty value would silently move the

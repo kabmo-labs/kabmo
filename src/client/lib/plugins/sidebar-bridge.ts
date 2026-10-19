@@ -21,7 +21,7 @@
  * the unsubscribe it was handed, and a module-level Set would come back empty.
  */
 
-import type { SidebarThread, SidebarThreadActions } from '@ompchamber/plugin-sdk';
+import type { SidebarThread, SidebarThreadActions } from '@kabmo-labs/plugin-sdk';
 import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import { pluginContext } from '@/client/lib/plugins/context';

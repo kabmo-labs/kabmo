@@ -1,5 +1,5 @@
 /**
- * How this OMPChamber copy was put on disk, and therefore how it can replace
+ * How this Kabmo copy was put on disk, and therefore how it can replace
  * itself. Detection is pure path/flag inspection so the branch table stays
  * unit-testable: the caller supplies the one fact that needs a subprocess
  * (whether `pkgRoot` is a git work tree, and where its `origin` points).
@@ -25,11 +25,11 @@ export interface DetectInstallInput {
   gitRemote?: string | null;
 }
 
-/** OMPChamber's own repository — only its checkout can fast-forward to a release tag. */
-export const REPO_URL = 'https://github.com/rajebdev/ompchamber.git';
+/** Kabmo's own repository — only its checkout can fast-forward to a release tag. */
+export const REPO_URL = 'https://github.com/kabmo-labs/kabmo.git';
 
-/** The repository after the rename. A checkout of either is fast-forwardable. */
-export const KABMO_REPO_URL = 'https://github.com/kabmo-labs/kabmo.git';
+/** The pre-rename repository; a checkout of either is recognized as updatable. */
+export const LEGACY_REPO_URL = 'https://github.com/rajebdev/ompchamber.git';
 
 // Bun's global install layout, independent of where BUN_INSTALL points.
 const BUN_GLOBAL = /(^|\/)install\/global\/node_modules\//;
@@ -53,7 +53,7 @@ export function detectInstallMethod({ pkgRoot, gitWorkTree, gitRemote }: DetectI
   }
 
   if (gitWorkTree && REPO_REMOTE.test(String(gitRemote ?? '').replace(/\\/g, '/'))) {
-    return { method: 'git', reason: 'git checkout of the OMPChamber repository' };
+    return { method: 'git', reason: 'git checkout of the Kabmo repository' };
   }
 
   if (gitWorkTree) {
@@ -74,7 +74,7 @@ export function isManualMethod(method: InstallMethod): boolean {
 /**
  * The exact command a user must run when the update cannot be automatic.
  *
- * Both branches use `bun add -g`: OMPChamber is a Bun package and the repo's own
+ * Both branches use `bun add -g`: Kabmo is a Bun package and the repo's own
  * toolchain contract is Bun-only (see AGENTS.md — npm/npx/yarn/pnpm are never
  * used here), so a copy under `node_modules` is still replaced with `bun`, not
  * with the package manager that happened to install it. The method is reported

@@ -22,7 +22,7 @@
 
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@/server/lib/db/client';
-import type { PluginSettingDefinition, PluginSettingsApi } from '@ompchamber/plugin-sdk';
+import type { PluginSettingDefinition, PluginSettingsApi } from '@kabmo-labs/plugin-sdk';
 
 export type PluginSettingsValues = Record<string, string | number | boolean>;
 

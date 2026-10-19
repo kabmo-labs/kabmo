@@ -23,7 +23,7 @@ export interface ActionsProps {
   data: UpdateChangelog | null;
   updates: UseUpdatesResult;
   onClose: () => void;
-  /** Open the About modal and start the OMPChamber update there. */
+  /** Open the About modal and start the Kabmo update there. */
   onRequestUpdate: () => void;
 }
 

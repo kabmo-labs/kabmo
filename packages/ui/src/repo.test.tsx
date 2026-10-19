@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { configureUiKit, useRepoScope, type RepoScope, type UiKitServices } from '@ompchamber/ui';
+import { configureUiKit, useRepoScope, type RepoScope, type UiKitServices } from '@kabmo-labs/ui';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

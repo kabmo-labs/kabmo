@@ -4,7 +4,7 @@
  */
 
 /**
- * Read-only orchestrator over the oh-my-pi agent directory — the OMPChamber
+ * Read-only orchestrator over the oh-my-pi agent directory — the Kabmo
  * analog of omp-web's lib/session-reader.ts sidebar data path.
  *
  * Composes the pieces of the omp-web sidebar data source so a future UI fork

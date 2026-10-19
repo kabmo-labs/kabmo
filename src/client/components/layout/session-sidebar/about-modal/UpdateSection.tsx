@@ -20,7 +20,7 @@ interface UpdateRowProps {
 const actionClassName = 'inline-flex items-center gap-1.5 rounded-md border border-ink/20 px-2.5 py-1.5 text-[11px] font-medium text-ink transition-colors hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50';
 
 function UpdateRow({ target, info, applying, disabled, onApply }: UpdateRowProps) {
-  const label = target === 'ompchamber' ? 'OMPChamber' : 'Oh-My-Pi';
+  const label = target === 'ompchamber' ? 'Kabmo' : 'Oh-My-Pi';
   const versionText = `v${info.current ?? '…'} → v${info.latest ?? '…'}`;
 
   return (

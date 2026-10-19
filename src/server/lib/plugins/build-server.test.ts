@@ -9,7 +9,7 @@
  * The bundled example is the fixture on purpose: it declares BOTH an `app` and
  * a `server`, so this suite pins the two-target build against the one shape
  * that exercises both. A unit test with a synthetic source would pass while the
- * real plugin's `server.ts` failed to resolve `@ompchamber/plugin-sdk` — which
+ * real plugin's `server.ts` failed to resolve `@kabmo-labs/plugin-sdk` — which
  * is exactly the failure the server target exists to avoid.
  *
  * Slow (an install plus two bundles), so the assertions are grouped into one

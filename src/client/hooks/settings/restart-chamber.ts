@@ -4,7 +4,7 @@
  */
 
 /**
- * The settings sidebar's "Restart OMPChamber" action.
+ * The settings sidebar's "Restart Kabmo" action.
  *
  * A restart replaces the process serving this page, so the sequence is the
  * same one `POST /api/updates/apply` uses for its armed restart: read the
@@ -93,7 +93,7 @@ export function useRestartChamber(options: UseRestartChamberOptions = {}): UseRe
       }
       return { ok: false, message: 'The restart was cancelled.' };
     } catch (error) {
-      return { ok: false, message: error instanceof Error ? error.message : 'Failed to restart OMPChamber.' };
+      return { ok: false, message: error instanceof Error ? error.message : 'Failed to restart Kabmo.' };
     } finally {
       setIsRestarting(false);
     }

@@ -42,7 +42,7 @@ import { resetLoadedBundles } from '@/client/lib/plugins/loader';
 import { pluginContext } from '@/client/lib/plugins/context';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_PANELS } from '@/shared/lib/realtime/protocol';
-import type { ContentScriptContext } from '@ompchamber/plugin-sdk';
+import type { ContentScriptContext } from '@kabmo-labs/plugin-sdk';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
 import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';

@@ -25,8 +25,8 @@
 import type {
   ListSlotName,
   KeyedRegistration,
-} from '@ompchamber/plugin-sdk';
-import { GLOBALLY_KEYED_SLOTS } from '@ompchamber/plugin-sdk';
+} from '@kabmo-labs/plugin-sdk';
+import { GLOBALLY_KEYED_SLOTS } from '@kabmo-labs/plugin-sdk';
 
 /** One contributed row, with the plugin it came from already attached. */
 export interface ListSlotEntry<T = KeyedRegistration> {

@@ -28,8 +28,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { configureUiKit, PluginIdProvider, useComposer, useRealtime, useRpc } from '@ompchamber/ui';
-import { makeUiKitServices, type FakeUiKit } from '@ompchamber/plugin-sdk/testing';
+import { configureUiKit, PluginIdProvider, useComposer, useRealtime, useRpc } from '@kabmo-labs/ui';
+import { makeUiKitServices, type FakeUiKit } from '@kabmo-labs/plugin-sdk/testing';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};

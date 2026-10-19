@@ -173,7 +173,7 @@ describe('installPanelPluginFromGit', () => {
     fs.mkdirSync(root, { recursive: true });
     fs.writeFileSync(
       getMarketplaceCatalogPath(),
-      JSON.stringify({ name: 'OMPChamber', description: 'keep me', plugins: [{ name: 'old', source: 'plugins/old' }] }),
+      JSON.stringify({ name: 'Kabmo', description: 'keep me', plugins: [{ name: 'old', source: 'plugins/old' }] }),
     );
     const result = await installPanelPluginFromGit(makePluginRepo(VALID));
     expect(result.ok).toBe(true);
@@ -183,7 +183,7 @@ describe('installPanelPluginFromGit', () => {
       description: string;
       plugins: Array<{ name: string }>;
     };
-    expect(catalog.name).toBe('OMPChamber');
+    expect(catalog.name).toBe('Kabmo');
     expect(catalog.description).toBe('keep me');
     expect(catalog.plugins.map((p) => p.name)).toEqual(['old', 'from-git']);
   });

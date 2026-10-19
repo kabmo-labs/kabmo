@@ -7,7 +7,7 @@
  * Keeping an installed BUNDLED plugin in step with the copy the package ships.
  *
  * A bundled plugin is installed by COPYING the store's directory into the
- * working marketplace (`installPanelPluginFromBundled`), so an OMPChamber update
+ * working marketplace (`installPanelPluginFromBundled`), so an Kabmo update
  * that changes a bundled plugin's files changes the STORE and leaves the install
  * on the old copy. Nothing else would ever notice: the install is a directory of
  * ordinary files, and the scan has no notion of a store version.

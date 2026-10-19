@@ -30,8 +30,8 @@
 import { Component, type ComponentChildren } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { AlertTriangle } from 'lucide-preact';
-import type { PendingInteractionQuestion, PendingInteractionRegistration } from '@ompchamber/plugin-sdk';
-import { PluginIdProvider } from '@ompchamber/ui';
+import type { PendingInteractionQuestion, PendingInteractionRegistration } from '@kabmo-labs/plugin-sdk';
+import { PluginIdProvider } from '@kabmo-labs/ui';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';

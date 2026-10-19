@@ -27,7 +27,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AlertCircle, FileText, Loader2, RefreshCw } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { useSessionState } from '@ompchamber/ui';
+import { useSessionState } from '@kabmo-labs/ui';
 import { PlanNav } from '@/client/components/workspace/plan-panel/Nav';
 import { PlanPageView } from '@/client/components/workspace/plan-panel/PageView';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';

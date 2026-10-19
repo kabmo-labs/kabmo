@@ -29,11 +29,11 @@ export interface Occupant {
   startedAt?: string;
   uptime?: number;
   source: 'registry+probe' | 'probe' | 'registry';
-  /** True when the occupant answered `/api/health` as OMPChamber itself. */
+  /** True when the occupant answered `/api/health` as Kabmo itself. */
   confirmedByHealth: boolean;
 }
 
-/** The OMPChamber instance on `port`, or null when the port is free/foreign. */
+/** The Kabmo instance on `port`, or null when the port is free/foreign. */
 export async function findOccupant(port: number, host?: string | null): Promise<Occupant | null> {
   const record = readInstanceRecord(port);
   const recordIsLive = record !== null

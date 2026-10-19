@@ -8,7 +8,7 @@
  * DOM surface that plugin's stylesheet is confined to.
  *
  * It lives in the KIT, not in the host, because both ends must share one
- * instance: the host imports `@ompchamber/ui` directly while a plugin bundle
+ * instance: the host imports `@kabmo-labs/ui` directly while a plugin bundle
  * gets the same module through `globalThis.__ompchamberPluginRuntime.ui`, so a
  * `Provider` the host renders is the `Provider` a plugin's hook reads.
  *
@@ -34,7 +34,7 @@
 import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { PLUGIN_SURFACE_ATTR } from '@ompchamber/plugin-sdk';
+import { PLUGIN_SURFACE_ATTR } from '@kabmo-labs/plugin-sdk';
 
 const PluginIdContext = createContext<string | null>(null);
 

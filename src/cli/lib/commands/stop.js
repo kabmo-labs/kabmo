@@ -1,4 +1,4 @@
-// `ompchamber stop` — stop OMPChamber instances.
+// `ompchamber stop` — stop Kabmo instances.
 //
 // Scope follows OWNERSHIP, the same rule `restart` and `update` apply. By
 // default only the instances the CLI started are stopped, because a server
@@ -43,7 +43,7 @@ export async function run(options) {
 
   if (!json && !quiet) {
     for (const entry of skipped) {
-      log(`Skipping OMPChamber on port ${entry.port} (pid ${entry.pid}): it ${unmanagedReason(entry.launchMode)} — ${stopHint(entry.port)}.`);
+      log(`Skipping Kabmo on port ${entry.port} (pid ${entry.pid}): it ${unmanagedReason(entry.launchMode)} — ${stopHint(entry.port)}.`);
     }
   }
 
@@ -54,8 +54,8 @@ export async function run(options) {
     }
     if (skipped.length === 0) {
       warn(requested === null
-        ? 'No running OMPChamber instances found.'
-        : `No running OMPChamber instance on port ${requested}.`);
+        ? 'No running Kabmo instances found.'
+        : `No running Kabmo instance on port ${requested}.`);
     }
     return;
   }
@@ -67,7 +67,7 @@ export async function run(options) {
     stopped.push({ port: entry.port, pid: entry.pid, stopped: gone });
     if (json) continue;
     if (gone) {
-      ok(`Stopped OMPChamber on port ${entry.port} (pid ${entry.pid}).`);
+      ok(`Stopped Kabmo on port ${entry.port} (pid ${entry.pid}).`);
     } else {
       // A failure the caller must be able to see: the instance is still
       // serving, its record is still on disk (so the next `status` finds it),
@@ -75,7 +75,7 @@ export async function run(options) {
       // before the fix: this branch was unreachable on Windows, because
       // `stopInstance` answered `true` for a process it never signalled.
       failures += 1;
-      warn(`OMPChamber on port ${entry.port} (pid ${entry.pid}) is still running — the stop did not take.`);
+      warn(`Kabmo on port ${entry.port} (pid ${entry.pid}) is still running — the stop did not take.`);
     }
   }
 

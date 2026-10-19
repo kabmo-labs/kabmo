@@ -4,7 +4,7 @@ import type { ReactNode, RefObject } from 'preact/compat';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { ChatTimeline } from '@/client/components/workspace/chat-timeline/index';
 import { usePanelCatalog, PluginPanelBody, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
-import { PanelHostProvider } from '@ompchamber/ui';
+import { PanelHostProvider } from '@kabmo-labs/ui';
 import { RightActivityBar } from '@/client/components/layout/RightActivityBar';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';

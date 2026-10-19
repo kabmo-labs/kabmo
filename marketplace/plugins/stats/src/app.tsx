@@ -88,7 +88,7 @@ function StatsPanel() {
         <div class="flex flex-col gap-2 p-2">
           <Note tone="error">The Stats server half is not running, so nothing is being measured.</Note>
           <Note>
-            It loads at chamber startup. If you just installed or updated this plugin, restart OMPChamber — a fresh
+            It loads at chamber startup. If you just installed or updated this plugin, restart Kabmo — a fresh
             start loads it. If it is already running, check the plugin is enabled in Settings → Panel Plugins.
           </Note>
         </div>

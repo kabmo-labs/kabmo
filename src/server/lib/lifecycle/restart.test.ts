@@ -8,7 +8,7 @@
  *
  * `restart.ts` decides whether the update flow may replace the running process.
  * Getting it wrong is asymmetric: replacing a `bun run dev` server ends a loop
- * OMPChamber does not own, while refusing to replace a daemon leaves the old
+ * Kabmo does not own, while refusing to replace a daemon leaves the old
  * build serving. The decision is pinned through the two sources it reads — the
  * instance record and `PORT` — with the detached-spawn branch deliberately not
  * exercised (arming it would launch a real `ompchamber restart`).
@@ -119,13 +119,13 @@ describe('skipRestartNote', () => {
 });
 
 describe('withRestartPlan', () => {
-  const updated: UpdateApplyResult = { success: true, target: 'ompchamber', manual: false, message: 'OMPChamber updated to v2.0.0 (bun-global).' };
+  const updated: UpdateApplyResult = { success: true, target: 'ompchamber', manual: false, message: 'Kabmo updated to v2.0.0 (bun-global).' };
 
   test('an armed plan sets the flag and appends the sentence', () => {
     const result = withRestartPlan(updated, { restarting: true, message: selfRestartMessage(3000) });
     expect(result.restarting).toBe(true);
     expect(result.message).toBe(
-      'OMPChamber updated to v2.0.0 (bun-global). Restarting on port 3000 to apply it — this page reloads on its own.',
+      'Kabmo updated to v2.0.0 (bun-global). Restarting on port 3000 to apply it — this page reloads on its own.',
     );
   });
 
@@ -245,7 +245,7 @@ describe('bun binary and shell route', () => {
 
 describe('install-method helpers', () => {
   test('names the repository the only fast-forwardable checkout tracks', () => {
-    expect(REPO_URL).toBe('https://github.com/rajebdev/ompchamber.git');
+    expect(REPO_URL).toBe('https://github.com/kabmo-labs/kabmo.git');
   });
 
   test('classifies only npm and unmanaged copies as manual', () => {
@@ -276,7 +276,7 @@ describe('checkAllUpdates', () => {
       installed: true,
       error: null,
       releaseName: `v${MOCK_LATEST_VERSION}`,
-      releaseUrl: `https://github.com/rajebdev/ompchamber/releases/tag/v${MOCK_LATEST_VERSION}`,
+      releaseUrl: `https://github.com/kabmo-labs/kabmo/releases/tag/v${MOCK_LATEST_VERSION}`,
     });
     expect(result.omp).toEqual({ current: '18.3.0', latest: '18.4.0', updateAvailable: true, installed: true, error: null });
     expect(Number.isNaN(Date.parse(result.checkedAt))).toBe(false);

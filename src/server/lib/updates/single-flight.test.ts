@@ -36,7 +36,7 @@ describe('withUpdateSlot', () => {
 
     const error = await withUpdateSlot('omp', async () => 'never').catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(UpdateInProgressError);
-    expect((error as Error).message).toContain('OMPChamber');
+    expect((error as Error).message).toContain('Kabmo');
 
     gate.release('done');
     await expect(running).resolves.toBe('done');

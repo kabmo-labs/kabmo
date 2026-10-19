@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentType } from 'preact';
-import type { HeaderDropdownProps, HeaderTriggerProps } from '@ompchamber/plugin-sdk/app';
+import type { HeaderDropdownProps, HeaderTriggerProps } from '@kabmo-labs/plugin-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
 import { headerDropdownOf, headerTriggerOf } from '@/client/lib/plugins/slots';
-import { PluginIdProvider } from '@ompchamber/ui';
+import { PluginIdProvider } from '@kabmo-labs/ui';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 

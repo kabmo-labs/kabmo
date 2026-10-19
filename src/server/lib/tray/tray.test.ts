@@ -128,10 +128,10 @@ describe('linux host menu', () => {
   // yad and zenity split the menu on `!` and `|`, so a label carrying either
   // would silently truncate the row.
   test('a label cannot break the menu separators', () => {
-    const payload = menuPayload([{ id: 'login', title: 'Start | Stop!Server' }, { separator: true }, { id: 'quit', title: 'Quit OMPChamber' }]);
+    const payload = menuPayload([{ id: 'login', title: 'Start | Stop!Server' }, { separator: true }, { id: 'quit', title: 'Quit Kabmo' }]);
     const parts = payload.split('|');
     expect(parts[0]).toContain('Start   Stop Server!action:login');
-    expect(parts[2]).toContain('Quit OMPChamber!action:quit');
+    expect(parts[2]).toContain('Quit Kabmo!action:quit');
   });
 });
 

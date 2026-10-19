@@ -4,7 +4,7 @@
  */
 
 /**
- * Registering OMPChamber to start at login — `serve --startup`.
+ * Registering Kabmo to start at login — `serve --startup`.
  *
  * Three platforms, three mechanisms, and each is the one the OS itself reads:
  *
@@ -36,7 +36,7 @@ import os from 'node:os';
 export const AUTOSTART_LABEL = 'dev.ompchamber.tray';
 
 /** `HKCU\...\Run` value name on Windows. */
-export const WINDOWS_RUN_VALUE = 'OMPChamberTray';
+export const WINDOWS_RUN_VALUE = 'KabmoTray';
 
 /** Basename of the Linux XDG autostart entry. */
 export const LINUX_DESKTOP_FILE = 'ompchamber-tray.desktop';
@@ -101,8 +101,8 @@ export function renderDesktopEntry({ argv, port }: { argv: string[]; port: numbe
   return `[Desktop Entry]
 Type=Application
 Version=1.0
-Name=OMPChamber
-Comment=OMPChamber console and tray on port ${port}
+Name=Kabmo
+Comment=Kabmo console and tray on port ${port}
 Exec=${command}
 Terminal=false
 X-GNOME-Autostart-enabled=true

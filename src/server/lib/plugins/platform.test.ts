@@ -31,7 +31,7 @@ import { createPluginRealtime, clearPluginTopic } from '@/server/lib/plugins/rea
 import { createPluginEvents, resetPluginEvents } from '@/server/lib/plugins/events.server';
 import { pluginTopic, isValidPluginId, pluginIdOfTopic } from '@/shared/lib/plugins/protocol';
 import { getDb } from '@/server/db.server';
-import type { PluginJson, PluginSettingDefinition } from '@ompchamber/plugin-sdk';
+import type { PluginJson, PluginSettingDefinition } from '@kabmo-labs/plugin-sdk';
 
 let root = '';
 

@@ -1,7 +1,7 @@
 import { Suspense } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { usePanelCatalog, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
-import { PanelHostProvider } from '@ompchamber/ui';
+import { PanelHostProvider } from '@kabmo-labs/ui';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSessionState } from '@/client/hooks/workspace/session-state';

@@ -21,7 +21,7 @@
  * and the send handler must not stall on it.
  */
 
-import type { CommandActionContext, CommandPaletteRegistration } from '@ompchamber/plugin-sdk';
+import type { CommandActionContext, CommandPaletteRegistration } from '@kabmo-labs/plugin-sdk';
 import { listSlotRows, type ListSlotEntry } from '@/client/lib/plugins/list-slots';
 import { pluginContext } from '@/client/lib/plugins/context';
 

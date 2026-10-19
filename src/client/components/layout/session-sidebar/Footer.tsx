@@ -33,8 +33,8 @@ export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUp
         <button
           type="button"
           onClick={onInfo}
-          title="About OMPChamber"
-          aria-label="About OMPChamber"
+          title="About Kabmo"
+          aria-label="About Kabmo"
           className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
         >
           <Info size={16} />

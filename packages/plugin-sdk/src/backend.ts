@@ -16,7 +16,7 @@
  *
  * Types only. The runtime half lives in the chamber
  * (`src/server/lib/plugins/`), because a published package cannot import the
- * host's own source — the same seam `@ompchamber/ui` uses.
+ * host's own source — the same seam `@kabmo-labs/ui` uses.
  *
  * Every member is OPTIONAL except `pluginId`. A host that implements a subset
  * hands over that subset, and a plugin that asks for the rest is refused at

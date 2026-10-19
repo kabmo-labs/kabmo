@@ -67,7 +67,7 @@ function versionJson(version: string): Record<string, unknown> {
 const CHANGELOG_MARKDOWN = [
   '# Changelog',
   '',
-  '## [999.0.0](https://github.com/rajebdev/ompchamber/compare/v998.0.0...v999.0.0) — 2026-01-01',
+  '## [999.0.0](https://github.com/kabmo-labs/kabmo/compare/v998.0.0...v999.0.0) — 2026-01-01',
   '',
   '### Added',
   '',
@@ -170,7 +170,7 @@ describe('POST /api/updates/apply in MOCK mode', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('text/event-stream');
     const text = await res.text();
-    expect(text).toContain('event: stage\ndata: "Simulating the OMPChamber update"\n\n');
+    expect(text).toContain('event: stage\ndata: "Simulating the Kabmo update"\n\n');
     expect(text).toContain('event: line\ndata: "[mock] no command was run; MOCK=true skips real updates\\n"\n\n');
     expect(text).toContain('event: result\ndata: {"success":true,"target":"ompchamber","manual":false');
     expect(text).toContain('nothing was changed');
@@ -207,7 +207,7 @@ describe('GET /api/updates/check', () => {
       installed: true,
       error: null,
       releaseName: 'v999.0.0',
-      releaseUrl: 'https://github.com/rajebdev/ompchamber/releases/tag/v999.0.0',
+      releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v999.0.0',
     });
     // omp was forced absent, which must be a normal result, not a 500.
     expect(result.omp).toMatchObject({ current: null, latest: null, updateAvailable: false, installed: false });
@@ -244,7 +244,7 @@ describe('GET /api/updates/changelog', () => {
       date: '2026-01-01',
       body: '### Added\n\n* a thing',
     });
-    expect(result.releaseUrl).toBe('https://github.com/rajebdev/ompchamber/releases/tag/v999.0.0');
+    expect(result.releaseUrl).toBe('https://github.com/kabmo-labs/kabmo/releases/tag/v999.0.0');
     // How this copy updates itself is a fact about the install, always present.
     const install = asRecord(result.install);
     expect(typeof install.method).toBe('string');

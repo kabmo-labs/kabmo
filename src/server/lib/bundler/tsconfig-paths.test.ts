@@ -4,7 +4,7 @@
  */
 
 /**
- * Every `@ompchamber/*` subpath imported in this repo must have a `tsconfig.json`
+ * Every `@kabmo-labs/*` subpath imported in this repo must have a `tsconfig.json`
  * `paths` entry.
  *
  * `paths` is not decoration here: it is what resolves a bare specifier when the
@@ -20,7 +20,7 @@
  * machine that wrote it — the symlink was present and the package's own `exports`
  * map answered. It broke every tree whose `node_modules` predates that export:
  * `bun run build` and, worse, the dev server, which answers `500` on the shell
- * route with `Could not resolve: "@ompchamber/plugin-sdk/app"` and a suggestion
+ * route with `Could not resolve: "@kabmo-labs/plugin-sdk/app"` and a suggestion
  * to run `bun install`.
  *
  * The rule is deliberately "imported anywhere in the repo", not "imported by
@@ -39,7 +39,7 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dir, '..', '..', '..', '..');
 
 /** Specifier prefixes owned by this workspace. */
-const OWNED = /^@ompchamber\//;
+const OWNED = /^@kabmo-labs\//;
 
 /** Roots that hold source the bundler and `tsc` both resolve. */
 const SOURCE_GLOBS = ['src/**/*.{ts,tsx,js}', 'packages/*/src/**/*.{ts,tsx}', 'marketplace/plugins/*/src/**/*.{ts,tsx}'];
@@ -60,7 +60,7 @@ interface TsConfig {
 const tsconfig = (await Bun.file(resolve(ROOT, 'tsconfig.json')).json()) as TsConfig;
 const paths = tsconfig.compilerOptions?.paths ?? {};
 
-/** Every `@ompchamber/*` specifier imported anywhere, with one importing file. */
+/** Every `@kabmo-labs/*` specifier imported anywhere, with one importing file. */
 function importedSpecifiers(): Map<string, string> {
   const found = new Map<string, string>();
 
@@ -91,7 +91,7 @@ describe('tsconfig paths cover every workspace subpath', () => {
     // A scan that silently matched nothing would make every assertion below
     // vacuous — the failure mode this whole file exists to prevent.
     expect(imported.size).toBeGreaterThan(0);
-    expect([...imported.keys()]).toContain('@ompchamber/plugin-sdk/app');
+    expect([...imported.keys()]).toContain('@kabmo-labs/plugin-sdk/app');
   });
 
   test('each imported subpath has an entry', () => {
@@ -116,9 +116,9 @@ describe('tsconfig paths cover every workspace subpath', () => {
   });
 
   test('no entry points at a module that no longer exists', () => {
-    // `@ompchamber/ui/styles.css` outlived the stylesheet it named; the import
+    // `@kabmo-labs/ui/styles.css` outlived the stylesheet it named; the import
     // was gone, so nothing failed, and the mapping was left pointing at a file
     // that had been deleted.
-    expect(Object.keys(paths)).not.toContain('@ompchamber/ui/styles.css');
+    expect(Object.keys(paths)).not.toContain('@kabmo-labs/ui/styles.css');
   });
 });

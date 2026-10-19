@@ -22,14 +22,14 @@ name: Release
 #
 # The order is the point, not a preference. The app does NOT ship `packages/`
 # (see the `files` list in package.json) — at runtime it resolves
-# `@ompchamber/plugin-sdk` and `@ompchamber/ui` out of its own `node_modules`,
+# `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` out of its own `node_modules`,
 # which is the version `bun.lock` records for those workspace packages. A
 # `workspace:` spec is substituted from the LOCK, not from the manifest, so the
 # app's published dependency pins are whatever the lock said when the app was
 # released. Releasing the app before the packages therefore publishes stale
 # pins — measured: `ompchamber@4.1.1` on npm declares both packages at `1.0.0`
-# while they are at `2.0.0`, and `@ompchamber/ui@2.0.0` declared
-# `"@ompchamber/plugin-sdk": "1.0.0"` while the SDK was `2.0.0`.
+# while they are at `2.0.0`, and `@kabmo-labs/ui@2.0.0` declared
+# `"@kabmo-labs/plugin-sdk": "1.0.0"` while the SDK was `2.0.0`.
 #
 # Chaining closes it: the `packages` job bumps the versions and commits the
 # refreshed `bun.lock`, and the `app` job fast-forwards to that commit before it
@@ -258,7 +258,7 @@ jobs:
   # position is the whole design.
   #
   # Named `marketplace`, NOT `plugins`: `publish-plugins.yml` already means the
-  # npm packages `@ompchamber/plugin-sdk` and `@ompchamber/ui`, and a job called
+  # npm packages `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui`, and a job called
   # `plugins` beside a workflow called "Publish Plugin Packages" reads as the
   # same thing. It is not — nothing here is published.
   # ---------------------------------------------------------------------------
@@ -392,7 +392,7 @@ jobs:
       # THIS is the step the ordering exists for. The `packages` job committed a
       # refreshed `bun.lock` carrying the new package versions, and syncing picks
       # it up BEFORE the install and the release — so the app's published
-      # `@ompchamber/*` pins name the versions that were just released instead of
+      # `@kabmo-labs/*` pins name the versions that were just released instead of
       # the previous ones.
       - name: Sync to the current remote
         run: |

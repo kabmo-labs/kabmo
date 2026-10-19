@@ -4,7 +4,7 @@
  */
 
 /**
- * Agent-directory resolution is the seam between OMPChamber and a real omp
+ * Agent-directory resolution is the seam between Kabmo and a real omp
  * install: every session, plugin and registry read hangs off these paths, so a
  * wrong answer silently shows an empty sidebar instead of an error.
  *

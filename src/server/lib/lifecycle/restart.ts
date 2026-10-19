@@ -16,7 +16,7 @@
  * `bun run start` execute this package's source in the user's own shell, and an
  * external supervisor (systemd, pm2, a container) owns the process it started;
  * all of them record `direct`, and replacing any of them would break a loop
- * OMPChamber does not own — or fight a second daemon for the port. Their own
+ * Kabmo does not own — or fight a second daemon for the port. Their own
  * launcher is what brings the new files up.
  */
 

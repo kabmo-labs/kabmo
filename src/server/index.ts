@@ -66,7 +66,7 @@ const port = Number(Bun.env.PORT) || 3000;
 const host = Bun.env.HOST || 'localhost';
 const mode = Bun.env.NODE_ENV === 'production' ? 'prod' : 'dev';
 // argv, not env: see launch-mode.ts — an inherited `OMPCHAMBER_LAUNCH_MODE`
-// would label a `bun run dev` started inside an OMPChamber shell as `daemon`.
+// would label a `bun run dev` started inside an Kabmo shell as `daemon`.
 const launchMode = resolveLaunchMode();
 
 // TLS is decided before the bind, because a certificate that cannot be produced
@@ -86,7 +86,7 @@ if (tlsRequested) {
 
 const lock = await acquirePortLock(port);
 if (!lock) {
-  console.error(`[ompchamber] another OMPChamber instance is starting on port ${port} right now — retry in a moment.`);
+  console.error(`[ompchamber] another Kabmo instance is starting on port ${port} right now — retry in a moment.`);
   process.exit(1);
 }
 
@@ -251,7 +251,7 @@ startScheduleRuntime();
 /**
  * Bring installed BUNDLED plugins up to the copy this package ships.
  *
- * An OMPChamber update replaces the store and leaves the install — it is a
+ * An Kabmo update replaces the store and leaves the install — it is a
  * copied directory of ordinary files — so this is the only thing that notices.
  * It is version-gated and skips git clones, so a plugin the user installed from
  * a URL is never overwritten by a store entry that happens to share its id.

@@ -177,7 +177,7 @@ describe('ompStartupError', () => {
     Bun.env.MOCK = 'false';
     invalidateOmpCliCache();
     const message = ompStartupError();
-    expect(message).toContain('omp binary not found — OMPChamber cannot start.');
+    expect(message).toContain('omp binary not found — Kabmo cannot start.');
     expect(message).toContain('OMPCHAMBER_OMP_BIN=/path/to/omp');
     expect(message).toContain('MOCK=true');
   });

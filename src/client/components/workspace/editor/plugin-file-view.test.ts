@@ -24,7 +24,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { DiffRendererProps, FileOpenerProps, SourceCodeRendererProps } from '@ompchamber/plugin-sdk';
+import type { DiffRendererProps, FileOpenerProps, SourceCodeRendererProps } from '@kabmo-labs/plugin-sdk';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { setPluginContext } from '@/client/lib/plugins/context';
 import {

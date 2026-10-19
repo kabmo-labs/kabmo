@@ -19,7 +19,7 @@
  * here from whichever composer is live, and the kit calls it.
  */
 
-import type { ComposerService, ComposerState } from '@ompchamber/ui';
+import type { ComposerService, ComposerState } from '@kabmo-labs/ui';
 
 type Listener = (state: ComposerState) => void;
 

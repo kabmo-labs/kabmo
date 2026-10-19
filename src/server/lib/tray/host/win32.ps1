@@ -48,7 +48,7 @@ $menu.add_Opening({
     @{ Kind = 'separator' },
     @{ Title = $(if ($config.loginInstalled) { 'Disable Start at Login' } else { 'Start at Login' }); Kind = 'login' },
     @{ Kind = 'separator' },
-    @{ Title = 'Quit OMPChamber'; Kind = 'quit' }
+    @{ Title = 'Quit Kabmo'; Kind = 'quit' }
   )
   foreach ($row in $rows) {
     if ($row.Kind -eq 'separator') {

@@ -39,7 +39,7 @@ function shellUnavailableResponse(reason: string): Response {
   // source lines, which are arbitrary code — a `<` in one would otherwise
   // truncate the page at the first tag.
   return new Response(
-    `<!doctype html><meta charset="utf-8"><title>OMPChamber</title>
+    `<!doctype html><meta charset="utf-8"><title>Kabmo</title>
 <body style="font:14px/1.6 ui-monospace,monospace;padding:2rem">
 <h1 style="font-size:1.1rem">Shell not available</h1>
 <p>The server could not render its HTML shell.</p>

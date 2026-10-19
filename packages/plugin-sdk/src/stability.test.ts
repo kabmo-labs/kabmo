@@ -24,8 +24,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import * as kit from '@ompchamber/ui';
-import * as sdk from '@ompchamber/plugin-sdk';
+import * as kit from '@kabmo-labs/ui';
+import * as sdk from '@kabmo-labs/plugin-sdk';
 
 /** The kit's exports that are participant SURFACES, by their stable name. */
 const STABLE_HOOKS = ['useRpc', 'useRealtime', 'useComposer'] as const;

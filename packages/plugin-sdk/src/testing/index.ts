@@ -4,14 +4,14 @@
  */
 
 /**
- * `@ompchamber/plugin-sdk/testing` — the backend half of the harness.
+ * `@kabmo-labs/plugin-sdk/testing` — the backend half of the harness.
  *
  * A plugin author's test imports this, not the chamber's source: the harness is
  * a SECOND implementation of the runtime contract, so it is published alongside
  * the contract it implements and a test can run with no chamber process, no
  * database and no network.
  *
- * The split from `@ompchamber/plugin-sdk/testing/app` is deliberate: this half
+ * The split from `@kabmo-labs/plugin-sdk/testing/app` is deliberate: this half
  * touches no DOM and installs no components, so a test of a bundle's `setup`
  * alone can assert what it registered without installing happy-dom.
  *

@@ -20,7 +20,7 @@ function mockApplyStream(target: 'omp' | 'ompchamber') {
   return createSseStream({
     heartbeatMs: 15_000,
     onStart: async (handlers) => {
-      const label = target === 'omp' ? 'Oh-My-Pi' : 'OMPChamber';
+      const label = target === 'omp' ? 'Oh-My-Pi' : 'Kabmo';
       handlers.send('stage', `Simulating the ${label} update`);
       handlers.send('line', `[mock] no command was run; MOCK=true skips real updates\n`);
       handlers.send('result', {

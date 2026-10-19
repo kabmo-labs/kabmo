@@ -53,8 +53,8 @@ describe('isGitUrl', () => {
 
 describe('repoSlug', () => {
   test('takes the last segment, which is what git clone names the directory', () => {
-    expect(repoSlug('https://github.com/rajebdev/ompchamber.git')).toBe('ompchamber');
-    expect(repoSlug('git@github.com:rajebdev/ompchamber.git')).toBe('ompchamber');
+    expect(repoSlug('https://github.com/kabmo-labs/kabmo.git')).toBe('kabmo');
+    expect(repoSlug('git@github.com:kabmo-labs/kabmo.git')).toBe('kabmo');
     expect(repoSlug('https://github.com/a/b/')).toBe('b');
   });
 
