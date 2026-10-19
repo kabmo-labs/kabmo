@@ -26,10 +26,6 @@ import { newTerminalId, type TerminalReadyFrame } from '@/shared/lib/workspace/t
 
 export type TerminalStatus = 'connecting' | 'running' | 'exited' | 'error';
 
-export interface TerminalSystemInfo {
-  gitBranch: string;
-}
-
 export interface UseTerminalOptions {
   root?: string;
   repo?: string;
@@ -42,14 +38,11 @@ export interface UseTerminalOptions {
 
 export interface UseTerminalResult {
   status: TerminalStatus;
-  /** Working directory the shell runs in, once known. */
-  cwd: string;
   shell: string;
   /** Exit code of a finished shell, or null while it runs. */
   exitCode: number | null;
   /** Set when the socket reported an error frame. */
   error: string | null;
-  systemInfo: TerminalSystemInfo;
   attach: (cols: number, rows: number) => void;
   resize: (cols: number, rows: number) => void;
   input: (data: Uint8Array) => void;
@@ -61,11 +54,9 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
   const { sessionId, ready } = useSessionStateContext();
   const [terminalId, setTerminalId] = useSessionState<string>('terminal.id', '');
   const [status, setStatus] = useState<TerminalStatus>('connecting');
-  const [cwd, setCwd] = useState('');
   const [shell, setShell] = useState('');
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [systemInfo, setSystemInfo] = useState<TerminalSystemInfo>({ gitBranch: 'main' });
 
   const socketRef = useRef<TerminalSocket | null>(null);
   // The grid the view reported, replayed on attach so a reconnect lands on the
@@ -109,7 +100,6 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
     const socket = connectTerminal(terminalId, {
       onReady(frame) {
         setStatus('running');
-        setCwd(frame.cwd);
         setShell(frame.shell);
         setExitCode(null);
       },
@@ -178,27 +168,6 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
     restart();
   }, [ready, options.root, options.repo, restart]);
 
-  // Launch context for the header (git branch), scoped like the shell itself.
-  useEffect(() => {
-    const root = options.root;
-    const repo = options.repo;
-    if (!root) return;
-    const params = new URLSearchParams({ root });
-    if (repo && repo !== '.') params.set('repo', repo);
-    let cancelled = false;
-    fetch(`/api/terminal/run?${params.toString()}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { gitBranch?: string } | null) => {
-        if (!cancelled && data?.gitBranch) setSystemInfo({ gitBranch: data.gitBranch });
-      })
-      .catch(() => {
-        // The header simply keeps its previous branch label.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [options.root, options.repo]);
-
   const attach = useCallback((cols: number, rows: number) => {
     sizeRef.current = { cols, rows };
     socketRef.current?.attach(cols, rows, rootRef.current, repoRef.current, themeRef.current);
@@ -213,5 +182,5 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
     socketRef.current?.input(data);
   }, []);
 
-  return { status, cwd, shell, exitCode, error, systemInfo, attach, resize, input, restart };
+  return { status, shell, exitCode, error, attach, resize, input, restart };
 }

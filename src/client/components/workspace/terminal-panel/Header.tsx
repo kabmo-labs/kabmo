@@ -13,10 +13,7 @@ interface TerminalHeaderProps {
   /** Discovery or a forced rescan is in flight. */
   reposScanning: boolean;
   onRefreshRepos: () => void;
-  /** Working directory the shell actually runs in. */
-  cwd?: string;
   shell?: string;
-  gitBranch?: string;
   onRestart: () => void;
 }
 
@@ -43,9 +40,7 @@ export function TerminalHeader({
   repos,
   reposScanning,
   onRefreshRepos,
-  cwd,
   shell,
-  gitBranch,
   onRestart,
 }: TerminalHeaderProps) {
   const shellName = shell ? shell.split('/').pop() : '';
@@ -87,11 +82,9 @@ export function TerminalHeader({
         </button>
       </div>
 
-      <span className="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-ink/40 flex-shrink-0 min-w-0">
-        {cwd && <span className="truncate max-w-[280px]" title={cwd}>{cwd}</span>}
-        {gitBranch && <span>{gitBranch}</span>}
-        {shellName && <span>{shellName}</span>}
-      </span>
+      {shellName && (
+        <span className="hidden sm:block text-[10px] font-mono text-ink/40 flex-shrink-0">{shellName}</span>
+      )}
     </div>
   );
 }

@@ -61,11 +61,9 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
 
   const {
     status,
-    cwd,
     shell,
     exitCode,
     error,
-    systemInfo,
     attach,
     resize,
     input,
@@ -193,9 +191,7 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
           repos={repos}
           reposScanning={reposScanning}
           onRefreshRepos={rescanRepos}
-          cwd={cwd}
           shell={shell}
-          gitBranch={systemInfo.gitBranch}
           onRestart={handleRestartClick}
         />
       )}

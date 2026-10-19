@@ -10,12 +10,3 @@ import type { TerminalSnapshot } from '@/shared/lib/workspace/terminal/protocol'
 export interface TerminalSessionsResponse {
   terminals: TerminalSnapshot[];
 }
-
-/** Launch context for the terminal header (`GET /api/terminal/run`). */
-export interface TerminalContextResponse {
-  bunVersion: string;
-  nodeVersion: string;
-  gitBranch: string;
-  cwd: string;
-  relativePath: string;
-}
