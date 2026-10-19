@@ -19,6 +19,7 @@
  * the omp half is forced to "binary not found" so no omp child is spawned.
  */
 
+import packageJson from '@/../package.json';
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { action as applyUpdateRoute } from '@/server/routes/updates/apply';
@@ -59,7 +60,7 @@ const globalWithCache = globalThis as { __ompChamberChangelogCache?: unknown };
 
 /** A published version manifest, the shape `/latest` answers. */
 function versionJson(version: string): Record<string, unknown> {
-  return { name: 'ompchamber', version, dist: { tarball: `https://registry.npmjs.org/ompchamber/-/ompchamber-${version}.tgz` } };
+  return { name: packageJson.name, version, dist: { tarball: `https://registry.npmjs.org/${packageJson.name}/-/${packageJson.name}-${version}.tgz` } };
 }
 
 /** A changelog shaped like the repository's own, for the notes range. */
@@ -83,6 +84,12 @@ function updatesFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input);
   if (url.includes('CHANGELOG')) {
     return Promise.resolve(new Response(CHANGELOG_MARKDOWN, { status: 200, headers: { 'content-type': 'text/markdown' } }));
+  }
+  // The update check asks the renamed package FIRST. Answering it with a
+  // version would make this copy look renamed; the stub speaks for the one
+  // package actually installed here.
+  if (!url.includes(`/${packageJson.name}/latest`)) {
+    return Promise.resolve(new Response('{}', { status: 404 }));
   }
   return Promise.resolve(
     new Response(JSON.stringify(versionJson('999.0.0')), { status: 200, headers: { 'content-type': 'application/json' } }),
