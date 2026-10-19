@@ -5,6 +5,18 @@ All notable changes to OMPChamber are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.22.0](https://github.com/rajebdev/ompchamber/compare/v4.21.0...v4.22.0) — 2026-10-19
+
+### Added
+
+* **editor:** add a symbol outline to the files panel ([1b4bcd2](https://github.com/rajebdev/ompchamber/commit/1b4bcd23432ee98e317b7148998ea8ddeece03be))
+* **nav:** draw one control order on both headers ([f8c3f08](https://github.com/rajebdev/ompchamber/commit/f8c3f080a67977c50688944587c087e224d24c7b))
+* **sidebar:** move New Session into the toolbar and overflow excess controls ([7500af9](https://github.com/rajebdev/ompchamber/commit/7500af957b013ffa8ea39af9e0a51aa320f317f3))
+
+### Fixed
+
+* **terminal:** drop the full path and branch labels from the header ([a429c00](https://github.com/rajebdev/ompchamber/commit/a429c00b263190797b480f51ad21caeafb675646))
+
 ## [4.21.0](https://github.com/rajebdev/ompchamber/compare/v4.20.0...v4.21.0) — 2026-10-18
 
 ### Added
