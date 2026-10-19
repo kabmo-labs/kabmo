@@ -79,7 +79,7 @@ on:
       # hence `required: false`, and hence the explicit presence check in the
       # steps below rather than a bare 401 after the whole build.
       NPM_TOKEN:
-        description: npm access token with read/write on @kabmo-labs/kabmo.
+        description: npm access token with read/write on @rajebdev/kabmo.
         required: false
 
 permissions:
@@ -143,7 +143,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NPM_TOKEN" || {
-            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on @kabmo-labs/kabmo (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
+            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on @rajebdev/kabmo (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
             exit 1
           }
 
@@ -190,7 +190,7 @@ jobs:
       - name: Publish to npm
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # The package is SCOPED (`@kabmo-labs/kabmo`) because npm refuses the
+        # The package is SCOPED (`@rajebdev/kabmo`) because npm refuses the
         # bare name `kabmo` with "Package name too similar to existing package
         # karma" — a typo-squat guard, verified against the registry with the
         # name unclaimed. `publishConfig.access` in package.json is what makes

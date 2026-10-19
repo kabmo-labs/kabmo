@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@kabmo-labs/kabmo"><img alt="npm version" src="https://img.shields.io/npm/v/@kabmo-labs/kabmo?logo=npm&logoColor=white&color=cb3837"></a>
+  <a href="https://www.npmjs.com/package/@rajebdev/kabmo"><img alt="npm version" src="https://img.shields.io/npm/v/@rajebdev/kabmo?logo=npm&logoColor=white&color=cb3837"></a>
   <a href="https://bun.sh"><img alt="Bun &ge; 1.4" src="https://img.shields.io/badge/Bun-%E2%89%A51.4-000000?logo=bun&logoColor=white"></a>
   <a href="https://elysiajs.com"><img alt="Elysia" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/elysia?color=6f42c1&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MjQgNDcxQTI1NSAyNTUgMCAwIDAgMjU2IDIyIDI1NiAyNTYgMCAwIDAgODMgNDY3di0ybDMzNi0xMTB6TTIwMyAyMTkgNzIgNDUzaC0zbC0yLTItMTEtMTMtOC05LTE3LTI3LTEtMnEtOC0xNS0xNC0zMmwtMy0xMHEtOS0zMC00LTU5di0xcTItMTMgNi0yNWw2LTE3IDQtMTBxMTAtMjEgMjgtMzdsNS02cTE3LTE1IDQxLTIybC0xMSAyLTcgMWgtNmwtNiAxLTYgMWgtN2wtMS0xaDFsNC0ycTIwLTExIDMwLTI5bDQtN3E5LTEzIDIxLTIxbDItMSAxMC01IDE1LTVxNS0yIDctNnYtMWE5IDkgMCAwIDAtMi0xMGwtMy0ydi0xbC0xOC0yMy0xNC0yMHEtNS02LTUtMTMgMC0yIDItMWwxNSA3cTIwIDEwIDQzIDRsMTAtMiA3LTFxMjYtMyA1MyA1aDFsMTcgNnEzMyAxMyA0NiA0NWwzIDE0YTU2IDU2IDAgMCAwIDIyIDMybDkgNiAxMiA3IDIwIDEwIDEgM3EtOSAxMC0yMSAxNmwtMTIgNS0xNCA1LTggMnEtMTggNS0zNiA1aC0yMWwtMTItMmMtMTUtNi0zMyAwLTQxIDE0Ii8%2BPC9zdmc%2B"></a>
   <a href="https://preactjs.com"><img alt="Preact" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/preact?logo=preact&logoColor=white&color=673ab7"></a>
@@ -128,7 +128,7 @@ Kabmo is published to npm and runs on Bun, not Node:
 > `KABMO_OMP_BIN`). `MOCK=true` is the only mode that runs without a real omp install.
 
 ```bash
-bun add -g @kabmo-labs/kabmo   # puts the `kabmo` command on your PATH
+bun add -g @rajebdev/kabmo   # puts the `kabmo` command on your PATH
 kabmo serve          # start the server on :3000
 ```
 
@@ -137,7 +137,7 @@ An install that predates the rename keeps its state: the first boot moves
 `OMPCHAMBER_*` environment names are still read as fallbacks.
 
 The published tarball carries the source, the CLI and the prebuilt client bundle, so there is no
-build step after install. `npm install -g @kabmo-labs/kabmo` works too — the `kabmo` bin is a Bun
+build step after install. `npm install -g @rajebdev/kabmo` works too — the `kabmo` bin is a Bun
 script, so Bun still has to be on `PATH`.
 
 ### From source
@@ -162,7 +162,7 @@ kabmo update                # install it, then restart a running instance
 kabmo update --force        # reinstall even when already up to date
 ```
 
-A **bun global** install is refreshed with `bun add -g @kabmo-labs/kabmo@<version>`; a **git checkout** is
+A **bun global** install is refreshed with `bun add -g @rajebdev/kabmo@<version>`; a **git checkout** is
 fast-forwarded to the release tag and rebuilt. Uncommitted work is never merged over (the update asks
 you to commit or stash first), and an install owned by another package manager is left alone and told
 which command to run.

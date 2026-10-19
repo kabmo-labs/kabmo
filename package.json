@@ -1,5 +1,5 @@
 {
-  "name": "@kabmo-labs/kabmo",
+  "name": "@rajebdev/kabmo",
   "version": "0.0.1",
   "description": "Web console and diagnostic workbench for AI coding agents — Elysia + Preact on Bun.",
   "license": "UNLICENSED",

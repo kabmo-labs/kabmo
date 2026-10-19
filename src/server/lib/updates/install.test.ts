@@ -35,10 +35,10 @@ describe('detectInstallMethod', () => {
     const info = detectInstallMethod({ pkgRoot: '/usr/local/lib/node_modules/kabmo', gitWorkTree: false, gitRemote: null });
     expect(info.method).toBe('npm');
     // The command is bun's in both manual branches: Kabmo is a Bun package.
-    expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g @kabmo-labs/kabmo@0.3.0');
+    expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g @rajebdev/kabmo@0.3.0');
     // The resolved target is the package an update actually installs; after the
     // rename that is `kabmo`, and a copy on the old name must still be told so.
-    expect(manualUpdateCommand(info.method, '5.0.0', '@kabmo-labs/kabmo')).toBe('bun add -g @kabmo-labs/kabmo@5.0.0');
+    expect(manualUpdateCommand(info.method, '5.0.0', '@rajebdev/kabmo')).toBe('bun add -g @rajebdev/kabmo@5.0.0');
   });
 
   test('treats a checkout of the repository as updatable over git', () => {
@@ -54,13 +54,13 @@ describe('detectInstallMethod', () => {
   test('leaves a checkout tracking another remote manual', () => {
     const info = detectInstallMethod({ ...checkout, gitRemote: 'https://github.com/kabmo-labs/kabmo-fork.git' });
     expect(info.method).toBe('unmanaged');
-    expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g @kabmo-labs/kabmo@0.3.0');
+    expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g @rajebdev/kabmo@0.3.0');
   });
 
   test('leaves a source copy without git metadata manual', () => {
     const info = detectInstallMethod({ pkgRoot: '/opt/src/kabmo', gitWorkTree: false, gitRemote: null });
     expect(info.method).toBe('unmanaged');
-    expect(manualUpdateCommand(info.method, null)).toBe('bun add -g @kabmo-labs/kabmo@latest');
+    expect(manualUpdateCommand(info.method, null)).toBe('bun add -g @rajebdev/kabmo@latest');
   });
 });
 
@@ -69,12 +69,12 @@ describe('planUpdateSteps', () => {
 
   test('installs the release version for a bun global install', () => {
     const steps = planUpdateSteps({ ...params, method: 'bun-global' });
-    expect(steps.map((step) => step.cmd.join(' '))).toEqual(['/Users/dev/.bun/bin/bun add -g @kabmo-labs/kabmo@0.3.0']);
+    expect(steps.map((step) => step.cmd.join(' '))).toEqual(['/Users/dev/.bun/bin/bun add -g @rajebdev/kabmo@0.3.0']);
   });
 
   test('installs the renamed package when the resolved target says so', () => {
-    const steps = planUpdateSteps({ ...params, method: 'bun-global', packageName: '@kabmo-labs/kabmo' });
-    expect(steps.map((step) => step.cmd.join(' '))).toEqual(['/Users/dev/.bun/bin/bun add -g @kabmo-labs/kabmo@0.3.0']);
+    const steps = planUpdateSteps({ ...params, method: 'bun-global', packageName: '@rajebdev/kabmo' });
+    expect(steps.map((step) => step.cmd.join(' '))).toEqual(['/Users/dev/.bun/bin/bun add -g @rajebdev/kabmo@0.3.0']);
   });
 
   test('fast-forwards a checkout to the release tag and rebuilds, without discarding local work', () => {
@@ -109,22 +109,22 @@ describe('resolveKabmoVersion', () => {
   test('a package rename is an update even when its version is lower', async () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.endsWith('/@kabmo-labs%2fkabmo/latest')) return new Response(JSON.stringify({ version: '1.0.0' }), { status: 200 });
+      if (url.endsWith('/@rajebdev%2fkabmo/latest')) return new Response(JSON.stringify({ version: '1.0.0' }), { status: 200 });
       return new Response('{}', { status: 404 });
     }) as typeof fetch;
 
     const info = await resolveKabmoVersion(dir);
-    expect(info.package).toBe('@kabmo-labs/kabmo');
+    expect(info.package).toBe('@rajebdev/kabmo');
     expect(info.renamed).toBe(true);
     // 1.0.0 is LOWER than 4.23.0, and semver alone would offer nothing.
     expect(info.updateAvailable).toBe(true);
   });
 
   test('the same package keeps the semver comparison', async () => {
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@kabmo-labs/kabmo', version: '1.0.0' }));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@rajebdev/kabmo', version: '1.0.0' }));
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.endsWith('/@kabmo-labs%2fkabmo/latest')) return new Response(JSON.stringify({ version: '1.0.0' }), { status: 200 });
+      if (url.endsWith('/@rajebdev%2fkabmo/latest')) return new Response(JSON.stringify({ version: '1.0.0' }), { status: 200 });
       return new Response('{}', { status: 404 });
     }) as typeof fetch;
 
