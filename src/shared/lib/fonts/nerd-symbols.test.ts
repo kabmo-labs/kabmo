@@ -88,11 +88,19 @@ describe('bundled Nerd Font symbols face', () => {
     // Reading the cmap needs fonttools, which is not a project dependency. The
     // absence is a legitimate skip; a *failure* of the probe is not, so the two
     // are told apart rather than both being swallowed as "no fonttools".
-    const available = Bun.spawnSync([
-      'python3',
-      '-c',
-      'import fontTools, brotli',
-    ]);
+    //
+    // The availability check gets its own bounded budget, and the test gets room
+    // for it: on a Windows runner `python3` resolves to a slow launcher that took
+    // the whole default 5s test budget just to answer "no fonttools", so the test
+    // was reported as TIMED OUT after it had correctly decided to skip (measured
+    // on windows-latest: 5009ms, with the skip message already printed). An
+    // interpreter that cannot answer inside this budget counts as unavailable —
+    // the skip this test already documents — rather than as a hang.
+    const PYTHON_PROBE_TIMEOUT_MS = 5_000;
+    const available = Bun.spawnSync({
+      cmd: ['python3', '-c', 'import fontTools, brotli'],
+      timeout: PYTHON_PROBE_TIMEOUT_MS,
+    });
     if (available.exitCode !== 0) {
       console.warn('skipping font coverage check: python3 fonttools/brotli unavailable');
       return;
@@ -126,7 +134,9 @@ print(json.dumps({ "codepoints": len(cmap), "uncovered": uncovered, "missing": [
     expect(result.uncovered).toEqual([]);
     expect(result.missing).toEqual([]);
     expect(result.codepoints).toBeGreaterThan(10_000);
-  });
+    // Room for the bounded availability probe above plus the cmap read; the
+    // default 5s is what a slow Windows launcher consumed on its own.
+  }, 20_000);
 
   test('the face file is present and non-trivial', async () => {
     const file = Bun.file(WOFF2);
