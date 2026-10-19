@@ -15,7 +15,7 @@
  * the heading itself and links each section to that version's release page.
  */
 
-import { releaseTagUrl } from '@/server/lib/updates/release-url';
+import { releaseTagUrl, REPO } from '@/server/lib/updates/release-url';
 import type { ReleaseNote } from '@/shared/types/updates';
 
 /**
@@ -26,7 +26,7 @@ import type { ReleaseNote } from '@/shared/types/updates';
  * version's GitHub release page, which is where the same prose is published for
  * a reader to follow.
  */
-export const CHANGELOG_URL = 'https://raw.githubusercontent.com/rajebdev/ompchamber/HEAD/CHANGELOG.md';
+export const CHANGELOG_URL = `https://raw.githubusercontent.com/${REPO}/HEAD/CHANGELOG.md`;
 
 /** How long a read is reused. The file changes on release, not on read. */
 const TTL_MS = 60_000;

@@ -20,8 +20,27 @@
 /** Where a package is published unless the environment redirects the read. */
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
 
-/** OMPChamber's package name — the one `bun add -g` installs and the check reads. */
+/** OMPChamber's package name before the rename — the fallback and the legacy install. */
 export const OMPCHAMBER_PACKAGE = 'ompchamber';
+
+/** The package the product ships as after the rename; asked FIRST. */
+export const KABMO_PACKAGE = 'kabmo';
+
+/**
+ * Which package an update installs, and its newest published version.
+ *
+ * The product was renamed from `ompchamber` to `kabmo`, and an install that
+ * predates the rename must still be able to move: the new name is asked first,
+ * the old one is the fallback, and a bridge release published under the OLD
+ * name is what teaches that install about the new one. Never throws; a registry
+ * outage answers `latest: null` and the caller words that as a status note.
+ */
+export async function resolveUpdatePackage(): Promise<{ name: string; latest: string | null }> {
+  const renamed = await fetchNpmLatest(KABMO_PACKAGE);
+  if (renamed) return { name: KABMO_PACKAGE, latest: renamed };
+  const legacy = await fetchNpmLatest(OMPCHAMBER_PACKAGE);
+  return { name: legacy ? OMPCHAMBER_PACKAGE : KABMO_PACKAGE, latest: legacy };
+}
 
 /** oh-my-pi's package name: what `omp update` itself resolves against. */
 export const OMP_PACKAGE = '@oh-my-pi/pi-coding-agent';

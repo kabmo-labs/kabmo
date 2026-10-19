@@ -32,7 +32,7 @@ concurrency:
 jobs:
   intake:
     name: size labels
-    if: github.repository == 'rajebdev/ompchamber'
+    if: (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo')
     runs-on: ubuntu-latest
     steps:
       - name: App token

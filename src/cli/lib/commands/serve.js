@@ -180,7 +180,7 @@ export async function run(options, ctx) {
       : null;
     const argv = buildLoginEntryArgv({
       bun: resolveBunBin(),
-      cli: resolvePath(pkgRoot, 'src', 'cli', 'ompchamber.js'),
+      cli: resolvePath(pkgRoot, 'src', 'cli', `${ctx?.bin ?? 'ompchamber'}.js`),
       port,
       host,
       tray: true,

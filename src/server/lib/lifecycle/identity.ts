@@ -45,6 +45,18 @@ export function isProcessAlive(pid: number): boolean {
 }
 
 /**
+ * Whether an OS command line belongs to this product.
+ *
+ * Both names are accepted: a checkout or package directory carries whichever
+ * name it was installed under, and a `kabmo` server must be recognized as ours
+ * just as an `ompchamber` one is (port guard, stop, restart, update ownership).
+ */
+export function isChamberCommand(command: string): boolean {
+  const lower = command.toLowerCase();
+  return lower.includes('ompchamber') || lower.includes('kabmo');
+}
+
+/**
  * `dead` | `matched` | `mismatched` | `unknown` for a PID.
  *
  * `unknown` means identity could not be read; callers treat it as "alive but
@@ -54,7 +66,7 @@ export function getProcessState(pid: number): ProcessState {
   if (!isProcessAlive(pid)) return 'dead';
   const command = processProbe.commandLine(pid);
   if (command === null) return 'unknown';
-  return command.toLowerCase().includes('ompchamber') ? 'matched' : 'mismatched';
+  return isChamberCommand(command) ? 'matched' : 'mismatched';
 }
 
 /**

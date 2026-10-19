@@ -59,7 +59,7 @@ export async function getDatabasePath(): Promise<string> {
   // instance needs the variable for. Verified before the fix: a mock boot with
   // `OMPCHAMBER_DB_PATH` set to a temp file still answered the repo path on
   // this line.
-  const customPath = Bun.env.OMPCHAMBER_DB_PATH || Bun.env.DB_PATH;
+  const customPath = Bun.env.KABMO_DB_PATH || Bun.env.OMPCHAMBER_DB_PATH || Bun.env.DB_PATH;
   if (customPath) {
     const resolvedPath = customPath.startsWith('~')
       ? path.join(os.homedir(), customPath.slice(1))

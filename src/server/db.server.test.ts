@@ -33,6 +33,7 @@ import { removeDir } from '@/test-support/remove-dir';
 const saved = {
   mock: Bun.env.MOCK,
   dbPath: Bun.env.OMPCHAMBER_DB_PATH,
+  renamedDbPath: Bun.env.KABMO_DB_PATH,
   legacyDbPath: Bun.env.DB_PATH,
 };
 const roots: string[] = [];
@@ -46,6 +47,7 @@ function tempRoot(): string {
 beforeEach(() => {
   delete Bun.env.MOCK;
   delete Bun.env.OMPCHAMBER_DB_PATH;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.DB_PATH;
 });
 
@@ -53,6 +55,7 @@ afterEach(() => {
   for (const [key, value] of Object.entries({
     MOCK: saved.mock,
     OMPCHAMBER_DB_PATH: saved.dbPath,
+    KABMO_DB_PATH: saved.renamedDbPath,
     DB_PATH: saved.legacyDbPath,
   })) {
     if (value === undefined) delete Bun.env[key];
@@ -88,6 +91,15 @@ describe('getDatabasePath', () => {
     const preferred = path.join(tempRoot(), 'preferred.sqlite');
     Bun.env.OMPCHAMBER_DB_PATH = preferred;
     expect(await getDatabasePath()).toBe(preferred);
+  });
+
+  test('KABMO_DB_PATH wins over both pre-rename spellings', async () => {
+    Bun.env.DB_PATH = path.join(tempRoot(), 'oldest.sqlite');
+    Bun.env.OMPCHAMBER_DB_PATH = path.join(tempRoot(), 'old.sqlite');
+    const renamed = path.join(tempRoot(), 'new.sqlite');
+    Bun.env.KABMO_DB_PATH = renamed;
+
+    expect(await getDatabasePath()).toBe(renamed);
   });
 
   test('a leading ~ expands to the home directory', async () => {

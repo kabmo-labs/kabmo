@@ -12,7 +12,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { parseArgs } from '@/cli/lib/args.js';
+import { parseArgs, helpText } from '@/cli/lib/args.js';
 
 describe('parseArgs', () => {
   test('a hyphenated flag lands on the camelCase option the command reads', () => {
@@ -46,6 +46,16 @@ describe('parseArgs', () => {
 
   test('an unknown flag is reported rather than swallowed', () => {
     expect(parseArgs(['serve', '--nope']).unknown).toEqual(['--nope']);
+  });
+});
+
+describe('helpText', () => {
+  test('names the bin it was invoked as, and the legacy spelling by default', () => {
+    expect(helpText('kabmo')).toContain('kabmo [COMMAND] [OPTIONS]');
+    expect(helpText('kabmo')).not.toContain('ompchamber [COMMAND]');
+    expect(helpText()).toContain('ompchamber [COMMAND] [OPTIONS]');
+    // The environment names are not the command name and must not be rewritten.
+    expect(helpText('kabmo')).toContain('OMPCHAMBER_DATA_DIR');
   });
 });
 

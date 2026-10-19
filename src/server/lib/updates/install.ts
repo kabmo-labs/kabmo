@@ -16,7 +16,7 @@ import { join as joinPath, resolve as resolvePath } from 'node:path';
 
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
-import { fetchNpmLatest, OMPCHAMBER_PACKAGE } from '@/server/lib/updates/npm';
+import { OMPCHAMBER_PACKAGE, resolveUpdatePackage } from '@/server/lib/updates/npm';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import {
   detectInstallMethod,
@@ -46,6 +46,8 @@ export interface OmpChamberVersionInfo {
   current: string | null;
   /** Newest version published on npm, null when none could be resolved. */
   latest: string | null;
+  /** The npm package `latest` came from — `kabmo` after the rename. */
+  package: string | null;
   updateAvailable: boolean;
   error: string | null;
 }
@@ -83,6 +85,8 @@ export interface OmpChamberUpdateResult {
   reason: string;
   current: string | null;
   latest: string | null;
+  /** The npm package this update installed from (`kabmo` after the rename). */
+  package: string | null;
   /** The version this call targeted. */
   version: string | null;
   message: string;
@@ -128,12 +132,13 @@ export async function readInstalledVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<
  */
 export async function resolveOmpChamberVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<OmpChamberVersionInfo> {
   const current = await readInstalledVersion(pkgRoot);
-  const latest = await fetchNpmLatest(OMPCHAMBER_PACKAGE);
+  const target = await resolveUpdatePackage();
   return {
     current,
-    latest,
-    updateAvailable: Boolean(current && latest && isNewer(latest, current)),
-    error: latest ? null : 'No OMPChamber release could be resolved',
+    latest: target.latest,
+    package: target.latest ? target.name : null,
+    updateAvailable: Boolean(current && target.latest && isNewer(target.latest, current)),
+    error: target.latest ? null : 'No OMPChamber release could be resolved',
   };
 }
 
@@ -156,12 +161,12 @@ export function resolveInstallContext(pkgRoot = DEFAULT_PKG_ROOT): InstallContex
 }
 
 /** The commands that install `version` for a given install method. */
-export function planUpdateSteps({ method, version, pkgRoot, bunBin }: { method: InstallMethod; version: string; pkgRoot: string; bunBin: string }): UpdateStep[] {
+export function planUpdateSteps({ method, version, pkgRoot, bunBin, packageName = OMPCHAMBER_PACKAGE }: { method: InstallMethod; version: string; pkgRoot: string; bunBin: string; packageName?: string }): UpdateStep[] {
   if (method === 'bun-global') {
     return [
       {
-        label: `Installing ompchamber@${version}`,
-        cmd: [bunBin, 'add', '-g', `ompchamber@${version}`],
+        label: `Installing ${packageName}@${version}`,
+        cmd: [bunBin, 'add', '-g', `${packageName}@${version}`],
         cwd: pkgRoot,
       },
     ];
@@ -232,6 +237,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     reason: context.reason,
     current: null,
     latest: null,
+    package: null,
     version: null,
     releaseUrl: null,
     output: '',
@@ -250,7 +256,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     return fail(err instanceof Error ? err.message : 'Failed to resolve the latest release');
   }
 
-  const resolved = { current: info.current, latest: info.latest, releaseUrl: info.latest ? releaseTagUrl(info.latest) : null };
+  const resolved = { current: info.current, latest: info.latest, package: info.package, releaseUrl: info.latest ? releaseTagUrl(info.latest) : null };
 
   if (!info.latest) {
     return fail(info.error ?? 'No OMPChamber release could be resolved', resolved);
@@ -267,7 +273,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
   }
 
   if (isManualMethod(context.method)) {
-    return fail(`This copy (${context.reason}) cannot update itself. Run: ${manualUpdateCommand(context.method, info.latest)}`, { ...resolved, manual: true, version: info.latest });
+    return fail(`This copy (${context.reason}) cannot update itself. Run: ${manualUpdateCommand(context.method, info.latest, info.package ?? OMPCHAMBER_PACKAGE)}`, { ...resolved, manual: true, version: info.latest });
   }
 
   if (context.method === 'git') {
@@ -279,7 +285,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
   }
 
   const collected: string[] = [];
-  for (const step of planUpdateSteps({ method: context.method, version: info.latest, pkgRoot: root, bunBin: context.bunBin })) {
+  for (const step of planUpdateSteps({ method: context.method, version: info.latest, pkgRoot: root, bunBin: context.bunBin, packageName: info.package ?? OMPCHAMBER_PACKAGE })) {
     onStage?.(step.label);
 
     let stepResult: { ok: boolean; exitCode: number | null; output: string };

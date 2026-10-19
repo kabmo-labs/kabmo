@@ -209,11 +209,11 @@ export function parseArgs(argv) {
 /**
  * Full multi-line help text. Returned (not printed) so the caller owns output.
  */
-export function helpText() {
+export function helpText(bin = 'ompchamber') {
   return `OMPChamber - Developer web console and diagnostic chamber for AI Oh-My-Pi
 
 USAGE:
-  ompchamber [COMMAND] [OPTIONS]
+  ${bin} [COMMAND] [OPTIONS]
 
 COMMANDS:
   serve          Start the OMPChamber web server (default when no command is given)
@@ -223,7 +223,7 @@ COMMANDS:
   status         Show running instances (every one, or --port <port>)
   logs           Print or follow server logs (every instance, or --port <port>)
   plugin         Build, type, scaffold or list panel plugins
-                 (build|types|new|list; see "ompchamber plugin --help")
+                 (build|types|new|list; see "${bin} plugin --help")
 
 OPTIONS:
   -p, --port <port>       Web server port (default: 3000); scopes status/stop/restart/logs
@@ -262,19 +262,19 @@ ENVIRONMENT:
   NPM_CONFIG_REGISTRY     Registry the update check reads (default: registry.npmjs.org)
 
 EXAMPLES:
-  ompchamber                       # Start the production server on the default port
-  ompchamber serve --port 8080     # Start on port 8080
-  ompchamber serve --lan           # Start and expose the server on the LAN
-  ompchamber serve --dev           # Run the dev server from source instead
-  ompchamber update --check        # Is a newer release available?
-  ompchamber update                # Update, then restart a running instance
-  ompchamber stop                  # Stop the instances the CLI started
-  ompchamber stop --port 3000      # Stop the instance on port 3000, whoever started it
-  ompchamber restart               # Restart the server
-  ompchamber status                # Show whether the server is running
-  ompchamber logs -f -n 200        # Follow the last 200 log lines
-  ompchamber serve --tray          # Start the server with a tray icon
-  ompchamber serve --startup       # Also start at every login
-  ompchamber serve --no-startup    # Remove the login entry
+  ${bin}                       # Start the production server on the default port
+  ${bin} serve --port 8080     # Start on port 8080
+  ${bin} serve --lan           # Start and expose the server on the LAN
+  ${bin} serve --dev           # Run the dev server from source instead
+  ${bin} update --check        # Is a newer release available?
+  ${bin} update                # Update, then restart a running instance
+  ${bin} stop                  # Stop the instances the CLI started
+  ${bin} stop --port 3000      # Stop the instance on port 3000, whoever started it
+  ${bin} restart               # Restart the server
+  ${bin} status                # Show whether the server is running
+  ${bin} logs -f -n 200        # Follow the last 200 log lines
+  ${bin} serve --tray          # Start the server with a tray icon
+  ${bin} serve --startup       # Also start at every login
+  ${bin} serve --no-startup    # Remove the login entry
 `;
 }

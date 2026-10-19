@@ -61,13 +61,13 @@ export function capReleaseNotes(notes: ReleaseNote[]): { versions: ReleaseNote[]
   return { versions, truncated };
 }
 
-function resolveInstall(latest: string | null): UpdateInstallInfo {
+function resolveInstall(latest: string | null, packageName: string | null): UpdateInstallInfo {
   const context = resolveInstallContext();
   return {
     method: context.method,
     reason: context.reason,
     manual: isManualMethod(context.method),
-    command: manualUpdateCommand(context.method, latest),
+    command: manualUpdateCommand(context.method, latest, packageName ?? undefined),
   };
 }
 
@@ -94,7 +94,7 @@ function mockChangelog(): UpdateChangelog {
     // Only the release RANGE is faked. How this copy updates itself is a fact
     // about the running install, and a mock that invented it would show a
     // button the real apply path refuses.
-    install: resolveInstall('3.8.0'),
+    install: resolveInstall('3.8.0', null),
     error: null,
   };
 }
@@ -107,8 +107,8 @@ function mockChangelog(): UpdateChangelog {
 export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
   if (isMockMode()) return mockChangelog();
 
-  const { current, latest, error } = await resolveOmpChamberVersion();
-  const install = resolveInstall(latest);
+  const { current, latest, error, package: packageName } = await resolveOmpChamberVersion();
+  const install = resolveInstall(latest, packageName);
   const base = {
     current,
     latest,

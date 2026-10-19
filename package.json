@@ -9,7 +9,8 @@
     "bun": ">=1.4.0"
   },
   "bin": {
-    "ompchamber": "./src/cli/ompchamber.js"
+    "ompchamber": "./src/cli/ompchamber.js",
+    "kabmo": "./src/cli/kabmo.js"
   },
   "repository": {
     "type": "git",

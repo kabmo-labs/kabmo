@@ -23,7 +23,7 @@ permissions:
 jobs:
   label:
     name: sync conflict label
-    if: github.repository == 'rajebdev/ompchamber'
+    if: (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo')
     runs-on: ubuntu-latest
     steps:
       - name: App token

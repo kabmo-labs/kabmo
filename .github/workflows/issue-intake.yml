@@ -28,7 +28,7 @@ jobs:
   intake:
     name: intake issue
     if: |
-      github.repository == 'rajebdev/ompchamber' &&
+      (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo') &&
       (github.event_name == 'issues' ||
        (github.event_name == 'issue_comment' &&
         !github.event.issue.pull_request &&

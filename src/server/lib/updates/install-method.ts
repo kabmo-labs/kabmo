@@ -5,6 +5,8 @@
  * (whether `pkgRoot` is a git work tree, and where its `origin` points).
  */
 
+import { OMPCHAMBER_PACKAGE } from '@/server/lib/updates/npm';
+
 /** Where the running copy came from. */
 export type InstallMethod = 'bun-global' | 'git' | 'npm' | 'unmanaged';
 
@@ -26,12 +28,17 @@ export interface DetectInstallInput {
 /** OMPChamber's own repository — only its checkout can fast-forward to a release tag. */
 export const REPO_URL = 'https://github.com/rajebdev/ompchamber.git';
 
+/** The repository after the rename. A checkout of either is fast-forwardable. */
+export const KABMO_REPO_URL = 'https://github.com/kabmo-labs/kabmo.git';
+
 // Bun's global install layout, independent of where BUN_INSTALL points.
 const BUN_GLOBAL = /(^|\/)install\/global\/node_modules\//;
 // Any other package-manager layout: npm/pnpm/yarn global, or a project dependency.
 const NODE_MODULES = /(^|\/)node_modules\//;
 // A remote that IS the repository (https, git@host:owner/name, trailing .git).
-const REPO_REMOTE = /(^|[/:])ompchamber(\.git)?$/;
+// Both spellings are accepted: a checkout created before the rename keeps the
+// old remote URL (GitHub redirects it), and it must stay fast-forwardable.
+const REPO_REMOTE = /(^|[/:])(ompchamber|kabmo)(\.git)?$/;
 
 export function detectInstallMethod({ pkgRoot, gitWorkTree, gitRemote }: DetectInstallInput): InstallMethodInfo {
   // Windows separators are normalized so one branch table covers both platforms.
@@ -73,7 +80,7 @@ export function isManualMethod(method: InstallMethod): boolean {
  * with the package manager that happened to install it. The method is reported
  * separately for diagnostics; it does not change the command.
  */
-export function manualUpdateCommand(method: InstallMethod, version: string | null): string | null {
-  if (method === 'unmanaged' || method === 'npm') return `bun add -g ompchamber@${version ?? 'latest'}`;
+export function manualUpdateCommand(method: InstallMethod, version: string | null, packageName = OMPCHAMBER_PACKAGE): string | null {
+  if (method === 'unmanaged' || method === 'npm') return `bun add -g ${packageName}@${version ?? 'latest'}`;
   return null;
 }

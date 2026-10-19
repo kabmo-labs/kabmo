@@ -15,6 +15,7 @@ import { run as runServe } from '@/cli/lib/commands/serve.js';
 import { skipRestartNote } from '@/server/lib/lifecycle/restart';
 import { isCliManaged } from '@/server/lib/lifecycle/launch-mode';
 import { resolveInstallContext, resolveOmpChamberVersion, updateOmpChamber } from '@/server/lib/updates/install';
+import { releaseTagUrl } from '@/server/lib/updates/release-url';
 
 /**
  * Live instances to restart after an update. The selection rule lives in
@@ -67,7 +68,7 @@ async function runCheck(pkgRoot, json) {
       method: context.method,
       reason: context.reason,
       error: info.error,
-      releaseUrl: info.latest ? `https://github.com/rajebdev/ompchamber/releases/tag/v${info.latest}` : null,
+      releaseUrl: info.latest ? releaseTagUrl(info.latest) : null,
     });
   } else {
     log(`Current version: ${info.current ?? 'unknown'}`);

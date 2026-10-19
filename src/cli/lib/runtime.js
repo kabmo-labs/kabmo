@@ -179,7 +179,7 @@ export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = '
     // `--tls` and `--tray` travel as argv, like `--launch-mode`: env is inherited
     // by every descendant, so a server started inside the chamber's own terminal
     // would otherwise inherit the choice.
-    args: [entry, '--ompchamber-server', launchModeArg(launchMode), ...(tls ? [TLS_FLAG] : []), ...(tray ? [TRAY_FLAG] : [])],
+    args: [entry, '--ompchamber-server', '--kabmo-server', launchModeArg(launchMode), ...(tls ? [TLS_FLAG] : []), ...(tray ? [TRAY_FLAG] : [])],
     // Both modes run from the package root. The built server's HTML bundle
     // resolves its asset paths against the cwd, and the build emits them under
     // `dist/client/` from that same root — while everything else the server

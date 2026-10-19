@@ -25,7 +25,10 @@ import path from 'path';
  * data directory to a cwd-relative path.
  */
 export function getDataDir(): string {
-  const override = (Bun.env.OMPCHAMBER_DATA_DIR ?? '').trim();
+  // `KABMO_DATA_DIR` is the name after the rename; `OMPCHAMBER_DATA_DIR` is
+  // still honoured because an install that predates it keeps its database and
+  // auth secret under `~/.ompchamber`. New wins when both are set.
+  const override = (Bun.env.KABMO_DATA_DIR ?? Bun.env.OMPCHAMBER_DATA_DIR ?? '').trim();
   if (override) {
     return path.resolve(override.startsWith('~') ? path.join(os.homedir(), override.slice(1)) : override);
   }

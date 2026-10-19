@@ -10,7 +10,12 @@
  * announces comes from the registry.
  */
 
-/** OMPChamber's own repository. */
+/**
+ * OMPChamber's own repository.
+ *
+ * Flip this to `kabmo-labs/kabmo` in the same change that transfers the
+ * repository; every release and changelog link is built from it.
+ */
 export const REPO = 'rajebdev/ompchamber';
 
 /** The releases index. */

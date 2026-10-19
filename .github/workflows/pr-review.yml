@@ -38,7 +38,7 @@ jobs:
   review:
     name: automated review
     if: |
-      github.repository == 'rajebdev/ompchamber' &&
+      (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo') &&
       (github.event_name == 'pull_request_target' ||
        (github.event_name == 'issue_comment' &&
         github.event.issue.pull_request &&

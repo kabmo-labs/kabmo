@@ -33,11 +33,19 @@ describe('detectInstallMethod', () => {
     expect(info.method).toBe('npm');
     // The command is bun's in both manual branches: OMPChamber is a Bun package.
     expect(manualUpdateCommand(info.method, '0.3.0')).toBe('bun add -g ompchamber@0.3.0');
+    // The resolved target is the package an update actually installs; after the
+    // rename that is `kabmo`, and a copy on the old name must still be told so.
+    expect(manualUpdateCommand(info.method, '5.0.0', 'kabmo')).toBe('bun add -g kabmo@5.0.0');
   });
 
   test('treats a checkout of the repository as updatable over git', () => {
     expect(detectInstallMethod(checkout).method).toBe('git');
     expect(detectInstallMethod({ ...checkout, gitRemote: 'git@github.com:rajebdev/ompchamber.git' }).method).toBe('git');
+  });
+
+  test('recognizes the renamed repository in both spellings', () => {
+    expect(detectInstallMethod({ ...checkout, gitRemote: 'https://github.com/kabmo-labs/kabmo.git' }).method).toBe('git');
+    expect(detectInstallMethod({ ...checkout, gitRemote: 'git@github.com:kabmo-labs/kabmo.git' }).method).toBe('git');
   });
 
   test('leaves a checkout tracking another remote manual', () => {
@@ -59,6 +67,11 @@ describe('planUpdateSteps', () => {
   test('installs the release version for a bun global install', () => {
     const steps = planUpdateSteps({ ...params, method: 'bun-global' });
     expect(steps.map((step) => step.cmd.join(' '))).toEqual(['/Users/dev/.bun/bin/bun add -g ompchamber@0.3.0']);
+  });
+
+  test('installs the renamed package when the resolved target says so', () => {
+    const steps = planUpdateSteps({ ...params, method: 'bun-global', packageName: 'kabmo' });
+    expect(steps.map((step) => step.cmd.join(' '))).toEqual(['/Users/dev/.bun/bin/bun add -g kabmo@0.3.0']);
   });
 
   test('fast-forwards a checkout to the release tag and rebuilds, without discarding local work', () => {

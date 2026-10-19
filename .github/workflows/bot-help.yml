@@ -23,7 +23,7 @@ jobs:
   help:
     name: help command
     if: |
-      github.repository == 'rajebdev/ompchamber' &&
+      (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo') &&
       github.event.comment.user.type != 'Bot' &&
       (github.event.comment.body == format('@{0} help', vars.BOT_MENTION || 'ompchamber-bot') ||
        startsWith(github.event.comment.body, format('@{0} help ', vars.BOT_MENTION || 'ompchamber-bot')))

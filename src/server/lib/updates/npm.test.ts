@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { fetchNpmLatest, npmRegistry } from '@/server/lib/updates/npm';
+import { fetchNpmLatest, npmRegistry, resolveUpdatePackage } from '@/server/lib/updates/npm';
 
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;
@@ -73,5 +73,49 @@ describe('fetchNpmLatest', () => {
   test('a network failure is null, never a throw', async () => {
     globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
     expect(await fetchNpmLatest('ompchamber')).toBeNull();
+  });
+});
+
+describe('resolveUpdatePackage', () => {
+  const runnerFetch = Bun.fetch;
+  let urls: string[] = [];
+  let answers: Record<string, string | null> = {};
+
+  beforeEach(() => {
+    urls = [];
+    answers = {};
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      urls.push(url);
+      const version = answers[url];
+      if (!version) return new Response('{}', { status: 404 });
+      return new Response(JSON.stringify({ version }), { status: 200 });
+    }) as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = runnerFetch;
+    delete Bun.env.NPM_CONFIG_REGISTRY;
+    delete Bun.env.BUN_CONFIG_REGISTRY;
+  });
+
+  test('asks the renamed package first and stops when it answers', async () => {
+    answers['https://registry.npmjs.org/kabmo/latest'] = '5.0.0';
+    answers['https://registry.npmjs.org/ompchamber/latest'] = '4.23.0';
+
+    expect(await resolveUpdatePackage()).toEqual({ name: 'kabmo', latest: '5.0.0' });
+    // One request: the fallback is only for a name that is not published yet.
+    expect(urls).toEqual(['https://registry.npmjs.org/kabmo/latest']);
+  });
+
+  test('falls back to the legacy name while the rename has not been published', async () => {
+    answers['https://registry.npmjs.org/ompchamber/latest'] = '4.23.0';
+
+    expect(await resolveUpdatePackage()).toEqual({ name: 'ompchamber', latest: '4.23.0' });
+    expect(urls).toHaveLength(2);
+  });
+
+  test('both absent names the new package with no version', async () => {
+    expect(await resolveUpdatePackage()).toEqual({ name: 'kabmo', latest: null });
   });
 });
