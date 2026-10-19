@@ -107,7 +107,7 @@ function mockChangelog(): UpdateChangelog {
 export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
   if (isMockMode()) return mockChangelog();
 
-  const { current, latest, error, package: packageName } = await resolveOmpChamberVersion();
+  const { current, latest, error, package: packageName, renamed } = await resolveOmpChamberVersion();
   const install = resolveInstall(latest, packageName);
   const base = {
     current,
@@ -120,6 +120,25 @@ export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
   };
 
   if (!latest) return { ...base, error: error ?? 'No OMPChamber release could be resolved' };
+  // The version restarts at 1.0.0, so there is no release RANGE to show: every
+  // changelog entry belongs to the old lineage. One synthetic note explains the
+  // switch, and the apply path installs the resolved package.
+  if (renamed) {
+    return {
+      ...base,
+      versions: [
+        {
+          version: latest,
+          date: null,
+          url: releaseTagUrl(latest),
+          body: `This release renames the app package from \`ompchamber\` to \`${packageName}\`. Updating installs \`${packageName}@${latest}\`; your data in \`~/.ompchamber\` is kept.`,
+        },
+      ],
+      total: 1,
+      truncated: false,
+      error: null,
+    };
+  }
   if (!current) return { ...base, error: 'The installed OMPChamber version could not be read' };
   // Nothing to announce. The client only opens the popup when a check reported an
   // update, so this is the race where the install moved between the two reads.

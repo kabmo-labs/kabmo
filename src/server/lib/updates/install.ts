@@ -19,6 +19,7 @@ import { packageDir } from '@/server/lib/fs/package-root';
 import { OMPCHAMBER_PACKAGE, resolveUpdatePackage } from '@/server/lib/updates/npm';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import {
+  KABMO_REPO_URL,
   detectInstallMethod,
   isManualMethod,
   manualUpdateCommand,
@@ -48,6 +49,8 @@ export interface OmpChamberVersionInfo {
   latest: string | null;
   /** The npm package `latest` came from — `kabmo` after the rename. */
   package: string | null;
+  /** The installed package's name differs from the resolved one. */
+  renamed: boolean;
   updateAvailable: boolean;
   error: string | null;
 }
@@ -122,6 +125,16 @@ export async function readInstalledVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<
   }
 }
 
+/** Package name installed on disk — `ompchamber` before the rename, `kabmo` after. */
+export async function readInstalledPackageName(pkgRoot = DEFAULT_PKG_ROOT): Promise<string | null> {
+  try {
+    const pkg = (await Bun.file(joinPath(resolvePath(pkgRoot), 'package.json')).json()) as { name?: unknown };
+    return typeof pkg?.name === 'string' && pkg.name.length > 0 ? pkg.name : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Installed version + newest published version on npm, never throws.
  *
@@ -132,12 +145,18 @@ export async function readInstalledVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<
  */
 export async function resolveOmpChamberVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<OmpChamberVersionInfo> {
   const current = await readInstalledVersion(pkgRoot);
+  const installedName = await readInstalledPackageName(pkgRoot);
   const target = await resolveUpdatePackage();
+  // A rename is an update even when its version is LOWER. The product restarts
+  // at 1.0.0, and semver would otherwise compare 4.23.0 against 1.0.0 and offer
+  // nothing — leaving every bridge install stranded on the old package.
+  const renamed = Boolean(installedName && target.latest && installedName !== target.name);
   return {
     current,
     latest: target.latest,
     package: target.latest ? target.name : null,
-    updateAvailable: Boolean(current && target.latest && isNewer(target.latest, current)),
+    renamed,
+    updateAvailable: renamed || Boolean(current && target.latest && isNewer(target.latest, current)),
     error: target.latest ? null : 'No OMPChamber release could be resolved',
   };
 }
@@ -272,6 +291,16 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     };
   }
 
+  if (context.method === 'git' && info.renamed) {
+    // A new repository has unrelated history, so there is no tag to fast-forward
+    // to. Re-cloning is the only safe move: `reset --hard` would discard local
+    // commits a clean work tree can still hold.
+    return fail(
+      `This checkout predates the rename to ${info.package}. Re-clone it: git clone ${KABMO_REPO_URL}`,
+      { ...resolved, manual: true, version: info.latest },
+    );
+  }
+
   if (isManualMethod(context.method)) {
     return fail(`This copy (${context.reason}) cannot update itself. Run: ${manualUpdateCommand(context.method, info.latest, info.package ?? OMPCHAMBER_PACKAGE)}`, { ...resolved, manual: true, version: info.latest });
   }
@@ -313,7 +342,9 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     ...resolved,
     updated: true,
     version: info.latest,
-    message: `OMPChamber updated to v${info.latest} (${context.method}).`,
+    message: info.renamed
+      ? `Switched to ${info.package} v${info.latest} (${context.method}).`
+      : `OMPChamber updated to v${info.latest} (${context.method}).`,
     output: tail(collected.join('\n\n')),
   };
 }

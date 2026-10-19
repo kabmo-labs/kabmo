@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { planUpdateSteps } from '@/server/lib/updates/install';
+import { planUpdateSteps, resolveOmpChamberVersion } from '@/server/lib/updates/install';
 import { detectInstallMethod, manualUpdateCommand } from '@/server/lib/updates/install-method';
 
 const checkout = {
@@ -84,5 +87,47 @@ describe('planUpdateSteps', () => {
     expect(commands).toContain('/Users/dev/.bun/bin/bun run build');
     expect(commands.some((command) => /(push|reset|checkout|stash|clean)\b/.test(command))).toBe(false);
     expect(steps.every((step) => step.cwd === '/Users/dev/ompchamber')).toBe(true);
+  });
+});
+
+describe('resolveOmpChamberVersion', () => {
+  const runnerFetch = Bun.fetch;
+  let dir = '';
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'kabmo-version-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'ompchamber', version: '4.23.0' }));
+  });
+
+  afterEach(() => {
+    globalThis.fetch = runnerFetch;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a package rename is an update even when its version is lower', async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/kabmo/latest')) return new Response(JSON.stringify({ version: '1.0.0' }), { status: 200 });
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+
+    const info = await resolveOmpChamberVersion(dir);
+    expect(info.package).toBe('kabmo');
+    expect(info.renamed).toBe(true);
+    // 1.0.0 is LOWER than 4.23.0, and semver alone would offer nothing.
+    expect(info.updateAvailable).toBe(true);
+  });
+
+  test('the same package keeps the semver comparison', async () => {
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'kabmo', version: '1.0.0' }));
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/kabmo/latest')) return new Response(JSON.stringify({ version: '1.0.0' }), { status: 200 });
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+
+    const info = await resolveOmpChamberVersion(dir);
+    expect(info.renamed).toBe(false);
+    expect(info.updateAvailable).toBe(false);
   });
 });
