@@ -110,7 +110,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
   return (
     <>
       <aside className={`flex flex-col bg-paper h-full ${className}`}>
-        <SessionSidebarHeader onNewSession={handleNewSession} streamStatus={streamStatus} />
+        <SessionSidebarHeader streamStatus={streamStatus} onCollapse={onClose} />
 
         <SessionSidebarToolbar
           isSearchVisible={isSearchVisible}
@@ -125,12 +125,12 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
           onToggleOptions={() => setOptionsOpen(!optionsOpen)}
           onCloseOptions={() => setOptionsOpen(false)}
           onSortChange={handleSortChange}
+          onNewSession={handleNewSession}
           onNewWorkspace={() => setNewWorkspaceOpen(true)}
           onScheduler={() => setSchedulerOpen(true)}
           scheduledCount={scheduledCount}
           onRefresh={refreshNow}
           refreshing={isRefreshing}
-          onClose={onClose}
         />
 
         {initializing ? (
