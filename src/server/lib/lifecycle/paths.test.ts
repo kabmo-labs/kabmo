@@ -40,13 +40,13 @@ describe('getDataDir', () => {
 
   test('the pre-rename override is still honoured', () => {
     Bun.env.OMPCHAMBER_DATA_DIR = '/tmp/legacy-data';
-    expect(getDataDir()).toBe('/tmp/legacy-data');
+    expect(getDataDir()).toBe(path.resolve('/tmp/legacy-data'));
   });
 
   test('the new override wins when both are set', () => {
     Bun.env.OMPCHAMBER_DATA_DIR = '/tmp/legacy-data';
     Bun.env.KABMO_DATA_DIR = '/tmp/new-data';
-    expect(getDataDir()).toBe('/tmp/new-data');
+    expect(getDataDir()).toBe(path.resolve('/tmp/new-data'));
   });
 
   test('a leading ~ expands', () => {
