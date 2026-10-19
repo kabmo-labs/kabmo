@@ -15,7 +15,7 @@ inlined in the README URL instead of referenced.
 |---|---|---|---|
 | `elysia.svg` | Elysia | https://elysiajs.com/assets/elysia.svg | MIT, © SaltyAom |
 | `shiki.svg` | Shiki | https://shiki.style/logo.svg | MIT, © Pine Wu / Anthony Fu |
-| `ompchamber.svg` | version | derived from `public/icon.svg` | this project's own mark |
+| `kabmo.svg` | version | derived from `public/icon.svg` | this project's own mark |
 
 ## What was changed, and why
 
@@ -26,10 +26,13 @@ inlined in the README URL instead of referenced.
 - **`shiki.svg`** — upstream is four shapes in `#cb7676` / `#4b9978` / `#83d0da` /
   `#e6cc78`. All four are flat white, because the badge is dark (`#3f3f46`) and
   four mid-tone colours at 14px read as noise.
-- **`ompchamber.svg`** — `public/icon.svg` is a 512px app tile: a dark rounded
-  card with a gradient **OMP** monogram, three window dots and a status bar. The
-  mark here is the tile's own monogram, nothing more, with the gradient flattened
-  to brand orange (`#f97316`) and the canvas cropped to the monogram's ink.
+- **`kabmo.svg`** — the tile's own **K**, nothing more: three round-capped
+  strokes, the stem and lower arm in warm off-white (`#F7F4EA`) and the upper arm
+  in brand orange (`#F26522`), cropped to the mark's ink and with the field
+  dropped (a dark-on-dark tile is invisible at badge size). The mark is the
+  duotone set in `public/icon.svg`; it is drawn as strokes rather than a polygon
+  because a hand-built outline left notches at the arm joins once rasterized at
+  16–32px, and a stroke join is the renderer's own geometry.
   Two candidates were measured and rejected at the size a badge actually renders:
   the tile **as-is** covers 10% of the box and its card is dark-on-dark against a
   dark badge (invisible), and an outline-plus-chevron mark that is not in the
@@ -37,12 +40,11 @@ inlined in the README URL instead of referenced.
   not an invented one.
 
 Every mark is one glyph in a 14px box inside a 20px badge, so each was checked at
-that size rather than at 512px: ink covers 40% (Elysia), 64% (Shiki) and 38%
-(OMPChamber) of the box, against 2–10% for the first drafts, which read as
-specks. GitHub renders badges at 2× on a retina screen, where the OMP letterforms
-are legible; at 1× the monogram is three ~4.6px letters and reads as texture —
-the honest limit of putting a wordmark on a 14px badge, and the reason the tile
-(two nested frames around the same tiny wordmark) was not used.
+that size rather than at 512px: ink covers 40% (Elysia), 64% (Shiki) and 22%
+(Kabmo) of the box, against 2–10% for the first drafts, which read as
+specks. GitHub renders badges at 2× on a retina screen; at 1× the K is a single
+~9px letter, which reads as a letter rather than as texture — the honest limit of
+putting a wordmark on a 14px badge.
 
 ## Regenerating
 
@@ -54,7 +56,7 @@ matching these files byte for byte, so the two cannot drift silently.
 
 To rebuild a mark from upstream: fetch it, apply the recolouring described above
 (for Elysia, also merge the disc and the leaf into one `fill-rule="evenodd"`
-path; for OMPChamber, drop the tile and keep the monogram, flattening its
+path; for Kabmo, drop the tile and keep the monogram, flattening its
 gradient), then minify. `svgo` is not a declared dependency — it is a one-off:
 
 ```bash

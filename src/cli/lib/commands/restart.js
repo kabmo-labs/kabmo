@@ -1,12 +1,12 @@
-// `ompchamber restart` — stop live instances, then serve again.
+// `kabmo restart` — stop live instances, then serve again.
 //
 // Scoping matches `status` and `stop`: without `--port` every live instance is
 // considered, and `--port <port>` restricts the restart to that one. With
 // nothing running, the command is simply `serve`.
 //
-// Instances the CLI did not start are left alone, exactly as `ompchamber update`
+// Instances the CLI did not start are left alone, exactly as `kabmo update`
 // leaves them: `bun run dev` and `bun run start` own their own process, so
-// replacing it would break a loop Kabmo does not manage. `ompchamber stop
+// replacing it would break a loop Kabmo does not manage. `kabmo stop
 // --port <port>` (or `--all`) is the deliberate way to end one.
 
 import { findLiveInstance, listLiveInstances } from '@/cli/lib/runtime.js';
@@ -29,7 +29,7 @@ function explicitPort(options) {
 /**
  * The credential payload a restarting server wrote to our stdin, verbatim.
  *
- * Null when no marker was set — a plain `ompchamber restart` from a shell has a
+ * Null when no marker was set — a plain `kabmo restart` from a shell has a
  * terminal there, and reading it would hang the command. `Bun.stdin.text()`
  * ends at EOF, which the writer always produces.
  */

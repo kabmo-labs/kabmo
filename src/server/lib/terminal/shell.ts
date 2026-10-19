@@ -12,7 +12,7 @@
  * `$SHELL` first, then the platform's usual suspects.
  */
 
-import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 
 const POSIX_FALLBACKS = ['/bin/zsh', '/bin/bash', '/bin/sh'];
 
@@ -55,7 +55,7 @@ export function shellArgs(platform: NodeJS.Platform = process.platform): string[
  *
  * This is required, not cosmetic. The runtime must spawn with
  * `detached: true` — without it the child lands in the *server's* process
- * group, where a group signal would take the chamber down and `SIGWINCH`
+ * group, where a group signal would take Kabmo down and `SIGWINCH`
  * cannot be addressed to the shell alone. But `setsid()` also drops the
  * controlling terminal, and a shell with no controlling tty silently disables
  * job control (`setopt monitor` fails): Ctrl+Z, `fg` and `jobs` stop working,
@@ -101,14 +101,14 @@ export function shellLaunch(executable: string, platform: NodeJS.Platform = proc
 
 /**
  * Environment for the PTY child. `TERM`/`COLORTERM` describe the renderer on
- * the other end of the socket; `COLORFGBG` carries the active chamber theme so
+ * the other end of the socket; `COLORFGBG` carries the active Kabmo theme so
  * prompts that read it (zsh themes, vim) pick readable colors.
  *
- * The chamber's OWN variables are removed by the shared SDK rule, for the same
+ * The Kabmo's OWN variables are removed by the shared SDK rule, for the same
  * reason `NODE_CHANNEL_FD` and the password are: this shell must behave like the
- * one on the operator's desktop, and `PORT` here is the port the CHAMBER is
+ * one on the operator's desktop, and `PORT` here is the port Kabmo is
  * serving (the CLI sets it on the server process) — measured, a PTY under a
- * chamber on 3001 reported `PORT=3001 NODE_ENV=production`, so a `bun run dev`
+ * Kabmo on 3001 reported `PORT=3001 NODE_ENV=production`, so a `bun run dev`
  * typed into this panel hit "Port 3001 is already served by Kabmo" while
  * the same command in a plain terminal ran on 3000. `NODE_ENV` matters beyond
  * the port: it decides dev vs production for whatever the user runs, and
@@ -118,14 +118,15 @@ export function terminalEnv(
   base: Record<string, string | undefined>,
   theme: 'light' | 'dark' = 'dark',
 ): Record<string, string | undefined> {
-  const env: Record<string, string | undefined> = stripChamberHostEnv(base, process.platform);
-  // The chamber's own IPC descriptor is host-private and meaningless inside the
+  const env: Record<string, string | undefined> = stripKabmoHostEnv(base, process.platform);
+  // The Kabmo's own IPC descriptor is host-private and meaningless inside the
   // PTY; an inherited value makes Node CLIs fail to parse their IPC channel.
   delete env.NODE_CHANNEL_FD;
   // Belt and braces. `lib/auth/env-password.ts` already removes this at boot, so
   // the value should never reach here — but the shell panel is the one place a
-  // leaked password is trivially readable (`echo $OMPCHAMBER_UI_PASSWORD`), and
+  // leaked password is trivially readable (`echo $KABMO_UI_PASSWORD`), and
   // a future refactor of the boot path must not be able to reintroduce that.
+  delete env.KABMO_UI_PASSWORD;
   delete env.OMPCHAMBER_UI_PASSWORD;
   env.TERM = 'xterm-256color';
   env.COLORTERM = 'truecolor';

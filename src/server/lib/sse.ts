@@ -4,7 +4,7 @@
  */
 
 /**
- * Shared Server-Sent Events plumbing for the chamber's streaming routes.
+ * Shared Server-Sent Events plumbing for Kabmo's streaming routes.
  *
  * Six SSE endpoints hand-rolled the same lifecycle — a `TextEncoder`, a
  * `ReadableStream`, `event:`/`data:` frame encoding, an optional comment-frame

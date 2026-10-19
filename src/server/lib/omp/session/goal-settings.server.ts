@@ -6,7 +6,7 @@
 /**
  * The goal loop's own settings, read where the loop runs.
  *
- * They live in the chamber settings blob beside the other chamber keys and
+ * They live in Kabmo settings blob beside the other Kabmo keys and
  * `autoSessionTitle`, and the server reads them straight from SQLite on every
  * decision — a goal can run for an hour across several turns, so a cached read
  * would keep an old choice alive for exactly the window the operator was
@@ -19,7 +19,7 @@
 import { readSettingsJson } from '@/server/lib/db/settings-store';
 import { getDb } from '@/server/db.server';
 
-const CHAMBER_SETTINGS_KEY = 'omp_chamber_settings';
+const SETTINGS_BLOB_KEY = 'kabmo_settings';
 
 /** The auditor runs by default: a goal loop with no independent check is the
  *  behaviour this setting exists to avoid. */
@@ -35,7 +35,7 @@ export interface GoalSettings {
 export async function readGoalSettings(): Promise<GoalSettings> {
   try {
     const db = await getDb();
-    const blob = await readSettingsJson<Record<string, unknown> | null>(db, CHAMBER_SETTINGS_KEY, null);
+    const blob = await readSettingsJson<Record<string, unknown> | null>(db, SETTINGS_BLOB_KEY, null);
     const enabled = blob?.goalAuditEnabled;
     const model = blob?.goalAuditModel;
     return {

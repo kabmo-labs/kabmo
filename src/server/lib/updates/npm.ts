@@ -2,7 +2,7 @@
  * npm registry reads for the update check.
  *
  * npm is where both targets are actually published, and therefore the version an
- * install can move to: `ompchamber update` runs `bun add -g ompchamber@<version>`,
+ * install can move to: `kabmo update` runs `bun add -g kabmo@<version>`,
  * and omp's own `omp update --check` resolves its metadata from the registry too
  * (verified against omp 18.6.0 with a header-recording stub: the check issued
  * exactly one request, `<registry>/@oh-my-pi%2fpi-coding-agent/latest`). Reading
@@ -12,7 +12,7 @@
  * when it answered nothing at all.
  *
  * One request per check: `/<pkg>/latest` is a single version manifest (~3 KB for
- * ompchamber, ~16 KB for omp), where the packument is the whole publish history
+ * kabmo, ~16 KB for omp), where the packument is the whole publish history
  * (139 KB and 7 MB respectively). The release RANGE is read from the repository's
  * CHANGELOG.md instead — see ./changelog-file.
  */
@@ -20,26 +20,45 @@
 /** Where a package is published unless the environment redirects the read. */
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
 
-/** Kabmo's package name before the rename — the fallback and the legacy install. */
-export const OMPCHAMBER_PACKAGE = 'ompchamber';
-
-/** The package the product ships as after the rename; asked FIRST. */
+/** The package the product ships as; asked FIRST. */
 export const KABMO_PACKAGE = 'kabmo';
+
+/**
+ * The package name before the rename — a read-only fallback.
+ *
+ * An install that predates the rename still has `ompchamber` on disk and npm
+ * still serves it, so a copy that cannot find `kabmo` is offered the legacy
+ * name rather than being told it is up to date. Nothing writes this name.
+ */
+export const LEGACY_PACKAGE = 'ompchamber';
 
 /**
  * Which package an update installs, and its newest published version.
  *
  * The product was renamed from `ompchamber` to `kabmo`, and an install that
  * predates the rename must still be able to move: the new name is asked first,
- * the old one is the fallback, and a bridge release published under the OLD
- * name is what teaches that install about the new one. Never throws; a registry
- * outage answers `latest: null` and the caller words that as a status note.
+ * and the old one is the fallback — but ONLY for an install that is still on
+ * the old name. Asking the legacy package unconditionally made a fresh `kabmo`
+ * install report `ompchamber@4.23.0` as an available update and offer to
+ * install it, which is a downgrade of the package NAME: the rename would be
+ * undone by the very check meant to complete it. Measured on this checkout:
+ * `kabmo update --check` printed "New version available: 4.23.0".
+ *
+ * `installedName` is the package on disk (see `readInstalledPackageName`), and
+ * `null` means it could not be read — in which case only the current name is
+ * considered, because an unknown install is not evidence that it is the old one.
+ *
+ * Never throws; a registry outage answers `latest: null` and the caller words
+ * that as a status note.
  */
-export async function resolveUpdatePackage(): Promise<{ name: string; latest: string | null }> {
-  const renamed = await fetchNpmLatest(KABMO_PACKAGE);
-  if (renamed) return { name: KABMO_PACKAGE, latest: renamed };
-  const legacy = await fetchNpmLatest(OMPCHAMBER_PACKAGE);
-  return { name: legacy ? OMPCHAMBER_PACKAGE : KABMO_PACKAGE, latest: legacy };
+export async function resolveUpdatePackage(
+  installedName: string | null = null,
+): Promise<{ name: string; latest: string | null }> {
+  const current = await fetchNpmLatest(KABMO_PACKAGE);
+  if (current) return { name: KABMO_PACKAGE, latest: current };
+  if (installedName !== LEGACY_PACKAGE) return { name: KABMO_PACKAGE, latest: null };
+  const legacy = await fetchNpmLatest(LEGACY_PACKAGE);
+  return { name: LEGACY_PACKAGE, latest: legacy };
 }
 
 /** oh-my-pi's package name: what `omp update` itself resolves against. */
@@ -71,7 +90,7 @@ export function npmRegistry(): string {
 export async function fetchNpmLatest(pkg: string, tag = 'latest'): Promise<string | null> {
   try {
     const response = await fetch(`${npmRegistry()}${pkg.replace('/', '%2f')}/${tag}`, {
-      headers: { 'User-Agent': 'ompchamber' },
+      headers: { 'User-Agent': 'kabmo' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!response.ok) return null;

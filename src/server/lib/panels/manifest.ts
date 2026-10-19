@@ -24,7 +24,7 @@ import type {
   PanelMarketplacePluginEntry,
   PanelPluginManifest,
 } from '@/shared/types';
-import type { PluginSettingDefinition } from '@kabmo-labs/plugin-sdk';
+import type { PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
 import { isRecord } from '@/shared/lib/util/guards';
 import { isValidRange } from '@/shared/lib/updates/semver';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
@@ -112,17 +112,23 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
 /**
  * Validate `engines`: an optional object of the two host keys, each a range the
  * module can read. An unknown key is a refusal rather than a silent ignore —
- * `engines.ompchamberSdk` is a typo that would otherwise remove the requirement
+ * `engines.kabmoSdk` is a typo that would otherwise remove the requirement
  * the author meant to state.
+ *
+ * `ompchamber` is the pre-rename spelling of `kabmo` and is accepted as an
+ * alias, because a plugin written before the rename declares it and refusing
+ * the key would refuse the plugin. It is NORMALIZED to `kabmo`, so the scan
+ * compares one key and the two spellings cannot disagree.
  */
 function toEngines(
   raw: unknown,
-): { value?: { ompchamber?: string; pluginSdk?: string } } | { error: string } {
+): { value?: { kabmo?: string; pluginSdk?: string } } | { error: string } {
   if (raw === undefined) return {};
   if (!isRecord(raw)) return { error: `manifest engines ${JSON.stringify(raw)} is not an object` };
-  const value: { ompchamber?: string; pluginSdk?: string } = {};
+  const value: { kabmo?: string; pluginSdk?: string } = {};
   for (const [key, entry] of Object.entries(raw)) {
-    if (key !== 'ompchamber' && key !== 'pluginSdk') {
+    const normalized = key === 'ompchamber' ? 'kabmo' : key;
+    if (normalized !== 'kabmo' && normalized !== 'pluginSdk') {
       return { error: `manifest engines has an unknown key ${JSON.stringify(key)}` };
     }
     const range = trimmed(entry);
@@ -130,7 +136,7 @@ function toEngines(
     if (!isValidRange(range)) {
       return { error: `manifest engines.${key} "${range}" is not a valid version range` };
     }
-    value[key] = range;
+    value[normalized] = range;
   }
   return Object.keys(value).length > 0 ? { value } : {};
 }

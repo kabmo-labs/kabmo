@@ -16,7 +16,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
-import { CHAMBER_MODE_SIGNAL, emitChamberModeSignal } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_MODE_SIGNAL, emitKabmoModeSignal } from '@/shared/lib/omp/mode/client-signal';
 import { subscribeClientSignal } from '@/client/lib/signals';
 import { formatGoalDuration, formatGoalTokens } from '@/shared/lib/omp/mode/format';
 import { isGoalOpen } from '@/shared/lib/omp/mode/status';
@@ -32,8 +32,18 @@ import {
   CHAMBER_PLAN_STATE_MARKER,
   EMPTY_MODE_SELECTION,
   GOAL_CONTINUATION_STOPS,
+  KABMO_GOAL_STATE_ENTRY,
+  KABMO_GOAL_STATE_MARKER,
+  KABMO_MODE_COMMAND,
+  KABMO_MODE_ERROR_MARKER,
+  KABMO_MODE_STATE_MARKER,
+  KABMO_MODES_ENV,
+  KABMO_PLAN_PROPOSAL_MARKER,
+  KABMO_PLAN_STATE_ENTRY,
+  KABMO_PLAN_STATE_MARKER,
   PLAN_REVIEW_CHOICES,
 } from '@/shared/lib/omp/mode/types';
+import { matchesModeName } from '@/shared/lib/omp/mode/constants';
 
 describe('formatGoalTokens', () => {
   test('below a thousand the rounded integer is shown', () => {
@@ -142,43 +152,64 @@ describe('mode constants', () => {
   });
 
   test('wire identifiers match the extension contract', () => {
+    expect(KABMO_MODES_ENV).toBe('KABMO_MODES');
+    expect(KABMO_MODE_COMMAND).toBe('kabmo-mode');
+    expect(KABMO_GOAL_STATE_ENTRY).toBe('kabmo-goal-state');
+    expect(KABMO_PLAN_STATE_ENTRY).toBe('kabmo-plan-state');
+  });
+
+  test('the pre-rename spellings survive as read-side constants', () => {
+    // A resumed session's JSONL carries these, and the extension file on disk
+    // may still be the one that emits them.
     expect(CHAMBER_MODES_ENV).toBe('CHAMBER_MODES');
     expect(CHAMBER_MODE_COMMAND).toBe('chamber-mode');
     expect(CHAMBER_GOAL_STATE_ENTRY).toBe('chamber-goal-state');
     expect(CHAMBER_PLAN_STATE_ENTRY).toBe('chamber-plan-state');
   });
 
-  test('marker prefixes are exact and colon-terminated', () => {
+  test('marker prefixes are exact and colon-terminated, under both spellings', () => {
+    expect(KABMO_PLAN_STATE_MARKER).toBe('KABMO_PLAN_STATE:');
+    expect(KABMO_GOAL_STATE_MARKER).toBe('KABMO_GOAL_STATE:');
+    expect(KABMO_MODE_STATE_MARKER).toBe('KABMO_MODE_STATE:');
+    expect(KABMO_MODE_ERROR_MARKER).toBe('KABMO_MODE_ERROR:');
+    expect(KABMO_PLAN_PROPOSAL_MARKER).toBe('KABMO_PLAN_PROPOSAL:');
+
     expect(CHAMBER_PLAN_STATE_MARKER).toBe('CHAMBER_PLAN_STATE:');
     expect(CHAMBER_GOAL_STATE_MARKER).toBe('CHAMBER_GOAL_STATE:');
     expect(CHAMBER_MODE_STATE_MARKER).toBe('CHAMBER_MODE_STATE:');
     expect(CHAMBER_MODE_ERROR_MARKER).toBe('CHAMBER_MODE_ERROR:');
     expect(CHAMBER_PLAN_PROPOSAL_MARKER).toBe('CHAMBER_PLAN_PROPOSAL:');
   });
+
+  test('the read predicate accepts both spellings and nothing else', () => {
+    expect(matchesModeName('modeCommand', 'kabmo-mode')).toBe(true);
+    expect(matchesModeName('modeCommand', 'chamber-mode')).toBe(true);
+    expect(matchesModeName('modeCommand', 'mode')).toBe(false);
+  });
 });
 
-describe('emitChamberModeSignal', () => {
+describe('emitKabmoModeSignal', () => {
   test('publishes the signal scoped by session id', () => {
     const seen: unknown[] = [];
-    const unsubscribe = subscribeClientSignal(CHAMBER_MODE_SIGNAL, (payload) => { seen.push(payload); });
-    emitChamberModeSignal('session-1', { marker: 'CHAMBER_MODE_STATE:', payload: { enabled: true } });
+    const unsubscribe = subscribeClientSignal(KABMO_MODE_SIGNAL, (payload) => { seen.push(payload); });
+    emitKabmoModeSignal('session-1', { marker: 'KABMO_MODE_STATE:', payload: { enabled: true } });
     unsubscribe();
-    expect(seen).toEqual([{ sessionId: 'session-1', marker: { marker: 'CHAMBER_MODE_STATE:', payload: { enabled: true } } }]);
+    expect(seen).toEqual([{ sessionId: 'session-1', marker: { marker: 'KABMO_MODE_STATE:', payload: { enabled: true } } }]);
   });
 
   test('an undefined session id is preserved', () => {
     const seen: unknown[] = [];
-    const unsubscribe = subscribeClientSignal(CHAMBER_MODE_SIGNAL, (payload) => { seen.push(payload); });
-    emitChamberModeSignal(undefined, { marker: 'CHAMBER_MODE_STATE:', payload: {} });
+    const unsubscribe = subscribeClientSignal(KABMO_MODE_SIGNAL, (payload) => { seen.push(payload); });
+    emitKabmoModeSignal(undefined, { marker: 'KABMO_MODE_STATE:', payload: {} });
     unsubscribe();
-    expect(seen).toEqual([{ sessionId: undefined, marker: { marker: 'CHAMBER_MODE_STATE:', payload: {} } }]);
+    expect(seen).toEqual([{ sessionId: undefined, marker: { marker: 'KABMO_MODE_STATE:', payload: {} } }]);
   });
 
   test('a listener that throws does not stop the others', () => {
     const seen: unknown[] = [];
-    const unsubscribeBad = subscribeClientSignal(CHAMBER_MODE_SIGNAL, () => { throw new Error('boom'); });
-    const unsubscribeGood = subscribeClientSignal(CHAMBER_MODE_SIGNAL, (payload) => { seen.push(payload); });
-    emitChamberModeSignal('session-1', { marker: 'CHAMBER_MODE_STATE:', payload: {} });
+    const unsubscribeBad = subscribeClientSignal(KABMO_MODE_SIGNAL, () => { throw new Error('boom'); });
+    const unsubscribeGood = subscribeClientSignal(KABMO_MODE_SIGNAL, (payload) => { seen.push(payload); });
+    emitKabmoModeSignal('session-1', { marker: 'KABMO_MODE_STATE:', payload: {} });
     unsubscribeBad();
     unsubscribeGood();
     expect(seen).toHaveLength(1);

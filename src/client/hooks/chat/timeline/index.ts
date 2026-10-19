@@ -97,7 +97,7 @@ export function useChatTimeline({
   // Raw composer text for steer/follow-up echoes (those paths have no bubble).
   const pendingUserDisplaysRef = useRef<{ sent: string; display: string }[]>([]);
 
-  // omp sessions are string UUIDs; chamber-created (mock/numeric) sessions are
+  // omp sessions are string UUIDs; Kabmo-created (mock/numeric) sessions are
   // integers, and a pending client-side "new-…" has no omp session yet — so
   // only a UUID routes through the live agent bridge.
   const isOmpSession = Boolean(sessionId) && !String(sessionId).startsWith('new-') && Number.isNaN(Number(sessionId));

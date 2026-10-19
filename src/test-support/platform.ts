@@ -7,7 +7,7 @@
  * Which suites can run on which platform, as one import instead of a literal
  * `process.platform === 'win32'` in every file.
  *
- * The chamber runs on Windows (the CLI, the omp child, the terminal and the
+ * The Kabmo runs on Windows (the CLI, the omp child, the terminal and the
  * process probes all carry win32 branches), but a real part of the test suite
  * cannot: a POSIX-only suite is one that reaches for `/bin/sh`, writes a
  * `#!/bin/sh` stub and chmods it executable, opens a `Bun.Terminal`, or takes an

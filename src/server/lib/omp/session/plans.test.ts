@@ -55,7 +55,7 @@ describe('safePlanName', () => {
 describe('localRootForSessionFile', () => {
   test('is the session file without its .jsonl, plus local/', () => {
     // omp's own rule (`resolveLocalRoot` = artifactsDir/local, where the
-    // artifacts dir is the session file minus the extension) — the chamber must
+    // artifacts dir is the session file minus the extension) — Kabmo must
     // not keep a second spelling of it. Built with `join`, not `/` literals, so
     // the separator is the host's and the round-trip is asserted the same way.
     const file = join('/sessions', 'proj', '2026-01-01T00-00-00-000Z_abc.jsonl');

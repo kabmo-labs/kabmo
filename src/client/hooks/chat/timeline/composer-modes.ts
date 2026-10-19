@@ -9,7 +9,7 @@
  * Plan/Goal state and the plan-review surface are two halves of the same
  * conversation: a mode command can produce a proposal, and answering that
  * proposal is itself a mode command. They also share the transport — the
- * `CHAMBER_*` markers the extension emits — so subscribing twice would mean two
+ * `KABMO_*` markers the extension emits — so subscribing twice would mean two
  * listeners parsing the same frames.
  *
  * Combined here rather than inside `useChatTimeline` because that hook is

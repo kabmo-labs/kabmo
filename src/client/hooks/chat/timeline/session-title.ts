@@ -4,7 +4,7 @@
  */
 
 /**
- * Navbar session-title state for the chamber. Owns the optimistic rename
+ * Navbar session-title state for Kabmo. Owns the optimistic rename
  * override so the header updates live — the sidebar publishes the
  * `session-renamed` client signal after a successful rename, no refetch.
  */

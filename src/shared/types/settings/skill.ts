@@ -8,7 +8,7 @@ export interface SkillItem {
   locationLabel?: string;
   group?: string;
   /**
-   * The SKILL.md body for a skill the chamber owns (`managed`), or the file
+   * The SKILL.md body for a skill Kabmo owns (`managed`), or the file
    * path for a read-only one — where the settings pane shows the source
    * location instead of an editor it must not save through.
    */
@@ -18,7 +18,7 @@ export interface SkillItem {
   filePath?: string;
   /** omp's discovery source, e.g. `native:user`, `agents:project`. */
   source?: string;
-  /** Chamber-owned: editable and deletable through the settings pane. */
+  /** Kabmo-owned: editable and deletable through the settings pane. */
   managed?: boolean;
   /** Excluded from the model's `<skills>` listing (`hide` / disableModelInvocation). */
   hidden?: boolean;

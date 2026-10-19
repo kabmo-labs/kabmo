@@ -4,11 +4,11 @@
  */
 
 /**
- * LIVE-path adapter: omp agent event/message stream → chamber ChatMessageData.
+ * LIVE-path adapter: omp agent event/message stream → Kabmo ChatMessageData.
  * All content-block parsing is delegated to the shared core parser
  * (parse-message-blocks.ts); this module only handles what is genuinely
  * SSE-specific: streaming tool status, incremental output pairing, notice
- * frames, and chamber display timestamps. The JSONL reload path uses the same
+ * frames, and Kabmo display timestamps. The JSONL reload path uses the same
  * core via messages-parse.ts — behavior parity is enforced by construction.
  */
 
@@ -36,7 +36,7 @@ export function toolResultText(value: unknown): string {
   return '';
 }
 
-/** Convert an omp AgentMessage (content blocks) into the chamber ChatMessageData shape.
+/** Convert an omp AgentMessage (content blocks) into Kabmo ChatMessageData shape.
  *  Custom-role frames (ultrathink-notice, xdev-mount-notice, ...) become a
  *  `notice` row — omp marks them display:false, so they render as an alert,
  *  never as assistant content. */

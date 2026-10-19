@@ -8,7 +8,7 @@
  *
  * Both are NEGATIVE-first, like every list-slot surface: an empty slot must add
  * nothing to the composer — not a wrapper, not a spacer — so the toolbar row and
- * the strip above the input are unchanged in a chamber with no plugins.
+ * the strip above the input are unchanged in a Kabmo with no plugins.
  */
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';

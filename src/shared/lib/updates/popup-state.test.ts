@@ -29,7 +29,7 @@ import {
   readAnnouncedVersion,
   shouldAnnounce,
 } from '@/shared/lib/updates/popup-state';
-import { primeChamberSettings } from '@/shared/lib/settings/client';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
 describe('popup-state constants', () => {
   test('names the settings key and the two window events', () => {
@@ -41,7 +41,7 @@ describe('popup-state constants', () => {
 
 describe('readAnnouncedVersion', () => {
   beforeEach(() => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
   });
 
   test('is null when nothing was ever announced', () => {
@@ -49,16 +49,16 @@ describe('readAnnouncedVersion', () => {
   });
 
   test('returns a stored version, trimmed', () => {
-    primeChamberSettings({ [UPDATE_POPUP_SETTING_KEY]: '  3.8.0  ' });
+    primeKabmoSettings({ [UPDATE_POPUP_SETTING_KEY]: '  3.8.0  ' });
     expect(readAnnouncedVersion()).toBe('3.8.0');
   });
 
   test('treats a blank or non-string marker as never announced', () => {
-    primeChamberSettings({ [UPDATE_POPUP_SETTING_KEY]: '' });
+    primeKabmoSettings({ [UPDATE_POPUP_SETTING_KEY]: '' });
     expect(readAnnouncedVersion()).toBeNull();
-    primeChamberSettings({ [UPDATE_POPUP_SETTING_KEY]: '   ' });
+    primeKabmoSettings({ [UPDATE_POPUP_SETTING_KEY]: '   ' });
     expect(readAnnouncedVersion()).toBeNull();
-    primeChamberSettings({ [UPDATE_POPUP_SETTING_KEY]: 42 });
+    primeKabmoSettings({ [UPDATE_POPUP_SETTING_KEY]: 42 });
     expect(readAnnouncedVersion()).toBeNull();
   });
 });
@@ -77,7 +77,7 @@ describe('shouldAnnounce', () => {
   });
 
   test('defaults the marker to the stored setting', () => {
-    primeChamberSettings({ [UPDATE_POPUP_SETTING_KEY]: '3.8.0' });
+    primeKabmoSettings({ [UPDATE_POPUP_SETTING_KEY]: '3.8.0' });
     expect(shouldAnnounce('3.8.0')).toBe(false);
     expect(shouldAnnounce('3.9.0')).toBe(true);
   });
@@ -85,7 +85,7 @@ describe('shouldAnnounce', () => {
 
 describe('markAnnounced', () => {
   test('records the version so the next read sees it', () => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
     markAnnounced('3.9.0');
     expect(readAnnouncedVersion()).toBe('3.9.0');
     expect(shouldAnnounce('3.9.0')).toBe(false);
@@ -94,5 +94,5 @@ describe('markAnnounced', () => {
 
 /** The snapshot is module state shared across the whole `bun test` process. */
 afterAll(() => {
-  primeChamberSettings({});
+  primeKabmoSettings({});
 });

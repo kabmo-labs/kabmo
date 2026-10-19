@@ -1,7 +1,7 @@
 # Stats
 
 A right-panel view of what the omp stack actually consumes — CPU and RAM, per
-process, across the chamber and everything it spawned.
+process, across Kabmo and everything it spawned.
 
 ## What it shows
 
@@ -21,7 +21,7 @@ label also carries a `title` naming what the figure is (`Resident set size`,
 its figures in the **same columns** as the rows it sums, so a total lines up with
 what it totals.
 
-Categories are `Chamber`, `omp`, `Terminal`, `Dictation`, `Tray`, and one group
+Categories are `Kabmo`, `omp`, `Terminal`, `Dictation`, `Tray`, and one group
 per omp daemon (`omp.browser.headless`, `omp.lsp.mux`, …). A process that cannot
 be attributed is still counted, as `Other`.
 
@@ -30,7 +30,7 @@ be attributed is still counted, as `Other`.
 The process set is a **union**, and the second half is the reason this plugin
 exists:
 
-1. the parent/child tree rooted at the chamber's own pid — omp session children
+1. the parent/child tree rooted at Kabmo's own pid — omp session children
    and their LSP grandchildren, the utility children, prewarm entries, the PTY
    shells and whatever they run, the STT worker, the tray host; **plus**
 2. the subtree under every daemon in omp's registry (`~/.omp/run/daemons/*`).

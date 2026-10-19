@@ -187,7 +187,7 @@ export function replaceProviderModels(
 }
 
 /**
- * Register newly added provider models on the chamber's catalog.
+ * Register newly added provider models on Kabmo's catalog.
  *
  * `isFavorite` is deliberately NOT sent: the picker derives favorites from the
  * stored preference keys, so a catalog flag would be a second, silently

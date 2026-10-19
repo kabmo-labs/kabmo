@@ -7,7 +7,7 @@
  * Reading goal notices out of their injected text.
  *
  * These two blobs are the real ones, copied from a session file written by a
- * live goal run: a continuation (the chamber's own hidden steer) and omp's
+ * live goal run: a continuation (Kabmo's own hidden steer) and omp's
  * `<goal_context>` block. What matters here is that the objective, the budget
  * figures and the instructions come out as separate fields — the generic
  * notice card would otherwise show the HTML comment as its title and dump the

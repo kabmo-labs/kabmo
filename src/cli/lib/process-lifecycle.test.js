@@ -65,7 +65,7 @@ function fakeSpawn({ exitCode = 0, throws = false } = {}) {
 describe('isGroupKillable', () => {
   // The guard exists because POSIX reserves `kill(-1)` for "every process this
   // user may signal": a stale record naming PID 1 (or 0) would otherwise turn
-  // `ompchamber stop` into a signal to the whole session — observed, and far
+  // `kabmo stop` into a signal to the whole session — observed, and far
   // worse than a stop that fails.
   test('refuses the PIDs that make a group kill catastrophic', () => {
     expect(isGroupKillable(0)).toBe(false);

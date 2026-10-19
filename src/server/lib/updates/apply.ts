@@ -8,7 +8,7 @@
  * browser BEFORE the process that is serving it goes away.
  */
 
-import { updateOmpChamber } from '@/server/lib/updates/install';
+import { updateKabmo } from '@/server/lib/updates/install';
 import { applyOmpUpdate } from '@/server/lib/updates/omp';
 import { withUpdateSlot } from '@/server/lib/updates/single-flight';
 import { recycleStandbyProcesses } from '@/server/lib/omp/session/standby.server';
@@ -63,12 +63,12 @@ export async function applyUpdate(target: UpdateTarget, hooks: UpdateProgressHoo
       }
     }
 
-    if (target === 'ompchamber') {
-      const result = await updateOmpChamber({ onLine: hooks.onLine, onStage: hooks.onStage });
+    if (target === 'kabmo') {
+      const result = await updateKabmo({ onLine: hooks.onLine, onStage: hooks.onStage });
       return {
         result: {
           success: result.success,
-          target: 'ompchamber',
+          target: 'kabmo',
           manual: result.manual,
           message: result.message,
           output: result.output || undefined,

@@ -46,19 +46,19 @@ let root: string;
 let savedDbPath: string | undefined;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
-  savedDbPath = Bun.env.OMPCHAMBER_DB_PATH;
+  root = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
+  savedDbPath = Bun.env.KABMO_DB_PATH;
   // The stream-status writes resolve the database; point them at the temp tree
-  // so the real `~/.ompchamber` is never created or opened.
-  Bun.env.OMPCHAMBER_DB_PATH = join(root, 'db.sqlite');
-  delete globalThis.__ompChamberDb;
+  // so the real `~/.kabmo` is never created or opened.
+  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
+  delete globalThis.__kabmoDb;
 });
 
 afterEach(() => {
   cancelQueuedDelivery('sess-1');
-  delete globalThis.__ompChamberDb;
-  if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-  else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
+  delete globalThis.__kabmoDb;
+  if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
+  else Bun.env.KABMO_DB_PATH = savedDbPath;
   removeDir(root);
 });
 

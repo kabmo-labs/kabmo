@@ -2,7 +2,7 @@
  * One update at a time, for the whole server.
  *
  * An update is long and it replaces an install in place, so overlapping runs
- * are not merely wasteful: two `updateOmpChamber` calls mean two
+ * are not merely wasteful: two `updateKabmo` calls mean two
  * `git merge --ff-only` plus two `bun install` in the same checkout, and two
  * `omp update` calls race over the same binary.
  *

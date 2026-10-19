@@ -177,7 +177,7 @@ export const DOCUMENT_MAX_FILE_BYTES = 20 * 1024 * 1024;
  * Chrome's own viewer, which fetches them with range requests (verified: a
  * `Range: bytes=0-1023` request answers `206` with `content-range` and
  * `accept-ranges`, and the plugin issues its own ranges as the reader scrolls).
- * Nothing in the chamber buffers the file, so the text ceiling has no reason to
+ * Nothing in Kabmo buffers the file, so the text ceiling has no reason to
  * apply to it — and applying it was the bug: a 6 MB PDF dragged from Finder was
  * refused as "larger than the 5.00 MB the editor opens" before the document
  * branch was ever reached, because the size test runs first.

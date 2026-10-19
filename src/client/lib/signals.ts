@@ -6,7 +6,7 @@
 /**
  * The client-only signals the chat, the sidebar and the composer hand each
  * other: the text a session row should show until omp's own title lands, a
- * rename, and a chamber-mode marker.
+ * rename, and a Kabmo-mode marker.
  *
  * A module bus rather than window events, for the reason the subagent frames
  * are: the payload is already scoped (a session id, a marker) and the consumers
@@ -26,14 +26,14 @@ export type ClientSignalName =
   | 'session-title-hint'
   /** A session was renamed (this tab), so the navbar follows without a refetch. */
   | 'session-renamed'
-  /** A chamber-mode notice marker parsed out of a frame. */
-  | 'chamber-mode';
+  /** A Kabmo-mode notice marker parsed out of a frame. */
+  | 'kabmo-mode';
 
 /** One signal's payload, keyed by the signal that carries it. */
 export interface ClientSignalPayloads {
   'session-title-hint': { sessionId: string; title: string };
   'session-renamed': { sessionId: string; title: string };
-  'chamber-mode': { sessionId?: string; marker?: unknown };
+  'kabmo-mode': { sessionId?: string; marker?: unknown };
 }
 
 type Listener<N extends ClientSignalName> = (payload: ClientSignalPayloads[N]) => void;
@@ -41,7 +41,7 @@ type Listener<N extends ClientSignalName> = (payload: ClientSignalPayloads[N]) =
 const listeners: { [N in ClientSignalName]: Set<Listener<N>> } = {
   'session-title-hint': new Set(),
   'session-renamed': new Set(),
-  'chamber-mode': new Set(),
+  'kabmo-mode': new Set(),
 };
 
 /** Subscribe to one signal. Returns the unsubscribe. */

@@ -22,7 +22,7 @@
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { primeChamberSettings, readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import {
   DEFAULT_LEFT_PANEL_WIDTH,
   MAX_LEFT_PANEL_WIDTH,
@@ -36,7 +36,7 @@ const LEGACY_KEY = 'desktopLayoutSizes';
 
 /** Every case starts from "nothing stored", which is what a real upgrade sees. */
 function resetSettings(): void {
-  primeChamberSettings({});
+  primeKabmoSettings({});
 }
 
 afterEach(() => {
@@ -46,7 +46,7 @@ afterEach(() => {
 afterAll(() => {
   // The settings snapshot is module state shared by every suite in one
   // `bun test` process; leave it as close to how it was found as possible.
-  primeChamberSettings({});
+  primeKabmoSettings({});
 });
 
 describe('sidebar-width', () => {
@@ -62,14 +62,14 @@ describe('sidebar-width', () => {
 
     expect(resolveSidebarWidth(500)).toBe(342);
     // Pinned: the next session reads the setting, never its own slot again.
-    expect(readChamberSetting<number>(WIDTH_KEY)).toBe(342);
+    expect(readKabmoSetting<number>(WIDTH_KEY)).toBe(342);
     expect(resolveSidebarWidth(500)).toBe(342);
   });
 
   test('a session slot is adopted only when no global value exists at all', () => {
     resetSettings();
     expect(resolveSidebarWidth(348)).toBe(348);
-    expect(readChamberSetting<number>(WIDTH_KEY)).toBe(348);
+    expect(readKabmoSetting<number>(WIDTH_KEY)).toBe(348);
   });
 
   test('a stored width beats both retired sources', () => {
@@ -105,7 +105,7 @@ describe('sidebar-width', () => {
   test('a save clamps and round-trips', () => {
     resetSettings();
     saveSidebarWidth(333.6);
-    expect(readChamberSetting<number>(WIDTH_KEY)).toBe(334);
+    expect(readKabmoSetting<number>(WIDTH_KEY)).toBe(334);
     expect(resolveSidebarWidth()).toBe(334);
   });
 });

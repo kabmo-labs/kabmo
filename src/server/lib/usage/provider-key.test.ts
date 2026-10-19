@@ -9,7 +9,7 @@
  * usable credential (a dead card) or hides one omp happily runs on. The rules
  * pinned here:
  *
- *  - a masked placeholder (`••••••`) in the chamber overlay is NOT a credential;
+ *  - a masked placeholder (`••••••`) in Kabmo overlay is NOT a credential;
  *  - the overlay, omp's models.yml and omp's agent.db are merged, not
  *    overridden — a slug in two stores reports both sources;
  *  - a provider omp resolves but no store accounts for is `environment` (an
@@ -42,7 +42,7 @@ let realAgentDir: string | undefined;
 let realBin: string | undefined;
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   dirs.push(dir);
   return dir;
 }
@@ -55,9 +55,9 @@ beforeAll(async () => {
   // used to be skipped on Windows. The compiled stub is a real program on both.
   stubBin = await ompRpcStub();
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
-  realBin = Bun.env.OMPCHAMBER_OMP_BIN;
+  realBin = Bun.env.KABMO_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
-  Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
+  Bun.env.KABMO_OMP_BIN = stubBin;
   // A sibling test file may have cached the real `omp` path for the process
   // lifetime; without this the stub would be bypassed and a real agent spawned.
   invalidateOmpCliCache();
@@ -67,19 +67,19 @@ afterAll(() => {
   disposeUtilityRpc();
   if (realAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = realAgentDir;
-  if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
+  if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = realBin;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 afterEach(() => {
   disposeUtilityRpc();
-  Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
+  Bun.env.KABMO_OMP_BIN = stubBin;
   invalidateOmpCliCache();
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.FAKE_OMP_RESPONSES;
   writeFileSync(join(agentDir, 'models.yml'), 'providers: {}\n');
@@ -87,10 +87,10 @@ afterEach(() => {
 });
 
 function useTempDb(): void {
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
 }
 
 async function writeOverlayValue(value: string): Promise<void> {
@@ -208,7 +208,7 @@ describe('listCredentialedProviders', () => {
 
   test('an unreachable omp registry degrades to the store scan', async () => {
     useTempDb();
-    Bun.env.OMPCHAMBER_OMP_BIN = join(tempDir(), 'missing-omp');
+    Bun.env.KABMO_OMP_BIN = join(tempDir(), 'missing-omp');
     invalidateOmpCliCache();
     writeOmpStores({ yml: { deepseek: 'ds-key' } });
 
@@ -310,7 +310,7 @@ describe('kenariProviderSlugs', () => {
     expect([...(await kenariProviderSlugs(['kyc-gateway', 'openai']))]).toEqual(['kyc-gateway']);
   });
 
-  test('the chamber overlay decides for a slug whose name says kenari', async () => {
+  test('Kabmo overlay decides for a slug whose name says kenari', async () => {
     useTempDb();
     await writeOverlayValue(JSON.stringify([{ name: 'Kenari Gateway', slug: 'knri', baseUrl: '', apiKey: 'k' }]));
     writeOmpStores({});

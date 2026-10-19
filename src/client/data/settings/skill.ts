@@ -9,7 +9,7 @@ export const DEFAULT_SKILLS: SkillItem[] = [
     location: 'user',
     locationLabel: 'User / OpenCode',
     group: 'MICROSOFT-FOUNDRY',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Manage and allocate Azure OpenAI / Microsoft Foundry deployment quota and PTU capacity."
 ---
@@ -26,7 +26,7 @@ description: "Manage and allocate Azure OpenAI / Microsoft Foundry deployment qu
     location: 'user',
     locationLabel: 'User / OpenCode',
     group: 'MICROSOFT-FOUNDRY',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Fine-tune hyperparameters and customize system prompt overlays for foundry models."
 ---
@@ -43,7 +43,7 @@ description: "Fine-tune hyperparameters and customize system prompt overlays for
     location: 'user',
     locationLabel: 'User / OpenCode',
     group: 'MICROSOFT-FOUNDRY',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Deploy and register serverless model endpoints on Microsoft Foundry edge."
 ---
@@ -60,7 +60,7 @@ description: "Deploy and register serverless model endpoints on Microsoft Foundr
     location: 'user',
     locationLabel: 'User / OpenCode',
     group: 'MICROSOFT-FOUNDRY',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Configure LoRA and full fine-tuning jobs on custom enterprise datasets."
 ---
@@ -68,7 +68,7 @@ description: "Configure LoRA and full fine-tuning jobs on custom enterprise data
 ## Finetuning Job Spec
 1. Validate JSONL formatted prompt/completion splits.
 2. Specify learning rate warmup, epochs, and checkpoint intervals.
-3. Stream training loss metrics to chamber telemetry matrix.`,
+3. Stream training loss metrics to Kabmo telemetry matrix.`,
   },
   {
     id: 'skill-ms-preset',
@@ -77,7 +77,7 @@ description: "Configure LoRA and full fine-tuning jobs on custom enterprise data
     location: 'user',
     locationLabel: 'User / OpenCode',
     group: 'MICROSOFT-FOUNDRY',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Apply pre-tested model configuration and inference presets for foundry."
 ---
@@ -95,7 +95,7 @@ description: "Apply pre-tested model configuration and inference presets for fou
     description: 'Customize OpenCode runtime bindings, language server hooks, and tool execution policies.',
     location: 'user',
     locationLabel: 'User / OpenCode',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Customize OpenCode runtime bindings, language server hooks, and tool execution policies."
 ---
@@ -110,7 +110,7 @@ description: "Customize OpenCode runtime bindings, language server hooks, and to
     description: 'Comprehensive integration toolkit for Microsoft Foundry AI ecosystem and telemetry.',
     location: 'user',
     locationLabel: 'User / OpenCode',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Comprehensive integration toolkit for Microsoft Foundry AI ecosystem and telemetry."
 ---
@@ -125,7 +125,7 @@ description: "Comprehensive integration toolkit for Microsoft Foundry AI ecosyst
     description: 'Automated vulnerability scanner and static security analysis toolchain.',
     location: 'user',
     locationLabel: 'User / OpenCode',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Automated vulnerability scanner and static security analysis toolchain."
 ---
@@ -141,7 +141,7 @@ description: "Automated vulnerability scanner and static security analysis toolc
     description: 'Automated pre-flight security review, secret leak inspection, and dependency audit checker.',
     location: 'user',
     locationLabel: 'User / OpenCode',
-    project: 'ompchamber',
+    project: 'kabmo',
     instructions: `---
 description: "Automated pre-flight security review, secret leak inspection, and dependency audit checker."
 ---

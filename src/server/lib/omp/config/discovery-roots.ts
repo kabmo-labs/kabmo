@@ -16,14 +16,14 @@
  * The set below is measured, not assumed (omp 18.4.3, a fresh directory with a
  * `SKILL.md` planted in each candidate and `omp skill list <dir> --json`):
  *
- *   project  .omp/skills     → native:project      ← the chamber may write here
+ *   project  .omp/skills     → native:project      ← Kabmo may write here
  *            .claude/skills  → claude:project
  *            .codex/skills   → codex:project
  *            .agents/skills  → agents:project
  *            .opencode/skills→ opencode:project
  *            .github/skills  → github:project
  *
- *   user     ~/.omp/agent/skills → native:user      ← the chamber may write here
+ *   user     ~/.omp/agent/skills → native:user      ← Kabmo may write here
  *            ~/.agents/skills     → agents:user
  *
  * Everything else was verified NOT read at this level: `~/.claude/skills`,
@@ -37,8 +37,8 @@
  * too — its command form is `.github/prompts/*.prompt.md`, a different layout
  * that `commands.ts` keeps its own entry for.
  *
- * A `managed` root is one the chamber may write to and delete from; every other
- * root is read-only here, because the chamber is not the tool that put the file
+ * A `managed` root is one Kabmo may write to and delete from; every other
+ * root is read-only here, because Kabmo is not the tool that put the file
  * there.
  */
 
@@ -58,7 +58,7 @@ export interface DiscoveryRoot {
   /** Directory holding the skill/command entries. */
   dir: string;
   scope: 'user' | 'project';
-  /** The chamber owns files here and may write or delete them. */
+  /** The Kabmo owns files here and may write or delete them. */
   managed: boolean;
 }
 
@@ -158,7 +158,7 @@ export function skillRoots(projectDir?: string | null): DiscoveryRoot[] {
  * below). $HOME is NOT a boundary — the walk crossed it — and a `.git` FILE
  * (a worktree or submodule) stops it just like a directory.
  *
- * These roots are `managed: false`: omp reads them, but the chamber's write and
+ * These roots are `managed: false`: omp reads them, but Kabmo's write and
  * delete paths are scoped to the cwd's own `.omp/skills`, and widening them
  * would let a save in one project rewrite another's files.
  */

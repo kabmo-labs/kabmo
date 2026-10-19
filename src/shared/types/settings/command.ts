@@ -24,10 +24,10 @@ export interface CommandItem {
   filePath?: string;
   /** omp's discovery source: `builtin`, `skill`, `custom`, `extension`, `file`. */
   source?: string;
-  /** True only for a markdown file under a root the chamber owns
+  /** True only for a markdown file under a root Kabmo owns
    *  (`~/.omp/agent/commands`, `<workspace>/.omp/commands`). Everything else —
    *  a builtin, a `.claude` command, an extension command — renders read-only
-   *  and cannot be deleted through the chamber. */
+   *  and cannot be deleted through Kabmo. */
   managed?: boolean;
   /** oh-my-pi aliases (`/models` for `/model`); live agent commands only. */
   aliases?: string[];

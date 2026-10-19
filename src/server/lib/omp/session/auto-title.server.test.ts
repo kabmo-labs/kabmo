@@ -14,7 +14,7 @@ import {
 
 /**
  * The safety property of auto-titling, and the one thing that must never
- * regress: the chamber fires omp's own `/rename` (which persists through
+ * regress: Kabmo fires omp's own `/rename` (which persists through
  * `setSessionName(title, "user")`) in the background, and that write has no
  * "don't overwrite" guard of its own — omp only refuses an `"auto"` write over
  * a `"user"` title. So the decision to skip a NAMED session is ours, and a bug

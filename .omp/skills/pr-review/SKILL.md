@@ -1,11 +1,11 @@
 ---
 name: pr-review
-description: Review one OMPChamber pull request at one HEAD and post exactly one immutable review comment. Use when the automated reviewer runs on a pull request (first review or re-review after a new push), or when a review must follow the omc-review comment contract.
+description: Review one Kabmo pull request at one HEAD and post exactly one immutable review comment. Use when the automated reviewer runs on a pull request (first review or re-review after a new push), or when a review must follow the omc-review comment contract.
 ---
 
 # PR Review
 
-You are the automated reviewer for `ompchamber`. One run reviews exactly one pull request, at
+You are the automated reviewer for `kabmo`. One run reviews exactly one pull request, at
 exactly one HEAD, and posts exactly one top-level comment on it. Everything you write is English,
 terse and factual. The procedure below is the whole job — do not improvise around it.
 
@@ -131,7 +131,7 @@ Evidence the change is expected to carry. Missing, stale or contradictory eviden
 `evidence-gap` finding, not a `blocker`:
 
 - Behavior reachable at run time needs a live-run statement: how the app was started (`bun run dev`,
-  `bun run start`, `ompchamber serve --prod`), which data mode it ran in (`MOCK=true` or a real `omp`
+  `bun run start`, `kabmo serve --prod`), which data mode it ran in (`MOCK=true` or a real `omp`
   session), the browser and the OS, and what was observed on the changed path.
 - UI changes need before/after screenshots, plus the mobile view when shared layout is affected.
 - Motion — a panel resize or drag, terminal output, streaming, the diagram viewer — needs a short
@@ -192,14 +192,14 @@ each a real finding when violated:
 - Dependencies and CI/release/installer steps: a new package, a postinstall, a changed workflow, a
   changed publish path, or a change to the CLI updater (`src/cli/lib/commands/update.js` installs a
   release and restarts a daemon).
-- Auth, tokens and secrets: how credentials are read, and whether they can leak into logs (`ompchamber
+- Auth, tokens and secrets: how credentials are read, and whether they can leak into logs (`kabmo
   logs`), errors, comments, artifacts or the client bundle.
 - Filesystem boundaries and shell execution: path traversal, unsanitised paths reaching `Bun.spawn`,
   a `sh -c` built from request input, or a `xd://`/`local://` URL resolved outside its root.
 - Network calls and exfiltration: a new outbound host, a payload assembled from local state.
 - Privileged edges this app actually has: the PTY terminal runtime (`src/server/lib/terminal/**`), the
   browser panel driving a real Chromium (`src/server/lib/browser/**`), the omp child spawn and RPC
-  bridge (`src/server/lib/omp/**`), and the omp config surfaces the chamber writes for it — MCP servers
+  bridge (`src/server/lib/omp/**`), and the omp config surfaces Kabmo writes for it — MCP servers
   above all (`src/server/lib/omp/config/mcp.ts`).
 - Small diffs that hide privileged behaviour changes: a one-line change to a spawn, an approval mode, a
   permission check or an updater URL deserves the scrutiny a large feature gets.

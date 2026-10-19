@@ -9,7 +9,7 @@
  *
  * The settings sidebar's "Reload OMP" button used to be a 1200 ms
  * spinner with no request behind it. A reload has to mean something, and the
- * only processes the chamber may bounce without destroying work are the ones
+ * only processes Kabmo may bounce without destroying work are the ones
  * with no session and no turn: the pooled utility children that answer the
  * provider/model lists and the composer's `/` popup, plus the prewarmed session
  * hosts waiting for a first prompt. Live sessions are left alone — see

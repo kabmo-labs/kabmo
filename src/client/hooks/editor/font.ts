@@ -21,7 +21,7 @@
  */
 
 import { useEffect, useState } from 'preact/hooks';
-import { readChamberSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
 import {
   EDITOR_DEFAULT_FONT_FAMILY,
   editorFontStack,
@@ -33,7 +33,7 @@ export const EDITOR_FONT_CHANGED_EVENT = 'omp:editor-font-changed';
 /** The family currently stored, falling back to the shipped default. */
 export function currentEditorFont(): string {
   if (typeof window === 'undefined') return EDITOR_DEFAULT_FONT_FAMILY;
-  return readChamberSetting<string>('editorFont') ?? EDITOR_DEFAULT_FONT_FAMILY;
+  return readKabmoSetting<string>('editorFont') ?? EDITOR_DEFAULT_FONT_FAMILY;
 }
 
 /** The stored family and the stack it resolves to, kept in step with writes. */

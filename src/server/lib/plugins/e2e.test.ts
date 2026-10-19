@@ -12,9 +12,9 @@
  * resolution and the registry's own admission — which is where the failures
  * this suite exists for actually live.
  *
- * The environment override (`OMPCHAMBER_MARKETPLACE_DIR`) is the seam: the
+ * The environment override (`KABMO_MARKETPLACE_DIR`) is the seam: the
  * registry resolves the working marketplace from it, so the test never touches
- * the developer's own `~/.ompchamber`.
+ * the developer's own `~/.kabmo`.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -37,8 +37,8 @@ let previousOverride: string | undefined;
 
 beforeAll(async () => {
   marketplaceRoot = await mkdtemp(join(tmpdir(), 'omp-plugin-e2e-'));
-  previousOverride = Bun.env.OMPCHAMBER_MARKETPLACE_DIR;
-  Bun.env.OMPCHAMBER_MARKETPLACE_DIR = marketplaceRoot;
+  previousOverride = Bun.env.KABMO_MARKETPLACE_DIR;
+  Bun.env.KABMO_MARKETPLACE_DIR = marketplaceRoot;
   isolateDb();
 
   // Copy the bundled plugin into the working marketplace and build it there —
@@ -48,8 +48,8 @@ beforeAll(async () => {
   const target = join(pluginsRoot, PLUGIN_ID);
   await cp(join(packageDir(), 'marketplace/plugins', PLUGIN_ID), target, { recursive: true });
 
-  const pkg = (await Bun.file(join(target, 'package.json')).json()) as { ompchamber: unknown };
-  const manifest = toManifest(pkg.ompchamber, target);
+  const pkg = (await Bun.file(join(target, 'package.json')).json()) as { kabmo: unknown };
+  const manifest = toManifest(pkg.kabmo, target);
   if ('error' in manifest) throw new Error(manifest.error);
   const built = await buildPanelPlugin(target, manifest);
   if (built.status !== 'built') throw new Error(`fixture build failed: ${built.reason}`);
@@ -59,8 +59,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await disposePlugin(PLUGIN_ID);
   releaseDb();
-  if (previousOverride === undefined) delete Bun.env.OMPCHAMBER_MARKETPLACE_DIR;
-  else Bun.env.OMPCHAMBER_MARKETPLACE_DIR = previousOverride;
+  if (previousOverride === undefined) delete Bun.env.KABMO_MARKETPLACE_DIR;
+  else Bun.env.KABMO_MARKETPLACE_DIR = previousOverride;
   await rm(marketplaceRoot, { recursive: true, force: true });
 });
 

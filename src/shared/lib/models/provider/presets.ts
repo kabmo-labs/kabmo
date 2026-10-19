@@ -15,7 +15,7 @@
  *   point a built-in provider at a proxy.
  * - Any other preset creates a provider entry of its own, so a slug that is
  *   already DEFINED — connected, or carrying its own `baseUrl` in models.yml or
- *   the chamber overlay — is not re-offered; that provider is managed from the
+ *   Kabmo overlay — is not re-offered; that provider is managed from the
  *   sidebar, which can reconnect it and edit its endpoint.
  *
  * `status` alone is the wrong test: omp reports ~60 providers it merely
@@ -28,7 +28,7 @@ import type { PresetProviderOption, ProviderItem } from '@/shared/types/settings
 
 /**
  * True when the provider already owns this slug in a config file — connected,
- * or carrying its own `baseUrl` from models.yml or the chamber overlay.
+ * or carrying its own `baseUrl` from models.yml or Kabmo overlay.
  */
 export function providerOwnsSlug(provider: ProviderItem | undefined): boolean {
   return provider !== undefined && (provider.status === 'connected' || Boolean(provider.baseUrl));

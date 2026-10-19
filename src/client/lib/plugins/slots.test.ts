@@ -15,7 +15,7 @@
  */
 
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';
+import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
 import {
   failPluginBundle,
   headerDropdownOf,

@@ -7,7 +7,7 @@
  * Keeping an installed BUNDLED plugin in step with the copy the package ships.
  *
  * A bundled plugin is installed by COPYING the store's directory into the
- * working marketplace (`installPanelPluginFromBundled`), so an Kabmo update
+ * working marketplace (`installPanelPluginFromBundled`), so a Kabmo update
  * that changes a bundled plugin's files changes the STORE and leaves the install
  * on the old copy. Nothing else would ever notice: the install is a directory of
  * ordinary files, and the scan has no notion of a store version.
@@ -73,7 +73,7 @@ async function manifestVersion(dir: string): Promise<string | null> {
  * as a user edit on the next pass, blocking the plugin forever.
  *
  * The exclusions are the directories the plugin's own tooling owns.
- * `node_modules` is never refetched (a network round trip per plugin per chamber
+ * `node_modules` is never refetched (a network round trip per plugin per Kabmo
  * upgrade, for a tree that usually did not change, and the build reinstalls when
  * the plugin declares dependencies at all). `dist` IS mirrored when the store
  * ships one — a plugin with no `src/` distributes its bundle, and keeping the
@@ -186,7 +186,7 @@ export async function syncBundledPlugins(): Promise<{
  * Sync ONE bundled plugin even though its files were edited.
  *
  * The escape hatch for a refusal: the user has seen which files differ and asked
- * for the store's copy anyway, which is the only way past a baseline the chamber
+ * for the store's copy anyway, which is the only way past a baseline Kabmo
  * cannot reconcile. The baseline is dropped first, so the pass that follows takes
  * the store's files and re-records what it wrote — the same end state a clean
  * install reaches.

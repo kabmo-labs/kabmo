@@ -67,7 +67,7 @@ async function spawnLockHolder(lockPath: string): Promise<Bun.Subprocess> {
 }
 
 beforeEach(() => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-test-flock-'));
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-test-flock-'));
 });
 
 afterEach(async () => {
@@ -83,8 +83,8 @@ afterEach(async () => {
   // `held` and the probe result live on a globalThis singleton shared with the
   // rest of the run; leaked state would hold a lock against a sibling suite.
   // The singleton is untyped on `globalThis`, so the shape is named once here.
-  const host = globalThis as unknown as { __ompChamberFlock?: unknown };
-  delete host.__ompChamberFlock;
+  const host = globalThis as unknown as { __kabmoFlock?: unknown };
+  delete host.__kabmoFlock;
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 

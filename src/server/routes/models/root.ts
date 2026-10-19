@@ -86,7 +86,7 @@ async function loadMockModels() {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // MOCK mode keeps the SQLite-backed catalog (chamber demo behavior).
+  // MOCK mode keeps the SQLite-backed catalog (Kabmo demo behavior).
   if (isMockMode()) {
     try {
       return json(await loadMockModels());

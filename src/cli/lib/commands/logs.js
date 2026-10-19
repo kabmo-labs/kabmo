@@ -1,4 +1,4 @@
-// `ompchamber logs` — print or follow the server logs.
+// `kabmo logs` — print or follow the server logs.
 //
 // Scoping matches `status`/`stop`/`restart`: without `--port` the logs of every
 // live instance are shown, each behind a `==> path <==` header, and `--port
@@ -18,7 +18,7 @@ function resolvePort(options) {
     const parsed = Number(raw);
     if (Number.isFinite(parsed)) return parsed;
   }
-  const env = Bun.env.OMPCHAMBER_PORT;
+  const env = Bun.env.KABMO_PORT;
   if (typeof env === 'string' && env.trim().length > 0) {
     const parsed = Number(env.trim());
     if (Number.isFinite(parsed)) return parsed;
@@ -118,7 +118,7 @@ export async function run(options) {
     // so its recorded port has no file here even though it is very much alive.
     fail(skipped.length > 0 && instances.length > 0
       ? `No log file at ${skipped[0].logFile}.\nPort ${skipped[0].port} was not started by the CLI — its output goes to the terminal that started it.`
-      : `No log file found at ${candidates[0].logFile}.\nStart the server first with \`ompchamber serve\`.`);
+      : `No log file found at ${candidates[0].logFile}.\nStart the server first with \`kabmo serve\`.`);
   }
 
   const requestedLines = Number(options?.lines);

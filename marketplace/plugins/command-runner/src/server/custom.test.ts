@@ -23,7 +23,7 @@
  *   button, so a repository with no command file is otherwise the one place the
  *   feature cannot be reached from.
  *
- * A fake `ChamberPluginApi` storage is used rather than the real database: the
+ * A fake `KabmoPluginApi` storage is used rather than the real database: the
  * storage contract is the host's (`plugin_records`), and what this module owns is
  * the keying and the rules around it. The MERGE and the START path are pinned in
  * `resolve.test.ts`, which needs a real filesystem.
@@ -31,7 +31,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import type { ChamberPluginApi, PluginJson } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi, PluginJson } from '@kabmo-labs/kabmo-sdk';
 
 import {
   CustomCommandStore,
@@ -71,7 +71,7 @@ function fakeApi() {
         },
       },
     },
-  } as unknown as ChamberPluginApi;
+  } as unknown as KabmoPluginApi;
   return { api, rows };
 }
 

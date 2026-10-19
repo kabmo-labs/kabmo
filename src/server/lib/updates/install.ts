@@ -4,11 +4,11 @@
  * Resolves the newest published release, works out how this copy was installed
  * (./install-method), then replaces it in place:
  *
- * - `bun-global` — `bun add -g ompchamber@<version>`.
+ * - `bun-global` — `bun add -g kabmo@<version>`.
  * - `git` — fetch, fast-forward to the release tag, then `bun install` and a
  *   client rebuild (`dist/` is gitignored, so a source checkout must rebuild).
  *
- * `ompchamber update` and the console's `POST /api/updates/apply` both run
+ * `kabmo update` and the console's `POST /api/updates/apply` both run
  * through here, so the CLI and the web button can never drift apart.
  */
 
@@ -16,7 +16,7 @@ import { join as joinPath, resolve as resolvePath } from 'node:path';
 
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
-import { OMPCHAMBER_PACKAGE, resolveUpdatePackage } from '@/server/lib/updates/npm';
+import { KABMO_PACKAGE, LEGACY_PACKAGE, resolveUpdatePackage } from '@/server/lib/updates/npm';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import {
   REPO_URL,
@@ -42,7 +42,7 @@ const STEP_TIMEOUT_MS = 600_000;
 /** Cap on the captured output returned to the console. */
 const OUTPUT_LIMIT = 20_000;
 
-export interface OmpChamberVersionInfo {
+export interface KabmoVersionInfo {
   /** Version on disk right now (`package.json`), null when unreadable. */
   current: string | null;
   /** Newest version published on npm, null when none could be resolved. */
@@ -78,7 +78,7 @@ export interface UpdateOptions {
   onStage?: (label: string) => void;
 }
 
-export interface OmpChamberUpdateResult {
+export interface KabmoUpdateResult {
   success: boolean;
   /** The environment cannot self-update; `message` holds the command to run. */
   manual: boolean;
@@ -125,7 +125,7 @@ export async function readInstalledVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<
   }
 }
 
-/** Package name installed on disk — `ompchamber` before the rename, `kabmo` after. */
+/** Package name installed on disk — `ompchamber` on a pre-rename install, `kabmo` after. */
 export async function readInstalledPackageName(pkgRoot = DEFAULT_PKG_ROOT): Promise<string | null> {
   try {
     const pkg = (await Bun.file(joinPath(resolvePath(pkgRoot), 'package.json')).json()) as { name?: unknown };
@@ -139,18 +139,18 @@ export async function readInstalledPackageName(pkgRoot = DEFAULT_PKG_ROOT): Prom
  * Installed version + newest published version on npm, never throws.
  *
  * The comparison is against npm rather than the GitHub release list because npm
- * is what the install comes from: `bun add -g ompchamber@<version>` can only
+ * is what the install comes from: `bun add -g kabmo@<version>` can only
  * install a published version, and a release tag that never reached the registry
  * would be offered and then fail to install.
  */
-export async function resolveOmpChamberVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<OmpChamberVersionInfo> {
+export async function resolveKabmoVersion(pkgRoot = DEFAULT_PKG_ROOT): Promise<KabmoVersionInfo> {
   const current = await readInstalledVersion(pkgRoot);
   const installedName = await readInstalledPackageName(pkgRoot);
-  const target = await resolveUpdatePackage();
-  // A rename is an update even when its version is LOWER. The product restarts
-  // at 1.0.0, and semver would otherwise compare 4.23.0 against 1.0.0 and offer
-  // nothing — leaving every bridge install stranded on the old package.
-  const renamed = Boolean(installedName && target.latest && installedName !== target.name);
+  const target = await resolveUpdatePackage(installedName);
+  // A rename is an update even when its version is LOWER: the product restarts
+  // at 0.0.1, so semver would compare 4.23.0 against 0.0.1 and offer nothing.
+  // Specifically OLD → NEW — an install on the current name is never "renamed".
+  const renamed = Boolean(installedName === LEGACY_PACKAGE && target.name === KABMO_PACKAGE && target.latest);
   return {
     current,
     latest: target.latest,
@@ -180,7 +180,7 @@ export function resolveInstallContext(pkgRoot = DEFAULT_PKG_ROOT): InstallContex
 }
 
 /** The commands that install `version` for a given install method. */
-export function planUpdateSteps({ method, version, pkgRoot, bunBin, packageName = OMPCHAMBER_PACKAGE }: { method: InstallMethod; version: string; pkgRoot: string; bunBin: string; packageName?: string }): UpdateStep[] {
+export function planUpdateSteps({ method, version, pkgRoot, bunBin, packageName = KABMO_PACKAGE }: { method: InstallMethod; version: string; pkgRoot: string; bunBin: string; packageName?: string }): UpdateStep[] {
   if (method === 'bun-global') {
     return [
       {
@@ -246,7 +246,7 @@ function tail(text: string): string {
  * as `success: false` with a message the CLI can print and the console can
  * show verbatim.
  */
-export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_ROOT, onLine, onStage }: UpdateOptions = {}): Promise<OmpChamberUpdateResult> {
+export async function updateKabmo({ force = false, pkgRoot = DEFAULT_PKG_ROOT, onLine, onStage }: UpdateOptions = {}): Promise<KabmoUpdateResult> {
   const context = resolveInstallContext(pkgRoot);
   const root = context.pkgRoot;
   const base = {
@@ -260,17 +260,17 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
     version: null,
     releaseUrl: null,
     output: '',
-  } satisfies Omit<OmpChamberUpdateResult, 'success' | 'message'>;
-  const fail = (message: string, patch: Partial<OmpChamberUpdateResult> = {}): OmpChamberUpdateResult => ({
+  } satisfies Omit<KabmoUpdateResult, 'success' | 'message'>;
+  const fail = (message: string, patch: Partial<KabmoUpdateResult> = {}): KabmoUpdateResult => ({
     success: false,
     ...base,
     message,
     ...patch,
   });
 
-  let info: OmpChamberVersionInfo;
+  let info: KabmoVersionInfo;
   try {
-    info = await resolveOmpChamberVersion(root);
+    info = await resolveKabmoVersion(root);
   } catch (err) {
     return fail(err instanceof Error ? err.message : 'Failed to resolve the latest release');
   }
@@ -302,7 +302,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
   }
 
   if (isManualMethod(context.method)) {
-    return fail(`This copy (${context.reason}) cannot update itself. Run: ${manualUpdateCommand(context.method, info.latest, info.package ?? OMPCHAMBER_PACKAGE)}`, { ...resolved, manual: true, version: info.latest });
+    return fail(`This copy (${context.reason}) cannot update itself. Run: ${manualUpdateCommand(context.method, info.latest, info.package ?? KABMO_PACKAGE)}`, { ...resolved, manual: true, version: info.latest });
   }
 
   if (context.method === 'git') {
@@ -314,7 +314,7 @@ export async function updateOmpChamber({ force = false, pkgRoot = DEFAULT_PKG_RO
   }
 
   const collected: string[] = [];
-  for (const step of planUpdateSteps({ method: context.method, version: info.latest, pkgRoot: root, bunBin: context.bunBin, packageName: info.package ?? OMPCHAMBER_PACKAGE })) {
+  for (const step of planUpdateSteps({ method: context.method, version: info.latest, pkgRoot: root, bunBin: context.bunBin, packageName: info.package ?? KABMO_PACKAGE })) {
     onStage?.(step.label);
 
     let stepResult: { ok: boolean; exitCode: number | null; output: string };

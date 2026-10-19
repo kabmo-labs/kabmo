@@ -124,7 +124,7 @@ function hoistNestedAtRules(rule: Rule): boolean {
  */
 export function flattenNestedAtRules(): Plugin {
   return {
-    postcssPlugin: 'ompchamber-flatten-nested-at-rules',
+    postcssPlugin: 'kabmo-flatten-nested-at-rules',
     OnceExit(root) {
       // A hoist can expose another nested at-rule in the segment that received
       // it, so repeat until a full pass moves nothing.

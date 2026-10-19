@@ -25,9 +25,9 @@
  */
 
 import { h, render } from 'preact';
-import type { MessageDirectiveRegistration } from '@kabmo-labs/plugin-sdk';
-import { PluginIdProvider } from '@kabmo-labs/ui';
-import type { SlotContextProps } from '@kabmo-labs/plugin-sdk';
+import type { MessageDirectiveRegistration } from '@kabmo-labs/kabmo-sdk';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
+import type { SlotContextProps } from '@kabmo-labs/kabmo-sdk';
 import {
   DIRECTIVE_ATTRS_ATTR,
   DIRECTIVE_BLOCK_CLASS,

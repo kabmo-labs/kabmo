@@ -28,7 +28,7 @@ export type RewindResult =
  *
  * `startedAt` is the row's own clock. It is the ONLY way to resolve a cut at a
  * row the session file does not carry — a builtin command (`/usage`, `/compact`)
- * writes no entry, so its timeline row lives in the chamber overlay alone and
+ * writes no entry, so its timeline row lives in Kabmo overlay alone and
  * the server cannot place it by id.
  */
 export async function requestRewind(

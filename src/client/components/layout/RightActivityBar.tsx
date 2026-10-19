@@ -75,7 +75,7 @@ export function RightActivityBar({ activePanel, onChangePanel, isPanelOpen, hasA
     .map((id) => byId.get(id))
     .filter((panel): panel is ResolvedPanel => panel !== undefined);
 
-  // The hairline that separates the chamber's own furniture from the installed
+  // The hairline that separates Kabmo's own furniture from the installed
   // plugins, drawn only while that grouping still HOLDS. The default order puts
   // every built-in above every plugin and the divider says so; once the user
   // drags a plugin up among the built-ins there is no longer a boundary to

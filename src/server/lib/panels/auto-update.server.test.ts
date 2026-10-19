@@ -36,7 +36,7 @@ const MANIFEST = { id: 'demo', name: 'Demo', version: '1.0.0', app: 'dist/app.js
 
 function writePlugin(dir: string, manifest: unknown): void {
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
 }
 
@@ -67,14 +67,14 @@ function advance(repo: string, version: string): void {
 beforeEach(() => {
   root = fs.mkdtempSync(join(tmpdir(), 'omp-autoupd-'));
   work = fs.mkdtempSync(join(tmpdir(), 'omp-autoupd-repos-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
-  globalThis.__ompChamberPanelGitStatus = undefined;
+  process.env.KABMO_MARKETPLACE_DIR = root;
+  globalThis.__kabmoPanelGitStatus = undefined;
   invalidatePanelScan();
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
-  globalThis.__ompChamberPanelGitStatus = undefined;
+  delete process.env.KABMO_MARKETPLACE_DIR;
+  globalThis.__kabmoPanelGitStatus = undefined;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(work, { recursive: true, force: true });
@@ -91,7 +91,7 @@ describe('runPanelAutoUpdatePass', () => {
     expect(result.updated).toEqual(['demo']);
     expect(result.failed).toEqual([]);
 
-    const manifest = JSON.parse(fs.readFileSync(join(root, 'plugins', 'demo', 'ompchamber.json'), 'utf8')) as {
+    const manifest = JSON.parse(fs.readFileSync(join(root, 'plugins', 'demo', 'kabmo.json'), 'utf8')) as {
       version: string;
     };
     expect(manifest.version).toBe('2.0.0');

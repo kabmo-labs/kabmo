@@ -21,7 +21,7 @@ interface CommandDetailPaneProps {
  * the command runs — so the editor is the point of the pane, and the body is
  * what a save writes back into the file.
  *
- * A command backed by a file the chamber does not own (a `.claude` or
+ * A command backed by a file Kabmo does not own (a `.claude` or
  * `.agents` command, a builtin, a skill entry) renders read-only: its file
  * belongs to another tool and a save here would rewrite it.
  */
@@ -37,9 +37,9 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
 
-  // A LIVE command the chamber does not own (a builtin, a `skill:<name>` entry,
+  // A LIVE command Kabmo does not own (a builtin, a `skill:<name>` entry,
   // an extension or a `.claude`/`.agents` file) renders read-only: its file, if
-  // it has one, belongs to another tool. A chamber-store row and a brand-new
+  // it has one, belongs to another tool. A Kabmo-store row and a brand-new
   // draft have no source and stay editable.
   const readOnly = !isNew && command.source != null && command.managed !== true;
 

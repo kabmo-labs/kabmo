@@ -20,7 +20,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
  * Read from the session's own transcript, because the modes are not a layout
  * preference: they are state the AGENT ran under, and the records are written
  * by the child process as it transitions. That makes this the one source a
- * second tab, a restarted chamber and a CLI-driven session all agree on.
+ * second tab, a restarted Kabmo and a CLI-driven session all agree on.
  *
  * The transcript is not always there to read. omp writes the JSONL at the first
  * ASSISTANT message, so a new chat is live — and in whatever mode the user just
@@ -185,7 +185,7 @@ export async function renameSession({ request, params }: ActionFunctionArgs) {
  * POST /api/sessions/:sessionId/rename-with-ai — let omp name the session from
  * its own transcript ("Rename with AI" in the session row's menu).
  *
- * Unlike the automatic titling the chamber already does, this is an explicit
+ * Unlike the automatic titling Kabmo already does, this is an explicit
  * request, so it renames a session that already has a name.
  */
 export async function renameWithAi({ request, params }: ActionFunctionArgs) {

@@ -23,7 +23,7 @@ import { getProcessState, isProcessAlive, type ProcessState } from '@/server/lib
 /**
  * Whether a `stream` row has no live run behind it and must heal to `finish`.
  *
- * The owner pid is the only input, so EVERY chamber instance reaches the same
+ * The owner pid is the only input, so EVERY Kabmo instance reaches the same
  * verdict from the same row — which is the point. Judging a row by the reader's
  * own runtime registry instead made instances disagree about one run: a second
  * instance opening its sidebar saw an empty registry, called the first
@@ -37,7 +37,7 @@ import { getProcessState, isProcessAlive, type ProcessState } from '@/server/lib
  * — identity comes from the OS command line, never from `kill(pid, 0)`.
  *
  * So the question is "is this still the process that wrote the row?": `matched`
- * (an ompchamber command line) is live, `unknown` (a host whose probe cannot
+ * (a Kabmo command line) is live, `unknown` (a host whose probe cannot
  * answer) keeps the previous bias and is treated as live, and a `mismatched`
  * pid is a stranger whose row is stale.
  *
@@ -67,7 +67,7 @@ export function isStaleStreamRow(
  *
  *   - a builtin (`/usage`, `/compact`) answers the ack itself with
  *     `agentInvoked:false`, and the dispatcher clears the row there;
- *   - the chamber's OWN extension (`/chamber-mode plan on` — the composer's
+ *   - Kabmo's OWN extension (`/kabmo-mode plan on` — the composer's
  *     Plan/Goal toggles) acks a bare `{success:true}` and reports
  *     `agentInvoked:false` on THIS frame instead. Verified against the real
  *     child: the dispatcher read that bare ack as a run, armed the
@@ -78,7 +78,7 @@ export function isStaleStreamRow(
  * real run, which carries `true`) must never be read as "no turn".
  *
  * `streaming` is the same guard the dispatcher's own release uses, and it is
- * load-bearing: a `/chamber-mode` sent while a turn runs is answered in ~20 ms
+ * load-bearing: a `/kabmo-mode` sent while a turn runs is answered in ~20 ms
  * from omp's command loop with the turn still streaming, so without it this
  * would delete THAT turn's live row and blank a spinner that is working.
  *
@@ -119,7 +119,7 @@ export function isOrphanStreamRow(
  * Self-heal, in two directions. Both leave the row at `finish`, which is the
  * honest outcome: the run is not going to finish.
  *
- *  1. A `stream` row whose OWNER IS GONE — a chamber process that exited
+ *  1. A `stream` row whose OWNER IS GONE — a Kabmo process that exited
  *     mid-run (crash, restart, SIGKILL), or whose pid was recycled by a
  *     stranger. Nothing will ever write the terminal status for it. This half
  *     is judged from the row alone (`owner_pid` against OS liveness AND
@@ -131,8 +131,8 @@ export function isOrphanStreamRow(
  *     instance can see it either: only the owning process knows whether it
  *     still has a run for the session. This is the shape a dropped prompt
  *     leaves behind (omp accepts the prompt and opens no turn, so no
- *     `agent_end` ever arrives — measured with the chamber's own
- *     `/chamber-mode` extension, whose bare `{success:true}` ack read as a
+ *     `agent_end` ever arrives — measured with Kabmo's own
+ *     `/kabmo-mode` extension, whose bare `{success:true}` ack read as a
  *     run), and without this half the spinner turns until the process restarts.
  *
  * `liveRunIds` is what the caller knows and this module cannot: the sessions

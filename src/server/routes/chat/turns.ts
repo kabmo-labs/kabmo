@@ -10,7 +10,7 @@
  * plus whatever "Load earlier messages" pulled in), so a rail built from the
  * mounted rows shows a fraction of the conversation and cannot reach a turn
  * that was never paged in. This endpoint answers the same id/position question
- * the timeline does — the JSONL messages with the chamber DB overlay merged —
+ * the timeline does — the JSONL messages with Kabmo DB overlay merged —
  * but for the WHOLE session, and strips each row down to what a tick needs.
  *
  * Positions are indices into that full merged list, which is exactly the list
@@ -65,7 +65,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
       }
     }
 
-    // Chamber-created sessions (mock or synthetic ids) answer from the DB copy,
+    // Kabmo-created sessions (mock or synthetic ids) answer from the DB copy,
     // mirroring the timeline loader's fallback.
     const db = await getDb();
     const existing = await db.get('SELECT messages FROM chat_sessions WHERE session_id = ?', [sessionId]);

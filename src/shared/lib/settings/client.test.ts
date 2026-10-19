@@ -1,10 +1,10 @@
 import { test, expect, afterAll, beforeEach } from 'bun:test';
 import {
-  primeChamberSettings,
-  readChamberSetting,
-  mergeChamberSettings,
+  primeKabmoSettings,
+  readKabmoSetting,
+  mergeKabmoSettings,
   writeSetting,
-  writeChamberSettings,
+  writeKabmoSettings,
 } from '@/shared/lib/settings/client';
 
 const bootstrap = {
@@ -14,28 +14,28 @@ const bootstrap = {
 };
 
 beforeEach(() => {
-  primeChamberSettings(bootstrap);
+  primeKabmoSettings(bootstrap);
 });
 
 test('reads expose top-level keys and blob keys flat', () => {
-  expect(readChamberSetting<string>('omp_sidebar_sort')).toBe('A-Z');
-  expect(readChamberSetting<string>('theme')).toBe('paper');
-  expect(readChamberSetting<string>('editorFont')).toBe('Menlo');
-  expect(readChamberSetting('absent')).toBeUndefined();
+  expect(readKabmoSetting<string>('omp_sidebar_sort')).toBe('A-Z');
+  expect(readKabmoSetting<string>('theme')).toBe('paper');
+  expect(readKabmoSetting<string>('editorFont')).toBe('Menlo');
+  expect(readKabmoSetting('absent')).toBeUndefined();
 });
 
 test('the raw blob key is not exposed as a flat key', () => {
-  expect(readChamberSetting('omp_chamber_settings')).toBeUndefined();
+  expect(readKabmoSetting('omp_chamber_settings')).toBeUndefined();
 });
 
-test('readChamberSetting accepts candidate key lists in priority order', () => {
-  expect(readChamberSetting<string>(['missing', 'theme'])).toBe('paper');
-  expect(readChamberSetting<string>(['theme', 'missing'])).toBe('paper');
-  expect(readChamberSetting(['missing', 'alsoMissing'])).toBeUndefined();
+test('readKabmoSetting accepts candidate key lists in priority order', () => {
+  expect(readKabmoSetting<string>(['missing', 'theme'])).toBe('paper');
+  expect(readKabmoSetting<string>(['theme', 'missing'])).toBe('paper');
+  expect(readKabmoSetting(['missing', 'alsoMissing'])).toBeUndefined();
 });
 
-test('mergeChamberSettings layers only the blob, never top-level keys', () => {
-  const merged = mergeChamberSettings({ theme: 'fallback', fontSize: 14 });
+test('mergeKabmoSettings layers only the blob, never top-level keys', () => {
+  const merged = mergeKabmoSettings({ theme: 'fallback', fontSize: 14 });
   expect(merged.theme).toBe('paper');
   expect(merged.fontSize).toBe(14);
   expect((merged as Record<string, unknown>).omp_sidebar_sort).toBeUndefined();
@@ -44,29 +44,29 @@ test('mergeChamberSettings layers only the blob, never top-level keys', () => {
 
 test('writeSetting updates the snapshot so the next read sees it', () => {
   writeSetting('omp_sidebar_sort', 'Z-A');
-  expect(readChamberSetting<string>('omp_sidebar_sort')).toBe('Z-A');
+  expect(readKabmoSetting<string>('omp_sidebar_sort')).toBe('Z-A');
 });
 
-test('writeChamberSettings updates flat keys and keeps sibling blob keys', () => {
-  writeChamberSettings({ theme: 'noir' });
-  expect(readChamberSetting<string>('theme')).toBe('noir');
-  expect(readChamberSetting<string>('editorFont')).toBe('Menlo');
-  expect(readChamberSetting('omp_chamber_settings')).toBeUndefined();
+test('writeKabmoSettings updates flat keys and keeps sibling blob keys', () => {
+  writeKabmoSettings({ theme: 'noir' });
+  expect(readKabmoSetting<string>('theme')).toBe('noir');
+  expect(readKabmoSetting<string>('editorFont')).toBe('Menlo');
+  expect(readKabmoSetting('omp_chamber_settings')).toBeUndefined();
 });
 
 test('a later write does not clobber previously written flat keys', () => {
   writeSetting('showRightPanel', false);
-  writeChamberSettings({ theme: 'noir' });
-  expect(readChamberSetting<boolean>('showRightPanel')).toBe(false);
-  expect(readChamberSetting<string>('theme')).toBe('noir');
+  writeKabmoSettings({ theme: 'noir' });
+  expect(readKabmoSetting<boolean>('showRightPanel')).toBe(false);
+  expect(readKabmoSetting<string>('theme')).toBe('noir');
 });
 
 /**
  * The snapshot is module state shared by every suite in one `bun test`
  * process; the last case here leaves it holding this file's fixtures. Restore
- * the pristine (unprimed) snapshot so a later file that reads a chamber
+ * the pristine (unprimed) snapshot so a later file that reads a Kabmo
  * setting sees the default rather than the fixture.
  */
 afterAll(() => {
-  primeChamberSettings({});
+  primeKabmoSettings({});
 });

@@ -18,7 +18,7 @@
  *   on. The fallback is the workspace root.
  * - **No workspace is `root: null`, never `root: ''`.** An empty string is a
  *   REAL value to a server that resolves it against its own cwd, so a plugin that
- *   passed it through would silently scope a command to the chamber's own
+ *   passed it through would silently scope a command to Kabmo's own
  *   directory instead of reporting "no workspace".
  *
  * The labels are asserted here too, because they travel with the rows and the

@@ -147,7 +147,7 @@ describe('auto-title trigger wiring', () => {
 });
 
 /**
- * The chamber's own background `/rename` answers on `prompt_result` with
+ * The Kabmo's own background `/rename` answers on `prompt_result` with
  * `agentInvoked:false` — auto-title fires it right after the first settled user
  * message, and `rename-with-ai` sends the same command.
  *

@@ -4,7 +4,7 @@
  */
 
 /**
- * Older-window pagination for the chamber timeline: pages
+ * Older-window pagination for Kabmo timeline: pages
  * `/api/chat/:id?before=` into the head of the message list and keeps the
  * viewport anchored on the rows the user was reading. Extracted from
  * useSessionLoad so that hook stays under the repo's per-file size ceiling.

@@ -85,11 +85,11 @@ let closeHook: (() => void) | null = null;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberRealtimeConnection: ConnectionState | undefined;
+  var __kabmoRealtimeConnection: ConnectionState | undefined;
 }
 
 export function state(): ConnectionState {
-  return (globalThis.__ompChamberRealtimeConnection ??= {
+  return (globalThis.__kabmoRealtimeConnection ??= {
     socket: null,
     status: 'idle',
     statusListeners: new Set(),

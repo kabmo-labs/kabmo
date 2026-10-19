@@ -4,7 +4,7 @@
  */
 
 /**
- * Skill discovery and SKILL.md authoring for the chamber's Skills settings.
+ * Skill discovery and SKILL.md authoring for Kabmo's Skills settings.
  *
  * Discovery is delegated to `omp skill list <dir> --json` rather than
  * re-implemented here. omp's own resolver is the only thing that knows every
@@ -15,16 +15,16 @@
  * of two directories silently disagreed with the agent: it listed skills the
  * agent could not run and hid the ones it could (measured: 6 shown vs 9 loaded
  * in this repository, and a catalog install into `~/.agents/skills` was
- * invisible to the chamber while omp ran it happily).
+ * invisible to Kabmo while omp ran it happily).
  *
  * `omp skill list` is cheap (measured 0.38-0.42s, no session, no model) and is
  * cached per directory for a few seconds so a panel read or a settings reload
  * does not spawn a process per request.
  *
- * Writing is deliberately narrow: only the two roots the chamber owns as
+ * Writing is deliberately narrow: only the two roots Kabmo owns as
  * omp-native skills (`~/.omp/agent/skills` and `<workspace>/.omp/skills`) can
  * be created in, edited or deleted. A skill from another provider (a Claude
- * plugin, a registry package) is read-only here — the chamber is not its
+ * plugin, a registry package) is read-only here — Kabmo is not its
  * owner, and deleting a file another tool manages is not a "delete skill".
  */
 
@@ -54,7 +54,7 @@ export interface DiscoveredSkill {
   baseDir: string;
   /** Excluded from the model's skill listing (`hide` / disableModelInvocation). */
   hidden: boolean;
-  /** True when the chamber owns the files and may rewrite or remove them. */
+  /** True when Kabmo owns the files and may rewrite or remove them. */
   managed: boolean;
 }
 
@@ -74,7 +74,7 @@ export function invalidateSkillCache(): void {
 }
 
 /**
- * The omp-native roots the chamber may create, edit and delete in — and the
+ * The omp-native roots Kabmo may create, edit and delete in — and the
  * only directories a `delete` may touch. A skill folder sits directly under one
  * of these.
  */
@@ -84,7 +84,7 @@ export function managedSkillRoots(projectDir?: string | null): string[] {
   return roots;
 }
 
-/** A skill the chamber owns: omp-native AND sitting directly under a managed
+/** A skill Kabmo owns: omp-native AND sitting directly under a managed
  *  root. Everything else (a Claude plugin, a registry package) is read-only. */
 function isManagedSkill(skill: { source: string; baseDir: string }, projectDir?: string | null): boolean {
   if (!skill.source.startsWith('native:')) return false;
@@ -104,7 +104,7 @@ interface CliSkill {
 /**
  * Enumerate the skills an omp session in `cwd` would load, through omp itself.
  * `projectDir` is the workspace the list is being shown for — it decides which
- * roots count as chamber-managed, and is NOT the same thing as `cwd` for the
+ * roots count as Kabmo-managed, and is NOT the same thing as `cwd` for the
  * user scope (whose cwd is the agent dir, which is not a workspace).
  * Returns [] when omp is not installed or the directory is unreadable; a
  * discovery failure must never surface as "you have no skills" being fatal.
@@ -237,7 +237,7 @@ export interface WriteSkillInput {
   body: string;
 }
 
-/** Create or overwrite a chamber-managed SKILL.md. Refuses a scope it cannot
+/** Create or overwrite a Kabmo-managed SKILL.md. Refuses a scope it cannot
  *  own (a project write with no workspace) rather than writing somewhere else. */
 export async function writeSkillFile(input: WriteSkillInput): Promise<{ filePath: string }> {
   const name = assertSafeName(input.name);
@@ -275,7 +275,7 @@ export async function writeSkillFile(input: WriteSkillInput): Promise<{ filePath
 }
 
 /**
- * Delete a chamber-managed skill directory. Refused unless the target is an
+ * Delete a Kabmo-managed skill directory. Refused unless the target is an
  * omp-native skill sitting directly under a managed root, so a delete can never
  * reach a skill another tool installed.
  */
@@ -284,7 +284,7 @@ export async function deleteSkillDir(id: string, projectDir?: string | null): Pr
   // is also the only managed root that applies there.
   const found = (await discoverSkills(projectDir ?? getAgentDir(), projectDir)).find((skill) => skill.id === id);
   if (!found) return false;
-  if (!found.managed) throw new Error(`"${found.name}" is managed by ${found.source}; the chamber cannot delete it`);
+  if (!found.managed) throw new Error(`"${found.name}" is managed by ${found.source}; Kabmo cannot delete it`);
 
   const dir = resolve(found.baseDir);
   const parent = resolve(dir, '..');

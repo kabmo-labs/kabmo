@@ -27,7 +27,7 @@
  *
  * The jump case needs a session LONG ENOUGH TO WINDOW, and that is why it
  * seeds a real JSONL instead of using the mock presets: `/api/chat/:id` serves
- * a chamber-created (DB) session in FULL, with `hasMore: false`, so no paging
+ * a Kabmo-created (DB) session in FULL, with `hasMore: false`, so no paging
  * ever happens and the defect is unreachable. Verified: with the follow-mode
  * fix reverted, the spec still passed against a DB session.
  */

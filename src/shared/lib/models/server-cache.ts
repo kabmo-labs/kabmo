@@ -16,9 +16,9 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberModelsCache: { data: ModelsData; expiresAt: number } | undefined;
+  var __kabmoModelsCache: { data: ModelsData; expiresAt: number } | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberProvidersRpcCache: { data: ProviderItem[]; expiresAt: number } | undefined;
+  var __kabmoProvidersRpcCache: { data: ProviderItem[]; expiresAt: number } | undefined;
 }
 
 /**
@@ -31,7 +31,7 @@ declare global {
  * exact staleness this function exists to prevent.
  */
 export function invalidateModelsCaches(): void {
-  globalThis.__ompChamberModelsCache = undefined;
-  globalThis.__ompChamberProvidersRpcCache = undefined;
+  globalThis.__kabmoModelsCache = undefined;
+  globalThis.__kabmoProvidersRpcCache = undefined;
   emitRealtimeSignal('models-changed');
 }

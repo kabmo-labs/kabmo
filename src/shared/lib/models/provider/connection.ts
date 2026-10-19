@@ -5,7 +5,7 @@
 
 /**
  * Client writes for the provider settings. Two concerns share one endpoint: the
- * chamber-local overlay (per-model visibility + sampling config) and the
+ * Kabmo-local overlay (per-model visibility + sampling config) and the
  * omp-native connect/disconnect flag. Both reshape the chat model picker, so
  * both notify it only AFTER the server confirmed the write — notifying first
  * would re-cache the pre-mutation list for another 60s.
@@ -53,7 +53,7 @@ export interface ProviderDeleteResult {
 }
 
 /**
- * Delete a provider: its chamber overlay row AND its `models.yml` entry.
+ * Delete a provider: its Kabmo overlay row AND its `models.yml` entry.
  *
  * The provider is identified by the id the registry served, because a provider
  * that exists only in models.yml has no overlay row to match on — the server

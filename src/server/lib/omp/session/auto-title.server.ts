@@ -6,10 +6,10 @@
 /**
  * Auto session titles for Kabmo.
  *
- * Chamber spawns omp with `--mode rpc-ui`, and that mode force-sets
+ * Kabmo spawns omp with `--mode rpc-ui`, and that mode force-sets
  * `PI_NO_TITLE=1` (omp's main.ts). The flag gates only the two AUTOMATIC title
  * paths — `AgentSession.maybeStartTitleGeneration` (first user message) and
- * `#scheduleReplanTitleRefresh` (todo replan) — so a chamber session is never
+ * `#scheduleReplanTitleRefresh` (todo replan) — so a Kabmo session is never
  * named on its own and the sidebar keeps the `New Session - <timestamp>`
  * placeholder for its whole life.
  *
@@ -66,10 +66,10 @@ import { readSettingsJson } from '@/server/lib/db/settings-store';
 import { getDb } from '@/server/db.server';
 import { GET_STATE_TIMEOUT_MS, PROMPT_ACK_TIMEOUT_MS, type RpcSessionState } from '@/server/lib/omp/rpc/constants';
 
-/** Chamber settings blob key; mirrors the other chamber-blob keys. */
-const CHAMBER_SETTINGS_KEY = 'omp_chamber_settings';
+/** Settings blob key; mirrors the other blob keys (see `shared/lib/settings/keys`). */
+const SETTINGS_BLOB_KEY = 'kabmo_settings';
 
-/** Auto-titling is opt-in per chamber install. Default ON: an unnamed session
+/** Auto-titling is opt-in per Kabmo install. Default ON: an unnamed session
  *  renders as `New Session - <timestamp>` forever, which is the visible defect,
  *  and the cost is one tiny-model call per session. */
 const AUTO_SESSION_TITLE_DEFAULT = true;
@@ -79,7 +79,7 @@ const AUTO_SESSION_TITLE_DEFAULT = true;
 const GENERATE_TITLE_COMMAND = '/rename';
 
 /**
- * How long the chamber's own `/rename` may keep emitting its diagnostic frames.
+ * How long Kabmo's own `/rename` may keep emitting its diagnostic frames.
  *
  * The command answers on the prompt path with an immediate ack and then streams
  * `session_info_update` + `command_output` once the tiny model returns
@@ -148,14 +148,14 @@ export function consumeAutoTitleOutput(host: AutoTitleHost): boolean {
 }
 
 /**
- * Read the `autoSessionTitle` flag from the chamber settings blob. Absent or
+ * Read the `autoSessionTitle` flag from Kabmo settings blob. Absent or
  * malformed → the default. Never throws: a settings read must not be able to
  * break a turn's settle path.
  */
 async function isAutoTitleEnabled(): Promise<boolean> {
   try {
     const db = await getDb();
-    const blob = await readSettingsJson<Record<string, unknown> | null>(db, CHAMBER_SETTINGS_KEY, null);
+    const blob = await readSettingsJson<Record<string, unknown> | null>(db, SETTINGS_BLOB_KEY, null);
     const value = blob?.autoSessionTitle;
     return typeof value === 'boolean' ? value : AUTO_SESSION_TITLE_DEFAULT;
   } catch {
@@ -223,7 +223,7 @@ export async function triggerAutoSessionTitle(host: AutoTitleHost, stage: AutoTi
     // we just read belongs to a different conversation.
     if (state.sessionId !== host.sessionId) return;
 
-    // Direct `proc` write, NOT the chamber's prompt dispatch: this is
+    // Direct `proc` write, NOT Kabmo's prompt dispatch: this is
     // background work, so it must not mark the session streaming or claim the
     // sidebar's run row. omp's ack is immediate (`agentInvoked:false`); the
     // generation itself streams back later as ordinary frames.

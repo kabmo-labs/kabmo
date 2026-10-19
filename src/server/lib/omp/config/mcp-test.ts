@@ -13,7 +13,7 @@
  */
 
 import type { Subprocess } from 'bun';
-import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
 import { isMockMode } from '@/server/mock.server';
@@ -39,7 +39,7 @@ const REDACTED_SENTINEL = '••••••••';
 const STDERR_TAIL_LIMIT = 8 * 1024;
 const GRACE_PERIOD_MS = 2_000;
 
-const CLIENT_INFO = { name: 'ompchamber', version: '1.0.0' };
+const CLIENT_INFO = { name: 'kabmo', version: '0.0.1' };
 
 interface HandshakeOutcome {
   protocolVersion?: string;
@@ -77,7 +77,7 @@ function initializeRequest(): Record<string, unknown> {
 /** Merge configured env vars over the sanitized env, skipping empty values and
  * the redaction sentinel so masked credentials are never replayed. */
 function mergeEnvVars(server: McpServerItem): NodeJS.ProcessEnv {
-  const env = stripChamberHostEnv(Bun.env, process.platform);
+  const env = stripKabmoHostEnv(Bun.env, process.platform);
   for (const item of server.envVars ?? []) {
     const key = item?.key?.trim();
     const value = item?.value;

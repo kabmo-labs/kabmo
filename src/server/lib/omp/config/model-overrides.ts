@@ -9,7 +9,7 @@
  *
  * omp resolves sampling per MODEL from here and globally from `config.yml`
  * (`temperature`, `topP`, `topK`, `minP`), with no per-model temperature at
- * all. The chamber's model dialog therefore only offers what omp honours:
+ * all. The Kabmo's model dialog therefore only offers what omp honours:
  * `maxTokens` and a reasoning `thinking` block. Writing them anywhere else
  * (the SQLite overlay) left the controls inert — the UI showed a value the
  * agent never applied.

@@ -47,7 +47,7 @@ Never use green, blue, or yellow. Semantic states are expressed purely in ink:
 ## 5. Structural Layout
 
 - **Left Sidebar**: Fixed ~240px with workspace switcher ('SD'), Cmd+K search, main nav with active 3px ink rule, environments group, build quota meter (412/600), and user row.
-- **Navbar**: 52px height with breadcrumb, segmented All/Production/Preview pill control, ghost filter, right sidebar chamber toggle, and solid-ink Deploy button.
+- **Navbar**: 52px height with breadcrumb, segmented All/Production/Preview pill control, ghost filter, right sidebar Kabmo toggle, and solid-ink Deploy button.
 - **Hero Card**: Current production with 4-stage pipeline rail (Build, Test, Bundle, Deploy summing exactly to 2m 41s).
 - **Deployments Table**: Dense table with ~44px rows, branch chips, commit messages, and redeploy action.
 - **Bottom Split**: Last failed build log excerpt with signal red error lines + Deploys last 14 days stepped ink bar chart.

@@ -17,7 +17,7 @@ interface PluginSettingsSectionProps {
  * disk, and this pane is a browser surface, so a secret can be reported as set,
  * replaced or cleared — never shown. A value is written back through
  * `omp plugin config set`, which runs omp's OWN validation (type, `min`/`max`,
- * enum membership) rather than the chamber re-deriving rules that live in omp's
+ * enum membership) rather than Kabmo re-deriving rules that live in omp's
  * schema.
  */
 export function PluginSettingsSection({ plugin, disabled, onSave, onDelete }: PluginSettingsSectionProps) {

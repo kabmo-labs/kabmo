@@ -1,4 +1,4 @@
-// `ompchamber stop` — stop Kabmo instances.
+// `kabmo stop` — stop Kabmo instances.
 //
 // Scope follows OWNERSHIP, the same rule `restart` and `update` apply. By
 // default only the instances the CLI started are stopped, because a server
@@ -25,7 +25,7 @@ function explicitPort(options) {
 
 /** How to end an instance the default scope leaves alone. */
 function stopHint(port) {
-  return `stop it with \`ompchamber stop --port ${port}\` or \`ompchamber stop --all\``;
+  return `stop it with \`kabmo stop --port ${port}\` or \`kabmo stop --all\``;
 }
 
 export async function run(options) {
@@ -88,7 +88,7 @@ export async function run(options) {
   if (failures > 0) {
     error(
       `Could not stop ${failures} instance${failures === 1 ? '' : 's'}.`
-      + ` The instance record is kept, so \`ompchamber status\` still reports it.`,
+      + ` The instance record is kept, so \`kabmo status\` still reports it.`,
     );
     process.exitCode = 1;
   }

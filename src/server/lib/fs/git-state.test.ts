@@ -45,7 +45,7 @@ function git(cwd: string, ...args: string[]): string {
 
 /** A repository on `main` and `feature` whose two branches edit the same line. */
 function makeConflictingRepo(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitstate-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-gitstate-'));
   roots.push(dir);
   git(dir, 'init', '-q', '-b', 'main', '.');
   git(dir, 'config', 'user.email', 'test@example.invalid');
@@ -76,7 +76,7 @@ describe('readGitState: no operation', () => {
   });
 
   test('a directory that is not a repository answers the empty state, not an error', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-notrepo-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-notrepo-'));
     roots.push(dir);
     const state = await readGitState(dir);
     expect(state).toEqual({ operation: null, conflicts: [], detached: false });

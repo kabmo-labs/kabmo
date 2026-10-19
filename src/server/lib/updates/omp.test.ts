@@ -24,7 +24,7 @@ import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 const originalFetch = Bun.fetch;
 
 describe('omp update check', () => {
-  const realOverride = Bun.env.OMPCHAMBER_OMP_BIN;
+  const realOverride = Bun.env.KABMO_OMP_BIN;
 
   /** A stand-in binary: the check only reads `omp --version` from it. The answer
    * is baked into the source (the check spawns without passing `env:`). */
@@ -41,13 +41,13 @@ describe('omp update check', () => {
   beforeEach(() => {
     // A path that cannot exist: probeOmpBin returns null from the override
     // without ever touching PATH, so the guard is deterministic on any machine.
-    Bun.env.OMPCHAMBER_OMP_BIN = join(tmpdir(), 'ompchamber-definitely-absent', 'omp');
+    Bun.env.KABMO_OMP_BIN = join(tmpdir(), 'kabmo-definitely-absent', 'omp');
     invalidateOmpCliCache();
   });
 
   afterEach(() => {
-    if (realOverride === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-    else Bun.env.OMPCHAMBER_OMP_BIN = realOverride;
+    if (realOverride === undefined) delete Bun.env.KABMO_OMP_BIN;
+    else Bun.env.KABMO_OMP_BIN = realOverride;
     globalThis.fetch = originalFetch;
     invalidateOmpCliCache();
   });
@@ -67,7 +67,7 @@ describe('omp update check', () => {
   });
 
   test('compares the binary’s own version against the npm latest', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('omp/18.6.0\n');
+    Bun.env.KABMO_OMP_BIN = await stubOmp('omp/18.6.0\n');
     invalidateOmpCliCache();
     stubRegistry('18.7.0');
 
@@ -81,7 +81,7 @@ describe('omp update check', () => {
   });
 
   test('the installed version being the newest is not an update', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('omp/18.6.0\n');
+    Bun.env.KABMO_OMP_BIN = await stubOmp('omp/18.6.0\n');
     invalidateOmpCliCache();
     stubRegistry('18.6.0');
 
@@ -95,7 +95,7 @@ describe('omp update check', () => {
   });
 
   test('an npm read that fails is reported, and no update is claimed', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('omp/18.6.0\n');
+    Bun.env.KABMO_OMP_BIN = await stubOmp('omp/18.6.0\n');
     invalidateOmpCliCache();
     globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
 
@@ -105,7 +105,7 @@ describe('omp update check', () => {
   });
 
   test('a binary that prints no version is an error, not an available update', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = await stubOmp('');
+    Bun.env.KABMO_OMP_BIN = await stubOmp('');
     invalidateOmpCliCache();
     stubRegistry('18.7.0');
 

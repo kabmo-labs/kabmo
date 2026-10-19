@@ -41,13 +41,13 @@ beforeEach(async () => {
   // shared unknown-client key here, so every test would otherwise inherit the
   // previous test's failures.
   resetLoginRateLimits();
-  Bun.env.OMPCHAMBER_DATA_DIR = DATA_DIR;
+  Bun.env.KABMO_DATA_DIR = DATA_DIR;
   await initAuth(PASSWORD);
 });
 
 afterAll(async () => {
   await initAuth(null);
-  delete Bun.env.OMPCHAMBER_DATA_DIR;
+  delete Bun.env.KABMO_DATA_DIR;
   fs.rmSync(DATA_DIR, { recursive: true, force: true });
 });
 

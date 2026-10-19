@@ -6,7 +6,7 @@
 /**
  * Plan-mode artifacts of one session, as the right-panel Plan view reads them.
  *
- * A plan is omp's file, not a chamber record: the reader lists the session's
+ * A plan is omp's file, not a Kabmo record: the reader lists the session's
  * `local/` artifact directory and serves the chosen plan's body verbatim. The
  * types carry no state of their own — `current` is what the session's plan mode
  * names (or the newest file), and `files` is everything available to switch to.

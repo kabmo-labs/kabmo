@@ -10,7 +10,7 @@ import type { CodeSurfaceHandle } from '@/client/components/common/code-surface'
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
 import { EditorBody } from '@/client/components/workspace/editor/Body';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { RENDERED_VIEWERS, viewerKindFor } from '@/shared/lib/fs/document-kind';

@@ -4,7 +4,7 @@
  */
 
 /**
- * Linking the chamber's own packages into a plugin's `node_modules`.
+ * Linking Kabmo's own packages into a plugin's `node_modules`.
  *
  * A plugin declares `@kabmo-labs/*` as OPTIONAL PEER dependencies: the host
  * provides them, so the plugin must never fetch them from a registry. The
@@ -18,7 +18,7 @@
  * Symlinks rather than copies: the packages are developed in place, and a copy
  * taken at install time would pin a plugin to whatever the sources said that
  * day. A pre-existing entry is replaced, because a plugin that shipped its own
- * (stale) copy would otherwise shadow the chamber's.
+ * (stale) copy would otherwise shadow Kabmo's.
  */
 
 import { mkdir, rm, symlink } from 'fs/promises';
@@ -37,9 +37,16 @@ import { dirname, join } from 'path';
  * the plugin's directory as its working directory, so a cwd-relative lookup
  * would search the marketplace and find nothing.
  */
-export function chamberPackageDirs(): Record<string, string> {
+export function kabmoPackageDirs(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const name of ['@kabmo-labs/plugin-sdk', '@kabmo-labs/ui', '@ompchamber/plugin-sdk', '@ompchamber/ui']) {
+  for (const name of [
+    '@kabmo-labs/kabmo-sdk',
+    '@kabmo-labs/kabmo-ui',
+    '@kabmo-labs/plugin-sdk',
+    '@kabmo-labs/ui',
+    '@ompchamber/plugin-sdk',
+    '@ompchamber/ui',
+  ]) {
     try {
       out[name] = dirname(Bun.resolveSync(`${name}/package.json`, import.meta.dir));
     } catch {
@@ -51,7 +58,7 @@ export function chamberPackageDirs(): Record<string, string> {
 }
 
 /**
- * Symlink the chamber's packages into a plugin's `node_modules`.
+ * Symlink Kabmo's packages into a plugin's `node_modules`.
  *
  * Best-effort: a plugin that imports none of them builds fine without this, so a
  * failure here is not a build failure.
@@ -59,30 +66,30 @@ export function chamberPackageDirs(): Record<string, string> {
  * There is deliberately NO Preact reconciliation here any more. An earlier
  * version pointed each LINKED package's `node_modules/preact` at the plugin's
  * copy, which is the one thing that must never happen: `packages/ui` and
- * `packages/plugin-sdk` are the HOST's own packages, so rewriting their
+ * `packages/kabmo-sdk` are the HOST's own packages, so rewriting their
  * dependency tree replaced the host's Preact with the plugin's — and since the
  * runtime shim hands the host's `preact/hooks` to every plugin, a plugin that
  * declares `preact` made the host hand out the WRONG hooks instance. The
  * failure is `Cannot read properties of undefined (reading '__H')` on the first
  * render, inside the host's own UI kit.
  *
- * It is also unnecessary: the shim marks `preact` external, so the chamber's
+ * It is also unnecessary: the shim marks `preact` external, so Kabmo's
  * bundler never resolves it through a linked package in the first place.
  */
-export async function linkChamberPackages(root: string): Promise<void> {
-  const dirs = chamberPackageDirs();
+export async function linkKabmoPackages(root: string): Promise<void> {
+  const dirs = kabmoPackageDirs();
   if (Object.keys(dirs).length === 0) return;
 
-  const scope = join(root, 'node_modules', '@ompchamber');
-  try {
-    await mkdir(scope, { recursive: true });
-  } catch {
-    return;
-  }
-
   for (const [name, packageRoot] of Object.entries(dirs)) {
-    const target = join(scope, name.split('/')[1]);
+    // The scope comes from the NAME, not a hardcoded `@kabmo-labs`: the list
+    // above spans two scopes (the current one and the pre-rename
+    // `@ompchamber`), and a fixed scope would link `@ompchamber/ui` in as
+    // `@kabmo-labs/ui` — overwriting the real kit with a package that is not it.
+    const [scope, bare] = name.split('/');
+    const dir = join(root, 'node_modules', scope);
+    const target = join(dir, bare);
     try {
+      await mkdir(dir, { recursive: true });
       await rm(target, { recursive: true, force: true });
       await symlink(packageRoot, target, 'junction');
     } catch {
@@ -91,3 +98,9 @@ export async function linkChamberPackages(root: string): Promise<void> {
     }
   }
 }
+
+/** @deprecated Use `kabmoPackageDirs`. */
+export const chamberPackageDirs = kabmoPackageDirs;
+
+/** @deprecated Use `linkKabmoPackages`. */
+export const linkChamberPackages = linkKabmoPackages;

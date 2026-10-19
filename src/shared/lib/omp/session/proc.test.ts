@@ -32,12 +32,12 @@ describe('parseProcUrl', () => {
   });
 
   test('reads an id', () => {
-    expect(parseProcUrl('proc://ompchamber-dev')).toEqual({ id: 'ompchamber-dev', action: 'read' });
+    expect(parseProcUrl('proc://kabmo-dev')).toEqual({ id: 'kabmo-dev', action: 'read' });
   });
 
   test('reads the two actions', () => {
-    expect(parseProcUrl('proc://ompchamber-dev/kill')).toEqual({ id: 'ompchamber-dev', action: 'kill' });
-    expect(parseProcUrl('proc://ompchamber-dev/mode')).toEqual({ id: 'ompchamber-dev', action: 'mode' });
+    expect(parseProcUrl('proc://kabmo-dev/kill')).toEqual({ id: 'kabmo-dev', action: 'kill' });
+    expect(parseProcUrl('proc://kabmo-dev/mode')).toEqual({ id: 'kabmo-dev', action: 'mode' });
   });
 
   test('ignores a query, a hash and a trailing slash', () => {
@@ -70,13 +70,13 @@ describe('procPathOf', () => {
 describe('procViewOf — write /kill of a service', () => {
   test('reads the op and the daemon snapshot', () => {
     const view = procViewOf({
-      target: 'proc://ompchamber-dev/kill',
-      input: { path: 'proc://ompchamber-dev/kill' },
+      target: 'proc://kabmo-dev/kill',
+      input: { path: 'proc://kabmo-dev/kill' },
       details: {
         proc: {
           action: 'stop',
           daemon: {
-            name: 'ompchamber-dev',
+            name: 'kabmo-dev',
             id: '7bf84d40',
             state: 'exited',
             startedAt: 1_791_433_388_038,
@@ -91,14 +91,14 @@ describe('procViewOf — write /kill of a service', () => {
       },
     });
     expect(view?.op).toBe('stop');
-    expect(view?.daemon).toMatchObject({ name: 'ompchamber-dev', state: 'exited', exitCode: 0 });
+    expect(view?.daemon).toMatchObject({ name: 'kabmo-dev', state: 'exited', exitCode: 0 });
     expect(procUptime(view!.daemon!, 0)?.label).toBe('16m 29s');
   });
 
   test('reads a stdin payload', () => {
     const view = procViewOf({
-      target: 'proc://ompchamber-dev',
-      details: { proc: { action: 'stdin', daemon: { name: 'ompchamber-dev', state: 'ready', pid: 22985 }, input: '{"kill":true}' } },
+      target: 'proc://kabmo-dev',
+      details: { proc: { action: 'stdin', daemon: { name: 'kabmo-dev', state: 'ready', pid: 22985 }, input: '{"kill":true}' } },
     });
     expect(view?.op).toBe('stdin');
     expect(view?.input).toBe('{"kill":true}');
@@ -107,8 +107,8 @@ describe('procViewOf — write /kill of a service', () => {
 
   test('reads a mode write', () => {
     const view = procViewOf({
-      target: 'proc://ompchamber-3599/mode',
-      details: { proc: { action: 'mode', daemon: { name: 'ompchamber-3599', state: 'ready', persist: true }, mode: 'persist' } },
+      target: 'proc://kabmo-3599/mode',
+      details: { proc: { action: 'mode', daemon: { name: 'kabmo-3599', state: 'ready', persist: true }, mode: 'persist' } },
     });
     expect(view?.op).toBe('mode');
     expect(view?.mode).toBe('persist');
@@ -176,8 +176,8 @@ describe('procViewOf — read', () => {
 describe('procViewOf — legacy hub shape', () => {
   test('reads a daemon off the top level of details', () => {
     const view = procViewOf({
-      target: 'proc://ompchamber-dev',
-      details: { op: 'start', daemon: { name: 'ompchamber-dev', state: 'ready', pid: 22985 } },
+      target: 'proc://kabmo-dev',
+      details: { op: 'start', daemon: { name: 'kabmo-dev', state: 'ready', pid: 22985 } },
     });
     expect(view?.op).toBe('start');
     expect(view?.daemon?.state).toBe('ready');
@@ -197,8 +197,8 @@ describe('procViewOf — legacy hub shape', () => {
 
 describe('bashServiceOf', () => {
   test('reads a service launch off a bash result', () => {
-    const service = bashServiceOf({ details: { service: { name: 'ompchamber-dev', state: 'ready', ready: true, timedOut: false, pid: 22985 } } });
-    expect(service).toMatchObject({ name: 'ompchamber-dev', state: 'ready', pid: 22985 });
+    const service = bashServiceOf({ details: { service: { name: 'kabmo-dev', state: 'ready', ready: true, timedOut: false, pid: 22985 } } });
+    expect(service).toMatchObject({ name: 'kabmo-dev', state: 'ready', pid: 22985 });
   });
 
   test('returns undefined for a plain command', () => {

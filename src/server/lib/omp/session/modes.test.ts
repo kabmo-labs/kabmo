@@ -18,6 +18,19 @@ import { readPersistedModes } from '@/server/lib/omp/session/modes';
 const line = (customType: string, data: unknown) => JSON.stringify({ type: 'custom', customType, data });
 
 describe('readPersistedModes', () => {
+  test('reads the pre-rename entry types too', () => {
+    // A session written before the rename carries `chamber-*`. Both are a
+    // transition log, and refusing the old ones would lose the mode state of
+    // every session that existed at the upgrade.
+    const body = [
+      line('chamber-plan-state', { enabled: true }),
+      line('chamber-goal-state', { enabled: true, goal: { id: 'g1', objective: 'ship', status: 'active' } }),
+    ].join('\n');
+    const modes = readPersistedModes(body);
+    expect(modes.plan).toBe(true);
+    expect(modes.goalRecord?.id).toBe('g1');
+  });
+
   test('reports nothing for a session with no mode entries', () => {
     const body = JSON.stringify({ type: 'message', message: { role: 'user', content: 'hi' } });
     expect(readPersistedModes(body)).toEqual({
@@ -31,7 +44,7 @@ describe('readPersistedModes', () => {
   });
 
   test('takes the LAST transition, not the first', () => {
-    const body = [line('chamber-plan-state', { enabled: true }), line('chamber-plan-state', { enabled: false })].join('\n');
+    const body = [line('kabmo-plan-state', { enabled: true }), line('kabmo-plan-state', { enabled: false })].join('\n');
     expect(readPersistedModes(body).plan).toBe(false);
   });
 
@@ -39,11 +52,11 @@ describe('readPersistedModes', () => {
     // The distinction that decides whether a cold spawn arms the continuation
     // loop: a paused goal exists (the toggle reads as on) but is not being
     // pursued, and omp's own cold-start pause must not be overridden.
-    const active = line('chamber-goal-state', {
+    const active = line('kabmo-goal-state', {
       enabled: true,
       goal: { id: 'g1', objective: 'x', status: 'active', tokensUsed: 0, timeUsedSeconds: 0, createdAt: 0, updatedAt: 0 },
     });
-    const paused = line('chamber-goal-state', {
+    const paused = line('kabmo-goal-state', {
       enabled: true,
       goal: { id: 'g1', objective: 'x', status: 'paused', tokensUsed: 0, timeUsedSeconds: 0, createdAt: 0, updatedAt: 0 },
     });
@@ -54,7 +67,7 @@ describe('readPersistedModes', () => {
 
   test('keeps a goal live across paused and budget-limited', () => {
     for (const status of ['active', 'paused', 'budget-limited'] as const) {
-      const body = line('chamber-goal-state', {
+      const body = line('kabmo-goal-state', {
         enabled: true,
         goal: { id: 'g1', objective: 'x', status, tokensUsed: 0, timeUsedSeconds: 0, createdAt: 0, updatedAt: 0 },
       });
@@ -64,7 +77,7 @@ describe('readPersistedModes', () => {
 
   test('a completed or dropped goal does not read as on', () => {
     for (const status of ['complete', 'dropped'] as const) {
-      const body = line('chamber-goal-state', {
+      const body = line('kabmo-goal-state', {
         enabled: false,
         goal: { id: 'g1', objective: 'x', status, tokensUsed: 0, timeUsedSeconds: 0, createdAt: 0, updatedAt: 0 },
       });
@@ -78,7 +91,7 @@ describe('readPersistedModes', () => {
   test('an enabled flag without a live status is not enough', () => {
     // omp writes `enabled: true` with `mode: "exiting"` on completion; the
     // status is what decides.
-    const body = line('chamber-goal-state', {
+    const body = line('kabmo-goal-state', {
       enabled: true,
       goal: { id: 'g1', objective: 'x', status: 'complete', tokensUsed: 1, timeUsedSeconds: 1, createdAt: 0, updatedAt: 0 },
     });
@@ -86,7 +99,7 @@ describe('readPersistedModes', () => {
   });
 
   test('ignores a malformed line rather than throwing', () => {
-    const body = ['{not json', line('chamber-plan-state', { enabled: true })].join('\n');
+    const body = ['{not json', line('kabmo-plan-state', { enabled: true })].join('\n');
     expect(readPersistedModes(body).plan).toBe(true);
   });
 
@@ -97,8 +110,8 @@ describe('readPersistedModes', () => {
     // about the loop — treating that silence as "no verdict" would erase it.
     const goal = { id: 'g1', objective: 'x', status: 'active', tokensUsed: 9, timeUsedSeconds: 3, createdAt: 0, updatedAt: 0 };
     const body = [
-      line('chamber-goal-state', { enabled: true, goal, continuation: { turn: 3, maxTurns: 3, stopped: 'max-turns' } }),
-      line('chamber-goal-state', { enabled: true, goal }),
+      line('kabmo-goal-state', { enabled: true, goal, continuation: { turn: 3, maxTurns: 3, stopped: 'max-turns' } }),
+      line('kabmo-goal-state', { enabled: true, goal }),
     ].join('\n');
     expect(readPersistedModes(body).goalContinuation).toEqual({ turn: 3, maxTurns: 3, stopped: 'max-turns' });
   });
@@ -106,25 +119,25 @@ describe('readPersistedModes', () => {
   test('an explicit null clears the verdict the way a Resume does', () => {
     const goal = { id: 'g1', objective: 'x', status: 'paused', tokensUsed: 9, timeUsedSeconds: 3, createdAt: 0, updatedAt: 0 };
     const body = [
-      line('chamber-goal-state', { enabled: true, goal, continuation: { turn: 3, maxTurns: 3, stopped: 'budget' } }),
-      line('chamber-goal-state', { enabled: true, goal, continuation: null }),
+      line('kabmo-goal-state', { enabled: true, goal, continuation: { turn: 3, maxTurns: 3, stopped: 'budget' } }),
+      line('kabmo-goal-state', { enabled: true, goal, continuation: null }),
     ].join('\n');
     expect(readPersistedModes(body).goalContinuation).toBeNull();
   });
 
   test('a malformed verdict is dropped rather than rendered', () => {
     const goal = { id: 'g1', objective: 'x', status: 'active', tokensUsed: 1, timeUsedSeconds: 1, createdAt: 0, updatedAt: 0 };
-    const body = line('chamber-goal-state', { enabled: true, goal, continuation: { turn: 0, maxTurns: 3 } });
+    const body = line('kabmo-goal-state', { enabled: true, goal, continuation: { turn: 0, maxTurns: 3 } });
     expect(readPersistedModes(body).goalContinuation).toBeNull();
   });
 
   test('the goal\'s own turn ceiling rides the verdict and survives Resume', () => {
     const goal = { id: 'g1', objective: 'x', status: 'active', tokensUsed: 1, timeUsedSeconds: 1, createdAt: 0, updatedAt: 0 };
     const body = [
-      line('chamber-goal-state', { enabled: true, goal, continuation: { turn: 2, maxTurns: 5 }, maxTurns: 5 }),
+      line('kabmo-goal-state', { enabled: true, goal, continuation: { turn: 2, maxTurns: 5 }, maxTurns: 5 }),
       // Resume clears the VERDICT; the ceiling must not go with it, or the goal
       // would silently fall back to the install default after a resume.
-      line('chamber-goal-state', { enabled: true, goal, continuation: null }),
+      line('kabmo-goal-state', { enabled: true, goal, continuation: null }),
     ].join('\n');
     const parsed = readPersistedModes(body);
     expect(parsed.goalContinuation).toBeNull();

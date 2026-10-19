@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * The overlay narrowing. For a session omp owns on disk the transcript lives in
- * the JSONL, so the chamber's copy only has to carry what omp cannot record
+ * the JSONL, so Kabmo's copy only has to carry what omp cannot record
  * there — the user turns (raw composer text, attachment metadata) and the notice
  * rows. Everything else was a mirror written on every `message_end`.
  *
@@ -30,7 +30,7 @@ function jsonl(): StoredMessage[] {
   ];
 }
 
-/** The same conversation as the chamber mirrored it: its own id on the turns the
+/** The same conversation as Kabmo mirrored it: its own id on the turns the
  *  user typed, the attachment metadata the JSONL cannot carry, and the command's
  *  notice row — which is the only place its output exists at all. */
 function storedFull(): StoredMessage[] {

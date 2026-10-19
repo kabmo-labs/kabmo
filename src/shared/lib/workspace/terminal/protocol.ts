@@ -114,7 +114,7 @@ export type TerminalServerFrame = TerminalReadyFrame | TerminalExitFrame | Termi
 
 /**
  * Terminal ids are client-generated. `randomUUID` needs a secure context, and
- * the chamber is reachable over plain http on a LAN address (`--lan`), so the
+ * Kabmo is reachable over plain http on a LAN address (`--lan`), so the
  * fallback is what keeps that deployment working.
  */
 export function newTerminalId(): string {

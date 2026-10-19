@@ -28,7 +28,7 @@ import { HOST_CAPABILITIES, missingCapabilities } from '@/shared/lib/panels/capa
 import { describeIncompatibility } from '@/server/lib/panels/compat.server';
 import type { PanelPluginManifest } from '@/shared/types';
 
-const RUNNING = { ompchamber: '1.0.0', pluginSdk: '1.0.0' };
+const RUNNING = { kabmo: '1.0.0', pluginSdk: '1.0.0' };
 
 /** A manifest that is compatible but for the field a test is about. */
 function manifest(overrides: Partial<PanelPluginManifest> = {}): PanelPluginManifest {
@@ -59,7 +59,7 @@ describe('describeIncompatibility', () => {
 
   test('a shipped capability is admitted', () => {
     // The bug this pins: `capabilities: ['server']` used to be refused with
-    // "which this chamber does not provide" over a feature that shipped.
+    // "which this Kabmo does not provide" over a feature that shipped.
     expect(describeIncompatibility(manifest({ capabilities: ['server'] }), RUNNING)).toBeNull();
     expect(describeIncompatibility(manifest({ capabilities: ['repo-scope'] }), RUNNING)).toBeNull();
   });
@@ -71,8 +71,8 @@ describe('describeIncompatibility', () => {
   });
 
   test('an engine range that does not match is refused, naming both sides', () => {
-    const reason = describeIncompatibility(manifest({ engines: { ompchamber: '^9.0.0' } }), RUNNING);
-    expect(reason).toContain('ompchamber');
+    const reason = describeIncompatibility(manifest({ engines: { kabmo: '^9.0.0' } }), RUNNING);
+    expect(reason).toContain('kabmo');
     expect(reason).toContain('1.0.0');
   });
 });

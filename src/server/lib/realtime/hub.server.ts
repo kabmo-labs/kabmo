@@ -4,7 +4,7 @@
  */
 
 /**
- * The chamber's realtime hub: the one place a server-originated event enters,
+ * The Kabmo's realtime hub: the one place a server-originated event enters,
  * and the one place it leaves from. Every publisher calls
  * `publish(topic, payload)`; every subscriber is a WebSocket connection from
  * `@/server/routes/realtime/ws`. Nothing else fans out to clients.
@@ -46,7 +46,7 @@ export type {
 
 /**
  * Most deltas held while a snapshot resolves. A resolve is a few milliseconds
- * of work, so overflow means a burst far beyond anything the chamber produces;
+ * of work, so overflow means a burst far beyond anything Kabmo produces;
  * a connection that overflows is re-resolved rather than served a partial
  * replay, because a silent gap is the one outcome this transport must not have.
  */
@@ -54,13 +54,13 @@ const MAX_PENDING_DELTAS = 256;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberRealtimeHub: HubState | undefined;
+  var __kabmoRealtimeHub: HubState | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberRealtimeHubInstance: RealtimeHub | undefined;
+  var __kabmoRealtimeHubInstance: RealtimeHub | undefined;
 }
 
 function state(): HubState {
-  return (globalThis.__ompChamberRealtimeHub ??= { topics: new Map(), descriptors: new Map() });
+  return (globalThis.__kabmoRealtimeHub ??= { topics: new Map(), descriptors: new Map() });
 }
 
 /**
@@ -308,11 +308,11 @@ export function createHub(): RealtimeHub {
  * a hot reload cannot leave a publisher writing into a discarded instance.
  */
 export function getRealtimeHub(): RealtimeHub {
-  return (globalThis.__ompChamberRealtimeHubInstance ??= createHub());
+  return (globalThis.__kabmoRealtimeHubInstance ??= createHub());
 }
 
 /** Test seam: drop the hub and its topic state. */
 export function resetRealtimeHub(): void {
-  globalThis.__ompChamberRealtimeHub = undefined;
-  globalThis.__ompChamberRealtimeHubInstance = undefined;
+  globalThis.__kabmoRealtimeHub = undefined;
+  globalThis.__kabmoRealtimeHubInstance = undefined;
 }

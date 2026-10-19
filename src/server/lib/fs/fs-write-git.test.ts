@@ -54,7 +54,7 @@ import { testPosix } from '@/test-support/platform';
 const tempDirs: string[] = [];
 
 function tempDir(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), `ompchamber-${prefix}-`));
+  const dir = mkdtempSync(join(tmpdir(), `kabmo-${prefix}-`));
   tempDirs.push(dir);
   return dir;
 }
@@ -135,8 +135,8 @@ describe('withConfigLock', () => {
   // its recovery branches, and it must not decide which mechanism runs here —
   // while a real host may be held by a lease a sibling suite still owns.
   beforeEach(() => {
-    const host = globalThis as { __ompChamberFlock?: { available?: boolean } };
-    if (host.__ompChamberFlock?.available === false) delete host.__ompChamberFlock;
+    const host = globalThis as { __kabmoFlock?: { available?: boolean } };
+    if (host.__kabmoFlock?.available === false) delete host.__kabmoFlock;
   });
 
   test('runs the critical section, returns its value, removes the lock', async () => {

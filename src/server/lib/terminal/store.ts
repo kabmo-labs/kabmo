@@ -42,31 +42,31 @@ export interface TerminalStore {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberTerminalState: TerminalStore | undefined;
+  var __kabmoTerminalState: TerminalStore | undefined;
   /**
    * The pre-object shape: a bare sessions Map under its own key. Read once, so a
    * server that reloads into this module keeps the shells it is already running
    * instead of dropping their records on the floor.
    */
   // eslint-disable-next-line no-var
-  var __ompChamberTerminals: Map<string, TerminalSession> | undefined;
+  var __kabmoTerminals: Map<string, TerminalSession> | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberTerminalSweep: TerminalSweep | undefined;
+  var __kabmoTerminalSweep: TerminalSweep | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberTerminalResizes: Map<string, TerminalTimeout> | undefined;
+  var __kabmoTerminalResizes: Map<string, TerminalTimeout> | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberTerminalCleanupInstalled: boolean | undefined;
+  var __kabmoTerminalCleanupInstalled: boolean | undefined;
 }
 
 export function terminalStore(): TerminalStore {
-  if (globalThis.__ompChamberTerminalState) return globalThis.__ompChamberTerminalState;
-  const legacySessions = globalThis.__ompChamberTerminals;
-  const legacyResizes = globalThis.__ompChamberTerminalResizes;
-  return (globalThis.__ompChamberTerminalState = {
+  if (globalThis.__kabmoTerminalState) return globalThis.__kabmoTerminalState;
+  const legacySessions = globalThis.__kabmoTerminals;
+  const legacyResizes = globalThis.__kabmoTerminalResizes;
+  return (globalThis.__kabmoTerminalState = {
     sessions: legacySessions instanceof Map ? legacySessions : new Map(),
     creating: new Map(),
     resizeTimers: legacyResizes instanceof Map ? legacyResizes : new Map(),
-    sweep: globalThis.__ompChamberTerminalSweep,
-    cleanupInstalled: globalThis.__ompChamberTerminalCleanupInstalled === true,
+    sweep: globalThis.__kabmoTerminalSweep,
+    cleanupInstalled: globalThis.__kabmoTerminalCleanupInstalled === true,
   });
 }

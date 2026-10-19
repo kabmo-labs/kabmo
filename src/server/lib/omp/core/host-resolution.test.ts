@@ -4,10 +4,10 @@
  */
 
 /**
- * Where the chamber resolves its omp host from, and how it folds the state a
+ * Where Kabmo resolves its omp host from, and how it folds the state a
  * live child reports back. Each case pins a decision that fails silently:
  *
- *  - `resolveOmpBin` must not let a bad `OMPCHAMBER_OMP_BIN` fall through to a
+ *  - `resolveOmpBin` must not let a bad `KABMO_OMP_BIN` fall through to a
  *    different omp on PATH, must re-probe when a cached hit disappears, and
  *    must not serve a cached MISS for the whole process lifetime (an install
  *    that lands while the server runs has to become visible).
@@ -34,7 +34,7 @@ import type { RpcSessionState } from '@/server/lib/omp/rpc/constants';
 
 const tempDirs: string[] = [];
 const realEnv = {
-  OMPCHAMBER_OMP_BIN: Bun.env.OMPCHAMBER_OMP_BIN,
+  KABMO_OMP_BIN: Bun.env.KABMO_OMP_BIN,
   MOCK: Bun.env.MOCK,
   PI_CODING_AGENT_DIR: Bun.env.PI_CODING_AGENT_DIR,
   PI_CONFIG_DIR: Bun.env.PI_CONFIG_DIR,
@@ -67,22 +67,22 @@ afterAll(() => {
 });
 
 describe('resolveOmpBin', () => {
-  test('an OMPCHAMBER_OMP_BIN pointing at an existing file wins', () => {
+  test('an KABMO_OMP_BIN pointing at an existing file wins', () => {
     const bin = fakeBinary();
-    Bun.env.OMPCHAMBER_OMP_BIN = bin;
+    Bun.env.KABMO_OMP_BIN = bin;
     invalidateOmpCliCache();
     expect(resolveOmpBin()).toBe(bin);
   });
 
-  test('a bad OMPCHAMBER_OMP_BIN yields null instead of falling through to PATH', () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = join(tempDir('omp-missing'), 'omp');
+  test('a bad KABMO_OMP_BIN yields null instead of falling through to PATH', () => {
+    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-missing'), 'omp');
     invalidateOmpCliCache();
     expect(resolveOmpBin()).toBeNull();
   });
 
   test('a cached hit that has since been deleted is re-probed', () => {
     const bin = fakeBinary();
-    Bun.env.OMPCHAMBER_OMP_BIN = bin;
+    Bun.env.KABMO_OMP_BIN = bin;
     invalidateOmpCliCache();
     expect(resolveOmpBin()).toBe(bin);
     fs.rmSync(bin);
@@ -91,11 +91,11 @@ describe('resolveOmpBin', () => {
   });
 
   test('a cached miss suppresses probing until the miss TTL elapses', () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = join(tempDir('omp-miss'), 'omp');
+    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-miss'), 'omp');
     invalidateOmpCliCache();
     expect(resolveOmpBin()).toBeNull();
     const bin = fakeBinary();
-    Bun.env.OMPCHAMBER_OMP_BIN = bin;
+    Bun.env.KABMO_OMP_BIN = bin;
     // Still inside MISS_TTL_MS: the install that just appeared is invisible.
     expect(resolveOmpBin()).toBeNull();
     // An explicit invalidation (after `omp update`) makes it visible at once.
@@ -166,24 +166,24 @@ describe('resolveProjectRoot', () => {
 
 describe('ompStartupError', () => {
   test('MOCK=true is exempt even when no binary resolves', () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = join(tempDir('omp-mock'), 'omp');
+    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-mock'), 'omp');
     Bun.env.MOCK = 'true';
     invalidateOmpCliCache();
     expect(ompStartupError()).toBeNull();
   });
 
   test('a missing binary yields the actionable multi-line message', () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = join(tempDir('omp-miss2'), 'omp');
+    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-miss2'), 'omp');
     Bun.env.MOCK = 'false';
     invalidateOmpCliCache();
     const message = ompStartupError();
     expect(message).toContain('omp binary not found — Kabmo cannot start.');
-    expect(message).toContain('OMPCHAMBER_OMP_BIN=/path/to/omp');
+    expect(message).toContain('KABMO_OMP_BIN=/path/to/omp');
     expect(message).toContain('MOCK=true');
   });
 
   test('a resolvable binary lets the app start', () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = fakeBinary();
+    Bun.env.KABMO_OMP_BIN = fakeBinary();
     Bun.env.MOCK = 'false';
     invalidateOmpCliCache();
     expect(ompStartupError()).toBeNull();
@@ -194,7 +194,7 @@ describe('ompStartupLogLines', () => {
   test('names the executable actually spawned plus the config and agent dirs', () => {
     const bin = fakeBinary();
     const agentDir = tempDir('omp-agent');
-    Bun.env.OMPCHAMBER_OMP_BIN = bin;
+    Bun.env.KABMO_OMP_BIN = bin;
     Bun.env.PI_CODING_AGENT_DIR = agentDir;
     Bun.env.PI_CONFIG_DIR = '.omp-alt';
     invalidateOmpCliCache();

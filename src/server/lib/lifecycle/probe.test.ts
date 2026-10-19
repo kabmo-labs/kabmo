@@ -5,7 +5,7 @@
 
 /**
  * `probe.ts` answers two questions a starting server depends on: "can I bind
- * this address" and "is an Kabmo server answering here". Getting either
+ * this address" and "is a Kabmo server answering here". Getting either
  * wrong is expensive — a false "free" turns into an EADDRINUSE after the
  * server has already announced itself, and a false "occupied" blocks startup
  * on a port nobody holds — so the tests drive real listeners on ephemeral
@@ -171,9 +171,9 @@ describe('waitForPortFree', () => {
 });
 
 describe('fetchHealth', () => {
-  test('returns the payload of an Kabmo listener, keeping only known fields', async () => {
+  test('returns the payload of a Kabmo listener, keeping only known fields', async () => {
     const full = occupy(() => Response.json({
-      service: 'ompchamber',
+      service: 'kabmo',
       pid: 4242,
       version: '3.10.1',
       startedAt: '2026-01-01T00:00:00.000Z',
@@ -193,7 +193,7 @@ describe('fetchHealth', () => {
     const health = await fetchHealth(full.port, '127.0.0.1', 1000, false);
 
     expect(health).toEqual({
-      service: 'ompchamber',
+      service: 'kabmo',
       pid: 4242,
       version: '3.10.1',
       startedAt: '2026-01-01T00:00:00.000Z',
@@ -214,25 +214,36 @@ describe('fetchHealth', () => {
 
   test('reports a malformed fds field as null rather than a half-trusted object', async () => {
     const partial = occupy(() => Response.json({
-      service: 'ompchamber',
+      service: 'kabmo',
       fds: { open: 1, highest: 1, limit: 2 },
     }));
 
     const health = await fetchHealth(partial.port, '127.0.0.1', 1000, false);
 
-    expect(health?.service).toBe('ompchamber');
+    expect(health?.service).toBe('kabmo');
     expect(health?.fds).toBeNull();
   });
 
   test('drops fields whose type is wrong rather than passing them on', async () => {
-    const mistyped = occupy(() => Response.json({ service: 'ompchamber', pid: '4242', version: 7, tls: 'yes' }));
+    const mistyped = occupy(() => Response.json({ service: 'kabmo', pid: '4242', version: 7, tls: 'yes' }));
 
     const health = await fetchHealth(mistyped.port, '127.0.0.1', 1000, false);
 
-    expect(health?.service).toBe('ompchamber');
+    expect(health?.service).toBe('kabmo');
     expect(health?.pid).toBeUndefined();
     expect(health?.version).toBeUndefined();
     expect(health?.tls).toBeUndefined();
+  });
+
+  test('recognizes a pre-rename listener, and reports it under the current name', async () => {
+    // A server started before the rename is still running the old build: its
+    // health payload says `ompchamber`, and `status`/`stop` must still find it.
+    const legacy = occupy(() => Response.json({ service: 'ompchamber', pid: 4242, port: 3000 }));
+
+    const health = await fetchHealth(legacy.port, '127.0.0.1', 1000, false);
+
+    expect(health?.service).toBe('kabmo');
+    expect(health?.pid).toBe(4242);
   });
 
   test('ignores a listener that is not Kabmo', async () => {
@@ -247,7 +258,7 @@ describe('fetchHealth', () => {
     const html = occupy(() => new Response('<html>not json</html>', { headers: { 'content-type': 'text/html' } }));
     expect(await fetchHealth(html.port, '127.0.0.1', 1000, false)).toBeNull();
 
-    const list = occupy(() => Response.json([{ service: 'ompchamber' }]));
+    const list = occupy(() => Response.json([{ service: 'kabmo' }]));
     expect(await fetchHealth(list.port, '127.0.0.1', 1000, false)).toBeNull();
   });
 
@@ -258,7 +269,7 @@ describe('fetchHealth', () => {
   });
 
   test('a plaintext listener is not found over TLS, and the mode decides the scheme', async () => {
-    const plain = occupy(() => Response.json({ service: 'ompchamber', pid: process.pid }));
+    const plain = occupy(() => Response.json({ service: 'kabmo', pid: process.pid }));
 
     expect(await fetchHealth(plain.port, '127.0.0.1', 1000, true)).toBeNull();
     expect(await fetchHealth(plain.port, '127.0.0.1', 1000, false)).not.toBeNull();

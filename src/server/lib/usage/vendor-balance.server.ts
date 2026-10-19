@@ -16,7 +16,7 @@
  * (a bogus key returns 401, not 404). Anthropic and OpenAI are NOT here on
  * purpose: their usage/cost reports require an org ADMIN key
  * (`sk-ant-admin01-…`) that a normal workspace key cannot substitute, so the
- * chamber cannot read them with the credential the user actually configured.
+ * Kabmo cannot read them with the credential the user actually configured.
  *
  * Results are shaped as `UsageLimitWindow[]` so the existing quota renderer
  * draws them — a balance is just a window whose unit is USD.
@@ -229,7 +229,7 @@ export function parseVendorBalance(slug: string, payload: unknown): UsageLimitWi
 }
 
 /**
- * The provider's key: the chamber overlay first, then omp's own stores, then
+ * The provider's key: Kabmo overlay first, then omp's own stores, then
  * the environment variable omp itself reads. The env fallback matters because a
  * key can live only in the user's shell (omp picks it up there), which no store
  * on disk would reveal.
@@ -254,7 +254,7 @@ export interface VendorBalance {
 /**
  * Fetch a vendor balance. Returns null when the provider has no balance
  * adapter, or when no credential could be resolved (a provider omp reports
- * through an env var the chamber was not launched with is a silent miss, not an
+ * through an env var Kabmo was not launched with is a silent miss, not an
  * error — the caller already knows the credential exists somewhere).
  */
 export async function fetchVendorBalance(slug: string): Promise<VendorBalance | null> {

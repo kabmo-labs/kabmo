@@ -38,7 +38,7 @@ const MANIFEST = { id: 'demo', name: 'Demo', version: '1.0.0', app: 'dist/app.js
 /** A plugin directory: manifest, bundle, and optionally a marker file. */
 function writePlugin(dir: string, manifest: unknown, files: Record<string, string> = {}): void {
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
   for (const [name, content] of Object.entries(files)) {
     const target = join(dir, name);
@@ -51,8 +51,8 @@ beforeEach(() => {
   root = fs.mkdtempSync(join(tmpdir(), 'omp-sync-work-'));
   store = fs.mkdtempSync(join(tmpdir(), 'omp-sync-store-'));
   work = fs.mkdtempSync(join(tmpdir(), 'omp-sync-repos-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
-  process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = store;
+  process.env.KABMO_MARKETPLACE_DIR = root;
+  process.env.KABMO_BUNDLED_MARKETPLACE_DIR = store;
   // The baseline and refusal records live in `app_settings`, so this suite needs
   // an isolated database: a shared handle would read the developer's real one.
   isolateDb();
@@ -60,8 +60,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
-  delete process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
+  delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
   releaseDb();
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
@@ -78,7 +78,7 @@ describe('syncBundledPlugins', () => {
     expect(result.updated).toHaveLength(1);
     expect(result.updated[0]).toMatchObject({ pluginId: 'demo', from: '1.0.0', to: '2.0.0' });
 
-    const manifest = JSON.parse(fs.readFileSync(join(root, 'plugins', 'demo', 'ompchamber.json'), 'utf8')) as {
+    const manifest = JSON.parse(fs.readFileSync(join(root, 'plugins', 'demo', 'kabmo.json'), 'utf8')) as {
       version: string;
     };
     expect(manifest.version).toBe('2.0.0');
@@ -114,7 +114,7 @@ describe('syncBundledPlugins', () => {
 
     await syncBundledPlugins();
     // Dependencies are never refetched: the store ships none, and an install per
-    // chamber upgrade would cost a network round trip for a tree that did not
+    // Kabmo upgrade would cost a network round trip for a tree that did not
     // change.
     expect(fs.existsSync(join(root, 'plugins', 'demo', 'node_modules', 'dep', 'package.json'))).toBe(true);
     expect(fs.readFileSync(join(root, 'plugins', 'demo', 'dist', 'app.js'), 'utf8')).toContain('fromStore');

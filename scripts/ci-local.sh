@@ -24,7 +24,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="ompchamber-ci-local:1.4.3"
+IMAGE="kabmo-ci-local:1.4.3"
 TASK="${1:-all}"
 
 # The gate image is `oven/bun` PLUS the tools the suite actually spawns.
@@ -61,15 +61,15 @@ DOCKERFILE
 # Every `node_modules` in the tree is OVERLAID with a volume, and that is not a
 # speed trick — it is a correctness one. The host's install is a Bun workspace
 # whose member symlinks are ABSOLUTE macOS paths (`marketplace/plugins/…/
-# node_modules/@kabmo-labs/ui -> /Users/<name>/…/packages/ui`), so a container
+# node_modules/@kabmo-labs/kabmo-ui -> /Users/<name>/…/packages/kabmo-ui`), so a container
 # that mounts the tree read-write resolves them to nothing: six suites died with
-# `ENOENT reading "…/node_modules/@kabmo-labs/ui"` while the same suites passed
+# `ENOENT reading "…/node_modules/@kabmo-labs/kabmo-ui"` while the same suites passed
 # on the host. The overlay also keeps `bun install` inside the container from
 # rewriting the host's tree, which it did once (the whole install was deleted).
 NODE_MODULES_OVERLAYS=(
   /work/node_modules
-  /work/packages/ui/node_modules
-  /work/packages/plugin-sdk/node_modules
+  /work/packages/kabmo-ui/node_modules
+  /work/packages/kabmo-sdk/node_modules
   /work/marketplace/plugins/command-runner/node_modules
   /work/marketplace/plugins/session-info/node_modules
   /work/marketplace/plugins/stats/node_modules
@@ -81,7 +81,7 @@ NODE_MODULES_OVERLAYS=(
 overlay_args() {
   OVERLAYS=()
   for path in "${NODE_MODULES_OVERLAYS[@]}"; do
-    OVERLAYS+=(-v "ompchamber-ci$(echo "${path}" | tr '/' '-')":${path})
+    OVERLAYS+=(-v "kabmo-ci$(echo "${path}" | tr '/' '-')":${path})
   done
 }
 
@@ -144,7 +144,7 @@ case "${TASK}" in
     docker run --rm --init \
       -v "${ROOT}:/work" \
       "${OVERLAYS[@]}" \
-      -v ompchamber-playwright:/home/bun/.cache/ms-playwright \
+      -v kabmo-playwright:/home/bun/.cache/ms-playwright \
       -w /work \
       -e CI=true \
       -e HOME=/home/bun \

@@ -108,7 +108,7 @@ describe('fetchChangelogNotes', () => {
   let status = 200;
 
   beforeEach(() => {
-    delete (globalThis as typeof globalThis & { __ompChamberChangelogCache?: unknown }).__ompChamberChangelogCache;
+    delete (globalThis as typeof globalThis & { __kabmoChangelogCache?: unknown }).__kabmoChangelogCache;
     urls = [];
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       urls.push(String(input));
@@ -118,7 +118,7 @@ describe('fetchChangelogNotes', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    delete (globalThis as typeof globalThis & { __ompChamberChangelogCache?: unknown }).__ompChamberChangelogCache;
+    delete (globalThis as typeof globalThis & { __kabmoChangelogCache?: unknown }).__kabmoChangelogCache;
   });
 
   test('reads the repository changelog and parses it', async () => {

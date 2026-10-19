@@ -19,7 +19,7 @@
  * here from whichever composer is live, and the kit calls it.
  */
 
-import type { ComposerService, ComposerState } from '@kabmo-labs/ui';
+import type { ComposerService, ComposerState } from '@kabmo-labs/kabmo-ui';
 
 type Listener = (state: ComposerState) => void;
 
@@ -39,7 +39,7 @@ interface ComposerSlot {
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberComposerSlot: ComposerSlot | undefined;
+  var __kabmoComposerSlot: ComposerSlot | undefined;
 }
 
 const EMPTY: ComposerState = {
@@ -50,7 +50,7 @@ const EMPTY: ComposerState = {
 };
 
 function slot(): ComposerSlot {
-  return (globalThis.__ompChamberComposerSlot ??= { state: EMPTY, writer: null, listeners: new Set() });
+  return (globalThis.__kabmoComposerSlot ??= { state: EMPTY, writer: null, listeners: new Set() });
 }
 
 /** The composer as it stands. Cheap: the same object until a write moves it. */

@@ -40,7 +40,7 @@ interface ProcessTableProps {
 
 /** The colour a group's dot takes, so the list is scannable. */
 const GROUP_TONE: Record<string, string> = {
-  chamber: 'bg-ink',
+  kabmo: 'bg-ink',
   session: 'bg-success',
   utility: 'bg-info',
   prewarm: 'bg-ink/30',

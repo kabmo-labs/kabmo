@@ -5,7 +5,7 @@
 
 /**
  * `provider-listing.server.ts` probes a provider endpoint for its model list,
- * and the probe is the one place the chamber picks a wire dialect on the
+ * and the probe is the one place Kabmo picks a wire dialect on the
  * user's behalf. Each rule here was a real failure mode:
  *
  *  - an Anthropic-shaped endpoint rejects a Bearer header with a 401 that reads
@@ -66,7 +66,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const server of servers.splice(0)) server.stop(true);
   requests.length = 0;
-  globalThis.__ompChamberModelsDevCatalog = undefined;
+  globalThis.__kabmoModelsDevCatalog = undefined;
 });
 
 describe('fetchRemoteModels — one dialect, one header set', () => {
@@ -202,7 +202,7 @@ describe('enrichFromCatalog', () => {
   };
 
   test('a bare listing entry is filled in from the catalog', async () => {
-    globalThis.__ompChamberModelsDevCatalog = { data: catalog, expiresAt: Date.now() + 3_600_000 };
+    globalThis.__kabmoModelsDevCatalog = { data: catalog, expiresAt: Date.now() + 3_600_000 };
     const [model] = await enrichFromCatalog([
       { id: 'gpt-5', name: 'gpt-5', contextWindow: '', hasTools: false, hasVision: false, isVisible: true },
     ], 'openai');
@@ -219,7 +219,7 @@ describe('enrichFromCatalog', () => {
   });
 
   test('the provider-reported metadata (context, pricing) survives enrichment', async () => {
-    globalThis.__ompChamberModelsDevCatalog = { data: catalog, expiresAt: Date.now() + 3_600_000 };
+    globalThis.__kabmoModelsDevCatalog = { data: catalog, expiresAt: Date.now() + 3_600_000 };
     const [model] = await enrichFromCatalog([
       { id: 'gpt-5', name: 'My GPT', contextWindow: '8K ctx', hasTools: true, hasVision: true, isVisible: true, priceInput: 0.5 },
     ], 'openai');
@@ -231,13 +231,13 @@ describe('enrichFromCatalog', () => {
   });
 
   test('an empty catalog leaves the models untouched', async () => {
-    globalThis.__ompChamberModelsDevCatalog = { data: {}, expiresAt: Date.now() + 3_600_000 };
+    globalThis.__kabmoModelsDevCatalog = { data: {}, expiresAt: Date.now() + 3_600_000 };
     const models = [{ id: 'gpt-5', name: 'gpt-5', contextWindow: '', hasTools: false, hasVision: false, isVisible: true }];
     expect(await enrichFromCatalog(models, 'openai')).toBe(models);
   });
 
   test('a model the catalog does not know is passed through by reference', async () => {
-    globalThis.__ompChamberModelsDevCatalog = { data: catalog, expiresAt: Date.now() + 3_600_000 };
+    globalThis.__kabmoModelsDevCatalog = { data: catalog, expiresAt: Date.now() + 3_600_000 };
     const unknown = { id: 'unknown-model', name: 'unknown-model', contextWindow: '', hasTools: false, hasVision: false, isVisible: true };
     const [model] = await enrichFromCatalog([unknown], 'openai');
     expect(model).toBe(unknown);

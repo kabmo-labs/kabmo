@@ -9,7 +9,7 @@ questions, or touch the app shell.
 
 Measured against `get-bb/bb` @ `main`:
 
-| Surface | bb | chamber after wave 1 |
+| Surface | bb | Kabmo after wave 1 |
 |---|---|---|
 | App-side members | 45 (`PluginSdkApp`) | 6 hooks + 9 components |
 | Server-side members | 22 (`BbPluginApi`) | 8 |
@@ -40,7 +40,7 @@ verified.
 
 ## W1 — The kit hooks
 
-Three hooks, all in `packages/ui/src/`. The seam is the same one wave 1 built:
+Three hooks, all in `packages/kabmo-ui/src/`. The seam is the same one wave 1 built:
 `configureUiKit` injects the host's services, and the kit reads them.
 
 ### `useRpc(method)`
@@ -52,7 +52,7 @@ const { call, pending, error } = useRpc<{ query: string }, Row[]>('list');
 await call({ query: 'today' });
 ```
 
-**It must not be `useChamberFetch` with a different URL.** Three behaviours the
+**It must not be `useKabmoFetch` with a different URL.** Three behaviours the
 fetch hook does not have and this one needs:
 
 1. **The plugin id comes from the HOST**, injected as a service. A plugin that
@@ -81,7 +81,7 @@ if it were current is the failure wave 1's own realtime plan calls out.
 
 ### `useComposer()`
 
-bb's is 32 members. Ours is deliberately smaller — it exposes what the chamber's
+bb's is 32 members. Ours is deliberately smaller — it exposes what Kabmo's
 composer actually has, and grows only when a real plugin needs more. The shape:
 
 ```ts
@@ -111,12 +111,12 @@ a banner renders its length; a write that also had to be awaited would make
   `stale` when the socket drops.
 - `useComposer().set()` changes the draft the user sees, and the next keystroke
   does not revert it.
-- The harness (`@ompchamber/plugin-sdk/testing`) provides fakes for all three,
+- The harness (`@kabmo-labs/kabmo-sdk/testing`) provides fakes for all three,
   so a plugin's tests do not need a host.
 
 ## W2 — `providerIcon`
 
-The chamber already resolves a provider's mark from a 73-glyph table
+The Kabmo already resolves a provider's mark from a 73-glyph table
 (`src/client/components/common/provider-icon/`, `glyphs.ts` + `resolveProviderGlyph`),
 and already falls back to the provider's initials. bb exposes the same thing as
 a slot (`experimental_providerIcon`).
@@ -139,7 +139,7 @@ would silently replace another's.
 ## W3 — `pendingInteraction`
 
 omp asks the agent's user questions through `extension_ui_request` with
-`method: 'ask'`, and the chamber already renders them (`ask-panel/GroupedAsk.tsx`,
+`method: 'ask'`, and Kabmo already renders them (`ask-panel/GroupedAsk.tsx`,
 `hooks/chat/timeline/ask-frames.ts`). bb lets a plugin answer them
 (`PluginPendingInteractionProps`: `{ interaction, submit, cancel }`).
 
@@ -175,7 +175,7 @@ A fenced block in an assistant message that renders as a plugin's component:
 ```
 ````
 
-The chamber's markdown pipeline (`src/shared/lib/markdown/marked.ts`) has no
+The Kabmo's markdown pipeline (`src/shared/lib/markdown/marked.ts`) has no
 directive support today, so this is the one workstream with a real parser change.
 
 **The fence must stay INERT when no plugin claims it.** Today an unknown fence
@@ -266,15 +266,15 @@ across both waves, so the decision is re-recorded rather than revisited.
 
 What bb's registry genuinely buys is component BREADTH (Radix primitives,
 tables, charts) for plugins that want a rich UI. A plugin that wants those
-depends on the library directly — the chamber is a Preact-native world, so
+depends on the library directly — Kabmo is a Preact-native world, so
 `lucide-preact` or a hand-rolled primitive is the same work either way, and the
-chamber does not have to own a generated registry to make that possible. bb's
+Kabmo does not have to own a generated registry to make that possible. bb's
 registry exists because bb REMOVED its kit; a registry that duplicates a working
 kit is a second place for a component to live.
 
 **Revisit if:** a real plugin needs a component whose implementation is large and
-host-coupled (a virtualized table reading the chamber's session store, say). Then
-the answer is a new module in `@ompchamber/ui`, not a registry.
+host-coupled (a virtualized table reading Kabmo's session store, say). Then
+the answer is a new module in `@kabmo-labs/kabmo-ui`, not a registry.
 
 ## Sequencing
 
@@ -297,7 +297,7 @@ Every workstream must pass: `bun run lint`, `bunx tsc --noEmit --noUnusedLocals
 `hosts`, `agents`, `sdk`, `experimental_environments`, `experimental_machines`,
 `experimental_serverAccess`, `experimental_aiServices`, `cli`. Each exists in bb
 because bb ships the agent runtime and lets a plugin supply or extend it. The
-chamber's agent is omp, reached over RPC; a plugin does not replace it. This is
+Kabmo's agent is omp, reached over RPC; a plugin does not replace it. This is
 D1 of the wave-1 plan and it is not revisited here.
 
 `useSidebarThreads` / `experimental_useSidebarThreadActions` / the thread-list

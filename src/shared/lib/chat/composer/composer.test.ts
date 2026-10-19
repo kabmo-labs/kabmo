@@ -158,7 +158,7 @@ describe('composer slash trigger', () => {
 });
 
 describe('composer Enter on a complete command', () => {
-  /** The real popup pool: omp's commands plus the chamber's own. */
+  /** The real popup pool: omp's commands plus Kabmo's own. */
   const CHAMBER_POOL: ComposerPickItem[] = mergeCommandAndSkillItems(
     [{ id: 'c-model', name: 'model', description: 'Show current model selection', scope: 'system', template: '' }],
     [],
@@ -178,7 +178,7 @@ describe('composer Enter on a complete command', () => {
   });
 
   test('a command omp owns still accepts, however complete it looks', () => {
-    // `/model` takes no subcommands, but the chamber does not intercept it:
+    // `/model` takes no subcommands, but Kabmo does not intercept it:
     // accepting is what the CLI does, and it must stay that way.
     expect(enterSends('/model')).toBe(false);
     expect(enterSends('/mo')).toBe(false);

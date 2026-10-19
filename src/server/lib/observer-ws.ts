@@ -4,7 +4,7 @@
  */
 
 /**
- * Shared lifecycle for the chamber's observer WebSocket streams (agent events,
+ * Shared lifecycle for Kabmo's observer WebSocket streams (agent events,
  * BTW frames). Both routes hand-rolled the same connection state — an
  * unsubscribe slot, a ping/pong keepalive, a latest-wins coalescer, and a
  * teardown that releases all three — so the policy lives here once, exactly as
@@ -17,7 +17,7 @@
  * receives the raw socket, and a `WeakMap` lookup in either misses). A missed
  * `pong` lookup never clears `awaitingPong`, so the second heartbeat tears down
  * a socket the client is still reading — every observer stream died at 60s
- * (measured: a fresh chamber instance closed a healthy socket at 60.005ms with
+ * (measured: a fresh Kabmo instance closed a healthy socket at 60.005ms with
  * `STREAM_HEARTBEAT_MS` = 30s). A missed `close` lookup leaks the interval, the
  * coalescer and the session subscription for the process's lifetime.
  *

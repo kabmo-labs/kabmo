@@ -32,7 +32,7 @@ export interface AppProps {
   /** Server-detected mobile verdict, so the first paint needs no UA check. */
   initialIsMobile?: boolean;
   /**
-   * True when the serving chamber is a production build. Gates DEVELOPMENT-ONLY
+   * True when the serving Kabmo is a production build. Gates DEVELOPMENT-ONLY
    * chrome — the desktop ⇄ mobile layout switch — while leaving user-facing
    * controls (the navbar's reload button) in place. Absent means development,
    * so a shell served by an older build keeps the switch.
@@ -48,7 +48,7 @@ export function App({ initialIsMobile = false, production = false, appSettings =
 
   // Initialize with server-detected User-Agent to eliminate SSR flash. The
   // device decides the layout on every load — the manual switch below is
-  // session-only, so opening the chamber on a phone never locks a desktop (or
+  // session-only, so opening Kabmo on a phone never locks a desktop (or
   // vice versa) into the other layout on its next visit.
   const [isMobileMode, setIsMobileMode] = useState<boolean>(initialIsMobile);
   // Set the moment the user picks a layout by hand; while set, the viewport no

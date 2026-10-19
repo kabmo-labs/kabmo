@@ -2,7 +2,7 @@
 
 ## What changed
 
-<!-- Intent and resulting behavior in plain words: what was wrong for someone using OMPChamber, and what they see now. Name any nearby behavior you deliberately left unchanged. -->
+<!-- Intent and resulting behavior in plain words: what was wrong for someone using Kabmo, and what they see now. Name any nearby behavior you deliberately left unchanged. -->
 
 ## Why
 
@@ -17,14 +17,14 @@
 | `src/server` (Bun/Elysia, omp bridge, SQLite) | [ ] |
 | `src/client` (Preact UI) | [ ] |
 | `src/shared` (server and client) | [ ] |
-| `src/cli` (`ompchamber serve/update/stop/status/logs`) | [ ] |
+| `src/cli` (`kabmo serve/update/stop/status/logs`) | [ ] |
 | docs, CI, packaging | [ ] |
 
 | Mode you actually ran | Ran |
 | --- | --- |
 | `MOCK=true` (runs with no `omp` install) | [ ] |
 | a real `omp` session | [ ] |
-| production build (`bun run build`, then `bun run start` or `ompchamber serve --prod`) | [ ] |
+| production build (`bun run build`, then `bun run start` or `kabmo serve --prod`) | [ ] |
 
 ## Validation
 
@@ -36,7 +36,7 @@
 
 ## Evidence
 
-<!-- Live-run statement: how you started it (`bun run dev`, `bun run start`, `ompchamber serve --prod`), which mode it ran in (`MOCK=true` or a real omp session), the browser and OS, and what you observed on the changed path. Then only what the change calls for:
+<!-- Live-run statement: how you started it (`bun run dev`, `bun run start`, `kabmo serve --prod`), which mode it ran in (`MOCK=true` or a real omp session), the browser and OS, and what you observed on the changed path. Then only what the change calls for:
        - UI change: before/after screenshots; add the mobile view when shared layout is affected
        - motion — panel resize or drag, terminal output, streaming, the diagram viewer: a short recording
        - a performance, memory or rendering claim: before/after measurements

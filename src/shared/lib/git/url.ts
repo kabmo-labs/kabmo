@@ -12,7 +12,7 @@
  * never disagree. A per-caller copy is what that costs.
  *
  * The local forms (`/path`, `~/path`, `file://`) are allowed deliberately.
- * `git clone` treats them as first-class, and the chamber already gives the
+ * `git clone` treats them as first-class, and Kabmo already gives the
  * user a real shell in the terminal panel — a local clone grants nothing that
  * was not already reachable, while making an offline clone and a test
  * repository work.

@@ -1,7 +1,7 @@
 import type { AIModelOption } from '@/shared/types';
 
 /**
- * MOCK-only demo catalog: the model rows a `MOCK=true` chamber shows before the
+ * MOCK-only demo catalog: the model rows a `MOCK=true` Kabmo shows before the
  * operator adds any of their own.
  *
  * Real mode never reads this — `/api/models` there is fed by the live omp model

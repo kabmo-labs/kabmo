@@ -50,7 +50,7 @@ function makePluginRepo(root: string, id = 'e2e-plugin'): PluginRepo {
   const dir = mkdtempSync(join(root, 'repo-'));
   const write = (version: string): void => {
     mkdirSync(join(dir, 'dist'), { recursive: true });
-    writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify({ id, name: id, version, app: 'dist/app.js' }));
+    writeFileSync(join(dir, 'kabmo.json'), JSON.stringify({ id, name: id, version, app: 'dist/app.js' }));
     writeFileSync(join(dir, 'dist', 'app.js'), `export default { version: ${JSON.stringify(version)} };`);
   };
   write('1.0.0');

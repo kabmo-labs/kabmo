@@ -119,14 +119,14 @@ describe('toolPanelKind — device and MCP calls', () => {
     expect(toolPanelKind(tool({
       type: 'read',
       name: 'read',
-      target: 'proc://ompchamber-dev',
-      input: { path: 'proc://ompchamber-dev' },
+      target: 'proc://kabmo-dev',
+      input: { path: 'proc://kabmo-dev' },
     }))).toBe('proc');
     expect(toolPanelKind(tool({
       type: 'write',
       name: 'write',
-      target: 'proc://ompchamber-dev/kill',
-      input: { path: 'proc://ompchamber-dev/kill', content: null },
+      target: 'proc://kabmo-dev/kill',
+      input: { path: 'proc://kabmo-dev/kill', content: null },
     }))).toBe('proc');
   });
 

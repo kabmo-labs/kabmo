@@ -39,7 +39,7 @@ import { testPosix } from '@/test-support/platform';
 const tempDirs: string[] = [];
 
 function tempDir(prefix: string): string {
-  const dir = mkdtempSync(join(tmpdir(), `ompchamber-${prefix}-`));
+  const dir = mkdtempSync(join(tmpdir(), `kabmo-${prefix}-`));
   tempDirs.push(dir);
   return dir;
 }
@@ -104,24 +104,24 @@ describe('resolveRoot / resolveReferencedPath / getDefaultFsRoot', () => {
   const dbPath = join(dbDir, 'test.sqlite');
   const registeredDir = join(dbDir, 'registered-project');
   const registeredFile = join(registeredDir, 'notes.txt');
-  let savedSlot: typeof globalThis.__ompChamberDb;
+  let savedSlot: typeof globalThis.__kabmoDb;
   let savedEnv: Record<string, string | undefined>;
 
   beforeAll(async () => {
     mkdirSync(registeredDir, { recursive: true });
     writeFileSync(registeredFile, 'x');
-    savedSlot = globalThis.__ompChamberDb;
+    savedSlot = globalThis.__kabmoDb;
     savedEnv = {
       MOCK: Bun.env.MOCK,
       SYNC_WORKSPACE: Bun.env.SYNC_WORKSPACE,
-      OMPCHAMBER_DB_PATH: Bun.env.OMPCHAMBER_DB_PATH,
+      KABMO_DB_PATH: Bun.env.KABMO_DB_PATH,
       DB_PATH: Bun.env.DB_PATH,
     };
     Bun.env.MOCK = 'false';
     Bun.env.SYNC_WORKSPACE = 'false';
-    Bun.env.OMPCHAMBER_DB_PATH = dbPath;
+    Bun.env.KABMO_DB_PATH = dbPath;
     delete Bun.env.DB_PATH;
-    globalThis.__ompChamberDb = { promise: null, resolved: null };
+    globalThis.__kabmoDb = { promise: null, resolved: null };
     const db = await getDb();
     await db.run('INSERT INTO workspace_folders (name, project_path) VALUES (?, ?)', ['proj', registeredDir]);
   });
@@ -131,8 +131,8 @@ describe('resolveRoot / resolveReferencedPath / getDefaultFsRoot', () => {
     // deleting the tree. Restoring first loses the only reference to it, and on
     // Windows the still-open handle makes the delete fail with EBUSY — which a
     // throw from `afterAll` reports as a failure of this block.
-    globalThis.__ompChamberDb?.resolved?.raw.close();
-    globalThis.__ompChamberDb = savedSlot;
+    globalThis.__kabmoDb?.resolved?.raw.close();
+    globalThis.__kabmoDb = savedSlot;
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete Bun.env[key];
       else Bun.env[key] = value;
@@ -185,7 +185,7 @@ describe('scopeToRepo', () => {
 
 describe('revealInFileManager verdicts', () => {
   test('a missing directory is named exactly', async () => {
-    const missing = join(tmpdir(), 'ompchamber-no-such-dir-xyz');
+    const missing = join(tmpdir(), 'kabmo-no-such-dir-xyz');
     const result = await revealInFileManager(missing);
     expect(result).toEqual({ ok: false, error: `Directory does not exist: ${resolve(missing)}` });
   });
@@ -228,7 +228,7 @@ describe('runShell', () => {
     const dir = tempDir('shell');
     const pwd = await runShell('pwd', { cwd: dir });
     expect(pwd.stdout.trim()).toBe(realpathSync(dir));
-    const env = await runShell('printf "$OMPCHAMBER_TEST_FOO"', { env: { OMPCHAMBER_TEST_FOO: 'bar' } });
+    const env = await runShell('printf "$KABMO_TEST_FOO"', { env: { KABMO_TEST_FOO: 'bar' } });
     expect(env.stdout).toBe('bar');
   });
 

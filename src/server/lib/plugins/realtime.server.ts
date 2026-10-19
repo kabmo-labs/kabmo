@@ -7,7 +7,7 @@
  * A plugin's realtime topic.
  *
  * A plugin does not get its own socket or its own frame vocabulary. It
- * publishes a VALUE onto the chamber's existing hub, which already owns the
+ * publishes a VALUE onto Kabmo's existing hub, which already owns the
  * sequence numbering, the snapshot-on-subscribe behaviour, the delta
  * coalescing and the subscriber refcount — so a plugin topic behaves exactly
  * like `sidebar` or `usage`, and the client needs no branch for it.
@@ -20,7 +20,7 @@
 
 import { getRealtimeHub } from '@/server/lib/realtime/hub.server';
 import { pluginTopic } from '@/shared/lib/plugins/protocol';
-import type { PluginJson, PluginRealtimeApi } from '@kabmo-labs/plugin-sdk';
+import type { PluginJson, PluginRealtimeApi } from '@kabmo-labs/kabmo-sdk';
 
 /**
  * The last value each plugin topic holds, process-wide.
@@ -33,11 +33,11 @@ import type { PluginJson, PluginRealtimeApi } from '@kabmo-labs/plugin-sdk';
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPluginTopicValues: Map<string, PluginJson> | undefined;
+  var __kabmoPluginTopicValues: Map<string, PluginJson> | undefined;
 }
 
 function topicValues(): Map<string, PluginJson> {
-  return (globalThis.__ompChamberPluginTopicValues ??= new Map());
+  return (globalThis.__kabmoPluginTopicValues ??= new Map());
 }
 
 /** The API one plugin is handed at load. */

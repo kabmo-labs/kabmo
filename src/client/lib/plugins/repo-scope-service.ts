@@ -28,7 +28,7 @@
  *   script (no component), so the two cannot disagree about which tree they mean.
  */
 
-import type { RepoScope, RepoScopeRow, UiKitServices } from '@kabmo-labs/ui';
+import type { RepoScope, RepoScopeRow, UiKitServices } from '@kabmo-labs/kabmo-ui';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { pluginContext, subscribePluginContext } from '@/client/lib/plugins/context';

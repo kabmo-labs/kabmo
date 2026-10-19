@@ -17,8 +17,8 @@
  * ## Where the truth lives
  *
  * The child process is authoritative: omp owns both modes, and every transition
- * it makes arrives as a `goal_updated` frame or a `CHAMBER_*_STATE` marker from
- * the chamber's own extension. The client mirrors that and sends intents. A
+ * it makes arrives as a `goal_updated` frame or a `*_STATE` marker from
+ * Kabmo's own extension. The client mirrors that and sends intents. A
  * reload re-reads the mirror from the session's JSONL
  * (`GET /api/sessions/:id/modes`), so a chat reopened in another tab shows the
  * modes it is actually in rather than the last thing this tab requested.
@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   EMPTY_MODE_SELECTION,
-  type ChamberModeSelection,
+  type KabmoModeSelection,
   type GoalContinuation,
   type GoalRecord,
 } from '@/shared/lib/omp/mode/types';
@@ -35,6 +35,7 @@ import { goalMarkerPatch, useModeMarkers, type ModesResponse } from '@/client/ho
 import { createGoalAction } from '@/client/hooks/chat/timeline/goal-command';
 import { isGoalOpen } from '@/shared/lib/omp/mode/status';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
+import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 
 export interface ChatTimelineModes {
   plan: boolean;
@@ -49,7 +50,7 @@ export interface ChatTimelineModes {
   goalOpen: boolean;
   goalRecord: GoalRecord | null;
   /**
-   * The child's last automatic goal turn (`CHAMBER_GOAL_CONTINUATION`), or
+   * The child's last automatic goal turn (`KABMO_GOAL_CONTINUATION`), or
    * null when the loop has not reported one for the current goal. Cleared when
    * the goal itself changes: a counter from the previous goal names a turn this
    * one never took.
@@ -73,7 +74,7 @@ export interface ChatTimelineModes {
   planAvailable: boolean;
   /**
    * The last refusal, from either side of the wire: the route's own error, or a
-   * `CHAMBER_MODE_ERROR` the extension emitted (an unknown action, a missing
+   * `KABMO_MODE_ERROR` the extension emitted (an unknown action, a missing
    * omp API, the plan/goal exclusion). Surfaced by the composer because a mode
    * command that fails silently leaves the toggle pressed over a mode the child
    * is not in.
@@ -89,7 +90,7 @@ export interface ChatTimelineModes {
    * A ref rather than a value because the reader is the SEND path
    * (`executeSend`), which runs outside the render that produced it.
    */
-  spawnSelectionRef: { current: ChamberModeSelection | null };
+  spawnSelectionRef: { current: KabmoModeSelection | null };
   onTogglePlan: (enabled: boolean) => void;
   /** Goal needs an objective, so the toggle opens a modal instead of sending a
    *  bare enable — see `GoalModal`. */
@@ -108,14 +109,14 @@ export function useChatTimelineModes(sessionId: string | null): ChatTimelineMode
   // A pending `new-…` chat has no omp session to command: `/api/agent/:id`
   // answers 404 and nothing persists. The selection lives in
   // `spawnSelectionRef` instead, and the SEND path hands it to the spawn
-  // (`executeSend` → `sendNewPrompt` → the session's `CHAMBER_MODES`
+  // (`executeSend` → `sendNewPrompt` → the session's `KABMO_MODES`
   // environment), which is the earliest moment a child exists to carry it.
   const [plan, setPlanState] = useState(false);
   const [goal, setGoalState] = useState(false);
   const [goalRecord, setGoalRecord] = useState<GoalRecord | null>(null);
   const [goalContinuation, setGoalContinuation] = useState<GoalContinuation | null>(null);
   /** True while the child's loop is deciding (marker-driven, see
-   *  `CHAMBER_GOAL_EVALUATING_MARKER`). */
+   *  `KABMO_GOAL_EVALUATING_MARKER`). */
   const [goalEvaluating, setGoalEvaluating] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +128,7 @@ export function useChatTimelineModes(sessionId: string | null): ChatTimelineMode
   planRef.current = plan;
   /** The selection a pending chat's spawn must carry. Reset whenever the hook
    *  is looking at a real session — from then on the child owns the modes. */
-  const spawnSelectionRef = useRef<ChamberModeSelection | null>(null);
+  const spawnSelectionRef = useRef<KabmoModeSelection | null>(null);
   // Mirrors the record's id so a goal transition can be detected OUTSIDE a
   // state updater. Comparing inside `setGoalRecord` would put the reset in an
   // updater that React may run twice.
@@ -199,18 +200,18 @@ export function useChatTimelineModes(sessionId: string | null): ChatTimelineMode
       if (patch.evaluating !== undefined) setGoalEvaluating(patch.evaluating);
       // A state frame carries the record; the evaluating/continuation frames
       // carry none, so they must not blank it.
-      if (marker.marker === 'CHAMBER_GOAL_STATE:') {
+      if (isModeMarker(marker.marker, 'goalStateMarker')) {
         setGoalRecord(patch.record);
         setGoalState(patch.enabled);
         if (!patch.record || patch.record.status !== 'active') setGoalEvaluating(false);
       }
       return;
     }
-    if (marker.marker === 'CHAMBER_PLAN_STATE:') {
+    if (isModeMarker(marker.marker, 'planStateMarker')) {
       setPlanState(marker.payload.enabled === true);
       return;
     }
-    if (marker.marker === 'CHAMBER_MODE_ERROR:') {
+    if (isModeMarker(marker.marker, 'modeErrorMarker')) {
       setError(typeof marker.payload.reason === 'string' ? marker.payload.reason : 'Mode command failed');
       // A refusal means the mode did NOT change, so the optimistic flip has to
       // come back off. The scope tag is what says which toggle lied; without it
@@ -230,7 +231,7 @@ export function useChatTimelineModes(sessionId: string | null): ChatTimelineMode
         const res = await fetch(`/api/agent/${encodeURIComponent(sessionId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'chamber_mode', scope, action, ...(payload ? { payload } : {}) }),
+          body: JSON.stringify({ type: 'kabmo_mode', scope, action, ...(payload ? { payload } : {}) }),
         });
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { error?: string };

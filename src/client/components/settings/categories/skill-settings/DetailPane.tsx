@@ -42,7 +42,7 @@ export function SkillDetailPane({
   const [savedToast, setSavedToast] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
 
-  // A skill the chamber does not own (a Claude plugin, a registry package) is
+  // A skill Kabmo does not own (a Claude plugin, a registry package) is
   // shown read-only: its file belongs to another tool, and a save here would
   // rewrite it. `managed` is absent on a brand-new draft, which is editable.
   const readOnly = !isCreatingNew && skill != null && skill.managed !== true;
@@ -167,7 +167,7 @@ description: ""
             </div>
           </div>
 
-          {/* Scope selector: only a chamber-managed skill can move roots, and
+          {/* Scope selector: only a Kabmo-managed skill can move roots, and
               the project scope needs a workspace to land in. */}
           {!readOnly && (
             <div className="flex items-center gap-2 mt-2">

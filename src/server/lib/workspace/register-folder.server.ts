@@ -12,7 +12,7 @@
  * — and the parts that matter are the ones a second copy gets wrong:
  *
  * - **The name is unique case-insensitively.** The sidebar lists folders by
- *   name, so a second `ompchamber` beside the first is indistinguishable.
+ *   name, so a second folder called `kabmo` beside the first is indistinguishable.
  * - **A tombstone for the same project path is cleared.** `deleted_workspaces`
  *   remembers a removed folder so the omp discovery sync does not resurrect
  *   it; re-adding that path by hand is the user overriding the tombstone, and

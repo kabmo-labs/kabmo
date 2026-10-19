@@ -220,10 +220,10 @@ export function getSessionData(sessionId: string | null) {
       date,
       thinking: {
         duration: "0.8s",
-        summary: "Provide user instructions for AI model selection and custom chamber settings.",
+        summary: "Provide user instructions for AI model selection and custom Kabmo settings.",
         thought: "The user is asking about model configuration. Direct them to the settings gear in the sidebar and the inline model switch pill above the chat input."
       },
-      content: `You can configure the AI models in two convenient locations:\n\n1. **Inline Model Switcher**: Click the model badge (e.g. \`[CMD] DeepSeek V4 Pro\`) right above the chat input box to switch models on the fly.\n2. **Chamber Settings**: Click the settings gear icon in the bottom-left of the sidebar to configure API keys, temperature, and custom system prompts for Oh-My-Pi.`
+      content: `You can configure the AI models in two convenient locations:\n\n1. **Inline Model Switcher**: Click the model badge (e.g. \`[CMD] DeepSeek V4 Pro\`) right above the chat input box to switch models on the fly.\n2. **Kabmo Settings**: Click the settings gear icon in the bottom-left of the sidebar to configure API keys, temperature, and custom system prompts for Oh-My-Pi.`
     }
   ];
 

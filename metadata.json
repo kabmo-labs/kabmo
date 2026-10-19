@@ -1,5 +1,5 @@
 {
-  "name": "OMPChamber",
-  "description": "A light e-ink paper developer dashboard and AI Oh-My-Pi web view chamber for CI/CD deployments.",
+  "name": "Kabmo",
+  "description": "A light e-ink paper developer dashboard for AI Oh-My-Pi agent sessions — a browser console for CI/CD deployments.",
   "requestFramePermissions": []
 }

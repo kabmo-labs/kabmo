@@ -4,7 +4,7 @@
  */
 
 /**
- * Startup gate: the chamber must not run without a resolvable `omp` binary.
+ * Startup gate: Kabmo must not run without a resolvable `omp` binary.
  *
  * Every live capability — RPC agent sessions, config get/set, session state,
  * model lists, updates — shells out to that binary (see ./cli.ts), so a missing
@@ -30,7 +30,7 @@ export function ompStartupError(): string | null {
     'omp binary not found — Kabmo cannot start.',
     'Agent sessions, omp config, session state and updates all run through the `omp` CLI,',
     'so the binary must be resolvable before the server starts.',
-    'Install AI Oh-My-Pi and put `omp` on your PATH, or set OMPCHAMBER_OMP_BIN=/path/to/omp.',
+    'Install AI Oh-My-Pi and put `omp` on your PATH, or set KABMO_OMP_BIN=/path/to/omp.',
     'To run on demo data without an omp install, start with MOCK=true.',
   ].join('\n');
 }

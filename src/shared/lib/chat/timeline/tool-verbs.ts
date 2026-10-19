@@ -25,20 +25,20 @@ import { parseProcUrl, procRequestOp } from '@/shared/lib/omp/session/proc';
 import { DEVICE_VERBS, PHASE_VERBS, TOOL_ALIASES, TOOL_VERBS, asString, pick, subjectFor, truncate } from '@/shared/lib/chat/timeline/tool-phrases';
 
 export interface ToolActivity {
-  /** Canonical omp tool name; legacy chamber aliases are normalized. */
+  /** Canonical omp tool name; legacy Kabmo aliases are normalized. */
   name?: string;
   /** Raw tool arguments (live event stream) — the richest subject source. */
   args?: unknown;
-  /** Raw tool arguments from a chamber ToolCallData. */
+  /** Raw tool arguments from a Kabmo ToolCallData. */
   input?: unknown;
-  /** Pre-extracted command/target from a chamber ToolCallData. */
+  /** Pre-extracted command/target from a Kabmo ToolCallData. */
   command?: string;
   target?: string;
   /** omp's `i` field: the model's own one-line intent, used as a fallback. */
   intent?: string;
 }
 
-/** Build the args record for a call, backfilling from chamber ToolCallData fields. */
+/** Build the args record for a call, backfilling from Kabmo ToolCallData fields. */
 function argsOf(tool: ToolActivity): Record<string, unknown> {
   const source = isRecord(tool.args) ? tool.args : isRecord(tool.input) ? tool.input : {};
   const args: Record<string, unknown> = { ...source };
@@ -85,7 +85,7 @@ export function describeToolActivity(tool: ToolActivity): string {
   const intent = asString(tool.intent) ?? pick(args, ['i']);
 
   // A `proc://` call is `read`/`write` transport, so the URL — not the tool —
-  // names the operation: `Reading proc://ompchamber-dev` would describe a
+  // names the operation: `Reading proc://kabmo-dev` would describe a
   // service stop as a file read.
   const proc = parseProcUrl(asString(args.path));
   if (proc) {
@@ -125,7 +125,7 @@ export function describeToolActivity(tool: ToolActivity): string {
   return truncate(verb);
 }
 
-/** Phrase for a chamber ToolCallData row (mock SSE path and reloaded history). */
+/** Phrase for a Kabmo ToolCallData row (mock SSE path and reloaded history). */
 export function describeToolCall(tool: ToolCallData): string {
   return describeToolActivity({
     name: tool.name ?? tool.type,

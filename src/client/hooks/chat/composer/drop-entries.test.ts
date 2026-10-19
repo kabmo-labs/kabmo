@@ -220,9 +220,9 @@ describe('refusal messages', () => {
 
   test('give each cause its own wording, singular or plural', () => {
     expect(describeReferenceFailure(['/repo/a.ts'], 'outside-roots'))
-      .toBe('"/repo/a.ts" lies outside the folders the chamber may read, so it was not attached (/repo/a.ts).');
+      .toBe('"/repo/a.ts" lies outside the folders Kabmo may read, so it was not attached (/repo/a.ts).');
     expect(describeReferenceFailure(['a', 'b'], 'outside-roots'))
-      .toBe('2 files lie outside the folders the chamber may read, so they were not attached (a, b).');
+      .toBe('2 files lie outside the folders Kabmo may read, so they were not attached (a, b).');
     expect(describeReferenceFailure(['x.txt'], 'remote'))
       .toBe('"x.txt" is a web download; save it into a workspace folder first (x.txt).');
     expect(describeReferenceFailure(['x.txt'], 'binary'))

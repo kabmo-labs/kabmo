@@ -9,10 +9,10 @@
  * The failure this pins is silent and total: the relay dialed the per-session
  * agent socket (`/api/agent/<id>/ws`), which the realtime migration DELETED —
  * so the upstream answered 404, no frame ever arrived, and a tab on a second
- * chamber instance rendered a session that was streaming as idle.
+ * Kabmo instance rendered a session that was streaming as idle.
  *
  * The peer here is a RAW WebSocket server speaking the realtime wire protocol,
- * not a second chamber hub: the hub is process-wide (`globalThis`), so an
+ * not a second Kabmo hub: the hub is process-wide (`globalThis`), so an
  * in-process "owner" would share it and could not exercise the relay at all.
  * What is under test is the RELAY's own contract — dial the owner's unified
  * socket, subscribe the session topic on it, and republish the frames it gets
@@ -193,7 +193,7 @@ describe('peer session relay', () => {
       },
     });
 
-    // The ownership guard reads an instance record from the chamber data dir.
+    // The ownership guard reads an instance record from Kabmo data dir.
     mkdirSync(join(roots.dataRoot, 'run'), { recursive: true });
     writeFileSync(
       join(roots.dataRoot, 'run', `${ownerServer.port}.json`),

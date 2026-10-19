@@ -6,13 +6,13 @@
 /**
  * Session RPC manager for Kabmo — the analog of omp-web's
  * lib/rpc-manager.ts. Wraps one spawned `omp --mode rpc-ui` process per
- * session with the command surface the chamber chat needs: prompt, abort,
+ * session with the command surface Kabmo chat needs: prompt, abort,
  * abort_and_prompt, set_model, set_thinking_level, get_state, and the
  * passthrough set. Event frames (agent_start/agent_end/message_update/...)
  * are forwarded to SSE subscribers via onEvent.
  *
  * Scoped down from omp-web: host tools, URI schemes, extension widgets, MCP
- * list, and branch/fork are omitted (the chamber does not surface them yet).
+ * list, and branch/fork are omitted (Kabmo does not surface them yet).
  */
 
 import { RpcProcess, type RpcFrame } from '@/server/lib/omp/rpc/process';
@@ -87,7 +87,7 @@ export class AgentSessionWrapper {
   autoTitleInFlight = false;
   /** omp's own plan/goal mode, mirrored from the frames. */
   readonly modeMirror = new ModeMirror();
-  // One-shot: the FIRST run of this conversation is the only one the chamber
+  // One-shot: the FIRST run of this conversation is the only one Kabmo
   // may ask omp to name it from. Seeded in applyIdentity from omp's own message
   // count, so a session reclaimed and respawned with `--resume` (which reports
   // the messages it restored) never re-titles from its newest turn.
@@ -247,7 +247,7 @@ export class AgentSessionWrapper {
     // nothing left to do.
     this.agentStartWatchdog.settleIfDone();
     // `suppressForward` withholds only the FRAME — a failed prompt response
-    // already emitted its own `prompt_error`, and the chamber's own background
+    // already emitted its own `prompt_error`, and Kabmo's own background
     // rename must not surface its diagnostics.
     if (!suppressForward) this.emit(event);
   }

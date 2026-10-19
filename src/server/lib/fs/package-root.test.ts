@@ -25,7 +25,7 @@ import { packageDir, packageRoot } from '@/server/lib/fs/package-root';
 const created: string[] = [];
 
 function stage(layout: (root: string) => string): string {
-  const root = mkdtempSync(join(tmpdir(), 'ompchamber-pkgroot-'));
+  const root = mkdtempSync(join(tmpdir(), 'kabmo-pkgroot-'));
   created.push(root);
   return layout(root);
 }
@@ -37,15 +37,15 @@ afterEach(() => {
 /** A published `bun add -g` install: the package under `node_modules/`, its deps in the parent. */
 function bunGlobal(startDir: string): string {
   const global = join(startDir, 'install', 'global');
-  const pkg = join(global, 'node_modules', 'ompchamber');
+  const pkg = join(global, 'node_modules', 'kabmo');
   mkdirSync(join(pkg, 'dist', 'client'), { recursive: true });
   mkdirSync(join(pkg, 'src', 'cli'), { recursive: true });
-  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: 'ompchamber', version: '4.3.0' }));
-  writeFileSync(join(pkg, 'src', 'cli', 'ompchamber.js'), '#!/usr/bin/env bun\n');
+  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: 'kabmo', version: '4.3.0' }));
+  writeFileSync(join(pkg, 'src', 'cli', 'kabmo.js'), '#!/usr/bin/env bun\n');
   mkdirSync(join(global, 'node_modules'), { recursive: true });
   // The global install root carries its own package.json, which is what made the
   // fixed-depth resolver read a version belonging to the wrong thing.
-  writeFileSync(join(global, 'package.json'), JSON.stringify({ dependencies: { ompchamber: '4.3.0' } }));
+  writeFileSync(join(global, 'package.json'), JSON.stringify({ dependencies: { kabmo: '4.3.0' } }));
   return join(pkg, 'dist', 'client');
 }
 
@@ -54,7 +54,7 @@ describe('packageDir', () => {
     const startDir = stage(bunGlobal);
     const dir = packageDir(startDir, startDir);
 
-    expect(dir.endsWith(join('node_modules', 'ompchamber'))).toBe(true);
+    expect(dir.endsWith(join('node_modules', 'kabmo'))).toBe(true);
     expect(dir.endsWith(join('install', 'global'))).toBe(false);
   });
 
@@ -73,7 +73,7 @@ describe('packageDir', () => {
       // An outer package root that would match first if the walk did not stop at
       // the nearest one.
       mkdirSync(join(root, 'src'), { recursive: true });
-      const inner = join(root, 'packages', 'ompchamber');
+      const inner = join(root, 'packages', 'kabmo');
       mkdirSync(join(inner, 'src', 'server'), { recursive: true });
       return join(inner, 'src', 'server');
     });

@@ -65,11 +65,11 @@ export function foldTransportFrame(data: OmpAgentEvent, host: TransportFrameHost
 
     // `cache_warming_*`, `retry_fallback_*`, `config_warnings_changed`,
     // `ttsr_triggered`, `todo_reminder`, `todo_auto_clear`, `irc_message`,
-    // `tool_stream_update` and the newer surfaces carry no chamber-side effect,
+    // `tool_stream_update` and the newer surfaces carry no Kabmo-side effect,
     // and are listed here so the omission is a decision rather than an
     // oversight: warming and fallback are already named by `auto_retry_*` /
     // `model_changed`, the todo frames describe a list the Todo panel reads from
-    // its own topic, IRC is not a chamber surface, and `tool_stream_update` is a
+    // its own topic, IRC is not a Kabmo surface, and `tool_stream_update` is a
     // tool's own projection of a call whose arguments the card already reads
     // from `toolcall_delta`. The advisor / live-voice / `queue_update` /
     // `config_update` frames (omp 18.9+) are the same kind of no-op here.

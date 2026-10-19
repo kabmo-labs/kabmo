@@ -4,7 +4,7 @@
  */
 
 /**
- * Pins the two time-shaped contracts the chamber reasons about everywhere.
+ * Pins the two time-shaped contracts Kabmo reasons about everywhere.
  *
  * `refresh-cadence.ts` is the single table every poll/throttle reads, so a
  * value drifting (or two related values crossing) changes how often the app

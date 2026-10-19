@@ -84,10 +84,10 @@ describe('uiPasswordHandover', () => {
   });
 
   test('a legacy variable inherited from the shell is removed from the child', () => {
-    // The operator's own `OMPCHAMBER_UI_PASSWORD` would otherwise reach every
+    // The operator's own `KABMO_UI_PASSWORD` would otherwise reach every
     // grandchild, because the server cannot delete it from the OS environ.
-    const { env, payload } = uiPasswordHandover({ password: PASSWORD }, { OMPCHAMBER_UI_PASSWORD: 'stale' });
-    expect(env.OMPCHAMBER_UI_PASSWORD).toBeUndefined();
+    const { env, payload } = uiPasswordHandover({ password: PASSWORD }, { KABMO_UI_PASSWORD: 'stale' });
+    expect(env.KABMO_UI_PASSWORD).toBeUndefined();
     expect(payload).not.toBeNull();
   });
 
@@ -99,10 +99,10 @@ describe('uiPasswordHandover', () => {
 });
 
 describe('the environment is not a channel a child can be trusted with', () => {
-  const original = Bun.env.OMPCHAMBER_TEST_LEAK;
+  const original = Bun.env.KABMO_TEST_LEAK;
   afterEach(() => {
-    if (original === undefined) delete Bun.env.OMPCHAMBER_TEST_LEAK;
-    else Bun.env.OMPCHAMBER_TEST_LEAK = original;
+    if (original === undefined) delete Bun.env.KABMO_TEST_LEAK;
+    else Bun.env.KABMO_TEST_LEAK = original;
   });
 
   // The measurement the whole module exists for, and it is narrower than "delete
@@ -120,34 +120,34 @@ describe('the environment is not a channel a child can be trusted with', () => {
     // Built by concatenation rather than a nested template: `${...}` inside a
     // template literal would be interpolated by Bun.
     const script = [
-      'delete Bun.env.OMPCHAMBER_TEST_LEAK;',
-      'const child = Bun.spawn([process.execPath,"-e","console.log(Bun.env.OMPCHAMBER_TEST_LEAK ?? \\"<unset>\\")"], { stdout: "pipe" });',
+      'delete Bun.env.KABMO_TEST_LEAK;',
+      'const child = Bun.spawn([process.execPath,"-e","console.log(Bun.env.KABMO_TEST_LEAK ?? \\"<unset>\\")"], { stdout: "pipe" });',
       'await child.exited;',
       'console.log(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer()));',
     ].join('\n');
     const probe = Bun.spawn([process.execPath, '-e', script], {
       stdout: 'pipe',
-      env: { ...Bun.env, OMPCHAMBER_TEST_LEAK: PASSWORD },
+      env: { ...Bun.env, KABMO_TEST_LEAK: PASSWORD },
     });
     await probe.exited;
     expect(new TextDecoder().decode(await new Response(probe.stdout).arrayBuffer()).trim()).toBe(PASSWORD);
   });
 
   test('a value set at runtime IS removed by delete, and the child agrees', async () => {
-    Bun.env.OMPCHAMBER_TEST_LEAK = PASSWORD;
-    delete Bun.env.OMPCHAMBER_TEST_LEAK;
-    const child = Bun.spawn([process.execPath, '-e', 'console.log(Bun.env.OMPCHAMBER_TEST_LEAK ?? "<unset>")'], { stdout: 'pipe' });
+    Bun.env.KABMO_TEST_LEAK = PASSWORD;
+    delete Bun.env.KABMO_TEST_LEAK;
+    const child = Bun.spawn([process.execPath, '-e', 'console.log(Bun.env.KABMO_TEST_LEAK ?? "<unset>")'], { stdout: 'pipe' });
     await child.exited;
     expect(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer()).trim()).toBe('<unset>');
   });
 
   test('an explicit env replaces the child environment, so a removal there is real', async () => {
-    Bun.env.OMPCHAMBER_TEST_LEAK = PASSWORD;
+    Bun.env.KABMO_TEST_LEAK = PASSWORD;
     const env = { ...Bun.env };
-    delete env.OMPCHAMBER_TEST_LEAK;
-    const child = Bun.spawn([process.execPath, '-e', 'console.log(Bun.env.OMPCHAMBER_TEST_LEAK ?? "<unset>")'], { stdout: 'pipe', env });
+    delete env.KABMO_TEST_LEAK;
+    const child = Bun.spawn([process.execPath, '-e', 'console.log(Bun.env.KABMO_TEST_LEAK ?? "<unset>")'], { stdout: 'pipe', env });
     await child.exited;
     expect(new TextDecoder().decode(await new Response(child.stdout).arrayBuffer()).trim()).toBe('<unset>');
-    delete Bun.env.OMPCHAMBER_TEST_LEAK;
+    delete Bun.env.KABMO_TEST_LEAK;
   });
 });

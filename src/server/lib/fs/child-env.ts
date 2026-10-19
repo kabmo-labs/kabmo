@@ -8,7 +8,7 @@
  *
  * `Bun.spawn` with no `env` option inherits the OS environ, and `delete
  * Bun.env.X` does NOT remove a value that was there at startup — measured on
- * Bun 1.4.3. So a process that received `OMPCHAMBER_UI_PASSWORD` hands it to
+ * Bun 1.4.3. So a process that received `KABMO_UI_PASSWORD` hands it to
  * every child it starts, including the ones that run third-party code: a
  * plugin's `bun install`, `git` hooks, `rg`, `omp` itself. Ten spawn sites in
  * this server passed no `env` at all, so each was a hole.
@@ -33,8 +33,8 @@ const WITHHELD: Record<string, true> = { [UI_PASSWORD_ENV.toUpperCase()]: true }
  * set for its child still can).
  *
  * `platform` is a parameter rather than a read of `process` for the reason
- * `stripChamberHostEnv` takes one: Windows env names are case-insensitive, so
- * `Ompchamber_Ui_Password` IS the withheld variable there, and the only way to
+ * `stripKabmoHostEnv` takes one: Windows env names are case-insensitive, so
+ * `Kabmo_Ui_Password` IS the withheld variable there, and the only way to
  * exercise that branch on a POSIX runner is to hand it in. An exact-name delete
  * leaves a differently-cased spelling in the child's environment.
  */

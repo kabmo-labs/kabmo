@@ -23,7 +23,7 @@ import { act } from 'preact/test-utils';
 import { RightActivityBar } from '@/client/components/layout/RightActivityBar';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { useRepoScope } from '@/client/hooks/workspace/repo-scope';
-import { primeChamberSettings, readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import { PANEL_ORDER_SETTING_KEY } from '@/shared/lib/workspace/panel-order';
 import { RIGHT_PANEL_TYPES } from '@/shared/lib/workspace/right-panels';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
@@ -98,7 +98,7 @@ afterEach(() => {
   subscribedScopes.length = 0;
   // The settings snapshot is module state shared by every suite in one `bun
   // test` process, and a case here writes a panel order into it.
-  primeChamberSettings({});
+  primeKabmoSettings({});
   resetRealtimeClient();
   server?.stop();
 });
@@ -202,7 +202,7 @@ async function dragOnto(from: string, to: string) {
 
 describe('RightActivityBar panel order', () => {
   test('a drag reorders the bar and persists the new order', async () => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
     await mount();
 
     // The shipped order, before anything is dragged.
@@ -219,13 +219,13 @@ describe('RightActivityBar panel order', () => {
 
     // The write is what makes the order survive a reload: it goes to the
     // GLOBAL setting, not to this session's layout state.
-    const stored = readChamberSetting<string[]>(PANEL_ORDER_SETTING_KEY);
+    const stored = readKabmoSetting<string[]>(PANEL_ORDER_SETTING_KEY);
     expect(stored?.slice(0, 3)).toEqual(['todo', 'context', 'files']);
     expect(stored).toHaveLength(RIGHT_PANEL_TYPES.length);
   });
 
   test('a stored order is drawn on the first render', async () => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
     writeSetting(PANEL_ORDER_SETTING_KEY, ['plan', ...RIGHT_PANEL_TYPES.filter((id) => id !== 'plan')]);
     await mount();
 
@@ -233,7 +233,7 @@ describe('RightActivityBar panel order', () => {
   });
 
   test('a cancelled drag writes nothing', async () => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
     await mount();
     const before = buttonLabels();
 
@@ -267,6 +267,6 @@ describe('RightActivityBar panel order', () => {
     for (let i = 0; i < 8; i += 1) await act(async () => {});
 
     expect(buttonLabels()).toEqual(before);
-    expect(readChamberSetting<string[]>(PANEL_ORDER_SETTING_KEY)).toBeUndefined();
+    expect(readKabmoSetting<string[]>(PANEL_ORDER_SETTING_KEY)).toBeUndefined();
   });
 });

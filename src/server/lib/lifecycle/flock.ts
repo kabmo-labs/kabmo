@@ -62,11 +62,11 @@ interface FlockHost {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberFlock: FlockHost | undefined;
+  var __kabmoFlock: FlockHost | undefined;
 }
 
 function host(): FlockHost {
-  return (globalThis.__ompChamberFlock ??= { held: new Map(), available: undefined, lib: undefined });
+  return (globalThis.__kabmoFlock ??= { held: new Map(), available: undefined, lib: undefined });
 }
 
 /** libc with `flock`, or null when this host has none. Cached for the process. */
@@ -98,7 +98,7 @@ export function flockAvailable(): boolean {
   state.available = false;
   const symbols = libc();
   if (!symbols) return false;
-  const probePath = `${process.env.TMPDIR ?? '/tmp'}/ompchamber-flock-${process.pid}`;
+  const probePath = `${process.env.TMPDIR ?? '/tmp'}/kabmo-flock-${process.pid}`;
   let fd: number | null = null;
   try {
     fd = fs.openSync(probePath, 'a');

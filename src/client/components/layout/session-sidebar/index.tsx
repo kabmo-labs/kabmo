@@ -10,7 +10,7 @@ import { SessionSidebarSessionList } from '@/client/components/layout/session-si
 import { SessionListSkeleton } from '@/client/components/layout/session-sidebar/Skeleton';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
@@ -59,9 +59,9 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
   // About modal is where an update has always been driven from and it owns the
   // live output, so this opens it and starts the run it will draw. The popup
   // dispatches this only after it has closed, so the two dialogs never stack.
-  useChamberEvent(UPDATE_REQUEST_EVENT, () => {
+  useKabmoEvent(UPDATE_REQUEST_EVENT, () => {
     setInfoOpen(true);
-    void updates.apply('ompchamber').then((result) => {
+    void updates.apply('kabmo').then((result) => {
       // A null result means the run was aborted with the page; there is nobody
       // left to tell. A `manual` answer is the command to run, not a success.
       if (!result) return;

@@ -1,6 +1,6 @@
 name: bot-summarize
 
-# `@ompchamber-bot summarize` turns a long thread into one comment: what the item is,
+# `@kabmo-bot summarize` turns a long thread into one comment: what the item is,
 # what is still open, what is blocked, and what happens next. It is the command for
 # the case where reading forty comments is the expensive part.
 #
@@ -24,10 +24,10 @@ jobs:
   summarize:
     name: summarize discussion
     if: |
-      (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo') &&
+      (github.repository == 'kabmo-labs/kabmo' || github.repository == 'kabmo-labs/kabmo') &&
       github.event.comment.user.type != 'Bot' &&
-      (github.event.comment.body == format('@{0} summarize', vars.BOT_MENTION || 'ompchamber-bot') ||
-       startsWith(github.event.comment.body, format('@{0} summarize ', vars.BOT_MENTION || 'ompchamber-bot')))
+      (github.event.comment.body == format('@{0} summarize', vars.BOT_MENTION || 'kabmo-bot') ||
+       startsWith(github.event.comment.body, format('@{0} summarize ', vars.BOT_MENTION || 'kabmo-bot')))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -67,7 +67,7 @@ jobs:
         id: command
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
-          MENTION: ${{ vars.BOT_MENTION || 'ompchamber-bot' }}
+          MENTION: ${{ vars.BOT_MENTION || 'kabmo-bot' }}
         run: |
           first_line="${COMMENT_BODY%%$'\n'*}"
           case "$first_line" in

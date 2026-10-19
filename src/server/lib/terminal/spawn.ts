@@ -10,7 +10,7 @@
  *
  * POSIX needs `detached: true`. `setsid()` makes the shell its own process-group
  * leader, which is what lets `process.kill(-pid, …)` reach a foreground command
- * and what keeps a group signal from taking the chamber down with the shell. The
+ * and what keeps a group signal from taking Kabmo down with the shell. The
  * controlling terminal it costs is restored by the `shellLaunch` shim.
  *
  * Windows must NOT detach. `detached` maps to `UV_PROCESS_DETACHED`, which passes
@@ -31,7 +31,7 @@ export interface ShellSpawnInput {
   terminal: Bun.Terminal;
   /** Working directory the shell opens in. */
   cwd: string;
-  /** Environment for the child (already stripped of the chamber's own). */
+  /** Environment for the child (already stripped of Kabmo's own). */
   env: Record<string, string | undefined>;
   /** Platform override, so the Windows branch is reachable from a POSIX run. */
   platform?: NodeJS.Platform;

@@ -160,7 +160,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             )}
 
             {/* Plugin contributions, in store order. The empty slot renders
-                nothing, so a chamber with no plugins keeps this strip intact. */}
+                nothing, so a Kabmo with no plugins keeps this strip intact. */}
             <PluginMessageActions messageId={String(msg.id)} role="user" text={typeof msg.content === 'string' ? msg.content : ''} />
           </div>
         </div>

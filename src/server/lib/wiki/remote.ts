@@ -7,7 +7,7 @@
  * The git remote → the wiki repository behind it.
  *
  * Both GitHub and GitLab publish a project's wiki as a SEPARATE git repository
- * whose URL is the project's own with `.wiki.git` on the end, so the chamber
+ * whose URL is the project's own with `.wiki.git` on the end, so Kabmo
  * needs no provider API, no token scope and no per-host branch: it appends the
  * suffix to whatever `origin` already is. That is also why a self-hosted GitLab
  * (`git-rbi.jatismobile.com/jns6_5/drrealhandler`) works with no code of its own

@@ -33,8 +33,8 @@ const FILE_BEARING_TYPES = ['files', 'text/uri-list', 'codefiles', 'downloadurl'
 /** Types whose payload is a path or URL to resolve, not a readable File. */
 const PATH_BEARING_TYPES = ['text/uri-list', 'downloadurl', 'text/plain', 'codefiles'];
 
-/** Data type marking a drag that started in the chamber's own file tree. */
-export const INTERNAL_FILE_PATH_TYPE = 'application/x-chamber-file-path';
+/** Data type marking a drag that started in Kabmo's own file tree. */
+export const INTERNAL_FILE_PATH_TYPE = 'application/x-kabmo-file-path';
 
 /**
  * Read one declared type's payload.

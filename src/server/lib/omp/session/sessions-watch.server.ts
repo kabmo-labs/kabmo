@@ -9,12 +9,12 @@
  * A session FILE appearing is what makes a session visible in the sidebar, and
  * omp writes it only when the first assistant message settles (~17s on a plain
  * prompt, because its writes are buffered). Nothing else reports that moment:
- * the chamber's own writes cover spawn adoption, rename and delete, but the
+ * Kabmo's own writes cover spawn adoption, rename and delete, but the
  * file itself is omp's.
  *
  * The 30s idle poll this replaces existed for exactly this case, plus changes
  * made by another tab or a CLI-driven session. Both are covered here and by the
- * writes that go through the chamber, so the poll is gone.
+ * writes that go through Kabmo, so the poll is gone.
  *
  * Two rules keep it cheap and correct:
  *
@@ -47,11 +47,11 @@ interface SessionsWatchState {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberSessionsWatch: SessionsWatchState | undefined;
+  var __kabmoSessionsWatch: SessionsWatchState | undefined;
 }
 
 function state(): SessionsWatchState {
-  return (globalThis.__ompChamberSessionsWatch ??= { watcher: null, timer: undefined });
+  return (globalThis.__kabmoSessionsWatch ??= { watcher: null, timer: undefined });
 }
 
 /**
@@ -76,7 +76,7 @@ function isStructuralSessionEvent(eventType: string, filename: string | null): b
  * publish).
  *
  * A sessions directory that does not exist is NOT created: omp owns that tree,
- * and the chamber creating it to watch it would be writing into the agent's
+ * and Kabmo creating it to watch it would be writing into the agent's
  * home. The watch is skipped instead, and a boot after omp has written its first
  * session picks it up.
  */
@@ -96,7 +96,7 @@ export function startSessionsWatch(): void {
     host.watcher.unref?.();
   } catch {
     // A missing directory, or a platform without recursive watch. The sidebar
-    // still updates on every chamber-side write; only a session created by an
+    // still updates on every Kabmo-side write; only a session created by an
     // external omp process would be late.
   }
 }

@@ -18,7 +18,7 @@ function AccountRow({
   const identity = account.email ?? account.accountId ?? account.credentialId;
   const organization = account.orgName ?? account.orgId;
   const available = account.availableCount ?? account.credits.length;
-  // omp decides what may be spent; the chamber only renders that verdict. A
+  // omp decides what may be spent; Kabmo only renders that verdict. A
   // zero here is a real answer ("nothing to spend right now"), not an error.
   const redeemable = account.redeemableCount ?? 0;
   const reason = account.error ?? account.unavailableReason;

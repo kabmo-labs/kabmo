@@ -21,7 +21,7 @@ export function ProviderSidebarList({
   onSelectProvider,
   onOpenAddModal,
   projects = [
-    { id: 'proj-ompchamber', name: 'ompchamber' },
+    { id: 'proj-kabmo', name: 'kabmo' },
     { id: 'proj-workspace', name: 'Workspace' },
     { id: 'proj-drrealhandler', name: 'drrealhandler' },
     { id: 'proj-opencode-zen', name: 'opencode-zen' },

@@ -16,7 +16,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { MAX_LEFT_PANEL_WIDTH, MIN_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
 import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
-import { useChamberEvent, useWindowEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent, useWindowEvent } from '@/client/hooks/ui/window-event';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { WORKSPACE_KEY_BINDINGS } from '@/shared/lib/workspace/keymap';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
@@ -170,7 +170,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   });
 
   // Global event listener for settings triggers
-  useChamberEvent('omp:open-settings', (e) => {
+  useKabmoEvent('omp:open-settings', (e) => {
     const customEvent = e as CustomEvent<{ category?: SettingsCategoryId; autoOpenAdd?: boolean }>;
     if (customEvent.detail?.category) {
       setSettingsCategory(customEvent.detail.category);
@@ -220,7 +220,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
       <div className="flex flex-1 overflow-hidden">
         <Group
           orientation="horizontal"
-          id="ompchamber-main"
+          id="kabmo-main"
           onLayoutChanged={() => {
             const left = leftPanelRef.current?.getSize()?.inPixels;
             if (left != null && left > 0) commitSidebarWidth(Math.round(left));

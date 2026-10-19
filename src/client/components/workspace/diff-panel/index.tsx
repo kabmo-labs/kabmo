@@ -9,7 +9,7 @@ import { ConflictBanner } from '@/client/components/workspace/diff-panel/Conflic
 import { UnifiedView } from '@/client/components/workspace/diff-panel/UnifiedView';
 import { SplitView } from '@/client/components/workspace/diff-panel/SplitView';
 import { usePluginDiffView } from '@/client/components/workspace/editor/plugin-file-view';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { AlertCircle, RefreshCw } from 'lucide-preact';
 
 interface DiffPanelProps {

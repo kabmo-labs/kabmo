@@ -15,14 +15,14 @@
 
 import { describe, expect, test } from 'bun:test';
 import { readPersistedModes } from '@/server/lib/omp/session/modes';
-import { chamberModeEnv } from '@/server/lib/omp/extensions/locator';
+import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 
 const line = (customType: string, data: unknown) => JSON.stringify({ type: 'custom', customType, data });
 
 describe('spawn-time mode restore', () => {
   test('a session left in plan mode spawns with plan in its environment', () => {
     const modes = readPersistedModes(line('chamber-plan-state', { enabled: true }));
-    expect(chamberModeEnv(modes).CHAMBER_MODES).toBe('plan');
+    expect(kabmoModeEnv(modes).CHAMBER_MODES).toBe('plan');
   });
 
   test('a session with a LIVE goal spawns with goal mode on', () => {
@@ -33,14 +33,14 @@ describe('spawn-time mode restore', () => {
       }),
     );
     // The loop itself is not the child's: it drives nothing on its own, and the
-    // chamber's auditor decides whether the next turn is opened (or whether the
+    // Kabmo's auditor decides whether the next turn is opened (or whether the
     // goal stops) — so the spawn carries the MODE, nothing more.
-    expect(chamberModeEnv(modes).CHAMBER_MODES).toBe('goal');
+    expect(kabmoModeEnv(modes).CHAMBER_MODES).toBe('goal');
   });
 
   test('a PAUSED goal restores the mode, and a finished one restores nothing', () => {
     // Pause is an instruction: the toggle reads as on (the goal exists) while
-    // the chamber's driver refuses to advance it — the status is what decides,
+    // Kabmo's driver refuses to advance it — the status is what decides,
     // not a spawn flag. Resume is the operator's move.
     const paused = readPersistedModes(
       line('chamber-goal-state', {
@@ -50,7 +50,7 @@ describe('spawn-time mode restore', () => {
     );
     expect(paused.goal).toBe(true);
     expect(paused.goalLive).toBe(false);
-    expect(chamberModeEnv(paused).CHAMBER_MODES).toBe('goal');
+    expect(kabmoModeEnv(paused).CHAMBER_MODES).toBe('goal');
   });
 
   test('a finished goal does not restore anything', () => {
@@ -60,6 +60,6 @@ describe('spawn-time mode restore', () => {
         goal: { id: 'g1', objective: 'x', status: 'complete', tokensUsed: 1, timeUsedSeconds: 1, createdAt: 0, updatedAt: 0 },
       }),
     );
-    expect(chamberModeEnv(modes).CHAMBER_MODES).toBe('');
+    expect(kabmoModeEnv(modes).CHAMBER_MODES).toBe('');
   });
 });

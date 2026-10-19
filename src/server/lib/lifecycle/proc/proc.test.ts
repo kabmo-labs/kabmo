@@ -6,7 +6,7 @@
 /**
  * Process probes: what liveness and identity answer for a PID.
  *
- * `identity.ts` decides whether a recorded PID is still an Kabmo server
+ * `identity.ts` decides whether a recorded PID is still a Kabmo server
  * from exactly these answers, so a wrong liveness or a wrong state string
  * silently blocks startup on a free port or, worse, lets a stale record name a
  * stranger as the occupant. Every probe method is contractually "degrade, never
@@ -98,8 +98,8 @@ describe('win32Probe', () => {
     // This is the fact `stopInstance` had to be taught: on Windows the probe
     // cannot read a PID's command line, so identity degrades to `unknown` for
     // every PID — the server's own included. A caller that treats anything but
-    // `matched` as "not ours" therefore never signals an Kabmo server
-    // there, which is what made `ompchamber stop` report success over a process
+    // `matched` as "not ours" therefore never signals a Kabmo server
+    // there, which is what made `kabmo stop` report success over a process
     // that was still listening.
     expect(win32Probe.commandLine(process.pid)).toBeNull();
   });

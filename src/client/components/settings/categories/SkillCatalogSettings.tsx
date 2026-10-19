@@ -33,7 +33,7 @@ export function SkillCatalogSettings() {
 
     // Both directions go through the same endpoint: an install runs the skills
     // CLI (which is what puts the skill where omp reads it), an uninstall runs
-    // its remove counterpart. Deleting only the chamber's own record used to
+    // its remove counterpart. Deleting only Kabmo's own record used to
     // leave the skill installed and running.
     fetch('/api/settings/skills', {
       method: 'POST',

@@ -28,7 +28,7 @@
  *     file mentions the remote the fetch used.
  *   - **A missing wiki is an answer, not an error.** Git answers "Repository not
  *     found" / "Authentication failed" for a wiki that does not exist and one
- *     the chamber cannot read, and both mean the same thing to a reader: there
+ *     Kabmo cannot read, and both mean the same thing to a reader: there
  *     is nothing to show. They map to `no-wiki` so the panel can say so instead
  *     of reporting a failure.
  *   - **A page is read at the ref, never off a path.** `git show <ref>:<path>`
@@ -90,12 +90,12 @@ interface WikiCacheHost {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberWikiCache: WikiCacheHost | undefined;
+  var __kabmoWikiCache: WikiCacheHost | undefined;
 }
 
 function cache(): Map<string, CacheEntry> {
-  globalThis.__ompChamberWikiCache ??= { entries: new Map() };
-  return globalThis.__ompChamberWikiCache.entries;
+  globalThis.__kabmoWikiCache ??= { entries: new Map() };
+  return globalThis.__kabmoWikiCache.entries;
 }
 
 /**

@@ -20,7 +20,7 @@
  *   enablement is read from here rather than from its registry entry.
  *
  * Everything here is a plain file read: omp's own CLI is the only writer, and
- * the chamber must never rewrite a registry omp owns. `plugins.ts` runs the CLI
+ * Kabmo must never rewrite a registry omp owns. `plugins.ts` runs the CLI
  * for anything that mutates.
  */
 

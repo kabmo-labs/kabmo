@@ -8,8 +8,8 @@
  * local edit blocked.
  *
  * Both live in `app_settings` rather than in the marketplace directory, for the
- * reason the enablement flag does: they are CHAMBER state about a directory the
- * chamber happens to have written, not a property of the plugin. A file inside
+ * reason the enablement flag does: they are Kabmo state about a directory the
+ * Kabmo happens to have written, not a property of the plugin. A file inside
  * the plugin would also be a file its own tooling could rewrite — and, worse,
  * would change the very tree the baseline describes.
  *

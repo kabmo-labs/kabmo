@@ -6,7 +6,7 @@ name: issue-intake
 # answer. One agent, one comment — an intake that leaves two comments costs the
 # maintainer a merge of its own reasoning.
 #
-# `@ompchamber-bot triage` and `@ompchamber-bot reproduce` re-run the same agent on
+# `@kabmo-bot triage` and `@kabmo-bot reproduce` re-run the same agent on
 # demand, with any text after the command passed as maintainer focus.
 
 on:
@@ -28,15 +28,15 @@ jobs:
   intake:
     name: intake issue
     if: |
-      (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo') &&
+      (github.repository == 'kabmo-labs/kabmo' || github.repository == 'kabmo-labs/kabmo') &&
       (github.event_name == 'issues' ||
        (github.event_name == 'issue_comment' &&
         !github.event.issue.pull_request &&
         github.event.comment.user.type != 'Bot' &&
-        (github.event.comment.body == format('@{0} triage', vars.BOT_MENTION || 'ompchamber-bot') ||
-         startsWith(github.event.comment.body, format('@{0} triage ', vars.BOT_MENTION || 'ompchamber-bot')) ||
-         github.event.comment.body == format('@{0} reproduce', vars.BOT_MENTION || 'ompchamber-bot') ||
-         startsWith(github.event.comment.body, format('@{0} reproduce ', vars.BOT_MENTION || 'ompchamber-bot')))))
+        (github.event.comment.body == format('@{0} triage', vars.BOT_MENTION || 'kabmo-bot') ||
+         startsWith(github.event.comment.body, format('@{0} triage ', vars.BOT_MENTION || 'kabmo-bot')) ||
+         github.event.comment.body == format('@{0} reproduce', vars.BOT_MENTION || 'kabmo-bot') ||
+         startsWith(github.event.comment.body, format('@{0} reproduce ', vars.BOT_MENTION || 'kabmo-bot')))))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -75,7 +75,7 @@ jobs:
         if: github.event_name == 'issue_comment'
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
-          MENTION: ${{ vars.BOT_MENTION || 'ompchamber-bot' }}
+          MENTION: ${{ vars.BOT_MENTION || 'kabmo-bot' }}
         run: |
           first_line="${COMMENT_BODY%%$'\n'*}"
           case "$first_line" in

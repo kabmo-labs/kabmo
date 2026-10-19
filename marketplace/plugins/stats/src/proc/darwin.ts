@@ -6,7 +6,7 @@
 /**
  * macOS: `libproc` + `sysctl`, no subprocess.
  *
- * Five calls per process, all through the same libraries the chamber's own
+ * Five calls per process, all through the same libraries Kabmo's own
  * liveness probe already opens:
  *
  * | Question | Call | Measured |

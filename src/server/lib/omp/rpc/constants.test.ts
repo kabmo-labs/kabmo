@@ -47,7 +47,7 @@ import {
   toImageContents,
   validateAgentImages,
 } from '@/server/lib/omp/rpc/constants';
-import { chamberExtensionArgs } from '@/server/lib/omp/extensions/locator';
+import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
 
 const tempDirs: string[] = [];
 
@@ -56,7 +56,7 @@ afterEach(() => {
 });
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -193,7 +193,7 @@ describe('buildSessionSpawnArgs', () => {
       '/tmp/session.jsonl',
       '--approval-mode',
       'yolo',
-      ...chamberExtensionArgs(),
+      ...kabmoExtensionArgs(),
     ]);
   });
 
@@ -203,12 +203,12 @@ describe('buildSessionSpawnArgs', () => {
       titleModelOverlayPath(),
       '--approval-mode',
       'write',
-      ...chamberExtensionArgs(),
+      ...kabmoExtensionArgs(),
     ]);
   });
 
   test('a new session still gets the overlay and the extension load', () => {
-    expect(buildSessionSpawnArgs('')).toEqual(['--config', titleModelOverlayPath(), ...chamberExtensionArgs()]);
+    expect(buildSessionSpawnArgs('')).toEqual(['--config', titleModelOverlayPath(), ...kabmoExtensionArgs()]);
   });
 
   test('the overlay file EXISTS by the time the argv names it', () => {
@@ -221,7 +221,7 @@ describe('buildSessionSpawnArgs', () => {
   });
 
   test('the extension load is the `-e <existing absolute file>` pair', () => {
-    const args = chamberExtensionArgs();
+    const args = kabmoExtensionArgs();
     expect(args.length === 0 || args[0] === '-e').toBe(true);
     // `isAbsolute`, not `startsWith('/')`: a Windows checkout names it `C:\…`.
     if (args.length > 0) expect(isAbsolute(args[1])).toBe(true);

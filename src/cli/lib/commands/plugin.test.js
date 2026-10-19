@@ -1,10 +1,10 @@
-// `ompchamber plugin` — the subcommand surface and its path handling.
+// `kabmo plugin` — the subcommand surface and its path handling.
 //
 // Two things are pinned here, and both were real bugs before they were:
 //
 // 1. `resolvePath` with an ABSOLUTE segment. `joinPath` strips a leading slash
 //    (it is used to build a path FROM a root), so `joinPath(cwd, '/tmp/x')` is
-//    `<cwd>/tmp/x`. Measured: `ompchamber plugin new /tmp/x` scaffolded into the
+//    `<cwd>/tmp/x`. Measured: `kabmo plugin new /tmp/x` scaffolded into the
 //    repo. The suite is a CLI-level case because the bug was only reachable
 //    through an absolute argument.
 // 2. `new` produces a project that typechecks. The scaffold writes its own
@@ -26,7 +26,7 @@ import { resolvePath } from '@/cli/lib/path-utils.js';
 
 // `import.meta.dir` is `src/cli/lib/commands`, so the package root is four up.
 const PKG_ROOT = resolvePath(import.meta.dir, '..', '..', '..', '..');
-const CLI = join(PKG_ROOT, 'src', 'cli', 'ompchamber.js');
+const CLI = join(PKG_ROOT, 'src', 'cli', 'kabmo.js');
 
 /** Run the CLI from the package root, so its own `pkgRoot` resolution is exercised. */
 function cli(args, cwd = PKG_ROOT) {
@@ -51,10 +51,10 @@ describe('resolvePath', () => {
   });
 });
 
-describe('ompchamber plugin', () => {
+describe('kabmo plugin', () => {
   test('bare `plugin` prints its own usage and exits non-zero', () => {
     const result = cli(['plugin']);
-    expect(result.stdout).toContain('ompchamber plugin <command>');
+    expect(result.stdout).toContain('kabmo plugin <command>');
     expect(result.code).not.toBe(0);
   });
 
@@ -68,7 +68,7 @@ describe('ompchamber plugin', () => {
     const dir = await mkdtemp(join(tmpdir(), 'omp-cli-plugin-'));
     try {
       const result = cli(['plugin', 'build', dir]);
-      expect(result.stderr).toContain('no "ompchamber" manifest block');
+      expect(result.stderr).toContain('no "kabmo" manifest block');
       expect(result.code).not.toBe(0);
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -84,21 +84,21 @@ describe('ompchamber plugin', () => {
 
       // The manifest declares both halves, so the build has two targets.
       const manifest = JSON.parse(await readFile(join(target, 'package.json'), 'utf8'));
-      expect(manifest.ompchamber.id).toBe('my-plugin');
-      expect(manifest.ompchamber.app).toBe('dist/app.js');
-      expect(manifest.ompchamber.server).toBe('dist/server.js');
+      expect(manifest.kabmo.id).toBe('my-plugin');
+      expect(manifest.kabmo.app).toBe('dist/app.js');
+      expect(manifest.kabmo.server).toBe('dist/server.js');
 
       // The declarations and the mapping onto them are what make `tsc` work in
-      // a directory with no chamber source on disk.
-      expect(existsSync(join(target, 'bundled-types/plugin-sdk/index.ts'))).toBe(true);
-      expect(existsSync(join(target, 'bundled-types/ui/index.tsx'))).toBe(true);
+      // a directory with no Kabmo source on disk.
+      expect(existsSync(join(target, 'bundled-types/kabmo-sdk/index.ts'))).toBe(true);
+      expect(existsSync(join(target, 'bundled-types/kabmo-ui/index.tsx'))).toBe(true);
       // The SDK's own suites are NOT copied: they import `bun:test`, which the
       // plugin's tsconfig does not resolve.
-      expect(existsSync(join(target, 'bundled-types/plugin-sdk/app.test.ts'))).toBe(false);
+      expect(existsSync(join(target, 'bundled-types/kabmo-sdk/app.test.ts'))).toBe(false);
 
       const tsconfig = JSON.parse(await readFile(join(target, 'tsconfig.json'), 'utf8'));
-      expect(tsconfig.compilerOptions.paths['@kabmo-labs/plugin-sdk/app']).toEqual([
-        './bundled-types/plugin-sdk/app.ts',
+      expect(tsconfig.compilerOptions.paths['@kabmo-labs/kabmo-sdk/app']).toEqual([
+        './bundled-types/kabmo-sdk/app.ts',
       ]);
       // `baseUrl` is deliberately absent: TypeScript 7 deprecates it, and
       // `paths` resolves relative to the tsconfig without it.

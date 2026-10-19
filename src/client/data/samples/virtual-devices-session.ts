@@ -330,7 +330,7 @@ app/hooks/useSync.ts
 
   return {
     id: SAMPLE_DEVICES_SESSION_ID,
-    title: 'Virtual Devices & Diagnostic Chamber (Oh-My-Pi Sample)',
+    title: 'Virtual Devices & Diagnostics (Oh-My-Pi Sample)',
     messages,
   };
 }

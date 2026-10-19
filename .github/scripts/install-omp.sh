@@ -16,13 +16,13 @@ if ! command -v bun >/dev/null 2>&1; then
   exit 1
 fi
 
-# Pinned to the version the chamber's RPC surface was measured against — the
+# Pinned to the version Kabmo's RPC surface was measured against — the
 # audit in docs/omp-18.8-adoption-plan.md names which features each phase
 # depends on, and the RPC verbs they use (steer, set_event_filter, isSettled)
 # do not exist on the 18.3.0 this used to pin.
 #
 # 18.10.0 (2026-10-12) is a surface-identical step up from the 18.9.2 this pinned
-# before, in both directions the chamber reads: the RPC wire schema carries the
+# before, in both directions Kabmo reads: the RPC wire schema carries the
 # SAME 67 commands and 283 definitions with nothing added, removed or changed,
 # and `orderedSettings()` produces a byte-identical schema (548 settings, 413
 # panel entries). What it does change is session IDENTITY — a session marked
@@ -43,7 +43,7 @@ fi
 # schema's source of truth is the failure mode this comment exists to prevent.
 #
 # 18.12.0 (2026-10-18): the schema's `source` line moves to 554 settings. Its
-# one RPC-wire addition is `narration` on a thinking block — which the chamber
+# one RPC-wire addition is `narration` on a thinking block — which Kabmo
 # already presents as answer text (`parseMessageBlocks`), so no RPC change was
 # needed for it.
 OMP_VERSION="${OMP_VERSION:-18.12.0}"

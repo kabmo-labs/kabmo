@@ -52,8 +52,8 @@ export interface RpcProcessOptions {
   cwd: string;
   /** Extra CLI args appended after the base `--mode rpc-ui --cwd <cwd>`. */
   extraArgs?: string[];
-  /** Environment overrides merged over Bun.env. Used by the chamber's mode
-   *  extension (`CHAMBER_MODES`), which reads the persisted selection at
+  /** Environment overrides merged over Bun.env. Used by Kabmo's mode
+   *  extension (`KABMO_MODES`), which reads the persisted selection at
    *  session start — the only channel available before the child's first
    *  command. */
   env?: Record<string, string>;

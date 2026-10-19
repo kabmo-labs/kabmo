@@ -25,7 +25,7 @@ export function getLogsDir() {
  * Log file for the running instance bound to `port`.
  */
 export function getLogFilePath(port) {
-  return joinPath(getLogsDir(), `ompchamber-${port}.log`);
+  return joinPath(getLogsDir(), `kabmo-${port}.log`);
 }
 
 /**

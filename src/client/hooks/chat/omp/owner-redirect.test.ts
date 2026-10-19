@@ -67,7 +67,7 @@ describe('redirectToOwningInstance', () => {
     expect(assigned).toEqual([]);
   });
 
-  test('an owner the chamber cannot place is not a redirect', () => {
+  test('an owner Kabmo cannot place is not a redirect', () => {
     expect(redirectToOwningInstance({ code: 'session_owned_elsewhere', ownerPort: null }, 's')).toBe(false);
     expect(assigned).toEqual([]);
   });

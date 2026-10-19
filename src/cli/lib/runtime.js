@@ -1,4 +1,4 @@
-// Runtime helpers for the Kabmo CLI: instance discovery, process identity,
+// Runtime helpers for Kabmo CLI: instance discovery, process identity,
 // server entry resolution, health probing and detached spawning.
 //
 // The instance record is written by the server that owns the port (see
@@ -123,7 +123,7 @@ function isBun(candidate) {
  * executing this CLI.
  */
 export function resolveBunBin() {
-  const override = Bun.env.OMPCHAMBER_BUN;
+  const override = Bun.env.KABMO_BUN;
   if (isBun(override)) return override;
 
   const execDir = process.execPath;
@@ -153,12 +153,12 @@ export function resolveBunBin() {
  *
  * Bun executes the TypeScript entry directly in both modes, so dev and prod
  * differ only by NODE_ENV — the client bundle in `dist/client` is required by
- * the SSR shell either way. `--ompchamber-server` is an identity marker: it
+ * the SSR shell either way. `--kabmo-server` is an identity marker: it
  * makes this process recognizable in `ps` output, which is how a starting
  * server decides whether a busy port belongs to Kabmo before signalling
  * anything. The launch mode rides along as argv (`--launch-mode=`), never as an
  * environment variable: env is inherited by descendants, so a `bun run dev`
- * started from an Kabmo shell would otherwise be labelled `daemon` and
+ * started from a Kabmo shell would otherwise be labelled `daemon` and
  * replaced by the next update.
  */
 export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = 'daemon', tls = false, tray = false }) {
@@ -177,9 +177,9 @@ export function buildServeInvocation({ pkgRoot, mode, port, host, launchMode = '
   return {
     file: resolveBunBin(),
     // `--tls` and `--tray` travel as argv, like `--launch-mode`: env is inherited
-    // by every descendant, so a server started inside the chamber's own terminal
+    // by every descendant, so a server started inside Kabmo's own terminal
     // would otherwise inherit the choice.
-    args: [entry, '--ompchamber-server', '--kabmo-server', launchModeArg(launchMode), ...(tls ? [TLS_FLAG] : []), ...(tray ? [TRAY_FLAG] : [])],
+    args: [entry, '--kabmo-server', launchModeArg(launchMode), ...(tls ? [TLS_FLAG] : []), ...(tray ? [TRAY_FLAG] : [])],
     // Both modes run from the package root. The built server's HTML bundle
     // resolves its asset paths against the cwd, and the build emits them under
     // `dist/client/` from that same root — while everything else the server

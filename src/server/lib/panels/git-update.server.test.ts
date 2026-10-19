@@ -12,7 +12,7 @@
  * The fixtures are local repositories, which makes the suite offline and
  * deterministic.
  *
- * `Bun.which('git')` guards it: the chamber treats a missing git as an
+ * `Bun.which('git')` guards it: Kabmo treats a missing git as an
  * environment condition, not a bug, so the suite is skipped rather than failed.
  */
 
@@ -42,7 +42,7 @@ function git(dir: string, args: string[]): void {
 /** A committed plugin repository, returned as a cloneable URL. */
 function makeRepo(manifest: unknown = VALID): string {
   const dir = fs.mkdtempSync(join(work, 'repo-'));
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
   git(dir, ['init', '-q']);
@@ -59,7 +59,7 @@ function makeRepo(manifest: unknown = VALID): string {
 
 /** Commit a new version of the plugin into `repo`, moving its HEAD. */
 function advance(repo: string, version: string): void {
-  fs.writeFileSync(join(repo, 'ompchamber.json'), JSON.stringify({ ...VALID, version }));
+  fs.writeFileSync(join(repo, 'kabmo.json'), JSON.stringify({ ...VALID, version }));
   git(repo, ['add', '-A']);
   git(repo, ['commit', '-q', '-m', `v${version}`]);
 }
@@ -67,12 +67,12 @@ function advance(repo: string, version: string): void {
 beforeEach(() => {
   root = fs.mkdtempSync(join(tmpdir(), 'omp-panels-git-'));
   work = fs.mkdtempSync(join(tmpdir(), 'omp-panels-repos-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
+  process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   removeDir(root);
   removeDir(work);
@@ -88,7 +88,7 @@ describe('readGitOrigin', () => {
   test('a directory that is not a clone has no origin', async () => {
     const dir = join(root, 'plugins', 'plain');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(VALID));
+    fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(VALID));
     expect(await readGitOrigin(dir)).toBeNull();
   });
 
@@ -139,7 +139,7 @@ describe('probeGitUpdate', () => {
   test('a plugin that is not a clone reports nothing to probe', async () => {
     const dir = join(root, 'plugins', 'plain');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(VALID));
+    fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(VALID));
 
     const status = await probeGitUpdate('plain');
     expect(status).toEqual({ current: null, latest: null, updateAvailable: false, checkedAt: null });
@@ -157,7 +157,7 @@ describe('updateGitPlugin', () => {
     expect(result.updated).toBe(true);
 
     // The FILES moved, not just the ref: the manifest on disk is the new one.
-    const manifest = JSON.parse(fs.readFileSync(join(root, 'plugins', 'from-git', 'ompchamber.json'), 'utf8')) as {
+    const manifest = JSON.parse(fs.readFileSync(join(root, 'plugins', 'from-git', 'kabmo.json'), 'utf8')) as {
       version: string;
     };
     expect(manifest.version).toBe('2.0.0');
@@ -192,7 +192,7 @@ describe('updateGitPlugin', () => {
   test('refuses a plugin that is not a git clone', async () => {
     const dir = join(root, 'plugins', 'plain');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(VALID));
+    fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(VALID));
 
     const result = await updateGitPlugin('plain');
     expect(result.ok).toBe(false);
@@ -206,7 +206,7 @@ describe('the scan reports a git origin', () => {
     await installPanelPluginFromGit(repo);
     const plain = join(root, 'plugins', 'plain');
     fs.mkdirSync(join(plain, 'dist'), { recursive: true });
-    fs.writeFileSync(join(plain, 'ompchamber.json'), JSON.stringify({ ...VALID, id: 'plain', name: 'Plain' }));
+    fs.writeFileSync(join(plain, 'kabmo.json'), JSON.stringify({ ...VALID, id: 'plain', name: 'Plain' }));
     fs.writeFileSync(join(plain, 'dist', 'app.js'), 'export default {};');
 
     invalidatePanelScan();

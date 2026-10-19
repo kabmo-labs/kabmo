@@ -7,9 +7,9 @@
  * A file's outline: the declarations it contains, in source order.
  *
  * **This is a heuristic scanner, not a parser and not LSP.** It exists because
- * the chamber has no LSP path to a browser: omp's `textDocument/documentSymbol`
+ * Kabmo has no LSP path to a browser: omp's `textDocument/documentSymbol`
  * lives inside the `lsp` TOOL (facing the model), and the RPC bridge the
- * chamber drives has no `lsp` command at all — so a precise outline would mean
+ * Kabmo drives has no `lsp` command at all — so a precise outline would mean
  * a second language-server client in the server, with its own process
  * management and dependency.
  *

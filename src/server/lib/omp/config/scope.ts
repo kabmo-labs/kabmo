@@ -52,7 +52,7 @@ export interface DiscoveryScope {
  * - neither → the app root, which is what an unscoped request has always meant
  *   (the composer's fallback for a session with no workspace folder, where omp
  *   itself spawns in the server's cwd). It stays a workspace because the app
- *   root is a registered root the chamber may write in.
+ *   root is a registered root Kabmo may write in.
  */
 export async function resolveDiscoveryScope(
   rawRoot: string | null | undefined,

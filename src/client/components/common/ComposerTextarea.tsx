@@ -12,7 +12,7 @@ export interface ComposerTextareaProps {
   disabled?: boolean;
   /** The server-injected settings map. The bindings are read out of it through
    *  `resolveComposerKeybindings`, which knows they live in the
-   *  `omp_chamber_settings` blob rather than at the top level. */
+   *  `kabmo_settings` blob rather than at the top level. */
   appSettings?: Record<string, any>;
   placeholder?: string;
   className?: string;

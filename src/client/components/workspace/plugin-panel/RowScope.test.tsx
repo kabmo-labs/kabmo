@@ -26,8 +26,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { configureUiKit, PluginIdProvider as PluginRowScope, usePluginId } from '@kabmo-labs/ui';
-import { makeUiKitServices, type FakeUiKit } from '@kabmo-labs/plugin-sdk/testing';
+import { configureUiKit, PluginIdProvider as PluginRowScope, usePluginId } from '@kabmo-labs/kabmo-ui';
+import { makeUiKitServices, type FakeUiKit } from '@kabmo-labs/kabmo-sdk/testing';
 
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;

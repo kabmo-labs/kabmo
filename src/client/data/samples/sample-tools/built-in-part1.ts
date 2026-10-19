@@ -219,7 +219,7 @@ Line 68: export interface ToolCallData {
     name: 'github',
     type: 'github',
     title: 'github — pr status #42',
-    input: { repo: 'canis/ompchamber', action: 'pr_status', pr: 42 },
+    input: { repo: 'canis/kabmo', action: 'pr_status', pr: 42 },
     output: `PR #42: feat(chat): redesign all tool renderers for readability
 Branch: feat/tool-renderers-ux
 Author: canis

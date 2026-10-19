@@ -28,7 +28,7 @@ test.describe('shell', () => {
   });
 
   test('serves the document with a title and a mounted client bundle', async ({ app }) => {
-    await expect(app).toHaveTitle(/OMPChamber/i);
+    await expect(app).toHaveTitle(/Kabmo/i);
     // The bundle is what makes the tree interactive; a shell that rendered but
     // never hydrated would leave `app-root` present and the app dead. A
     // hydrated tree carries the sidebar's New Session control, which only

@@ -52,10 +52,10 @@ export interface LabelContext {
   /** Wall clock, so age is computed once per sample. */
   now: number;
   /**
-   * The chamber's own pid, when the caller knows it.
+   * The Kabmo's own pid, when the caller knows it.
    *
-   * The tree root IS the chamber, decided by identity rather than argv: a
-   * `bun run src/server/index.ts` boot (dev) carries no `--ompchamber-server`,
+   * The tree root IS Kabmo, decided by identity rather than argv: a
+   * `bun run src/server/index.ts` boot (dev) carries no `--kabmo-server`,
    * and reading the label off argv made the one row a reader looks for first
    * render as `index.ts`.
    */
@@ -85,7 +85,7 @@ function basename(value: string): string {
  *
  * A `bun` process's argv head is the runtime, not the program, so the SECOND
  * argument is the honest name when the first is a known runtime and the second
- * is a script path. Without this every omp child, the broker and the chamber
+ * is a script path. Without this every omp child, the broker and Kabmo
  * itself read as `bun`.
  *
  * `bun run <script>` needs one more step: the second argument is the
@@ -154,7 +154,7 @@ export function describeProcess(process: ProcessInfo, context: LabelContext): Pr
   const project = projectOf(process.cwd);
   const cwdArg = projectOf(argOf(argv, '--cwd'));
 
-  if (line.includes('--ompchamber-server') || (context.serverPid !== undefined && process.pid === context.serverPid)) {
+  if (line.includes('--kabmo-server') || (context.serverPid !== undefined && process.pid === context.serverPid)) {
     return { title: 'Kabmo server', detail: detailOf(['the server itself', age]) };
   }
   if (line.includes('__omp_worker_daemon_broker')) {

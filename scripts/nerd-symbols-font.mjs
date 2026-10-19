@@ -2,7 +2,7 @@
  * Regenerate the bundled Nerd Font symbols face.
  *
  * The terminal's private-use glyphs (powerline separators, devicons, Font
- * Awesome, Material Design icons) exist in no coding webfont, so the chamber
+ * Awesome, Material Design icons) exist in no coding webfont, so Kabmo
  * ships a subset of Nerd Fonts' `SymbolsNerdFontMono` as the last entry in the
  * terminal's font stack. See `src/shared/lib/fonts/nerd-symbols.css` for why,
  * and `NOTICE.md` beside it for the icon-set licences.

@@ -1,4 +1,5 @@
 import { PanelLeftClose } from 'lucide-preact';
+import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { withChord } from '@/client/lib/ui/with-chord';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
@@ -34,8 +35,7 @@ export function SessionSidebarHeader({
           same placement the phone's header uses — it reads as part of the
           title instead of competing with the icon controls for a slot. */}
       <span className="relative font-bold text-sm tracking-tight flex items-center">
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500 font-extrabold text-[15px] tracking-tighter">OMP</span>
-        <span className="ml-[1px]">Chamber</span>
+        <BrandWordmark />
         <span className="absolute -top-0.5 -right-1.5 flex">
           <StreamStatusDot status={streamStatus} />
         </span>

@@ -67,7 +67,7 @@ async function commitStagedInstall(stagingDir: string): Promise<InstallResult> {
   const read = await readPluginManifest(stagingDir);
   if (read.kind === 'none') {
     await rm(stagingDir, { recursive: true, force: true });
-    return { ok: false, error: 'That plugin has no ompchamber.json, and no ompchamber key in package.json.' };
+    return { ok: false, error: 'That plugin has no kabmo.json, and no kabmo key in package.json.' };
   }
   if (read.kind === 'error') {
     await rm(stagingDir, { recursive: true, force: true });

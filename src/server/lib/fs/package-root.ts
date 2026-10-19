@@ -7,7 +7,7 @@
  * - `packageRoot()` — the first directory that holds `node_modules`, i.e. where
  *   the DEPENDENCIES are. A source checkout and a non-hoisted install answer
  *   their own root; a hoisted install answers the PARENT of the package, since
- *   a package under `node_modules/ompchamber/` has no `node_modules` of its own.
+ *   a package under `node_modules/kabmo/` has no `node_modules` of its own.
  * - `packageDir()` — the first directory that holds `src/`, i.e. where the
  *   PACKAGE's own files are (`package.json`, `public/`, `dist/client/`, the
  *   source stylesheets). In a hoisted install this is one level BELOW

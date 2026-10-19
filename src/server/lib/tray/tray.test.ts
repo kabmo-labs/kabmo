@@ -8,7 +8,8 @@
 // against the OS lives in the smoke runs recorded in AGENTS.md.
 
 import { describe, expect, test } from 'bun:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -18,6 +19,7 @@ import {
   renderDesktopEntry,
   renderLaunchAgent,
   renderWindowsRunValue,
+  removeLegacyAutostart,
   uninstallAutostart,
 } from '@/server/lib/tray/autostart';
 import { buildLoginEntryArgv } from '@/server/lib/tray/entry';
@@ -25,14 +27,14 @@ import { buildTrayConfig, trayUrl } from '@/server/lib/tray/config';
 import { buildMenuModel, menuPayload } from '@/server/lib/tray/host/linux.js';
 
 describe('buildLoginEntryArgv', () => {
-  const base = { bun: '/bun', cli: '/pkg/src/cli/ompchamber.js', port: 3000, host: '127.0.0.1', tray: true, tls: false, lan: false };
+  const base = { bun: '/bun', cli: '/pkg/src/cli/kabmo.js', port: 3000, host: '127.0.0.1', tray: true, tls: false, lan: false };
 
   // The load-bearing rule: launchd reaps a job's process tree when the job's
   // program exits, so a detached `serve` (which returns as soon as the health
   // check passes) left nothing running. The entry must hold the CLI open.
   test('runs serve in the foreground, so the job does not exit', () => {
     const argv = buildLoginEntryArgv(base);
-    expect(argv).toEqual(['/bun', '/pkg/src/cli/ompchamber.js', 'serve', '--foreground', '--prod', '--port', '3000', '--host', '127.0.0.1', '--tray']);
+    expect(argv).toEqual(['/bun', '/pkg/src/cli/kabmo.js', 'serve', '--foreground', '--prod', '--port', '3000', '--host', '127.0.0.1', '--tray']);
   });
 
   test('pins the mode, since a login entry has no shell to export NODE_ENV', () => {
@@ -107,10 +109,10 @@ describe('buildTrayConfig', () => {
       pidFile: '/data/tray/host/tray-3999.pid',
       loginInstalled: false,
     });
-    expect(config.cli).toContain(join('src', 'cli', 'ompchamber.js'));
+    expect(config.cli).toContain(join('src', 'cli', 'kabmo.js'));
     expect(config.cli).not.toContain('..');
     expect(config.url).toBe('http://127.0.0.1:3999');
-    expect(config.logFile).toBe('/data/logs/ompchamber-3999.log');
+    expect(config.logFile).toBe('/data/logs/kabmo-3999.log');
     expect(config.loginInstalled).toBe(false);
   });
 });
@@ -136,13 +138,15 @@ describe('linux host menu', () => {
 });
 
 describe('autostart filesystem round trip', () => {
-  // Exercised against a temp HOME: the real install was verified separately, and
-  // a test that wrote into the developer's own LaunchAgents would be a test that
-  // installed something on every run.
+  // Exercised against a temp XDG root: the real install was verified separately,
+  // and a test that wrote into the developer's own `~/.config/autostart` would be
+  // a test that installed something on every run. HOME is not enough —
+  // `os.homedir()` is resolved once at process start on macOS, so changing it
+  // mid-run left the write pointing at the developer's real home.
   test('writes, reports and removes an entry', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'ompchamber-autostart-'));
-    const before = process.env.HOME;
-    process.env.HOME = home;
+    const home = await mkdtemp(join(tmpdir(), 'kabmo-autostart-'));
+    const before = process.env.XDG_CONFIG_HOME;
+    process.env.XDG_CONFIG_HOME = home;
     try {
       expect(isAutostartInstalled({ platform: 'linux' })).toBe(false);
       const written = installAutostart({
@@ -158,15 +162,44 @@ describe('autostart filesystem round trip', () => {
       expect(uninstallAutostart({ platform: 'linux' })).toBe(true);
       expect(isAutostartInstalled({ platform: 'linux' })).toBe(false);
     } finally {
-      if (before === undefined) delete process.env.HOME;
-      else process.env.HOME = before;
+      if (before === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = before;
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a pre-rename login entry is removed', () => {
+  // It names `src/cli/ompchamber.js`, which this release does not ship: left in
+  // place it fails at every login, and `--no-startup` removes only the current
+  // entry, so nothing else could ever reach it.
+  test('removes the old XDG entry and reports where it was', async () => {
+    // `XDG_CONFIG_HOME`, not HOME: `os.homedir()` is resolved once at process
+    // start on macOS, so changing HOME mid-run would leave the function reading
+    // the developer's real home — and the test writing into it.
+    const home = await mkdtemp(join(tmpdir(), 'kabmo-autostart-legacy-'));
+    const before = process.env.XDG_CONFIG_HOME;
+    process.env.XDG_CONFIG_HOME = home;
+    try {
+      const dir = join(home, 'autostart');
+      await mkdir(dir, { recursive: true });
+      const legacy = join(dir, 'ompchamber-tray.desktop');
+      await writeFile(legacy, '[Desktop Entry]\nName=OMPChamber\n');
+
+      expect(removeLegacyAutostart({ platform: 'linux' })).toBe(legacy);
+      expect(existsSync(legacy)).toBe(false);
+      // Idempotent: a second run has nothing to remove.
+      expect(removeLegacyAutostart({ platform: 'linux' })).toBeNull();
+    } finally {
+      if (before === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = before;
       await rm(home, { recursive: true, force: true });
     }
   });
 });
 
 describe('the login entry carries a credential PATH, never the secret', () => {
-  const base = { bun: '/bun', cli: '/pkg/src/cli/ompchamber.js', port: 3000, host: '127.0.0.1', tray: true, tls: false, lan: false };
+  const base = { bun: '/bun', cli: '/pkg/src/cli/kabmo.js', port: 3000, host: '127.0.0.1', tray: true, tls: false, lan: false };
 
   // A plist is mode 0644 and outlives the run that wrote it, so a password in
   // its argv is published to every user on the machine — measured: the value

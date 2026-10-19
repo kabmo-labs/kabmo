@@ -9,7 +9,7 @@
  * What this pins is that a process is drawn as a process: the state, pid,
  * uptime, exit code and log the result carries are on screen, and the panel is
  * reached from the `read`/`write` transport rather than from the tool name.
- * Before this, `write proc://ompchamber-dev/kill` opened the EDIT panel (its
+ * Before this, `write proc://kabmo-dev/kill` opened the EDIT panel (its
  * stdin payload rendered as "Written File Preview") and `read proc://ompdev`
  * opened the READ panel with `javascript` as the file kind.
  *
@@ -59,27 +59,27 @@ async function mount(partial: Partial<ToolCallData> & Pick<ToolCallData, 'type'>
 const KILL: Partial<ToolCallData> & Pick<ToolCallData, 'type'> = {
   type: 'write',
   name: 'write',
-  target: 'proc://ompchamber-dev/kill',
-  input: { path: 'proc://ompchamber-dev/kill', content: null },
-  output: 'Stopped ompchamber-dev [service] — exited — up 16m29s',
+  target: 'proc://kabmo-dev/kill',
+  input: { path: 'proc://kabmo-dev/kill', content: null },
+  output: 'Stopped kabmo-dev [service] — exited — up 16m29s',
   status: 'success',
   details: {
     proc: {
       action: 'stop',
-      daemon: { name: 'ompchamber-dev', state: 'exited', startedAt: 1_791_433_388_038, exitedAt: 1_791_434_377_079, exitCode: 0, restartCount: 0, outputBytes: 4540, persist: false, detached: false },
+      daemon: { name: 'kabmo-dev', state: 'exited', startedAt: 1_791_433_388_038, exitedAt: 1_791_434_377_079, exitCode: 0, restartCount: 0, outputBytes: 4540, persist: false, detached: false },
     },
   },
 };
 
 describe('Proc panel — a service the call named', () => {
   test('reaches the panel from the transport, not the tool name', () => {
-    expect(toolPanelKind({ id: 'c1', type: 'write', name: 'write', title: 'write', target: 'proc://ompchamber-dev/kill', input: { path: 'proc://ompchamber-dev/kill' } } as ToolCallData)).toBe('proc');
+    expect(toolPanelKind({ id: 'c1', type: 'write', name: 'write', title: 'write', target: 'proc://kabmo-dev/kill', input: { path: 'proc://kabmo-dev/kill' } } as ToolCallData)).toBe('proc');
   });
 
   test('states the state, the exit code and the span it ran', async () => {
     const el = await mount(KILL);
     const text = el.textContent ?? '';
-    expect(text).toContain('ompchamber-dev');
+    expect(text).toContain('kabmo-dev');
     expect(text).toContain('exited');
     expect(text).toContain('exit');
     expect(text).toContain('0');
@@ -99,15 +99,15 @@ describe('Proc panel — stdin write', () => {
     const el = await mount({
       type: 'write',
       name: 'write',
-      target: 'proc://ompchamber-dev',
-      input: { path: 'proc://ompchamber-dev', content: '{"id":"ompchamber-dev","kill":true}' },
-      output: 'Sent input to ompchamber-dev [service] — ready — up 16m21s — pid 22985',
+      target: 'proc://kabmo-dev',
+      input: { path: 'proc://kabmo-dev', content: '{"id":"kabmo-dev","kill":true}' },
+      output: 'Sent input to kabmo-dev [service] — ready — up 16m21s — pid 22985',
       status: 'success',
-      details: { proc: { action: 'stdin', daemon: { name: 'ompchamber-dev', state: 'ready', pid: 22985, startedAt: Date.now() - 981_000 }, input: '{"id":"ompchamber-dev","kill":true}' } },
+      details: { proc: { action: 'stdin', daemon: { name: 'kabmo-dev', state: 'ready', pid: 22985, startedAt: Date.now() - 981_000 }, input: '{"id":"kabmo-dev","kill":true}' } },
     });
     const text = el.textContent ?? '';
     expect(text).toContain('Stdin');
-    expect(text).toContain('{"id":"ompchamber-dev","kill":true}');
+    expect(text).toContain('{"id":"kabmo-dev","kill":true}');
     expect(text).toContain('pid');
     expect(text).toContain('22985');
     expect(text).toContain('ready');
@@ -228,13 +228,13 @@ describe('Proc panel — legacy hub tool', () => {
   test('renders a hub daemon from the top level of details', async () => {
     const el = await mount({
       type: 'hub',
-      input: { op: 'start', name: 'ompchamber-dev', application: 'bun', args: ['run', 'dev'] },
-      output: 'ompchamber-dev [service] — ready — pid 22985',
+      input: { op: 'start', name: 'kabmo-dev', application: 'bun', args: ['run', 'dev'] },
+      output: 'kabmo-dev [service] — ready — pid 22985',
       status: 'success',
-      details: { op: 'start', daemon: { name: 'ompchamber-dev', state: 'ready', pid: 22985, startedAt: 1 } },
+      details: { op: 'start', daemon: { name: 'kabmo-dev', state: 'ready', pid: 22985, startedAt: 1 } },
     });
     const text = el.textContent ?? '';
-    expect(text).toContain('ompchamber-dev');
+    expect(text).toContain('kabmo-dev');
     expect(text).toContain('ready');
     expect(text).toContain('22985');
   });

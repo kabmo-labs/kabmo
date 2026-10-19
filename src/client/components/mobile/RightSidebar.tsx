@@ -1,7 +1,7 @@
 import { Suspense } from 'preact/compat';
 import { X } from 'lucide-preact';
 import { usePanelCatalog, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
-import { PanelHostProvider } from '@kabmo-labs/ui';
+import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -24,7 +24,7 @@ interface MobileRightSidebarProps {
  * Same views, same order and same titles as the desktop activity bar: the
  * catalog and the meta table are shared, so the two layouts cannot list the
  * views differently. Visibility is shared too — a view hidden from the desktop
- * bar is hidden here, because that choice is about the CHAMBER, not about one
+ * bar is hidden here, because that choice is about Kabmo, not about one
  * layout — and a hidden view keeps its row in the desktop right-click menu,
  * which is where it is switched back on.
  */

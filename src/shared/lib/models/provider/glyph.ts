@@ -9,7 +9,7 @@
  *
  * A provider reaches this module as whatever string omp reported: a login
  * provider id (`google-vertex`), a models.yml slug the user typed
- * (`my-gateway`), a legacy chamber icon key (`claude`), or a display name
+ * (`my-gateway`), a legacy Kabmo icon key (`claude`), or a display name
  * (`DeepSeek`). All four must land on the same mark, so lookup folds the input
  * to lowercase alphanumerics and matches it against this table.
  *

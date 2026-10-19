@@ -10,7 +10,7 @@
  * omp 18.12.0 marks those blocks `narration: true` (decoded from the Anthropic /
  * Bedrock thinking signature) and presents them as ANSWER text everywhere it
  * renders — `presentNarrationAsAnswer` is applied by the TUI's streaming
- * reveal, print mode and the ACP mapper. The chamber folded every thinking
+ * reveal, print mode and the ACP mapper. The Kabmo folded every thinking
  * block into the collapsed "Thinking" accordion, so a reply sent between two
  * tool calls disappeared from the transcript on those models.
  *

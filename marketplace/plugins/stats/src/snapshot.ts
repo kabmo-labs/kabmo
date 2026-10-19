@@ -88,7 +88,7 @@ export interface StatsSnapshot {
   machine: MachineContext;
   /** omp daemons the registry reports, so a row can be named by its daemon. */
   daemons: DaemonEntry[];
-  /** The chamber's own pid, so the panel can mark it. */
+  /** The Kabmo's own pid, so the panel can mark it. */
   serverPid: number;
   /** Sparkline series, oldest first. Absent when history is disabled. */
   history?: { rss: number[]; cpuPercent: number[] };
@@ -96,9 +96,9 @@ export interface StatsSnapshot {
   error?: string;
 }
 
-/** What the sampler needs to know about the chamber, injected so it is testable. */
+/** What the sampler needs to know about Kabmo, injected so it is testable. */
 export interface SampleDeps {
-  /** The chamber's pid — the tree root. */
+  /** The Kabmo's pid — the tree root. */
   serverPid: number;
   /** Wall clock, for the rate denominator. */
   now: () => number;

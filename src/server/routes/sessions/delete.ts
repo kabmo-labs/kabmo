@@ -15,7 +15,7 @@
  *     can still see, and omp would flush the file back on shutdown anyway;
  *  2. destroy the child and AWAIT its exit — omp writes session state on
  *     shutdown and would otherwise recreate the transcript just removed;
- *  3. purge side questions, then the transcript, artifacts and chamber rows.
+ *  3. purge side questions, then the transcript, artifacts and Kabmo rows.
  *
  * A pending `new-…` session is refused: it is a client-side placeholder with
  * nothing stored anywhere yet, so deleting it is the same as navigating away.

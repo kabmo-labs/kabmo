@@ -13,7 +13,7 @@
  * is not.
  */
 
-import { Field, FieldList, Note } from '@ompchamber/ui/components';
+import { Field, FieldList, Note } from '@kabmo-labs/kabmo-ui/components';
 
 import { RefreshButton } from './RefreshButton';
 import { formatBytes, formatPercent } from './format';

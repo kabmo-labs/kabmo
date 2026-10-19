@@ -50,12 +50,11 @@ describe('parseArgs', () => {
 });
 
 describe('helpText', () => {
-  test('names the bin it was invoked as, and the legacy spelling by default', () => {
+  test('names the bin it was invoked as, defaulting to kabmo', () => {
     expect(helpText('kabmo')).toContain('kabmo [COMMAND] [OPTIONS]');
-    expect(helpText('kabmo')).not.toContain('ompchamber [COMMAND]');
-    expect(helpText()).toContain('ompchamber [COMMAND] [OPTIONS]');
+    expect(helpText()).toContain('kabmo [COMMAND] [OPTIONS]');
     // The environment names are not the command name and must not be rewritten.
-    expect(helpText('kabmo')).toContain('OMPCHAMBER_DATA_DIR');
+    expect(helpText('kabmo')).toContain('KABMO_DATA_DIR');
   });
 });
 

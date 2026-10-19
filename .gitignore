@@ -3,7 +3,7 @@ build/
 dist/
 coverage/
 
-# A plugin's own lockfile is written by the `bun install` the chamber runs
+# A plugin's own lockfile is written by the `bun install` Kabmo runs
 # before building it (see lib/panels/build.server.ts), not by a plugin
 # author — the shipped plugins commit none.
 marketplace/plugins/*/bun.lock
@@ -16,6 +16,7 @@ workspace.db
 *.db-shm
 *.db-wal
 *.sqlite
+.kabmo/
 .ompchamber/
 .playwright-mcp
 

@@ -219,7 +219,7 @@ function FeaturesSection({
           </p>
         </div>
         {/* A read-only ladder still SHOWS the selection — the list is the truth
-            of what loads — it just cannot be saved through the chamber. */}
+            of what loads — it just cannot be saved through Kabmo. */}
         {!note && (
           <div className="flex items-center gap-2">
             {selected !== null && (

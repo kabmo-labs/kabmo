@@ -17,7 +17,7 @@ import {
   playNotificationSound,
   triggerChatCompletionSound,
 } from '@/client/hooks/ui/notification-sound';
-import { primeChamberSettings } from '@/shared/lib/settings/client';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator'] as const;
 /** The runner's own globals, restored on teardown (see the matching afterAll at the end of this file) so later files still see native Event/CustomEvent/window. */
@@ -213,31 +213,31 @@ describe('playInputRequiredSound', () => {
 
 describe('isChatSoundEnabled', () => {
   test('defaults to on when no preference is stored', () => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
     expect(isChatSoundEnabled()).toBe(true);
   });
 
   test('an explicit false on either key mutes it, with chatCompletionSound first', () => {
-    primeChamberSettings({ chatCompletionSound: false });
+    primeKabmoSettings({ chatCompletionSound: false });
     expect(isChatSoundEnabled()).toBe(false);
 
-    primeChamberSettings({ soundAlerts: false });
+    primeKabmoSettings({ soundAlerts: false });
     expect(isChatSoundEnabled()).toBe(false);
 
     // The newer key wins over the legacy alias.
-    primeChamberSettings({ chatCompletionSound: true, soundAlerts: false });
+    primeKabmoSettings({ chatCompletionSound: true, soundAlerts: false });
     expect(isChatSoundEnabled()).toBe(true);
 
-    primeChamberSettings({ chatCompletionSound: false, soundAlerts: true });
+    primeKabmoSettings({ chatCompletionSound: false, soundAlerts: true });
     expect(isChatSoundEnabled()).toBe(false);
   });
 
   test('triggerChatCompletionSound plays only when enabled', () => {
-    primeChamberSettings({ chatCompletionSound: false });
+    primeKabmoSettings({ chatCompletionSound: false });
     triggerChatCompletionSound();
     expect(FakeAudioContext.instances).toEqual([]);
 
-    primeChamberSettings({ chatCompletionSound: true });
+    primeKabmoSettings({ chatCompletionSound: true });
     triggerChatCompletionSound();
     expect(FakeAudioContext.instances).toHaveLength(1);
   });
@@ -245,7 +245,7 @@ describe('isChatSoundEnabled', () => {
 
 /** The snapshot and the DOM globals are module/global state shared across the whole `bun test` process. */
 afterAll(() => {
-  primeChamberSettings({});
+  primeKabmoSettings({});
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) {
     if (nativeGlobals[key] === undefined) delete target[key];

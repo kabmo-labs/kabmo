@@ -4,7 +4,7 @@
  */
 
 /**
- * Composer/action handlers for the chamber chat (send, send-now, edit/delete
+ * Composer/action handlers for Kabmo chat (send, send-now, edit/delete
  * queued items, undo, retry, new-chat, stop, model/thinking changes, close
  * dialog). Extracted from useChatTimeline so that hook stays under the repo's
  * per-file size ceiling. Everything these handlers need arrives via the deps
@@ -26,6 +26,7 @@ import { createQueueActions } from '@/client/hooks/chat/timeline/queue-actions';
 import { reportSteerOutcome } from '@/shared/lib/chat/timeline/steer-report';
 import { createRewindActions } from '@/client/hooks/chat/timeline/rewind-actions';
 import { prepareQueuedAttachments } from '@/shared/lib/chat/attachments';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
 
 export interface ChatTimelineActionsDeps {
   inputValue: string;
@@ -162,14 +163,14 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     //
     // MUST run before the TUI-only guard below: `/btw` is in that table (omp
     // implements it in the TUI only), so the guard would refuse the very
-    // command the chamber answers with a panel.
+    // command Kabmo answers with a panel.
     if (dispatchBtwCommand(textToSend, attachments)) {
       setInputValue('');
       return;
     }
 
     // A command a PLUGIN contributed through the `commandPaletteAction` slot is
-    // answered by that plugin, exactly like a chamber command: it is local work
+    // answered by that plugin, exactly like a Kabmo command: it is local work
     // the popup advertised, so it must never reach the model as literal text
     // (RPC has no expansion for it, and omp would improvise a whole turn around
     // the string). MUST run before the TUI-only guard below: a plugin may
@@ -210,7 +211,9 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
       }
       // Non-steering submit while running: honor the Follow-up Dispatch
       // setting — queue the follow-up, or steer the running agent.
-      const behavior = appSettings.omp_chamber_settings?.followUpBehavior ?? appSettings.followUpBehavior ?? 'queue';
+      // The blob is read through the shared resolver, so the pre-rename
+      // `omp_chamber_settings` row is still honoured on an upgraded install.
+      const behavior = readKabmoSetting<string>('followUpBehavior', appSettings) ?? 'queue';
       if (behavior === 'steering' && isOmpSession) {
         setInputValue('');
         reportSteerOutcome(await steerOmpAgent(textToSend, attachments), reportActionError);

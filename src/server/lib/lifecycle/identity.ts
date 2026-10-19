@@ -6,7 +6,7 @@
 /**
  * Process identity for a PID recorded for a port.
  *
- * Liveness alone cannot answer "is this PID still an Kabmo server": after
+ * Liveness alone cannot answer "is this PID still a Kabmo server": after
  * an ungraceful exit the PID can be recycled to an unrelated process, and a
  * liveness-only check then reports a live instance nobody is serving — which
  * either blocks startup on a free port or, worse, lets a stale record name a
@@ -50,11 +50,16 @@ export function isProcessAlive(pid: number): boolean {
  * Both names are accepted: a checkout or package directory carries whichever
  * name it was installed under, and a `kabmo` server must be recognized as ours
  * just as an `ompchamber` one is (port guard, stop, restart, update ownership).
+ * A server started before the rename is still running from the old path, and
+ * `status` has to find it.
  */
-export function isChamberCommand(command: string): boolean {
+export function isKabmoCommand(command: string): boolean {
   const lower = command.toLowerCase();
   return lower.includes('ompchamber') || lower.includes('kabmo');
 }
+
+/** @deprecated Use `isKabmoCommand`. */
+export const isChamberCommand = isKabmoCommand;
 
 /**
  * `dead` | `matched` | `mismatched` | `unknown` for a PID.
@@ -66,7 +71,7 @@ export function getProcessState(pid: number): ProcessState {
   if (!isProcessAlive(pid)) return 'dead';
   const command = processProbe.commandLine(pid);
   if (command === null) return 'unknown';
-  return isChamberCommand(command) ? 'matched' : 'mismatched';
+  return isKabmoCommand(command) ? 'matched' : 'mismatched';
 }
 
 /**

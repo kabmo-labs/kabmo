@@ -52,7 +52,7 @@ export function liveFrame(groups: ExtensionUiDialogRequest[][], index: number): 
 // otherwise repaint every question already answered as still waiting. The draft
 // cache keeps the text across a reload; it is per-tab and dies with the session.
 function draftKey(toolId: string): string {
-  return `ompchamber.ask-draft:${toolId}`;
+  return `kabmo.ask-draft:${toolId}`;
 }
 
 function loadDrafts(toolId: string): Record<number, string> {

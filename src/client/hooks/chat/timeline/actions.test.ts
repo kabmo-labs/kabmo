@@ -10,7 +10,7 @@
  * client — omp implements `/btw` in its TUI only, so a forwarded token would
  * reach the model as literal text. The interception has to run BEFORE the
  * TUI-only guard, because `btw` is listed in that table too; getting the order
- * wrong silently refuses the one command the chamber does answer.
+ * wrong silently refuses the one command Kabmo does answer.
  *
  * Pinned here: a btw draft fires `omp:btw` (question + attachments) and never
  * calls the send path, while clearing the composer; a plugin's
@@ -24,7 +24,7 @@ import { afterEach, beforeAll, afterAll, describe, expect, test } from 'bun:test
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import type { CommandActionContext } from '@kabmo-labs/plugin-sdk';
+import type { CommandActionContext } from '@kabmo-labs/kabmo-sdk';
 import type { Attachment, ChatMessageData } from '@/shared/types';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { setPluginContext } from '@/client/lib/plugins/context';

@@ -1,7 +1,7 @@
-// UI-password handling for `ompchamber serve`.
+// UI-password handling for `kabmo serve`.
 //
 // There is no stored password. A password is supplied per invocation — through
-// `--ui-password`, `OMPCHAMBER_UI_PASSWORD`, or an interactive prompt — and the
+// `--ui-password`, `KABMO_UI_PASSWORD`, or an interactive prompt — and the
 // server hashes it in memory for that process only. Nothing on disk can enable
 // authentication, so a plain `bun run dev` never inherits a password someone set
 // once and forgot about.
@@ -79,7 +79,7 @@ function promptForPassword(question) {
  * The password this start should enforce, and where it came from.
  *
  * `--no-ui-password` is an explicit opt-out and beats everything, so a shell
- * profile that exports `OMPCHAMBER_UI_PASSWORD` can still be overridden for one
+ * profile that exports `KABMO_UI_PASSWORD` can still be overridden for one
  * run. `generated` is surfaced because a generated value is the one password the
  * user has never seen: it must be printed, and printed once.
  */
@@ -185,6 +185,6 @@ export function reportUiAuth({ resolved, host, tls = false }) {
       `Warning: bound to ${host}, which your network can reach, with no UI password set —`
       + ' anyone who can reach this port gets full access to this machine.',
     );
-    warn('  Set one with --ui-password, or OMPCHAMBER_UI_PASSWORD.');
+    warn('  Set one with --ui-password, or KABMO_UI_PASSWORD.');
   }
 }

@@ -4,7 +4,7 @@
  */
 
 /**
- * Prompt assembly for the chamber composer: rewrite composer-level mentions
+ * Prompt assembly for Kabmo composer: rewrite composer-level mentions
  * into what oh-my-pi actually receives, then inline the text attachments the
  * user dropped in. Extracted from the send path so that hook stays under the
  * repo's per-file size ceiling.

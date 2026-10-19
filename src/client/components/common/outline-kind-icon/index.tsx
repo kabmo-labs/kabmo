@@ -15,7 +15,7 @@
  * a `Package` in the other.
  *
  * The marks are all one tone (`text-ink/45`, the gutter's own colour): the
- * chamber's palette reserves chroma for failure, and a rainbow outline would be
+ * Kabmo's palette reserves chroma for failure, and a rainbow outline would be
  * the only colour on a monochrome panel. The SHAPE carries the distinction.
  */
 

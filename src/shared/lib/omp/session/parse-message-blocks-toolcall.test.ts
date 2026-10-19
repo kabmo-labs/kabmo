@@ -4,7 +4,7 @@
  */
 
 /**
- * `toToolCallData` — the bridge from a parsed tool call to the chamber's
+ * `toToolCallData` — the bridge from a parsed tool call to Kabmo's
  * rendered `ToolCallData` — and the blob-reference guard it shares a module
  * with.
  *

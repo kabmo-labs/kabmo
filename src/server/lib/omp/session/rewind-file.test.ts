@@ -112,7 +112,7 @@ describe('truncateSessionBody: a cut the session FILE does not carry', () => {
 
   test('resolves a client-side row id by its clock, cutting at the next file turn', () => {
     // A builtin command (`/usage`, `/compact`) writes no entry: its timeline row
-    // lives only in the chamber overlay, and the rewind used to answer
+    // lives only in Kabmo overlay, and the rewind used to answer
     // entry_not_found for exactly the row the user clicked.
     const out = truncateSessionBody(twoTurns(), { entryId: 'msg-1790-user', startedAt: Date.parse('2026-01-01T00:05:00.000Z') });
     expect(out).not.toBeNull();

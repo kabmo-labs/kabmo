@@ -29,7 +29,7 @@ import { ToolDetailsPanel, resolveToolKey } from '@/client/components/workspace/
 import { usePluginTimelineRenderer } from '@/client/components/workspace/chat-timeline/tool-renderers/plugin-renderers';
 import { usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 import { toolPanelKind } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { toolSummary } from '@/shared/lib/chat/tool/summary';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import {

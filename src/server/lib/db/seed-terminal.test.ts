@@ -16,9 +16,9 @@
  * its contract is *idempotence*: it re-asserts the demo rows on every start
  * instead of duplicating them, which is why the sidebar keeps the same five
  * chat titles and the same file tree after a restart. It is also destructive in
- * one place that is easy to miss — folder 1 is RENAMED to `ompchamber` on every
+ * one place that is easy to miss — folder 1 is RENAMED to `kabmo` on every
  * seed — so that is pinned rather than assumed. Every test runs against a temp
- * SQLite file; the real chamber database is never opened.
+ * SQLite file; the real Kabmo database is never opened.
  *
  * The `terminal/session.server.ts` helpers are pinned alongside because they
  * need no PTY: the viewer fan-out drop rule (a viewer that cannot keep up is

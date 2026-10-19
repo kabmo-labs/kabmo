@@ -6,7 +6,7 @@
 /**
  * A bundled plugin whose update a local edit stopped.
  *
- * A refusal, not a failure, and the wording has to carry that: the chamber is
+ * A refusal, not a failure, and the wording has to carry that: Kabmo is
  * leaving the user's files alone, which is the outcome they want unless they were
  * editing by accident. The row therefore names WHICH files differ — without them
  * the user has to diff a directory against a version they cannot see — and offers
@@ -46,7 +46,7 @@ export function SyncBlockedNotice({ blocked, busy, onForceSync }: SyncBlockedNot
               </span>
             </div>
             <p className="text-[11px] text-ink/60">
-              The chamber installed this plugin, and {record.changed.length} of its files no longer match what it
+              Kabmo installed this plugin, and {record.changed.length} of its files no longer match what it
               wrote. Your files are left as they are.
             </p>
             <ul className="text-[10px] font-mono text-ink/50 space-y-0.5">

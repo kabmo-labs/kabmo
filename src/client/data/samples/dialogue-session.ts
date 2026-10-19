@@ -211,12 +211,12 @@ export function getSampleDialogueSession(): {
             title: 'task — RepoSummarizer',
             input: {
               context:
-                '# Goal\nProduce a concise summary of the Kabmo repository for the user.\n\n# Constraints\nRead-only investigation. Skip formatters and linters.',
+                '# Goal\nProduce a concise summary of Kabmo repository for the user.\n\n# Constraints\nRead-only investigation. Skip formatters and linters.',
               tasks: [
                 {
                   name: 'RepoSummarizer',
                   agent: 'scout',
-                  task: '# Target\nSummarize repository purpose, tech stack, and structure at /Users/rajebdev/JatisMobile/ompchamber.',
+                  task: '# Target\nSummarize repository purpose, tech stack, and structure at /Users/rajebdev/JatisMobile/kabmo.',
                 },
               ],
             },
@@ -277,7 +277,7 @@ export function getSampleDialogueSession(): {
         id: '65e71033',
         role: 'ai',
         content:
-          'Repo summary from `RepoSummarizer`:\n\n**Kabmo** — developer web-view console and diagnostic chamber for AI **Oh-My-Pi** autonomous agent.\n\n**Stack:** Remix v2 + React 19 + Vite, Tailwind CSS v4, TypeScript (strict, ES2022). Runs under npm or Bun.\n\n**Structure:**\n- `app/routes/` — Remix flat-routes, large REST-style `api/` domain tree\n- `app/components/` — common, layout, workspace, mobile, settings\n- `app/hooks/` — chat, terminal, git-tree, agent streaming\n- `app/lib/omp/` — bridges to oh-my-pi runtime (RPC managers, session readers)\n- `app/types/`, `app/data/` (mock presets)\n\n**Config:** `MOCK` mode toggles seeded demo data vs real data. SQLite persistence (`app/db.server.ts`).\n\n**Deployment-relevant:** PWA support, xterm/KaTeX/Shiki rendering.',
+          'Repo summary from `RepoSummarizer`:\n\n**Kabmo** — developer web-view console and diagnostic workbench for AI **Oh-My-Pi** autonomous agent.\n\n**Stack:** Remix v2 + React 19 + Vite, Tailwind CSS v4, TypeScript (strict, ES2022). Runs under npm or Bun.\n\n**Structure:**\n- `app/routes/` — Remix flat-routes, large REST-style `api/` domain tree\n- `app/components/` — common, layout, workspace, mobile, settings\n- `app/hooks/` — chat, terminal, git-tree, agent streaming\n- `app/lib/omp/` — bridges to oh-my-pi runtime (RPC managers, session readers)\n- `app/types/`, `app/data/` (mock presets)\n\n**Config:** `MOCK` mode toggles seeded demo data vs real data. SQLite persistence (`app/db.server.ts`).\n\n**Deployment-relevant:** PWA support, xterm/KaTeX/Shiki rendering.',
         date: 'Sep 9, 04:44 AM',
       },
     ],

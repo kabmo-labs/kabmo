@@ -8,7 +8,7 @@
  *
  * The glyph is drawn INLINE rather than imported, and that is a build fact
  * rather than a preference: the kit ships no icon set, and a plugin's
- * `node_modules` carries only the two `@ompchamber/*` packages the host links
+ * `node_modules` carries only the two `@kabmo-labs/*` packages the host links
  * into it — `lucide-preact` is the HOST's own dependency, so importing it would
  * make this plugin's build depend on a package it was never given. One path is
  * cheaper than that dependency.

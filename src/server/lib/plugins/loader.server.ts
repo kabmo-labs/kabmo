@@ -6,7 +6,7 @@
 /**
  * Loading a plugin's SERVER half, and unloading it again.
  *
- * A plugin's `server.ts` is a module the chamber's own process imports — the
+ * A plugin's `server.ts` is a module Kabmo's own process imports — the
  * same trust decision the browser bundle already carries, stated once here so
  * it is not re-litigated per call site. What the host controls is the SHAPE:
  * the factory is handed an API bound to its own id, and everything it registers
@@ -16,7 +16,7 @@
  * accident:
  *
  * - **The entry is BUILT, not imported from source.** A plugin's `server.ts` is
- *   TypeScript importing `@kabmo-labs/plugin-sdk`; the chamber's process runs
+ *   TypeScript importing `@kabmo-labs/kabmo-sdk`; Kabmo's process runs
  *   the bundle the plugin's build produced, exactly as the browser runs the
  *   `app` bundle. One build path, one artifact, no `tsx` in the server.
  * - **Disposal is exact-once and LIFO.** A reload that runs a disposer twice (or
@@ -40,13 +40,13 @@ import { createPluginRealtime, clearPluginTopic } from '@/server/lib/plugins/rea
 import { createPluginEvents, clearPluginEvents } from '@/server/lib/plugins/events.server';
 import { createPluginBackground, type PluginBackgroundHandle } from '@/server/lib/plugins/background.server';
 import { createPluginLogger } from '@/server/lib/plugins/log.server';
-import type { ChamberPluginApi, ChamberPluginFactory } from '@kabmo-labs/plugin-sdk';
+import type { KabmoPluginApi, KabmoPluginFactory } from '@kabmo-labs/kabmo-sdk';
 
 /** One loaded plugin, as the runtime holds it. */
 export interface LoadedPlugin {
   pluginId: string;
   /** The API the factory received — kept for a host that needs to read settings. */
-  api: ChamberPluginApi;
+  api: KabmoPluginApi;
   background: PluginBackgroundHandle;
   /** The disposers, in registration order. Run in reverse. */
   disposers: Array<() => void | Promise<void>>;
@@ -68,18 +68,18 @@ export interface PluginLoadError {
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberLoadedPlugins: Map<string, LoadedPlugin> | undefined;
+  var __kabmoLoadedPlugins: Map<string, LoadedPlugin> | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberPluginLoadErrors: PluginLoadError[] | undefined;
+  var __kabmoPluginLoadErrors: PluginLoadError[] | undefined;
 }
 
 function loaded(): Map<string, LoadedPlugin> {
-  return (globalThis.__ompChamberLoadedPlugins ??= new Map());
+  return (globalThis.__kabmoLoadedPlugins ??= new Map());
 }
 
 /** Why a plugin did not load, for the pane. Empty when everything loaded. */
 export function pluginLoadErrors(): PluginLoadError[] {
-  return globalThis.__ompChamberPluginLoadErrors ?? [];
+  return globalThis.__kabmoPluginLoadErrors ?? [];
 }
 
 /**
@@ -96,9 +96,9 @@ export function pluginLoadErrors(): PluginLoadError[] {
  * a transient fault). The list is keyed by plugin id, so this is an upsert.
  */
 export function notePluginLoadFailure(pluginId: string, reason: string | null): void {
-  const current = globalThis.__ompChamberPluginLoadErrors ?? [];
+  const current = globalThis.__kabmoPluginLoadErrors ?? [];
   const without = current.filter((entry) => entry.pluginId !== pluginId);
-  globalThis.__ompChamberPluginLoadErrors = reason === null ? without : [...without, { pluginId, reason }];
+  globalThis.__kabmoPluginLoadErrors = reason === null ? without : [...without, { pluginId, reason }];
 }
 
 /** The API as it stands, or undefined when the plugin is not loaded. */
@@ -149,7 +149,7 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
   const background = createPluginBackground(pluginId);
   const events = createPluginEvents(pluginId);
 
-  const api: ChamberPluginApi = {
+  const api: KabmoPluginApi = {
     pluginId,
     log: createPluginLogger(pluginId),
     storage,
@@ -178,7 +178,7 @@ export async function loadPluginServer(pluginId: string): Promise<LoadedPlugin> 
   loaded().set(pluginId, record);
 
   try {
-    await (module.default as ChamberPluginFactory)(api);
+    await (module.default as KabmoPluginFactory)(api);
   } catch (error) {
     await disposePlugin(pluginId);
     throw new Error(`plugin "${pluginId}" failed to load: ${error instanceof Error ? error.message : String(error)}`);
@@ -245,7 +245,7 @@ export async function loadPluginServers(): Promise<{ loaded: string[]; errors: P
     }
   }
 
-  globalThis.__ompChamberPluginLoadErrors = errors;
+  globalThis.__kabmoPluginLoadErrors = errors;
   return { loaded: ids, errors };
 }
 
@@ -265,7 +265,7 @@ const SHUTDOWN_DISPOSE_TIMEOUT_MS = 3_000;
  * A plugin's disposer owns real work — a spawned child, a listener, a timer —
  * and `onDispose` is the only place it is released. Without this the process
  * exits with those alive: a detached child outlives its parent by definition,
- * so a command a plugin started would keep running after the chamber is gone
+ * so a command a plugin started would keep running after Kabmo is gone
  * (verified: the plugin's own `Bun.spawn({ detached: true })` children survive a
  * `SIGTERM` to the server).
  *

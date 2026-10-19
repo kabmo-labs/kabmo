@@ -4,7 +4,7 @@ import { usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
 import { setPluginContext } from '@/client/lib/plugins/context';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
-import type { ContentScriptRegistration } from '@kabmo-labs/plugin-sdk';
+import type { ContentScriptRegistration } from '@kabmo-labs/kabmo-sdk';
 import {
   mountContentScripts,
   unmountAllContentScripts,
@@ -108,7 +108,7 @@ function usePluginStylesheets(): void {
  * would churn every generation for nothing.
  *
  * Reported, never thrown: a script that cannot mount is a plugin bug, and it
- * must not take the chamber's boot with it.
+ * must not take Kabmo's boot with it.
  */
 function useContentScripts(): void {
   const { panels } = usePanelRegistry();

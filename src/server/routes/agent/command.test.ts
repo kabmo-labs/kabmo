@@ -6,7 +6,7 @@
 /**
  * The spawn guard on POST /api/agent/:sessionId.
  *
- * This route is the chamber's ONLY lazy-spawn path: a command posted for a
+ * This route is Kabmo's ONLY lazy-spawn path: a command posted for a
  * session it does not manage starts an `omp` child for it. That is right for a
  * prompt — the user asked for work — and wrong for a read. The sidebar renders
  * a subagent roster row for every session in the list, and the roster probes
@@ -28,7 +28,7 @@
 import { describe, expect, test } from 'bun:test';
 import { sendCommand } from '@/server/routes/agent/command';
 
-/** Ids that no chamber instance manages and no session file backs. */
+/** Ids that no Kabmo instance manages and no session file backs. */
 const DEAD = 'spawn-guard-dead-session';
 const UNKNOWN = 'spawn-guard-unknown-session';
 

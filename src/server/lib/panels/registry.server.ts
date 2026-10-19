@@ -11,10 +11,10 @@
  *   <package>/marketplace/            the STORE — what the app ships
  *     plugins/session-info/           an offer, not an install
  *
- *   ~/.ompchamber/marketplace/        the WORKING copy — what is installed
+ *   ~/.kabmo/marketplace/        the WORKING copy — what is installed
  *     marketplace.json                the catalog
  *     plugins/session-info/           an installed plugin
- *       package.json                  manifest under its `ompchamber` key
+ *       package.json                  manifest under its `kabmo` key
  *       dist/app.js                   the built ESM bundle the host imports
  *
  * The working copy lives in the DATA directory because that is the only location
@@ -32,11 +32,11 @@
  * bundle later from the bundle route.
  */
 
-import { homedir } from 'os';
 import { join, resolve } from 'path';
 import type { PanelPluginStatus, PanelRegistryPayload } from '@/shared/types';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { packageDir } from '@/server/lib/fs/package-root';
+import { getDataDir } from '@/server/lib/lifecycle/paths';
 import { readDisabledPlugins, readPluginAutoUpdate } from '@/server/lib/panels/state.server';
 import { readAllGitStatuses } from '@/server/lib/panels/git-status.server';
 import { readBlockedSyncs } from '@/server/lib/panels/baseline.server';
@@ -48,11 +48,11 @@ import { readBundledCatalog } from '@/server/lib/panels/bundled-catalog.server';
 import { describeIncompatibility, runningVersions } from '@/server/lib/panels/compat.server';
 import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 
-/** The marketplace root: `~/.ompchamber/marketplace`, overridable for tests. */
+/** The marketplace root: `<data>/marketplace`, overridable for tests. */
 export function getMarketplaceDir(): string {
-  const override = Bun.env.OMPCHAMBER_MARKETPLACE_DIR;
+  const override = Bun.env.KABMO_MARKETPLACE_DIR ?? Bun.env.OMPCHAMBER_MARKETPLACE_DIR;
   if (override) return resolve(override);
-  return join(homedir(), '.ompchamber', 'marketplace');
+  return join(getDataDir(), 'marketplace');
 }
 
 /** Where a plugin's files live inside the marketplace. */
@@ -77,13 +77,13 @@ export function getMarketplaceCatalogPath(): string {
  * Overridable so the seed and install tests can point at a fixture tree.
  */
 export function getBundledMarketplaceDir(): string {
-  const override = Bun.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
+  const override = Bun.env.KABMO_BUNDLED_MARKETPLACE_DIR ?? Bun.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
   if (override) return resolve(override);
   return join(packageDir(), 'marketplace');
 }
 
 /** The marketplace's stable id, used to attribute panels and rejections. */
-const MARKETPLACE_ID = 'ompchamber';
+const MARKETPLACE_ID = 'kabmo';
 
 const SCAN_CACHE_TTL_MS = 5_000;
 
@@ -102,12 +102,12 @@ interface PanelScan extends PanelRegistryPayload {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPanelScan: { at: number; dir: string; scan: PanelScan } | undefined;
+  var __kabmoPanelScan: { at: number; dir: string; scan: PanelScan } | undefined;
 }
 
 /** Drop the scan cache — called after an install, a remove, or a Refresh. */
 export function invalidatePanelScan(): void {
-  globalThis.__ompChamberPanelScan = undefined;
+  globalThis.__kabmoPanelScan = undefined;
 }
 
 async function runPanelScan(): Promise<PanelScan> {
@@ -287,10 +287,10 @@ async function runPanelScan(): Promise<PanelScan> {
 
 async function cachedScan(): Promise<PanelScan> {
   const dir = getMarketplaceDir();
-  const cached = globalThis.__ompChamberPanelScan;
+  const cached = globalThis.__kabmoPanelScan;
   if (cached && cached.dir === dir && Date.now() - cached.at < SCAN_CACHE_TTL_MS) return cached.scan;
   const scan = await runPanelScan();
-  globalThis.__ompChamberPanelScan = { at: Date.now(), dir, scan };
+  globalThis.__kabmoPanelScan = { at: Date.now(), dir, scan };
   return scan;
 }
 

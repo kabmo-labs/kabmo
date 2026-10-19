@@ -9,7 +9,7 @@
  * ## It is a CODE BLOCK, not a `<pre>`
  *
  * The output is a program's stdout: fixed-width, not prose, and long lines are
- * normal. It is drawn with the chamber's own code-block treatment — the
+ * normal. It is drawn with Kabmo's own code-block treatment — the
  * `.code-block` shell (border `ink/15`, radius, `--theme-canvas`) plus the
  * `Fira Code` face and the 12px/1rem line box `tailwind.css` gives a rendered
  * code block — so a command's output and a fenced block in the chat look like the
@@ -88,7 +88,7 @@ export function RunOutput({ run, log, onStop }: RunOutputProps) {
         ) : null}
       </div>
 
-      {/* The chamber's code-block shell, inline: `tailwind.css` styles
+      {/* The Kabmo's code-block shell, inline: `tailwind.css` styles
           `.prose-content .code-block`, which a plugin's DOM is not inside, so the
           same tokens are written here. A plugin cannot import the host's
           stylesheet — it renders in the host's document with the host's utilities,

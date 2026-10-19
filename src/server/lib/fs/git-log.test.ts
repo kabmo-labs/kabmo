@@ -40,7 +40,7 @@ const tempDirs: string[] = [];
 const SEED_TIMEOUT_MS = 120_000;
 
 function tempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitlog-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-gitlog-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -307,7 +307,7 @@ describe('fetchFileDiff commit patches', () => {
 });
 
 describe('the sample fallback is reserved for MOCK mode', () => {
-  const missing = path.join(os.tmpdir(), 'ompchamber-gitlog-does-not-exist');
+  const missing = path.join(os.tmpdir(), 'kabmo-gitlog-does-not-exist');
 
   function withMock(value: string | undefined, fn: () => Promise<void>): Promise<void> {
     const previous = Bun.env.MOCK;

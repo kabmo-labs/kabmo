@@ -9,7 +9,7 @@
  * A download dragged out of a web page (WhatsApp Web, Gmail, Slack) hands the
  * composer a URL, not bytes: there is no `File` in the drag at all. The browser
  * cannot read it either — a cross-origin `file://` path and a remote URL are
- * both outside what the page may fetch. The chamber server can, so the
+ * both outside what the page may fetch. The Kabmo server can, so the
  * reference is resolved there and returned as text the composer attaches like
  * any other file.
  *
@@ -33,9 +33,9 @@ export function referenceName(reference: string): string {
 
 /** Why a dropped reference could not be turned into a file. */
 export type ReferenceFailure =
-  /** The path exists but lies outside the roots the chamber may read. */
+  /** The path exists but lies outside the roots Kabmo may read. */
   | 'outside-roots'
-  /** A URL from a web page; the chamber does not fetch outbound. */
+  /** A URL from a web page; Kabmo does not fetch outbound. */
   | 'remote'
   /** The path exists but its contents are not text (an image, an archive). */
   | 'binary'
@@ -95,7 +95,7 @@ export function describeReferenceFailure(names: string[], reason: ReferenceFailu
   const tail = names.length > 3 ? '…' : '';
   switch (reason) {
     case 'outside-roots':
-      return `${subject} lie${names.length === 1 ? 's' : ''} outside the folders the chamber may read, so ${names.length === 1 ? 'it was' : 'they were'} not attached (${list}${tail}).`;
+      return `${subject} lie${names.length === 1 ? 's' : ''} outside the folders Kabmo may read, so ${names.length === 1 ? 'it was' : 'they were'} not attached (${list}${tail}).`;
     case 'remote':
       return `${subject} ${names.length === 1 ? 'is a web download' : 'are web downloads'}; save ${names.length === 1 ? 'it' : 'them'} into a workspace folder first (${list}${tail}).`;
     case 'binary':

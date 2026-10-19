@@ -45,9 +45,9 @@ let root: string;
 let saved: Record<string, string | undefined>;
 
 const ENV_KEYS = [
-  'OMPCHAMBER_OMP_BIN',
+  'KABMO_OMP_BIN',
   'PI_CODING_AGENT_DIR',
-  'OMPCHAMBER_DB_PATH',
+  'KABMO_DB_PATH',
   'SYNC_WORKSPACE',
   'FAKE_OMP_FORK_ON_RESUME',
   'FAKE_OMP_FORK_LOG',
@@ -56,9 +56,9 @@ const ENV_KEYS = [
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'omp-fork-test-'));
   saved = Object.fromEntries(ENV_KEYS.map((key) => [key, Bun.env[key]]));
-  Bun.env.OMPCHAMBER_OMP_BIN = join(import.meta.dir, '../../../../test-support/fake-omp-fork.ts');
+  Bun.env.KABMO_OMP_BIN = join(import.meta.dir, '../../../../test-support/fake-omp-fork.ts');
   Bun.env.PI_CODING_AGENT_DIR = join(root, 'agent');
-  Bun.env.OMPCHAMBER_DB_PATH = join(root, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   Bun.env.FAKE_OMP_FORK_ON_RESUME = '1';
   Bun.env.FAKE_OMP_FORK_LOG = join(root, 'forks.jsonl');

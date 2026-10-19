@@ -1,9 +1,9 @@
 # Panel Plugins
 
-A panel plugin adds its own views to OMPChamber — a view in the right panel, a
+A panel plugin adds its own views to Kabmo — a view in the right panel, a
 tab in the editor panel, a readout in the navbar, a block in its settings.
 **A plugin is a Preact + Bun package**, built the same way this app builds
-itself, and the chamber imports its build output into its own page and renders
+itself, and Kabmo imports its build output into its own page and renders
 it in its own tree.
 
 You write TSX, import from `node_modules`, and get one self-contained ESM bundle.
@@ -21,19 +21,23 @@ the harness, the CLI) and
 [Wave 2](../plugin-platform-wave2-plan.md) (the participant hooks and the four
 slots that reach into the conversation).
 
-Two packages are provided by the chamber itself:
+Two packages are provided by Kabmo itself:
 
 | Import | What it gives you |
 |---|---|
-| `@ompchamber/plugin-sdk` | The contract: `definePluginApp`, the slot and props types, and the SERVER half (`ChamberPluginApi`). |
-| `@ompchamber/plugin-sdk/app` | The same app contract, as the runtime slot the build shims to. |
-| `@ompchamber/plugin-sdk/testing` | A fake host for the plugin's own tests — no chamber process needed. |
-| `@ompchamber/plugin-sdk/testing/app` | `loadPluginApp` / `renderSlot` / `renderPanel`, for testing the components. |
-| `@ompchamber/ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useChamberFetch`, `useRpc`, `useRealtime`, `useComposer`, plus the two providers (`PanelHostProvider`, `PluginIdProvider`). |
-| `@ompchamber/ui/components` | `Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`, and `Markdown` (rendered through the chamber's own pipeline). |
+| `@kabmo-labs/kabmo-sdk` | The contract: `definePluginApp`, the slot and props types, and the SERVER half (`KabmoPluginApi`). |
+| `@kabmo-labs/kabmo-sdk/app` | The same app contract, as the runtime slot the build shims to. |
+| `@kabmo-labs/kabmo-sdk/testing` | A fake host for the plugin's own tests — no Kabmo process needed. |
+| `@kabmo-labs/kabmo-sdk/testing/app` | `loadPluginApp` / `renderSlot` / `renderPanel`, for testing the components. |
+| `@kabmo-labs/kabmo-ui` | The hooks: `usePanelInfo`, `usePanelHost`, `useTheme`, `useSessionValue`, `useSessionState`, `useWorkspaceFile`, `useKabmoFetch`, `useRpc`, `useRealtime`, `useComposer`, plus the two providers (`PanelHostProvider`, `PluginIdProvider`). |
+| `@kabmo-labs/kabmo-ui/components` | `Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`, and `Markdown` (rendered through Kabmo's own pipeline). |
 
-They are published on npm (`@ompchamber/plugin-sdk`, `@ompchamber/ui`), and the
-chamber links them into a plugin's `node_modules` before building.
+They are published on npm (`@kabmo-labs/kabmo-sdk`, `@kabmo-labs/kabmo-ui`), and the
+Kabmo links them into a plugin's `node_modules` before building.
+
+The pre-rename names `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` are still
+resolved by the runtime shim and by the package linker, so a plugin that has not
+been republished keeps building and loading. Write the new names in new code.
 
 **Declare them as OPTIONAL PEER dependencies.** The manifest should name what the
 code imports, and this is the only form that does so without breaking the install:
@@ -41,10 +45,10 @@ code imports, and this is the only form that does so without breaking the instal
 ```json
 {
   "dependencies": { "preact": "^10.29.8" },
-  "peerDependencies": { "@ompchamber/plugin-sdk": "*", "@ompchamber/ui": "*" },
+  "peerDependencies": { "@kabmo-labs/kabmo-sdk": "*", "@kabmo-labs/kabmo-ui": "*" },
   "peerDependenciesMeta": {
-    "@ompchamber/plugin-sdk": { "optional": true },
-    "@ompchamber/ui": { "optional": true }
+    "@kabmo-labs/kabmo-sdk": { "optional": true },
+    "@kabmo-labs/kabmo-ui": { "optional": true }
   }
 }
 ```
@@ -65,7 +69,7 @@ Two consequences worth knowing:
 
 - **`optional` also silences a version mismatch.** A peer range the linked package
   cannot satisfy produces no warning (measured: `^99.0.0` against the link exits
-  0). Keep the range loose (`*` or `^1`) and let the chamber's link decide — it
+  0). Keep the range loose (`*` or `^1`) and let Kabmo's link decide — it
   provides a newer package by design.
 - **This is the convention the ecosystem already uses.** React, Preact and every
   other host-provided runtime declares itself this way, so a plugin author
@@ -74,15 +78,15 @@ Two consequences worth knowing:
 ## One store, one working marketplace
 
 ```
-~/.ompchamber/marketplace/          the WORKING marketplace (installed plugins)
+~/.kabmo/marketplace/          the WORKING marketplace (installed plugins)
 ├── marketplace.json                the catalog — what is registered
 └── plugins/
     └── session-info/               an installed plugin (a Preact + Bun package)
-        ├── package.json            the ompchamber manifest
+        ├── package.json            the kabmo manifest
         ├── tsconfig.json           jsxImportSource: "preact"
         ├── src/
         │   └── app.tsx             definePluginApp(...) — the whole plugin
-        └── dist/                   the build output the chamber imports
+        └── dist/                   the build output Kabmo imports
             └── app.js
 
 <package>/marketplace/              the STORE, shipped with the app
@@ -91,14 +95,14 @@ Two consequences worth knowing:
     └── session-info/               offered, NOT installed
 ```
 
-`dist/` is gitignored, so it is never committed: the chamber builds it. A plugin
+`dist/` is gitignored, so it is never committed: Kabmo builds it. A plugin
 is built when it is INSTALLED — never at boot — and the manifest's `app` names a
 file inside `dist/`, with the pane offering **Rebuild** whenever it is missing.
 
 **The bundled marketplace is a store, not a preinstalled set.** A plugin the
 package ships is available in Settings → Panel Plugins and contributes nothing
 until you install it, which is the shape VS Code uses: an extension is not
-installed until you install it. A fresh chamber therefore starts with an empty
+installed until you install it. A fresh Kabmo therefore starts with an empty
 activity bar, and nothing is ever copied into your data directory behind your
 back.
 
@@ -118,8 +122,8 @@ entry, same scan — which is what lets the pane treat them identically.
 The working copy lives in your data directory because that is the only location
 both install shapes can write.
 
-`OMPCHAMBER_MARKETPLACE_DIR` overrides the working location and
-`OMPCHAMBER_BUNDLED_MARKETPLACE_DIR` the store (both useful for testing).
+`KABMO_MARKETPLACE_DIR` overrides the working location and
+`KABMO_BUNDLED_MARKETPLACE_DIR` the store (both useful for testing).
 
 ## Installing, enabling, removing
 
@@ -132,8 +136,8 @@ Three separate things, and the pane keeps them separate:
 | **Remove** | Deletes the directory and its catalog entry. Re-installing is the only way back. |
 | **Forget** | Drops one catalog entry whose directory is already gone. No files are touched. Offered on the rejection row, and nowhere else. |
 
-Enablement is stored in the chamber's own database, not in the plugin directory:
-the plugin's files are a third-party repository whose format the chamber does not
+Enablement is stored in Kabmo's own database, not in the plugin directory:
+the plugin's files are a third-party repository whose format Kabmo does not
 own. It is stored as the DISABLED set, so absent means enabled — which is what
 makes a freshly installed plugin live immediately and keeps a database written
 before this feature from switching everything off.
@@ -145,7 +149,7 @@ are pinned there — the panel toggles in the navbar are what control those.
 
 ## Building
 
-The chamber builds a plugin with Bun — the same runtime the app itself runs on,
+The Kabmo builds a plugin with Bun — the same runtime the app itself runs on,
 and the same bundler (`bun build`, `target: 'browser'`) it bundles its own client
 with.
 
@@ -154,9 +158,9 @@ with.
   not installed and never should be — a plugin may not rely on the app's own
   tsconfig, and the pane reports that fix rather than the raw module error.
 - If `package.json` has a **`build` script**, that script runs. It wins, because a
-  plugin may need a bundler pass the chamber knows nothing about (a framework, a
+  plugin may need a bundler pass Kabmo knows nothing about (a framework, a
   template compiler).
-- Otherwise the chamber bundles `src/app.tsx` (or `src/app.ts`, or the same at
+- Otherwise Kabmo bundles `src/app.tsx` (or `src/app.ts`, or the same at
   the plugin root) into the `app` file the manifest names, **and
   `src/server.ts` into the `server` file** when the manifest declares one. A
   plain plugin needs no build script at all — and a plugin built this way gets
@@ -165,12 +169,12 @@ with.
 - **The two targets are not symmetric.** The app bundle is built for the browser
   with the shared specifiers rewritten to the host runtime; the server bundle is
   built for Bun (`target: 'bun'`, unminified) with nothing shimmed, because the
-  chamber's process imports it by absolute path and there is no runtime global
+  Kabmo's process imports it by absolute path and there is no runtime global
   published there.
 - **Dependencies are installed first** (`bun install --ignore-scripts`) when
   `package.json` declares any. `--ignore-scripts` because a postinstall would run
   arbitrary code on the SERVER.
-- **`@ompchamber/*` is linked into the plugin's `node_modules`** before the
+- **`@kabmo-labs/*` is linked into the plugin's `node_modules`** before the
   build. Those packages are workspace links inside this checkout, so a plugin
   cloned into the marketplace cannot resolve them from its own install — `bun
   install` would have to fetch them from a registry that does not carry them.
@@ -180,7 +184,7 @@ with.
   replaced the HOST's Preact — and since the runtime shim hands the host's
   `preact/hooks` to every plugin, a plugin that declared `preact` made the host
   hand out the wrong hooks instance. The shim marks `preact` external, so the
-  chamber's bundler never resolves it through a linked package anyway.
+  Kabmo's bundler never resolves it through a linked package anyway.
 - `dist/` is **replaced**, never merged, so a file the current source no longer
   emits cannot survive.
 - Every file the manifest names must exist after the build. A build that produces
@@ -191,32 +195,33 @@ with.
 
 ### The CLI
 
-`ompchamber plugin` builds, types and scaffolds plugins without going through the
+`kabmo plugin` builds, types and scaffolds plugins without going through the
 UI:
 
 ```bash
-ompchamber plugin new my-plugin     # scaffold: manifest, src/app.tsx, src/server.ts, tsconfig
-ompchamber plugin build my-plugin   # the SAME build the chamber runs on install
-ompchamber plugin types my-plugin   # (re)emit bundled-types/
-ompchamber plugin list              # installed plugins and their build state
+kabmo plugin new my-plugin     # scaffold: manifest, src/app.tsx, src/server.ts, tsconfig
+kabmo plugin build my-plugin   # the SAME build Kabmo runs on install
+kabmo plugin types my-plugin   # (re)emit bundled-types/
+kabmo plugin list              # installed plugins and their build state
 ```
 
 `new` writes the SDK's declarations into `bundled-types/` and a `tsconfig.json`
 whose `paths` map onto them, so a fresh directory typechecks immediately with no
-chamber source on disk — `bunx tsc --noEmit -p .` just works. `build` is the
+Kabmo source on disk — `bunx tsc --noEmit -p .` just works. `build` is the
 CLI's own entry to the same `buildPanelPlugin` the server calls, so a plugin
-author runs locally exactly what the chamber will run on install.
+author runs locally exactly what Kabmo will run on install.
 
 ## Installing
 
 Settings → **Panel Plugins**. Two ways in, one install step out:
 
-- **Available from OMPChamber** — the bundled store. **Install** copies that
+- **Available from Kabmo** — the bundled store. **Install** copies that
   plugin out of the package and builds it.
 - **Install from a git URL** — paste a URL → **Install**.
 
-The repository root must carry a manifest — an `ompchamber` key in
-`package.json` (the usual case for a package), or a standalone `ompchamber.json`.
+The repository root must carry a manifest — a `kabmo` key in
+`package.json` (the usual case for a package), or a standalone `kabmo.json`.
+A pre-rename plugin still declaring `ompchamber` (key or file) keeps loading.
 Accepted sources are what `git clone` accepts: `https://`, `ssh://`, the
 `git@host:path` form, and a local path.
 
@@ -246,9 +251,9 @@ The catalog. Every field is optional; an entry's `source` is not.
 
 ```json
 {
-  "name": "OMPChamber",
-  "description": "Panels bundled with OMPChamber, plus the ones you install from a git URL.",
-  "owner": { "name": "OMPChamber" },
+  "name": "Kabmo",
+  "description": "Panels bundled with Kabmo, plus the ones you install from a git URL.",
+  "owner": { "name": "Kabmo" },
   "plugins": [
     { "name": "session-info", "source": "plugins/session-info", "description": "…", "category": "utility" }
   ]
@@ -275,7 +280,7 @@ claims an install that is not there, so Settings → Panel Plugins shows:
 
 ```
 Rejected
-~/.ompchamber/marketplace/plugins/session-info
+~/.kabmo/marketplace/plugins/session-info
 listed in marketplace.json but no plugin was found there (session-info)
 ```
 
@@ -303,8 +308,8 @@ rejection.
 
 ## The manifest
 
-A plugin's manifest is the `ompchamber` key in its `package.json`. A standalone
-`ompchamber.json` is also accepted — for a plugin that is not a package, and for
+A plugin's manifest is the `kabmo` key in its `package.json`. A standalone
+`kabmo.json` is also accepted — for a plugin that is not a package, and for
 a hand-written one — and is read first.
 
 It carries only what the host needs BEFORE the code runs: an identity, an
@@ -314,13 +319,13 @@ their positions are decided by the registrations the bundle makes when it loads.
 ```json
 {
   "name": "session-info",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
-  "ompchamber": {
+  "kabmo": {
     "id": "session-info",
     "name": "Session Info",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "description": "Shows the active workspace and keeps a note per session.",
     "app": "dist/app.js",
     "server": "dist/server.js",
@@ -331,13 +336,13 @@ their positions are decided by the registrations the bundle makes when it loads.
         "default": ""
       }
     },
-    "engines": { "ompchamber": "^4", "pluginSdk": "^2" },
+    "engines": { "kabmo": "^0.0.1", "pluginSdk": "^0.0.1" },
     "capabilities": ["panel"]
   },
   "devDependencies": {
     "preact": "^10.29.8",
-    "@ompchamber/plugin-sdk": "*",
-    "@ompchamber/ui": "*"
+    "@kabmo-labs/kabmo-sdk": "*",
+    "@kabmo-labs/kabmo-ui": "*"
   }
 }
 ```
@@ -348,9 +353,9 @@ their positions are decided by the registrations the bundle makes when it loads.
 | `name` | yes | Shown in the activity-bar tooltip and the settings pane. |
 | `version` | yes | Free-form string; displayed, not parsed. |
 | `app` | one of `app`/`server` | The BUILT ESM bundle, relative to the plugin root — conventionally `dist/app.js`. Its default export must be a `definePluginApp(...)` definition. |
-| `server` | one of `app`/`server` | The BUILT server entry, conventionally `dist/server.js`. Its default export is a `ChamberPluginApi` factory. Built for Bun, not for the browser. |
+| `server` | one of `app`/`server` | The BUILT server entry, conventionally `dist/server.js`. Its default export is a `KabmoPluginApi` factory. Built for Bun, not for the browser. |
 | `settings` | no | Declared settings, keyed by name: `{ type: 'string'\|'number'\|'boolean', label, description?, default?, secret? }`. Declarative so the host can draw a form and validate a value **without the plugin running** — a switched-off plugin still shows its settings. A `secret` value is stored and never returned to a client. |
-| `engines` | no | `{ ompchamber?, pluginSdk? }` — version RANGES (`^4`, `>=4.9 <5`, `*`). Absent means "any". A range the running host does not satisfy refuses the plugin BY NAME, naming both sides. |
+| `engines` | no | `{ kabmo?, pluginSdk? }` — version RANGES (`^0.0.1`, `>=0.0.1 <1`, `*`). Absent means "any". A range the running host does not satisfy refuses the plugin BY NAME, naming both sides. The pre-rename spelling `engines.ompchamber` is accepted and read as `kabmo`. |
 | `capabilities` | no | Host capabilities the plugin requires. Today only `panel` exists — the list is what the host actually provides, so declaring something not yet shipped is refused rather than silently ignored. |
 | `icon` | no | Image, relative to the plugin root. Omit and the pane draws the plugin's initials. |
 | `readme` | no | Markdown, relative to the plugin root. Defaults to `README.md` at the root when it exists. |
@@ -374,7 +379,7 @@ card and the installed card. A blank box would read as a broken plugin rather
 than one that chose not to ship a mark.
 
 **An `.svg` icon is drawn as a MASK, so its own colours are discarded and the
-surrounding ink paints it.** The chamber's palette is monochrome
+surrounding ink paints it.** The Kabmo's palette is monochrome
 (`DESIGN.md`), and a mark has to move with the theme the way every built-in
 view's icon does — the activity bar's buttons go from `text-ink/40` to
 `text-ink`. A file loaded through `<img>` cannot: it is a separate document, so
@@ -396,7 +401,7 @@ drawn in its own colours: masking one would throw the colour away, and a JPEG ha
 no alpha to mask with — it would paint the box solid.
 
 **Match the built-in views' geometry so your mark carries the same ink weight.**
-The chamber's own icons are Lucide: a `24×24` viewBox with the art inset `2/24`
+The Kabmo's own icons are Lucide: a `24×24` viewBox with the art inset `2/24`
 of the box and a `stroke-width` of `2/24`. An inset of `3.25` at `1.6` — a
 plausible-looking choice — measures ~6% smaller and ~20% lighter at the activity
 bar's 16px box, which is what makes one button look like a different size from
@@ -405,7 +410,7 @@ its neighbours even though every box is exactly 16px.
 **A README is what a user judges a plugin by before installing it.** Ship one (or
 name another file with `readme`): the store card grows a **README** button that
 opens it in the pane's own reader, and an installed card gets the same button
-beside Remove. It renders through the chamber's markdown pipeline — sanitized,
+beside Remove. It renders through Kabmo's markdown pipeline — sanitized,
 with the same Shiki highlighting, KaTeX and mermaid hydration the chat timeline
 has — so a plugin's README reads like the rest of the app. No button is drawn for
 a plugin that ships none.
@@ -417,34 +422,34 @@ and the components it registers are rendered **in the host's own Preact tree** �
 the same Preact instance, the same document, the same theme. There is no iframe,
 no message channel and no separate realm.
 
-That is the point: a plugin's UI looks and behaves like the chamber's own,
-because it *is* the chamber's own rendering. It also means a plugin is **local
+That is the point: a plugin's UI looks and behaves like Kabmo's own,
+because it *is* Kabmo's own rendering. It also means a plugin is **local
 code you installed, trusted the way a VS Code extension is trusted** — it can
-read `localStorage`, call the chamber's API and touch the DOM. Install plugins
+read `localStorage`, call Kabmo's API and touch the DOM. Install plugins
 you would run.
 
 Two rules make it work, and both are enforced by the build:
 
 - **One Preact.** The build marks `preact`, `preact/hooks`, `preact/jsx-runtime`,
-  `preact/jsx-dev-runtime`, `preact/compat`, `@ompchamber/plugin-sdk/app`,
-  `@ompchamber/ui` and `@ompchamber/ui/components` EXTERNAL, and rewrites each to
-  read `globalThis.__ompchamberPluginRuntime` — the object the host publishes
+  `preact/jsx-dev-runtime`, `preact/compat`, `@kabmo-labs/kabmo-sdk/app`,
+  `@kabmo-labs/kabmo-ui` and `@kabmo-labs/kabmo-ui/components` EXTERNAL, and rewrites each to
+  read `globalThis.__kabmoPluginRuntime` — the object the host publishes
   before any bundle loads. A plugin that bundled its own Preact would create
   components the host's tree cannot render (`Cannot read properties of undefined
   (reading '__H')` at the first render), which is why this is correctness, not
   size.
-- **The host owns the services.** `@ompchamber/ui` reads the active session, the
+- **The host owns the services.** `@kabmo-labs/kabmo-ui` reads the active session, the
   workspace and the palette through services the host injects at boot, so a
-  plugin gets the chamber's answers rather than its own guesses.
+  plugin gets Kabmo's answers rather than its own guesses.
 
 ## Writing a plugin
 
 One file, one bundle, one `definePluginApp` default export:
 
 ```tsx
-import { definePluginApp } from '@ompchamber/plugin-sdk/app';
-import { usePanelInfo, useSessionValue } from '@ompchamber/ui';
-import { Field, FieldList, Panel, TextAreaField } from '@ompchamber/ui/components';
+import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
+import { usePanelInfo, useSessionValue } from '@kabmo-labs/kabmo-ui';
+import { Field, FieldList, Panel, TextAreaField } from '@kabmo-labs/kabmo-ui/components';
 
 function SessionInfo() {
   const info = usePanelInfo();
@@ -471,7 +476,7 @@ root) into the `app` file your manifest names. A plugin that declares its own
 it marks the shared specifiers external itself.
 
 **Do not declare `preact` as a dependency.** It is provided by the host, exactly
-like `@ompchamber/*`, and the shim makes the build read the host's instance
+like `@kabmo-labs/*`, and the shim makes the build read the host's instance
 rather than bundling one. Declaring it as an optional peer (for types) is fine;
 declaring it as a real dependency makes `bun install` fetch a second copy the
 plugin must not use.
@@ -507,7 +512,7 @@ exactly that row back.
 | Method | Where it appears | Registration | Props |
 |---|---|---|---|
 | `app.messageAction(...)` | A chat row's action strip (beside Retry / Copy / New-chat), on both desktop and the phone's sheet. | `{ id, title?, order?, component }` | `{ sessionId, workspacePath, messageId, role, text }` |
-| `app.commandPaletteAction(...)` | The composer's `/` popup, merged with the chamber's own commands. | `{ id, title?, order?, command, description, hint?, run }` | `run({ sessionId, workspacePath, args })` |
+| `app.commandPaletteAction(...)` | The composer's `/` popup, merged with Kabmo's own commands. | `{ id, title?, order?, command, description, hint?, run }` | `run({ sessionId, workspacePath, args })` |
 | `app.fileOpener(...)` | Replaces the editor's file view when `matches` accepts the file. | `{ id, title?, order?, matches, component }` | `{ sessionId, workspacePath, path, extension }` |
 | `app.sourceCodeRenderer(...)` | Replaces the editor's read-only code view for a claimed extension. | `{ id, title?, order?, extensions, component }` | `{ sessionId, workspacePath, path, content, language? }` |
 | `app.diffRenderer(...)` | Replaces the diff viewer. | `{ id, title?, order?, extensions?, component }` | `{ sessionId, workspacePath, path, diff }` |
@@ -548,7 +553,7 @@ Three rules, all of them enforced:
   plugin id then registration id, so two plugins contributing at the same
   `order` still render deterministically across reloads.
 - **A plugin that contributes nothing changes nothing.** Every surface renders
-  nothing at all for an empty slot, so a chamber with no plugins is behaviourally
+  nothing at all for an empty slot, so a Kabmo with no plugins is behaviourally
   identical to one before these slots existed.
 
 Three of them carry a rule of their own:
@@ -574,7 +579,7 @@ Three of them carry a rule of their own:
 ### Acting on the conversation
 
 ```tsx
-import { useComposer, useRealtime, useRpc } from '@ompchamber/ui';
+import { useComposer, useRealtime, useRpc } from '@kabmo-labs/kabmo-ui';
 
 function Notes() {
   // Calls THIS plugin's own server method — the plugin id is implicit, so a
@@ -619,12 +624,12 @@ with frontmatter".
 ### The server half
 
 A plugin may also ship `src/server.ts`, built to `dist/server.js` and imported by
-the CHAMBER'S process. Its default export is a factory:
+Kabmo'S process. Its default export is a factory:
 
 ```ts
-import type { ChamberPluginApi } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
-export default function plugin(api: ChamberPluginApi) {
+export default function plugin(api: KabmoPluginApi) {
   api.log.info('loaded');
 
   // Named methods, called by the plugin's OWN client half.
@@ -649,7 +654,7 @@ export default function plugin(api: ChamberPluginApi) {
   // Announce and hear names within the plugin.
   api.events.on('saved', (payload) => api.log.debug('saved', payload));
 
-  // Long-lived work, declared rather than run: the chamber owns the timer.
+  // Long-lived work, declared rather than run: Kabmo owns the timer.
   api.background.schedule('refresh', '5m', async () => { /* … */ });
 
   api.onDispose(() => api.log.info('disposed'));
@@ -662,7 +667,7 @@ Four properties worth knowing:
   from the id the host was given, so a plugin holds no string it could point at
   another plugin's rows. That is a property of the call signature, not a check
   that could be forgotten.
-- **A plugin is loaded by the chamber's process, in-process** — the same trust
+- **A plugin is loaded by Kabmo's process, in-process** — the same trust
   decision its browser bundle already carries. Install plugins you would run.
 - **Disposal is exact-once and LIFO.** Every registration is recorded; on reload,
   disable or removal the disposers run in reverse and every registry the plugin
@@ -677,12 +682,12 @@ and answers RPC but draws nothing.
 
 ### Testing a plugin
 
-`@ompchamber/plugin-sdk/testing` gives a plugin's own tests a fake host, with no
-chamber running:
+`@kabmo-labs/kabmo-sdk/testing` gives a plugin's own tests a fake host, with no
+Kabmo running:
 
 ```ts
-import { createFakeChamberHost } from '@ompchamber/plugin-sdk/testing';
-import { loadPluginApp, renderSlot } from '@ompchamber/plugin-sdk/testing/app';
+import { createFakeKabmoHost } from '@kabmo-labs/kabmo-sdk/testing';
+import { loadPluginApp, renderSlot } from '@kabmo-labs/kabmo-sdk/testing/app';
 
 const app = await loadPluginApp(() => import('./app'));
 expect(app.harness.registrations.rightPanel?.id).toBe('info');
@@ -693,7 +698,7 @@ expect(slot.container.textContent).toContain('s1');
 
 `loadPluginApp` installs the runtime global and wires the kit through the SAME
 `configureUiKit` the host calls, so a component's hooks work without a host.
-`renderSlot` installs both halves itself. `createFakeChamberHost` validates the
+`renderSlot` installs both halves itself. `createFakeKabmoHost` validates the
 registrations exactly as the host does — the same four rules, the same error
 strings — so a test catches what the host would refuse.
 
@@ -751,7 +756,7 @@ near the right edge.
 | `useSessionValue(key, delayMs?)` | `{ value, status, error, update }` — per-session state, debounced. |
 | `useSessionState(key, fallback)` | `[value, setValue, ready]` — per-session state of ANY JSON shape (a collapsed-phase map, a picked file). |
 | `useWorkspaceFile(relPath)` | `{ content, loading, error }` — a text file inside the active workspace. |
-| `useChamberFetch(url, opts?)` | `{ data, isLoading, error, reload }` — a direct read of the chamber's HTTP API: a poll that pauses while hidden, plus re-reads on the window events you name. |
+| `useKabmoFetch(url, opts?)` | `{ data, isLoading, error, reload }` — a direct read of Kabmo's HTTP API: a poll that pauses while hidden, plus re-reads on the window events you name. |
 | `useSidebarThreads()` | `{ threads, isLoading, stale, refresh }` — the sessions the sidebar is showing. |
 | `useSidebarThreadActions()` | `{ open, rename, setArchived, markSeen, remove, openNew, error }` — the session actions, over the host's own routes. |
 
@@ -761,7 +766,7 @@ renders — fades its own bar in and out with no wiring. `useScrollbarFadeRef` a
 the `.scrollbar-overlay-container` fade classes are gone; a container only needs
 to scroll.
 
-bb calls the sidebar's rows "threads"; the chamber calls the same thing a
+bb calls the sidebar's rows "threads"; Kabmo calls the same thing a
 **session**, and these hooks use that word because it is what the host's own
 routes and types say. One concept, two names.
 
@@ -771,7 +776,7 @@ run in flight and the `awaitingInput` flag, which ride their own topic. `stale`
 means the socket is down, and it is surfaced rather than hidden.
 
 ```tsx
-import { useSidebarThreads, useSidebarThreadActions } from '@ompchamber/ui';
+import { useSidebarThreads, useSidebarThreadActions } from '@kabmo-labs/kabmo-ui';
 
 function Recent() {
   const { threads, stale } = useSidebarThreads();
@@ -799,25 +804,25 @@ Two properties worth knowing:
   signal, so the navbar follows it without a refetch.
 - **A refusal is a value.** Each mutation resolves `false` and puts the host's
   own reason on `error`; it does not throw. There is deliberately no
-  `setPinned` — the chamber pins a FOLDER, not a session, so a session pin here
+  `setPinned` — Kabmo pins a FOLDER, not a session, so a session pin here
   would be a control that cannot do what it says.
 
 `usePanelHost` is a Preact context, not a global: the desktop stack keeps every
 built-in view mounted at once, so "the current panel's props" is not one
-process-wide value. Render a panel inside `PanelHostProvider` (the chamber's own
+process-wide value. Render a panel inside `PanelHostProvider` (Kabmo's own
 layouts do) and any component nested in it reads the same props its top-level one
 was handed.
 
-`useChamberFetch` is for a plugin that reaches an HTTP endpoint directly, and it
+`useKabmoFetch` is for a plugin that reaches an HTTP endpoint directly, and it
 replaces hand-rolling one: a late answer for a request you have moved past is
 dropped, a new URL clears the previous payload before reading, and a hidden or
-disabled view makes no request at all. The chamber's own views do not use it —
+disabled view makes no request at all. The Kabmo's own views do not use it —
 they read the unified realtime socket, which is not part of the kit's surface.
 
 ```tsx
-// Any chamber endpoint that answers JSON, with the session's cookie.
+// Any Kabmo endpoint that answers JSON, with the session's cookie.
 const url = sessionId ? `/api/telemetry/context?sessionId=${encodeURIComponent(sessionId)}` : null;
-const { data, isLoading, error, reload } = useChamberFetch<Payload>(url, {
+const { data, isLoading, error, reload } = useKabmoFetch<Payload>(url, {
   enabled: active,
   // Window events your panel should re-read on (a burst is throttled).
   events: ['omp:view-subagent'],
@@ -831,7 +836,7 @@ Two behaviours the kit exists to encode:
   a real workspace. Every hook subscribes and re-renders.
 - **Session state is not component state.** A component is unmounted when its
   panel is hidden, so a value kept in `useState` alone would be lost on every
-  tab switch. `useSessionValue` reads the chamber's store.
+  tab switch. `useSessionValue` reads Kabmo's store.
 - **Two readers of one key stay in step.** `useSessionValue` re-reads the slot
   when anything else writes it, so a field and a readout of the same value
   cannot disagree — a plugin that shows a character count of a note it also
@@ -841,12 +846,12 @@ Two behaviours the kit exists to encode:
 
 ### Styling
 
-Use the chamber's Tailwind utilities and theme variables directly — `bg-paper`,
+Use Kabmo's Tailwind utilities and theme variables directly — `bg-paper`,
 `text-ink`, `border-ink/10`, `text-error`. A plugin renders in the host's
 document, so those classes are already in the stylesheet and the palette applies
 for free. There is no stylesheet to import and no `oc-*` class layer any more.
 
-A plugin added to `~/.ompchamber/marketplace/` is **outside the project root**,
+A plugin added to `~/.kabmo/marketplace/` is **outside the project root**,
 so Tailwind's scan does not see its own class names. Prefer the kit's components
 (`Panel`, `Field`, `FieldList`, `TextAreaField`, `Button`, `Empty`, `Note`) and
 inline styles for anything the kit does not cover.
@@ -858,7 +863,7 @@ is not declared is built, served by nothing, and silently not applied. Name it i
 the manifest and the host loads it:
 
 ```json
-"ompchamber": { "app": "dist/app.js", "css": "dist/app.css" }
+"kabmo": { "app": "dist/app.js", "css": "dist/app.css" }
 ```
 
 The host loads it as a `<link>` **for as long as the plugin has a live content
@@ -950,7 +955,7 @@ before committing to it.
 
 ## Theming
 
-A plugin renders in the chamber's own document, so it inherits everything for
+A plugin renders in Kabmo's own document, so it inherits everything for
 free: `data-theme` on `<html>`, the CSS variables, the fonts, the Tailwind
 utilities. A plugin that only renders markup needs to do nothing.
 
@@ -960,7 +965,7 @@ the palette changes.
 
 ## Publishing
 
-Maintainers only. `@ompchamber/plugin-sdk` and `@ompchamber/ui` are released
+Maintainers only. `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` are released
 independently of the app — they are a library surface with its own cadence — but
 they are cut in the SAME run as the app, and BEFORE it.
 
@@ -974,19 +979,19 @@ Each package gets a release only from the commits that touched its directory:
 git commit -m 'feat(panels): add a slot'
 
 # ships the SDK (a minor bump) — and the UI kit, because the version moves with it
-git commit -m 'feat(sdk): add a capability flag' -- packages/plugin-sdk
+git commit -m 'feat(sdk): add a capability flag' -- packages/kabmo-sdk
 
 # ships the SDK as 2.0.0
 git commit -m 'feat(sdk)!: drop the old slot name
 
-BREAKING CHANGE: ...' -- packages/plugin-sdk
+BREAKING CHANGE: ...' -- packages/kabmo-sdk
 ```
 
 **Why the app waits for the packages.** The app does not ship `packages/`; at
-runtime it resolves `@ompchamber/*` from its own `node_modules`, which is the
+runtime it resolves `@kabmo-labs/*` from its own `node_modules`, which is the
 version `bun.lock` records for those workspace packages. Releasing the app first
 would publish pins naming the previous package versions — which is what
-`ompchamber@4.1.1` does today, declaring both packages at `1.0.0` while they are
+`kabmo@4.1.1` does today, declaring both packages at `1.0.0` while they are
 at `2.0.0`. The packages job commits the refreshed `bun.lock`, and the app job
 fast-forwards to that commit before it installs and releases, so the pins are
 always current. A failed package release stops the app's for the same reason.
@@ -998,7 +1003,7 @@ release nothing. A package's release range starts at its own last tag, so a
 package that was not touched since then is left alone — and because the analyzer
 only ever sees that package's commits, an app `feat` in between cannot bump it.
 
-The release cuts a tag (`plugin-sdk/v2.0.0`) and a GitHub Release, writes the
+The release cuts a tag (`kabmo-sdk/v2.0.0`) and a GitHub Release, writes the
 package's `CHANGELOG.md`, and commits the version into its `package.json`. That
 push is made with `GITHUB_TOKEN`, which raises no workflow run, so the workflow
 then **dispatches** `publish-plugins.yml` for exactly the packages it released.
@@ -1006,22 +1011,22 @@ The two are one pipeline split in two for the same reason the app's are: the npm
 side keeps the `npm` environment's approval gate, the gates and the tarball
 check in one place.
 
-`ui` declares its SDK dependency as `workspace:*`, which becomes an exact
+`kabmo-ui` declares its SDK dependency as `workspace:*`, which becomes an exact
 version in the published tarball — read from `bun.lock`, not from the manifest.
 The release therefore refreshes the lock and commits it with the version, so a
-`ui` release pins the SDK version it was actually built against; and the
+`kabmo-ui` release pins the SDK version it was actually built against; and the
 packages are released in order, with a failed SDK release stopping the run
-rather than publishing a `ui` against an SDK that is not there.
+rather than publishing a `kabmo-ui` against an SDK that is not there.
 
 **To publish by hand** — a re-run after a failed publish, or a package cut from
 a branch — bump the version in the package's `package.json`, push a matching tag,
 and the same workflow publishes it. If the package you are bumping is depended
-on by the other (`plugin-sdk`), run `bun install` first so `bun.lock` carries
+on by the other (`kabmo-sdk`), run `bun install` first so `bun.lock` carries
 the new version:
 
 ```bash
-git tag plugin-sdk/v1.1.0     # or ui/v1.1.0
-git push origin plugin-sdk/v1.1.0
+git tag kabmo-sdk/v1.1.0     # or kabmo-ui/v1.1.0
+git push origin kabmo-sdk/v1.1.0
 ```
 
 A tag whose version does not match the package is refused. Publishing is
@@ -1038,25 +1043,25 @@ by its owner.
 
 `marketplace/plugins/session-info/` in this repository is the bundled plugin and
 the reference implementation. It is a real Preact + Bun package: a
-`package.json` with the `ompchamber` manifest, a `tsconfig.json` pointing JSX at
+`package.json` with the `kabmo` manifest, a `tsconfig.json` pointing JSX at
 Preact, and ONE `src/app.tsx` whose `definePluginApp` registers three slots (a
 right panel, a header readout, an editor tab). It declares no build script — the
-chamber bundles it.
+Kabmo bundles it.
 
 The packages themselves live in `packages/`:
 
 | Package | Published | Contents |
 |---|---|---|
-| `packages/plugin-sdk` | yes | The app contract: `definePluginApp` and the slot/props types. |
-| `packages/ui` | yes | The hooks, the components, and the service seam the host fills. |
+| `packages/kabmo-sdk` | yes | The app contract: `definePluginApp` and the slot/props types. |
+| `packages/kabmo-ui` | yes | The hooks, the components, and the service seam the host fills. |
 
 The host half of that seam is `src/client/lib/plugins/`: `runtime.ts` publishes
-`globalThis.__ompchamberPluginRuntime`, `loader.ts` imports each enabled plugin's
+`globalThis.__kabmoPluginRuntime`, `loader.ts` imports each enabled plugin's
 bundle, `slots.ts` keeps what the bundles registered, and `kit.ts` hands the UI
-kit the chamber's own services.
+kit Kabmo's own services.
 
 `packages/` is the development home of the two published packages; it is **not**
-what the chamber reads at runtime. The chamber resolves them with
+what Kabmo reads at runtime. The Kabmo resolves them with
 `Bun.resolveSync` from its own tree, which answers both shapes: a checkout (via
 the `workspaces` map) and a published install (via `node_modules`). A fixed path
 would be wrong for one of them — the app's `files` list does not ship `packages/`,
@@ -1066,15 +1071,15 @@ The two published packages are released automatically by the `packages` job of
 `.github/workflows/release.yml` on every push to `main`, from the Conventional
 Commits that touched each package — before that workflow releases the app;
 `.github/workflows/publish-plugins.yml` is what puts them on npm, and also
-accepts a `plugin-sdk/vX.Y.Z` or `ui/vX.Y.Z` tag for a manual release. See
+accepts a `kabmo-sdk/vX.Y.Z` or `kabmo-ui/vX.Y.Z` tag for a manual release. See
 [Publishing](#publishing).
 
 Copy its shape:
 
 ```bash
-mkdir -p ~/.ompchamber/marketplace/plugins/my-panel/src
+mkdir -p ~/.kabmo/marketplace/plugins/my-panel/src
 # write:
-#   package.json   name/version + the ompchamber key (id, name, version, app)
+#   package.json   name/version + the kabmo key (id, name, version, app)
 #   tsconfig.json  jsx: react-jsx, jsxImportSource: preact
 #   src/app.tsx    export default definePluginApp((app) => { ... })
 ```

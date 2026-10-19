@@ -4,7 +4,7 @@
  */
 
 /**
- * Brand art for every provider the chamber can show, one glyph per brand.
+ * Brand art for every provider Kabmo can show, one glyph per brand.
  *
  * GENERATED DATA — do not hand-edit a path. Each entry is the inner markup of a
  * brand mark, resolved to `currentColor`, with its own `viewBox` because the

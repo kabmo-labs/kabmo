@@ -1,4 +1,4 @@
-// `ompchamber status` — report the live instances, their health and log paths.
+// `kabmo status` — report the live instances, their health and log paths.
 //
 // Without `--port` every live instance is reported: a CLI server on one port, a
 // `bun run dev` server on another and a production server on a third are three

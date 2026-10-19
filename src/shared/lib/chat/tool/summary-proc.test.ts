@@ -27,13 +27,13 @@ describe('toolSummary — proc://', () => {
   test('states the service outcome, not the transport', () => {
     const summary = toolSummary(tool({
       type: 'write',
-      target: 'proc://ompchamber-dev/kill',
-      input: { path: 'proc://ompchamber-dev/kill', content: null },
-      output: 'Stopped ompchamber-dev [service] — exited — up 16m29s',
+      target: 'proc://kabmo-dev/kill',
+      input: { path: 'proc://kabmo-dev/kill', content: null },
+      output: 'Stopped kabmo-dev [service] — exited — up 16m29s',
       details: {
         proc: {
           action: 'stop',
-          daemon: { name: 'ompchamber-dev', state: 'exited', startedAt: 1_791_433_388_038, exitedAt: 1_791_434_377_079, exitCode: 0 },
+          daemon: { name: 'kabmo-dev', state: 'exited', startedAt: 1_791_433_388_038, exitedAt: 1_791_434_377_079, exitCode: 0 },
         },
       },
     }));
@@ -44,10 +44,10 @@ describe('toolSummary — proc://', () => {
     const startedAt = Date.now() - 981_000;
     const summary = toolSummary(tool({
       type: 'write',
-      target: 'proc://ompchamber-dev',
-      input: { path: 'proc://ompchamber-dev', content: '{"id":"ompchamber-dev","kill":true}' },
-      output: 'Sent input to ompchamber-dev [service] — ready — up 16m21s — pid 22985',
-      details: { proc: { action: 'stdin', daemon: { name: 'ompchamber-dev', state: 'ready', pid: 22985, startedAt } } },
+      target: 'proc://kabmo-dev',
+      input: { path: 'proc://kabmo-dev', content: '{"id":"kabmo-dev","kill":true}' },
+      output: 'Sent input to kabmo-dev [service] — ready — up 16m21s — pid 22985',
+      details: { proc: { action: 'stdin', daemon: { name: 'kabmo-dev', state: 'ready', pid: 22985, startedAt } } },
     }));
     // `1 lines` (the old shape, from `input.content`) is the bug this pins.
     expect(summary?.line).not.toContain('1 lines');
@@ -89,8 +89,8 @@ describe('toolSummary — proc://', () => {
   test('the legacy hub tool reads the same way', () => {
     const summary = toolSummary(tool({
       type: 'hub',
-      input: { op: 'start', name: 'ompchamber-dev' },
-      details: { op: 'start', daemon: { name: 'ompchamber-dev', state: 'ready', pid: 22985, startedAt: 1 } },
+      input: { op: 'start', name: 'kabmo-dev' },
+      details: { op: 'start', daemon: { name: 'kabmo-dev', state: 'ready', pid: 22985, startedAt: 1 } },
     }));
     expect(summary?.line).toContain('start · ready');
     expect(summary?.line).toContain('pid 22985');
@@ -101,10 +101,10 @@ describe('toolSummary — bash service launch', () => {
   test('names the service a bash started', () => {
     const summary = toolSummary(tool({
       type: 'bash',
-      input: { command: 'bun run dev', name: 'ompchamber-dev' },
-      details: { service: { name: 'ompchamber-dev', state: 'ready', ready: true, timedOut: false, pid: 22985 } },
+      input: { command: 'bun run dev', name: 'kabmo-dev' },
+      details: { service: { name: 'kabmo-dev', state: 'ready', ready: true, timedOut: false, pid: 22985 } },
     }));
-    expect(summary?.line).toContain('ompchamber-dev · ready');
+    expect(summary?.line).toContain('kabmo-dev · ready');
     expect(summary?.line).toContain('pid 22985');
   });
 

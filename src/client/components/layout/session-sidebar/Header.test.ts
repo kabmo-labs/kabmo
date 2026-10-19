@@ -71,7 +71,7 @@ describe('sidebar title bar', () => {
     // The chord rides in the accessible name, so the shortcut is discoverable
     // (⌘B on macOS, Ctrl+B elsewhere — the keymap decides, not this file).
     expect(button?.getAttribute('aria-label')).toMatch(/[⌘+]\s*B|B$/);
-    expect(el.textContent).toContain('Chamber');
+    expect(el.textContent).toContain('Kabmo');
   });
 
   test('the collapse control runs its handler', async () => {

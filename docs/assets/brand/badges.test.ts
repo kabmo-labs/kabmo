@@ -33,7 +33,7 @@ const BRAND_DIR = import.meta.dir;
 const README = readFileSync(join(ROOT, 'README.md'), 'utf8');
 
 /** The badge URL each mark belongs to, keyed by the mark's file name. */
-const MARKS = ['elysia', 'shiki', 'ompchamber'] as const;
+const MARKS = ['elysia', 'shiki', 'kabmo'] as const;
 
 /** Base64 as shields requires it: `+`, `/` and `=` percent-encoded. */
 function encodePayload(svg: Buffer): string {

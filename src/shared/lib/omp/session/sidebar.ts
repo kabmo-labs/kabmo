@@ -4,7 +4,7 @@
  */
 
 /**
- * Adapter from oh-my-pi discovery data to the chamber folder model.
+ * Adapter from oh-my-pi discovery data to Kabmo folder model.
  *
  * Folders are the SQLite-managed workspaces (id, name, isExpanded,
  * project_path). This module produces the *session items* that fill those

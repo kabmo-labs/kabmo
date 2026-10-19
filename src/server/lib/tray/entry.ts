@@ -35,7 +35,7 @@ import { PROD_FLAG, TRAY_FLAG, UI_PASSWORD_FILE_FLAG } from '@/server/lib/lifecy
  *
  * The CLI resolves its own root as `<dir>/../..` and its path helper does not
  * collapse a `..` segment, so a raw value reaches a generated plist as
- * `<pkg>/src/cli/../../src/cli/ompchamber.js`. The OS would follow it, but a
+ * `<pkg>/src/cli/../../src/cli/kabmo.js`. The OS would follow it, but a
  * login entry outlives the process that wrote it and is read by a human
  * debugging `launchctl print` — measured in a generated LaunchAgent.
  */
@@ -50,7 +50,7 @@ function canonicalize(value: string): string {
 export interface LoginEntryInput {
   /** Bun binary to run the CLI with. */
   bun: string;
-  /** Absolute path to `src/cli/ompchamber.js`. */
+  /** Absolute path to `src/cli/kabmo.js`. */
   cli: string;
   port: number;
   host: string;

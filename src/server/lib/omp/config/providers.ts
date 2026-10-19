@@ -7,7 +7,7 @@
  * Write side of the native OMP provider registry — `models.yml`.
  *
  * omp never writes this file itself (its `ModelsConfigFile` is load-only), so
- * the chamber is the only automated author and every write is a
+ * Kabmo is the only automated author and every write is a
  * read-modify-write of a user-editable document: comments, formatting, and
  * unrelated keys all have to survive, and the result has to pass omp's own
  * schema before it reaches disk. Reading lives in `./models-config.ts`.
@@ -46,7 +46,7 @@ export interface OmpProviderUpsertInput {
    */
   auth?: ProviderAuthMode;
   /**
-   * Let OMP list this provider's models live instead of the chamber writing a
+   * Let OMP list this provider's models live instead of Kabmo writing a
    * snapshot of ids. A discovery provider is legitimately registered with an
    * empty `models` array.
    */
@@ -320,7 +320,7 @@ export interface OmpProviderRemovalResult {
  * The whole entry goes, `modelOverrides` included: leaving the overrides behind
  * keeps a provider entry that still carries `baseUrl`/`apiKey`, so omp goes on
  * listing it as a configured provider whose models no longer exist — a ghost
- * that reappears in the chamber on the next load. Removing the entry is what
+ * that reappears in Kabmo on the next load. Removing the entry is what
  * "delete this provider" means; overrides for a bundled provider live under
  * that bundled provider's own name and are untouched by this call.
  */

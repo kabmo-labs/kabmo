@@ -1,5 +1,6 @@
 import { Loader2, MoreHorizontal, PanelLeft } from 'lucide-preact';
 import { HeaderControls } from '@/client/components/common/header-controls';
+import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
@@ -77,8 +78,7 @@ export function TopNavbar({
               <PanelLeft size={16} />
             </button>
             <span className="relative font-bold text-sm tracking-tight hidden sm:flex items-center flex-shrink-0">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500 font-extrabold text-[15px] tracking-tighter">OMP</span>
-              <span className="ml-[1px]">Chamber</span>
+              <BrandWordmark />
               {/* Same badge placement the sidebar header and the phone use:
                   the stream indicator belongs to the wordmark, not to the
                   control cluster. */}

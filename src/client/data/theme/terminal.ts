@@ -67,7 +67,7 @@ export function getXtermTheme(themeId: string) {
  * face that is absent is simply skipped by the normal fallback chain, so
  * listing many costs nothing.
  *
- * `'Kabmo Nerd Symbols'` is the one the chamber bundles itself
+ * `'Kabmo Nerd Symbols'` is the one Kabmo bundles itself
  * (`src/shared/lib/fonts/nerd-symbols.css`), and it is deliberately LAST: a
  * machine that already has a Nerd Font renders from it and never fetches these
  * bytes, while a phone — which has none — falls through to it instead of

@@ -22,6 +22,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
 import { KeyRound, Loader2 } from 'lucide-preact';
 import { login, probeSession } from '@/client/hooks/ui/auth';
+import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 
 export const LoginScreen: FunctionComponent = () => {
   const [password, setPassword] = useState('');
@@ -77,16 +78,10 @@ export const LoginScreen: FunctionComponent = () => {
       <form onSubmit={submit} className="w-full max-w-xs space-y-4">
         <div className="space-y-1 text-center">
           <KeyRound size={28} className="mx-auto text-ink/60" />
-          {/* The sidebar header's brand, class for class: `OMP` in the
-              orange→amber gradient at `text-[15px]`, `Chamber` inheriting the
-              container's `text-sm` and offset by 1px. Copied verbatim rather
-              than scaled — the five other instances (top navbar, both mobile
-              headers, the about modal) differ in size, and "the same as the
-              sidebar" means the same, including `OMP` sitting one step larger
-              than `Chamber`. */}
+          {/* The sidebar header's brand: one wordmark, so the login screen and
+              the app cannot disagree about what the product is called. */}
           <h1 className="font-bold text-sm tracking-tight flex items-center justify-center">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500 font-extrabold text-[15px] tracking-tighter">OMP</span>
-            <span className="ml-[1px]">Chamber</span>
+            <BrandWordmark />
           </h1>
           <p className="text-xs text-ink/60">This instance is password protected.</p>
         </div>

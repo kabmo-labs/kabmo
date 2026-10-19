@@ -5,7 +5,7 @@
 
 /**
  * The settings panel is driven entirely by the static schema table plus the
- * chamber's extras, and the spawn path by the access-mode guard. A wrong
+ * Kabmo's extras, and the spawn path by the access-mode guard. A wrong
  * `ui.tab` or condition silently hides a row the docs promise; a lost extra
  * drops a documented setting from the panel; a permissive access-mode guard
  * spawns omp in a mode the user never picked. These tests pin the merge, the
@@ -77,7 +77,7 @@ describe('OMP_SCHEMA', () => {
 });
 
 describe('ALL_SCHEMA_ENTRIES', () => {
-  test('merges every chamber extra on top of the upstream entries', () => {
+  test('merges every Kabmo extra on top of the upstream entries', () => {
     for (const key of Object.keys(SCHEMA_EXTRAS)) {
       expect(ALL_SCHEMA_ENTRIES[key]).toBe(SCHEMA_EXTRAS[key]);
     }
@@ -142,7 +142,7 @@ describe('isConditionMet', () => {
   });
 
   test('host-terminal conditions always hold in the web view', () => {
-    // The chamber is neither macOS-limited nor image-protocol-limited, so these
+    // The Kabmo is neither macOS-limited nor image-protocol-limited, so these
     // rows must never disappear.
     expect(isConditionMet('macOS', {})).toBe(true);
     expect(isConditionMet('hasImageProtocol', {})).toBe(true);

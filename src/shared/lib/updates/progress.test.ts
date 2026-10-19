@@ -14,13 +14,13 @@ function empty(): UpdateLogState {
 
 describe('appendUpdateLog', () => {
   test('a chunk split mid-line is held until its newline arrives', () => {
-    const first = appendUpdateLog(empty(), 'Installing ompcha');
+    const first = appendUpdateLog(empty(), 'Installing kab');
     // Nothing complete yet: the partial line is carried, not rendered as a line.
     expect(first.lines).toEqual([]);
-    expect(updateLogText(first)).toBe('Installing ompcha');
+    expect(updateLogText(first)).toBe('Installing kab');
 
-    const second = appendUpdateLog(first, 'mber@0.7.1\n');
-    expect(second.lines).toEqual(['Installing ompchamber@0.7.1']);
+    const second = appendUpdateLog(first, 'mo@0.7.1\n');
+    expect(second.lines).toEqual(['Installing kabmo@0.7.1']);
     expect(second.pending).toBe('');
   });
 

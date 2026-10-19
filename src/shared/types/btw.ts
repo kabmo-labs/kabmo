@@ -56,7 +56,7 @@ export interface BtwTurn {
   updatedAt: number;
 }
 
-/** A side conversation scoped to one chamber session. */
+/** A side conversation scoped to one Kabmo session. */
 export interface BtwTopic {
   id: string;
   sessionId: string;

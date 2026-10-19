@@ -8,8 +8,8 @@
  *
  * Split out of the scan so the two facts it owns have one home: what a
  * DIRECTORY under the marketplace is (a plugin only if it carries a manifest),
- * and how a manifest is found (a standalone `ompchamber.json` first, then
- * `package.json`'s `ompchamber` key). The scan, the installer and the builder
+ * and how a manifest is found (a standalone `kabmo.json` first, then
+ * `package.json`'s `kabmo` key). The scan, the installer and the builder
  * all go through `readPluginManifest`, which is what keeps them agreeing — when
  * the installer had its own copy it read only the first file and refused to
  * install any Bun package at all.
@@ -74,10 +74,17 @@ export async function readJsonBody(
 /**
  * Read a plugin's manifest.
  *
- * Two files can carry it, and both must be tried: `ompchamber.json` for a
- * hand-written plugin, and `package.json`'s `ompchamber` key for a Bun package —
+ * Two files can carry it, and both must be tried: `kabmo.json` for a
+ * hand-written plugin, and `package.json`'s `kabmo` key for a Bun package —
  * which is what a plugin IS, so the second is the common case rather than a
  * legacy one.
+ *
+ * Both the file name and the key also accept their pre-rename spelling
+ * (`ompchamber.json`, `package.json`'s `ompchamber` key). A plugin installed
+ * before the rename is a directory of ordinary files on the user's disk, and
+ * refusing it would silently drop it from the pane with no action available to
+ * repair it. The new spelling is tried first, so a plugin that carries both is
+ * read as the new one.
  *
  * Three answers, and the difference between the first two is load-bearing: a
  * directory with no manifest at all is not a plugin and is skipped in silence
@@ -89,13 +96,17 @@ export async function readJsonBody(
 export async function readPluginManifest(
   dir: string,
 ): Promise<{ kind: 'none' } | { kind: 'error'; reason: string } | { kind: 'manifest'; value: unknown }> {
-  const own = await readJsonBody(join(dir, 'ompchamber.json'));
-  if (own.kind === 'unreadable') return { kind: 'error', reason: 'ompchamber.json is not valid JSON' };
-  if (own.kind === 'body') return { kind: 'manifest', value: own.value };
+  for (const file of ['kabmo.json', 'ompchamber.json']) {
+    const own = await readJsonBody(join(dir, file));
+    if (own.kind === 'unreadable') return { kind: 'error', reason: `${file} is not valid JSON` };
+    if (own.kind === 'body') return { kind: 'manifest', value: own.value };
+  }
 
   const pkg = await readJsonBody(join(dir, 'package.json'));
   if (pkg.kind === 'unreadable') return { kind: 'error', reason: 'package.json is not valid JSON' };
   if (pkg.kind === 'none') return { kind: 'none' };
-  if (!isRecord(pkg.value) || pkg.value.ompchamber === undefined) return { kind: 'none' };
-  return { kind: 'manifest', value: pkg.value.ompchamber };
+  if (!isRecord(pkg.value)) return { kind: 'none' };
+  const manifest = pkg.value.kabmo ?? pkg.value.ompchamber;
+  if (manifest === undefined) return { kind: 'none' };
+  return { kind: 'manifest', value: manifest };
 }

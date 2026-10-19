@@ -31,8 +31,8 @@
  * own DOM by it and a stale generation can be recognised rather than guessed at.
  */
 
-import type { ContentScriptRegistration } from '@kabmo-labs/plugin-sdk';
-import { PLUGIN_SURFACE_ATTR } from '@kabmo-labs/plugin-sdk';
+import type { ContentScriptRegistration } from '@kabmo-labs/kabmo-sdk';
+import { PLUGIN_SURFACE_ATTR } from '@kabmo-labs/kabmo-sdk';
 
 /** One mounted generation, held so it can be taken down in order. */
 interface MountedScript {
@@ -54,15 +54,15 @@ interface MountedScript {
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberContentScripts: MountedScript[] | undefined;
+  var __kabmoContentScripts: MountedScript[] | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberContentGeneration: number | undefined;
+  var __kabmoContentGeneration: number | undefined;
   // eslint-disable-next-line no-var
-  var __ompChamberContentScriptRoots: Map<string, HTMLElement> | undefined;
+  var __kabmoContentScriptRoots: Map<string, HTMLElement> | undefined;
 }
 
 function mounted(): MountedScript[] {
-  return (globalThis.__ompChamberContentScripts ??= []);
+  return (globalThis.__kabmoContentScripts ??= []);
 }
 
 /**
@@ -80,12 +80,12 @@ function mounted(): MountedScript[] {
  * roots it has to remove.
  */
 function roots(): Map<string, HTMLElement> {
-  return (globalThis.__ompChamberContentScriptRoots ??= new Map());
+  return (globalThis.__kabmoContentScriptRoots ??= new Map());
 }
 
 /** The next generation number. Monotonic across every plugin. */
 function nextGeneration(): number {
-  return (globalThis.__ompChamberContentGeneration = (globalThis.__ompChamberContentGeneration ?? 0) + 1);
+  return (globalThis.__kabmoContentGeneration = (globalThis.__kabmoContentGeneration ?? 0) + 1);
 }
 
 /**

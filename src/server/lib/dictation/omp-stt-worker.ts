@@ -16,7 +16,7 @@
  *
  * What it DOES expose is an internal worker, `omp __omp_worker_stt`, whose
  * transport is **Bun IPC** (`stdin`/`stdout` are `ignore`; frames arrive on the
- * `ipc` channel with `serialization: "advanced"`). The chamber runs on Bun, so
+ * `ipc` channel with `serialization: "advanced"`). The Kabmo runs on Bun, so
  * it can spawn that same worker and speak the same frames — which is what
  * `omp-stt-worker.ts` does. The result is omp's own models with no API key and
  * no second implementation of the inference stack.
@@ -229,15 +229,15 @@ class OmpSttWorker {
 // are: `bun --hot` re-evaluates this module while the spawned worker (and the
 // model it holds in memory) lives on, and a module-level binding would orphan
 // the child with no handle left to kill it.
-const globalStore = globalThis as typeof globalThis & { __ompChamberSttWorker?: OmpSttWorker };
+const globalStore = globalThis as typeof globalThis & { __kabmoSttWorker?: OmpSttWorker };
 
 /** The process-wide STT worker. */
 export function sttWorker(): OmpSttWorker {
-  globalStore.__ompChamberSttWorker ??= new OmpSttWorker();
-  return globalStore.__ompChamberSttWorker;
+  globalStore.__kabmoSttWorker ??= new OmpSttWorker();
+  return globalStore.__kabmoSttWorker;
 }
 
 /** Recycle the worker so the next request boots a fresh one (omp update / reload). */
 export function recycleSttWorker(): void {
-  globalStore.__ompChamberSttWorker?.shutdown();
+  globalStore.__kabmoSttWorker?.shutdown();
 }

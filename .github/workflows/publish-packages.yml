@@ -1,9 +1,9 @@
 name: Publish the plugin packages
 
-# The publish BODY for `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui`, as a
+# The publish BODY for `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui`, as a
 # REUSABLE workflow — the same two callers `publish-app.yml` serves:
 #
-#   - `publish-plugins.yml` is the TRIGGER: a `plugin-sdk/v*` or `ui/v*` tag
+#   - `publish-plugins.yml` is the TRIGGER: a `kabmo-sdk/v*` or `kabmo-ui/v*` tag
 #     push, or a manual dispatch. The documented manual path (bump the version,
 #     push the tag) has to stand on its own.
 #   - `release.yml` CALLS this file after the `packages` job, which is what
@@ -45,7 +45,7 @@ on:
         description: 'Space-separated package directories'
         required: false
         type: string
-      # One package, named by its tag, e.g. `plugin-sdk/v2.0.0`. What a tag push
+      # One package, named by its tag, e.g. `kabmo-sdk/v2.0.0`. What a tag push
       # and a manual re-run of a failed publish both supply.
       tag:
         description: 'Tag naming the package to publish'
@@ -83,7 +83,7 @@ on:
       # See `publish-app.yml`: declared so a caller can pass it by name, with the
       # value normally arriving from the `npm` environment on the job below.
       NPM_TOKEN:
-        description: npm access token with read/write on both @ompchamber packages.
+        description: npm access token with read/write on both @kabmo-labs packages.
         required: false
 
 permissions:
@@ -144,7 +144,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           test -n "$NPM_TOKEN" || {
-            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on @kabmo-labs/plugin-sdk and @kabmo-labs/ui (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
+            echo "::error::NPM_TOKEN is not set. Add a granular npm access token with read/write on @kabmo-labs/kabmo-sdk and @kabmo-labs/kabmo-ui (Settings -> Secrets and variables -> Actions), or on the 'npm' environment."
             exit 1
           }
 
@@ -174,9 +174,9 @@ jobs:
             done
           else
             case "$IN_PACKAGE" in
-              plugin-sdk) dirs="packages/plugin-sdk" ;;
-              ui)         dirs="packages/ui" ;;
-              *)          dirs="packages/plugin-sdk packages/ui" ;;
+              kabmo-sdk) dirs="packages/kabmo-sdk" ;;
+              kabmo-ui)  dirs="packages/kabmo-ui" ;;
+              *)         dirs="packages/kabmo-sdk packages/kabmo-ui" ;;
             esac
           fi
           dirs="${dirs# }"
@@ -191,8 +191,8 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          pkg="${TAG%%/*}"                       # plugin-sdk/v1.2.3 -> plugin-sdk
-          want="${TAG#*/}"                       # plugin-sdk/v1.2.3 -> v1.2.3
+          pkg="${TAG%%/*}"                       # kabmo-sdk/v1.2.3 -> kabmo-sdk
+          want="${TAG#*/}"                       # kabmo-sdk/v1.2.3 -> v1.2.3
           dir="packages/$pkg"
           test -d "$dir" || { echo "::error::Tag $TAG names no package directory ($dir)"; exit 1; }
           have="v$(bun -e "console.log((await Bun.file('$dir/package.json').json()).version)")"
@@ -242,7 +242,7 @@ jobs:
             echo "--- $dir ($targets)"; tail -3 /tmp/pack.txt
           done
 
-      # `ui` depends on `plugin-sdk` at the exact version, so the target list is
+      # `kabmo-ui` depends on `kabmo-sdk` at the exact version, so the target list is
       # in catalog order (SDK before UI) and the script stops at the first
       # failure rather than publishing a UI whose SDK is not on npm.
       - name: Publish

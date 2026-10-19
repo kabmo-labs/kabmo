@@ -7,7 +7,7 @@
  * Native OMP agent discovery — reads agent definition markdown files from
  * ~/.omp/agent/agents and <project>/.omp/agents so the settings agents list
  * surfaces the same agent definitions the omp agent loads. Discovery is
- * read-only: chamber never mutates native agent files.
+ * read-only: Kabmo never mutates native agent files.
  */
 
 import fs from 'fs';
@@ -124,7 +124,7 @@ export interface AgentFileInput {
 
 /**
  * Write (create or replace) a user-level agent definition markdown file.
- * Project agents are intentionally not writable from the chamber — the agent
+ * Project agents are intentionally not writable from Kabmo — the agent
  * dir belongs to omp.
  */
 export async function writeAgentDefinition(input: AgentFileInput): Promise<{ path: string }> {

@@ -32,7 +32,7 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 import { NON_TERMINAL_CONTINUATION_GRACE_MS, type AgentEvent } from '@/server/lib/omp/rpc/constants';
 import { settleTerminalRun } from '@/server/lib/omp/rpc/terminal-settle';
-import { parseChamberMarker } from '@/shared/lib/omp/mode/markers';
+import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
 import { SKILL_PROMPT_CUSTOM_TYPE } from '@/shared/lib/omp/session/operator-title';
 import type { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 
@@ -68,7 +68,7 @@ export interface SessionFrameHost extends AutoTitleHost, QueueDeliveryHost {
 export interface FrameFoldResult {
   /** The fold already handled this frame's user-visible effect and the caller
    *  must NOT forward it: a failed `prompt` response has emitted its own
-   *  `prompt_error`, and a `command_output` belonging to the chamber's own
+   *  `prompt_error`, and a `command_output` belonging to Kabmo's own
    *  background rename must stay out of the timeline. */
   suppressForward: boolean;
 }
@@ -137,7 +137,7 @@ function handleToolExecutionEnd(host: SessionFrameHost): void {
  * The `prompt_result` branch: whether this frame may reach the client.
  *
  * omp answers EVERY prompt that opened no turn on this frame, and most of them
- * are the chamber's own background work: the auto-title `/rename` (fired right
+ * are Kabmo's own background work: the auto-title `/rename` (fired right
  * after the first settled user message), a Plan/Goal mode toggle,
  * `/reload-plugins`, `rename-with-ai`, a peer instance's command. Forwarding one
  * tells the CLIENT that its prompt opened no turn; its fold then settles the
@@ -145,7 +145,7 @@ function handleToolExecutionEnd(host: SessionFrameHost): void {
  * `stream` mark the sidebar's spinner hangs on and dropping the optimistic user
  * mark, so the turn's own echo is appended beside the bubble it stood for.
  * Measured on a fresh session (omp 18.7.0): the indicator died ~450 ms into a
- * 20 s run, and the first prompt was stored twice in the chamber's copy of the
+ * 20 s run, and the first prompt was stored twice in Kabmo's copy of the
  * conversation.
  *
  * The RUN is the attribution, and it covers every sender: while the operator's
@@ -250,7 +250,7 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       break;
     case 'command_output':
       // A `command_output` for a command the OPERATOR typed renders as a notice
-      // row. But the chamber fires its own `/rename` in the background, and omp
+      // row. But Kabmo fires its own `/rename` in the background, and omp
       // answers it on the same frame — "Session renamed to …", or "Could not
       // generate a session title" for a low-signal first message. Neither was
       // asked for, and the second would be pure noise. The frame carries no
@@ -280,7 +280,7 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       host.modeMirror.observe(event);
       break;
     case 'extension_ui_request': {
-      // The chamber's mode extension reports every plan/goal transition through
+      // The Kabmo's mode extension reports every plan/goal transition through
       // `ctx.ui.notify`, which omp frames as an `extension_ui_request` with
       // `method: "notify"`. The client parses those into composer state; the
       // wrapper mirrors them for the same reason it mirrors `goal_updated` —
@@ -289,7 +289,7 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
       // can answer from while the transcript does not exist yet.
       const data = event as { method?: unknown; message?: unknown };
       if (data.method === 'notify') {
-        const marker = parseChamberMarker(typeof data.message === 'string' ? data.message : '');
+        const marker = parseModeMarker(typeof data.message === 'string' ? data.message : '');
         if (marker) host.modeMirror.observeMarker(marker);
       }
       host.trackUiDialog(event);

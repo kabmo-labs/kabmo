@@ -28,7 +28,7 @@ const AGENT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-omp-routes-'));
 const ORIGINAL_ENV = {
   MOCK: Bun.env.MOCK,
   PI_CODING_AGENT_DIR: Bun.env.PI_CODING_AGENT_DIR,
-  OMPCHAMBER_OMP_BIN: Bun.env.OMPCHAMBER_OMP_BIN,
+  KABMO_OMP_BIN: Bun.env.KABMO_OMP_BIN,
 };
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;
@@ -40,7 +40,7 @@ beforeEach(() => {
   Bun.env.PI_CODING_AGENT_DIR = AGENT_DIR;
   // No omp child may be spawned: a non-existent override makes `resolveOmpBin()`
   // answer null, so the plugin bridge stops before `Bun.spawn`.
-  Bun.env.OMPCHAMBER_OMP_BIN = path.join(AGENT_DIR, 'no-such-omp');
+  Bun.env.KABMO_OMP_BIN = path.join(AGENT_DIR, 'no-such-omp');
   // `resolveOmpBin` memoizes the first binary IT resolved for the process, so a
   // sibling suite's stub would otherwise be reused here (and this file's
   // non-existent override cached for the files after it).
@@ -48,7 +48,7 @@ beforeEach(() => {
   delete Bun.env.MOCK;
   // The id index and the release cache hang off globalThis; a fixture must not
   // survive into a sibling suite.
-  delete (globalThis as { __ompChamberSessionIdIndex?: unknown }).__ompChamberSessionIdIndex;
+  delete (globalThis as { __kabmoSessionIdIndex?: unknown }).__kabmoSessionIdIndex;
 });
 
 afterEach(() => {
@@ -58,8 +58,8 @@ afterEach(() => {
   }
   invalidateOmpCliCache();
   globalThis.fetch = originalFetch;
-  delete (globalThis as { __ompChamberLoginResponseSink?: unknown }).__ompChamberLoginResponseSink;
-  delete (globalThis as { __ompChamberModelsDevCatalog?: unknown }).__ompChamberModelsDevCatalog;
+  delete (globalThis as { __kabmoLoginResponseSink?: unknown }).__kabmoLoginResponseSink;
+  delete (globalThis as { __kabmoModelsDevCatalog?: unknown }).__kabmoModelsDevCatalog;
 });
 
 afterAll(() => {
@@ -110,7 +110,7 @@ describe('POST /api/omp/login', () => {
 
   test('forwards an in-flight extension_ui_response to the registered sink', async () => {
     const seen: Array<Record<string, unknown>> = [];
-    (globalThis as { __ompChamberLoginResponseSink?: (frame: Record<string, unknown>) => void }).__ompChamberLoginResponseSink =
+    (globalThis as { __kabmoLoginResponseSink?: (frame: Record<string, unknown>) => void }).__kabmoLoginResponseSink =
       (frame) => seen.push(frame);
     const frame = { id: 'ui-1', type: 'extension_ui_response', value: 'sk-abc' };
 

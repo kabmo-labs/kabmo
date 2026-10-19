@@ -23,7 +23,7 @@
  *   with its built-in mark rather than an empty tile.
  */
 
-import type { ProviderIconRegistration } from '@kabmo-labs/plugin-sdk';
+import type { ProviderIconRegistration } from '@kabmo-labs/kabmo-sdk';
 import type { ProviderGlyph } from '@/client/components/common/provider-icon/glyphs';
 import { PROVIDER_GLYPHS } from '@/client/components/common/provider-icon/glyphs';
 import type { ListSlotRows } from '@/client/lib/plugins/list-slots';

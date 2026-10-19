@@ -16,7 +16,7 @@ import { useComposerPipeline } from '@/client/hooks/chat/composer/pipeline';
 import { DropOverlay } from '@/client/components/workspace/chat-timeline/chat-input/DropOverlay';
 import { GoalSurfaces } from '@/client/components/workspace/chat-timeline/chat-input/GoalSurfaces';
 import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
-import { readChamberSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
 import { useKeyboardInset } from '@/client/hooks/ui/keyboard-inset';
 import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';
 import type { ChatInputProps } from '@/client/components/workspace/chat-timeline/chat-input/props';
@@ -191,7 +191,7 @@ export function ChatInput({
         modes={modes}
         running={chatRunning ?? isGenerating}
         open={goalModalOpen}
-        defaultBudget={normalizeGoalBudget(readChamberSetting<number>('goalDefaultBudget', appSettings))}
+        defaultBudget={normalizeGoalBudget(readKabmoSetting<number>('goalDefaultBudget', appSettings))}
         onOpen={() => setGoalModalOpen(true)}
         onClose={() => setGoalModalOpen(false)}
       />

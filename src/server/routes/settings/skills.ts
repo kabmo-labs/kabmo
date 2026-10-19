@@ -41,7 +41,7 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 /**
- * Convert a discovered skill into the chamber's SkillItem. A chamber-managed
+ * Convert a discovered skill into Kabmo's SkillItem. A Kabmo-managed
  * skill carries its SKILL.md body so the pane can edit it; a read-only one
  * carries its file path, because the pane must not offer a save that would
  * rewrite another tool's file.
@@ -194,7 +194,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return json({ success: true, skills: await listSkills(scope) });
     }
 
-    // Create or update a chamber-managed SKILL.md.
+    // Create or update a Kabmo-managed SKILL.md.
     if (body.skill) {
       if (mock) return json({ success: true, skills: DEFAULT_SKILLS });
 

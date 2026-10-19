@@ -37,7 +37,7 @@ const VALID = { id: 'demo', name: 'Demo', version: '1.0.0', app: 'dist/app.js' }
 function writePlugin(id: string): void {
   const dir = join(root, 'plugins', id);
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify({ ...VALID, id }));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify({ ...VALID, id }));
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
 }
 
@@ -47,13 +47,13 @@ function writeCatalog(catalog: unknown): void {
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-remove-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-remove-'));
+  process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
 });

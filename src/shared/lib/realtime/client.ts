@@ -87,11 +87,11 @@ interface TopicState {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberRealtimeTopics: TopicState | undefined;
+  var __kabmoRealtimeTopics: TopicState | undefined;
 }
 
 function topics(): TopicState {
-  return (globalThis.__ompChamberRealtimeTopics ??= { topics: new Map() });
+  return (globalThis.__kabmoRealtimeTopics ??= { topics: new Map() });
 }
 
 function entryFor(topic: string): TopicEntry {
@@ -323,6 +323,6 @@ export const realtimeClient: RealtimeClient = {
 
 /** Test seam: drop every topic and the connection. */
 export function resetRealtimeClient(): void {
-  globalThis.__ompChamberRealtimeTopics = undefined;
+  globalThis.__kabmoRealtimeTopics = undefined;
   resetConnection();
 }

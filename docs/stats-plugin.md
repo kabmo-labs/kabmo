@@ -1,7 +1,7 @@
-# Stats OMPChamber — resource panel plugin
+# Stats Kabmo — resource panel plugin
 
 A right-panel view of the CPU and RAM the omp stack actually consumes — the
-chamber server, every omp child it spawned, the omp daemon brokers and their
+Kabmo server, every omp child it spawned, the omp daemon brokers and their
 daemons, and the PTY shells.
 
 **Shipped as a plugin**, not as a built-in view: `marketplace/plugins/stats`.
@@ -15,7 +15,7 @@ this machine; the smoke run is described at the end.
 
 ## Why a plugin rather than a built-in view
 
-The chamber's plugin platform exists for exactly this shape — a self-contained
+The Kabmo's plugin platform exists for exactly this shape — a self-contained
 view with its own server half — and this panel needs one: a browser cannot read
 another process's RSS or CPU, so the measuring has to happen in the server's
 process. That is `api.background.service` + `api.rpc` + `api.realtime`, all of
@@ -30,7 +30,7 @@ user no way to put it away. A plugin installs, can be disabled, and leaves
 
 ### F1 — The obvious probe reads the wrong struct
 
-The chamber's own liveness probe (`src/server/lib/lifecycle/proc/`) answers
+The Kabmo's own liveness probe (`src/server/lib/lifecycle/proc/`) answers
 "alive? zombie? command line? parent? foreground group?" — subprocess-free, per
 platform. It has no CPU and no RSS, because nothing had needed them, and the
 call that carries them is a *different flavor of the same call* on macOS.
@@ -64,10 +64,10 @@ page size is 4096 in a container against 16384 on an Apple-silicon host, while
 `VmRSS` is already in kB. It also measured faster (0.47 ms against 0.58 ms per
 sweep over 61 processes).
 
-### F2 — A daemon broker can be parented OUTSIDE the chamber
+### F2 — A daemon broker can be parented OUTSIDE Kabmo
 
 This is the finding the whole plugin exists for. Walking the ppid tree from the
-chamber's pid is *almost* the answer, and the gap is a real resource.
+Kabmo's pid is *almost* the answer, and the gap is a real resource.
 
 ```
 broker 10466  parent = 7010 (an omp child of the server)   -> INSIDE the tree
@@ -78,12 +78,12 @@ The mechanism is in omp's own source: `launch/client.ts` spawns the broker with
 `{ detached: true }` and then `child.unref()`s it, so it survives the omp process
 that started it and is reparented to `1`. Broker `62457` supervised
 `~/.omp/run/daemons/1f1e40d033e7375e/` whose `scope.json` reads
-`{"projectDir":"/Users/rajebdev/JatisMobile/ompchamber"}` — **this project** —
+`{"projectDir":"/Users/rajebdev/JatisMobile/kabmo"}` — **this project** —
 and its subtree is a Chromium plus its helpers.
 
 So the process set is the **union** of:
 
-1. the ppid tree rooted at the chamber's pid; and
+1. the ppid tree rooted at Kabmo's pid; and
 2. the subtree under every daemon registry entry (broker and daemon alike),
    deduped by pid.
 
@@ -230,7 +230,7 @@ distinction was already in data the sweep had read.
   live sessions with titles and hundreds of messages. omp takes an OS `flock` on
   `<configRoot>/run/session-owners/<id>.lock`, so an open descriptor on that file
   is the answer (`leaseOfPid`, 0.70 ms for 9 pids). The same primitive the
-  chamber's own `lease-holder.server.ts` uses, walked in the other direction.
+  Kabmo's own `lease-holder.server.ts` uses, walked in the other direction.
 - **The cwd.** A `tsserver`, a Chromium helper and a `codegraph` MCP server are
   identical in argv, and the directory they run in is what names the checkout.
   Darwin: `proc_pidinfo(PROC_PIDVNODEPATHINFO)`, `vip_path` at 152 of a 2352-byte
@@ -238,7 +238,7 @@ distinction was already in data the sweep had read.
   cwd" for every process). Linux: `readlink /proc/<pid>/cwd`.
 
 **Grouping follows the ppid links.** A group root is a direct child of the
-chamber (a session host, a prewarm, a utility, a PTY shell), a daemon root from
+Kabmo (a session host, a prewarm, a utility, a PTY shell), a daemon root from
 omp's registry, or a broker. Three orderings are load-bearing and each was
 measured: the direct-child test runs BEFORE the registry test (a session can
 spawn its own broker — pid 66310 — which must stay inside that session); daemon
@@ -258,7 +258,7 @@ that is noise.
 bun test marketplace/plugins/stats/src     # 64 tests: labels, groups, sessions, the union, the delta, the live probe
 bun run lint && bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
 bun run build
-bun src/cli/ompchamber.js plugin build marketplace/plugins/stats
+bun src/cli/kabmo.js plugin build marketplace/plugins/stats
 ```
 
 Smoke, run end to end against a real server on a temp data dir:
@@ -269,12 +269,12 @@ Smoke, run end to end against a real server on a temp data dir:
    probe `darwin`: `chamber` (1 proc), `utility` (3), `daemon`
    `omp.browser.headless` (8), `daemon` `omp.lsp.mux` (9), `broker` (1) — each
    header carrying its own subtree rollup, each row its two lines.
-3. The chamber's own row read `OMPChamber server — the server itself · 34s`, not
+3. The Kabmo's own row read `Kabmo server — the server itself · 34s`, not
    `index.ts`: the label is decided by PID identity, because a dev boot
-   (`bun run src/server/index.ts`) carries no `--ompchamber-server`.
+   (`bun run src/server/index.ts`) carries no `--kabmo-server`.
 4. In a real Chromium at a 420px panel: 31 rows across 5 groups, every group
    header with its `⇄` marker and rollup, indentation rendering as 2 spaces per
-   depth, the chamber's row marked `self` under its pid, and titles in the UI
+   depth, Kabmo's row marked `self` under its pid, and titles in the UI
    stack (`-apple-system`, i.e. `--font-sans` with the Nerd Font fallback) so a
    session's card icon paints rather than tofu. `table.scrollWidth ===
    clientWidth === 420` — no overflow.

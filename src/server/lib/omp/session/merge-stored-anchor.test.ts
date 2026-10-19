@@ -5,7 +5,7 @@
  * Where an unmatched raw turn lands.
  *
  * omp answers a builtin on the command path and writes NO session entry for it,
- * so `/usage` or `/compact` exists only in the chamber's own copy — no JSONL
+ * so `/usage` or `/compact` exists only in Kabmo's own copy — no JSONL
  * user turn relates to it, and it cannot be matched into place. It was
  * positioned by scanning the stored array forward for the next row the JSONL
  * carried, which only worked because the overlay also held the mirrored rows —
@@ -32,7 +32,7 @@ function jsonl(): StoredMessage[] {
   ];
 }
 
-/** The chamber's copy of the same timeline, built in the order it was lived:
+/** The Kabmo's copy of the same timeline, built in the order it was lived:
  *  mirrors and local rows interleaved by time. */
 function storedFull(): StoredMessage[] {
   return [

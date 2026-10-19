@@ -37,12 +37,12 @@ interface ScanCacheHost {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberTelemetryScanCache: ScanCacheHost | undefined;
+  var __kabmoTelemetryScanCache: ScanCacheHost | undefined;
 }
 
 function cache(): Map<string, CachedEntries> {
-  globalThis.__ompChamberTelemetryScanCache ??= { entries: new Map() };
-  return globalThis.__ompChamberTelemetryScanCache.entries;
+  globalThis.__kabmoTelemetryScanCache ??= { entries: new Map() };
+  return globalThis.__kabmoTelemetryScanCache.entries;
 }
 
 /**

@@ -16,7 +16,7 @@
  * historical constant rather than inventing one); and a missing or malformed
  * row resolves to null instead of throwing.
  *
- * The registry is served by a STUB binary (`OMPCHAMBER_OMP_BIN`), so the real
+ * The registry is served by a STUB binary (`KABMO_OMP_BIN`), so the real
  * agent is never spawned — a real one does not exist on a CI runner, and a test
  * that reaches for it fails there while passing on a developer machine. Same
  * harness as `registry.server.test.ts`.
@@ -55,7 +55,7 @@ let realAgentDir: string | undefined;
 let realBin: string | undefined;
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-ctx-limit-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-ctx-limit-'));
   dirs.push(dir);
   return dir;
 }
@@ -63,9 +63,9 @@ function tempDir(): string {
 beforeAll(async () => {
   const stubPath = await ompRpcStub();
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
-  realBin = Bun.env.OMPCHAMBER_OMP_BIN;
+  realBin = Bun.env.KABMO_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = tempDir();
-  Bun.env.OMPCHAMBER_OMP_BIN = stubPath;
+  Bun.env.KABMO_OMP_BIN = stubPath;
   // A sibling test file may have cached the real `omp` path for the process
   // lifetime; without this the stub would be bypassed and a real agent spawned.
   invalidateOmpCliCache();
@@ -74,30 +74,30 @@ beforeAll(async () => {
 afterAll(() => {
   if (realAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = realAgentDir;
-  if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
+  if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = realBin;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) removeDir(dir);
 });
 
 beforeEach(() => {
-  // A throwaway database per test: the real chamber db is never opened, and the
+  // A throwaway database per test: the real Kabmo db is never opened, and the
   // pick under test is written where the resolver reads it.
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   Bun.env.FAKE_OMP_RESPONSES = JSON.stringify(REGISTRY_MODELS);
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
-  globalThis.__ompChamberModelsCache = undefined;
+  globalThis.__kabmoDb = undefined;
+  globalThis.__kabmoModelsCache = undefined;
 });
 
 afterEach(() => {
   disposeUtilityRpc();
-  globalThis.__ompChamberModelsCache = undefined;
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoModelsCache = undefined;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
   delete Bun.env.FAKE_OMP_RESPONSES;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
 });
 

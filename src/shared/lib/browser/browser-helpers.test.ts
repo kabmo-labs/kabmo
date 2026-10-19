@@ -177,7 +177,7 @@ describe('parseObserverPayload', () => {
   });
 
   test('names the binding the injected script calls', () => {
-    expect(OBSERVER_BINDING).toBe('__ompChamberAction');
+    expect(OBSERVER_BINDING).toBe('__kabmoAction');
   });
 });
 

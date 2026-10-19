@@ -86,9 +86,9 @@ export function createRewindActions(deps: RewindActionsDeps): RewindActions {
 
     // Real omp sessions rewind in place: POST /api/chat/:sessionId/rewind
     // truncates the session JSONL before the turn (session id unchanged) and
-    // respawns the agent on the truncated context. The chamber-side truncate
+    // respawns the agent on the truncated context. The Kabmo-side truncate
     // below would be undone by the next reload, because the timeline loads
-    // from the omp JSONL — not from the chamber DB copy.
+    // from the omp JSONL — not from Kabmo DB copy.
     if (isOmpSession && sessionId) {
       const row = localMessagesRef.current.find((m) => m.id === msgId);
       const result = await requestRewind(sessionId, msgId, row?.startedAt);

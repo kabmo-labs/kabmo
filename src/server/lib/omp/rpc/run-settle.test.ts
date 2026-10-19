@@ -37,19 +37,19 @@ let root: string;
 let savedDbPath: string | undefined;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'ompchamber-settle-'));
-  savedDbPath = Bun.env.OMPCHAMBER_DB_PATH;
-  Bun.env.OMPCHAMBER_DB_PATH = join(root, 'db.sqlite');
-  delete globalThis.__ompChamberDb;
+  root = mkdtempSync(join(tmpdir(), 'kabmo-settle-'));
+  savedDbPath = Bun.env.KABMO_DB_PATH;
+  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
+  delete globalThis.__kabmoDb;
 });
 
 afterEach(() => {
   // CLOSE the db handle before dropping it and deleting the tree, or Windows
   // fails the `rm` with EBUSY on the still-open connection.
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  delete globalThis.__ompChamberDb;
-  if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-  else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  delete globalThis.__kabmoDb;
+  if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
+  else Bun.env.KABMO_DB_PATH = savedDbPath;
   removeDir(root);
 });
 

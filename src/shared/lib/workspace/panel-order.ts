@@ -22,14 +22,14 @@
  *   reinstalling a plugin) returns it to the place the user put it.
  */
 
-import { readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 
 /** `app_settings` key holding the panel ids in the user's order. */
 export const PANEL_ORDER_SETTING_KEY = 'omp_right_panel_order';
 
 /** The stored order, validated: strings only, no blanks, no duplicates. */
 export function readPanelOrder(): string[] {
-  const stored = readChamberSetting<unknown>(PANEL_ORDER_SETTING_KEY);
+  const stored = readKabmoSetting<unknown>(PANEL_ORDER_SETTING_KEY);
   if (!Array.isArray(stored)) return [];
   const seen = new Set<string>();
   const out: string[] = [];

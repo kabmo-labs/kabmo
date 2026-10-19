@@ -109,8 +109,8 @@ export async function readDisabledProviderEntries(): Promise<unknown[]> {
 /**
  * Slugs disabled for `cwd`, with path-scoped entries resolved the way omp
  * resolves them. Defaults to the shared utility RPC process's cwd (`homedir()`),
- * which is the cwd omp itself uses when the chamber asks it for the model list —
- * so the chamber's own filter agrees with the list omp just served.
+ * which is the cwd omp itself uses when Kabmo asks it for the model list —
+ * so Kabmo's own filter agrees with the list omp just served.
  */
 export async function readDisabledProviders(cwd: string = homedir()): Promise<Set<string>> {
   return new Set(resolvePathScopedSlugs(await readDisabledProviderEntries(), cwd));

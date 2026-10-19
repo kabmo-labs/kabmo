@@ -1,7 +1,7 @@
 import { hydrate } from 'preact';
 import { App } from '@/client/App';
 import { bootSyntax } from '@/shared/lib/code/highlighter';
-import { primeChamberSettings } from '@/shared/lib/settings/client';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { initDocumentTheme } from '@/client/hooks/ui/theme';
 import { primeWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { installAuthFetchBridge, primeAuthState } from '@/client/hooks/ui/auth';
@@ -24,7 +24,7 @@ const bootstrap = window.__OMP_BOOTSTRAP__;
 primeAuthState(bootstrap?.authenticated, bootstrap?.authEnabled === true);
 installAuthFetchBridge();
 
-primeChamberSettings(bootstrap?.appSettings);
+primeKabmoSettings(bootstrap?.appSettings);
 
 // BEFORE the theme init, which writes the chrome meta: a phone that repainted
 // it from the module default would flash the desktop's color for a frame. The
@@ -53,14 +53,14 @@ installUiKit();
 // already covered.
 installScrollbarActivity();
 
-// A file the OS handed to the chamber (PWA File Handling) arrives as a
+// A file the OS handed to Kabmo (PWA File Handling) arrives as a
 // `FileSystemFileHandle` on `launchQueue`, and the consumer must be installed
 // before the first render: launches that happened before the script ran are
 // QUEUED, and reading one is what makes a cold start from a double-clicked file
 // work. A no-op on a browser without the API (Firefox, Safari), which is why it
 // is safe to call unconditionally.
 installFileLaunchHandler((result) => {
-  if (!result.ok) console.warn(`[ompchamber] ${result.message}`);
+  if (!result.ok) console.warn(`[kabmo] ${result.message}`);
 });
 
 // Fire-and-forget: warms the Shiki highlighter in parallel with hydration.

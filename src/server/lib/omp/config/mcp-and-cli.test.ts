@@ -8,7 +8,7 @@
  * path-scoped setting resolver, and the two CLI bridges' pure parts.
  *
  * Pinned because each decides on untrusted or hand-written input:
- * - `nativeToServerItem` maps a native entry to the chamber shape; a wrong
+ * - `nativeToServerItem` maps a native entry to Kabmo shape; a wrong
  *   reach type or a dropped env var makes the UI test a server it cannot run.
  * - `writeUserMcpServer` must preserve credentials the browser redacted, and
  *   must reject a name that could escape the file's own key grammar.

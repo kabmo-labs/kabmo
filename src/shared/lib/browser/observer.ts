@@ -23,7 +23,7 @@ import type { BrowserActionKind } from '@/shared/types';
 import type { BrowserActionDraft } from '@/shared/lib/browser/activity';
 
 /** Page-context function the injected script calls; CDP surfaces it as Runtime.bindingCalled. */
-export const OBSERVER_BINDING = '__ompChamberAction';
+export const OBSERVER_BINDING = '__kabmoAction';
 
 const OBSERVER_KINDS = new Set<BrowserActionKind>(['click', 'type', 'press', 'submit']);
 
@@ -36,8 +36,8 @@ const OBSERVER_KINDS = new Set<BrowserActionKind>(['click', 'type', 'press', 'su
 const OBSERVER_SOURCE = [
   '(function () {',
   '  if (window.top !== window) return;',
-  '  if (window.__ompChamberObserver) return;',
-  '  window.__ompChamberObserver = true;',
+  '  if (window.__kabmoObserver) return;',
+  '  window.__kabmoObserver = true;',
   `  var BINDING = ${JSON.stringify(OBSERVER_BINDING)};`,
   '  function emit(kind, label) {',
   '    try { if (typeof window[BINDING] === "function") window[BINDING](JSON.stringify({ kind: kind, label: label })); } catch (error) { /* binding unavailable or page CSP blocked it — interaction reporting is best-effort */ }',

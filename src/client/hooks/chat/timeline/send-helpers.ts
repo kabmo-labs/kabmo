@@ -62,7 +62,7 @@ export function buildOptimisticRows(args: {
   };
 }
 
-/** The simulated SSE path, taken by a chamber-created session and as the
+/** The simulated SSE path, taken by a Kabmo-created session and as the
  *  fallback when a real spawn is impossible (MOCK mode, no workspace cwd). */
 export async function streamMockFallback(args: {
   sessionId: string | null;

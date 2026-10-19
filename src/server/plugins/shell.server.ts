@@ -73,7 +73,7 @@ export function shellBundleRefusal(pressure: FdPressure | null): string | null {
  * bundle fail with messages that name the wrong cause entirely. Measured on the
  * real condition (a dev server past Darwin's 10,240-descriptor cliff) — Bun
  * reports the file reads it could not do as
- * `Could not resolve: "@kabmo-labs/plugin-sdk/app". Maybe you need to "bun install"?`,
+ * `Could not resolve: "@kabmo-labs/kabmo-sdk/app". Maybe you need to "bun install"?`,
  * which sends the reader to reinstall a dependency that is present and correct
  * while the actual fix is a restart. The build detail is still printed under it,
  * because it is the evidence, but it is labelled as the consequence it is.

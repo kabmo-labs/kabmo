@@ -56,7 +56,7 @@ test('a breaking change releases major on the types that can carry one', async (
 });
 
 test('a breaking-change footer releases major', async () => {
-  expect(await bump('feat: rename the host variable\n\nBREAKING CHANGE: `OMP_WEB_OMP_BIN` is now `OMPCHAMBER_OMP_BIN`')).toBe('major');
+  expect(await bump('feat: rename the host variable\n\nBREAKING CHANGE: `OMP_WEB_OMP_BIN` is now `KABMO_OMP_BIN`')).toBe('major');
   expect(await bump('fix: rename it\n\nBREAKING-CHANGE: the old name is no longer read')).toBe('major');
   expect(await bump('feat: it\n\n* BREAKING CHANGE: still a footer')).toBe('major');
 });

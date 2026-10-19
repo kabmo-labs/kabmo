@@ -17,7 +17,7 @@ const agentsStore = createSettingsListStore<AgentItem>({
 });
 
 /**
- * Convert a natively discovered omp agent into the chamber AgentItem shape.
+ * Convert a natively discovered omp agent into Kabmo AgentItem shape.
  * Native agents are surfaced as read-only built-ins (isBuiltIn) so the UI
  * lists them alongside app-local custom agents without offering edits that
  * would silently not persist.
@@ -75,7 +75,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return json({ error: 'id is required' }, { status: 400 });
       }
       if (id.startsWith('omp-')) {
-        return json({ error: 'Native omp agents are read-only in chamber' }, { status: 403 });
+        return json({ error: 'Native omp agents are read-only in Kabmo' }, { status: 403 });
       }
 
       const list = await agentsStore.remove(db, id);
@@ -113,7 +113,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
       if (!Array.isArray(body) && !Array.isArray(body.agents) && body.agent
         && typeof body.agent.id === 'string' && body.agent.id.startsWith('omp-')) {
-        return json({ error: 'Native omp agents are read-only in chamber' }, { status: 403 });
+        return json({ error: 'Native omp agents are read-only in Kabmo' }, { status: 403 });
       }
 
       const updatedAgents = await agentsStore.upsert(db, body);

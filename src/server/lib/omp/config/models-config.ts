@@ -61,7 +61,7 @@ export interface NativeModelInfo {
  * file is missing or has no providers — never throws for absent files.
  *
  * The `models` collection is array-only here, matching omp's schema. The
- * previous tolerant map-form reader made the chamber report providers as
+ * previous tolerant map-form reader made Kabmo report providers as
  * healthy while omp had disabled the entire file for the same content, and the
  * next upsert then rewrote the map as an array, discarding every model in it.
  */

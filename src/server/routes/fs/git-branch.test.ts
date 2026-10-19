@@ -149,7 +149,7 @@ describe('listBranchDetails', () => {
   });
 
   test('a directory that is not a repository answers an empty list', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-norepo-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-norepo-'));
     repos.push(dir);
     expect(await listBranchDetails(dir)).toEqual([]);
   });

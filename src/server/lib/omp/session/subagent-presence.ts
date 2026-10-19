@@ -43,7 +43,7 @@ const cache = new Map<string, PresenceEntry>();
  * awaited `fs.stat`, because an awaited one rejects on that common path and a
  * caught rejection from `fs` is still reported by Bun's rejection tracker when
  * this module is re-evaluated by `bun run --hot` — the dev server, and any
- * `ompchamber serve` whose NODE_ENV is unset. The result was a full ENOENT
+ * `kabmo serve` whose NODE_ENV is unset. The result was a full ENOENT
  * report with a `Bun v1.4.2` footer printed over a healthy server's own sidebar
  * reads. Measured on Bun 1.4.2 against this exact function — 40 concurrent
  * probes per request, 40 module rewrites, 6 runs: `try { await fs.stat(dir) }

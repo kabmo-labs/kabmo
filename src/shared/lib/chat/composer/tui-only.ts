@@ -24,36 +24,36 @@
  * The table is data extracted from the installed omp's own registry, so a name
  * omp moves to text mode stops being guarded by deleting its row. It is
  * deliberately keyed on NAMES ONLY: the guard must not depend on the version of
- * the running child, because a chamber talking to an older omp would otherwise
+ * the running child, because a Kabmo talking to an older omp would otherwise
  * refuse a command that build actually implements.
  *
- * `plan` and `goal` are absent because the CHAMBER now owns them: the composer's
- * mode toggles send `/chamber-mode …` to a chamber-owned extension inside the
+ * `plan` and `goal` are absent because Kabmo now owns them: the composer's
+ * mode toggles send `/kabmo-mode …` to a Kabmo-owned extension inside the
  * child, which reaches the live `AgentSession` the TUI drives. A typed `/plan`
  * or `/goal` is therefore answered by that same extension rather than refused —
  * the extension registers the real command names as aliases, so the docs' syntax
  * works too. `plan-review` and `guided-goal` stay listed: neither has a
  * counterpart the extension can honour from a prompt.
  *
- * `btw` is listed because omp's entry is TUI-only — the chamber's own `/btw`
+ * `btw` is listed because omp's entry is TUI-only — Kabmo's own `/btw`
  * is intercepted before this predicate is consulted (see `dispatchBtwCommand`),
  * so the two never conflict.
  */
 
-import { CHAMBER_COMMANDS } from '@/shared/lib/chat/composer/trigger';
+import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
 
 /**
- * Commands the CHAMBER answers itself, derived from the one list that defines
+ * Commands Kabmo answers itself, derived from the one list that defines
  * them. They are in omp's TUI-only set (omp implements `/btw` with `handleTui`
  * only) but they are NOT unavailable here — the composer intercepts them before
  * any guard runs.
  *
  * Derived rather than restated: a second hand-kept list is exactly what drifts,
- * and a name that moved into `CHAMBER_COMMANDS` without a matching row here
+ * and a name that moved into `KABMO_COMMANDS` without a matching row here
  * would be refused by the very guard that exists to protect it.
  */
-export const CHAMBER_OWNED_SLASH_COMMANDS: Record<string, true> = Object.fromEntries(
-  CHAMBER_COMMANDS.map((command) => [command.name.toLowerCase(), true as const]),
+export const KABMO_OWNED_SLASH_COMMANDS: Record<string, true> = Object.fromEntries(
+  KABMO_COMMANDS.map((command) => [command.name.toLowerCase(), true as const]),
 );
 
 /** Every TUI-only builtin name and alias, lowercased. */
@@ -116,12 +116,12 @@ export function slashCommandName(text: string): string | null {
 }
 
 /**
- * Whether a draft invokes a command the chamber cannot run, because omp only
+ * Whether a draft invokes a command Kabmo cannot run, because omp only
  * implements it in its TUI. Such a prompt must be refused locally — forwarding
  * it makes the model answer a command it never received.
  *
- * A command the CHAMBER owns is excluded: `/btw` is TUI-only in omp, but the
- * chamber answers it with the side-question panel, so refusing it here would
+ * A command Kabmo owns is excluded: `/btw` is TUI-only in omp, but the
+ * Kabmo answers it with the side-question panel, so refusing it here would
  * break a working feature. The client intercepts those before consulting this
  * predicate; the exclusion is what keeps the SERVER-side guard (which sees only
  * the text, e.g. on a queued delivery) from refusing them too.
@@ -129,7 +129,7 @@ export function slashCommandName(text: string): string | null {
 export function isTuiOnlySlashCommand(text: string): boolean {
   const name = slashCommandName(text);
   if (name === null) return false;
-  if (CHAMBER_OWNED_SLASH_COMMANDS[name] === true) return false;
+  if (KABMO_OWNED_SLASH_COMMANDS[name] === true) return false;
   return TUI_ONLY_SLASH_COMMANDS[name] === true;
 }
 

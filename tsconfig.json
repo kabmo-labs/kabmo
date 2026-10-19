@@ -29,23 +29,23 @@
       "elkjs": [
         "./src/client/stubs/elkjs.ts"
       ],
-      "@kabmo-labs/plugin-sdk": [
-        "./packages/plugin-sdk/src/index.ts"
+      "@kabmo-labs/kabmo-sdk": [
+        "./packages/kabmo-sdk/src/index.ts"
       ],
-      "@kabmo-labs/plugin-sdk/app": [
-        "./packages/plugin-sdk/src/app.ts"
+      "@kabmo-labs/kabmo-sdk/app": [
+        "./packages/kabmo-sdk/src/app.ts"
       ],
-      "@kabmo-labs/plugin-sdk/testing": [
-        "./packages/plugin-sdk/src/testing/index.ts"
+      "@kabmo-labs/kabmo-sdk/testing": [
+        "./packages/kabmo-sdk/src/testing/index.ts"
       ],
-      "@kabmo-labs/plugin-sdk/testing/app": [
-        "./packages/plugin-sdk/src/testing/app.tsx"
+      "@kabmo-labs/kabmo-sdk/testing/app": [
+        "./packages/kabmo-sdk/src/testing/app.tsx"
       ],
-      "@kabmo-labs/ui": [
-        "./packages/ui/src/index.tsx"
+      "@kabmo-labs/kabmo-ui": [
+        "./packages/kabmo-ui/src/index.tsx"
       ],
-      "@kabmo-labs/ui/components": [
-        "./packages/ui/src/components.tsx"
+      "@kabmo-labs/kabmo-ui/components": [
+        "./packages/kabmo-ui/src/components.tsx"
       ]
     },
     "types": [

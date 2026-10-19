@@ -310,5 +310,5 @@ export function resetConnection(): void {
   } catch {
     // Already gone.
   }
-  globalThis.__ompChamberRealtimeConnection = undefined;
+  globalThis.__kabmoRealtimeConnection = undefined;
 }

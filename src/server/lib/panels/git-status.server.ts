@@ -22,11 +22,11 @@ import type { PanelGitStatus } from '@/shared/types';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPanelGitStatus: Map<string, PanelGitStatus> | undefined;
+  var __kabmoPanelGitStatus: Map<string, PanelGitStatus> | undefined;
 }
 
 function store(): Map<string, PanelGitStatus> {
-  return (globalThis.__ompChamberPanelGitStatus ??= new Map());
+  return (globalThis.__kabmoPanelGitStatus ??= new Map());
 }
 
 /** The cached freshness of one plugin, or undefined when it was never probed. */

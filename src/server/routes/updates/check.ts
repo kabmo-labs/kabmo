@@ -10,7 +10,7 @@ function failureResult(message: string): UpdateCheckResult {
     installed: false,
     error: message,
   });
-  return { ompchamber: target(), omp: target(), checkedAt: new Date().toISOString() };
+  return { kabmo: target(), omp: target(), checkedAt: new Date().toISOString() };
 }
 
 /**

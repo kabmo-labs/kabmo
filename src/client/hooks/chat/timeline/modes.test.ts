@@ -23,7 +23,7 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useChatTimelineModes } from '@/client/hooks/chat/timeline/modes';
 import { GoalBanner } from '@/client/components/workspace/chat-timeline/chat-input/GoalBanner';
-import { CHAMBER_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
 import { publishClientSignal } from '@/client/lib/signals';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
@@ -177,7 +177,7 @@ describe('useChatTimelineModes hydration', () => {
   test('an accepted Resume drops the last "stopped" verdict', async () => {
     const el = await mount(WITH_GOAL);
     await act(async () => {
-      publishClientSignal(CHAMBER_MODE_SIGNAL, {
+      publishClientSignal(KABMO_MODE_SIGNAL, {
         sessionId: WITH_GOAL,
         marker: {
           marker: 'CHAMBER_GOAL_CONTINUATION:',
@@ -213,7 +213,7 @@ describe('useChatTimelineModes hydration', () => {
   test('the loop deciding is visible: the evaluating frame spins the row', async () => {
     const el = await mount(LIVE_GOAL);
     await act(async () => {
-      publishClientSignal(CHAMBER_MODE_SIGNAL, {
+      publishClientSignal(KABMO_MODE_SIGNAL, {
         sessionId: LIVE_GOAL,
         marker: { marker: 'CHAMBER_GOAL_EVALUATING:', payload: { evaluating: true } },
       });
@@ -222,7 +222,7 @@ describe('useChatTimelineModes hydration', () => {
     expect(el.querySelector('.animate-spin')).not.toBeNull();
 
     await act(async () => {
-      publishClientSignal(CHAMBER_MODE_SIGNAL, {
+      publishClientSignal(KABMO_MODE_SIGNAL, {
         sessionId: LIVE_GOAL,
         marker: { marker: 'CHAMBER_GOAL_EVALUATING:', payload: { evaluating: false } },
       });
@@ -267,7 +267,7 @@ describe('the Plan toggle', () => {
     expect(el.querySelector('#plan')?.getAttribute('data-pressed')).toBe('true');
 
     await act(async () => {
-      publishClientSignal(CHAMBER_MODE_SIGNAL, {
+      publishClientSignal(KABMO_MODE_SIGNAL, {
         sessionId: WITH_GOAL,
         marker: {
           marker: 'CHAMBER_MODE_ERROR:',
@@ -290,7 +290,7 @@ describe('the Plan toggle', () => {
     // A goal-side refusal reports its own scope; rolling Plan back for it would
     // turn a working mode off because an unrelated command failed.
     await act(async () => {
-      publishClientSignal(CHAMBER_MODE_SIGNAL, {
+      publishClientSignal(KABMO_MODE_SIGNAL, {
         sessionId: WITH_GOAL,
         marker: { marker: 'CHAMBER_MODE_ERROR:', payload: { scope: 'goal', reason: 'an objective is required' } },
       });

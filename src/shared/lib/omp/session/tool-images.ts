@@ -80,7 +80,7 @@ export function extractToolImages(content: unknown): ToolImageRef[] {
  * The URL an `<img>` should load for a tool image, or null when the reference
  * carries no usable payload.
  *
- * A blob ref goes through the chamber's own route rather than a `data:` URL:
+ * A blob ref goes through Kabmo's own route rather than a `data:` URL:
  * the bytes live in omp's blob store on the server, and re-encoding a
  * multi-megabyte screenshot into the JSON payload of every session load is
  * exactly what the store exists to avoid. An inline payload is already bytes

@@ -22,7 +22,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import type { ContentScriptContext, ContentScriptRegistration } from '@kabmo-labs/plugin-sdk';
+import type { ContentScriptContext, ContentScriptRegistration } from '@kabmo-labs/kabmo-sdk';
 import {
   isGenerationLive,
   mountContentScripts,

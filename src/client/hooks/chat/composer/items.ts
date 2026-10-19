@@ -14,13 +14,13 @@
  * whose bundle finishes loading while the popup is open has to appear without
  * the composer remounting.
  *
- * Plugin rows are appended, not prepended: the chamber's own commands lead (see
+ * Plugin rows are appended, not prepended: Kabmo's own commands lead (see
  * `mergeCommandAndSkillItems`), and appending is enough because the popup
  * re-filters the whole pool on every keystroke.
  */
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import type { CommandPaletteRegistration } from '@kabmo-labs/plugin-sdk';
+import type { CommandPaletteRegistration } from '@kabmo-labs/kabmo-sdk';
 import type { ComposerPickItem, ComposerPickKind } from '@/shared/types';
 import { loadComposerItems } from '@/shared/lib/chat/composer/client';
 import type { ListSlotRows } from '@/client/lib/plugins/list-slots';

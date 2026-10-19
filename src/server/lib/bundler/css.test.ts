@@ -22,7 +22,7 @@ import { SCROLLBAR_ACTIVE_ATTRIBUTE } from '@/client/lib/scrollbar-activity';
  * only the bundle the browser is actually served can.
  */
 async function buildThroughPlugin(css: string): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'ompchamber-css-'));
+  const dir = await mkdtemp(join(tmpdir(), 'kabmo-css-'));
   try {
     await Bun.write(join(dir, 'probe.css'), css);
     const result = await Bun.build({
@@ -45,7 +45,7 @@ async function buildThroughPlugin(css: string): Promise<string> {
  * silently fails to survive the plugin chain is invisible in review.
  */
 async function buildProjectStylesheet(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'ompchamber-tw-'));
+  const dir = await mkdtemp(join(tmpdir(), 'kabmo-tw-'));
   try {
     const result = await Bun.build({
       entrypoints: [join(import.meta.dir, '../../../client/tailwind.css')],

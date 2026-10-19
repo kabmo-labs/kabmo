@@ -8,7 +8,7 @@
  *
  * Three mechanisms do the narrowing, and all three are needed:
  *
- * 1. **A per-package `tagFormat`.** `plugin-sdk/v${version}` makes
+ * 1. **A per-package `tagFormat`.** `kabmo-sdk/v${version}` makes
  *    `release/commits.js` range the commits since that package's own last tag,
  *    so a release is decided from what changed since it was last published.
  * 2. **A path filter in front of the analyzer and the notes generator.** A tag

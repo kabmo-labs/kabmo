@@ -5,7 +5,7 @@
  * semantics, so keep them stable.
  */
 
-export type UpdateTarget = 'ompchamber' | 'omp';
+export type UpdateTarget = 'kabmo' | 'omp';
 
 export interface UpdateTargetInfo {
   /** Installed/current version, or null when unknown/not installed. */
@@ -13,7 +13,7 @@ export interface UpdateTargetInfo {
   /** Latest available version, or null when none could be resolved. */
   latest: string | null;
   updateAvailable: boolean;
-  /** For omp: whether the omp binary was found. Always true for ompchamber. */
+  /** For omp: whether the omp binary was found. Always true for kabmo. */
   installed: boolean;
   /** Human-readable error/status note, or null. */
   error: string | null;
@@ -23,7 +23,7 @@ export interface UpdateTargetInfo {
 }
 
 export interface UpdateCheckResult {
-  ompchamber: UpdateTargetInfo;
+  kabmo: UpdateTargetInfo;
   omp: UpdateTargetInfo;
   checkedAt: string; // ISO timestamp
 }

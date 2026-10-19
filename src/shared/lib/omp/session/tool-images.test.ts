@@ -69,7 +69,7 @@ describe('extractToolImages', () => {
 });
 
 describe('toolImageSrc', () => {
-  test('a blob ref goes through the chamber route, not a data URL', () => {
+  test('a blob ref goes through Kabmo route, not a data URL', () => {
     expect(toolImageSrc({ mimeType: 'image/jpeg', blobRef: `blob:sha256:${HASH}` }))
       .toBe(`/api/omp/blob?hash=${HASH}`);
   });

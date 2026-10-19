@@ -42,7 +42,7 @@ import { resetLoadedBundles } from '@/client/lib/plugins/loader';
 import { pluginContext } from '@/client/lib/plugins/context';
 import { resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_PANELS } from '@/shared/lib/realtime/protocol';
-import type { ContentScriptContext } from '@kabmo-labs/plugin-sdk';
+import type { ContentScriptContext } from '@kabmo-labs/kabmo-sdk';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
 import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';
@@ -158,7 +158,7 @@ async function mountWithContentScript(): Promise<void> {
 
 /** The plugin's mounted generations, read off the host's own registry. */
 function generations(): number[] {
-  return (globalThis.__ompChamberContentScripts ?? []).map((entry) => entry.generation);
+  return (globalThis.__kabmoContentScripts ?? []).map((entry) => entry.generation);
 }
 
 describe('PluginBootstrap', () => {

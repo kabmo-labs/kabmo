@@ -12,7 +12,7 @@
  * ONE run and needs the process, while everything there happens to the SET.
  */
 
-import { stripChamberHostEnv } from '@ompchamber/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 
 import type { Run } from './run-types';
 import { appendToRing, emptyRing } from './ring';
@@ -81,15 +81,15 @@ export class RunRegistry extends RunStore {
         // The group the kill reaches. Without it the signal stops the shell and
         // leaves whatever it started running.
         detached: true,
-        // The chamber's OWN variables must not reach the command. This plugin's
-        // server half runs inside the chamber's process, so `Bun.env` here is the
-        // server's environment — `PORT` is the port the CHAMBER listens on, and
-        // `NODE_ENV=production` is how the chamber itself was started. Inheriting
+        // The Kabmo's OWN variables must not reach the command. This plugin's
+        // server half runs inside Kabmo's process, so `Bun.env` here is the
+        // server's environment — `PORT` is the port Kabmo listens on, and
+        // `NODE_ENV=production` is how Kabmo itself was started. Inheriting
         // them made `bun run dev` from this panel fail with "Port 3001 is already
         // served by Kabmo" while the same command in a plain terminal (where
         // `PORT` is unset) ran on 3000. The rule is the SDK's, shared with the
         // host's own child spawns so the two cannot drift.
-        env: stripChamberHostEnv(Bun.env, process.platform),
+        env: stripKabmoHostEnv(Bun.env, process.platform),
       });
     } catch (error) {
       // A missing binary THROWS here (measured), so this is the only path that

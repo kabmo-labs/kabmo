@@ -24,7 +24,7 @@ const HEALTH_TIMEOUT_MS = 1500;
  *
  * A local guard rather than an import of the module that produces it: `probe.ts`
  * is loaded by the CLI, and `fd-pressure` `dlopen`s libc — pulling that into
- * every `ompchamber status` would be a syscall surface the CLI does not need.
+ * every `kabmo status` would be a syscall surface the CLI does not need.
  * The type is imported as a TYPE only, so nothing of it survives to runtime.
  */
 function isFdPressure(value: unknown): value is FdPressure {
@@ -140,7 +140,7 @@ export interface HealthPayload {
  * One health request over `scheme`.
  *
  * `rejectUnauthorized: false` is required for the self-signed certificate this
- * project generates: the probe is asking "is an Kabmo server answering
+ * project generates: the probe is asking "is a Kabmo server answering
  * here", and a certificate this machine generated for itself is not evidence
  * against that. It is safe here specifically because the caller is on the same
  * host and the answer is only used to identify a local process.
@@ -161,9 +161,13 @@ async function probeHealthOver(
     const body: unknown = await response.json();
     if (!body || typeof body !== 'object') return null;
     const payload = body as Record<string, unknown>;
-    if (payload.service !== 'ompchamber') return null;
+    // Both names identify this product: a server started before the rename is
+    // still running the old build and answers `ompchamber`, and `status`/`stop`
+    // must find it — the alternative is a live instance nothing can report or
+    // end. Normalized to the current name so every caller compares one value.
+    if (payload.service !== 'kabmo' && payload.service !== 'ompchamber') return null;
     return {
-      service: 'ompchamber',
+      service: 'kabmo',
       pid: typeof payload.pid === 'number' ? payload.pid : undefined,
       version: typeof payload.version === 'string' ? payload.version : undefined,
       startedAt: typeof payload.startedAt === 'string' ? payload.startedAt : undefined,
@@ -184,10 +188,10 @@ async function probeHealthOver(
 }
 
 /**
- * `GET /api/health` for an Kabmo listener, or null.
+ * `GET /api/health` for a Kabmo listener, or null.
  *
  * Only payloads that identify themselves as Kabmo are returned — every
- * caller here is asking "is an Kabmo server on this port", so a foreign
+ * caller here is asking "is a Kabmo server on this port", so a foreign
  * HTTP service answers null rather than a half-trusted object.
  *
  * `tls: 'auto'` (the default) tries HTTPS first, then HTTP. Discovery cannot

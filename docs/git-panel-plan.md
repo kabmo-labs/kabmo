@@ -12,7 +12,7 @@ the code and against real repositories:
 4. Which git features are worth adding at all (cheap × frequent).
 
 The corpus for "frequent" is the author's own `~/.omp/agent/sessions` (every
-`git` invocation the chamber's agent ever ran) plus `~/.zsh_history`, counted by
+`git` invocation Kabmo's agent ever ran) plus `~/.zsh_history`, counted by
 `rg -o 'git (merge|rebase|…)'`:
 
 | verb | invocations | verb | invocations |

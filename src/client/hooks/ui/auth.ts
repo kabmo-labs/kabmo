@@ -57,7 +57,7 @@ function getSnapshot(): AuthState {
  * Whether the SERVING instance requires a password at all.
  *
  * Separate from `state`, which says whether THIS browser has a session. A
- * chamber running open is `authenticated` for every visitor, so `state` alone
+ * Kabmo running open is `authenticated` for every visitor, so `state` alone
  * cannot answer "is there a session to sign out of" — the sign-out control would
  * either never appear or appear on an instance with nothing to sign out of.
  */

@@ -19,11 +19,11 @@ interface LogoutProviderModalProps {
  * Those two write `disabledProviders` in `config.yml`, which only hides the
  * provider's models from the picker — the OAuth token or API key stays on disk.
  * omp exposes `get_logout_accounts` + `logout` for the real operation, and this
- * dialog is the only place the chamber calls them.
+ * dialog is the only place Kabmo calls them.
  *
  * The account list is read on open (omp addresses a credential by
  * `(providerId, credentialId)`, so it cannot be guessed) and the dialog names
- * what survives: a `models.yml` entry and a chamber-overlay row are untouched.
+ * what survives: a `models.yml` entry and a Kabmo-overlay row are untouched.
  */
 export function LogoutProviderModal({ isOpen, provider, onClose, onSignedOut }: LogoutProviderModalProps) {
   const [accounts, setAccounts] = useState<LogoutAccount[] | null>(null);

@@ -8,7 +8,7 @@
  * position when older history is paged in above the viewport, and it writes
  * `scrollTop` directly (which CSS `scroll-behavior: smooth` then animates). A
  * window that landed after the user asked for the tail therefore wrote
- * `scrollTop` straight over the jump: reproduced live in the chamber against a
+ * `scrollTop` straight over the jump: reproduced live in Kabmo against a
  * session with older pages — the viewport stopped ~26k px short of the tail
  * (the anchor's own target), and only the next click reached the bottom, once
  * no window was left to page in.

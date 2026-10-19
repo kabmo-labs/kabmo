@@ -27,7 +27,7 @@ const BASE = { terminal: TERMINAL, cwd: '/work', env: { PATH: '/usr/bin' } };
 describe('shellSpawnOptions', () => {
   test('POSIX detaches, so a group signal reaches what the shell started', () => {
     // Without it the child sits in the SERVER's process group: `kill(-pid)` is
-    // ESRCH, Ctrl+Z stops working, and a group signal would take the chamber
+    // ESRCH, Ctrl+Z stops working, and a group signal would take Kabmo
     // down with the shell.
     for (const platform of ['darwin', 'linux'] as const) {
       expect(shellSpawnOptions({ ...BASE, platform }).detached).toBe(true);

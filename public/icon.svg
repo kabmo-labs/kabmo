@@ -1,60 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-    
-    <defs>
-      <linearGradient id="ompGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#ff8c38"/>
-        <stop offset="40%" stop-color="#f97316"/>
-        <stop offset="100%" stop-color="#ea580c"/>
-      </linearGradient>
-      <linearGradient id="glowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#ff8c38" stop-opacity="0.15"/>
-        <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
-      </linearGradient>
-      <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#1c1a16"/>
-        <stop offset="100%" stop-color="#12110e"/>
-      </linearGradient>
-      <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#23201a"/>
-        <stop offset="100%" stop-color="#181612"/>
-      </linearGradient>
-      <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#f97316" stop-opacity="0.8"/>
-        <stop offset="50%" stop-color="#ea580c" stop-opacity="0.9"/>
-        <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.3"/>
-      </linearGradient>
-    </defs>
-  
-    <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
-    
-    <!-- Chamber Card Glow & Frame (Inside safe zone: 104..408) -->
-    <rect x="100" y="100" width="312" height="312" rx="56" fill="url(#cardGrad)" stroke="#322e25" stroke-width="2.5"/>
-    <rect x="102" y="102" width="308" height="120" rx="54" fill="url(#glowGrad)"/>
-
-    <!-- Terminal Header Dots -->
-    <circle cx="142" cy="138" r="5.5" fill="#ea580c"/>
-    <circle cx="160" cy="138" r="5.5" fill="#f59e0b" opacity="0.8"/>
-    <circle cx="178" cy="138" r="5.5" fill="#10b981" opacity="0.7"/>
-
-    <!-- Oh-My-Pi subtle prompt symbol -->
-    <path d="M 346 133 L 362 133 M 351 133 L 351 145 M 359 133 L 359 145" stroke="#544d3e" stroke-width="2.2" stroke-linecap="round"/>
-
-    <!-- OMP Typography Monogram -->
-    <!-- Total width: 278, height: 108. Offset: x=117, y=184 -->
-    <g transform="translate(117, 184)" fill="url(#ompGrad)">
-      <!-- O (x: 0..80, y: 0..108) -->
-      <path d="M 28 0 C 12 0, 0 14, 0 32 L 0 76 C 0 94, 12 108, 28 108 L 52 108 C 68 108, 80 94, 80 76 L 80 32 C 80 14, 68 0, 52 0 Z M 28 26 L 52 26 C 55 26, 56 28, 56 32 L 56 76 C 56 80, 55 82, 52 82 L 28 82 C 25 82, 24 80, 24 76 L 24 32 C 24 28, 25 26, 28 26 Z" fill-rule="evenodd"/>
-      
-      <!-- M (x: 94..188, y: 0..108) -->
-      <path d="M 94 0 L 120 0 L 141 54 L 162 0 L 188 0 L 188 108 L 164 108 L 164 36 L 148 76 L 134 76 L 118 36 L 118 108 L 94 108 Z"/>
-      
-      <!-- P (x: 202..276, y: 0..108) -->
-      <path d="M 202 0 L 246 0 C 265 0, 276 12, 276 31 L 276 39 C 276 58, 265 70, 246 70 L 226 70 L 226 108 L 202 108 Z M 226 24 L 243 24 C 249 24, 252 26, 252 32 L 252 38 C 252 44, 249 46, 243 46 L 226 46 Z" fill-rule="evenodd"/>
-    </g>
-
-    <!-- Bottom Accent / Terminal Status Pulse -->
-    <rect x="176" y="336" width="160" height="6" rx="3" fill="url(#lineGrad)"/>
-    <circle cx="160" cy="339" r="3" fill="#ea580c"/>
-    <circle cx="352" cy="339" r="3" fill="#f59e0b"/>
-  
-  </svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-label="Kabmo">
+  <title>Kabmo</title>
+  <!-- Full-canvas tile, the geometry the previous icon used: the launcher, the
+       tab and the dock each apply their own mask, and an inset tile would leave
+       a margin inside the mask instead of behind it. -->
+  <rect width="64" height="64" rx="14" fill="#0B5D3B"/>
+  <g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 15v34" stroke="#F7F4EA"/>
+    <path d="M20 32 42 15" stroke="#F26522"/>
+    <path d="M20 32 42 49" stroke="#F7F4EA"/>
+  </g>
+</svg>

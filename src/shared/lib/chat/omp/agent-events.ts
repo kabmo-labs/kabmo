@@ -4,7 +4,7 @@
  */
 
 /**
- * Folds one live agent event frame into chamber state. Transport-agnostic: the
+ * Folds one live agent event frame into Kabmo state. Transport-agnostic: the
  * WebSocket and SSE clients both hand every decoded frame to `foldAgentEvent`,
  * so both transports produce byte-identical timeline behavior.
  *
@@ -16,8 +16,9 @@
 import type { IncomingExtensionUiRequest, OmpAgentEvent } from '@/shared/types';
 import { extractTextFromContent, toChatMessage } from '@/shared/lib/omp/session/mapper';
 import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
-import { parseChamberMarker } from '@/shared/lib/omp/mode/markers';
-import { emitChamberModeSignal } from '@/shared/lib/omp/mode/client-signal';
+import { parseModeMarker } from '@/shared/lib/omp/mode/markers';
+import { emitKabmoModeSignal } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_GOAL_EVALUATING_MARKER } from '@/shared/lib/omp/mode/types';
 import { materializeTerminalMessages } from '@/shared/lib/chat/omp/terminal-messages';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
 import { setActivity, toolHost, type OmpAgentFoldDeps } from '@/shared/lib/chat/omp/fold-deps';
@@ -221,7 +222,7 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
     }
 
     case 'extension_ui_request': {
-      // The chamber's mode extension reports every plan/goal transition through
+      // The Kabmo's mode extension reports every plan/goal transition through
       // `ctx.ui.notify`, which omp frames as an `extension_ui_request` with
       // `method: "notify"` — NOT a `notice` frame (verified against omp 18.4.4:
       // `rpc-mode.ts`'s `notify` implementation emits exactly that).
@@ -238,9 +239,9 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
       // through four components.
       if ((data as { method?: unknown }).method === 'notify') {
         const message = typeof data.message === 'string' ? data.message : '';
-        const marker = parseChamberMarker(message);
+        const marker = parseModeMarker(message);
         if (marker) {
-          emitChamberModeSignal(deps.sessionId, marker);
+          emitKabmoModeSignal(deps.sessionId, marker);
           break;
         }
       }
@@ -249,11 +250,11 @@ export function foldAgentEvent(data: OmpAgentEvent, deps: OmpAgentFoldDeps): voi
     }
 
     case 'goal_evaluating': {
-      // The chamber's auditor working on the turn that just ended. No model
+      // The Kabmo's auditor working on the turn that just ended. No model
       // turn is streaming while it runs, so without this frame the composer
       // would look idle during the seconds the check takes.
-      emitChamberModeSignal(deps.sessionId, {
-        marker: 'CHAMBER_GOAL_EVALUATING:',
+      emitKabmoModeSignal(deps.sessionId, {
+        marker: KABMO_GOAL_EVALUATING_MARKER,
         payload: { evaluating: data.evaluating === true },
       });
       break;

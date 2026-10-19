@@ -120,7 +120,7 @@ describe('upsertOmpProviderModels — new providers', () => {
   });
 
   test('an override-only provider is a change even with no models and no key', async () => {
-    // omp already bundles this provider's catalog; the chamber only moves the
+    // omp already bundles this provider's catalog; Kabmo only moves the
     // endpoint. Without `!existing` in `providerChanged` nothing would be
     // written and the override would silently vanish.
     const result = await upsertOmpProviderModels('openai', {

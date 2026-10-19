@@ -188,7 +188,7 @@ describe('generatePassword', () => {
     expect(PASSWORD_ALPHABET).toBe('ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789');
     expect(PASSWORD_ALPHABET).toHaveLength(55);
     expect(PASSWORD_ALPHABET).not.toMatch(/[IOil01o]/);
-    expect(UI_PASSWORD_ENV).toBe('OMPCHAMBER_UI_PASSWORD');
+    expect(UI_PASSWORD_ENV).toBe('KABMO_UI_PASSWORD');
     expect(GENERATED_PASSWORD_LENGTH).toBe(16);
   });
 
@@ -272,15 +272,15 @@ describe('hashPassword / verifyPassword', () => {
 
 describe('loadPersistedAccessMode', () => {
   const dir = mkdtempSync(join(tmpdir(), 'omp-access-'));
-  const env = { path: Bun.env.OMPCHAMBER_DB_PATH, db: Bun.env.DB_PATH, mock: Bun.env.MOCK, sync: Bun.env.SYNC_WORKSPACE };
-  const slotKey = '__ompChamberDb' as const;
+  const env = { path: Bun.env.KABMO_DB_PATH, db: Bun.env.DB_PATH, mock: Bun.env.MOCK, sync: Bun.env.SYNC_WORKSPACE };
+  const slotKey = '__kabmoDb' as const;
   const savedSlot = (globalThis as Record<string, unknown>)[slotKey];
 
   beforeAll(() => {
     // The db handle is cached on globalThis across test files in one process;
     // drop any handle another file opened so this file opens its own temp db.
     (globalThis as Record<string, unknown>)[slotKey] = { promise: null, resolved: null };
-    Bun.env.OMPCHAMBER_DB_PATH = join(dir, 'access.sqlite');
+    Bun.env.KABMO_DB_PATH = join(dir, 'access.sqlite');
     delete Bun.env.DB_PATH;
     delete Bun.env.MOCK;
     Bun.env.SYNC_WORKSPACE = 'false';
@@ -290,13 +290,13 @@ describe('loadPersistedAccessMode', () => {
     // CLOSE the handle this block opened through `getDb()` before restoring the
     // slot and deleting the tree; a bare slot restore abandons it, and Windows
     // then fails the delete with EBUSY on the still-open connection.
-    globalThis.__ompChamberDb?.resolved?.raw.close();
+    globalThis.__kabmoDb?.resolved?.raw.close();
     (globalThis as Record<string, unknown>)[slotKey] = savedSlot;
-    const restore = (key: 'OMPCHAMBER_DB_PATH' | 'DB_PATH' | 'MOCK' | 'SYNC_WORKSPACE', value: string | undefined) => {
+    const restore = (key: 'KABMO_DB_PATH' | 'DB_PATH' | 'MOCK' | 'SYNC_WORKSPACE', value: string | undefined) => {
       if (value === undefined) delete Bun.env[key];
       else Bun.env[key] = value;
     };
-    restore('OMPCHAMBER_DB_PATH', env.path);
+    restore('KABMO_DB_PATH', env.path);
     restore('DB_PATH', env.db);
     restore('MOCK', env.mock);
     restore('SYNC_WORKSPACE', env.sync);

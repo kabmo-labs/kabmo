@@ -5,7 +5,7 @@
  * A session row belongs to a workspace folder; when that folder is bound to an
  * oh-my-pi project (project_path), selecting one of its sessions should make
  * every right panel work inside that real project directory instead of the
- * ompchamber app directory. This module keeps that opt-in capability safe:
+ * kabmo app directory. This module keeps that opt-in capability safe:
  * arbitrary client paths are rejected — a root is only honored when it is the
  * app root, a directory below it, or an exact registered workspace project
  * path from the SQLite database.
@@ -67,7 +67,7 @@ export async function resolveReferencedPath(rawPath: string): Promise<string | n
 
 /**
  * The scope an absolute path should be opened under, or null when it is not
- * inside anything the chamber is allowed to read.
+ * inside anything Kabmo is allowed to read.
  *
  * The reverse direction of {@link resolveWithinRoot}: that one takes a client
  * `root` + relative path, this one is handed a path a DROP produced — which is

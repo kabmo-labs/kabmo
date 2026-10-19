@@ -8,8 +8,8 @@
  *
  * ## Why the dialog shell is written here
  *
- * The chamber's own modals sit on `src/client/components/common/Modal.tsx`, and
- * a plugin bundle cannot import chamber source — `@/…` does not resolve in it.
+ * Kabmo's own modals sit on `src/client/components/common/Modal.tsx`, and
+ * a plugin bundle cannot import Kabmo source — `@/…` does not resolve in it.
  * So the shell is reproduced with the same classes and the same ARIA pair
  * (`role="dialog"` + `aria-modal`), which is what makes it read as one of the
  * app's dialogs to a screen reader rather than as a floating div.

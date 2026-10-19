@@ -4,7 +4,7 @@
  */
 
 /**
- * Whether a plugin can run on THIS chamber.
+ * Whether a plugin can run on THIS Kabmo.
  *
  * Two questions, both answered by naming both sides: an `engines` range the
  * running version does not satisfy, and a capability the host does not provide.
@@ -12,7 +12,7 @@
  * incompatible bundle misbehaves later and somewhere that names nothing, while
  * this refusal names the requirement and the version.
  *
- * The chamber's own versions are resolved from the running install rather than
+ * The Kabmo's own versions are resolved from the running install rather than
  * baked in, and a version that cannot be resolved refuses NOTHING: failing
  * closed on our own missing metadata would take working plugins down with it.
  * Only the plugin's DECLARED mismatch fails closed.
@@ -21,13 +21,13 @@
 import { join } from 'path';
 import type { PanelPluginManifest } from '@/shared/types';
 import { packageDir } from '@/server/lib/fs/package-root';
-import { chamberPackageDirs } from '@/server/lib/panels/link.server';
+import { kabmoPackageDirs } from '@/server/lib/panels/link.server';
 import { missingCapabilities } from '@/shared/lib/panels/capabilities';
 import { satisfiesRange } from '@/shared/lib/updates/semver';
 
 /** The versions a plugin's `engines` is compared against; null means unknown. */
 export interface RunningVersions {
-  ompchamber: string | null;
+  kabmo: string | null;
   pluginSdk: string | null;
 }
 
@@ -41,12 +41,12 @@ async function readPackageVersion(dir: string): Promise<string | null> {
   }
 }
 
-/** The running chamber's own versions, resolved once per scan. */
+/** The running Kabmo's own versions, resolved once per scan. */
 export async function runningVersions(): Promise<RunningVersions> {
-  const dirs = chamberPackageDirs();
-  const sdkDir = dirs['@kabmo-labs/plugin-sdk'] ?? dirs['@ompchamber/plugin-sdk'];
+  const dirs = kabmoPackageDirs();
+  const sdkDir = dirs['@kabmo-labs/kabmo-sdk'] ?? dirs['@kabmo-labs/plugin-sdk'] ?? dirs['@ompchamber/plugin-sdk'];
   return {
-    ompchamber: await readPackageVersion(packageDir()),
+    kabmo: await readPackageVersion(packageDir()),
     pluginSdk: sdkDir ? await readPackageVersion(sdkDir) : null,
   };
 }
@@ -62,7 +62,7 @@ export function describeIncompatibility(manifest: PanelPluginManifest, running: 
   const engines = manifest.engines;
   if (engines) {
     const checks: readonly [string, string | undefined, string | null, string][] = [
-      ['ompchamber', engines.ompchamber, running.ompchamber, 'this chamber'],
+      ['kabmo', engines.kabmo, running.kabmo, 'Kabmo'],
       ['pluginSdk', engines.pluginSdk, running.pluginSdk, 'this plugin SDK'],
     ];
     for (const [key, range, version, label] of checks) {
@@ -73,7 +73,7 @@ export function describeIncompatibility(manifest: PanelPluginManifest, running: 
   }
   const missing = missingCapabilities(manifest.capabilities ?? []);
   if (missing.length > 0) {
-    return `manifest requires capability "${missing[0]}" which this chamber does not provide`;
+    return `manifest requires capability "${missing[0]}" which Kabmo does not provide`;
   }
   return null;
 }

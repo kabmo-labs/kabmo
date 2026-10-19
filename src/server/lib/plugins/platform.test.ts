@@ -16,7 +16,7 @@
  *
  * The database is the isolated one (`isolateDb`/`releaseDb`), because the
  * handle is a process-wide singleton and a suite that reads the developer's
- * real `~/.ompchamber/db.sqlite` writes to it.
+ * real `~/.kabmo/db.sqlite` writes to it.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
@@ -31,7 +31,7 @@ import { createPluginRealtime, clearPluginTopic } from '@/server/lib/plugins/rea
 import { createPluginEvents, resetPluginEvents } from '@/server/lib/plugins/events.server';
 import { pluginTopic, isValidPluginId, pluginIdOfTopic } from '@/shared/lib/plugins/protocol';
 import { getDb } from '@/server/db.server';
-import type { PluginJson, PluginSettingDefinition } from '@kabmo-labs/plugin-sdk';
+import type { PluginJson, PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
 
 let root = '';
 

@@ -1,12 +1,12 @@
 name: Feature request
-description: A capability OMPChamber does not have yet.
+description: A capability Kabmo does not have yet.
 title: "[Feature] "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        OMPChamber is a small project with one maintainer: what gets built is a judgement call, and a
+        Kabmo is a small project with one maintainer: what gets built is a judgement call, and a
         request is not a commitment. The most useful thing you can write here is the problem, not the
         implementation — design and scope are the maintainer's call.
 
@@ -14,7 +14,7 @@ body:
     id: problem
     attributes:
       label: The problem
-      description: What you are trying to get done, and where OMPChamber gets in the way. Concrete beats general.
+      description: What you are trying to get done, and where Kabmo gets in the way. Concrete beats general.
     validations:
       required: true
 

@@ -29,14 +29,14 @@ let tempDir = '';
 let originalDataDir: string | undefined;
 
 beforeEach(() => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-credential-test-'));
-  originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-  Bun.env.OMPCHAMBER_DATA_DIR = tempDir;
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-credential-test-'));
+  originalDataDir = Bun.env.KABMO_DATA_DIR;
+  Bun.env.KABMO_DATA_DIR = tempDir;
 });
 
 afterEach(() => {
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 

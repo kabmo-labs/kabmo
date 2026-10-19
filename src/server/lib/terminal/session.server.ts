@@ -15,7 +15,7 @@
  *    the server's own process group: an interactive shell reports "no job
  *    control in this shell" (Ctrl+Z and `fg` stop working), `process.kill(-pid, …)`
  *    fails with ESRCH, and a group signal aimed at the *server's* group would
- *    take the chamber down with it. **Windows is the exception and must NOT
+ *    take Kabmo down with it. **Windows is the exception and must NOT
  *    detach**: there `detached` becomes `DETACHED_PROCESS`, the child gets no
  *    console at all, and `cmd.exe` exits 1 immediately (measured on the CI
  *    runner — every shell `status: "exited"`). Windows has no process group to

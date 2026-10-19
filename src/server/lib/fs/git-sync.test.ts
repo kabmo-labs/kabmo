@@ -8,7 +8,7 @@
  *
  * The counts come from the LOCAL tracking ref, so they are only as fresh as
  * the last fetch; the module's whole reason to exist is that nothing in the
- * chamber ever fetched, leaving the Sync badge stuck at ↑0 ↓0 while origin had
+ * Kabmo ever fetched, leaving the Sync badge stuck at ↑0 ↓0 while origin had
  * commits to pull. These tests build a real bare origin plus a clone in temp
  * dirs and pin: the zero answer when there is no upstream, a local commit
  * counting as ahead, a stale ref reporting zero until `refreshRemoteRefs`
@@ -33,7 +33,7 @@ import {
 const tempDirs: string[] = [];
 
 function tempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitsync-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-gitsync-'));
   tempDirs.push(dir);
   return dir;
 }

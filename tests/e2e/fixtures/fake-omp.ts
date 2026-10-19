@@ -8,7 +8,7 @@
  * A scripted `omp` RPC child, for browser specs that need a real agent session
  * without a model.
  *
- * It is NOT a mock of the chamber's side of the protocol — it is a client of
+ * It is NOT a mock of Kabmo's side of the protocol — it is a client of
  * omp's own wire protocol, so the code under test is the real thing: the
  * spawn path, the frame reader, the frame fold, the realtime topic, the
  * timeline renderer. A test double that stubbed any of
@@ -36,16 +36,16 @@
  * ## What it answers
  *
  * `ready`, then a `{type:'response'}` per command. `get_state` reports a fresh
- * session (messageCount 0, so the chamber's auto-title is eligible — the same
+ * session (messageCount 0, so Kabmo's auto-title is eligible — the same
  * shape a real spawn has). `get_available_models` / `get_login_providers` /
  * `get_available_commands` answer small canned registries so the model picker
  * and the composer's `/` popup render. The attach-time configuration commands
  * (`set_event_filter`, `set_ask_dialog`, `set_subagent_subscription`) are
- * acknowledged, because the chamber sends them and treats an error as
+ * acknowledged, because Kabmo sends them and treats an error as
  * best-effort.
  *
  * `FAKE_OMP_RECORD_PATH` appends every frame RECEIVED as JSONL, so a spec can
- * assert what the chamber actually sent (that the event filter was requested,
+ * assert what Kabmo actually sent (that the event filter was requested,
  * that a `/reload-plugins` reached a live child) rather than inferring it.
  */
 
@@ -68,11 +68,11 @@ const sessionId = resume
   : crypto.randomUUID();
 
 /**
- * The session file, under the layout both omp and the chamber read:
+ * The session file, under the layout both omp and Kabmo read:
  * `<sessions>/<project-dir>/<file>.jsonl`, with a `{"type":"session"}` header
  * carrying the id.
  *
- * The directory NAME is not load-bearing — the chamber's scan walks one level
+ * The directory NAME is not load-bearing — Kabmo's scan walks one level
  * under the sessions root and takes each file's id from its header — but the
  * DEPTH and the header are. A fixture that wrote `<sessions>/<file>.jsonl` with
  * no header left every session lookup 404ing (measured: `rename-with-ai`
@@ -356,7 +356,7 @@ function handleCommand(frame: Record<string, unknown>) {
       // Acknowledge the admission first, then run the turn — the order omp uses.
       respond({ agentInvoked: true });
       const message = typeof frame.message === 'string' ? frame.message : '';
-      // The chamber fires `/rename` in the background for the auto-title, and
+      // The Kabmo fires `/rename` in the background for the auto-title, and
       // on demand for "Rename with AI". Real omp answers with
       // `session_info_update` (the new title) and THEN `command_output` — and
       // the rename route's verdict is which of the two arrives, so a fixture
@@ -375,9 +375,10 @@ function handleCommand(frame: Record<string, unknown>) {
         })();
         return;
       }
-      // The chamber's own `/chamber-mode …` control channel (the Plan/Goal
-      // toggles, the plan-review republish). Real omp executes it in the
-      // chamber-owned extension and answers `agentInvoked:false` with NO
+      // Kabmo's own `/kabmo-mode …` control channel (the Plan/Goal toggles,
+      // the plan-review republish); `/chamber-mode` is the pre-rename spelling
+      // and is honoured too. Real omp executes it in the Kabmo-owned extension
+      // and answers `agentInvoked:false` with NO
       // assistant message — it costs no transcript. A fixture that ran it as a
       // full turn opened a SECOND concurrent run beside the operator's, and
       // that stray run's `message_end` cleared the first run's AI placeholder
@@ -385,7 +386,7 @@ function handleCommand(frame: Record<string, unknown>) {
       // placeholder and a later coalesced update mapped the placeholder onto it,
       // rendering the turn (and its ask card) TWICE. Measured: ~1 run in 30,
       // with two cards for one ask — one "Running", one "Done".
-      if (message.trim().startsWith('/chamber-mode')) {
+      if (/^\/(kabmo|chamber)-mode\b/.test(message.trim())) {
         respond({ agentInvoked: false });
         write({ type: 'prompt_result', agentInvoked: false });
         return;

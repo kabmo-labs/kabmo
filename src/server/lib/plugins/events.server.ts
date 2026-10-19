@@ -6,20 +6,20 @@
 /**
  * A plugin's event surface.
  *
- * The chamber's signal bus is a CLOSED union (`RealtimeSignal`), and that is a
+ * The Kabmo's signal bus is a CLOSED union (`RealtimeSignal`), and that is a
  * property worth keeping: a listener for a name that does not exist is a
  * subscription to nothing, and the union is what makes the compiler say so for
- * the chamber's own code. A plugin's event names are therefore held in their
+ * Kabmo's own code. A plugin's event names are therefore held in their
  * own map rather than being forced into the union — a plugin may announce any
  * name, and two plugins announcing `ready` are two channels because the plugin
  * id is part of the key.
  *
- * What a plugin does NOT get is a name that collides with the chamber's own.
+ * What a plugin does NOT get is a name that collides with Kabmo's own.
  * Every key here is prefixed, so `ready` from a plugin can never reach a
- * listener the chamber registered for its own `ready`.
+ * listener Kabmo registered for its own `ready`.
  */
 
-import type { PluginEventsApi, PluginJson } from '@kabmo-labs/plugin-sdk';
+import type { PluginEventsApi, PluginJson } from '@kabmo-labs/kabmo-sdk';
 
 type Listener = (payload: PluginJson | undefined) => void;
 
@@ -33,13 +33,13 @@ type Listener = (payload: PluginJson | undefined) => void;
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPluginEventListeners: Map<string, Set<Listener>> | undefined;
+  var __kabmoPluginEventListeners: Map<string, Set<Listener>> | undefined;
 }
 
 const eventKey = (pluginId: string, name: string) => `${pluginId}\u0000${name}`;
 
 function listeners(): Map<string, Set<Listener>> {
-  return (globalThis.__ompChamberPluginEventListeners ??= new Map());
+  return (globalThis.__kabmoPluginEventListeners ??= new Map());
 }
 
 /** The API one plugin is handed at load. */
@@ -60,7 +60,7 @@ export function createPluginEvents(pluginId: string): PluginEventsApi {
       };
     },
     emit(name, payload) {
-      // A throwing listener never stops the others — the rule the chamber's own
+      // A throwing listener never stops the others — the rule Kabmo's own
       // signal bus follows, for the same reason: this sits on a write path.
       for (const listener of [...(listeners().get(eventKey(pluginId, name)) ?? [])]) {
         try {

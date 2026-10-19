@@ -21,7 +21,7 @@
  * spread each one without a lie.
  *
  * Every path here returns null when no row matches. That is the property that
- * keeps a chamber with no plugins rendering exactly what it did before these
+ * keeps a Kabmo with no plugins rendering exactly what it did before these
  * slots existed — the hosts only ever draw a contributed view when this module
  * says one was contributed.
  */
@@ -34,9 +34,9 @@ import type {
   FileOpenerRegistration,
   SourceCodeRendererProps,
   SourceCodeRendererRegistration,
-} from '@kabmo-labs/plugin-sdk';
+} from '@kabmo-labs/kabmo-sdk';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 
 /** What a non-diff file carries into resolution. */
 export interface PluginFileViewFile {

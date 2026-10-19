@@ -7,12 +7,12 @@
  * Watch the skill/command roots omp reads and refresh every live child when one
  * of them changes.
  *
- * The chamber's own write path already reloads (settings/skills,
+ * The Kabmo's own write path already reloads (settings/skills,
  * settings/commands), but that covers only writes it made. A SKILL.md can also
  * land from a hand edit, `git pull`, the `skills` CLI, another agent session, or
  * an editor — and omp discovers skills once per process, so a live child keeps
  * reporting the old inventory until it restarts. Verified against a live
- * chamber: a hand-written project skill was invisible to a running session, and
+ * Kabmo: a hand-written project skill was invisible to a running session, and
  * `/skill:<name>` reached the model as literal text.
  *
  * The refresh itself is one `/reload-plugins` per child (see reload.server.ts);
@@ -36,7 +36,7 @@
  * recursive watchers over 42 entries), so the descriptor cliff this project
  * guards against is not a factor here.
  *
- * A root that does not exist yet is NOT created — the chamber must not write
+ * A root that does not exist yet is NOT created — Kabmo must not write
  * `.omp/skills` into a user's repository just to watch it. Instead the nearest
  * existing ancestor is watched without recursion, and the real root is picked
  * up the moment it appears. That is what makes the very first skill a workspace

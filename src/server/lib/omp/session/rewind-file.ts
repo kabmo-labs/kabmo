@@ -18,7 +18,7 @@
  *
  * A cut point is not always IN the file, either. A builtin command (`/usage`,
  * `/compact`, `/context`) writes no entry at all, so the timeline row the user
- * clicks exists only in the chamber DB and carries a client-side id
+ * clicks exists only in Kabmo DB and carries a client-side id
  * (`msg-…-user`). The row is positioned by its own clock, so a cut named by
  * such an id resolves to the first FILE turn at or after it — and the rows the
  * cut removed are reported back so the overlay can drop them too. Missing that

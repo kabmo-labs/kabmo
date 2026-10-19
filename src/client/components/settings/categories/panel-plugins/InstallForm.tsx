@@ -11,10 +11,10 @@ interface InstallFormProps {
  * Install a panel plugin from a git URL.
  *
  * The URL is the whole install grammar — there is no package name, no registry
- * and no version to pick, because a plugin is a repository whose root holds an
- * `ompchamber.json`. The field therefore validates the URL SHAPE before sending
- * it, so an obvious mistake is answered instantly instead of after a clone
- * timeout.
+ * and no version to pick, because a plugin is a repository whose root holds a
+ * `kabmo.json` (or a `package.json` with a `kabmo` key). The field therefore
+ * validates the URL SHAPE before sending it, so an obvious mistake is answered
+ * instantly instead of after a clone timeout.
  *
  * Only its OWN validation is rendered here. A server error belongs to whichever
  * action produced it — install, update, or the auto-update switch — so the pane
@@ -52,9 +52,9 @@ export function InstallForm({ busy, onInstall, onClearError }: InstallFormProps)
         <span className="text-xs font-semibold text-ink">Install from a git URL</span>
       </div>
       <p className="text-[11px] text-ink/50">
-        A Bun package whose <span className="font-mono">package.json</span> carries an{' '}
-        <span className="font-mono">ompchamber</span> key, or a plain directory with an{' '}
-        <span className="font-mono">ompchamber.json</span>. It is cloned, built, and registered automatically.
+        A Bun package whose <span className="font-mono">package.json</span> carries a{' '}
+        <span className="font-mono">kabmo</span> key, or a plain directory with a{' '}
+        <span className="font-mono">kabmo.json</span>. It is cloned, built, and registered automatically.
       </p>
       <div className="flex items-center gap-2">
         <input

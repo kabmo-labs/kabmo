@@ -317,7 +317,7 @@ describe('toolSummary — fallback and empty', () => {
     const summary = toolSummary(tool({
       type: 'read_file',
       target: 'package.json',
-      output: '{\n  "name": "ompchamber"\n}\n',
+      output: '{\n  "name": "kabmo"\n}\n',
     }));
     expect(summary?.facts.some((fact) => fact.kind === 'subject')).toBe(false);
   });

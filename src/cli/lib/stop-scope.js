@@ -1,4 +1,4 @@
-// Ownership scope for `ompchamber stop`.
+// Ownership scope for `kabmo stop`.
 //
 // Kept separate from the command so the rule is testable without a live
 // server: the default scope is the instances the CLI started, and only an

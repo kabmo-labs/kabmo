@@ -1,12 +1,12 @@
 name: bot-help
 
-# `@ompchamber-bot help` is the only command answered without an agent: it prints a
+# `@kabmo-bot help` is the only command answered without an agent: it prints a
 # fixed list. Spending a model call on a static string would be slower and less
 # reliable than the string itself.
 #
 # Three conventions are shared by every bot workflow here:
 #   * writes use a GitHub App installation token, so comments and labels come from
-#     `@ompchamber-bot` rather than from `github-actions`, and a bot comment never
+#     `@kabmo-bot` rather than from `github-actions`, and a bot comment never
 #     re-triggers the workflows that match bot comments;
 #   * the job is skipped outside the owning repository, because a fork run has no App
 #     secret and a red X there says nothing about this repository;
@@ -25,8 +25,8 @@ jobs:
     if: |
       (github.repository == 'kabmo-labs/kabmo' || github.repository == 'kabmo-labs/kabmo') &&
       github.event.comment.user.type != 'Bot' &&
-      (github.event.comment.body == format('@{0} help', vars.BOT_MENTION || 'ompchamber-bot') ||
-       startsWith(github.event.comment.body, format('@{0} help ', vars.BOT_MENTION || 'ompchamber-bot')))
+      (github.event.comment.body == format('@{0} help', vars.BOT_MENTION || 'kabmo-bot') ||
+       startsWith(github.event.comment.body, format('@{0} help ', vars.BOT_MENTION || 'kabmo-bot')))
     runs-on: ubuntu-latest
     steps:
       - name: App token
@@ -59,7 +59,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REACTION_ID: ${{ steps.reaction.outputs.id }}
-          MENTION: ${{ vars.BOT_MENTION || 'ompchamber-bot' }}
+          MENTION: ${{ vars.BOT_MENTION || 'kabmo-bot' }}
         run: |
           first_line="${COMMENT_BODY%%$'\n'*}"
           case "$first_line" in
@@ -69,7 +69,7 @@ jobs:
 
           # Unquoted heredoc so ${MENTION} expands; the body carries no backticks or $.
           gh issue comment "$ISSUE_NUMBER" --body-file - <<HELP
-          <h3>ompchamber bot commands</h3>
+          <h3>kabmo bot commands</h3>
 
           Start a comment with one command. Any text after it is passed to the agent as maintainer focus.
 

@@ -35,7 +35,7 @@ import type { ModelPreferences } from '@/shared/types';
 const MODEL_PREFERENCES_KEY = 'omp_model_preferences';
 
 /**
- * Demo favorites/recents so a `MOCK=true` chamber still opens with the rails
+ * Demo favorites/recents so a `MOCK=true` Kabmo still opens with the rails
  * the shipped catalog advertises. Seeded on first read only — from then on the
  * row is the user's, and the catalog's own flags are ignored.
  */

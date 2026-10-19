@@ -7,7 +7,7 @@
  * Opening and saving a file the operating system handed over.
  *
  * The claims here are the ones that make a launched file different from every
- * other file in the chamber:
+ * other file in Kabmo:
  *
  * - It is refused for its KIND before a tab opens, because there is no route to
  *   ask that question for a `FileSystemFileHandle`.

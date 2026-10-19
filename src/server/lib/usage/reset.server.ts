@@ -8,7 +8,7 @@
  *
  * omp keeps provider-issued reset credits for Codex and Claude accounts
  * (18.9.0 added `omp usage reset`, and warns when one is nearing expiry). The
- * chamber's Usage surfaces showed only quota windows and balances, so a reset
+ * Kabmo's Usage surfaces showed only quota windows and balances, so a reset
  * the user had saved could be seen nowhere and spent nowhere — the one
  * action that clears an exhausted window was CLI-only.
  *

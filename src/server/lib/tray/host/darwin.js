@@ -84,7 +84,7 @@ function run(argv) {
   };
 
   ObjC.registerSubclass({
-    name: 'OmpChamberTray',
+    name: 'KabmoTray',
     methods: {
       'menuNeedsUpdate:': {
         types: ['void', ['id']],
@@ -137,7 +137,7 @@ function run(argv) {
     },
   });
 
-  const handler = $.OmpChamberTray.alloc.init;
+  const handler = $.KabmoTray.alloc.init;
   const statusItem = $.NSStatusBar.systemStatusBar.statusItemWithLength($.NSVariableStatusItemLength);
 
   // The bundled icon when it loads; the name otherwise, so a missing asset

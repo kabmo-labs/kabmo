@@ -35,7 +35,7 @@ let root = '';
 function writeInstalled(dirName: string, manifest: unknown): void {
   const dir = join(root, 'plugins', dirName);
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
 }
 
@@ -43,19 +43,19 @@ function writeInstalled(dirName: string, manifest: unknown): void {
 function withStore(run: (bundled: string) => Promise<void>): Promise<void> {
   const bundled = fs.mkdtempSync(join(root, 'bundled-'));
   fs.mkdirSync(join(bundled, 'plugins', 'offer'), { recursive: true });
-  fs.writeFileSync(join(bundled, 'plugins', 'offer', 'ompchamber.json'), JSON.stringify({ ...VALID, id: 'offer' }));
-  const previous = process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
-  process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = bundled;
+  fs.writeFileSync(join(bundled, 'plugins', 'offer', 'kabmo.json'), JSON.stringify({ ...VALID, id: 'offer' }));
+  const previous = process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
+  process.env.KABMO_BUNDLED_MARKETPLACE_DIR = bundled;
   return run(bundled).finally(() => {
-    if (previous === undefined) delete process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
-    else process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = previous;
+    if (previous === undefined) delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
+    else process.env.KABMO_BUNDLED_MARKETPLACE_DIR = previous;
     fs.rmSync(bundled, { recursive: true, force: true });
   });
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-store-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-store-'));
+  process.env.KABMO_MARKETPLACE_DIR = root;
   // The scan reads the disabled set, so it needs a database of its own before
   // the first read — see `@/test-support/isolated-db`.
   isolateDb();
@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
   releaseDb();
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });

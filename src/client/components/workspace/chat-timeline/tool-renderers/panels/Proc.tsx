@@ -9,7 +9,7 @@
  *
  * omp's `proc://` device is reached through ordinary `read`/`write` transport
  * with a `proc://` path, so before this existed the timeline drew a dev server
- * as a FILE: `write proc://ompchamber-dev/kill` opened the `edit` panel (its
+ * as a FILE: `write proc://kabmo-dev/kill` opened the `edit` panel (its
  * stdin payload rendered as "Written File Preview"), and `read proc://ompdev`
  * opened the `read` panel with `javascript` as the file kind and the service
  * log as file contents. Every fact the result carries — state, pid, uptime,
@@ -299,7 +299,7 @@ export function Proc({ tool }: { tool: ToolCallData }) {
 
       {/* A listing's prose, or a message the structured rows do not carry.
           A named process is NOT echoed as raw text: omp's own card shows the
-          snapshot, and printing `Started ompchamber: ready pid=43148 …` under
+          snapshot, and printing `Started kabmo: ready pid=43148 …` under
           the facts that already say `ready · pid 43148` is the same sentence
           twice. A failed call still shows its reason. */}
       {isListing && output && <FallbackOutput text={output} />}

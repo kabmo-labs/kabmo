@@ -20,6 +20,9 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { RUNTIME_SLOT_BY_SPECIFIER, runtimeShimPlugin, shimModuleSource } from '@/server/lib/panels/shim';
 
 describe('RUNTIME_SLOT_BY_SPECIFIER', () => {
@@ -28,9 +31,15 @@ describe('RUNTIME_SLOT_BY_SPECIFIER', () => {
     // has to be caught here rather than at load in a browser.
     expect(Object.keys(RUNTIME_SLOT_BY_SPECIFIER).sort()).toEqual(
       [
+        '@kabmo-labs/kabmo-sdk/app',
+        '@kabmo-labs/kabmo-ui',
+        '@kabmo-labs/kabmo-ui/components',
+        // The package names before the `kabmo-` prefix was added. A bundle on
+        // disk imports these, so they have to resolve to the same slots.
         '@kabmo-labs/plugin-sdk/app',
         '@kabmo-labs/ui',
         '@kabmo-labs/ui/components',
+        // And the names from before the product rename.
         '@ompchamber/plugin-sdk/app',
         '@ompchamber/ui',
         '@ompchamber/ui/components',
@@ -44,13 +53,49 @@ describe('RUNTIME_SLOT_BY_SPECIFIER', () => {
   });
 });
 
+describe('legacy package specifiers', () => {
+  // A plugin bundle on disk imports the pre-rename names, and those packages are
+  // no longer installed — so introspecting the SPECIFIER answers nothing and Bun
+  // fails the build with `No matching export in "kabmo-plugin-runtime-shim:…"
+  // for import "definePluginApp"`. The export NAMES have to come from the
+  // module that ships.
+  test('a build from a legacy specifier carries the current exports', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'kabmo-shim-legacy-'));
+    try {
+      mkdirSync(join(root, 'src'), { recursive: true });
+      writeFileSync(
+        join(root, 'src/app.tsx'),
+        [
+          "import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';",
+          "import { Panel } from '@kabmo-labs/ui/components';",
+          'export default definePluginApp((app) => { app.rightPanel({ id: "x", component: () => Panel }); });',
+        ].join('\n'),
+      );
+      const result = await Bun.build({
+        entrypoints: [join(root, 'src/app.tsx')],
+        target: 'browser',
+        format: 'esm',
+        outdir: join(root, 'dist'),
+        plugins: [runtimeShimPlugin()],
+      });
+      expect(result.logs.map((log) => log.message).join(' ')).not.toContain('No matching export');
+      expect(result.success).toBe(true);
+      const bundle = readFileSync(join(root, 'dist/app.js'), 'utf8');
+      // Still the HOST's runtime, under the name the plugin wrote.
+      expect(bundle).toContain('__kabmoPluginRuntime');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('shimModuleSource', () => {
   test('reads the slot and throws a message naming the bundle when it is absent', () => {
     const source = shimModuleSource('preact/hooks', 'hooks', ['useState']);
 
-    expect(source).toContain('globalThis.__ompchamberPluginRuntime');
+    expect(source).toContain('globalThis.__kabmoPluginRuntime');
     expect(source).toContain('runtime.hooks == null');
-    expect(source).toContain('must be loaded by the Kabmo app');
+    expect(source).toContain('must be loaded by Kabmo app');
     // The specifier is named in the error, so the failing import is identifiable.
     expect(source).toContain('preact/hooks');
   });
@@ -66,7 +111,7 @@ describe('shimModuleSource', () => {
   test('emits a valid named-export list for an empty module', () => {
     // An empty list still has to parse: `export const { } = mod;` is not valid
     // syntax on its own line shape, so the generated text must stay well formed.
-    const source = shimModuleSource('@kabmo-labs/ui/components', 'uiComponents', []);
+    const source = shimModuleSource('@kabmo-labs/kabmo-ui/components', 'uiComponents', []);
     expect(source).toContain('export const {');
     expect(source.trimEnd().endsWith('} = mod;')).toBe(true);
   });
@@ -93,7 +138,7 @@ describe('runtimeShimPlugin', () => {
 
     // ...and the loaded source is the reader, not the module.
     const loaded = await load({ path: 'preact/hooks', namespace: shared?.namespace as string });
-    expect(loaded.contents).toContain('__ompchamberPluginRuntime');
+    expect(loaded.contents).toContain('__kabmoPluginRuntime');
   });
 
   test('introspects the real exports, so the runtime list cannot drift', async () => {
@@ -104,7 +149,7 @@ describe('runtimeShimPlugin', () => {
       onLoad: (_filter: unknown, handler: never) => loadHooks.push(handler),
     } as never);
 
-    const loaded = await loadHooks[0]({ path: 'preact/jsx-runtime', namespace: 'ompchamber-plugin-runtime-shim' });
+    const loaded = await loadHooks[0]({ path: 'preact/jsx-runtime', namespace: 'kabmo-plugin-runtime-shim' });
 
     // These three are what a transpiled TSX file imports BY NAME; a shim that
     // omitted them would break every plugin rather than degrade.

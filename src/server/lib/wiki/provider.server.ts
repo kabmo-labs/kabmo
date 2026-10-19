@@ -37,12 +37,12 @@ interface ProviderCacheHost {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberWikiProviders: ProviderCacheHost | undefined;
+  var __kabmoWikiProviders: ProviderCacheHost | undefined;
 }
 
 function cache(): Map<string, HostVerdict> {
-  globalThis.__ompChamberWikiProviders ??= { hosts: new Map() };
-  return globalThis.__ompChamberWikiProviders.hosts;
+  globalThis.__kabmoWikiProviders ??= { hosts: new Map() };
+  return globalThis.__kabmoWikiProviders.hosts;
 }
 
 function byName(host: string): WikiProvider | null {

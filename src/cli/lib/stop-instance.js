@@ -3,7 +3,7 @@
 //
 // Kept apart from `runtime.js` (discovery, health probing, spawning) because the
 // two defects this module exists to prevent are both about IDENTITY and
-// OWNERSHIP, and a reader looking for "what happens when I run `ompchamber stop`"
+// OWNERSHIP, and a reader looking for "what happens when I run `kabmo stop`"
 // should land here rather than in the middle of the discovery helpers.
 
 import { killChildTree, STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
@@ -65,7 +65,7 @@ function waitForProcessExit(pid, timeoutMs, isAlive) {
  *    `getProcessState` answers `unknown` for every PID there — including the
  *    server's own. The guard treated anything but `matched` as a stranger, so a
  *    record-only entry took the early return: the record was deleted, `true` was
- *    returned, and `ompchamber stop` printed "✓ Stopped" while the server kept
+ *    returned, and `kabmo stop` printed "✓ Stopped" while the server kept
  *    listening on the port. Measured on Windows: the process was never
  *    signalled at all.
  *
@@ -100,7 +100,7 @@ export async function stopInstance(entry, { timeoutMs = STOP_TIMEOUT_MS, deps = 
   if (!confirmedByProbe && deps.getProcessState(pid) !== 'matched') {
     const occupant = port === undefined || port === null ? null : await deps.findOccupant(port, entry?.host);
     if (occupant?.pid !== pid) {
-      // The PID is alive but is not the Kabmo serving this port (a
+      // The PID is alive but is not Kabmo serving this port (a
       // recycled PID, a foreign listener, or a port nothing holds): a stranger
       // is never signalled, and the stale record is the only thing to remove.
       await dropRecord();

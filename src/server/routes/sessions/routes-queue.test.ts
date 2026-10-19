@@ -37,7 +37,7 @@ const SESSION_ID = '11111111-2222-3333-4444-555555555555';
 let priorDbPath: string | undefined;
 let priorMock: string | undefined;
 let priorAgentDir: string | undefined;
-let priorSlot: typeof globalThis.__ompChamberDb;
+let priorSlot: typeof globalThis.__kabmoDb;
 
 beforeAll(async () => {
   removeDir(ROOT);
@@ -59,19 +59,19 @@ beforeAll(async () => {
   );
 
   priorAgentDir = Bun.env.PI_CODING_AGENT_DIR;
-  priorDbPath = Bun.env.OMPCHAMBER_DB_PATH;
+  priorDbPath = Bun.env.KABMO_DB_PATH;
   priorMock = Bun.env.MOCK;
-  priorSlot = globalThis.__ompChamberDb;
+  priorSlot = globalThis.__kabmoDb;
 
   Bun.env.PI_CODING_AGENT_DIR = AGENT;
-  Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = path.join(ROOT, 'db.sqlite');
   Bun.env.MOCK = 'false';
   // The db handle is process-wide; CLOSE the one a sibling suite left before
   // dropping it — an abandoned connection keeps its file locked, and on Windows
   // the teardown delete then fails with EBUSY. The temp file stays on disk so a
   // later suite that inherits the slot cannot fall back to the real database.
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
   clearSessionFileCaches();
   invalidateOmpSidebarData();
 });
@@ -81,15 +81,15 @@ afterAll(() => {
   invalidateOmpSidebarData();
   if (priorAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = priorAgentDir;
-  if (priorDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-  else Bun.env.OMPCHAMBER_DB_PATH = priorDbPath;
+  if (priorDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
+  else Bun.env.KABMO_DB_PATH = priorDbPath;
   if (priorMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = priorMock;
   // Close before restoring the slot and deleting: a live connection makes a
   // Windows delete fail with EBUSY, and a throw from `afterAll` reports a
   // failure of the file.
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = priorSlot;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = priorSlot;
   removeDir(ROOT);
 });
 
@@ -122,8 +122,8 @@ describe('queue routes', () => {
    *  file's fixtures (or another case's leftovers). */
   beforeEach(async () => {
     Bun.env.PI_CODING_AGENT_DIR = AGENT;
-    Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
-    globalThis.__ompChamberDb = undefined;
+    Bun.env.KABMO_DB_PATH = path.join(ROOT, 'db.sqlite');
+    globalThis.__kabmoDb = undefined;
     clearSessionFileCaches();
     for (const item of await ids(await call.get())) await call.remove('DELETE', item);
   });

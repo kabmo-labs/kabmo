@@ -13,7 +13,7 @@
  * `<pluginId>\0list`, so two plugins both having a `list` is not a collision.
  *
  * Validation runs through the Standard Schema subset the contract declares, not
- * through a library. That is deliberate: the chamber validates whatever the
+ * through a library. That is deliberate: Kabmo validates whatever the
  * plugin supplied, and the plugin may supply Zod, Valibot, ArkType or a plain
  * object with a `~standard.validate`. The SDK therefore ships no validator,
  * which is what keeps its dependency list empty.
@@ -24,7 +24,7 @@ import type {
   PluginRpcMethod,
   PluginSchema,
   PluginSchemaIssue,
-} from '@kabmo-labs/plugin-sdk';
+} from '@kabmo-labs/kabmo-sdk';
 
 /** A registered method, with the plugin it belongs to already resolved. */
 export interface RegisteredRpcMethod {
@@ -35,13 +35,13 @@ export interface RegisteredRpcMethod {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPluginRpc: Map<string, RegisteredRpcMethod> | undefined;
+  var __kabmoPluginRpc: Map<string, RegisteredRpcMethod> | undefined;
 }
 
 const key = (pluginId: string, method: string) => `${pluginId}\u0000${method}`;
 
 function registry(): Map<string, RegisteredRpcMethod> {
-  return (globalThis.__ompChamberPluginRpc ??= new Map());
+  return (globalThis.__kabmoPluginRpc ??= new Map());
 }
 
 /** Whether a name is a legal RPC method id. */

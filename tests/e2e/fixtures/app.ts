@@ -7,7 +7,7 @@
  * The Playwright fixture every spec's `test` is imported from.
  *
  * Its one job is lifecycle: a spec asks for a mode, and it gets a browser
- * context pointed at a chamber server that was started fresh for it and is
+ * context pointed at a Kabmo server that was started fresh for it and is
  * torn down when the spec ends — including on failure, so a failing spec still
  * removes its temp root and its child process. Nothing is shared between
  * specs, which is what keeps the assertions honest: a test that mutated a
@@ -46,12 +46,12 @@ export interface AppFixtures {
  *
  * Kept explicit and short. A blanket "ignore console errors" would defeat the
  * point of asserting there are none; each entry here is something a browser or
- * a dev tool emits that no chamber edit can fix. Add to this list only with a
+ * a dev tool emits that no Kabmo edit can fix. Add to this list only with a
  * measurement, never to make a red spec green.
  */
 const IGNORED_CONSOLE = [
   // The bundled Chromium reports a fingerprinting/ads heuristic error on some
-  // CI images; unrelated to the chamber's own code.
+  // CI images; unrelated to Kabmo's own code.
   /third-party cookie/i,
   // Vite/Playwright dev warnings about a sourcemap that ships with a dependency.
   /sourcemap/i,

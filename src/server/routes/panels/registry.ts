@@ -7,7 +7,7 @@
  * `GET /api/panels` — every installed panel plugin, grouped by marketplace.
  *
  * The client's only source for the activity-bar entries a plugin contributes.
- * Rejected plugin directories travel with the payload so a manifest the chamber
+ * Rejected plugin directories travel with the payload so a manifest Kabmo
  * refused is visible in the UI rather than indistinguishable from a plugin that
  * was never installed.
  *

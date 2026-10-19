@@ -1,5 +1,5 @@
 /**
- * Command-line argument parsing for the Kabmo CLI.
+ * Command-line argument parsing for Kabmo CLI.
  *
  * Pure and side-effect free: it never throws, never exits and never writes
  * to a stream. Callers decide how to react to `unknown` flags.
@@ -209,14 +209,14 @@ export function parseArgs(argv) {
 /**
  * Full multi-line help text. Returned (not printed) so the caller owns output.
  */
-export function helpText(bin = 'ompchamber') {
-  return `Kabmo - Developer web console and diagnostic chamber for AI Oh-My-Pi
+export function helpText(bin = 'kabmo') {
+  return `Kabmo - Developer web console and diagnostic workbench for AI Oh-My-Pi
 
 USAGE:
   ${bin} [COMMAND] [OPTIONS]
 
 COMMANDS:
-  serve          Start the Kabmo web server (default when no command is given)
+  serve          Start Kabmo web server (default when no command is given)
   update         Update Kabmo to the latest version on npm
   stop           Stop the instances the CLI started (--port/--all to stop any)
   restart        Stop and start again (every CLI-started instance, or --port <port>)
@@ -253,13 +253,16 @@ OPTIONS:
   -v, --version           Show the version
 
 ENVIRONMENT:
-  OMPCHAMBER_DATA_DIR     Override the data directory (default: ~/.ompchamber)
-  OMPCHAMBER_PORT         Default web server port
-  OMPCHAMBER_HOST         Default bind address
-  OMPCHAMBER_UI_PASSWORD  UI password, hashed into auth.json at startup and then
-                          removed from the environment (see --ui-password)
-  OMPCHAMBER_OMP_BIN      Path to the omp binary (required; falls back to PATH)
+  KABMO_DATA_DIR          Override the data directory (default: ~/.kabmo)
+  KABMO_PORT              Default web server port
+  KABMO_HOST              Default bind address
+  KABMO_UI_PASSWORD       UI password, hashed into auth.json at startup and
+                          then removed from the environment (see --ui-password)
+  KABMO_OMP_BIN           Path to the omp binary (required; falls back to PATH)
   NPM_CONFIG_REGISTRY     Registry the update check reads (default: registry.npmjs.org)
+
+  The pre-rename OMPCHAMBER_* spellings of the five KABMO_* variables above are
+  still read, so an existing shell profile or unit file keeps working.
 
 EXAMPLES:
   ${bin}                       # Start the production server on the default port

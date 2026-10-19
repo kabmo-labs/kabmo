@@ -41,7 +41,7 @@ let bundled = '';
 function writePlugin(dirName: string, dir: string, manifest: unknown = MANIFEST): string {
   const pluginDir = join(dir, dirName);
   fs.mkdirSync(join(pluginDir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(pluginDir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(pluginDir, 'kabmo.json'), JSON.stringify(manifest));
   fs.writeFileSync(join(pluginDir, 'dist', 'app.js'), 'export default {};');
   fs.writeFileSync(join(pluginDir, 'icon.svg'), '<svg></svg>');
   fs.writeFileSync(join(pluginDir, 'README.md'), '# Demo\n\nHello.');
@@ -63,8 +63,8 @@ function call(loader: (args: never) => unknown, params: Record<string, string>) 
 beforeEach(() => {
   root = fs.mkdtempSync(join(tmpdir(), 'omc-panel-css-'));
   bundled = fs.mkdtempSync(join(tmpdir(), 'omc-panel-store-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
-  process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = bundled;
+  process.env.KABMO_MARKETPLACE_DIR = root;
+  process.env.KABMO_BUNDLED_MARKETPLACE_DIR = bundled;
   // A database of this suite's own, BEFORE the first scan: the scan reads the
   // disabled set, and a path set while a cached handle exists is never read.
   isolateDb();
@@ -73,8 +73,8 @@ beforeEach(() => {
 
 afterEach(() => {
   releaseDb();
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
-  delete process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
+  delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(bundled, { recursive: true, force: true });

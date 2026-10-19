@@ -23,7 +23,7 @@ function getSignalExitCode(signal) {
  *
  * The negative form signals a process GROUP, and POSIX reserves `-1` for "every
  * process this user may signal" — so a pid of 1 or 0 must never reach it. A
- * stale instance record naming such a PID would otherwise turn `ompchamber stop`
+ * stale instance record naming such a PID would otherwise turn `kabmo stop`
  * into a signal to the whole session, which is a far worse outcome than a stop
  * that fails. Kept as a named predicate so the rule is testable WITHOUT
  * signalling anything.

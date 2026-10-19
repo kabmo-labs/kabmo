@@ -12,7 +12,7 @@
  *   - omp's own `operatorTitleText` (whose rule this mirrors): a `user` message,
  *     or a `custom` entry carrying `customType: "skill-prompt"` — the chip
  *     `/skill:<name> <args>`, NEVER the expanded SKILL.md body.
- *   - the chamber's 4 KiB sidebar scan: looked only for `"role":"user"`, and a
+ *   - Kabmo's 4 KiB sidebar scan: looked only for `"role":"user"`, and a
  *     skill entry has no `role` field at all, so a `/skill:`-opened session
  *     reported `(no messages)` and its row read "New Session - <timestamp>"
  *     while the header showed the real title.

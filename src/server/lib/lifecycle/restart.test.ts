@@ -11,7 +11,7 @@
  * Kabmo does not own, while refusing to replace a daemon leaves the old
  * build serving. The decision is pinned through the two sources it reads — the
  * instance record and `PORT` — with the detached-spawn branch deliberately not
- * exercised (arming it would launch a real `ompchamber restart`).
+ * exercised (arming it would launch a real `kabmo restart`).
  *
  * `apply.ts` turns one update run into `{ result, updated }`. `updated: false`
  * for the "already up to date" phrase is load-bearing: it is a SUCCESS that must
@@ -39,15 +39,15 @@ import { isManualMethod, REPO_URL } from '@/server/lib/updates/install-method';
 import { checkAllUpdates, MOCK_CURRENT_VERSION, MOCK_LATEST_VERSION } from '@/server/lib/updates/check';
 import type { UpdateApplyResult, UpdateTarget } from '@/shared/types/updates';
 
-const originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-const originalOmpBin = Bun.env.OMPCHAMBER_OMP_BIN;
+const originalDataDir = Bun.env.KABMO_DATA_DIR;
+const originalOmpBin = Bun.env.KABMO_OMP_BIN;
 const originalPort = Bun.env.PORT;
 const fixtures: string[] = [];
 
 function useDataDir(): void {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-restart-test-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-restart-test-'));
   fixtures.push(dir);
-  Bun.env.OMPCHAMBER_DATA_DIR = dir;
+  Bun.env.KABMO_DATA_DIR = dir;
 }
 
 /** A stand-in for the `omp` binary; the real one is never spawned. The answer is
@@ -62,17 +62,17 @@ let restartOmpBin = '';
 
 async function useFixtureOmp(output: string, exitCode = 0): Promise<void> {
   if (!restartOmpBin) restartOmpBin = await executableStub(RESTART_OMP_SOURCE, 'fake-omp-restart');
-  Bun.env.OMPCHAMBER_OMP_BIN = restartOmpBin;
+  Bun.env.KABMO_OMP_BIN = restartOmpBin;
   Bun.env.FAKE_OMP_OUTPUT = output;
   Bun.env.FAKE_OMP_EXIT = String(exitCode);
   invalidateOmpCliCache();
 }
 
 afterEach(() => {
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
-  if (originalOmpBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = originalOmpBin;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
+  if (originalOmpBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = originalOmpBin;
   invalidateOmpCliCache();
   if (originalPort === undefined) delete Bun.env.PORT;
   else Bun.env.PORT = originalPort;
@@ -89,7 +89,7 @@ describe('skipRestartNote', () => {
   });
 
   test('tells every other unmanaged instance to restart itself', () => {
-    const expected = 'this instance is not managed by the ompchamber CLI — restart it yourself to apply the update';
+    const expected = 'this instance is not managed by the kabmo CLI — restart it yourself to apply the update';
     expect(skipRestartNote('daemon')).toBe(expected);
     expect(skipRestartNote(null)).toBe(expected);
     expect(skipRestartNote(undefined)).toBe(expected);
@@ -113,13 +113,13 @@ describe('skipRestartNote', () => {
       'this instance runs from source (`bun run dev` / `bun run start`) — start it again',
     );
     expect(skipRestartNote('daemon', 'restart')).toBe(
-      'this instance is not managed by the ompchamber CLI — restart it yourself',
+      'this instance is not managed by the kabmo CLI — restart it yourself',
     );
   });
 });
 
 describe('withRestartPlan', () => {
-  const updated: UpdateApplyResult = { success: true, target: 'ompchamber', manual: false, message: 'Kabmo updated to v2.0.0 (bun-global).' };
+  const updated: UpdateApplyResult = { success: true, target: 'kabmo', manual: false, message: 'Kabmo updated to v2.0.0 (bun-global).' };
 
   test('an armed plan sets the flag and appends the sentence', () => {
     const result = withRestartPlan(updated, { restarting: true, message: selfRestartMessage(3000) });
@@ -269,7 +269,7 @@ describe('checkAllUpdates', () => {
     // whose real version is usually already the newest release.
     Bun.env.MOCK = 'true';
     const result = await checkAllUpdates();
-    expect(result.ompchamber).toEqual({
+    expect(result.kabmo).toEqual({
       current: MOCK_CURRENT_VERSION,
       latest: MOCK_LATEST_VERSION,
       updateAvailable: true,
@@ -312,7 +312,7 @@ describe('applyUpdate', () => {
   });
 
   test('a missing omp binary fails without moving anything', async () => {
-    Bun.env.OMPCHAMBER_OMP_BIN = path.join(os.tmpdir(), 'ompchamber-definitely-absent', 'omp');
+    Bun.env.KABMO_OMP_BIN = path.join(os.tmpdir(), 'kabmo-definitely-absent', 'omp');
     const applied = await applyUpdate('omp');
     if (applied.updated !== false) throw new Error('expected updated === false');
     expect(applied.result.success).toBe(false);

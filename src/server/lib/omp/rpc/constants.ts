@@ -11,7 +11,7 @@
 
 import { homedir } from 'os';
 import { pathExists } from '@/server/lib/omp/core/paths';
-import { chamberExtensionArgs } from '@/server/lib/omp/extensions/locator';
+import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
 import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
@@ -172,7 +172,7 @@ export const PASSTHROUGH_COMMANDS = new Set([
 ]);
 
 // Commands that only READ live process state, with an RPC-free on-disk
-// equivalent. A live session answers them on the fast path; for one the chamber
+// equivalent. A live session answers them on the fast path; for one Kabmo
 // does not manage, the spawn path must refuse them (409) rather than boot an
 // omp child to answer a read. The sidebar renders a roster row for every
 // session in the list, so an unconditional probe started a process per finished
@@ -188,7 +188,7 @@ export const OBSERVER_ONLY_COMMANDS = new Set(['get_subagents', 'get_subagent_me
  *
  * Spawning is not merely wasteful, it is destructive: the spawn path resumes
  * the session FILE, and a `stream` row is written by whichever process owns the
- * run — so an `abort` posted from a second chamber instance (or from a page
+ * run — so an `abort` posted from a second Kabmo instances (or from a page
  * that reattached after a reload) would start a second `omp --resume` writer on
  * a session file the owning process is appending to, abort nothing, and, for
  * `force_reset`, then destroy the child it had just created. The Stop button
@@ -206,7 +206,7 @@ export const LIVE_RUN_COMMANDS: Record<string, true> = {
  * is running on, so a side question that snapshotted the old one would be left
  * describing a conversation the chat has already left. omp blocks the same
  * operations while a `/btw` answer is in flight or unsaved
- * (`BtwController.withSessionMove` / `flush`); the chamber refuses them with
+ * (`BtwController.withSessionMove` / `flush`); Kabmo refuses them with
  * `btw_busy` (409) instead.
  */
 export const CONVERSATION_MOVING_COMMANDS = new Set(['switch_session', 'branch', 'new_session', 'handoff']);
@@ -268,13 +268,13 @@ export async function resolveSpawnCwd(recordedCwd?: string | null): Promise<stri
 
 /** Extra CLI args for spawning `omp --mode rpc-ui` for a session.
  *
- *  `-e <extensions/chamber-modes/index.ts>` is always appended when the file is
- *  present: the chamber's plan/goal toggles are driven from inside the child
+ *  `-e <extensions/kabmo-modes/index.ts>` is always appended when the file is
+ *  present: Kabmo's plan/goal toggles are driven from inside the child
  *  (omp has no RPC verb for either mode), so the extension is not optional
  *  equipment for a session that happens to have a mode on — it is how the
  *  composer's controls reach the agent at all.
  *
- *  `--config <overlay>` points the child at the chamber's title-model overlay,
+ *  `--config <overlay>` points the child at Kabmo's title-model overlay,
  *  which exists (empty) before this runs. It is how a session's own model
  *  reaches omp's title generation: the child watches that path, so
  *  `rename-with-ai` rewrites the `tiny` role for the duration of one request.
@@ -294,6 +294,6 @@ export function buildSessionSpawnArgs(sessionFile: string, approvalMode?: Approv
     // mode, so the flag is the sole lever. It works with or without --resume.
     args.push('--approval-mode', approvalMode);
   }
-  args.push(...chamberExtensionArgs());
+  args.push(...kabmoExtensionArgs());
   return args;
 }

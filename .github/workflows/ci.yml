@@ -24,7 +24,7 @@ name: CI
 # checks would have to do.
 #
 # One of those jobs runs on `windows-latest`, and it is not a formality: the
-# chamber ships a Windows CLI, and the win32 branches in its path helpers,
+# Kabmo ships a Windows CLI, and the win32 branches in its path helpers,
 # `stop`'s ownership guard and the process-tree kill are otherwise never
 # executed by any gate on a macOS-developed repository.
 #

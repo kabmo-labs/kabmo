@@ -31,9 +31,9 @@ export function buildFsRawUrl(file: { path: string; root?: string; repo?: string
  * rather than a path on disk.
  *
  * The File panel's lazy read points `/api/fs/read` at whatever path a `read`
- * named, and a virtual URL names no file: `read proc://ompchamber-dev` sent
- * `/api/fs/read?path=proc%3A%2F%2Fompchamber-dev`, the route refused it, and
- * the panel printed `// Loaded file: proc://ompchamber-dev` as if that were the
+ * named, and a virtual URL names no file: `read proc://kabmo-dev` sent
+ * `/api/fs/read?path=proc%3A%2F%2Fkabmo-dev`, the route refused it, and
+ * the panel printed `// Loaded file: proc://kabmo-dev` as if that were the
  * file's contents. Only a path with a scheme and no local meaning is excluded —
  * a Windows drive letter (`C:\x`) is a single colon and stays a path.
  */
@@ -62,7 +62,7 @@ const READ_RANGE_CHUNK_RE = new RegExp(
  * and nothing else.
  *
  * `read` accepts a selector on the path itself (`Read.tsx:205-215:raw`) and the
- * chamber carried the whole string around as if it were the file name: the
+ * Kabmo carried the whole string around as if it were the file name: the
  * language detector read the extension as `tsx:205-215:raw`, answered `text`,
  * and the code surface rendered unhighlighted (measured on a real session
  * store: 9517 of 18128 read paths carry a selector, and 1268 of those — every

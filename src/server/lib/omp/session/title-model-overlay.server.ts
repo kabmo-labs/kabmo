@@ -58,7 +58,7 @@ import { writeFileAtomic } from '@/server/lib/fs/atomic-write';
 /** Overlay file name, under the agent dir. A STABLE name is load-bearing: a
  *  fresh path per request would leave the previous one watched and dead, and
  *  the child would never see the change. */
-const OVERLAY_NAME = 'ompchamber-title-model.yml';
+const OVERLAY_NAME = 'kabmo-title-model.yml';
 
 /**
  * How long to let omp apply a rewritten overlay before dispatching `/rename`.
@@ -94,7 +94,7 @@ const EMPTY_OVERLAY = '{}\n';
  * runner where omp was installed and never run, `~/.omp/agent` is absent and
  * the bare write threw ENOENT — swallowed, leaving no overlay behind. Every
  * spawn then named a `--config` path that did not exist, which omp answers with
- * `Config overlay not found` and no session at all. Verified: the chamber's own
+ * `Config overlay not found` and no session at all. Verified: Kabmo's own
  * `constants.test.ts` fails on a clean `PI_CODING_AGENT_DIR`, and passes once
  * the parent is created.
  */

@@ -1,12 +1,12 @@
-// `ompchamber plugin <subcommand>` — build, type and scaffold panel plugins.
+// `kabmo plugin <subcommand>` — build, type and scaffold panel plugins.
 //
 // The CLI's own entry to the SAME build the server runs, and that is the point:
-// a plugin author must be able to run locally exactly what the chamber will run
+// a plugin author must be able to run locally exactly what Kabmo will run
 // on install, or they are debugging a build they cannot see. `buildPanelPlugin`
 // is imported from the server's own module rather than reimplemented here.
 //
 // `types` emits the SDK's declarations so a plugin outside this repository can
-// typecheck without the chamber's source on disk — a fork has no `@/` alias and
+// typecheck without Kabmo's source on disk — a fork has no `@/` alias and
 // no `packages/`, and resolving the SDK's `.ts` directly is what a published
 // package must never require.
 
@@ -21,7 +21,7 @@ import { discoverPanelPlugins } from '@/server/lib/panels/registry.server';
 const SUBCOMMANDS = ['build', 'types', 'new', 'list'];
 
 function usage() {
-  return `Usage: ompchamber plugin <command> [options]
+  return `Usage: kabmo plugin <command> [options]
 
 COMMANDS:
   build <dir>       Build a plugin's app and/or server bundle
@@ -42,7 +42,7 @@ function readManifest(dir) {
   if (!fs.existsSync(pkgPath)) return null;
   try {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-    return pkg && typeof pkg === 'object' ? pkg.ompchamber ?? null : null;
+    return pkg && typeof pkg === 'object' ? pkg.kabmo ?? null : null;
   } catch (cause) {
     fail(`Could not parse ${pkgPath}: ${cause.message}`);
   }
@@ -53,7 +53,7 @@ async function build(dir, ctx) {
   if (!fs.existsSync(target)) fail(`No such directory: ${target}`);
 
   const manifest = readManifest(target);
-  if (!manifest) fail(`${joinPath(target, 'package.json')} has no "ompchamber" manifest block`);
+  if (!manifest) fail(`${joinPath(target, 'package.json')} has no "kabmo" manifest block`);
 
   const result = await buildPanelPlugin(target, manifest);
 
@@ -71,7 +71,7 @@ async function build(dir, ctx) {
  * Write the SDK's own sources as declarations.
  *
  * The SDK ships TypeScript SOURCE (the `source` export condition), which is
- * what lets the chamber bundle it. A plugin outside this repo cannot consume
+ * what lets Kabmo bundle it. A plugin outside this repo cannot consume
  * that — it has no `@/` alias and no workspace — so the types are emitted here
  * from the same files, into a directory the plugin's tsconfig can point at.
  */
@@ -101,8 +101,8 @@ async function types(dir, ctx) {
  */
 function writeBundledTypes(target, pkgRoot) {
   const sources = [
-    [joinPath(pkgRoot, 'packages', 'plugin-sdk', 'src'), 'plugin-sdk'],
-    [joinPath(pkgRoot, 'packages', 'ui', 'src'), 'ui'],
+    [joinPath(pkgRoot, 'packages', 'kabmo-sdk', 'src'), 'kabmo-sdk'],
+    [joinPath(pkgRoot, 'packages', 'kabmo-ui', 'src'), 'kabmo-ui'],
   ];
   const out = joinPath(target, 'bundled-types');
   const SKIP = /\.test\.tsx?$/;
@@ -137,7 +137,7 @@ async function scaffold(dir, ctx) {
         version: '1.0.0',
         private: true,
         type: 'module',
-        ompchamber: {
+        kabmo: {
           id,
           name,
           version: '1.0.0',
@@ -145,13 +145,13 @@ async function scaffold(dir, ctx) {
           server: 'dist/server.js',
         },
         peerDependencies: {
-          '@kabmo-labs/plugin-sdk': '*',
-          '@kabmo-labs/ui': '*',
+          '@kabmo-labs/kabmo-sdk': '*',
+          '@kabmo-labs/kabmo-ui': '*',
           preact: '^10.29.8',
         },
         peerDependenciesMeta: {
-          '@kabmo-labs/plugin-sdk': { optional: true },
-          '@kabmo-labs/ui': { optional: true },
+          '@kabmo-labs/kabmo-sdk': { optional: true },
+          '@kabmo-labs/kabmo-ui': { optional: true },
           preact: { optional: true },
         },
       },
@@ -175,16 +175,16 @@ async function scaffold(dir, ctx) {
           skipLibCheck: true,
           types: [],
           // Pointed at the emitted declarations, so `tsc` works in this
-          // directory with no chamber source on disk. `baseUrl` is NOT set:
+          // directory with no Kabmo source on disk. `baseUrl` is NOT set:
           // TypeScript 7 deprecates it, and `paths` resolves relative to the
           // tsconfig without it.
           paths: {
-            '@kabmo-labs/plugin-sdk': ['./bundled-types/plugin-sdk/index.ts'],
-            '@kabmo-labs/plugin-sdk/app': ['./bundled-types/plugin-sdk/app.ts'],
-            '@kabmo-labs/plugin-sdk/testing': ['./bundled-types/plugin-sdk/testing/index.ts'],
-            '@kabmo-labs/plugin-sdk/testing/app': ['./bundled-types/plugin-sdk/testing/app.tsx'],
-            '@kabmo-labs/ui': ['./bundled-types/ui/index.tsx'],
-            '@kabmo-labs/ui/components': ['./bundled-types/ui/components.tsx'],
+            '@kabmo-labs/kabmo-sdk': ['./bundled-types/kabmo-sdk/index.ts'],
+            '@kabmo-labs/kabmo-sdk/app': ['./bundled-types/kabmo-sdk/app.ts'],
+            '@kabmo-labs/kabmo-sdk/testing': ['./bundled-types/kabmo-sdk/testing/index.ts'],
+            '@kabmo-labs/kabmo-sdk/testing/app': ['./bundled-types/kabmo-sdk/testing/app.tsx'],
+            '@kabmo-labs/kabmo-ui': ['./bundled-types/kabmo-ui/index.tsx'],
+            '@kabmo-labs/kabmo-ui/components': ['./bundled-types/kabmo-ui/components.tsx'],
           },
         },
         include: ['src'],
@@ -204,15 +204,15 @@ async function scaffold(dir, ctx) {
   if (isJson()) printJson({ dir: target, id, name, types: copied });
   else ok(`Scaffolded ${name} in ${target}`);
   if (copied === 0) {
-    log('No SDK sources in this install — run "ompchamber plugin types ." from a checkout before typechecking.');
+    log('No SDK sources in this install — run "kabmo plugin types ." from a checkout before typechecking.');
   }
   log('Typecheck with: bunx tsc --noEmit -p .');
-  log('Build with:     ompchamber plugin build .');
+  log('Build with:     kabmo plugin build .');
 }
 
-const APP_TEMPLATE = `import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';
-import { usePanelInfo } from '@kabmo-labs/ui';
-import { Panel, Field, FieldList } from '@kabmo-labs/ui/components';
+const APP_TEMPLATE = `import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
+import { usePanelInfo } from '@kabmo-labs/kabmo-ui';
+import { Panel, Field, FieldList } from '@kabmo-labs/kabmo-ui/components';
 
 function MyPanel() {
   const info = usePanelInfo();
@@ -231,9 +231,9 @@ export default definePluginApp((app) => {
 });
 `;
 
-const SERVER_TEMPLATE = `import type { ChamberPluginApi } from '@kabmo-labs/plugin-sdk';
+const SERVER_TEMPLATE = `import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
-export default function plugin(api: ChamberPluginApi) {
+export default function plugin(api: KabmoPluginApi) {
   api.log.info('loaded');
 
   api.rpc.register('ping', { handler: () => ({ pong: true }) });
@@ -244,7 +244,7 @@ export default function plugin(api: ChamberPluginApi) {
 }
 `;
 
-/** List the plugins the chamber has installed, with their build state. */
+/** List the plugins Kabmo has installed, with their build state. */
 async function list() {
   const payload = await discoverPanelPlugins();
   if (isJson()) {

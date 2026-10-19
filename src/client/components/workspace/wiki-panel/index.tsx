@@ -42,7 +42,7 @@ interface WikiPanelProps {
 const REASON_TEXT: Record<WikiUnavailableReason, string> = {
   'no-remote': 'This repository has no origin remote, so there is no wiki to find.',
   'unsupported-remote': 'The origin remote is not a URL a wiki can be derived from.',
-  'no-wiki': 'This project has no wiki (or the chamber cannot read it).',
+  'no-wiki': 'This project has no wiki (or Kabmo cannot read it).',
   unreachable: 'The wiki could not be reached.',
 };
 

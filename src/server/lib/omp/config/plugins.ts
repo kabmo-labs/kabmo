@@ -4,9 +4,9 @@
  */
 
 /**
- * The installed-plugin inventory behind the chamber's Plugins settings.
+ * The installed-plugin inventory behind Kabmo's Plugins settings.
  *
- * omp keeps two registries and the chamber must merge them without inventing a
+ * omp keeps two registries and Kabmo must merge them without inventing a
  * third:
  *
  * - `omp plugin list --json` → `{ npm, marketplace }`. `npm` is the plugins

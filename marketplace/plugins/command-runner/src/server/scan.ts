@@ -24,9 +24,9 @@
  *
  * ## Containment is this module's guarantee
  *
- * The chamber's own root allow-list (the app root, a path under it, or a
- * registered `project_path`) is NOT re-implemented: it needs the chamber's
- * database, and a plugin's server bundle cannot import chamber source. What this
+ * The Kabmo's own root allow-list (the app root, a path under it, or a
+ * registered `project_path`) is NOT re-implemented: it needs Kabmo's
+ * database, and a plugin's server bundle cannot import Kabmo source. What this
  * does enforce is that `repo` resolves INSIDE `root` — which is the check that
  * stops `repo: '../../etc'`.
  */
@@ -71,7 +71,7 @@ export interface Scope {
  */
 export function resolveScope(scope: Scope): string | null {
   // An ABSOLUTE root: a relative one would resolve against the server's own cwd,
-  // which is how a request for `''` silently scans the chamber's directory.
+  // which is how a request for `''` silently scans Kabmo's directory.
   if (!scope.root || !isAbsolute(scope.root)) return null;
   const base = resolve(scope.root);
   const target = resolve(base, scope.repo || '.');

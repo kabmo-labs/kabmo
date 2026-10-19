@@ -166,7 +166,7 @@ export async function deleteProjectMcpServer(projectRoot: string, name: string):
   return deleteServerAt((await resolveProjectMcpConfig(projectRoot)).path, name);
 }
 
-/** Convert a native omp server config into the chamber McpServerItem shape.
+/** Convert a native omp server config into Kabmo McpServerItem shape.
  *  Pass `project` to produce a project-scoped item (id omp-project-<name>). */
 export function nativeToServerItem(
   name: string,

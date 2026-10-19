@@ -6,7 +6,7 @@
 /**
  * The chat row's plugin action strip.
  *
- * The property that matters is the NEGATIVE one: a chamber with no plugin rows
+ * The property that matters is the NEGATIVE one: a Kabmo with no plugin rows
  * renders nothing here, so every existing row's action strip is byte-identical
  * to what it was before this slot existed. A wrapper `<div>`, a spacer or an
  * empty fragment-with-a-parent would all break that silently, so the empty case

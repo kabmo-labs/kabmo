@@ -15,7 +15,7 @@
  */
 
 import type { Subprocess } from 'bun';
-import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrames, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
@@ -48,7 +48,7 @@ export class RpcProcess {
     const resolveBin = options.dependencies?.resolveOmpBin ?? resolveOmpBin;
     const bin = resolveBin();
     if (!bin) {
-      throw new Error('omp binary not found. Install oh-my-pi or set OMPCHAMBER_OMP_BIN.');
+      throw new Error('omp binary not found. Install oh-my-pi or set KABMO_OMP_BIN.');
     }
     this.cwd = options.cwd;
     if (options.onFrame) this.frameListeners.add(options.onFrame);
@@ -56,7 +56,7 @@ export class RpcProcess {
     const args = ['--mode', 'rpc-ui', '--cwd', options.cwd, ...(options.extraArgs ?? [])];
     // Strip named profiles (OMP_PROFILE/PI_PROFILE) so the child resolves the
     // same default agent dir. An explicit options.env entry still wins.
-    const childEnv = stripChamberHostEnv({ ...Bun.env, ...options.env }, process.platform);
+    const childEnv = stripKabmoHostEnv({ ...Bun.env, ...options.env }, process.platform);
     if (options.env?.OMP_PROFILE === undefined) delete childEnv.OMP_PROFILE;
     if (options.env?.PI_PROFILE === undefined) delete childEnv.PI_PROFILE;
     // A spawn fails synchronously when the process is out of descriptors, and

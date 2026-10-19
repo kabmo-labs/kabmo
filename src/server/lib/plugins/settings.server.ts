@@ -22,7 +22,7 @@
 
 import { getDb } from '@/server/db.server';
 import type { DbClient } from '@/server/lib/db/client';
-import type { PluginSettingDefinition, PluginSettingsApi } from '@kabmo-labs/plugin-sdk';
+import type { PluginSettingDefinition, PluginSettingsApi } from '@kabmo-labs/kabmo-sdk';
 
 export type PluginSettingsValues = Record<string, string | number | boolean>;
 
@@ -31,11 +31,11 @@ type Listener = (values: PluginSettingsValues) => void;
 /** One plugin's change fan-out, held process-wide so a reload keeps its readers. */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPluginSettingListeners: Map<string, Set<Listener>> | undefined;
+  var __kabmoPluginSettingListeners: Map<string, Set<Listener>> | undefined;
 }
 
 function listenersFor(pluginId: string): Set<Listener> {
-  const registry = (globalThis.__ompChamberPluginSettingListeners ??= new Map());
+  const registry = (globalThis.__kabmoPluginSettingListeners ??= new Map());
   let set = registry.get(pluginId);
   if (!set) {
     set = new Set();
@@ -46,7 +46,7 @@ function listenersFor(pluginId: string): Set<Listener> {
 
 /** Drop every listener a plugin registered — called from its disposal pass. */
 export function clearPluginSettingListeners(pluginId: string): void {
-  globalThis.__ompChamberPluginSettingListeners?.delete(pluginId);
+  globalThis.__kabmoPluginSettingListeners?.delete(pluginId);
 }
 
 /**

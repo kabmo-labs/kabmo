@@ -12,7 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import type { CommandActionContext } from '@kabmo-labs/plugin-sdk';
+import type { CommandActionContext } from '@kabmo-labs/kabmo-sdk';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { setPluginContext } from '@/client/lib/plugins/context';
 import { dispatchPluginCommand } from '@/client/hooks/chat/timeline/plugin-commands';

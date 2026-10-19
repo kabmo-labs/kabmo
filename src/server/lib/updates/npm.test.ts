@@ -38,8 +38,8 @@ describe('fetchNpmLatest', () => {
   });
 
   test('reads /<pkg>/latest and returns its version', async () => {
-    expect(await fetchNpmLatest('ompchamber')).toBe('3.14.0');
-    expect(urls[0]).toBe('https://registry.npmjs.org/ompchamber/latest');
+    expect(await fetchNpmLatest('kabmo')).toBe('3.14.0');
+    expect(urls[0]).toBe('https://registry.npmjs.org/kabmo/latest');
   });
 
   test('escapes the slash of a scoped name, as the registry client does', async () => {
@@ -50,29 +50,29 @@ describe('fetchNpmLatest', () => {
   test('honours the registry the installer was configured with', async () => {
     Bun.env.NPM_CONFIG_REGISTRY = 'https://registry.example.test';
     expect(npmRegistry()).toBe('https://registry.example.test/');
-    await fetchNpmLatest('ompchamber');
-    expect(urls[0]).toBe('https://registry.example.test/ompchamber/latest');
+    await fetchNpmLatest('kabmo');
+    expect(urls[0]).toBe('https://registry.example.test/kabmo/latest');
   });
 
   test('a trailing slash on the configured registry is not doubled', async () => {
     Bun.env.BUN_CONFIG_REGISTRY = 'https://registry.example.test/';
-    await fetchNpmLatest('ompchamber');
-    expect(urls[0]).toBe('https://registry.example.test/ompchamber/latest');
+    await fetchNpmLatest('kabmo');
+    expect(urls[0]).toBe('https://registry.example.test/kabmo/latest');
   });
 
   test('a non-OK answer and a malformed body are both null', async () => {
     status = 404;
-    expect(await fetchNpmLatest('ompchamber')).toBeNull();
+    expect(await fetchNpmLatest('kabmo')).toBeNull();
     status = 200;
     payload = { version: 42 };
-    expect(await fetchNpmLatest('ompchamber')).toBeNull();
+    expect(await fetchNpmLatest('kabmo')).toBeNull();
     payload = {};
-    expect(await fetchNpmLatest('ompchamber')).toBeNull();
+    expect(await fetchNpmLatest('kabmo')).toBeNull();
   });
 
   test('a network failure is null, never a throw', async () => {
     globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
-    expect(await fetchNpmLatest('ompchamber')).toBeNull();
+    expect(await fetchNpmLatest('kabmo')).toBeNull();
   });
 });
 
@@ -108,11 +108,27 @@ describe('resolveUpdatePackage', () => {
     expect(urls).toEqual(['https://registry.npmjs.org/kabmo/latest']);
   });
 
-  test('falls back to the legacy name while the rename has not been published', async () => {
+  test('falls back to the legacy name only for an install still on it', async () => {
     answers['https://registry.npmjs.org/ompchamber/latest'] = '4.23.0';
 
-    expect(await resolveUpdatePackage()).toEqual({ name: 'ompchamber', latest: '4.23.0' });
+    expect(await resolveUpdatePackage('ompchamber')).toEqual({ name: 'ompchamber', latest: '4.23.0' });
     expect(urls).toHaveLength(2);
+  });
+
+  test('never offers the legacy package to an install already on the new name', async () => {
+    // The failure this pins: a fresh `kabmo` install reported
+    // `ompchamber@4.23.0` as an available update, which would undo the rename.
+    answers['https://registry.npmjs.org/ompchamber/latest'] = '4.23.0';
+
+    expect(await resolveUpdatePackage('kabmo')).toEqual({ name: 'kabmo', latest: null });
+    expect(urls).toEqual(['https://registry.npmjs.org/kabmo/latest']);
+  });
+
+  test('an unknown install name is not evidence of the old one', async () => {
+    answers['https://registry.npmjs.org/ompchamber/latest'] = '4.23.0';
+
+    expect(await resolveUpdatePackage(null)).toEqual({ name: 'kabmo', latest: null });
+    expect(urls).toEqual(['https://registry.npmjs.org/kabmo/latest']);
   });
 
   test('both absent names the new package with no version', async () => {

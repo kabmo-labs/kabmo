@@ -25,7 +25,7 @@ import { removeDir } from '@/test-support/remove-dir';
 const tempDirs: string[] = [];
 
 function tempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitpub-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-gitpub-'));
   tempDirs.push(dir);
   return dir;
 }

@@ -15,7 +15,7 @@ export interface ProjectOption {
 
 /** Static project list shared by the agent, command, and skill sidebars. */
 export const PROJECT_OPTIONS: ProjectOption[] = [
-  { id: 'ompchamber', name: 'ompchamber', label: 'ompchamber' },
+  { id: 'kabmo', name: 'kabmo', label: 'kabmo' },
   { id: 'workspace-edge', name: 'workspace-edge', label: 'workspace-edge' },
   { id: 'global', name: 'global config', label: 'Global (All Projects)' },
 ];

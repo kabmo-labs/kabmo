@@ -6,7 +6,7 @@
 /**
  * Live terminal inventory.
  *
- * The panel persists its terminal id per chamber session, so a reload normally
+ * The panel persists its terminal id per Kabmo session, so a reload normally
  * reattaches to the shell it already owns. This endpoint covers the case where
  * that id is gone (cleared storage, a second browser, a new tab): the client can
  * see which shells are alive in the active scope and adopt one instead of

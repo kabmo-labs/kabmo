@@ -14,7 +14,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useInputRequiredAlert } from '@/client/hooks/ui/input-required-alert';
-import { primeChamberSettings } from '@/shared/lib/settings/client';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator'] as const;
@@ -157,13 +157,13 @@ function cues(): number {
 
 describe('useInputRequiredAlert', () => {
   test('does not replay a cue for questions already waiting at page load', () => {
-    primeChamberSettings({ chatCompletionSound: true });
+    primeKabmoSettings({ chatCompletionSound: true });
     mount(h(AlertProbe, { folders: folderWith([{ id: 'a', awaitingInput: true }]) }));
     expect(cues()).toBe(0);
   });
 
   test('fires exactly one cue when a session newly starts waiting', () => {
-    primeChamberSettings({ chatCompletionSound: true });
+    primeKabmoSettings({ chatCompletionSound: true });
     mount(h(AlertProbe, { folders: folderWith([{ id: 'a' }]) }));
     expect(cues()).toBe(0);
 
@@ -183,7 +183,7 @@ describe('useInputRequiredAlert', () => {
   });
 
   test('several newly waiting sessions still cue only once', () => {
-    primeChamberSettings({ chatCompletionSound: true });
+    primeKabmoSettings({ chatCompletionSound: true });
     mount(h(AlertProbe, { folders: folderWith([]) }));
 
     act(() => {
@@ -202,7 +202,7 @@ describe('useInputRequiredAlert', () => {
   });
 
   test('a session that stops waiting and waits again is news', () => {
-    primeChamberSettings({ chatCompletionSound: true });
+    primeKabmoSettings({ chatCompletionSound: true });
     mount(h(AlertProbe, { folders: folderWith([{ id: 'a', awaitingInput: true }]) }));
 
     act(() => {
@@ -215,7 +215,7 @@ describe('useInputRequiredAlert', () => {
   });
 
   test('the cue respects the notification preference', () => {
-    primeChamberSettings({ chatCompletionSound: false });
+    primeKabmoSettings({ chatCompletionSound: false });
     mount(h(AlertProbe, { folders: folderWith([]) }));
 
     act(() => {
@@ -226,7 +226,7 @@ describe('useInputRequiredAlert', () => {
 });
 
 afterAll(() => {
-  primeChamberSettings({});
+  primeKabmoSettings({});
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) {
     if (nativeGlobals[key] === undefined) delete target[key];

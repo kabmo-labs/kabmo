@@ -81,19 +81,19 @@ let savedAgentDir: string | undefined;
 let savedSyncWorkspace: string | undefined;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
-  savedDbPath = Bun.env.OMPCHAMBER_DB_PATH;
+  root = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
+  savedDbPath = Bun.env.KABMO_DB_PATH;
   savedAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   savedSyncWorkspace = Bun.env.SYNC_WORKSPACE;
   // A throwaway database and agent dir keep the discovery-roots reconcile (which
   // every adopt path awaits) inside the temp tree instead of the user's config.
-  Bun.env.OMPCHAMBER_DB_PATH = join(root, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
   Bun.env.PI_CODING_AGENT_DIR = join(root, 'agent');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete globalThis.__ompSessions;
   delete globalThis.__ompStartLocks;
   delete globalThis.__ompPrewarmed;
-  delete globalThis.__ompChamberDb;
+  delete globalThis.__kabmoDb;
 });
 
 afterEach(() => {
@@ -104,10 +104,10 @@ afterEach(() => {
   // CLOSE the db handle before dropping it and deleting the tree: a bare
   // `delete` abandons the connection, and on Windows the still-open handle makes
   // the `rm` fail with EBUSY.
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  delete globalThis.__ompChamberDb;
-  if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-  else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  delete globalThis.__kabmoDb;
+  if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
+  else Bun.env.KABMO_DB_PATH = savedDbPath;
   if (savedAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = savedAgentDir;
   if (savedSyncWorkspace === undefined) delete Bun.env.SYNC_WORKSPACE;

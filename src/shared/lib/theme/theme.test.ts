@@ -28,7 +28,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { mixHex, parseHexColor, relativeLuminance, rgbaToHex } from '@/shared/lib/theme/color';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
-import { CHAMBER_PALETTES } from '@/shared/lib/theme/palettes/chamber';
+import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
 import { LIGHT_PALETTES } from '@/shared/lib/theme/palettes/light';
 import { THEMES } from '@/shared/lib/theme/catalog';
@@ -128,7 +128,7 @@ describe('generated stylesheet', () => {
   });
 
   test('emits the exact variable block for the default palette', () => {
-    const paper = CHAMBER_PALETTES[0];
+    const paper = KABMO_PALETTES[0];
     const block = [
       `html[data-theme="${paper.id}"] {`,
       `  --theme-paper: ${paper.paper};`,
@@ -160,7 +160,7 @@ describe('generated stylesheet', () => {
 });
 
 describe('palette sources', () => {
-  const all = [...CHAMBER_PALETTES, ...LIGHT_PALETTES, ...DARK_PALETTES];
+  const all = [...KABMO_PALETTES, ...LIGHT_PALETTES, ...DARK_PALETTES];
 
   test('every palette declares the same twelve keys', () => {
     for (const palette of all) {

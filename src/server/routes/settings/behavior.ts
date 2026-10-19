@@ -11,7 +11,7 @@ import type { InstructionFileKind } from '@/shared/types';
 /**
  * Preset stores for MOCK mode only. In real mode the Behavior panel is bound to
  * the native user instruction files (~/.omp/agent/AGENTS.md and RULES.md), so
- * the chamber never keeps a second copy of them; the `agents` key keeps its
+ * Kabmo never keeps a second copy of them; the `agents` key keeps its
  * historical name from when the panel only edited behavior rules.
  */
 const MOCK_KEYS: Record<InstructionFileKind, string> = {

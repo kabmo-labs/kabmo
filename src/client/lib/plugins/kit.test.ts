@@ -13,7 +13,7 @@
  *
  * The case this suite exists for is the OTHER one: a 404 on the ROUTE means no
  * plugin by that id is loaded on the server. That is exactly the state a plugin
- * installed into a running chamber sits in until its server half loads, and a
+ * installed into a running Kabmo sits in until its server half loads, and a
  * panel needs to tell it apart from a broken call so it can say "the server half
  * is not running — restart" instead of showing an empty view. Reporting it as
  * the generic `bad_response` (with a message about `watch answered 404`) made
@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import { installUiKit } from '@/client/lib/plugins/kit';
-import { uiKitServices } from '@kabmo-labs/ui';
+import { uiKitServices } from '@kabmo-labs/kabmo-ui';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
 const saved = new Map<string, unknown>();

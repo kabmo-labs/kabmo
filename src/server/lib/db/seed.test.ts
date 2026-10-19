@@ -10,9 +10,9 @@
  * its contract is *idempotence*: it re-asserts the demo rows on every start
  * instead of duplicating them, which is why the sidebar keeps the same five
  * chat titles and the same file tree after a restart. It is also destructive in
- * one place that is easy to miss — folder 1 is RENAMED to `ompchamber` on every
+ * one place that is easy to miss — folder 1 is RENAMED to `kabmo` on every
  * seed — so that is pinned rather than assumed. Every test runs against a temp
- * SQLite file; the real chamber database is never opened.
+ * SQLite file; the real Kabmo database is never opened.
  *
  * The `terminal/session.server.ts` helpers are pinned alongside because they
  * need no PTY: the viewer fan-out drop rule (a viewer that cannot keep up is
@@ -76,7 +76,7 @@ let workRoot = '';
 const opened: DbClient[] = [];
 
 beforeEach(() => {
-  workRoot = mkdtempSync(path.join(tmpdir(), 'ompchamber-test-'));
+  workRoot = mkdtempSync(path.join(tmpdir(), 'kabmo-test-'));
 });
 
 afterEach(() => {
@@ -111,7 +111,7 @@ describe('seedMockData — fresh mock database', () => {
     await seedMockData(db);
 
     const folders = await db.all<{ id: number; name: string }>('SELECT id, name FROM workspace_folders ORDER BY id');
-    expect(folders.map((f) => f.name)).toEqual(['ompchamber', 'Workspace', 'drrealhandler']);
+    expect(folders.map((f) => f.name)).toEqual(['kabmo', 'Workspace', 'drrealhandler']);
     expect(await titlesIn(db, 1)).toEqual(CHAT_TITLES);
     expect(await titlesIn(db, 2)).toEqual(WORKSPACE_TITLES);
     expect(await titlesIn(db, 3)).toEqual(DRREALHANDLER_TITLES);
@@ -176,7 +176,7 @@ describe('seedMockData — fresh mock database', () => {
 });
 
 describe('seedMockData — existing database', () => {
-  test('folder 1 is renamed to ompchamber while other folders keep their names', async () => {
+  test('folder 1 is renamed to kabmo while other folders keep their names', async () => {
     const db = await freshDb('existing-folders');
     await db.run("INSERT INTO workspace_folders (id, name, is_expanded) VALUES (1, 'Custom', 1)");
     await db.run("INSERT INTO workspace_folders (id, name, is_expanded) VALUES (2, 'Keep', 1)");
@@ -184,7 +184,7 @@ describe('seedMockData — existing database', () => {
     await seedMockData(db);
 
     const folders = await db.all<{ id: number; name: string }>('SELECT id, name FROM workspace_folders ORDER BY id');
-    expect(folders.map((f) => f.name)).toEqual(['ompchamber', 'Keep', 'drrealhandler']);
+    expect(folders.map((f) => f.name)).toEqual(['kabmo', 'Keep', 'drrealhandler']);
   }, SEED_TIMEOUT_MS);
 
   test('a folder that already has sessions gets no workspace list', async () => {

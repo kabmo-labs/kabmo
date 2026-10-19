@@ -24,7 +24,7 @@ import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
 import { isWindows, testPosix } from '@/test-support/platform';
 import { removeDir } from '@/test-support/remove-dir';
 
-const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitdiff-'));
+const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-gitdiff-'));
 
 function git(...args: string[]): void {
   const result = Bun.spawnSync({ cmd: ['git', ...args], cwd: repo });
@@ -289,7 +289,7 @@ describe('no-change and fallback paths', () => {
   });
 
   test('a diff outside a repository is reported, not thrown', async () => {
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-gitdiff-plain-'));
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-gitdiff-plain-'));
     try {
       const result = await fetchWorkingFileDiff(outside, 'anything.txt');
       expect(result.file).toBe('anything.txt');

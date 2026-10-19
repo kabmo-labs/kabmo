@@ -89,14 +89,14 @@ describe('GET /api/plugins', () => {
     // The route's job is to make a dead server half VISIBLE: a plugin whose
     // factory threw has a working panel and a backend that answers 404, and
     // without this the only symptom is a method that is not there.
-    globalThis.__ompChamberPluginLoadErrors = [{ pluginId: PLUGIN, reason: 'the factory threw' }];
+    globalThis.__kabmoPluginLoadErrors = [{ pluginId: PLUGIN, reason: 'the factory threw' }];
     try {
       const body = (await ((await stateLoader({} as never)) as Response).json()) as {
         errors: { pluginId: string; reason: string }[];
       };
       expect(body.errors).toEqual([{ pluginId: PLUGIN, reason: 'the factory threw' }]);
     } finally {
-      globalThis.__ompChamberPluginLoadErrors = undefined;
+      globalThis.__kabmoPluginLoadErrors = undefined;
     }
   });
 });
@@ -139,7 +139,7 @@ describe('the RPC route', () => {
     });
     const result = await callRpc('boom', null);
     // Not a 500: the call reached the plugin and the plugin refused. A server
-    // error here would make a plugin's own decision look like a chamber fault.
+    // error here would make a plugin's own decision look like a Kabmo fault.
     expect(result.status).toBe(200);
     expect(result.body).toEqual({
       ok: false,
@@ -230,7 +230,7 @@ describe('the HTTP route family', () => {
     expect((await callHttp('/')).status).toBe(404);
   });
 
-  test('a plugin exception becomes its own message, not a chamber stack', async () => {
+  test('a plugin exception becomes its own message, not a Kabmo stack', async () => {
     const api = createPluginHttp(PLUGIN);
     api.route('/boom', () => {
       throw new Error('the route says no');

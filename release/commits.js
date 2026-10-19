@@ -64,7 +64,7 @@ function git(args, cwd, input) {
 /**
  * The commits in a range, newest first.
  *
- * @param {string} range `git log` range, e.g. `plugin-sdk/v1.0.0..HEAD`.
+ * @param {string} range `git log` range, e.g. `kabmo-sdk/v1.0.0..HEAD`.
  * @param {string} cwd
  * @returns {Array<{hash: string, message: string, author: {name: string, email: string}, committer: {name: string, email: string}}>}
  */

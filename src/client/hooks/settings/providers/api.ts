@@ -18,7 +18,7 @@ export interface ProviderSettingsPayload {
   presetProviders?: PresetProviderOption[];
 }
 
-/** Load the merged provider registry (omp's sources + the chamber overlay). */
+/** Load the merged provider registry (omp's sources + Kabmo overlay). */
 export async function loadProvidersFromApi(): Promise<ProviderSettingsPayload | null> {
   try {
     const response = await fetch('/api/settings/providers');
@@ -40,7 +40,7 @@ export interface ModelOverrideResult {
 
 /**
  * Write the per-model knobs omp honours (`maxTokens`, reasoning effort) into
- * models.yml `modelOverrides`. Writing only the chamber overlay left the
+ * models.yml `modelOverrides`. Writing only Kabmo overlay left the
  * controls inert — omp never read them.
  */
 export async function saveModelOverrideRemote(

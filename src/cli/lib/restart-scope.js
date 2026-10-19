@@ -1,4 +1,4 @@
-// Restart scope for `ompchamber update`.
+// Restart scope for `kabmo update`.
 //
 // Kept separate from the command so the rule is testable without a live server,
 // exactly as `stop-scope.js` is for `stop`. The rule is ownership: an update
@@ -36,7 +36,7 @@ export function selectRestartTargets(instances, all) {
  * The `serve` options that bring a stopped instance back the way it was found.
  *
  * Every field here comes from the INSTANCE, never from the argv of the command
- * that is restarting it. `ompchamber restart` and `ompchamber update` are their
+ * that is restarting it. `kabmo restart` and `kabmo update` are their
  * own invocations: their options describe the command, and spreading them into
  * `serve` is what silently dropped `--tray` and `--tls` from the replacement.
  * An instance started with `serve --startup` (whose login entry runs
@@ -76,7 +76,7 @@ export function restartServeOptions(instance, options = {}) {
  * The warning a restart owes the user when it cannot carry the credential over.
  *
  * A self-restart hands the hashed credential to its replacement, so it keeps
- * working. A MANUAL `ompchamber restart` has nothing to hand over: the original
+ * working. A MANUAL `kabmo restart` has nothing to hand over: the original
  * server never stored the password (only an argon2 hash lived in its memory),
  * so the replacement genuinely cannot require it. Before this, that restart
  * came back with authentication silently DISABLED — measured: a run started with

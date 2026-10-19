@@ -69,20 +69,20 @@ describe('terminalStore', () => {
   });
 
   test('adopts the legacy globals a pre-object reload left behind', () => {
-    const saved: (TerminalStore | undefined)[] = [globalThis.__ompChamberTerminalState];
-    const savedSessions = globalThis.__ompChamberTerminals;
-    const savedResizes = globalThis.__ompChamberTerminalResizes;
-    const savedSweep = globalThis.__ompChamberTerminalSweep;
-    const savedCleanup = globalThis.__ompChamberTerminalCleanupInstalled;
+    const saved: (TerminalStore | undefined)[] = [globalThis.__kabmoTerminalState];
+    const savedSessions = globalThis.__kabmoTerminals;
+    const savedResizes = globalThis.__kabmoTerminalResizes;
+    const savedSweep = globalThis.__kabmoTerminalSweep;
+    const savedCleanup = globalThis.__kabmoTerminalCleanupInstalled;
 
     const legacySessions = new Map<string, TerminalSession>([['kept', fakeSession({ id: 'kept' })]]);
     const legacyResizes = new Map<string, TerminalTimeout>([['kept', 7 as unknown as TerminalTimeout]]);
     try {
-      globalThis.__ompChamberTerminalState = undefined;
-      globalThis.__ompChamberTerminals = legacySessions;
-      globalThis.__ompChamberTerminalResizes = legacyResizes;
-      globalThis.__ompChamberTerminalSweep = undefined;
-      globalThis.__ompChamberTerminalCleanupInstalled = true;
+      globalThis.__kabmoTerminalState = undefined;
+      globalThis.__kabmoTerminals = legacySessions;
+      globalThis.__kabmoTerminalResizes = legacyResizes;
+      globalThis.__kabmoTerminalSweep = undefined;
+      globalThis.__kabmoTerminalCleanupInstalled = true;
 
       const store = terminalStore();
       expect(store.sessions).toBe(legacySessions); // the live shell survives
@@ -91,26 +91,26 @@ describe('terminalStore', () => {
       expect(store.creating.size).toBe(0);
       expect(terminalStore()).toBe(store);
     } finally {
-      globalThis.__ompChamberTerminalState = saved[0];
-      globalThis.__ompChamberTerminals = savedSessions;
-      globalThis.__ompChamberTerminalResizes = savedResizes;
-      globalThis.__ompChamberTerminalSweep = savedSweep;
-      globalThis.__ompChamberTerminalCleanupInstalled = savedCleanup;
+      globalThis.__kabmoTerminalState = saved[0];
+      globalThis.__kabmoTerminals = savedSessions;
+      globalThis.__kabmoTerminalResizes = savedResizes;
+      globalThis.__kabmoTerminalSweep = savedSweep;
+      globalThis.__kabmoTerminalCleanupInstalled = savedCleanup;
     }
   });
 
   test('a legacy global that is not a Map is ignored, not adopted', () => {
-    const savedState = globalThis.__ompChamberTerminalState;
-    const savedSessions = globalThis.__ompChamberTerminals;
+    const savedState = globalThis.__kabmoTerminalState;
+    const savedSessions = globalThis.__kabmoTerminals;
     try {
-      globalThis.__ompChamberTerminalState = undefined;
-      globalThis.__ompChamberTerminals = 'not-a-map' as unknown as Map<string, TerminalSession>;
+      globalThis.__kabmoTerminalState = undefined;
+      globalThis.__kabmoTerminals = 'not-a-map' as unknown as Map<string, TerminalSession>;
       const store = terminalStore();
       expect(store.sessions).toBeInstanceOf(Map);
       expect(store.sessions.size).toBe(0);
     } finally {
-      globalThis.__ompChamberTerminalState = savedState;
-      globalThis.__ompChamberTerminals = savedSessions;
+      globalThis.__kabmoTerminalState = savedState;
+      globalThis.__kabmoTerminals = savedSessions;
     }
   });
 });

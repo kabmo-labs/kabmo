@@ -10,7 +10,7 @@
  * `retry.maxRetries` attempts, honoring the provider's own `retry-after`), and
  * it keeps the RUN open across those attempts: each retry announces itself with
  * `auto_retry_start` and opens a fresh `agent_start`, with no `agent_end` in
- * between. The chamber therefore renders a live run for the whole stall — the
+ * between. The Kabmo therefore renders a live run for the whole stall — the
  * sidebar spinner and the generating indicator are correct — while the timeline
  * shows only the failed turn and says nothing about why nothing is moving.
  * Measured on a real quota wall: ~2m43s of that, and the last visible row was

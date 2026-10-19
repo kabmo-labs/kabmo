@@ -4,7 +4,7 @@
  */
 
 /**
- * The definition files the chamber owns (agents, instruction files) and the plugin CLI wrapper. Agent discovery is read-only and forgiving: a malformed
+ * The definition files Kabmo owns (agents, instruction files) and the plugin CLI wrapper. Agent discovery is read-only and forgiving: a malformed
  * frontmatter field becomes a default (`mode: all`, `temperature: null`) rather
  * than dropping the agent, a non-`.md` entry and an oversized file are skipped,
  * and a USER agent wins over a project agent with the same base name.
@@ -14,7 +14,7 @@
  * of only whitespace REMOVES the file, or an empty AGENTS.md would still claim
  * the context scope; plugin wrappers pass `--scope` only where omp accepts it,
  * and `pluginCliError` prefers stderr. `PI_CODING_AGENT_DIR` points at a temp
- * dir and `OMPCHAMBER_OMP_BIN` at a stub recording its argv — no real process (the stub is a compiled executable, so it spawns on both platforms).
+ * dir and `KABMO_OMP_BIN` at a stub recording its argv — no real process (the stub is a compiled executable, so it spawns on both platforms).
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
@@ -70,14 +70,14 @@ function write(file: string, content: string): string {
 }
 
 beforeAll(async () => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-definitions-'));
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-definitions-'));
   agentDir = join(root, 'agent');
   userAgents = join(agentDir, 'agents');
   projectAgents = join(root, 'project-agents');
   fs.mkdirSync(userAgents, { recursive: true });
   fs.mkdirSync(projectAgents, { recursive: true });
   prevAgentDir = Bun.env.PI_CODING_AGENT_DIR;
-  prevBin = Bun.env.OMPCHAMBER_OMP_BIN;
+  prevBin = Bun.env.KABMO_OMP_BIN;
   prevMock = Bun.env.MOCK;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
   Bun.env.MOCK = 'true';
@@ -86,7 +86,7 @@ beforeAll(async () => {
   const stubSource = `import { writeFileSync } from 'node:fs';
 writeFileSync(${JSON.stringify(logFile)}, process.argv.slice(2).map((arg) => arg + '\\n').join(''));
 `;
-  Bun.env.OMPCHAMBER_OMP_BIN = await executableStub(stubSource, 'fake-omp-argv');
+  Bun.env.KABMO_OMP_BIN = await executableStub(stubSource, 'fake-omp-argv');
   // `resolveOmpBin` memoizes the FIRST binary it resolves for the process.
   invalidateOmpCliCache();
 });
@@ -104,8 +104,8 @@ beforeEach(() => {
 afterAll(() => {
   if (prevAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = prevAgentDir;
-  if (prevBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = prevBin;
+  if (prevBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = prevBin;
   invalidateOmpCliCache();
   if (prevMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = prevMock;

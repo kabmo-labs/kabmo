@@ -76,7 +76,7 @@ export function usePluginSettings(scopeQuery: string): PluginSettingsData {
         const data = await res.json();
         if (!data?.success) {
           // omp's own sentence, verbatim: it names the missing marketplace, the
-          // ambiguous scope or the bad source format, none of which the chamber
+          // ambiguous scope or the bad source format, none of which Kabmo
           // could reconstruct.
           setError(typeof data?.error === 'string' ? data.error : `Request failed (${res.status})`);
           return false;

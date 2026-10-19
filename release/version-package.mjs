@@ -3,7 +3,7 @@
  *
  * `@semantic-release/npm` is the usual plugin for this and cannot be used here:
  * it writes the version by shelling out to `npm version`, and npm does not
- * support the `workspace:` protocol that `packages/ui` declares its SDK
+ * support the `workspace:` protocol that `packages/kabmo-ui` declares its SDK
  * dependency with. Running it inside this workspace root fails outright —
  * measured on npm 11 in a rehearsal of the real pipeline:
  *
@@ -48,8 +48,8 @@ function readManifest(cwd, dir) {
  * substitutes a `workspace:` spec from THAT record rather than from the
  * manifest on disk. So bumping a package's version and packing a dependent
  * package in the same run publishes the dependency at its PREVIOUS version:
- * measured, `@kabmo-labs/ui@2.0.0` went to npm declaring
- * `"@kabmo-labs/plugin-sdk": "1.0.0"` while the SDK was 2.0.0 on the registry —
+ * measured, `@kabmo-labs/kabmo-ui@2.0.0` went to npm declaring
+ * `"@kabmo-labs/kabmo-sdk": "1.0.0"` while the SDK was 2.0.0 on the registry —
  * an install that resolves the old SDK, which is exactly the incompatibility
  * the 2.0.0 release existed to announce.
  *

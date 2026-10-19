@@ -4,10 +4,10 @@
  */
 
 /**
- * Handing a chamber mode signal to whoever listens for it.
+ * Handing a Kabmo mode signal to whoever listens for it.
  *
  * Two producers reach the same consumer: the extension's notice markers (which
- * the fold parses out of `extension_ui_request` frames) and the chamber's own
+ * the fold parses out of `extension_ui_request` frames) and Kabmo's own
  * auditor frames (`goal_evaluating`). Both are composer state rather than
  * conversation, so neither goes through the timeline's callbacks — they are
  * re-dispatched as a scoped window event, the same shape the subagent frames
@@ -16,14 +16,20 @@
 
 import { publishClientSignal } from '@/client/lib/signals';
 
-export interface ChamberModeSignal {
+export interface KabmoModeSignal {
   marker: string;
   payload: Record<string, unknown>;
 }
 
-/** The chamber-mode signal name, for a consumer that subscribes. */
-export const CHAMBER_MODE_SIGNAL = 'chamber-mode' as const;
+/** The Kabmo-mode signal name, for a consumer that subscribes. */
+export const KABMO_MODE_SIGNAL = 'kabmo-mode' as const;
 
-export function emitChamberModeSignal(sessionId: string | undefined, signal: ChamberModeSignal): void {
-  publishClientSignal(CHAMBER_MODE_SIGNAL, { sessionId, marker: signal });
+export function emitKabmoModeSignal(sessionId: string | undefined, signal: KabmoModeSignal): void {
+  publishClientSignal(KABMO_MODE_SIGNAL, { sessionId, marker: signal });
 }
+
+/** @deprecated Use `KabmoModeSignal`. */
+export type ChamberModeSignal = KabmoModeSignal;
+
+/** @deprecated Use `emitKabmoModeSignal`. */
+export const emitChamberModeSignal = emitKabmoModeSignal;

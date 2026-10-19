@@ -11,9 +11,23 @@ import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
 import { reminderPartIndex } from '@/shared/lib/chat/notice-row';
 import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
 import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
-import { CHAMBER_GOAL_STATE_ENTRY, CHAMBER_PLAN_STATE_ENTRY } from '@/shared/lib/omp/mode/types';
+import { CHAMBER_GOAL_STATE_ENTRY, CHAMBER_PLAN_STATE_ENTRY, KABMO_GOAL_STATE_ENTRY, KABMO_PLAN_STATE_ENTRY } from '@/shared/lib/omp/mode/types';
 
-/** Map a raw omp JSONL entry of type "message" to the chamber shape. */
+/**
+ * The mode bookkeeping entry types, in both spellings.
+ *
+ * A session written before the rename carries the `chamber-*` types and one
+ * written after it carries `kabmo-*`; both are a transition log rather than
+ * prose, so both are filtered out of the timeline.
+ */
+const MODE_STATE_ENTRIES = new Set([
+  KABMO_GOAL_STATE_ENTRY,
+  KABMO_PLAN_STATE_ENTRY,
+  CHAMBER_GOAL_STATE_ENTRY,
+  CHAMBER_PLAN_STATE_ENTRY,
+]);
+
+/** Map a raw omp JSONL entry of type "message" to Kabmo shape. */
 export function toChatMessage(entry: OmpMessageEntry): ChatMessageData | null {
   const msg = entry.message;
   if (!msg) return null;
@@ -212,11 +226,11 @@ export function noticeFromCustomMessage(record: Record<string, unknown>): ChatMe
   const id = typeof record.id === 'string' ? record.id : `notice-${Date.now()}`;
 
   if (customType === 'session_exit') return null;
-  // The chamber's own mode bookkeeping. These entries carry no prose — they are
+  // The Kabmo's own mode bookkeeping. These entries carry no prose — they are
   // a transition log the console reads for the composer's toggles (see
   // `server/lib/omp/session/modes.ts`) — and rendering them would put a raw
   // JSON blob in the timeline on every toggle.
-  if (customType === CHAMBER_GOAL_STATE_ENTRY || customType === CHAMBER_PLAN_STATE_ENTRY) return null;
+  if (MODE_STATE_ENTRIES.has(customType)) return null;
 
   const content = record.content;
   const text = typeof content === 'string'

@@ -37,7 +37,7 @@ plugin's own documentation is `marketplace/plugins/command-runner/README.md`.
 `<bundled>/plugins/<id>` directly. The repo's `marketplace/marketplace.json` is
 read by nothing in this repo (verified: no `src/`, `scripts/` or test reference
 reads it; the catalog file the SCAN reads is the working one under
-`~/.ompchamber/marketplace/`). So the entry there is documentation for a human —
+`~/.kabmo/marketplace/`). So the entry there is documentation for a human —
 add one for consistency with the two shipped plugins, and do not expect a missing
 one to hide the plugin.
 
@@ -135,13 +135,13 @@ context, and `useContentScripts` never runs, so no content script mounts. The
 plugin is therefore half-dead on a phone — the panel draws, the scope watcher
 (§9) does not — until this is fixed (§10 P0).
 
-**F4 — A chamber restart would orphan every command.** The plugin's runs are
+**F4 — A Kabmo restart would orphan every command.** The plugin's runs are
 `Bun.spawn({ detached: true })` children, and `detached` is exactly what makes a
 group kill possible — but a detached child does NOT die with its parent.
 `src/server/index.ts`'s `SIGTERM`/`SIGINT` handler calls
 `stopDiscoveryRootsWatch()`, `stopScheduleRuntime()`, `app.stop()` and
 `process.exit(0)`; `disposeAllPlugins()` exists and is called from **tests only**
-(verified: `src/server/routes/panels/panel-routes.test-util.ts`). A chamber
+(verified: `src/server/routes/panels/panel-routes.test-util.ts`). A Kabmo
 restart therefore leaves every dev server the plugin started running. §10 P0
 wires the shutdown path.
 
@@ -193,11 +193,11 @@ means streaming is available later without a transport change.
 **F9 — Declaring `capabilities` today would REFUSE the plugin.**
 `HOST_CAPABILITIES` (`src/shared/lib/panels/capabilities.ts`) is `['panel']`, and
 `missingCapabilities` refuses on anything else — `capabilities: ['server']` fails
-the scan with `manifest requires capability "server" which this chamber does not
+the scan with `manifest requires capability "server" which this Kabmo does not
 provide`. The two shipped plugins declare none. This plan adds one row
 (`repo-scope`, §8) because the plugin genuinely requires it, and nothing else.
 
-**F10 — The plugin's server bundle cannot import chamber source.** It is built by
+**F10 — The plugin's server bundle cannot import Kabmo source.** It is built by
 `buildServerBundle` (`target: 'bun'`, everything bundled, no `plugins`) and loaded
 by absolute path; `@/…` is not resolvable there. Measured: a fixture plugin whose
 `src/server.ts` does `import { getDb } from '@/server/db.server'` fails the build
@@ -253,20 +253,20 @@ run.
 
 Consequence worth knowing: a plugin-spawned command appears in the **Stats**
 panel's process table, because the sampler walks the ppid tree rooted at the
-chamber's own pid (`marketplace/plugins/stats/src/sampler.ts`) — so a runaway
+Kabmo's own pid (`marketplace/plugins/stats/src/sampler.ts`) — so a runaway
 build's RAM is visible there without the plugin doing anything.
 
 ## 5. Contract
 
 ### 5.1 Manifest
 
-`marketplace/plugins/command-runner/package.json`, under the `ompchamber` key:
+`marketplace/plugins/command-runner/package.json`, under the `kabmo` key:
 
 ```json
 {
   "id": "command-runner",
   "name": "Runner",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Lists a repository's commands and runs them.",
   "app": "dist/app.js",
   "server": "dist/server.js",
@@ -280,7 +280,7 @@ build's RAM is visible there without the plugin doing anything.
 ```
 
 `peerDependencies` are the optional-peer shape the docs prescribe
-(`@ompchamber/plugin-sdk`, `@ompchamber/ui`, `preact`, all `optional: true`), the
+(`@kabmo-labs/kabmo-sdk`, `@kabmo-labs/kabmo-ui`, `preact`, all `optional: true`), the
 same as the two shipped plugins. The `engines` key is deliberately absent: the
 capability row is the precise gate for the one thing this plugin needs.
 
@@ -330,7 +330,7 @@ and `src/server/resolve.ts`.
 ### 5.3 HTTP
 
 One route, because it is a plain GET of a byte range and the kit's reader for
-that is `useChamberFetch`:
+that is `useKabmoFetch`:
 
 ```
 GET /api/plugins/command-runner/http/logs?id=<runId>&tail=<bytes>
@@ -340,7 +340,7 @@ GET /api/plugins/command-runner/http/logs?id=<runId>&tail=<bytes>
 `truncated` here means the ring dropped output (`bytes > ringBytes`).
 
 `text` is the LAST `tail` bytes of the run's ring buffer, ANSI-stripped (the
-chamber's own proc panel strips ANSI for the same reason — `stripAnsiCodes` in
+Kabmo's own proc panel strips ANSI for the same reason — `stripAnsiCodes` in
 `src/shared/lib/code/ansi.ts`, which the plugin cannot import and re-implements
 as a small local copy, per F10). Three numbers, because they answer three
 different questions: `bytes` is the TOTAL the process produced, `ringBytes` is
@@ -357,14 +357,14 @@ its own id into a path would break the day its id changed, and the kit already
 hands the component the id it is running under. So the panel composes
 `/api/plugins/${usePluginId()}/http/logs?id=…`.
 
-**Read on the byte count, not on a timer.** `useChamberFetch` is called with
+**Read on the byte count, not on a timer.** `useKabmoFetch` is called with
 `pollMs: 0` and `enabled: logOpen`, and a `useEffect` keyed on the run's `bytes`
 (from the realtime topic) calls the hook's `reload`. That is the honest gate: a
 run that prints nothing costs zero requests, a build that streams costs one read
 per publish, and a closed log costs nothing at all. A 500 ms timer would re-send
 up to 64 KB to say nothing changed. `useRpc` is deliberately not the transport
 here — it is POST-only and has no polling or visibility handling, so a log read
-through it would hand-roll the three behaviours `useChamberFetch` already owns.
+through it would hand-roll the three behaviours `useKabmoFetch` already owns.
 
 **That gate is why the topic publishes on output, THROTTLED.** `bytes` has to
 move for the open log to re-read, so the run record publishes a metadata-only
@@ -432,7 +432,7 @@ interface Run {
 }
 ```
 
-Runs live only in the server process: a plugin reload, a disable, or a chamber
+Runs live only in the server process: a plugin reload, a disable, or a Kabmo
 restart ends them (§10 P0 for the last one). Nothing is persisted — there is no
 "run history" in this plan (§12).
 
@@ -464,7 +464,7 @@ adding a row, never a branch at a call site — the same rule
 `provider/dialect.ts` follows.
 
 The plugin's own layout (every path below is under
-`marketplace/plugins/command-runner/`, and no file imports the chamber's `src/` —
+`marketplace/plugins/command-runner/`, and no file imports Kabmo's `src/` —
 F10):
 
 ```
@@ -536,8 +536,8 @@ more:
   `repo: '../../etc'`;
 - the resolved directory must exist.
 
-**Deliberately not re-implemented: the chamber's root allow-list** (app root, a
-path under it, or a registered `project_path`). It needs the chamber's SQLite
+**Deliberately not re-implemented: Kabmo's root allow-list** (app root, a
+path under it, or a registered `project_path`). It needs Kabmo's SQLite
 file, and F10 says the plugin cannot import `lib/fs/root.ts`. The honest position:
 the root is host-supplied (`PanelBodyProps.rootPath` comes from the folder row's
 `project_path`), and the plugin's own guarantee is containment. If the full
@@ -673,7 +673,7 @@ The four controls on a row, in order:
 with two controls — expanding the row already shows the output — and a row that
 opened itself because a flag was on fought the reader who had just closed it. The
 disclosure is now gated on there BEING output, and a live run streams into its own
-row. The output is drawn as the chamber's code block (the `.code-block` shell plus
+row. The output is drawn as Kabmo's code block (the `.code-block` shell plus
 the `Fira Code` 12px/1rem line box), wrapping rather than scrolling sideways.
 
 The runner is part of the row's label (`bun run dev` against `npm run build`), so
@@ -705,7 +705,7 @@ because that is the established shape for an additive service
 and the hook degrades to "no scope" instead of throwing.
 
 ```ts
-// packages/ui/src/services.ts
+// packages/kabmo-ui/src/services.ts
 export interface RepoScope { root: string; repo: string; repos: string[]; scanning: boolean; ready: boolean }
 // on UiKitServices:
 repoScope?(): RepoScope;
@@ -716,7 +716,7 @@ rescanRepoScope?(): void;
 ```
 
 ```ts
-// packages/ui/src/repo.ts  (new)
+// packages/kabmo-ui/src/repo.ts  (new)
 export function useRepoScope(): RepoScope & {
   setRepo(repo: string): void;
   refresh(): void;
@@ -753,7 +753,7 @@ repo. The host's implementation therefore fires its listener on BOTH
 `subscribePluginContext` (the session id) and `subscribeSessionKey`, under one
 unsubscribe.
 
-`RepoPicker` (in the kit, `packages/ui/src/repo-picker.tsx`) is the control: a
+`RepoPicker` (in the kit, `packages/kabmo-ui/src/repo-picker.tsx`) is the control: a
 search field, a refresh that spins while `scanning`, a checkmark on the active
 row, and its own outside-click handling (the kit cannot import the host's
 `useOnClickOutside`). It draws the rows the SERVICE hands it (`{ repo, label,
@@ -765,7 +765,7 @@ copy, and it keeps only what is host-specific: the modal it opens as the
 picker's optional `onManage` row. The git panel's `GitRepoHeader` keeps its own
 chrome (branch, fetch, commit count) and is out of scope.
 
-`HOST_CAPABILITIES` gains `'repo-scope'` (F9), so a chamber without the service
+`HOST_CAPABILITIES` gains `'repo-scope'` (F9), so a Kabmo without the service
 refuses the plugin by name instead of rendering a picker that does nothing. Note
 the array is `['panel']` TODAY even though `server`, `storage`, `rpc`, `realtime`
 and `settings` have all shipped — the file's own comment says a row is appended
@@ -776,8 +776,8 @@ this plugin declares only the capability it actually needs.
 
 Two constraints on the kit component, both verified:
 
-- **The kit has no icon dependency.** `packages/ui/package.json` declares only
-  `preact` and `@ompchamber/plugin-sdk`, and no file under `packages/ui/src/`
+- **The kit has no icon dependency.** `packages/kabmo-ui/package.json` declares only
+  `preact` and `@kabmo-labs/kabmo-sdk`, and no file under `packages/kabmo-ui/src/`
   imports an icon set. `RepoPicker` therefore draws its chevron, search, refresh
   and check as inline `<svg>` (or text glyphs), exactly as the kit already draws
   every other shape it offers — importing `lucide-preact` would add a dependency
@@ -785,11 +785,11 @@ Two constraints on the kit component, both verified:
 - **A new kit export needs no shim change.** `introspectExports`
   (`lib/panels/shim.ts`) reads the real module's export list at BUILD time and
   emits a named re-export per name, so a plugin gets `useRepoScope` and
-  `RepoPicker` the moment they are exported from `packages/ui/src/index.tsx`.
-  The shim list only has to change for a new MODULE (`@ompchamber/ui/<x>`).
+  `RepoPicker` the moment they are exported from `packages/kabmo-ui/src/index.tsx`.
+  The shim list only has to change for a new MODULE (`@kabmo-labs/kabmo-ui/<x>`).
 
 Adding a service to `UiKitServices` is a published-contract change, so
-`packages/ui` takes a minor version bump in the same change (its release is cut
+`packages/kabmo-ui` takes a minor version bump in the same change (its release is cut
 from commits, so the commit type carries it).
 
 ## 9. Force-stop on a repo switch
@@ -799,7 +799,7 @@ Three mechanisms, because each one alone has a hole:
 1. **The scope watcher, in the plugin's content script.** A content script mounts
    from `PluginBootstrap` for every ENABLED plugin, regardless of which panel is
    shown (F2), and it can reach the kit's services — `uiKitServices()` is
-   exported from `@ompchamber/ui` and returns the host's own configured services,
+   exported from `@kabmo-labs/kabmo-ui` and returns the host's own configured services,
    so a content script reads `repoScope()` / `subscribeRepoScope` directly and
    calls `callRpc(context.pluginId, 'stop-others', …)`. **It must not call the kit
    HOOKS**: `useRepoScope()` needs a Preact component and a content script is not
@@ -817,7 +817,7 @@ Three mechanisms, because each one alone has a hole:
    makes a missed notification self-healing rather than permanent.
 2. **A sweep when the panel mounts.** The panel records the scope it is showing
    and, on mount or on a scope change, calls the same method. This covers a
-   chamber that was reloaded (no watcher had run yet) and a phone.
+   Kabmo that was reloaded (no watcher had run yet) and a phone.
 3. **The scope recorded on every run.** `stop-others` kills every run of this
    SESSION whose `scopeKey` differs from the one given — so even a run started
    before a watcher existed is covered by the next one.
@@ -831,7 +831,7 @@ B must survive a switch in session A. That is a decision, not an accident
 
 | Phase | Content | Acceptance |
 |---|---|---|
-| **P0** | Two chamber-side prerequisites. (a) Mount `PluginBootstrap` in the mobile layout with the resolved `activeProjectPath`, so a phone has plugin context and content scripts (F3b). (b) Dispose the plugins before the process exits (F4). The handler must become async and await the disposal BEFORE `process.exit(0)` — today it fires `void app.stop()` and exits on the next line, so an unawaited `disposeAllPlugins()` would never run its disposers. | (a) On a phone-sized viewport, `usePanelInfo()` reports the active session and workspace, and an enabled plugin's content script mounts. (b) With a run in flight, `SIGTERM` on the server leaves no child behind (`ps` by pgid) — and the server still exits promptly, so the fix cannot be "wait for every plugin". |
+| **P0** | Two Kabmo-side prerequisites. (a) Mount `PluginBootstrap` in the mobile layout with the resolved `activeProjectPath`, so a phone has plugin context and content scripts (F3b). (b) Dispose the plugins before the process exits (F4). The handler must become async and await the disposal BEFORE `process.exit(0)` — today it fires `void app.stop()` and exits on the next line, so an unawaited `disposeAllPlugins()` would never run its disposers. | (a) On a phone-sized viewport, `usePanelInfo()` reports the active session and workspace, and an enabled plugin's content script mounts. (b) With a run in flight, `SIGTERM` on the server leaves no child behind (`ps` by pgid) — and the server still exits promptly, so the fix cannot be "wait for every plugin". |
 | **P1** | Kit repo scope: four services, `useRepoScope`, `RepoPicker`, `HOST_CAPABILITIES += 'repo-scope'`, and the host's `repo-picker/index.tsx` switched to the kit component. | Picking a repo in the Files panel moves Source Control's status dot and the Terminal's cwd (existing behaviour, unbroken); the kit picker is what Files renders; a plugin calling `useRepoScope()` sees the same pick and a write reaches the panels. Unit: the service reads/writes `workspace.activeRepo` raw, and `useRepoScope` re-renders on an external write. |
 | **P2** | The plugin scaffold: manifest, `marketplace.json` entry, `icon.svg`, `tsconfig.json`, `app.tsx` (a `rightPanel` + a no-op `contentScript`), the panel shell — header (repo picker, two checkboxes, refresh) + explicit empty states. | Install from Settings → Panel Plugins builds both bundles and the activity bar gains `Commands — Runner`. Opening it with no workspace shows a named empty state (never "No session selected" over a live panel — a plugin panel is not workspace-gated, and `enabled: true` does not imply a root, F3); with a workspace it shows the header with the repo picker on it. |
 | **P3** | Discovery: the detector table, the bounded walk, PM resolution, the `list` RPC, and the grouped row UI. | A fixture repo with a root `package.json` (a `bun.lock`), `packages/api/package.json` (a `package-lock.json`, one script) and a `Makefile` (`.PHONY`, a variable with a colon, three targets) lists **three groups**, the right runner on each package row, exactly the three make targets, and no `node_modules` path. A file added afterwards appears after Refresh. |
@@ -846,7 +846,7 @@ depends on the plugin.
 **P2 depends on P1**, and not only for the picker: the manifest declares
 `capabilities: ["repo-scope"]`, and until that row is in `HOST_CAPABILITIES` the
 scan refuses the plugin by name (F9). Installing P2 before P1 therefore fails
-with `manifest requires capability "repo-scope" which this chamber does not
+with `manifest requires capability "repo-scope" which this Kabmo does not
 provide` — a clear refusal, which is the point of the capability row, but it
 means the two cannot be shipped out of order.
 
@@ -858,7 +858,7 @@ wrapper around it — with a timeout so a plugin that hangs cannot block the exi
 goes beside it) and the handler becomes a two-line call. Doing it the obvious way
 pushes the file over 350 and fails gate 3.
 
-**P1 likewise touches `packages/ui/src/services.ts` (230) and `kit.ts` (153)** —
+**P1 likewise touches `packages/kabmo-ui/src/services.ts` (230) and `kit.ts` (153)** —
 both have room, and the `RepoPicker` is a new file, so the ceiling is only a
 constraint in `index.ts`.
 

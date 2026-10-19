@@ -11,7 +11,7 @@
  * exactly once instead of once per reload, and it is the only reason
  * `onDispose` can be trusted to have nothing left to clean up.
  *
- * The schedule grammar is the CHAMBER's (`@/shared/lib/schedule/parse`), not a
+ * The schedule grammar is Kabmo's (`@/shared/lib/schedule/parse`), not a
  * second parser: a plugin's `5m` and a scheduled task's `5m` must mean the same
  * thing, and the day-of-week rule is the kind of thing two implementations get
  * subtly different. A spec that parses as neither is refused at declaration
@@ -20,7 +20,7 @@
 
 import { parseCron, parseInterval, nextRunAfter, validateSchedule } from '@/shared/lib/schedule/parse';
 import type { ScheduleKind } from '@/shared/types/schedule';
-import type { PluginBackgroundApi } from '@kabmo-labs/plugin-sdk';
+import type { PluginBackgroundApi } from '@kabmo-labs/kabmo-sdk';
 
 /** One declared service, with the plugin it belongs to. */
 export interface PluginService {
@@ -93,7 +93,7 @@ export function createPluginBackground(pluginId: string, now = Date.now()): {
   return { api, handle };
 }
 
-/** Advance one schedule past a fire, using the chamber's own rule. */
+/** Advance one schedule past a fire, using Kabmo's own rule. */
 export function advancePluginSchedule(schedule: PluginSchedule, after = Date.now()): number | null {
   return nextRunAfter(schedule.kind, schedule.spec, after);
 }

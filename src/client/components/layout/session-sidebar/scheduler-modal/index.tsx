@@ -9,7 +9,7 @@
  * This is the real feature behind the sidebar's Calendar button, which used to
  * open a mock dialog whose textarea had no state, whose "Schedule Task" button
  * only closed the window, and whose options were decorative. omp has no
- * scheduler of its own, so the chamber owns the clock (see
+ * scheduler of its own, so Kabmo owns the clock (see
  * `@/server/lib/schedule/runtime.server`) and this modal is its only UI.
  *
  * The model snapshot is taken from what the composer has selected RIGHT NOW,

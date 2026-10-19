@@ -7,7 +7,7 @@ const QUOTA_URL = 'https://kenari.id/v1/account/quota';
 const MCP_URL = 'https://kenari.id/mcp';
 // Cloudflare blocks the /mcp path with error 1010 when the request carries a
 // default fetch User-Agent; an explicit one is required (verified).
-const USER_AGENT = 'ompchamber/1.0 (+https://kenari.id/docs/agents)';
+const USER_AGENT = 'kabmo/1.0 (+https://kenari.id/docs/agents)';
 
 /**
  * Parse an Indonesian Rupiah amount: "Rp" followed by digits where `.` is the

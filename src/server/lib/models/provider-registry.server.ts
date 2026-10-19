@@ -6,7 +6,7 @@
 /**
  * Provider registry assembly for the provider settings. Folds the three omp
  * sources — auth login providers, models.yml registrations, config.yml
- * disabledProviders — with the chamber's local SQLite overlay into the
+ * disabledProviders — with Kabmo's local SQLite overlay into the
  * ProviderItem list the settings UI renders. Server-only: reads omp config
  * files and drives the shared utility RPC process.
  */
@@ -18,12 +18,12 @@ import { disabledProviderItem, nativeProviderItem } from '@/server/lib/models/pr
 import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
 import type { ProviderItem } from '@/shared/types';
 
-/** app_settings key holding the chamber-local provider overlay. */
+/** app_settings key holding Kabmo-local provider overlay. */
 export const PROVIDERS_SETTINGS_KEY = 'omp_providers_config';
 
 const RPC_CACHE_TTL_MS = 60_000;
 
-/** Minimal shape of a get_login_providers entry, as the chamber reads it. */
+/** Minimal shape of a get_login_providers entry, as Kabmo reads it. */
 export interface DetectedLoginProvider {
   id: string;
   name: string;
@@ -56,7 +56,7 @@ export interface OmpRegistrySnapshot {
 
 /**
  * Raw omp registry probe — the two commands that define "detected" for the
- * chamber: the login providers omp knows and the models they serve. Parsed here
+ * Kabmo: the login providers omp knows and the models they serve. Parsed here
  * once so the provider settings page and the startup banner count the same set.
  * Throws when the utility RPC is unreachable; each caller degrades its own way.
  */
@@ -77,7 +77,7 @@ export async function fetchOmpRegistrySnapshot(): Promise<OmpRegistrySnapshot> {
  * source the composer's model dropdown already uses via /api/models.
  */
 async function loadRpcProviderItems(): Promise<ProviderItem[]> {
-  const cached = globalThis.__ompChamberProvidersRpcCache;
+  const cached = globalThis.__kabmoProvidersRpcCache;
   if (cached && cached.expiresAt > Date.now()) return cached.data;
   try {
     const { providers: loginProviders, models: available } = await fetchOmpRegistrySnapshot();
@@ -105,7 +105,7 @@ async function loadRpcProviderItems(): Promise<ProviderItem[]> {
         })),
       };
     });
-    globalThis.__ompChamberProvidersRpcCache = { data: items, expiresAt: Date.now() + RPC_CACHE_TTL_MS };
+    globalThis.__kabmoProvidersRpcCache = { data: items, expiresAt: Date.now() + RPC_CACHE_TTL_MS };
     return items;
   } catch {
     // RPC unavailable (cold start / omp busy) — degrade to the remaining sources.
@@ -187,7 +187,7 @@ export function deduplicateProviderItems(items: ProviderItem[]): ProviderItem[] 
 }
 
 /**
- * Re-apply the chamber-local overlay onto freshly built registry entries. The
+ * Re-apply Kabmo-local overlay onto freshly built registry entries. The
  * registry is authoritative for which providers/models exist, but the user's
  * own per-model choices (visibility, sampling config) exist only in SQLite —
  * without this, every reload rebuilds the list with isVisible: true and the

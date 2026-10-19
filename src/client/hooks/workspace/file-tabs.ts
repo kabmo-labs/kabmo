@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { diffTabId, diffTabName, fileTabId } from '@/shared/lib/workspace/file-tab-id';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import {
@@ -189,7 +189,7 @@ export function useFileTabs(
   }, [dropScrollFor, onOpenTab, setOpenedFiles, setActiveFileId]);
 
   // Global listeners for omp:open-file and omp:open-diff
-  useChamberEvent('omp:open-file', (e) => {
+  useKabmoEvent('omp:open-file', (e) => {
     const customEvent = e as CustomEvent<{ path: string; name?: string; id?: number; content?: string; root?: string; repo?: string; handleId?: string }>;
     if (!customEvent.detail || !customEvent.detail.path) return;
 
@@ -209,7 +209,7 @@ export function useFileTabs(
     });
   });
 
-  useChamberEvent('omp:open-diff', (e) => {
+  useKabmoEvent('omp:open-diff', (e) => {
     const customEvent = e as CustomEvent<{
       file: string;
       staged?: boolean;

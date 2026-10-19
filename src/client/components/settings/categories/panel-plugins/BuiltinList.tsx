@@ -10,10 +10,10 @@ interface BuiltinListProps {
 }
 
 /**
- * The views the chamber ships, with the same switch an installed plugin gets.
+ * The views Kabmo ships, with the same switch an installed plugin gets.
  *
  * They are listed FIRST and separated from the plugins because the two are
- * different kinds of thing: a built-in view is the chamber's own code and is
+ * different kinds of thing: a built-in view is Kabmo's own code and is
  * always present, while a plugin can be installed and removed. What they share
  * is the switch — and sharing it is the point of this section. Enablement is one
  * set of ids (`git` for a view, `plugin:<id>` for a plugin), so a view switched
@@ -40,7 +40,7 @@ export function BuiltinList({ disabled, busy, onSetEnabled }: BuiltinListProps) 
       </header>
 
       <p className="text-[11px] text-ink/50 mb-2">
-        The views the chamber ships. Switch one off to put it away — its code stays in the app, so this is
+        The views Kabmo ships. Switch one off to put it away — its code stays in the app, so this is
         reversible at any time and needs no reinstall.
       </p>
 

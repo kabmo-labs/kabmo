@@ -243,7 +243,7 @@ describe('providerFetchBlockReason', () => {
   });
 
   test('a provider without an endpoint is blocked', () => {
-    const expected = 'This provider has no endpoint the chamber can probe — omp owns its URL.';
+    const expected = 'This provider has no endpoint Kabmo can probe — omp owns its URL.';
     expect(providerFetchBlockReason({})).toBe(expected);
     expect(providerFetchBlockReason({ baseUrl: '' })).toBe(expected);
     expect(providerFetchBlockReason({ baseUrl: undefined, modelSource: 'fetch' })).toBe(expected);

@@ -9,7 +9,7 @@
  * The resolution is a PRIORITY, so the cases that matter are the ones where two
  * plugins disagree: an opener that refuses must fall through to a renderer, and
  * an opener that accepts must beat one. The zero-row case is pinned first
- * because it is the invariant the hosts depend on — a chamber with no plugins
+ * because it is the invariant the hosts depend on — a Kabmo with no plugins
  * resolves nothing and therefore draws its built-in viewer, unchanged.
  *
  * Every assertion is made against RENDERED TEXT rather than a captured value:
@@ -24,7 +24,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { DiffRendererProps, FileOpenerProps, SourceCodeRendererProps } from '@kabmo-labs/plugin-sdk';
+import type { DiffRendererProps, FileOpenerProps, SourceCodeRendererProps } from '@kabmo-labs/kabmo-sdk';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { setPluginContext } from '@/client/lib/plugins/context';
 import {

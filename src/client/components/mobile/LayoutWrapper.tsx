@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import type { SettingsCategoryId } from '@/shared/types';
 import { MobileMainView } from '@/client/components/mobile/MainView';
 import { MobileSessionSidebar } from '@/client/components/mobile/SessionSidebar';
@@ -76,7 +76,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   const editorDrop = useEditorDrop({ enabled: hasContext, onResult: handleDropResult });
 
   // Listen to open-file event on mobile
-  useChamberEvent('omp:open-file', (e) => {
+  useKabmoEvent('omp:open-file', (e) => {
     const customEvent = e as CustomEvent<unknown>;
     const next = mobileEditorFileFrom(customEvent.detail);
     if (next) setMobileEditorFile(next);
@@ -86,7 +86,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // `omp:open-diff`, which the desktop layout turns into an editor tab. On the
   // phone the same event opens the full-screen diff; without a listener here
   // the tap was silently dropped.
-  useChamberEvent('omp:open-diff', (e) => {
+  useKabmoEvent('omp:open-diff', (e) => {
     const detail = (e as CustomEvent<{ file?: string; status?: string; staged?: boolean; repo?: string; root?: string }>).detail;
     if (!detail?.file) return;
     setMobileDiff({
@@ -102,13 +102,13 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // `omp:view-subagent` listener there owns the URL). On the phone the chat is
   // a separate screen, so the tap must also bring it forward — otherwise the
   // transcript opens behind the drawer and the tap reads as a no-op.
-  useChamberEvent('omp:view-subagent', () => setCurrentScreen('main'));
+  useKabmoEvent('omp:view-subagent', () => setCurrentScreen('main'));
 
   // Settings requests (e.g. the model dropdown asking for Settings → Providers
   // when no provider is configured) arrive on the same global channel the
   // desktop layout listens on. SettingsModal itself only reads the payload and
   // never opens, so the open has to be handled here.
-  useChamberEvent('omp:open-settings', (e) => {
+  useKabmoEvent('omp:open-settings', (e) => {
     const detail = (e as CustomEvent<{ category?: SettingsCategoryId; autoOpenAdd?: boolean }>).detail;
     setSettingsCategory(detail?.category ?? 'appearance');
     setAutoOpenAddProvider(Boolean(detail?.autoOpenAdd));

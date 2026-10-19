@@ -28,7 +28,7 @@
  */
 
 import { useCallback, useRef, useState } from 'preact/hooks';
-import { useRpc } from '@ompchamber/ui';
+import { useRpc } from '@kabmo-labs/kabmo-ui';
 
 import { RPC, type Command, type CustomCommand } from '../protocol';
 
@@ -128,7 +128,7 @@ export function useCustomDialog(args: {
    * Delete a stored command.
    *
    * Confirmed, because the row is the ONLY copy: a stored command lives in the
-   * chamber's own storage, not in a file, so there is no git history to restore it
+   * Kabmo's own storage, not in a file, so there is no git history to restore it
    * from and nothing to re-derive it from.
    */
   const remove = useCallback(

@@ -75,7 +75,7 @@ export interface PluginItem {
    *  NEVER included — see `secretSet`. */
   settingValues?: Record<string, unknown>;
   /** Keys whose `secret: true` setting has a stored value. The value itself is
-   *  read by omp, not by the chamber, so the pane can only offer to clear it. */
+   *  read by omp, not by Kabmo, so the pane can only offer to clear it. */
   secretSet?: string[];
   /** Catalog version when it is newer than the installed one. */
   updateAvailable?: string;

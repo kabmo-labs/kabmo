@@ -44,9 +44,9 @@ function mockPayload(): WikiRepoPayload {
     repo: {
       provider: 'github',
       host: 'github.com',
-      slug: 'ompchamber/demo',
-      remote: 'https://github.com/ompchamber/demo',
-      webUrl: 'https://github.com/ompchamber/demo/wiki',
+      slug: 'kabmo/demo',
+      remote: 'https://github.com/kabmo/demo',
+      webUrl: 'https://github.com/kabmo/demo/wiki',
       revision: '0000000000000000000000000000000000000000',
       updatedAt: new Date().toISOString(),
     },

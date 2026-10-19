@@ -4,7 +4,7 @@
  */
 
 /**
- * Turn-matching helpers shared by the chamber chat loader and the in-place
+ * Turn-matching helpers shared by Kabmo chat loader and the in-place
  * rewind endpoint: identifying raw composer input and deciding whether a
  * JSONL-derived user turn and a stored DB-copy turn are the same request
  * (omp rewrites delivered prompts, so equality is not enough).

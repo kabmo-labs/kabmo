@@ -1,15 +1,15 @@
 import './styles.css';
-import { definePluginApp } from '@ompchamber/plugin-sdk/app';
-import { usePanelInfo, useSessionValue } from '@ompchamber/ui';
-import { Field, FieldList, Note, Panel, TextAreaField } from '@ompchamber/ui/components';
+import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
+import { usePanelInfo, useSessionValue } from '@kabmo-labs/kabmo-ui';
+import { Field, FieldList, Note, Panel, TextAreaField } from '@kabmo-labs/kabmo-ui/components';
 
 /**
  * The bundled example plugin.
  *
  * One file, one bundle, three slots — which is the whole shape of a panel
  * plugin: a `definePluginApp` default export whose `setup` registers the
- * components, and nothing else. The components run in the chamber's own tree,
- * so they use the chamber's theme classes and its hooks directly.
+ * components, and nothing else. The components run in Kabmo's own tree,
+ * so they use Kabmo's theme classes and its hooks directly.
  *
  * It exists to exercise every surface a plugin can occupy, so a change that
  * breaks one slot is visible without writing a plugin:
@@ -84,7 +84,7 @@ function SessionStatsTrigger() {
 /**
  * The navbar DROPDOWN — drawn only while the entry is open.
  *
- * Kept short on purpose: the chamber caps it and gives it its own scroll, but a
+ * Kept short on purpose: Kabmo caps it and gives it its own scroll, but a
  * readout nobody can take in at a glance defeats the point of a navbar entry.
  */
 function SessionStatsDropdown() {

@@ -4,7 +4,7 @@
  */
 
 /**
- * Reading a goal notice out of the text omp and the chamber's own extension
+ * Reading a goal notice out of the text omp and Kabmo's own extension
  * inject into the transcript.
  *
  * Goal mode writes three kinds of `custom_message`, all of them `display:false`
@@ -53,7 +53,7 @@ const BUDGET_LINE = /^-\s*(Tokens used|Token budget|Tokens remaining|Time used)\
 function goalNoticeKind(notice: string, source: string | undefined): GoalNoticeKind | null {
   const fromSource = source ? SOURCE_KIND[source] : undefined;
   if (fromSource) return fromSource;
-  // Rows written before `noticeSource` existed (the chamber's own overlay keeps
+  // Rows written before `noticeSource` existed (Kabmo's own overlay keeps
   // notice rows, so a session saved by an older build still shows them). The
   // two multi-line kinds name themselves in their text; a bare objective cannot
   // and stays a generic notice.

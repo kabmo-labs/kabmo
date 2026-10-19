@@ -42,7 +42,7 @@ import { removeDir } from '@/test-support/remove-dir';
  * (`resolveRoot` honors the app root, a path below it, or a registered
  * workspace). A repository in `/tmp` is not addressable through the route at
  * all — `resolveRoot` falls back to the app root's own working tree, so
- * `git add`/`git commit` ran against THE CHAMBER REPOSITORY and committed the
+ * `git add`/`git commit` ran against THE Kabmo REPOSITORY and committed the
  * developer's uncommitted work. Verified the hard way, twice.
  */
 const FIXTURE_ROOT = path.join(process.cwd(), 'tmp-test-git-action');
@@ -83,7 +83,7 @@ function makeRepo(commits = 1): string {
  *
  * `resolveRoot` silently substitutes the app root for a root it cannot honor,
  * and every fixture here is driven through that route — so a fixture that is
- * not where this file thinks it is would commit to the chamber repository
+ * not where this file thinks it is would commit to Kabmo repository
  * instead. Asserting the resolved directory is the fixture, on every call, is
  * what turns that silent substitution into a failed test.
  */

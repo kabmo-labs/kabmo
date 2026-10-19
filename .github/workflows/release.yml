@@ -22,14 +22,14 @@ name: Release
 #
 # The order is the point, not a preference. The app does NOT ship `packages/`
 # (see the `files` list in package.json) — at runtime it resolves
-# `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` out of its own `node_modules`,
+# `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` out of its own `node_modules`,
 # which is the version `bun.lock` records for those workspace packages. A
 # `workspace:` spec is substituted from the LOCK, not from the manifest, so the
 # app's published dependency pins are whatever the lock said when the app was
 # released. Releasing the app before the packages therefore publishes stale
-# pins — measured: `ompchamber@4.1.1` on npm declares both packages at `1.0.0`
+# pins — measured: `kabmo@4.1.1` on npm declares both packages at `1.0.0`
 # while they are at `2.0.0`, and `@kabmo-labs/ui@2.0.0` declared
-# `"@kabmo-labs/plugin-sdk": "1.0.0"` while the SDK was `2.0.0`.
+# `"@kabmo-labs/kabmo-sdk": "1.0.0"` while the SDK was `2.0.0`.
 #
 # Chaining closes it: the `packages` job bumps the versions and commits the
 # refreshed `bun.lock`, and the `app` job fast-forwards to that commit before it
@@ -54,7 +54,7 @@ name: Release
 #
 # `publish.yml` and `publish-plugins.yml` are now the TRIGGERS for those two
 # bodies: `release: published` plus `workflow_dispatch` for the app, a
-# `plugin-sdk/v*` / `ui/v*` tag push plus `workflow_dispatch` for the packages.
+# `kabmo-sdk/v*` / `kabmo-ui/v*` tag push plus `workflow_dispatch` for the packages.
 # Both of them ALSO call the two gate workflows inside the body they call, so a
 # publish cannot start on a commit whose gates or specs are red — whichever path
 # asked for it.
@@ -92,7 +92,7 @@ name: Release
 #
 #   - packages: `node release/release-packages.mjs --dry-run` cuts nothing and
 #     pushes nothing (it skips every `prepare` step), and refuses to run without
-#     `--dry-run` outside CI unless `OMPCHAMBER_RELEASE_ALLOW_NON_CI=1`.
+#     `--dry-run` outside CI unless `KABMO_RELEASE_ALLOW_NON_CI=1`.
 #   - app: drop the `@semantic-release/github` entry from release.config.mjs
 #     first (that plugin publishes a real release even in dry-run mode), then
 #     point the run at a throwaway repository whose URL parses — a bare
@@ -205,11 +205,11 @@ jobs:
           # child env and then spreads the caller's env OVER them, and
           # @semantic-release/git has no author option — these four variables are
           # the only way to change it. The id is the App's USER id (NOT its app
-          # id): `gh api /users/ompchamber-bot[bot] --jq .id`.
-          GIT_AUTHOR_NAME: ompchamber-bot[bot]
-          GIT_AUTHOR_EMAIL: 333284999+ompchamber-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: ompchamber-bot[bot]
-          GIT_COMMITTER_EMAIL: 333284999+ompchamber-bot[bot]@users.noreply.github.com
+          # id): `gh api /users/kabmo-bot[bot] --jq .id`.
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
         # Per-package version rules, path scoping and the lockfile refresh live
         # in release/packages.mjs, release/version-package.mjs and
         # release/packages.js. This script reports what it released in
@@ -258,7 +258,7 @@ jobs:
   # position is the whole design.
   #
   # Named `marketplace`, NOT `plugins`: `publish-plugins.yml` already means the
-  # npm packages `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui`, and a job called
+  # npm packages `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui`, and a job called
   # `plugins` beside a workflow called "Publish Plugin Packages" reads as the
   # same thing. It is not — nothing here is published.
   # ---------------------------------------------------------------------------
@@ -332,10 +332,10 @@ jobs:
       - name: Commit the bumps
         if: steps.bump.outputs.any == 'true'
         env:
-          GIT_AUTHOR_NAME: ompchamber-bot[bot]
-          GIT_AUTHOR_EMAIL: 333284999+ompchamber-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: ompchamber-bot[bot]
-          GIT_COMMITTER_EMAIL: 333284999+ompchamber-bot[bot]@users.noreply.github.com
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
         # The subject is a `chore`, which releases nothing on its own
         # (`release/release-rules.js`), so this commit cannot cut a version by
         # itself. `[skip ci]` because every gate already ran on the push that
@@ -408,10 +408,10 @@ jobs:
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GIT_AUTHOR_NAME: ompchamber-bot[bot]
-          GIT_AUTHOR_EMAIL: 333284999+ompchamber-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: ompchamber-bot[bot]
-          GIT_COMMITTER_EMAIL: 333284999+ompchamber-bot[bot]@users.noreply.github.com
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
         run: |
           # semantic-release writes no outputs, so the tag it cut is read back
           # off the repository. `releaseRules` in release/release-rules.js means

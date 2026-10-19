@@ -10,7 +10,7 @@
  * in-memory HUD: the `todo` tool commits a snapshot to the entry it appends,
  * and omp reads the deepest snapshot back off the ACTIVE BRANCH when it
  * rehydrates (`getLatestTodoPhasesFromEntries` → `syncTodoPhasesFromBranch`).
- * This module performs the same read, so the chamber's panel shows what the
+ * This module performs the same read, so Kabmo's panel shows what the
  * agent itself would resume with.
  *
  * Two rules are load-bearing and each was verified against omp 18.3.0:

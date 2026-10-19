@@ -4,7 +4,7 @@
  */
 
 /**
- * The theme catalog: every palette the chamber can paint, the lookups the whole
+ * The theme catalog: every palette Kabmo can paint, the lookups the whole
  * app resolves a stored theme id through, and the light/dark verdict that used
  * to be re-derived by hand in four places (`hooks/ui/theme.ts`,
  * `code/shiki-themes.ts`, `markdown/mermaid.ts`, `server/plugins/ssr.ts`) — each
@@ -15,7 +15,7 @@
  */
 
 import type { ThemePalette, ThemeSwatch } from '@/shared/types/theme';
-import { CHAMBER_PALETTES } from '@/shared/lib/theme/palettes/chamber';
+import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
 import { LIGHT_PALETTES } from '@/shared/lib/theme/palettes/light';
 
@@ -28,20 +28,20 @@ export const DEFAULT_THEME_ID = 'paper';
  * at the writer instead of an unstyled page at runtime.
  */
 export type ThemeId =
-  | (typeof CHAMBER_PALETTES)[number]['id']
+  | (typeof KABMO_PALETTES)[number]['id']
   | (typeof LIGHT_PALETTES)[number]['id']
   | (typeof DARK_PALETTES)[number]['id'];
 
-const ALL_PALETTES = [...CHAMBER_PALETTES, ...LIGHT_PALETTES, ...DARK_PALETTES];
+const ALL_PALETTES = [...KABMO_PALETTES, ...LIGHT_PALETTES, ...DARK_PALETTES];
 
 const BY_ID: Record<string, ThemePalette | undefined> = Object.fromEntries(
   ALL_PALETTES.map((theme) => [theme.id, theme]),
 );
 
-const DEFAULT_PALETTE: ThemePalette = CHAMBER_PALETTES[0];
+const DEFAULT_PALETTE: ThemePalette = KABMO_PALETTES[0];
 
 /**
- * Every palette, in appearance-grid order: the chamber's own three first (the
+ * Every palette, in appearance-grid order: Kabmo's own three first (the
  * ones an existing install is already using), then each ported family with its
  * light and dark entry adjacent.
  *
@@ -55,7 +55,7 @@ export const THEMES: readonly ThemePalette[] = (() => {
     if (group) group.push(palette);
     else families.set(palette.family, [palette]);
   }
-  return [...CHAMBER_PALETTES, ...[...families.values()].flat()];
+  return [...KABMO_PALETTES, ...[...families.values()].flat()];
 })();
 
 /**

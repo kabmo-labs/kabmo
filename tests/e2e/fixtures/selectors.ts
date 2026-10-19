@@ -9,7 +9,7 @@
  * Two rules, and they are the whole reason this file exists rather than a
  * literal in each spec.
  *
- * 1. **Role + accessible name first.** The chamber's toolbars already carry a
+ * 1. **Role + accessible name first.** The Kabmo's toolbars already carry a
  *    `title` and an `aria-label` on every icon-only button (a bare `<svg
  *    onClick>` is unreachable by keyboard, so the app was built the other way
  *    round), which makes `getByRole('button', { name: 'Save' })` both stable

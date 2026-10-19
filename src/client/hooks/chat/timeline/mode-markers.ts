@@ -5,7 +5,7 @@
 
 /**
  * The marker half of the composer's mode state: subscription, the hydration
- * shape, and the fold from one `CHAMBER_*` notice into the fields it moves.
+ * shape, and the fold from one mode notice into the fields it moves.
  *
  * Split from `modes.ts` because that hook owns the COMMANDS (send, toggle,
  * spawn selection) and this half is pure translation — one marker in, one
@@ -14,8 +14,9 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks';
-import type { ChamberModeSelection, GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
-import { CHAMBER_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import type { KabmoModeSelection, GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
+import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 import { subscribeClientSignal } from '@/client/lib/signals';
 import {
   continuationFromMarker,
@@ -26,7 +27,7 @@ import {
 
 /** The persisted selection, plus the goal record the same read returns. */
 export interface ModesResponse {
-  modes?: ChamberModeSelection & { goalRecord?: GoalRecord | null; goalContinuation?: GoalContinuation | null };
+  modes?: KabmoModeSelection & { goalRecord?: GoalRecord | null; goalContinuation?: GoalContinuation | null };
 }
 
 /**
@@ -37,7 +38,7 @@ export interface ModesResponse {
 export function useModeMarkers(sessionId: string | null, handler: (marker: ParsedMarker) => void): void {
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
-  useEffect(() => subscribeClientSignal(CHAMBER_MODE_SIGNAL, (detail) => {
+  useEffect(() => subscribeClientSignal(KABMO_MODE_SIGNAL, (detail) => {
     const marker = detail?.marker as ParsedMarker | undefined;
     if (!marker) return;
     if (sessionId && detail.sessionId && detail.sessionId !== sessionId) return;
@@ -54,7 +55,7 @@ export interface GoalMarkerPatch {
   goalChanged: boolean;
   /** A verdict the child reported; `undefined` when this frame carried none. */
   continuation?: GoalContinuation | null;
-  /** Only `CHAMBER_GOAL_EVALUATING` carries this. */
+  /** Only `KABMO_GOAL_EVALUATING` carries this. */
   evaluating?: boolean;
 }
 
@@ -67,13 +68,13 @@ export interface GoalMarkerPatch {
  * keeps it in a ref and passes it here rather than this module owning it.
  */
 export function goalMarkerPatch(marker: ParsedMarker, currentGoalId: string | null): GoalMarkerPatch | null {
-  if (marker.marker === 'CHAMBER_GOAL_EVALUATING:') {
+  if (isModeMarker(marker.marker, 'goalEvaluatingMarker')) {
     // The child's loop is deciding whether to open another turn. It has no
     // other frame (the decision is a synchronous guard chain), so this is what
     // the strip's spinner hangs off.
     return { record: null, enabled: false, goalChanged: false, evaluating: marker.payload.evaluating === true };
   }
-  if (marker.marker === 'CHAMBER_GOAL_CONTINUATION:') {
+  if (isModeMarker(marker.marker, 'goalContinuationMarker')) {
     // The loop's own per-turn report: emitted just before it opens an
     // automatic turn, so the run that follows is the turn it names. The
     // decision that produced it is over, so `evaluating` must not be left
@@ -86,7 +87,7 @@ export function goalMarkerPatch(marker: ParsedMarker, currentGoalId: string | nu
       evaluating: false,
     };
   }
-  if (marker.marker !== 'CHAMBER_GOAL_STATE:') return null;
+  if (!isModeMarker(marker.marker, 'goalStateMarker')) return null;
   const record = goalRecordFromMarker(marker.payload);
   return {
     record,

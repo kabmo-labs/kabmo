@@ -58,7 +58,7 @@ const MOCK_PLAN_MD = `# Add a plan panel
 
 ## Context
 
-The chamber has no view of the plan an omp session is working from. The review
+Kabmo has no view of the plan an omp session is working from. The review
 popup covers the moment of approval, and nothing covers what the plan says
 afterwards — including the case where the agent rewrites it.
 

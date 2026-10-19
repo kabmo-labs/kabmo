@@ -10,7 +10,7 @@
  * `disabledProviders`, `enabledProviders`, and `enabledModels` are the three
  * settings omp treats as path-scoped: an entry may be a bare string, or an
  * object carrying `path`/`paths`/`pathPrefix`/`pathPrefixes` plus the values to
- * apply only under those prefixes. The chamber must not flatten that shape —
+ * apply only under those prefixes. The Kabmo must not flatten that shape —
  * dropping the objects loses the user's per-project policy — and must resolve
  * it the same way omp does, or the provider settings would disagree with the
  * model list omp serves.

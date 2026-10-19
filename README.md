@@ -5,7 +5,7 @@
 <h1 align="center">Kabmo</h1>
 
 <p align="center">
-  Browser console and diagnostic chamber for <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) agent sessions.<br>
+  Browser console and diagnostic workbench for <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) agent sessions.<br>
   Watch, steer and audit autonomous coding sessions from one paper-flat dashboard.
 </p>
 
@@ -15,7 +15,7 @@
   <a href="https://elysiajs.com"><img alt="Elysia" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/elysia?color=6f42c1&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MjQgNDcxQTI1NSAyNTUgMCAwIDAgMjU2IDIyIDI1NiAyNTYgMCAwIDAgODMgNDY3di0ybDMzNi0xMTB6TTIwMyAyMTkgNzIgNDUzaC0zbC0yLTItMTEtMTMtOC05LTE3LTI3LTEtMnEtOC0xNS0xNC0zMmwtMy0xMHEtOS0zMC00LTU5di0xcTItMTMgNi0yNWw2LTE3IDQtMTBxMTAtMjEgMjgtMzdsNS02cTE3LTE1IDQxLTIybC0xMSAyLTcgMWgtNmwtNiAxLTYgMWgtN2wtMS0xaDFsNC0ycTIwLTExIDMwLTI5bDQtN3E5LTEzIDIxLTIxbDItMSAxMC01IDE1LTVxNS0yIDctNnYtMWE5IDkgMCAwIDAtMi0xMGwtMy0ydi0xbC0xOC0yMy0xNC0yMHEtNS02LTUtMTMgMC0yIDItMWwxNSA3cTIwIDEwIDQzIDRsMTAtMiA3LTFxMjYtMyA1MyA1aDFsMTcgNnEzMyAxMyA0NiA0NWwzIDE0YTU2IDU2IDAgMCAwIDIyIDMybDkgNiAxMiA3IDIwIDEwIDEgM3EtOSAxMC0yMSAxNmwtMTIgNS0xNCA1LTggMnEtMTggNS0zNiA1aC0yMWwtMTItMmMtMTUtNi0zMyAwLTQxIDE0Ii8%2BPC9zdmc%2B"></a>
   <a href="https://preactjs.com"><img alt="Preact" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/preact?logo=preact&logoColor=white&color=673ab7"></a>
   <a href="https://shiki.style"><img alt="Shiki" src="https://img.shields.io/github/package-json/dependency-version/kabmo-labs/kabmo/shiki?color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNjYgMjY2Ij48Y2lyY2xlIGN4PSIyMjAiIGN5PSI0NyIgcj0iNDciIGZpbGw9IiNmZmYiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCA0OGgyNjZ2NjVIMHoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTA5IDE0NHEwLTgtNi0xMy02LTQtMTctNGwtMTIgMS03IDUtMiA3IDEgNSA1IDUgNyAzIDExIDMgMTQgMyAyNCA4IDE3IDEycTcgOCAxMCAxNWE1MyA1MyAwIDAgMS02IDQ3cS03IDEyLTI0IDE4LTE1IDYtMzggNi0yMiAwLTM5LTYtMTctNy0yNi0yMXQtOS0zNWg0NGw0IDEzcTQgNiAxMCA4IDcgMyAxNiAzbDEyLTIgOC01cTMtMyAzLTggMC0zLTMtN2wtOC01LTE1LTUtMTctM3EtMjQtNS0zNy0xNy0xMy0xMS0xMy0zMiAwLTE3IDktMjl0MjUtMTkgMzYtNyAzNiA3IDI0IDIwcTkgMTIgOCAyOXoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjE3IDB2MjY2aC02NVYweiIvPjwvc3ZnPg%3D%3D"></a>
-  <a href="package.json"><img alt="Version" src="https://img.shields.io/github/package-json/v/kabmo-labs/kabmo?label=version&color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjExNyAxMzMgMjc4IDI3OCI%2BPGcgZmlsbD0iI2Y5NzMxNiI%2BPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMTQ1IDE4NGMtMTYgMC0yOCAxNC0yOCAzMnY0NGMwIDE4IDEyIDMyIDI4IDMyaDI0YzE2IDAgMjgtMTQgMjgtMzJ2LTQ0YzAtMTgtMTItMzItMjgtMzJabTAgMjZoMjRxNCAwIDQgNnY0NHEwIDYtNCA2aC0yNHEtNCAwLTQtNnYtNDRxMC02IDQtNiIvPjxwYXRoIGQ9Ik0yMTEgMTg0aDI2bDIxIDU0IDIxLTU0aDI2djEwOGgtMjR2LTcybC0xNiA0MGgtMTRsLTE2LTQwdjcyaC0yNFoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zMTkgMTg0aDQ0cTI5IDEgMzAgMzF2OHEtMSAzMC0zMCAzMWgtMjB2MzhoLTI0Wm0yNCAyNGgxN3E5IDAgOSA4djZxMCA5LTkgOGgtMTdaIi8%2BPC9nPjwvc3ZnPg%3D%3D"></a>
+  <a href="package.json"><img alt="Version" src="https://img.shields.io/github/package-json/v/kabmo-labs/kabmo?label=version&color=3f3f46&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI%2BPGcgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSI4IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xOCAxMnY0MCIgc3Ryb2tlPSIjRjdGNEVBIi8%2BPHBhdGggZD0iTTE4IDMyIDQ0IDEyIiBzdHJva2U9IiNGMjY1MjIiLz48cGF0aCBkPSJNMTggMzIgNDQgNTIiIHN0cm9rZT0iI0Y3RjRFQSIvPjwvZz48L3N2Zz4%3D"></a>
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@
 
 ## What it is
 
-The browser view onto a live `omp` install. It is not a terminal wrapper: the chamber reads
+The browser view onto a live `omp` install. It is not a terminal wrapper: Kabmo reads
 omp's own session JSONL, project registry, config and subagent transcripts, folds them into one
 live view, and writes back through omp's RPC mode.
 
@@ -94,7 +94,7 @@ bun run dev                     # source checkout: one process, HMR, no build st
 - **Self-update** — `kabmo update` installs the latest version from npm, and **About → Updates**
   does the same from the console, restarting the server and reloading the page into the new build.
 - **Opt-in password, HTTPS and session revocation** — the UI is open by default and locked only when
-  you ask for it (`--ui-password` / `OMPCHAMBER_UI_PASSWORD`), with `--tls` for a self-signed HTTPS
+  you ask for it (`--ui-password` / `KABMO_UI_PASSWORD`), with `--tls` for a self-signed HTTPS
   listener and `POST /api/auth/revoke` to end every session at once. See [Security](#security).
 - **Tray icon and start at login** — `serve --tray` / `--startup`, with the icon as a child of the
   server so it can never outlive it.
@@ -107,7 +107,7 @@ bun run dev                     # source checkout: one process, HMR, no build st
 
 ![Eight of the 45 palettes, same surface](docs/assets/theme-grid.png)
 
-45 palettes in one catalog (`src/shared/lib/theme/`): the chamber's own three (`paper`, `contrast`,
+45 palettes in one catalog (`src/shared/lib/theme/`): Kabmo's own three (`paper`, `contrast`,
 `one-dark-pro-soft`) and 21 light/dark pairs — Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula,
 Solarized, Kanagawa, Vesper, Ayu, Monokai and more. Switching repaints everything, syntax
 highlighting and Mermaid diagrams included, through one writer (`applyDocumentTheme`) that sets
@@ -125,15 +125,16 @@ Kabmo is published to npm and runs on Bun, not Node:
 
 > **omp required** — every live capability (agent sessions, omp config, session state, updates)
 > shells out to the `omp` binary, so `serve` refuses to start when it is not on `PATH` (or set via
-> `OMPCHAMBER_OMP_BIN`). `MOCK=true` is the only mode that runs without a real omp install.
+> `KABMO_OMP_BIN`). `MOCK=true` is the only mode that runs without a real omp install.
 
 ```bash
-bun add -g kabmo     # puts the `kabmo` command on your PATH (`ompchamber` remains an alias)
-kabmo serve         # start the server on :3000
+bun add -g kabmo     # puts the `kabmo` command on your PATH
+kabmo serve          # start the server on :3000
 ```
 
-The `ompchamber` bin and the `OMPCHAMBER_*` environment names remain as aliases, and the data
-directory is still `~/.ompchamber` — an existing install keeps its database, login and sessions.
+An install that predates the rename keeps its state: the first boot moves
+`~/.ompchamber` to `~/.kabmo` (database, login, sessions and marketplace), and the
+`OMPCHAMBER_*` environment names are still read as fallbacks.
 
 The published tarball carries the source, the CLI and the prebuilt client bundle, so there is no
 build step after install. `npm install -g kabmo` works too — the `kabmo` bin is a Bun
@@ -191,12 +192,12 @@ serving that console, and reloads the page once the replacement answers on the s
 | `-p, --port <port>` | Web server port (default `3000`); scopes `status`/`stop`/`restart`/`logs` |
 | `--host <address>` (`--hostname`) | Bind address (default `127.0.0.1`) |
 | `--lan` | Bind to `0.0.0.0` for LAN access (warns when the traffic is unencrypted) |
-| `--tls` | Serve HTTPS from a self-signed certificate, generated once into `~/.ompchamber/tls/` |
+| `--tls` | Serve HTTPS from a self-signed certificate, generated once into `~/.kabmo/tls/` |
 | `--tray` | Show a menu-bar/notification-area icon for this server |
 | `--startup` | Start the server at login (and show the tray icon now) |
 | `--no-startup` | Remove the login entry |
 | `--ui-password [value]` | Require a password for the browser UI; generates one when the value is omitted |
-| `--no-ui-password` | Ignore `OMPCHAMBER_UI_PASSWORD` for this start |
+| `--no-ui-password` | Ignore `KABMO_UI_PASSWORD` for this start |
 | `--prod` | Accepted for compatibility — production is the default |
 | `--dev` | Run the dev server from source (HMR, unminified) instead |
 | `--foreground` (`--no-daemon`) | Run in the foreground (no daemon) |
@@ -231,9 +232,9 @@ Open Logs, Start at Login / Disable Start at Login, Quit Kabmo.
   passes) produced no server at all. In the foreground the CLI is the long-lived job, the server is
   its child, and the tray is the server's child. Verified against `launchctl print`: the entry is
   `state = running` with the CLI as its program.
-- **macOS** registers `~/Library/LaunchAgents/dev.ompchamber.tray.plist` (`RunAtLoad`, no
+- **macOS** registers `~/Library/LaunchAgents/dev.kabmo.tray.plist` (`RunAtLoad`, no
   `KeepAlive` — a server stopped on purpose stays stopped). **Linux** writes
-  `$XDG_CONFIG_HOME/autostart/ompchamber-tray.desktop`, which every freedesktop session reads.
+  `$XDG_CONFIG_HOME/autostart/kabmo-tray.desktop`, which every freedesktop session reads.
   **Windows** sets the HKCU `…\CurrentVersion\Run` value through `reg`, so registering never needs
   elevation.
 - **What draws the icon is the platform's own tray API**: an AppKit status item on macOS (via
@@ -251,7 +252,7 @@ by Kabmo, the newcomer reports who holds it and exits non-zero so you can pick a
 
 ```bash
 kabmo serve --port 3001        # CLI flag
-OMPCHAMBER_PORT=3001 kabmo serve
+KABMO_PORT=3001 kabmo serve
 PORT=3001 bun run dev              # or: PORT=3001 bun run start
 ```
 
@@ -266,10 +267,10 @@ PORT=3001 bun run dev              # or: PORT=3001 bun run start
   the dev loop with it. Name the instance — `kabmo stop --port <port>`, or `--all` — to end
   one anyway.
 
-The server writes `~/.ompchamber/run/<port>.json` (`pid`, `host`, `mode`, `launchMode`, `startedAt`)
+The server writes `~/.kabmo/run/<port>.json` (`pid`, `host`, `mode`, `launchMode`, `startedAt`)
 once it owns the port, which is how `status`/`stop`/`logs` also see servers started by `bun run dev`
 or `--foreground`. `launchMode` is derived from the process's **argv**, never from an environment
-variable — env is inherited, so a `bun run dev` started inside an Kabmo shell would otherwise be
+variable — env is inherited, so a `bun run dev` started inside a Kabmo shell would otherwise be
 replaced by an update. Records left by a killed server are pruned once their PID stops answering.
 
 - `stop` reports what actually happened. The record is dropped only once the process is gone, so a
@@ -291,18 +292,18 @@ Environment variables, read from `.env` (see [`.env.example`](.env.example)):
 | `HOST` | `localhost` | Server bind address |
 | `MOCK` | `false` | `true` = demo datasets, `false` = real SQLite + workspace only |
 | `SYNC_WORKSPACE` | `true` | Seed the workspace list from discovered omp projects — only while the list is still empty (one-time bootstrap; a curated list is never appended to) |
-| `OMPCHAMBER_DATA_DIR` | `~/.ompchamber` | CLI registry, logs, database, wiki mirrors and TLS certificate root |
-| `OMPCHAMBER_PORT` / `OMPCHAMBER_HOST` | — | Defaults for the CLI when no flag is passed |
-| `OMPCHAMBER_UI_PASSWORD` | — | Require a UI password (see [Security](#security)); erased from the environment at boot |
-| `OMPCHAMBER_DB_PATH` (`DB_PATH`) | `~/.ompchamber/db.sqlite` | SQLite database path |
-| `OMPCHAMBER_BUN` | — | Explicit Bun binary for the CLI to spawn |
-| `OMPCHAMBER_OMP_BIN` | — | Explicit `omp` binary path |
-| `OMPCHAMBER_MARKETPLACE_DIR` / `OMPCHAMBER_BUNDLED_MARKETPLACE_DIR` | — | Override where plugin marketplaces are read from |
+| `KABMO_DATA_DIR` (`OMPCHAMBER_DATA_DIR`) | `~/.kabmo` | CLI registry, logs, database, wiki mirrors and TLS certificate root |
+| `KABMO_PORT` / `KABMO_HOST` | — | Defaults for the CLI when no flag is passed |
+| `KABMO_UI_PASSWORD` (`OMPCHAMBER_UI_PASSWORD`) | — | Require a UI password (see [Security](#security)); erased from the environment at boot |
+| `KABMO_DB_PATH` (`OMPCHAMBER_DB_PATH`, `DB_PATH`) | `~/.kabmo/db.sqlite` | SQLite database path |
+| `KABMO_BUN` | — | Explicit Bun binary for the CLI to spawn |
+| `KABMO_OMP_BIN` (`OMPCHAMBER_OMP_BIN`) | — | Explicit `omp` binary path |
+| `KABMO_MARKETPLACE_DIR` / `KABMO_BUNDLED_MARKETPLACE_DIR` | — | Override where plugin marketplaces are read from |
 | `PI_CONFIG_DIR` / `PI_CODING_AGENT_DIR` | `~/.omp` | Oh-My-Pi config root overrides |
 | `SKILLS_API_URL` | `https://skills.sh` | Skills catalog source |
 | `NPM_CONFIG_REGISTRY` | `https://registry.npmjs.org` | Registry the update check reads |
 
-Runtime state, sessions and settings live in SQLite (`~/.ompchamber/db.sqlite`), the single source
+Runtime state, sessions and settings live in SQLite (`~/.kabmo/db.sqlite`), the single source
 of truth for persisted settings. Per-session UI state (open tabs, panel widths, the picked repo,
 drafts) lives beside it, keyed by session id, so a reload restores the layout that session was left
 in.
@@ -311,11 +312,11 @@ in.
 
 **Off by default.** A plain `bun run dev` requires no password, and no file on disk can change that:
 the password is supplied per run and hashed in memory. Only a session *signing* secret is persisted
-(`~/.ompchamber/auth.json`, mode 0600), so `bun run --hot` does not sign you out on every save while
+(`~/.kabmo/auth.json`, mode 0600), so `bun run --hot` does not sign you out on every save while
 nothing durable can enable authentication on its own.
 
 ```bash
-kabmo serve --ui-password my-secret    # or OMPCHAMBER_UI_PASSWORD
+kabmo serve --ui-password my-secret    # or KABMO_UI_PASSWORD
 kabmo serve --ui-password              # generates one and prints it once
 kabmo serve --tls --ui-password …      # HTTPS, cookie gains Secure
 ```
@@ -330,7 +331,7 @@ kabmo serve --tls --ui-password …      # HTTPS, cookie gains Secure
   secret and ends every session everywhere. The token binds to a key derived from the password, so a
   restart with the same password keeps your session and a different one kills it.
 - **TLS** — `--tls` generates a self-signed certificate (SAN covering `localhost`, `127.0.0.1` and
-  the machine's LAN addresses) into `~/.ompchamber/tls/`. Your browser warns once, then the
+  the machine's LAN addresses) into `~/.kabmo/tls/`. Your browser warns once, then the
   connection is encrypted. Without it, a password and the session cookie cross the network in
   cleartext, which is what `--lan` warns about.
 - **No TLS locally?** A tunnel terminates TLS at the edge and needs no certificate:
@@ -356,11 +357,11 @@ src/
 │  ├─ lib/          omp session/subagent/config, panels, wiki, updates, lifecycle
 │  └─ plugins/      SSR shell, static assets, compression, dev assets
 ├─ shared/    Imported by both — types, chat timeline folding, pure helpers
-└─ cli/       ompchamber command (plain ESM, runs under Bun)
+└─ cli/       kabmo command (plain ESM, runs under Bun)
 
 packages/
-├─ plugin-sdk/  the panel-plugin contract (types, backend API, slots)
-└─ ui/          the Preact kit a plugin builds against
+├─ kabmo-sdk/   the panel-plugin contract (types, backend API, slots)
+└─ kabmo-ui/    the Preact kit a plugin builds against
 
 marketplace/plugins/
 ├─ command-runner/  a repository's commands, 18 sources across 15 toolchains
@@ -376,7 +377,7 @@ Non-obvious invariants worth reading before you edit:
   codes stay identical; `action` owns method dispatch and returns its own `405`.
 - **Every internal import uses the `@/` alias**, folders mirror component names in kebab-case, and
   every `.ts`/`.tsx` file stays under 350 lines.
-- **Every right-panel view is a plugin**, including the eleven the chamber ships: one catalog merges
+- **Every right-panel view is a plugin**, including the eleven Kabmo ships: one catalog merges
   the built-ins and the installed ones, so a view cannot be a table in one layout and a fetch in the
   other.
 
@@ -442,7 +443,7 @@ gates → e2e → packages → packages-publish
    **last action of the release run** rather than a second run dispatched beside it, so a release
    cannot report success while its publish is still queued, still waiting on the `npm` environment,
    or already failed.
-3. The same run releases `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` FIRST (the app pins them, and
+3. The same run releases `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` FIRST (the app pins them, and
    a `workspace:` spec is substituted from `bun.lock`), then bumps the bundled marketplace plugins
    by their own commit history — a bundled plugin's manifest version is the whole delivery
    mechanism, since `syncBundledPlugins` applies a new copy only when the store's version is
@@ -472,7 +473,7 @@ A `BREAKING CHANGE:` footer is therefore read only in uppercase, and only where 
 Two things to set up once and one to never do:
 
 - GitHub environment **`npm`** with a secret `NPM_TOKEN`: a granular npm token with read/write on
-  `ompchamber` (and the two packages), 2FA bypass enabled and the `publish and stage` action (a
+  `kabmo` (and the two packages), 2FA bypass enabled and the `publish and stage` action (a
   stage-only token is rejected — Bun has no `npm stage publish`).
 - A failed publish is retried with `gh workflow run publish.yml -f tag=vX.Y.Z`, which leaves the
   release itself untouched. `publish.yml` is now only a TRIGGER (a published release, or that

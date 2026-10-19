@@ -24,7 +24,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { buildPanelPlugin, describeInstallFailure, PLUGIN_BUILD_DIR } from '@/server/lib/panels/build.server';
-import { chamberPackageDirs, linkChamberPackages } from '@/server/lib/panels/link.server';
+import { kabmoPackageDirs, linkKabmoPackages } from '@/server/lib/panels/link.server';
 import type { PanelPluginManifest } from '@/shared/types';
 
 let root = '';
@@ -43,7 +43,7 @@ function writeFile(relative: string, content: string): void {
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-build-'));
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-build-'));
 });
 
 afterEach(() => {
@@ -63,7 +63,7 @@ describe('buildPanelPlugin', () => {
     writeFile(
       'src/app.tsx',
       [
-        "import { definePluginApp } from '@kabmo-labs/plugin-sdk/app';",
+        "import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';",
         "import { useState } from 'preact/hooks';",
         'export default definePluginApp((app) => { app.rightPanel({ id: "x", component: () => useState(0) && null }); });',
       ].join('\n'),
@@ -74,7 +74,7 @@ describe('buildPanelPlugin', () => {
     const bundle = fs.readFileSync(join(root, PLUGIN_BUILD_DIR, 'app.js'), 'utf8');
     // The shared runtime is READ, not bundled: no Preact and no SDK copy in the
     // output, and the shim's own guard is what names a host that is missing.
-    expect(bundle).toContain('__ompchamberPluginRuntime');
+    expect(bundle).toContain('__kabmoPluginRuntime');
     expect(bundle).not.toContain('preact.module');
   });
 
@@ -138,13 +138,13 @@ describe('buildPanelPlugin', () => {
   });
 });
 
-describe('linkChamberPackages', () => {
-  test('links each @ompchamber package once, keyed by package not specifier', async () => {
-    await linkChamberPackages(root);
-    const scope = join(root, 'node_modules', '@ompchamber');
-    if (!fs.existsSync(scope)) return; // no chamber packages resolvable in this environment
+describe('linkKabmoPackages', () => {
+  test('links each @kabmo-labs package once, keyed by package not specifier', async () => {
+    await linkKabmoPackages(root);
+    const scope = join(root, 'node_modules', '@kabmo-labs');
+    if (!fs.existsSync(scope)) return; // no Kabmo packages resolvable in this environment
     const entries = fs.readdirSync(scope).sort();
-    // `@kabmo-labs/ui` and `@kabmo-labs/ui/components` are ONE package, so the
+    // `@kabmo-labs/kabmo-ui` and `@kabmo-labs/kabmo-ui/components` are ONE package, so the
     // second must not have replaced the first with its own directory.
     expect(entries).toEqual([...new Set(entries)]);
     for (const entry of entries) {
@@ -156,23 +156,23 @@ describe('linkChamberPackages', () => {
 
   test('is a no-op when the plugin has no node_modules to link into', async () => {
     // The directory is created, not required: a plugin that imports nothing from
-    // the chamber still builds, so a missing node_modules must not throw.
-    await expect(linkChamberPackages(join(root, 'nested'))).resolves.toBeUndefined();
+    // Kabmo still builds, so a missing node_modules must not throw.
+    await expect(linkKabmoPackages(join(root, 'nested'))).resolves.toBeUndefined();
   });
 
   test('never rewrites the HOST packages own dependency tree', async () => {
     // The regression this pins: an earlier version pointed each linked package's
-    // `node_modules/preact` at the PLUGIN's copy. `packages/ui` and
-    // `packages/plugin-sdk` are the host's own packages, so that replaced the
+    // `node_modules/preact` at the PLUGIN's copy. `packages/kabmo-ui` and
+    // `packages/kabmo-sdk` are the host's own packages, so that replaced the
     // host's Preact with the plugin's — and because the runtime shim hands the
     // host's `preact/hooks` to every plugin, a plugin declaring `preact` made the
     // host hand out the WRONG hooks instance. Every plugin render then died with
     // `Cannot read properties of undefined (reading '__H')`, inside the host's
     // own UI kit, and the whole app went blank.
     //
-    // The shim makes it unnecessary too: `preact` is external, so the chamber's
+    // The shim makes it unnecessary too: `preact` is external, so Kabmo's
     // bundler never resolves it through a linked package.
-    const hostPackages = Object.values(chamberPackageDirs());
+    const hostPackages = Object.values(kabmoPackageDirs());
     expect(hostPackages.length).toBeGreaterThan(0);
 
     // A plugin that ships its own Preact, which is the shape that triggered it.
@@ -180,7 +180,7 @@ describe('linkChamberPackages', () => {
     fs.mkdirSync(pluginPreact, { recursive: true });
     fs.writeFileSync(join(pluginPreact, 'package.json'), JSON.stringify({ name: 'preact', version: '9.0.0' }));
 
-    await linkChamberPackages(root);
+    await linkKabmoPackages(root);
 
     for (const packageRoot of hostPackages) {
       const hijacked = join(packageRoot, 'node_modules', 'preact');
@@ -199,15 +199,15 @@ describe('describeInstallFailure', () => {
     // and the package.json script list. Taking the LAST line reported
     // `$ bun run build` as the reason a plugin could not install.
     const stderr = [
-      'error: GET https://registry.npmjs.org/@ompchamber%2Fui - 404',
+      'error: GET https://registry.npmjs.org/@kabmo-labs%2Fui - 404',
       '',
-      'error: @kabmo-labs/ui@^1.0.0 failed to resolve',
+      'error: @kabmo-labs/kabmo-ui@^1.0.0 failed to resolve',
       '',
       'Bun v1.4.2 (macOS arm64)',
       '',
     ].join('\n');
     expect(describeInstallFailure(stderr, undefined)).toBe(
-      'error: GET https://registry.npmjs.org/@ompchamber%2Fui - 404',
+      'error: GET https://registry.npmjs.org/@kabmo-labs%2Fui - 404',
     );
   });
 
@@ -230,8 +230,8 @@ describe('optional peer dependencies', () => {
         name: 'x',
         version: '1.0.0',
         scripts: { build: 'bun build src/entry.ts --outfile dist/app.js --target browser' },
-        peerDependencies: { '@kabmo-labs/ui': '*' },
-        peerDependenciesMeta: { '@kabmo-labs/ui': { optional: true } },
+        peerDependencies: { '@kabmo-labs/kabmo-ui': '*' },
+        peerDependenciesMeta: { '@kabmo-labs/kabmo-ui': { optional: true } },
       }),
     );
     writeFile('src/entry.ts', 'export default { ok: true };');
@@ -264,13 +264,16 @@ describe('peer dependency declaration', () => {
   });
 });
 
-describe('chamberPackageDirs', () => {
-  test('resolves the packages the chamber actually runs with', () => {
-    const dirs = chamberPackageDirs();
+describe('kabmoPackageDirs', () => {
+  test('resolves the packages Kabmo actually runs with', () => {
+    const dirs = kabmoPackageDirs();
     // Resolved at runtime, not listed as paths: a source checkout keeps them
     // under `packages/` while a published install has them in `node_modules`,
     // and `packages/` is not shipped at all. `Bun.resolveSync` answers both.
-    expect(Object.keys(dirs).sort()).toEqual(['@kabmo-labs/plugin-sdk', '@kabmo-labs/ui']);
+    expect(Object.keys(dirs).sort()).toEqual(['@kabmo-labs/kabmo-sdk', '@kabmo-labs/kabmo-ui']);
+    // The pre-rename names resolve too when they are installed, which is what
+    // keeps a plugin that has not been republished yet buildable; this checkout
+    // no longer carries them, so the assertion is on the CURRENT pair only.
     for (const dir of Object.values(dirs)) {
       expect(fs.existsSync(join(dir, 'package.json'))).toBe(true);
     }
@@ -279,7 +282,7 @@ describe('chamberPackageDirs', () => {
   test('every resolved directory is one a symlink can point at', () => {
     // The link target must be the package ROOT, not its entry file — linking a
     // `.ts` file would leave the specifier's subpath exports unresolvable.
-    for (const dir of Object.values(chamberPackageDirs())) {
+    for (const dir of Object.values(kabmoPackageDirs())) {
       expect(fs.lstatSync(dir).isDirectory()).toBe(true);
     }
   });

@@ -15,11 +15,11 @@
  * The targets are NOT symmetric, and the asymmetry is the point:
  *
  * - **The app bundle runs in the BROWSER**, so it is shimmed: `preact` and the
- *   SDK resolve to the host's `globalThis.__ompchamberPluginRuntime`, which is
+ *   SDK resolve to the host's `globalThis.__kabmoPluginRuntime`, which is
  *   what keeps one Preact instance across the host and every plugin.
- * - **The server bundle runs in BUN, in the chamber's own process**, so there is
+ * - **The server bundle runs in BUN, in Kabmo's own process**, so there is
  *   nothing to shim — no runtime global is published there. It bundles
- *   everything it imports, `@kabmo-labs/plugin-sdk` included: the entry is
+ *   everything it imports, `@kabmo-labs/kabmo-sdk` included: the entry is
  *   imported by absolute path from the plugin's directory, and a self-contained
  *   file cannot fail to resolve a dependency at load time.
  */
@@ -74,7 +74,7 @@ export async function buildAppBundle(root: string, source: string, outdir: strin
 /**
  * Bundle a server entry for Bun.
  *
- * Not minified: this half runs in the chamber's own process, where a stack
+ * Not minified: this half runs in Kabmo's own process, where a stack
  * trace naming a real function is worth more than the bytes, and it is loaded
  * once per boot rather than served to a browser on every page load.
  */

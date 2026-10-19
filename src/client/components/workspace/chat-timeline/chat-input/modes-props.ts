@@ -34,7 +34,7 @@ export interface ComposerModes {
   planAvailable: boolean;
   /**
    * The last mode-command refusal, from either side of the wire (the route's
-   * error, or a `CHAMBER_MODE_ERROR` from the extension). The composer renders
+   * error, or a `KABMO_MODE_ERROR` from the extension). The composer renders
    * it, because a command that failed silently left the toggle pressed over a
    * mode the child is not in.
    */

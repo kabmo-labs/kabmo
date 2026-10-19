@@ -34,7 +34,7 @@ import {
 import { copyImageToClipboard, downloadUrl, saveBlob } from '@/client/hooks/editor/file-actions';
 import { retainKeys, saveEditorFile } from '@/client/hooks/editor/save-file';
 import { EDITOR_DEFAULT_FONT_FAMILY, EDITOR_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
-import { primeChamberSettings } from '@/shared/lib/settings/client';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
 const DOM_GLOBALS = [
   'window', 'document', 'navigator', 'HTMLElement', 'Element', 'Node', 'Event', 'CustomEvent',
@@ -124,18 +124,18 @@ async function mountFont(): Promise<HTMLElement> {
 
 describe('the editor font setting', () => {
   test('an unset setting resolves to the shipped default family', () => {
-    primeChamberSettings({});
+    primeKabmoSettings({});
     expect(currentEditorFont()).toBe(EDITOR_DEFAULT_FONT_FAMILY);
     expect(EDITOR_FONT_FAMILY.startsWith(`"${EDITOR_DEFAULT_FONT_FAMILY}"`)).toBe(true);
   });
 
   test('a stored family is read from the settings snapshot', () => {
-    primeChamberSettings({ editorFont: 'Menlo' });
+    primeKabmoSettings({ editorFont: 'Menlo' });
     expect(currentEditorFont()).toBe('Menlo');
   });
 
   test('the mounted editor starts on the stored family, not the default', async () => {
-    primeChamberSettings({ editorFont: 'Menlo' });
+    primeKabmoSettings({ editorFont: 'Menlo' });
     await mountFont();
     expect(stack.startsWith('"Menlo",')).toBe(true);
     // The bundled stack stays behind the choice, which is what lets a device
@@ -144,7 +144,7 @@ describe('the editor font setting', () => {
   });
 
   test('a live change reaches the mounted editor and re-resolves the stack', async () => {
-    primeChamberSettings({ editorFont: 'Menlo' });
+    primeKabmoSettings({ editorFont: 'Menlo' });
     await mountFont();
     await act(async () => {
       window.dispatchEvent(new CustomEvent(EDITOR_FONT_CHANGED_EVENT, { detail: 'JetBrains Mono' }));
@@ -159,7 +159,7 @@ describe('the editor font setting', () => {
   });
 
   test('the listener is removed when the editor unmounts', async () => {
-    primeChamberSettings({ editorFont: 'Menlo' });
+    primeKabmoSettings({ editorFont: 'Menlo' });
     await mountFont();
     if (container) render(null, container);
     // No subscriber left: a write must not throw or touch a dead component.

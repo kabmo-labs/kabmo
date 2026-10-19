@@ -10,7 +10,7 @@
  * client-side mark is what left a spinner turning after its run had ended.
  *
  * One case is driven through `foldAgentEvent` with a real omp frame: the
- * callbacks see the MAPPED chamber role (`assistant` → `ai`), which a
+ * callbacks see the MAPPED Kabmo role (`assistant` → `ai`), which a
  * hand-built message would hide.
  */
 

@@ -36,12 +36,12 @@ export interface CatalogLoadOptions {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberModelsDevCatalog: { data: ModelsDevCatalog; expiresAt: number } | undefined;
+  var __kabmoModelsDevCatalog: { data: ModelsDevCatalog; expiresAt: number } | undefined;
 }
 
 export async function loadModelsDevCatalog(options: CatalogLoadOptions = {}): Promise<ModelsDevCatalog> {
   const { timeoutMs = CATALOG_TIMEOUT_MS, strict = false } = options;
-  const cached = globalThis.__ompChamberModelsDevCatalog;
+  const cached = globalThis.__kabmoModelsDevCatalog;
   if (cached && cached.expiresAt > Date.now()) return cached.data;
   try {
     const response = await fetch(CATALOG_URL, { signal: AbortSignal.timeout(timeoutMs) });
@@ -54,7 +54,7 @@ export async function loadModelsDevCatalog(options: CatalogLoadOptions = {}): Pr
       if (strict) throw new Error('models.dev payload is not an object');
       return cached?.data ?? {};
     }
-    globalThis.__ompChamberModelsDevCatalog = { data, expiresAt: Date.now() + CATALOG_TTL_MS };
+    globalThis.__kabmoModelsDevCatalog = { data, expiresAt: Date.now() + CATALOG_TTL_MS };
     return data;
   } catch (error) {
     if (strict) throw error;

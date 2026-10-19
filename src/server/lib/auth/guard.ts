@@ -106,7 +106,7 @@ export async function initAuth(password: string | null | undefined): Promise<str
   const candidate = typeof password === 'string' ? password.trim() : '';
   if (candidate.length === 0) {
     active = null;
-    return 'disabled (no --ui-password or OMPCHAMBER_UI_PASSWORD given)';
+    return 'disabled (no --ui-password or KABMO_UI_PASSWORD given)';
   }
 
   const existingSecret = await readSessionSecret();
@@ -130,7 +130,7 @@ export async function initAuth(password: string | null | undefined): Promise<str
  * Arm authentication from a credential a PREVIOUS process already hashed.
  *
  * This is the self-restart path. The replacement is spawned by
- * `ompchamber restart`, which never had the plaintext — the server that armed
+ * `kabmo restart`, which never had the plaintext — the server that armed
  * the restart did, and it has already hashed it. Handing the hash over instead
  * of the password is what keeps the plaintext from being respawned at all: a
  * `--ui-password` given to the original run never has to exist again, and the

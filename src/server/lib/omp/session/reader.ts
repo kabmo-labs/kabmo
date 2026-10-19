@@ -4,7 +4,7 @@
  */
 
 /**
- * Read-only orchestrator over the oh-my-pi agent directory — the Kabmo
+ * Read-only orchestrator over the oh-my-pi agent directory — Kabmo
  * analog of omp-web's lib/session-reader.ts sidebar data path.
  *
  * Composes the pieces of the omp-web sidebar data source so a future UI fork
@@ -30,7 +30,7 @@ const CONCURRENCY = 6;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberSidebarDataCache: {
+  var __kabmoSidebarDataCache: {
     data: OmpSidebarData;
     expiresAt: number;
     inFlight: Promise<OmpSidebarData> | null;
@@ -44,10 +44,10 @@ declare global {
  * (4 KiB prefix per session file) instead of one scan each.
  */
 export async function loadOmpSidebarData(): Promise<OmpSidebarData> {
-  let slot = globalThis.__ompChamberSidebarDataCache;
+  let slot = globalThis.__kabmoSidebarDataCache;
   if (!slot) {
     slot = { data: undefined as unknown as OmpSidebarData, expiresAt: 0, inFlight: null };
-    globalThis.__ompChamberSidebarDataCache = slot;
+    globalThis.__kabmoSidebarDataCache = slot;
   }
   const now = Date.now();
   if (slot.data && slot.expiresAt > now) return slot.data;
@@ -66,7 +66,7 @@ export async function loadOmpSidebarData(): Promise<OmpSidebarData> {
  * that follows the delete would otherwise serve it back for up to the TTL.
  */
 export function invalidateOmpSidebarData(): void {
-  const slot = globalThis.__ompChamberSidebarDataCache;
+  const slot = globalThis.__kabmoSidebarDataCache;
   if (!slot) return;
   slot.data = undefined as unknown as OmpSidebarData;
   slot.expiresAt = 0;
@@ -145,7 +145,7 @@ async function buildOmpSidebarData(): Promise<OmpSidebarData> {
     available,
     generatedAt: new Date().toISOString(),
   };
-  const slot = globalThis.__ompChamberSidebarDataCache;
+  const slot = globalThis.__kabmoSidebarDataCache;
   if (slot) {
     slot.data = data;
     slot.expiresAt = Date.now() + SIDEBAR_DATA_TTL_MS;

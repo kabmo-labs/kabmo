@@ -24,7 +24,7 @@ export interface DbClient {
 /**
  * How long a blocked write waits for another connection to release the lock.
  *
- * The chamber database is shared: a second chamber on another port writes the
+ * The Kabmo database is shared: a second Kabmo on another port writes the
  * same file, the CLI writes it, and a maintenance `VACUUM` takes the exclusive
  * lock outright. Without this, a write that meets any of them fails on the spot
  * with `SQLITE_BUSY: database is locked` — which is exactly what a server log

@@ -9,7 +9,7 @@
  * omp binary, so its absence is a first-class, user-visible state.
  *
  * Faithful port of omp-web/lib/omp/omp-cli.ts (binary resolution only; the
- * version probe is not needed by the chamber).
+ * version probe is not needed by Kabmo).
  */
 
 import { existsSync } from 'fs';
@@ -33,7 +33,7 @@ export function invalidateOmpCliCache(): void {
 }
 
 function probeOmpBin(): string | null {
-  const override = Bun.env.OMPCHAMBER_OMP_BIN;
+  const override = Bun.env.KABMO_OMP_BIN ?? Bun.env.OMPCHAMBER_OMP_BIN;
   if (override) return existsSync(override) ? override : null;
 
   const onPath = Bun.which(BIN_NAME);
@@ -50,7 +50,7 @@ function probeOmpBin(): string | null {
   return Bun.which(BIN_NAME, { PATH: fallbackPath });
 }
 
-/** Resolve the omp binary: OMPCHAMBER_OMP_BIN override, then PATH lookup. Returns
+/** Resolve the omp binary: KABMO_OMP_BIN override, then PATH lookup. Returns
  * null when omp is not installed. A hit is cached for the process lifetime; a
  * miss is re-probed after MISS_TTL_MS. */
 export function resolveOmpBin(): string | null {

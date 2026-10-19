@@ -103,7 +103,7 @@ jobs:
           echo "No file over 350 lines."
 
   # ---------------------------------------------------------------------------
-  # The SAME gates on Windows, because the chamber ships a Windows CLI and the
+  # The SAME gates on Windows, because Kabmo ships a Windows CLI and the
   # repository is developed on macOS.
   #
   # This job exists because of what a macOS-only gate cannot see: the CLI's

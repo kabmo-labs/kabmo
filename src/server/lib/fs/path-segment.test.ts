@@ -79,11 +79,11 @@ describe('purgeBtwForSession refuses a non-segment id', () => {
       await fs.promises.mkdir(path.dirname(file), { recursive: true });
       await Bun.write(file, '{"type":"session"}\n');
     }
-    Bun.env.OMPCHAMBER_DB_PATH = path.join(root, 'db.sqlite');
+    Bun.env.KABMO_DB_PATH = path.join(root, 'db.sqlite');
   });
 
   afterAll(async () => {
-    delete Bun.env.OMPCHAMBER_DB_PATH;
+    delete Bun.env.KABMO_DB_PATH;
     await fs.promises.rm(root, { recursive: true, force: true });
   });
 

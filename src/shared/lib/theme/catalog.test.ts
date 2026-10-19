@@ -4,7 +4,7 @@
  */
 
 /**
- * The catalog is the single source of truth for what the chamber can paint, and
+ * The catalog is the single source of truth for what Kabmo can paint, and
  * every failure mode here is silent at runtime: an unknown id renders the
  * default palette (a theme that "doesn't work"), a missing color renders as an
  * empty declaration (an invisible swatch, a transparent panel), a wrong variant
@@ -29,7 +29,7 @@ const COLOR_KEYS = ['canvas', 'paper', 'ink', 'error', 'success', 'info', 'warni
 const COLOR_VALUE = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|#[0-9a-f]{8})$/i;
 
 describe('theme catalog', () => {
-  test('ships the chamber palettes plus every ported variant', () => {
+  test('ships Kabmo palettes plus every ported variant', () => {
     expect(THEMES.length).toBe(45);
     // 21 ported light + paper/contrast; 21 ported dark + one-dark-pro-soft.
     expect(THEMES.filter((t) => t.variant === 'light').length).toBe(23);
@@ -71,7 +71,7 @@ describe('theme catalog', () => {
       byFamily.set(theme.family, variants);
     }
     // `paper`/`contrast` (light-only) and `one-dark-pro-soft` (dark-only) are
-    // the chamber's own single-variant palettes; every ported family has both.
+    // Kabmo's own single-variant palettes; every ported family has both.
     const singles = [...byFamily].filter(([, variants]) => variants.size === 1).map(([family]) => family);
     expect(singles.sort()).toEqual(['contrast', 'one-dark-pro-soft', 'paper']);
   });

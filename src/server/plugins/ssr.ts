@@ -11,6 +11,7 @@ import {
 } from '@/server/lib/assets/dev-assets.server';
 import { listenerFetchOptions, listenerUrl } from '@/server/lib/lifecycle/listener';
 import { FONT_STYLESHEET_ROUTE } from '@/server/lib/assets/font-css.server';
+import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
@@ -145,11 +146,13 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // screen without it.
   const authenticated = isAuthenticatedRequest(request);
   const settings = authenticated ? await readSettings() : {};
-  const chamberSettings = (settings.omp_chamber_settings ?? {}) as { theme?: string };
+  // Both blobs, legacy beneath: an install that predates the rename still has
+  // its theme in the old row, and the SSR shell is what paints the first frame.
+  const settingsBlob = readSettingsBlob(settings) as { theme?: string };
   // Resolved through the catalog: an id this build no longer ships (a
   // downgrade, the retired `noir` alias) renders the default palette instead of
   // an unstyled page.
-  const theme = resolveTheme(chamberSettings.theme);
+  const theme = resolveTheme(settingsBlob.theme);
   const initialIsMobile = MOBILE_UA.test(request.headers.get('user-agent') ?? '');
 
   const rendered = await renderShell();
@@ -160,7 +163,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // server's dev-only asset route can never disagree about which build this is.
   // `authEnabled` travels beside `authenticated` because they answer different
   // questions: "this browser has a session" versus "there is a session to have".
-  // A chamber running open answers `authenticated: true` for every visitor, so
+  // A Kabmo running open answers `authenticated: true` for every visitor, so
   // the navbar cannot use it to decide whether a sign-out control applies.
   const bootstrap = JSON.stringify({ initialIsMobile, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: settings }).replace(/</g, '\\u003c');
   // The template's own `<meta name="theme-color">` is REWRITTEN, not joined by

@@ -4,11 +4,11 @@
  *
  * Builtin-command output must survive a reload. omp writes NOTHING to the
  * session JSONL for a `/context` or `/usage` turn — the output exists only in
- * the live `command_output` frame — so the chamber's own copy is the only place
+ * the live `command_output` frame — so Kabmo's own copy is the only place
  * it can be kept, and `mergeOmpAttachments` has to splice it back in.
  *
  * The anchor is the user turn that produced it, matched by CONTENT: the
- * chamber's optimistic user row carries a `msg-…-user` id while the JSONL
+ * Kabmo's optimistic user row carries a `msg-…-user` id while the JSONL
  * records omp's timestamp id, so an id match never fires.
  */
 
@@ -26,7 +26,7 @@ function jsonlTurn(): StoredMessage[] {
   ];
 }
 
-/** The chamber's own copy of that same conversation, plus the notice row. */
+/** The Kabmo's own copy of that same conversation, plus the notice row. */
 function storedWithNotice(): string {
   const stored: StoredMessage[] = [
     { id: 'msg-1-user', role: 'user', content: '/context' },

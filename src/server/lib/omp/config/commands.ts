@@ -4,12 +4,12 @@
  */
 
 /**
- * Command (slash-command) file location and authoring for the chamber's
+ * Command (slash-command) file location and authoring for Kabmo's
  * Commands settings.
  *
  * omp discovers markdown slash commands from every provider's config dirs and
  * `get_available_commands` reports them by name, description and argument hint
- * — but never by path, and never with the scope it found them at. The chamber
+ * — but never by path, and never with the scope it found them at. The Kabmo
  * needs both to answer "is this a user-scope command or a project-scope one,
  * and may I edit it?", so this module probes the same directories omp reads.
  *
@@ -23,7 +23,7 @@
  *   `~/.agents/commands`, `~/.config/opencode/commands`
  *
  * Only the two omp-native `.omp` roots are `managed`: a command from `.claude`
- * or `.agents` is shown read-only, because the chamber is not the tool that put
+ * or `.agents` is shown read-only, because Kabmo is not the tool that put
  * it there and a save or delete through this pane would rewrite another tool's
  * file. A nested Claude command is addressed as `ns:name` by omp and stored as
  * `<dir>/ns/name.md`, which is why a colon maps to a path separator here.
@@ -53,7 +53,7 @@ function userCommandDirs(): Array<{ dir: string; suffix: string }> {
 export interface CommandFileLocation {
   filePath: string;
   scope: 'user' | 'project';
-  /** True for the two omp-native roots the chamber may write and delete in. */
+  /** True for the two omp-native roots Kabmo may write and delete in. */
   managed: boolean;
 }
 
@@ -135,7 +135,7 @@ export interface WriteCommandInput {
   body: string;
 }
 
-/** Create or overwrite a chamber-managed command file. Refuses a project write
+/** Create or overwrite a Kabmo-managed command file. Refuses a project write
  *  with no workspace rather than landing it somewhere the user did not pick. */
 export async function writeCommandFile(input: WriteCommandInput): Promise<{ filePath: string }> {
   const relative = safeRelativeName(input.name);
@@ -172,13 +172,13 @@ export async function writeCommandFile(input: WriteCommandInput): Promise<{ file
   return { filePath };
 }
 
-/** Delete a chamber-managed command file. Refused unless the name resolves to
+/** Delete a Kabmo-managed command file. Refused unless the name resolves to
  *  one of the managed roots, so a delete can never reach another tool's file. */
 export async function deleteCommandFile(name: string, projectDir?: string | null): Promise<boolean> {
   const found = await locateCommandFile(name, projectDir);
-  if (!found) throw new Error(`"${name}" is not a command file the chamber can delete`);
+  if (!found) throw new Error(`"${name}" is not a command file Kabmo can delete`);
   if (!found.managed) {
-    throw new Error(`"${name}" is provided by ${found.filePath}; the chamber cannot delete it`);
+    throw new Error(`"${name}" is provided by ${found.filePath}; Kabmo cannot delete it`);
   }
   await fs.promises.rm(found.filePath, { force: true });
   return true;

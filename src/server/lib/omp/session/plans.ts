@@ -7,7 +7,7 @@
  * Read one session's plan-mode artifacts from disk.
  *
  * A plan is a `local://` artifact, so it is not in the transcript and not in
- * the chamber's database: omp writes it under the session's own artifacts
+ * Kabmo's database: omp writes it under the session's own artifacts
  * directory, which is the session file's path minus its `.jsonl` suffix, plus
  * `local/` (`resolveLocalRoot` → `artifactsDir/local`). Every plan lands there
  * as `<slug>-plan.md`, so the read is: locate the session file, derive that
@@ -62,12 +62,12 @@ interface PlanCacheHost {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPlanPaths: PlanCacheHost | undefined;
+  var __kabmoPlanPaths: PlanCacheHost | undefined;
 }
 
 function cache(): PlanCacheHost {
-  if (!globalThis.__ompChamberPlanPaths) globalThis.__ompChamberPlanPaths = { entries: new Map() };
-  return globalThis.__ompChamberPlanPaths;
+  if (!globalThis.__kabmoPlanPaths) globalThis.__kabmoPlanPaths = { entries: new Map() };
+  return globalThis.__kabmoPlanPaths;
 }
 
 /** The `local/` artifact root beside a session file. */
@@ -78,7 +78,7 @@ export function localRootForSessionFile(sessionFile: string): string {
 /**
  * The plan a session's plan mode names, newest entry first.
  *
- * Only `mode_change` speaks here: the chamber's own `chamber-plan-state` entry
+ * Only `mode_change` speaks here: Kabmo's own `kabmo-plan-state` entry
  * records the boolean, and the model's `xd://propose` write is a tool call that
  * names a title rather than a path.
  */

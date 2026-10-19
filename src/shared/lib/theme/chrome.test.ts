@@ -19,10 +19,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
-import { CHAMBER_PALETTES } from '@/shared/lib/theme/palettes/chamber';
+import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 
-const paper = CHAMBER_PALETTES[0];
-const oneDark = CHAMBER_PALETTES[2];
+const paper = KABMO_PALETTES[0];
+const oneDark = KABMO_PALETTES[2];
 
 describe('windowChromeColor', () => {
   test('matches the desktop top bar (paper) for an authenticated desktop', () => {
@@ -41,7 +41,7 @@ describe('windowChromeColor', () => {
   });
 
   test('never returns the ink slot, which is what the manifest carries', () => {
-    for (const palette of CHAMBER_PALETTES) {
+    for (const palette of KABMO_PALETTES) {
       for (const isMobile of [true, false]) {
         for (const authRequired of [true, false]) {
           const chrome = windowChromeColor(palette, { isMobile, authRequired });

@@ -7,7 +7,7 @@
  * Repository-wiki contracts for the right-panel Wiki view.
  *
  * A wiki is not an API: GitHub and GitLab both publish it as a SEPARATE git
- * repository beside the project (`<remote>.wiki.git`), so the chamber reads it
+ * repository beside the project (`<remote>.wiki.git`), so Kabmo reads it
  * the way a reader would — the wiki's own git history — and never needs a
  * provider token, an API version, or a per-host code path. That one fact is why
  * a single implementation covers github.com, gitlab.com and a self-hosted
@@ -101,7 +101,7 @@ export interface WikiRepoPayload {
   /**
    * Why there is no wiki. Distinguishes the cases the panel words differently:
    * no `origin` remote, a remote whose wiki does not exist, and a wiki the
-   * chamber could not reach.
+   * Kabmo could not reach.
    */
   reason?: WikiUnavailableReason;
   /** Human-readable detail for `reason` (git's own message, trimmed). */

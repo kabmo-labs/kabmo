@@ -33,7 +33,7 @@ import { parsePorcelainV2 } from '@/server/lib/fs/git-porcelain-v2';
 import { readRepoDetail, readRepoDetails } from '@/server/lib/fs/git-repo-details';
 import { removeDir } from '@/test-support/remove-dir';
 
-const FIXTURE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-repo-details-'));
+const FIXTURE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-repo-details-'));
 
 function git(cwd: string, ...args: string[]): string {
   const result = Bun.spawnSync({

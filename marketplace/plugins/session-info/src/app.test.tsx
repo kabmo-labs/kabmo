@@ -6,11 +6,11 @@
 /**
  * The bundled example plugin, tested the way a plugin author's test is written.
  *
- * This is the P0 gate: it runs under `bun test` with NO chamber process, no
- * database and no network, using only `@ompchamber/plugin-sdk/testing/app` and
+ * This is the P0 gate: it runs under `bun test` with NO Kabmo process, no
+ * database and no network, using only `@kabmo-labs/kabmo-sdk/testing/app` and
  * the published kit. It exists to prove the harness can load a real bundle —
- * one that imports `@ompchamber/plugin-sdk/app`, `@ompchamber/ui` and
- * `@ompchamber/ui/components` — and then render and drive what it registered.
+ * one that imports `@kabmo-labs/kabmo-sdk/app`, `@kabmo-labs/kabmo-ui` and
+ * `@kabmo-labs/kabmo-ui/components` — and then render and drive what it registered.
  *
  * The plugin's module is imported at the TOP of this file, before any test has
  * run and therefore before any runtime exists. That ordering is the point:
@@ -22,7 +22,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { loadPluginApp, renderSlot, type LoadedPluginApp, type RenderedSlot } from '@ompchamber/plugin-sdk/testing/app';
+import { loadPluginApp, renderSlot, type LoadedPluginApp, type RenderedSlot } from '@kabmo-labs/kabmo-sdk/testing/app';
 import * as pluginModule from './app';
 
 const PLUGIN_ID = 'session-info';
@@ -35,10 +35,10 @@ function settle(ms = 500): Promise<void> {
 /**
  * The DOM globals a happy-dom window provides, replaced for this suite only.
  *
- * Built here rather than imported from the chamber's `src/test-support`: this is
+ * Built here rather than imported from Kabmo's `src/test-support`: this is
  * a plugin, and a plugin's test must run from its own directory with the
  * published packages alone — the harness exists precisely so a plugin author
- * never has to reach into the chamber's source.
+ * never has to reach into Kabmo's source.
  */
 const DOM_GLOBALS = [
   'window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement',

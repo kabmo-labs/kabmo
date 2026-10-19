@@ -22,7 +22,7 @@
 import type { ToolCallData } from '@/shared/types/chat';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
 
-/** Legacy chamber/MOCK alias → canonical omp tool name. */
+/** Legacy Kabmo/MOCK alias → canonical omp tool name. */
 export const TOOL_ALIASES: Record<string, string> = {
   read_file: 'read',
   view_file: 'read',

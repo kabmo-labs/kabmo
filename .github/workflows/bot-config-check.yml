@@ -20,7 +20,7 @@ permissions: {}
 jobs:
   check:
     name: configuration
-    if: (github.repository == 'rajebdev/ompchamber' || github.repository == 'kabmo-labs/kabmo')
+    if: (github.repository == 'kabmo-labs/kabmo' || github.repository == 'kabmo-labs/kabmo')
     runs-on: ubuntu-latest
     steps:
       - name: App token
@@ -34,7 +34,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-          MENTION: ${{ vars.BOT_MENTION || 'ompchamber-bot' }}
+          MENTION: ${{ vars.BOT_MENTION || 'kabmo-bot' }}
           MENTION_SOURCE: ${{ vars.BOT_MENTION && 'repository variable BOT_MENTION' || 'built-in default' }}
           MENTION_VAR_SET: ${{ vars.BOT_MENTION && 'yes' || 'no' }}
           MENTION_SECRET_SET: ${{ secrets.BOT_MENTION && 'yes' || 'no' }}

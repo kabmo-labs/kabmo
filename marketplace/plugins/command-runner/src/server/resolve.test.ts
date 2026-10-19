@@ -31,7 +31,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { ChamberPluginApi, PluginJson } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi, PluginJson } from '@kabmo-labs/kabmo-sdk';
 
 import { CustomCommandStore, customCommandId } from './custom';
 import { startRun, withCustom } from './resolve';
@@ -64,7 +64,7 @@ function fakeApi() {
         },
       },
     },
-  } as unknown as ChamberPluginApi;
+  } as unknown as KabmoPluginApi;
   return { api, rows };
 }
 

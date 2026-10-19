@@ -51,7 +51,7 @@ function deps(rows: ProcessInfo[], overrides: Partial<SampleDeps> = {}): SampleD
 
 describe('createSampler', () => {
   test('the first sample reports no CPU rate rather than zero', () => {
-    const sampler = createSampler(deps([proc(SERVER_PID, 1, ['bun', '--ompchamber-server'], { rss: 2048, cpuNs: 5e6 })]));
+    const sampler = createSampler(deps([proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 2048, cpuNs: 5e6 })]));
     const snapshot = sampler.sample();
     expect(snapshot.rows).toHaveLength(1);
     expect(snapshot.rows[0].rss).toBe(2048);
@@ -63,7 +63,7 @@ describe('createSampler', () => {
   test('the second sample reports the rate over the elapsed wall time', () => {
     // 500 ms of CPU over 1000 ms of wall is 50%. The tick unit is the probe's
     // business; the sampler only subtracts.
-    const rows: ProcessInfo[] = [proc(SERVER_PID, 1, ['bun', '--ompchamber-server'], { cpuNs: 0 })];
+    const rows: ProcessInfo[] = [proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { cpuNs: 0 })];
     let clock = 1_000;
     const sampler = createSampler(deps(rows, { now: () => clock }));
     sampler.sample();
@@ -74,7 +74,7 @@ describe('createSampler', () => {
   });
 
   test('a process that appeared since the last sweep has no rate', () => {
-    const rows: ProcessInfo[] = [proc(SERVER_PID, 1, ['bun', '--ompchamber-server'])];
+    const rows: ProcessInfo[] = [proc(SERVER_PID, 1, ['bun', '--kabmo-server'])];
     let clock = 1_000;
     const sampler = createSampler(deps(rows, { now: () => clock }));
     sampler.sample();
@@ -92,7 +92,7 @@ describe('createSampler', () => {
       { name: 'omp.browser.headless', pid: 200, state: 'ready', projectDir: '/p', brokerPid: 199 },
     ];
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server'], { rss: 100 }),
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 100 }),
       proc(101, SERVER_PID, ['bun', '/bin/omp', '--mode', 'rpc-ui'], { rss: 200 }),
       proc(199, 1, ['bun', 'cli.js', '__omp_worker_daemon_broker'], { rss: 300 }),
       proc(200, 199, ['/path/chrome'], { rss: 400 }),
@@ -112,7 +112,7 @@ describe('createSampler', () => {
 
   test('the daemon registry is not consulted when it is switched off', () => {
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
       proc(199, 1, ['bun', 'cli.js', '__omp_worker_daemon_broker'], { rss: 300 }),
     ];
     let reads = 0;
@@ -134,7 +134,7 @@ describe('createSampler', () => {
     // The group's figures are the whole subtree's, which is the number a reader
     // cannot get by adding rows up by eye.
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server'], { rss: 100 }),
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 100 }),
       proc(101, SERVER_PID, ['bun', 'omp', '--mode', 'rpc-ui'], { rss: 200 }),
       proc(102, 101, ['node', '/p/mcp.js'], { rss: 300 }),
     ];
@@ -150,7 +150,7 @@ describe('createSampler', () => {
 
   test('a lease turns a host group into a session group', () => {
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
       proc(101, SERVER_PID, ['bun', 'omp', '--mode', 'rpc-ui']),
     ];
     const leases = new Map([[101, '01a13ceb-bb58-7351-baa5-30abb45cad14']]);
@@ -161,7 +161,7 @@ describe('createSampler', () => {
 
   test('a group header is the OWNER label, not the first member encountered', () => {
     const rows: ProcessInfo[] = [
-      proc(SERVER_PID, 1, ['bun', '--ompchamber-server']),
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
       proc(101, SERVER_PID, ['bun', 'omp', '--mode', 'rpc-ui'], { cwd: '/Users/me/proj' }),
       proc(102, 101, ['node', '/p/mcp.js']),
     ];
@@ -175,7 +175,7 @@ describe('createSampler', () => {
   });
 
   test('history is bounded and absent when disabled', () => {
-    const rows: ProcessInfo[] = [proc(SERVER_PID, 1, ['bun', '--ompchamber-server'], { rss: 1024 })];
+    const rows: ProcessInfo[] = [proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 1024 })];
     const sampler = createSampler(deps(rows, { historyPoints: 3 }));
     for (let i = 0; i < 6; i += 1) sampler.sample();
     const bounded = sampler.sample();

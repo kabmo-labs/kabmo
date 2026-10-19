@@ -1,5 +1,5 @@
 import type { AgentItem, CommandItem, ComposerPickItem, ComposerPickKind, FsFileEntry, SkillItem } from '@/shared/types';
-import { CHAMBER_COMMANDS } from '@/shared/lib/chat/composer/trigger';
+import { KABMO_COMMANDS } from '@/shared/lib/chat/composer/trigger';
 
 const CACHE_TTL_MS = 300_000;
 
@@ -58,11 +58,11 @@ export function toFilePickItems(files: FsFileEntry[]): ComposerPickItem[] {
 
 /**
  * Combine live command items (`/name`, including omp's own `skill:<name>`
- * entries) with the chamber's skill list. Commands win: a skill whose plain or
+ * entries) with Kabmo's skill list. Commands win: a skill whose plain or
  * `skill:`-namespaced name a command already covers is skipped, so the two
  * sources never double-list the same skill.
  *
- * The chamber's own commands (`CHAMBER_COMMANDS`) lead, so a same-named entry
+ * The Kabmo's own commands (`KABMO_COMMANDS`) lead, so a same-named entry
  * from omp can never advertise behavior the composer overrides on send — `/btw`
  * is reserved by omp in the TUI for the same reason.
  *
@@ -73,7 +73,7 @@ export function mergeCommandAndSkillItems(commands: CommandItem[], skills: Skill
   const result: ComposerPickItem[] = [];
   const seen = new Set<string>();
 
-  for (const command of [...CHAMBER_COMMANDS, ...commands]) {
+  for (const command of [...KABMO_COMMANDS, ...commands]) {
     const key = command.name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);

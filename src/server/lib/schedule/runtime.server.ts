@@ -7,7 +7,7 @@
  * The scheduled-task runtime: one process-wide tick that claims every task due
  * and dispatches its prompt into omp.
  *
- * omp has no scheduler, so the chamber owns both the clock and the dispatch.
+ * omp has no scheduler, so Kabmo owns both the clock and the dispatch.
  * A fire spawns an omp child through the same registry the chat uses —
  * `startNewRpcSession` for a fresh conversation, `startRpcSession` when the
  * task resumes a named session — and sends the prompt with the task's own model
@@ -109,11 +109,11 @@ interface ScheduleRuntimeSlot {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberScheduleRuntime: ScheduleRuntimeSlot | undefined;
+  var __kabmoScheduleRuntime: ScheduleRuntimeSlot | undefined;
 }
 
 function slot(): ScheduleRuntimeSlot {
-  return (globalThis.__ompChamberScheduleRuntime ??= { timer: null, ticking: false });
+  return (globalThis.__kabmoScheduleRuntime ??= { timer: null, ticking: false });
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {

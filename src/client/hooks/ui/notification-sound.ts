@@ -1,5 +1,5 @@
 import { useCallback } from 'preact/hooks';
-import { readChamberSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
 
 interface WebkitWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
@@ -132,7 +132,7 @@ export function playInputRequiredSound() {
 export function isChatSoundEnabled(appSettings?: Record<string, any>): boolean {
   if (typeof window === 'undefined') return true;
 
-  const value = readChamberSetting<boolean>(['chatCompletionSound', 'soundAlerts'], appSettings);
+  const value = readKabmoSetting<boolean>(['chatCompletionSound', 'soundAlerts'], appSettings);
   return value === undefined ? true : Boolean(value);
 }
 

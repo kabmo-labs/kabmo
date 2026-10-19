@@ -6,7 +6,7 @@
 /**
  * The bundled example plugin's SERVER half.
  *
- * It exists to exercise every member of `ChamberPluginApi` in one small file,
+ * It exists to exercise every member of `KabmoPluginApi` in one small file,
  * so a change that breaks one of them is visible without writing a plugin. What
  * each part is FOR is stated where it is used; what matters here is that all of
  * it is disposed: a plugin that registers a method, a route and a topic and
@@ -17,12 +17,12 @@
  * it is willing to give, and defer running it until the plugin is loaded.
  */
 
-import type { ChamberPluginApi } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
 /** Notes the server half keeps, one per session, in the plugin's own storage. */
 const NOTES_COLLECTION = 'notes';
 
-export default function plugin(api: ChamberPluginApi) {
+export default function plugin(api: KabmoPluginApi) {
   api.log.info('session-info server half loaded');
 
   /**
@@ -104,7 +104,7 @@ export default function plugin(api: ChamberPluginApi) {
   /**
    * Background work: one interval that republishes the count.
    *
-   * Declared rather than run by the plugin, so the chamber's own scheduler owns
+   * Declared rather than run by the plugin, so Kabmo's own scheduler owns
    * the timer and a reload cannot leave a second one behind.
    */
   api.background.schedule('refresh-count', '5m', async () => {

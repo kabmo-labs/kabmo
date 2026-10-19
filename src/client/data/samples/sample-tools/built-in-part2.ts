@@ -57,16 +57,16 @@ export const builtInToolsPart2: ToolCallData[] = [
     id: 'call_20_hub',
     name: 'hub',
     type: 'hub',
-    title: 'hub — start ompchamber daemon',
+    title: 'hub — start kabmo daemon',
     input: {
       op: 'start',
-      name: 'ompchamber',
+      name: 'kabmo',
       application: 'bun',
       args: ['run', 'start'],
       env: { MOCK: 'true' },
       ready: { port: 3000, timeout: 30 },
     },
-    output: `Started ompchamber: ready pid=43148 uptime=997ms restarts=0
+    output: `Started kabmo: ready pid=43148 uptime=997ms restarts=0
 Ready log matched: http://localhost:3000`,
     status: 'success',
     duration: '997ms',
@@ -75,7 +75,7 @@ Ready log matched: http://localhost:3000`,
     details: {
       op: 'start',
       daemon: {
-        name: 'ompchamber',
+        name: 'kabmo',
         id: 'ca665717-71fa-42c6-a749-8cecf4f37982',
         state: 'ready',
         pid: 43148,

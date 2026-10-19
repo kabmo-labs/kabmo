@@ -4,7 +4,7 @@
  */
 
 /**
- * Read-modify-write of an omp YAML config file: an exclusive chamber lock, a
+ * Read-modify-write of an omp YAML config file: an exclusive Kabmo lock, a
  * comment-preserving document model, an external-change retry, and an atomic
  * write that keeps the file's mode and symlink.
  *
@@ -25,7 +25,7 @@
  * Concurrency: omp serializes its own config writes with an OS-level `flock(2)`
  * on `${path}.lock`. That lock is not reachable from Bun (no `flock` binding,
  * and the lock file omp creates must not be deleted out from under it), so the
- * chamber takes its OWN lock file and closes the remaining window with the
+ * Kabmo takes its OWN lock file and closes the remaining window with the
  * external-change check below: if the file moved between the read and the
  * write, the edit is replayed against the fresh content instead of clobbering
  * whatever omp just wrote.
@@ -102,7 +102,7 @@ export async function withOmpYamlDocument<T>(
   edit: (doc: Document) => DocumentEdit<T> | Promise<DocumentEdit<T>>,
 ): Promise<T> {
   // Not `${path}.lock`: that file belongs to omp's own flock lease.
-  return withConfigLock(`${path}.ompchamber.lock`, async () => {
+  return withConfigLock(`${path}.kabmo.lock`, async () => {
     for (let attempt = 0; ; attempt++) {
       const before = await fileGeneration(path);
       const source = (await Bun.file(path).exists()) ? await Bun.file(path).text() : '';

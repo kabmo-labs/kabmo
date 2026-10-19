@@ -9,7 +9,7 @@
  * The failure this prevents is silent and total: `Bun.spawn` with no `env`
  * inherits the OS environ, and `delete Bun.env.X` does not remove a value that
  * was there at startup (measured on Bun 1.4.3). A server that received
- * `OMPCHAMBER_UI_PASSWORD` therefore handed it to every child it spawned —
+ * `KABMO_UI_PASSWORD` therefore handed it to every child it spawned —
  * including `runShell`, which runs a third-party plugin's own `bun install`.
  */
 
@@ -48,10 +48,10 @@ describe('childEnv', () => {
   });
 
   test('the caller environment is not mutated', () => {
-    Bun.env.OMPCHAMBER_CHILD_ENV_PROBE = 'keep';
+    Bun.env.KABMO_CHILD_ENV_PROBE = 'keep';
     childEnv();
-    expect(Bun.env.OMPCHAMBER_CHILD_ENV_PROBE).toBe('keep');
-    delete Bun.env.OMPCHAMBER_CHILD_ENV_PROBE;
+    expect(Bun.env.KABMO_CHILD_ENV_PROBE).toBe('keep');
+    delete Bun.env.KABMO_CHILD_ENV_PROBE;
   });
 
   test('a differently-cased spelling of the credential is withheld on Windows', () => {

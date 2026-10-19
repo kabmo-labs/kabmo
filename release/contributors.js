@@ -89,7 +89,7 @@ async function loginFromApi(hash, request) {
       headers: {
         accept: 'application/vnd.github+json',
         authorization: `Bearer ${token}`,
-        'user-agent': 'ompchamber-release-notes',
+        'user-agent': 'kabmo-release-notes',
       },
     });
 

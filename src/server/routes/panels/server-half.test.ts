@@ -7,7 +7,7 @@
  * The install route keeps a plugin's SERVER half in step with its on-disk state.
  *
  * A plugin's server half is otherwise loaded once at BOOT, so a plugin installed
- * into a running chamber answered no topic and refused its RPC methods until a
+ * into a running Kabmo answered no topic and refused its RPC methods until a
  * restart — which a panel could only report as an empty view. The install route
  * now loads (or unloads) the half itself, and these tests drive that route the
  * way the settings pane does.

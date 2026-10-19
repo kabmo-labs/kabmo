@@ -48,7 +48,7 @@ beforeAll(() => {
   fs.rmSync(ROOT, { recursive: true, force: true });
   fs.mkdirSync(AGENT_DIR, { recursive: true });
   Bun.env.PI_CODING_AGENT_DIR = AGENT_DIR;
-  Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = path.join(ROOT, 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
 });
@@ -60,7 +60,7 @@ afterEach(() => {
 
 afterAll(() => {
   delete Bun.env.PI_CODING_AGENT_DIR;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
   fs.rmSync(ROOT, { recursive: true, force: true });

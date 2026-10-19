@@ -23,7 +23,7 @@
 import { useCallback, useState } from 'preact/hooks';
 import type { Attachment, BtwState, BtwTopic, ChatMessageData } from '@/shared/types';
 import { useBtwSession, type BtwLiveAnswer } from '@/client/hooks/chat/btw';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
@@ -114,7 +114,7 @@ export function useBtwMode(sessionId: string | null): BtwMode {
 
   // `/btw [question]` hands the question over; a bare `/btw` only opens the
   // form, which is the history view.
-  useChamberEvent('omp:btw', (event) => {
+  useKabmoEvent('omp:btw', (event) => {
     const detail = (event as CustomEvent<{ question?: string; attachments?: Attachment[] }>).detail;
     const question = detail?.question?.trim();
     setOpen(true);

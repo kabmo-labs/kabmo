@@ -10,7 +10,7 @@
  * The list is omp's, read from the session transcript (see
  * `@/server/lib/omp/session/todos`), so this panel adds presentation only —
  * phase groups, a progress bar, and the current task called out. It deliberately
- * does NOT recompute or cache a list of its own: a chamber-side copy would drift
+ * does NOT recompute or cache a list of its own: a Kabmo-side copy would drift
  * from the one the agent rehydrates, and a plan panel that disagrees with the
  * agent is worse than no panel.
  *
@@ -23,7 +23,7 @@
 import { useMemo } from 'preact/hooks';
 import { AlertCircle, ListTodo, RefreshCw } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { useSessionState } from '@kabmo-labs/ui';
+import { useSessionState } from '@kabmo-labs/kabmo-ui';
 import { TodoPhaseGroup } from '@/client/components/workspace/todo-panel/PhaseGroup';
 import { currentTaskLocation, todoProgressLabel, todoProgressPercent } from '@/shared/lib/chat/todo/progress';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';

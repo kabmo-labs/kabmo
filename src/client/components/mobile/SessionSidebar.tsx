@@ -8,7 +8,7 @@ import { AboutModal, NewWorkspaceModal } from '@/client/components/layout/sessio
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
 import { UpdatePopup } from '@/client/components/layout/update-popup';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
@@ -72,10 +72,10 @@ export function MobileSessionSidebar({
   // see the desktop sidebar. The phone must also bring the drawer forward, or
   // the About modal would open over the chat with the user still looking at the
   // session list they came from.
-  useChamberEvent(UPDATE_REQUEST_EVENT, () => {
+  useKabmoEvent(UPDATE_REQUEST_EVENT, () => {
     onClose();
     setAboutOpen(true);
-    void updates.apply('ompchamber').then((result) => {
+    void updates.apply('kabmo').then((result) => {
       if (!result) return;
       pushToast(result.message, result.success && !result.manual ? 'success' : 'error');
     });

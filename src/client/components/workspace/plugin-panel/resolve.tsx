@@ -1,11 +1,11 @@
 import { useMemo } from 'preact/hooks';
 import type { ComponentType, ReactNode } from 'preact/compat';
-import type { RightPanelProps } from '@kabmo-labs/plugin-sdk/app';
+import type { RightPanelProps } from '@kabmo-labs/kabmo-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
 import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { pluginIdOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 import { resolvePluginPanelWidths } from '@/shared/lib/workspace/panel-widths';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { panelOf, rightPanelOf } from '@/client/lib/plugins/slots';
 import { PluginError } from '@/client/components/workspace/plugin-panel/Error';
 import {

@@ -89,7 +89,7 @@ export const BREAKDOWN_DATA: Record<BreakdownTab, BreakdownRow[]> = {
     { name: 'Sep 05', cost: '$0.014', share: '14.0%', tokens: '330K', sharePercent: 14.0, dotColorClass: 'bg-transparent border border-ink/40' },
   ],
   project: [
-    { name: 'ompchamber-core', cost: '$0.068', share: '68.0%', tokens: '2.1M', sharePercent: 68.0, dotColorClass: 'bg-ink/80' },
+    { name: 'kabmo-core', cost: '$0.068', share: '68.0%', tokens: '2.1M', sharePercent: 68.0, dotColorClass: 'bg-ink/80' },
     { name: 'agent-runner', cost: '$0.022', share: '22.0%', tokens: '680K', sharePercent: 22.0, dotColorClass: 'bg-ink/50' },
     { name: 'remis-edge-runtime', cost: '$0.010', share: '10.0%', tokens: '300K', sharePercent: 10.0, dotColorClass: 'bg-transparent border border-ink/40' },
   ],

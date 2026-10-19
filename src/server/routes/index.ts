@@ -3,6 +3,7 @@ import { mountBindings, type HandlerBinding } from '@/server/lib/route-adapter';
 import { agentBindings } from '@/server/routes/agent';
 import { authBindings } from '@/server/routes/auth';
 import { btwBindings } from '@/server/routes/btw';
+import { consoleBindings } from '@/server/routes/console';
 import { chamberBindings } from '@/server/routes/chamber';
 import { chatBindings } from '@/server/routes/chat';
 import { sessionsBindings } from '@/server/routes/sessions';
@@ -28,6 +29,8 @@ import { wellKnownBindings } from '@/server/routes/well-known';
 
 const allBindings: HandlerBinding[] = [
   ...authBindings,
+  ...consoleBindings,
+  // @deprecated pre-rename path; same handlers, kept for an old page.
   ...chamberBindings,
   ...agentBindings,
   ...btwBindings,

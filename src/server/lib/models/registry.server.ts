@@ -43,7 +43,7 @@ function supportsFastMode(model: OmpModel): boolean {
 }
 
 /**
- * Disabled providers recorded in the chamber's own provider overlay. Used only
+ * Disabled providers recorded in Kabmo's own provider overlay. Used only
  * by the MOCK path of `/api/models`, which has no config.yml `disabledProviders`
  * to read — real mode gets the same answer natively.
  */
@@ -93,7 +93,7 @@ async function readHiddenModelKeys(): Promise<Set<string>> {
 /**
  * A model is offered only when its provider is neither disabled in omp's
  * config.yml (`disabledProviders`) nor carrying a per-model hide in the
- * chamber overlay. Disabling the provider is the coarse switch — Settings →
+ * Kabmo overlay. Disabling the provider is the coarse switch — Settings →
  * Providers flips it so the whole provider leaves the chat picker.
  */
 function filterSelectableModels(
@@ -194,10 +194,10 @@ export const EMPTY_MODELS: ModelsData = {
 };
 
 export async function loadModelsWithCache(): Promise<ModelsData> {
-  const cached = globalThis.__ompChamberModelsCache;
+  const cached = globalThis.__kabmoModelsCache;
   if (cached && cached.expiresAt > Date.now()) return cached.data;
   const data = await loadModels();
-  globalThis.__ompChamberModelsCache = { data, expiresAt: Date.now() + MODELS_CACHE_TTL_MS };
+  globalThis.__kabmoModelsCache = { data, expiresAt: Date.now() + MODELS_CACHE_TTL_MS };
   return data;
 }
 

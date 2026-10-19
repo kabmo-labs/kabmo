@@ -6,7 +6,7 @@
 /**
  * An executable stand-in for a spawned program, on every platform.
  *
- * A dozen suites need to point `OMPCHAMBER_OMP_BIN` (or `git`, or `rg`) at a
+ * A dozen suites need to point `KABMO_OMP_BIN` (or `git`, or `rg`) at a
  * script they wrote, so the code under test spawns THEIR answer instead of the
  * real binary. The obvious shape is a `#!/bin/sh` file chmod-ed `0755`, and on
  * POSIX that works.
@@ -34,7 +34,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /** Where compiled fixtures live, so a suite re-run reuses them. */
-const CACHE_ROOT = join(tmpdir(), 'ompchamber-test-bins');
+const CACHE_ROOT = join(tmpdir(), 'kabmo-test-bins');
 
 /**
  * Compile `source` into an executable and return its path.

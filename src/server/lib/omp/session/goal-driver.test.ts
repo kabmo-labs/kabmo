@@ -4,7 +4,7 @@
  */
 
 /**
- * The goal driver: what the chamber does after every finished turn.
+ * The goal driver: what Kabmo does after every finished turn.
  *
  * The rules worth pinning are the ones a naive loop gets wrong — a single
  * "blocked" verdict must NOT end a goal (three in a row do), a check that could
@@ -104,7 +104,7 @@ describe('driveGoalAfterTurn', () => {
     const h = harness({ answers: SAY(false, true, false) });
     await h.run();
 
-    expect(h.sent).toEqual(['/chamber-mode goal continue']);
+    expect(h.sent).toEqual(['/kabmo-mode goal continue']);
     // The spinner's window is exactly the audit: on before, off after.
     expect(h.events.map((e) => e.evaluating)).toEqual([true, false]);
   });
@@ -112,7 +112,7 @@ describe('driveGoalAfterTurn', () => {
   test('a complete verdict closes the loop', async () => {
     const h = harness({ answers: SAY(true, false, false) });
     await h.run();
-    expect(h.sent).toEqual([`/chamber-mode goal done ${JSON.stringify({ stopped: 'complete' })}`]);
+    expect(h.sent).toEqual([`/kabmo-mode goal done ${JSON.stringify({ stopped: 'complete' })}`]);
   });
 
   test('one blocked verdict does not end the goal, three do', async () => {
@@ -122,19 +122,19 @@ describe('driveGoalAfterTurn', () => {
     await h.run();
     await h.run();
     // A one-off snag is not a verdict: the loop keeps going.
-    expect(h.sent).toEqual(['/chamber-mode goal continue', '/chamber-mode goal continue']);
+    expect(h.sent).toEqual(['/kabmo-mode goal continue', '/kabmo-mode goal continue']);
 
     await h.run();
-    expect(h.sent.at(-1)).toBe(`/chamber-mode goal done ${JSON.stringify({ stopped: 'blocked' })}`);
+    expect(h.sent.at(-1)).toBe(`/kabmo-mode goal done ${JSON.stringify({ stopped: 'blocked' })}`);
   });
 
   test('an audit that could not run continues once, then stops', async () => {
     const h = harness({ answers: [null, null] });
     await h.run();
-    expect(h.sent).toEqual(['/chamber-mode goal continue']);
+    expect(h.sent).toEqual(['/kabmo-mode goal continue']);
 
     await h.run();
-    expect(h.sent.at(-1)).toBe(`/chamber-mode goal done ${JSON.stringify({ stopped: 'audit-failed' })}`);
+    expect(h.sent.at(-1)).toBe(`/kabmo-mode goal done ${JSON.stringify({ stopped: 'audit-failed' })}`);
   });
 
   test('a standing verdict keeps the loop down until Resume', async () => {
@@ -184,7 +184,7 @@ describe('driveGoalAfterTurn', () => {
       },
     });
 
-    expect(calls).toEqual(['/chamber-mode goal continue']);
+    expect(calls).toEqual(['/kabmo-mode goal continue']);
   });
 
   test('with the auditor switched off nothing is audited or advanced', async () => {

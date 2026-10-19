@@ -78,8 +78,8 @@ describe('projectConfigFromFolder', () => {
   test('maps a fully populated row', () => {
     const row: WorkspaceFolderRow = {
       id: 7,
-      name: 'ompchamber',
-      project_path: '/work/ompchamber',
+      name: 'kabmo',
+      project_path: '/work/kabmo',
       model: 'DeepSeek-V3',
       accent_color: '#38bdf8',
       icon: 'code',
@@ -90,8 +90,8 @@ describe('projectConfigFromFolder', () => {
     expect(projectConfigFromFolder(row)).toEqual({
       id: 'folder-7',
       folderId: 7,
-      name: 'ompchamber',
-      path: '/work/ompchamber',
+      name: 'kabmo',
+      path: '/work/kabmo',
       model: 'DeepSeek-V3',
       accentColor: '#38bdf8',
       icon: 'code',
@@ -265,9 +265,9 @@ describe('migrateLegacyProjectSettings', () => {
 
   test('a current database (marker present) is left untouched', async () => {
     const db = await freshDb();
-    const id = await insertFolder(db, 'ompchamber', '/work/ompchamber');
+    const id = await insertFolder(db, 'kabmo', '/work/kabmo');
     await db.run('INSERT INTO app_settings (key, value) VALUES (?, ?)', ['omp_projects_config_migrated', '1']);
-    await seedLegacy(db, JSON.stringify([{ name: 'ompchamber', path: '/work/ompchamber', model: 'X' }]));
+    await seedLegacy(db, JSON.stringify([{ name: 'kabmo', path: '/work/kabmo', model: 'X' }]));
 
     await migrateLegacyProjectSettings(db);
     expect((await folderRow(db, id))?.model).toBeNull();
@@ -288,8 +288,8 @@ describe('migrateLegacyProjectSettings', () => {
 
   test('matches by project path and fills defaults for missing fields', async () => {
     const db = await freshDb();
-    const id = await insertFolder(db, 'ompchamber', '/work/ompchamber');
-    await seedLegacy(db, JSON.stringify([{ path: '/work/ompchamber' }]));
+    const id = await insertFolder(db, 'kabmo', '/work/kabmo');
+    await seedLegacy(db, JSON.stringify([{ path: '/work/kabmo' }]));
 
     await migrateLegacyProjectSettings(db);
     const row = await folderRow(db, id);
@@ -337,7 +337,7 @@ describe('migrateLegacyProjectSettings', () => {
 
   test('a non-array legacy document falls back to the default project list', async () => {
     const db = await freshDb();
-    const id = await insertFolder(db, 'ompchamber', '/Users/rajebdev/JatisMobile/ompchamber');
+    const id = await insertFolder(db, 'kabmo', '/Users/rajebdev/JatisMobile/kabmo');
     await seedLegacy(db, JSON.stringify({ projects: [] }));
 
     await migrateLegacyProjectSettings(db);

@@ -81,18 +81,18 @@ const F_GETFD = 1;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberFdLib: Library<typeof FD_SYMBOLS> | null | undefined;
+  var __kabmoFdLib: Library<typeof FD_SYMBOLS> | null | undefined;
 }
 
 /** libc with `fcntl`/`getdtablesize`, or null where this host has neither. */
 function libc(): Library<typeof FD_SYMBOLS> | null {
-  if (globalThis.__ompChamberFdLib !== undefined) return globalThis.__ompChamberFdLib;
-  globalThis.__ompChamberFdLib = null;
+  if (globalThis.__kabmoFdLib !== undefined) return globalThis.__kabmoFdLib;
+  globalThis.__kabmoFdLib = null;
   if (process.platform === 'win32') return null;
   for (const name of LIBC_NAMES) {
     try {
-      globalThis.__ompChamberFdLib = dlopen(name, FD_SYMBOLS);
-      return globalThis.__ompChamberFdLib;
+      globalThis.__kabmoFdLib = dlopen(name, FD_SYMBOLS);
+      return globalThis.__kabmoFdLib;
     } catch {
       // Try the next name; a host with none of them keeps the null answer.
     }
@@ -188,7 +188,7 @@ const EXHAUSTION_SYMPTOM = /\bEBADF\b|\bEMFILE\b|too many open files/i;
 export function describeFdPressure(pressure = countOpenFileDescriptors()): string | null {
   if (!pressure || !pressure.nearCliff) return null;
   return (
-    `The chamber server is out of file descriptors ` +
+    `The Kabmo server is out of file descriptors ` +
     `(${pressure.open} of ${pressure.limit} open, highest #${pressure.highest}); restart the instance. ` +
     `A dev server holds the whole client module graph open and a macOS reload never releases ` +
     `the previous generation (bun#40706), so the count only climbs.`

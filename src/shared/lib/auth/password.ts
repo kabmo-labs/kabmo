@@ -28,7 +28,10 @@ export const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxy
  * imported by that same module — naming it here is what keeps the two from
  * needing a circular import.
  */
-export const UI_PASSWORD_ENV = 'OMPCHAMBER_UI_PASSWORD';
+export const UI_PASSWORD_ENV = 'KABMO_UI_PASSWORD';
+
+/** The pre-rename spelling, still read so an exported password keeps working. */
+export const LEGACY_UI_PASSWORD_ENV = 'OMPCHAMBER_UI_PASSWORD';
 
 /** Length of a generated password — 16 characters is ~92 bits over this alphabet. */
 export const GENERATED_PASSWORD_LENGTH = 16;

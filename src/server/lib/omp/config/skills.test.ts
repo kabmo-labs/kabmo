@@ -29,8 +29,8 @@ let agentDir = '';
 let realAgentDir: string | undefined;
 
 beforeAll(() => {
-  projectDir = fs.mkdtempSync(join(tmpdir(), 'ompchamber-skill-project-'));
-  agentDir = fs.mkdtempSync(join(tmpdir(), 'ompchamber-skill-agent-'));
+  projectDir = fs.mkdtempSync(join(tmpdir(), 'kabmo-skill-project-'));
+  agentDir = fs.mkdtempSync(join(tmpdir(), 'kabmo-skill-agent-'));
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
 });

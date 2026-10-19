@@ -33,13 +33,28 @@ import fs from 'node:fs';
 import os from 'node:os';
 
 /** launchd label (also the plist file name). */
-export const AUTOSTART_LABEL = 'dev.ompchamber.tray';
+export const AUTOSTART_LABEL = 'dev.kabmo.tray';
 
 /** `HKCU\...\Run` value name on Windows. */
 export const WINDOWS_RUN_VALUE = 'KabmoTray';
 
 /** Basename of the Linux XDG autostart entry. */
-export const LINUX_DESKTOP_FILE = 'ompchamber-tray.desktop';
+export const LINUX_DESKTOP_FILE = 'kabmo-tray.desktop';
+
+/**
+ * The pre-rename spellings, removed on sight.
+ *
+ * A login entry is a file the OS executes at every boot, and the one written
+ * before the rename runs `src/cli/ompchamber.js` — a file this release does not
+ * ship. Leaving it in place means a failed launch on every login with nothing on
+ * screen to explain it, and no command that could repair it: `--no-startup`
+ * removes the CURRENT entry, not that one. Removing it is safe in the only
+ * sense that matters — it cannot work any more — and a user who wants the
+ * server at login registers it again with `serve --startup`, which writes the
+ * new entry.
+ */
+export const LEGACY_AUTOSTART_LABEL = 'dev.ompchamber.tray';
+export const LEGACY_LINUX_DESKTOP_FILE = 'ompchamber-tray.desktop';
 
 /** `$XDG_CONFIG_HOME`, or `~/.config`. */
 function xdgConfigHome(): string {
@@ -183,6 +198,26 @@ export function uninstallAutostart({ platform = process.platform } = {}): boolea
   if (!target || !fs.existsSync(target)) return false;
   fs.rmSync(target, { force: true });
   return true;
+}
+
+/**
+ * Remove a login entry written before the rename. Returns where one was removed.
+ *
+ * Windows needs nothing: the Run value has always been `KabmoTray`, so the
+ * registration was renamed with the product rather than by it.
+ */
+export function removeLegacyAutostart({ platform = process.platform } = {}): string | null {
+  if (platform === 'win32') return null;
+  const target = platform === 'darwin'
+    ? `${os.homedir()}/Library/LaunchAgents/${LEGACY_AUTOSTART_LABEL}.plist`
+    : `${xdgConfigHome()}/autostart/${LEGACY_LINUX_DESKTOP_FILE}`;
+  if (!fs.existsSync(target)) return null;
+  try {
+    fs.rmSync(target, { force: true });
+    return target;
+  } catch {
+    return null;
+  }
 }
 
 /** Whether a login entry exists for this platform right now. */

@@ -8,16 +8,16 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { isChamberCommand } from '@/server/lib/lifecycle/identity';
+import { isKabmoCommand } from '@/server/lib/lifecycle/identity';
 
-describe('isChamberCommand', () => {
+describe('isKabmoCommand', () => {
   test('matches a server installed under either name', () => {
-    expect(isChamberCommand('bun /Users/x/.bun/install/global/node_modules/ompchamber/src/server/index.ts')).toBe(true);
-    expect(isChamberCommand('bun /Users/x/.bun/install/global/node_modules/kabmo/src/server/index.ts')).toBe(true);
-    expect(isChamberCommand('bun /x/kabmo/dist/client/index.js --kabmo-server')).toBe(true);
+    expect(isKabmoCommand('bun /Users/x/.bun/install/global/node_modules/kabmo/src/server/index.ts')).toBe(true);
+    expect(isKabmoCommand('bun /Users/x/.bun/install/global/node_modules/kabmo/src/server/index.ts')).toBe(true);
+    expect(isKabmoCommand('bun /x/kabmo/dist/client/index.js --kabmo-server')).toBe(true);
   });
 
   test('does not claim a foreign process', () => {
-    expect(isChamberCommand('node /opt/app/server.js')).toBe(false);
+    expect(isKabmoCommand('node /opt/app/server.js')).toBe(false);
   });
 });

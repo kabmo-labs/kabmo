@@ -16,12 +16,12 @@ const FLUSH_DELAY_MS = 50;
  * running from. The stream is shaped like a real run so the log and the result
  * toast render, and it says it was simulated.
  */
-function mockApplyStream(target: 'omp' | 'ompchamber') {
+function mockApplyStream(target: 'omp' | 'kabmo') {
   return createSseStream({
     heartbeatMs: 15_000,
     onStart: async (handlers) => {
       const label = target === 'omp' ? 'Oh-My-Pi' : 'Kabmo';
-      handlers.send('stage', `Simulating the ${label} update`);
+      handlers.send('stage', `Simulating ${label === 'Kabmo' ? 'a' : 'the'} ${label} update`);
       handlers.send('line', `[mock] no command was run; MOCK=true skips real updates\n`);
       handlers.send('result', {
         success: true,
@@ -35,7 +35,7 @@ function mockApplyStream(target: 'omp' | 'ompchamber') {
 }
 
 /**
- * POST /api/updates/apply — body `{ target: 'omp' | 'ompchamber' }`.
+ * POST /api/updates/apply — body `{ target: 'omp' | 'kabmo' }`.
  *
  * Answers with an SSE stream rather than one JSON body: the update runs for
  * minutes and prints as it goes, and a buffered response showed the user a
@@ -58,7 +58,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   } catch {
     return json({ error: 'Request body is not valid JSON' }, { status: 400 });
   }
-  if (target !== 'omp' && target !== 'ompchamber') {
+  if (target !== 'omp' && target !== 'kabmo') {
     return json({ error: 'Unknown update target' }, { status: 400 });
   }
 
@@ -114,7 +114,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         // folded into the result before it is sent: "updated" over a server
         // still on the old build would mislead, and `restarting` is what tells
         // the console to wait for the replacement and reload.
-        const result = target === 'ompchamber' && applied.result.success && applied.updated
+        const result = target === 'kabmo' && applied.result.success && applied.updated
           ? withRestartPlan(applied.result, scheduleSelfRestart())
           : applied.result;
         handlers.send('result', result);

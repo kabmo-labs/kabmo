@@ -11,10 +11,10 @@
  * omp's failure mode is what makes this necessary: a schema violation anywhere
  * in the file disables EVERY custom provider at once — `Warning: models.yml
  * validation failed — custom providers disabled` — so one malformed model
- * entry takes the whole registry down, not just its own provider. The chamber
+ * entry takes the whole registry down, not just its own provider. The Kabmo
  * writes this file, so it must not be the one that produces an invalid one.
  *
- * Only the rules the chamber can actually violate are checked; unknown keys are
+ * Only the rules Kabmo can actually violate are checked; unknown keys are
  * ignored because omp's schema ignores them too.
  */
 
@@ -67,7 +67,7 @@ const EFFORT_VALUES = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max
 /**
  * Every reason a `thinking` block would fail omp's `ModelThinkingSchema`.
  *
- * The block is written by the chamber whenever a user ticks an effort ladder,
+ * The block is written by Kabmo whenever a user ticks an effort ladder,
  * and omp's failure mode is unforgiving: a missing `mode` or an effort outside
  * the vocabulary makes it disable EVERY custom provider in the file.
  */

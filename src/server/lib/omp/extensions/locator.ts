@@ -4,17 +4,17 @@
  */
 
 /**
- * Where the chamber's mode extension lives, and the spawn arguments that load
+ * Where Kabmo's mode extension lives, and the spawn arguments that load
  * it.
  *
- * `extensions/chamber-modes/` is the extension's own folder, mirroring the
+ * `extensions/kabmo-modes/` is the extension's own folder, mirroring the
  * repo's component convention (kebab-case folder, `index.ts` entry, suffix-only
  * child names) — and that is also what makes the RELATIVE imports inside it
  * legal: `-e <dir>/index.ts` resolves `./session` from the extension's own
- * directory, so nothing there may use the chamber's `@/` alias (the child
+ * directory, so nothing there may use Kabmo's `@/` alias (the child
  * process has no tsconfig for it).
  *
- * The extension ships WITH the chamber (`extensions/`, next to `src/`) and is
+ * The extension ships WITH Kabmo (`extensions/`, next to `src/`) and is
  * passed to the child as `-e <abs path>`. It is deliberately not installed into
  * `~/.omp/agent/extensions/`:
  *
@@ -39,33 +39,60 @@ import { dirname, join, parse, resolve } from 'node:path';
 /** Absolute path of the extension entry, or null when the directory is absent
  *  (a pruned install). A null makes the spawn path skip `-e` entirely rather
  *  than pass a path omp would fail to load. */
-export function chamberExtensionEntry(): string | null {
+import { CHAMBER_MODES_ENV, KABMO_MODES_ENV } from '@/shared/lib/omp/mode/types';
+
+export function kabmoExtensionEntry(): string | null {
+  // `kabmo-modes` is the folder this build ships; `chamber-modes` is the
+  // pre-rename name, still probed so a checkout that upgraded in place (or a
+  // package tree an older release left behind) keeps a working toggle rather
+  // than silently spawning a child with no extension.
+  const dirs = ['kabmo-modes', 'chamber-modes'];
   let dir = import.meta.dir;
   const { root } = parse(dir);
   for (;;) {
-    const candidate = join(dir, 'extensions', 'chamber-modes', 'index.ts');
-    if (existsSync(candidate)) return candidate;
+    for (const name of dirs) {
+      const candidate = join(dir, 'extensions', name, 'index.ts');
+      if (existsSync(candidate)) return candidate;
+    }
     if (dir === root) break;
     dir = dirname(dir);
   }
-  const cwdCandidate = join(resolve(process.cwd()), 'extensions', 'chamber-modes', 'index.ts');
-  return existsSync(cwdCandidate) ? cwdCandidate : null;
+  const cwd = resolve(process.cwd());
+  for (const name of dirs) {
+    const candidate = join(cwd, 'extensions', name, 'index.ts');
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
 }
 
 /** Spawn arguments that load the mode extension. Empty when it cannot be
  *  found, so a pruned install still spawns a working (if toggle-less) child. */
-export function chamberExtensionArgs(): string[] {
-  const entry = chamberExtensionEntry();
+export function kabmoExtensionArgs(): string[] {
+  const entry = kabmoExtensionEntry();
   return entry ? ['-e', entry] : [];
 }
 
 /** Environment variables the extension reads at session start.
  *
- *  `CHAMBER_MODES` carries the persisted per-session selection. There used to be
- *  a second flag here (`CHAMBER_GOAL_AUTO_CONTINUE`) because the child armed its
- *  own loop; the loop belongs to the chamber now, so the child has nothing to
- *  arm and the flag is gone. */
-export function chamberModeEnv(modes: { plan: boolean; goal: boolean }): Record<string, string> {
+ *  `KABMO_MODES` carries the persisted per-session selection. The pre-rename
+ *  `CHAMBER_MODES` is ALSO exported, because the extension file on disk may
+ *  still be the one that reads it — the two are written together for exactly one
+ *  release's worth of installs, and the extension reads the new name first.
+ *
+ *  There used to be a second flag here (`CHAMBER_GOAL_AUTO_CONTINUE`) because
+ *  the child armed its own loop; the loop belongs to Kabmo now, so the child has
+ *  nothing to arm and the flag is gone. */
+export function kabmoModeEnv(modes: { plan: boolean; goal: boolean }): Record<string, string> {
   const list = [modes.plan ? 'plan' : '', modes.goal ? 'goal' : ''].filter(Boolean);
-  return { CHAMBER_MODES: list.join(',') };
+  const value = list.join(',');
+  return { [KABMO_MODES_ENV]: value, [CHAMBER_MODES_ENV]: value };
 }
+
+/** @deprecated Use `kabmoExtensionEntry`. */
+export const chamberExtensionEntry = kabmoExtensionEntry;
+
+/** @deprecated Use `kabmoExtensionArgs`. */
+export const chamberExtensionArgs = kabmoExtensionArgs;
+
+/** @deprecated Use `kabmoModeEnv`. */
+export const chamberModeEnv = kabmoModeEnv;

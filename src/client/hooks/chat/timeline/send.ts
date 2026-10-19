@@ -4,7 +4,7 @@
  */
 
 /**
- * Message-send core for the chamber chat: reads text/image attachments, builds
+ * Message-send core for Kabmo chat: reads text/image attachments, builds
  * the optimistic user + AI placeholder bubbles, then routes the send through
  * the live omp agent bridge (existing/new session) or the mock SSE stream.
  * Extracted from useChatTimeline so that hook stays under the size ceiling.
@@ -288,7 +288,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       }
     }
 
-    // Mock / chamber-created session: existing simulated SSE path.
+    // Mock / Kabmo-created session: existing simulated SSE path.
     const currentFolder = folders.find(f => String(f.id) === String(selectedFolderId));
     return streamMockFallback({
       sessionId,

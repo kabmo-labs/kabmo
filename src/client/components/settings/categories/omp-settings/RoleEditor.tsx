@@ -13,7 +13,7 @@
  * hand-picked subset: the panel used to offer 9, which left `memory`, `image`,
  * `web`, `speech`, `dictation` and `judge` unreachable from the UI even though
  * `omp config set` accepts them and omp reads them at runtime. `dictation` in
- * particular is how a local STT model is chosen (the chamber's own dictation
+ * particular is how a local STT model is chosen (Kabmo's own dictation
  * resolves `stt.language` from config; the model comes from this role), so the
  * missing row was the one a non-English user needed most.
  *

@@ -72,10 +72,10 @@ beforeAll(() => {
   git(['commit', '-q', '-m', 'seed'], ORIGIN);
 
   Bun.env.PI_CODING_AGENT_DIR = path.join(ROOT, 'agent');
-  Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = path.join(ROOT, 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
 });
 
 afterEach(async () => {
@@ -88,10 +88,10 @@ afterEach(async () => {
 });
 
 afterAll(() => {
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
   delete Bun.env.PI_CODING_AGENT_DIR;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
   removeDir(ROOT);

@@ -6,7 +6,7 @@
 /**
  * Sessions this process is streaming WITHOUT an omp child.
  *
- * A `stream` row records the pid of the chamber process running it, and the
+ * A `stream` row records the pid of Kabmo process running it, and the
  * sidebar's self-heal releases any row this process owns while its RPC
  * registry holds no run for it (`isOrphanStreamRow`). That rule is correct for
  * every run an omp child serves — and wrong for the simulated stream, whose run
@@ -28,7 +28,7 @@
  * reset to empty while the streams it describes are still running.
  */
 
-const SLOT = '__ompChamberLocalRuns';
+const SLOT = '__kabmoLocalRuns';
 
 /** The live set, created on first use. Callers `add`/`delete`/spread it. */
 export function localRuns(): Set<string> {

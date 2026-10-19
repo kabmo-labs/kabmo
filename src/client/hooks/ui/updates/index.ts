@@ -3,7 +3,7 @@
  * that runs it.
  *
  * The apply is a POST whose response is an SSE stream, not a JSON body. An
- * `omp update` or an Kabmo install runs for minutes; a buffered response
+ * `omp update` or a Kabmo install runs for minutes; a buffered response
  * left the console with a spinner and nothing else until it finished, and
  * discarded the command output the server had already collected. Every frame
  * the stream carries is folded into `progress`, which survives the modal being
@@ -51,7 +51,7 @@ export function isUpdateApplyResult(payload: unknown): payload is UpdateApplyRes
 
   return (
     'success' in payload && typeof payload.success === 'boolean' &&
-    'target' in payload && (payload.target === 'ompchamber' || payload.target === 'omp') &&
+    'target' in payload && (payload.target === 'kabmo' || payload.target === 'omp') &&
     'manual' in payload && typeof payload.manual === 'boolean' &&
     'message' in payload && typeof payload.message === 'string'
   );
@@ -109,7 +109,7 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
     // so a narrowed `null` would be read back here as a value that can never be
     // set.
     const applied: { result: UpdateApplyResult | null } = { result: null };
-    // Who is serving this page BEFORE the run. Only an Kabmo update can
+    // Who is serving this page BEFORE the run. Only a Kabmo update can
     // replace that process, and the replacement is recognised by answering with
     // a different `pid`/`startedAt` — so the baseline has to be read while the
     // old process is still the one answering.
@@ -121,7 +121,7 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
     let navigating = false;
 
     try {
-      if (target === 'ompchamber') before = await readServerIdentity(restartDeps);
+      if (target === 'kabmo') before = await readServerIdentity(restartDeps);
 
       const response = await fetch('/api/updates/apply', {
         method: 'POST',
@@ -247,7 +247,7 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
     applying,
     progress,
     error,
-    hasUpdate: Boolean(info?.ompchamber.updateAvailable || info?.omp.updateAvailable),
+    hasUpdate: Boolean(info?.kabmo.updateAvailable || info?.omp.updateAvailable),
     check,
     apply,
   };

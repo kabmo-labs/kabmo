@@ -96,10 +96,10 @@ describe('toolCardHeader — proc:// calls', () => {
   test('a service stop names the op and the process, not the transport write', () => {
     expect(header({
       type: 'write',
-      target: 'proc://ompchamber-dev/kill',
-      input: { path: 'proc://ompchamber-dev/kill', content: null },
-      details: { proc: { action: 'stop', daemon: { name: 'ompchamber-dev', state: 'exited' } } },
-    })).toEqual({ title: 'Proc', subtitle: 'stop · ompchamber-dev' });
+      target: 'proc://kabmo-dev/kill',
+      input: { path: 'proc://kabmo-dev/kill', content: null },
+      details: { proc: { action: 'stop', daemon: { name: 'kabmo-dev', state: 'exited' } } },
+    })).toEqual({ title: 'Proc', subtitle: 'stop · kabmo-dev' });
   });
 
   test('a status read names the op from the path', () => {
@@ -114,10 +114,10 @@ describe('toolCardHeader — proc:// calls', () => {
   test('a stdin write names the process it wrote to', () => {
     expect(header({
       type: 'write',
-      target: 'proc://ompchamber-dev',
-      input: { path: 'proc://ompchamber-dev', content: 'x' },
-      details: { proc: { action: 'stdin', daemon: { name: 'ompchamber-dev', state: 'ready' } } },
-    })).toEqual({ title: 'Proc', subtitle: 'stdin · ompchamber-dev' });
+      target: 'proc://kabmo-dev',
+      input: { path: 'proc://kabmo-dev', content: 'x' },
+      details: { proc: { action: 'stdin', daemon: { name: 'kabmo-dev', state: 'ready' } } },
+    })).toEqual({ title: 'Proc', subtitle: 'stdin · kabmo-dev' });
   });
 
   test('the bare listing names the operation and no process', () => {

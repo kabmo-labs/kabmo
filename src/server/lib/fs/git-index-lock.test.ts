@@ -63,7 +63,7 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 function makeRepo(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-index-lock-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-index-lock-'));
   repos.push(dir);
   git(dir, 'init', '-q', '-b', 'main');
   git(dir, 'config', 'user.email', 'e2e@example.invalid');
@@ -159,7 +159,7 @@ describe('a git READ does not take the index lock', () => {
     expect(indexWriteCount(repo, { GIT_OPTIONAL_LOCKS: '0' })).toBe(0);
   });
 
-  testPosix('the chamber spawns git with the lock refused, on both the argv and the shell path', async () => {
+  testPosix('Kabmo spawns git with the lock refused, on both the argv and the shell path', async () => {
     // The status read goes through `runShell` (a `sh -c` string), the repo-modal
     // read through `runGit` (argv) — the split is exactly how one of the two
     // paths would have kept the bug. A shim on PATH records what each child was
@@ -185,7 +185,7 @@ describe('a git READ does not take the index lock', () => {
     const repo = makeRepo();
     seedTracked(repo);
 
-    const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-git-shim-'));
+    const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-git-shim-'));
     repos.push(shimDir);
     const record = path.join(shimDir, 'env.txt');
     const shim = path.join(shimDir, 'git');

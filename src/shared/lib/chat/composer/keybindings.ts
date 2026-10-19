@@ -4,16 +4,16 @@
  */
 
 /**
- * The composer's three Enter bindings, resolved from the chamber settings.
+ * The composer's three Enter bindings, resolved from Kabmo settings.
  *
- * Settings → Chats → Keybindings persists these through `writeChamberSettings`,
- * so they live in the `omp_chamber_settings` blob — NOT at the top level of
+ * Settings → Chats → Keybindings persists these through `writeKabmoSettings`,
+ * so they live in the `kabmo_settings` blob — NOT at the top level of
  * `appSettings`, which is the raw `app_settings` rows. Reading them off the top
  * level found nothing and every binding silently fell back to its default: a
  * user who set "send" to Ctrl+Enter still had a bare Enter submit the prompt
  * (measured in the browser: the draft was cleared and a turn rendered).
  *
- * `readChamberSetting` resolves the blob and top-level keys alike, which is what
+ * `readKabmoSetting` resolves the blob and top-level keys alike, which is what
  * the rest of the composer already uses for `goalDefaultBudget`. The defaults
  * here mirror the settings editor's own, so an unset key reads as the binding
  * the panel shows.
@@ -26,7 +26,7 @@
  */
 
 import type { SettingsState } from '@/shared/types';
-import { readChamberSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
 
 export type ComposerKeybinding = SettingsState['keybindingSend'];
 
@@ -48,8 +48,8 @@ export const DEFAULT_COMPOSER_KEYBINDINGS: ComposerKeybindings = {
 /** The three bindings, blob key first, then the editor's own defaults. */
 export function resolveComposerKeybindings(appSettings?: Record<string, any>): ComposerKeybindings {
   return {
-    send: readChamberSetting<ComposerKeybinding>('keybindingSend', appSettings) ?? DEFAULT_COMPOSER_KEYBINDINGS.send,
-    newLine: readChamberSetting<ComposerKeybinding>('keybindingNewLine', appSettings) ?? DEFAULT_COMPOSER_KEYBINDINGS.newLine,
-    steering: readChamberSetting<ComposerKeybinding>('keybindingSteering', appSettings) ?? DEFAULT_COMPOSER_KEYBINDINGS.steering,
+    send: readKabmoSetting<ComposerKeybinding>('keybindingSend', appSettings) ?? DEFAULT_COMPOSER_KEYBINDINGS.send,
+    newLine: readKabmoSetting<ComposerKeybinding>('keybindingNewLine', appSettings) ?? DEFAULT_COMPOSER_KEYBINDINGS.newLine,
+    steering: readKabmoSetting<ComposerKeybinding>('keybindingSteering', appSettings) ?? DEFAULT_COMPOSER_KEYBINDINGS.steering,
   };
 }

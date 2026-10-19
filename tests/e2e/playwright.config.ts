@@ -39,7 +39,7 @@ export default defineConfig({
   // the client on demand in development.
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  // One worker: every spec owns a server and a real browser, and the chamber's
+  // One worker: every spec owns a server and a real browser, and Kabmo's
   // server is a single process with a process-wide database handle. Parallel
   // servers are fine, but serializing keeps the port and CPU picture simple and
   // the failure output readable — this layer is not where speed matters.

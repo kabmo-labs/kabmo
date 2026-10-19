@@ -197,12 +197,12 @@ describe('workspace folder sync', () => {
     const db = await freshDb('curated');
     await db.run(
       'INSERT INTO workspace_folders (name, is_expanded, project_path) VALUES (?, 1, ?)',
-      ['ompchamber', '/Users/someone/JatisMobile/ompchamber'],
+      ['kabmo', '/Users/someone/JatisMobile/kabmo'],
     );
 
     expect(await syncWorkspaceFoldersFromDiscovery(db)).toBe(false);
     // The curated folder alone — the three discoverable projects stayed out.
-    expect(await folderPaths(db)).toEqual(['/Users/someone/JatisMobile/ompchamber']);
+    expect(await folderPaths(db)).toEqual(['/Users/someone/JatisMobile/kabmo']);
   });
 
   test('a pre-marker database records the run on its first boot', async () => {
@@ -213,7 +213,7 @@ describe('workspace folder sync', () => {
     const db = await freshDb('upgrade');
     await db.run(
       'INSERT INTO workspace_folders (name, is_expanded, project_path) VALUES (?, 1, ?)',
-      ['ompchamber', '/Users/someone/JatisMobile/ompchamber'],
+      ['kabmo', '/Users/someone/JatisMobile/kabmo'],
     );
     expect(await syncWorkspaceFoldersFromDiscovery(db)).toBe(false);
 

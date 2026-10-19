@@ -6,7 +6,7 @@
 /**
  * BTW operations: list, ask (new topic or follow-up), abort, promote, delete.
  *
- * The rules here are omp's own `/btw` rules, expressed against the chamber's
+ * The rules here are omp's own `/btw` rules, expressed against Kabmo's
  * storage:
  *  - one side question in flight per session (no implicit queue, no implicit
  *    cancel — a second question is refused, exactly like the TUI);
@@ -64,7 +64,7 @@ function topicTitle(question: string): string {
 
 function assertAvailable(): void {
   if (isMockMode()) {
-    throw new BtwError('Side questions need a real omp session; the chamber is running in demo mode.', 'btw_unavailable');
+    throw new BtwError('Side questions need a real omp session; Kabmo is running in demo mode.', 'btw_unavailable');
   }
 }
 
@@ -156,7 +156,7 @@ export async function abortBtw(sessionId: string, topicId: string): Promise<BtwS
 /**
  * Refuse a session operation that would move the conversation out from under a
  * running side question. omp blocks the same operations while a `/btw` answer is
- * in flight or unsaved (`BtwController.withSessionMove` / `flush`); a chamber
+ * in flight or unsaved (`BtwController.withSessionMove` / `flush`); a Kabmo
  * chat that switched sessions mid-question would leave the answer attached to a
  * transcript nobody is looking at.
  */

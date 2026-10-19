@@ -36,7 +36,7 @@ const fieldClass = 'w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hov
  * comes from.
  *
  * These three are the `models.yml` fields that decide whether a provider works
- * at all, and each one is a decision the chamber cannot make for the user:
+ * at all, and each one is a decision Kabmo cannot make for the user:
  *
  * - An Anthropic-shaped proxy reached with a Bearer header authorises nothing,
  *   and omp rejects an unknown `api` by disabling every custom provider in the

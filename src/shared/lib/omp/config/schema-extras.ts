@@ -4,7 +4,7 @@
  */
 
 /**
- * Chamber-side UI metadata for settings that oh-my-pi's docs catalog
+ * Kabmo-side UI metadata for settings that oh-my-pi's docs catalog
  * documents but that upstream's settings schema gives no `ui` block —
  * upstream's own panel hides them. These rows restore the documented
  * surface: they render in the same tab/group layout, edit through the same
@@ -79,7 +79,7 @@ export const SCHEMA_EXTRAS: Record<string, SchemaEntry> = {
   /**
    * Upstream declares `stt.language` with no `ui` block, so its own panel hides
    * it while its OWN dictation reads it (`cfgSttLanguage`, default `"en"`). The
-   * chamber drives the same worker and previously sent no language at all,
+   * Kabmo drives the same worker and previously sent no language at all,
    * which left every decode auto-detecting — the one setting that decides
    * whether a non-English utterance transcribes correctly was unreachable from
    * either surface. The row restores it; the dictation route reads it as the

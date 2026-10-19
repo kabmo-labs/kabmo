@@ -4,7 +4,7 @@
  */
 
 /**
- * Folds omp's `get_state` payload into the chamber's WebSessionState while
+ * Folds omp's `get_state` payload into Kabmo's WebSessionState while
  * reconciling the wrapper's own running flags against it. The reconciliation is
  * the point: `isStreaming` alone cannot tell a finished turn from one that is
  * between tool calls, so a session with dispatched-but-unstarted work or an

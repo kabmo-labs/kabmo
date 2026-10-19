@@ -82,25 +82,36 @@ describe('ModeMirror', () => {
 describe('ModeMirror.observeMarker', () => {
   const marker = (name: string, payload: Record<string, unknown>) => ({ marker: name as never, payload });
 
+  test('the pre-rename spelling is still observed', () => {
+    // A transcript replayed from before the rename carries `CHAMBER_*`; the
+    // mirror is what a reattaching client reads the mode from, so ignoring the
+    // old prefix would show a session as having no mode at all.
+    const mirror = new ModeMirror();
+    mirror.observeMarker(marker('CHAMBER_PLAN_STATE:', { enabled: true }));
+    expect(mirror.planEnabled).toBe(true);
+    mirror.observeMarker(marker('CHAMBER_GOAL_STATE:', { goal: goal('active'), enabled: true }));
+    expect(mirror.goalRecord?.id).toBe('g1');
+  });
+
   test('a plan marker sets the flag in both directions', () => {
     const mirror = new ModeMirror();
     expect(mirror.planEnabled).toBeUndefined();
-    mirror.observeMarker(marker('CHAMBER_PLAN_STATE:', { enabled: true }));
+    mirror.observeMarker(marker('KABMO_PLAN_STATE:', { enabled: true }));
     expect(mirror.planEnabled).toBe(true);
-    mirror.observeMarker(marker('CHAMBER_PLAN_STATE:', { enabled: false }));
+    mirror.observeMarker(marker('KABMO_PLAN_STATE:', { enabled: false }));
     expect(mirror.planEnabled).toBe(false);
   });
 
   test('a goal marker records the record and applies the live rule', () => {
     const mirror = new ModeMirror();
-    mirror.observeMarker(marker('CHAMBER_GOAL_STATE:', { goal: goal('active'), enabled: true }));
+    mirror.observeMarker(marker('KABMO_GOAL_STATE:', { goal: goal('active'), enabled: true }));
     expect(mirror.goalRecord?.id).toBe('g1');
     expect(mirror.goalStatus).toBe('active');
     expect(mirror.goalEnabled).toBe(true);
 
     // Paused: the record stays (the composer still shows the goal) but it is
     // not work in progress.
-    mirror.observeMarker(marker('CHAMBER_GOAL_STATE:', { goal: goal('paused'), enabled: false }));
+    mirror.observeMarker(marker('KABMO_GOAL_STATE:', { goal: goal('paused'), enabled: false }));
     expect(mirror.goalRecord?.status).toBe('paused');
     expect(mirror.goalEnabled).toBe(false);
   });
@@ -108,20 +119,20 @@ describe('ModeMirror.observeMarker', () => {
   test('a continuation verdict and its ceiling ride the goal marker', () => {
     const mirror = new ModeMirror();
     mirror.observeMarker(
-      marker('CHAMBER_GOAL_STATE:', { goal: goal('active'), enabled: true, continuation: { turn: 3, maxTurns: 25 }, maxTurns: 25 }),
+      marker('KABMO_GOAL_STATE:', { goal: goal('active'), enabled: true, continuation: { turn: 3, maxTurns: 25 }, maxTurns: 25 }),
     );
     expect(mirror.goalContinuation).toEqual({ turn: 3, maxTurns: 25 });
     expect(mirror.goalMaxTurns).toBe(25);
 
     // A transition entry with no verdict must not erase the last one.
-    mirror.observeMarker(marker('CHAMBER_GOAL_STATE:', { goal: goal('active'), enabled: true }));
+    mirror.observeMarker(marker('KABMO_GOAL_STATE:', { goal: goal('active'), enabled: true }));
     expect(mirror.goalContinuation).toEqual({ turn: 3, maxTurns: 25 });
   });
 
   test('a plan marker leaves the goal record alone', () => {
     const mirror = new ModeMirror();
-    mirror.observeMarker(marker('CHAMBER_GOAL_STATE:', { goal: goal('active'), enabled: true }));
-    mirror.observeMarker(marker('CHAMBER_PLAN_STATE:', { enabled: true }));
+    mirror.observeMarker(marker('KABMO_GOAL_STATE:', { goal: goal('active'), enabled: true }));
+    mirror.observeMarker(marker('KABMO_PLAN_STATE:', { enabled: true }));
     expect(mirror.goalRecord?.id).toBe('g1');
     expect(mirror.goalEnabled).toBe(true);
   });

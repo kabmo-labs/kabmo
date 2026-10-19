@@ -5,7 +5,7 @@
 
 /**
  * Builds the SSE stream-chunk callback object passed to streamChatResponse for
- * the mock / chamber-created session path in useChatTimeline. Extracted so the
+ * the mock / Kabmo-created session path in useChatTimeline. Extracted so the
  * timeline hook stays under the repo's per-file size ceiling. Closures mutate
  * the caller's state, so they arrive via a single deps record and are read as
  * `deps.*` — captured semantics are unchanged.

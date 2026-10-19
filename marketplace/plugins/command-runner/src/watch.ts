@@ -34,8 +34,8 @@
  * watcher does nothing — the panel's own mount sweep is then the net.
  */
 
-import { uiKitServices } from '@ompchamber/ui';
-import type { ContentScriptContext } from '@ompchamber/plugin-sdk';
+import { uiKitServices } from '@kabmo-labs/kabmo-ui';
+import type { ContentScriptContext } from '@kabmo-labs/kabmo-sdk';
 
 import { RPC } from './protocol';
 

@@ -6,7 +6,7 @@
 /**
  * The panel's header: its name, then the scope.
  *
- * The chamber's panels open with a title row (`h-10 px-3 border-b`), and this
+ * Kabmo's panels open with a title row (`h-10 px-3 border-b`), and this
  * one had none — it started straight at the repo picker, so the view was the only
  * one in the right panel that never said what it was. The title takes the same
  * treatment `TerminalHeader` gives its own (`text-xs font-semibold tracking-wider
@@ -21,7 +21,7 @@
  * the picker just set.
  */
 
-import { RepoPicker, type RepoScopeHandle } from '@ompchamber/ui';
+import { RepoPicker, type RepoScopeHandle } from '@kabmo-labs/kabmo-ui';
 
 import { Glyph, ICON } from './Glyph';
 

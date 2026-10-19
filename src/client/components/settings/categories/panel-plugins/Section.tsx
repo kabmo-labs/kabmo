@@ -101,8 +101,7 @@ export function PanelPluginsSection() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs text-ink/60 max-w-xl">
-          Panels bundled with Kabmo, plus the ones you install from a git URL. A plugin is local code the
-          chamber loads into this page and renders in its own tree, so it looks and behaves like the rest of the
+          Panels bundled with Kabmo, plus the ones you install from a git URL. A plugin is local code Kabmo loads into this page and renders in its own tree, so it looks and behaves like the rest of the
           app — treat it the way you would a VS Code extension.
         </p>
       </div>
@@ -134,7 +133,7 @@ export function PanelPluginsSection() {
 
       {!ready ? <p className="text-xs text-ink/50">Reading…</p> : null}
 
-      {/* Built-ins first, and always — they are the chamber's own views, so
+      {/* Built-ins first, and always — they are Kabmo's own views, so
           they are listed whether or not the registry read settled. */}
       <BuiltinList disabled={disabledPanels} busy={actions.busy} onSetEnabled={actions.setEnabled} />
 
@@ -142,9 +141,9 @@ export function PanelPluginsSection() {
         <div className="text-xs text-ink/60 space-y-1.5">
           <p>No panel plugins installed.</p>
           <p className="font-mono text-[11px] text-ink/45 leading-relaxed">
-            ~/.ompchamber/marketplace/marketplace.json
+            ~/.kabmo/marketplace/marketplace.json
             <br />
-            ~/.ompchamber/marketplace/plugins/&lt;plugin&gt;/package.json
+            ~/.kabmo/marketplace/plugins/&lt;plugin&gt;/package.json
           </p>
         </div>
       ) : null}

@@ -7,7 +7,7 @@
  * UI-auth state for ONE run of the server.
  *
  * There is no stored password. A password is supplied per invocation — through
- * `--ui-password` or `OMPCHAMBER_UI_PASSWORD` — hashed in memory at boot, and
+ * `--ui-password` or `KABMO_UI_PASSWORD` — hashed in memory at boot, and
  * forgotten when the process exits. A plain `bun run dev` therefore runs with no
  * authentication, which is the default: a file on disk must not be able to
  * decide that a server the user started needs a credential they never set.

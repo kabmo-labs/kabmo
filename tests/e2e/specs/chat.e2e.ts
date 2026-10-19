@@ -14,7 +14,7 @@
  * Every one of those steps has been a real regression; none is visible to a
  * happy-dom mount.
  *
- * It runs in `real` mode (MOCK=false) with `OMPCHAMBER_OMP_BIN` pointed at the
+ * It runs in `real` mode (MOCK=false) with `KABMO_OMP_BIN` pointed at the
  * scripted child, so there is no model and no network, but there IS a real
  * process, a real protocol, and a real stream.
  */

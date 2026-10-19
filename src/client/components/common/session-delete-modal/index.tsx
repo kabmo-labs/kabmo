@@ -24,7 +24,7 @@ export interface SessionDeleteModalProps {
  *
  * The dialog names what actually disappears — the transcript on disk, the
  * subagent transcripts beside it, the side questions asked in it, and the
- * chamber's own rows for it — because none of it is recoverable from the UI.
+ * Kabmo's own rows for it — because none of it is recoverable from the UI.
  * That is the whole difference between this button and the archive button next
  * to it, and a bare "Delete?" would leave the user guessing which one they
  * pressed.

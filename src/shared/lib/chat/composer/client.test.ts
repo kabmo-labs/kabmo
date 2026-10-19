@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * The popup's command pool has two sources with different owners: omp's
- * `get_available_commands` and the chamber's own commands. `/btw` exists only
+ * `get_available_commands` and Kabmo's own commands. `/btw` exists only
  * in the second — omp's registry entry for it is TUI-only, so RPC never
  * advertises it — and the composer intercepts the token on send. If the entry
  * ever disappears, the popup offers every command except the one being typed,
@@ -38,7 +38,7 @@ describe('mergeCommandAndSkillItems', () => {
     expect(btw?.description).toBe("[question] - Ask a side question, or browse this session's BTW history");
   });
 
-  test('keeps the chamber entry when omp advertises the same name', () => {
+  test('keeps Kabmo entry when omp advertises the same name', () => {
     const items = mergeCommandAndSkillItems([command({ name: 'btw', description: 'something else entirely' })], []);
 
     const matching = items.filter((item) => item.name === 'btw');

@@ -40,7 +40,7 @@ async function serve({ request, params }: LoaderFunctionArgs | ActionFunctionArg
     return await route.handler(request);
   } catch (error) {
     // A plugin's exception is reported as ITS failure, with its own message:
-    // the alternative is a 500 whose body describes the chamber rather than
+    // the alternative is a 500 whose body describes Kabmo rather than
     // what the plugin did.
     return json(
       { error: error instanceof Error ? error.message : String(error) },

@@ -56,7 +56,7 @@ let realAgentDir: string | undefined;
 let realBin: string | undefined;
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   dirs.push(dir);
   return dir;
 }
@@ -73,9 +73,9 @@ beforeAll(async () => {
   // script is unspawnable there however it is chmod-ed.
   stubBin = await executableStub(STUB_SOURCE, 'fake-omp');
   realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
-  realBin = Bun.env.OMPCHAMBER_OMP_BIN;
+  realBin = Bun.env.KABMO_OMP_BIN;
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
-  Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
+  Bun.env.KABMO_OMP_BIN = stubBin;
   Bun.env.FAKE_OMP_RESPONSES = JSON.stringify({
     get_login_providers: { providers: [] },
     get_available_models: { models: [] },
@@ -102,8 +102,8 @@ afterAll(() => {
   disposeUtilityRpc();
   if (realAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = realAgentDir;
-  if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
+  if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = realBin;
   delete Bun.env.FAKE_OMP_RESPONSES;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) removeDir(dir);
@@ -113,19 +113,19 @@ afterEach(() => {
   calls.length = 0;
   invalidateUsageCache();
   disposeUtilityRpc();
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
 });
 
 /** Two accounts, same endpoint, different keys — the case that used to collapse. */
 async function seedTwoKenariAccounts(): Promise<void> {
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
   const db = await getDb();
   await db.run('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)', [
     'omp_providers_config',

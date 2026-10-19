@@ -26,9 +26,9 @@
  */
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { definePluginApp } from '@ompchamber/plugin-sdk/app';
-import { usePanelHost, useRealtime, useRpc } from '@ompchamber/ui';
-import { Empty, Note, Panel } from '@ompchamber/ui/components';
+import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
+import { usePanelHost, useRealtime, useRpc } from '@kabmo-labs/kabmo-ui';
+import { Empty, Note, Panel } from '@kabmo-labs/kabmo-ui/components';
 
 import { ProcessTable } from './ProcessTable';
 import { Sparkline } from './Sparkline';
@@ -78,7 +78,7 @@ function StatsPanel() {
   // The arm attempt is also the LIVENESS probe: a plugin whose server half is
   // not loaded answers this route with a 404, which the kit reports as
   // `plugin_not_loaded`. That is the state a plugin installed into a running
-  // chamber sits in until its server half loads — and the reason this panel
+  // Kabmo sits in until its server half loads — and the reason this panel
   // used to open on "No sample yet." with nothing on screen to explain it.
   const serverDown = watch.error?.code === 'plugin_not_loaded';
 
@@ -88,7 +88,7 @@ function StatsPanel() {
         <div class="flex flex-col gap-2 p-2">
           <Note tone="error">The Stats server half is not running, so nothing is being measured.</Note>
           <Note>
-            It loads at chamber startup. If you just installed or updated this plugin, restart Kabmo — a fresh
+            It loads when Kabmo starts. If you just installed or updated this plugin, restart Kabmo — a fresh
             start loads it. If it is already running, check the plugin is enabled in Settings → Panel Plugins.
           </Note>
         </div>
@@ -177,7 +177,7 @@ export default definePluginApp((app) => {
     title: 'Resources',
     component: StatsPanel,
     // Telemetry tables need room before they wrap — the same floor the
-    // chamber's own Context view takes.
+    // Kabmo's own Context view takes.
     minWidth: 420,
   });
 });

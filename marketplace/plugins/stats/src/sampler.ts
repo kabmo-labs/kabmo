@@ -8,7 +8,7 @@
  *
  * ## The process set is a UNION, and that is the load-bearing decision
  *
- * The obvious answer — walk the ppid tree from the chamber's own pid — is
+ * The obvious answer — walk the ppid tree from Kabmo's own pid — is
  * measurably incomplete. An omp daemon broker is spawned `{ detached: true }`
  * and `unref()`ed by omp, so it outlives the omp process that started it and is
  * reparented to `1`. Measured on this machine: one broker sat under the server
@@ -17,7 +17,7 @@
  *
  * So the set is:
  *
- *   1. the ppid tree rooted at the chamber's pid — omp children and their LSP
+ *   1. the ppid tree rooted at Kabmo's pid — omp children and their LSP
  *      grandchildren, the utility children, prewarm entries, PTY shells and
  *      whatever they run; and
  *   2. the subtree under every daemon registry entry, broker and daemon alike,
@@ -25,7 +25,7 @@
  *
  * `detached: true` does NOT break the ppid link (verified for both the PTY
  * shell and the omp child — detaching changes the process GROUP, which is what
- * the group-kill uses), so the tree walk is complete for everything the chamber
+ * the group-kill uses), so the tree walk is complete for everything Kabmo
  * spawned and the registry covers everything omp detached from it.
  *
  * ## CPU is a RATE, so the sampler keeps the previous reading
@@ -56,7 +56,7 @@ interface Baseline {
 }
 
 /**
- * Which processes belong to the chamber, by pid.
+ * Which processes belong to Kabmo, by pid.
  *
  * Both halves of the union in one pass, and the daemon half walks the SAME
  * parent map rather than recursing a second time: the map is already built.
@@ -110,13 +110,13 @@ function collectProcessSet(
 /**
  * The order groups are listed in.
  *
- * The chamber first (it is the thing the panel is about), then the SESSIONS
+ * The Kabmo first (it is the thing the panel is about), then the SESSIONS
  * doing work, then idle capacity, then the shared daemons — which are usually
  * the largest but belong to no session — and the terminal last. Sorting by size
  * instead would reorder the panel on every sample and make it unreadable.
  */
 const GROUP_ORDER: readonly GroupKind[] = [
-  'chamber',
+  'kabmo',
   'session',
   'utility',
   'prewarm',

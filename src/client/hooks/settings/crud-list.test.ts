@@ -13,7 +13,7 @@
  * is pinned to the rule its doc calls out: the pane changes only on an explicit
  * row choice, never because a selection merely exists. `useWorkspaceRoots` is
  * pinned to the id-OR-value resolution that fixed a picker silently scoping
- * every workspace to the user root, and `useChamberSettingsWriter` to the
+ * every workspace to the user root, and `useKabmoSettingsWriter` to the
  * diff-persist rule (only a moved key is written).
  */
 

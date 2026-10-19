@@ -22,7 +22,7 @@
  * builtin such as `/usage` is a legitimate thing to branch a chat from. It is
  * deliberately not a code fence either: fencing the seed would turn that command
  * into prose, and it would not hide anything, because nothing in this path
- * executes the text on the chamber's side.
+ * executes the text on Kabmo's side.
  */
 
 /** The line that separates the seeded message from the user's own addition. */

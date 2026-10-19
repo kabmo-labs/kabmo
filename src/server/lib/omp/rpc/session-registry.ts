@@ -127,7 +127,7 @@ export async function startRpcSession(
   // A session file another omp process already owns must not be resumed: omp
   // would move THIS child to a sibling file (open-elsewhere), splitting the
   // conversation and adding a duplicate sidebar row with the same title. The
-  // local registry above cannot see a second chamber instance, so ownership is
+  // local registry above cannot see a second Kabmo instances, so ownership is
   // read from omp's own lease (see ownership.server.ts).
   if (sessionFile) {
     const ownership = await resolveSessionOwnership(sessionId);
@@ -301,10 +301,10 @@ export async function startNewRpcSession(
   let wrapper: AgentSessionWrapper | undefined;
   // A prewarmed entry was spawned with the environment current at prewarm
   // time, so a MODE selection that differs from its own can no longer be served
-  // by it — the extension reads `CHAMBER_MODES` once, at session start. Treated
+  // by it — the extension reads the mode env once, at session start. Treated
   // exactly like a mode mismatch: claim and kill, then spawn cold.
-  const entryModes = entry?.modeEnv?.CHAMBER_MODES ?? '';
-  const wantedModes = modeEnv?.CHAMBER_MODES ?? '';
+  const entryModes = entry?.modeEnv?.KABMO_MODES ?? entry?.modeEnv?.CHAMBER_MODES ?? '';
+  const wantedModes = modeEnv?.KABMO_MODES ?? modeEnv?.CHAMBER_MODES ?? '';
   if (entry && !entry.claimed && entry.approvalMode === mode && entryModes === wantedModes) {
     entry.claimed = true;
     pool.delete(cwd);

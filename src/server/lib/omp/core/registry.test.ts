@@ -34,7 +34,7 @@ const realAgentDir = Bun.env.PI_CODING_AGENT_DIR;
 let agentDir = '';
 
 function setupAgentDir(): string {
-  agentDir = mkdtempSync(path.join(tmpdir(), 'ompchamber-test-agent-'));
+  agentDir = mkdtempSync(path.join(tmpdir(), 'kabmo-test-agent-'));
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
   return agentDir;
 }
@@ -65,7 +65,7 @@ afterEach(() => {
 
 describe('parseProjectRegistry', () => {
   test('keeps well-formed entries and canonicalizes their path', () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'ompchamber-test-proj-'));
+    const dir = mkdtempSync(path.join(tmpdir(), 'kabmo-test-proj-'));
     const registry = parseProjectRegistry(
       JSON.stringify({
         version: 1,
@@ -112,7 +112,7 @@ describe('loadProjectRegistry', () => {
   });
 
   test('reads a real file and tolerates a corrupt one', async () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'ompchamber-test-reg-'));
+    const dir = mkdtempSync(path.join(tmpdir(), 'kabmo-test-reg-'));
     const good = path.join(dir, 'good.json');
     const bad = path.join(dir, 'bad.json');
     writeFileSync(good, JSON.stringify({ projects: [{ path: '/p' }] }));
@@ -150,7 +150,7 @@ describe('mergeProjects', () => {
     // on Windows resolves against the CURRENT drive and, on the runner, collides
     // with the real `D:\a`. A temp-rooted path that does not exist stays verbatim
     // on every host, so the sort/cull under test is what the case observes.
-    const [z, a, m] = ['z', 'a', 'm'].map((s) => path.join(tmpdir(), `ompchamber-merge-${s}`));
+    const [z, a, m] = ['z', 'a', 'm'].map((s) => path.join(tmpdir(), `kabmo-merge-${s}`));
     const merged = mergeProjects(registry([{ path: z }]), [m, a]);
     expect(merged.map((p) => p.path)).toEqual([z, a, m]);
   });
@@ -162,7 +162,7 @@ describe('mergeProjects', () => {
   });
 
   test('duplicate and blank discovered paths collapse', () => {
-    const [a, b] = ['a', 'b'].map((s) => path.join(tmpdir(), `ompchamber-merge-${s}`));
+    const [a, b] = ['a', 'b'].map((s) => path.join(tmpdir(), `kabmo-merge-${s}`));
     const merged = mergeProjects(registry([]), [a, a, '', b]);
     expect(merged.map((p) => p.path)).toEqual([a, b]);
   });

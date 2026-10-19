@@ -31,7 +31,7 @@ export interface InstanceRecord {
    *
    * Recorded because a replacement is spawned from the CLI's OWN argv, which
    * carries none of the flags the original run had: `restart` builds its
-   * `serve` invocation from the command line of `ompchamber restart`, so a
+   * `serve` invocation from the command line of `kabmo restart`, so a
    * server started with `--tray` (a login entry, `serve --tray`) came back
    * without an icon after every update. The record is the only description of
    * the instance that survives the process, so the flags live here.
@@ -44,7 +44,7 @@ export interface InstanceRecord {
    *
    * Recorded so a restart that CANNOT reproduce the credential says so instead
    * of quietly starting an open server. The plaintext is never stored (only a
-   * hash lives in memory), so a manual `ompchamber restart` genuinely cannot
+   * hash lives in memory), so a manual `kabmo restart` genuinely cannot
    * recover it — the replacement has to be told, not guessed at.
    */
   auth: boolean;

@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { resolveRunPassword, UI_PASSWORD_FLAG } from '@/server/lib/auth/env-password';
-import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { terminalEnv } from '@/server/lib/terminal/shell';
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
@@ -89,13 +89,13 @@ describe('the password never reaches a child process', () => {
   });
 
   test('the omp child environment strips it', () => {
-    const env = stripChamberHostEnv({ PATH: '/usr/bin', [UI_PASSWORD_ENV]: PASSWORD }, process.platform);
+    const env = stripKabmoHostEnv({ PATH: '/usr/bin', [UI_PASSWORD_ENV]: PASSWORD }, process.platform);
     expect(env[UI_PASSWORD_ENV]).toBeUndefined();
     expect(env.PATH).toBe('/usr/bin');
   });
 
   test('the strip is case-insensitive on Windows, where env names are', () => {
-    const env = stripChamberHostEnv(
+    const env = stripKabmoHostEnv(
       { PATH: 'C:\\Windows', [UI_PASSWORD_ENV]: PASSWORD },
       'win32',
     );
@@ -103,10 +103,10 @@ describe('the password never reaches a child process', () => {
   });
 
   test('both strips leave a name that merely resembles it alone', () => {
-    // `OMPCHAMBER_UI_PASSWORD_FILE` is a different variable; a prefix match that
+    // `KABMO_UI_PASSWORD_FILE` is a different variable; a prefix match that
     // removed it would be a silent misconfiguration.
-    const base = { PATH: '/usr/bin', OMPCHAMBER_UI_PASSWORD_FILE: '/tmp/x' };
-    expect(terminalEnv(base, 'dark').OMPCHAMBER_UI_PASSWORD_FILE).toBe('/tmp/x');
-    expect(stripChamberHostEnv(base, process.platform).OMPCHAMBER_UI_PASSWORD_FILE).toBe('/tmp/x');
+    const base = { PATH: '/usr/bin', KABMO_UI_PASSWORD_FILE: '/tmp/x' };
+    expect(terminalEnv(base, 'dark').KABMO_UI_PASSWORD_FILE).toBe('/tmp/x');
+    expect(stripKabmoHostEnv(base, process.platform).KABMO_UI_PASSWORD_FILE).toBe('/tmp/x');
   });
 });

@@ -16,7 +16,7 @@ interface PluginReadmeModalProps {
  *
  * The whole point of the button is that a user can judge a plugin WITHOUT
  * committing to it, so this modal installs nothing and touches nothing: it
- * fetches the markdown and renders it through the chamber's own pipeline, which
+ * fetches the markdown and renders it through Kabmo's own pipeline, which
  * is what gives a plugin's README the same sanitizing, Shiki highlighting,
  * KaTeX and mermaid hydration the chat timeline has. Raw HTML in the file is
  * sanitized, not trusted — a README is third-party content.

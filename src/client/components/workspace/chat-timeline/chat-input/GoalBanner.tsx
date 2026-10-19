@@ -18,7 +18,7 @@
  *
  * ## What the turn counter is, exactly
  *
- * `continuation` comes from the child's own `CHAMBER_GOAL_CONTINUATION` frame,
+ * `continuation` comes from the child's own `KABMO_GOAL_CONTINUATION` frame,
  * emitted immediately before it opens an automatic turn — so the run that
  * follows IS the turn it names, and `running` alone would not distinguish a
  * goal turn from an ordinary one the user started. omp exposes no "evaluating"
@@ -41,7 +41,7 @@ import type { GoalAction } from '@/client/hooks/chat/timeline/modes';
 
 /** How each stand-down reason reads, and what the row offers for it. Data, not
  *  a chain of `if`s: the reasons come from two places (the child's ceilings and
- *  the chamber's auditor) and the row must name every one of them. */
+ *  Kabmo's auditor) and the row must name every one of them. */
 const STOP_UI: Record<GoalContinuationStop, { badge: string; title: string; tone: string; action: 'resume' | 'budget' | 'none' }> = {
   'max-turns': {
     badge: 'stopped',
@@ -88,7 +88,7 @@ export interface GoalBannerProps {
   record: GoalRecord;
   /**
    * The CHAT's run state — the timeline's `timelineRunning`, not the composer's
-   * local one. A goal turn driven by another tab or another chamber instance is
+   * local one. A goal turn driven by another tab or another Kabmo instance is
    * still this goal's turn, and the sidebar spinner already reports it.
    */
   running: boolean;
@@ -120,7 +120,7 @@ export function GoalBanner({ record, running, continuation, evaluating, pending,
   const stop = stopReason && STOP_UI[stopReason] ? stopReason : null;
   const stopped = !paused && stop !== null;
   // The spinner covers both halves of "not idle": a streaming turn, and the
-  // auditor the chamber runs after it (`goal_evaluating`).
+  // auditor Kabmo runs after it (`goal_evaluating`).
   const busy = running || evaluating;
   const tone = busy ? 'text-ink/45' : stopped ? STOP_UI[stop].tone : paused ? 'text-warning' : 'text-ink/45';
   const badge = paused

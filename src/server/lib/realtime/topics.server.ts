@@ -32,7 +32,7 @@ import { EXACT_TOPICS, descriptorFor, isKnownTopicName } from '@/server/lib/real
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberRealtimeTopicsReady: boolean | undefined;
+  var __kabmoRealtimeTopicsReady: boolean | undefined;
 }
 
 /**
@@ -71,8 +71,8 @@ function buildDescriptors(): Map<string, TopicDescriptor> {
  * call from the route's boot path is a no-op.
  */
 export function initRealtimeTopics(): void {
-  if (globalThis.__ompChamberRealtimeTopicsReady) return;
-  globalThis.__ompChamberRealtimeTopicsReady = true;
+  if (globalThis.__kabmoRealtimeTopicsReady) return;
+  globalThis.__kabmoRealtimeTopicsReady = true;
   registerTopics(buildDescriptors());
   onRealtimeSignal(({ signal, sessionId, root }) => {
     if (signal === 'stream-status') publishSidebarStatus();
@@ -186,11 +186,11 @@ interface PublishState {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberRealtimePublish: PublishState | undefined;
+  var __kabmoRealtimePublish: PublishState | undefined;
 }
 
 function publishState(): PublishState {
-  return (globalThis.__ompChamberRealtimePublish ??= { timers: new Map(), last: new Map() });
+  return (globalThis.__kabmoRealtimePublish ??= { timers: new Map(), last: new Map() });
 }
 
 /**

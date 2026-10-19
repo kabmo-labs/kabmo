@@ -19,7 +19,7 @@
 import { isMockMode } from '@/server/mock.server';
 import { fetchChangelogNotes } from '@/server/lib/updates/changelog-file';
 import { isManualMethod, manualUpdateCommand } from '@/server/lib/updates/install-method';
-import { resolveInstallContext, resolveOmpChamberVersion } from '@/server/lib/updates/install';
+import { resolveInstallContext, resolveKabmoVersion } from '@/server/lib/updates/install';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import { compareVersions, isNewer, normalizeVersion } from '@/shared/lib/updates/semver';
 import type { ReleaseNote, UpdateChangelog, UpdateInstallInfo } from '@/shared/types/updates';
@@ -107,7 +107,7 @@ function mockChangelog(): UpdateChangelog {
 export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
   if (isMockMode()) return mockChangelog();
 
-  const { current, latest, error, package: packageName, renamed } = await resolveOmpChamberVersion();
+  const { current, latest, error, package: packageName, renamed } = await resolveKabmoVersion();
   const install = resolveInstall(latest, packageName);
   const base = {
     current,
@@ -120,7 +120,7 @@ export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
   };
 
   if (!latest) return { ...base, error: error ?? 'No Kabmo release could be resolved' };
-  // The version restarts at 1.0.0, so there is no release RANGE to show: every
+  // The version restarts at 0.0.1, so there is no release RANGE to show: every
   // changelog entry belongs to the old lineage. One synthetic note explains the
   // switch, and the apply path installs the resolved package.
   if (renamed) {
@@ -131,7 +131,7 @@ export async function buildUpdateChangelog(): Promise<UpdateChangelog> {
           version: latest,
           date: null,
           url: releaseTagUrl(latest),
-          body: `This release renames the app package from \`ompchamber\` to \`${packageName}\`. Updating installs \`${packageName}@${latest}\`; your data in \`~/.ompchamber\` is kept.`,
+          body: `This release renames the app package from \`ompchamber\` to \`${packageName}\`. Updating installs \`${packageName}@${latest}\`; your data is moved to \`~/.kabmo\` and kept.`,
         },
       ],
       total: 1,

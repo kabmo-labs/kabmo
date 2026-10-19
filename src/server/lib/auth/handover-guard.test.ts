@@ -6,7 +6,7 @@
 /**
  * Arming authentication from a credential a PREVIOUS process computed.
  *
- * This is the self-restart path. The replacement is spawned by `ompchamber
+ * This is the self-restart path. The replacement is spawned by `kabmo
  * restart`, which never had the plaintext — the instance being replaced did,
  * and it has already hashed it. The property under test is that the pair
  * `credentialKey` + `sessionSecret` travels together: without the secret the
@@ -32,12 +32,12 @@ afterEach(async () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
     tempDir = null;
   }
-  delete Bun.env.OMPCHAMBER_DATA_DIR;
+  delete Bun.env.KABMO_DATA_DIR;
 });
 
 function useTempDataDir(): void {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-handover-test-'));
-  Bun.env.OMPCHAMBER_DATA_DIR = tempDir;
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-handover-test-'));
+  Bun.env.KABMO_DATA_DIR = tempDir;
 }
 
 describe('initAuthFromHandover', () => {

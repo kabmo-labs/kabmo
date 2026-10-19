@@ -29,8 +29,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
-import { configureUiKit, type RepoScope, type UiKitServices } from '@ompchamber/ui';
-import type { ContentScriptContext } from '@ompchamber/plugin-sdk';
+import { configureUiKit, type RepoScope, type UiKitServices } from '@kabmo-labs/kabmo-ui';
+import type { ContentScriptContext } from '@kabmo-labs/kabmo-sdk';
 
 import { mountScopeWatch, stopOtherScopes } from './watch';
 

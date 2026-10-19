@@ -30,7 +30,7 @@
  * refcounts, so the second `dlopen` costs a lookup and no memory. Folding these
  * into the sweep would make every pid pay for two calls only a handful need.
  *
- * The struct offsets are the ones `lease-holder.server.ts` in the chamber's own
+ * The struct offsets are the ones `lease-holder.server.ts` in Kabmo's own
  * server already uses against this platform, which is why they are named rather
  * than re-derived here.
  */

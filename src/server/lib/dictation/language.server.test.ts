@@ -72,8 +72,8 @@ beforeAll(async () => {
   langFile = join(dir, 'language.txt');
   setStubLanguage('en');
   stubBin = await executableStub(stubSource(langFile), 'fake-omp-language');
-  realBin = Bun.env.OMPCHAMBER_OMP_BIN;
-  Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
+  realBin = Bun.env.KABMO_OMP_BIN;
+  Bun.env.KABMO_OMP_BIN = stubBin;
   // A sibling suite may have cached the real `omp` path for the process
   // lifetime; without this the stub is bypassed and the real agent is driven.
   invalidateOmpCliCache();
@@ -82,8 +82,8 @@ beforeAll(async () => {
 afterAll(() => {
   if (originalMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = originalMock;
-  if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
+  if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = realBin;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });

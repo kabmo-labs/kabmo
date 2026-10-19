@@ -135,7 +135,7 @@ A row is one line — the command, its last outcome, and four controls:
 ```
 
 - **`▸` / `▾`** — the disclosure. It opens that command's own output underneath
-  it, and the reveal is the chamber's standard one (`grid-template-rows: 0fr → 1fr`),
+  it, and the reveal is Kabmo's standard one (`grid-template-rows: 0fr → 1fr`),
   so the body rises rather than the list jumping.
 - **`[⏱]` background** — track this command as a job. On, the run is also listed
   under `Running` with a Stop button and its elapsed time, which is the shape of
@@ -189,7 +189,7 @@ enforced by three mechanisms, because each alone has a hole:
    enabled — the panel itself is unmounted while another view is on screen, so a
    switch made from the Files panel would otherwise leave processes running with
    nothing to notice. The script renders nothing.
-2. **The panel sweeps on mount**, which covers a reloaded chamber (no watcher has
+2. **The panel sweeps on mount**, which covers a reloaded Kabmo (no watcher has
    run yet) and a phone.
 3. **Every run records its scope**, so a sweep kills runs started before a
    watcher existed.

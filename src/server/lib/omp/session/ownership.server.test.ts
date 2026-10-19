@@ -63,7 +63,7 @@ function holdLease(sessionId: string): string {
 
 /**
  * Hold the lease from a SEPARATE, REPARENTED process — the shape a real second
- * chamber instance has.
+ * Kabmo instance has.
  *
  * A child spawned directly by this process is, by the guard's own rule, "our
  * own child" (its parent pid IS this pid), so it can never exercise the foreign
@@ -113,19 +113,19 @@ async function waitForForeignHolder(leasePath: string): Promise<void> {
 }
 
 beforeEach(() => {
-  root = join(tmpdir(), `ompchamber-owner-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  root = join(tmpdir(), `kabmo-owner-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   // XDG state root, with the omp app dir pre-created so `sessionOwnersDir`
   // takes the XDG branch instead of the user's real `~/.omp`.
   mkdirSync(join(root, 'omp', 'run', 'session-owners'), { recursive: true });
   savedXdg = Bun.env.XDG_STATE_HOME;
-  savedDbPath = Bun.env.OMPCHAMBER_DB_PATH;
+  savedDbPath = Bun.env.KABMO_DB_PATH;
   savedAgentDir = Bun.env.PI_CODING_AGENT_DIR;
   Bun.env.XDG_STATE_HOME = root;
-  Bun.env.OMPCHAMBER_DB_PATH = join(root, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
   // Keep the workspace-sync seed (which reads omp discovery) inside the temp
   // tree: without this every run scans the user's real session directory.
   Bun.env.PI_CODING_AGENT_DIR = join(root, 'agent');
-  delete globalThis.__ompChamberDb;
+  delete globalThis.__kabmoDb;
   delete globalThis.__ompSessions;
   delete globalThis.__ompStartLocks;
 });
@@ -149,11 +149,11 @@ afterEach(() => {
   releases.length = 0;
   if (savedXdg === undefined) delete Bun.env.XDG_STATE_HOME;
   else Bun.env.XDG_STATE_HOME = savedXdg;
-  if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-  else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
+  if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
+  else Bun.env.KABMO_DB_PATH = savedDbPath;
   if (savedAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = savedAgentDir;
-  delete globalThis.__ompChamberDb;
+  delete globalThis.__kabmoDb;
   delete globalThis.__ompSessions;
   delete globalThis.__ompStartLocks;
   removeDir(root);

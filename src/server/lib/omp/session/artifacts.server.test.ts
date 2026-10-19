@@ -7,12 +7,12 @@
  * Reading the raw stream behind an `artifact://<id>` reference.
  *
  * omp spills a long tool result to `<sessionDir>/<sessionId>/<id>.<kind>.log`
- * and leaves only a truncated body in the transcript. Nothing in the chamber
+ * and leaves only a truncated body in the transcript. Nothing in Kabmo
  * read it, so 65 real results (the longest in the corpus) stopped at the 768
  * bytes the transcript kept.
  *
  * The id and kind reach this module from a session transcript — a document the
- * chamber reads, not one it wrote — so the guards ARE the test: a crafted id
+ * Kabmo reads, not one it wrote — so the guards ARE the test: a crafted id
  * must not escape the session directory, and an unknown kind must not be
  * probed. The session dir is redirected through `PI_CODING_AGENT_DIR`, the same
  * seam the blob tests use.

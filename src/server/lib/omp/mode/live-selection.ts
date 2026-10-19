@@ -17,9 +17,9 @@
  *
  * Two sources answer for the child, and neither can drift from it:
  *
- *  - the wrapper's `ModeMirror`, fed by the extension's own `CHAMBER_*` markers
+ *  - the wrapper's `ModeMirror`, fed by the extension's own `KABMO_*` markers
  *    and by omp's `goal_updated`;
- *  - the spawn environment (`CHAMBER_MODES`), which is the selection the child
+ *  - the spawn environment (`KABMO_MODES`), which is the selection the child
  *    was started with and which its extension re-applies at session start.
  *
  * `spoken` says whether the child itself has reported a mode. It is what the
@@ -51,8 +51,11 @@ export function liveModeSelection(sessionId: string): LiveModeSelection | null {
   if (!session || !session.isAlive()) return null;
 
   const mirror = session.modeMirror;
-  const spawned = selectionFromModeEnvValue(getSpawnModeEnv(session).CHAMBER_MODES);
-  // The child has spoken if EITHER feed produced anything: a `CHAMBER_*` marker
+  // Both env spellings: this build exports `KABMO_MODES`, and a child spawned
+  // by an older one carries `CHAMBER_MODES`.
+  const env = getSpawnModeEnv(session);
+  const spawned = selectionFromModeEnvValue(env.KABMO_MODES ?? env.CHAMBER_MODES);
+  // The child has spoken if EITHER feed produced anything: a `KABMO_*` marker
   // (plan, or a goal record) or omp's own `goal_updated` (a goal status).
   const spoken =
     mirror.planEnabled !== undefined || mirror.goalRecord !== null || mirror.goalStatus !== undefined;

@@ -126,7 +126,7 @@ describe('blockTuiOnlySend', () => {
   });
 
   test('a chamber-owned command is never refused', () => {
-    // `/btw` is TUI-only in omp, but the chamber answers it itself.
+    // `/btw` is TUI-only in omp, but Kabmo answers it itself.
     const store = makeStore();
     expect(blockTuiOnlySend('/btw how does this work', store.set)).toBe(false);
     expect(store.messages).toHaveLength(0);

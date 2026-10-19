@@ -8,7 +8,7 @@
  * through.
  *
  * The negative property is the one that matters: with no registration the mark
- * is byte-identical to the built-in one, so a chamber with no plugins renders
+ * is byte-identical to the built-in one, so a Kabmo with no plugins renders
  * exactly as it did before this slot existed. The positive one is the resolution
  * ORDER — a registration wins for its provider, and only that provider.
  *

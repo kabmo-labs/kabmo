@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import { useChamberSettingsWriter } from '@/client/hooks/settings/use-chamber-setting';
+import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-setting';
 import { applyWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { DEFAULT_THEME_ID, resolveTheme } from '@/shared/lib/theme/catalog';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
@@ -78,7 +78,7 @@ export function applyDocumentTheme(theme: string): void {
 }
 
 export function useTheme() {
-  const writeChamberSettings = useChamberSettingsWriter();
+  const writeKabmoSettings = useKabmoSettingsWriter();
   const [theme, setThemeState] = useState<string>(currentThemeId);
 
   const isDark = resolveTheme(theme).variant === 'dark';
@@ -112,9 +112,9 @@ export function useTheme() {
       const id = resolveTheme(newTheme).id;
       applyDocumentTheme(id);
       setThemeState(id);
-      writeChamberSettings({ theme: id });
+      writeKabmoSettings({ theme: id });
     },
-    [writeChamberSettings],
+    [writeKabmoSettings],
   );
 
   return { theme, isDark, setTheme };

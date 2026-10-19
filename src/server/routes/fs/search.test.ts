@@ -34,7 +34,7 @@ import { runRipgrep } from '@/server/lib/fs/ripgrep';
 const tempDirs: string[] = [];
 
 function tempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-search-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-search-'));
   tempDirs.push(dir);
   return dir;
 }

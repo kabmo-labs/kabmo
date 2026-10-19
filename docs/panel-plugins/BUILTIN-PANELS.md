@@ -1,6 +1,6 @@
 # Built-in Panels Are Plugins
 
-Every right-panel view in OMPChamber — the eleven the chamber ships and the ones
+Every right-panel view in Kabmo — the eleven Kabmo ships and the ones
 installed from a plugin — now travels ONE path: a registration, one merged
 catalog, and one enablement store. A built-in view behaves like a plugin that
 arrived already installed and already switched on; the only difference is that
@@ -35,7 +35,7 @@ The layout never learns which kind a view is:
 ## Enablement: one axis, one store
 
 Disabling and hiding used to be two axes with two stores, and hiding was the
-built-ins' only one (`hiddenRightPanels` in the chamber settings blob). There is
+built-ins' only one (`hiddenRightPanels` in Kabmo settings blob). There is
 now one axis, and it is the plugin one:
 
 | Action | What it changes |
@@ -119,5 +119,5 @@ both survive.
 
 > Test suites that scan the panel registry must isolate their database
 > (`@/test-support/isolated-db`). The scan reads the disabled set, and the handle
-> is a process-wide singleton — a suite that sets `OMPCHAMBER_DB_PATH` after the
-> handle is open writes into the developer's real `~/.ompchamber/db.sqlite`.
+> is a process-wide singleton — a suite that sets `KABMO_DB_PATH` after the
+> handle is open writes into the developer's real `~/.kabmo/db.sqlite`.

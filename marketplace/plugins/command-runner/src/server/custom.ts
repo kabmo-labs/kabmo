@@ -8,7 +8,7 @@
  *
  * ## Where they live, and why
  *
- * `api.storage.records` — the plugin platform's record table — NOT the chamber's
+ * `api.storage.records` — the plugin platform's record table — NOT Kabmo's
  * `app_settings` and NOT `localStorage`:
  *
  * - **The host already owns a namespace for this.** `plugin_records` is keyed by
@@ -17,8 +17,8 @@
  *   plugin's rows. "Namespacing" is a property of the call signature rather than
  *   a check that could be forgotten.
  * - **`app_settings` is the host's.** Writing a plugin's rows there would put
- *   them in the chamber's own settings namespace, where a future host migration
- *   owns them and a user's `ompchamber` upgrade could rewrite them.
+ *   them in Kabmo's own settings namespace, where a future host migration
+ *   owns them and a user's Kabmo upgrade could rewrite them.
  * - **`localStorage` cannot work.** The runner is the SERVER: it resolves a
  *   command id to an argv, so the list has to be readable server-side. A
  *   browser-only store would leave the panel able to draw a row it cannot run.
@@ -36,7 +36,7 @@
  * today is found tomorrow without storing a lookup table.
  */
 
-import type { ChamberPluginApi, PluginJson } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi, PluginJson } from '@kabmo-labs/kabmo-sdk';
 
 import type { Command, CommandGroup, CustomCommand, CustomScope } from '../protocol';
 
@@ -102,9 +102,9 @@ export function visibleIn(commands: readonly CustomCommand[], root: string | nul
  * a second tab sees the same list.
  */
 export class CustomCommandStore {
-  private readonly api: ChamberPluginApi;
+  private readonly api: KabmoPluginApi;
 
-  constructor(api: ChamberPluginApi) {
+  constructor(api: KabmoPluginApi) {
     this.api = api;
   }
 

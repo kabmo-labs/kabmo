@@ -81,7 +81,7 @@ export function fetchModelsMessage(counts: { addedCount: number; removedCount: n
 }
 
 /**
- * The extra line reported after a manual "fetch models": what the chamber wrote
+ * The extra line reported after a manual "fetch models": what Kabmo wrote
  * into `models.yml` versus what omp already had. A file write and a model-count
  * change are different outcomes, and conflating them hid a failed write.
  */

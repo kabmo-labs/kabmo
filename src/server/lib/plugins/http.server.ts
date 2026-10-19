@@ -19,7 +19,7 @@
  * `/status`.
  */
 
-import type { PluginHttpApi } from '@kabmo-labs/plugin-sdk';
+import type { PluginHttpApi } from '@kabmo-labs/kabmo-sdk';
 
 /** One registered route: the path as the plugin wrote it, and its handler. */
 export interface RegisteredHttpRoute {
@@ -37,13 +37,13 @@ export interface RegisteredHttpRoute {
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPluginHttpRoutes: Map<string, RegisteredHttpRoute> | undefined;
+  var __kabmoPluginHttpRoutes: Map<string, RegisteredHttpRoute> | undefined;
 }
 
 const routeKey = (pluginId: string, path: string) => `${pluginId}\u0000${path}`;
 
 function routes(): Map<string, RegisteredHttpRoute> {
-  return (globalThis.__ompChamberPluginHttpRoutes ??= new Map());
+  return (globalThis.__kabmoPluginHttpRoutes ??= new Map());
 }
 
 /** Normalize a declared path: one leading slash, no trailing one. */

@@ -32,7 +32,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   // Response forwarding: an in-flight login posts an extension_ui_response frame.
   const isUiResponse = body && typeof body.id === 'string' && body.type === 'extension_ui_response';
   const forward = isUiResponse
-    ? (globalThis.__ompChamberLoginResponseSink as ((frame: { type: string; [key: string]: unknown }) => void) | undefined)
+    ? (globalThis.__kabmoLoginResponseSink as ((frame: { type: string; [key: string]: unknown }) => void) | undefined)
     : undefined;
   if (forward) {
     forward(body as { type: string; [key: string]: unknown });
@@ -56,7 +56,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const cleanup = () => {
         if (closed) return;
         closed = true;
-        globalThis.__ompChamberLoginResponseSink = undefined;
+        globalThis.__kabmoLoginResponseSink = undefined;
         handlers.close();
       };
       const send = (data: unknown) => {
@@ -64,7 +64,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         handlers.send('', data);
       };
 
-      globalThis.__ompChamberLoginResponseSink = (frame) => sink?.(frame);
+      globalThis.__kabmoLoginResponseSink = (frame) => sink?.(frame);
 
       const proc = new RpcProcess({ cwd: '/', extraArgs: ['--no-session', '--no-skills', '--no-lsp'] });
       const onAbort = () => { void proc.dispose(); cleanup(); };
@@ -108,5 +108,5 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberLoginResponseSink: ((frame: Record<string, unknown>) => void) | undefined;
+  var __kabmoLoginResponseSink: ((frame: Record<string, unknown>) => void) | undefined;
 }

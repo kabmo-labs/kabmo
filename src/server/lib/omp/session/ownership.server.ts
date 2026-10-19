@@ -5,7 +5,7 @@
 
 /**
  * Cross-process session ownership: who else is writing this session file, and
- * which chamber instance owns that writer.
+ * which Kabmo instances owns that writer.
  *
  * ## Why this exists
  *
@@ -16,13 +16,13 @@
  * moves itself to a sibling file with a new session id and `parentSession`
  * pointing at the old one (`reason: "open-elsewhere"`).
  *
- * The chamber's own registry (`globalThis.__ompSessions`) is PER PROCESS, so
- * `startRpcSession` cannot see a session a second chamber instance is already
+ * The Kabmo's own registry (`globalThis.__ompSessions`) is PER PROCESS, so
+ * `startRpcSession` cannot see a session a second Kabmo instances is already
  * running. Resuming that file is exactly the case omp forks — the user sees a
  * duplicate sidebar row with the same title (both files share the opening
  * message), and their conversation is split across two files.
  *
- * Verified by reproduction: one chamber instance running a session, a second
+ * Verified by reproduction: one Kabmo instance running a session, a second
  * instance sending a prompt to the same id, and omp logging
  * `Session moved to a new file … open-elsewhere` within a second.
  *
@@ -34,7 +34,7 @@
  *     found by walking the process table (`lease-holder.server.ts`, FFI on
  *     macOS, `/proc` on Linux). This is what `lsof -t` answers, asked directly.
  *
- * The holder's PARENT is then matched against the chamber's instance records:
+ * The holder's PARENT is then matched against Kabmo's instance records:
  * an omp child is spawned by a server, so its parent IS the instance a client
  * must be relayed to. That also tells a foreign writer from this process's own
  * child (a stale registry entry is parented by us).
@@ -51,10 +51,10 @@ import { processParentPid } from '@/server/lib/lifecycle/identity';
 
 /** Who is holding a session's omp ownership lease. */
 export interface SessionOwnership {
-  /** OS pid of the omp process holding the lease, when the chamber can name it. */
+  /** OS pid of the omp process holding the lease, when Kabmo can name it. */
   holderPid: number | null;
   /**
-   * The chamber instance serving that holder, when it can be resolved. Null
+   * The Kabmo instance serving that holder, when it can be resolved. Null
    * when the holder cannot be placed (an `omp` CLI run has no instance record)
    * — the caller then reports the refusal on its own.
    */
@@ -122,7 +122,7 @@ export function sessionLeasePath(sessionId: string): string {
  * Who holds `sessionId`, or null when it is free — including when the only
  * holder is THIS process (not a conflict; the local registry already answers).
  *
- * `selfPid` is the chamber server's own pid: a holder parented by this process
+ * `selfPid` is Kabmo server's own pid: a holder parented by this process
  * is our own child, never a foreign writer.
  */
 export async function resolveSessionOwnership(

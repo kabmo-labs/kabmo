@@ -7,7 +7,7 @@
  * Is a git-installed panel plugin behind its remote, and how does it get current?
  *
  * A plugin installed from a URL is a shallow clone in the working marketplace,
- * and nothing else in the chamber knows where it came from — the catalog entry
+ * and nothing else in Kabmo knows where it came from — the catalog entry
  * names `plugins/<id>`, not the URL. The clone's own `origin` is therefore the
  * origin of record (read by `git-clone.server.ts`), and freshness is a COMMIT
  * comparison: a plugin repository publishes no releases, so "current" can only
@@ -24,9 +24,9 @@
  * The update is a FETCH plus a hard reset, not a merge. A shallow clone shares
  * no ancestor with a commit fetched past its boundary, so `merge --ff-only`
  * refuses with "unrelated histories" — measured on a depth-1 clone advanced by
- * one commit. The plugin directory is chamber-owned rather than a branch a user
+ * one commit. The plugin directory is Kabmo-owned rather than a branch a user
  * works on, so taking the remote's tree outright is what an update means; a
- * clone carrying local edits is REFUSED first, the same way the chamber's own
+ * clone carrying local edits is REFUSED first, the same way Kabmo's own
  * updater refuses a dirty checkout rather than merging over it.
  */
 

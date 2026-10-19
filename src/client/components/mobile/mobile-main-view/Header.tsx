@@ -6,6 +6,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
+import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { HeaderControls } from '@/client/components/common/header-controls';
 
 interface MobileHeaderProps {
@@ -108,8 +109,7 @@ export function MobileHeader({
         </button>
 
         <span className="relative font-bold text-sm tracking-tight flex items-center flex-shrink-0">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500 font-extrabold text-[15px] tracking-tighter">OMP</span>
-          <span className="ml-[1px] text-ink">Chamber</span>
+          <BrandWordmark />
           <span className="absolute -top-0.5 -right-1.5 flex">
             <StreamStatusDot status={streamStatus} />
           </span>

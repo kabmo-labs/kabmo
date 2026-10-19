@@ -175,7 +175,7 @@ describe('providerFetchBlockReason', () => {
   test('a models.yml provider with an endpoint may fetch', () => {
     // The regression: the registry built these entries without a `baseUrl`, so
     // the button was disabled for the one set of providers whose endpoint the
-    // chamber actually knows.
+    // Kabmo actually knows.
     expect(providerFetchBlockReason({ baseUrl: 'https://kenari.id/v1', modelSource: 'fetch' })).toBeUndefined();
   });
 

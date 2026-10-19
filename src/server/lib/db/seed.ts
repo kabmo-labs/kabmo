@@ -56,11 +56,11 @@ export async function seedMockData(db: DbClient): Promise<void> {
 
 /** Demo folders 1-3 and the five sessions the sidebar screenshots show. */
 async function seedChatSessions(db: DbClient): Promise<void> {
-  // Ensure ompchamber, Workspace, drrealhandler folders exist
-  await db.run("INSERT OR IGNORE INTO workspace_folders (id, name, is_expanded) VALUES (1, 'ompchamber', 1)");
+  // Ensure kabmo, Workspace, drrealhandler folders exist
+  await db.run("INSERT OR IGNORE INTO workspace_folders (id, name, is_expanded) VALUES (1, 'kabmo', 1)");
   await db.run("INSERT OR IGNORE INTO workspace_folders (id, name, is_expanded) VALUES (2, 'Workspace', 1)");
   await db.run("INSERT OR IGNORE INTO workspace_folders (id, name, is_expanded) VALUES (3, 'drrealhandler', 1)");
-  await db.run("UPDATE workspace_folders SET name = 'ompchamber' WHERE id = 1");
+  await db.run("UPDATE workspace_folders SET name = 'kabmo' WHERE id = 1");
 
   const existingChats = await db.all("SELECT * FROM sessions WHERE folder_id = 1");
   const titles = [

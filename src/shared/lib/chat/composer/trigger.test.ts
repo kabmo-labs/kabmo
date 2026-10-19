@@ -16,7 +16,7 @@ import { describe, expect, test } from 'bun:test';
 
 import type { ComposerMatchItem, ComposerPickItem, ComposerTrigger } from '@/shared/types';
 import {
-  CHAMBER_COMMANDS,
+  KABMO_COMMANDS,
   detectComposerTrigger,
   insertToken,
   sendInsteadOfAccept,
@@ -223,14 +223,14 @@ describe('sendInsteadOfAccept', () => {
   });
 
   test('a complete chamber-owned command lets Enter send', () => {
-    for (const command of CHAMBER_COMMANDS) {
+    for (const command of KABMO_COMMANDS) {
       const t = trigger({ query: command.name, phase: 'name' });
       expect(sendInsteadOfAccept(t, cmd(command.name))).toBe(true);
       expect(sendInsteadOfAccept(trigger({ query: command.name.toUpperCase() }), cmd(command.name))).toBe(true);
     }
   });
 
-  test('an incomplete chamber command still accepts', () => {
+  test('an incomplete Kabmo command still accepts', () => {
     expect(sendInsteadOfAccept(trigger({ query: 'bt' }), cmd('btw'))).toBe(false);
   });
 

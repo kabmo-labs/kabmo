@@ -5,7 +5,7 @@
 
 /**
  * Shared session-message source resolution for the telemetry endpoints.
- * Source priority: omp session JSONL on disk, then the chamber DB copy for
+ * Source priority: omp session JSONL on disk, then Kabmo DB copy for
  * chat-created sessions, then mock data — so /api/telemetry/context and
  * /api/telemetry/raw-messages always agree on where a session's turns live.
  */

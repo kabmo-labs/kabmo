@@ -262,7 +262,7 @@ describe('screencast viewer', () => {
 
   test('accepts observer payloads only from the current session and binding', async () => {
     const { handle, socket, seen } = await open();
-    const binding = (payload: unknown, sessionId: string, name = '__ompChamberAction') =>
+    const binding = (payload: unknown, sessionId: string, name = '__kabmoAction') =>
       socket.emit('message', { data: JSON.stringify({ method: 'Runtime.bindingCalled', params: { name, payload }, sessionId }) });
     binding(JSON.stringify({ kind: 'click', label: 'Mengklik tombol' }), 'SESS-OTHER');
     binding(JSON.stringify({ kind: 'click', label: 'Mengklik tombol' }), 'SESS-1', 'otherBinding');

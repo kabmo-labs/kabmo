@@ -7,7 +7,7 @@
  *
  * The reload itself is `reloadLiveSessions` (covered separately). What these
  * tests pin is that a filesystem change under a watched root reaches the
- * callback — the behaviour a hand-written SKILL.md needs and a chamber-only
+ * callback — the behaviour a hand-written SKILL.md needs and a Kabmo-only
  * write path cannot provide — plus the three reconcile rules: a root that does
  * not exist yet is bridged, a root added later is picked up, and re-syncing
  * never doubles a watcher.
@@ -118,7 +118,7 @@ describe('discovery roots watch', () => {
     roots = [root];
     const watcher = start();
 
-    // `.omp/skills` is absent at sync time — the chamber must not create it.
+    // `.omp/skills` is absent at sync time — Kabmo must not create it.
     await watcher.sync();
     expect(await Bun.file(root).exists()).toBe(false);
 

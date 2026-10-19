@@ -20,11 +20,11 @@
  * machine that wrote it — the symlink was present and the package's own `exports`
  * map answered. It broke every tree whose `node_modules` predates that export:
  * `bun run build` and, worse, the dev server, which answers `500` on the shell
- * route with `Could not resolve: "@kabmo-labs/plugin-sdk/app"` and a suggestion
+ * route with `Could not resolve: "@kabmo-labs/kabmo-sdk/app"` and a suggestion
  * to run `bun install`.
  *
  * The rule is deliberately "imported anywhere in the repo", not "imported by
- * src": a plugin's `src/app.tsx` is compiled by the chamber's bundler with the
+ * src": a plugin's `src/app.tsx` is compiled by Kabmo's bundler with the
  * same resolution, and the tsconfig's `include` covers it for the same reason.
  *
  * Type-only imports are NOT exempt. `paths` is what `tsc` uses too, so a missing
@@ -91,7 +91,7 @@ describe('tsconfig paths cover every workspace subpath', () => {
     // A scan that silently matched nothing would make every assertion below
     // vacuous — the failure mode this whole file exists to prevent.
     expect(imported.size).toBeGreaterThan(0);
-    expect([...imported.keys()]).toContain('@kabmo-labs/plugin-sdk/app');
+    expect([...imported.keys()]).toContain('@kabmo-labs/kabmo-sdk/app');
   });
 
   test('each imported subpath has an entry', () => {
@@ -116,9 +116,9 @@ describe('tsconfig paths cover every workspace subpath', () => {
   });
 
   test('no entry points at a module that no longer exists', () => {
-    // `@kabmo-labs/ui/styles.css` outlived the stylesheet it named; the import
+    // `@kabmo-labs/kabmo-ui/styles.css` outlived the stylesheet it named; the import
     // was gone, so nothing failed, and the mapping was left pointing at a file
     // that had been deleted.
-    expect(Object.keys(paths)).not.toContain('@kabmo-labs/ui/styles.css');
+    expect(Object.keys(paths)).not.toContain('@kabmo-labs/kabmo-ui/styles.css');
   });
 });

@@ -191,5 +191,5 @@ jobs:
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
         # Add `--access public` here if the package is ever renamed to a scope
-        # (`@user/ompchamber`): scoped packages default to restricted.
+        # (`@user/kabmo`): scoped packages default to restricted.
         run: bun publish

@@ -9,7 +9,7 @@
  *
  * A file dropped on the editor is named absolutely: a file manager cannot know
  * which workspace the page considers active, and the same is true of a path
- * handed over by the OS. Every other surface in the chamber works from
+ * handed over by the OS. Every other surface in Kabmo works from
  * `root` + a path RELATIVE to it, and the read and save routes resolve that
  * pair back through the same allow-list this route applies. So a drop has to be
  * translated once, here, rather than teaching the editor a second path shape it

@@ -6,12 +6,12 @@
 /**
  * The CLI's own path helpers, on both platforms' path spellings.
  *
- * These are not cosmetic: `ompchamber.js` derives the package root from
+ * These are not cosmetic: `kabmo.js` derives the package root from
  * `import.meta.dir`, and every entry the CLI runs — the built server, the dev
  * entry, the build script, the login-entry argv — hangs off that root. A
  * resolver that recognizes only a leading `/` treats a Windows path as
  * relative, prefixes the cwd twice and answers a path that exists nowhere:
- * measured against the published tarball, `ompchamber serve` reported "This
+ * measured against the published tarball, `kabmo serve` reported "This
  * install is incomplete" for an install that ships `dist/client`.
  *
  * The Windows cases therefore assert on the SHAPE of the answer (an absolute
@@ -98,8 +98,8 @@ describe('joinPath', () => {
 
   test('normalizes Windows separators so a joined path is comparable', () => {
     expect(joinPath('C:\\a', 'b', 'c')).toBe('C:/a/b/c');
-    expect(joinPath('C:\\Users\\x\\ompchamber', 'dist', 'client', 'index.js'))
-      .toBe('C:/Users/x/ompchamber/dist/client/index.js');
+    expect(joinPath('C:\\Users\\x\\kabmo', 'dist', 'client', 'index.js'))
+      .toBe('C:/Users/x/kabmo/dist/client/index.js');
   });
 });
 
@@ -130,19 +130,19 @@ describe('resolvePath', () => {
     const saved = Bun.env.HOME;
     try {
       delete Bun.env.HOME;
-      if (!isWindows) expect(joinPath(homeDir(), '.ompchamber').startsWith('/')).toBe(true);
+      if (!isWindows) expect(joinPath(homeDir(), '.kabmo').startsWith('/')).toBe(true);
       // The claim in the name is absoluteness, and that holds on both
-      // platforms — `C:/Users/x/.ompchamber` is as absolute as `/Users/x/…`.
-      expect(isAbsolutePath(joinPath(homeDir(), '.ompchamber'))).toBe(true);
+      // platforms — `C:/Users/x/.kabmo` is as absolute as `/Users/x/…`.
+      expect(isAbsolutePath(joinPath(homeDir(), '.kabmo'))).toBe(true);
     } finally {
       if (saved !== undefined) Bun.env.HOME = saved;
     }
   });
 
-  // The issue #5 regression. `ompchamber.js` calls exactly this shape with
+  // The issue #5 regression. `kabmo.js` calls exactly this shape with
   // `import.meta.dir`, which on Windows is a drive-rooted backslash path.
   describe('on Windows', () => {
-    const WIN_DIR = 'C:\\Users\\Administrator\\.bun\\install\\global\\node_modules\\ompchamber\\src\\cli';
+    const WIN_DIR = 'C:\\Users\\Administrator\\.bun\\install\\global\\node_modules\\kabmo\\src\\cli';
 
     test('the package root keeps one drive letter and is not cwd-prefixed', () => {
       const pkgRoot = withCwd('C:\\', () => resolvePath(WIN_DIR, '..', '..'));
@@ -150,14 +150,14 @@ describe('resolvePath', () => {
       expect(pkgRoot.startsWith('C:/')).toBe(true);
       expect(pkgRoot.indexOf('C:', 1)).toBe(-1);
       expect(pkgRoot).not.toContain('C:\\');
-      expect(pkgRoot).toBe('C:/Users/Administrator/.bun/install/global/node_modules/ompchamber/src/cli/../..');
+      expect(pkgRoot).toBe('C:/Users/Administrator/.bun/install/global/node_modules/kabmo/src/cli/../..');
     });
 
     test('every path derived from the package root stays inside it', () => {
       const pkgRoot = withCwd('C:\\', () => resolvePath(WIN_DIR, '..', '..'));
       expect(joinPath(pkgRoot, 'dist', 'client', 'index.js'))
-        .toBe('C:/Users/Administrator/.bun/install/global/node_modules/ompchamber/src/cli/../../dist/client/index.js');
-      expect(joinPath(pkgRoot, 'scripts', 'build-client.ts')).toContain('/ompchamber/src/cli/../../scripts/');
+        .toBe('C:/Users/Administrator/.bun/install/global/node_modules/kabmo/src/cli/../../dist/client/index.js');
+      expect(joinPath(pkgRoot, 'scripts', 'build-client.ts')).toContain('/kabmo/src/cli/../../scripts/');
     });
 
     test('a drive-rooted segment is absolute, so it discards the cwd', () => {

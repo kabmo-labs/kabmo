@@ -8,7 +8,7 @@ export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
     icon: 'deepseek',
     status: 'connected',
     configuredIn: 'auth credentials',
-    credentialSource: 'chamber',
+    credentialSource: 'kabmo',
     apiKey: 'sk-ds-••••••••••••••••••••38f1',
     baseUrl: 'https://api.deepseek.com/v1',
     models: [
@@ -60,7 +60,7 @@ export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
     icon: 'agentrouter',
     status: 'connected',
     configuredIn: 'auth credentials',
-    credentialSource: 'chamber',
+    credentialSource: 'kabmo',
     apiKey: 'ar-live-•••••••••••••••••••89c2',
     baseUrl: 'https://router.agent.ai/v1',
     models: [
@@ -106,7 +106,7 @@ export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
     icon: 'commandcode',
     status: 'connected',
     configuredIn: 'auth credentials',
-    credentialSource: 'chamber',
+    credentialSource: 'kabmo',
     apiKey: 'cc-key-••••••••••••••••••••7a12',
     baseUrl: 'https://api.commandcode.dev/v1',
     models: Array.from({ length: 41 }, (_, i) => {
@@ -145,7 +145,7 @@ export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
     icon: 'opencode',
     status: 'connected',
     configuredIn: 'auth credentials',
-    credentialSource: 'chamber',
+    credentialSource: 'kabmo',
     apiKey: 'zen-live-•••••••••••••••••••44fa',
     baseUrl: 'https://zen.opencode.ai/v1',
     models: [
@@ -165,7 +165,7 @@ export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
     icon: 'claude',
     status: 'connected',
     configuredIn: 'auth credentials',
-    credentialSource: 'chamber',
+    credentialSource: 'kabmo',
     apiKey: 'sk-ant-•••••••••••••••••••••991c',
     baseUrl: 'https://api.anthropic.com/v1',
     models: [
@@ -189,7 +189,7 @@ export const DEFAULT_PROVIDERS_LIST: ProviderItem[] = [
  * an OVERRIDE entry: omp keeps serving its own model list for that provider and
  * only the endpoint changes. That is the documented way to point a bundled
  * provider at a proxy, and it is deliberately not offered for providers whose
- * models the chamber would then have to duplicate.
+ * models Kabmo would then have to duplicate.
  */
 export const PRESET_NEW_PROVIDERS: PresetProviderOption[] = [
   {

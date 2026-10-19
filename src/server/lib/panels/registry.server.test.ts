@@ -55,7 +55,7 @@ function writeCatalog(catalog: unknown): void {
 function writePlugin(dirName: string, manifest: unknown): string {
   const dir = join(getMarketplacePluginsDir(), dirName);
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
   // The scan only publishes a plugin whose bundle exists; an unbuilt one is
   // reported as UNBUILT, which is a different list.
   fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
@@ -63,8 +63,8 @@ function writePlugin(dirName: string, manifest: unknown): string {
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-marketplace-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-marketplace-'));
+  process.env.KABMO_MARKETPLACE_DIR = root;
   // The scan reads the disabled set, which is a DATABASE read — so the suite
   // needs a database of its own before the first scan, or it opens the real one
   // and a `setPluginEnabled` below rewrites a live install.
@@ -73,7 +73,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
   releaseDb();
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
@@ -96,7 +96,7 @@ describe('discoverPanelPlugins', () => {
     // The pane still names the marketplace, so its empty state can explain
     // where a plugin would go.
     expect(payload.marketplaces).toHaveLength(1);
-    expect(payload.marketplaces[0].id).toBe('ompchamber');
+    expect(payload.marketplaces[0].id).toBe('kabmo');
   });
 
   test('a plugin is loaded and attributed to the marketplace', async () => {
@@ -143,7 +143,7 @@ describe('discoverPanelPlugins', () => {
     const { errors } = await discoverPanelPlugins();
     expect(errors).toHaveLength(1);
     expect(errors[0].reason).toContain('no plugin was found there');
-    expect(errors[0].marketplace).toBe('ompchamber');
+    expect(errors[0].marketplace).toBe('kabmo');
     // The entry's own source rides along: that row is the only rejection a user
     // can clear from the pane, and the entry is addressed by this path.
     expect(errors[0].source).toBe('plugins/ghost');
@@ -154,7 +154,7 @@ describe('discoverPanelPlugins', () => {
     // button that dropped the record would hide it rather than fix it.
     const dir = join(getMarketplacePluginsDir(), 'corrupt');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(join(dir, 'ompchamber.json'), '{ not json');
+    fs.writeFileSync(join(dir, 'kabmo.json'), '{ not json');
     invalidatePanelScan();
     const { errors } = await discoverPanelPlugins();
     expect(errors).toHaveLength(1);
@@ -194,10 +194,10 @@ describe('discoverPanelPlugins', () => {
     expect(errors.some((e) => e.dir.endsWith('notes'))).toBe(false);
   });
 
-  test('reads the manifest from package.json#ompchamber as well', async () => {
+  test('reads the manifest from package.json#kabmo as well', async () => {
     const dir = join(getMarketplacePluginsDir(), 'from-pkg');
     fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-    fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x', ompchamber: VALID }));
+    fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x', kabmo: VALID }));
     fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
     invalidatePanelScan();
     const { panels } = await discoverPanelPlugins();
@@ -222,7 +222,7 @@ describe('discoverPanelPlugins', () => {
   test('an unbuilt plugin is listed as not built, not as a rejection', async () => {
     const dir = join(getMarketplacePluginsDir(), 'unbuilt');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(VALID));
+    fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(VALID));
     invalidatePanelScan();
     const { panels, plugins, errors } = await discoverPanelPlugins();
     expect(panels).toEqual([]);
@@ -233,7 +233,7 @@ describe('discoverPanelPlugins', () => {
   test('a manifest that exists but is not JSON is reported', async () => {
     const dir = join(getMarketplacePluginsDir(), 'corrupt');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(join(dir, 'ompchamber.json'), '{ not json');
+    fs.writeFileSync(join(dir, 'kabmo.json'), '{ not json');
     invalidatePanelScan();
     const { errors } = await discoverPanelPlugins();
     expect(errors[0].reason).toContain('not valid JSON');

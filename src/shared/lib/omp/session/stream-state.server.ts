@@ -18,13 +18,13 @@
  * A row also carries the MODEL serving that run (`model_provider` + `model_id`),
  * written by the dispatcher that owns the `stream` row and updated only when the
  * writer actually knows the model — so the generating indicator names the real
- * provider/model, in every tab and every chamber instance, with no per-session
+ * provider/model, in every tab and every Kabmo instance, with no per-session
  * JSONL read.
  *
- * `stream` rows record the pid of the chamber process running that session, so
+ * `stream` rows record the pid of Kabmo process running that session, so
  * a `stream` row whose owner is gone self-heals to `finish` — see
  * `healStaleStreamStatuses`. Ownership travels in the row because the database
- * is SHARED by every chamber instance on the machine (~/.ompchamber/db.sqlite)
+ * is SHARED by every Kabmo instance on the machine (~/.kabmo/db.sqlite)
  * while the runtime session registry is per process: without the column, a
  * second instance opening its sidebar judged the first instance's live run by
  * its own empty registry and cleared a spinner that was still working.

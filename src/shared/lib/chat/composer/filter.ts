@@ -4,7 +4,7 @@ import { filterCommandItems, commandArgumentItems } from '@/shared/lib/chat/comp
 /** Detects the `file:` query prefix (case-insensitive) that scopes to files. */
 const FILE_QUERY_PREFIX_RE = /^file:/i;
 
-/** Rank tiers for `@` mentions (chamber-only; omp's file completion is path-based). */
+/** Rank tiers for `@` mentions (Kabmo-only; omp's file completion is path-based). */
 interface RankedMatch {
   tier: number;
   index: number;

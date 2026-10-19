@@ -6,7 +6,7 @@
 /**
  * Dark palettes ported verbatim from OpenChamber
  * (packages/ui/src/lib/theme/themes/*.json, MIT, commit 5e6675b). Only the
- * values the chamber consumes are carried: surface.background -> canvas,
+ * values Kabmo consumes are carried: surface.background -> canvas,
  * surface.elevated -> paper, surface.foreground -> ink, status.* -> signal
  * colors, primary.base -> accent. Field order is the swatch order.
  *

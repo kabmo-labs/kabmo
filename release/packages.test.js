@@ -63,7 +63,7 @@ describe('package release pipeline', () => {
   let dir;
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'ompchamber-release-'));
+    dir = mkdtempSync(join(tmpdir(), 'kabmo-release-'));
     git(dir, 'init', '-q', '--initial-branch=main');
 
     commit(dir, 'feat(a): first package change', { 'packages/a/src/index.ts': 'export const a = 1;\n' });
@@ -112,7 +112,7 @@ describe('package release pipeline', () => {
   test('a path-less commit maps to an empty list, never to a missing entry', () => {
     // Its own repository: an empty commit added to the shared one would join
     // every later range in this file.
-    const scratch = mkdtempSync(join(tmpdir(), 'ompchamber-release-empty-'));
+    const scratch = mkdtempSync(join(tmpdir(), 'kabmo-release-empty-'));
 
     try {
       git(scratch, 'init', '-q', '--initial-branch=main');
@@ -148,7 +148,7 @@ describe('package release pipeline', () => {
     const entry = RELEASE_PACKAGES[0];
     const config = packageReleaseConfig(entry);
 
-    expect(config.tagFormat).toBe('plugin-sdk/v${version}');
+    expect(config.tagFormat).toBe('kabmo-sdk/v${version}');
     expect(config.analyzeCommits).toHaveLength(1);
     expect(typeof config.analyzeCommits[0][0]).toBe('function');
     expect(typeof config.generateNotes[0][0]).toBe('function');
@@ -160,7 +160,7 @@ describe('package release pipeline', () => {
     expect(config.plugins).not.toContainEqual(['@semantic-release/npm', expect.anything()]);
     expect(config.plugins).toContainEqual([
       '@semantic-release/changelog',
-      { changelogFile: 'packages/plugin-sdk/CHANGELOG.md', changelogTitle: expect.stringContaining('# @kabmo-labs/plugin-sdk') },
+      { changelogFile: 'packages/kabmo-sdk/CHANGELOG.md', changelogTitle: expect.stringContaining('# @kabmo-labs/kabmo-sdk') },
     ]);
 
     // `bun.lock` rides along, because the version plugin rewrites it and
@@ -187,13 +187,13 @@ describe('package catalog', () => {
   });
 
   test('derives the tag prefix the workflow publishes on', () => {
-    expect(RELEASE_PACKAGES.map(tagPrefix)).toEqual(['plugin-sdk', 'ui']);
+    expect(RELEASE_PACKAGES.map(tagPrefix)).toEqual(['kabmo-sdk', 'kabmo-ui']);
   });
 });
 
 /**
  * A two-package workspace where `b` depends on `a` at `workspace:*` — the shape
- * `@kabmo-labs/ui` has on `@kabmo-labs/plugin-sdk`. Built from scratch so the
+ * `@kabmo-labs/kabmo-ui` has on `@kabmo-labs/kabmo-sdk`. Built from scratch so the
  * test does not depend on this repository's own versions.
  */
 function makeWorkspace(prefix) {
@@ -249,23 +249,23 @@ function packedDependency(dir) {
 
 describe('the local version plugin', () => {
   test('writes the version into the package manifest, and nothing else', () => {
-    const scratch = mkdtempSync(join(tmpdir(), 'ompchamber-version-'));
-    const original = readFileSync(new URL('../packages/plugin-sdk/package.json', import.meta.url), 'utf8');
+    const scratch = mkdtempSync(join(tmpdir(), 'kabmo-version-'));
+    const original = readFileSync(new URL('../packages/kabmo-sdk/package.json', import.meta.url), 'utf8');
 
     try {
-      mkdirSync(join(scratch, 'packages/plugin-sdk'), { recursive: true });
-      writeFileSync(join(scratch, 'packages/plugin-sdk/package.json'), original);
+      mkdirSync(join(scratch, 'packages/kabmo-sdk'), { recursive: true });
+      writeFileSync(join(scratch, 'packages/kabmo-sdk/package.json'), original);
       // The plugin refreshes the lockfile, which needs a workspace root.
       writeFileSync(join(scratch, 'package.json'), '{"name":"fixture","private":true}\n');
 
       const logs = [];
-      versionPackagePlugin('packages/plugin-sdk').prepare({}, {
+      versionPackagePlugin('packages/kabmo-sdk').prepare({}, {
         cwd: scratch,
         nextRelease: { version: '9.9.9' },
         logger: { log: (message) => logs.push(message) },
       });
 
-      const written = readFileSync(join(scratch, 'packages/plugin-sdk/package.json'), 'utf8');
+      const written = readFileSync(join(scratch, 'packages/kabmo-sdk/package.json'), 'utf8');
       const before = JSON.parse(original);
       const after = JSON.parse(written);
 
@@ -285,8 +285,8 @@ describe('the local version plugin', () => {
    *
    * `bun.lock` records a version per workspace package, and `bun publish`
    * substitutes a `workspace:` spec from THAT record rather than from the
-   * manifest. Measured in production: `@kabmo-labs/ui@2.0.0` went to npm
-   * declaring `"@kabmo-labs/plugin-sdk": "1.0.0"` while the SDK was 2.0.0 on the
+   * manifest. Measured in production: `@kabmo-labs/kabmo-ui@2.0.0` went to npm
+   * declaring `"@kabmo-labs/kabmo-sdk": "1.0.0"` while the SDK was 2.0.0 on the
    * registry — an install that resolves the old SDK, which is precisely the
    * incompatibility the 2.0.0 release announced. Bumping the manifest without
    * refreshing the lock leaves the dependent package packing the old version.
@@ -297,7 +297,7 @@ describe('the local version plugin', () => {
   // is exercised by the production release run, which has the privilege.
   const testPosix = process.platform === 'win32' ? test.skip : test;
   testPosix('refreshes bun.lock, so a dependent package packs the NEW version', () => {
-    const scratch = makeWorkspace('ompchamber-lock-');
+    const scratch = makeWorkspace('kabmo-lock-');
 
     try {
       expect(packedDependency(scratch)).toBe('1.0.0');
@@ -316,7 +316,7 @@ describe('the local version plugin', () => {
   });
 
   test('refuses a private package instead of writing a version nobody can publish', () => {
-    const scratch = mkdtempSync(join(tmpdir(), 'ompchamber-version-private-'));
+    const scratch = mkdtempSync(join(tmpdir(), 'kabmo-version-private-'));
 
     try {
       mkdirSync(join(scratch, 'packages/a'), { recursive: true });

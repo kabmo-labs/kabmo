@@ -108,7 +108,7 @@ export function resolveTargetFile(tool: ToolCallData): string | undefined {
 }
 
 /**
- * The canonical key for a tool call — omp's own name with the chamber's legacy
+ * The canonical key for a tool call — omp's own name with Kabmo's legacy
  * aliases folded. Used for icon selection and the header's title fallback.
  */
 export function resolveToolKey(tool: ToolCallData): string {

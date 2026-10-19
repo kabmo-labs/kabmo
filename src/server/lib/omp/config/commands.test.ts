@@ -10,7 +10,7 @@
  * never the file behind it, so the pane's read-only/editable decision and the
  * delete's safety both rest on this lookup. The rules worth locking are the
  * ones a user cannot see: which root a duplicate name resolves to (omp runs the
- * PROJECT file), which roots the chamber may write to (only the two
+ * PROJECT file), which roots Kabmo may write to (only the two
  * `omp`-native ones), and the `.prompt.md` suffix VS Code prompt files carry.
  *
  * Everything runs inside a temp workspace and a temp `$HOME`, so the real
@@ -39,8 +39,8 @@ const write = (filePath: string, body = 'body') => {
 };
 
 beforeAll(() => {
-  projectDir = fs.mkdtempSync(join(tmpdir(), 'ompchamber-cmd-project-'));
-  homeDir = fs.mkdtempSync(join(tmpdir(), 'ompchamber-cmd-home-'));
+  projectDir = fs.mkdtempSync(join(tmpdir(), 'kabmo-cmd-project-'));
+  homeDir = fs.mkdtempSync(join(tmpdir(), 'kabmo-cmd-home-'));
   realHome = Bun.env.HOME;
   // `userCommandDirs()` reads `$HOME` for the `.claude`/`.codex`/`.agents`/
   // `.config/opencode` roots, so redirecting it keeps the test off the real one.
@@ -85,7 +85,7 @@ describe('locateCommandFile', () => {
     expect((await locateCommandFile('dupe', projectDir))?.filePath)
       .toBe(join(projectDir, '.omp', 'commands', 'dupe.md'));
     // With no workspace the same name is the user-level file, which the
-    // chamber does not own.
+    // Kabmo does not own.
     expect(await locateCommandFile('dupe')).toEqual({
       filePath: join(homeDir, '.claude', 'commands', 'dupe.md'),
       scope: 'user',

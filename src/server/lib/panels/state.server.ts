@@ -12,10 +12,10 @@
  * plugin off rather than deleting it. Deleting is `removePanelPlugin`; this
  * only flips a flag.
  *
- * The flag lives in the chamber's own `app_settings` rather than in the
- * marketplace directory, because it is CHAMBER state: the plugin's files are a
- * third-party repository whose format the chamber does not own, and writing a
- * chamber preference into it would be a file the plugin's own tooling could
+ * The flag lives in Kabmo's own `app_settings` rather than in the
+ * marketplace directory, because it is Kabmo state: the plugin's files are a
+ * third-party repository whose format Kabmo does not own, and writing a
+ * Kabmo preference into it would be a file the plugin's own tooling could
  * rewrite.
  *
  * Stored as the DISABLED set, not an enabled set. Absent means enabled, which
@@ -25,13 +25,14 @@
 
 import { getDb } from '@/server/db.server';
 import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { LEGACY_SETTINGS_BLOB_KEY } from '@/shared/lib/settings/keys';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 /** `app_settings` key holding the disabled plugin ids. */
 const PANEL_PLUGINS_KEY = 'omp_panel_plugins';
 
-/** The chamber settings blob, which used to hold the HIDDEN panel ids. */
-const CHAMBER_SETTINGS_KEY = 'omp_chamber_settings';
+/** The Kabmo settings blob, which used to hold the HIDDEN panel ids. */
+const SETTINGS_BLOB_KEY = 'kabmo_settings';
 
 interface PanelPluginState {
   /** Plugin ids whose contributions are switched off. */
@@ -39,8 +40,8 @@ interface PanelPluginState {
   /**
    * Whether git-installed plugins are updated automatically.
    *
-   * Chamber state, like the disabled set, and stored in the same blob: it is a
-   * preference about what the CHAMBER does, not a property of any plugin
+   * Kabmo state, like the disabled set, and stored in the same blob: it is a
+   * preference about what Kabmo does, not a property of any plugin
    * directory, and writing it into a plugin's own files would put it where that
    * plugin's tooling could rewrite it.
    *
@@ -80,17 +81,34 @@ function normalize(raw: unknown): PanelPluginState {
  */
 async function migrateHiddenPanels(state: PanelPluginState): Promise<PanelPluginState> {
   const db = await getDb();
-  const blob = await readSettingsJson<Record<string, unknown>>(db, CHAMBER_SETTINGS_KEY, {});
-  const hidden = blob.hiddenRightPanels;
-  if (!Array.isArray(hidden)) return state;
+  // The retired key can sit in EITHER blob: an install that predates the rename
+  // wrote `omp_chamber_settings`, and the fold has to reach that row or the
+  // upgrade silently resurrects every panel the user had hidden. Each blob is
+  // edited in place and only when it actually carries the key, so the pass stays
+  // idempotent — a second read finds nothing to fold, and a value written
+  // afterwards cannot be re-adopted.
+  const blobs: Array<[string, Record<string, unknown>]> = [];
+  for (const key of [LEGACY_SETTINGS_BLOB_KEY, SETTINGS_BLOB_KEY]) {
+    const stored = await readSettingsJson<unknown>(db, key, null);
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      blobs.push([key, stored as Record<string, unknown>]);
+    }
+  }
 
-  const { hiddenRightPanels: _retired, ...rest } = blob;
+  const hidden = blobs.flatMap(([, blob]) => (Array.isArray(blob.hiddenRightPanels) ? blob.hiddenRightPanels : []));
+  if (hidden.length === 0) return state;
+
   const merged = new Set(state.disabled);
   for (const id of hidden) {
     if (typeof id === 'string' && id.length > 0) merged.add(id);
   }
 
-  await writeSettingsJson(db, CHAMBER_SETTINGS_KEY, rest);
+  for (const [key, blob] of blobs) {
+    if (!Array.isArray(blob.hiddenRightPanels)) continue;
+    const { hiddenRightPanels: _retired, ...rest } = blob;
+    await writeSettingsJson(db, key, rest);
+  }
+
   const next = { disabled: [...merged], autoUpdate: state.autoUpdate };
   await writeSettingsJson(db, PANEL_PLUGINS_KEY, next);
   return next;

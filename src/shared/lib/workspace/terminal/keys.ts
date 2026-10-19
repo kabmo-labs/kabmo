@@ -90,7 +90,7 @@ export const TERMINAL_KEYS: readonly TerminalKeyDef[] = [
   // shell's terminfo entry names. `TERM=xterm-256color` declares khome/kend as
   // SS3 (`\EOH`/`\EOF`) — `infocmp xterm-256color` prints exactly that — while
   // xterm.js sends `ESC[H`/`ESC[F` whenever DECCKM is off, which is the state a
-  // shell prompt is in. Verified against the chamber's own zsh: the CSI form
+  // shell prompt is in. Verified against Kabmo's own zsh: the CSI form
   // makes ZLE ring the bell and leave the cursor where it was, the SS3 form
   // moves it.
   { id: 'home', label: 'Home', name: 'Home', csi: { prefix: '1', final: 'H', application: 'OH', terminfo: '\x1bOH' } },

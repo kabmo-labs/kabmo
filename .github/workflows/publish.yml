@@ -23,7 +23,7 @@ name: Publish
 # dispatch it used to be triggered by.
 #
 # Required: NPM_TOKEN — a granular access token with "Read and write" permission
-# on the ompchamber package (or an automation token), as a repository secret or
+# on the kabmo package (or an automation token), as a repository secret or
 # on the `npm` environment. Bun reads it from NPM_CONFIG_TOKEN, so the token
 # never lands in a file.
 #

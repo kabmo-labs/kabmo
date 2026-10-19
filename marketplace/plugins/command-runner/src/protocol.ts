@@ -7,7 +7,7 @@
  * What the two halves of this plugin say to each other.
  *
  * The panel and the runner are separate bundles in separate realms (a browser
- * and the chamber's own process), so every shape here crosses a wire. Two rules
+ * and Kabmo's own process), so every shape here crosses a wire. Two rules
  * follow from that and both are load-bearing:
  *
  * - **The panel never names a command line.** A run is started by COMMAND ID,

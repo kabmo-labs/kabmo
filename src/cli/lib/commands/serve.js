@@ -1,4 +1,4 @@
-// `ompchamber serve` — start the Kabmo server.
+// `kabmo serve` — start Kabmo server.
 //
 // Two flags live here beyond the server's own options, and both are about the
 // process tree rather than about the listener:
@@ -32,7 +32,7 @@ import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 import { getLogFilePath } from '@/cli/lib/paths.js';
 import { resolveServeMode } from '@/cli/lib/serve-mode.js';
 import { ompStartupError } from '@/server/lib/omp/core/startup';
-import { installAutostart, uninstallAutostart, getAutostartEntryPath } from '@/server/lib/tray/autostart';
+import { installAutostart, removeLegacyAutostart, uninstallAutostart, getAutostartEntryPath } from '@/server/lib/tray/autostart';
 import { getAutostartCredentialPath, removeAutostartCredential, writeAutostartCredential } from '@/server/lib/tray/credential';
 import { buildLoginEntryArgv } from '@/server/lib/tray/entry';
 
@@ -45,7 +45,7 @@ export function resolvePort(options) {
     const parsed = Number(raw);
     if (Number.isFinite(parsed)) return parsed;
   }
-  const env = Bun.env.OMPCHAMBER_PORT;
+  const env = Bun.env.KABMO_PORT;
   if (typeof env === 'string' && env.trim().length > 0) {
     const parsed = Number(env.trim());
     if (Number.isFinite(parsed)) return parsed;
@@ -57,7 +57,7 @@ export function resolveHost(options) {
   if (options?.lan) return '0.0.0.0';
   const raw = options?.host;
   if (typeof raw === 'string' && raw.length > 0) return raw;
-  const env = Bun.env.OMPCHAMBER_HOST;
+  const env = Bun.env.KABMO_HOST;
   if (typeof env === 'string' && env.length > 0) return env;
   return DEFAULT_HOST;
 }
@@ -109,6 +109,11 @@ export async function run(options, ctx) {
   // with "already served" and left the entry in place).
   if (options?.startup === false) {
     const removed = uninstallAutostart();
+    // A pre-rename entry names a CLI file this release does not ship, so it
+    // would fail at every login and no command would reach it: `--no-startup`
+    // removes the CURRENT entry. Dropped here, on the one command that is
+    // about the registration at all.
+    removeLegacyAutostart();
     // The credential exists only to serve the entry that was just removed.
     removeAutostartCredential();
     if (json) printJson({ startup: false, removed, entry: getAutostartEntryPath() });
@@ -133,10 +138,10 @@ export async function run(options, ctx) {
           onLine: quiet || json ? undefined : (chunk) => process.stdout.write(chunk),
         });
       } catch (err) {
-        fail(`${err?.message ?? String(err)}\n  Or start the dev server from source:  ompchamber serve --dev`);
+        fail(`${err?.message ?? String(err)}\n  Or start the dev server from source:  kabmo serve --dev`);
       }
       if (!(await Bun.file(builtServer).exists())) {
-        fail(`Build finished but ${builtServer} is still missing.\n  Or start the dev server from source:  ompchamber serve --dev`);
+        fail(`Build finished but ${builtServer} is still missing.\n  Or start the dev server from source:  kabmo serve --dev`);
       }
     }
   }
@@ -145,12 +150,12 @@ export async function run(options, ctx) {
   if (existing) {
     // Refused here as well as in the server (lib/lifecycle/port-guard) so the
     // CLI reports it immediately instead of spawning a child that exits during
-    // the health wait. Nothing is stopped: freeing a port is `ompchamber stop`.
+    // the health wait. Nothing is stopped: freeing a port is `kabmo stop`.
     fail(
       `Port ${port} is already served by Kabmo (pid ${existing.pid}, ${existing.mode}).`
       + '\n  Nothing was stopped — a starting instance never stops another one.'
-      + `\n  Stop it first:  ompchamber stop --port ${port}`
-      + '\n  Or start on another port:  ompchamber serve --port <port>',
+      + `\n  Stop it first:  kabmo stop --port ${port}`
+      + '\n  Or start on another port:  kabmo serve --port <port>',
     );
   }
 
@@ -180,7 +185,7 @@ export async function run(options, ctx) {
       : null;
     const argv = buildLoginEntryArgv({
       bun: resolveBunBin(),
-      cli: resolvePath(pkgRoot, 'src', 'cli', `${ctx?.bin ?? 'ompchamber'}.js`),
+      cli: resolvePath(pkgRoot, 'src', 'cli', `${ctx?.bin ?? 'kabmo'}.js`),
       port,
       host,
       tray: true,
@@ -188,10 +193,13 @@ export async function run(options, ctx) {
       lan: host === '0.0.0.0',
       credentialPath,
     });
+    // The old entry cannot work after the rename (its program is gone), and
+    // leaving it registered would start a failing job beside the new one.
+    removeLegacyAutostart();
     const written = installAutostart({ argv, port, logFile: getLogFilePath(port) });
     if (json) printJson({ startup: true, entry: written.path ?? 'windows-run-key' });
     else if (written.path) ok(`Registered login entry: ${written.path}`);
-    else ok('Registered the Kabmo tray to start at login (Windows Run key).');
+    else ok('Registered Kabmo tray to start at login (Windows Run key).');
     if (resolvedPassword?.password && !credentialPath) {
       warn(
         `The login entry could not store your UI password, so it will start WITHOUT one.`

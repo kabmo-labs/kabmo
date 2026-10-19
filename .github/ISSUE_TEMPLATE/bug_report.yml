@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in OMPChamber is wrong, broken, or crashes.
+description: Something in Kabmo is wrong, broken, or crashes.
 title: "[Bug] "
 labels: ["bug"]
 body:
@@ -40,11 +40,11 @@ body:
   - type: dropdown
     id: how-run
     attributes:
-      label: How you run OMPChamber
+      label: How you run Kabmo
       description: The install and the command you started it with.
       options:
-        - ompchamber serve --prod (published install)
-        - ompchamber serve (dev server, daemon)
+        - kabmo serve --prod (published install)
+        - kabmo serve (dev server, daemon)
         - bun run dev (from source)
         - bun run start (from source, production)
     validations:
@@ -99,7 +99,7 @@ body:
       label: Versions
       description: Output of these, where they exist. `omp` is the agent binary the server shells out to.
       placeholder: |
-        ompchamber update --check
+        kabmo update --check
         omp --version
         bun --version
       render: shell
@@ -110,7 +110,7 @@ body:
     id: logs
     attributes:
       label: Logs or screenshot
-      description: The server log (`ompchamber logs -n 100`), and a screenshot if the problem is visual.
+      description: The server log (`kabmo logs -n 100`), and a screenshot if the problem is visual.
       render: shell
     validations:
       required: false

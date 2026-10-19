@@ -36,7 +36,7 @@
  *
  * ## Nothing here is persisted
  *
- * A plugin reload, a disable or a chamber restart ends every run. The shutdown
+ * A plugin reload, a disable or a Kabmo restart ends every run. The shutdown
  * path disposes this registry (the plugin's `onDispose`), which is what keeps a
  * detached child from outliving the server.
  */

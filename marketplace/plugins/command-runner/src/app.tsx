@@ -42,7 +42,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { definePluginApp } from '@ompchamber/plugin-sdk/app';
+import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
 import {
   usePanelHost,
   usePanelInfo,
@@ -51,7 +51,7 @@ import {
   useRpc,
   useRepoScope,
   useSessionState,
-} from '@ompchamber/ui';
+} from '@kabmo-labs/kabmo-ui';
 
 import { PanelView } from './panel';
 import { mountScopeWatch, stopOtherScopes } from './watch';
@@ -133,7 +133,7 @@ function CommandRunnerPanel() {
   const dialog = useCustomDialog({ root: scope?.root ?? null, rescan: scan });
 
   // A sweep when the panel mounts, as the second net. The content script covers a
-  // switch made while this panel is unmounted, but a chamber that was reloaded has
+  // switch made while this panel is unmounted, but a Kabmo that was reloaded has
   // had no watcher run yet and a phone has no content script at all — so the panel
   // also asks, and the call is idempotent either way.
   //
@@ -199,7 +199,7 @@ function CommandRunnerPanel() {
    * Called by a row when it is shown and whenever that run's byte count moves, so
    * the SAME run is read repeatedly as it prints.
    *
-   * **A plain `fetch`, not the kit's `useChamberFetch`, and that is the fix for a
+   * **A plain `fetch`, not the kit's `useKabmoFetch`, and that is the fix for a
    * real bug.** The hook re-reads when its URL CHANGES; a repeat read of one run
    * is the same URL, so the second request never happened — measured: a run that
    * printed produced no log in the panel at all, because the only read issued was

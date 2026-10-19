@@ -14,8 +14,8 @@
  * exit the recorded PID can belong to an unrelated process, so liveness alone
  * is not enough.
  *
- * `paths.ts` reads `OMPCHAMBER_DATA_DIR` per call, so pointing it at a temp
- * tree redirects the whole registry without touching `~/.ompchamber`.
+ * `paths.ts` reads `KABMO_DATA_DIR` per call, so pointing it at a temp
+ * tree redirects the whole registry without touching `~/.kabmo`.
  * Restored in `afterAll`.
  */
 
@@ -40,14 +40,14 @@ let workRoot = '';
 let originalDataDir: string | undefined;
 
 beforeAll(() => {
-  workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-lifecycle-test-'));
-  originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-  Bun.env.OMPCHAMBER_DATA_DIR = workRoot;
+  workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-lifecycle-test-'));
+  originalDataDir = Bun.env.KABMO_DATA_DIR;
+  Bun.env.KABMO_DATA_DIR = workRoot;
 });
 
 afterAll(() => {
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
   fs.rmSync(workRoot, { recursive: true, force: true });
 });
 
@@ -73,10 +73,10 @@ function record(port: number, overrides: Partial<InstanceRecord> = {}): Instance
   };
 }
 
-/** Spawn a live child whose argv names ompchamber, so identity reads `matched`. */
+/** Spawn a live child whose argv names kabmo, so identity reads `matched`. */
 function spawnMatched(): { pid: number; kill: () => void; exited: Promise<unknown>; dir: string } {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-fixture-'));
-  const script = path.join(dir, 'ompchamber-fixture.sh');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-fixture-'));
+  const script = path.join(dir, 'kabmo-fixture.sh');
   fs.writeFileSync(script, '#!/bin/sh\nsleep 30\n', { mode: 0o755 });
   const child = Bun.spawn([script], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
   return { pid: child.pid, kill: () => child.kill(), exited: child.exited, dir };
@@ -198,7 +198,7 @@ describe('process identity', () => {
     expect(getProcessState(2_147_483_646)).toBe('dead');
   });
 
-  testPosix('a live process whose command line names ompchamber is matched', async () => {
+  testPosix('a live process whose command line names kabmo is matched', async () => {
     const child = spawnMatched();
     try {
       expect(isProcessAlive(child.pid)).toBe(true);
@@ -233,7 +233,7 @@ describe('findOccupant with no listener on the port', () => {
   });
 
   testPosix('a live but mismatched PID is not an occupant', async () => {
-    // A recycled PID: alive, but demonstrably not an Kabmo server.
+    // A recycled PID: alive, but demonstrably not a Kabmo server.
     const child = spawnMismatched();
     try {
       writeInstanceRecord(record(FREE_PORT, { pid: child.pid }));

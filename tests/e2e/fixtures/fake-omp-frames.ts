@@ -26,7 +26,7 @@ export interface FrameWriterDeps {
 /**
  * An assistant message in the shape omp emits on the wire.
  *
- * `id` is load-bearing, not decoration: the chamber's mapper keys a timeline row
+ * `id` is load-bearing, not decoration: Kabmo's mapper keys a timeline row
  * by the message's OWN id and falls back to `msg-<timestamp>-ai` when it is
  * absent. A fixture that omitted it therefore let two frames created in the same
  * millisecond derive the SAME id, and the timeline rendered the turn twice —

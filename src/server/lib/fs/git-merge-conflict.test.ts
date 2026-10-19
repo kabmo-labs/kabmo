@@ -36,7 +36,7 @@ afterEach(() => {
 
 /** A scratch repo with an identity that cannot leak into the developer's config. */
 function makeRepo(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-merge-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-merge-'));
   repos.push(dir);
   git(dir, 'init', '-q', '-b', 'main');
   // The identity goes into the REPO's own config, not the spawn env: the code

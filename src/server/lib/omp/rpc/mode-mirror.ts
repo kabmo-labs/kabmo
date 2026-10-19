@@ -11,15 +11,15 @@
  *  - `get_state` does not carry either mode, so a reattaching client (a reload,
  *    a second tab) has nothing to read the mode from;
  *  - and the mode is not a client preference — it decides whether the child is
- *    running a goal the chamber must keep feeding, and whether a plan is parked
+ *    running a goal Kabmo must keep feeding, and whether a plan is parked
  *    waiting for a human.
  *
  * The mirror is fed by two frames, and they cover different halves:
  *
  *  - omp's own `goal_updated` session event, which is authoritative for the
- *    goal: whatever the chamber last asked for, the frame reports what the
+ *    goal: whatever Kabmo last asked for, the frame reports what the
  *    child actually did;
- *  - the chamber extension's own `CHAMBER_*` notice markers, which are the ONLY
+ *  - Kabmo's mode extension and its `KABMO_*` notice markers, which are the ONLY
  *    live word on PLAN mode (omp emits no plan event at all) and the only place
  *    a goal RECORD — objective, status, continuation verdict — is carried.
  *
@@ -32,11 +32,10 @@
 
 import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
 import {
-  CHAMBER_GOAL_STATE_MARKER,
-  CHAMBER_PLAN_STATE_MARKER,
   type GoalContinuation,
   type GoalRecord,
 } from '@/shared/lib/omp/mode/types';
+import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 import { continuationFromMarker, goalEnabledFromMarker, goalRecordFromMarker, type ParsedMarker } from '@/shared/lib/omp/mode/markers';
 import { isGoalStatus } from '@/shared/lib/omp/mode/status';
 import type { GoalStatus } from '@/shared/lib/omp/mode/types';
@@ -78,18 +77,18 @@ export class ModeMirror {
   /**
    * Apply one extension notice marker.
    *
-   * Markers only, never a `CHAMBER_MODE_ERROR` or a plan proposal: those are
+   * Markers only, never a `KABMO_MODE_ERROR` or a plan proposal: those are
    * refusals and review state, not the selection. A marker for the other scope
    * leaves this one alone — the two toggles are independent, and a plan
    * transition that blanked the goal record would make a live goal disappear
    * from a reattaching client.
    */
   observeMarker(marker: ParsedMarker): void {
-    if (marker.marker === CHAMBER_PLAN_STATE_MARKER) {
+    if (isModeMarker(marker.marker, 'planStateMarker')) {
       this.planEnabled = marker.payload.enabled === true;
       return;
     }
-    if (marker.marker !== CHAMBER_GOAL_STATE_MARKER) return;
+    if (!isModeMarker(marker.marker, 'goalStateMarker')) return;
     const record = goalRecordFromMarker(marker.payload);
     this.goalRecord = record;
     this.goalStatus = record && isGoalStatus(record.status) ? record.status : undefined;

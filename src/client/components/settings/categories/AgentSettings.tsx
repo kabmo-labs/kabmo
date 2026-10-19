@@ -15,7 +15,7 @@ interface AgentSettingsProps {
 
 export const AgentSettings: FunctionComponent<AgentSettingsProps> = () => {
   const masterDetail = useSettingsMasterDetail();
-  const [selectedProject, setSelectedProject] = useState('ompchamber');
+  const [selectedProject, setSelectedProject] = useState('kabmo');
   const { items: agents, selectedId, selected: selectedAgent, isCreatingNew, isLoading, select, startCreate, save, remove } =
     useCrudList<AgentItem>({
       endpoint: '/api/settings/agents',

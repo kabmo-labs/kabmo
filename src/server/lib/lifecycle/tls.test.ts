@@ -23,14 +23,14 @@ let tempDir: string;
 let originalDataDir: string | undefined;
 
 beforeEach(() => {
-  originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-tls-test-'));
-  Bun.env.OMPCHAMBER_DATA_DIR = tempDir;
+  originalDataDir = Bun.env.KABMO_DATA_DIR;
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-tls-test-'));
+  Bun.env.KABMO_DATA_DIR = tempDir;
 });
 
 afterEach(() => {
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
@@ -93,6 +93,6 @@ describe('ensureTlsCertificate', () => {
   test('the paths live under the data directory, not the source tree', () => {
     expect(getTlsCertPath().startsWith(tempDir)).toBe(true);
     expect(getTlsKeyPath().startsWith(tempDir)).toBe(true);
-    expect(getTlsCertPath()).not.toContain(`${os.homedir()}${path.sep}.ompchamber`);
+    expect(getTlsCertPath()).not.toContain(`${os.homedir()}${path.sep}.kabmo`);
   });
 });

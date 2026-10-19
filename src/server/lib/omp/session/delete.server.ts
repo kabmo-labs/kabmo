@@ -5,10 +5,10 @@
 
 /**
  * Deleting a session: the transcript on disk, its subagent artifacts, and every
- * chamber-side row keyed to the session id.
+ * Kabmo-side row keyed to the session id.
  *
  * The transcript is authoritative — omp's own session listing is derived from
- * the JSONL alone — so a delete that removed only the chamber's rows would see
+ * the JSONL alone — so a delete that removed only Kabmo's rows would see
  * the session come straight back on the next sidebar scan. What "delete" means
  * here, in one place:
  *
@@ -39,14 +39,14 @@ import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 
 export interface SessionPurgeResult {
   /** Something keyed to this id existed — a transcript, a mock session row, or
-   *  a chamber row. False means the id resolved nowhere at all. */
+   *  a Kabmo row. False means the id resolved nowhere at all. */
   found: boolean;
   fileRemoved: boolean;
   artifactsRemoved: boolean;
 }
 
 /**
- * Chamber rows keyed by a session id. Every statement is a no-op when the id
+ * Kabmo rows keyed by a session id. Every statement is a no-op when the id
  * matches nothing, which is what makes one purge serve both modes: real
  * sessions (omp UUIDs, present on disk only) and mock ones (numeric ids in
  * `sessions`).
@@ -63,7 +63,7 @@ const SESSION_ROW_DELETES: readonly (readonly [string, string])[] = [
   ['files', 'session_id'],
 ];
 
-async function purgeChamberRows(db: DbClient, sessionId: string): Promise<number> {
+async function purgeKabmoRows(db: DbClient, sessionId: string): Promise<number> {
   let changes = 0;
   for (const [table, column] of SESSION_ROW_DELETES) {
     const result = await db.run(`DELETE FROM ${table} WHERE ${column} = ?`, [sessionId]);
@@ -91,7 +91,7 @@ async function removeTranscript(filePath: string): Promise<boolean> {
 }
 
 /**
- * Purge everything the chamber and the agent directory hold for `sessionId`.
+ * Purge everything Kabmo and the agent directory hold for `sessionId`.
  * `sessionId` must be a single safe path segment — it names the artifacts
  * directory — which the route validates before calling.
  */
@@ -120,7 +120,7 @@ export async function purgeSessionData(sessionId: string): Promise<SessionPurgeR
   }
 
   const db = await getDb();
-  const rowChanges = await purgeChamberRows(db, sessionId);
+  const rowChanges = await purgeKabmoRows(db, sessionId);
 
   // Both caches outlive the mutation by their own keys: the file list/scan pair
   // is mtime-keyed (a delete bumps the parent directory, but the memo can still

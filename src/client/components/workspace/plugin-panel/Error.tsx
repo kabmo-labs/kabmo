@@ -10,7 +10,7 @@ interface PluginErrorProps {
  *
  * A plugin that is enabled but has no component right now has three very
  * different causes — its bundle is still importing, it failed to load, or it is
- * not installed — and a blank panel makes all three look like a broken chamber.
+ * not installed — and a blank panel makes all three look like a broken console.
  * The distinction that matters most is TRANSIENT versus PERMANENT: a bundle
  * still importing resolves itself, while a failure will not.
  */

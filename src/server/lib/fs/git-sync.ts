@@ -6,7 +6,7 @@ import { GIT_ENV } from '@/server/lib/fs/git-run';
  *
  * `git rev-list --left-right --count HEAD...@{upstream}` counts against the
  * LOCAL remote-tracking ref, and that ref only moves on fetch/pull/push.
- * Nothing in the chamber ever fetched, so `behind` reported the state of the
+ * Nothing in Kabmo ever fetched, so `behind` reported the state of the
  * last fetch rather than the remote: the badge sat at ↑0 ↓0 while origin had
  * commits to pull, and the button — disabled by that very zero — could never
  * correct itself.

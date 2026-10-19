@@ -33,7 +33,7 @@ import { runningUpdate, withUpdateSlot } from '@/server/lib/updates/single-fligh
 const originalFetch = Bun.fetch;
 const MISSING_OMP = '/nonexistent/omc-updates-test/omp';
 /** The suite mutates process-wide env; restore what was there, not just delete. */
-const ORIGINAL_ENV = { MOCK: Bun.env.MOCK, OMPCHAMBER_OMP_BIN: Bun.env.OMPCHAMBER_OMP_BIN };
+const ORIGINAL_ENV = { MOCK: Bun.env.MOCK, KABMO_OMP_BIN: Bun.env.KABMO_OMP_BIN };
 
 function restoreEnv(): void {
   for (const [key, value] of Object.entries(ORIGINAL_ENV)) {
@@ -56,7 +56,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /** The changelog cache hangs off globalThis; a stubbed page must not leak into a sibling suite. */
-const globalWithCache = globalThis as { __ompChamberChangelogCache?: unknown };
+const globalWithCache = globalThis as { __kabmoChangelogCache?: unknown };
 
 /** A published version manifest, the shape `/latest` answers. */
 function versionJson(version: string): Record<string, unknown> {
@@ -99,7 +99,7 @@ function updatesFetch(input: RequestInfo | URL): Promise<Response> {
 beforeEach(() => {
   // No omp child may be spawned: the override path does not exist, so
   // `resolveOmpBin()` answers null and the omp probe stops before any spawn.
-  Bun.env.OMPCHAMBER_OMP_BIN = MISSING_OMP;
+  Bun.env.KABMO_OMP_BIN = MISSING_OMP;
   invalidateOmpCliCache();
 });
 
@@ -107,7 +107,7 @@ afterEach(() => {
   restoreEnv();
   globalThis.fetch = originalFetch;
   // `fetchChangelogNotes` caches on globalThis, so a stubbed page must not leak.
-  delete globalWithCache.__ompChamberChangelogCache;
+  delete globalWithCache.__kabmoChangelogCache;
 });
 
 afterAll(() => {
@@ -128,7 +128,7 @@ describe('POST /api/updates/apply refusals', () => {
   });
 
   test('a target outside the two known ones is a 400', async () => {
-    for (const target of ['', 'ompchamber2', 7, null, undefined]) {
+    for (const target of ['', 'kabmo2', 7, null, undefined]) {
       const res = (await applyUpdateRoute({
         request: request('POST', JSON.stringify({ target })),
         params: {},
@@ -144,7 +144,7 @@ describe('POST /api/updates/apply refusals', () => {
     try {
       expect(runningUpdate()).toBe('omp');
       const res = (await applyUpdateRoute({
-        request: request('POST', JSON.stringify({ target: 'ompchamber' })),
+        request: request('POST', JSON.stringify({ target: 'kabmo' })),
         params: {},
       } as never)) as Response;
       expect(res.status).toBe(409);
@@ -164,15 +164,15 @@ describe('POST /api/updates/apply in MOCK mode', () => {
 
   test('answers an SSE stream shaped like a real run and says it was simulated', async () => {
     const res = (await applyUpdateRoute({
-      request: request('POST', JSON.stringify({ target: 'ompchamber' })),
+      request: request('POST', JSON.stringify({ target: 'kabmo' })),
       params: {},
     } as never)) as Response;
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('text/event-stream');
     const text = await res.text();
-    expect(text).toContain('event: stage\ndata: "Simulating the Kabmo update"\n\n');
+    expect(text).toContain('event: stage\ndata: "Simulating a Kabmo update"\n\n');
     expect(text).toContain('event: line\ndata: "[mock] no command was run; MOCK=true skips real updates\\n"\n\n');
-    expect(text).toContain('event: result\ndata: {"success":true,"target":"ompchamber","manual":false');
+    expect(text).toContain('event: result\ndata: {"success":true,"target":"kabmo","manual":false');
     expect(text).toContain('nothing was changed');
     // Nothing was spawned, and the slot is free again.
     expect(runningUpdate()).toBeNull();
@@ -200,7 +200,7 @@ describe('GET /api/updates/check', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('no-store');
     const result = await payload(res);
-    expect(result.ompchamber).toMatchObject({
+    expect(result.kabmo).toMatchObject({
       current: installed,
       latest: '999.0.0',
       updateAvailable: true,
@@ -220,7 +220,7 @@ describe('GET /api/updates/check', () => {
     const res = (await checkRoute()) as unknown as Response;
     expect(res.status).toBe(200);
     const result = await payload(res);
-    expect(result.ompchamber).toMatchObject({ current: '3.6.0', latest: '3.8.0', updateAvailable: true });
+    expect(result.kabmo).toMatchObject({ current: '3.6.0', latest: '3.8.0', updateAvailable: true });
     expect(result.omp).toMatchObject({ current: '18.3.0', latest: '18.4.0', updateAvailable: true });
   });
 });

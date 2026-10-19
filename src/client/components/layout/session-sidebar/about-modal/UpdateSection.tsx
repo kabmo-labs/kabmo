@@ -20,7 +20,7 @@ interface UpdateRowProps {
 const actionClassName = 'inline-flex items-center gap-1.5 rounded-md border border-ink/20 px-2.5 py-1.5 text-[11px] font-medium text-ink transition-colors hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50';
 
 function UpdateRow({ target, info, applying, disabled, onApply }: UpdateRowProps) {
-  const label = target === 'ompchamber' ? 'Kabmo' : 'Oh-My-Pi';
+  const label = target === 'kabmo' ? 'Kabmo' : 'Oh-My-Pi';
   const versionText = `v${info.current ?? '…'} → v${info.latest ?? '…'}`;
 
   return (
@@ -55,7 +55,7 @@ function UpdateRow({ target, info, applying, disabled, onApply }: UpdateRowProps
 export function UpdateSection({ updates, onToast }: UpdateSectionProps) {
   const updateRows = updates.info
     ? [
-        { target: 'ompchamber' as const, info: updates.info.ompchamber },
+        { target: 'kabmo' as const, info: updates.info.kabmo },
         { target: 'omp' as const, info: updates.info.omp },
       ].filter(({ info }) => info.updateAvailable && info.latest !== null)
     : [];
@@ -151,7 +151,7 @@ export function UpdateSection({ updates, onToast }: UpdateSectionProps) {
                 onApply={(selectedTarget) => void handleApply(selectedTarget)}
               />
             ))}
-            {updates.info?.ompchamber.updateAvailable && (
+            {updates.info?.kabmo.updateAvailable && (
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent(UPDATE_POPUP_OPEN_EVENT))}
@@ -159,7 +159,7 @@ export function UpdateSection({ updates, onToast }: UpdateSectionProps) {
                 className={`${actionClassName} mt-2 w-full justify-center`}
               >
                 <Sparkles size={12} />
-                <span>What&apos;s new in {updates.info.ompchamber.latest}</span>
+                <span>What&apos;s new in {updates.info.kabmo.latest}</span>
               </button>
             )}
             <button

@@ -67,15 +67,15 @@ describe('isTuiOnlySlashCommand', () => {
     }
   });
 
-  test('does NOT refuse a command the chamber answers itself', () => {
-    // `/btw` is TUI-only in omp, but the chamber owns it: the composer opens
+  test('does NOT refuse a command Kabmo answers itself', () => {
+    // `/btw` is TUI-only in omp, but Kabmo owns it: the composer opens
     // the side-question panel. Refusing it here broke a working feature.
     expect(isTuiOnlySlashCommand('/btw')).toBe(false);
     expect(isTuiOnlySlashCommand('/btw how does this work')).toBe(false);
   });
 
-  test('does NOT refuse /plan or /goal, which the chamber now owns', () => {
-    // Both are `handleTui`-only in omp's registry, but the chamber drives them
+  test('does NOT refuse /plan or /goal, which Kabmo now owns', () => {
+    // Both are `handleTui`-only in omp's registry, but Kabmo drives them
     // through its own extension inside the child — so a typed `/plan` or
     // `/goal` is a real command now, not literal text for the model to
     // improvise around. `plan-review` and `guided-goal` stay refused: neither

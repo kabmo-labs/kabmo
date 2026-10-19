@@ -14,7 +14,7 @@
  * database — so a teardown that closes the handle and then deletes the
  * directory races the close on Windows and loses. Measured on the first Windows
  * run: 37 failures, every one of them an `EBUSY: resource busy or locked, rm
- * 'C:\...\Temp\ompchamber-…'` thrown from an `afterEach`, which reports the
+ * 'C:\...\Temp\kabmo-…'` thrown from an `afterEach`, which reports the
  * PREVIOUS test as failed and cascades into the rest of the file.
  *
  * Two things make the removal reliable, and both are needed:
@@ -66,7 +66,7 @@ export function removeDir(dir: string): boolean {
       // collect it, and only a collection releases the handle. Forcing one after
       // a couple of plain retries is what turns "the object is garbage but not
       // yet finalised" into a deletable file — measured on a Windows runner,
-      // where a suite that cleared `globalThis.__ompChamberDb` instead of
+      // where a suite that cleared `globalThis.__kabmoDb` instead of
       // closing it held the tree for the whole retry window.
       if (attempt++ >= 2) Bun.gc(true);
       // A synchronous spin, because the callers are `afterEach` hooks that may

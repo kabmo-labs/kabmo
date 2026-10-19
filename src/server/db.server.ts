@@ -22,6 +22,7 @@ import { syncWorkspaceFoldersFromDiscovery } from '@/server/lib/db/workspace-syn
 import { isMockMode } from '@/server/mock.server';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { migrateLegacyProjectSettings } from '@/shared/lib/workspace/project-settings-migration';
+import { getDataDir } from '@/server/lib/lifecycle/paths';
 
 /**
  * The handle and its promise live on `globalThis`, not in module bindings.
@@ -44,11 +45,11 @@ interface DbSlot {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberDb: DbSlot | undefined;
+  var __kabmoDb: DbSlot | undefined;
 }
 
 function slot(): DbSlot {
-  return (globalThis.__ompChamberDb ??= { promise: null, resolved: null });
+  return (globalThis.__kabmoDb ??= { promise: null, resolved: null });
 }
 
 export async function getDatabasePath(): Promise<string> {
@@ -57,7 +58,7 @@ export async function getDatabasePath(): Promise<string> {
   // from a checkout wrote the repository's own `workspace.db` no matter what
   // the caller set — which is exactly what an isolated test or a second
   // instance needs the variable for. Verified before the fix: a mock boot with
-  // `OMPCHAMBER_DB_PATH` set to a temp file still answered the repo path on
+  // `KABMO_DB_PATH` set to a temp file still answered the repo path on
   // this line.
   const customPath = Bun.env.KABMO_DB_PATH || Bun.env.OMPCHAMBER_DB_PATH || Bun.env.DB_PATH;
   if (customPath) {
@@ -75,7 +76,7 @@ export async function getDatabasePath(): Promise<string> {
     return path.join(process.cwd(), 'workspace.db');
   }
 
-  const defaultDir = path.join(os.homedir(), '.ompchamber');
+  const defaultDir = getDataDir();
   if (!(await pathExists(defaultDir))) {
     await fs.promises.mkdir(defaultDir, { recursive: true });
   }
@@ -105,7 +106,7 @@ export async function getDb(): Promise<DbClient> {
       // the list is still empty. User-made folders are never deleted and a
       // curated list is never appended to; the sync is a one-time bootstrap.
       const seeded = await syncWorkspaceFoldersFromDiscovery(db);
-      if (seeded) console.log('[ompchamber] workspaces:    seeded from omp discovery (list was empty)');
+      if (seeded) console.log('[kabmo] workspaces:    seeded from omp discovery (list was empty)');
     }
 
     await migrateLegacyProjectSettings(db);

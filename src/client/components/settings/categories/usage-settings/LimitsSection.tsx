@@ -98,7 +98,7 @@ export function LimitsSection({ limits, tracked, unavailable, notes }: LimitsSec
       {limits.length === 0 ? (
         <p className="text-[11px] text-ink/50">
           {!tracked
-            ? 'No quota source for this provider: omp ships no usage adapter for it and it exposes no balance endpoint the chamber knows.'
+            ? 'No quota source for this provider: omp ships no usage adapter for it and it exposes no balance endpoint Kabmo knows.'
             : unavailable
               ? 'omp tracks this provider but its usage endpoint returned no data — an invalid or expired credential, an unreachable endpoint, or a plan without quota windows.'
               : 'No quota windows were reported for this provider.'}

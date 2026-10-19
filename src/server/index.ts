@@ -11,7 +11,7 @@ import { ssrRoutes } from '@/server/plugins/ssr';
 import { setListener } from '@/server/lib/lifecycle/listener';
 import { getDatabasePath, getDb } from '@/server/db.server';
 import { compactChatOverlayRows } from '@/server/lib/db/compact-chat-overlay';
-import { fetchOmpRegistrySnapshot } from '@/server/lib/models/provider-registry.server';
+import { logDetectedRegistry } from '@/server/lib/models/detected-registry.server';
 import { ompStartupError, ompStartupLogLines } from '@/server/lib/omp/core/startup';
 import { readInstanceRecord, removeInstanceRecord, writeInstanceRecord } from '@/server/lib/lifecycle/instance';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
@@ -22,12 +22,19 @@ import { acquirePortLock, claimPort, PortInUseError } from '@/server/lib/lifecyc
 import { ensureTlsCertificate, isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
 import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
 import { isMockMode } from '@/server/mock.server';
+import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
 import { stopDiscoveryRootsWatch, syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 import { syncBundledPlugins } from '@/server/lib/panels/sync.server';
 import { startPanelAutoUpdate } from '@/server/lib/panels/auto-update.server';
 import { disposeAllPluginsOnShutdown, loadPluginServers } from '@/server/lib/plugins/loader.server';
+
+// A pre-rename install keeps its database, login and sessions: the data
+// directory is moved into place before ANYTHING reads a path under it. This is
+// the first statement in the file for that reason — the auth secret, the
+// instance record and the SQLite file all live there.
+migrateLegacyDataDir();
 
 // Refuse to run without a resolvable omp binary — before the listener opens and
 // before the first request can reach a route that shells out to it. The database
@@ -41,7 +48,7 @@ if (startupError) {
 // Authentication is armed here, before the listener opens and before anything
 // can spawn a child. The credential arrives by argv, by a handover on stdin
 // (from the CLI, or from the instance being replaced), or through the legacy
-// `OMPCHAMBER_UI_PASSWORD` — which is NOT a safe channel: `delete Bun.env.X`
+// `KABMO_UI_PASSWORD` — which is NOT a safe channel: `delete Bun.env.X`
 // leaves the value in the OS environ a child inherits (measured on Bun 1.4.3).
 // No source means the server runs open, which is the default.
 const runPassword = resolveRunPassword();
@@ -50,23 +57,23 @@ const authNotice = handover
   ? await initAuthFromHandover(handover)
   : await initAuth(runPassword.password);
 
-// Which omp the chamber drives, which ~/.omp tree it reads and which SQLite file
+// Which omp Kabmo drives, which ~/.omp tree it reads and which SQLite file
 // it writes — the paths every session/agent diagnostic traces back to. The data
 // mode comes first because it changes what every later line means.
-console.log(`[ompchamber] mock mode:      ${isMockMode() ? 'true (demo presets)' : 'false (real omp data)'}`);
+console.log(`[kabmo] mock mode:      ${isMockMode() ? 'true (demo presets)' : 'false (real omp data)'}`);
 // Printed with the bind address beside it, because those two facts decide the
 // risk: a network-exposed listener with no password is reachable by anyone who
 // can route to the host. The source matters too — `env` means the variable was
 // just erased, `argv` means it is still visible in this process's command line.
-console.log(`[ompchamber] ui auth:        ${authNotice}${runPassword.source === 'argv' ? ' [from argv]' : ''}`);
-for (const line of ompStartupLogLines()) console.log(`[ompchamber] ${line}`);
-console.log(`[ompchamber] db:             ${await getDatabasePath()}`);
+console.log(`[kabmo] ui auth:        ${authNotice}${runPassword.source === 'argv' ? ' [from argv]' : ''}`);
+for (const line of ompStartupLogLines()) console.log(`[kabmo] ${line}`);
+console.log(`[kabmo] db:             ${await getDatabasePath()}`);
 
 const port = Number(Bun.env.PORT) || 3000;
 const host = Bun.env.HOST || 'localhost';
 const mode = Bun.env.NODE_ENV === 'production' ? 'prod' : 'dev';
-// argv, not env: see launch-mode.ts — an inherited `OMPCHAMBER_LAUNCH_MODE`
-// would label a `bun run dev` started inside an Kabmo shell as `daemon`.
+// argv, not env: see launch-mode.ts — an inherited `KABMO_LAUNCH_MODE`
+// would label a `bun run dev` started inside a Kabmo shell as `daemon`.
 const launchMode = resolveLaunchMode();
 
 // TLS is decided before the bind, because a certificate that cannot be produced
@@ -77,16 +84,16 @@ let tlsOptions: { cert: Bun.BunFile; key: Bun.BunFile } | null = null;
 if (tlsRequested) {
   const certificate = ensureTlsCertificate();
   if (!certificate.ok) {
-    console.error(`[ompchamber] --tls was given but no certificate could be prepared:\n  ${certificate.error}`);
+    console.error(`[kabmo] --tls was given but no certificate could be prepared:\n  ${certificate.error}`);
     process.exit(1);
   }
   tlsOptions = { cert: Bun.file(certificate.certPath), key: Bun.file(certificate.keyPath) };
-  console.log(`[ompchamber] tls:             on (${certificate.generated ? 'certificate generated' : 'certificate reused'}) at ${certificate.certPath}`);
+  console.log(`[kabmo] tls:             on (${certificate.generated ? 'certificate generated' : 'certificate reused'}) at ${certificate.certPath}`);
 }
 
 const lock = await acquirePortLock(port);
 if (!lock) {
-  console.error(`[ompchamber] another Kabmo instance is starting on port ${port} right now — retry in a moment.`);
+  console.error(`[kabmo] another Kabmo instance is starting on port ${port} right now — retry in a moment.`);
   process.exit(1);
 }
 
@@ -124,7 +131,7 @@ const app = new Elysia({ serve: { routes: { [SHELL_ROUTE]: shell } } })
 // about to appear. Marker-guarded, so a plugin the user removed stays removed.
 try {
   const seeded = await seedDefaultMarketplace();
-  if (seeded.seeded) console.log('[ompchamber] marketplace:   seeded the bundled panel plugins');
+  if (seeded.seeded) console.log('[kabmo] marketplace:   seeded the bundled panel plugins');
   // A build failure leaves the plugin in place but unservable, and the pane
   // offers a Rebuild — reported here so a headless start says why.
   if (seeded.reason) console.error(`[panels] plugin build: ${seeded.reason}`);
@@ -139,7 +146,7 @@ initRealtimeTopics();
 
 // A session FILE appearing is what makes a session visible in the sidebar, and
 // omp writes it only when the first assistant message settles — a moment no
-// chamber write reports. Watching the sessions root is what replaces the 30s
+// Kabmo write reports. Watching the sessions root is what replaces the 30s
 // idle poll that used to cover it.
 startSessionsWatch();
 
@@ -181,7 +188,7 @@ try {
   });
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(error instanceof PortInUseError ? `[ompchamber] ${message}` : `[ompchamber] could not listen on ${host}:${port} — ${message}`);
+  console.error(error instanceof PortInUseError ? `[kabmo] ${message}` : `[kabmo] could not listen on ${host}:${port} — ${message}`);
   process.exit(1);
 } finally {
   lock.release();
@@ -203,7 +210,7 @@ if (!writeInstanceRecord({
   startedAt: previousRecord?.pid === process.pid ? previousRecord.startedAt : new Date().toISOString(),
   version: pkg.version,
 })) {
-  console.log('[ompchamber] instance record not written (data directory not writable) — `ompchamber status` will fall back to probing this port');
+  console.log('[kabmo] instance record not written (data directory not writable) — `kabmo status` will fall back to probing this port');
 }
 process.on('exit', () => removeInstanceRecord(port));
 
@@ -212,7 +219,7 @@ process.on('exit', () => removeInstanceRecord(port));
 // one line that matters — the URL — at the bottom of the log.
 await logDetectedRegistry();
 
-console.log(`[ompchamber] listening on ${tlsOptions ? 'https' : 'http'}://${host}:${port}`);
+console.log(`[kabmo] listening on ${tlsOptions ? 'https' : 'http'}://${host}:${port}`);
 
 /**
  * One-time rewrite of the overlay rows written before `overlayRowsForOmpSession`
@@ -229,7 +236,7 @@ try {
 
 /**
  * Watch the skill/command roots omp reads, so a SKILL.md written by anything
- * other than the chamber (a hand edit, `git pull`, the skills CLI, another
+ * other than Kabmo (a hand edit, `git pull`, the skills CLI, another
  * agent) reaches the live sessions without a restart. See the module — the
  * refresh itself is `/reload-plugins`, this only decides when.
  */
@@ -251,7 +258,7 @@ startScheduleRuntime();
 /**
  * Bring installed BUNDLED plugins up to the copy this package ships.
  *
- * An Kabmo update replaces the store and leaves the install — it is a
+ * A Kabmo update replaces the store and leaves the install — it is a
  * copied directory of ordinary files — so this is the only thing that notices.
  * It is version-gated and skips git clones, so a plugin the user installed from
  * a URL is never overwritten by a store entry that happens to share its id.
@@ -268,7 +275,7 @@ startScheduleRuntime();
 try {
   const synced = await syncBundledPlugins();
   for (const item of synced.updated) {
-    console.log(`[ompchamber] plugins:        synced ${item.pluginId} ${item.from} → ${item.to}`);
+    console.log(`[kabmo] plugins:        synced ${item.pluginId} ${item.from} → ${item.to}`);
     if (item.warning) console.error(`[plugins] ${item.pluginId}: rebuild after sync failed — ${item.warning}`);
   }
   for (const failure of synced.failed) console.error(`[plugins] ${failure.pluginId}: bundled sync failed — ${failure.error}`);
@@ -286,7 +293,7 @@ try {
 try {
   const result = await loadPluginServers();
   if (result.loaded.length > 0) {
-    console.log(`[ompchamber] plugins:        ${result.loaded.length} server half(s) loaded (${result.loaded.join(', ')})`);
+    console.log(`[kabmo] plugins:        ${result.loaded.length} server half(s) loaded (${result.loaded.join(', ')})`);
   }
   for (const failure of result.errors) console.error(`[plugins] ${failure.pluginId}: ${failure.reason}`);
 } catch (error) {
@@ -305,36 +312,8 @@ startPanelAutoUpdate();
  */
 if (isTrayEnabledByArgv()) {
   const result = ensureTray({ port, host, tls: Boolean(tlsOptions), pkgRoot: packageDir() });
-  if (result.started) console.log('[ompchamber] tray:            icon shown');
-  else console.log(`[ompchamber] tray:            not shown — ${result.reason}`);
-}
-
-/**
- * What omp reports it can actually run. A live RPC round-trip: a cold utility
- * process takes seconds, which is why it runs after the listener is up. Side
- * benefit — it warms the shared utility process the model picker drives, so the
- * first /api/models call does not pay the spawn.
- */
-async function logDetectedRegistry(): Promise<void> {
-  if (isMockMode()) {
-    console.log('[ompchamber] providers:      n/a (MOCK mode)');
-    console.log('[ompchamber] models:         n/a (MOCK mode)');
-    return;
-  }
-  try {
-    const { providers, models } = await fetchOmpRegistrySnapshot();
-    // Count providers that actually serve a model — the distinct `provider`
-    // values in the model list, i.e. the same set GET /api/models groups by.
-    // omp's login catalog lists every sign-in offer it supports (75 here, 73 of
-    // them without credentials); counting those would report a provider set the
-    // chamber cannot use. The catalog size is kept as context.
-    const servingProviders = new Set(models.map((model) => model.provider)).size;
-    console.log(`[ompchamber] providers:      ${servingProviders} detected (${providers.length} known to omp)`);
-    console.log(`[ompchamber] models:         ${models.length} detected`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.log(`[ompchamber] providers/models: detection failed — ${message}`);
-  }
+  if (result.started) console.log('[kabmo] tray:            icon shown');
+  else console.log(`[kabmo] tray:            not shown — ${result.reason}`);
 }
 
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {

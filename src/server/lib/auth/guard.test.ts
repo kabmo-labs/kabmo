@@ -98,12 +98,12 @@ afterEach(async () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
     tempDir = null;
   }
-  delete Bun.env.OMPCHAMBER_DATA_DIR;
+  delete Bun.env.KABMO_DATA_DIR;
 });
 
 function useTempDataDir(): string {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-guard-test-'));
-  Bun.env.OMPCHAMBER_DATA_DIR = tempDir;
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-guard-test-'));
+  Bun.env.KABMO_DATA_DIR = tempDir;
   return tempDir;
 }
 

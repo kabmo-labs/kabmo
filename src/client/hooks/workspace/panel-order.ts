@@ -24,7 +24,7 @@
  */
 import { useCallback } from 'preact/hooks';
 import { useSyncExternalStore } from 'preact/compat';
-import { readChamberSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
 import {
   PANEL_ORDER_SETTING_KEY,
   mergeVisibleOrder,
@@ -45,7 +45,7 @@ function subscribe(listener: () => void): () => void {
 }
 
 function snapshot(): readonly string[] {
-  const source = readChamberSetting<unknown>(PANEL_ORDER_SETTING_KEY);
+  const source = readKabmoSetting<unknown>(PANEL_ORDER_SETTING_KEY);
   if (source === lastSource) return cached;
   lastSource = source;
   cached = readPanelOrder();

@@ -216,7 +216,7 @@ export async function fetchGitCommits(
   } catch {
     // Reached only when git could not answer at all (not a repository, a bad
     // revision, a timeout). Mock rows are reserved for MOCK mode, where the
-    // whole chamber runs on presets — returning them here showed 20 commits
+    // whole Kabmo runs on presets — returning them here showed 20 commits
     // from an unrelated repository in real mode.
     if (isMockMode()) {
       const paged = SAMPLE_GIT_COMMITS.slice(skip, skip + limit);

@@ -11,7 +11,7 @@
  * what it looks like, so the two rules that keep it safe are structural rather
  * than advisory:
  *
- * - **An empty slot renders NOTHING.** A chamber with no plugins produces the
+ * - **An empty slot renders NOTHING.** A Kabmo with no plugins produces the
  *   card it produced before this slot existed, which is what lets a plugin
  *   DECLINE for free: there is no "waiting for a plugin" state to fall out of,
  *   so a question can never be swallowed by an absent answer.
@@ -30,8 +30,8 @@
 import { Component, type ComponentChildren } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { AlertTriangle } from 'lucide-preact';
-import type { PendingInteractionQuestion, PendingInteractionRegistration } from '@kabmo-labs/plugin-sdk';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import type { PendingInteractionQuestion, PendingInteractionRegistration } from '@kabmo-labs/kabmo-sdk';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';

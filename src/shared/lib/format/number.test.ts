@@ -4,7 +4,7 @@
  */
 
 /**
- * The chamber's shared number formatters.
+ * The Kabmo's shared number formatters.
  *
  * These decide what a token count, a cost, a byte size and a per-1M price look
  * like on every surface, so the boundaries are the contract: `formatCompactTokens`

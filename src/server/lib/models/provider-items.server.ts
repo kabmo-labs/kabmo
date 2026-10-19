@@ -44,7 +44,7 @@ export function disabledProviderItem(slug: string): ProviderItem {
 
 /**
  * Native provider entry discovered from models.yml. Credentials never leave
- * omp's own stores — chamber only surfaces registration info.
+ * omp's own stores — Kabmo only surfaces registration info.
  */
 export function nativeProviderItem(info: NativeProviderInfo, isDisabled = false): ProviderItem {
   const { slug, baseUrl } = info;
@@ -72,7 +72,7 @@ export function nativeProviderItem(info: NativeProviderInfo, isDisabled = false)
     // The endpoint travels on the item, not only inside `configuredIn`'s label.
     // It is what the models list gates "fetch models" on, so leaving it out of
     // the payload disabled the button for every models.yml provider — the one
-    // set of providers whose endpoint is actually known to the chamber. The
+    // set of providers whose endpoint is actually known to Kabmo. The
     // URL is not a secret: `configuredIn` already prints it.
     ...(baseUrl ? { baseUrl } : {}),
     // This entry was built FROM models.yml, so the file holds it by definition.

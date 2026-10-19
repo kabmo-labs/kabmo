@@ -7,7 +7,7 @@
  * The GLOBAL topics: `usage`, `schedule`, `panels` and `models`.
  *
  * None is scoped to a session or a workspace, and all four describe state the
- * chamber reads from a library the HTTP routes already call — so each resolver
+ * Kabmo reads from a library the HTTP routes already call — so each resolver
  * here is a direct call, with no route extraction needed.
  *
  * `panels` and `models` are large payloads produced on demand, so their
@@ -28,7 +28,7 @@ import { discoverPanelPlugins } from '@/server/lib/panels/registry.server';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
 
 /**
- * Every resolver is a direct call: each topic describes state the chamber reads
+ * Every resolver is a direct call: each topic describes state Kabmo reads
  * from a library its HTTP route already calls, so there is no read logic here to
  * share or to drift.
  */

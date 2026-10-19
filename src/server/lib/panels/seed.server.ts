@@ -21,7 +21,7 @@
  * left the bundled plugins copied into the working directory; those stay where
  * they are and keep working (they are ordinary installed plugins now), and the
  * user removes them from the pane if they do not want them. Deleting them on
- * upgrade would be the chamber taking a destructive action on files the user
+ * upgrade would be Kabmo taking a destructive action on files the user
  * may be using.
  */
 

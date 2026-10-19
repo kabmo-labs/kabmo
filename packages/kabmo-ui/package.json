@@ -1,0 +1,40 @@
+{
+  "name": "@kabmo-labs/kabmo-ui",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Preact hooks and components for Kabmo panel plugins.",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./components": "./src/components.tsx"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "preact": "^10.29.8",
+    "@kabmo-labs/kabmo-sdk": "workspace:*"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-ui"
+  },
+  "homepage": "https://github.com/kabmo-labs/kabmo#readme",
+  "bugs": {
+    "url": "https://github.com/kabmo-labs/kabmo/issues"
+  },
+  "keywords": [
+    "kabmo",
+    "panel",
+    "plugin",
+    "preact",
+    "ui"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

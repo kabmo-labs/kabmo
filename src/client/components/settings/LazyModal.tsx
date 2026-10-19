@@ -19,7 +19,7 @@
  *
  * All three call sites already own the open state (each layout runs its own
  * `omp:open-settings` listener), so gating preserves the existing contract. The
- * unmount is safe for settings values too: `mergeChamberSettings` re-reads the
+ * unmount is safe for settings values too: `mergeKabmoSettings` re-reads the
  * in-memory snapshot in `lib/settings/client`, which every write updates, not
  * the stale bootstrap payload.
  *

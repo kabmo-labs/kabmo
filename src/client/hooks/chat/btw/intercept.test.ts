@@ -7,7 +7,7 @@
  * `/btw` interception.
  *
  * The token must be recognized the way omp parses a slash invocation — on the
- * earliest whitespace OR `:` — because a form the chamber does not intercept is
+ * earliest whitespace OR `:` — because a form Kabmo does not intercept is
  * sent to the model as literal text (omp's `/btw` is TUI-only, so nothing
  * downstream understands it).
  */

@@ -23,7 +23,7 @@ export interface AIModelOption {
   /**
    * Favorite / last-used flag. On a picker row these are DERIVED from the
    * stored preference keys (`ModelPreferences`), never read off the registry —
-   * a favorite is a chamber-local preference, not a property of omp's config.
+   * a favorite is a Kabmo-local preference, not a property of omp's config.
    * On the MOCK catalog they are the seed for a fresh install's rails.
    */
   isFavorite?: boolean;
@@ -78,7 +78,7 @@ export interface ThinkingModelMeta {
 /**
  * The user's favorite + last-used models, keyed by the composite `provider:id`
  * identity (`modelKey`). Stored separately from the model registry because the
- * registry is a read-only view of omp's config — a favorite is a chamber-local
+ * registry is a read-only view of omp's config — a favorite is a Kabmo-local
  * preference, and an id-only key would light up every provider serving it.
  */
 export interface ModelPreferences {

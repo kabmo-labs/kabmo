@@ -4,7 +4,7 @@
  */
 
 /**
- * The settings routes backed by the chamber SQLite store: root, projects,
+ * The settings routes backed by Kabmo SQLite store: root, projects,
  * behavior, agents and providers.
  *
  * Each of these modules owns a request contract that is easy to break from the
@@ -24,9 +24,9 @@
  * - `providers` reports a delete without an id as a 400 rather than silently
  *   removing the whole overlay.
  *
- * The DB is a fresh temp file (`OMPCHAMBER_DB_PATH`, `SYNC_WORKSPACE=false`)
+ * The DB is a fresh temp file (`KABMO_DB_PATH`, `SYNC_WORKSPACE=false`)
  * and the agent dir a temp tree, so no case can reach the developer's real
- * `~/.omp` or `~/.ompchamber`. Tests run in real mode unless a case opts into
+ * `~/.omp` or `~/.kabmo`. Tests run in real mode unless a case opts into
  * MOCK for a mock-only branch; the db slot is primed in `beforeAll` so a later
  * MOCK toggle cannot re-resolve the path to the repo's own `workspace.db`.
  */
@@ -56,10 +56,10 @@ beforeAll(async () => {
   removeDir(ROOT);
   fs.mkdirSync(path.join(ROOT, 'agent'), { recursive: true });
   Bun.env.PI_CODING_AGENT_DIR = path.join(ROOT, 'agent');
-  Bun.env.OMPCHAMBER_DB_PATH = path.join(ROOT, 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = path.join(ROOT, 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
   await getDb();
 });
 
@@ -68,10 +68,10 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
   delete Bun.env.PI_CODING_AGENT_DIR;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   delete Bun.env.MOCK;
   removeDir(ROOT);
@@ -236,11 +236,11 @@ describe('settings agents', () => {
   test('native omp agents are read-only for delete and for write', async () => {
     const del = await call(agentsAction, new Request(`${API}/agents?id=omp-reviewer`, { method: 'DELETE' }));
     expect(del.status).toBe(403);
-    expect(await del.json()).toEqual({ error: 'Native omp agents are read-only in chamber' });
+    expect(await del.json()).toEqual({ error: 'Native omp agents are read-only in Kabmo' });
 
     const write = await call(agentsAction, send(`${API}/agents`, 'POST', { agent: { id: 'omp-reviewer', name: 'x' } }));
     expect(write.status).toBe(403);
-    expect(await write.json()).toEqual({ error: 'Native omp agents are read-only in chamber' });
+    expect(await write.json()).toEqual({ error: 'Native omp agents are read-only in Kabmo' });
   });
 
   test('a delete without an id is a 400', async () => {

@@ -192,7 +192,7 @@ export function InstalledList({
               ) : null}
 
               {/* A git-installed plugin's freshness. Rendered for a clone only —
-                  a bundled install is kept current by the chamber's own update,
+                  a bundled install is kept current by Kabmo's own update,
                   so a git row there would describe a remote it does not have. */}
               {plugin.gitOrigin ? (
                 <GitFreshness

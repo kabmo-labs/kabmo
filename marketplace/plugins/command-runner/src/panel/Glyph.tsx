@@ -8,7 +8,7 @@
  *
  * The kit has no icon dependency and neither does this plugin: a `lucide-preact`
  * import would bundle a whole icon set for four shapes. Same convention as the
- * chamber's own `RepoPicker` (and the other bundled plugins' icons) — geometry
+ * Kabmo's own `RepoPicker` (and the other bundled plugins' icons) — geometry
  * inset 2/24 of the box with a 2/24 stroke, so the marks carry the same ink
  * weight as everything beside them.
  *

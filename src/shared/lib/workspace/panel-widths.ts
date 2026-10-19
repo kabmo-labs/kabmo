@@ -277,7 +277,7 @@ export function pairMaxSize(args: {
  *
  * A plugin declares its own `minWidth` / `defaultFraction`, but neither is
  * trusted as the only source: a manifest can omit them or name a value that
- * makes a panel unusable (a 40px floor clips every toolbar), so the chamber's
+ * makes a panel unusable (a 40px floor clips every toolbar), so Kabmo's
  * own slot defaults are the floor under a declared value. A plugin panel is a
  * right-panel view, so it shares that slot's defaults.
  */

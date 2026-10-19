@@ -4,13 +4,13 @@
  */
 
 /**
- * Merge the chamber's own copy of a conversation onto the messages loaded from
+ * Merge Kabmo's own copy of a conversation onto the messages loaded from
  * an omp JSONL file.
  *
  * The JSONL is authoritative for what the model received, but it is not a
- * complete record of the chamber's UI: omp rewrites raw composer input
+ * complete record of Kabmo's UI: omp rewrites raw composer input
  * (`@agent` → a task-tool delegation prompt, `/skill:a b` → `/skill:a`) and
- * writes no user entry at all for `/command` turns. The chamber DB keeps the
+ * writes no user entry at all for `/command` turns. The Kabmo DB keeps the
  * turn as the user typed it, which is what this restores.
  *
  * Attachments are UNIONED rather than picked from one side. The two sources see
@@ -19,12 +19,12 @@
  * - The JSONL recovers a text file's NAME from the delivered prompt (the
  *   composer inlines the file as `Attached file: <name>` plus a fenced block)
  *   and carries an image's bytes, but has no preview and no stored content.
- * - The chamber row has the display fields — a text file's name and content, an
+ * - The Kabmo row has the display fields — a text file's name and content, an
  *   image's name and preview — but nothing about what omp actually received.
  *
  * Choosing one list over the other is what made a dropped `.md`/`.py`/`.json`
  * vanish from a reloaded session: the JSONL had an image, so its list won, and
- * the text file only ever existed in the chamber row.
+ * the text file only ever existed in Kabmo row.
  */
 
 export interface StoredAttachment {
@@ -43,15 +43,15 @@ export interface StoredMessage {
   timestamp?: string;
   /**
    * When omp recorded the entry, in epoch ms — `toChatMessage` stamps every
-   * JSONL-derived row with it, and the chamber's own rows carry the clock they
+   * JSONL-derived row with it, and Kabmo's own rows carry the clock they
    * were created at. It is what positions a raw turn that no JSONL turn relates
-   * to (see `anchorIndexFor`); `date` cannot serve, because a chamber row's is a
+   * to (see `anchorIndexFor`); `date` cannot serve, because a Kabmo row's is a
    * display string ("Today, 03:57 PM") rather than an ISO instant.
    */
   startedAt?: number;
   attachments?: StoredAttachment[];
   /**
-   * A notice row — omp's own reminder/task-result entries, or the chamber's
+   * A notice row — omp's own reminder/task-result entries, or Kabmo's
    * rendering of a builtin command's output. The JSONL cannot round-trip
    * command output at all: a `/context` or `/usage` turn writes no entry to the
    * session file, so the notice exists ONLY in the live frame, and without this
@@ -61,7 +61,7 @@ export interface StoredMessage {
 }
 
 /**
- * The only rows a chamber overlay needs for a session whose transcript omp owns
+ * The only rows a Kabmo overlay needs for a session whose transcript omp owns
  * on disk: the user turns (the raw composer text and the attachment metadata the
  * JSONL cannot record) and the notice rows (builtin command output, which omp
  * writes nowhere).
@@ -175,7 +175,7 @@ function anchorIndexFor(
   return merged.length;
 }
 
-/** Merge user turns and attachments from the chamber DB copy onto the
+/** Merge user turns and attachments from Kabmo DB copy onto the
  *  JSONL-loaded messages. */
 export function mergeOmpAttachments(
   messages: StoredMessage[],
@@ -247,14 +247,14 @@ export function mergeOmpAttachments(
 }
 
 /**
- * Re-attach notice rows the chamber stored but the JSONL cannot carry.
+ * Re-attach notice rows Kabmo stored but the JSONL cannot carry.
  *
  * A builtin slash command writes NOTHING to the session file — omp answers it
  * on the command path and the output lives only in the `command_output` frame —
  * so a `/context` or `/usage` row disappeared on reload, leaving a timeline that
- * had forgotten a command the user just ran. The chamber's own copy keeps them.
+ * had forgotten a command the user just ran. The Kabmo's own copy keeps them.
  *
- * Placement is by the USER TURN that produced them, never by id: the chamber's
+ * Placement is by the USER TURN that produced them, never by id: Kabmo's
  * optimistic user row carries a `msg-…-user` id while the JSONL records omp's
  * own timestamp id, so the two never match. The stored list is walked backwards
  * to the nearest user message, and that message is located in the merged list

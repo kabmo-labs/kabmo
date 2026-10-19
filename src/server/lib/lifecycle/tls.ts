@@ -4,7 +4,7 @@
  */
 
 /**
- * TLS for the chamber's own listener.
+ * TLS for Kabmo's own listener.
  *
  * Without it, a UI password is close to decorative on a network: the login POST
  * carries the password in cleartext, and every later request carries the session
@@ -37,7 +37,7 @@ import { getDataDir } from '@/server/lib/lifecycle/paths';
  *
  * argv rather than env, for the reason `lifecycle/launch-mode.ts` records for its
  * own flag: env is inherited by every descendant, so a `bun run dev` started
- * inside the chamber's terminal would silently inherit the choice.
+ * inside Kabmo's terminal would silently inherit the choice.
  */
 export const TLS_FLAG = '--tls';
 

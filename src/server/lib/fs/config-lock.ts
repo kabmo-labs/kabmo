@@ -15,7 +15,7 @@
  *
  * This is deliberately NOT omp's own lock: omp takes an OS-level `flock(2)` on
  * `${path}.lock` (Linux uses abstract Unix sockets, Windows named mutexes), so
- * the two mechanisms do not interop. The window this leaves — a chamber write
+ * the two mechanisms do not interop. The window this leaves — a Kabmo write
  * landing between omp's read and its rename — is bounded by keeping every
  * critical section to a single read-modify-write, and omp re-reads inside its
  * own lock before applying its pending changes.

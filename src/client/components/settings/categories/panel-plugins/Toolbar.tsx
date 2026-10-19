@@ -8,7 +8,7 @@
  *
  * Two controls that belong together because they act on the same question — is a
  * git-installed plugin current — from opposite directions: the check asks now,
- * the switch decides whether the chamber keeps asking on its own.
+ * the switch decides whether Kabmo keeps asking on its own.
  *
  * The checkbox states exactly what it does to the user's files. An automatic
  * update fetches a remote and hard-resets the clone, so a label reading

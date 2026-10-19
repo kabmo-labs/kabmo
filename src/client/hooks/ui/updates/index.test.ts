@@ -4,7 +4,7 @@
  */
 
 /**
- * The console's half of an Kabmo update that restarts its own server.
+ * The console's half of a Kabmo update that restarts its own server.
  *
  * The route arms a detached restart and answers first, so the page is still
  * served by the process whose build was just replaced. Reloading on the result
@@ -47,10 +47,10 @@ function sseResponse(frames: string[]): Response {
   return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
 }
 
-/** A check payload with an Kabmo update available. */
+/** A check payload with a Kabmo update available. */
 function checkPayload(): Record<string, unknown> {
   return {
-    ompchamber: { current: '1.0.0', latest: '2.0.0', updateAvailable: true, installed: true, error: null },
+    kabmo: { current: '1.0.0', latest: '2.0.0', updateAvailable: true, installed: true, error: null },
     omp: { current: null, latest: null, updateAvailable: false, installed: false, error: null },
     checkedAt: '2026-10-15T00:00:00.000Z',
   };
@@ -136,10 +136,10 @@ describe('an update that restarts its own server', () => {
       (url) => {
         if (url.includes('/api/updates/check')) return Response.json(checkPayload());
         return sseResponse([
-          sseFrame('stage', 'Installing ompchamber@2.0.0'),
+          sseFrame('stage', 'Installing kabmo@2.0.0'),
           sseFrame('result', {
             success: true,
-            target: 'ompchamber',
+            target: 'kabmo',
             manual: false,
             message: 'Kabmo updated to v2.0.0 (bun-global). Restarting on port 4242 to apply it — this page reloads on its own.',
             restarting: true,
@@ -159,7 +159,7 @@ describe('an update that restarts its own server', () => {
 
     let result: unknown = null;
     await act(async () => {
-      result = await harness.updates.apply('ompchamber');
+      result = await harness.updates.apply('kabmo');
     });
 
     expect(harness.reloads).toBe(1);
@@ -175,7 +175,7 @@ describe('an update that restarts its own server', () => {
       (url) => {
         if (url.includes('/api/updates/check')) return Response.json(checkPayload());
         return sseResponse([
-          sseFrame('result', { success: true, target: 'ompchamber', manual: false, message: 'Kabmo updated to v2.0.0 (bun-global).', restarting: true }),
+          sseFrame('result', { success: true, target: 'kabmo', manual: false, message: 'Kabmo updated to v2.0.0 (bun-global).', restarting: true }),
         ]);
       },
       // The same process keeps answering: the port never went down.
@@ -187,7 +187,7 @@ describe('an update that restarts its own server', () => {
 
     let result: unknown = null;
     await act(async () => {
-      result = await harness.updates.apply('ompchamber');
+      result = await harness.updates.apply('kabmo');
     });
 
     expect(harness.reloads).toBe(0);

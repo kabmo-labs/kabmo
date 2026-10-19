@@ -30,7 +30,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import { disposeAllPluginsOnShutdown, loadedPluginIds } from '@/server/lib/plugins/loader.server';
-import type { ChamberPluginApi } from '@kabmo-labs/plugin-sdk';
+import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
 /** The registry `disposePlugin` reads, process-wide and anchored on globalThis. */
 function seed(pluginId: string, disposers: Array<() => void | Promise<void>>): void {
@@ -39,17 +39,17 @@ function seed(pluginId: string, disposers: Array<() => void | Promise<void>>): v
     // A record is only ever read for its disposers by the disposal path, and a
     // real api would need a database. The cast keeps the fixture honest about
     // what is exercised.
-    api: { pluginId } as unknown as ChamberPluginApi,
+    api: { pluginId } as unknown as KabmoPluginApi,
     background: { services: [], schedules: [] },
     disposers,
   };
-  const host = globalThis as unknown as { __ompChamberLoadedPlugins?: Map<string, typeof record> };
-  const map = (host.__ompChamberLoadedPlugins ??= new Map());
+  const host = globalThis as unknown as { __kabmoLoadedPlugins?: Map<string, typeof record> };
+  const map = (host.__kabmoLoadedPlugins ??= new Map());
   map.set(pluginId, record);
 }
 
 afterEach(() => {
-  globalThis.__ompChamberLoadedPlugins = undefined;
+  globalThis.__kabmoLoadedPlugins = undefined;
 });
 
 describe('disposeAllPluginsOnShutdown', () => {

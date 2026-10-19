@@ -2,15 +2,15 @@ import type { ThemeId } from '@/shared/lib/theme/catalog';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
-  // OMPCHAMBER
+  // KABMO
   | 'appearance'
   | 'chats'
   | 'notifications'
   | 'usage'
   | 'token-usage'
-  /** Panel plugins — the chamber's own extension surface (marketplaces of
+  /** Panel plugins — Kabmo's own extension surface (marketplaces of
    *  sandboxed panel views). Deliberately NOT under LIBRARY, which holds omp's
-   *  plugins: these are chamber surfaces omp has no concept of. */
+   *  plugins: these are Kabmo surfaces omp has no concept of. */
   | 'panel-plugins'
   // WORKSPACE
   | 'projects'
@@ -31,7 +31,7 @@ export interface SettingsCategoryItem {
   label: string;
   iconName: string;
   badge?: string;
-  section: 'OMPCHAMBER' | 'WORKSPACE' | 'OMP' | 'LIBRARY';
+  section: 'KABMO' | 'WORKSPACE' | 'OMP' | 'LIBRARY';
   description?: string;
 }
 
@@ -50,14 +50,14 @@ export interface SettingsState {
   editorFont: string;
   /** Generate a session title from the first run. omp suppresses its
    *  own auto-titling under `--mode rpc-ui` (PI_NO_TITLE), so without this a
-   *  chamber session keeps its `New Session - <timestamp>` placeholder. Asked
+   *  Kabmo session keeps its `New Session - <timestamp>` placeholder. Asked
    *  once when the first user message settles, retried once at that run's end;
    *  a later run never re-titles it — and a user-set name is never overwritten. */
   autoSessionTitle: boolean;
   soundAlerts: boolean;
   chatCompletionSound: boolean;
   /**
-   * Whether the chamber's goal loop runs at all: an independent auditor decides
+   * Whether Kabmo's goal loop runs at all: an independent auditor decides
    * after every finished turn whether the goal continues. Off means a goal
    * still exists (the strip, pause/resume and the objective all work) but
    * nothing advances it on its own.

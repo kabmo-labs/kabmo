@@ -18,7 +18,7 @@
  * server, so the tray and the console it fronts end together. A tray that
  * outlived its server would be an icon for a port nobody serves.
  *
- * Deliberately NOT a CLI subcommand. `ompchamber tray run` spawned the host
+ * Deliberately NOT a CLI subcommand. `kabmo tray run` spawned the host
  * detached and kept a pid file to find it again, which meant a `status`/`stop`
  * surface, a record to keep in sync, and a login entry that had to run the host
  * directly (launchd reaps a job's process tree). As a child of the server the
@@ -52,9 +52,9 @@ interface TrayRuntime {
  * and no handle to the first.
  */
 function slot(): { current: TrayRuntime | null } {
-  const holder = globalThis as unknown as { __ompChamberTray?: { current: TrayRuntime | null } };
-  holder.__ompChamberTray ??= { current: null };
-  return holder.__ompChamberTray;
+  const holder = globalThis as unknown as { __kabmoTray?: { current: TrayRuntime | null } };
+  holder.__kabmoTray ??= { current: null };
+  return holder.__kabmoTray;
 }
 
 /** Whether a tray host is running for this process. */

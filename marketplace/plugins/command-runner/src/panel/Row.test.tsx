@@ -260,7 +260,7 @@ describe('CommandRow', () => {
     expect(text).toContain('CHAMBER-SPEAKS-LOUD');
     expect(text).toContain('exit 0');
     // A program's stdout is a code block, not prose: the `<pre>` carries the
-    // chamber's code-block shell, and it WRAPS rather than scrolling sideways.
+    // Kabmo's code-block shell, and it WRAPS rather than scrolling sideways.
     const pre = container.querySelector('pre')!;
     expect(pre.className).toContain('font-mono');
     expect(pre.className).toContain('whitespace-pre-wrap');

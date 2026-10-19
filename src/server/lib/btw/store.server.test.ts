@@ -7,7 +7,7 @@
  * The BTW store is the durable half of a side question: the panel re-reads it
  * on every reload, so a row it decodes wrongly is shown wrongly forever, and a
  * row it never writes is a lost answer. These tests drive the real module
- * against a throwaway SQLite file (never the chamber's own database) and pin
+ * against a throwaway SQLite file (never Kabmo's own database) and pin
  * the parts a caller depends on:
  *
  *  - turn indices are dense and monotonic per topic, because the panel indexes
@@ -47,18 +47,18 @@ import { removeDir } from '@/test-support/remove-dir';
 const dirs: string[] = [];
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   dirs.push(dir);
   return dir;
 }
 
 /** Point the db singleton at a fresh temp file, so no store call can reach the
- *  real chamber database. */
+ *  real Kabmo database. */
 function useTempDb(): void {
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
 }
 
 function message(text: string): ChatMessageData {
@@ -66,9 +66,9 @@ function message(text: string): ChatMessageData {
 }
 
 afterEach(() => {
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   for (const dir of dirs.splice(0)) removeDir(dir);
 });
@@ -282,10 +282,10 @@ describe('bootstrap on a pre-existing database', () => {
     `);
     legacy.raw.close();
 
-    Bun.env.OMPCHAMBER_DB_PATH = dbPath;
+    Bun.env.KABMO_DB_PATH = dbPath;
     Bun.env.SYNC_WORKSPACE = 'false';
     delete Bun.env.MOCK;
-    globalThis.__ompChamberDb = undefined;
+    globalThis.__kabmoDb = undefined;
 
     // The first read bootstraps the schema over the legacy file.
     const topic = await getBtwTopic('t1');

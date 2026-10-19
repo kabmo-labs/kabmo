@@ -91,15 +91,15 @@ describe('terminalEnv', () => {
     expect(env.PATH).toBe('/usr/bin');
   });
 
-  test('drops the chamber IPC descriptor', () => {
+  test('drops Kabmo IPC descriptor', () => {
     // An inherited NODE_CHANNEL_FD makes Node CLIs print IPC parse errors.
     const env = terminalEnv({ NODE_CHANNEL_FD: '3' }, 'dark');
     expect('NODE_CHANNEL_FD' in env).toBe(false);
     expect(env.COLORFGBG).toBe('15;0');
   });
 
-  test('the chamber host env does not reach the shell', () => {
-    // Measured before this: a PTY under a chamber serving 3001 reported
+  test('Kabmo host env does not reach the shell', () => {
+    // Measured before this: a PTY under a Kabmo serving 3001 reported
     // `PORT=3001 NODE_ENV=production`, so `bun run dev` typed into the terminal
     // panel failed with "Port 3001 is already served by Kabmo" while the
     // same command in a plain terminal ran on 3000.

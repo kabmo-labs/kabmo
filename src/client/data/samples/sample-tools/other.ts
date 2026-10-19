@@ -69,7 +69,7 @@ export const otherTools: ToolCallData[] = [
     title: 'read_file — package.json',
     target: 'package.json',
     output: `{
-  "name": "ompchamber",
+  "name": "kabmo",
   "private": true,
   "type": "module",
   "scripts": {

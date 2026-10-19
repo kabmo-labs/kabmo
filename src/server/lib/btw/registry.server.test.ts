@@ -41,16 +41,16 @@ import { removeDir } from '@/test-support/remove-dir';
 const dirs: string[] = [];
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   dirs.push(dir);
   return dir;
 }
 
 function useTempDb(): void {
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
 }
 
 function context(topicId: string, sessionId = 's1') {
@@ -58,10 +58,10 @@ function context(topicId: string, sessionId = 's1') {
 }
 
 afterEach(() => {
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
   globalThis.__ompBtwRegistry = undefined;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   for (const dir of dirs.splice(0)) removeDir(dir);
 });

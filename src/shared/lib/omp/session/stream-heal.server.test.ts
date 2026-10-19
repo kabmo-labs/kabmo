@@ -10,7 +10,7 @@
  * process is gone.
  *
  * The rule is deliberately a pure function of the ROW plus OS liveness, with no
- * caller context. That is what makes several chamber instances agree: they all
+ * caller context. That is what makes several Kabmo instances agree: they all
  * read the same row and ask the same question about the same pid.
  */
 
@@ -22,7 +22,7 @@ const OWNER = 4242;
 const otherInstance = 9999;
 /** OWNER and the other instance are alive; anything else, including 999999, is not. */
 const alive = (pid: number) => pid === OWNER || pid === otherInstance;
-/** Both live owners still run a chamber command line. */
+/** Both live owners still run a Kabmo command line. */
 const ours = () => 'matched' as const;
 
 describe('isStaleStreamRow', () => {

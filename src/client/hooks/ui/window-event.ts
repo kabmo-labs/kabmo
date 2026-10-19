@@ -43,10 +43,13 @@ export function useDocumentEvent<K extends keyof DocumentEventMap>(
 }
 
 /** Subscribe to a custom `omp:*` window event. */
-export function useChamberEvent(
+export function useKabmoEvent(
   name: string,
   handler: (event: Event) => void,
   options?: AddEventListenerOptions | boolean,
 ) {
   useEventListener<Event>(window, name, handler, options);
 }
+
+/** @deprecated Use `useKabmoEvent`. */
+export const useChamberEvent = useKabmoEvent;

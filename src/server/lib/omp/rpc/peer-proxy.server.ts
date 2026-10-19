@@ -4,7 +4,7 @@
  */
 
 /**
- * Peer forwarding: when a session is owned by ANOTHER chamber instance, serve
+ * Peer forwarding: when a session is owned by ANOTHER Kabmo instance, serve
  * the request from that instance instead of starting a second omp writer.
  *
  * ## Why forward instead of redirect
@@ -38,14 +38,14 @@
 import { resolveSessionOwnership } from '@/server/lib/omp/session/ownership.server';
 
 /** Marks a request already relayed once, so a peer never forwards it again. */
-export const PEER_HOP_HEADER = 'x-ompchamber-peer-hop';
+export const PEER_HOP_HEADER = 'x-kabmo-peer-hop';
 
 /** How long a relayed command may take before it is treated as unreachable. */
 const PEER_TIMEOUT_MS = 120_000;
 
 /**
  * Base URL of the instance owning `sessionId`, or null when it is free, owned
- * by this process, or owned by something the chamber cannot place (an `omp` CLI
+ * by this process, or owned by something Kabmo cannot place (an `omp` CLI
  * run has no instance record and therefore no port to relay to).
  *
  * The record's `host` is the bind address (`0.0.0.0` for a default install),

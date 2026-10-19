@@ -10,7 +10,7 @@
  * offered 9 of omp's 15 built-in roles, so `memory`, `image`, `web`, `speech`,
  * `dictation` and `judge` could not be set from the console even though
  * `omp config set`/`modelRoles` accept them. `dictation` is the one with a
- * feature behind it — the chamber's own dictation reads `stt.language` from
+ * feature behind it — Kabmo's own dictation reads `stt.language` from
  * config, and the local STT MODEL comes from that role — so an editor without
  * it left the model choice to omp's default with no way to change it here.
  *

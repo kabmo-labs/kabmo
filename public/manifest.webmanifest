@@ -1,12 +1,12 @@
 {
   "id": "/",
-  "name": "OMPChamber",
-  "short_name": "OMPChamber",
-  "description": "AI Studio developer web view console and diagnostic chamber.",
+  "name": "Kabmo",
+  "short_name": "Kabmo",
+  "description": "Browser console and diagnostic workbench for AI coding agents.",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "background_color": "#141310",
-  "theme_color": "#141310",
+  "background_color": "#0B5D3B",
+  "theme_color": "#0B5D3B",
   "start_url": "/",
   "scope": "/",
   "launch_handler": {

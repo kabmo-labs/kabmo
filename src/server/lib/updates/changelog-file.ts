@@ -97,17 +97,17 @@ interface ChangelogCache {
   at: number;
 }
 
-const cacheSlot = globalThis as typeof globalThis & { __ompChamberChangelogCache?: ChangelogCache };
+const cacheSlot = globalThis as typeof globalThis & { __kabmoChangelogCache?: ChangelogCache };
 
 /** Never throws: an unreadable changelog is an empty list, and the caller words it. */
 export async function fetchChangelogNotes(force = false): Promise<ReleaseNote[]> {
-  const cached = cacheSlot.__ompChamberChangelogCache;
+  const cached = cacheSlot.__kabmoChangelogCache;
   if (!force && cached && Date.now() - cached.at < TTL_MS) return cached.notes;
 
   let notes: ReleaseNote[] = [];
   try {
     const response = await fetch(CHANGELOG_URL, {
-      headers: { 'User-Agent': 'ompchamber' },
+      headers: { 'User-Agent': 'kabmo' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (response.ok) notes = parseChangelogSections(await response.text());
@@ -117,6 +117,6 @@ export async function fetchChangelogNotes(force = false): Promise<ReleaseNote[]>
 
   // An empty read is not cached: a transient failure would otherwise pin "no
   // release notes" for a minute and hide a real update.
-  if (notes.length > 0) cacheSlot.__ompChamberChangelogCache = { notes, at: Date.now() };
+  if (notes.length > 0) cacheSlot.__kabmoChangelogCache = { notes, at: Date.now() };
   return notes;
 }

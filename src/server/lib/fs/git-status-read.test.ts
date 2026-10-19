@@ -24,7 +24,7 @@ import { parsePorcelainZ } from '@/server/lib/fs/git-run';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
 import { removeDir } from '@/test-support/remove-dir';
 
-const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-status-'));
+const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-status-'));
 
 function git(...args: string[]): void {
   const result = Bun.spawnSync({ cmd: ['git', ...args], cwd: repo });

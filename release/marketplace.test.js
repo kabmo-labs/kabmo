@@ -11,8 +11,8 @@
  *    `stats` sticky-header fix and the `session-info` icon fix both landed
  *    with the version untouched.
  * 2. **The two version spellings in a manifest must agree.** `package.json`
- *    carries `version` and `ompchamber.version`; the registry reads the SECOND
- *    (`toManifest` reads `pkg.ompchamber`), and the sync compares it. Bumping
+ *    carries `version` and `kabmo.version`; the registry reads the SECOND
+ *    (`toManifest` reads `pkg.kabmo`), and the sync compares it. Bumping
  *    only the first changes nothing on any machine, and nothing about the file
  *    looks wrong.
  *
@@ -58,7 +58,7 @@ function git(dir, ...args) {
 
 /** A manifest with both version spellings, as a bundled plugin declares them. */
 function manifest(version, extra = '') {
-  return `${JSON.stringify({ name: 'p', version, ompchamber: { id: 'p', version } }, null, 2)}\n${extra}`;
+  return `${JSON.stringify({ name: 'p', version, kabmo: { id: 'p', version } }, null, 2)}\n${extra}`;
 }
 
 /**
@@ -66,7 +66,7 @@ function manifest(version, extra = '') {
  * driven through commits that are exactly what the test wrote.
  */
 function makeRepo() {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-plugin-release-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-plugin-release-'));
   scratch.push(dir);
   git(dir, 'init', '-q', '-b', 'main');
   git(dir, 'config', 'user.email', 'test@example.invalid');
@@ -101,7 +101,7 @@ describe('the catalog matches the tree', () => {
       // The plugin's identity is its manifest; `syncBundledPlugins` and the
       // registry both key on the manifest's own id, so a row that disagrees
       // would bump a directory nothing reads.
-      expect(parsed.ompchamber?.id, `${entry.dir} declares a different id`).toBe(entry.id);
+      expect(parsed.kabmo?.id, `${entry.dir} declares a different id`).toBe(entry.id);
     }
   });
 
@@ -110,12 +110,12 @@ describe('the catalog matches the tree', () => {
       const parsed = JSON.parse(readFileSync(join(repoRoot, entry.dir, 'package.json'), 'utf8'));
 
       // A drift here is the bug the whole mechanism cannot see: the registry
-      // reads `ompchamber.version`, so a `version` bump alone is a no-op that
+      // reads `kabmo.version`, so a `version` bump alone is a no-op that
       // looks like a release.
       expect(
         parsed.version,
-        `${entry.dir} declares version ${parsed.version} but ompchamber.version ${parsed.ompchamber?.version}`,
-      ).toBe(parsed.ompchamber?.version);
+        `${entry.dir} declares version ${parsed.version} but kabmo.version ${parsed.kabmo?.version}`,
+      ).toBe(parsed.kabmo?.version);
     }
   });
 

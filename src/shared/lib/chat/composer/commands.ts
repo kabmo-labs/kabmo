@@ -5,7 +5,7 @@ import { SKILL_NAMESPACE, SKILL_NAMESPACE_TOKEN } from '@/shared/lib/chat/compos
  * Slash-command ranking, ported from oh-my-pi's `pi-tui/autocomplete.ts`
  * (`scoreCommandTextMatch`, `skillBareNameBreakoutTier`, `collapseSkillNamespace`,
  * `buildSlashCommandCompletions`, `buildArgumentCompletions`). Keeping the
- * formulas identical is the point: the chamber's popup must order and match
+ * formulas identical is the point: Kabmo's popup must order and match
  * `/`-tokens exactly like the CLI it drives.
  */
 
@@ -229,7 +229,7 @@ function rankCommands(items: ComposerPickItem[], lowerPrefix: string): ComposerM
     if (hit) ranked.push(hit);
   }
   // Equal scores keep list order — oh-my-pi falls back to usage, which the
-  // chamber does not track, then to stable registry order.
+  // Kabmo does not track, then to stable registry order.
   ranked.sort((a, b) => b.score - a.score);
   return ranked.map((entry) => ({ ...entry.item, match: entry.match }));
 }

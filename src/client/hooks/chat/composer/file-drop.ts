@@ -16,7 +16,7 @@
  *    size-0 stub for it. Only `DataTransferItem.webkitGetAsEntry()` reveals it
  *    as a directory, so those are walked recursively and attached file by file.
  * 3. A file dropped anywhere the app does not cancel lands in the tab as
- *    `file://` navigation, which throws the chamber away. The guard below is
+ *    `file://` navigation, which throws Kabmo away. The guard below is
  *    window-wide for exactly that reason; it only ever cancels file drags, so
  *    text and URL drops keep their native behaviour.
  *
@@ -104,7 +104,7 @@ export function useFileDrop({ onFiles, disabled = false }: UseFileDropOptions): 
   }, [reset]);
 
   // Files dropped anywhere else would navigate the tab to `file://` and discard
-  // the chamber, so the default is cancelled app-wide. This runs after the
+  // Kabmo, so the default is cancelled app-wide. This runs after the
   // composer's own drop handler (the event bubbles up to window), by which point
   // that handler has already read the data store it needed.
   useEffect(() => {

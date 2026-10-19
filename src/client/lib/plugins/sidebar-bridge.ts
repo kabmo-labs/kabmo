@@ -6,7 +6,7 @@
 /**
  * The sidebar, published to the plugin kit.
  *
- * bb calls this "threads"; the chamber calls the same thing SESSIONS. The read
+ * bb calls this "threads"; Kabmo calls the same thing SESSIONS. The read
  * is a PROJECTION of the host's own `sidebar` topic — the same realtime topic
  * the sidebar beside it reads — so a plugin cannot disagree with the list on
  * screen, including a run in flight.
@@ -21,7 +21,7 @@
  * the unsubscribe it was handed, and a module-level Set would come back empty.
  */
 
-import type { SidebarThread, SidebarThreadActions } from '@kabmo-labs/plugin-sdk';
+import type { SidebarThread, SidebarThreadActions } from '@kabmo-labs/kabmo-sdk';
 import { realtimeClient } from '@/shared/lib/realtime/client';
 import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import { pluginContext } from '@/client/lib/plugins/context';
@@ -45,11 +45,11 @@ interface SidebarSlot {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberSidebarBridge: SidebarSlot | undefined;
+  var __kabmoSidebarBridge: SidebarSlot | undefined;
 }
 
 function slot(): SidebarSlot {
-  return (globalThis.__ompChamberSidebarBridge ??= { listeners: new Set(), unsubscribe: null });
+  return (globalThis.__kabmoSidebarBridge ??= { listeners: new Set(), unsubscribe: null });
 }
 
 /**

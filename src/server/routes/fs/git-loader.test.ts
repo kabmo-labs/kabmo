@@ -26,7 +26,7 @@ import { removeDir } from '@/test-support/remove-dir';
 /**
  * Inside the app root, because that is the route's own allow-list: `resolveRoot`
  * honors the app root, a path below it, or a registered workspace, and a
- * fixture in `/tmp` would be silently swapped for the chamber's own tree.
+ * fixture in `/tmp` would be silently swapped for Kabmo's own tree.
  */
 const FIXTURE_ROOT = path.join(process.cwd(), 'tmp-test-git-loader');
 const repos: string[] = [];

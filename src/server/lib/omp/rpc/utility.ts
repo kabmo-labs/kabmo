@@ -27,7 +27,7 @@ import { RELOAD_PLUGINS_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
 // Skills stay ENABLED too. `--no-skills` made `get_available_commands` omit
 // every `skill:<name>` entry (measured: 45 commands without, 52 with), so the
 // composer's `/` popup could not offer the skills omp happily executes — and
-// the chamber's own disk scan missed provider roots omp reads (`~/.agents/skills`).
+// Kabmo's own disk scan missed provider roots omp reads (`~/.agents/skills`).
 // Cost is nil: the ready frame lands at the same ~420ms either way.
 const UTILITY_EXTRA_ARGS = ['--no-session', '--no-lsp'];
 const READY_TIMEOUT_MS = 60_000;

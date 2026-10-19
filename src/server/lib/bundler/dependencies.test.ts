@@ -8,7 +8,7 @@
  *
  * The bundler plugin (`css.ts`) is **runtime server code**, not build tooling:
  * `bunfig.toml` names it in `[serve.static].plugins`, so `Bun.serve` loads it
- * whenever an HTML route is bundled — which is every `ompchamber serve` in
+ * whenever an HTML route is bundled — which is every `kabmo serve` in
  * development and every `bun run start`. It therefore has to be loadable from
  * an install that carries only `dependencies`.
  *
@@ -99,7 +99,7 @@ async function bareImports(file: string): Promise<string[]> {
   try {
     imports = transpiler.scanImports(readFileSync(join(ROOT, file), 'utf8'));
   } catch {
-    // A shebang line (`src/cli/ompchamber.js`) is not parseable as a module;
+    // A shebang line (`src/cli/kabmo.js`) is not parseable as a module;
     // its imports are covered by the files it imports.
     return [];
   }

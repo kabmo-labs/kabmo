@@ -1,0 +1,54 @@
+{
+  "name": "@kabmo-labs/kabmo-sdk",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "The contract between a panel plugin and Kabmo host.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./app": "./src/app.ts",
+    "./testing": "./src/testing/index.ts",
+    "./testing/app": "./src/testing/app.tsx"
+  },
+  "peerDependencies": {
+    "@kabmo-labs/kabmo-ui": "*",
+    "happy-dom": "*",
+    "preact": "^10.29.8"
+  },
+  "peerDependenciesMeta": {
+    "@kabmo-labs/kabmo-ui": {
+      "optional": true
+    },
+    "happy-dom": {
+      "optional": true
+    },
+    "preact": {
+      "optional": true
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kabmo-labs/kabmo.git",
+    "directory": "packages/kabmo-sdk"
+  },
+  "homepage": "https://github.com/kabmo-labs/kabmo#readme",
+  "bugs": {
+    "url": "https://github.com/kabmo-labs/kabmo/issues"
+  },
+  "keywords": [
+    "kabmo",
+    "panel",
+    "plugin",
+    "sdk",
+    "types"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

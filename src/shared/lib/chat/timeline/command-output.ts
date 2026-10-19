@@ -11,7 +11,7 @@
  * Persistence is the point. omp answers a builtin on the command path and
  * writes nothing to the session JSONL — the output exists only in this frame —
  * so a timeline rebuilt from the file had forgotten a `/context` the user just
- * ran. The chamber's own copy keeps it, and `mergeOmpAttachments` splices it
+ * ran. The Kabmo's own copy keeps it, and `mergeOmpAttachments` splices it
  * back under the turn that produced it on the next load.
  *
  * Split out of `omp-callbacks.ts` (which keeps only the wiring) so both files
@@ -58,7 +58,7 @@ export function appendNoticeRow(text: string, deps: NoticeRowDeps): void {
       // The streaming placeholder is deliberately NOT persisted — it is a
       // client-side bubble that `onPromptSettled` removes, and executeSend
       // filters it for the same reason. Writing it here left an empty assistant
-      // row in the chamber's copy of a command-only turn.
+      // row in Kabmo's copy of a command-only turn.
       //
       // Safe inside the updater: `row` is built once, so re-applying the same
       // updater produces the identical array — this is a full-array overwrite,

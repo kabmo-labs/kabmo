@@ -37,7 +37,7 @@ afterEach(() => {
 
 /** A directory holding one `.git` per named child, plus an optional root repo. */
 function makeRoot(names: string[], options: { rootIsRepo?: boolean } = {}): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-repos-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-repos-'));
   roots.push(dir);
   if (options.rootIsRepo) fs.mkdirSync(path.join(dir, '.git'));
   for (const name of names) fs.mkdirSync(path.join(dir, name, '.git'), { recursive: true });

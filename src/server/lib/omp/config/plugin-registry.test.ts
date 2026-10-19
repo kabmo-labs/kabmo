@@ -45,7 +45,7 @@ let prevXdg: string | undefined;
 let prevAgentDir: string | undefined;
 
 beforeAll(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-plugin-registry-'));
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-plugin-registry-'));
   xdg = join(root, 'xdg');
   fs.mkdirSync(join(xdg, 'omp'), { recursive: true });
   prevXdg = Bun.env.XDG_DATA_HOME;

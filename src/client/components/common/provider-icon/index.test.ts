@@ -15,7 +15,7 @@
  *
  * Without it the marks are black on every theme, which is invisible only on a
  * dark canvas and so went unnoticed for the app's whole life: measured on the
- * rendered chamber, a mark over `aura-dark`'s panel (#201E2B) composited to
+ * rendered Kabmo, a mark over `aura-dark`'s panel (#201E2B) composited to
  * `rgb(0,0,0)` — contrast 1.28:1 — while the same mark under this component
  * paints in the palette's ink (contrast 5.88:1).
  *

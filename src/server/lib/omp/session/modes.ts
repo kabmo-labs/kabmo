@@ -4,12 +4,12 @@
  */
 
 /**
- * Reading the chamber's persisted mode selection back off a session.
+ * Reading Kabmo's persisted mode selection back off a session.
  *
  * The extension appends one `custom` entry per mode transition
- * (`chamber-plan-state`, `chamber-goal-state`), so the session's own JSONL is
- * the durable record — and it is the only one that survives a chamber restart,
- * a second chamber instance, and a session the CLI itself has been driving.
+ * (`kabmo-plan-state`, `kabmo-goal-state`), so the session's own JSONL is
+ * the durable record — and it is the only one that survives a Kabmo restart,
+ * a second Kabmo instances, and a session the CLI itself has been driving.
  *
  * Reading it is a full parse of the same records the transcript loader already
  * walks (`loadSessionMessages`), so this module shares the lenient JSONL
@@ -24,6 +24,8 @@ import {
   CHAMBER_GOAL_STATE_ENTRY,
   CHAMBER_PLAN_STATE_ENTRY,
   GOAL_CONTINUATION_STOPS,
+  KABMO_GOAL_STATE_ENTRY,
+  KABMO_PLAN_STATE_ENTRY,
   type GoalContinuation,
   type GoalRecord,
 } from '@/shared/lib/omp/mode/types';
@@ -118,11 +120,13 @@ export function readPersistedModes(body: string): PersistedModes {
     if (!data || typeof data !== 'object') continue;
     const payload = data as Record<string, unknown>;
 
-    if (record.customType === CHAMBER_PLAN_STATE_ENTRY) {
+    // Both spellings: a session written before the rename carries the old
+  // entry types, and refusing them would lose its plan on resume.
+  if (record.customType === KABMO_PLAN_STATE_ENTRY || record.customType === CHAMBER_PLAN_STATE_ENTRY) {
       plan = payload.enabled === true;
       continue;
     }
-    if (record.customType === CHAMBER_GOAL_STATE_ENTRY) {
+    if (record.customType === KABMO_GOAL_STATE_ENTRY || record.customType === CHAMBER_GOAL_STATE_ENTRY) {
       const candidate = payload.goal;
       goalRecord = isGoalRecord(candidate) ? candidate : null;
       goalLive = payload.enabled === true && goalRecord?.status === 'active';

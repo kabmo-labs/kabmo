@@ -275,7 +275,7 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
       }
     },
     // Built-in slash command output: a notice row, persisted — see the module
-    // doc for why the chamber's own copy is the only place it can survive.
+    // doc for why Kabmo's own copy is the only place it can survive.
     onCommandOutput: (text) => {
       appendNoticeRow(text, { setLocalMessages, aiPlaceholderIdRef, persistMessages });
     },
@@ -285,7 +285,7 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
     onProviderRetry: (info) => {
       appendNoticeRow(retryNotice(info), { setLocalMessages, aiPlaceholderIdRef, persistMessages });
     },
-    // omp renamed the session — the auto-title generation the chamber asks for
+    // omp renamed the session — the auto-title generation Kabmo asks for
     // after a settled run, a `/rename`, or an RPC set_session_name. The slot
     // write is in place, so the title is already on disk: refresh the metadata
     // the navbar/context panel read, and signal the sidebar (whose scan cache

@@ -7,7 +7,7 @@
  * Read one session's todo state from its transcript.
  *
  * The list is omp's, and its only durable home is the session JSONL — there is
- * no separate todo file and no chamber-side copy to fall out of date. So the
+ * no separate todo file and no Kabmo-side copy to fall out of date. So the
  * read is: locate the session file, parse it, and take the deepest committed
  * snapshot on the active branch (`latestTodoSnapshot`).
  *
@@ -52,12 +52,12 @@ interface TodoCacheHost {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberTodoCache: TodoCacheHost | undefined;
+  var __kabmoTodoCache: TodoCacheHost | undefined;
 }
 
 function cache(): TodoCacheHost {
-  globalThis.__ompChamberTodoCache ??= { entries: new Map() };
-  return globalThis.__ompChamberTodoCache;
+  globalThis.__kabmoTodoCache ??= { entries: new Map() };
+  return globalThis.__kabmoTodoCache;
 }
 
 const EMPTY_TODO_STATE: SessionTodoState = { snapshot: null, progress: todoProgress([]) };

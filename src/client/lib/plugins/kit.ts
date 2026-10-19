@@ -4,9 +4,9 @@
  */
 
 /**
- * Wiring the UI kit to the chamber's own services.
+ * Wiring the UI kit to Kabmo's own services.
  *
- * `@kabmo-labs/ui` is a published package, so it cannot import the chamber's
+ * `@kabmo-labs/kabmo-ui` is a published package, so it cannot import Kabmo's
  * source. This module is the host half of that seam: it hands the kit the few
  * services a plugin genuinely cannot reach itself, and it is called ONCE at
  * boot, before any plugin component can mount.
@@ -22,7 +22,7 @@
  *   URL.
  */
 
-import { configureUiKit, type PluginRpcOutcome } from '@kabmo-labs/ui';
+import { configureUiKit, type PluginRpcOutcome } from '@kabmo-labs/kabmo-ui';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { pluginContext, subscribePluginContext } from '@/client/lib/plugins/context';
@@ -44,7 +44,7 @@ import {
 import { repoScopeServices } from '@/client/lib/plugins/repo-scope-service';
 
 /**
- * Read a text file inside the active workspace, through the chamber's own fs
+ * Read a text file inside the active workspace, through Kabmo's own fs
  * route.
  *
  * The route takes a root-relative path and enforces the browse scope, so a
@@ -88,7 +88,7 @@ async function callRpc(pluginId: string, method: string, input: unknown): Promis
     if (body && typeof body === 'object' && 'ok' in body) return body;
     // A 404 on the ROUTE (not a method the plugin answered) means no plugin by
     // this id is loaded on the server. That is the exact state a plugin
-    // installed into a running chamber is in until its server half loads, and
+    // installed into a running Kabmo is in until its server half loads, and
     // naming it lets a panel say so instead of reporting "watch answered 404"
     // — which reads as a broken plugin rather than one that is not live yet.
     if (response.status === 404) {
@@ -128,7 +128,7 @@ export function installUiKit(): void {
     getSessionJson: <T,>(sessionId: string | null, key: string) => getSessionValue<T>(sessionId, key),
     setSessionJson: (sessionId, key, value) => setSessionKey(sessionId, key, value),
     subscribeSessionJson: (sessionId, key, listener) => subscribeSessionKey(sessionId, key, listener),
-    // The chamber's markdown renderer, so a plugin does not bundle a second
+    // The Kabmo's markdown renderer, so a plugin does not bundle a second
     // copy of the marked / KaTeX / mermaid / Shiki pipeline.
     markdown: () => MarkdownRenderer,
 

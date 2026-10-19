@@ -6,7 +6,7 @@
 /**
  * Which process holds an open descriptor on a file, found without a subprocess.
  *
- * A `flock` answers "is this lease held" but names no owner, and the chamber
+ * A `flock` answers "is this lease held" but names no owner, and Kabmo
  * needs the owner to relay a request to the instance serving it. `lsof -t`
  * answers exactly this question, but it spawns — and this module exists to ask
  * the same question through the platform's own APIs, which is how the rest of

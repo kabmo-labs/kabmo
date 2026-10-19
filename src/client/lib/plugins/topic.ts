@@ -9,7 +9,7 @@
  * `useRealtime` in the kit cannot import this — the kit is a published package —
  * so the host registers these four functions through `configureUiKit` and the
  * hook calls them. They are thin on purpose: the subscription, the value and
- * the staleness all live on the chamber's existing realtime client, so a plugin
+ * the staleness all live on Kabmo's existing realtime client, so a plugin
  * topic behaves exactly like `sidebar` or `usage`.
  *
  * Staleness comes from the CLIENT's own per-topic flag, not from the socket's

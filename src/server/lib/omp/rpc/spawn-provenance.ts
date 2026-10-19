@@ -11,8 +11,8 @@
  *
  *  - the **approval mode** (`--approval-mode`) has no RPC setter, so a live
  *    wrapper is stale the moment the desired mode differs and must be respawned;
- *  - the **mode selection** (`CHAMBER_MODES`) is read once, at session start, by
- *    the chamber's extension — but a mismatch needs NO respawn, because a mode
+ *  - the **mode selection** (`KABMO_MODES`) is read once, at session start, by
+ *    Kabmo's extension — but a mismatch needs NO respawn, because a mode
  *    command re-applies both flags in-process. It is kept so a COLD start gets
  *    the right environment, and so the prewarm pool can tell an entry that can
  *    serve a request from one that cannot.

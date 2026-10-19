@@ -131,7 +131,7 @@ export function startFakePeer(): FakePeer {
  * The two directories the ownership guard reads, redirected into temp roots.
  *
  * Both MUST be redirected: without them the guard inspects the developer's real
- * `~/.omp` and `~/.ompchamber`, where a live session of the same id — or a real
+ * `~/.omp` and `~/.kabmo`, where a live session of the same id — or a real
  * running instance — would decide the answer instead of the test's fixture.
  */
 export interface PeerRoots {
@@ -141,23 +141,23 @@ export interface PeerRoots {
 }
 
 export function usePeerRoots(): PeerRoots {
-  const stateRoot = join(tmpdir(), `ompchamber-peer-state-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  const dataRoot = join(tmpdir(), `ompchamber-peer-data-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const stateRoot = join(tmpdir(), `kabmo-peer-state-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const dataRoot = join(tmpdir(), `kabmo-peer-data-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   // `sessionOwnersDir` takes the XDG branch only once the app root exists.
   mkdirSync(join(stateRoot, 'omp', 'run', 'session-owners'), { recursive: true });
   mkdirSync(dataRoot, { recursive: true });
 
   const saved = {
     state: Bun.env.XDG_STATE_HOME,
-    data: Bun.env.OMPCHAMBER_DATA_DIR,
+    data: Bun.env.KABMO_DATA_DIR,
     agent: Bun.env.PI_CODING_AGENT_DIR,
-    db: Bun.env.OMPCHAMBER_DB_PATH,
+    db: Bun.env.KABMO_DB_PATH,
   };
   Bun.env.XDG_STATE_HOME = stateRoot;
-  Bun.env.OMPCHAMBER_DATA_DIR = dataRoot;
+  Bun.env.KABMO_DATA_DIR = dataRoot;
   Bun.env.PI_CODING_AGENT_DIR = join(stateRoot, 'agent');
-  Bun.env.OMPCHAMBER_DB_PATH = join(dataRoot, 'db.sqlite');
-  delete globalThis.__ompChamberDb;
+  Bun.env.KABMO_DB_PATH = join(dataRoot, 'db.sqlite');
+  delete globalThis.__kabmoDb;
 
   return {
     stateRoot,
@@ -165,19 +165,19 @@ export function usePeerRoots(): PeerRoots {
     restore: () => {
       if (saved.state === undefined) delete Bun.env.XDG_STATE_HOME;
       else Bun.env.XDG_STATE_HOME = saved.state;
-      if (saved.data === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-      else Bun.env.OMPCHAMBER_DATA_DIR = saved.data;
+      if (saved.data === undefined) delete Bun.env.KABMO_DATA_DIR;
+      else Bun.env.KABMO_DATA_DIR = saved.data;
       if (saved.agent === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
       else Bun.env.PI_CODING_AGENT_DIR = saved.agent;
-      if (saved.db === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-      else Bun.env.OMPCHAMBER_DB_PATH = saved.db;
+      if (saved.db === undefined) delete Bun.env.KABMO_DB_PATH;
+      else Bun.env.KABMO_DB_PATH = saved.db;
     },
   };
 }
 
 /**
  * Hold `sessionId`'s lease from a SEPARATE, REPARENTED process — the shape a
- * real second chamber instance's omp child has.
+ * real second Kabmo instances's omp child has.
  *
  * A lease held by this very process is deliberately NOT a conflict (the local
  * registry already answers for it), and a directly-spawned child is "our own

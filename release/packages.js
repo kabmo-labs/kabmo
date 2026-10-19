@@ -12,8 +12,8 @@
  * `packages.test.js` is what holds them together. Reading the manifest here
  * would make the agreement untestable.
  *
- * **Order is load-bearing.** `@kabmo-labs/ui` declares
- * `"@kabmo-labs/plugin-sdk": "workspace:*"`, which Bun rewrites to an exact
+ * **Order is load-bearing.** `@kabmo-labs/kabmo-ui` declares
+ * `"@kabmo-labs/kabmo-sdk": "workspace:*"`, which Bun rewrites to an exact
  * version at publish time from the version `bun.lock` records for the workspace
  * package — not from the manifest on disk. So a `ui` release pins whatever SDK
  * version the lock says, which is why the version plugin refreshes the lock and
@@ -24,16 +24,16 @@
 export const RELEASE_PACKAGES = [
   {
     /** Directory under `packages/`, which is also the tag's prefix. */
-    dir: 'packages/plugin-sdk',
-    name: '@kabmo-labs/plugin-sdk',
+    dir: 'packages/kabmo-sdk',
+    name: '@kabmo-labs/kabmo-sdk',
   },
   {
-    dir: 'packages/ui',
-    name: '@kabmo-labs/ui',
+    dir: 'packages/kabmo-ui',
+    name: '@kabmo-labs/kabmo-ui',
   },
 ];
 
-/** The tag prefix a package is released under, e.g. `plugin-sdk`. */
+/** The tag prefix a package is released under, e.g. `kabmo-sdk`. */
 export function tagPrefix(entry) {
   return entry.dir.replace(/^packages\//, '');
 }
@@ -56,7 +56,7 @@ export function tagPrefix(entry) {
  * @param {Record<string, string|undefined>} env
  */
 export function assertReleaseEnvironment(env) {
-  if (env.GITHUB_ACTIONS === 'true' || env.OMPCHAMBER_RELEASE_ALLOW_NON_CI === '1') {
+  if (env.GITHUB_ACTIONS === 'true' || env.KABMO_RELEASE_ALLOW_NON_CI === '1') {
     return;
   }
 
@@ -70,7 +70,7 @@ export function assertReleaseEnvironment(env) {
       '',
       'To rehearse, use --dry-run (it skips every prepare step and pushes nothing).',
       'To cut a release from this machine on purpose, set',
-      'OMPCHAMBER_RELEASE_ALLOW_NON_CI=1.',
+      'KABMO_RELEASE_ALLOW_NON_CI=1.',
     ].join('\n'),
   );
 }

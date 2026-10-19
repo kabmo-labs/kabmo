@@ -57,9 +57,9 @@ export function ringText(ring: ByteRing, tail: number): string {
 /**
  * Remove ANSI escape sequences from a log tail.
  *
- * A `<pre>` cannot render them, and the chamber's own proc panel strips them for
+ * A `<pre>` cannot render them, and Kabmo's own proc panel strips them for
  * the same reason. Deliberately a small local copy rather than an import: the
- * plugin's server bundle cannot reach the chamber's source (`@/…` does not
+ * plugin's server bundle cannot reach Kabmo's source (`@/…` does not
  * resolve in it), and the alternative — no stripping — renders `\u001b[0m` as
  * literal text between every word of a coloured build.
  */

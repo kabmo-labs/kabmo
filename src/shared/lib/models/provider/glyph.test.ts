@@ -17,7 +17,7 @@ import { PROVIDER_GLYPHS } from '@/client/components/common/provider-icon/glyphs
 import { providerInitials, resolveProviderGlyph } from '@/shared/lib/models/provider/glyph';
 
 /**
- * Every provider id omp 18.3.0 ships (`KnownProvider`) plus the chamber's own
+ * Every provider id omp 18.3.0 ships (`KnownProvider`) plus Kabmo's own
  * additions. A provider added upstream appears here as one more id, and the
  * coverage test below is what makes its missing mark a loud failure instead of a
  * blank badge in the picker.

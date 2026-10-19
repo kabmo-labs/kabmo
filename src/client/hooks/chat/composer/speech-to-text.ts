@@ -5,7 +5,7 @@
 
 /**
  * Composer dictation: capture the browser's microphone, hand the utterance to
- * the chamber's dictation socket, and insert what omp's local STT returns.
+ * Kabmo's dictation socket, and insert what omp's local STT returns.
  *
  * Audio is captured as raw PCM16LE mono @16 kHz — the rate omp's worker expects
  * — and sent as ONE frame on release, because omp's STT is not incremental (its

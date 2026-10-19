@@ -154,7 +154,7 @@ describe('RunRegistry', () => {
 
   // POSIX-only: the kill targets the process GROUP (`process.kill(-pid)`), which
   // Windows does not have — the plugin's win32 path uses `taskkill /t` and is
-  // covered by the chamber's own `killChildTree` suite.
+  // covered by Kabmo's own `killChildTree` suite.
   const testPosix = process.platform === 'win32' ? test.skip : test;
   testPosix('stop kills the whole process group, not just the shell', async () => {
     const { registry } = makeRegistry();
@@ -254,16 +254,16 @@ describe('RunRegistry', () => {
     expect(log.text.length).toBeLessThanOrEqual(64 * 1024);
   }, 30_000);
 
-  test('the chamber host env is not inherited by the command', async () => {
+  test('Kabmo host env is not inherited by the command', async () => {
     // The reported bug: the Runner panel's `bun run dev` failed with "Port 3001
     // is already served by Kabmo" because this plugin's server half runs
-    // INSIDE the chamber's process, so the `Bun.env` it spawns with is the
-    // CHAMBER's — `PORT` was the port the chamber itself listens on. The same
+    // INSIDE Kabmo's process, so the `Bun.env` it spawns with is the
+    // Kabmo's — `PORT` was the port Kabmo itself listens on. The same
     // command in a plain terminal (where `PORT` is unset) ran on 3000.
     //
     // `HOST` rides along for the same reason and was missed: the CLI sets it
-    // beside PORT (`buildServeInvocation`), so a command inherited the chamber's
-    // bind address. Measured through a live chamber started with
+    // beside PORT (`buildServeInvocation`), so a command inherited Kabmo's
+    // bind address. Measured through a live Kabmo started with
     // `HOST=127.0.0.1`: a run reported `HOST=127.0.0.1` while a plain terminal
     // had it unset.
     const saved = { PORT: Bun.env.PORT, HOST: Bun.env.HOST, NODE_ENV: Bun.env.NODE_ENV };

@@ -11,7 +11,7 @@
  * panel, and the only way to keep it in step is to read omp's registry rather
  * than transcribe it. The JSON sat frozen from the Remix→Elysia migration
  * (2026-09-18) until this script existed: 157 live settings had no row at all,
- * and 12 rows the chamber still offered were rejected by `omp config get` with
+ * and 12 rows Kabmo still offered were rejected by `omp config get` with
  * `Unknown setting:` — an editor whose write was guaranteed to fail.
  *
  * Source of truth: `orderedSettings()` from the installed
@@ -42,7 +42,7 @@ const DEFAULT_OUT = join(REPO, 'src/client/data/settings/omp-schema.json');
 
 /** The package omp installs settings from. Resolved from the repo so a global
  *  install and a workspace install both work; `bun pm ls -g` is not consulted
- *  because the chamber may run against either. */
+ *  because Kabmo may run against either. */
 const PACKAGE = '@oh-my-pi/pi-coding-agent';
 
 function findPackageDir() {
@@ -69,7 +69,7 @@ async function readTabs(tuiDir) {
  *
  * omp's panel metadata is platform-conditional in exactly one EVALUATED place:
  * `modes/settings.ts` appends an `apple` option to `spelling.autocomplete` under
- * `process.platform === "darwin"`. The chamber ships one schema for every client
+ * `process.platform === "darwin"`. The Kabmo ships one schema for every client
  * and CI runs on Linux, so generating against whatever host happened to run the
  * script made the gate fail for a file produced on macOS — measured, the only
  * diff was that one option and everything else was byte-identical.
@@ -89,7 +89,7 @@ async function pinGenerationPlatform(pkgDir) {
   Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
 }
 
-/** One schema entry, in the chamber's `SchemaEntry` shape. */
+/** One schema entry, in Kabmo's `SchemaEntry` shape. */
 function toEntry(definition) {
   const entry = { type: definition.type };
   if (definition.default !== undefined) entry.default = definition.default;
@@ -114,7 +114,7 @@ async function build() {
 
   for (const { definition } of settings) {
     const ui = definition?.ui;
-    // A setting with no `ui` has no row in omp's own panel either — the chamber
+    // A setting with no `ui` has no row in omp's own panel either — Kabmo
     // renders the panel surface, so it is deliberately not carried.
     if (!ui?.tab || !ui.label) continue;
     entries[definition.id] = toEntry(definition);

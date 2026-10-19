@@ -55,16 +55,16 @@ beforeAll(async () => {
   responseFile = join(dir, 'response.json');
   stubResult({ stdout: '{"generatedAt":1,"accounts":[]}' });
   stubBin = await executableStub(stubSource(responseFile), 'fake-omp-reset');
-  realBin = Bun.env.OMPCHAMBER_OMP_BIN;
-  Bun.env.OMPCHAMBER_OMP_BIN = stubBin;
+  realBin = Bun.env.KABMO_OMP_BIN;
+  Bun.env.KABMO_OMP_BIN = stubBin;
   invalidateOmpCliCache();
 });
 
 afterAll(() => {
   if (originalMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = originalMock;
-  if (realBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = realBin;
+  if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = realBin;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });

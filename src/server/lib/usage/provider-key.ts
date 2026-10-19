@@ -25,7 +25,7 @@ function toProviderEntry(value: unknown): ProviderEntry | null {
   };
 }
 
-/** The chamber's own provider overlay rows (app DB), unvalidated. */
+/** The Kabmo's own provider overlay rows (app DB), unvalidated. */
 export async function loadProviderEntries(): Promise<ProviderEntry[]> {
   const db = await getDb();
   const row = await db.get<{ value?: string }>(
@@ -87,7 +87,7 @@ export function resolveKenariApiKey(slug: string): Promise<string | null> {
 /**
  * Which of `slugs` are Kenari providers. The agent.db and omp-registry halves
  * carry no endpoint or display name, so the slug's own spelling is the first
- * signal, and the two endpoint-bearing stores (the chamber overlay and
+ * signal, and the two endpoint-bearing stores (Kabmo overlay and
  * models.yml) decide the rest — a provider registered under an unrelated slug
  * but pointed at kenari.id is still Kenari.
  */
@@ -124,7 +124,7 @@ export interface CredentialedProvider {
   sources: string[];
 }
 
-/** Slugs configured in the chamber's own provider overlay (app DB). */
+/** Slugs configured in Kabmo's own provider overlay (app DB). */
 async function appDbSlugs(): Promise<Set<string>> {
   const slugs = new Set<string>();
   for (const entry of await loadProviderEntries()) {
@@ -138,7 +138,7 @@ async function appDbSlugs(): Promise<Set<string>> {
 
 /**
  * Slugs omp itself considers usable. This is the authoritative signal, because
- * omp resolves credentials from places the chamber cannot enumerate — an
+ * omp resolves credentials from places Kabmo cannot enumerate — an
  * `ANTHROPIC_API_KEY`-style environment variable is invisible to a models.yml /
  * agent.db scan, yet omp happily runs on it. Two omp views are unioned:
  *

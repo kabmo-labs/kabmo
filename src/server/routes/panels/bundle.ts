@@ -48,8 +48,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
   const manifestPath = join(dir, 'package.json');
   let app = 'dist/app.js';
   if (await pathExists(manifestPath)) {
-    const pkg = (await Bun.file(manifestPath).json()) as { ompchamber?: { app?: unknown } };
-    if (typeof pkg.ompchamber?.app === 'string') app = pkg.ompchamber.app;
+    const pkg = (await Bun.file(manifestPath).json()) as {
+      kabmo?: { app?: unknown };
+      ompchamber?: { app?: unknown };
+    };
+    const declared = pkg.kabmo?.app ?? pkg.ompchamber?.app;
+    if (typeof declared === 'string') app = declared;
   }
 
   const target = join(dir, app);

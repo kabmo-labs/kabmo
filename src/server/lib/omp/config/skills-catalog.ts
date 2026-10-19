@@ -109,7 +109,7 @@ export async function installCatalogSkill(pkg: string, skillName?: string | null
 /**
  * Uninstall a catalog skill by name. `skills remove` is the counterpart of the
  * `skills add` above and clears the symlink/copy the install created, which is
- * what a catalog "Uninstall" has to undo — deleting the entry from the chamber's
+ * what a catalog "Uninstall" has to undo — deleting the entry from Kabmo's
  * own store would leave the skill running in omp.
  */
 export async function uninstallCatalogSkill(name: string): Promise<{ output: string }> {

@@ -9,7 +9,7 @@
  *
  * `describeToolActivity` decides what the docked row says while the agent works,
  * and it has four inputs that fight over the subject: explicit args, the
- * chamber's `command`/`target` backfill fields, the model's own `intent`, and the
+ * Kabmo's `command`/`target` backfill fields, the model's own `intent`, and the
  * `xd://<device>` inner tool. The tests pin that precedence (subject beats
  * intent; args beat input; a device names the action instead of `write`) because
  * getting it wrong shows a confidently wrong sentence, not a missing one.
@@ -49,10 +49,10 @@ describe('describeToolActivity', () => {
   });
 
   test('a proc:// call names the operation, not the read/write transport', () => {
-    // `Reading proc://ompchamber-dev/kill` would describe a service stop as a
+    // `Reading proc://kabmo-dev/kill` would describe a service stop as a
     // file read — the URL is the only thing that names what happened.
-    expect(describeToolActivity({ name: 'write', args: { path: 'proc://ompchamber-dev/kill' } })).toBe(
-      'Stopping ompchamber-dev',
+    expect(describeToolActivity({ name: 'write', args: { path: 'proc://kabmo-dev/kill' } })).toBe(
+      'Stopping kabmo-dev',
     );
     expect(describeToolActivity({ name: 'read', args: { path: 'proc://ompdev' } })).toBe('Reading process ompdev');
     expect(describeToolActivity({ name: 'read', args: { path: 'proc://' } })).toBe('Listing processes');
@@ -122,7 +122,7 @@ describe('describeToolActivity', () => {
 describe('describeToolCall', () => {
   const call = (partial: Partial<ToolCallData>): ToolCallData => ({ id: '1', type: 'read', title: '', ...partial });
 
-  test('resolves a chamber row the same way as a live call', () => {
+  test('resolves a Kabmo row the same way as a live call', () => {
     expect(describeToolCall(call({ name: 'read', input: { path: 'a.ts' } }))).toBe('Reading a.ts');
   });
 

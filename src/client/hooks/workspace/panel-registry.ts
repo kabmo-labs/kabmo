@@ -91,12 +91,12 @@ interface RegistryStore {
 }
 
 function store(): RegistryStore {
-  return (globalThis.__ompChamberPanelRegistry ??= { payload: EMPTY, ready: false });
+  return (globalThis.__kabmoPanelRegistry ??= { payload: EMPTY, ready: false });
 }
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPanelRegistry: RegistryStore | undefined;
+  var __kabmoPanelRegistry: RegistryStore | undefined;
 }
 
 /** Adopt a payload and load the bundles it names. */

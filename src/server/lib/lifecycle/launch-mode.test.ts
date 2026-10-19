@@ -6,27 +6,27 @@ const ENTRY = '/repo/src/server/index.ts';
 
 describe('resolveLaunchMode', () => {
   test('reads the flag the CLI appends to the servers it spawns', () => {
-    expect(resolveLaunchMode(['bun', ENTRY, '--ompchamber-server', launchModeArg('daemon')])).toBe('daemon');
-    expect(resolveLaunchMode(['bun', ENTRY, '--ompchamber-server', launchModeArg('foreground')])).toBe('foreground');
+    expect(resolveLaunchMode(['bun', ENTRY, '--kabmo-server', launchModeArg('daemon')])).toBe('daemon');
+    expect(resolveLaunchMode(['bun', ENTRY, '--kabmo-server', launchModeArg('foreground')])).toBe('foreground');
   });
 
   test('treats a server started without the flag as direct', () => {
     // `bun run dev`, `bun run start`, a manual run, an external supervisor.
-    expect(resolveLaunchMode(['bun', 'run', '--hot', ENTRY, '--ompchamber-server'])).toBe('direct');
-    expect(resolveLaunchMode(['bun', ENTRY, '--ompchamber-server', '--launch-mode=sideways'])).toBe('direct');
+    expect(resolveLaunchMode(['bun', 'run', '--hot', ENTRY, '--kabmo-server'])).toBe('direct');
+    expect(resolveLaunchMode(['bun', ENTRY, '--kabmo-server', '--launch-mode=sideways'])).toBe('direct');
   });
 
   test('ignores an inherited environment marker', () => {
-    // The chamber's terminal panel runs commands with the server's own env, so
+    // The Kabmo's terminal panel runs commands with the server's own env, so
     // a `bun run dev` started there inherits `daemon` — argv is the only
     // trustworthy signal, and this test fails if env is ever read again.
-    const previous = Bun.env.OMPCHAMBER_LAUNCH_MODE;
-    Bun.env.OMPCHAMBER_LAUNCH_MODE = 'daemon';
+    const previous = Bun.env.KABMO_LAUNCH_MODE;
+    Bun.env.KABMO_LAUNCH_MODE = 'daemon';
     try {
-      expect(resolveLaunchMode(['bun', ENTRY, '--ompchamber-server'])).toBe('direct');
+      expect(resolveLaunchMode(['bun', ENTRY, '--kabmo-server'])).toBe('direct');
     } finally {
-      if (previous === undefined) delete Bun.env.OMPCHAMBER_LAUNCH_MODE;
-      else Bun.env.OMPCHAMBER_LAUNCH_MODE = previous;
+      if (previous === undefined) delete Bun.env.KABMO_LAUNCH_MODE;
+      else Bun.env.KABMO_LAUNCH_MODE = previous;
     }
   });
 });

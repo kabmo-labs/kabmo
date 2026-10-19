@@ -9,12 +9,12 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="OMPChamber" />
+    <meta name="apple-mobile-web-app-title" content="Kabmo" />
     <meta
       name="description"
-      content="A light e-ink paper developer dashboard and AI Oh-My-Pi web view chamber for CI/CD deployments."
+      content="A light e-ink paper developer dashboard for AI Oh-My-Pi agent sessions — a browser console for CI/CD deployments."
     />
-    <title>OMPChamber</title>
+    <title>Kabmo</title>
     <!-- Inline and in the head on purpose: this has to be registered BEFORE the
          dev server's HMR client, which it cannot be from the module entry.
          Bun injects its client script into the head, so a listener installed
@@ -29,7 +29,7 @@
          timing warning, not an exception anything threw. Chrome and Firefox
          raise it through `error`, so Bun's client draws its full-screen "Runtime
          Error" overlay (z-index 2147483647) over the whole app for it and counts
-         it (`1 of 667 Errors`). The chamber's own resize-driven auto-scroll no
+         it (`1 of 667 Errors`). The Kabmo's own resize-driven auto-scroll no
          longer provokes it (the timeline defers its pin out of the delivery, see
          `hooks/chat/timeline/scroll.ts`), but observers the app does not own can
          still report it and it is never actionable.

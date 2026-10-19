@@ -53,11 +53,11 @@ interface AutoUpdateRuntime {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPanelAutoUpdate: AutoUpdateRuntime | undefined;
+  var __kabmoPanelAutoUpdate: AutoUpdateRuntime | undefined;
 }
 
 function runtime(): AutoUpdateRuntime {
-  return (globalThis.__ompChamberPanelAutoUpdate ??= { timer: null, running: false });
+  return (globalThis.__kabmoPanelAutoUpdate ??= { timer: null, running: false });
 }
 
 /** What one auto-update pass did, so a caller can report it. */

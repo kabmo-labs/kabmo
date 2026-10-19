@@ -56,7 +56,7 @@ export type ProviderDiscoveryType =
 /**
  * How a provider's models reach `models.yml`.
  *
- * - `fetch` — the chamber lists the endpoint now and writes the ids in.
+ * - `fetch` — Kabmo lists the endpoint now and writes the ids in.
  * - `discovery` — omp lists them live from `discovery.type`; nothing is written.
  * - `override` — keep omp's bundled model list and only override the endpoint
  *   (the documented "override-only provider" shape).
@@ -83,14 +83,19 @@ export interface ProviderItem {
    * endpoint and key and is edited in place. Testing the provider ID instead
    * sent a keyless local server into a login flow it can never complete.
    */
-  credentialSource?: 'omp-auth' | 'models.yml' | 'chamber';
+  /**
+   * Where this provider's credential is stored. `kabmo` is Kabmo's own provider
+   * overlay row; `chamber` is the pre-rename spelling of the same value and is
+   * still accepted from a row written before the rename.
+   */
+  credentialSource?: 'omp-auth' | 'models.yml' | 'kabmo' | 'chamber';
   /**
    * The provider HAS an entry in omp's own `models.yml`.
    *
    * Read from the file by the server rather than inferred on the client, because
    * it gates a destructive action: deleting removes that entry, and only the
    * server knows which slugs the file actually holds. A provider that exists
-   * only in the chamber overlay must not offer the button — there is nothing in
+   * only in Kabmo overlay must not offer the button — there is nothing in
    * models.yml to delete.
    */
   inModelsYml?: boolean;

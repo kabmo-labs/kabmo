@@ -45,7 +45,7 @@ const dirs: string[] = [];
 let realAgentDir: string | undefined;
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   dirs.push(dir);
   return dir;
 }
@@ -82,18 +82,18 @@ afterEach(() => {
   handlers.quota = () => Response.json({});
   handlers.balance = () => toolResponse('Rp 0');
   handlers.usage = () => toolResponse('');
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
 });
 
 /** Point the db singleton at a throwaway file and store one kenari credential. */
 async function seedKenariCredential(apiKey = 'kenari-key'): Promise<void> {
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
   const db = await getDb();
   await db.run('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)', [
     'omp_providers_config',
@@ -155,7 +155,7 @@ describe('buildKenariReport — payload shaping', () => {
     await buildKenariReport('kenari');
     const mcp = calls.find((call) => call.url.includes('/mcp'));
     expect(mcp?.headers.get('authorization')).toBe('Bearer secret-key');
-    expect(mcp?.headers.get('user-agent')).toContain('ompchamber/');
+    expect(mcp?.headers.get('user-agent')).toContain('kabmo/');
     expect(mcp?.headers.get('accept')).toContain('text/event-stream');
   });
 
@@ -240,10 +240,10 @@ describe('buildKenariReport — payload shaping', () => {
 
 describe('buildKenariReport — credential gate', () => {
   test('no kenari credential means no report and no upstream call', async () => {
-    Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+    Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
     Bun.env.SYNC_WORKSPACE = 'false';
     delete Bun.env.MOCK;
-    globalThis.__ompChamberDb = undefined;
+    globalThis.__kabmoDb = undefined;
 
     expect(await buildKenariReport('kenari')).toBeNull();
     expect(calls).toHaveLength(0);

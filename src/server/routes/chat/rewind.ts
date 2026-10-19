@@ -9,7 +9,7 @@ import { userTurnsRelate } from '@/shared/lib/chat/timeline/turns';
 
 /**
  * In-place rewind (undo) for an omp session: truncate the session JSONL back
- * to just before a user turn and clean the chamber's DB overlay copy.
+ * to just before a user turn and clean the Kabmo DB overlay copy.
  *
  * Why file surgery instead of omp's `branch` RPC: branch always forks a new
  * session file (new id → URL/sidebar churn). omp itself rewrites this same
@@ -45,7 +45,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
   if (!entryId) return json({ error: 'entryId is required', code: 'entry_id_required' }, { status: 400 });
   // The row's own clock, sent by the client for a turn the session FILE does
   // not carry: a builtin command (`/usage`, `/compact`) writes no entry, so its
-  // timeline row exists only in the chamber overlay and its id is client-side.
+  // timeline row exists only in Kabmo overlay and its id is client-side.
   const startedAt = body && typeof body === 'object' && 'startedAt' in body && typeof body.startedAt === 'number'
     ? body.startedAt
     : undefined;
@@ -80,7 +80,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
     return json({ error: error instanceof Error ? error.message : 'Failed to rewrite session file' }, { status: 500 });
   }
 
-  // Clean the chamber DB overlay: a stored turn the cut removed would otherwise
+  // Clean the Kabmo DB overlay: a stored turn the cut removed would otherwise
   // be merged straight back onto the truncated file on the next load — which is
   // exactly what made an undone turn reappear after a reload.
   try {

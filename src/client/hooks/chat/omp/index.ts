@@ -18,7 +18,7 @@ import { isRunSwitch } from '@/client/hooks/chat/omp/run-switch';
 const STEER_REQUEST_TIMEOUT_MS = 25_000;
 
 /**
- * Live omp agent bridge for the chamber chat (real mode, MOCK=false). Mirrors
+ * Live omp agent bridge for Kabmo chat (real mode, MOCK=false). Mirrors
  * the omp-web useAgentSession streaming surface: send a prompt over the RPC
  * bridge (POST /api/agent/:sessionId), consume agent events over the configured
  * the realtime channel, and fold them into ChatMessageData — one "current assistant

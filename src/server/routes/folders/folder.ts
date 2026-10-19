@@ -87,7 +87,7 @@ export async function deleteFolder({ request, params }: ActionFunctionArgs) {
 
   // The removed workspace's `.omp` roots leave scope with it, so the discovery
   // watcher set has to shrink — a lingering watcher would keep broadcasting
-  // reloads for a tree the chamber no longer reads.
+  // reloads for a tree Kabmo no longer reads.
   void syncDiscoveryRootsWatch();
   emitRealtimeSignal('sidebar-structure');
 

@@ -35,18 +35,18 @@ import { ensureWikiMirror } from '@/server/lib/wiki/mirror.server';
 
 /** Point the mirror cache at a throwaway data directory. */
 function useWikiDataDir(): void {
-  process.env.OMPCHAMBER_DATA_DIR = fakeGitTempDir('omp-wiki-data-');
+  process.env.KABMO_DATA_DIR = fakeGitTempDir('omp-wiki-data-');
 }
 
 afterEach(() => {
   process.env.PATH = realPath;
-  globalThis.__ompChamberWikiCache = undefined;
-  globalThis.__ompChamberWikiProviders = undefined;
+  globalThis.__kabmoWikiCache = undefined;
+  globalThis.__kabmoWikiProviders = undefined;
   for (const key of FAKE_GIT_ENV_KEYS) delete process.env[key];
 });
 
 afterAll(() => {
-  delete process.env.OMPCHAMBER_DATA_DIR;
+  delete process.env.KABMO_DATA_DIR;
   cleanupFakeGit();
 });
 
@@ -137,7 +137,7 @@ describe('detectWikiProvider', () => {
   });
 
   test('uses a cached verdict for an unknown host instead of probing again', async () => {
-    globalThis.__ompChamberWikiProviders = {
+    globalThis.__kabmoWikiProviders = {
       hosts: new Map([['probe.example.test', { provider: 'gitlab', at: Date.now() }]]),
     };
 
@@ -155,7 +155,7 @@ describe('ensureWikiMirror', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.mirror).toEqual({
-      repoDir: join(process.env.OMPCHAMBER_DATA_DIR as string, 'wiki', 'github.com__o__n'),
+      repoDir: join(process.env.KABMO_DATA_DIR as string, 'wiki', 'github.com__o__n'),
       revision: 'abc123',
       updatedAt: '2026-01-02T03:04:05Z',
     });

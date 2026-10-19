@@ -5,7 +5,7 @@
 
 /**
  * Dictation WebSocket frames: the contract between the composer's mic button
- * and the chamber's dictation route.
+ * and Kabmo's dictation route.
  *
  * One utterance per socket, and the audio travels in a SINGLE frame. The
  * alternative — streaming chunks while the user speaks — buys nothing here:

@@ -11,7 +11,7 @@
  * (the BSDs) falls back to `ps`. No caller knows which one it got.
  *
  * macOS and Linux are the native paths because they are the platforms the
- * chamber actually runs on and where a subprocess-free answer exists; the `ps`
+ * Kabmo actually runs on and where a subprocess-free answer exists; the `ps`
  * fallback stays for the platforms that have no other option.
  */
 

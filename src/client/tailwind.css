@@ -37,6 +37,12 @@
   --color-info-hover: var(--theme-info-hover);
   --color-warning: var(--theme-warning);
   --color-warning-hover: var(--theme-warning-hover);
+  /* The brand mark's own colour, and deliberately NOT a theme token: the logo
+     is the same mark in every palette, so a theme flip must not repaint the
+     letter that carries it. This is the app icon's accent stroke — the orange
+     of the K's upper arm (`public/icon.svg`) — and it is the only chroma
+     outside the error red. */
+  --color-brand: #f26522;
 }
 
 @layer base {

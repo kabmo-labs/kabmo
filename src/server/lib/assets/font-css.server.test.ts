@@ -69,7 +69,7 @@ describe('/fonts.css is assembled from source, not from a build artifact', () =>
 
 describe('the source tree is resolved by the package, not by the dependencies', () => {
   // In a hoisted install the package's own files live under
-  // `node_modules/ompchamber/` while its dependencies sit in the parent
+  // `node_modules/kabmo/` while its dependencies sit in the parent
   // `node_modules/` — so `packageRoot()` (the first root holding
   // `node_modules`) is the PARENT, and looking for `src/` beside the hoisted
   // packages finds nothing. That served an empty sheet and silently dropped

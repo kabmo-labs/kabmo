@@ -48,13 +48,13 @@ function readCatalog(): { name?: string; description?: string; plugins?: Array<{
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-catalog-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-catalog-'));
+  process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
 });

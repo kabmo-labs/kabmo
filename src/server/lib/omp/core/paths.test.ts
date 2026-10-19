@@ -48,7 +48,7 @@ const savedEnv: Record<EnvKey, string | undefined> = {
 
 const tempDirs: string[] = [];
 
-function tempDir(prefix = 'ompchamber-test-'): string {
+function tempDir(prefix = 'kabmo-test-'): string {
   const dir = mkdtempSync(path.join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
@@ -196,7 +196,7 @@ describe('canonicalize / pathExists / projectPathKey', () => {
   });
 
   test('projectPathKey strips trailing separators from a missing path', () => {
-    const missing = path.join(tmpdir(), 'ompchamber-missing-key', 'sub');
+    const missing = path.join(tmpdir(), 'kabmo-missing-key', 'sub');
     expect(projectPathKey(`${missing}///`)).toBe(missing);
     // The root path itself is never reduced to empty; the HOST's root spelling
     // (`/` on POSIX, a drive such as `C:\` on Windows) is what a caller passes.
@@ -224,6 +224,6 @@ describe('getSessionDirNameForCwd', () => {
   });
 
   testPosix('a path outside home and tmp falls back to the legacy absolute encoding', () => {
-    expect(getSessionDirNameForCwd('/opt/ompchamber-proj')).toBe('--opt-ompchamber-proj--');
+    expect(getSessionDirNameForCwd('/opt/kabmo-proj')).toBe('--opt-kabmo-proj--');
   });
 });

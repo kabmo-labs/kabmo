@@ -9,13 +9,13 @@
  * omp owns both modes internally (`PlanModeState` / `GoalModeState`) but exposes
  * neither over RPC: the command union has no plan/goal verb, `mode_change`
  * entries are not restored by `--mode rpc-ui`, and `plan.defaultOnStartup` is
- * read by the interactive TUI alone. The chamber therefore drives both modes
- * through a chamber-owned extension (`extensions/chamber-modes/`, loaded with `-e`) that
+ * read by the interactive TUI alone. The Kabmo therefore drives both modes
+ * through a Kabmo-owned extension (`extensions/kabmo-modes/`, loaded with `-e`) that
  * reaches the live `AgentSession`, and mirrors the result back here.
  *
  * These types are the mirror. `goal_updated` is the one frame omp emits on its
  * own (session event, forwarded by the RPC host), so it is authoritative:
- * whatever the chamber last requested, the record from that frame wins.
+ * whatever Kabmo last requested, the record from that frame wins.
  */
 
 /** Goal status vocabulary, verbatim from omp's `Goal.status`. */
@@ -42,9 +42,9 @@ export interface GoalModeState {
 }
 
 /**
- * One automatic goal turn, as the chamber's goal driver reports it.
+ * One automatic goal turn, as Kabmo's goal driver reports it.
  *
- * The chamber asks its AUDITOR after every turn and then tells the child to
+ * The Kabmo asks its AUDITOR after every turn and then tells the child to
  * open the next one; the child emits this with `CHAMBER_GOAL_CONTINUATION:`
  * right BEFORE it opens that turn — so the run that starts afterwards IS the
  * turn this describes, which is what lets the strip say "turn 3 of 25" without
@@ -65,7 +65,7 @@ export interface GoalContinuation {
  * string from the wire.
  *
  * `budget` and `max-turns` are enforced inside the child; `blocked`,
- * `complete` and `audit-failed` come from the chamber's auditor (the working
+ * `complete` and `audit-failed` come from Kabmo's auditor (the working
  * agent's own report, judged independently).
  */
 export const GOAL_CONTINUATION_STOPS = ['budget', 'max-turns', 'blocked', 'complete', 'audit-failed'] as const;
@@ -96,8 +96,8 @@ export interface PlanProposal {
   planContent: string;
 }
 
-/** Per-session mode flags the chamber persists and re-applies on every spawn. */
-export interface ChamberModeSelection {
+/** Per-session mode flags Kabmo persists and re-applies on every spawn. */
+export interface KabmoModeSelection {
   plan: boolean;
   goal: boolean;
   /** Whether the goal was being PURSUED (as opposed to merely existing). Only
@@ -107,26 +107,71 @@ export interface ChamberModeSelection {
   goalLive?: boolean;
 }
 
-export const EMPTY_MODE_SELECTION: ChamberModeSelection = { plan: false, goal: false };
+export const EMPTY_MODE_SELECTION: KabmoModeSelection = { plan: false, goal: false };
+
+/** @deprecated Use `KabmoModeSelection`. */
+export type ChamberModeSelection = KabmoModeSelection;
+
+/**
+ * The mode protocol's names, re-exported from the ONE table that defines both
+ * spellings (`./constants`). The write side is `kabmo-*`; every reader in this
+ * module also accepts the pre-rename `chamber-*` spelling, so a session written
+ * before the rename keeps its plan and goal state.
+ */
+export {
+  MODE_PROTOCOL,
+  LEGACY_MODE_PROTOCOL,
+  ALL_MODE_MARKERS,
+  isModeMarker,
+  matchesModeName,
+  type ModeProtocolName,
+} from '@/shared/lib/omp/mode/constants';
 
 /** Custom-entry type the extension appends so a reload can recover the last
  *  known goal without re-reading omp's own `mode_change` records (which rpc-ui
- *  never restores). Mirrors the constant in `extensions/chamber-modes/protocol.ts`. */
-export const CHAMBER_GOAL_STATE_ENTRY = 'chamber-goal-state';
+ *  never restores). Mirrors `extensions/kabmo-modes/protocol.ts`. */
+export const KABMO_GOAL_STATE_ENTRY = 'kabmo-goal-state';
 
 /** Custom-entry type carrying the plan-mode flag + plan path. */
-export const CHAMBER_PLAN_STATE_ENTRY = 'chamber-plan-state';
+export const KABMO_PLAN_STATE_ENTRY = 'kabmo-plan-state';
 
 /** Environment variable the spawn path uses to seed both modes. */
-export const CHAMBER_MODES_ENV = 'CHAMBER_MODES';
+export const KABMO_MODES_ENV = 'KABMO_MODES';
 
-/** Chamber-owned slash command the extension registers. */
+/** Kabmo-owned slash command the extension registers. */
+export const KABMO_MODE_COMMAND = 'kabmo-mode';
+
+/**
+ * The pre-rename names, still READ and never written.
+ *
+ * @deprecated A session file, a spawn environment or an extension bundle from
+ * before the rename carries these; dropping them would make every such session
+ * lose its mode state on resume. New code must use the `KABMO_*` names above.
+ */
+export const CHAMBER_GOAL_STATE_ENTRY = 'chamber-goal-state';
+export const CHAMBER_PLAN_STATE_ENTRY = 'chamber-plan-state';
+export const CHAMBER_MODES_ENV = 'CHAMBER_MODES';
 export const CHAMBER_MODE_COMMAND = 'chamber-mode';
 
-/** Notice markers the extension emits and the chamber parses. Each is a prefix
+/** Notice markers the extension emits and Kabmo parses. Each is a prefix
  *  followed by a JSON payload; an unparsed notice still renders as a notice, so
- *  a version skew degrades to a readable line rather than silence. Kept in sync
- *  with `extensions/chamber-state.ts` by `mode-types.test.ts`. */
+ *  a version skew degrades to a readable line rather than silence. */
+export const KABMO_PLAN_STATE_MARKER = 'KABMO_PLAN_STATE:';
+export const KABMO_GOAL_STATE_MARKER = 'KABMO_GOAL_STATE:';
+export const KABMO_MODE_STATE_MARKER = 'KABMO_MODE_STATE:';
+export const KABMO_MODE_ERROR_MARKER = 'KABMO_MODE_ERROR:';
+export const KABMO_PLAN_PROPOSAL_MARKER = 'KABMO_PLAN_PROPOSAL:';
+export const KABMO_PLAN_DECISION_MARKER = 'KABMO_PLAN_DECISION:';
+export const KABMO_PLAN_SAVED_MARKER = 'KABMO_PLAN_SAVED:';
+export const KABMO_GOAL_CONTINUATION_MARKER = 'KABMO_GOAL_CONTINUATION:';
+/** Emitted while the child's loop is deciding whether to open another turn
+ *  (`{evaluating: true}` in, `{evaluating: false}` out). The decision itself is
+ *  a synchronous guard chain with no other frame, so this is what a spinner can
+ *  hang off — the gap it covers is the one place the loop is doing something
+ *  that is not a model turn. */
+export const KABMO_GOAL_EVALUATING_MARKER = 'KABMO_GOAL_EVALUATING:';
+
+/** @deprecated Pre-rename marker prefixes; still parsed, never emitted. */
 export const CHAMBER_PLAN_STATE_MARKER = 'CHAMBER_PLAN_STATE:';
 export const CHAMBER_GOAL_STATE_MARKER = 'CHAMBER_GOAL_STATE:';
 export const CHAMBER_MODE_STATE_MARKER = 'CHAMBER_MODE_STATE:';
@@ -135,16 +180,11 @@ export const CHAMBER_PLAN_PROPOSAL_MARKER = 'CHAMBER_PLAN_PROPOSAL:';
 export const CHAMBER_PLAN_DECISION_MARKER = 'CHAMBER_PLAN_DECISION:';
 export const CHAMBER_PLAN_SAVED_MARKER = 'CHAMBER_PLAN_SAVED:';
 export const CHAMBER_GOAL_CONTINUATION_MARKER = 'CHAMBER_GOAL_CONTINUATION:';
-/** Emitted while the child's loop is deciding whether to open another turn
- *  (`{evaluating: true}` in, `{evaluating: false}` out). The decision itself is
- *  a synchronous guard chain with no other frame, so this is what a spinner can
- *  hang off — the gap it covers is the one place the loop is doing something
- *  that is not a model turn. */
 export const CHAMBER_GOAL_EVALUATING_MARKER = 'CHAMBER_GOAL_EVALUATING:';
 
 /**
- * A `CHAMBER_*_MARKER` notice is re-published on the client signal bus
- * (`chamber-mode`, see `@/client/lib/signals`), scoped by session id. The fold
+ * A `KABMO_*_MARKER` notice is re-published on the client signal bus
+ * (`kabmo-mode`, see `@/client/lib/signals`), scoped by session id. The fold
  * converts a frame into a signal so a feature hook can subscribe without the
  * timeline threading a payload it never reads through its component tree.
  */

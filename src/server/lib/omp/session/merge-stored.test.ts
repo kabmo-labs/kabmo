@@ -4,11 +4,11 @@
  */
 
 /**
- * Merging the chamber's stored turns onto JSONL-loaded ones.
+ * Merging Kabmo's stored turns onto JSONL-loaded ones.
  *
  * The two sources see different halves of an attachment: the JSONL recovers a
  * text file's name from the delivered prompt but has no preview or content,
- * while the chamber row has those display fields but nothing about what omp
+ * while Kabmo row has those display fields but nothing about what omp
  * received. Taking one list over the other dropped whichever entries only
  * existed on the losing side — a dropped `.md` disappeared from a reloaded
  * session as soon as the same turn carried an image.

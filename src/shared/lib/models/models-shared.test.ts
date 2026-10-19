@@ -28,7 +28,7 @@ import { entryCapabilities, extractModels } from '@/shared/lib/models/remote-lis
 const realFetch = Bun.fetch;
 
 // Bun has no `window`; the catalog cache lives on `globalThis` under this key.
-const CATALOG_CACHE_KEY = '__ompChamberModelsDevCatalog';
+const CATALOG_CACHE_KEY = '__kabmoModelsDevCatalog';
 const globalScope = globalThis as unknown as Record<string, unknown>;
 
 let calls: string[] = [];

@@ -11,7 +11,7 @@
  */
 
 import { isMockMode } from '@/server/mock.server';
-import { resolveOmpChamberVersion } from '@/server/lib/updates/install';
+import { resolveKabmoVersion } from '@/server/lib/updates/install';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import { checkOmpUpdate } from '@/server/lib/updates/omp';
 import type { UpdateCheckResult, UpdateTargetInfo } from '@/shared/types/updates';
@@ -22,7 +22,7 @@ export const MOCK_LATEST_VERSION = '3.8.0';
 
 function mockTargets(): UpdateCheckResult {
   return {
-    ompchamber: {
+    kabmo: {
       current: MOCK_CURRENT_VERSION,
       latest: MOCK_LATEST_VERSION,
       updateAvailable: true,
@@ -36,11 +36,11 @@ function mockTargets(): UpdateCheckResult {
   };
 }
 
-async function checkOmpChamber(): Promise<UpdateTargetInfo> {
+async function checkKabmo(): Promise<UpdateTargetInfo> {
   try {
     // Reads the version on disk, so a completed update stops showing as
     // available even before the server is restarted.
-    const info = await resolveOmpChamberVersion();
+    const info = await resolveKabmoVersion();
     return {
       current: info.current,
       latest: info.latest,
@@ -66,6 +66,6 @@ async function checkOmpChamber(): Promise<UpdateTargetInfo> {
 export async function checkAllUpdates(): Promise<UpdateCheckResult> {
   if (isMockMode()) return mockTargets();
 
-  const [ompchamber, omp] = await Promise.all([checkOmpChamber(), checkOmpUpdate()]);
-  return { ompchamber, omp, checkedAt: new Date().toISOString() };
+  const [kabmo, omp] = await Promise.all([checkKabmo(), checkOmpUpdate()]);
+  return { kabmo, omp, checkedAt: new Date().toISOString() };
 }

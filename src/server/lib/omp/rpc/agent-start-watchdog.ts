@@ -19,7 +19,7 @@
  *     `healStaleStreamStatuses` cannot reach it either — the sidebar spinner
  *     turns until the process restarts.
  *
- * Measured shape: the chamber's own `/chamber-mode` extension (the composer's
+ * Measured shape: Kabmo's own `/kabmo-mode` extension (the composer's
  * Plan/Goal toggles) acks a bare `{success:true}`, which reads as a run.
  *
  * The deadline is the only thing that can tell this apart from a slow start,

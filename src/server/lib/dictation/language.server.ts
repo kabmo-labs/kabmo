@@ -7,11 +7,11 @@
  * The source language the dictation route sends to omp's STT worker.
  *
  * omp declares `stt.language` (default `"en"`) and its own dictation reads it
- * through `cfgSttLanguage`; the chamber drives the SAME worker but previously
+ * through `cfgSttLanguage`; Kabmo drives the SAME worker but previously
  * passed no language at all, so every decode auto-detected. Measured at
  * 18.11.0: the worker only applies `language` for a non-`englishOnly` model
  * (Whisper tiers, and the Parakeet/Nemotron checkpoints ignore it), so the hint
- * matters exactly for the multilingual tiers the chamber defaults to.
+ * matters exactly for the multilingual tiers Kabmo defaults to.
  *
  * Read from the live config rather than mirrored, so a value the user edits in
  * Settings — or writes with `omp config set` — is what the next utterance uses.
@@ -34,7 +34,7 @@ const LANGUAGE_TAG_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
  * module in place, and a plain binding would drop a cache whose entries are
  * still valid.
  */
-const cacheKey = '__ompChamberDictationLanguage';
+const cacheKey = '__kabmoDictationLanguage';
 type LanguageCache = { at: number; value: string } | null;
 interface CacheHost { [cacheKey]?: LanguageCache }
 
@@ -59,7 +59,7 @@ export function onOmpConfigWritten(key: string): void {
  *
  * An unusable or unset value yields `undefined` rather than a guess: the worker
  * treats an absent `language` as "auto-detect", which is the honest behaviour
- * for a config the chamber cannot read, and it is strictly better than pinning
+ * for a config Kabmo cannot read, and it is strictly better than pinning
  * every decode to English because a read failed.
  */
 export async function resolveDictationLanguage(): Promise<string | undefined> {

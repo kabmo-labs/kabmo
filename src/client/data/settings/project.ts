@@ -27,7 +27,7 @@ export const DEFAULT_PROJECTS_LIST: ProjectConfigItem[] = [
   { id: 'proj-opencode-cmd-provider-2', name: 'opencode-cmd-provider', path: '/Users/rajebdev/JatisMobile/opencode-cmd-provider', model: 'Not selected', accentColor: '#94a3b8', icon: 'default' },
   { id: 'proj-bofis-pro', name: 'bofis-pro', path: '/Users/rajebdev/JatisMobile/bofis-pro', model: 'Not selected', accentColor: '#fbbf24', icon: 'default' },
   { id: 'proj-ompweb', name: 'ompweb', path: '/Users/rajebdev/JatisMobile/ompweb', model: 'Not selected', accentColor: '#f43f5e', icon: 'default' },
-  { id: 'proj-ompchamber', name: 'ompchamber', path: '/Users/rajebdev/JatisMobile/ompchamber', model: 'Not selected', accentColor: '#38bdf8', icon: 'default' },
+  { id: 'proj-kabmo', name: 'kabmo', path: '/Users/rajebdev/JatisMobile/kabmo', model: 'Not selected', accentColor: '#38bdf8', icon: 'default' },
 ];
 
 export const ACCENT_COLOR_OPTIONS: AccentColorOption[] = [

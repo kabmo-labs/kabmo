@@ -55,7 +55,7 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
       // `isRunning()`, NOT `streaming`: `streaming` only flips at `agent_start`,
       // so a dispatch that arrives DURING the ack round trip of an earlier one
       // saw `streaming === false` and claimed the turn slot for itself. The
-      // chamber's own `/chamber-mode` commands are dispatched on that path (the
+      // own `/kabmo-mode` commands are dispatched on that path (the
       // plan-review `republish`, a mode toggle) and answer `agentInvoked:false`,
       // so the claim made them release the RUNNING turn's `stream` row and emit
       // a `prompt_result` — which the client folds as "the run settled",
@@ -110,7 +110,7 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
           host.awaitingAgentStartDeadline = Date.now() + AWAITING_AGENT_START_TIMEOUT_MS;
           // Nothing else watches this deadline. Without the watchdog a dispatch
           // whose turn never opens (omp accepted the prompt and emitted no
-          // `agent_start` — measured with the chamber's own `/chamber-mode`,
+          // `agent_start` — measured with Kabmo's own `/kabmo-mode`,
           // whose bare `{success:true}` ack reads as a run) leaves
           // `promptRunning` true forever AND the `stream` row owned by a LIVE
           // process, which the sidebar heal cannot reach. See the method.

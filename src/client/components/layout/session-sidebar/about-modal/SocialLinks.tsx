@@ -16,7 +16,7 @@ export function SocialLinks() {
         </a>
 
         <a
-          href="https://www.instagram.com/ompchamber/"
+          href="https://www.instagram.com/kabmo-labs/"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 text-xs font-medium text-ink/75 hover:text-ink transition-colors"
@@ -28,7 +28,7 @@ export function SocialLinks() {
         </a>
 
         <a
-          href="https://www.threads.com/@ompchamber"
+          href="https://www.threads.com/@kabmo-labs"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 text-xs font-medium text-ink/75 hover:text-ink transition-colors"
@@ -42,7 +42,7 @@ export function SocialLinks() {
 
       <div className="flex items-center justify-center gap-6">
         <a
-          href="https://github.com/rajebdev/ompchamber"
+          href="https://github.com/kabmo-labs/kabmo"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 text-xs font-medium text-ink/75 hover:text-ink transition-colors"

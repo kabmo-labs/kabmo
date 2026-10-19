@@ -13,7 +13,7 @@
  * child, and the copy itself becomes the topic's durable history — a follow-up
  * after the child was reclaimed resumes it and still sees every earlier turn.
  *
- * Promotion turns the copy into a session of the chamber's own: the file is
+ * Promotion turns the copy into a session of Kabmo's own: the file is
  * rewritten with a fresh session id and a title taken from the question, then
  * placed beside the parent session — the same end state omp's `/btw` reaches
  * with its branch action, where the side answer becomes the tip of a new
@@ -38,7 +38,7 @@ import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { serializeTitleSlot } from '@/server/lib/omp/session/title-slot';
 import { isRecord } from '@/shared/lib/util/guards';
 
-/** Root holding every topic workspace, beside the chamber database. */
+/** Root holding every topic workspace, beside Kabmo database. */
 export async function getBtwRoot(): Promise<string> {
   const root = path.join(path.dirname(await getDatabasePath()), 'btw');
   await fs.promises.mkdir(root, { recursive: true });
@@ -157,7 +157,7 @@ function unwrapBtwPrompts(record: Record<string, unknown>): Record<string, unkno
 
 /**
  * Promote a topic: write its transcript next to the parent session under a
- * fresh session id, so the chamber (and omp) treat it as a branch of the
+ * fresh session id, so Kabmo (and omp) treat it as a branch of the
  * parent conversation whose tip is the side answer. Returns the new id.
  */
 export async function promoteBtwTopic(input: {

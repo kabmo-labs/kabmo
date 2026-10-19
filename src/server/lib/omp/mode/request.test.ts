@@ -41,14 +41,14 @@ describe('modeCommandPrompt', () => {
       payload: { objective: 'line one\nline two' },
     });
     expect(prompt.includes('\n')).toBe(false);
-    expect(prompt.startsWith('/chamber-mode goal create ')).toBe(true);
+    expect(prompt.startsWith('/kabmo-mode goal create ')).toBe(true);
     // Round-trips: the extension parses the same JSON back out.
-    const json = prompt.slice('/chamber-mode goal create '.length);
+    const json = prompt.slice('/kabmo-mode goal create '.length);
     expect(JSON.parse(json).objective).toBe('line one\nline two');
   });
 
   test('omits an empty payload', () => {
-    expect(modeCommandPrompt({ scope: 'plan', action: 'off' })).toBe('/chamber-mode plan off');
+    expect(modeCommandPrompt({ scope: 'plan', action: 'off' })).toBe('/kabmo-mode plan off');
   });
 });
 

@@ -1,5 +1,5 @@
 /**
- * Client-side trigger for the server's prewarm pool: asking the chamber server
+ * Client-side trigger for the server's prewarm pool: asking Kabmo server
  * to start an idle `omp --mode rpc-ui` process for a project cwd before the
  * first prompt is sent. Fired when the user opens a new (pending) session —
  * the seconds between the click and the first send then hide the omp boot.

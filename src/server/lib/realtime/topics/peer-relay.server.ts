@@ -5,7 +5,7 @@
 
 /**
  * Peer bridging for a session topic: relaying a session's frames from the
- * chamber instance that OWNS it into this instance's hub.
+ * Kabmo instances that OWNS it into this instance's hub.
  *
  * Both instances share a database and an agent dir, so the owner's stream IS
  * this session's stream, and the client stays on whichever instance it opened

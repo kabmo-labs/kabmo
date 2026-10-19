@@ -20,14 +20,14 @@
  * same exemption the Todos tab takes, and for the same reason.
  *
  * The list is omp's own files (`<slug>-plan.md` under the session's `local/`),
- * read by `@/server/lib/omp/session/plans`. There is no chamber-side copy: a
+ * read by `@/server/lib/omp/session/plans`. There is no Kabmo-side copy: a
  * second one would drift from the file the agent is working from.
  */
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AlertCircle, FileText, Loader2, RefreshCw } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { useSessionState } from '@kabmo-labs/ui';
+import { useSessionState } from '@kabmo-labs/kabmo-ui';
 import { PlanNav } from '@/client/components/workspace/plan-panel/Nav';
 import { PlanPageView } from '@/client/components/workspace/plan-panel/PageView';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';

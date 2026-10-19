@@ -21,7 +21,7 @@
  *
  * Everything else is the minimum a spawn needs: `ready`, then a
  * `{type:'response'}` per command, with the attach-time configuration commands
- * acknowledged because the chamber treats an error as best-effort.
+ * acknowledged because Kabmo treats an error as best-effort.
  */
 
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';

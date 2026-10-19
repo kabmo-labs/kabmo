@@ -10,7 +10,7 @@
  * probe chooses its backend — no caller knows which one it got.
  *
  * The script is COPIED into the data directory before it runs. A login entry
- * outlives the install that wrote it (an `ompchamber update` replaces the
+ * outlives the install that wrote it (an `kabmo update` replaces the
  * package tree, a checkout moves), so the path baked into a LaunchAgent, a
  * `.desktop` file or a Run key has to be one only the data directory owns.
  * `source` is inside the package and `target` inside the data directory, joined
@@ -99,7 +99,7 @@ export function resolveHostScript(platform: NodeJS.Platform = process.platform):
  * Copy this build's host script into the data directory, returning its target.
  *
  * Copied rather than run from the package because a login entry outlives the
- * install that wrote it: an `ompchamber update` replaces the package tree, so
+ * install that wrote it: an `kabmo update` replaces the package tree, so
  * the path a LaunchAgent, a `.desktop` file or a Run key names has to be one
  * only the data directory owns.
  */

@@ -44,7 +44,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
  * Shallow-merge a plain-object patch into the object already stored for `key`.
  *
  * A patch is the only thing the settings client can send without republishing
- * values it merely read: the `omp_chamber_settings` blob is written by two
+ * values it merely read: the settings blob is written by two
  * writers (the settings modal, the theme picker) and read by many, so a writer
  * that echoed its whole copy would discard whatever another writer stored in
  * between. Merging is what makes a partial write safe; a stored value that is

@@ -1,6 +1,6 @@
 # Cross-platform UI end-to-end testing
 
-Regression prevention for feature work and fixes. The chamber today has one test
+Regression prevention for feature work and fixes. The Kabmo today has one test
 layer — in-process `bun test` (416 files, ~71.5k lines) — and every bug that
 reached a user in the last cycle was a UI-level one the layer cannot see: a
 panel that stayed mounted with stale width, a stream indicator that died at
@@ -70,25 +70,25 @@ This one is the useful reference. It has two layers above unit tests.
   Maestro is pinned by version **and** by sha256 of its release asset, with a
   comment on how to recompute it.
 
-**Takeaway:** bb's browser-layer analogue is exactly what ompchamber is missing
+**Takeaway:** bb's browser-layer analogue is exactly what kabmo is missing
 — a scripted fake agent that makes turns deterministic without a model, a
 seeded backend the UI can be pointed at, and a readiness contract the runner
 waits on. bb itself has no browser automation (Maestro is mobile-only), so the
 browser half is ours to add.
 
-## What ompchamber already has to build on
+## What kabmo already has to build on
 
 Everything below was read from this tree, not assumed.
 
 - **The server is a single process and takes its whole configuration from the
-  environment**: `PORT`, `HOST`, `OMPCHAMBER_DATA_DIR`, `OMPCHAMBER_DB_PATH`,
-  `OMPCHAMBER_OMP_BIN`, `MOCK`, `PI_CODING_AGENT_DIR`. `MOCK=true` boots
+  environment**: `PORT`, `HOST`, `KABMO_DATA_DIR`, `KABMO_DB_PATH`,
+  `KABMO_OMP_BIN`, `MOCK`, `PI_CODING_AGENT_DIR`. `MOCK=true` boots
   without an `omp` install at all (`ompStartupError` returns null), and the
   boot banner prints `listening on http://<host>:<port>`.
-  Verified: `MOCK=true OMPCHAMBER_DATA_DIR=<tmp> PORT=39177 bun run
-  src/server/index.ts --ompchamber-server` answered `{"ok":true,…,"mock":true}`
+  Verified: `MOCK=true KABMO_DATA_DIR=<tmp> PORT=39177 bun run
+  src/server/index.ts --kabmo-server` answered `{"ok":true,…,"mock":true}`
   on `/api/health` and `200` on `/`.
-- **`OMPCHAMBER_OMP_BIN` is already the fake-binary seam.** Five suites use it
+- **`KABMO_OMP_BIN` is already the fake-binary seam.** Five suites use it
   today, and `registry.server.test.ts` ships a 20-line NDJSON stub that speaks
   `ready` + `response` frames. The seam exists; it has never been driven from a
   browser.
@@ -142,7 +142,7 @@ fake re-sends the accumulated message on each frame, exactly as omp does —
 `message_end`, `tool_execution_start/update/end`, `turn_end`, `agent_end`).
 Prompt directives mirror bb's scripted-echo-provider: `delay:<ms>`,
 `tool:<name>`, `ask:<text>`, `error:<text>`, `retry:<n>`, and a default of
-answering the prompt. Rationale: the chamber's own code under test is the
+answering the prompt. Rationale: Kabmo's own code under test is the
 transport, the fold, the overlay store and the renderer — a fake that bypasses
 them tests nothing. This is the same argument AGENTS.md makes for
 `realtime-server.ts` ("stubbing `WebSocket` would test the fake's frame timing
@@ -157,18 +157,18 @@ omp's build for a local run.
 
 **D5 — Two modes, chosen per spec, both deterministic.** Pure-UI specs run the
 server with `MOCK=true` and never spawn a child (fast, no fake needed).
-Agent-behaviour specs run with `MOCK=false` and `OMPCHAMBER_OMP_BIN=<fake>`,
+Agent-behaviour specs run with `MOCK=false` and `KABMO_OMP_BIN=<fake>`,
 so a real session lifecycle, a real child, real frames and the real fold are
 exercised — with no model, no network and no token spend. A spec declares which
 mode it needs in its fixture, and the server is started per mode.
 
 **D6 — Isolation is not optional, and one gap must be fixed first.**
 `getDatabasePath()` returns `path.join(process.cwd(), 'workspace.db')` in MOCK
-mode, **ignoring `OMPCHAMBER_DB_PATH`** — verified: the probe boot above wrote
+mode, **ignoring `KABMO_DB_PATH`** — verified: the probe boot above wrote
 to the repository's own `workspace.db`. A test that boots a MOCK server from
-the repo root therefore touches a real database. Fix: honor `OMPCHAMBER_DB_PATH`
+the repo root therefore touches a real database. Fix: honor `KABMO_DB_PATH`
 in mock mode too (it is a one-branch change in `db.server.ts`), and have the
-harness set it, plus `OMPCHAMBER_DATA_DIR` and `PI_CODING_AGENT_DIR`, into a
+harness set it, plus `KABMO_DATA_DIR` and `PI_CODING_AGENT_DIR`, into a
 per-run temp root that is removed on teardown. This is the same class of bug
 `isolateDb` documents for the unit layer, one level up.
 
@@ -241,15 +241,15 @@ tests/e2e/
 ### The harness (`fixtures/server.ts`)
 
 1. `mkdtemp` a run root; write a fake `omp` shim that execs `fake-omp.ts`
-   (so `OMPCHAMBER_OMP_BIN` is an executable path, not a `.ts`).
-2. Spawn `bun run src/server/index.ts --ompchamber-server` with
+   (so `KABMO_OMP_BIN` is an executable path, not a `.ts`).
+2. Spawn `bun run src/server/index.ts --kabmo-server` with
    `cwd = <repo root>`, `PORT = <free port>`, `HOST=127.0.0.1`,
-   `MOCK` per the spec's mode, `OMPCHAMBER_DATA_DIR`/`OMPCHAMBER_DB_PATH`/
-   `PI_CODING_AGENT_DIR` under the run root, and `OMPCHAMBER_OMP_BIN` pointing
+   `MOCK` per the spec's mode, `KABMO_DATA_DIR`/`KABMO_DB_PATH`/
+   `PI_CODING_AGENT_DIR` under the run root, and `KABMO_OMP_BIN` pointing
    at the shim (real-mode specs only).
 3. Wait for readiness by **polling `GET /api/health`** until `ok:true` and the
    port matches — the same shape bb waits on, minus its log-line parsing,
-   because the chamber has a health route. Fail fast if the child exits.
+   because Kabmo has a health route. Fail fast if the child exits.
 4. Capture stdout/stderr into the run root; attach the tail to a failing spec.
 5. Teardown: `SIGTERM` the process group, wait, `SIGKILL` after a grace period,
    remove the run root. Stale-run sweeping (bb's `global-setup`) is a follow-up,
@@ -259,7 +259,7 @@ tests/e2e/
 
 - Reads argv for `--mode rpc-ui`, `--cwd`, `--resume`, `--no-session`,
   `--no-lsp`, `--approval-mode`; ignores what it does not model, so the real
-  argv the chamber builds is what the fake receives (no test-only argv path).
+  argv Kabmo builds is what the fake receives (no test-only argv path).
 - Emits `{"type":"ready","protocolVersion":1}` on stdout first, then serves
   commands by `type` with the documented `{type:'response', id, command,
   success, data}` envelope.
@@ -274,10 +274,10 @@ tests/e2e/
   fragments then `message_end` + `turn_end` + `agent_end`.
 - Honours `set_event_filter` (so a spec can assert both the delta path and the
   accumulated path), `set_ask_dialog`, `set_subagent_subscription` (answering
-  `Unknown command` is also a case worth pinning, since the chamber treats it
+  `Unknown command` is also a case worth pinning, since Kabmo treats it
   as best-effort).
 - Optional `FAKE_OMP_RECORD_PATH`: append every received frame as JSONL, so a
-  spec can assert what the chamber *sent* (bb's `SCRIPTED_ECHO_RECORD_PATH`
+  spec can assert what Kabmo *sent* (bb's `SCRIPTED_ECHO_RECORD_PATH`
   idea — it is the only way to test "the reload reached the child" without
   reading the child's mind).
 
@@ -298,8 +298,8 @@ tests/e2e/
 
 | Phase | Deliverable | Gate |
 |---|---|---|
-| P0 | `OMPCHAMBER_DB_PATH` honored in MOCK mode; temp-root harness; `playwright.config.ts`; `shell.spec.ts` green | the server boots from a temp root and `/` renders the app shell with no console error |
-| P1 | `fake-omp.ts` + `chat.spec.ts` (real mode): send a prompt, watch the delta stream render, the run footer settle | a full turn renders from frames the chamber folded, with no model |
+| P0 | `KABMO_DB_PATH` honored in MOCK mode; temp-root harness; `playwright.config.ts`; `shell.spec.ts` green | the server boots from a temp root and `/` renders the app shell with no console error |
+| P1 | `fake-omp.ts` + `chat.spec.ts` (real mode): send a prompt, watch the delta stream render, the run footer settle | a full turn renders from frames Kabmo folded, with no model |
 | P2 | Sidebar, panels, settings, theme specs; the `data-testid` contract where roles are not enough | a session switch restores that session's layout; a theme switch repaints |
 | P3 | Mobile viewport spec (composer, drawers, key bar), editor spec, terminal spec | a phone viewport can send a message and open the terminal |
 | P4 | `e2e.yml` (push to `main` + label + nightly), trace/screenshot artifacts uploaded on failure | the job is green on a clean runner and its artifacts are readable |
@@ -358,12 +358,12 @@ The layers, as they stand:
 
 ## Non-goals
 
-- **No E2E for omp itself.** The chamber's contract with `omp` is the wire
+- **No E2E for omp itself.** The Kabmo's contract with `omp` is the wire
   protocol; a test that drives a real `omp` binary belongs to omp.
 - **No visual-regression baseline.** Screenshots are attached as failure
   evidence; a pixel-diff suite needs its own stability work (fonts,
   antialiasing, animation) and is a separate decision.
-- **No mobile-native runner.** The chamber has no native client; the phone
+- **No mobile-native runner.** The Kabmo has no native client; the phone
   surface is the same web app at a phone viewport, which Playwright's device
   emulation covers.
 - **No load/performance testing.** The profile scripts in the reference repos

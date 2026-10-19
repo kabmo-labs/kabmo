@@ -15,7 +15,7 @@
  * — so it does not belong in `session_ui_state` beside a session's layout.
  */
 
-import { readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 
 /** Top-level `app_settings` key holding the announced version. */
 export const UPDATE_POPUP_SETTING_KEY = 'omp_update_popup_version';
@@ -31,7 +31,7 @@ export const UPDATE_POPUP_SETTING_KEY = 'omp_update_popup_version';
 export const UPDATE_POPUP_OPEN_EVENT = 'omp:update-popup';
 
 /**
- * Window event that opens the About modal and starts the Kabmo update.
+ * Window event that opens the About modal and starts Kabmo update.
  *
  * The popup's "Update now" does not run the update itself: the About modal is
  * where an update is driven from, and it owns the live output and the per-target
@@ -47,7 +47,7 @@ export const UPDATE_REQUEST_EVENT = 'omp:update-request';
  * purpose is to be decided before any network call is made for it.
  */
 export function readAnnouncedVersion(): string | null {
-  const stored = readChamberSetting<string>(UPDATE_POPUP_SETTING_KEY);
+  const stored = readKabmoSetting<string>(UPDATE_POPUP_SETTING_KEY);
   return typeof stored === 'string' && stored.trim().length > 0 ? stored.trim() : null;
 }
 

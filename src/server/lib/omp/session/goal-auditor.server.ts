@@ -26,7 +26,7 @@
  * window it occupies is real time the UI can honestly report as "evaluating".
  */
 
-import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 
 export interface GoalAuditAnswers {
@@ -155,8 +155,8 @@ export async function runGoalAudit(
       cmd: [bin, ...args],
       cwd: request.cwd,
       // The auditor is a reader: no session, no tools, no title, and the
-      // chamber's own port/password must not leak into it.
-      env: stripChamberHostEnv({ ...Bun.env, PI_NO_TITLE: '1' }, process.platform),
+      // Kabmo's own port/password must not leak into it.
+      env: stripKabmoHostEnv({ ...Bun.env, PI_NO_TITLE: '1' }, process.platform),
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',

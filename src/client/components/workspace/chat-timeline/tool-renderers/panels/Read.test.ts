@@ -8,8 +8,8 @@
  *
  * A `read` whose result carries no output falls back to fetching the path it
  * named through `/api/fs/read`. An omp internal URL names no file: the route
- * refused `proc://ompchamber-dev`, and the panel printed
- * `// Loaded file: proc://ompchamber-dev` as if that were the file's contents.
+ * refused `proc://kabmo-dev`, and the panel printed
+ * `// Loaded file: proc://kabmo-dev` as if that were the file's contents.
  * A `read` of a process is answered by the `proc://` panel, never by this one —
  * but a legacy transcript can still hand it a virtual URL.
  *
@@ -89,7 +89,7 @@ describe('Read panel — lazy fallback', () => {
 
   test('a virtual URL never reaches /api/fs/read', async () => {
     calls = [];
-    const el = await mount(readTool({ target: 'proc://ompchamber-dev', input: { path: 'proc://ompchamber-dev' } }));
+    const el = await mount(readTool({ target: 'proc://kabmo-dev', input: { path: 'proc://kabmo-dev' } }));
     expect(calls).toHaveLength(0);
     expect(el.textContent ?? '').not.toContain('Loaded file');
   });

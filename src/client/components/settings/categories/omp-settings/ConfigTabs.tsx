@@ -8,7 +8,7 @@
  * its groups in TAB_GROUPS order; rows render only when their schema
  * condition holds against the live config snapshot and when the global
  * search matches. Entries without UI metadata (upstream or extras) never
- * render — matching upstream's own panel surface plus chamber extras.
+ * render — matching upstream's own panel surface plus Kabmo extras.
  */
 
 import { useMemo } from 'preact/hooks';

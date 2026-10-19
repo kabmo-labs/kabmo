@@ -3,11 +3,11 @@
 // absolute native paths.
 //
 // Every helper speaks BOTH separators, because the CLI runs on Windows. A path
-// there arrives as `C:\Users\...\ompchamber\src\cli` (import.meta.dir, argv, an
+// there arrives as `C:\Users\...\kabmo\src\cli` (import.meta.dir, argv, an
 // env override), and a resolver that recognized only a leading `/` treated it
 // as RELATIVE: it prefixed the cwd and `resolvePath(import.meta.dir, '..', '..')`
 // answered `C:\/C:\/C:\Users\...\src\cli/../..`, so the package root and every
-// path derived from it pointed nowhere — `ompchamber serve` reported "This
+// path derived from it pointed nowhere — `kabmo serve` reported "This
 // install is incomplete" for a tarball that ships `dist/client`. Verified
 // against the published install.
 
@@ -24,7 +24,7 @@ const WINDOWS_UNC = /^[\\/]{2}[^\\/]/;
  * Both platforms' spellings are recognized on either platform: the CLI's paths
  * come from the OS (a Windows path IS absolute on Windows) and from user input,
  * and an absolute argument must discard what precedes it exactly as `/tmp/x`
- * does — otherwise `ompchamber plugin new C:\proj` scaffolds into `<cwd>/C:\proj`.
+ * does — otherwise `kabmo plugin new C:\proj` scaffolds into `<cwd>/C:\proj`.
  */
 export function isAbsolutePath(value) {
   if (typeof value !== 'string' || value.length === 0) return false;
@@ -68,7 +68,7 @@ export function joinPath(...segments) {
  * - An ABSOLUTE segment discards everything before it. `joinPath` deliberately
  *   strips a leading slash (it is used to build a path FROM a root), so
  *   `joinPath(cwd, '/tmp/x')` yields `<cwd>/tmp/x` — a silent relocation of an
- *   absolute argument. Verified on the CLI: `ompchamber plugin new /tmp/x`
+ *   absolute argument. Verified on the CLI: `kabmo plugin new /tmp/x`
  *   scaffolded into `<cwd>/tmp/x`. On Windows the same rule applies to a
  *   drive-rooted or UNC argument.
  * - A `.` segment means "here", so it contributes nothing. Without this,

@@ -27,13 +27,13 @@ const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-auth-revoke-'));
 const PASSWORD = 'correct-horse-battery';
 
 beforeEach(async () => {
-  Bun.env.OMPCHAMBER_DATA_DIR = DATA_DIR;
+  Bun.env.KABMO_DATA_DIR = DATA_DIR;
   await initAuth(PASSWORD);
 });
 
 afterAll(async () => {
   await initAuth(null);
-  delete Bun.env.OMPCHAMBER_DATA_DIR;
+  delete Bun.env.KABMO_DATA_DIR;
   fs.rmSync(DATA_DIR, { recursive: true, force: true });
 });
 

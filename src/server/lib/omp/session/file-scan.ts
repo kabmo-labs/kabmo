@@ -56,7 +56,7 @@ export async function readTextPrefix(filePath: string, prefixBytes: number): Pro
 /**
  * omp lifecycle markers: entries the agent writes about the SESSION PROCESS,
  * not about the conversation. `session_exit` is emitted every time an omp
- * child is disposed — an idle timeout, a chamber restart, a shutdown — and a
+ * child is disposed — an idle timeout, a Kabmo restart, a shutdown — and a
  * session accumulates one per dispose (the file that prompted this rule holds
  * three). Treating the newest one as last activity floats a session that has
  * been quiet for days to the top of `LATEST_SESSION`: measured across a real

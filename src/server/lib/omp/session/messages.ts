@@ -5,7 +5,7 @@
 
 /**
  * Read-only full-JSONL loader for a single oh-my-pi session file, mapping the
- * omp message stream to the chamber ChatMessageData shape so the chat timeline
+ * omp message stream to Kabmo ChatMessageData shape so the chat timeline
  * renders faithfully (thinking accordions, tool calls with their results,
  * assistant text, user turns).
  *
@@ -32,7 +32,7 @@ import { readBlobRef } from '@/server/lib/omp/session/blobs.server';
 const MAX_SESSION_LOAD_BYTES = 512 * 1024 * 1024;
 
 /** omp expands `/skill:<name>` into a `custom_message` record and stores no
- *  user message for it, so the chamber reconstructs the bubble from it.
+ *  user message for it, so Kabmo reconstructs the bubble from it.
  *
  *  The bubble text comes from the SAME rule the sidebar row and the title use
  *  (`operatorTitleFromEntry`) — `/skill:<name>` plus the operator's args — so
@@ -138,7 +138,7 @@ export async function loadSessionMessages(filePath: string): Promise<ChatMessage
  *
  * omp externalizes a large attached image out of the session JSONL: the entry
  * keeps the ref, the bytes go to the blob store. Only omp's own loader resolves
- * them, so a reloaded chamber session used to render
+ * them, so a reloaded Kabmo session used to render
  * `data:image/png;base64,blob:sha256:…` — a data URL whose payload is the ref
  * string, which the browser cannot decode. The ref itself is dropped once
  * resolved; an unresolvable one leaves the attachment with no preview rather

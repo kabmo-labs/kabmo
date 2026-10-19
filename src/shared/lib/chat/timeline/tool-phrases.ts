@@ -60,7 +60,7 @@ export const TOOL_VERBS: Record<string, string> = {
   goal: 'Tracking goal',
 };
 
-/** Legacy chamber/MOCK tool aliases → canonical omp builtin name. */
+/** Legacy Kabmo/MOCK tool aliases → canonical omp builtin name. */
 export const TOOL_ALIASES: Record<string, string> = {
   read_file: 'read',
   view_file: 'read',

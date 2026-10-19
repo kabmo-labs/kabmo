@@ -24,7 +24,7 @@ async function addColumn(db: DbClient, statement: string): Promise<void> {
 }
 
 export async function migrateSessionStreamStateColumns(db: DbClient): Promise<void> {
-  // Which chamber process is running the session, so any instance reading this
+  // Which Kabmo process is running the session, so any instance reading this
   // table can judge a `stream` row it does not own (see stream-state.server.ts).
   await addColumn(db, 'ALTER TABLE session_stream_state ADD COLUMN owner_pid INTEGER;');
   // The model that serves the session's run, so the generating indicator names

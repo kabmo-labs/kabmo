@@ -11,9 +11,9 @@
  * reads a *different* record shape (an `{type:'message', message:{…}}` entry)
  * and so has its own branch rules. Pinned here: the role spelling omp uses
  * (`developer`/`custom`/`toolResult` all fold to `assistant`, while a real
- * `assistant` becomes the chamber's `ai`), the two-pass tool-result pairing
+ * `assistant` becomes Kabmo's `ai`), the two-pass tool-result pairing
  * that drops an orphaned result entry but keeps its output attached to the
- * call, and the custom-entry filter that must not print chamber mode
+ * call, and the custom-entry filter that must not print Kabmo mode
  * bookkeeping into the timeline.
  *
  * The last block drives the whole reload through `loadSessionMessages`: file
@@ -41,13 +41,13 @@ const entry = (message: Record<string, unknown>, extra: Record<string, unknown> 
   ({ type: 'message', id: 'e1', timestamp: '2026-01-02T03:04:05.000Z', message, ...extra }) as OmpMessageEntry;
 
 describe('roleFor', () => {
-  test('maps omp roles onto the chamber vocabulary', () => {
+  test('maps omp roles onto Kabmo vocabulary', () => {
     expect(roleFor('user')).toBe('user');
     expect(roleFor('assistant')).toBe('ai');
   });
 
   test('folds developer, custom, toolResult and system onto assistant', () => {
-    // omp spells these roles differently; the chamber has no such rows, and
+    // omp spells these roles differently; Kabmo has no such rows, and
     // the fold is what lets a developer turn render as an assistant notice.
     expect(roleFor('developer')).toBe('assistant');
     expect(roleFor('custom')).toBe('assistant');
@@ -217,7 +217,7 @@ describe('collectToolOutputs', () => {
 });
 
 describe('noticeFromCustomMessage', () => {
-  test('drops session_exit and the chamber mode bookkeeping entries', () => {
+  test('drops session_exit and Kabmo mode bookkeeping entries', () => {
     expect(noticeFromCustomMessage({ customType: 'session_exit', content: 'bye' })).toBeNull();
     expect(noticeFromCustomMessage({ customType: 'chamber-goal-state', content: 'x' })).toBeNull();
     expect(noticeFromCustomMessage({ customType: 'chamber-plan-state', content: 'x' })).toBeNull();
@@ -303,7 +303,7 @@ describe('loadSessionMessages — ordering and thinking-level stamping', () => {
 
   test('an injected entry in a session file keeps its row in the timeline', async () => {
     // omp writes these for the model (a todo nudge, the eval runtime snapshot)
-    // with `display:false`. The chamber renders them anyway: they are part of
+    // with `display:false`. The Kabmo renders them anyway: they are part of
     // the session record, and a reader who wants the full transcript gets it.
     const messages = await loadSessionMessages(writeSession([
       { type: 'message', id: 'u1', timestamp: at(1), message: { role: 'user', content: 'run it' } },

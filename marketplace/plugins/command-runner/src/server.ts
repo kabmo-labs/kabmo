@@ -28,7 +28,7 @@
  * ## The registry is per load, and `onDispose` is what makes a reload safe
  *
  * A run is a detached child, and a detached child outlives its parent by
- * definition. So disposal kills every run, and the chamber's shutdown path calls
+ * definition. So disposal kills every run, and Kabmo's shutdown path calls
  * it — otherwise a `SIGTERM` to the server would leave every dev server this
  * plugin started still running.
  *
@@ -39,7 +39,7 @@
  * hitting one is reported rather than silently truncating.
  */
 
-import type { ChamberPluginApi } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
 import type { Scope } from './server/scan';
 import { RunRegistry } from './server/runner';
@@ -59,7 +59,7 @@ import {
 const MAX_TAIL_BYTES = 1024 * 1024;
 
 /** The plugin's server half. */
-export default function plugin(api: ChamberPluginApi) {
+export default function plugin(api: KabmoPluginApi) {
   const registry = new RunRegistry({
     // The topic payload crosses a JSON boundary, so the plugin's own interface is
     // widened at exactly one place rather than the whole model being indexable.
@@ -76,7 +76,7 @@ export default function plugin(api: ChamberPluginApi) {
   // snapshot rather than `null`.
   api.realtime.seed({ scopeKey: null, runs: [] } satisfies RunnerState);
 
-  // Disposal kills every run. This is the whole reason a chamber restart does
+  // Disposal kills every run. This is the whole reason a Kabmo restart does
   // not orphan a dev server this plugin started.
   api.onDispose(() => registry.dispose());
 

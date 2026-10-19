@@ -24,8 +24,8 @@
  *   repo, and a rescan.
  */
 
-import { useRepoScope } from '@ompchamber/ui';
-import { Empty, Note } from '@ompchamber/ui/components';
+import { useRepoScope } from '@kabmo-labs/kabmo-ui';
+import { Empty, Note } from '@kabmo-labs/kabmo-ui/components';
 
 import { CommandGroups } from './Groups';
 import { CustomForm } from './CustomForm';

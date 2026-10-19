@@ -7,7 +7,7 @@
  * The one `omp plugin …` runner.
  *
  * Mutations are delegated to omp's own CLI: omp owns the plugin registries, the
- * cache and the `node_modules` symlinks, and the chamber must not re-implement a
+ * cache and the `node_modules` symlinks, and Kabmo must not re-implement a
  * write whose format omp also reads at runtime.
  *
  * Measured against omp 18.4.4: `--json` is output formatting only and several

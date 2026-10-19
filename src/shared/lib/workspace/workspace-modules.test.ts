@@ -31,7 +31,7 @@ import {
 } from '@/shared/lib/workspace/right-panels';
 import { notifySessionKey, subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { loadExpandedSessionIds, saveExpandedSessionIds } from '@/shared/lib/workspace/sidebar-expanded';
-import { primeChamberSettings, readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 const EXPANDED_KEY = 'omp_sidebar_expanded_sessions';
@@ -45,7 +45,7 @@ afterEach(() => {
 afterAll(() => {
   // Leave the settings snapshot as close to how it was found as possible:
   // other suites share this module instance within one `bun test` process.
-  primeChamberSettings({});
+  primeKabmoSettings({});
   Reflect.set(globalThis, 'fetch', originalFetch);
 });
 
@@ -193,7 +193,7 @@ describe('active-project', () => {
 
 describe('sidebar-expanded', () => {
   function stored(): unknown {
-    return readChamberSetting<unknown>(EXPANDED_KEY);
+    return readKabmoSetting<unknown>(EXPANDED_KEY);
   }
 
   test('an absent setting loads as an empty set', () => {

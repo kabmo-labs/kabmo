@@ -1,4 +1,4 @@
-// `ompchamber update` — replace this install with the latest version on npm.
+// `kabmo update` — replace this install with the latest version on npm.
 //
 // The installation mechanics live in the shared update engine so the CLI and
 // the console's "Update" button do the same thing; this command owns the
@@ -14,7 +14,7 @@ import { STOP_TIMEOUT_MS } from '@/cli/lib/process-lifecycle.js';
 import { run as runServe } from '@/cli/lib/commands/serve.js';
 import { skipRestartNote } from '@/server/lib/lifecycle/restart';
 import { isCliManaged } from '@/server/lib/lifecycle/launch-mode';
-import { resolveInstallContext, resolveOmpChamberVersion, updateOmpChamber } from '@/server/lib/updates/install';
+import { resolveInstallContext, resolveKabmoVersion, updateKabmo } from '@/server/lib/updates/install';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 
 /**
@@ -56,7 +56,7 @@ async function restartInstances(options, ctx) {
 }
 
 async function runCheck(pkgRoot, json) {
-  const info = await resolveOmpChamberVersion(pkgRoot);
+  const info = await resolveKabmoVersion(pkgRoot);
   const context = resolveInstallContext(pkgRoot);
 
   if (json) {
@@ -96,7 +96,7 @@ export async function run(options, ctx) {
     return runCheck(pkgRoot, json);
   }
 
-  const result = await updateOmpChamber({ force, pkgRoot, onStage, onLine });
+  const result = await updateKabmo({ force, pkgRoot, onStage, onLine });
 
   if (json) {
     // Restarting prints through the serve command; silence it so stdout stays
@@ -120,7 +120,7 @@ export async function run(options, ctx) {
   if (!result.updated) return;
 
   if (!shouldRestart) {
-    log('Restart the server to apply it: `ompchamber restart`.');
+    log('Restart the server to apply it: `kabmo restart`.');
     return;
   }
 

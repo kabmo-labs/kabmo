@@ -14,7 +14,7 @@
  *
  * One shared table per axis rather than a table per plugin. A plugin-declared
  * schema would mean DDL driven by a third-party manifest — a migration the
- * chamber cannot version, and a table namespace two plugins could collide in.
+ * Kabmo cannot version, and a table namespace two plugins could collide in.
  * `collection` and `id` inside `plugin_records` give the same expressiveness
  * with one migration and a composite primary key that is already an index.
  *

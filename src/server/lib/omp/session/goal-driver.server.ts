@@ -4,14 +4,14 @@
  */
 
 /**
- * The goal loop's driver: the chamber asks the AUDITOR after every turn and
+ * The goal loop's driver: Kabmo asks the AUDITOR after every turn and
  * obeys the verdict.
  *
  * Ownership moved here from the child's extension deliberately. The extension
  * can see ceilings and budgets but not whether the objective was met, so with
  * the loop inside the child the only termination authority was the working
  * agent's own word. An independent auditor is a model call, which the child
- * cannot make — and the chamber is where the session's turn boundaries, the
+ * cannot make — and Kabmo is where the session's turn boundaries, the
  * persisted goal record and the client stream all meet.
  *
  * What stays in the child: opening the continuation TURN. Only the extension
@@ -81,9 +81,9 @@ interface DriverState {
 /** Process-wide like the other server caches: a `bun --hot` reload re-evaluates
  *  this module while the sessions on the other side stay alive. */
 function store(): Map<string, DriverState> {
-  const global = globalThis as unknown as { __ompChamberGoalDriver?: Map<string, DriverState> };
-  global.__ompChamberGoalDriver ??= new Map<string, DriverState>();
-  return global.__ompChamberGoalDriver;
+  const global = globalThis as unknown as { __kabmoGoalDriver?: Map<string, DriverState> };
+  global.__kabmoGoalDriver ??= new Map<string, DriverState>();
+  return global.__kabmoGoalDriver;
 }
 
 /** Forget the strikes for a session — an explicit Resume is a fresh start. */
@@ -193,7 +193,7 @@ export async function driveGoalAfterTurn({ host, messages, deps = {} }: GoalTurn
     void send({ type: 'prompt', message: modeCommandPrompt({ scope: 'goal', action, payload }) });
   };
   // The child's ceiling map is per-process, and this driver may be talking to a
-  // child that never saw the goal created (a resume, another chamber instance).
+  // child that never saw the goal created (a resume, another Kabmo instance).
   // The persisted number rides every `continue` so the stop stays the goal's.
   const continueTurn = () => {
     command('continue', context.maxTurns === undefined ? undefined : { maxTurns: context.maxTurns });

@@ -8,7 +8,7 @@
  *
  * argv rather than env for both, for the reason `lifecycle/launch-mode.ts`
  * records: env is inherited by every descendant, so a `bun run dev` started
- * inside the chamber's own terminal would silently inherit the choice. The CLI
+ * inside Kabmo's own terminal would silently inherit the choice. The CLI
  * appends these to the invocation it spawns, and a login entry spells the same
  * argv for itself.
  */

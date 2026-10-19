@@ -5,7 +5,7 @@
 
 /**
  * OMP Engine settings panel — the complete native omp settings schema in
- * the chamber modal.
+ * Kabmo modal.
  *
  * - Header: live engine state (running, model, thinking, context) + refresh.
  * - Config: every schema entry with UI metadata, rendered in omp's own

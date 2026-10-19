@@ -19,7 +19,7 @@ interface UseProviderSettingsOptions {
  * repo's size ceiling without changing closure semantics, since every action
  * still closes over the same state.
  *
- * Every mutation lands in one of two stores: the chamber-local overlay (per-model
+ * Every mutation lands in one of two stores: Kabmo-local overlay (per-model
  * visibility and sampling config) or omp's own config.yml `disabledProviders`
  * (connect / disconnect). Disconnect has to use the latter — the overlay is
  * re-merged away on load, which is why a disconnected provider used to come back
@@ -32,7 +32,7 @@ export function useProviderSettings({
   const [providers, setProviders] = useState<ProviderItem[]>([]);
   const [presetProviders, setPresetProviders] = useState<PresetProviderOption[]>(PRESET_NEW_PROVIDERS);
   const [selectedProviderId, setSelectedProviderId] = useState<string>('provider-deepseek');
-  const [currentProject, setCurrentProject] = useState('ompchamber');
+  const [currentProject, setCurrentProject] = useState('kabmo');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const { toasts, pushToast, dismissToast } = useToasts();
 
@@ -95,7 +95,7 @@ export function useProviderSettings({
 
   /**
    * After a hand-registered model lands in models.yml, the registry has to be
-   * re-read: the new row exists only in omp's file, so nothing in the chamber's
+   * re-read: the new row exists only in omp's file, so nothing in Kabmo's
    * own overlay knows about it yet. Re-fetching the MERGED list (rather than
    * re-saving the overlay, whose response is the overlay alone) is what puts
    * the model in the sidebar count and the chat picker.

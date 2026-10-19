@@ -7,7 +7,7 @@
  * Live terminal session for the right panel: the socket, its status, and the
  * attach/resize/input verbs the xterm view drives.
  *
- * The terminal id is per chamber session and persisted, which is what makes the
+ * The terminal id is per Kabmo session and persisted, which is what makes the
  * shell survive a page reload: the panel reattaches to the id it already owns
  * and the server replays its scrollback. `restart` mints a new id, so a shell
  * that was exited (or wedged) is left behind rather than resurrected.
@@ -79,7 +79,7 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalResult
   /** Last `root\0repo` the shell was launched for; null until the first. */
   const scopeRef = useRef<string | null>(null);
 
-  // One id per chamber session. The check reads the store, not the hook's local
+  // One id per Kabmo session. The check reads the store, not the hook's local
   // value: on the render where the blob first becomes ready, `useSessionState`
   // still reports the fallback (its restore effect has not run yet), so
   // deciding from the local value would mint a second id and overwrite the

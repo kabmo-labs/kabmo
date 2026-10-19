@@ -9,7 +9,7 @@
  *
  * omp splits two things that both read as "turn this provider off":
  *
- *   - `disabledProviders` in `config.yml` (what the chamber's `disconnect` and
+ *   - `disabledProviders` in `config.yml` (what Kabmo's `disconnect` and
  *     `disable` both wrote) hides the provider's models from the picker. The
  *     OAuth token or API key STAYS on disk.
  *   - `logout` (with the account named by `get_logout_accounts`) actually

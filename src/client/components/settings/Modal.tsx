@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'preact/hooks';
 import { AlertCircle, Check, ChevronLeft, X } from 'lucide-preact';
 import type { SettingsCategoryId, SettingsState } from '@/shared/types';
-import { mergeChamberSettings } from '@/shared/lib/settings/client';
+import { mergeKabmoSettings } from '@/shared/lib/settings/client';
 import { diffSettings } from '@/shared/lib/settings/diff';
-import { useChamberSettingsWriter } from '@/client/hooks/settings/use-chamber-setting';
+import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-setting';
 import { useReloadOmpEngine } from '@/client/hooks/settings/reload-engine';
-import { useRestartChamber } from '@/client/hooks/settings/restart-chamber';
+import { useRestartKabmo } from '@/client/hooks/settings/restart-kabmo';
 import { applyDocumentTheme } from '@/client/hooks/ui/theme';
 import { DEFAULT_THEME_ID } from '@/shared/lib/theme/catalog';
 import { EDITOR_DEFAULT_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
@@ -66,9 +66,9 @@ export function SettingsModal({
   const [isMobileDrilled, setIsMobileDrilled] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
-  const writeChamberSettings = useChamberSettingsWriter();
+  const writeKabmoSettings = useKabmoSettingsWriter();
   const { isReloading, reload: reloadEngine } = useReloadOmpEngine();
-  const { isRestarting, restart: restartChamber } = useRestartChamber();
+  const { isRestarting, restart: restartKabmo } = useRestartKabmo();
 
   /** One toast slot for the whole modal: a later message replaces the earlier
    *  one rather than queueing, and the tone is carried so a failed action
@@ -80,7 +80,7 @@ export function SettingsModal({
   };
 
   const [settings, setSettings] = useState<SettingsState>(() =>
-    mergeChamberSettings(DEFAULT_SETTINGS, appSettings),
+    mergeKabmoSettings(DEFAULT_SETTINGS, appSettings),
   );
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export function SettingsModal({
   }, [isOpen, initialCategory, autoOpenAddProvider]);
 
   // Global event listener for direct trigger
-  useChamberEvent('omp:open-settings', (e) => {
+  useKabmoEvent('omp:open-settings', (e) => {
     const customEvent = e as CustomEvent<{ category?: SettingsCategoryId; autoOpenAdd?: boolean }>;
     if (customEvent.detail?.category) {
       setActiveCategory(customEvent.detail.category);
@@ -127,7 +127,7 @@ export function SettingsModal({
       // `curl` to /api/settings) would silently revert it on the next unrelated
       // toggle. `theme` in particular is written by the appearance picker and
       // read by the SSR shell, so the stale copy is not just cosmetic.
-      writeChamberSettings(diffSettings(prev, next, updater));
+      writeKabmoSettings(diffSettings(prev, next, updater));
       return next;
     });
     showToast('Setting was saved');
@@ -138,8 +138,8 @@ export function SettingsModal({
     showToast(outcome.message, outcome.ok ? 'success' : 'error');
   };
 
-  const handleRestartChamber = async () => {
-    const outcome = await restartChamber();
+  const handleRestartKabmo = async () => {
+    const outcome = await restartKabmo();
     // A successful restart navigates, so this toast is only ever seen when the
     // replacement could not be reached or the instance refused the restart —
     // both of which the user has to act on.
@@ -223,7 +223,7 @@ export function SettingsModal({
             onSearchChange={setSearchQuery}
             onReloadOmp={handleReloadOmp}
             isReloading={isReloading}
-            onRestartChamber={handleRestartChamber}
+            onRestartKabmo={handleRestartKabmo}
             isRestarting={isRestarting}
             className="w-full"
           />
@@ -320,7 +320,7 @@ export function SettingsModal({
               onSearchChange={setSearchQuery}
               onReloadOmp={handleReloadOmp}
               isReloading={isReloading}
-              onRestartChamber={handleRestartChamber}
+              onRestartKabmo={handleRestartKabmo}
               isRestarting={isRestarting}
               className="w-full border-r-0"
             />

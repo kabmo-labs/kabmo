@@ -5,7 +5,7 @@
 
 /**
  * omp's hashline patch grammar — the `edit` tool's `input` argument. The
- * chamber never applies a patch; it reads the text to name the target file
+ * Kabmo never applies a patch; it reads the text to name the target file
  * while the call is still streaming (omp only ships the applied diff in the
  * toolResult `details`, i.e. long after the card first paints) and to show
  * which lines the patch touches before that diff lands.

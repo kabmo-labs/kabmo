@@ -39,7 +39,7 @@ function proc(pid: number, argv: string[] | null, extra: Partial<ProcessInfo> = 
 
 describe('commandLabel', () => {
   test('a bun process is named by its script, not the runtime', () => {
-    expect(commandLabel(proc(1, ['bun', '/path/dist/client/index.js', '--ompchamber-server']))).toBe('index.js');
+    expect(commandLabel(proc(1, ['bun', '/path/dist/client/index.js', '--kabmo-server']))).toBe('index.js');
   });
 
   test('`bun run <script>` names the script, not the subcommand', () => {
@@ -79,14 +79,14 @@ describe('formatSpan', () => {
 
 describe('projectOf', () => {
   test('names the basename, and `~` for the home directory', () => {
-    expect(projectOf('/Users/me/code/ompchamber')).toBe('ompchamber');
+    expect(projectOf('/Users/me/code/kabmo')).toBe('kabmo');
     expect(projectOf(null)).toBeNull();
   });
 });
 
 describe('describeProcess', () => {
-  test('the chamber server names itself, not its entry file', () => {
-    const label = describeProcess(proc(1, ['bun', '/path/index.js', '--ompchamber-server']), { now: NOW });
+  test('Kabmo server names itself, not its entry file', () => {
+    const label = describeProcess(proc(1, ['bun', '/path/index.js', '--kabmo-server']), { now: NOW });
     expect(label.title).toBe('Kabmo server');
     expect(label.detail).toContain('the server itself');
   });

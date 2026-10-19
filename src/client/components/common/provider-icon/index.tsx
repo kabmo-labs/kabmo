@@ -27,7 +27,7 @@
  * stable, readable badge rather than an empty box.
  */
 
-import type { ProviderIconRegistration } from '@kabmo-labs/plugin-sdk';
+import type { ProviderIconRegistration } from '@kabmo-labs/kabmo-sdk';
 import { resolveProviderMark } from '@/client/components/common/provider-icon/resolve';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 import { providerInitials } from '@/shared/lib/models/provider/glyph';

@@ -12,7 +12,7 @@ Status: **fixed.** F1, F2, F3 and F4 are closed; see "Resolution" below.
 - A real `omp --mode rpc-ui --no-session --no-lsp` child was spawned and driven
   over its NDJSON RPC (`{type:'prompt', message:'run: echo hi'}`); every frame
   was captured verbatim.
-- The captured frames were replayed through the chamber's own
+- The captured frames were replayed through Kabmo's own
   `foldAgentEvent` (`src/shared/lib/chat/omp/agent-events.ts`) to observe what
   the live timeline actually receives.
 - The JSONL reload path was exercised through `loadSessionMessages`
@@ -184,21 +184,21 @@ release-time flow; do not hand-edit the file).
 
 ---
 
-## F4 — New omp frames the chamber does not handle (reviewed; named as ignored)
+## F4 — New omp frames Kabmo does not handle (reviewed; named as ignored)
 
 Enumerated against the 18.10.3 wire schema and the live capture. All are
 currently inert (they fall through to `transport-frames.ts`'s `default`):
 
 - `tool_stream_update` — a streaming variant of `tool_execution_update` for a
-  tool that streams its own output; the chamber reads only
+  tool that streams its own output; Kabmo reads only
   `tool_execution_update`. No regression observed (no tool emitted one in the
   sampled sessions).
-- `advisor_yielded`, `advisor_cost_changed` — advisor surface the chamber does
+- `advisor_yielded`, `advisor_cost_changed` — advisor surface Kabmo does
   not render.
 - `live_start/phase/levels/end/transcript` — GPT live-voice sessions, not a
-  chamber surface.
-- `queue_update` — the chamber's queue panel reads client state, not this frame.
-- `config_update` — a builtin slash command changed model config; the chamber
+  Kabmo surface.
+- `queue_update` — Kabmo's queue panel reads client state, not this frame.
+- `config_update` — a builtin slash command changed model config; Kabmo
   already reacts to `model_changed` and `thinking_level_changed`.
 
 Proposed: leave as-is; the ignored set in `transport-frames.ts` should name
@@ -215,7 +215,7 @@ Proposed: leave as-is; the ignored set in `transport-frames.ts` should name
 that arrives before (or without) the `_end` frame still reaches the row on
 screen; `recordToolResult` now carries `isError` too. Verified by replaying the
 verbatim 18.10.3 frames: a `bash` card reads `85ms`, a service launch reads
-`ompchamber · ready · pid 43148`, and a `read` reads `2.0 KB · 60 lines` —
+`kabmo · ready · pid 43148`, and a `read` reads `2.0 KB · 60 lines` —
 identical to the reload path. Pinned by `tool-details.test.ts` (nested-wins,
 top-level fallback, the toolResult re-pair, the error status).
 
@@ -253,7 +253,7 @@ at 1440px and 390px.
 **F4 — new frames.** `tool_stream_update`, `advisor_yielded`,
 `advisor_cost_changed`, `queue_update` and `config_update` are named in
 `transport-frames.ts`'s ignored set, so the omission is a decision rather than a
-fall-through. None carries a chamber-side effect (see the F4 notes above).
+fall-through. None carries a Kabmo-side effect (see the F4 notes above).
 
 **Gates.** `bunx tsc --noEmit`, the `--noUnusedLocals --noUnusedParameters`
 pass, the 350-line ceiling and the relative-import check all pass; 626 chat-lib

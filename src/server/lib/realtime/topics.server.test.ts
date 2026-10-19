@@ -56,10 +56,10 @@ afterEach(() => {
   // The wiring test installs the real listener; leaving it in place would let a
   // later suite's signal reach this hub.
   clearRealtimeSignalListeners();
-  globalThis.__ompChamberRealtimeTopicsReady = undefined;
+  globalThis.__kabmoRealtimeTopicsReady = undefined;
   // The dedupe/coalesce state is process state too; a payload identical to the
   // previous test's would otherwise be skipped as a no-op publish.
-  globalThis.__ompChamberRealtimePublish = undefined;
+  globalThis.__kabmoRealtimePublish = undefined;
 });
 
 describe('publishTopic', () => {
@@ -123,7 +123,7 @@ describe('initRealtimeTopics signal wiring', () => {
     // The real registration first (that is what installs the signal listener),
     // then the stubs override its descriptors — the hub reads whatever map was
     // registered last.
-    globalThis.__ompChamberRealtimeTopicsReady = undefined;
+    globalThis.__kabmoRealtimeTopicsReady = undefined;
     initRealtimeTopics();
     let modelsCalls = 0;
     let usageCalls = 0;
@@ -161,7 +161,7 @@ describe('initRealtimeTopics signal wiring', () => {
    */
   test('session-attached rebinds the topic and re-snapshots it', async () => {
     vi.useFakeTimers();
-    globalThis.__ompChamberRealtimeTopicsReady = undefined;
+    globalThis.__kabmoRealtimeTopicsReady = undefined;
     initRealtimeTopics();
     const topic = sessionTopic('sess-1');
     let attaches = 0;

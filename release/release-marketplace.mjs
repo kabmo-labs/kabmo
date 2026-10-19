@@ -24,7 +24,7 @@
  * `feat` is a minor. Only the bump is derived — there is no changelog, no tag
  * and no GitHub release, because none of those reach an installed plugin.
  *
- * The write is `version` in `package.json` AND `ompchamber.version` in the same
+ * The write is `version` in `package.json` AND `kabmo.version` in the same
  * file. They are two spellings of one number and the registry reads the second,
  * so bumping only the first would change nothing on any machine.
  *
@@ -107,7 +107,7 @@ function bumpVersion(version, type) {
  * should be the version line alone.
  *
  * Both keys are anchored by their INDENTATION (the top-level one at two spaces,
- * `ompchamber.version` at four) and by the exact previous value, so nothing else
+ * `kabmo.version` at four) and by the exact previous value, so nothing else
  * in the file can match. Both must be found: one alone means the file is not the
  * shape this expects, and writing it would leave the two spellings disagreeing —
  * which is precisely the drift the registry cannot see.
@@ -154,16 +154,16 @@ for (const entry of BUNDLED_PLUGINS) {
   try {
     const source = readFileSync(path, 'utf8');
     const manifest = JSON.parse(source);
-    const declared = manifest.ompchamber?.version;
+    const declared = manifest.kabmo?.version;
 
     // The two spellings must agree before anything is written, or a bump would
     // silently correct (or widen) a drift that is the author's to fix.
     if (!manifest.version || !declared) {
-      throw new Error(`${entry.dir}/package.json has no version or no ompchamber.version`);
+      throw new Error(`${entry.dir}/package.json has no version or no kabmo.version`);
     }
     if (manifest.version !== declared) {
       throw new Error(
-        `${entry.dir}/package.json declares version ${manifest.version} but ompchamber.version ${declared}; they must agree`,
+        `${entry.dir}/package.json declares version ${manifest.version} but kabmo.version ${declared}; they must agree`,
       );
     }
 

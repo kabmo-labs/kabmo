@@ -40,43 +40,43 @@ afterEach(() => {
 
 describe('hashTrackedFiles', () => {
   test('hashes nested files under POSIX-style relative paths', async () => {
-    write('ompchamber.json', '{}');
+    write('kabmo.json', '{}');
     write('src/deep/app.tsx', 'export default {};');
 
     const hashes = await hashTrackedFiles(dir);
-    expect(Object.keys(hashes).sort()).toEqual(['ompchamber.json', 'src/deep/app.tsx']);
+    expect(Object.keys(hashes).sort()).toEqual(['kabmo.json', 'src/deep/app.tsx']);
     // A path separator in a key would make the same file hash under two names
     // depending on the platform, and the comparison is by key.
     expect(hashes['src/deep/app.tsx']).not.toContain('\\');
   });
 
   test('excludes node_modules, lockfiles and .git unconditionally', async () => {
-    write('ompchamber.json', '{}');
+    write('kabmo.json', '{}');
     write('node_modules/dep/package.json', '{}');
     write('bun.lock', '{}');
     write('.git/config', '[core]');
 
     // Tracking any of these marks every plugin as edited the first time it
     // builds, and the sync then never runs again.
-    expect(Object.keys(await hashTrackedFiles(dir))).toEqual(['ompchamber.json']);
+    expect(Object.keys(await hashTrackedFiles(dir))).toEqual(['kabmo.json']);
   });
 
   test('excludes dist for a plugin that BUILDS from source', async () => {
-    write('ompchamber.json', '{}');
+    write('kabmo.json', '{}');
     write('src/app.tsx', 'export default {};');
     write('dist/app.js', 'built');
 
     // `dist` is this build's output here, so its hashes change on every build.
-    expect(Object.keys(await hashTrackedFiles(dir)).sort()).toEqual(['ompchamber.json', 'src/app.tsx']);
+    expect(Object.keys(await hashTrackedFiles(dir)).sort()).toEqual(['kabmo.json', 'src/app.tsx']);
   });
 
   test('TRACKS dist for a plugin with no source, because it distributes its bundle', async () => {
-    write('ompchamber.json', '{}');
+    write('kabmo.json', '{}');
     write('dist/app.js', 'export default {};');
 
     // No `src/` and no build script: `dist` is content the user can edit, and
     // excluding it would let the sync overwrite the edit silently.
-    expect(Object.keys(await hashTrackedFiles(dir)).sort()).toEqual(['dist/app.js', 'ompchamber.json']);
+    expect(Object.keys(await hashTrackedFiles(dir)).sort()).toEqual(['dist/app.js', 'kabmo.json']);
   });
 
   test('a build script alone is enough to treat dist as output', async () => {

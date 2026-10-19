@@ -10,7 +10,7 @@
  * omp process — the pooled utility children that answer the provider and model
  * lists and the composer's `/` popup, plus the prewarmed session hosts — so the
  * next command boots the binary currently installed. That is the only way to
- * pick up an `omp update` without restarting the chamber: a live omp child is
+ * pick up an `omp update` without restarting Kabmo: a live omp child is
  * the build it was spawned from for its whole life.
  *
  * Live sessions are deliberately untouched (the server owns that decision), so

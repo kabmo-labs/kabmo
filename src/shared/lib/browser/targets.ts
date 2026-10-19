@@ -33,7 +33,7 @@ export function parsePageTargets(result: unknown): PageTarget[] {
 
 /**
  * Choose the tab to view: an explicit preference while it is still a live page
- * this session owns (chamber-user click), else the newest owned page from the
+ * this session owns (Kabmo-user click), else the newest owned page from the
  * session's creation-ordered registry. Never picks another session's tab — the
  * shared daemon hosts every session's pages, so both the unscoped fallback and
  * an unowned pin would leak one session's browsing into another session's

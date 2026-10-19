@@ -7,7 +7,7 @@
  * A plugin's logger, prefixed with its own id.
  *
  * The prefix is the whole feature: a plugin's `info('connected')` on its own
- * would be indistinguishable from the chamber's own logging, and the first
+ * would be indistinguishable from Kabmo's own logging, and the first
  * question about any log line is whose it is. It goes through `console` rather
  * than a logging library because that is what the rest of this server does —
  * a plugin does not get a second output path.
@@ -17,7 +17,7 @@
  * logger.
  */
 
-import type { PluginJson, PluginLogger } from '@kabmo-labs/plugin-sdk';
+import type { PluginJson, PluginLogger } from '@kabmo-labs/kabmo-sdk';
 
 function describe(detail: PluginJson | undefined): string {
   if (detail === undefined) return '';

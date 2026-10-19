@@ -4,17 +4,17 @@
  */
 
 /**
- * oh-my-pi's `todo` tool state, as the chamber reads it.
+ * oh-my-pi's `todo` tool state, as Kabmo reads it.
  *
- * omp owns this list, not the chamber: the `todo` tool writes a structured
+ * omp owns this list, not Kabmo: the `todo` tool writes a structured
  * snapshot into the session JSONL (a `toolResult` entry's `details.phases`, or
  * a `user_todo_edit` custom entry when the operator edits the list by hand), and
  * every later branch rehydration — resume, rewind, fork, `/btw` — reads the
  * DEEPEST such snapshot on the active branch back out of it
- * (`getLatestTodoPhasesFromEntries`). The chamber mirrors exactly that read, so
+ * (`getLatestTodoPhasesFromEntries`). The Kabmo mirrors exactly that read, so
  * the panel and the agent's own HUD cannot disagree about what is open.
  *
- * The status vocabulary is omp's, including the two states the chamber's chat
+ * The status vocabulary is omp's, including the two states Kabmo's chat
  * timeline never rendered before: `blocked` (waiting on something, with an
  * optional note) and `abandoned` (deliberately dropped). Both are settled-but-
  * not-done, which is why `isClosedTodo` — not `status === 'completed'` — is

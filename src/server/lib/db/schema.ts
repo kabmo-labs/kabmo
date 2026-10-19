@@ -4,7 +4,7 @@
  */
 
 /**
- * Schema bootstrap for the chamber database: the `CREATE TABLE IF NOT EXISTS`
+ * Schema bootstrap for Kabmo database: the `CREATE TABLE IF NOT EXISTS`
  * block plus the in-place migrations that repair schemas written by older
  * installs. Split out of `@/server/db.server` so the connection lifecycle
  * there stays readable; the order below is load-bearing — the migrations run

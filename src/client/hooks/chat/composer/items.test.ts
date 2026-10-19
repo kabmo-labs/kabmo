@@ -13,12 +13,12 @@
  *   file called `sonic` would otherwise insert `@sonic` and collide with the
  *   agent of that name, so files travel in the `file:` namespace (and quoted
  *   when the path contains whitespace, which would otherwise end the token).
- * - The chamber's own commands lead, and a skill a command already covers is
+ * - The Kabmo's own commands lead, and a skill a command already covers is
  *   skipped, so the same skill is never listed twice under two tokens.
  * - A hook must discard a response that lands after its `kind` changed: the
  *   late items would otherwise repopulate a menu the user has already left.
  * - A `commandPaletteAction` a plugin registered must appear in the `/` popup
- *   beside the chamber's own commands — and only there: a closed menu or an `@`
+ *   beside Kabmo's own commands — and only there: a closed menu or an `@`
  *   mention must not gain a row the user cannot act on.
  */
 
@@ -180,7 +180,7 @@ describe('plugin commands in the popup', () => {
     run: () => {},
   };
 
-  test('a registered command is appended beside the chamber’s own commands', async () => {
+  test('a registered command is appended beside Kabmo’s own commands', async () => {
     answer = () => ({ body: { commands: [], skills: [] } });
     await mount('command');
     await settle(6);

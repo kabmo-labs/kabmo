@@ -7,7 +7,7 @@
  * A panel plugin is a Bun package, and this is its build.
  *
  * The plugin directory is a normal Bun project — `package.json`, a TSX entry and
- * whatever dependencies it declares — and the chamber bundles it into ONE ESM
+ * whatever dependencies it declares — and Kabmo bundles it into ONE ESM
  * file that the host `import()`s into its own page. That is the point of the
  * shape: a plugin author writes TypeScript, imports from `node_modules`, and
  * gets one self-contained module, exactly as this repo does for its own client.
@@ -20,14 +20,14 @@
  * - **`@kabmo-labs/*` is linked into the plugin's `node_modules` before the
  *   build.** The SDK and the UI kit are installed packages, so a plugin cloned
  *   into the marketplace cannot resolve them from its own install — `bun install`
- *   would have to fetch them from a registry, and the chamber must link the
+ *   would have to fetch them from a registry, and Kabmo must link the
  *   copies IT runs with. Linking is the boring answer that works for every
  *   bundler a plugin might use, rather than only for `bun build`: a `--preload`
  *   resolver was measured NOT to reach the CLI's build at all (Bun 1.4.2), and
  *   `BUN_OPTIONS` breaks `bun run` itself.
  * - **The shared runtime is EXTERNAL.** `preact`, its hooks and JSX runtimes,
- *   `@kabmo-labs/plugin-sdk/app` and `@kabmo-labs/ui` are rewritten to read the
- *   host's `globalThis.__ompchamberPluginRuntime` (see `shim.ts`). A plugin that
+ *   `@kabmo-labs/kabmo-sdk/app` and `@kabmo-labs/kabmo-ui` are rewritten to read the
+ *   host's `globalThis.__kabmoPluginRuntime` (see `shim.ts`). A plugin that
  *   bundled its own Preact would create components the host's tree cannot
  *   render, which is why this is a correctness rule and not a size optimisation.
  * - **`bun install` runs first, with lifecycle scripts disabled.** A plugin's
@@ -48,7 +48,7 @@ import type { PanelPluginManifest } from '@/shared/types';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { runShell } from '@/server/lib/fs/shell';
-import { linkChamberPackages } from '@/server/lib/panels/link.server';
+import { linkKabmoPackages } from '@/server/lib/panels/link.server';
 import {
   APP_SOURCE_CANDIDATES,
   SERVER_SOURCE_CANDIDATES,
@@ -91,7 +91,7 @@ const BUILD_TIMEOUT_MS = 180_000;
 /**
  * Whether the plugin's package.json declares a `build` script.
  *
- * A script WINS over the chamber's own bundler: a plugin may need a pass this
+ * A script WINS over Kabmo's own bundler: a plugin may need a pass this
  * module knows nothing about (a framework, a template compiler, a CSS pipeline),
  * and second-guessing it would break the plugins that need it most. Such a
  * plugin is responsible for producing the manifest's `app` file itself, and the
@@ -136,15 +136,15 @@ async function declaresDependencies(root: string): Promise<boolean> {
  * Two paths, and which one runs is decided by the plugin:
  *
  * - **Its own `build` script.** Run as-is; the plugin owns its output and must
- *   produce the files the manifest names. The chamber's shim does not apply, so
+ *   produce the files the manifest names. The Kabmo's shim does not apply, so
  *   such a plugin carries its own runtime unless it marks the shared specifiers
  *   external itself.
- * - **The chamber's bundler.** One `Bun.build` per declared entry: the app
+ * - **The Kabmo's bundler.** One `Bun.build` per declared entry: the app
  *   entry shimmed for the browser, the server entry bundled for Bun. A plugin
  *   may declare either or both, and each half is built only when its source is
  *   present.
  *
- * The `dist/` purge happens only when the chamber is about to WRITE something.
+ * The `dist/` purge happens only when Kabmo is about to WRITE something.
  * A server-only plugin whose server half is emitted by its own tooling has
  * nothing to rebuild here, and deleting its output would leave it unservable
  * with nothing to put back.
@@ -176,7 +176,7 @@ export async function buildPanelPlugin(root: string, manifest: PanelPluginManife
       return { status: 'failed', reason: describeInstallFailure(install.stderr, install.stdout) };
     }
   }
-  await linkChamberPackages(root);
+  await linkKabmoPackages(root);
 
   if (usesOwnScript) {
     const build = await runShell(
@@ -262,7 +262,7 @@ function describeBuildFailure(logs: readonly { message?: string; position?: unkn
  * is what `pluginCliError` does for `omp plugin`, and what this did) reports
  * `$ bun run build` as the reason a plugin could not install. Measured on a
  * plugin declaring a package that is not on npm: the real message is
- * `error: GET https://registry.npmjs.org/@ompchamber%2Fui - 404`.
+ * `error: GET https://registry.npmjs.org/@kabmo-labs%2Fui - 404`.
  *
  * So: the first `error:` line if there is one, else the first line that is not
  * part of the banner.

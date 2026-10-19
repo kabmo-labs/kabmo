@@ -54,7 +54,7 @@ function mount(clicked: Clicked): HTMLElement {
           clicked.reload += 1;
         },
         isReloading: false,
-        onRestartChamber: () => {
+        onRestartKabmo: () => {
           clicked.restart += 1;
         },
         isRestarting: false,
@@ -105,7 +105,7 @@ describe('SettingsSidebar bottom actions', () => {
           onSearchChange: () => {},
           onReloadOmp: () => {},
           isReloading: true,
-          onRestartChamber: () => {},
+          onRestartKabmo: () => {},
           isRestarting: false,
         }),
         container,

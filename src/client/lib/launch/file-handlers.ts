@@ -4,7 +4,7 @@
  */
 
 /**
- * Opening a file the operating system handed to the chamber.
+ * Opening a file the operating system handed to Kabmo.
  *
  * This is the PWA File Handling path, and it is a different shape from every
  * other way a file reaches the editor. A drop, a link or the file tree names a
@@ -108,7 +108,7 @@ export async function openHandleAsTab(
   return { ok: true, message: `Opened ${file.name}` };
 }
 
-/** Open a file the OS handed to the chamber at launch. */
+/** Open a file the OS handed to Kabmo at launch. */
 export function openLaunchedHandle(handle: FileSystemFileHandle): Promise<LaunchedFileResult> {
   return openHandleAsTab(handle, 'launch');
 }

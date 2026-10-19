@@ -81,14 +81,30 @@ describe('subdirectories', () => {
 });
 
 describe('readPluginManifest', () => {
-  test('reads a standalone ompchamber.json', async () => {
-    fs.writeFileSync(join(root, 'ompchamber.json'), JSON.stringify({ id: 'demo' }));
+  test('reads a standalone kabmo.json', async () => {
+    fs.writeFileSync(join(root, 'kabmo.json'), JSON.stringify({ id: 'demo' }));
     expect(await readPluginManifest(root)).toEqual({ kind: 'manifest', value: { id: 'demo' } });
   });
 
-  test('reads the ompchamber key out of package.json', async () => {
-    fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'x', ompchamber: { id: 'demo' } }));
+  test('reads the kabmo key out of package.json', async () => {
+    fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'x', kabmo: { id: 'demo' } }));
     expect(await readPluginManifest(root)).toEqual({ kind: 'manifest', value: { id: 'demo' } });
+  });
+
+  test('reads a pre-rename ompchamber.json, so an old install keeps loading', async () => {
+    fs.writeFileSync(join(root, 'ompchamber.json'), JSON.stringify({ id: 'legacy' }));
+    expect(await readPluginManifest(root)).toEqual({ kind: 'manifest', value: { id: 'legacy' } });
+  });
+
+  test('reads a pre-rename package.json key, and the new key wins when both exist', async () => {
+    fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'x', ompchamber: { id: 'legacy' } }));
+    expect(await readPluginManifest(root)).toEqual({ kind: 'manifest', value: { id: 'legacy' } });
+
+    fs.writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: 'x', kabmo: { id: 'current' }, ompchamber: { id: 'legacy' } }),
+    );
+    expect(await readPluginManifest(root)).toEqual({ kind: 'manifest', value: { id: 'current' } });
   });
 
   test('a directory with no manifest is not a plugin, and is skipped in silence', async () => {
@@ -107,10 +123,10 @@ describe('readPluginManifest', () => {
     // The distinction the whole three-answer shape exists for: this folder was
     // meant to be a plugin, and collapsing it with "no manifest" made every
     // corrupt install look like a folder that was never a plugin.
-    fs.writeFileSync(join(root, 'ompchamber.json'), '{ not json');
-    expect(await readPluginManifest(root)).toEqual({ kind: 'error', reason: 'ompchamber.json is not valid JSON' });
+    fs.writeFileSync(join(root, 'kabmo.json'), '{ not json');
+    expect(await readPluginManifest(root)).toEqual({ kind: 'error', reason: 'kabmo.json is not valid JSON' });
 
-    fs.rmSync(join(root, 'ompchamber.json'));
+    fs.rmSync(join(root, 'kabmo.json'));
     fs.writeFileSync(join(root, 'package.json'), '{ not json');
     expect(await readPluginManifest(root)).toEqual({ kind: 'error', reason: 'package.json is not valid JSON' });
   });

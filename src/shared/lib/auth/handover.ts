@@ -10,10 +10,10 @@
  * The environment was the obvious channel and it is broken. `delete Bun.env.X`
  * removes the name from the JS view only: Bun builds a child's environment from
  * the OS environ, which still carries the value. Measured on Bun 1.4.3 — after
- * `delete Bun.env.OMPCHAMBER_UI_PASSWORD`, a `Bun.spawn` with no `env` option
+ * `delete Bun.env.KABMO_UI_PASSWORD`, a `Bun.spawn` with no `env` option
  * handed the password to the child, and so did the real `runShell` path that
  * runs a plugin's own `bun install` / `bun run build`. Any third-party code the
- * chamber executes could read the UI password.
+ * Kabmo executes could read the UI password.
  *
  * So the secret is written to the child's stdin once, before it reads it, and
  * nothing on the way holds it in an environment a grandchild can inspect. The
@@ -29,7 +29,7 @@
  */
 
 /** Marker variable: present only on a spawn that is about to receive a payload. */
-export const PASSWORD_HANDOVER_ENV = 'OMPCHAMBER_PASSWORD_HANDOVER';
+export const PASSWORD_HANDOVER_ENV = 'KABMO_PASSWORD_HANDOVER';
 
 /** The one value {@link PASSWORD_HANDOVER_ENV} can carry. */
 export const PASSWORD_HANDOVER_STDIN = 'stdin';

@@ -14,7 +14,7 @@
  * The change is IN MEMORY, which is what the design allows: nothing on disk can
  * hold a password, so there is nothing durable to update. It lasts until the
  * process exits; the next start gets its password from `--ui-password` or
- * `OMPCHAMBER_UI_PASSWORD` again. The response says so, because a user who
+ * `KABMO_UI_PASSWORD` again. The response says so, because a user who
  * believes they changed a stored password would be surprised by a restart.
  *
  * Every OTHER session is revoked by the change: a token carries a fingerprint of

@@ -19,7 +19,7 @@
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { primeChamberSettings, readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import {
   PANEL_ORDER_SETTING_KEY,
   mergeVisibleOrder,
@@ -33,7 +33,7 @@ const ORDER_KEY = PANEL_ORDER_SETTING_KEY;
 
 /** Every case starts from "nothing stored", which is what a fresh install sees. */
 function resetSettings(): void {
-  primeChamberSettings({});
+  primeKabmoSettings({});
 }
 
 afterEach(() => {
@@ -43,7 +43,7 @@ afterEach(() => {
 afterAll(() => {
   // The settings snapshot is module state shared by every suite in one
   // `bun test` process; leave it as close to how it was found as possible.
-  primeChamberSettings({});
+  primeKabmoSettings({});
 });
 
 describe('readPanelOrder', () => {
@@ -127,7 +127,7 @@ describe('savePanelOrder', () => {
   test('a save round-trips through the settings snapshot', () => {
     resetSettings();
     savePanelOrder(['plan', 'git']);
-    expect(readChamberSetting<string[]>(ORDER_KEY)).toEqual(['plan', 'git']);
+    expect(readKabmoSetting<string[]>(ORDER_KEY)).toEqual(['plan', 'git']);
     expect(readPanelOrder()).toEqual(['plan', 'git']);
   });
 });

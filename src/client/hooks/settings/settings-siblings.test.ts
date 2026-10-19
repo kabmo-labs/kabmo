@@ -13,9 +13,9 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { GLOBAL_SCOPE_ID, useWorkspaceRoots, type WorkspaceRoots } from '@/client/hooks/settings/workspace-roots';
-import { useChamberSettingsWriter } from '@/client/hooks/settings/use-chamber-setting';
+import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-setting';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
-import { primeChamberSettings, readChamberSetting } from '@/shared/lib/settings/client';
+import { primeKabmoSettings, readKabmoSetting } from '@/shared/lib/settings/client';
 type Settings = { theme?: string; editorFont?: string };
 import { diffSettings } from '@/shared/lib/settings/diff';
 
@@ -48,7 +48,7 @@ function WorkspaceRootsProbe() {
 }
 
 function WriterProbe() {
-  writeSettings = useChamberSettingsWriter();
+  writeSettings = useKabmoSettingsWriter();
   return null;
 }
 
@@ -148,9 +148,9 @@ describe('useWorkspaceRoots', () => {
   });
 });
 
-describe('useChamberSettingsWriter', () => {
+describe('useKabmoSettingsWriter', () => {
   test('persists only the keys a diff reports as moved', async () => {
-    primeChamberSettings({ omp_chamber_settings: { theme: 'dark', editorFont: 'Menlo' } });
+    primeKabmoSettings({ omp_chamber_settings: { theme: 'dark', editorFont: 'Menlo' } });
     await mount(h(WriterProbe, {}));
     const prev: Settings = { theme: 'dark', editorFont: 'Menlo' };
     const next: Settings = { theme: 'light', editorFont: 'Menlo' };
@@ -162,7 +162,7 @@ describe('useChamberSettingsWriter', () => {
     if (posts.length !== 1) throw new Error('expected one POST in the request log');
     const body = posts[0]?.body;
     if (typeof body !== 'string') throw new Error('expected a JSON body in the POST');
-    expect(JSON.parse(body)).toMatchObject({ omp_chamber_settings: { theme: 'light' } });
-    expect(String(readChamberSetting('theme'))).toBe('light');
+    expect(JSON.parse(body)).toMatchObject({ kabmo_settings: { theme: 'light' } });
+    expect(String(readKabmoSetting('theme'))).toBe('light');
   });
 });

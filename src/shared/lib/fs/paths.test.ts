@@ -53,7 +53,7 @@ describe('stripReadSelector', () => {
     // `http://host:8080/x` would otherwise lose `:8080` to the line-range rule.
     expect(stripReadSelector('http://host:8080/x.ts')).toBe('http://host:8080/x.ts');
     expect(stripReadSelector('xd://eval/browser')).toBe('xd://eval/browser');
-    expect(stripReadSelector('proc://ompchamber-dev')).toBe('proc://ompchamber-dev');
+    expect(stripReadSelector('proc://kabmo-dev')).toBe('proc://kabmo-dev');
     expect(stripReadSelector('skill://diagnose')).toBe('skill://diagnose');
   });
 
@@ -65,7 +65,7 @@ describe('stripReadSelector', () => {
 
 describe('isVirtualPath', () => {
   test('recognizes an omp internal URL', () => {
-    expect(isVirtualPath('proc://ompchamber-dev')).toBe(true);
+    expect(isVirtualPath('proc://kabmo-dev')).toBe(true);
     expect(isVirtualPath('xd://lsp')).toBe(true);
     expect(isVirtualPath('agent://Sleeper')).toBe(true);
     expect(isVirtualPath('skill://pr-review')).toBe(true);

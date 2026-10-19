@@ -113,7 +113,7 @@ export function useSubagentTranscript(
       if (generation !== generationRef.current) return;
       if (!page) {
         // The session's omp process is gone (the child finished, the idle
-        // reclaim took it, or the chamber restarted) — the RPC is refused for
+        // reclaim took it, or Kabmo restarted) — the RPC is refused for
         // an unmanaged session rather than respawning one for a read. Continue
         // on disk; without this the view froze on whatever the last live page
         // held, which is exactly the final turns of a just-finished subagent.

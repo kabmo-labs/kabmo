@@ -5,7 +5,7 @@
 
 /**
  * Shared number formatters. Every compact-label / cost / byte / price display
- * in the chamber funnels through here so the wire format stays identical
+ * in Kabmo funnels through here so the wire format stays identical
  * everywhere.
  *
  * `formatCompactTokens` absorbs the former `formatContextWindow` (the most

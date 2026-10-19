@@ -1,6 +1,6 @@
 name: Publish Plugin Packages
 
-# Publishes `@kabmo-labs/plugin-sdk` and `@kabmo-labs/ui` — the packages a panel
+# Publishes `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` — the packages a panel
 # plugin imports — to npm.
 #
 # This file is a TRIGGER, not the implementation. The steps live in
@@ -14,7 +14,7 @@ name: Publish Plugin Packages
 # a plugin author depends on. Folding them together would republish a library on
 # every app release for no reason, and a library fix would have to wait for one.
 #
-# Triggered by pushing a tag `plugin-sdk/v1.2.3` or `ui/v1.2.3`, which must match
+# Triggered by pushing a tag `kabmo-sdk/v1.2.3` or `kabmo-ui/v1.2.3`, which must match
 # the version in that package's package.json — the check inside the called
 # workflow refuses the tag otherwise, so a tag can never publish a version nobody
 # wrote down. This path stays because it is the documented manual release: bump
@@ -33,13 +33,13 @@ name: Publish Plugin Packages
 # DOES cut a version, its own run publishes it here.
 #
 # Required: NPM_TOKEN — a granular access token with "Read and write" on BOTH
-# @ompchamber packages, or an automation token, as a repository secret or on the
+# @kabmo-labs packages, or an automation token, as a repository secret or on the
 # `npm` environment.
 on:
   push:
     tags:
-      - 'plugin-sdk/v*'
-      - 'ui/v*'
+      - 'kabmo-sdk/v*'
+      - 'kabmo-ui/v*'
   workflow_dispatch:
     inputs:
       packages:
@@ -47,7 +47,7 @@ on:
         required: false
         type: string
       tag:
-        description: 'Tag to publish, e.g. plugin-sdk/v2.0.0 (alternative to `packages`)'
+        description: 'Tag to publish, e.g. kabmo-sdk/v2.0.0 (alternative to `packages`)'
         required: false
         type: string
       package:
@@ -57,13 +57,13 @@ on:
         type: choice
         options:
           - both
-          - plugin-sdk
-          - ui
+          - kabmo-sdk
+          - kabmo-ui
 
 concurrency:
   # One publish per package at a time. Grouped by the package rather than by the
-  # ref so a `ui` publish cannot start while a `plugin-sdk` one is still running —
-  # `ui` depends on `plugin-sdk`, so their order matters.
+  # ref so a `kabmo-ui` publish cannot start while a `kabmo-sdk` one is still running —
+  # `kabmo-ui` depends on `kabmo-sdk`, so their order matters.
   group: publish-plugins
   cancel-in-progress: false
 

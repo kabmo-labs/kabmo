@@ -33,7 +33,7 @@ import { removeDir } from '@/test-support/remove-dir';
  * (`resolveRoot` honors the app root, a path below it, or a registered
  * workspace). A repository in `/tmp` is not addressable through the route at
  * all — `resolveRoot` falls back to the app root's own working tree, so the
- * action ran against THE CHAMBER REPOSITORY.
+ * action ran against THE Kabmo REPOSITORY.
  */
 const FIXTURE_ROOT = path.join(process.cwd(), 'tmp-test-git-merge');
 const repos: string[] = [];

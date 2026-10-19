@@ -7,7 +7,7 @@
  * Read-only access to the omp agent's stored provider credentials
  * (~/.omp/agent/models.yml `providers.<slug>.apiKey`, then
  * ~/.omp/agent/agent.db `auth_credentials`). These are omp's own secrets —
- * chamber only reads them to build usage reports and never writes, mutates,
+ * Kabmo only reads them to build usage reports and never writes, mutates,
  * logs, or echoes them back over HTTP.
  */
 

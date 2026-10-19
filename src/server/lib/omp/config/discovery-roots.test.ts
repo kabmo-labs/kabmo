@@ -12,7 +12,7 @@
  *   `~/.config/opencode/commands` are commands-only. A consumer that used one
  *   list for both would watch a root omp ignores, or miss one it reads.
  * - Only the omp-native roots are `managed`. Everything else belongs to another
- *   tool, so a save or delete through the chamber must never reach it.
+ *   tool, so a save or delete through Kabmo must never reach it.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -65,7 +65,7 @@ describe('skill roots', () => {
       expect(dirs).toContain(join(inner, '.omp', 'skills'));
       expect(dirs).toContain(join(outer, '.omp', 'skills'));
 
-      // The chamber's write/delete paths stay scoped to the cwd's own root: a
+      // The Kabmo's write/delete paths stay scoped to the cwd's own root: a
       // save in one project must not be able to rewrite a parent's files.
       const managed = skillRoots(inner).filter((root) => root.managed).map((root) => root.dir);
       expect(managed).not.toContain(join(outer, '.omp', 'skills'));

@@ -7,7 +7,7 @@
  * "Rename with AI" — the session row's menu action that asks omp to name a
  * conversation from its own transcript.
  *
- * It is the MANUAL counterpart of the chamber's auto-titling
+ * It is the MANUAL counterpart of Kabmo's auto-titling
  * (`auto-title.server.ts`), and the difference is the whole point: auto-titling
  * refuses to touch a session that already has a name, because it fires
  * unrequested and would overwrite what the operator typed. This action IS the
@@ -90,7 +90,7 @@ export async function renameSessionWithAi(sessionId: string): Promise<RenameWith
   if (!session?.isAlive()) {
     const cwd = await resolveSpawnCwd(resolved.recordedCwd);
     const spawnMode = await loadPersistedAccessMode();
-    // A session the chamber is not managing still has a transcript on disk, so
+    // A session Kabmo is not managing still has a transcript on disk, so
     // the child is resumed for this one action — the same spawn the send path
     // performs, minus the prompt bookkeeping. Refused when another process owns
     // the file: resuming it would make omp fork the session (open-elsewhere).

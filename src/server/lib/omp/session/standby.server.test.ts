@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * The standby-recycle contract, which is what makes an `omp update` visible
- * without a chamber restart.
+ * without a Kabmo restart.
  *
  * Three properties are load-bearing:
  *

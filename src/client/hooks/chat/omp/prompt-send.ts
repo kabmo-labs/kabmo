@@ -89,7 +89,7 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       });
       const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string; code?: string } & SessionOwnerConflict;
       if (!res.ok || body.error) {
-        // Another chamber instance owns this session: send the tab there
+        // Another Kabmo instance owns this session: send the tab there
         // instead of starting a second writer (which omp would fork).
         if (redirectToOwningInstance(body, sid)) return { ok: false, busy: false, error: 'Session is owned by another instance' };
         setState((prev) => ({ ...prev, isGenerating: false, error: body.error ?? `HTTP ${res.status}` }));

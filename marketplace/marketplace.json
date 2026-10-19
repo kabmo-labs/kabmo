@@ -12,7 +12,7 @@
     {
       "name": "stats",
       "source": "plugins/stats",
-      "description": "CPU and RAM used by the omp stack — the chamber, every omp child, the daemons and the shells.",
+      "description": "CPU and RAM used by the omp stack — Kabmo, every omp child, the daemons and the shells.",
       "category": "utility"
     },
     {

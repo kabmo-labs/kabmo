@@ -59,8 +59,8 @@ interface SessionScanCache {
 }
 
 declare global {
-  var __ompChamberSessionFileListCache: Map<string, SessionFileListCacheEntry> | undefined;
-  var __ompChamberSessionScanCache: SessionScanCache | undefined;
+  var __kabmoSessionFileListCache: Map<string, SessionFileListCacheEntry> | undefined;
+  var __kabmoSessionScanCache: SessionScanCache | undefined;
 }
 
 const MAX_SESSION_SCAN_CACHE_ENTRIES = 2048;
@@ -77,10 +77,10 @@ export async function listSessionFiles(sessionsRoot: string = getSessionsDir()):
   } catch {
     return [];
   }
-  if (!globalThis.__ompChamberSessionFileListCache) {
-    globalThis.__ompChamberSessionFileListCache = new Map();
+  if (!globalThis.__kabmoSessionFileListCache) {
+    globalThis.__kabmoSessionFileListCache = new Map();
   }
-  const cache = globalThis.__ompChamberSessionFileListCache;
+  const cache = globalThis.__kabmoSessionFileListCache;
   const cached = cache.get(sessionsRoot);
   if (cached) {
     let fresh = true;
@@ -134,15 +134,15 @@ export async function listSessionFiles(sessionsRoot: string = getSessionsDir()):
   // A rebuilt list means the directory moved (a session was added or removed),
   // which is exactly when the `id → path` index is stale — it is derived from
   // this list, and its own mtime key cannot see a file that is not in it yet.
-  globalThis.__ompChamberSessionIdIndex?.delete(sessionsRoot);
+  globalThis.__kabmoSessionIdIndex?.delete(sessionsRoot);
   return files;
 }
 
 function getSessionScanCache(): Map<string, OmpSessionInfo> {
-  const slot = globalThis.__ompChamberSessionScanCache;
+  const slot = globalThis.__kabmoSessionScanCache;
   if (slot && slot.version === SESSION_SCAN_CACHE_VERSION) return slot.entries;
   const fresh: SessionScanCache = { version: SESSION_SCAN_CACHE_VERSION, entries: new Map() };
-  globalThis.__ompChamberSessionScanCache = fresh;
+  globalThis.__kabmoSessionScanCache = fresh;
   return fresh.entries;
 }
 
@@ -249,12 +249,12 @@ interface SessionIdIndex {
 }
 
 declare global {
-  var __ompChamberSessionIdIndex: Map<string, SessionIdIndex> | undefined;
+  var __kabmoSessionIdIndex: Map<string, SessionIdIndex> | undefined;
 }
 
 /** The `id → path` index for `sessionsRoot`, building it on first use. */
 export async function sessionIdIndex(sessionsRoot: string = getSessionsDir()): Promise<Map<string, string>> {
-  const host = (globalThis.__ompChamberSessionIdIndex ??= new Map());
+  const host = (globalThis.__kabmoSessionIdIndex ??= new Map());
   const cached = host.get(sessionsRoot);
   if (cached) return cached.entries;
   const entries = new Map<string, string>();
@@ -270,9 +270,9 @@ export async function sessionIdIndex(sessionsRoot: string = getSessionsDir()): P
 /** Clear in-memory file-list and per-file scan caches (e.g. after a mutation
  *  that mtime keys cannot detect). */
 export function clearSessionFileCaches(): void {
-  globalThis.__ompChamberSessionFileListCache?.clear();
-  globalThis.__ompChamberSessionScanCache?.entries.clear();
-  globalThis.__ompChamberSessionIdIndex?.clear();
+  globalThis.__kabmoSessionFileListCache?.clear();
+  globalThis.__kabmoSessionScanCache?.entries.clear();
+  globalThis.__kabmoSessionIdIndex?.clear();
 }
 
 /** Exported for tests/spot-checks: read a raw JSONL session header directly. */

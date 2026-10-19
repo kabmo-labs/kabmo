@@ -17,8 +17,8 @@
  *
  * | Root | Why |
  * |---|---|
- * | a **direct child of the chamber** | an omp session host, a prewarm, a utility, a PTY shell — the chamber spawned it, so it is a thing of its own |
- * | a **daemon root from omp's registry** | the broker is `detached` + `unref`ed, so it is reparented to launchd and a tree walk from the chamber can never see it |
+ * | a **direct child of Kabmo** | an omp session host, a prewarm, a utility, a PTY shell — Kabmo spawned it, so it is a thing of its own |
+ * | a **daemon root from omp's registry** | the broker is `detached` + `unref`ed, so it is reparented to launchd and a tree walk from Kabmo can never see it |
  * | a **broker** | it supervises SEVERAL daemons (`omp.browser.headed`, `omp.browser.headless`, `omp.lsp.mux` here), so folding it into whichever one a map named first is arbitrary |
  *
  * ## Two orderings that are load-bearing
@@ -31,7 +31,7 @@
  *   walking from the broker's pid alone dropped `omp.browser.headed`, because a
  *   broker supervises more daemons than the one file names.
  *
- * A process whose chain reaches neither the chamber nor a known daemon keeps
+ * A process whose chain reaches neither Kabmo nor a known daemon keeps
  * its own key, so it still renders rather than vanishing.
  */
 
@@ -39,7 +39,7 @@ import type { DaemonEntry } from './daemons';
 import type { ProcessInfo } from './proc/types';
 
 /** What a group IS, which decides its icon, tone and ordering. */
-export type GroupKind = 'chamber' | 'session' | 'prewarm' | 'utility' | 'daemon' | 'broker' | 'terminal' | 'other';
+export type GroupKind = 'kabmo' | 'session' | 'prewarm' | 'utility' | 'daemon' | 'broker' | 'terminal' | 'other';
 
 /** Where one process sits in the tree. */
 export interface GroupAssignment {
@@ -53,7 +53,7 @@ export interface GroupAssignment {
 }
 
 export interface GroupOptions {
-  /** The chamber's own pid — the tree root and the terminal-parent test. */
+  /** The Kabmo's own pid — the tree root and the terminal-parent test. */
   serverPid: number;
   /** Every daemon omp's registry reports. */
   daemons: readonly DaemonEntry[];
@@ -88,8 +88,8 @@ function rootsOf(list: readonly ProcessInfo[], options: GroupOptions): Map<numbe
   const byPid = new Map(list.map((process) => [process.pid, process]));
 
   // Daemons and brokers first: a registry pid may be a direct child of the
-  // chamber, and the registry knows what it IS while the child test only knows
-  // that the chamber spawned it.
+  // Kabmo, and the registry knows what it IS while the child test only knows
+  // that Kabmo spawned it.
   for (const daemon of options.daemons) {
     if (daemon.state === 'ready' && byPid.has(daemon.pid)) {
       roots.set(daemon.pid, { kind: 'daemon', name: daemon.name });
@@ -99,7 +99,7 @@ function rootsOf(list: readonly ProcessInfo[], options: GroupOptions): Map<numbe
     }
   }
 
-  // Then a direct child of the chamber that the registry did not claim: an omp
+  // Then a direct child of Kabmo that the registry did not claim: an omp
   // session host (its argv says which kind), or a PTY shell.
   for (const process of list) {
     if (process.ppid !== options.serverPid || roots.has(process.pid)) continue;
@@ -175,9 +175,9 @@ export function assignGroups(
       kind = found.kind;
       baseDepth = found.depth + 1;
     } else if (cursor && cursor.pid === options.serverPid) {
-      key = 'chamber';
+      key = 'kabmo';
       ownerPid = options.serverPid;
-      kind = 'chamber';
+      kind = 'kabmo';
       baseDepth = 0;
     } else if (cursor) {
       const root = roots.get(cursor.pid);

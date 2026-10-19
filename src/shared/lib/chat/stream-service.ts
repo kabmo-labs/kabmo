@@ -141,7 +141,7 @@ export async function handleSimulatedStreaming(options: {
     `- **Runtime Target**: Bun v1.2.4 with native TypeScript striping\n`,
     `- **Edge Adapter**: remisJS edge routes & build plugins\n`,
     `- **Module Integrity**: All 14 workspace modules validated with 0 errors\n\n`,
-    `The runtime environment is healthy and all diagnostics passed successfully. You can inspect the detailed telemetry matrix or execute further chamber commands directly.`,
+    `The runtime environment is healthy and all diagnostics passed successfully. You can inspect the detailed telemetry matrix or execute further Kabmo commands directly.`,
   ];
 
   let fullContent = '';

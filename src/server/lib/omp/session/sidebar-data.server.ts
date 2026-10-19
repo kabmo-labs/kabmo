@@ -135,7 +135,7 @@ export async function loadSidebarStructure(): Promise<SessionListPayload> {
  * `repair` runs the two self-heal halves, because this is where a stale spinner
  * is actually looked at:
  *
- *   - a `stream` row whose owning chamber process is gone (judged from the row
+ *   - a `stream` row whose owning Kabmo process is gone (judged from the row
  *     alone, so every instance agrees);
  *   - a `stream` row THIS process owns with no live run behind it — an orphan,
  *     which only this process can see (see `healStaleStreamStatuses`), plus a
@@ -158,7 +158,7 @@ export async function loadSidebarStatus(
   // chat's generating indicator have one source in every mode. Returning `{}`
   // here is what kept the two from ever agreeing under `MOCK=true`.
   if (options.repair !== false) {
-    // The database is shared by every chamber instance on the machine, so a
+    // The database is shared by every Kabmo instance on the machine, so a
     // `stream` row may belong to a process this one cannot see. Ownership is
     // read from the row itself (its `owner_pid`) against OS liveness — never
     // against this process's own runtime registry, which would make two

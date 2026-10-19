@@ -18,7 +18,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
-import type { ContentScriptContext, ContentScriptRegistration } from '@kabmo-labs/plugin-sdk';
+import type { ContentScriptContext, ContentScriptRegistration } from '@kabmo-labs/kabmo-sdk';
 import { mountContentScripts, resetContentScripts, unmountContentScripts } from '@/client/lib/plugins/content-scripts';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement'] as const;

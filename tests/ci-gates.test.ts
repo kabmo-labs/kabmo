@@ -175,7 +175,7 @@ describe('the gate contract', () => {
   });
 
   test('both gates run on Windows as well as Linux', async () => {
-    // The chamber ships a Windows CLI, and the win32 branches in its path
+    // The Kabmo ships a Windows CLI, and the win32 branches in its path
     // helpers, `stop`'s ownership guard and the process-tree kill are otherwise
     // never executed by any gate: the repository is developed on macOS and the
     // runners are Linux. Three of the last five commits on `main` are Windows

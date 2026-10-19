@@ -4,7 +4,7 @@
  */
 
 /**
- * Auth state on disk, the caller address, and the chamber database.
+ * Auth state on disk, the caller address, and Kabmo database.
  *
  * The auth file holds ONE thing: a session-signing secret. A stored
  * `passwordHash` from the retired v1 shape must be readable for its secret but
@@ -37,17 +37,17 @@ let workRoot = '';
 let originalDataDir: string | undefined;
 
 beforeAll(() => {
-  workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-auth-db-test-'));
-  originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-  Bun.env.OMPCHAMBER_DATA_DIR = workRoot;
+  workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-auth-db-test-'));
+  originalDataDir = Bun.env.KABMO_DATA_DIR;
+  Bun.env.KABMO_DATA_DIR = workRoot;
 });
 
 /** Every connection this file opened, closed before the directory is deleted. */
 const opened: Array<{ close(): void }> = [];
 
 afterAll(() => {
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
   for (const db of opened.splice(0)) db.close();
   removeDir(workRoot);
 });
@@ -181,7 +181,7 @@ describe('database client', () => {
 });
 
 describe('schema bootstrap', () => {
-  test('creates the chamber tables and is idempotent', async () => {
+  test('creates Kabmo tables and is idempotent', async () => {
     const db = createDb(path.join(workRoot, 'schema.sqlite'));
     opened.push(db.raw);
     await initSchema(db);

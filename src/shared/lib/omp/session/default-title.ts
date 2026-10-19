@@ -58,7 +58,7 @@ export function pendingSessionCreatedAt(sessionId: string | null | undefined): n
  * 07:53:13 → :14 → :18 → :26 within one run) and the row's `updated_at` was
  * perpetually "now", which re-shuffled LATEST_SESSION ordering each time.
  *
- * NaN for anything that is not a v7 UUID (a legacy v4 id, a chamber id), so
+ * NaN for anything that is not a v7 UUID (a legacy v4 id, a Kabmo id), so
  * the caller's own fallback still applies.
  */
 export function sessionIdEpochMs(sessionId: string | null | undefined): number {

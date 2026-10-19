@@ -25,8 +25,8 @@
 import type {
   ListSlotName,
   KeyedRegistration,
-} from '@kabmo-labs/plugin-sdk';
-import { GLOBALLY_KEYED_SLOTS } from '@kabmo-labs/plugin-sdk';
+} from '@kabmo-labs/kabmo-sdk';
+import { GLOBALLY_KEYED_SLOTS } from '@kabmo-labs/kabmo-sdk';
 
 /** One contributed row, with the plugin it came from already attached. */
 export interface ListSlotEntry<T = KeyedRegistration> {
@@ -57,11 +57,11 @@ interface ListSlotState {
  */
 declare global {
   // eslint-disable-next-line no-var
-  var __ompChamberPluginListSlots: ListSlotState | undefined;
+  var __kabmoPluginListSlots: ListSlotState | undefined;
 }
 
 function state(): ListSlotState {
-  return (globalThis.__ompChamberPluginListSlots ??= { entries: new Map(), listeners: new Set() });
+  return (globalThis.__kabmoPluginListSlots ??= { entries: new Map(), listeners: new Set() });
 }
 
 const entryKey = (pluginId: string, slot: ListSlotName, id: string) => `${pluginId}\u0000${slot}\u0000${id}`;

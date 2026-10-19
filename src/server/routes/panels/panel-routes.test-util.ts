@@ -45,7 +45,7 @@ export const dirs = { root: '', bundled: '' };
 export function writePlugin(dirName: string, dir: string, manifest: unknown = MANIFEST): string {
   const pluginDir = join(dir, dirName);
   fs.mkdirSync(join(pluginDir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(pluginDir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(pluginDir, 'kabmo.json'), JSON.stringify(manifest));
   fs.writeFileSync(join(pluginDir, 'dist', 'app.js'), 'export default {};');
   fs.writeFileSync(join(pluginDir, 'icon.svg'), '<svg></svg>');
   fs.writeFileSync(join(pluginDir, 'README.md'), '# Demo\n\nHello.');
@@ -107,18 +107,18 @@ export function usePanelRouteFixtures(): void {
   beforeEach(() => {
     dirs.root = fs.mkdtempSync(join(tmpdir(), 'omc-panel-routes-'));
     dirs.bundled = fs.mkdtempSync(join(tmpdir(), 'omc-panel-store-'));
-    process.env.OMPCHAMBER_MARKETPLACE_DIR = dirs.root;
-    process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = dirs.bundled;
+    process.env.KABMO_MARKETPLACE_DIR = dirs.root;
+    process.env.KABMO_BUNDLED_MARKETPLACE_DIR = dirs.bundled;
     isolateDb();
     invalidatePanelScan();
   });
 
   afterEach(async () => {
     await disposeAllPlugins();
-    globalThis.__ompChamberPluginLoadErrors = undefined;
+    globalThis.__kabmoPluginLoadErrors = undefined;
     releaseDb();
-    delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
-    delete process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
+    delete process.env.KABMO_MARKETPLACE_DIR;
+    delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
     invalidatePanelScan();
     fs.rmSync(dirs.root, { recursive: true, force: true });
     fs.rmSync(dirs.bundled, { recursive: true, force: true });

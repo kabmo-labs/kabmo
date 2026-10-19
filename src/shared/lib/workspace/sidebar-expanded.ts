@@ -6,14 +6,14 @@
  * array so it cannot grow without bound.
  */
 
-import { readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 
 const SETTINGS_KEY = 'omp_sidebar_expanded_sessions';
 /** Beyond this many ids the oldest are dropped on save. */
 const MAX_IDS = 50;
 
 export function loadExpandedSessionIds(): Set<string> {
-  const parsed = readChamberSetting<unknown>(SETTINGS_KEY);
+  const parsed = readKabmoSetting<unknown>(SETTINGS_KEY);
   if (!Array.isArray(parsed)) return new Set();
   return new Set(parsed.filter((id): id is string => typeof id === 'string'));
 }

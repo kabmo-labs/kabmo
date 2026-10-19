@@ -17,7 +17,7 @@
  *
  * The per-question loop is still reachable (a host that never opted in, or a
  * build without the command), and there a multi-question ask reaches the
- * chamber as ONE blocking `select` frame per question, in order. That frame
+ * Kabmo as ONE blocking `select` frame per question, in order. That frame
  * carries the question as its `title` (plus a ` (2/3)` progress suffix and a
  * `(2 selected) ` prefix for multi-select questions), which is what lets the
  * inline card put each frame back on the question it asked. Both shapes must

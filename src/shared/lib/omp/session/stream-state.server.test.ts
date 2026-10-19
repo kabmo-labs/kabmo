@@ -27,24 +27,24 @@ describe('run model on the stream row', () => {
   let savedDbPath: string | undefined;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'ompchamber-ss-'));
-    savedDbPath = Bun.env.OMPCHAMBER_DB_PATH;
+    root = mkdtempSync(join(tmpdir(), 'kabmo-ss-'));
+    savedDbPath = Bun.env.KABMO_DB_PATH;
     // The writes resolve the database; point them at a temp tree so the real
-    // `~/.ompchamber` is never opened.
-    Bun.env.OMPCHAMBER_DB_PATH = join(root, 'db.sqlite');
-    delete globalThis.__ompChamberDb;
+    // `~/.kabmo` is never opened.
+    Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
+    delete globalThis.__kabmoDb;
   });
 
   afterEach(() => {
     // CLOSE the handle before dropping the reference and deleting the tree. A
-    // bare `delete globalThis.__ompChamberDb` abandons the connection without
+    // bare `delete globalThis.__kabmoDb` abandons the connection without
     // closing it, so the file stays locked; on Windows the delete then fails
     // with EBUSY and reports the PREVIOUS test as failed (measured on the first
     // Windows run: every case in this file).
-    globalThis.__ompChamberDb?.resolved?.raw.close();
-    delete globalThis.__ompChamberDb;
-    if (savedDbPath === undefined) delete Bun.env.OMPCHAMBER_DB_PATH;
-    else Bun.env.OMPCHAMBER_DB_PATH = savedDbPath;
+    globalThis.__kabmoDb?.resolved?.raw.close();
+    delete globalThis.__kabmoDb;
+    if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
+    else Bun.env.KABMO_DB_PATH = savedDbPath;
     removeDir(root);
   });
 

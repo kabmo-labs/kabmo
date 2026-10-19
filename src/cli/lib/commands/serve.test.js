@@ -1,4 +1,4 @@
-// `ompchamber serve`'s flag rules that decide the process tree.
+// `kabmo serve`'s flag rules that decide the process tree.
 //
 // Only the pure decisions are tested here: the command itself spawns a server,
 // writes a login entry outside the data directory and blocks on a health check,
@@ -38,15 +38,15 @@ describe('trayForOptions', () => {
 
 describe('resolvePort / resolveHost', () => {
   test('an explicit flag wins over the environment', () => {
-    const previous = Bun.env.OMPCHAMBER_PORT;
-    Bun.env.OMPCHAMBER_PORT = '5555';
+    const previous = Bun.env.KABMO_PORT;
+    Bun.env.KABMO_PORT = '5555';
     try {
       expect(resolvePort({ port: 6000 })).toBe(6000);
       expect(resolvePort({})).toBe(5555);
       expect(resolvePort({ port: null })).toBe(5555);
     } finally {
-      if (previous === undefined) delete Bun.env.OMPCHAMBER_PORT;
-      else Bun.env.OMPCHAMBER_PORT = previous;
+      if (previous === undefined) delete Bun.env.KABMO_PORT;
+      else Bun.env.KABMO_PORT = previous;
     }
   });
 

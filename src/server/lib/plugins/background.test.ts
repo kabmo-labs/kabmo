@@ -44,7 +44,7 @@ describe('background', () => {
     expect(handle.services[0]?.id).toBe('poller');
   });
 
-  test('a schedule resolves its next fire with the chamber own grammar', () => {
+  test('a schedule resolves its next fire with Kabmo own grammar', () => {
     const { api, handle } = createPluginBackground('alpha', 1_000_000);
     api.schedule('sweep', '5m', () => {});
     api.schedule('cronny', '0 * * * *', () => {});

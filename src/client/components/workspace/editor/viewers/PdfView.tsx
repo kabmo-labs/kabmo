@@ -9,7 +9,7 @@
  * The alternative was a JavaScript renderer (pdf.js) and it was measured and
  * rejected: it costs a ~512 KB gzip bundle plus a worker chunk to re-implement
  * scrolling, page navigation, text selection, find, zoom and print that Chrome
- * already ships. The chamber runs in Chromium (and the phone browsers all
+ * already ships. The Kabmo runs in Chromium (and the phone browsers all
  * render PDFs natively), so the native viewer is strictly better here — zero
  * bundle, every affordance, and a rendering path that is not ours to maintain.
  *

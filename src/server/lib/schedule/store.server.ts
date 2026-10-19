@@ -9,7 +9,7 @@
  *
  * The server owns the clock: `next_run_at` is a stored column, not a derived
  * one, and the tick ADVANCES it in the same transaction that claims the task.
- * That is what makes two ticks (or two chamber instances on one database) safe
+ * That is what makes two ticks (or two Kabmo instances on one database) safe
  * — the second sees the row already moved past its own `now` and takes nothing.
  * A claim is therefore a write, not a read: `claimDueTasks` returns tasks that
  * have already been rescheduled, and the dispatcher only has to run them.

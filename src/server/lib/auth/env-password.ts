@@ -9,14 +9,14 @@
  *
  * Two sources, checked in order: the `--ui-password` argv flag (the CLI hashes
  * it before spawning, so the value normally arrives only when someone runs the
- * server by hand) and `OMPCHAMBER_UI_PASSWORD`.
+ * server by hand) and `KABMO_UI_PASSWORD`.
  *
  * The environment variable is DELETED the moment it is read, before any await.
  * `Bun.env` and `process.env` are the same object, and every child this server
  * spawns inherits it — the terminal panel's PTY (`lib/terminal/shell.ts`), the
  * omp RPC child (`lib/omp/rpc/process.ts`), `git`, `rg`. Without the delete, a
  * password supplied through the environment is readable from inside the
- * chamber's own terminal (`echo $OMPCHAMBER_UI_PASSWORD`) and by any process the
+ * Kabmo's own terminal (`echo $KABMO_UI_PASSWORD`) and by any process the
  * agent runs — a worse exposure than the argv leak the flag avoids.
  *
  * There is no file fallback. A stored password would let a `bun run dev` demand
@@ -24,7 +24,7 @@
  * module exists to remove.
  */
 
-import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
+import { LEGACY_UI_PASSWORD_ENV, UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
 /** argv flag carrying a password directly to the server (bypassing the CLI). */
 export const UI_PASSWORD_FLAG = '--ui-password';
@@ -49,11 +49,16 @@ export interface ResolvedRunPassword {
  * `--ui-password=value`.
  */
 export function resolveRunPassword(argv: readonly string[] = Bun.argv): ResolvedRunPassword {
-  const fromEnv = Bun.env[UI_PASSWORD_ENV];
+  // The pre-rename spelling is read as well, and BOTH are erased: an install
+  // whose shell profile still exports `OMPCHAMBER_UI_PASSWORD` must keep its
+  // protection, and leaving that one behind would hand the plaintext to every
+  // child — the leak the erase exists to prevent.
+  const fromEnv = Bun.env[UI_PASSWORD_ENV] ?? Bun.env[LEGACY_UI_PASSWORD_ENV];
   // Erased before any await, and before the caller hashes anything: a failure
   // must not leave the plaintext in the environment of a process that keeps
   // running.
-  if (fromEnv !== undefined) delete Bun.env[UI_PASSWORD_ENV];
+  delete Bun.env[UI_PASSWORD_ENV];
+  delete Bun.env[LEGACY_UI_PASSWORD_ENV];
   const envPassword = fromEnv && fromEnv.trim().length > 0 ? fromEnv.trim() : null;
 
   const flagIndex = argv.indexOf(UI_PASSWORD_FLAG);

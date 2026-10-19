@@ -4,7 +4,7 @@
  */
 
 /**
- * Boots a REAL chamber server for browser specs, isolated to a temp root.
+ * Boots a REAL Kabmo server for browser specs, isolated to a temp root.
  *
  * A subprocess, not an in-process Elysia app: the bugs a browser spec is here
  * to catch live in the assembled thing — the SSR shell, the client bundle, the
@@ -15,7 +15,7 @@
  * Isolation is the whole contract, and it is why `getDatabasePath` had to be
  * fixed first: every path the server writes — the SQLite file, the instance
  * record, the agent tree it scans for sessions — is redirected under one temp
- * root that teardown removes. A spec that leaked into `~/.ompchamber` or the
+ * root that teardown removes. A spec that leaked into `~/.kabmo` or the
  * checkout's `workspace.db` would corrupt the developer's machine.
  *
  * Readiness is polled on `GET /api/health` rather than parsed from the boot
@@ -162,7 +162,7 @@ async function waitForHealth(port: number, log: () => string, isAlive: () => boo
  * POSIX signals the process GROUP: the server is spawned detached, so its
  * grandchildren (a PTY shell, an omp child) die with it. Windows has no
  * negative-pid equivalent — `process.kill(-pid)` is not a thing there — so it
- * uses `taskkill /t`, the same mechanism the chamber's own
+ * uses `taskkill /t`, the same mechanism Kabmo's own
  * `killProcessTree` takes. Falling back to the direct child alone would leave
  * a detached `omp` behind on every Windows spec.
  */
@@ -203,7 +203,7 @@ export async function startHarnessServer(options: {
   const dataDir = join(runRoot, 'data');
   const agentDir = join(runRoot, 'agent');
   // The panel-plugin marketplace is a SECOND root the server writes, and it
-  // defaults to `~/.ompchamber/marketplace` — NOT under the data directory. A
+  // defaults to `~/.kabmo/marketplace` — NOT under the data directory. A
   // spec that installed a plugin therefore installed it into the developer's own
   // marketplace: measured, running this suite left an `e2e-plugin` row in the
   // real `marketplace.json` pointing at a temp repository that had been deleted.
@@ -216,13 +216,13 @@ export async function startHarnessServer(options: {
   const bundledDir = join(options.repoRoot, 'marketplace');
   const port = await pickFreePort();
 
-  // Real mode drives the scripted child. `OMPCHAMBER_OMP_BIN` must be an
+  // Real mode drives the scripted child. `KABMO_OMP_BIN` must be an
   // EXECUTABLE path — the server spawns it directly — so it is a compiled
   // binary, not a shell script (see `compiledFakeOmp` for why a `#!/bin/sh`
   // shim cannot work on Windows).
   const ompBin = options.mode === 'real' ? await compiledFakeOmp() : undefined;
 
-  const child = spawn('bun', ['run', 'src/server/index.ts', '--ompchamber-server'], {
+  const child = spawn('bun', ['run', 'src/server/index.ts', '--kabmo-server'], {
     cwd: options.repoRoot,
     // Windows has no process groups; the server is killed through `taskkill /t`
     // instead (see `signalGroup`), so detaching would only create a console.
@@ -234,16 +234,16 @@ export async function startHarnessServer(options: {
       PORT: String(port),
       NODE_ENV: 'development',
       // The three paths that decide where the server writes. `MOCK` chooses the
-      // data mode; `OMPCHAMBER_OMP_BIN` is only meaningful in real mode.
+      // data mode; `KABMO_OMP_BIN` is only meaningful in real mode.
       MOCK: options.mode === 'mock' ? 'true' : 'false',
-      OMPCHAMBER_DATA_DIR: dataDir,
-      OMPCHAMBER_DB_PATH: join(dataDir, 'db.sqlite'),
+      KABMO_DATA_DIR: dataDir,
+      KABMO_DB_PATH: join(dataDir, 'db.sqlite'),
       PI_CODING_AGENT_DIR: agentDir,
       // Both plugin-marketplace roots, or a spec's install lands in the real
-      // `~/.ompchamber/marketplace` and the bundled store is the checkout's own.
-      OMPCHAMBER_MARKETPLACE_DIR: marketplaceDir,
-      OMPCHAMBER_BUNDLED_MARKETPLACE_DIR: bundledDir,
-      ...(ompBin ? { OMPCHAMBER_OMP_BIN: ompBin } : {}),
+      // `~/.kabmo/marketplace` and the bundled store is the checkout's own.
+      KABMO_MARKETPLACE_DIR: marketplaceDir,
+      KABMO_BUNDLED_MARKETPLACE_DIR: bundledDir,
+      ...(ompBin ? { KABMO_OMP_BIN: ompBin } : {}),
       // Never inherit a developer's sync/credential choices.
       SYNC_WORKSPACE: 'false',
       ...options.env,

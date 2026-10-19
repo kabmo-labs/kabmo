@@ -1,6 +1,6 @@
 ---
 name: issue-intake
-description: Triage one OMPChamber GitHub issue and post exactly one maintainer-facing comment. Use when the automated issue bot runs on a new or edited issue, or when a report needs duplicate/regression classification, labelling and a single comment.
+description: Triage one Kabmo GitHub issue and post exactly one maintainer-facing comment. Use when the automated issue bot runs on a new or edited issue, or when a report needs duplicate/regression classification, labelling and a single comment.
 ---
 
 # Issue Intake
@@ -103,13 +103,13 @@ Reproduce in the reporter's conditions, because this app's behaviour depends on 
 - the data mode: `MOCK=true` runs against simulated data and needs no `omp` install, `MOCK=false` shells
   out to the real `omp` binary — a bug can exist in one and not the other, so a repro in the wrong mode
   proves nothing;
-- the run shape: a `bun run dev` server, `bun run start`, and an `ompchamber serve` daemon hold
+- the run shape: a `bun run dev` server, `bun run start`, and an `kabmo serve` daemon hold
   different state, and the CLI commands (`status`, `logs`) report on the daemon, not on a dev server;
 - the surface: a UI symptom belongs to a browser, a CLI symptom does not, and the right-panel views
   (files, search, git, terminal, context, browser) have separate runtimes behind them.
 
-Evidence to collect while you investigate: the server log (`ompchamber logs -n 100`), the running
-instance (`ompchamber status --json`), and the omp version (`omp --version`) — the server shells out to
+Evidence to collect while you investigate: the server log (`kabmo logs -n 100`), the running
+instance (`kabmo status --json`), and the omp version (`omp --version`) — the server shells out to
 that binary, so its version is part of the failure.
 
 - Found a concrete code-level mechanism? Say so with `file:line`, and state plainly whether it is

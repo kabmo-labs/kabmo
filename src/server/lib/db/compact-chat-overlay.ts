@@ -24,7 +24,7 @@
  *
  * Two properties keep it safe on an existing database:
  *
- * - It only rewrites a row whose session file EXISTS. For a chamber-created
+ * - It only rewrites a row whose session file EXISTS. For a Kabmo-created
  *   session the DB is the only copy, so those rows are left exactly as they are.
  * - It only rewrites a row it actually shrinks, so the cost is proportional to
  *   what is left to fix: 762 ms for a 173 MB overlay on first run, and one

@@ -103,19 +103,25 @@ describe('toManifest', () => {
   });
 
   test('carries a well-formed engines and capabilities block through', () => {
-    const manifest = { ...MANIFEST, engines: { ompchamber: '^1.2', pluginSdk: '~2.0' }, capabilities: ['panel'] };
+    const manifest = { ...MANIFEST, engines: { kabmo: '^1.2', pluginSdk: '~2.0' }, capabilities: ['panel'] };
     expect(toManifest(manifest, ROOT)).toMatchObject({
-      engines: { ompchamber: '^1.2', pluginSdk: '~2.0' },
+      engines: { kabmo: '^1.2', pluginSdk: '~2.0' },
       capabilities: ['panel'],
     });
   });
 
   test('refuses a malformed range rather than passing it', () => {
-    expect(toManifest({ ...MANIFEST, engines: { ompchamber: 'not a range' } }, ROOT)).toMatchObject({
+    expect(toManifest({ ...MANIFEST, engines: { kabmo: 'not a range' } }, ROOT)).toMatchObject({
       error: expect.stringContaining('is not a valid version range'),
     });
-    expect(toManifest({ ...MANIFEST, engines: { ompchamber: '  ' } }, ROOT)).toMatchObject({
+    expect(toManifest({ ...MANIFEST, engines: { kabmo: '  ' } }, ROOT)).toMatchObject({
       error: expect.stringContaining('is not a version range'),
+    });
+  });
+
+  test('reads the pre-rename engines key as kabmo, so an old plugin is not refused', () => {
+    expect(toManifest({ ...MANIFEST, engines: { ompchamber: '^1.2' } }, ROOT)).toMatchObject({
+      engines: { kabmo: '^1.2' },
     });
   });
 

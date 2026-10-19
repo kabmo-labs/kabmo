@@ -46,7 +46,7 @@ export function buildSidebarSessionStatus(
  * cannot disagree about whether a run is in flight. The status row is
  * server-authoritative and lives in the shared database, so it is the only
  * condition that holds for a run this client did not start: a second tab, a
- * second chamber instance, or a page that never attached to the session's
+ * second Kabmo instances, or a page that never attached to the session's
  * event stream (`GET /api/agent/:id` answers `running: false` for a child
  * owned by another process, so no `onResumeStream` fires here).
  */

@@ -4,10 +4,10 @@
  */
 
 /**
- * Scheduled tasks: a prompt the chamber sends to an omp session on a clock.
+ * Scheduled tasks: a prompt Kabmo sends to an omp session on a clock.
  *
- * The row is the chamber's own record (SQLite `scheduled_tasks`) — omp has no
- * scheduler of its own, so the chamber owns the clock and the dispatch. A run
+ * The row is Kabmo's own record (SQLite `scheduled_tasks`) — omp has no
+ * scheduler of its own, so Kabmo owns the clock and the dispatch. A run
  * is either a fresh omp session per fire (`sessionId: null`) or a resume of one
  * named session, which is what makes "every morning, in this conversation"
  * possible without a second conversation per day.

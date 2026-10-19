@@ -13,7 +13,7 @@
  * scan, and a stubbed `git` would exercise none of them.
  *
  * `Bun.which('git')` guards the suite: without git the install tests are
- * skipped rather than failing, because the chamber treats a missing git as an
+ * skipped rather than failing, because Kabmo treats a missing git as an
  * environment condition, not a bug.
  */
 
@@ -40,7 +40,7 @@ const VALID = {
 /** Create a git repository holding a plugin, and return its path as a URL. */
 function makePluginRepo(manifest: unknown, extra: Record<string, string> = {}): string {
   const dir = fs.mkdtempSync(join(work, 'repo-'));
-  fs.writeFileSync(join(dir, 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
   // The bundle is committed with the plugin here: the install only builds when
   // the plugin is a package, and this fixture is a plain directory.
   fs.mkdirSync(join(dir, 'dist'), { recursive: true });
@@ -67,13 +67,13 @@ const hasGit = Boolean(Bun.which('git'));
 
 /** Run `fn` with the bundled marketplace pointed at `dir`, restoring it after. */
 async function withBundledStore<T>(dir: string, fn: () => Promise<T>): Promise<T> {
-  const previous = process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
-  process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = dir;
+  const previous = process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
+  process.env.KABMO_BUNDLED_MARKETPLACE_DIR = dir;
   try {
     return await fn();
   } finally {
-    if (previous === undefined) delete process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR;
-    else process.env.OMPCHAMBER_BUNDLED_MARKETPLACE_DIR = previous;
+    if (previous === undefined) delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
+    else process.env.KABMO_BUNDLED_MARKETPLACE_DIR = previous;
   }
 }
 
@@ -81,19 +81,19 @@ async function withBundledStore<T>(dir: string, fn: () => Promise<T>): Promise<T
 function makeBundledStore(manifest: unknown = VALID): string {
   const bundled = fs.mkdtempSync(join(work, 'bundled-'));
   fs.mkdirSync(join(bundled, 'plugins', 'demo'), { recursive: true });
-  fs.writeFileSync(join(bundled, 'plugins', 'demo', 'ompchamber.json'), JSON.stringify(manifest));
+  fs.writeFileSync(join(bundled, 'plugins', 'demo', 'kabmo.json'), JSON.stringify(manifest));
   return bundled;
 }
 
 beforeEach(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-seed-'));
-  work = fs.mkdtempSync(join(tmpdir(), 'ompchamber-repos-'));
-  process.env.OMPCHAMBER_MARKETPLACE_DIR = root;
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-seed-'));
+  work = fs.mkdtempSync(join(tmpdir(), 'kabmo-repos-'));
+  process.env.KABMO_MARKETPLACE_DIR = root;
   invalidatePanelScan();
 });
 
 afterEach(() => {
-  delete process.env.OMPCHAMBER_MARKETPLACE_DIR;
+  delete process.env.KABMO_MARKETPLACE_DIR;
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(work, { recursive: true, force: true });
@@ -109,7 +109,7 @@ describe('seedDefaultMarketplace', () => {
       // The catalog exists so the scan has a store to read...
       expect(fs.existsSync(join(root, 'marketplace.json'))).toBe(true);
       // ...but the bundled plugin is NOT copied: the bundled marketplace is a
-      // store the user installs FROM, so a fresh chamber starts with nothing
+      // store the user installs FROM, so a fresh Kabmo starts with nothing
       // installed and an empty activity bar.
       expect(fs.existsSync(join(root, 'plugins', 'demo'))).toBe(false);
 
@@ -127,9 +127,9 @@ describe('seedDefaultMarketplace', () => {
       // A plugin the user installed afterwards is never disturbed by a later
       // boot, and the catalog the user's install appended to is not rewritten.
       fs.mkdirSync(join(root, 'plugins', 'mine'), { recursive: true });
-      fs.writeFileSync(join(root, 'plugins', 'mine', 'ompchamber.json'), JSON.stringify({ ...VALID, id: 'mine' }));
+      fs.writeFileSync(join(root, 'plugins', 'mine', 'kabmo.json'), JSON.stringify({ ...VALID, id: 'mine' }));
       expect((await seedDefaultMarketplace()).seeded).toBe(false);
-      expect(fs.existsSync(join(root, 'plugins', 'mine', 'ompchamber.json'))).toBe(true);
+      expect(fs.existsSync(join(root, 'plugins', 'mine', 'kabmo.json'))).toBe(true);
     });
   });
 
@@ -155,7 +155,7 @@ describe('installPanelPluginFromGit', () => {
     const result = await installPanelPluginFromGit(repo);
     expect(result.ok).toBe(true);
     expect(result.pluginId).toBe('from-git');
-    expect(fs.existsSync(join(root, 'plugins', 'from-git', 'ompchamber.json'))).toBe(true);
+    expect(fs.existsSync(join(root, 'plugins', 'from-git', 'kabmo.json'))).toBe(true);
 
     const catalog = JSON.parse(fs.readFileSync(getMarketplaceCatalogPath(), 'utf8')) as {
       plugins: Array<{ name: string; source: string }>;
@@ -203,7 +203,7 @@ describe('installPanelPluginFromGit', () => {
 
     const result = await installPanelPluginFromGit(dir);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('ompchamber.json');
+    expect(result.error).toContain('kabmo.json');
     // Nothing in the marketplace, and no staging directory left in it either.
     const entries = fs.existsSync(join(root, 'plugins')) ? fs.readdirSync(join(root, 'plugins')) : [];
     expect(entries).toEqual([]);
@@ -225,13 +225,13 @@ describe('installPanelPluginFromGit', () => {
           name: 'from-git',
           version: '2.0.0',
           scripts: { build: 'bun build src/entry.ts --outfile dist/app.js --target browser' },
-          ompchamber: VALID,
+          kabmo: VALID,
         }),
         'src/entry.ts': 'export default { built: true };',
       },
     );
-    // Remove the plain manifest so the package's own `ompchamber` key is used.
-    fs.rmSync(join(repo, 'ompchamber.json'));
+    // Remove the plain manifest so the package's own `kabmo` key is used.
+    fs.rmSync(join(repo, 'kabmo.json'));
 
     const result = await installPanelPluginFromGit(repo);
     expect(result.ok).toBe(true);
@@ -253,11 +253,11 @@ describe('installPanelPluginFromGit', () => {
           name: 'from-git',
           version: '2.0.0',
           scripts: { build: 'bun build src/missing.ts --outfile dist/app.js' },
-          ompchamber: VALID,
+          kabmo: VALID,
         }),
       },
     );
-    fs.rmSync(join(repo, 'ompchamber.json'));
+    fs.rmSync(join(repo, 'kabmo.json'));
 
     const result = await installPanelPluginFromGit(repo);
     expect(result.ok).toBe(true);

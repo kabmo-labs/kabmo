@@ -25,7 +25,7 @@ import { Actions } from '@/client/components/layout/update-popup/Actions';
 import { ReleaseNotes } from '@/client/components/layout/update-popup/ReleaseNotes';
 import { useUpdateChangelog } from '@/client/hooks/ui/updates/changelog';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { markAnnounced, shouldAnnounce, UPDATE_POPUP_OPEN_EVENT, UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 
 export interface UpdatePopupProps {
@@ -44,10 +44,10 @@ export function UpdatePopup({ updates }: UpdatePopupProps) {
   // lets a release that lands mid-session still announce itself.
   const announcedRef = useRef<string | null>(null);
 
-  useChamberEvent(UPDATE_POPUP_OPEN_EVENT, () => setManualOpen(true));
+  useKabmoEvent(UPDATE_POPUP_OPEN_EVENT, () => setManualOpen(true));
 
-  const latest = updates.info?.ompchamber.latest ?? null;
-  const available = Boolean(updates.info?.ompchamber.updateAvailable && latest);
+  const latest = updates.info?.kabmo.latest ?? null;
+  const available = Boolean(updates.info?.kabmo.updateAvailable && latest);
 
   useEffect(() => {
     if (!available || !latest || announcedRef.current === latest) return;
@@ -67,7 +67,7 @@ export function UpdatePopup({ updates }: UpdatePopupProps) {
   if (!open) return null;
 
   const data = changelog.data;
-  const from = data?.current ?? updates.info?.ompchamber.current ?? null;
+  const from = data?.current ?? updates.info?.kabmo.current ?? null;
   const to = data?.latest ?? latest;
 
   // Rendered through a portal, and that is load-bearing on BOTH layouts: the

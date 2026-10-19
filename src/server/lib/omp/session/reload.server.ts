@@ -4,7 +4,7 @@
  */
 
 /**
- * Refresh the plugin/skill inventory of every LIVE omp process the chamber
+ * Refresh the plugin/skill inventory of every LIVE omp process Kabmo
  * drives: the per-session children AND the pooled utility processes.
  *
  * omp discovers skills, commands and plugins once per process and does not
@@ -29,7 +29,7 @@
  * the `create-skill` skill writes its SKILL.md with a tool WHILE the chat that
  * invoked it is streaming, so the write landed during a run and the refresh was
  * skipped — leaving the new skill invisible until the user found the manual `⟳`
- * button. Verified against a live chamber: a skill created mid-turn was absent
+ * button. Verified against a live Kabmo: a skill created mid-turn was absent
  * from `get_available_commands` after the turn ended, and appeared the moment a
  * session reloaded.
  *

@@ -32,7 +32,7 @@
  * breaks one of them is visible in this plugin rather than in a user's.
  */
 
-import type { ChamberPluginApi, PluginJson } from '@ompchamber/plugin-sdk';
+import type { KabmoPluginApi, PluginJson } from '@kabmo-labs/kabmo-sdk';
 
 import { createSampler, type StatsSnapshot } from './sampler';
 import { readDaemonRegistry } from './daemons';
@@ -53,7 +53,7 @@ function asJson(snapshot: StatsSnapshot): PluginJson {
   return snapshot as unknown as PluginJson;
 }
 
-export default function plugin(api: ChamberPluginApi) {
+export default function plugin(api: KabmoPluginApi) {
   api.log.info('stats server half loaded');
 
   /** How many panels are watching. The loop samples only while this is > 0. */

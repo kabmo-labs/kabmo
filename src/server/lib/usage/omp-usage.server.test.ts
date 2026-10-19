@@ -10,7 +10,7 @@ import { parseOmpUsageSnapshot } from '@/server/lib/usage/omp-usage.server';
 /**
  * `omp usage --json` is the only source of provider-REPORTED quota, and the
  * shapes below are what omp 18.3.0 emits. The parser is the boundary that
- * turns that external payload into the chamber's flat `UsageLimitWindow[]`,
+ * turns that external payload into Kabmo's flat `UsageLimitWindow[]`,
  * so its precedence rules and its tolerance of junk are the contract.
  */
 describe('parseOmpUsageSnapshot', () => {

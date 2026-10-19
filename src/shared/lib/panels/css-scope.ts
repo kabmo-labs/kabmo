@@ -38,7 +38,7 @@
  * host.
  */
 
-import { pluginSurfaceSelector } from '@kabmo-labs/plugin-sdk';
+import { pluginSurfaceSelector } from '@kabmo-labs/kabmo-sdk';
 
 /** The at-rules that are only honoured at the top level of a stylesheet. */
 const TOP_LEVEL_STATEMENTS: Record<string, true> = {

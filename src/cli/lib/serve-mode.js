@@ -1,5 +1,5 @@
 /**
- * Serve-mode selection for `ompchamber serve`.
+ * Serve-mode selection for `kabmo serve`.
  *
  * The CLI always runs the production build: it is what a user of the command
  * wants (no HMR client, no unminified dev bundle re-downloaded per page load),

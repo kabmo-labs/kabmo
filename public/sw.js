@@ -1,5 +1,5 @@
 /**
- * OMPChamber service worker.
+ * Kabmo service worker.
  *
  * Two jobs, and only the first one is about installability.
  *
@@ -28,7 +28,10 @@
  * production — the URLs it matches do not exist there.
  */
 
-const BUNDLE_CACHE = 'ompchamber-dev-bundle';
+const BUNDLE_CACHE = 'kabmo-dev-bundle';
+
+/** The cache this worker used before the rename. */
+const LEGACY_BUNDLE_CACHE = 'ompchamber-dev-bundle';
 const BUNDLE_PREFIX = '/_dev-assets/client/';
 
 self.addEventListener('install', () => {
@@ -36,7 +39,16 @@ self.addEventListener('install', () => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      // The pre-rename cache holds a whole development bundle and nothing will
+      // ever read it again — the key it was stored under is gone. Dropping it
+      // here is the only thing that can reclaim those bytes on a client that
+      // was already running when the worker changed.
+      await caches.delete(LEGACY_BUNDLE_CACHE);
+      await self.clients.claim();
+    })(),
+  );
 });
 
 self.addEventListener('fetch', (event) => {

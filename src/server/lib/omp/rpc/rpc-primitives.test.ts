@@ -13,7 +13,7 @@
  *    because it sits directly on the frame path.
  *  - `PendingUiDialogs` remembers the ids omp is blocked on, and reports
  *    whether the set CHANGED so a caller does not republish on a `notify`.
- *  - `stripChamberHostEnv` strips the chamber host's own PORT / NODE_ENV /
+ *  - `stripKabmoHostEnv` strips the chamber host's own PORT / NODE_ENV /
  *    password from a spawned project command.
  *  - `recordSpawnProvenance` / `reconcileSpawnApprovalMode` decide whether a
  *    live session must be respawned for a new `--approval-mode`.
@@ -33,7 +33,7 @@ import {
   RpcCommandTimeoutError,
   STDERR_TAIL_LIMIT,
 } from '@/server/lib/omp/rpc/process-helpers';
-import { stripChamberHostEnv } from '@kabmo-labs/plugin-sdk';
+import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import {
   getSpawnApprovalMode,
   getSpawnModeEnv,
@@ -193,30 +193,30 @@ describe('PendingUiDialogs', () => {
   });
 });
 
-describe('stripChamberHostEnv', () => {
-  const base = { PATH: '/bin', PORT: '3000', HOST: '127.0.0.1', NODE_ENV: 'production', OMPCHAMBER_UI_PASSWORD: 'secret', NEXT_PUBLIC_X: '1', KEEP: 'yes' };
+describe('stripKabmoHostEnv', () => {
+  const base = { PATH: '/bin', PORT: '3000', HOST: '127.0.0.1', NODE_ENV: 'production', KABMO_UI_PASSWORD: 'secret', NEXT_PUBLIC_X: '1', KEEP: 'yes' };
 
-  test('removes the chamber host variables and keeps everything else', () => {
-    expect(stripChamberHostEnv(base, 'linux')).toEqual({ PATH: '/bin', KEEP: 'yes' });
+  test('removes Kabmo host variables and keeps everything else', () => {
+    expect(stripKabmoHostEnv(base, 'linux')).toEqual({ PATH: '/bin', KEEP: 'yes' });
   });
 
   test('removes HOST, the bind address the CLI sets beside PORT', () => {
-    // Measured: a Runner command under a chamber started with `HOST=127.0.0.1`
+    // Measured: a Runner command under a Kabmo started with `HOST=127.0.0.1`
     // reported `HOST=127.0.0.1` in its own environment, while a plain terminal
     // had it unset — so a project script that reads HOST as a default bound to
-    // the chamber's address instead of its own.
-    expect(stripChamberHostEnv({ HOST: '0.0.0.0', PATH: '/bin' }, 'linux')).toEqual({ PATH: '/bin' });
+    // Kabmo's address instead of its own.
+    expect(stripKabmoHostEnv({ HOST: '0.0.0.0', PATH: '/bin' }, 'linux')).toEqual({ PATH: '/bin' });
   });
 
   test('does not mutate the base environment', () => {
-    stripChamberHostEnv(base, 'linux');
+    stripKabmoHostEnv(base, 'linux');
     expect(base.PORT).toBe('3000');
   });
 
   test('matches names case-insensitively only on win32', () => {
     const mixed = { port: '1', host: 'x', Node_Env: 'x', next_private: '1', keep: 'ok' };
-    expect(stripChamberHostEnv(mixed, 'win32')).toEqual({ keep: 'ok' });
-    expect(stripChamberHostEnv(mixed, 'linux')).toEqual(mixed);
+    expect(stripKabmoHostEnv(mixed, 'win32')).toEqual({ keep: 'ok' });
+    expect(stripKabmoHostEnv(mixed, 'linux')).toEqual(mixed);
   });
 });
 

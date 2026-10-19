@@ -4,7 +4,7 @@
  */
 
 /**
- * Session loading core for the chamber chat: fetches /api/chat/:sessionId,
+ * Session loading core for Kabmo chat: fetches /api/chat/:sessionId,
  * applies session metadata (model / thinking level / title) and replaces the
  * timeline with the committed messages. Extracted from useChatTimeline so that
  * hook stays under the size ceiling.
@@ -87,7 +87,7 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
   // Thinking level seeded from the spawn response. The spawn's
   // `set_thinking_level` IS the level this session runs, and `/api/chat/:id`
   // cannot report it until omp's JSONL is locatable — until then the loader
-  // answers from the chamber DB copy, which carries no thinkingLevel at all.
+  // answers from Kabmo DB copy, which carries no thinkingLevel at all.
   // Without this seed the composer that takes over the pending view falls back
   // to a catalog default and claims a level the run never used.
   const seededThinkingLevelRef = useRef<string | null>(null);

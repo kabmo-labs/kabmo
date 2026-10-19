@@ -7,7 +7,7 @@
  * Plan Review: the full-screen surface for a plan the model submitted.
  *
  * The five choices are omp's own, in its own order, because the operator is
- * choosing between omp behaviours and not chamber behaviours:
+ * choosing between omp behaviours and not Kabmo behaviours:
  *
  *  - **Approve and execute** — a fresh session; the planning transcript is not
  *    carried over, which is what makes it the roomiest option.

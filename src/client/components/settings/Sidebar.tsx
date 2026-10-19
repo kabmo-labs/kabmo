@@ -6,19 +6,19 @@ export interface CategoryDef {
   id: SettingsCategoryId;
   label: string;
   icon: LucideIcon;
-  section: 'OMPCHAMBER' | 'WORKSPACE' | 'OMP' | 'LIBRARY';
+  section: 'KABMO' | 'WORKSPACE' | 'OMP' | 'LIBRARY';
   badge?: string;
   description: string;
 }
 
 export const SETTINGS_CATEGORIES: CategoryDef[] = [
-  // OMPCHAMBER
-  { id: 'appearance', label: 'Appearance', icon: Palette, section: 'OMPCHAMBER', description: 'Custom themes, typography scale, and layout density.' },
-  { id: 'chats', label: 'Chats', icon: MessageSquare, section: 'OMPCHAMBER', description: 'Message streaming, thinking blocks, and tool view modes.' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, section: 'OMPCHAMBER', description: 'Build failure alerts, sounds, and system popups.' },
-  { id: 'usage', label: 'Usage', icon: BarChart3, section: 'OMPCHAMBER', description: 'Build minutes quota, storage, and general usage.' },
-  { id: 'token-usage', label: 'Token Usage', icon: Coins, section: 'OMPCHAMBER', description: 'Token telemetry, cache, and cost breakdown.' },
-  { id: 'panel-plugins', label: 'Panel Plugins', icon: Puzzle, section: 'OMPCHAMBER', description: 'Panels a plugin adds to the chamber: right-panel views, navbar readouts and editor tabs.' },
+  // KABMO
+  { id: 'appearance', label: 'Appearance', icon: Palette, section: 'KABMO', description: 'Custom themes, typography scale, and layout density.' },
+  { id: 'chats', label: 'Chats', icon: MessageSquare, section: 'KABMO', description: 'Message streaming, thinking blocks, and tool view modes.' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, section: 'KABMO', description: 'Build failure alerts, sounds, and system popups.' },
+  { id: 'usage', label: 'Usage', icon: BarChart3, section: 'KABMO', description: 'Build minutes quota, storage, and general usage.' },
+  { id: 'token-usage', label: 'Token Usage', icon: Coins, section: 'KABMO', description: 'Token telemetry, cache, and cost breakdown.' },
+  { id: 'panel-plugins', label: 'Panel Plugins', icon: Puzzle, section: 'KABMO', description: 'Panels a plugin adds to Kabmo: right-panel views, navbar readouts and editor tabs.' },
   // WORKSPACE
   { id: 'projects', label: 'Projects', icon: FolderGit, section: 'WORKSPACE', description: 'Workspace directories, roots, and ignored paths.' },
   // OMP
@@ -41,7 +41,7 @@ interface SettingsSidebarProps {
   onSearchChange: (q: string) => void;
   onReloadOmp: () => void;
   isReloading: boolean;
-  onRestartChamber: () => void;
+  onRestartKabmo: () => void;
   isRestarting: boolean;
   className?: string;
 }
@@ -53,7 +53,7 @@ export function SettingsSidebar({
   onSearchChange,
   onReloadOmp,
   isReloading,
-  onRestartChamber,
+  onRestartKabmo,
   isRestarting,
   className = ''
 }: SettingsSidebarProps) {
@@ -65,7 +65,7 @@ export function SettingsSidebar({
       cat.description.toLowerCase().includes(q);
   });
 
-  const sections: Array<'OMPCHAMBER' | 'WORKSPACE' | 'OMP' | 'LIBRARY'> = ['OMPCHAMBER', 'WORKSPACE', 'OMP', 'LIBRARY'];
+  const sections: Array<'KABMO' | 'WORKSPACE' | 'OMP' | 'LIBRARY'> = ['KABMO', 'WORKSPACE', 'OMP', 'LIBRARY'];
 
   return (
     <div className={`flex flex-col h-full bg-canvas border-r border-ink/10 text-ink select-none ${className}`}>
@@ -157,7 +157,7 @@ export function SettingsSidebar({
         </button>
         <button
           type="button"
-          onClick={onRestartChamber}
+          onClick={onRestartKabmo}
           disabled={isReloading || isRestarting}
           title="Stop and start this Kabmo instance"
           aria-label="Restart Kabmo"

@@ -11,7 +11,7 @@ const STARTED_AT = Date.now();
 const STARTED_ISO = new Date(STARTED_AT).toISOString();
 
 /**
- * GET /api/health — lightweight readiness probe for the `ompchamber status` CLI.
+ * GET /api/health — lightweight readiness probe for the `kabmo status` CLI.
  * Dependency-light by design: never touches the database and never throws.
  *
  * It does sweep the descriptor table (`countOpenFileDescriptors`, ~12 ms over
@@ -25,7 +25,7 @@ export async function loader() {
   return json(
     {
       ok: true,
-      service: 'ompchamber',
+      service: 'kabmo',
       version: pkg.version,
       pid: process.pid,
       uptime: Math.round((Date.now() - STARTED_AT) / 10) / 100,

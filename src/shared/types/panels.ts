@@ -1,7 +1,7 @@
 /**
  * Panel-plugin contribution types.
  *
- * A panel plugin is third-party code the chamber loads INTO ITS OWN PAGE: the
+ * A panel plugin is third-party code Kabmo loads INTO ITS OWN PAGE: the
  * bundle is a real ESM module, the host `import()`s it, and the components it
  * registers are rendered in the host's Preact tree — the same document, the
  * same theme, the same hooks. There is no iframe and no message channel, so a
@@ -13,14 +13,14 @@
  * makes when it loads.
  */
 
-import type { PluginSettingDefinition } from '@kabmo-labs/plugin-sdk';
+import type { PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
 
 /** Where a contributed panel renders. One panel per position, per plugin. */
 export type PanelPosition = 'right' | 'editor' | 'header';
 
 /**
- * A plugin's own manifest (`ompchamber` in `package.json`, or a standalone
- * `ompchamber.json`).
+ * A plugin's own manifest (`kabmo` in `package.json`, or a standalone
+ * `kabmo.json`).
  */
 export interface PanelPluginManifest {
   id: string;
@@ -50,7 +50,7 @@ export interface PanelPluginManifest {
   css?: string;
   /**
    * The built server entry, relative to the plugin root — conventionally
-   * `dist/server.js`. Its default export is a `ChamberPluginFactory`.
+   * `dist/server.js`. Its default export is a `KabmoPluginFactory`.
    */
   server?: string;
   /**
@@ -61,11 +61,11 @@ export interface PanelPluginManifest {
   /**
    * Host versions this plugin declares it works with. Absent means "any".
    *
-   * `ompchamber` is the app's own version, `pluginSdk` the `@kabmo-labs/plugin-sdk`
+   * `kabmo` is the app's own version, `pluginSdk` the `@kabmo-labs/kabmo-sdk`
    * version — the two move independently, and a plugin built against a newer
    * contract must be refused rather than allowed to load and misbehave.
    */
-  engines?: { ompchamber?: string; pluginSdk?: string };
+  engines?: { kabmo?: string; pluginSdk?: string };
   /**
    * Host capabilities this plugin requires; a missing one refuses the plugin.
    *
@@ -298,7 +298,7 @@ export interface PanelRegistryPayload {
    * (`git`, `files`, …). The server only ever stores these ids — it has no
    * built-in panel list, and does not need one, because the client is what
    * resolves a bare id to a component. Carrying the set here rather than in the
-   * chamber settings blob is what keeps ONE store: the activity-bar menu and
+   * Kabmo settings blob is what keeps ONE store: the activity-bar menu and
    * the Panel Plugins switches write the same ids through the same endpoint,
    * so the two surfaces cannot disagree about whether a panel is on.
    */
@@ -317,8 +317,8 @@ export interface PanelRegistryPayload {
   /**
    * The bundled plugins a local edit has stopped from syncing, by plugin id.
    *
-   * A refusal, not a fault: the user changed files in a plugin the chamber
-   * installed, so the chamber leaves them alone. It travels on the payload
+   * A refusal, not a fault: the user changed files in a plugin Kabmo
+   * installed, so Kabmo leaves them alone. It travels on the payload
    * because the alternative is a plugin that silently stays on an old version
    * with nothing on screen to say why.
    */

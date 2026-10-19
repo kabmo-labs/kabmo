@@ -21,7 +21,7 @@ name: E2E specs
 # `secrets`, `strategy`, `needs`, `if`, `concurrency`, `permissions` and
 # `cache-mode` — everything else belongs here.
 #
-# TWO jobs run the same suite on two operating systems, because the chamber's
+# TWO jobs run the same suite on two operating systems, because Kabmo's
 # Windows-only code paths are otherwise never executed by a browser: the CLI's
 # path helpers, `stop`'s ownership guard and the `taskkill` tree kill. See the
 # `chromium-windows` job for what the harness had to change to make that
@@ -98,7 +98,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # The same browser specs on Windows.
   #
-  # The specs drive a REAL chamber server, and the parts of that server a Mac
+  # The specs drive a REAL Kabmo server, and the parts of that server a Mac
   # never exercises are exactly the ones a browser spec is best at catching: the
   # CLI's path handling, `stop`'s ownership guard, the process-tree kill
   # (`taskkill` rather than a group signal) and the spawn of an `omp` child.

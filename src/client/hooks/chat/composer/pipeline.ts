@@ -103,7 +103,7 @@ export function useComposerPipeline({
       setNotice(unreadable.length > 0 ? describeUnreadable(unreadable) : null);
     }
     if (failed.length > 0) {
-      // Named per cause: "outside the folders the chamber may read" is something
+      // Named per cause: "outside the folders Kabmo may read" is something
       // the user can act on, while a bare "could not be read" is not.
       const reason = reasons.get(failed[0]) ?? 'unavailable';
       setNotice(describeReferenceFailure(failed, reason));

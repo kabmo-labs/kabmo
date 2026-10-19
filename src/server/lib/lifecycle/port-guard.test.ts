@@ -43,8 +43,8 @@ const children: Bun.Subprocess[] = [];
 const servers: Server<undefined>[] = [];
 
 /** The flock singleton is anchored on `globalThis`; leaked state spans suites. */
-function flockHost(): { __ompChamberFlock?: unknown } {
-  return globalThis as unknown as { __ompChamberFlock?: unknown };
+function flockHost(): { __kabmoFlock?: unknown } {
+  return globalThis as unknown as { __kabmoFlock?: unknown };
 }
 
 /**
@@ -55,7 +55,7 @@ function flockHost(): { __ompChamberFlock?: unknown } {
  * observed while the real mechanism is active.
  */
 function usePidFileFallback(): void {
-  flockHost().__ompChamberFlock = { held: new Map(), available: false, lib: null };
+  flockHost().__kabmoFlock = { held: new Map(), available: false, lib: null };
 }
 
 function track<T extends PortLock | FlockHandle>(lease: T | null): T | null {
@@ -64,7 +64,7 @@ function track<T extends PortLock | FlockHandle>(lease: T | null): T | null {
 }
 
 /**
- * A real process whose argv says `ompchamber`, i.e. `matched` to identity.ts.
+ * A real process whose argv says `kabmo`, i.e. `matched` to identity.ts.
  *
  * The child announces itself before it parks, and that line is what says the OS
  * has finished `exec`: a freshly spawned process's command line is unreadable
@@ -76,7 +76,7 @@ function track<T extends PortLock | FlockHandle>(lease: T | null): T | null {
  */
 async function spawnChamberHolder(): Promise<Bun.Subprocess> {
   const child = Bun.spawn({
-    cmd: ['bun', '-e', 'console.log("ready"); await new Promise(() => {})', 'ompchamber-holder'],
+    cmd: ['bun', '-e', 'console.log("ready"); await new Promise(() => {})', 'kabmo-holder'],
     stdout: 'pipe',
     stderr: 'ignore',
   });
@@ -119,10 +119,10 @@ function occupy(fetch: (request: Request) => Response): number {
 }
 
 beforeEach(() => {
-  originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-test-port-guard-'));
-  Bun.env.OMPCHAMBER_DATA_DIR = tempDir;
-  // `claimPort` asks the occupant whether it is an Kabmo server, over the
+  originalDataDir = Bun.env.KABMO_DATA_DIR;
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-test-port-guard-'));
+  Bun.env.KABMO_DATA_DIR = tempDir;
+  // `claimPort` asks the occupant whether it is a Kabmo server, over the
   // global fetch. A stub another file left installed would answer for it.
   globalThis.fetch = realFetch;
 });
@@ -138,9 +138,9 @@ afterEach(async () => {
   }
   for (const server of servers.splice(0)) server.stop(true);
   for (const lease of leases.splice(0)) lease.release();
-  delete flockHost().__ompChamberFlock;
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
+  delete flockHost().__kabmoFlock;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
@@ -228,7 +228,7 @@ describe('claimPort', () => {
     // `bun run --hot` re-evaluates the entry inside the running process, so the
     // port is held by us and Bun swaps the handler on the next listen. Killing
     // the dev loop on every save is the failure this prevents.
-    const port = occupy(() => Response.json({ service: 'ompchamber', pid: process.pid }));
+    const port = occupy(() => Response.json({ service: 'kabmo', pid: process.pid }));
     let binds = 0;
 
     await claimPort({ port, host: '127.0.0.1', listen: async () => { binds += 1; } });
@@ -236,9 +236,9 @@ describe('claimPort', () => {
     expect(binds).toBe(1);
   });
 
-  testPosix('names an Kabmo occupant held by another process', async () => {
+  testPosix('names a Kabmo occupant held by another process', async () => {
     const holder = await spawnChamberHolder();
-    const port = occupy(() => Response.json({ service: 'ompchamber', pid: holder.pid, version: '9.9.9' }));
+    const port = occupy(() => Response.json({ service: 'kabmo', pid: holder.pid, version: '9.9.9' }));
     let binds = 0;
 
     const error = await claimPort({ port, host: '127.0.0.1', listen: async () => { binds += 1; } })
@@ -257,7 +257,7 @@ describe('claimPort', () => {
   test('names a foreign listener as not Kabmo, without a bind error', async () => {
     // Nothing answers `/api/health` and nothing identifies itself, so the probe
     // fails first and `listen` is never attempted.
-    const port = occupy(() => new Response('not ompchamber'));
+    const port = occupy(() => new Response('not kabmo'));
     let binds = 0;
 
     const error = await claimPort({ port, host: '127.0.0.1', listen: async () => { binds += 1; } })

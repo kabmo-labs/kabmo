@@ -8,7 +8,7 @@
  *
  * A plugin is a repository, and its README is the material a user actually wants
  * before installing: what it does, what it needs, what it writes. Serving it
- * here lets the pane render it in the chamber's own markdown pipeline (the same
+ * here lets the pane render it in Kabmo's own markdown pipeline (the same
  * sanitizer, Shiki highlighting, KaTeX and mermaid hydration the chat timeline
  * uses) instead of sending the user to a git host.
  *

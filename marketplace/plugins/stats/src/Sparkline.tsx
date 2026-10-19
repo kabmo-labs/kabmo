@@ -7,7 +7,7 @@
  * A sparkline for one series.
  *
  * An inline `<svg>` with a single `polyline`, not a chart library: the kit has
- * no chart primitive, the chamber's own panels draw their distribution bars the
+ * no chart primitive, Kabmo's own panels draw their distribution bars the
  * same way, and a dependency for one polyline would be the largest thing in the
  * plugin.
  *

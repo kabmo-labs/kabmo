@@ -16,7 +16,7 @@
  *   is invalid HTML and the inner click is swallowed — which is why the custom
  *   header is not a disclosure at all, and this spec is what keeps it that way.
  * - **Edit/Delete appear only on a STORED command.** A command parsed from a
- *   `package.json` has no chamber-side row; offering Edit on it would open a
+ *   `package.json` has no Kabmo-side row; offering Edit on it would open a
  *   dialog whose save could not reach the file it came from.
  * - **The dialog's scope choice and its refusal are real.** The workspace choice
  *   is disabled with no root, and a refusal is printed rather than the dialog
@@ -190,7 +190,7 @@ describe('the custom group', () => {
     await mountGroups();
     expect(byLabel('Edit deploy staging')).not.toBeNull();
     expect(byLabel('Delete deploy staging')).not.toBeNull();
-    // The Makefile's `build` has no chamber-side row, so neither control exists
+    // The Makefile's `build` has no Kabmo-side row, so neither control exists
     // for it — an Edit that could not save anywhere is worse than no Edit.
     expect(byLabel('Edit make build')).toBeNull();
     expect(byLabel('Delete make build')).toBeNull();

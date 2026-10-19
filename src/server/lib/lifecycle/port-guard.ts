@@ -9,7 +9,7 @@
  * One port is served by exactly one process, and **a starting instance never
  * stops another one** — not a CLI server, not a dev run. An occupant that
  * identifies itself as Kabmo makes the newcomer exit with the ways to pick
- * a different port; freeing a port is what `ompchamber stop --port <port>` is
+ * a different port; freeing a port is what `kabmo stop --port <port>` is
  * for, done deliberately and per port.
  *
  * The refusal is load-bearing rather than defensive: a second bind is *not*
@@ -158,8 +158,8 @@ export async function claimPort({ port, host, listen }: ClaimPortOptions): Promi
 /** Every way to point this server at another port. */
 function portGuidance(): string {
   return [
-    '    ompchamber serve --port 3001',
-    '    OMPCHAMBER_PORT=3001 ompchamber serve',
+    '    kabmo serve --port 3001',
+    '    KABMO_PORT=3001 kabmo serve',
     '    PORT=3001 bun run dev          # or: PORT=3001 bun run start',
   ].join('\n');
 }
@@ -172,7 +172,7 @@ async function buildPortInUseError(port: number, host: string, bindError: unknow
     return new PortInUseError(
       `Port ${port} is already served by Kabmo ${describeOccupant(occupant)}.\n`
       + `  Nothing was stopped — a starting instance never stops another one.\n`
-      + `  Stop it first:  ompchamber stop --port ${port}\n`
+      + `  Stop it first:  kabmo stop --port ${port}\n`
       + `  Or start on another port:\n${portGuidance()}`,
     );
   }

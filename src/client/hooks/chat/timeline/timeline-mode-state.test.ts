@@ -38,16 +38,16 @@ import { goalMarkerPatch, useModeMarkers } from '@/client/hooks/chat/timeline/mo
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
 import { type GoalRecord } from '@/shared/lib/omp/mode/types';
-import { CHAMBER_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
 import { publishClientSignal } from '@/client/lib/signals';
 import type { ParsedMarker } from '@/shared/lib/omp/mode/markers';
-import { primeChamberSettings } from '@/shared/lib/settings/client';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown so later files still have them. */
 const native: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
 
-/** One parsed `CHAMBER_*` notice, as `parseChamberMarker` would return it. */
+/** One parsed `CHAMBER_*` notice, as `parseModeMarker` would return it. */
 function marker(name: ParsedMarker['marker'], payload: Record<string, unknown>): ParsedMarker {
   return { marker: name, payload };
 }
@@ -93,7 +93,7 @@ afterEach(() => {
   if (container) render(null, container);
   container?.remove();
   settingsPosts.length = 0;
-  primeChamberSettings({});
+  primeKabmoSettings({});
 });
 
 async function drain(): Promise<void> {
@@ -185,7 +185,7 @@ describe('useModeMarkers', () => {
   }
 
   function dispatch(detail: { sessionId?: string; marker?: unknown }): void {
-    publishClientSignal(CHAMBER_MODE_SIGNAL, detail);
+    publishClientSignal(KABMO_MODE_SIGNAL, detail);
   }
 
   async function mount(sessionId: string | null): Promise<void> {
@@ -296,7 +296,7 @@ describe('useComposerModes', () => {
     expect(el.querySelector('#proposal')?.textContent).toBe('none');
 
     await act(async () => {
-      publishClientSignal(CHAMBER_MODE_SIGNAL, {
+      publishClientSignal(KABMO_MODE_SIGNAL, {
         sessionId: 's1',
         marker: { marker: 'CHAMBER_PLAN_PROPOSAL:', payload: { title: 'The plan', planFilePath: '/p.md' } },
       });

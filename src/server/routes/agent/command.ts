@@ -9,12 +9,12 @@ import { CONVERSATION_MOVING_COMMANDS, LIVE_RUN_COMMANDS, OBSERVER_ONLY_COMMANDS
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { assertBtwIdle } from '@/server/lib/btw/service.server';
 import { loadPersistedModes } from '@/server/lib/omp/session/modes';
-import { modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
-import { chamberModeEnv } from '@/server/lib/omp/extensions/locator';
+import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelection } from '@/server/lib/omp/mode/request';
+import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
 
-/** How long after an accepted Resume the chamber nudges the loop. The
+/** How long after an accepted Resume Kabmo nudges the loop. The
  *  extension answers the mode command first; this only coalesces the nudge
  *  behind that answer (same 250 ms OpenChamber uses for its resume kickoff). */
 const RESUME_KICKOFF_MS = 250;
@@ -31,7 +31,7 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
       return json({ error: 'command type is required', code: 'command_type_required' }, { status: 400 });
     }
 
-    // The session is running on ANOTHER chamber instance: relay this command
+    // The session is running on ANOTHER Kabmo instance: relay this command
     // there instead of resuming the file here (which omp would fork). Checked
     // before any spawn decision, and never for a request that already hopped —
     // two instances that disagree would otherwise bounce it forever.
@@ -55,8 +55,8 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
       await assertBtwIdle(sessionId, body.type.replace(/_/g, ' '));
     }
 
-    // Plan/Goal mode control. Translated to a `/chamber-mode …` prompt for the
-    // chamber-owned extension inside the child: no RPC verb exists for either
+    // Plan/Goal mode control. Translated to a `/kabmo-mode …` prompt for the
+    // Kabmo-owned extension inside the child: no RPC verb exists for either
     // mode, and this path costs no transcript entry (the command is answered
     // locally). A live session is re-targeted in place — unlike the approval
     // mode, a mode change needs NO respawn.
@@ -65,8 +65,9 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // usually the FIRST thing a user does on a reopened chat: the composer
     // renders from the persisted selection, and pressing the button is what
     // makes the child exist.
-    const modeRequest = body.type === 'chamber_mode' ? parseModeRequest(body) : null;
-    if (body.type === 'chamber_mode' && !modeRequest) {
+    const isModeRequest = isModeCommandType(body.type);
+    const modeRequest = isModeRequest ? parseModeRequest(body) : null;
+    if (isModeRequest && !modeRequest) {
       return json({ error: 'scope (plan|goal) and action are required', code: 'invalid_mode_request' }, { status: 400 });
     }
     // One translation, used by both dispatch paths below: a mode command is a
@@ -84,7 +85,7 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
         // A Resume is the operator re-arming the loop: strike history from the
         // previous stop is not evidence about this run, and an idle session
         // should start working at once rather than wait for a user message
-        // (the extension can only open the turn, the chamber paces it).
+        // (the extension can only open the turn, Kabmo paces it).
         if (modeRequest?.scope === 'goal' && modeRequest.action === 'resume') {
           resetGoalDriverState(sessionId);
           setTimeout(() => {
@@ -97,7 +98,7 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
 
     // Observer-only reads must never boot an omp child. This route is the spawn
     // path, so a roster snapshot (`get_subagents`) or a transcript page
-    // (`get_subagent_messages`) posted for a session the chamber is not
+    // (`get_subagent_messages`) posted for a session Kabmo is not
     // managing would start a whole process just to answer a read — measured:
     // opening a FINISHED session's roster row grew the omp process count, and
     // the sidebar renders those rows for every session in the list. Both reads
@@ -105,7 +106,7 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // which is what a dead session is served from; the live registry is only
     // consulted while a process exists to answer for.
     if (OBSERVER_ONLY_COMMANDS.has(body.type)) {
-      return json({ error: 'Session is not managed by the chamber', code: 'session_not_running' }, { status: 409 });
+      return json({ error: 'Session is not managed by Kabmo', code: 'session_not_running' }, { status: 409 });
     }
     // Same refusal for a stop: with no live wrapper here there is nothing to
     // stop, and the spawn path below would resume the session file just to
@@ -123,9 +124,9 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // The mode selection rides the spawn ENVIRONMENT, because `--mode rpc-ui`
     // never restores `mode_change` and the child's first command is the earliest
     // moment anything could re-apply it. Read from the session's own JSONL, so a
-    // chamber restart, a second instance, or a CLI-driven session all agree.
+    // Kabmo restart, a second instance, or a CLI-driven session all agree.
     const persisted = body.modes !== undefined ? parseModeSelection(body as Record<string, unknown>) : await loadPersistedModes(filePath);
-    const modeEnv = chamberModeEnv({ plan: persisted.plan, goal: persisted.goal });
+    const modeEnv = kabmoModeEnv({ plan: persisted.plan, goal: persisted.goal });
     const { session } = await startRpcSession(sessionId, filePath, cwd, recordedCwd, spawnMode, modeEnv);
     const result = await session.send(forwarded);
     // Same Resume nudge as the live path: a resumed goal must not sit idle

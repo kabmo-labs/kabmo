@@ -31,7 +31,7 @@ function row(overrides: Partial<ProcessRow> = {}): ProcessRow {
     ppid: 1,
     title: 'Kabmo server',
     detail: 'the server itself',
-    groupKey: 'chamber',
+    groupKey: 'kabmo',
     depth: 0,
     rss: 1024 * 1024,
     cpuPercent: null,
@@ -47,8 +47,8 @@ function snapshot(rows: ProcessRow[]): StatsSnapshot {
     rows,
     groups: [
       {
-        key: 'chamber',
-        kind: 'chamber',
+        key: 'kabmo',
+        kind: 'kabmo',
         ownerPid: 100,
         title: 'Kabmo server',
         detail: 'the server itself',

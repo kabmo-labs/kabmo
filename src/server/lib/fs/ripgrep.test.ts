@@ -26,7 +26,7 @@ import { testPosix } from '@/test-support/platform';
 const tempDirs: string[] = [];
 
 function tempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-rg-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-rg-'));
   tempDirs.push(dir);
   return dir;
 }

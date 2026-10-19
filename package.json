@@ -1,7 +1,7 @@
 {
   "name": "kabmo",
-  "version": "1.0.0",
-  "description": "Web console and diagnostic chamber for AI coding agents — Elysia + Preact on Bun.",
+  "version": "0.0.1",
+  "description": "Web console and diagnostic workbench for AI coding agents — Elysia + Preact on Bun.",
   "license": "UNLICENSED",
   "author": "Wijanarko Putra Rajeb <wijanarko.rajeb@gmail.com>",
   "type": "module",
@@ -9,7 +9,6 @@
     "bun": ">=1.4.0"
   },
   "bin": {
-    "ompchamber": "./src/cli/ompchamber.js",
     "kabmo": "./src/cli/kabmo.js"
   },
   "repository": {
@@ -40,24 +39,24 @@
     "dist/client"
   ],
   "scripts": {
-    "dev": "bun run --hot src/server/index.ts --ompchamber-server",
-    "dev:lan": "HOST=0.0.0.0 bun run --hot src/server/index.ts --ompchamber-server",
+    "dev": "bun run --hot src/server/index.ts --kabmo-server",
+    "dev:lan": "HOST=0.0.0.0 bun run --hot src/server/index.ts --kabmo-server",
     "build": "bun run scripts/build-client.ts",
     "omp:schema": "bun run scripts/omp-schema.mjs",
     "omp:schema:check": "bun run scripts/omp-schema.mjs --check",
-    "start": "NODE_ENV=production bun run src/server/index.ts --ompchamber-server",
+    "start": "NODE_ENV=production bun run src/server/index.ts --kabmo-server",
     "typecheck": "tsc",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "bun test",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "typecheck:e2e": "tsc --noEmit -p tests/e2e",
-    "publish:plugins": "bash .github/scripts/publish-plugin-packages.sh packages/plugin-sdk packages/ui"
+    "publish:plugins": "bash .github/scripts/publish-plugin-packages.sh packages/kabmo-sdk packages/kabmo-ui"
   },
   "dependencies": {
     "@fontsource/fira-code": "^5.3.0",
-    "@kabmo-labs/plugin-sdk": "workspace:*",
-    "@kabmo-labs/ui": "workspace:*",
+    "@kabmo-labs/kabmo-sdk": "workspace:*",
+    "@kabmo-labs/kabmo-ui": "workspace:*",
     "@shikijs/langs": "^4.4.3",
     "@shikijs/themes": "^4.4.3",
     "@tailwindcss/postcss": "^4.1.14",

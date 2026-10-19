@@ -13,7 +13,7 @@
  *   1. Identity could not be read (`getProcessState` answers `unknown` on every
  *      Windows PID) and that was read as "not ours", so the early return deleted
  *      the record and answered `true` without signalling anything.
- *      `ompchamber stop` printed "✓ Stopped" while the port stayed bound.
+ *      `kabmo stop` printed "✓ Stopped" while the port stayed bound.
  *   2. The record was dropped even when the process survived, which removed the
  *      only handle `listLiveInstances` has: `status` then said "not running"
  *      while `serve` — which probes the port — refused to start.
@@ -40,14 +40,14 @@ let workRoot = '';
 let originalDataDir;
 
 beforeAll(() => {
-  workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-stop-test-'));
-  originalDataDir = Bun.env.OMPCHAMBER_DATA_DIR;
-  Bun.env.OMPCHAMBER_DATA_DIR = workRoot;
+  workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-stop-test-'));
+  originalDataDir = Bun.env.KABMO_DATA_DIR;
+  Bun.env.KABMO_DATA_DIR = workRoot;
 });
 
 afterAll(() => {
-  if (originalDataDir === undefined) delete Bun.env.OMPCHAMBER_DATA_DIR;
-  else Bun.env.OMPCHAMBER_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete Bun.env.KABMO_DATA_DIR;
+  else Bun.env.KABMO_DATA_DIR = originalDataDir;
   fs.rmSync(workRoot, { recursive: true, force: true });
 });
 

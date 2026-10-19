@@ -15,7 +15,7 @@
  * - `auth: none` is what makes a local server keyless; without it omp demands
  *   an `apiKey` and a keyless provider is rejected as unconfigured.
  * - `discovery` lets OMP list the models live from the endpoint instead of the
- *   chamber writing a snapshot of ids into `models.yml`.
+ *   Kabmo writing a snapshot of ids into `models.yml`.
  *
  * Pure data + pure functions, shared by the server (which validates and writes
  * the file) and the client (which offers the choices), so the two cannot
@@ -201,7 +201,7 @@ export function providerFetchBlockReason(provider: {
     return 'omp lists this provider’s models itself — a fetch here would freeze a snapshot beside that live list.';
   }
   if (!provider.baseUrl) {
-    return 'This provider has no endpoint the chamber can probe — omp owns its URL.';
+    return 'This provider has no endpoint Kabmo can probe — omp owns its URL.';
   }
   return undefined;
 }

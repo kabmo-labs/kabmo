@@ -4,7 +4,7 @@
  */
 
 /**
- * RELOAD-path adapter: raw omp JSONL entries → chamber ChatMessageData parts.
+ * RELOAD-path adapter: raw omp JSONL entries → Kabmo ChatMessageData parts.
  * Content-block parsing is delegated to the shared core parser
  * (parse-message-blocks.ts) — the same one the live SSE path uses — so the
  * two render paths cannot drift. This module keeps only JSONL-specific

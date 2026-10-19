@@ -56,7 +56,7 @@ export const SCROLLBAR_IDLE_MS = 5_000;
  * fresh window still gets a real install.
  */
 interface ScrollbarActivityHost {
-  __ompChamberScrollbarActivity?: WeakSet<Document>;
+  __kabmoScrollbarActivity?: WeakSet<Document>;
 }
 
 /** A pending fade. Named here rather than re-derived per site because the DOM
@@ -82,7 +82,7 @@ function scrolledElement(target: EventTarget | null): Element | null {
 export function installScrollbarActivity(idleMs = SCROLLBAR_IDLE_MS): void {
   if (typeof document === 'undefined') return;
   const host = globalThis as ScrollbarActivityHost;
-  const wired = (host.__ompChamberScrollbarActivity ??= new WeakSet<Document>());
+  const wired = (host.__kabmoScrollbarActivity ??= new WeakSet<Document>());
   if (wired.has(document)) return;
   wired.add(document);
 

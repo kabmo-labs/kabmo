@@ -61,7 +61,7 @@ import { splitFontFaces } from '@/server/lib/assets/font-faces';
 import { flattenNestedAtRules } from '@/server/lib/bundler/nested-at-rules';
 
 const plugin: BunPlugin = {
-  name: 'ompchamber-css',
+  name: 'kabmo-css',
   setup(build) {
     build.onLoad({ filter: /\.css$/ }, async (args) => {
       const source = await Bun.file(args.path).text();

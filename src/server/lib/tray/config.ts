@@ -49,7 +49,7 @@ export interface TrayConfig {
   label: string;
   /** Bun binary the host uses to reach the CLI for an action. */
   bun: string;
-  /** CLI entry (`src/cli/ompchamber.js`) the host shells back into. */
+  /** CLI entry (`src/cli/kabmo.js`) the host shells back into. */
   cli: string;
   /** Packaged icon; falls back to the title when it does not load. */
   icon: string;
@@ -107,10 +107,10 @@ export function buildTrayConfig({ pkgRoot, port, host, tls, dataDir, bun, icon, 
     // Canonicalized, never the raw join: `resolvePath` does not collapse a `..`
     // segment, so a path assembled from a `..`-bearing root would carry it into
     // a login entry's argv, where it is interpreted much later. Measured: a
-    // generated LaunchAgent held `<pkg>/src/cli/../../src/cli/ompchamber.js`.
-    cli: canonicalize(`${pkgRoot}/src/cli/ompchamber.js`),
+    // generated LaunchAgent held `<pkg>/src/cli/../../src/cli/kabmo.js`.
+    cli: canonicalize(`${pkgRoot}/src/cli/kabmo.js`),
     icon: canonicalize(icon),
-    logFile: `${dataDir}/logs/ompchamber-${port}.log`,
+    logFile: `${dataDir}/logs/kabmo-${port}.log`,
     dataDir,
     pidFile,
     loginInstalled: Boolean(loginInstalled),

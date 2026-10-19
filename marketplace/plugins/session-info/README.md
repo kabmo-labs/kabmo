@@ -19,5 +19,5 @@ plugin API.
 ## Notes
 
 Nothing here leaves your machine. The note is written to the session's own state
-in the chamber's database, and the plugin's bundle is served from the plugin
+in Kabmo's database, and the plugin's bundle is served from the plugin
 directory it was installed into.

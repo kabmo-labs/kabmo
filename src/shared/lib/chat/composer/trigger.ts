@@ -10,7 +10,7 @@ export const SKILL_NAMESPACE = 'skill:';
 export const SKILL_NAMESPACE_TOKEN = `/${SKILL_NAMESPACE}`;
 
 /**
- * Slash commands the chamber answers itself, reserved exactly like oh-my-pi
+ * Slash commands Kabmo answers itself, reserved exactly like oh-my-pi
  * reserves its own tokens.
  *
  * omp's `/btw` is TUI-only — its registry entry has `handleTui` and no
@@ -19,9 +19,9 @@ export const SKILL_NAMESPACE_TOKEN = `/${SKILL_NAMESPACE}`;
  * one it intercepts on send. The entry is byte-for-byte omp's own metadata
  * (description and inline hint), so the popup reads the same in both clients.
  */
-export const CHAMBER_COMMANDS: CommandItem[] = [
+export const KABMO_COMMANDS: CommandItem[] = [
   {
-    id: 'chamber-btw',
+    id: 'kabmo-btw',
     name: 'btw',
     description: "Ask a side question, or browse this session's BTW history",
     scope: 'system',
@@ -33,7 +33,7 @@ export const CHAMBER_COMMANDS: CommandItem[] = [
     // omp registers `/plan` with `handleTui` only, so `get_available_commands`
     // never advertises it — the popup would offer every command except the one
     // this client can now run. Descriptions are omp's own wording.
-    id: 'chamber-plan',
+    id: 'kabmo-plan',
     name: 'plan',
     description: 'Toggle plan mode (agent plans before executing)',
     scope: 'system',
@@ -42,7 +42,7 @@ export const CHAMBER_COMMANDS: CommandItem[] = [
     inputHint: '[prompt]',
   },
   {
-    id: 'chamber-goal',
+    id: 'kabmo-goal',
     name: 'goal',
     description: 'Toggle goal mode (persistent autonomous objective for this session)',
     scope: 'system',
@@ -52,11 +52,11 @@ export const CHAMBER_COMMANDS: CommandItem[] = [
   },
 ];
 
-/** True when the chamber intercepts this command instead of forwarding it to
+/** True when Kabmo intercepts this command instead of forwarding it to
  *  omp as chat text. */
-function isChamberOwnedCommand(name: string): boolean {
+function isKabmoOwnedCommand(name: string): boolean {
   const lower = name.toLowerCase();
-  return CHAMBER_COMMANDS.some((command) => command.name.toLowerCase() === lower);
+  return KABMO_COMMANDS.some((command) => command.name.toLowerCase() === lower);
 }
 
 /**
@@ -184,7 +184,7 @@ export function tokenForItem(item: ComposerPickItem): string {
 /**
  * Whether a popup accept should stand aside and let Enter mean "send".
  *
- * Only the chamber's own commands qualify: the composer intercepts those on
+ * Only Kabmo's own commands qualify: the composer intercepts those on
  * send, so for `/btw` the Enter *is* the action and accept-on-Enter would
  * swallow the very keystroke the user is aiming at. Every command omp owns
  * keeps accepting, which is what opens its argument completions — including the
@@ -193,7 +193,7 @@ export function tokenForItem(item: ComposerPickItem): string {
 export function sendInsteadOfAccept(trigger: ComposerTrigger, item: ComposerMatchItem | undefined): boolean {
   if (!item || trigger.kind !== 'command' || trigger.phase !== 'name') return false;
   if (item.name.toLowerCase() !== trigger.query.toLowerCase()) return false;
-  return isChamberOwnedCommand(item.name);
+  return isKabmoOwnedCommand(item.name);
 }
 
 /** Splice `token` over the trigger span in `value`, returning the new value and caret. */

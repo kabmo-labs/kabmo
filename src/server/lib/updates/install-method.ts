@@ -5,7 +5,7 @@
  * (whether `pkgRoot` is a git work tree, and where its `origin` points).
  */
 
-import { OMPCHAMBER_PACKAGE } from '@/server/lib/updates/npm';
+import { KABMO_PACKAGE } from '@/server/lib/updates/npm';
 
 /** Where the running copy came from. */
 export type InstallMethod = 'bun-global' | 'git' | 'npm' | 'unmanaged';
@@ -53,7 +53,7 @@ export function detectInstallMethod({ pkgRoot, gitWorkTree, gitRemote }: DetectI
   }
 
   if (gitWorkTree && REPO_REMOTE.test(String(gitRemote ?? '').replace(/\\/g, '/'))) {
-    return { method: 'git', reason: 'git checkout of the Kabmo repository' };
+    return { method: 'git', reason: 'git checkout of Kabmo repository' };
   }
 
   if (gitWorkTree) {
@@ -80,7 +80,7 @@ export function isManualMethod(method: InstallMethod): boolean {
  * with the package manager that happened to install it. The method is reported
  * separately for diagnostics; it does not change the command.
  */
-export function manualUpdateCommand(method: InstallMethod, version: string | null, packageName = OMPCHAMBER_PACKAGE): string | null {
+export function manualUpdateCommand(method: InstallMethod, version: string | null, packageName = KABMO_PACKAGE): string | null {
   if (method === 'unmanaged' || method === 'npm') return `bun add -g ${packageName}@${version ?? 'latest'}`;
   return null;
 }

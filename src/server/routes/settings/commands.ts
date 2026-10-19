@@ -29,7 +29,7 @@ const commandsStore = createSettingsListStore<CommandItem>({
   plural: 'commands',
 });
 
-/** Command sources the chamber surfaces in the composer (mcp_prompt is not user-typable). */
+/** Command sources Kabmo surfaces in the composer (mcp_prompt is not user-typable). */
 const AGENT_COMMAND_SOURCES: Record<string, true> = {
   builtin: true,
   skill: true,
@@ -40,7 +40,7 @@ const AGENT_COMMAND_SOURCES: Record<string, true> = {
 
 /**
  * Live slash commands from the agent's `get_available_commands`, mapped into
- * the chamber's CommandItem. Aliases, subcommands and the argument hint ride
+ * Kabmo's CommandItem. Aliases, subcommands and the argument hint ride
  * along: they are what the composer's `/` popup needs to behave like omp's own
  * editor (`/models` completing to the alias, `/fast ` offering on|off|status).
  * Anything malformed is dropped rather than trusted.
@@ -99,7 +99,7 @@ async function loadAgentCommands(cwd: string): Promise<CommandItem[]> {
 
 /**
  * Attach what the settings pane needs to decide whether a live command is a
- * file the chamber owns: the file backing it (if any), its scope, and its body.
+ * file Kabmo owns: the file backing it (if any), its scope, and its body.
  * `get_available_commands` reports the name, description and hint but not the
  * path, so the answer comes from looking the name up in the roots omp reads.
  */
@@ -163,8 +163,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
 
       // A live command's id carries its name (`omp-live-<name>`); the pane's
-      // delete is only offered for one the chamber owns, and the file is the
-      // real thing to remove. A chamber-local row still deletes as a row.
+      // delete is only offered for one Kabmo owns, and the file is the
+      // real thing to remove. A Kabmo-local row still deletes as a row.
       const name = id.startsWith('omp-live-') ? id.slice('omp-live-'.length) : null;
       const scope = await resolveDiscoveryScope(url.searchParams.get('root'), url.searchParams.get('scope'));
       if (name) {
@@ -183,7 +183,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         url.searchParams.get('scope') ?? (typeof body.scope === 'string' ? body.scope : null),
       );
 
-      // Only a markdown file the chamber owns is written as a file. A live
+      // Only a markdown file Kabmo owns is written as a file. A live
       // command from another provider (an extension command, a `.claude`
       // command, a TypeScript custom command) has no file here, and writing one
       // with the same name would SHADOW it — omp resolves a name present in

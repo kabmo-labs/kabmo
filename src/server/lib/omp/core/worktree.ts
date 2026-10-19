@@ -20,7 +20,7 @@ import { pathExists } from '@/server/lib/omp/core/paths';
 import { GIT_ENV } from '@/server/lib/fs/git-run';
 
 declare global {
-  var __ompChamberProjectCache: Map<string, { root: string; expiresAt: number }> | undefined;
+  var __kabmoProjectCache: Map<string, { root: string; expiresAt: number }> | undefined;
 }
 
 const PROJECT_CACHE_TTL_MS = 60_000;
@@ -34,8 +34,8 @@ async function realPathOrSelf(filePath: string): Promise<string> {
 }
 
 function getProjectCache(): Map<string, { root: string; expiresAt: number }> {
-  if (!globalThis.__ompChamberProjectCache) globalThis.__ompChamberProjectCache = new Map();
-  return globalThis.__ompChamberProjectCache;
+  if (!globalThis.__kabmoProjectCache) globalThis.__kabmoProjectCache = new Map();
+  return globalThis.__kabmoProjectCache;
 }
 
 async function git(cwd: string, args: string[]): Promise<string> {

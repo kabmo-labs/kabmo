@@ -14,7 +14,7 @@
  * own loader (`session-loader.ts:resolveBlobRefs`) resolves the refs back on
  * read.
  *
- * Nothing in the chamber did that, so a reloaded session rendered
+ * Nothing in Kabmo did that, so a reloaded session rendered
  * `data:image/png;base64,blob:sha256:…` — a data URL whose payload is the ref
  * string, which no browser can decode. The timeline showed a broken image and
  * opening it dumped the ref as text.

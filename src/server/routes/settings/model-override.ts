@@ -11,7 +11,7 @@ import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
  * omp resolves `maxTokens` and the reasoning `thinking` block per model from
  * models.yml `modelOverrides`, and has no per-model temperature/topP at all
  * (those exist only as global `config.yml` settings, editable in Settings →
- * OMP Engine). Writing the chamber's model dialog anywhere else made its
+ * OMP Engine). Writing Kabmo's model dialog anywhere else made its
  * controls inert, so this route is the one that reaches the agent.
  *
  * Body: { provider, modelId, maxTokens?: number|null, reasoningEffort?: string|null }

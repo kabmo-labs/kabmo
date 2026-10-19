@@ -2,9 +2,10 @@ import { createPortal } from 'preact/compat';
 import { Heart, X } from 'lucide-preact';
 import packageJson from '@/../package.json';
 import type { UseUpdatesResult } from '@/client/hooks/ui/updates';
+import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { SocialLinks } from '@/client/components/layout/session-sidebar/about-modal/SocialLinks';
 import { UpdateSection } from '@/client/components/layout/session-sidebar/about-modal/UpdateSection';
-import { useChamberEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 
 export interface AboutModalProps {
@@ -18,7 +19,7 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // "What's new" opens the popup, which draws at a higher layer: leaving this
   // dialog mounted would stack two modals over the same subject, and its
   // backdrop would swallow the popup's clicks.
-  useChamberEvent(UPDATE_POPUP_OPEN_EVENT, () => {
+  useKabmoEvent(UPDATE_POPUP_OPEN_EVENT, () => {
     if (isOpen) onClose();
   });
 
@@ -50,15 +51,14 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
           <X size={18} className="stroke-[2.5]" />
         </button>
 
-        {/* OMP Chamber Brand Logo */}
+        {/* Brand mark */}
         <div className="flex justify-center pt-2 pb-1">
           <img src="/icon.svg" alt="Kabmo" width={96} height={96} draggable={false} />
         </div>
 
         {/* Title */}
         <h2 className="text-xl font-bold tracking-tight mt-3 flex items-center justify-center">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500 font-extrabold text-2xl tracking-tighter">OMP</span>
-          <span className="text-ink text-2xl font-bold ml-[1px]">Chamber</span>
+          <BrandWordmark className="text-2xl" />
         </h2>
 
         {/* App & Agent Versions */}

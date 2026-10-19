@@ -68,7 +68,7 @@ function makeRepo(name: string): SeedWorkingRepo {
  * Registration MUST happen before any git action: `resolveRoot` only accepts
  * the app root, a path beneath it, or a registered `project_path`, so a
  * `/api/fs/git` call naming an unregistered scratch directory falls back to the
- * app root — it would run the merge against THE CHAMBER REPOSITORY.
+ * app root — it would run the merge against THE Kabmo REPOSITORY.
  */
 async function openGitPanel(
   page: Page,
@@ -127,7 +127,7 @@ async function showSourceControl(page: Page): Promise<void> {
  * Run one git action against `repo` through the route the panel uses.
  *
  * Only legal AFTER `openGitPanel` has registered the folder — see there for why
- * an unregistered root silently redirects to the chamber's own repository.
+ * an unregistered root silently redirects to Kabmo's own repository.
  */
 async function gitAction(
   server: HarnessServer,
@@ -171,7 +171,7 @@ test.describe('Source Control — merge conflicts', () => {
 
     // Register the workspace FIRST, then start the merge: the route refuses an
     // unregistered root, so a merge issued before this would have run against
-    // the chamber's own repository.
+    // Kabmo's own repository.
     await openGitPanel(page, server, repo);
     await gitAction(server, repo, { actionType: 'merge_branch', branch: 'feature' });
     // Wait for git's OWN state to report the merge before reloading. The merge

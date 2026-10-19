@@ -53,7 +53,7 @@ async function loadAggregate(): Promise<AggregateModule> {
 }
 
 function tempRoot(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ompchamber-test-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-test-'));
   tempRoots.push(root);
   return root;
 }

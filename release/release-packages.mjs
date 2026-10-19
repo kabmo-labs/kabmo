@@ -10,7 +10,7 @@
  * Each package is released from the SAME commit range and the same rules as the
  * app (see `release/packages.mjs` for the per-package config, which narrows the
  * range to the package's own commits). Releases run in catalog order and stop
- * on the first failure, because `@kabmo-labs/ui` pins the SDK version at pack
+ * on the first failure, because `@kabmo-labs/kabmo-ui` pins the SDK version at pack
  * time: publishing a `ui` whose SDK dependency is not on npm is worse than
  * publishing neither.
  *

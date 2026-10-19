@@ -8,15 +8,15 @@
 export type ThemeVariant = 'light' | 'dark';
 
 /**
- * One theme's chamber-facing colors.
+ * One theme's Kabmo-facing colors.
  *
- * Deliberately a flat record of the eight values the chamber actually paints
+ * Deliberately a flat record of the eight values Kabmo actually paints
  * with — OpenChamber's theme files carry ~90 tokens across surfaces, syntax,
  * markdown and tools; carrying all of them would be dead weight here, since the
- * chamber derives everything else from these with `color-mix`.
+ * Kabmo derives everything else from these with `color-mix`.
  */
 export interface ThemePalette {
-  /** Stable key written to `app_settings.omp_chamber_settings.theme`. */
+  /** Stable key written to `app_settings.kabmo_settings.theme`. */
   id: string;
   /** Display name, shared by a family's light and dark entries. */
   name: string;

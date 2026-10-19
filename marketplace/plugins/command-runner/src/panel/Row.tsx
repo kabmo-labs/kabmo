@@ -7,7 +7,7 @@
  * One command, as a row that expands into its own output.
  *
  * The shape is the git panel's `StashSection`, deliberately: `.section-reveal`
- * (`grid-template-rows: 0fr → 1fr`) is the chamber's one disclosure animation,
+ * (`grid-template-rows: 0fr → 1fr`) is Kabmo's one disclosure animation,
  * the toggle is a full-width `<button>` carrying `aria-expanded`/`aria-controls`,
  * and the body stays MOUNTED and `inert` while collapsed so the reveal has
  * something to animate without leaving a hidden control tabbable.
@@ -37,9 +37,9 @@
  * ## A user's own command gets two more controls
  *
  * Edit and Delete appear ONLY on a row that came from storage (`command.custom`),
- * because a command parsed out of a `package.json` has no chamber-side row to
+ * because a command parsed out of a `package.json` has no Kabmo-side row to
  * edit — its file is the source, and the panel is not an editor for it. Both are
- * revealed on hover and always shown on a touch device, which is the chamber's
+ * revealed on hover and always shown on a touch device, which is Kabmo's
  * `.touch-visible` convention: a control that exists only on hover is
  * unreachable on a phone.
  */
@@ -186,7 +186,7 @@ export function CommandRow({
         </button>
 
         {/* Edit / Delete, only on a stored command. `touch-visible` is the
-            chamber's own reveal: `opacity-0` at rest, forced visible by a
+            Kabmo's own reveal: `opacity-0` at rest, forced visible by a
             coarse pointer, so a phone is not left with two invisible controls
             it can press but cannot see. */}
         {command.custom && onEdit ? (

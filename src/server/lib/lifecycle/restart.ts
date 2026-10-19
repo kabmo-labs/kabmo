@@ -9,8 +9,8 @@
  * A server cannot restart itself: the process holding the port has to exit
  * before a replacement can bind it, and the update response has to leave first.
  * So once the files on disk are replaced, the work goes to a detached
- * `ompchamber restart --port <port>` — the same stop-then-serve the CLI runs
- * after `ompchamber update`.
+ * `kabmo restart --port <port>` — the same stop-then-serve the CLI runs
+ * after `kabmo update`.
  *
  * Instances the CLI did not start are left alone. `bun run dev` and
  * `bun run start` execute this package's source in the user's own shell, and an
@@ -34,7 +34,7 @@ import type { UpdateApplyResult } from '@/shared/types/updates';
 
 /**
  * Package root of the running copy — the directory holding its `package.json`
- * and `src/cli/ompchamber.js`. Resolved by walking up from this module, never
+ * and `src/cli/kabmo.js`. Resolved by walking up from this module, never
  * by counting `..` segments: the AOT bundle flattens every server module into
  * `dist/client/index.js`, so a fixed depth names a different directory in a
  * published install than in a checkout.
@@ -87,9 +87,9 @@ function ownInstance(): { port: number; launchMode: string } | null {
   return { port, launchMode: resolveLaunchMode() };
 }
 
-/** `ompchamber restart --port <port>` for the install this server runs from. */
+/** `kabmo restart --port <port>` for the install this server runs from. */
 function restartCommand(port: number): string[] | null {
-  const cli = joinPath(PKG_ROOT, 'src', 'cli', 'ompchamber.js');
+  const cli = joinPath(PKG_ROOT, 'src', 'cli', 'kabmo.js');
   if (!existsSync(cli)) return null;
   return [resolveBunBin(), cli, 'restart', '--port', String(port)];
 }
@@ -141,7 +141,7 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
   const cmd = restartCommand(self.port);
   if (!cmd) {
     const nextStep = purpose === 'restart' ? 'restart it yourself' : 'restart it yourself to apply the update';
-    return { restarting: false, message: `The ompchamber CLI is missing from ${PKG_ROOT} — ${nextStep}.` };
+    return { restarting: false, message: `The kabmo CLI is missing from ${PKG_ROOT} — ${nextStep}.` };
   }
 
   // The replacement must come up with the SAME credential this process is
@@ -156,7 +156,7 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
   const credential = loadAuthConfig();
 
   setTimeout(() => {
-    console.log(`[ompchamber] restarting on port ${self.port}: ${cmd.join(' ')}`);
+    console.log(`[kabmo] restarting on port ${self.port}: ${cmd.join(' ')}`);
     try {
       const child = Bun.spawn({
         cmd,
@@ -182,7 +182,7 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
       }
       child.unref();
     } catch (err) {
-      console.error(`[ompchamber] restart helper could not be started: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`[kabmo] restart helper could not be started: ${err instanceof Error ? err.message : String(err)}`);
     }
   }, RESTART_GRACE_MS);
 

@@ -15,7 +15,7 @@ const TABS: Array<{ kind: InstructionFileKind; label: string; hint: string }> = 
  * Behavior rules live in omp's native user instruction files, and this panel
  * reads and writes them directly: AGENTS.md (context file, loaded when a
  * session starts) and RULES.md (sticky rule, re-sent on every request).
- * MOCK=true keeps the demo on chamber-local preset rows instead of the real
+ * MOCK=true keeps the demo on Kabmo-local preset rows instead of the real
  * agent directory.
  */
 export const BehaviorSettings: FunctionComponent = () => {

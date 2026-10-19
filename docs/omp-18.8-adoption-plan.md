@@ -1,8 +1,8 @@
 # omp 18.8 adoption plan
 
-The chamber pinned `OMP_VERSION=18.3.0` in `.github/scripts/install-omp.sh` while
+The Kabmo pinned `OMP_VERSION=18.3.0` in `.github/scripts/install-omp.sh` while
 the installed binary was **18.8.3** (2026-10-07); the pin now matches (F9). This document records the audit
-of everything between the two versions that the chamber either gets wrong or
+of everything between the two versions that Kabmo either gets wrong or
 does not use, and the phased plan to close it.
 
 Status: **complete**. Phase table and per-phase outcomes below; P4b–d and P5 were
@@ -36,7 +36,7 @@ Every claim below was measured, not read off a changelog:
 ### F1 — Tool output is double-appended (bug, shipped)
 
 `tool_execution_update.partialResult` is a **full snapshot** of the tool's output
-so far, never a delta. The chamber appends:
+so far, never a delta. The Kabmo appends:
 
 ```ts
 // src/shared/lib/chat/omp/agent-events.ts:143-146
@@ -73,7 +73,7 @@ migration commit `77d9199` and has never been regenerated. Consequences:
   `skills.*`, `ida.*`, `searxng.*`, `gc.*`, `memories.*`,
   `compaction.v2RetainedMessageBudget`, `browser.tern`, `stream.serverUrl`,
   `telemetry.otlpExportEnabled` and `auth.broker.*`.
-- **12 keys the chamber still offers are rejected by omp** — verified one by one
+- **12 keys Kabmo still offers are rejected by omp** — verified one by one
   with `omp config get <key>` → `Unknown setting: <key>`:
 
   `irc.timeoutMs`, `providers.autoThinkingModel`, `providers.imageOrder`,
@@ -104,14 +104,14 @@ Measured on one prompt (`Write a 300 word essay about rain.`):
 | default (accumulated) | 10,908,455 | 2,217 |
 | `messageUpdates: "delta"` | 107,943 | 486 |
 
-~101× fewer bytes. The chamber never calls `set_event_filter` and reads the
+~101× fewer bytes. The Kabmo never calls `set_event_filter` and reads the
 accumulated `partial`, so it pays the full cost.
 
 Terminal frames stay whole in delta mode (verified): `message_end`, `turn_end`
 and `agent_end` still carry the complete message, so the fix is confined to the
 in-flight rendering path.
 
-### F4 — omp now implements, natively, three things the chamber reimplemented
+### F4 — omp now implements, natively, three things Kabmo reimplemented
 
 | Area | omp RPC | Chamber today |
 |---|---|---|
@@ -123,11 +123,11 @@ Measured: `steer` mid-turn answers `success: true`, emits
 `queue_update {steering:[…]}` then `{steering:[]}` when consumed, and the model
 responds to the steer inside the same run (one `agent_start`, one `agent_end`).
 
-The chamber's queue row labelled **"Send Now (Steering)"** actually posts
+The Kabmo's queue row labelled **"Send Now (Steering)"** actually posts
 `abort_and_prompt`, which discards the running turn. omp has had real steering
 since 18.3.x.
 
-### F5 — Unused surface (no chamber code path)
+### F5 — Unused surface (no Kabmo code path)
 
 Verified zero references in `src/`:
 
@@ -146,7 +146,7 @@ Frames that arrive today fall through `default: break` in both folds.
 `POST /api/settings/providers` `{enabled:false}` writes
 `disabledProviders` in `config.yml`. The OAuth token / API key stays in the auth
 store. omp exposes `get_logout_accounts` + `logout` for the real operation, and
-the chamber never calls them.
+Kabmo never calls them.
 
 ### F7 — Grouped ask dialog available
 
@@ -155,26 +155,26 @@ with `method:"ask"` carrying every question of a call (with `multi` and
 `recommended`), answered by a single `AnswersUiResponse`. Verified live: two
 questions including a `multi:true` one arrived in one request.
 
-Today the chamber renders one dialog per question because omp's default mode
+Today Kabmo renders one dialog per question because omp's default mode
 asks one at a time.
 
 ### F8 — Verified NOT broken (do not "fix")
 
 - **TUI-only guard is correct.** All 42 names in
   `src/shared/lib/chat/composer/tui-only.ts` are still `handleTui`-only in
-  18.8.3. `plan`/`goal` are deliberately absent (the chamber's own extension
+  18.8.3. `plan`/`goal` are deliberately absent (Kabmo's own extension
   answers them). The extracted list from 18.8.3 is exactly those 42 plus
   `goal`/`plan` — no drift.
 - **`get_state.isSettled` is already used** (`run-settle.server.ts`).
 - **STT audio type is correct.** The worker takes `Float32Array` at 16 kHz and
   rejects everything else; `src/server/routes/dictation/ws.ts` converts PCM16 →
   `Float32Array` before `transcribe`. The comment in `omp-stt-worker.ts` saying
-  "base64" is **doc drift** in the chamber, not a code bug.
+  "base64" is **doc drift** in Kabmo, not a code bug.
 - **`turn_end` is deliberately unhandled** — it fires for every turn of a
   multi-turn run, and `terminal-settle.ts` reads the badge from it. Not a gap.
 - **`tool_stream_update` never fires** in practice on 18.8.3 for `bash` or
   `write` (measured: 0 frames on both). It is an extension-tool channel
-  (`updateStreamPreview` in the TUI), not something the chamber is missing.
+  (`updateStreamPreview` in the TUI), not something Kabmo is missing.
 
 ### F9 — Pinned version was stale
 
@@ -233,16 +233,16 @@ each. The now-dead `interruptPendingRef` guard was removed.
 
 **omp's follow-up queue is in-memory and belongs to the child process.** Measured:
 a `follow_up` item present in `get_state.queuedMessages` before the child was
-killed was **gone after a respawn** on the same session file. The chamber's queue
+killed was **gone after a respawn** on the same session file. The Kabmo's queue
 is SQLite-backed (`queued_messages`) and therefore survives an idle reclaim, a
-server restart and a second chamber instance — three things that happen routinely
-and would silently drop a user's queued message under omp's queue. The chamber
+server restart and a second Kabmo instances — three things that happen routinely
+and would silently drop a user's queued message under omp's queue. The Kabmo
 also never populates omp's queue (zero `follow_up` sends), so the two are
 disjoint rather than duplicated.
 
 Adopting `remove_queued_message` / `promote_queued_message` /
 `abort_and_restore_queue` would mean routing the panel's queue through a store
-that loses its contents on the next child restart. The chamber's own per-item
+that loses its contents on the next child restart. The Kabmo's own per-item
 queue endpoints already provide the equivalent operations durably.
 
 What IS taken from this area is P4a: real `steer` for "Send Now".
@@ -250,9 +250,9 @@ What IS taken from this area is P4a: real `steer` for "Send Now".
 ### P5 — native /btw: NOT ADOPTED (measured)
 
 Same finding, same reason. Measured: `get_btw_history` returned a record before
-the child was killed and **`{records:[]}` after a respawn**. The chamber's BTW
+the child was killed and **`{records:[]}` after a respawn**. The Kabmo's BTW
 topics live in SQLite (`btw_topics`/`btw_turns`) and survive restarts; omp's
-history is per-process. The chamber's side child additionally resumes a
+history is per-process. The Kabmo's side child additionally resumes a
 transcript COPY (`--no-tools`), which is what keeps the parent session file
 untouched and lets a topic outlive any single child.
 
@@ -269,7 +269,7 @@ commands answered `success: true` for it.
 
 Not adopted, with the evidence:
 
-- **`get_session_stats`** duplicates what the chamber already has. Measured side
+- **`get_session_stats`** duplicates what Kabmo already has. Measured side
   by side: `get_session_stats.tokens` = `{input: 8843, output: 25, total: 8868}`
   and `cost: 0.001482…`, while the `message_end` frame the timeline already folds
   carried `usage.totalTokens: 8868` and `usage.cost.total: 0.001482…` — the same
@@ -278,7 +278,7 @@ Not adopted, with the evidence:
 - **`get_available_thinking_levels`** duplicates `get_state.model.thinking.efforts`
   (measured: `["low","high","max"]`), which `thinkingLevelsForMeta` already turns
   into the same ladder the command returns (`["off","low","high","max"]`). The
-  chamber reads the live ladder from `get_state`, so the command adds a round
+  Kabmo reads the live ladder from `get_state`, so the command adds a round
   trip for an identical list.
 
 ### P7 — provider logout (shipped)
@@ -288,7 +288,7 @@ Not adopted, with the evidence:
 a `sign out` button sits beside `disable`/`connect` in the auth section. The two
 operations are now visibly different: `disable`/`disconnect` hide a provider and
 leave the credential, `sign out` deletes it. The dialog says what survives (a
-`models.yml` entry, the chamber overlay) so the distinction is not implied.
+`models.yml` entry, Kabmo overlay) so the distinction is not implied.
 
 ### P8 — grouped ask (shipped)
 
@@ -310,10 +310,10 @@ the steering rule and the generated settings schema; the STT audio doc drift
 ## Non-goals
 
 - No `--mode json`, ACP, or live-voice (`live_start`) support.
-- No `predict_word` ghost text (the chamber's composer has no completion surface).
+- No `predict_word` ghost text (Kabmo's composer has no completion surface).
 - No `export_html`.
 - `get_entries` / `get_tree` / `get_branch_messages` are read-only tree views the
-  chamber has no UI for; noted, not adopted.
+  Kabmo has no UI for; noted, not adopted.
 
 ---
 
@@ -321,14 +321,14 @@ the steering rule and the generated settings schema; the STT audio doc drift
 
 The 18.8 work above was measured against **18.8.3**. The installed binary is now
 **18.9.2** (published 2026-10-11T19:17Z), so the same questions were re-asked:
-what moved under the chamber, and what does the panel still not offer. Every
+what moved under Kabmo, and what does the panel still not offer. Every
 claim below is measured against the installed package, not read off a changelog.
 
 ## Method
 
 - `src/modes/rpc/wire/rpc-wire.schema.json` from the installed package, diffed
   against the `v18.8.3` tag — the machine-readable contract, not prose.
-- `omp config list --json` (548 keys) against the chamber's merged schema table.
+- `omp config list --json` (548 keys) against Kabmo's merged schema table.
 - The slash-command registry: `BUILTIN_SLASH_COMMAND_RESERVED_NAMES` +
   `lookupBuiltinSlashCommand`, classified by whether the spec carries a text-mode
   `handle`.
@@ -340,7 +340,7 @@ claim below is measured against the installed package, not read off a changelog.
 ### R1 — The RPC surface is UNCHANGED (nothing to adopt, nothing broken)
 
 18.8.3 → 18.9.2 carries **the same 67 commands**: `ADDED: []`, `REMOVED: []`, and
-no command's params/result/timeout changed. Every verb the chamber depends on
+no command's params/result/timeout changed. Every verb Kabmo depends on
 (`steer`, `set_event_filter`, `set_ask_dialog`, `cancel_subagent`,
 `steer_subagent`, `get_logout_accounts`, `logout`, `get_subagents`) is present
 with an identical signature.
@@ -349,11 +349,11 @@ Two shape changes exist and both are additive:
 
 - `SessionState.queuedMessages` gained `liveSteered: number` (default `0`) — the
   count of leading `steering` entries already sent into the streaming response,
-  which `remove_queued_message` cannot reach. The chamber never reads omp's queue
+  which `remove_queued_message` cannot reach. The Kabmo never reads omp's queue
   (P4b–d, below), so it is inert here.
 - `QueueUpdateEvent` gained the same field, for the same reason.
 
-The frame names the chamber folds (`session_settled`, `rpc_frame_error`,
+The frame names Kabmo folds (`session_settled`, `rpc_frame_error`,
 `extension_error`) all still exist.
 
 ### R2 — The settings schema had drifted 9 rows (fixed)
@@ -371,7 +371,7 @@ Seven existing entries changed **description text only** (`ask.timeout`,
 `tui.autoGraph`, `tui.vimModeDisplay`) — no type, default or enum value moved.
 
 Verified against the live binary rather than the file: `omp config list --json`
-reports 548 keys, and of the chamber's 435 merged entries **0 are rejected**. The
+reports 548 keys, and of Kabmo's 435 merged entries **0 are rejected**. The
 12 keys that used to be rejected (`stt.modelName`, `providers.tts`, …) are still
 absent from omp's registry, so the generator does not pull them back.
 
@@ -393,8 +393,8 @@ so the two cannot disagree about which omp generated the table.
 
 ### R5 — Verified still correct at 18.9.2 (do not "fix")
 
-- **TUI-only command guard.** The chamber's 42-name list is an exact match for
-  18.9.2's TUI-only set (44 names; `plan`/`goal` are chamber-owned and
+- **TUI-only command guard.** The Kabmo's 42-name list is an exact match for
+  18.9.2's TUI-only set (44 names; `plan`/`goal` are Kabmo-owned and
   deliberately absent). 0 unguarded, 0 stale.
 - **STT worker transport.** `omp __omp_worker_stt` still answers on the Bun IPC
   channel with `serialization: "advanced"` and `stdin`/`stdout` ignored — ping →
@@ -403,22 +403,22 @@ so the two cannot disagree about which omp generated the table.
   collab, local model workers); it does not replace the STT worker channel.
 - **STT model keys.** Still exactly `whisper-base`, `whisper-small`,
   `whisper-large-v3-turbo`, `parakeet-tdt-0.6b-v3`; omp's own default is still
-  the English-European-only Parakeet, so the chamber's `whisper-base` default
+  the English-European-only Parakeet, so Kabmo's `whisper-base` default
   remains the right call.
 - **`omp usage --json` / `omp plugin list --json` / `omp skill list --json`.**
   Same shapes; `usage` gained only a `reset` subcommand.
 - **Session title slot.** Still 256 bytes, same entry type, on both sides.
-- **Schema extras.** All 15 chamber-documented keys still answer `omp config get`.
+- **Schema extras.** All 15 Kabmo-documented keys still answer `omp config get`.
 - **`PI_NO_TITLE` gate.** Still set by `--mode rpc-ui` and still gates only the
-  two automatic title paths, so the chamber's own `/rename` remains the way a
+  two automatic title paths, so Kabmo's own `/rename` remains the way a
   session gets named.
 
 ### R6 — `title.icons` changes what a generated title looks like (not a bug)
 
 18.9.0 added **title cards**: `title.icons` (default `nf+emoji`) heads a
 generated or `/rename`d title with an icon and a short code — `formatCardTitle`
-emits `🧪 FLAKY: Fix flaky park tests`. This reaches the chamber, because the
-chamber names sessions by sending `/rename` to the child and then reads the
+emits `🧪 FLAKY: Fix flaky park tests`. This reaches Kabmo, because the
+Kabmo names sessions by sending `/rename` to the child and then reads the
 resulting name back.
 
 It is **not** handled specially and does not need to be: `sessionTitleFor`
@@ -435,7 +435,7 @@ is still `18.9.2` and there is no `18.10.0` on the registry. It brings
 `omp session pack|unpack|moved`, `omp auth export|import`, and the native local
 IPC transport — whose Windows note is the one operational caveat ("daemons
 started by an older omp are not reused"). Its RPC wire schema is **identical to
-18.9.2's** (67 commands, 0 added, 0 removed, 0 defs changed), so the chamber
+18.9.2's** (67 commands, 0 added, 0 removed, 0 defs changed), so Kabmo
 needs no code change for it. Re-audit when it lands on npm; do not pin a
 tag-only release.
 
@@ -486,7 +486,7 @@ the install was moved to it. Everything below is measured against the installed
   therefore passed against the 18.9.2-generated file with no regeneration —
   which is the strongest form of "the schema did not move".
 
-The frames the chamber folds (`session_settled`, `rpc_frame_error`,
+The frames Kabmo folds (`session_settled`, `rpc_frame_error`,
 `extension_error`) and the RPC verbs it drives (`steer`, `set_event_filter`,
 `set_ask_dialog`, `cancel_subagent`, `steer_subagent`, `get_logout_accounts`,
 `logout`) are all unchanged.
@@ -501,19 +501,19 @@ The frames the chamber folds (`session_settled`, `rpc_frame_error`,
   an inherited IPC handle.
 - **STT model keys.** Still exactly `whisper-base`, `whisper-small`,
   `whisper-large-v3-turbo`, `parakeet-tdt-0.6b-v3`; omp's default is still the
-  European-only Parakeet, so the chamber's `whisper-base` default stands.
-- **TUI-only command guard.** 44 TUI-only names at 18.10.0, and the chamber's
-  42-name list is an exact match (`plan`/`goal` are chamber-owned). 0 unguarded,
+  European-only Parakeet, so Kabmo's `whisper-base` default stands.
+- **TUI-only command guard.** 44 TUI-only names at 18.10.0, and Kabmo's
+  42-name list is an exact match (`plan`/`goal` are Kabmo-owned). 0 unguarded,
   0 stale.
-- **Every CLI surface the chamber shells out to.** `omp usage --json`,
+- **Every CLI surface Kabmo shells out to.** `omp usage --json`,
   `omp plugin list --json`, `omp skill list . --json` and `omp config list --json`
   all exit 0 with the same shapes (548 config keys, 413 with a `ui` block).
-- **Every flag the chamber passes to a child.** `--mode --cwd --resume
+- **Every flag Kabmo passes to a child.** `--mode --cwd --resume
   --no-session --no-lsp --no-title --no-tools --approval-mode --model --thinking`
   are all still accepted.
 - **Session title slot.** Still 256 bytes, same entry type.
 - **The new CLI verbs are additive.** `omp session pack|unpack|moved` and
-  `omp auth export|import` exist and change nothing the chamber calls.
+  `omp auth export|import` exist and change nothing Kabmo calls.
 
 ### R10 — A forked resume was re-spawned (bug, fixed)
 
@@ -526,7 +526,7 @@ writes the conversation to a fresh file under a fresh id. Verified against a rea
 `01a12dc0-8f6b-…` and a file under `--private-tmp-ompfork--/`, in a different
 directory from the one resumed.
 
-The chamber's registry was keyed on the id the CALLER holds (the URL's session
+The Kabmo's registry was keyed on the id the CALLER holds (the URL's session
 id), and `startRpcSession`'s lookup therefore MISSED on the very next message:
 the send re-resolved the ORIGINAL file and spawned a second child, which forked
 again. Measured on the real spawn path (`startRpcSession` twice, and again
@@ -554,7 +554,7 @@ fails with 2.
 
 18.10.0 writes a visible, model-facing `custom_message` with
 `customType: "session-transfer"` when a session arrives, departs or is forked.
-The chamber's notice mapper carries any unrecognised `customType` through as a
+The Kabmo's notice mapper carries any unrecognised `customType` through as a
 `notice` row with its `noticeSource` — verified by loading a session file built
 to 18.10.0's exact shape: the marker rendered as a notice row with
 `source: session-transfer`, and the surrounding turns were unaffected. No branch
@@ -586,7 +586,7 @@ because the gate installs the PIN and the pin was behind.
   `v18.10.3`, `v18.10.0` and `v18.8.3` tags (downloaded from the registry).
 - `orderedSettings()` from the installed package, generated into a temp file and
   compared entry by entry with the committed schema.
-- `omp config list --json` (550 keys) against the chamber's merged table.
+- `omp config list --json` (550 keys) against Kabmo's merged table.
 - `STT_MODELS` / `MODEL_ROLE_IDS` / `session-entries.ts` from the installed
   package.
 - Live probes: `omp config set/get/reset`, `omp usage reset [--json]`,
@@ -642,13 +642,13 @@ Pinned by `config-cli.test.ts` against a stub `omp`.
 
 ### R14 — `nemotron-streaming-en-0.6b` was unreachable (fixed)
 
-18.11.0 added a fifth STT model. The chamber's `SttModelKey` union held four, and
+18.11.0 added a fifth STT model. The Kabmo's `SttModelKey` union held four, and
 `isSttModelKey` gates the worker call — so the key could not be selected at all
 (the worker would have answered `Unknown stt model` anyway). Added.
 
 It is the one key omp decodes through an ONLINE recognizer, but that is omp's
 own streaming path (`stream_start`/`stream_audio`/`stream_stop`), which the
-chamber does not drive — its socket sends one utterance per `transcribe` call.
+Kabmo does not drive — its socket sends one utterance per `transcribe` call.
 `decodeSegment` handles the online model on the batch path too (feeds the
 utterance plus a terminal padding frame), so no transport change was needed; the
 label says "live in omp TUI" so the difference is stated rather than implied.
@@ -656,16 +656,16 @@ label says "live in omp TUI" so the difference is stated rather than implied.
 ### R15 — `stt.language` was unreachable AND unused (fixed)
 
 Upstream declares `stt.language` (default `"en"`) with **no `ui` block**, so its
-own panel hides it — while its own dictation reads it. The chamber drove the
+own panel hides it — while its own dictation reads it. The Kabmo drove the
 same worker and passed **no language at all**, leaving every decode
 auto-detecting: the setting that decides whether a non-English utterance
 transcribes correctly was reachable from neither surface.
 
-Two halves: a chamber-documented row in `schema-extras.ts`, and
+Two halves: a Kabmo-documented row in `schema-extras.ts`, and
 `language.server.ts` resolving the value (60 s cache, dropped by the config
 write route) which the dictation socket uses when the client sends none. The
 worker applies `language` only for a non-`englishOnly` model, which is exactly
-the multilingual tiers the chamber defaults to.
+the multilingual tiers Kabmo defaults to.
 
 ### R16 — Six of omp's fifteen model roles were unreachable (fixed)
 
@@ -683,7 +683,7 @@ user needs (a chat model in `judge` is silently unusable). Pinned by
 ### R17 — Saved rate-limit resets had no surface (feature)
 
 18.9.0 added `omp usage reset` (list stored Codex/Claude reset credits, spend
-one) plus expiry warnings. The chamber's Usage surfaces showed quota windows and
+one) plus expiry warnings. The Kabmo's Usage surfaces showed quota windows and
 balances only, so a saved reset could be seen nowhere and spent nowhere.
 
 New: `reset.server.ts` (both halves are omp's own command), route
@@ -705,7 +705,7 @@ list.
 
 18.10.0 added `omp --restore <session>`: resume, then continue what the last
 process left unfinished (the interrupted turn and its subagents). It is **not
-reachable from the chamber** — measured:
+reachable from Kabmo** — measured:
 
 ```
 $ omp --mode rpc-ui --restore /tmp/s/t.jsonl
@@ -713,7 +713,7 @@ Error: --restore requires an interactive terminal (not --print or --mode).
 ```
 
 `main.ts` wires `restoreSession` only inside the `isInteractive` branch; both
-RPC modes are excluded. The chamber spawns `--mode rpc-ui`, so this is not a gap
+RPC modes are excluded. The Kabmo spawns `--mode rpc-ui`, so this is not a gap
 that can be closed from here — recorded so it is not "fixed" later.
 
 ### R19 — The approval flow now diverges from omp (documented, not changed)
@@ -723,7 +723,7 @@ further — **sending a message while an approval is pending DENIES the call and
 steers the turn with that message**, so the agent learns why. (`denyingSteering`
 exists in 18.11.0 and in neither 18.10.3 nor 18.8.3.)
 
-The chamber does the opposite, deliberately and for a measured reason: a pending
+The Kabmo does the opposite, deliberately and for a measured reason: a pending
 dialog parks omp's whole RPC command loop, so `abort`/`abort_and_prompt` are
 refused up front (`refuseWhenBlockedOnDialog`, 409 `session_blocked_on_dialog`)
 instead of hanging the request, and the dialog is a modal that covers the
@@ -737,18 +737,18 @@ hang.
   `REMOVED: []`, 0 command signatures changed. Event unions identical: 31 agent
   events, 20 notifications, 4 inbound frames. `ExtensionUiRequest` still has its
   12 variants. Four defs changed across the whole range and all are inert here:
-  `CompactionResult.providerReplayThroughEntryId` (the chamber reads only
+  `CompactionResult.providerReplayThroughEntryId` (Kabmo reads only
   `summary`/`tokensBefore`), `QueueUpdateEvent`/`QueuedMessagesState.liveSteered`
-  and `SessionState.queuedMessages` (the chamber does not adopt omp's queue —
+  and `SessionState.queuedMessages` (Kabmo does not adopt omp's queue —
   P4b–d).
-- **TUI-only guard: still exact.** omp has 44 TUI-only names; the chamber lists
-  42, and the two absent are `plan`/`goal`, which the chamber owns through its
+- **TUI-only guard: still exact.** omp has 44 TUI-only names; Kabmo lists
+  42, and the two absent are `plan`/`goal`, which Kabmo owns through its
   extension.
 - **Builtin tools: identical.** 30 + 3 hidden, unchanged 18.8.3 → 18.11.0.
   `tern-media.ts` is new but is a `read.ts` helper, not a tool.
 - **The `runtime` session-entry field is new and harmless.** 18.11.0 stamps
   every entry with the writing build (`{version, commit?, branch?, diff?,
-  label?}`); the chamber's parser ignores unknown fields, and no surface displays
+  label?}`); Kabmo's parser ignores unknown fields, and no surface displays
   it.
 - **Chamber schema extras: 0 rejected.** All 15 documented keys answer
   `omp config get`; the merged table's only rejections were the two R12 rows.
@@ -767,5 +767,5 @@ hang.
 | R16 | 9 of 15 roles editable | `RoleEditor` lists all 15, sectioned | `RoleEditor.test.ts`, 4 tests |
 | R17 | saved resets had no surface | `reset.server.ts` + route + section in both panels | `reset.server.test.ts` (11) + live HTTP smoke |
 | R18 | `--restore` unreachable | none possible — interactive-only | `omp --mode rpc-ui --restore` exits 1 |
-| R19 | approval flow diverges | documented, not changed | 18.11.0 `denyingSteering`; chamber 409 by design |
+| R19 | approval flow diverges | documented, not changed | 18.11.0 `denyingSteering`; Kabmo 409 by design |
 | R20 | wire/tools/guard unchanged | none needed | wire diff 67/67, role diff 0, tool diff 0 |

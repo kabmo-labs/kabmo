@@ -4,7 +4,7 @@
  */
 
 /**
- * Single source of truth for the timings the chamber still reasons about.
+ * Single source of truth for the timings Kabmo still reasons about.
  *
  * Most of what used to live here is gone: the panel, sidebar, git, schedule and
  * repo-discovery polls were replaced by the realtime socket's topics, so only

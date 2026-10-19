@@ -24,7 +24,7 @@ describe('withUpdateSlot', () => {
     const running = withUpdateSlot('omp', () => gate.promise);
     expect(runningUpdate()).toBe('omp');
 
-    await expect(withUpdateSlot('ompchamber', async () => 'never')).rejects.toThrow(UpdateInProgressError);
+    await expect(withUpdateSlot('kabmo', async () => 'never')).rejects.toThrow(UpdateInProgressError);
 
     gate.release('done');
     await expect(running).resolves.toBe('done');
@@ -32,7 +32,7 @@ describe('withUpdateSlot', () => {
 
   test('the refusal names the update that is already running', async () => {
     const gate = deferred();
-    const running = withUpdateSlot('ompchamber', () => gate.promise);
+    const running = withUpdateSlot('kabmo', () => gate.promise);
 
     const error = await withUpdateSlot('omp', async () => 'never').catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(UpdateInProgressError);

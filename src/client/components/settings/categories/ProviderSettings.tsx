@@ -106,7 +106,7 @@ export function ProviderSettings({
                   onOpenReconnectModal={() => {
                     // A provider omp signs in through `/login` needs the OAuth
                     // dialog; one whose endpoint and key live in models.yml (or the
-                    // chamber overlay) is edited in place. Testing the provider ID
+                    // Kabmo overlay) is edited in place. Testing the provider ID
                     // for `omp-auth-` was wrong: a native models.yml entry shares
                     // that ID prefix once merged, and a keyless local server has no
                     // login flow to complete at all.

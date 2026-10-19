@@ -42,7 +42,7 @@ afterAll(() => {
 });
 
 afterEach(() => {
-  rmSync(join(agentDir, 'ompchamber-title-model.yml'), { force: true });
+  rmSync(join(agentDir, 'kabmo-title-model.yml'), { force: true });
 });
 
 /** The module resolves the agent dir at import time, so it is imported after
@@ -79,11 +79,11 @@ describe('title-model overlay', () => {
     try {
       expect(existsSync(nested)).toBe(false);
       ensureTitleModelOverlay();
-      expect(existsSync(join(nested, 'ompchamber-title-model.yml'))).toBe(true);
+      expect(existsSync(join(nested, 'kabmo-title-model.yml'))).toBe(true);
     } finally {
       process.env.PI_CODING_AGENT_DIR = prior;
     }
-    expect(titleModelOverlayPath()).toBe(join(agentDir, 'ompchamber-title-model.yml'));
+    expect(titleModelOverlayPath()).toBe(join(agentDir, 'kabmo-title-model.yml'));
   });
 
   test('writes the role under `modelRoles` and restores the empty overlay after', async () => {

@@ -6,10 +6,10 @@
 /**
  * The plan a model submitted for review.
  *
- * Plan mode's approval path is a `write` to `xd://propose`, which the chamber's
+ * Plan mode's approval path is a `write` to `xd://propose`, which Kabmo's
  * extension intercepts and parks — the model's tool call stays open until an
  * answer arrives. The proposal therefore reaches the client as a
- * `CHAMBER_PLAN_PROPOSAL` marker carrying the plan body, and the client's answer
+ * `KABMO_PLAN_PROPOSAL` marker carrying the plan body, and the client's answer
  * travels back as a second mode command. Nothing polls: both directions ride the
  * stream the transcript already uses.
  *
@@ -20,10 +20,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { PlanProposal } from '@/shared/lib/omp/mode/types';
-import { CHAMBER_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
+import { KABMO_MODE_SIGNAL } from '@/shared/lib/omp/mode/client-signal';
 import { subscribeClientSignal } from '@/client/lib/signals';
 import type { ParsedMarker } from '@/shared/lib/omp/mode/markers';
 import { isPendingSessionId } from '@/shared/lib/omp/session/default-title';
+import { isModeMarker } from '@/shared/lib/omp/mode/constants';
 
 export interface PlanReviewState {
   proposal: PlanProposal | null;
@@ -61,7 +62,7 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
   // was announced: the marker went out over the stream, omp never re-delivers
   // it, and the plan body exists only in the extension's slot. So ask the child
   // to re-send it — but ONLY while a child is already alive. This route is the
-  // chamber's lazy-spawn path, and opening a finished session to READ it must
+  // Kabmo's lazy-spawn path, and opening a finished session to READ it must
   // not boot an omp process for a question the answer to which is "nothing is
   // parked" (the same rule the observer-only commands follow).
   useEffect(() => {
@@ -75,7 +76,7 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
         return fetch(`/api/agent/${encodeURIComponent(current)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'chamber_mode', scope: 'plan', action: 'republish' }),
+          body: JSON.stringify({ type: 'kabmo_mode', scope: 'plan', action: 'republish' }),
         });
       })
       .catch(() => {});
@@ -84,11 +85,11 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
     };
   }, [sessionId]);
 
-  useEffect(() => subscribeClientSignal(CHAMBER_MODE_SIGNAL, (detail) => {
+  useEffect(() => subscribeClientSignal(KABMO_MODE_SIGNAL, (detail) => {
       const marker = detail?.marker as ParsedMarker | undefined;
       if (!marker) return;
       if (sessionId && detail.sessionId && detail.sessionId !== sessionId) return;
-      if (marker.marker === 'CHAMBER_PLAN_PROPOSAL:') {
+      if (isModeMarker(marker.marker, 'planProposalMarker')) {
         const next = proposalFromMarkerPayload(marker.payload);
         if (next) {
           setProposal(next);
@@ -98,17 +99,17 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
       }
       // A decision reported by the child: the parked promise is resolved, so
       // the review surface has done its job.
-      if (marker.marker === 'CHAMBER_PLAN_DECISION:') {
+      if (isModeMarker(marker.marker, 'planDecisionMarker')) {
         setProposal(null);
         setDeciding(false);
         return;
       }
-      if (marker.marker === 'CHAMBER_PLAN_SAVED:') {
+      if (isModeMarker(marker.marker, 'planSavedMarker')) {
         setProposal(null);
         setDeciding(false);
         return;
       }
-      if (marker.marker === 'CHAMBER_MODE_ERROR:') {
+      if (isModeMarker(marker.marker, 'modeErrorMarker')) {
         setDeciding(false);
         setError(typeof marker.payload.reason === 'string' ? marker.payload.reason : 'Mode command failed');
       }
@@ -124,7 +125,7 @@ export function usePlanReview(sessionId: string | null): PlanReviewState {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'chamber_mode',
+          type: 'kabmo_mode',
           scope: 'plan',
           action: 'decide',
           payload: { choice, feedback },

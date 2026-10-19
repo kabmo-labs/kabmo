@@ -9,7 +9,7 @@
  * decoding, ordering and claim behavior are the contract the delivery timer
  * depends on.
  *
- * The tests run against a throwaway SQLite file (never the chamber database)
+ * The tests run against a throwaway SQLite file (never Kabmo database)
  * and pin: positions increase on append and are rewritten exactly by
  * `reorderQueue`; a claim returns the head in position order and deletes it so
  * the next claim cannot see it again; a failed delivery's requeue lands ahead
@@ -55,16 +55,16 @@ beforeAll(() => {
 const dirs: string[] = [];
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ompchamber-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kabmo-test-'));
   dirs.push(dir);
   return dir;
 }
 
 function useTempDb(): void {
-  Bun.env.OMPCHAMBER_DB_PATH = join(tempDir(), 'db.sqlite');
+  Bun.env.KABMO_DB_PATH = join(tempDir(), 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__ompChamberDb = undefined;
+  globalThis.__kabmoDb = undefined;
 }
 
 function row(over: Record<string, unknown> = {}) {
@@ -83,9 +83,9 @@ function row(over: Record<string, unknown> = {}) {
 }
 
 afterEach(() => {
-  globalThis.__ompChamberDb?.resolved?.raw.close();
-  globalThis.__ompChamberDb = undefined;
-  delete Bun.env.OMPCHAMBER_DB_PATH;
+  globalThis.__kabmoDb?.resolved?.raw.close();
+  globalThis.__kabmoDb = undefined;
+  delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;
   for (const dir of dirs.splice(0)) removeDir(dir);
 });

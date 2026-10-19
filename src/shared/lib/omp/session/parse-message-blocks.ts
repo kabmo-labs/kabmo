@@ -5,7 +5,7 @@
 
 /**
  * Single source of truth for parsing omp message content blocks (text /
- * thinking / toolCall / toolResult) into the chamber's parsed-message shape.
+ * thinking / toolCall / toolResult) into Kabmo's parsed-message shape.
  *
  * Both render paths share this core so their behavior can never drift:
  * - live SSE events:  hooks/chat/omp/stream.ts → mapper.ts (streaming=true)
@@ -176,7 +176,7 @@ export function parseMessageBlocks(content: unknown): ParsedMessageBlocks {
   return result;
 }
 
-/** Build a chamber ToolCallData from the parsed core shape. `streaming`
+/** Build a Kabmo ToolCallData from the parsed core shape. `streaming`
  *  controls the initial status (live calls start 'running'); pairing an
  *  output after the fact overrides it back to success/error. */
 export function toToolCallData(

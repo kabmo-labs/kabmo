@@ -3,11 +3,11 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "ompchamber",
+      "name": "kabmo",
       "dependencies": {
         "@fontsource/fira-code": "^5.3.0",
-        "@kabmo-labs/plugin-sdk": "workspace:*",
-        "@kabmo-labs/ui": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-ui": "workspace:*",
         "@shikijs/langs": "^4.4.3",
         "@shikijs/themes": "^4.4.3",
         "@tailwindcss/postcss": "^4.1.14",
@@ -48,25 +48,25 @@
         "typescript": "~5.8.2",
       },
     },
-    "packages/plugin-sdk": {
-      "name": "@kabmo-labs/plugin-sdk",
-      "version": "1.0.0",
+    "packages/kabmo-sdk": {
+      "name": "@kabmo-labs/kabmo-sdk",
+      "version": "0.0.1",
       "peerDependencies": {
-        "@kabmo-labs/ui": "*",
+        "@kabmo-labs/kabmo-ui": "*",
         "happy-dom": "*",
         "preact": "^10.29.8",
       },
       "optionalPeers": [
-        "@kabmo-labs/ui",
+        "@kabmo-labs/kabmo-ui",
         "happy-dom",
         "preact",
       ],
     },
-    "packages/ui": {
-      "name": "@kabmo-labs/ui",
-      "version": "1.0.0",
+    "packages/kabmo-ui": {
+      "name": "@kabmo-labs/kabmo-ui",
+      "version": "0.0.1",
       "dependencies": {
-        "@kabmo-labs/plugin-sdk": "workspace:*",
+        "@kabmo-labs/kabmo-sdk": "workspace:*",
         "preact": "^10.29.8",
       },
     },
@@ -120,9 +120,9 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@kabmo-labs/plugin-sdk": ["@kabmo-labs/plugin-sdk@workspace:packages/plugin-sdk"],
+    "@kabmo-labs/kabmo-sdk": ["@kabmo-labs/kabmo-sdk@workspace:packages/kabmo-sdk"],
 
-    "@kabmo-labs/ui": ["@kabmo-labs/ui@workspace:packages/ui"],
+    "@kabmo-labs/kabmo-ui": ["@kabmo-labs/kabmo-ui@workspace:packages/kabmo-ui"],
 
     "@mermaid-js/parser": ["@mermaid-js/parser@2.0.0", "", { "dependencies": { "@chevrotain/types": "~11.1.2" } }, "sha512-K8BeapFUfrfxbRAUQAG5oBOCwo1+bNWzaVnPxTCutkfrTBn6T/j91FIhqxWJ32SUeQ9T3iy1zcmPZ5ROZEvDrg=="],
 

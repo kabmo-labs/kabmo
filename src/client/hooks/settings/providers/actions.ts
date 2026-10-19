@@ -252,7 +252,7 @@ export function createProviderActions(deps: ProviderActionsDeps) {
   };
 
   /**
-   * Delete a provider's `models.yml` entry (and the chamber's overlay row).
+   * Delete a provider's `models.yml` entry (and Kabmo's overlay row).
    *
    * Only offered for a provider the server reports as `inModelsYml`, because
    * the action is a file edit: a login provider's credential is untouched, and
@@ -277,7 +277,7 @@ export function createProviderActions(deps: ProviderActionsDeps) {
       // The overlay row is gone even when the file cleanup failed, so the
       // warning is reported rather than presented as a clean delete.
       if (result.warning) {
-        pushToast(`${target.name} removed from the chamber, but models.yml cleanup failed: ${result.warning}`, 'error');
+        pushToast(`${target.name} removed from Kabmo, but models.yml cleanup failed: ${result.warning}`, 'error');
       } else if (result.removedFromOmp) {
         const count = result.modelsRemoved ?? 0;
         pushToast(
@@ -285,7 +285,7 @@ export function createProviderActions(deps: ProviderActionsDeps) {
           'success',
         );
       } else {
-        pushToast(`${target.name} removed from the chamber list.`, 'success');
+        pushToast(`${target.name} removed from Kabmo list.`, 'success');
       }
     } finally {
       setIsDeletingProvider(false);

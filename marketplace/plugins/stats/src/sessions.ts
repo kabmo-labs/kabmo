@@ -19,8 +19,8 @@
  *
  * ## Paths, resolved here rather than imported
  *
- * A panel plugin is bundled into the host, and only `@ompchamber/*` specifiers
- * are shared — the chamber's own `@/server/lib/omp/core/paths` is not reachable
+ * A panel plugin is bundled into the host, and only `@kabmo-labs/*` specifiers
+ * are shared — Kabmo's own `@/server/lib/omp/core/paths` is not reachable
  * from a plugin. So the three rules that decide where omp keeps agent state are
  * restated here: `PI_CODING_AGENT_DIR` overrides the agent dir, `PI_CONFIG_DIR`
  * renames the config root, and the XDG data layout is used only once
@@ -89,7 +89,7 @@ export function sessionsDir(): string {
  * `<configRoot>/run/session-owners` — where omp keeps its per-session leases.
  *
  * Deliberately the CONFIG root and not the XDG data root: the lease is process
- * state, and `lease-holder.server.ts` in the chamber reads it from the same
+ * state, and `lease-holder.server.ts` in Kabmo reads it from the same
  * place. A host that relocated only its DATA would still hold leases here.
  */
 export function leasesDir(): string {

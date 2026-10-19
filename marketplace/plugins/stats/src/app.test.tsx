@@ -8,7 +8,7 @@
  *
  * This is the state a user reported: the panel opened and said "No sample yet."
  * with nothing on screen to explain it. The cause is structural — a plugin's
- * server half is loaded at chamber STARTUP, so a plugin installed into a running
+ * server half is loaded at Kabmo STARTUP, so a plugin installed into a running
  * instance answers no topic and refuses its RPC methods until a restart.
  *
  * The panel detects it through its own arm call: `watch` is an RPC method on the
@@ -26,9 +26,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { loadPluginApp, uninstallTestPluginRuntime } from '@ompchamber/plugin-sdk/testing/app';
-import type { FakeChamberHarness } from '@ompchamber/plugin-sdk/testing';
-import { PanelHostProvider, PluginIdProvider, configureUiKit, uiKitServices } from '@ompchamber/ui';
+import { loadPluginApp, uninstallTestPluginRuntime } from '@kabmo-labs/kabmo-sdk/testing/app';
+import type { FakeKabmoHarness } from '@kabmo-labs/kabmo-sdk/testing';
+import { PanelHostProvider, PluginIdProvider, configureUiKit, uiKitServices } from '@kabmo-labs/kabmo-ui';
 
 import pluginDefinition from './app';
 import type { StatsSnapshot } from './sampler';
@@ -57,7 +57,7 @@ const PLUGIN_ID = 'plugin-under-test';
 
 /** Render the plugin's right panel the way the host does. */
 async function renderStatsPanel(
-  harness: FakeChamberHarness,
+  harness: FakeKabmoHarness,
 ): Promise<{ text: string; html: string; unmount: () => void }> {
   const registration = harness.registrations.rightPanel;
   if (!registration) throw new Error('the plugin registered no right panel');
@@ -105,7 +105,7 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
         ppid: 0,
         title: 'Kabmo server',
         detail: 'the server itself · 1m',
-        groupKey: 'chamber',
+        groupKey: 'kabmo',
         depth: 0,
         rss: 2 * 1024 * 1024,
         cpuPercent: 1.5,
@@ -114,8 +114,8 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
     ],
     groups: [
       {
-        key: 'chamber',
-        kind: 'chamber',
+        key: 'kabmo',
+        kind: 'kabmo',
         ownerPid: 1,
         title: 'Kabmo server',
         detail: 'the server itself · 1m',

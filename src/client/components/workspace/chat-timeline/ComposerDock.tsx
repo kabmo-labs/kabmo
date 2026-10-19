@@ -11,14 +11,14 @@ import { PluginComposerBanners } from '@/client/components/workspace/chat-timeli
 
 interface ComposerDockProps {
   isMobile: boolean;
-  /** Chamber session the side-question panel scopes to. */
+  /** Kabmo session the side-question panel scopes to. */
   sessionId: string | null;
   isGenerating: boolean;
   /**
    * Whether the docked generating indicator renders. Wider than
    * `isGenerating`: it also counts the server-tracked `stream` status the
    * sidebar spinner is drawn from, so a run this client did not start (a
-   * second tab, another chamber instance) still shows as generating here.
+   * second tab, another Kabmo instance) still shows as generating here.
    * Reaches the composer as its chat-level running flag as well: the goal strip
    * and the Stop button describe the RUN, not this draft, and reading
    * `isGenerating` alone hid Stop for every run this page did not start.
@@ -106,7 +106,7 @@ export function ComposerDock({
           while the side-question form takes the composer's place. */}
       <div className="relative mx-auto w-full max-w-[970px]">
         {/* Plugin banner strip: above the input, in the chat's own composer.
-            An empty slot renders nothing, so a chamber with no plugins keeps
+            An empty slot renders nothing, so a Kabmo with no plugins keeps
             this dock byte-identical. */}
         <PluginComposerBanners />
         {showGeneratingIndicator && (

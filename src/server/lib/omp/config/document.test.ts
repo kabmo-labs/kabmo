@@ -6,7 +6,7 @@
 /**
  * The comment-preserving YAML config writer and the two settings it edits.
  *
- * These modules are the only place the chamber writes into omp's own config
+ * These modules are the only place Kabmo writes into omp's own config
  * files, so each promise here is a data-loss promise:
  *
  * - `withOmpYamlDocument` must refuse a file that is not a YAML mapping (the
@@ -66,7 +66,7 @@ function write(file: string, content: string, mode?: number): string {
 const read = (file: string) => fs.readFileSync(file, 'utf8');
 
 beforeAll(() => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-document-'));
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-document-'));
   agentDir = join(root, 'agent');
   fs.mkdirSync(agentDir, { recursive: true });
   prevAgentDir = Bun.env.PI_CODING_AGENT_DIR;

@@ -9,11 +9,11 @@
  * The server refuses to resume a session another omp process already owns
  * (`SessionOwnedElsewhereError`), because doing so makes omp move this writer
  * to a sibling file — a duplicate sidebar row with the same title and a split
- * conversation. When the owner is another CHAMBER instance, the refusal carries
+ * conversation. When the owner is another Kabmo instance, the refusal carries
  * its port, and the right answer is not an error message: it is to open the
  * session there, since both instances share one database and one agent dir.
  *
- * A holder the chamber cannot place (an `omp` CLI run) has no `ownerPort`, so
+ * A holder Kabmo cannot place (an `omp` CLI run) has no `ownerPort`, so
  * the caller keeps the plain refusal.
  */
 

@@ -10,7 +10,7 @@ const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
  *
  * A read failure is a 200 with `error` set, not a 500: omp exits 1 when there
  * is nothing to list (`No Codex or Claude accounts found…`), and that is an
- * answer about the user's accounts rather than a chamber fault. The section
+ * answer about the user's accounts rather than a Kabmo fault. The section
  * renders the sentence.
  */
 export async function loader({ request, params }: LoaderFunctionArgs) {

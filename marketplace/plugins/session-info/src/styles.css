@@ -12,7 +12,7 @@
  *
  * Do NOT reach for the host's classes. This file used to say
  * `html[data-session-info] .code-block::before`, and that is the leak the
- * scoping replaced: `.code-block` is the CHAMBER's class and `html[…]` is an
+ * scoping replaced: `.code-block` is Kabmo's class and `html[…]` is an
  * ancestor of everything, so the rule drew a gradient line over every code block
  * in the chat. Under `@scope` a selector like that matches nothing — which is
  * the honest outcome, and the reason the content-script contract hands you a

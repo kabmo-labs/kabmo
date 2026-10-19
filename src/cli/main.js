@@ -1,22 +1,24 @@
 /**
- * The CLI's entry logic, one function per invoked name.
+ * The CLI's entry logic.
  *
- * `ompchamber` and `kabmo` are two bins over the same commands during the
- * rename. The name is passed in rather than inferred: both bins are symlinks to
- * a script, and Bun resolves `argv[1]` to the target, so the invoked spelling is
- * not observable from inside the process.
+ * The invoked name is passed in rather than inferred: the bin is a symlink to a
+ * script and Bun resolves `argv[1]` to the target, so the invoked spelling is
+ * not observable from inside the process. It is still a parameter because the
+ * help text and the login entry both print it, and a rename should not have to
+ * touch either.
  */
 
 import packageJson from '@/../package.json';
 import { parseArgs, helpText } from '@/cli/lib/args.js';
 import { configure, error, fail } from '@/cli/lib/output.js';
 import { resolvePath } from '@/cli/lib/path-utils.js';
+import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
 
 const { version } = packageJson;
 
 const COMMANDS = ['serve', 'update', 'stop', 'restart', 'status', 'logs', 'plugin'];
 
-export async function runCli(bin = 'ompchamber') {
+export async function runCli(bin = 'kabmo') {
   const { command, positionals, options, unknown } = parseArgs(process.argv.slice(2));
 
   configure({ json: options.json, quiet: options.quiet });
@@ -34,6 +36,11 @@ export async function runCli(bin = 'ompchamber') {
   if (unknown.length > 0) {
     fail(`Unknown option: ${unknown[0]}\nRun "${bin} --help" for usage.`);
   }
+
+  // The data directory is moved from its pre-rename name before any command
+  // resolves a path under it (`status` reads the instance records, `logs` the
+  // log directory, `serve` the database).
+  migrateLegacyDataDir();
 
   // src/cli/main.js -> package root is two levels up.
   const pkgRoot = resolvePath(import.meta.dir, '..', '..');

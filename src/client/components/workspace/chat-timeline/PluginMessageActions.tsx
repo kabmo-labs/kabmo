@@ -8,7 +8,7 @@
  * strip renders beside Retry / Copy / New-chat.
  *
  * A row is drawn ONLY when a plugin contributed one — the component returns
- * `null` for an empty slot, so a chamber with no plugins produces exactly the
+ * `null` for an empty slot, so a Kabmo with no plugins produces exactly the
  * same tree it did before this slot existed. That is the property the whole
  * list-slot design rests on: the host surface does not gain a wrapper, a spacer
  * or an empty group when nothing registered.
@@ -18,9 +18,9 @@
  * facts (id, role, text), so they share one component instead of three.
  */
 
-import type { MessageActionRegistration } from '@kabmo-labs/plugin-sdk';
+import type { MessageActionRegistration } from '@kabmo-labs/kabmo-sdk';
 import type { ListSlotEntry } from '@/client/lib/plugins/list-slots';
-import { PluginIdProvider } from '@kabmo-labs/ui';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { useListSlotRows, usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
 interface PluginMessageActionsProps {

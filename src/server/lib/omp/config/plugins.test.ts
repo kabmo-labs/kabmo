@@ -21,7 +21,7 @@
  *   user lockfile), so it must carry `featuresEditable: false`.
  * - `omp` itself and entries without a name are not plugins.
  *
- * The `omp` CLI is replaced by a stub binary (via `OMPCHAMBER_OMP_BIN`) that
+ * The `omp` CLI is replaced by a stub binary (via `KABMO_OMP_BIN`) that
  * prints a fixture — no real omp process, no network.
  */
 
@@ -57,14 +57,14 @@ function manifestPackage(dir: string, pkg: Record<string, unknown>): string {
 }
 
 beforeAll(async () => {
-  root = fs.mkdtempSync(join(tmpdir(), 'ompchamber-plugins-'));
+  root = fs.mkdtempSync(join(tmpdir(), 'kabmo-plugins-'));
   xdg = join(root, 'xdg');
   cwd = join(root, 'workspace');
   fs.mkdirSync(join(xdg, 'omp'), { recursive: true });
   fs.mkdirSync(join(cwd, '.omp', 'plugins'), { recursive: true });
   prevXdg = Bun.env.XDG_DATA_HOME;
   prevAgentDir = Bun.env.PI_CODING_AGENT_DIR;
-  prevBin = Bun.env.OMPCHAMBER_OMP_BIN;
+  prevBin = Bun.env.KABMO_OMP_BIN;
   Bun.env.XDG_DATA_HOME = xdg;
   delete Bun.env.PI_CODING_AGENT_DIR;
 
@@ -154,7 +154,7 @@ beforeAll(async () => {
   const stubSource = `import { readFileSync } from 'node:fs';
 process.stdout.write(readFileSync(${JSON.stringify(listFixture)}));
 `;
-  Bun.env.OMPCHAMBER_OMP_BIN = await executableStub(stubSource, 'fake-omp-plugin-list');
+  Bun.env.KABMO_OMP_BIN = await executableStub(stubSource, 'fake-omp-plugin-list');
   invalidateOmpCliCache();
   // `resolveOmpBin` memoizes the FIRST binary it resolves for the process, so a
   // sibling suite's value would otherwise answer every call here.
@@ -166,8 +166,8 @@ afterAll(() => {
   else Bun.env.XDG_DATA_HOME = prevXdg;
   if (prevAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = prevAgentDir;
-  if (prevBin === undefined) delete Bun.env.OMPCHAMBER_OMP_BIN;
-  else Bun.env.OMPCHAMBER_OMP_BIN = prevBin;
+  if (prevBin === undefined) delete Bun.env.KABMO_OMP_BIN;
+  else Bun.env.KABMO_OMP_BIN = prevBin;
   invalidateOmpCliCache();
   fs.rmSync(root, { recursive: true, force: true });
 });

@@ -5,7 +5,7 @@
  * session — only the highlight moves — so a width that changed when the user
  * picked a different session read as the layout jumping for no reason. The
  * editor and the right panel describe one session's working state and stay in
- * `layout.panelWidths`; this one is a chamber setting, stored in `app_settings`
+ * `layout.panelWidths`; this one is a Kabmo setting, stored in `app_settings`
  * beside the sidebar's other cross-session state
  * (`omp_sidebar_expanded_sessions`, `omp_sidebar_sort`).
  *
@@ -24,7 +24,7 @@
  * first would move the sidebar 351 → 500 on the first switch, which is the
  * symptom this module exists to end.
  */
-import { readChamberSetting, writeSetting } from '@/shared/lib/settings/client';
+import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 
 /** `app_settings` key holding the sidebar's width, in pixels. */
 export const SIDEBAR_WIDTH_SETTING_KEY = 'omp_sidebar_width';
@@ -62,14 +62,14 @@ function finiteOrUndefined(value: unknown): number | undefined {
 
 /** The retired global blob's `left`, when the row is still on disk. */
 function legacyGlobalWidth(): number | undefined {
-  const sizes = readChamberSetting<unknown>(LEGACY_SIZES_KEY);
+  const sizes = readKabmoSetting<unknown>(LEGACY_SIZES_KEY);
   if (typeof sizes !== 'object' || sizes === null || !('left' in sizes)) return undefined;
   return finiteOrUndefined(sizes.left);
 }
 
 /** The stored setting, or `undefined` when this install has never written one. */
 function storedWidth(): number | undefined {
-  return finiteOrUndefined(readChamberSetting<unknown>(SIDEBAR_WIDTH_SETTING_KEY));
+  return finiteOrUndefined(readKabmoSetting<unknown>(SIDEBAR_WIDTH_SETTING_KEY));
 }
 
 /**

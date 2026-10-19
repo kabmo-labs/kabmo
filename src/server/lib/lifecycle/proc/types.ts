@@ -50,7 +50,7 @@ export interface ProcessProbe {
   /**
    * Parent pid of a live process, or null when unreadable.
    *
-   * Used to attribute a process to the chamber instance that spawned it: an omp
+   * Used to attribute a process to Kabmo instance that spawned it: an omp
    * child's parent IS the server, which is how a session owned by ANOTHER
    * instance is told from this process's own child.
    */

@@ -6,7 +6,7 @@
 /**
  * Waiting for the server that answered an update to be REPLACED.
  *
- * The update route arms a detached `ompchamber restart --port <port>` and
+ * The update route arms a detached `kabmo restart --port <port>` and
  * answers first (`RESTART_GRACE_MS`, 1.2 s). So when the result says
  * `restarting`, the page is still being served by the process whose build was
  * just replaced: reloading immediately would fetch the OLD bundle back from the

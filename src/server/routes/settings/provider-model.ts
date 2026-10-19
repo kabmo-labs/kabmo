@@ -80,7 +80,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const result = await upsertOmpProviderModels(provider, {
       baseUrl: typeof body.baseUrl === 'string' ? body.baseUrl.trim() : '',
-      // A provider the chamber overlay knows but models.yml does not needs the
+      // A provider Kabmo overlay knows but models.yml does not needs the
       // credential to be created; a provider already in the file keeps its own
       // (the writer is add-only). A masked placeholder is dropped by the writer
       // rather than persisted as a credential.

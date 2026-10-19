@@ -31,8 +31,8 @@ import type {
   PluginAppDefinition,
   RightPanelProps,
   SettingsSectionProps,
-} from '@kabmo-labs/plugin-sdk/app';
-import { isPluginAppDefinition } from '@kabmo-labs/plugin-sdk/app';
+} from '@kabmo-labs/kabmo-sdk/app';
+import { isPluginAppDefinition } from '@kabmo-labs/kabmo-sdk/app';
 import { clearPluginListSlots, registerListSlot } from '@/client/lib/plugins/list-slots';
 
 /** The four slots a plugin may fill, one component each. */

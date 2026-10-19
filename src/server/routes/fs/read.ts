@@ -289,7 +289,7 @@ export async function readReferencedFile({ request }: LoaderFunctionArgs) {
     return json({ error: 'Missing path' }, { status: 400 });
   }
 
-  // A remote reference is not fetched here: the chamber has no policy for
+  // A remote reference is not fetched here: Kabmo has no policy for
   // outbound requests and a drag from a page is not a reason to add one.
   if (/^https?:\/\//i.test(reference)) {
     return json({ error: 'Remote references are not supported' }, { status: 400 });

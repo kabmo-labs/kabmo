@@ -25,7 +25,7 @@
  * The classifier therefore labels the whole subtree, which is why the broker's
  * pid matters as much as each daemon's.
  *
- * **A broker can be parented OUTSIDE the chamber.** omp spawns it
+ * **A broker can be parented OUTSIDE Kabmo.** omp spawns it
  * `{ detached: true }` and then `unref()`s it, so a broker outlives the omp
  * process that started it and its ppid becomes 1. Measured on this machine: one
  * broker's parent was the server (reachable by a tree walk) and another's was
@@ -134,7 +134,7 @@ function readRuntimeDir(runtimeDir: string): DaemonEntry[] {
  * Every daemon omp reports, across every project on this machine.
  *
  * Deliberately not filtered by project: a daemon belongs to a *project's*
- * runtime dir, and the chamber serves one project at a time — but the brokers
+ * runtime dir, and Kabmo serves one project at a time — but the brokers
  * that outlive their spawner are exactly the ones a project filter would drop
  * while they are still holding memory for a session the user has open. The
  * panel shows the project each entry belongs to, so a shared machine is

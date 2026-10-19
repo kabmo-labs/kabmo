@@ -10,7 +10,7 @@
  * a file beside the session and leaves a `columnTruncated.artifactId` in the
  * result's `details.meta` — measured over 5,441 real results, 1% (65) carry one,
  * and they are exactly the outputs a reader most wants whole: a `bash` build
- * log, an `eval` that printed a table, a `read` of a long file. The chamber
+ * log, an `eval` that printed a table, a `read` of a long file. The Kabmo
  * served none of it, so those results were truncated at 768 bytes with no way
  * to see the rest.
  *
@@ -23,7 +23,7 @@
  * Every guard here is a path boundary: the id must be digits, the kind must be
  * one of omp's own, and the resolved path must still sit inside the session's
  * directory. omp wrote these files, but the id and kind reach this module from
- * a session transcript, which is a document the chamber reads rather than one
+ * a session transcript, which is a document Kabmo reads rather than one
  * it wrote.
  */
 

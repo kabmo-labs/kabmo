@@ -9,7 +9,7 @@
  *
  * The marker travels as an argv flag, never as an environment variable. Env is
  * inherited by every descendant, so a server started from a shell *inside* an
- * Kabmo tree — the chamber's own terminal panel runs commands with the
+ * Kabmo tree — Kabmo's own terminal panel runs commands with the
  * server's environment — would inherit `daemon` and then be swapped out by the
  * next update, killing a `bun run dev` loop Kabmo does not own. argv
  * belongs to the process alone.
@@ -48,7 +48,7 @@ export function resolveLaunchMode(argv: readonly string[] = Bun.argv): InstanceL
  * launcher exits with its child: `bun run dev` is a supervisor process whose
  * only job is to mirror the script it spawned, so signalling the server ends
  * the user's dev loop with it. Leaving those alone by default is what keeps
- * `ompchamber stop` from killing a loop it did not start; an explicit
+ * `kabmo stop` from killing a loop it did not start; an explicit
  * `--port <port>` (or `--all`) still ends one, deliberately.
  */
 export function isCliManaged(launchMode: string | null | undefined): boolean {
@@ -62,5 +62,5 @@ export function isCliManaged(launchMode: string | null | undefined): boolean {
  */
 export function unmanagedReason(launchMode: string | null | undefined): string {
   if (launchMode === 'direct') return 'runs from source (`bun run dev` / `bun run start`)';
-  return 'is not managed by the ompchamber CLI';
+  return 'is not managed by the kabmo CLI';
 }

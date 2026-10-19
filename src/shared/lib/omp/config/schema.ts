@@ -19,7 +19,7 @@ import { SCHEMA_EXTRAS } from '@/shared/lib/omp/config/schema-extras';
 
 export const OMP_SCHEMA = schemaJson as unknown as OmpSchema;
 
-/** All UI entries: upstream schema plus chamber-documented extras. */
+/** All UI entries: upstream schema plus Kabmo-documented extras. */
 export const ALL_SCHEMA_ENTRIES: Record<string, SchemaEntry> = {
   ...OMP_SCHEMA.entries,
   ...SCHEMA_EXTRAS,
@@ -33,7 +33,7 @@ export function configValue(entries: Record<string, ConfigEntry>, key: string): 
 /**
  * Evaluate a `ui.condition` against the live config snapshot. Conditions
  * that describe the host terminal (macOS, image protocol) always hold in
- * the chamber web view, which has neither platform limitation.
+ * Kabmo web view, which has neither platform limitation.
  */
 export function isConditionMet(condition: string | undefined, entries: Record<string, ConfigEntry>): boolean {
   switch (condition) {

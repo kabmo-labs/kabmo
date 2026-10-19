@@ -59,14 +59,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   try {
     // Real mode: an omp session UUID found on disk is authoritative — load its
     // messages straight from the session JSONL file (rich timeline). The
-    // chat_sessions overlay is only for chamber-created sessions (mock or
+    // chat_sessions overlay is only for Kabmo-created sessions (mock or
     // synthetic ids).
     if (!mock) {
       const filePath = await findSessionFileById(sessionId);
       if (filePath) {
         const messages = await loadSessionMessages(filePath);
         // Real omp JSONL only records image blocks — text/pdf attachments
-        // never reach the file. The chamber's DB copy (written by the chat
+        // never reach the file. The Kabmo's DB copy (written by the chat
         // timeline) carries the full attachment metadata, so merge it back
         // onto the matching user messages by content.
         const db = await getDb();
@@ -205,7 +205,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // A session omp owns on disk has its transcript in the JSONL, so the
       // overlay keeps only the rows omp cannot record there — the user turns
       // (raw composer text, attachment metadata) and the notice rows. A session
-      // with no file is chamber-created: the DB is its only copy, so it stays
+      // with no file is Kabmo-created: the DB is its only copy, so it stays
       // whole. The gate is the file's existence, never the id's shape — an omp
       // uuid whose file is gone still needs its full row.
       const persistedMessages = (await findSessionFileById(sessionId))

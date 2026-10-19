@@ -1,6 +1,6 @@
 # Line endings, pinned for every checkout.
 #
-# The chamber is developed on macOS, gated on Linux, and SHIPS a Windows CLI, so
+# The Kabmo is developed on macOS, gated on Linux, and SHIPS a Windows CLI, so
 # the same working tree is checked out on all three. Without this file git uses
 # each platform's default, and Windows defaults to `core.autocrlf=true` — which
 # rewrites every text file to CRLF in the working tree. That is not cosmetic

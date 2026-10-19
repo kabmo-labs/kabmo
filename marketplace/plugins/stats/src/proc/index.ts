@@ -6,7 +6,7 @@
 /**
  * Which probe answers on this platform.
  *
- * The choice is by `process.platform` at module load, exactly as the chamber's
+ * The choice is by `process.platform` at module load, exactly as Kabmo's
  * own liveness probe chooses its backend — no caller knows which one it got.
  *
  * Windows gets the unsupported answer rather than a fabricated one. There is no
