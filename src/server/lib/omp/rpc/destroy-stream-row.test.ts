@@ -22,10 +22,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { removeDir } from '@/test-support/remove-dir';
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 
 import { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import type { RpcProcess } from '@/server/lib/omp/rpc/process';
@@ -47,24 +44,24 @@ function makeProc(): RpcProcess {
   } as unknown as RpcProcess;
 }
 
-let root: string;
-let savedDbPath: string | undefined;
-
+/**
+ * Isolated through the shared helper, not by hand.
+ *
+ * `getDb()` caches its OPENING PROMISE, not only the handle, and a rejection
+ * stays cached: once one open failed, every later `getDb()` in the same process
+ * returned that same rejected promise, so `loadStreamStates` swallowed it into
+ * `{}` and every assertion read `undefined`. Measured on the Windows gate,
+ * where a hand-rolled teardown left the SQLite handle unclosed and the temp
+ * tree locked. `isolateDb` closes and clears the handle BEFORE pointing the
+ * path at a temp file (the order is the point), and `releaseDb` closes it again
+ * before deleting — the only shape that works on Windows.
+ */
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'kabmo-destroy-'));
-  savedDbPath = Bun.env.KABMO_DB_PATH;
-  Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
-  delete globalThis.__kabmoDb;
+  isolateDb();
 });
 
 afterEach(() => {
-  // CLOSE the db handle before dropping it and deleting the tree, or Windows
-  // fails the `rm` with EBUSY on the still-open connection.
-  globalThis.__kabmoDb?.resolved?.raw.close();
-  delete globalThis.__kabmoDb;
-  if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
-  else Bun.env.KABMO_DB_PATH = savedDbPath;
-  removeDir(root);
+  releaseDb();
 });
 
 /** A wrapper with a live run and a matching `stream` row behind it. */

@@ -20,6 +20,12 @@
  * still what they were (cwd-relative `workspace.db` in mock, `~/.kabmo`
  * otherwise). `getDatabasePath` is read per call, so no handle is opened and
  * the real database is never touched.
+ *
+ * One case DOES open a handle, and it is the reason this file also covers
+ * `getDb`: a rejected open used to stay cached in the process-wide slot, so one
+ * transient failure (a locked temp tree on a Windows runner) made every later
+ * caller inherit it and the suites that swallow the error answered empty for the
+ * rest of the run.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -27,7 +33,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import * as path from 'node:path';
 
-import { getDatabasePath } from '@/server/db.server';
+import { getDatabasePath, getDb } from '@/server/db.server';
 import { removeDir } from '@/test-support/remove-dir';
 
 const saved = {
@@ -115,5 +121,33 @@ describe('getDatabasePath', () => {
 
   test('real mode with no override stays the home data directory', async () => {
     expect(await getDatabasePath()).toBe(path.join(homedir(), '.kabmo', 'db.sqlite'));
+  });
+});
+
+describe('a failed open is not cached', () => {
+  test('the next call retries after an open throws', async () => {
+    // A path whose PARENT is a regular file: `mkdir -p` on it fails, so the
+    // open throws without any handle to leak.
+    const blocker = path.join(roots[0] ?? tmpdir(), `blocker-${process.pid}`);
+    await Bun.write(blocker, 'not a directory');
+    const savedSlot = globalThis.__kabmoDb;
+    try {
+      Bun.env.KABMO_DB_PATH = path.join(blocker, 'db.sqlite');
+      globalThis.__kabmoDb = undefined;
+
+      await expect(getDb()).rejects.toBeDefined();
+      // The slot is CLEAR: leaving the rejection in place is what made one
+      // failure permanent for the process. Read through a widened local —
+      // the assignment above narrows the global to `undefined` for the checker.
+      const afterFailure = globalThis.__kabmoDb as { promise?: unknown } | undefined;
+      expect(afterFailure?.promise ?? null).toBeNull();
+
+      Bun.env.KABMO_DB_PATH = path.join(roots[0] ?? tmpdir(), `retry-${process.pid}`, 'db.sqlite');
+      const db = await getDb();
+      expect(db).toBeDefined();
+      db.raw.close();
+    } finally {
+      globalThis.__kabmoDb = savedSlot;
+    }
   });
 });

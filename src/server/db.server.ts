@@ -90,7 +90,7 @@ export async function getDb(): Promise<DbClient> {
   // initialized in this process, and re-opening would leak the old one.
   if (state.resolved) return state.resolved;
 
-  state.promise = (async () => {
+  const opening = (async () => {
     const dbPath = await getDatabasePath();
     const db = createDb(dbPath);
 
@@ -114,6 +114,19 @@ export async function getDb(): Promise<DbClient> {
     state.resolved = db;
     return db;
   })();
+
+  // A FAILED open must not be cached. `state.promise` is handed to every later
+  // caller, so a rejection left in place makes one transient failure permanent
+  // for the life of the process: measured on a Windows CI run, a single locked
+  // temp database turned every subsequent `getDb()` into the same rejection,
+  // and the suites that swallow it (`loadStreamStates`, the settings store)
+  // answered empty for the rest of the run. Clearing the slot on failure means
+  // the next caller retries against whatever path is configured by then — which
+  // is also what a test that isolates itself between cases needs.
+  state.promise = opening.catch((error: unknown) => {
+    state.promise = null;
+    throw error;
+  });
 
   return state.promise;
 }
