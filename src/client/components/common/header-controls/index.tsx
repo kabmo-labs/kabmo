@@ -4,9 +4,28 @@ import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { SignOutButton } from '@/client/components/common/SignOutButton';
 import { ContextUsageButton } from '@/client/components/common/context-usage-button';
 import { HeaderPanelButtons } from '@/client/components/common/header-panel-buttons';
+import { HeaderMoreMenu } from '@/client/components/common/header-controls/MoreMenu';
+import { useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
+import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
 import { withChord } from '@/client/lib/ui/with-chord';
 
 export type HeaderLayout = 'desktop' | 'mobile';
+
+/**
+ * The narrowest phone header that still holds every control in the row.
+ *
+ * Measured against the real header, with a long session title so the picker is
+ * at its 150px cap and cannot absorb the difference:
+ *
+ * - open instance, reload in the row: the picker reaches 150px at **400px**;
+ * - with a UI password, reload + lock: at **436px**.
+ *
+ * Below those the picker would start truncating the session title to pay for a
+ * control that is pressed once a session, so those two move into `⋯` instead.
+ * A wider phone or a rotated one gets them back — the fold is not a device
+ * class, it is the width at which the row stops fitting.
+ */
+const MOBILE_FULL_ROW_PX = { without: 400, withSignOut: 436 } as const;
 
 interface HeaderControlsProps {
   layout: HeaderLayout;
@@ -40,14 +59,30 @@ const ICON_SIZE: Record<HeaderLayout, number> = { desktop: 16, mobile: 18 };
  *
  *   1. Install (PWA)            — desktop only
  *   2. Plugin header slots
- *   3. Reload page
+ *   3. Reload page              — desktop; behind `⋯` on a phone
  *   4. Context usage
- *   5. Sign out (the lock)
+ *   5. Sign out (the lock)      — desktop; behind `⋯` on a phone
  *   6. Editor toggle            — desktop only
  *   7. Right panel
+ *   8. More actions (`⋯`)       — phone only, in the slot the two moved controls
+ *                                  left behind
  *
  * The dev-only layout switch sits AFTER that list: it is not part of the
  * product's navbar and must not push a listed control out of the agreed order.
+ *
+ * ## Why a narrow phone folds two of them into a menu
+ *
+ * The row is 320–412px wide and already shares it with the wordmark, the slash
+ * and the session title — the only functional thing in the left group. Reload
+ * and sign-out are rare (a reload is Cmd/Ctrl+R; a sign-out happens once a
+ * session), while context and the right panel are read and pressed mid-turn.
+ * Measured with a UI password set and all four standing in the row, the title
+ * got 89px at 390 and 19px at 320 — one letter and an ellipsis.
+ *
+ * The fold is therefore a WIDTH, not a layout: `MOBILE_FULL_ROW_PX` is the
+ * narrowest header that still fits every control beside a full 150px picker,
+ * and above it the phone draws the same row the desktop does. Nothing is
+ * permanently unreachable, and nothing is hidden at a width that can hold it.
  */
 export function HeaderControls({
   layout,
@@ -60,14 +95,27 @@ export function HeaderControls({
 }: HeaderControlsProps) {
   const iconClass = ICON_BUTTON_CLASS[layout];
   const size = ICON_SIZE[layout];
+  const authEnabled = useAuthEnabled();
+  const authState = useAuthState();
+  const signOutShown = authEnabled && authState !== 'required';
+  // Called unconditionally: a hook inside the ternary below would run in a
+  // different order on the two layouts.
+  const wideRow = useViewportAtLeast(signOutShown ? MOBILE_FULL_ROW_PX.withSignOut : MOBILE_FULL_ROW_PX.without);
+  const wideEnoughForAll = layout === 'desktop' || wideRow;
+  // A phone folds the two rare controls only while the row cannot hold them.
+  const folded = layout === 'mobile' && !wideEnoughForAll;
 
   return (
     <div className="flex items-center space-x-1">
       {layout === 'desktop' && <PWAInstallButton />}
       <HeaderPanelButtons layout={layout} />
-      <ReloadPageButton size={size} className={iconClass} />
+      {/* The cluster's ORDER is fixed; what changes on a narrow phone is that
+          reload and sign-out move behind `⋯`, which sits in the slot they
+          left. Nothing is hidden at a width that can hold it: measured, the
+          row fits every control at 400px open and 436px with the lock. */}
+      {(layout === 'desktop' || !folded) && <ReloadPageButton size={size} className={iconClass} />}
       <ContextUsageButton sessionId={sessionId} layout={layout} />
-      <SignOutButton size={size} className={iconClass} />
+      {(layout === 'desktop' || !folded) && <SignOutButton size={size} className={iconClass} />}
       {layout === 'desktop' && onToggleEditor && (
         <button
           type="button"
@@ -102,6 +150,7 @@ export function HeaderControls({
           {showRightPanel ? <PanelRightClose size={size} /> : <PanelRight size={size} />}
         </button>
       )}
+      {folded && <HeaderMoreMenu />}
       {layout === 'desktop' && onSwitchToMobile && (
         <button
           type="button"

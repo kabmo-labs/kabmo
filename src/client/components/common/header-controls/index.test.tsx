@@ -157,7 +157,26 @@ function controlNames(): string[] {
   return names;
 }
 
-async function mount(layout: 'desktop' | 'mobile', props: { editor?: boolean; switch?: boolean } = {}): Promise<void> {
+/**
+ * Mount the cluster at a chosen viewport width.
+ *
+ * The width is load-bearing since the phone folds two controls into `⋯` only
+ * while the row cannot hold them (`MOBILE_FULL_ROW_PX`), so a case that does
+ * not say where it is mounted is asserting a layout nobody chose. happy-dom
+ * resolves `matchMedia` against `innerWidth`, so setting it is the same signal
+ * a real resize raises.
+ */
+async function mount(
+  layout: 'desktop' | 'mobile',
+  props: { editor?: boolean; switch?: boolean; width?: number } = {},
+): Promise<void> {
+  // happy-dom resolves `matchMedia` against `innerWidth`, so writing it is the
+  // same signal a real resize raises.
+  Object.defineProperty(window, 'innerWidth', {
+    value: props.width ?? 1024,
+    configurable: true,
+    writable: true,
+  });
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
@@ -205,12 +224,42 @@ describe('HeaderControls', () => {
     ]);
   });
 
-  test('mobile draws the same controls in the same order, minus the desktop-only pair', async () => {
-    await mount('mobile');
+  test('a narrow phone draws the row, minus the desktop-only pair', async () => {
+    await mount('mobile', { width: 390 });
 
     // Install is desktop-only by decision: a phone's browser never fires the
     // prompt (iOS has its own guide), so the control is not part of the phone's
     // row. The editor column does not exist on the phone at all.
+    //
+    // At 390px reload and sign-out are rows of the `⋯` menu rather than
+    // standing in the row: that is what pays for the wordmark and the session
+    // title (see `HeaderControls`' own doc).
+    expect(controlNames()).toEqual([
+      'Demo Stats',
+      'Context usage',
+      'Open Right Panel',
+      'More actions',
+    ]);
+  });
+
+  test('a narrow phone folds reload and sign-out into the ⋯ menu', async () => {
+    await mount('mobile', { width: 360 });
+
+    // Below `MOBILE_FULL_ROW_PX` the row cannot hold them beside a full-width
+    // picker, so they are rows of the `⋯` menu instead.
+    expect(controlNames()).toEqual([
+      'Demo Stats',
+      'Context usage',
+      'Open Right Panel',
+      'More actions',
+    ]);
+  });
+
+  test('a phone wide enough for the whole row draws every control, no menu', async () => {
+    // 500px is past both thresholds (400 open, 436 with the lock), so nothing
+    // is folded: the fold is a width, not a device class.
+    await mount('mobile', { width: 500 });
+
     expect(controlNames()).toEqual([
       'Demo Stats',
       'Reload page',
@@ -226,15 +275,32 @@ describe('HeaderControls', () => {
     render(null, container);
     container.remove();
 
-    await mount('mobile');
+    await mount('mobile', { width: 500 });
     const mobile = controlNames();
 
-    const shared = ['Reload page', 'Context usage', 'Sign out'];
-    const positions = (names: string[]) => shared.map((name) => names.indexOf(name));
-    expect(positions(desktop)).toEqual([2, 3, 4]);
-    expect(positions(mobile)).toEqual([1, 2, 3]);
-    // Each list is ordered, which is the property that was wrong.
-    expect(positions(desktop)).toEqual([...positions(desktop)].sort((a, b) => a - b));
-    expect(positions(mobile)).toEqual([...positions(mobile)].sort((a, b) => a - b));
+    // Context before the panel on both — the two controls a user presses while
+    // reading a run.
+    expect(desktop.indexOf('Context usage')).toBeLessThan(desktop.indexOf('Toggle Right Panel'));
+    expect(mobile.indexOf('Context usage')).toBeLessThan(mobile.indexOf('Open Right Panel'));
+  });
+
+  test('the folded controls stay one click away, not absent', async () => {
+    await mount('mobile', { width: 360 });
+
+    expect(controlNames()).not.toContain('Reload page');
+    expect(controlNames()).not.toContain('Sign out');
+
+    const trigger = container.querySelector('button[aria-label="More actions"]') as HTMLElement;
+    expect(trigger).toBeTruthy();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    await act(async () => {
+      trigger.click();
+    });
+
+    const menu = container.querySelector('[role="menu"]');
+    expect(menu).toBeTruthy();
+    expect(menu!.textContent).toContain('Reload page');
+    expect(menu!.textContent).toContain('Sign out');
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
   });
 });

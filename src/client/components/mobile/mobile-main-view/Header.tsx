@@ -122,24 +122,18 @@ export function MobileHeader({
           <Menu size={20} strokeWidth={2} />
         </button>
 
-        <span className="relative font-bold text-sm tracking-tight hidden min-[420px]:flex items-center flex-shrink-0">
+        {/* The wordmark is drawn at EVERY width. The width it needs was bought
+            back from the control cluster instead: reload and sign out moved
+            into the `⋯` menu (`HeaderControls`), which is what pays for the
+            wordmark plus the slash beside it. */}
+        <span className="relative font-bold text-sm tracking-tight flex items-center flex-shrink-0">
           <BrandWordmark />
           <span className="absolute -top-0.5 -right-1.5 flex">
             <StreamStatusDot status={streamStatus} />
           </span>
         </span>
 
-        {/* The dot is FUNCTIONAL — on a phone it is the only place the realtime
-            channel reports that it dropped — so it keeps a slot of its own when
-            the wordmark it is badged on is gone. It costs 6px plus the row's
-            8px gap; the wordmark it replaces costs 73px. The badge placement is
-            the wordmark's, so the two are drawn separately rather than one
-            element restyled. */}
-        <span className="flex items-center flex-shrink-0 min-[420px]:hidden">
-          <StreamStatusDot status={streamStatus} />
-        </span>
-
-        <span className="text-ink/25 font-light text-xs hidden min-[420px]:inline flex-shrink-0 select-none">/</span>
+        <span className="text-ink/25 font-light text-xs flex-shrink-0 select-none">/</span>
 
         <div
           className="relative min-w-0 flex-1 max-w-[150px]"

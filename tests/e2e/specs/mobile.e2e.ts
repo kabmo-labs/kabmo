@@ -28,40 +28,81 @@ test.describe('mobile layout', () => {
     // "Open Sessions" and "Open Right Panel" do not exist on the desktop tree.
     await expect(app.getByRole('button', { name: 'Open Sessions' })).toBeVisible();
     await expect(app.getByRole('button', { name: 'Open Right Panel' })).toBeVisible();
-    // Reload is the desktop navbar's control too, so a phone that never drew it
-    // would pass every other assertion here — the label is the one thing both
-    // layouts share.
+    await expect(app.getByRole('button', { name: 'Context usage' })).toBeVisible();
+    // Pixel 7 is 412px, past the 400px fold threshold for an open instance, so
+    // the row holds every control and there is no `⋯`. The narrow case is its
+    // own spec below.
     await expect(app.getByRole('button', { name: 'Reload page' })).toBeVisible();
   });
 
+  test('keeps reload one click away behind the ⋯ menu on a narrow phone', async ({ app }) => {
+    // 360px is below the fold threshold, so the two rare controls move into the
+    // menu rather than truncating the session title to pay for them.
+    await app.setViewportSize({ width: 360, height: 800 });
+    const trigger = app.getByRole('button', { name: 'More actions' });
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await trigger.click();
+
+    const menu = app.getByRole('menu');
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Reload page' })).toBeVisible();
+
+    // Escape closes it, so a menu opened by accident is not a trap.
+    await app.keyboard.press('Escape');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
   /**
-   * The session picker and the reload control must never touch.
+   * A phone wide enough for the row draws EVERY control, and no menu.
+   *
+   * The fold is a width, not a device class: `MOBILE_FULL_ROW_PX` is the
+   * narrowest header that still fits the whole cluster beside a full-width
+   * session picker, and past it there is nothing to gain by hiding a control.
+   * A layout that folded unconditionally would pass every narrow spec and still
+   * be wrong here — which is why this case exists.
+   */
+  test('a wide phone draws the full row instead of the ⋯ menu', async ({ app }) => {
+    await app.setViewportSize({ width: 560, height: 900 });
+    // Let the media query settle; `useViewportAtLeast` subscribes to it.
+    await expect(app.getByRole('button', { name: 'Reload page' })).toBeVisible();
+
+    await expect(app.getByRole('button', { name: 'Context usage' })).toBeVisible();
+    await expect(app.getByRole('button', { name: 'Open Right Panel' })).toBeVisible();
+    await expect(app.getByRole('button', { name: 'More actions' })).toHaveCount(0);
+  });
+
+  /**
+   * The session picker must never reach the control cluster.
    *
    * The header's left group was `min-w-0` but not `flex-1`, so it kept its
    * max-content width: the picker's `<button>` carried `max-w-[150px]` and
    * stayed at 150px while its wrapper shrank, spilling the title over the
-   * control cluster — measured at 320px the picker's right edge and the reload
-   * button's left edge were the SAME pixel, and at 375/360 the title's box
-   * covered the reload control by 15/30px. A class list cannot prove that; only
-   * a browser resolving the flex layout can.
+   * controls — measured at 320px the picker's right edge and the first
+   * control's left edge were the SAME pixel, and at 375/360 the title's box
+   * covered it by 15/30px. A class list cannot prove that; only a browser
+   * resolving the flex layout can.
+   *
+   * The cluster's FIRST control is measured rather than reload specifically:
+   * reload has since moved into the `⋯` menu, and a spec pinned to it would
+   * pass by finding nothing. The first control is whatever the layout puts
+   * there (context on the phone), which is the edge the title can collide with.
    *
    * The worst case is forced here (a long title written into the picker), since
    * the mock's own titles are short enough to hide the overlap.
    */
-  test('the session title never reaches the reload control', async ({ app }) => {
+  test('the session title never reaches the control cluster', async ({ app }) => {
     await app.setViewportSize({ width: 320, height: 800 });
 
     const geometry = () =>
       app.evaluate(() => {
         const header = document.querySelector('header')!;
         const picker = header.querySelector('[data-testid="session-picker"] button') as HTMLElement | null;
-        const reload = header.querySelector('button[aria-label="Reload page"]') as HTMLElement | null;
+        const controls = header.querySelector(':scope > div:nth-child(2)') as HTMLElement | null;
         const label = picker?.querySelector('span') ?? null;
-        if (!picker || !reload || !label) return null;
+        if (!picker || !controls || !label) return null;
         const pickerBox = picker.getBoundingClientRect();
-        const reloadBox = reload.getBoundingClientRect();
         return {
-          gap: Math.round(reloadBox.left - pickerBox.right),
+          gap: Math.round(controls.getBoundingClientRect().left - pickerBox.right),
           titleClipped: label.scrollWidth > label.clientWidth,
           viewportWidth: window.innerWidth,
           documentWidth: document.documentElement.scrollWidth,
@@ -88,24 +129,23 @@ test.describe('mobile layout', () => {
   });
 
   /**
-   * With a password set, the lock joins the cluster and the title keeps working.
+   * With a password set, the wordmark STAYS and the title still works.
    *
-   * The cluster is 140px wide with the lock (reload, context, sign out, panel)
-   * against 104px without, and the left group also carries 73px of fixed chrome
-   * (hamburger, wordmark, slash). On a 390px phone that left the title 89px —
-   * one and a half words — and at 320px it left 19px, which is not a title at
-   * all. The wordmark and its slash are therefore dropped below 420px; the
-   * brand is still drawn by the drawer's own header and by the desktop navbar.
+   * The cluster was 140px wide with the lock standing in the row (reload,
+   * context, sign out, panel), which left the title 89px at 390 and 19px at
+   * 320 — one letter and an ellipsis. Hiding the wordmark was tried and
+   * rejected: the brand belongs in the header at every width.
    *
-   * The threshold is measured, not guessed: at 420px the picker gets 136px with
-   * the brand present, and below it the brand's 73px is worth more to the title
-   * than the logo is. The spec asserts BOTH sides of the boundary, because a
-   * brand hidden at every width would pass the narrow half alone.
+   * What paid for it is the cluster instead. Reload and sign-out moved into the
+   * `⋯` menu, so the phone's row is context + panel + `⋯` (104px) whether or
+   * not a password is set. The spec asserts the wordmark is VISIBLE at 320 and
+   * 360, that the sign-out control is reachable through the menu rather than
+   * the row, and that the title keeps a usable width at the narrow end.
    */
   test.describe('with a UI password', () => {
     test.use({ serverEnv: { KABMO_UI_PASSWORD: 'e2e-password' } });
 
-    test('the header keeps the title readable beside the lock', async ({ harness, page }) => {
+    test('keeps the wordmark and the title beside the lock', async ({ harness, page }) => {
       const server = await harness('mock');
       await openApp(page, server.baseURL);
       // The login screen is the app shell at the served URL; the session is
@@ -118,7 +158,13 @@ test.describe('mobile layout', () => {
         });
       });
       await page.goto(server.baseURL, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'More actions' })).toBeVisible();
+
+      // Sign-out is a menu row now — present, but not standing in the row.
+      await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+      await page.getByRole('button', { name: 'More actions' }).click();
+      await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeVisible();
+      await page.keyboard.press('Escape');
 
       const measure = () =>
         page.evaluate(() => {
@@ -126,9 +172,10 @@ test.describe('mobile layout', () => {
           const picker = header.querySelector('[data-testid="session-picker"] button') as HTMLElement;
           const label = picker.querySelector('span') as HTMLElement;
           const controls = header.querySelector(':scope > div:nth-child(2)') as HTMLElement;
-          const brand = header.querySelector('span.relative') as HTMLElement | null;
+          // The wordmark is the span carrying the brand's own `ab` run.
+          const brand = header.querySelector('.bg-clip-text') as HTMLElement | null;
           return {
-            brandShown: brand ? getComputedStyle(brand).display !== 'none' : false,
+            brandWidth: brand ? Math.round(brand.getBoundingClientRect().width) : 0,
             titleWidth: Math.round(label.getBoundingClientRect().width),
             gap: Math.round(controls.getBoundingClientRect().left - picker.getBoundingClientRect().right),
             documentWidth: document.documentElement.scrollWidth,
@@ -137,18 +184,29 @@ test.describe('mobile layout', () => {
 
       await page.setViewportSize({ width: 360, height: 800 });
       const narrow = await measure();
-      expect(narrow.brandShown).toBe(false);
+      // The brand is drawn, not dropped — that is the whole point of the menu.
+      expect(narrow.brandWidth).toBeGreaterThan(10);
       expect(narrow.gap).toBeGreaterThanOrEqual(4);
-      // The title is the widest thing the left group can offer once the brand is
-      // gone: measured 74px here, against 59px with the wordmark present.
+      // Measured 74px here: the same width the header gave the title before a
+      // password was ever set, because the lock no longer costs a slot.
       expect(narrow.titleWidth).toBeGreaterThanOrEqual(70);
       expect(narrow.documentWidth).toBe(360);
 
-      await page.setViewportSize({ width: 520, height: 800 });
-      const wide = await measure();
-      expect(wide.brandShown).toBe(true);
-      expect(wide.gap).toBeGreaterThanOrEqual(4);
-      expect(wide.documentWidth).toBe(520);
+      await page.setViewportSize({ width: 320, height: 800 });
+      const narrowest = await measure();
+      expect(narrowest.brandWidth).toBeGreaterThan(10);
+      expect(narrowest.gap).toBeGreaterThanOrEqual(4);
+      expect(narrowest.titleWidth).toBeGreaterThanOrEqual(50);
+      expect(narrowest.documentWidth).toBe(320);
+
+      // Past `MOBILE_FULL_ROW_PX.withSignOut` the lock comes back into the row:
+      // a password is not a reason to keep a control in a menu at a width that
+      // holds it.
+      await page.setViewportSize({ width: 560, height: 800 });
+      await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Reload page' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'More actions' })).toHaveCount(0);
+      expect((await measure()).brandWidth).toBeGreaterThan(10);
     });
   });
 
