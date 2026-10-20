@@ -1,7 +1,9 @@
 import { Category } from '@/client/components/layout/session-sidebar/CategoryItem';
+import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import type { WorkspaceFolderData } from '@/shared/types';
 
 interface SessionSidebarSessionListProps {
-  folders: any[];
+  folders: WorkspaceFolderData[];
   activeSessionId: number | string | null;
   searchQuery: string;
   showArchived: boolean;
@@ -10,6 +12,9 @@ interface SessionSidebarSessionListProps {
   onNewSessionForFolder: (id: number) => void;
   /** Surfaces a refused folder action (the reveal endpoint's own reason). */
   onToast?: (message: string, type?: 'success' | 'error') => void;
+  /** Present only while a batch selection is active. */
+  batch?: BatchBinding;
+  onStartSessionSelection?: (folderId: number) => void;
 }
 
 export function SessionSidebarSessionList({
@@ -21,6 +26,8 @@ export function SessionSidebarSessionList({
   onSelectSession,
   onNewSessionForFolder,
   onToast,
+  batch,
+  onStartSessionSelection,
 }: SessionSidebarSessionListProps) {
   // No fade wiring here: the app-wide scrollbar rule reveals this list's bar
   // from the document's own capture-phase listener (`lib/scrollbar-activity`),
@@ -43,6 +50,8 @@ export function SessionSidebarSessionList({
             showArchived={showArchived}
             sessionStatus={sessionStatus}
             onToast={onToast}
+            batch={batch}
+            onStartSessionSelection={onStartSessionSelection}
           />
         ))
       )}

@@ -13,7 +13,7 @@
  * source of truth.
  */
 
-import { FolderOpen, Pin, PinOff, Trash2 } from 'lucide-preact';
+import { FolderOpen, ListChecks, Pin, PinOff, Trash2 } from 'lucide-preact';
 
 interface WorkspaceOptionsMenuProps {
   variant: 'desktop' | 'mobile';
@@ -21,6 +21,8 @@ interface WorkspaceOptionsMenuProps {
   /** Reveal the workspace directory in the platform file manager. Omitted for
    *  an unbound folder, which has no directory of its own. */
   onOpenFolder?: () => void;
+  /** Enter the session batch-selection mode scoped to this workspace. */
+  onSelectSessions?: () => void;
   confirmDelete: boolean;
   onPin: () => void;
   onDelete: () => void;
@@ -32,6 +34,7 @@ export function WorkspaceOptionsMenu({
   variant,
   isPinned = false,
   onOpenFolder,
+  onSelectSessions,
   confirmDelete,
   onPin,
   onDelete,
@@ -62,6 +65,12 @@ export function WorkspaceOptionsMenu({
           {isPinned ? <PinOff size={13} /> : <Pin size={13} />}
           <span>{isPinned ? 'Unpin Workspace' : 'Pin Workspace'}</span>
         </button>
+        {onSelectSessions && (
+          <button type="button" onClick={onSelectSessions} className="w-full text-left px-3 py-2 hover:bg-ink/5 text-ink/80 flex items-center space-x-2">
+            <ListChecks size={13} />
+            <span>Select sessions</span>
+          </button>
+        )}
         <button type="button" onClick={onRequestDelete} className="w-full text-left px-3 py-2 hover:bg-error/10 text-error flex items-center space-x-2">
           <Trash2 size={13} />
           <span>Delete Workspace</span>
@@ -73,27 +82,32 @@ export function WorkspaceOptionsMenu({
   return confirmDelete ? (
     <>
       <div className="px-3 py-1.5 text-xs text-ink/80 font-medium">Delete workspace?</div>
-      <div className="px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-error" onClick={onDelete}>
+      <button type="button" onClick={onDelete} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-error">
         <Trash2 size={12} /><span>Yes, delete</span>
-      </div>
-      <div className="px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/70" onClick={onCancelDelete}>
+      </button>
+      <button type="button" onClick={onCancelDelete} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/70">
         <span>Cancel</span>
-      </div>
+      </button>
     </>
   ) : (
     <>
       {onOpenFolder && (
-        <div className="px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80" onClick={onOpenFolder}>
+        <button type="button" onClick={onOpenFolder} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80">
           <FolderOpen size={12} /><span>Go to Explorer</span>
-        </div>
+        </button>
       )}
-      <div className="px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80" onClick={onPin}>
+      <button type="button" onClick={onPin} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80">
         {isPinned ? <PinOff size={12} /> : <Pin size={12} />}
         <span>{isPinned ? 'Unpin Workspace' : 'Pin Workspace'}</span>
-      </div>
-      <div className="px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-error" onClick={onRequestDelete}>
+      </button>
+      {onSelectSessions && (
+        <button type="button" onClick={onSelectSessions} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80">
+          <ListChecks size={12} /><span>Select sessions</span>
+        </button>
+      )}
+      <button type="button" onClick={onRequestDelete} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-error">
         <Trash2 size={12} /><span>Delete Workspace</span>
-      </div>
+      </button>
     </>
   );
 }

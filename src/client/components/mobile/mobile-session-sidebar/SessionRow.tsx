@@ -3,6 +3,7 @@ import type { SessionItemData } from '@/shared/types';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
+import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 
 export interface MobileSessionRowProps {
   session: SessionItemData;
@@ -25,6 +26,11 @@ export interface MobileSessionRowProps {
   /** Ask omp to name this session from its transcript. Omitted for a pending
    *  `new-…` chat, which has no transcript to derive a title from. */
   onRenameWithAi?: () => void;
+  /** Draw a checkbox and let the row's tap toggle the selection instead of
+   *  opening the session (batch mode). */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function MobileSessionRow({
@@ -41,6 +47,9 @@ export function MobileSessionRow({
   onDelete,
   onRename,
   onRenameWithAi,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: MobileSessionRowProps) {
   const {
     isEditing,
@@ -91,14 +100,16 @@ export function MobileSessionRow({
       <div
         data-testid="session-item"
         data-session-id={String(session.id)}
-        onContextMenu={hasActions ? menu.openAtCursor : undefined}
+        onContextMenu={hasActions && !selectable ? menu.openAtCursor : undefined}
         className={`w-full rounded-lg flex items-center transition-colors ${
-          isActive ? 'bg-ink/10 font-medium text-ink' : 'hover:bg-ink/5 text-ink/85'
+          selectable && selected
+            ? 'bg-ink/10 ring-1 ring-inset ring-ink/20 text-ink'
+            : isActive ? 'bg-ink/10 font-medium text-ink' : 'hover:bg-ink/5 text-ink/85'
         }`}
       >
         <button
           type="button"
-          onClick={onSelect}
+          onClick={selectable ? onToggleSelect : onSelect}
           className="flex-1 text-left pl-2 pr-3 py-2 flex items-center justify-between min-w-0"
         >
           <div className="flex items-center min-w-0 pr-2">
@@ -107,7 +118,16 @@ export function MobileSessionRow({
                 outranks the run spinner — the spinner says work is happening,
                 the question mark says it is YOUR turn (desktop parity). An
                 in-flight rename outranks both, for the same reason it does
-                there: it answers a click that is still pending. */}
+                there: it answers a click that is still pending.
+                In batch mode the slot carries the checkbox instead: a row that
+                is a choice should not also report a run. */}
+            {selectable ? (
+              <SelectionCheckbox
+                checked={selected}
+                label={`Select ${session.title}`}
+                onChange={() => onToggleSelect?.()}
+              />
+            ) : (
             <span className="w-4 flex-shrink-0 flex items-center justify-center">
               {renaming ? (
                 <span role="status" aria-label="Generating a name…">
@@ -121,6 +141,7 @@ export function MobileSessionRow({
                 <Check size={13} className="text-ink/50" />
               ) : null}
             </span>
+            )}
             <span className="text-xs truncate leading-snug ml-2">{title}</span>
           </div>
 
@@ -134,7 +155,7 @@ export function MobileSessionRow({
             column so the trailing glyph's centre stays 19px from the row's right
             edge whether the last element is this trigger or the chevron. Without
             it the glyphs step in and out from row to row. */}
-        {hasActions && (
+        {hasActions && !selectable && (
           <button
             type="button"
             onClick={menu.openBelow}
@@ -151,7 +172,7 @@ export function MobileSessionRow({
         {/* Last element, so its glyph sits in the folder header's chevron column.
             `p-1.5 mr-1.5` centres a 14px glyph on that column while keeping a
             touch-sized tap target. */}
-        {showChevron && (
+        {showChevron && !selectable && (
           <button
             type="button"
             onClick={onToggleExpand}

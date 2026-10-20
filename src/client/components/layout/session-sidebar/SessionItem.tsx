@@ -3,6 +3,7 @@ import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Loader2, MoreHori
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
+import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 
 export interface SessionItemProps {
   /** The session this row draws; the key its in-flight rename is tracked under. */
@@ -29,6 +30,11 @@ export interface SessionItemProps {
   isExpanded?: boolean;
   hasSubagents?: boolean;
   onToggleExpand?: (e: TargetedMouseEvent<HTMLElement>) => void;
+  /** Draw a checkbox and let the row's click toggle the selection instead of
+   *  opening the session (batch mode). */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function SessionItem({
@@ -48,6 +54,9 @@ export function SessionItem({
   isExpanded = false,
   hasSubagents = false,
   onToggleExpand,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: SessionItemProps) {
   // A rename in flight is drawn in the same 16px slot the run spinner uses, so
   // a row the user just acted on says so where they are already looking. It
@@ -82,14 +91,32 @@ export function SessionItem({
       <div
         data-testid="session-item"
         data-session-id={String(sessionId)}
-        onClick={isEditing ? undefined : onClick}
-        onContextMenu={hasActions && !isEditing ? menu.openAtCursor : undefined}
+        data-selected={selectable && selected ? 'true' : undefined}
+        onClick={isEditing ? undefined : selectable ? onToggleSelect : onClick}
+        onContextMenu={hasActions && !isEditing && !selectable ? menu.openAtCursor : undefined}
         className={`group/item relative flex items-center w-full rounded-lg px-2 py-1.5 cursor-pointer text-xs transition-colors select-none ${
-          isActive
-            ? 'bg-ink/10 font-medium text-ink'
-            : 'text-ink/75 hover:text-ink hover:bg-ink/5'
+          selectable && selected
+            ? 'bg-ink/10 text-ink ring-1 ring-inset ring-ink/20'
+            : isActive
+              ? 'bg-ink/10 font-medium text-ink'
+              : 'text-ink/75 hover:text-ink hover:bg-ink/5'
         }`}
       >
+        {/* The checkbox takes the row's leading slot in batch mode. It replaces
+            the status/chevron column rather than sitting beside it: a row in
+            this mode is a choice, and a run spinner next to a checkbox reads as
+            a second, unrelated control. */}
+        {selectable ? (
+          <>
+            <SelectionCheckbox
+              checked={selected}
+              label={`Select ${title}`}
+              onChange={() => onToggleSelect?.()}
+            />
+            <span className="w-2 shrink-0" />
+          </>
+        ) : (
+          <>
         {/* One 16px slot owns both icons — never two side by side. A live run
             signal (blocked question, run spinner) holds the slot; otherwise the
             chevron is pinned, collapsed or expanded. While the signal holds it,
@@ -147,6 +174,8 @@ export function SessionItem({
 
         {/* Gap between icon and text */}
         <span className="w-2 shrink-0" />
+          </>
+        )}
 
         {/* Session Title - aligned straight with Folder Name */}
         {isEditing ? (
@@ -181,7 +210,7 @@ export function SessionItem({
             `ml-1` on top of the button's own `p-1` is the same 8px the title
             keeps from the time column, so the row's two gaps read as one
             rhythm instead of the glyph crowding the age. */}
-        {!isEditing && hasActions && (
+        {!isEditing && hasActions && !selectable && (
           <button
             type="button"
             onClick={menu.openBelow}

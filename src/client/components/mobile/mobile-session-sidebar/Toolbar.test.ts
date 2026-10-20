@@ -72,6 +72,8 @@ async function mount(overrides: Partial<MobileSessionToolbarProps> = {}) {
       onHideArchived: () => { calls.hidden += 1; },
       onSearchChange: () => {},
       onClearSearch: () => {},
+      onSelectWorkspaces: () => {},
+      selecting: false,
       ...overrides,
     }), container);
   });

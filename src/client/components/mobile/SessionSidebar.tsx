@@ -16,6 +16,12 @@ import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sid
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
+import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
+import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
+import { BatchDeleteModal } from '@/client/components/common/batch-selection/BatchDeleteModal';
+import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
 
 interface MobileSessionSidebarProps {
   activeSessionId: number | string | null;
@@ -139,6 +145,40 @@ export function MobileSessionSidebar({
     setShowArchived(!showArchived);
   };
 
+  // Batch selection — same two modes and the same rules as the desktop sidebar
+  // (the state machine and the confirmation are shared hooks/components).
+  const batch = useBatchSelection();
+  const batchDelete = useBatchDeleteRun(refreshNow);
+
+  const scopeFolder = batch.scopeFolderId === null
+    ? null
+    : processedFolders.find((folder) => folder.id === batch.scopeFolderId) ?? null;
+  const batchAvailable = batch.mode === 'workspace'
+    ? processedFolders.map((folder) => String(folder.id))
+    : batch.mode === 'session'
+      ? selectableSessionIds(scopeFolder?.sessions ?? [], showArchived)
+      : [];
+  // Same rule as the desktop sidebar: the count and the payload are the LIVE
+  // selection, so a row removed elsewhere cannot be counted or sent.
+  const batchSelected = liveSelection(batch.selected, batchAvailable);
+
+  const batchBinding: BatchBinding | undefined = batch.mode
+    ? {
+        mode: batch.mode,
+        scopeFolderId: batch.scopeFolderId,
+        selected: batch.selected,
+        toggle: batch.toggle,
+        selectAllOf: batch.selectAllOf,
+        unselectAllOf: batch.unselectAllOf,
+        summaryOf: batch.summaryOf,
+      }
+    : undefined;
+
+  const startWorkspaceSelection = () => {
+    if (batch.mode === 'workspace') batch.end();
+    else batch.begin('workspace');
+  };
+
   return (
     <div className="flex flex-col h-full w-full bg-canvas text-ink relative select-none">
       
@@ -163,6 +203,8 @@ export function MobileSessionSidebar({
         onHideArchived={() => setShowArchived(false)}
         onSearchChange={setSearchQuery}
         onClearSearch={() => setSearchQuery('')}
+        onSelectWorkspaces={startWorkspaceSelection}
+        selecting={batch.mode !== null}
       />
 
       {initializing ? (
@@ -178,6 +220,22 @@ export function MobileSessionSidebar({
           onNewSessionForFolder={handleNewSessionForFolderAndClose}
           onToggleFolder={toggleFolder}
           onToast={pushToast}
+          batch={batchBinding}
+          onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
+        />
+      )}
+
+      {batch.mode && (
+        <BatchActionBar
+          mode={batch.mode}
+          count={batchSelected.length}
+          total={batchAvailable.length}
+          busy={batchDelete.isDeleting}
+          scopeLabel={scopeFolder?.name}
+          onSelectAll={() => batch.selectAllOf(batchAvailable)}
+          onUnselectAll={() => batch.unselectAllOf(batchAvailable)}
+          onDelete={() => batchDelete.request(batchSelected)}
+          onCancel={batch.end}
         />
       )}
 
@@ -215,6 +273,26 @@ export function MobileSessionSidebar({
       {/* "Update available" announcement — once per version, gated on the check.
           Its "Update now" hands the run to the About modal below. */}
       <UpdatePopup updates={updates} />
+
+      {/* Batch delete confirmation — same dialog the desktop draws. */}
+      <BatchDeleteModal
+        mode={batch.mode ?? 'session'}
+        count={batchDelete.pending.length}
+        scopeLabel={scopeFolder?.name}
+        isDeleting={batchDelete.isDeleting}
+        outcome={batchDelete.outcome}
+        onClose={() => {
+          const refusedCount = batchDelete.outcome?.refused.length ?? 0;
+          batchDelete.cancel();
+          if (batchDelete.outcome && refusedCount === 0) batch.end();
+        }}
+        onConfirm={() => {
+          const mode = batch.mode ?? 'session';
+          void batchDelete.confirm(mode).then((result) => {
+            if (result && result.refused.length === 0) batch.end();
+          });
+        }}
+      />
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 

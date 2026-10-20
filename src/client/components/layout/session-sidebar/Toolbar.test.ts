@@ -75,6 +75,8 @@ async function mount() {
       scheduledCount: 0,
       onRefresh: () => {},
       refreshing: false,
+      onSelectWorkspaces: () => {},
+      selecting: false,
     }), container);
   });
   return { el: container, calls };

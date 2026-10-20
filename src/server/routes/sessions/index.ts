@@ -14,9 +14,14 @@ import {
 import { listSubagents, readSubagentTranscript } from '@/server/routes/sessions/subagents';
 import { cancelSubagent, steerSubagent } from '@/server/routes/sessions/subagent-control';
 import { deleteSession } from '@/server/routes/sessions/delete';
+import { batchDeleteSessions } from '@/server/routes/sessions/batch-delete';
 
 export const sessionsBindings: HandlerBinding[] = [
   ...bindingsFor(sessionsList, '/api/sessions/list'),
+  // Registered BEFORE the `:sessionId` routes: the segment is static, and the
+  // batch route is POST while `:sessionId` answers DELETE, so an id route
+  // winning the match would turn every batch into a 405.
+  { method: 'POST', path: '/api/sessions/batch-delete', handler: batchDeleteSessions },
   ...bindingsFor(sessionsFolder, '/api/sessions/:sessionId'),
   // DELETE-only on the same path the folder loader answers GET on: mounting it
   // through `actionBindings` would register a 405 GET fallback that Elysia

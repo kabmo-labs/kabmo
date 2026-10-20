@@ -1,4 +1,5 @@
 import { MobileSessionCategory } from '@/client/components/mobile/mobile-session-sidebar/Item';
+import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 interface MobileSessionListProps {
@@ -12,6 +13,9 @@ interface MobileSessionListProps {
   onToggleFolder: (folderId: number) => void;
   /** Surfaces a refused folder action (the reveal endpoint's own reason). */
   onToast?: (message: string, type?: 'success' | 'error') => void;
+  /** Present only while a batch selection is active. */
+  batch?: BatchBinding;
+  onStartSessionSelection?: (folderId: number) => void;
 }
 
 export function MobileSessionList({
@@ -24,6 +28,8 @@ export function MobileSessionList({
   onNewSessionForFolder,
   onToggleFolder,
   onToast,
+  batch,
+  onStartSessionSelection,
 }: MobileSessionListProps) {
   // No fade wiring here: the app-wide scrollbar rule reveals this list's bar
   // from the document's own capture-phase listener (`lib/scrollbar-activity`),
@@ -47,6 +53,8 @@ export function MobileSessionList({
             showArchived={showArchived}
             sessionStatus={sessionStatus}
             onToast={onToast}
+            batch={batch}
+            onStartSessionSelection={onStartSessionSelection}
           />
         ))
       )}

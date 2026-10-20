@@ -9,9 +9,13 @@ import {
   toggleFolder,
   updateFolderSettings,
 } from '@/server/routes/folders/folder';
+import { batchDeleteFolders } from '@/server/routes/folders/batch-delete';
 
 export const foldersBindings: HandlerBinding[] = [
   ...bindingsFor(foldersCreate, '/api/folders'),
+  // Static segment, registered before `:folderId/*` for the same reason the
+  // sessions batch route is: an id route must not swallow it.
+  { method: 'POST', path: '/api/folders/batch-delete', handler: batchDeleteFolders },
   ...actionBindings(foldersClone.action, '/api/folders/clone'),
   ...actionBindings(foldersMkdir.action, '/api/folders/mkdir'),
   ...actionBindings(pinFolder, '/api/folders/:folderId/pin'),

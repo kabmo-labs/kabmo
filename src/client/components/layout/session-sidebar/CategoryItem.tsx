@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight, ChevronUp, MoreHorizontal, Pin, Plus } from 'lucide-preact';
+import { ChevronDown, ChevronUp } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
@@ -8,13 +8,14 @@ import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-fo
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { SessionItem } from '@/client/components/layout/session-sidebar/SessionItem';
+import { CategoryHeader } from '@/client/components/layout/session-sidebar/CategoryHeader';
 import { SubagentList } from '@/client/components/common/subagent-list';
-import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
-import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
-import { selectVisibleSessions } from '@/shared/lib/workspace/session-visibility';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
+import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
+import type { WorkspaceFolderData } from '@/shared/types';
 
 export { SessionItem };
 
@@ -27,8 +28,10 @@ export function Category({
   showArchived = false,
   sessionStatus = {},
   onToast,
+  batch,
+  onStartSessionSelection,
 }: { 
-  folder: any;
+  folder: WorkspaceFolderData;
   activeSessionId: number | string | null;
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (id: number) => void;
@@ -36,6 +39,10 @@ export function Category({
   showArchived?: boolean;
   sessionStatus?: Record<string, 'stream' | 'finish' | 'abort'>;
   onToast?: (message: string, type?: 'success' | 'error') => void;
+  /** Present only while a batch selection is active; absent is the normal list. */
+  batch?: BatchBinding;
+  /** Start a session selection scoped to this workspace, from its `⋯` menu. */
+  onStartSessionSelection?: (folderId: number) => void;
 }) {
   const [isOpen, setIsOpen] = useState(folder.isExpanded || false);
   const [showMenu, setShowMenu] = useState(false);
@@ -74,7 +81,6 @@ export function Category({
   });
 
   const allSessions = folder.sessions;
-  const ProjectIcon = getProjectIcon(folder.icon);
 
   const toggleFolder = () => {
     const nextState = !isOpen;
@@ -113,101 +119,73 @@ export function Category({
 
   const isActuallyOpen = forceExpanded || isOpen;
 
-  const visibleSessions = (allSessions || []).filter((s: any) =>
+  const visibleSessions = (allSessions || []).filter((s) =>
     showArchived ? s.is_archived === 1 : s.is_archived !== 1
   );
 
-  // The opened session and every live run are exempt from the window, so a
-  // session being watched is never one of the hidden rows.
-  const { rendered: renderedSessions, hiddenCount } = selectVisibleSessions(
-    visibleSessions,
+  // Batch rules live in one shared module — the phone's drawer item reads the
+  // same function, so the two layouts cannot disagree about which rows a
+  // header owns or what its checkbox reports.
+  const {
+    folderCheckbox,
+    sessionCheckboxes,
+    folderSummary,
+    toggleFolderSelection,
+    rendered: renderedSessions,
+    hiddenCount,
+  } = folderBatchState({
+    batch,
+    folder,
+    sessions: visibleSessions,
+    showArchived,
     visibleCount,
-    { activeSessionId, sessionStatus },
-  );
+    activeSessionId,
+    sessionStatus,
+  });
+  // A session selection opens every folder: a checkbox on a collapsed workspace
+  // would let the user select rows they cannot see or unselect. The WORKSPACE
+  // mode leaves the expansion alone — it selects folders, not rows.
+  const listOpen = isActuallyOpen || sessionCheckboxes;
   const hasMore = hiddenCount > 0;
 
   return (
     <div className="space-y-1">
-      {/* Folder Header */}
-      <div 
-        className="group flex items-center justify-between h-7 text-xs font-semibold text-ink px-2 hover:bg-ink/5 rounded-md transition-colors select-none"
-      >
-        <div className="flex-1 h-full flex items-center cursor-pointer min-w-0" onClick={toggleFolder}>
-          {/* One 16px slot owns both glyphs, exactly like a session row's
-              status/chevron slot: the folder mark sits there at rest and hands
-              the slot to the disclosure chevron on hover, so the icon column
-              reads as one line AND the header says what clicking it does. */}
-          <span className="relative w-4 h-4 flex items-center justify-center shrink-0">
-            <span className="absolute inset-0 flex items-center justify-center transition-opacity group-hover:opacity-0 touch-hidden">
-              {folder.customIconUrl ? (
-                <img
-                  src={folder.customIconUrl}
-                  alt=""
-                  className="w-[15px] h-[15px] rounded-xs object-contain shrink-0"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <ProjectIcon
-                  size={15}
-                  className="text-ink/75"
-                  style={{ color: folder.accentColor || undefined }}
-                />
-              )}
-            </span>
-            <span className="absolute inset-0 flex items-center justify-center text-ink/60 opacity-0 transition-opacity group-hover:opacity-100 touch-visible">
-              {isActuallyOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            </span>
-          </span>
-          <span className="w-2 shrink-0" />
-          {folder.isPinned && <Pin size={11} className="text-ink/60 shrink-0 mr-1.5" />}
-          <span className="truncate text-[13px] font-semibold tracking-tight">{folder.name}</span>
-        </div>
-        
-        {/* Workspace Actions — always drawn, matching the drawer's folder
-            header. They used to appear only on hover, which left the folder's
-            own affordances undiscoverable in a sidebar that has no other cue. */}
-        <div className="flex items-center space-x-0.5 pl-1">
-          <button
-            type="button"
-            title="New Session"
-            className="w-5 h-5 flex items-center justify-center text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer transition-colors"
-            onClick={(e) => { e.stopPropagation(); onNewSessionForFolder(folder.id); }}
-          >
-            <Plus size={12} />
-          </button>
-          
-          <div className="relative flex items-center" ref={menuRef}>
-            <button
-              type="button"
-              title="Workspace Options"
-              className="w-5 h-5 flex items-center justify-center text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer transition-colors"
-              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-            >
-              <MoreHorizontal size={12} />
-            </button>
-            
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-paper border border-ink/15 rounded-md shadow-lg z-50 py-1 text-xs">
-                <WorkspaceOptionsMenu
-                  variant="desktop"
-                  isPinned={folder.isPinned}
-                  onOpenFolder={onOpenFolder}
-                  confirmDelete={confirmDelete}
-                  onPin={onPin}
-                  onDelete={onDelete}
-                  onRequestDelete={requestDelete}
-                  onCancelDelete={cancelDelete}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <CategoryHeader
+        folder={folder}
+        isOpen={isActuallyOpen}
+        onToggleFolder={toggleFolder}
+        checkbox={
+          folderCheckbox && folderSummary
+            ? {
+                checked: folderSummary.all,
+                indeterminate: folderSummary.some,
+                label: `Select ${folder.name}`,
+                onChange: toggleFolderSelection,
+              }
+            : null
+        }
+        batchActive={Boolean(batch)}
+        menuRef={menuRef}
+        showMenu={showMenu}
+        onToggleMenu={() => setShowMenu(!showMenu)}
+        onNewSession={() => onNewSessionForFolder(folder.id)}
+        onOpenFolder={onOpenFolder}
+        onSelectSessions={
+          onStartSessionSelection
+            ? () => { setShowMenu(false); onStartSessionSelection(folder.id); }
+            : undefined
+        }
+        confirmDelete={confirmDelete}
+        onPin={onPin}
+        onDelete={onDelete}
+        onRequestDelete={requestDelete}
+        onCancelDelete={cancelDelete}
+      />
       
       {/* Sessions List */}
-      {isActuallyOpen && (
+      {listOpen && (
         <div className="space-y-0.5">
-          {renderedSessions.map((session: any) => {
+          {renderedSessions.map((session) => {
             const sessionKey = String(session.id);
             const isActive = activeSessionId !== null
               ? String(activeSessionId) === sessionKey
@@ -248,6 +226,9 @@ export function Category({
                   hasSubagents={hasSubagents}
                   isExpanded={isExpanded}
                   onToggleExpand={() => handleToggleSessionExpand(sessionKey)}
+                  selectable={sessionCheckboxes}
+                  selected={Boolean(batch?.selected.includes(sessionKey))}
+                  onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}
                 />
                 {hasSubagents && isExpanded && (
                   <SubagentList sessionId={session.id} isActiveSession={canExpandActive} />
@@ -261,7 +242,7 @@ export function Category({
               truncated for height, so after a partial reveal the user needs to
               keep revealing AND to start over, which is what two controls say
               and one alternating control cannot. */}
-          {(hasMore || canShowLess) && !forceExpanded && (
+          {(hasMore || canShowLess) && !forceExpanded && !sessionCheckboxes && (
             <div className="flex items-center gap-1">
               {hasMore && (
                 <button

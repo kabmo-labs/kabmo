@@ -25,6 +25,7 @@ export type SidebarToolbarControl =
   | 'scheduler'
   | 'refresh'
   | 'search'
+  | 'select'
   | 'archive'
   | 'sort';
 
@@ -43,6 +44,11 @@ export const SIDEBAR_TOOLBAR_PRIORITY: SidebarToolbarControl[] = [
   'new-workspace',
   'refresh',
   'search',
+  // Batch selection sits beside search: both are modes over the LIST, and both
+  // are entered deliberately — unlike archive/sort, which change what the list
+  // shows. It is after the two floored controls, so it can move into the `⋯`
+  // menu on a narrow sidebar like any other mode.
+  'select',
   'archive',
   'scheduler',
   'sort',

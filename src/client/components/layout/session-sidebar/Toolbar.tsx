@@ -1,4 +1,4 @@
-import { Archive, ArrowUpDown, Calendar, FolderPlus, Plus, RefreshCw, Search, X } from 'lucide-preact';
+import { Archive, ArrowUpDown, Calendar, FolderPlus, ListChecks, Plus, RefreshCw, Search, X } from 'lucide-preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { SessionSortOption } from '@/shared/types';
 import { SortMenu } from '@/client/components/common/sort-menu';
@@ -32,6 +32,10 @@ interface SessionSidebarToolbarProps {
   onRefresh: () => void;
   /** True while the user-initiated refresh is in flight — spins the icon. */
   refreshing: boolean;
+  /** Enter the workspace batch-selection mode (checkbox on each workspace). */
+  onSelectWorkspaces: () => void;
+  /** True while a batch selection is active — the control reads pressed. */
+  selecting: boolean;
 }
 
 /**
@@ -88,6 +92,8 @@ export function SessionSidebarToolbar({
   scheduledCount,
   onRefresh,
   refreshing,
+  onSelectWorkspaces,
+  selecting,
 }: SessionSidebarToolbarProps) {
   const { ref: rowRef, width } = useRowWidth();
   const capacity = sidebarToolbarCapacity(width);
@@ -110,6 +116,15 @@ export function SessionSidebarToolbar({
   }
   if (hidden.includes('archive')) {
     overflowActions.push({ id: 'archive', label: archiveLabel, icon: Archive, onSelect: onToggleArchived, active: showArchived });
+  }
+  if (hidden.includes('select')) {
+    overflowActions.push({
+      id: 'select',
+      label: selecting ? 'Cancel selection' : 'Select workspaces',
+      icon: ListChecks,
+      onSelect: onSelectWorkspaces,
+      active: selecting,
+    });
   }
   if (hidden.includes('scheduler')) {
     overflowActions.push({ id: 'scheduler', label: schedulerLabel, icon: Calendar, onSelect: onScheduler });
@@ -197,6 +212,18 @@ export function SessionSidebarToolbar({
               className={`${ICON_CLASS} ${isSearchVisible ? ICON_ACTIVE : ICON_IDLE}`}
             >
               <Search size={14} />
+            </button>
+          )}
+          {visible.has('select') && (
+            <button
+              type="button"
+              title={selecting ? 'Cancel selection' : 'Select workspaces'}
+              aria-label={selecting ? 'Cancel selection' : 'Select workspaces'}
+              aria-pressed={selecting}
+              onClick={onSelectWorkspaces}
+              className={`${ICON_CLASS} ${selecting ? ICON_ACTIVE : ICON_IDLE}`}
+            >
+              <ListChecks size={14} />
             </button>
           )}
           {visible.has('archive') && (

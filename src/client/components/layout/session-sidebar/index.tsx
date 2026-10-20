@@ -18,6 +18,12 @@ import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sid
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
+import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
+import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
+import { BatchDeleteModal } from '@/client/components/common/batch-selection/BatchDeleteModal';
+import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
 export function SessionSidebar({ className = '', onClose, appSettings = {}, streamStatus }: { className?: string, onClose?: () => void, appSettings?: Record<string, any>, streamStatus?: AgentStreamStatus }) {
@@ -54,6 +60,43 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
 
   // Sidebar inline states
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+
+  // Batch selection: two separate modes (sessions from a workspace's `⋯` menu,
+  // workspaces from the toolbar). `batchDelete.pending` holds the ids the
+  // confirmation dialog is about; the bar's Delete opens it and never deletes
+  // on its own.
+  const batch = useBatchSelection();
+  const batchDelete = useBatchDeleteRun(refreshNow);
+
+  const scopeFolder = batch.scopeFolderId === null
+    ? null
+    : processedFolders.find((folder) => folder.id === batch.scopeFolderId) ?? null;
+  const batchAvailable = batch.mode === 'workspace'
+    ? processedFolders.map((folder) => String(folder.id))
+    : batch.mode === 'session'
+      ? selectableSessionIds(scopeFolder?.sessions ?? [], showArchived)
+      : [];
+  // The count and the payload are the LIVE selection: an id that vanished from
+  // the list (deleted in another tab, filtered away) is not something this bar
+  // may still claim, and not something Delete may still send.
+  const batchSelected = liveSelection(batch.selected, batchAvailable);
+
+  const batchBinding: BatchBinding | undefined = batch.mode
+    ? {
+        mode: batch.mode,
+        scopeFolderId: batch.scopeFolderId,
+        selected: batch.selected,
+        toggle: batch.toggle,
+        selectAllOf: batch.selectAllOf,
+        unselectAllOf: batch.unselectAllOf,
+        summaryOf: batch.summaryOf,
+      }
+    : undefined;
+
+  const startWorkspaceSelection = () => {
+    if (batch.mode === 'workspace') batch.end();
+    else batch.begin('workspace');
+  };
 
   // The popup's "Update now" hands the run over instead of starting its own: the
   // About modal is where an update has always been driven from and it owns the
@@ -131,6 +174,8 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
           scheduledCount={scheduledCount}
           onRefresh={refreshNow}
           refreshing={isRefreshing}
+          onSelectWorkspaces={startWorkspaceSelection}
+          selecting={batch.mode !== null}
         />
 
         {initializing ? (
@@ -145,6 +190,22 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
             onSelectSession={handleSelectSession}
             onNewSessionForFolder={handleNewSessionForFolder}
             onToast={pushToast}
+            batch={batchBinding}
+            onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
+          />
+        )}
+
+        {batch.mode && (
+          <BatchActionBar
+            mode={batch.mode}
+            count={batchSelected.length}
+            total={batchAvailable.length}
+            busy={batchDelete.isDeleting}
+            scopeLabel={scopeFolder?.name}
+            onSelectAll={() => batch.selectAllOf(batchAvailable)}
+            onUnselectAll={() => batch.unselectAllOf(batchAvailable)}
+            onDelete={() => batchDelete.request(batchSelected)}
+            onCancel={batch.end}
           />
         )}
 
@@ -173,6 +234,32 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
       {/* "Update available" announcement — once per version, gated on the check.
           Its "Update now" hands the run to the About modal below. */}
       <UpdatePopup updates={updates} />
+
+      {/* Batch delete confirmation. It stays open on a refusal so the reasons
+          can be read; a fully successful run closes itself and leaves the mode. */}
+      <BatchDeleteModal
+        mode={batch.mode ?? 'session'}
+        count={batchDelete.pending.length}
+        scopeLabel={scopeFolder?.name}
+        isDeleting={batchDelete.isDeleting}
+        outcome={batchDelete.outcome}
+        onClose={() => {
+          // A run that finished cleanly also ends the mode; one that refused
+          // ids keeps it, so the rows that survived are still selected for a
+          // second attempt.
+          const refusedCount = batchDelete.outcome?.refused.length ?? 0;
+          batchDelete.cancel();
+          if (batchDelete.outcome && refusedCount === 0) batch.end();
+        }}
+        onConfirm={() => {
+          const mode = batch.mode ?? 'session';
+          void batchDelete.confirm(mode).then((result) => {
+            // A finished run leaves the mode; a refused one keeps it so the
+            // remaining rows are still selectable for a second attempt.
+            if (result && result.refused.length === 0) batch.end();
+          });
+        }}
+      />
 
       {/* New Workspace Modal */}
       <NewWorkspaceModal

@@ -1,5 +1,5 @@
 import type { RefObject } from 'preact/compat';
-import { Archive, ArrowUpDown, Calendar, FolderPlus, Plus, RefreshCw, Search, X } from 'lucide-preact';
+import { Archive, ArrowUpDown, Calendar, FolderPlus, ListChecks, Plus, RefreshCw, Search, X } from 'lucide-preact';
 import type { SessionSortOption } from '@/shared/types';
 import { SortMenu } from '@/client/components/common/sort-menu';
 
@@ -24,6 +24,10 @@ export interface MobileSessionToolbarProps {
   onHideArchived: () => void;
   onSearchChange: (value: string) => void;
   onClearSearch: () => void;
+  /** Enter the workspace batch-selection mode (checkbox on each workspace). */
+  onSelectWorkspaces: () => void;
+  /** True while a batch selection is active — the control reads pressed. */
+  selecting: boolean;
 }
 
 export function MobileSessionToolbar({
@@ -45,6 +49,8 @@ export function MobileSessionToolbar({
   onHideArchived,
   onSearchChange,
   onClearSearch,
+  onSelectWorkspaces,
+  selecting,
 }: MobileSessionToolbarProps) {
   return (
     <div className="@container p-3 border-b border-ink/10 flex flex-col space-y-2.5 flex-shrink-0 bg-canvas">
@@ -121,6 +127,25 @@ export function MobileSessionToolbar({
           aria-label={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}
         >
           <Archive size={16} strokeWidth={1.8} />
+        </button>
+
+        {/* Batch selection over the WORKSPACES. A mode, like search, so it
+            sits with the view controls and reports its pressed state — and it
+            is the only way into the workspace batch, because a workspace has
+            no row of its own to long-press. */}
+        <button
+          type="button"
+          onClick={onSelectWorkspaces}
+          aria-pressed={selecting}
+          className={`w-9.5 h-9.5 rounded-xl border active:scale-95 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-xs ${
+            selecting
+              ? 'bg-ink/10 text-ink border-ink/30'
+              : 'border-ink/15 bg-paper hover:bg-ink/5 text-ink/80 hover:text-ink'
+          }`}
+          title={selecting ? 'Cancel selection' : 'Select workspaces'}
+          aria-label={selecting ? 'Cancel selection' : 'Select workspaces'}
+        >
+          <ListChecks size={16} strokeWidth={1.8} />
         </button>
 
         {/* Refresh sessions button — same action the desktop toolbar's

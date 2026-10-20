@@ -10,11 +10,13 @@ import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-fo
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
-import { selectVisibleSessions } from '@/shared/lib/workspace/session-visibility';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { WorkspaceFolderData } from '@/shared/types';
+import type { BatchBinding } from '@/client/components/common/batch-selection/types';
+import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
+import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 
 interface MobileSessionCategoryProps {
   folder: WorkspaceFolderData;
@@ -26,6 +28,10 @@ interface MobileSessionCategoryProps {
   showArchived?: boolean;
   sessionStatus?: Record<string, 'stream' | 'finish' | 'abort'>;
   onToast?: (message: string, type?: 'success' | 'error') => void;
+  /** Present only while a batch selection is active; absent is the normal list. */
+  batch?: BatchBinding;
+  /** Start a session selection scoped to this workspace, from its `⋯` menu. */
+  onStartSessionSelection?: (folderId: number) => void;
 }
 
 export function MobileSessionCategory({
@@ -38,6 +44,8 @@ export function MobileSessionCategory({
   showArchived = false,
   sessionStatus = {},
   onToast,
+  batch,
+  onStartSessionSelection,
 }: MobileSessionCategoryProps) {
   const { visibleCount, showMore, showLess, canShowLess } = useShowMore();
   const { refresh } = useSidebarData();
@@ -91,23 +99,45 @@ export function MobileSessionCategory({
   const filteredSessions = (folder.sessions || []).filter((s) =>
     showArchived ? s.is_archived === 1 : s.is_archived !== 1
   );
-  // Same window as the desktop sidebar: the opened session and every live run
-  // stay on screen past the boundary, so nothing being watched is paginated
-  // away on the phone either.
-  const { rendered: visibleSessions, hiddenCount } = selectVisibleSessions(
-    filteredSessions,
-    visibleCount,
-    { activeSessionId, sessionStatus },
-  );
   const ProjectIcon = getProjectIcon(folder.icon);
+
+  // Batch rules are shared with the desktop category (`folderBatchState`), so
+  // the phone cannot offer a different scope, summary or pagination rule.
+  const {
+    folderCheckbox,
+    sessionCheckboxes,
+    folderSummary,
+    toggleFolderSelection,
+    rendered: visibleSessions,
+    hiddenCount,
+  } = folderBatchState({
+    batch,
+    folder,
+    sessions: filteredSessions,
+    showArchived,
+    visibleCount,
+    activeSessionId,
+    sessionStatus,
+  });
+  const listOpen = isExpanded || sessionCheckboxes;
 
   return (
     <div className="mb-4">
       <div
-        onClick={onToggleExpand}
+        onClick={batch ? undefined : onToggleExpand}
         className="flex items-center justify-between pl-4 pr-3 py-2 cursor-pointer hover:bg-ink/5 rounded-lg select-none transition-colors"
       >
         <div className="flex items-center space-x-2 min-w-0">
+          {folderCheckbox && folderSummary ? (
+            <SelectionCheckbox
+              size="md"
+              checked={folderSummary.all}
+              indeterminate={folderSummary.some}
+              label={`Select ${folder.name}`}
+              onChange={toggleFolderSelection}
+            />
+          ) : (
+          <>
           {/* The folder glyph occupies the same 16px left slot the session rows
               give their roster toggle, so the two columns line up down the
               drawer — the icon, the chevron and every row's status glyph share
@@ -131,6 +161,8 @@ export function MobileSessionCategory({
               />
             )}
           </span>
+          </>
+          )}
 
           <span className="text-sm font-semibold text-ink truncate">
             {folder.name}
@@ -146,6 +178,8 @@ export function MobileSessionCategory({
             <GitBranch size={13} className="text-ink/50 ml-1" />
           )}
 
+          {!batch && (
+          <>
           <button
             type="button"
             onClick={(event) => {
@@ -178,6 +212,11 @@ export function MobileSessionCategory({
                   variant="mobile"
                   isPinned={folder.isPinned}
                   onOpenFolder={onOpenFolder}
+                  onSelectSessions={
+                    onStartSessionSelection
+                      ? () => { setShowMenu(false); onStartSessionSelection(folder.id); }
+                      : undefined
+                  }
                   confirmDelete={confirmDelete}
                   onPin={onPin}
                   onDelete={onDelete}
@@ -189,10 +228,12 @@ export function MobileSessionCategory({
           </div>
 
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </>
+          )}
         </div>
       </div>
 
-      {isExpanded && (
+      {listOpen && (
         <div className="mt-0.5 space-y-0.5 pl-2">
           {visibleSessions.map((session) => {
             const sessionKey = String(session.id);
@@ -231,6 +272,9 @@ export function MobileSessionCategory({
                   onRenameWithAi={
                     sessionKey.startsWith('new-') ? undefined : () => void handleRenameWithAi(session)
                   }
+                  selectable={sessionCheckboxes}
+                  selected={Boolean(batch?.selected.includes(sessionKey))}
+                  onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}
                 />
                 {isRosterOpen && (
                   <SubagentList sessionId={session.id} isActiveSession={isSessionActive} />
@@ -242,7 +286,7 @@ export function MobileSessionCategory({
           {/* Reveal / collapse controls, one row — parity with the desktop
               category. Same window, so the phone cannot offer a different
               boundary than the sidebar. */}
-          {(hiddenCount > 0 || canShowLess) && (
+          {(hiddenCount > 0 || canShowLess) && !sessionCheckboxes && (
             <div className="flex items-center gap-1">
               {hiddenCount > 0 && (
                 <button
