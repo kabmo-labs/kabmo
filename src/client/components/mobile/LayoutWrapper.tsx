@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { registerBackHandler } from '@/client/lib/native/back';
 import type { SettingsCategoryId } from '@/shared/types';
 import { MobileMainView } from '@/client/components/mobile/MainView';
 import { MobileSessionSidebar } from '@/client/components/mobile/SessionSidebar';
@@ -63,6 +64,36 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     [pushToast],
   );
   const mobileEditorMissing = mobileEditorMissingIds.size > 0;
+
+  // The Android shell's back button asks this layout first.
+  //
+  // Order is what the user sees, innermost first: the full-screen editor and
+  // diff cover everything, then the settings modal, then the drawer screens,
+  // and only then does the shell walk WebView history. Without this, back
+  // reopened the previous session while leaving the drawer that opened it on
+  // screen — the screens live in React state, not in the URL.
+  useEffect(() => {
+    return registerBackHandler(() => {
+      if (mobileEditorFile) {
+        setMobileEditorFile(null);
+        return true;
+      }
+      if (mobileDiff) {
+        setMobileDiff(null);
+        return true;
+      }
+      if (settingsOpen) {
+        setSettingsOpen(false);
+        setAutoOpenAddProvider(false);
+        return true;
+      }
+      if (currentScreen !== 'main') {
+        setCurrentScreen('main');
+        return true;
+      }
+      return false;
+    });
+  }, [mobileEditorFile, mobileDiff, settingsOpen, currentScreen]);
 
   const { folder: sessionFolder } = activeProjectForSession(folders, sessionId);
   const contextFolder = sessionFolder ?? (folderId ? folders.find(f => String(f.id) === String(folderId)) ?? null : null);

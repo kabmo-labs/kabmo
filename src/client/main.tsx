@@ -8,6 +8,7 @@ import { installAuthFetchBridge, primeAuthState } from '@/client/hooks/ui/auth';
 import { installPluginRuntime } from '@/client/lib/plugins/runtime';
 import { installUiKit } from '@/client/lib/plugins/kit';
 import { installScrollbarActivity } from '@/client/lib/scrollbar-activity';
+import { installBackDispatcher } from '@/client/lib/native/back';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 
 import '@/client/tailwind.css';
@@ -52,6 +53,11 @@ installUiKit();
 // hook. Before the first render so the first scroll of a restored session is
 // already covered.
 installScrollbarActivity();
+
+// The native shell asks `window.__kabmoBack()` before walking WebView history.
+// Installed before the first render for the same reason the listener above is:
+// a back press during hydration must find the dispatcher, not `undefined`.
+installBackDispatcher();
 
 // A file the OS handed to Kabmo (PWA File Handling) arrives as a
 // `FileSystemFileHandle` on `launchQueue`, and the consumer must be installed
