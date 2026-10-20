@@ -16,7 +16,7 @@
 
 import { invalidateOmpCliCache, resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { fetchNpmLatest, OMP_PACKAGE } from '@/server/lib/updates/npm';
-import { pumpStream } from '@/server/lib/updates/install';
+import { pumpStream } from '@/server/lib/updates/install-steps';
 import { isNewer } from '@/shared/lib/updates/semver';
 import type { UpdateTargetInfo } from '@/shared/types/updates';
 

@@ -27,6 +27,8 @@ import {
   type InstallMethodInfo,
 } from '@/server/lib/updates/install-method';
 import { isNewer } from '@/shared/lib/updates/semver';
+import { copyAt, resolveInstalledCopy, type InstalledCopy } from '@/server/lib/updates/installed-cli';
+import { runStep, runSync, tail, type UpdateStep } from '@/server/lib/updates/install-steps';
 
 /**
  * Package root of the running copy — the directory holding its `package.json`.
@@ -37,10 +39,6 @@ import { isNewer } from '@/shared/lib/updates/semver';
  * checkout. `packageDir()` finds the real one in both.
  */
 const DEFAULT_PKG_ROOT = packageDir();
-/** A client rebuild is slow, but a hung child is worse. */
-const STEP_TIMEOUT_MS = 600_000;
-/** Cap on the captured output returned to the console. */
-const OUTPUT_LIMIT = 20_000;
 
 export interface KabmoVersionInfo {
   /** Version on disk right now (`package.json`), null when unreadable. */
@@ -60,12 +58,6 @@ export interface InstallContext extends InstallMethodInfo {
   gitRemote: string | null;
   /** Resolved Bun binary used for `bun add` / `bun install` / `bun run build`. */
   bunBin: string;
-}
-
-export interface UpdateStep {
-  label: string;
-  cmd: string[];
-  cwd: string;
 }
 
 export interface UpdateOptions {
@@ -97,22 +89,14 @@ export interface KabmoUpdateResult {
   releaseUrl: string | null;
   /** Captured command output (tail), for non-streaming callers. */
   output: string;
-}
-
-function runSync(cmd: string[], cwd?: string): { ok: boolean; out: string } {
-  try {
-    const proc = Bun.spawnSync({
-      cmd,
-      cwd,
-      stdin: 'ignore',
-      stdout: 'pipe',
-      stderr: 'pipe',
-      timeout: 15_000,
-    });
-    return { ok: proc.exitCode === 0, out: proc.stdout.toString().trim() };
-  } catch {
-    return { ok: false, out: '' };
-  }
+  /**
+   * The copy that now sits on disk — what a restart must launch.
+   *
+   * Not the copy that is RUNNING: a rename installs a different package
+   * beside it, so respawning from the running directory relaunches the build
+   * the update just replaced (measured on the 4.23.1 → 0.0.1 move).
+   */
+  installed: InstalledCopy | null;
 }
 
 /** Version installed on disk — not the one the running process imported. */
@@ -200,47 +184,6 @@ export function planUpdateSteps({ method, version, pkgRoot, bunBin, packageName 
 }
 
 /**
- * Drain a child's stdout/stderr, forwarding each chunk to `sink` as it arrives
- * and returning the whole decoded text. Exported because the omp update path
- * needs the same streaming read: buffering with `new Response(stream).text()`
- * emits nothing until the process exits, which is exactly what makes an update
- * look hung.
- */
-export async function pumpStream(stream: ReadableStream<Uint8Array>, sink?: (chunk: string) => void): Promise<string> {
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let text = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    if (chunk.length === 0) continue;
-    text += chunk;
-    sink?.(chunk);
-  }
-  return text;
-}
-
-async function runStep(step: UpdateStep, onLine?: (chunk: string) => void): Promise<{ ok: boolean; exitCode: number | null; output: string }> {
-  const proc = Bun.spawn({
-    cmd: step.cmd,
-    cwd: step.cwd,
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-    timeout: STEP_TIMEOUT_MS,
-    env: { ...Bun.env, PAGER: 'cat', FORCE_COLOR: '0' },
-  });
-  const [stdout, stderr] = await Promise.all([pumpStream(proc.stdout, onLine), pumpStream(proc.stderr, onLine)]);
-  const exitCode = await proc.exited;
-  return { ok: exitCode === 0, exitCode, output: `${stdout}${stderr}`.trim() };
-}
-
-function tail(text: string): string {
-  return text.length > OUTPUT_LIMIT ? `…\n${text.slice(-OUTPUT_LIMIT)}` : text;
-}
-
-/**
  * Bring this install to the newest release. Never throws: every failure mode
  * (no release, unsupported install, dirty work tree, failing step) comes back
  * as `success: false` with a message the CLI can print and the console can
@@ -260,6 +203,7 @@ export async function updateKabmo({ force = false, pkgRoot = DEFAULT_PKG_ROOT, o
     version: null,
     releaseUrl: null,
     output: '',
+    installed: null,
   } satisfies Omit<KabmoUpdateResult, 'success' | 'message'>;
   const fail = (message: string, patch: Partial<KabmoUpdateResult> = {}): KabmoUpdateResult => ({
     success: false,
@@ -336,10 +280,18 @@ export async function updateKabmo({ force = false, pkgRoot = DEFAULT_PKG_ROOT, o
     }
   }
 
+  // Read back AFTER the steps: a global install puts the package where the
+  // installer decided, and a checkout IS the package. A null here leaves the
+  // restart on this process's own copy, which is the honest fallback.
+  const installed = context.method === 'git'
+    ? copyAt(root)
+    : resolveInstalledCopy(info.package ?? KABMO_PACKAGE, context.bunBin) ?? copyAt(root);
+
   return {
     success: true,
     ...base,
     ...resolved,
+    installed,
     updated: true,
     version: info.latest,
     message: info.renamed

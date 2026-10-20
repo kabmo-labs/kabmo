@@ -12,6 +12,7 @@ import { updateKabmo } from '@/server/lib/updates/install';
 import { applyOmpUpdate } from '@/server/lib/updates/omp';
 import { withUpdateSlot } from '@/server/lib/updates/single-flight';
 import { recycleStandbyProcesses } from '@/server/lib/omp/session/standby.server';
+import type { InstalledCopy } from '@/server/lib/updates/installed-cli';
 import type { UpdateApplyResult, UpdateTarget } from '@/shared/types/updates';
 
 /** A stage label or a line of command output, as the update produces it. */
@@ -27,6 +28,12 @@ export interface UpdateProgressHooks {
 export interface AppliedUpdate {
   result: UpdateApplyResult;
   updated: boolean;
+  /**
+   * The copy this run left on disk, when it knows. The restart that follows
+   * launches THIS one — the running process's own directory is the build the
+   * update just replaced, which is how a rename came back as the old product.
+   */
+  installed?: InstalledCopy | null;
 }
 
 /**
@@ -74,6 +81,7 @@ export async function applyUpdate(target: UpdateTarget, hooks: UpdateProgressHoo
           output: result.output || undefined,
         },
         updated: result.updated,
+        installed: result.installed,
       };
     }
 

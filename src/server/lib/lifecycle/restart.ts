@@ -20,9 +20,6 @@
  * launcher is what brings the new files up.
  */
 
-import { existsSync } from 'node:fs';
-import { join as joinPath } from 'node:path';
-
 import { resolveBunBin } from '@/server/lib/lifecycle/bun';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { listInstanceRecords } from '@/server/lib/lifecycle/instance';
@@ -30,6 +27,7 @@ import { isCliManaged, resolveLaunchMode, unmanagedReason } from '@/server/lib/l
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { loadAuthConfig } from '@/server/lib/auth/guard';
 import { PASSWORD_HANDOVER_ENV, PASSWORD_HANDOVER_STDIN, serializeHandover } from '@/shared/lib/auth/handover';
+import { copyAt, type InstalledCopy } from '@/server/lib/updates/installed-cli';
 import type { UpdateApplyResult } from '@/shared/types/updates';
 
 /**
@@ -87,11 +85,46 @@ function ownInstance(): { port: number; launchMode: string } | null {
   return { port, launchMode: resolveLaunchMode() };
 }
 
-/** `kabmo restart --port <port>` for the install this server runs from. */
-function restartCommand(port: number): string[] | null {
-  const cli = joinPath(PKG_ROOT, 'src', 'cli', 'kabmo.js');
-  if (!existsSync(cli)) return null;
-  return [resolveBunBin(), cli, 'restart', '--port', String(port)];
+/**
+ * The marker the TARGET copy reads its credential through.
+ *
+ * The rename renamed the variable too (`OMPCHAMBER_PASSWORD_HANDOVER` →
+ * `KABMO_PASSWORD_HANDOVER`), so a restart that set only one spelling would
+ * hand a payload to a CLI that never looks for it — and the replacement would
+ * come back with authentication silently disabled. Keyed by package name
+ * because that is the only fact about the target this process can read.
+ */
+const HANDOVER_ENV_BY_PACKAGE: Record<string, string> = {
+  'ompchamber': 'OMPCHAMBER_PASSWORD_HANDOVER',
+  '@kabmo-labs/kabmo': PASSWORD_HANDOVER_ENV,
+};
+
+export interface RestartInvocation {
+  /** argv for the detached helper: `<bun> <cli> restart --port <port>`. */
+  cmd: string[];
+  /** The variable that CLI reads its credential marker from. */
+  handoverEnv: string;
+  /** Package root the helper runs in. */
+  root: string;
+}
+
+/**
+ * How to restart the copy rooted at `root`.
+ *
+ * The CLI is that copy's OWN registered bin, resolved from its `package.json`,
+ * because the file name is not a constant across a rename: a renamed package
+ * ships only the bin it declares, so a hard-coded `kabmo.js` finds nothing in
+ * a copy that names it something else. Null when the root holds no runnable
+ * copy.
+ */
+export function restartInvocation(port: number, root: string): RestartInvocation | null {
+  const copy = copyAt(root);
+  if (!copy) return null;
+  return {
+    cmd: [resolveBunBin(), copy.cli, 'restart', '--port', String(port)],
+    handoverEnv: HANDOVER_ENV_BY_PACKAGE[copy.packageName] ?? PASSWORD_HANDOVER_ENV,
+    root: copy.root,
+  };
 }
 
 /**
@@ -127,7 +160,7 @@ export function withRestartPlan(result: UpdateApplyResult, plan: SelfRestartPlan
  * helper is detached so this process exiting does not take it down, and it
  * removes this port's record itself (`stopInstance`) before serving.
  */
-export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): SelfRestartPlan {
+export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update', installed: InstalledCopy | null = null): SelfRestartPlan {
   const self = ownInstance();
   if (!self) {
     const nextStep = purpose === 'restart' ? 'restart it yourself' : 'restart it yourself to apply the update';
@@ -138,11 +171,16 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
     return { restarting: false, message: skipRestartNote(self.launchMode, purpose) };
   }
 
-  const cmd = restartCommand(self.port);
-  if (!cmd) {
+  // The copy that must come back is the one the update INSTALLED. Falling back
+  // to this process's own root keeps `Restart` (which installs nothing) and a
+  // caller that could not read the install working as before.
+  const root = installed?.root ?? PKG_ROOT;
+  const invocation = restartInvocation(self.port, root);
+  if (!invocation) {
     const nextStep = purpose === 'restart' ? 'restart it yourself' : 'restart it yourself to apply the update';
-    return { restarting: false, message: `The kabmo CLI is missing from ${PKG_ROOT} — ${nextStep}.` };
+    return { restarting: false, message: `The CLI is missing from ${root} — ${nextStep}.` };
   }
+  const { cmd, handoverEnv } = invocation;
 
   // The replacement must come up with the SAME credential this process is
   // serving under. Without it, a restart silently disables authentication —
@@ -160,7 +198,7 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
     try {
       const child = Bun.spawn({
         cmd,
-        cwd: PKG_ROOT,
+        cwd: root,
         stdin: credential ? 'pipe' : 'ignore',
         stdout: 'inherit',
         stderr: 'inherit',
@@ -169,7 +207,7 @@ export function scheduleSelfRestart(purpose: SelfRestartPurpose = 'update'): Sel
         // CLI forwards it to the server it spawns, which is the only place it
         // is ever read.
         env: credential
-          ? { ...Bun.env, [PASSWORD_HANDOVER_ENV]: PASSWORD_HANDOVER_STDIN }
+          ? { ...Bun.env, [handoverEnv]: PASSWORD_HANDOVER_STDIN }
           : Bun.env,
       });
       if (credential && child.stdin) {

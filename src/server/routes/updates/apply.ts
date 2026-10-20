@@ -115,7 +115,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         // still on the old build would mislead, and `restarting` is what tells
         // the console to wait for the replacement and reload.
         const result = target === 'kabmo' && applied.result.success && applied.updated
-          ? withRestartPlan(applied.result, scheduleSelfRestart())
+          ? withRestartPlan(applied.result, scheduleSelfRestart('update', applied.installed ?? null))
           : applied.result;
         handlers.send('result', result);
       } catch (err) {
