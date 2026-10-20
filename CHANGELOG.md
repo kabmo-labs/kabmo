@@ -4,6 +4,33 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.2.0](https://github.com/kabmo-labs/kabmo/compare/v0.1.0...v0.2.0) — 2026-10-20
+
+### Added
+
+* **android:** add the Kotlin WebView shell and its APK release job ([c2c355c](https://github.com/kabmo-labs/kabmo/commit/c2c355c8aa53d04cf7e807121aaadd1c5ddc6bf3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **android:** let the hardware back button close what the page owns ([43ebe4a](https://github.com/kabmo-labs/kabmo/commit/43ebe4a5e9eb5749fae93dc372ffe85a03624289)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **android:** offer the APK download in the sidebar when a newer one exists ([678058b](https://github.com/kabmo-labs/kabmo/commit/678058bec157d82e4e2fd1f785dec846740b4c03)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** frame the chat composer like a tool render card ([6e002b1](https://github.com/kabmo-labs/kabmo/commit/6e002b11ee8672860e6f41cb7e40d8680b81ba67)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** one surface for the composer, and shrink it while a phone reads ([a9fc6c8](https://github.com/kabmo-labs/kabmo/commit/a9fc6c803a9291db21c36de9aa3d861a551e3b39)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** fold the phone header's rare controls by width, not by device ([54c8733](https://github.com/kabmo-labs/kabmo/commit/54c87335cf8023b057fdc477a33d506d98d521a7)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **android:** record the shell's contracts and their measured traps ([fc36444](https://github.com/kabmo-labs/kabmo/commit/fc3644464e19970bc9c0c9f91baffa505ff81bfb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **packages:** document the plugin SDK and UI kit ([cf97e0e](https://github.com/kabmo-labs/kabmo/commit/cf97e0e6f481f4fb03d0b98db58151e0669fc1de)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** render a cardless ask inline instead of an empty modal ([92b6dbf](https://github.com/kabmo-labs/kabmo/commit/92b6dbf3caa798bb29baf676a96bdd121c722600)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **files:** list every directory entry instead of filtering by name ([5f24301](https://github.com/kabmo-labs/kabmo/commit/5f24301b5b1eaa54c94256c253ec1b44cb2095f8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **fs:** spell listing paths POSIX, and isolate the batch-delete suite ([ac325dd](https://github.com/kabmo-labs/kabmo/commit/ac325dd6d9eb380304835f775d44660f814c3ed4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git:** reconcile a diverged branch on Sync instead of refusing ([47a70b5](https://github.com/kabmo-labs/kabmo/commit/47a70b59bbc90604621d410bf6415486022a15bf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** keep a new chat's opened right panels across its first send ([1106756](https://github.com/kabmo-labs/kabmo/commit/11067564688be45db31b293cee639466d8d91bee)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** stop the session title colliding with the header controls ([b5ae61b](https://github.com/kabmo-labs/kabmo/commit/b5ae61be94814d13eee2075b62903c713edbd7fa)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **search:** keep an already-open file on screen and clear the search fields ([15a8326](https://github.com/kabmo-labs/kabmo/commit/15a8326bae4b9d4e6c533d9eefe472203a056e73)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** move the phone toolbar's overflow into a ⋯ menu ([f1e238d](https://github.com/kabmo-labs/kabmo/commit/f1e238d10c106bad257cbcaf3167cbcc7559bcc9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.1.0](https://github.com/kabmo-labs/kabmo/compare/v0.0.1...v0.1.0) — 2026-10-20
 
 ### Added
