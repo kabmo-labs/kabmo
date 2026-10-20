@@ -20,7 +20,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
-import { Eye, EyeOff, KeyRound, Loader2 } from 'lucide-preact';
+import { Eye, EyeOff, Loader2 } from 'lucide-preact';
 import { login, probeSession } from '@/client/hooks/ui/auth';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 
@@ -77,12 +77,14 @@ export const LoginScreen: FunctionComponent = () => {
   return (
     <div className="min-h-dvh flex items-center justify-center bg-canvas text-ink px-4">
       <form onSubmit={submit} className="w-full max-w-xs space-y-4">
-        <div className="space-y-1 text-center">
-          <KeyRound size={28} className="mx-auto text-ink/60" />
-          {/* The sidebar header's brand: one wordmark, so the login screen and
-              the app cannot disagree about what the product is called. */}
-          <h1 className="font-bold text-sm tracking-tight flex items-center justify-center">
-            <BrandWordmark />
+        <div className="space-y-2 text-center">
+          {/* The product's own lockup is the header here: one wordmark, drawn
+              at hero size, so the login screen and the app cannot disagree
+              about what the product is called. No second icon — the K *is* the
+              icon, and a key glyph above it said nothing the field's own label
+              does not. The eye in the field is a control, not a second mark. */}
+          <h1 className="flex items-center justify-center">
+            <BrandWordmark className="text-3xl" />
           </h1>
           <p className="text-xs text-ink/60">This instance is password protected.</p>
         </div>
