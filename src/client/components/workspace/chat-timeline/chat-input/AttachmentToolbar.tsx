@@ -38,7 +38,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
 
   return (
     <>
-      <div className="flex items-center flex-wrap gap-1.5 px-3 py-2 border-b border-ink/5 text-ink/60">
+      <div className="flex items-center flex-wrap gap-1.5 px-3 py-2 border-b border-ink/8 text-ink/60">
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center justify-center hover:bg-ink/5 p-1 rounded transition-colors text-ink/60 hover:text-ink shrink-0"

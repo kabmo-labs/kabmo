@@ -90,11 +90,18 @@ export function composerExpansion({
   keyboardInset,
 }: ComposerExpansionInput): ComposerExpansion {
   const mobile = variant === 'mobile';
-  const border = isDragging ? 'border-ink/40' : 'border-ink/20 focus-within:border-ink';
+  // Same frame as a tool card (`ToolCardShell`): `rounded-xl`, `border-ink/10`
+  // on `bg-paper`, darkening to `ink/20` under the pointer — the composer is a
+  // card in the same transcript, so it must not be a smaller, differently
+  // coloured one. `focus-within` is the composer's own analogue of the card's
+  // hover, since the interactive surface is the textarea inside it.
+  const border = isDragging
+    ? 'border-ink/40'
+    : 'border-ink/10 hover:border-ink/20 focus-within:border-ink/30';
 
   if (!expanded) {
     return {
-      cardClass: `border rounded-md bg-paper shadow-sm ${border}`,
+      cardClass: `border rounded-xl bg-paper shadow-sm ${border}`,
       cardPositionClass: 'relative',
       cardLayoutClass: '',
       textareaClass: mobile
@@ -128,7 +135,7 @@ export function composerExpansion({
   }
 
   return {
-    cardClass: `border rounded-md bg-paper shadow-lg ${border}`,
+    cardClass: `border rounded-xl bg-paper shadow-md ${border}`,
     cardPositionClass: 'relative',
     cardLayoutClass: '',
     // A share of the viewport, not of the panel: the dock sits at the bottom of

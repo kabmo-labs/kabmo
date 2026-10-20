@@ -99,7 +99,12 @@ export function ComposerToolbar({
 
   return (
     <div
-      className={`@container flex items-center justify-between border-t border-ink/5 bg-canvas/50 rounded-b-md ${isMobile ? 'px-2 py-2' : 'px-3 py-2'}`}
+      // `rounded-b-[inherit]` rather than a literal: the card is `rounded-xl`
+      // docked and `rounded-none` when a phone stretches it to the viewport, so
+      // the bar's corners follow the frame instead of rounding a full-screen
+      // surface. The tone pair (`ink/8` hairline over `canvas/40`) is the tool
+      // card body's own (`ToolCardShell`).
+      className={`@container flex items-center justify-between border-t border-ink/8 bg-canvas/40 rounded-b-[inherit] ${isMobile ? 'px-2 py-2' : 'px-3 py-2'}`}
     >
       <div className={`flex items-center min-w-0 ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
         {showModel && (

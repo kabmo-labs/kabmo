@@ -48,6 +48,45 @@ describe('composerExpansion docked', () => {
   });
 });
 
+/**
+ * The composer is a card in the same transcript as the tool calls, so its frame
+ * is the tool card's own (`ToolCardShell`): `rounded-xl`, `border-ink/10` on
+ * `bg-paper`, darkening to `ink/20` — plus a shadow, which the tool card only
+ * grows when expanded but the composer always has, because it is the input the
+ * user is looking at. A `rounded-md` here made it read as a smaller, different
+ * card sitting under the conversation.
+ */
+describe('composerExpansion frame matches a tool card', () => {
+  test('docked: rounded-xl, ink/10 hairline, a resting shadow', () => {
+    for (const variant of ['desktop', 'mobile'] as const) {
+      const { cardClass } = composerExpansion({ ...base, variant });
+      expect(cardClass).toContain('rounded-xl');
+      expect(cardClass).not.toContain('rounded-md');
+      expect(cardClass).toContain('border-ink/10');
+      expect(cardClass).toContain('bg-paper');
+      expect(cardClass).toContain('shadow-sm');
+    }
+  });
+
+  test('the border darkens on hover and on focus, never at rest', () => {
+    const { cardClass } = composerExpansion({ ...base, variant: 'desktop' });
+    expect(cardClass).toContain('hover:border-ink/20');
+    expect(cardClass).toContain('focus-within:border-ink/30');
+  });
+
+  test('a stretched desktop keeps the radius and lifts the shadow one step', () => {
+    const { cardClass } = composerExpansion({ ...base, expanded: true, variant: 'desktop' });
+    expect(cardClass).toContain('rounded-xl');
+    expect(cardClass).toContain('shadow-md');
+  });
+
+  test('a stretched phone drops the radius so the bars follow it', () => {
+    const { cardClass } = composerExpansion({ ...base, expanded: true, variant: 'mobile' });
+    expect(cardClass).toContain('rounded-none');
+    expect(cardClass).toContain('shadow-none');
+  });
+});
+
 describe('composerExpansion stretched', () => {
   test('a phone takes the viewport, and its popup opens over the draft', () => {
     const layout = composerExpansion({ ...base, expanded: true, variant: 'mobile' });
