@@ -79,19 +79,32 @@ export function useFileTabs(
       id: file.id ?? fileTabId(file.path),
       root: file.root ?? activeProjectPath ?? undefined,
     };
-    setOpenedFiles(prev => {
-      const existing = prev.find(
-        f => f.id === fileEntry.id || (!f.isDiff && f.path && fileEntry.path && f.path === fileEntry.path)
-      );
-      if (existing) {
-        setActiveFileId(existing.id);
-        return prev;
-      }
-      return [...prev, fileEntry];
-    });
+    // Resolved against the STORE, outside the updater: a state updater may run
+    // more than once, and activating a tab is not something that may be applied
+    // twice. The store is the authoritative copy (every write goes through
+    // `setSessionKey`), and reading it instead of the hook's own value keeps
+    // this callback's identity stable — a caller that memoizes on it (the
+    // search panel's rows do) would otherwise re-render on every tab change.
+    const current = getSessionValue<OpenedFile[]>(sessionId, 'layout.openedFiles') ?? [];
+    const existing = current.find(
+      f => f.id === fileEntry.id || (!f.isDiff && f.path && fileEntry.path && f.path === fileEntry.path)
+    );
+    if (existing) {
+      // The tab on screen may carry a DIFFERENT id for the same path — the
+      // explorer hands a row's own `id` (its relative path) through, while a
+      // search row or a chat link computes `fileTabId(path)`. Activating the
+      // computed id here is what blanked the editor: the id named no tab, so
+      // `Editor` found no active file and drew "Select a tab to view content"
+      // over the file that was already open. Only a tab that is CREATED can be
+      // activated by the id it was created with.
+      setActiveFileId(existing.id);
+      onOpenTab?.();
+      return;
+    }
+    setOpenedFiles(prev => [...prev, fileEntry]);
     setActiveFileId(fileEntry.id);
     onOpenTab?.();
-  }, [activeProjectPath, onOpenTab, setOpenedFiles, setActiveFileId]);
+  }, [activeProjectPath, onOpenTab, sessionId, setOpenedFiles, setActiveFileId]);
 
   const handleOpenDiff = useCallback((diffInfo: {
     file: string;

@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'preact/hooks';
-import { CaseSensitive, Check, MoreHorizontal, Regex, ReplaceAll, Search, WholeWord } from 'lucide-preact';
+import { useCallback, useMemo, useRef } from 'preact/hooks';
+import { CaseSensitive, Check, MoreHorizontal, Regex, ReplaceAll, Search, WholeWord, X } from 'lucide-preact';
 import type { RefObject } from 'preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { SearchResults } from '@/client/components/workspace/search-panel/Results';
@@ -87,6 +87,24 @@ export function SearchPanelBody({
 }: SearchPanelBodyProps) {
   const groups = useMemo(() => groupSearchResults(results), [results]);
 
+  /**
+   * The clear (×) buttons live INSIDE their field, and focus returns to it
+   * after clearing: the point of the control is to retype the query, so a
+   * cleared field the user has to click again is half the job. The buttons sit
+   * in the field's own box rather than beside it for the same reason — a
+   * control that clears the input belongs to the input.
+   */
+  const queryInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const clearQuery = useCallback(() => {
+    setQuery('');
+    queryInputRef.current?.focus();
+  }, [setQuery]);
+  const clearReplace = useCallback(() => {
+    setReplaceQuery('');
+    replaceInputRef.current?.focus();
+  }, [setReplaceQuery]);
+
   // The same flags the search ran with, so the editor's own matcher paints the
   // identical set of occurrences once the file opens.
   const options: FindOptions = useMemo(() => ({ matchCase, wholeWord, isRegex: useRegex }), [matchCase, wholeWord, useRegex]);
@@ -159,12 +177,24 @@ export function SearchPanelBody({
           <div className="flex items-center border border-ink/20 rounded bg-paper focus-within:border-ink/40 focus-within:ring-1 focus-within:ring-ink/10 transition-all">
             <Search size={14} className="ml-2 text-ink/40 flex-shrink-0" />
             <input
+              ref={queryInputRef}
               type="text"
               placeholder="Search"
               value={query}
               onChange={(e) => setQuery(e.currentTarget.value)}
               className="w-full bg-transparent border-none text-xs px-2 py-1.5 focus:outline-none text-ink placeholder-ink/30 min-w-0"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={clearQuery}
+                title="Clear search"
+                aria-label="Clear search"
+                className="p-1 mr-0.5 rounded text-ink/40 hover:text-ink hover:bg-ink/5 flex-shrink-0"
+              >
+                <X size={12} />
+              </button>
+            )}
             <div className="flex items-center space-x-0.5 pr-1 text-ink/40 flex-shrink-0">
               <button
                 onClick={() => setMatchCase(!matchCase)}
@@ -192,13 +222,27 @@ export function SearchPanelBody({
         </div>
 
         <div className="relative flex items-center space-x-1">
-          <input
-            type="text"
-            placeholder="Replace"
-            value={replaceQuery}
-            onChange={(e) => setReplaceQuery(e.currentTarget.value)}
-            className="flex-1 min-w-0 bg-paper border border-ink/20 rounded text-xs px-2 py-1.5 focus:outline-none focus:border-ink/40 focus:ring-1 focus:ring-ink/10 transition-all text-ink placeholder-ink/30"
-          />
+          <div className="flex flex-1 min-w-0 items-center border border-ink/20 rounded bg-paper focus-within:border-ink/40 focus-within:ring-1 focus-within:ring-ink/10 transition-all">
+            <input
+              ref={replaceInputRef}
+              type="text"
+              placeholder="Replace"
+              value={replaceQuery}
+              onChange={(e) => setReplaceQuery(e.currentTarget.value)}
+              className="flex-1 min-w-0 bg-transparent border-none text-xs px-2 py-1.5 focus:outline-none text-ink placeholder-ink/30"
+            />
+            {replaceQuery && (
+              <button
+                type="button"
+                onClick={clearReplace}
+                title="Clear replace"
+                aria-label="Clear replace"
+                className="p-1 mr-0.5 rounded text-ink/40 hover:text-ink hover:bg-ink/5 flex-shrink-0"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
           <button
             onClick={() => handleReplace()}
             disabled={results.length === 0 || replaceBusy}
