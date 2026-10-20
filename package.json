@@ -53,6 +53,7 @@
     "lint": "tsc --noEmit",
     "test": "bun test",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "readme:media": "bun run scripts/readme-media.ts",
     "typecheck:e2e": "tsc --noEmit -p tests/e2e",
     "publish:plugins": "bash .github/scripts/publish-plugin-packages.sh packages/kabmo-sdk packages/kabmo-ui"
   },
