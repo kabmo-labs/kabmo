@@ -48,6 +48,27 @@ on:
         required: false
       ANDROID_KEY_PASSWORD:
         required: false
+  # The re-run path, which this body did not have and every other publish body
+  # does. Without it a failed APK build could only be retried by re-running the
+  # whole release — and when the failure is in the TOOLCHAIN (measured: the
+  # `tools` package was removed from the SDK repository, so setup died before a
+  # single Gradle task ran) the release itself is fine and only this artifact is
+  # missing. A `workflow_dispatch` builds against an existing tag and re-attaches
+  # with `--clobber`, which is exactly the repair.
+  #
+  # `inputs` resolves for BOTH contexts, so the job below reads `inputs.tag`
+  # whichever way it was started; `secrets` are read from the repository for a
+  # dispatch and from the caller for a `workflow_call`.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the APK to (e.g. v0.2.0)
+        required: true
+        type: string
+      version-code:
+        description: versionCode — must be higher than the one already published
+        required: true
+        type: string
 
 jobs:
   apk:
