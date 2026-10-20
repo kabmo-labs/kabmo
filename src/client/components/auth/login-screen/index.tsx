@@ -20,12 +20,13 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
-import { KeyRound, Loader2 } from 'lucide-preact';
+import { Eye, EyeOff, KeyRound, Loader2 } from 'lucide-preact';
 import { login, probeSession } from '@/client/hooks/ui/auth';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 
 export const LoginScreen: FunctionComponent = () => {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [trustDevice, setTrustDevice] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -86,21 +87,39 @@ export const LoginScreen: FunctionComponent = () => {
           <p className="text-xs text-ink/60">This instance is password protected.</p>
         </div>
 
-        <input
-          type="password"
-          autoComplete="current-password"
-          autoFocus
-          value={password}
-          onInput={(event) => {
-            setPassword(event.currentTarget.value);
-            if (error) setError('');
-          }}
-          placeholder="Password"
-          aria-label="Password"
-          aria-invalid={error ? true : undefined}
-          disabled={busy}
-          className="w-full bg-paper border border-ink/20 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink/40 focus:outline-none focus:border-ink/50 transition-colors"
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            autoFocus
+            value={password}
+            onInput={(event) => {
+              setPassword(event.currentTarget.value);
+              if (error) setError('');
+            }}
+            placeholder="Password"
+            aria-label="Password"
+            aria-invalid={error ? true : undefined}
+            disabled={busy}
+            className="w-full bg-paper border border-ink/20 rounded-lg pl-3 pr-10 py-2 text-sm text-ink placeholder-ink/40 focus:outline-none focus:border-ink/50 transition-colors"
+          />
+          {/* The eye is a `type` toggle, not a second field: the value lives in
+              one state slot either way, so revealing it cannot change what is
+              submitted. It is a real button with its own label because the
+              alternative — a bare `<svg onClick>` — is unreachable by keyboard
+              and unnamed for assistive tech. */}
+          <button
+            type="button"
+            onClick={() => setShowPassword((shown) => !shown)}
+            disabled={busy}
+            title={showPassword ? 'Hide password' : 'Show password'}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-ink/50 hover:text-ink disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-default"
+          >
+            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
 
         <label className="flex items-center gap-2 text-xs text-ink/70">
           <input
