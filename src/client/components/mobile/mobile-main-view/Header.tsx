@@ -88,7 +88,7 @@ export function MobileHeader({
 
   return (
     <header
-      className="flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between px-3 z-20 titlebar-drag-region select-none"
+      className="flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between gap-2 px-3 z-20 titlebar-drag-region select-none"
       style={{
         height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
         paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px), env(titlebar-area-x, 0px))',
@@ -96,8 +96,22 @@ export function MobileHeader({
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-      {/* Left: hamburger, app title & session dropdown */}
-      <div className="flex items-center space-x-2 min-w-0 titlebar-no-drag">
+      {/* Left: hamburger, app title & session dropdown.
+          `flex-1 min-w-0` is what makes the title the ONLY part that gives up
+          width: the hamburger, wordmark and slash are `flex-shrink-0`, so the
+          row shrinks to the control cluster's width and the picker truncates
+          inside it. Without `flex-1` the row kept its max-content width and
+          the picker's 150px button spilled over the reload control.
+
+          The wordmark and its slash are DROPPED below 420px. They are fixed
+          chrome (53px + 4px + 16px of gaps = 73px, 19% of a 390px header) that
+          competes with the one functional thing in the row: the session title.
+          With a password set the cluster is 140px wide (reload, context, lock,
+          panel), which leaves the title `vw − 285px` — measured 89px at 390,
+          59px at 360 and 19px at 320. The brand is not lost: the drawer header
+          draws it, as does the desktop navbar. Same decision, same reason, as
+          the desktop navbar's `hidden sm:flex` on its own wordmark. */}
+      <div className="flex items-center space-x-2 flex-1 min-w-0 titlebar-no-drag">
         <button
           type="button"
           onClick={onOpenSessionSidebar}
@@ -108,20 +122,34 @@ export function MobileHeader({
           <Menu size={20} strokeWidth={2} />
         </button>
 
-        <span className="relative font-bold text-sm tracking-tight flex items-center flex-shrink-0">
+        <span className="relative font-bold text-sm tracking-tight hidden min-[420px]:flex items-center flex-shrink-0">
           <BrandWordmark />
           <span className="absolute -top-0.5 -right-1.5 flex">
             <StreamStatusDot status={streamStatus} />
           </span>
         </span>
 
-        <span className="text-ink/25 font-light text-xs flex-shrink-0 select-none">/</span>
+        {/* The dot is FUNCTIONAL — on a phone it is the only place the realtime
+            channel reports that it dropped — so it keeps a slot of its own when
+            the wordmark it is badged on is gone. It costs 6px plus the row's
+            8px gap; the wordmark it replaces costs 73px. The badge placement is
+            the wordmark's, so the two are drawn separately rather than one
+            element restyled. */}
+        <span className="flex items-center flex-shrink-0 min-[420px]:hidden">
+          <StreamStatusDot status={streamStatus} />
+        </span>
 
-        <div className="relative min-w-0" ref={sessionPickerRef}>
+        <span className="text-ink/25 font-light text-xs hidden min-[420px]:inline flex-shrink-0 select-none">/</span>
+
+        <div
+          className="relative min-w-0 flex-1 max-w-[150px]"
+          ref={sessionPickerRef}
+          data-testid="session-picker"
+        >
           <button
             type="button"
             onClick={() => setShowSessionPicker(!showSessionPicker)}
-            className="flex items-center space-x-1 text-xs font-semibold text-ink hover:text-ink/80 transition-colors py-1 max-w-[150px] min-w-0"
+            className="flex w-full items-center space-x-1 text-xs font-semibold text-ink hover:text-ink/80 transition-colors py-1 min-w-0"
             title={displayTitle}
           >
             <span className="truncate">{displayTitle}</span>

@@ -34,6 +34,124 @@ test.describe('mobile layout', () => {
     await expect(app.getByRole('button', { name: 'Reload page' })).toBeVisible();
   });
 
+  /**
+   * The session picker and the reload control must never touch.
+   *
+   * The header's left group was `min-w-0` but not `flex-1`, so it kept its
+   * max-content width: the picker's `<button>` carried `max-w-[150px]` and
+   * stayed at 150px while its wrapper shrank, spilling the title over the
+   * control cluster — measured at 320px the picker's right edge and the reload
+   * button's left edge were the SAME pixel, and at 375/360 the title's box
+   * covered the reload control by 15/30px. A class list cannot prove that; only
+   * a browser resolving the flex layout can.
+   *
+   * The worst case is forced here (a long title written into the picker), since
+   * the mock's own titles are short enough to hide the overlap.
+   */
+  test('the session title never reaches the reload control', async ({ app }) => {
+    await app.setViewportSize({ width: 320, height: 800 });
+
+    const geometry = () =>
+      app.evaluate(() => {
+        const header = document.querySelector('header')!;
+        const picker = header.querySelector('[data-testid="session-picker"] button') as HTMLElement | null;
+        const reload = header.querySelector('button[aria-label="Reload page"]') as HTMLElement | null;
+        const label = picker?.querySelector('span') ?? null;
+        if (!picker || !reload || !label) return null;
+        const pickerBox = picker.getBoundingClientRect();
+        const reloadBox = reload.getBoundingClientRect();
+        return {
+          gap: Math.round(reloadBox.left - pickerBox.right),
+          titleClipped: label.scrollWidth > label.clientWidth,
+          viewportWidth: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+        };
+      });
+
+    const short = await geometry();
+    expect(short).not.toBeNull();
+    expect(short!.gap).toBeGreaterThanOrEqual(4);
+    expect(short!.documentWidth).toBe(short!.viewportWidth);
+
+    await app.evaluate(() => {
+      const picker = document.querySelector('[data-testid="session-picker"] button')!;
+      picker.querySelector('span')!.textContent =
+        'Fix flaky park tests for the payments service integration suite';
+    });
+
+    const long = await geometry();
+    expect(long!.gap).toBeGreaterThanOrEqual(4);
+    // The title gives up the width instead of pushing the controls: it ends in
+    // an ellipsis and the header still fits the viewport.
+    expect(long!.titleClipped).toBe(true);
+    expect(long!.documentWidth).toBe(long!.viewportWidth);
+  });
+
+  /**
+   * With a password set, the lock joins the cluster and the title keeps working.
+   *
+   * The cluster is 140px wide with the lock (reload, context, sign out, panel)
+   * against 104px without, and the left group also carries 73px of fixed chrome
+   * (hamburger, wordmark, slash). On a 390px phone that left the title 89px —
+   * one and a half words — and at 320px it left 19px, which is not a title at
+   * all. The wordmark and its slash are therefore dropped below 420px; the
+   * brand is still drawn by the drawer's own header and by the desktop navbar.
+   *
+   * The threshold is measured, not guessed: at 420px the picker gets 136px with
+   * the brand present, and below it the brand's 73px is worth more to the title
+   * than the logo is. The spec asserts BOTH sides of the boundary, because a
+   * brand hidden at every width would pass the narrow half alone.
+   */
+  test.describe('with a UI password', () => {
+    test.use({ serverEnv: { KABMO_UI_PASSWORD: 'e2e-password' } });
+
+    test('the header keeps the title readable beside the lock', async ({ harness, page }) => {
+      const server = await harness('mock');
+      await openApp(page, server.baseURL);
+      // The login screen is the app shell at the served URL; the session is
+      // obtained in-page so the cookie belongs to this browser context.
+      await page.evaluate(async () => {
+        await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: 'e2e-password', remember: false }),
+        });
+      });
+      await page.goto(server.baseURL, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+
+      const measure = () =>
+        page.evaluate(() => {
+          const header = document.querySelector('header')!;
+          const picker = header.querySelector('[data-testid="session-picker"] button') as HTMLElement;
+          const label = picker.querySelector('span') as HTMLElement;
+          const controls = header.querySelector(':scope > div:nth-child(2)') as HTMLElement;
+          const brand = header.querySelector('span.relative') as HTMLElement | null;
+          return {
+            brandShown: brand ? getComputedStyle(brand).display !== 'none' : false,
+            titleWidth: Math.round(label.getBoundingClientRect().width),
+            gap: Math.round(controls.getBoundingClientRect().left - picker.getBoundingClientRect().right),
+            documentWidth: document.documentElement.scrollWidth,
+          };
+        });
+
+      await page.setViewportSize({ width: 360, height: 800 });
+      const narrow = await measure();
+      expect(narrow.brandShown).toBe(false);
+      expect(narrow.gap).toBeGreaterThanOrEqual(4);
+      // The title is the widest thing the left group can offer once the brand is
+      // gone: measured 74px here, against 59px with the wordmark present.
+      expect(narrow.titleWidth).toBeGreaterThanOrEqual(70);
+      expect(narrow.documentWidth).toBe(360);
+
+      await page.setViewportSize({ width: 520, height: 800 });
+      const wide = await measure();
+      expect(wide.brandShown).toBe(true);
+      expect(wide.gap).toBeGreaterThanOrEqual(4);
+      expect(wide.documentWidth).toBe(520);
+    });
+  });
+
   test('opens the sessions drawer', async ({ app }) => {
     await app.getByRole('button', { name: 'Open Sessions' }).click();
     // The drawer is the sidebar at phone width; the seeded demo folders are its
