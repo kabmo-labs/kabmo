@@ -13,6 +13,10 @@
  * refusal, not a failure — and treating it as an error aborted Sync before it
  * ever reached the push. Driven against real repositories, because the exit
  * codes and the `-u` upstream write are what the module exists for.
+ *
+ * The pull suite also pins the DIVERGED case, where `--ff-only` exits 128 and
+ * Sync silently did nothing (one local commit, one on origin) — see the merge
+ * test and `pullBranch`'s own comment.
  */
 
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -64,6 +68,32 @@ function makeClone(): { origin: string; clone: string } {
 
 function upstreamOf(cwd: string): string {
   return git(cwd, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}').trim();
+}
+
+/** "<ahead>\t<behind>" against the upstream — `1\t1` is a diverged branch. */
+function counts(cwd: string): string {
+  return git(cwd, 'rev-list', '--count', '--left-right', 'HEAD...@{upstream}').trim();
+}
+
+/**
+ * A second clone of `origin` that commits `name` and pushes it, so the branch
+ * under test is behind by one — the other half of a divergence.
+ *
+ * `content` overrides what the file holds, which is what makes the two sides
+ * CONFLICT instead of one of them being an unrelated new path.
+ */
+function pushFromOtherClone(origin: string, name: string, message: string, content?: string): void {
+  const other = tempDir();
+  git(tempDir(), 'clone', '-q', origin, other);
+  initRepo(other);
+  if (content === undefined) {
+    commitFile(other, name, message);
+  } else {
+    fs.writeFileSync(path.join(other, name), content);
+    git(other, 'add', '-A');
+    git(other, 'commit', '-q', '-m', message);
+  }
+  git(other, 'push', '-q');
 }
 
 afterAll(() => {
@@ -143,5 +173,71 @@ describe('pullBranch', () => {
     await pullBranch(clone);
 
     expect(fs.existsSync(path.join(clone, 'remote.txt'))).toBe(true);
+  });
+
+  /**
+   * The reported Sync failure: one local commit and one on origin.
+   *
+   * `--ff-only` exits 128 here ("Not possible to fast-forward, aborting."), so
+   * Sync threw before the push and the badge stayed at ↑1 ↓1 with git's advice
+   * text on screen. The fix is the merge pull, and the assertion is the state
+   * after a REAL push: nothing left ahead or behind.
+   */
+  test('merges a diverged branch instead of refusing, and the push then lands', async () => {
+    const { origin, clone } = makeClone();
+    pushFromOtherClone(origin, 'other.txt', 'other');
+    commitFile(clone, 'mine.txt', 'mine');
+    git(clone, 'fetch', '-q');
+    expect(counts(clone)).toBe('1\t1');
+
+    await pullBranch(clone);
+    await pushBranch(clone);
+
+    expect(counts(clone)).toBe('0\t0');
+    // The merge commit carries the remote branch's name, which is what a pull
+    // writes — not a rebase, whose history would hold two linear commits.
+    expect(git(clone, 'log', '-1', '--pretty=%s')).toContain('Merge branch');
+    expect(fs.existsSync(path.join(clone, 'other.txt'))).toBe(true);
+  });
+
+  /**
+   * A pull that stops on a conflict exits 1 with `MERGE_HEAD` in place — the
+   * state the operation bar exists to show, not a failed sync. Throwing there
+   * reported the conflict as an error and never reached the panel's own
+   * "resolve the conflicts" surface.
+   */
+  test('accepts a pull that stops on a conflict, leaving the merge open', async () => {
+    const { origin, clone } = makeClone();
+    // `seed.txt` exists on both sides already, so the two edits CONFLICT —
+    // a file only one side has would merge cleanly (`AA` only when both
+    // created it, which is a different shape than a content conflict).
+    fs.writeFileSync(path.join(clone, 'seed.txt'), 'mine\n');
+    git(clone, 'commit', '-q', '-am', 'mine');
+    pushFromOtherClone(origin, 'seed.txt', 'theirs', 'theirs\n');
+    git(clone, 'fetch', '-q');
+
+    await pullBranch(clone);
+
+    expect(fs.existsSync(path.join(clone, '.git', 'MERGE_HEAD'))).toBe(true);
+    expect(git(clone, 'status', '--porcelain=v1')).toContain('UU seed.txt');
+  });
+
+  /**
+   * The pull is pinned to merge semantics whatever the repository's own
+   * `pull.ff`/`pull.rebase` say — a Sync button must not mean two things.
+   */
+  test('does not inherit pull.ff=only, which reproduces the refusal', async () => {
+    const { origin, clone } = makeClone();
+    pushFromOtherClone(origin, 'other.txt', 'other');
+    commitFile(clone, 'mine.txt', 'mine');
+    git(clone, 'fetch', '-q');
+    git(clone, 'config', 'pull.ff', 'only');
+
+    await pullBranch(clone);
+
+    // Ahead by the local commit plus the merge commit, and no longer behind:
+    // the pull brought origin in rather than refusing it.
+    expect(counts(clone)).toBe('2\t0');
+    expect(git(clone, 'log', '-1', '--pretty=%s')).toContain('Merge branch');
   });
 });

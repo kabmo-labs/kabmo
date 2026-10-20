@@ -201,6 +201,21 @@ describe('GitPanel sync badge', () => {
     for (let i = 0; i < 20; i += 1) await act(async () => {});
     expect(container.textContent).toContain('↑0 ↓3');
   });
+
+  /**
+   * The Sync button is enabled whenever no action is running — including the
+   * DIVERGED case that used to be refused by git itself. Its accessible name
+   * is the action, not the count: a name built from the row's own text reads
+   * "↑1 ↓1", which names no control.
+   */
+  test('a diverged branch leaves Sync enabled, and the control is named', async () => {
+    await mount({ topicSync: { ahead: 1, behind: 1 } });
+
+    const sync = container.querySelector('button[aria-label="Sync with upstream"]');
+    if (!sync) throw new Error('no Sync control rendered');
+    expect((sync as HTMLButtonElement).disabled).toBe(false);
+    expect(container.textContent).toContain('↑1 ↓1');
+  });
 });
 
 /**

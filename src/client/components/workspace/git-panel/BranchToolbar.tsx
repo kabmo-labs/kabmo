@@ -170,6 +170,9 @@ export function GitBranchToolbar({
           <CloudDownload size={13} />
         </button>
 
+        {/* The row's only text is the count, so an accessible name built from
+            it would read "↑1 ↓1" — it names the ACTION, the same way Fetch
+            and Commit History do. */}
         <button
           type="button"
           onClick={onSync}
@@ -183,6 +186,7 @@ export function GitBranchToolbar({
                   ? `Pull ${syncCount.behind} commit(s)`
                   : 'Up to date — sync anyway'
           }
+          aria-label="Sync with upstream"
           className="flex items-center gap-1 p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <RefreshCw size={13} />

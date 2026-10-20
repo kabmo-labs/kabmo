@@ -102,8 +102,25 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
   },
 
   async sync({ targetDir }) {
+    // A merge/rebase already stopped on a conflict is a state the operation
+    // bar owns: a pull there is refused by git ("You have not concluded your
+    // merge"), and letting that refusal through would report the conflict as
+    // a failed sync. Naming it points the user at the bar instead.
+    const before = await readGitState(targetDir);
+    if (before.operation) {
+      throw new Error(
+        `Finish the ${OPERATION_LABELS[before.operation]} first — Sync is unavailable while an operation is in progress.`,
+      );
+    }
     await pullBranch(targetDir);
-    await pushBranch(targetDir);
+    // A pull that stopped on a conflict has nothing to push yet: the merge is
+    // unresolved, so `git push` refuses ("Updates were rejected because the
+    // remote contains work…") and the route would report a failed Sync over a
+    // conflict the panel is about to offer to resolve. The operation bar is
+    // the surface that has to be reached, so the push is skipped and the
+    // working tree is left exactly as the pull left it.
+    const after = await readGitState(targetDir);
+    if (!after.operation) await pushBranch(targetDir);
     // Both commands already moved the tracking ref; the next read must not
     // fetch again to see a state it just produced.
     markRemoteRefsFresh(targetDir);

@@ -32,7 +32,7 @@ import type { Locator, Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { seedWorkspace, waitUntil } from '../fixtures/seed';
-import { seedWorkingRepo, seedWorkingRepoIn, seedConflictingBranches, type SeedWorkingRepo } from '../fixtures/git-repo';
+import { seedWorkingRepo, seedWorkingRepoIn, seedConflictingBranches, seedCloneParent, type SeedWorkingRepo } from '../fixtures/git-repo';
 import type { HarnessServer } from '../fixtures/server';
 
 /**
@@ -546,6 +546,70 @@ test.describe('Source Control — stash and commit', () => {
     // The count did NOT grow: it replaced, not appended.
     expect(repo.git('log', '--oneline').trim().split('\n').length).toBe(before);
 
+  });
+});
+
+test.describe('Source Control — sync', () => {
+  /**
+   * A workspace repository with one commit on BOTH sides: one local, one on
+   * origin. `--ff-only` refuses this ("Not possible to fast-forward"), so Sync
+   * threw before its push and the badge stayed at ↑1 ↓1 — the reported "the
+   * sync button does nothing". The assertion is git's own counts afterwards,
+   * not the toast: only a real merge makes them zero.
+   */
+  function seedDivergedRepo(name: string): SeedWorkingRepo {
+    const repo = makeRepo(name);
+    const origin = seedCloneParent(`${name}-origin`);
+    scratch.push(origin);
+    // `repo.git` always runs in the repository, so the bare origin is reached
+    // with `-C` rather than a second runner.
+    repo.git('-C', origin.path, 'init', '-q', '--bare', '-b', 'main');
+    repo.git('remote', 'add', 'origin', origin.path);
+    writeFileSync(join(repo.path, 'seed.txt'), 'seed\n');
+    repo.git('add', '-A');
+    repo.git('commit', '-q', '-m', 'seed');
+    repo.git('push', '-q', '-u', 'origin', 'main');
+
+    // The other half of the divergence, from a second clone.
+    const other = seedCloneParent(`${name}-other`);
+    scratch.push(other);
+    repo.git('clone', '-q', origin.path, other.path);
+    repo.git('-C', other.path, 'config', 'user.email', 'e2e@example.invalid');
+    repo.git('-C', other.path, 'config', 'user.name', 'E2E');
+    writeFileSync(join(other.path, 'remote.txt'), 'remote\n');
+    repo.git('-C', other.path, 'add', '-A');
+    repo.git('-C', other.path, 'commit', '-q', '-m', 'remote work');
+    repo.git('-C', other.path, 'push', '-q');
+
+    writeFileSync(join(repo.path, 'local.txt'), 'local\n');
+    repo.git('add', '-A');
+    repo.git('commit', '-q', '-m', 'local work');
+    // The counts compare against the LOCAL tracking ref, so the other clone's
+    // push is invisible until a fetch moves it.
+    repo.git('fetch', '-q');
+    return repo;
+  }
+
+  test('a diverged branch syncs to a merge instead of refusing', async ({ harness, page }) => {
+    const server = await harness('real');
+    const repo = seedDivergedRepo('git-sync');
+    expect(repo.git('rev-list', '--count', '--left-right', 'HEAD...@{upstream}').trim()).toBe('1\t1');
+
+    await openGitPanel(page, server, repo);
+
+    // The badge is what the panel knows about the divergence; the button is
+    // enabled (only a running action disables it) and named by its ACTION.
+    await expect(page.getByText('↑1 ↓1')).toBeVisible();
+    const sync = page.getByRole('button', { name: 'Sync with upstream' });
+    await expect(sync).toBeEnabled();
+    await sync.click();
+
+    await waitUntil(async () =>
+      repo.git('rev-list', '--count', '--left-right', 'HEAD...@{upstream}').trim() === '0\t0',
+    );
+    // Both sides landed and the history records a real merge.
+    expect(repo.git('log', '-1', '--pretty=%s')).toContain('Merge branch');
+    expect(repo.git('status', '--porcelain=v1').trim()).toBe('');
   });
 });
 
