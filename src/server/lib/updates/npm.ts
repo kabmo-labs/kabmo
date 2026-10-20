@@ -23,15 +23,16 @@ const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
 /**
  * The package the product ships as; asked FIRST.
  *
- * SCOPED, and that is not cosmetic: npm refuses the bare name `kabmo` with
- * `403 — Package name too similar to existing package karma` (verified against
- * the registry: the name is unclaimed, so it is a typo-squat guard rather than
- * an ownership conflict). `kabmo` is the scope the maintainer's own
- * npm account owns, so the publish needs no extra organisation grant, and the
- * `bin` stays `kabmo` — the COMMAND a user types did not change, only the
- * specifier `bun add -g` resolves.
+ * SCOPED, and that is forced rather than chosen: npm refuses the bare name
+ * `kabmo` with `403 — Package name too similar to existing package karma`, on
+ * an UNCLAIMED name (the registry answers 404 for `kabmo` while `karma`
+ * resolves to 6.4.4). That verdict comes from the registry, so no token, flag
+ * or client changes it — npm's own message is to publish under a scope.
+ *
+ * The `bin` stays `kabmo`, so the COMMAND a user types did not change. Only
+ * the specifier `bun add -g` resolves moved, and the README states it.
  */
-export const KABMO_PACKAGE = 'kabmo';
+export const KABMO_PACKAGE = '@kabmo-labs/kabmo';
 
 /**
  * The package name before the rename — a read-only fallback.

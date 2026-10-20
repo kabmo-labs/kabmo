@@ -190,10 +190,9 @@ jobs:
       - name: Publish to npm
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # UNSCOPED `kabmo`. npm once answered `403 — Package name too similar
-        # to existing package karma`; the name is unclaimed (the registry
-        # answers 404 for it while `karma` resolves), and this step is where
-        # that verdict is re-tested. If it refuses again, the fix is a SCOPED
-        # name plus `publishConfig.access: public`, and the README's install
-        # command changes with it — the two must never disagree.
+        # SCOPED `@kabmo-labs/kabmo`: npm refuses the bare name `kabmo` with
+        # `403 — Package name too similar to existing package karma`, on a name
+        # the registry still answers 404 for. `publishConfig.access: public` in
+        # package.json is what makes it public; scoped packages default to
+        # restricted, so removing that field would publish a private package.
         run: bun publish

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "kabmo",
+      "name": "@kabmo-labs/kabmo",
       "dependencies": {
         "@fontsource/fira-code": "^5.3.0",
         "@kabmo-labs/kabmo-sdk": "workspace:*",
