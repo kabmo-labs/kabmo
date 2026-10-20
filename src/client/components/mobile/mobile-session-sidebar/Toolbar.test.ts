@@ -133,3 +133,107 @@ describe('mobile toolbar archive button', () => {
     expect(sortTrigger?.className).not.toContain('bg-ink/10');
   });
 });
+
+/**
+ * The row's overflow rule, which is what the reported missing `+` came down to.
+ *
+ * happy-dom reports `clientWidth` as 0, so the toolbar renders the unmeasured
+ * state — every control on the row — and these cases pin the two halves that
+ * are decidable without layout: the primary pill's icon and label are BOTH in
+ * the markup at every width, and the `⋯` menu exists as the destination the
+ * measured rule moves a control into.
+ */
+describe('mobile toolbar overflow', () => {
+  test('the primary pill always draws its icon and its label', async () => {
+    const { el } = await mount();
+    const pill = Array.from(el.querySelectorAll('button')).find((b) => b.getAttribute('aria-label') === 'New Session');
+    expect(pill).not.toBeUndefined();
+    const icon = pill?.querySelector('svg');
+    expect(icon?.getAttribute('class')).toContain('lucide-plus');
+    // `shrink-0` is the fix: without it the icon is the flex item that gives up
+    // width, and the label's `whitespace-nowrap` min-content refuses to.
+    expect(icon?.getAttribute('class')).toContain('shrink-0');
+    const label = pill?.querySelector('span');
+    expect(label?.textContent).toBe('New Session');
+    // Not hidden at any width — the budget drops a CONTROL instead.
+    expect(label?.className).not.toContain('hidden');
+  });
+
+  test('every control is on the row until a width says otherwise', async () => {
+    // An unmeasured row reports 0, and `mobileToolbarCapacity(0)` keeps the
+    // full set: the menu must not appear before anything has been measured.
+    const { el } = await mount();
+    for (const name of [
+      'New Workspace',
+      'Scheduled tasks',
+      'Show archived sessions',
+      'Select workspaces',
+      'Refresh sessions',
+      'Sort workspaces',
+    ]) {
+      const button = Array.from(el.querySelectorAll('button')).find((b) => b.getAttribute('aria-label') === name);
+      expect(button).not.toBeUndefined();
+    }
+    expect(el.querySelector('button[aria-label="More sidebar actions"]')).toBeNull();
+  });
+
+  test('the overflow menu opens and carries the controls it took', async () => {
+    // The row is stubbed to a phone's 366px (a 390px drawer minus its `p-3`),
+    // which is the width the reported bug was seen at. happy-dom computes no
+    // layout, so the measurement the hook reads is supplied here — the rule
+    // itself is pinned by `sidebar-toolbar.test.ts`.
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get() {
+        return (this as HTMLElement).className === 'flex items-center space-x-2' ? 366 : 0;
+      },
+    });
+    try {
+      const { el } = await mount();
+      const onRow = (name: string) =>
+        Array.from(el.querySelectorAll('button')).find((b) => b.getAttribute('aria-label') === name);
+      // The tail moves out — scheduler and selection — while the head stays,
+      // including the two view controls a phone actually uses.
+      expect(onRow('Scheduled tasks')).toBeUndefined();
+      expect(onRow('Select workspaces')).toBeUndefined();
+      expect(onRow('New Workspace')).not.toBeUndefined();
+      expect(onRow('Sort workspaces')).not.toBeUndefined();
+
+      const trigger = el.querySelector('button[aria-label="More sidebar actions"]') as HTMLButtonElement;
+      expect(trigger).not.toBeNull();
+      await act(async () => { trigger.click(); });
+
+      // Named in words, not as glyphs — and each one still runs.
+      const menuItems = Array.from(el.querySelectorAll('[role="menuitem"]')).map((b) => b.textContent ?? '');
+      expect(menuItems).toContain('Scheduled tasks');
+      expect(menuItems).toContain('Select workspaces');
+      // The sort did NOT overflow here, so its options are not duplicated in
+      // the menu — the sort list arrives only when the sort control itself is
+      // one of the ones that left the row.
+      expect(el.textContent).not.toContain('Sort Workspaces');
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'clientWidth', descriptor);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+    }
+  });
+
+  test('a wide drawer keeps every control on the row', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get() {
+        return (this as HTMLElement).className === 'flex items-center space-x-2' ? 600 : 0;
+      },
+    });
+    try {
+      const { el } = await mount();
+      expect(el.querySelector('button[aria-label="More sidebar actions"]')).toBeNull();
+      expect(Array.from(el.querySelectorAll('button')).find((b) => b.getAttribute('aria-label') === 'Sort workspaces'))
+        .not.toBeUndefined();
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'clientWidth', descriptor);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+    }
+  });
+});

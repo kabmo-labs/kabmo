@@ -39,6 +39,14 @@ interface ToolbarOverflowMenuProps {
   sortHidden: boolean;
   sortOption: SessionSortOption;
   onSortChange: (option: SessionSortOption) => void;
+  /**
+   * The row this menu sits in. Both layouts share the RULE and the menu, but
+   * their controls are different sizes — the desktop row is `w-7` in a 34px
+   * step, the phone's drawer is `w-9.5` in a 46px one — so the trigger and the
+   * sort rows have to match the controls beside them. A `⋯` drawn at desktop
+   * metrics in a drawer of 38px buttons reads as a control from another screen.
+   */
+  layout?: 'desktop' | 'mobile';
 }
 
 export function ToolbarOverflowMenu({
@@ -46,7 +54,9 @@ export function ToolbarOverflowMenu({
   sortHidden,
   sortOption,
   onSortChange,
+  layout = 'desktop',
 }: ToolbarOverflowMenuProps) {
+  const mobile = layout === 'mobile';
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(rootRef, () => setOpen(false));
@@ -75,19 +85,25 @@ export function ToolbarOverflowMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className={`w-7 h-7 inline-flex items-center justify-center rounded border transition-colors cursor-pointer ${
+        className={`inline-flex items-center justify-center transition-colors cursor-pointer ${
+          mobile
+            ? 'w-9.5 h-9.5 rounded-xl border active:scale-95 shadow-xs'
+            : 'w-7 h-7 rounded border'
+        } ${
           open
             ? 'border-ink/30 bg-ink/10 text-ink'
             : 'border-ink/15 bg-paper text-ink/70 hover:bg-ink/5 hover:text-ink'
         }`}
       >
-        <Ellipsis size={14} />
+        <Ellipsis size={mobile ? 16 : 14} />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 rounded-lg shadow-lg z-50 py-1 text-xs"
+          className={`absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 shadow-lg z-50 py-1 text-xs ${
+            mobile ? 'rounded-xl p-2' : 'rounded-lg'
+          }`}
         >
           {actions.map((action) => (
             <button
@@ -96,7 +112,9 @@ export function ToolbarOverflowMenu({
               role="menuitem"
               onClick={() => run(action)}
               aria-pressed={action.active}
-              className={`w-full text-left px-3 py-1.5 flex items-center gap-2 transition-colors ${
+              className={`w-full text-left flex items-center gap-2 transition-colors ${
+                mobile ? 'px-2.5 py-1.5 rounded-lg' : 'px-3 py-1.5'
+              } ${
                 action.active ? 'bg-ink/5 text-ink font-medium' : 'text-ink/75 hover:bg-ink/5 hover:text-ink'
               }`}
             >
@@ -107,7 +125,7 @@ export function ToolbarOverflowMenu({
 
           {sortHidden && (
             <div className="mt-1 border-t border-ink/10 pt-1">
-              <SortMenu variant="desktop" sortOption={sortOption} onSortChange={onSortChange} />
+              <SortMenu variant={layout} sortOption={sortOption} onSortChange={onSortChange} />
             </div>
           )}
         </div>

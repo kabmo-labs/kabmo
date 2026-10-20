@@ -1,9 +1,9 @@
 import { Archive, ArrowUpDown, Calendar, FolderPlus, ListChecks, Plus, RefreshCw, Search, X } from 'lucide-preact';
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { SessionSortOption } from '@/shared/types';
 import { SortMenu } from '@/client/components/common/sort-menu';
 import { ToolbarOverflowMenu } from '@/client/components/layout/session-sidebar/OverflowMenu';
 import type { OverflowAction } from '@/client/components/layout/session-sidebar/OverflowMenu';
+import { useToolbarRowWidth } from '@/client/hooks/workspace/toolbar-row-width';
 import {
   SIDEBAR_TOOLBAR_PRIORITY,
   TOOLBAR_ROW_PADDING_PX,
@@ -38,37 +38,6 @@ interface SessionSidebarToolbarProps {
   selecting: boolean;
 }
 
-/**
- * The row's content width, kept current as the sidebar is dragged.
- *
- * The capacity decision needs the width the row actually has, and the sidebar
- * is resizable — a `ResizeObserver` is what makes the set of visible controls
- * follow a drag instead of being decided once at mount.
- */
-function useRowWidth() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-  // A layout effect, so the first measure lands BEFORE paint: with a passive
-  // effect the row drew every control and then dropped the ones that did not
-  // fit on the next frame.
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    // `clientWidth` includes the row's own `px-1`, and the capacity budget is
-    // a CONTENT width — leaving the padding in made the row 8px optimistic,
-    // which is exactly the margin an extra icon needs.
-    const measure = () => setWidth(Math.max(0, element.clientWidth - TOOLBAR_ROW_PADDING_PX));
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    // The sidebar is resizable, so the visible set has to follow a drag
-    // instead of being decided once at mount.
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return { ref, width };
-}
-
 const ICON_CLASS = 'shrink-0 w-7 h-7 inline-flex items-center justify-center rounded border transition-colors cursor-pointer';
 const ICON_IDLE = 'border-ink/15 bg-paper text-ink/70 hover:bg-ink/5 hover:text-ink';
 const ICON_ACTIVE = 'border-ink/30 bg-ink/10 text-ink';
@@ -95,7 +64,7 @@ export function SessionSidebarToolbar({
   onSelectWorkspaces,
   selecting,
 }: SessionSidebarToolbarProps) {
-  const { ref: rowRef, width } = useRowWidth();
+  const { ref: rowRef, width } = useToolbarRowWidth(TOOLBAR_ROW_PADDING_PX);
   const capacity = sidebarToolbarCapacity(width);
   const visible = new Set(SIDEBAR_TOOLBAR_PRIORITY.slice(0, capacity));
   const hidden = SIDEBAR_TOOLBAR_PRIORITY.slice(capacity);
