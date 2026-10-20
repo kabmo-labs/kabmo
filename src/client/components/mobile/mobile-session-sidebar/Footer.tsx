@@ -1,4 +1,4 @@
-import { Info, Monitor, Settings } from 'lucide-preact';
+import { Download, Info, Monitor, Settings } from 'lucide-preact';
 import packageJson from '@/../package.json';
 
 interface MobileSessionFooterProps {
@@ -6,6 +6,8 @@ interface MobileSessionFooterProps {
   onAbout: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
+  /** The newer APK to offer, or null. Only ever set inside the Android app. */
+  androidDownload?: { url: string; latest: string; releaseUrl: string | null } | null;
   /** Switch the app to the desktop layout for this page session only. The
    *  choice is not persisted, so the next load re-detects the device. */
   onDesktopToggle?: () => void;
@@ -17,6 +19,7 @@ export function MobileSessionFooter({
   updateAvailable,
   onUpdateClick,
   onDesktopToggle,
+  androidDownload,
 }: MobileSessionFooterProps) {
   return (
     <div
@@ -40,6 +43,23 @@ export function MobileSessionFooter({
           <Info size={14} />
           <span>About</span>
         </button>
+        {androidDownload && (
+          // Directly after About, matching the desktop footer. An `<a>`, not a
+          // button: the download is the browser's (or the WebView's) job, and
+          // `target="_blank"` hands it to the system browser so the console is
+          // not replaced by a file download.
+          <a
+            href={androidDownload.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Download Kabmo ${androidDownload.latest} for Android`}
+            aria-label={`Download Kabmo ${androidDownload.latest} for Android`}
+            className="flex items-center space-x-1 hover:text-ink transition-colors"
+          >
+            <Download size={14} />
+            <span>APK</span>
+          </a>
+        )}
         {onDesktopToggle && (
           <button
             type="button"

@@ -5,6 +5,7 @@ import { MobileSessionList } from '@/client/components/mobile/mobile-session-sid
 import { MobileSessionFooter } from '@/client/components/mobile/mobile-session-sidebar/Footer';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { AboutModal, NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
+import { useAndroidDownload } from '@/client/hooks/ui/updates/android-download';
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
 import { UpdatePopup } from '@/client/components/layout/update-popup';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
@@ -72,6 +73,9 @@ export function MobileSessionSidebar({
   const scheduledCount = useScheduledTaskCount();
   const [aboutOpen, setAboutOpen] = useState(false);
   const updates = useUpdates();
+  // Null in a browser, and null when this APK is already current — see
+  // `useAndroidDownload`.
+  const androidDownload = useAndroidDownload(window.__OMP_BOOTSTRAP__?.shellVersion);
   const { toasts, pushToast, dismissToast } = useToasts();
 
   // The popup's "Update now" hands the run over rather than starting its own —
@@ -242,6 +246,7 @@ export function MobileSessionSidebar({
       <MobileSessionFooter
         onSettings={() => window.dispatchEvent(new CustomEvent('omp:open-settings', { detail: {} }))}
         onAbout={() => setAboutOpen(true)}
+        androidDownload={androidDownload}
         onDesktopToggle={onDesktopToggle}
         updateAvailable={updates.hasUpdate}
         onUpdateClick={() => {

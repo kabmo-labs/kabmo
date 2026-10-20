@@ -6,6 +6,7 @@ import { UpdatePopup } from '@/client/components/layout/update-popup';
 import { SessionSidebarHeader } from '@/client/components/layout/session-sidebar/Header';
 import { SessionSidebarToolbar } from '@/client/components/layout/session-sidebar/Toolbar';
 import { SessionSidebarFooter } from '@/client/components/layout/session-sidebar/Footer';
+import { useAndroidDownload } from '@/client/hooks/ui/updates/android-download';
 import { SessionSidebarSessionList } from '@/client/components/layout/session-sidebar/SessionList';
 import { SessionListSkeleton } from '@/client/components/layout/session-sidebar/Skeleton';
 import { ToastStack } from '@/client/components/common/ToastStack';
@@ -56,6 +57,9 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const scheduledCount = useScheduledTaskCount();
   const updates = useUpdates();
+  // The Android download offer: null in a browser and null when this APK is
+  // already the newest published one, so the footer draws nothing.
+  const androidDownload = useAndroidDownload(window.__OMP_BOOTSTRAP__?.shellVersion);
   const { toasts, pushToast, dismissToast } = useToasts();
 
   // Sidebar inline states
@@ -212,6 +216,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
         <SessionSidebarFooter
           onSettings={() => setSettingsOpen(true)}
           onInfo={() => setInfoOpen(true)}
+          androidDownload={androidDownload}
           updateAvailable={updates.hasUpdate}
           onUpdateClick={() => {
             setInfoOpen(true);

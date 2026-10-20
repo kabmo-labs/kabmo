@@ -22,6 +22,14 @@ export interface KabmoBootstrap {
    * while this fact was missing, and the only way to ask was a second request.
    */
   authEnabled?: boolean;
+  /**
+   * The Android shell's version, when this page was requested by the APK
+   * (`KabmoAndroid/<version>` in the User-Agent). Null in every browser.
+   *
+   * The sidebar uses it to decide whether a download button applies at all, and
+   * whether this install is behind the published APK.
+   */
+  shellVersion?: string | null;
 }
 
 declare global {
