@@ -95,12 +95,9 @@ export async function browseDirectories({ request }: LoaderFunctionArgs) {
   });
 }
 
-/**
- * Names never listed in the Files panel: dependency/build output and the git
- * object database. Skipped for being noise, not for being hidden — every other
- * entry is listed, dot-prefixed files and folders included.
- */
-
+// No name is filtered: `lib/fs/listing.ts` (shared with the realtime topic)
+// lists every entry, and git-ignored ones are dimmed rather than dropped.
+//
 // Lazy listing: return only the immediate children of a directory. Folders are
 // emitted with `children: null` meaning "not loaded yet" so the client can
 // fetch them on demand — directories are NOT recursed here (keeps the initial
@@ -143,8 +140,26 @@ export async function listDirectory({ request }: LoaderFunctionArgs) {
 /** Hard cap on emitted files so a huge tree cannot stall the request. */
 const MAX_FILES = 3000;
 
-/** Directory names that are never recursed into. */
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', 'coverage']);
+/**
+ * Directory names the RECURSIVE walk does not descend into.
+ *
+ * This is a budget guard, not the Files panel's noise table (there is none any
+ * more — `lib/fs/listing.ts` lists every entry). `/api/fs/list` returns a flat
+ * file index capped at `MAX_FILES` for the composer's `@` picker, and
+ * descending into a dependency tree spends that whole budget inside
+ * `node_modules` — leaving the picker with no project file in it. The tree
+ * panel is unaffected: it lists lazily, one directory per request, so a folder
+ * is only walked when someone expands it.
+ */
+const SKIP_DIRS: Record<string, true> = {
+  node_modules: true,
+  '.git': true,
+  dist: true,
+  build: true,
+  '.next': true,
+  '.cache': true,
+  coverage: true,
+};
 
 interface ListFileEntry {
   name: string;
@@ -172,7 +187,7 @@ async function walk(dir: string, baseDir: string, out: ListFileEntry[]): Promise
     if (entry.name.startsWith('.')) continue;
 
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (SKIP_DIRS[entry.name]) continue;
       await walk(path.join(dir, entry.name), baseDir, out);
       continue;
     }
