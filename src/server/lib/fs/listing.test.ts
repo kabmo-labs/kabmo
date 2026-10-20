@@ -62,7 +62,12 @@ describe('listDirectoryEntries', () => {
 
     const android = await listDirectoryEntries(path.join(root, 'packages/android'), root);
     expect(android.map((entry) => entry.name)).toEqual(['dist']);
-    // Paths stay relative to the LISTED root, which is what the tree keys on.
+    // Paths stay relative to the LISTED root, which is what the tree keys on,
+    // and they are POSIX-spelled whatever the platform: `path.relative` answers
+    // `packages\android\dist` on Windows, which keyed every row differently from
+    // the same row on POSIX and — because `git check-ignore` rejects a
+    // backslash — left the whole listing un-dimmed there. This assertion is the
+    // guard; it is what failed on the Windows CI leg.
     expect(android[0]!.path).toBe('packages/android/dist');
   });
 

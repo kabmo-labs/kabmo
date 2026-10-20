@@ -43,7 +43,14 @@ export async function listDirectoryEntries(dirPath: string, rootPath: string): P
   const listed = (await fs.promises.readdir(dirPath))
     .map((child) => {
       const full = path.join(dirPath, child);
-      return { child, full, rel: path.relative(rootPath, full) };
+      // POSIX spelling, because `rel` is not only a display value: it is the
+      // tree's id/key, the `fs:` topic's path, and the path handed to
+      // `git check-ignore` — which rejects a backslash outright, so on Windows
+      // every row came back un-dimmed and keyed `packages\android\dist`. The
+      // rest of the server states the same convention (`lib/fs/root.ts`,
+      // `lib/fs/transfer.ts`).
+      const rel = path.relative(rootPath, full).split(path.sep).join('/');
+      return { child, full, rel };
     });
 
   const ignored = await collectIgnoredPaths(rootPath, listed.map((entry) => entry.rel));

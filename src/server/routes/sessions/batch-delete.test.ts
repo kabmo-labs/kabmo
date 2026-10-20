@@ -29,6 +29,13 @@ const AGENT_DIR = path.join(os.tmpdir(), `omc-batch-delete-${process.pid}`, 'age
 let priorAgentDir: string | undefined;
 
 beforeAll(() => {
+  // This suite reaches the database: `removeSession` → `purgeSessionData`
+  // resolves `getDb()`. Without isolating, it inherits whatever handle an
+  // earlier file left on the process-wide slot — and when that handle points at
+  // a temp directory its owner already deleted, SQLite answers `disk I/O error`
+  // and the verdict loses its code (measured on CI: `not_found` came back
+  // `undefined` while the same file passed alone).
+  isolateDb();
   fs.rmSync(AGENT_DIR, { recursive: true, force: true });
   fs.mkdirSync(path.join(AGENT_DIR, 'sessions'), { recursive: true });
   priorAgentDir = Bun.env.PI_CODING_AGENT_DIR;
@@ -41,6 +48,7 @@ afterAll(() => {
   if (priorAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = priorAgentDir;
   fs.rmSync(path.dirname(AGENT_DIR), { recursive: true, force: true });
+  releaseDb();
 });
 
 function post(body: unknown, url: string): Promise<Response> {
@@ -124,16 +132,11 @@ describe('batchDeleteFolders request shape', () => {
   });
 
   test('an unknown workspace is refused per id', async () => {
-    isolateDb();
-    try {
-      const res = await postFolder({ ids: ['424242'] });
-      expect(res.status).toBe(200);
-      const body = await res.json() as { success: boolean; removed: string[]; refused: { code?: string }[] };
-      expect(body.success).toBe(false);
-      expect(body.removed).toEqual([]);
-      expect(body.refused[0].code).toBe('not_found');
-    } finally {
-      releaseDb();
-    }
+    const res = await postFolder({ ids: ['424242'] });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { success: boolean; removed: string[]; refused: { code?: string }[] };
+    expect(body.success).toBe(false);
+    expect(body.removed).toEqual([]);
+    expect(body.refused[0].code).toBe('not_found');
   });
 });
