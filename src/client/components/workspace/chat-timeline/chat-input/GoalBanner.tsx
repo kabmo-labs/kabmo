@@ -138,12 +138,12 @@ export function GoalBanner({ record, running, continuation, evaluating, pending,
 
   return (
     <div
-      // The strip paints a background at the card's TOP edge, and a child's
-      // background is not clipped by the parent's radius — `rounded-t-[inherit]`
-      // makes it follow the frame (`rounded-xl` docked, `rounded-none` when a
-      // phone stretches the composer), so the corners do not show a square
-      // canvas patch over the card.
-      className="flex items-center gap-2 rounded-t-[inherit] border-b border-ink/8 bg-canvas/40 px-3 py-1.5 text-[11px]"
+      // The strip sits on the card's own surface — no hairline and no tinted
+      // band, so the goal row, the draft and the toolbar read as ONE panel
+      // rather than three stacked bars. Its state still shows: the icon and
+      // the badge carry the tone (`badge`/`tone`), which is the semantic half;
+      // the background was only ever separation.
+      className="flex items-center gap-2 px-3 py-1.5 text-[11px]"
       data-goal-banner={record.status}
       data-goal-stop={stop ?? undefined}
     >

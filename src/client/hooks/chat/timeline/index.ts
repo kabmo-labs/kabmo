@@ -49,7 +49,7 @@ export function useChatTimeline({
   // without re-creating it (useSessionLoad is defined below the scroll hook).
   const loadOlderRef = useRef<() => void>(() => {});
 
-  const { scrollRef, contentRef, showScrollBottom, handleScroll, scrollToBottom, jumpToBottom, followRef, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
+  const { scrollRef, contentRef, showScrollBottom, readingBack, handleScroll, scrollToBottom, jumpToBottom, followRef, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
     onScrollTop: () => loadOlderRef.current(),
   });
 
@@ -324,6 +324,7 @@ export function useChatTimeline({
     scrollRef,
     contentRef,
     showScrollBottom,
+    readingBack,
     handleScroll,
     scrollToBottom,
     jumpToBottom,

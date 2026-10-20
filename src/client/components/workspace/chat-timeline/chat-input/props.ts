@@ -97,4 +97,11 @@ export interface ChatInputProps {
    * form lives inside a panel that is already sized to the answers beside it.
    */
   expandable?: boolean;
+  /**
+   * The reader has scrolled back through the transcript. On a phone with an
+   * empty draft the composer then gives its height back to the conversation
+   * (`composerExpansion`'s `compact`); it returns to full size as soon as the
+   * reader reaches the tail, types, or focuses the box.
+   */
+  shrinkWhileReading?: boolean;
 }

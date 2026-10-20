@@ -317,4 +317,43 @@ describe('timeline scroll', () => {
     expect(probe.el.scrollTop).toBe(geometry.height - geometry.viewport);
     await unmountProbe(probe);
   });
+
+  /**
+   * `readingBack` is what a phone composer shrinks on, and it is hysteretic for
+   * a reason the geometry makes unavoidable: compacting the composer GROWS the
+   * scroller's viewport by the height it gave back, which moves the reader
+   * closer to the tail. A single threshold would then release the flag, restore
+   * the box, and push the reader back out — a render loop.
+   */
+  test('readingBack engages further back than the jump button and releases at the tail', async () => {
+    scrolled.length = 0;
+    geometry.top = 0;
+    geometry.height = 5000;
+    const probe = await mountProbe('a', [message('a1')]);
+    const scroll = () => probe.holder.current!;
+    /** Both flags are state, so the commit that carries them is a render. */
+    const readAt = async (top: number) => {
+      await act(async () => { probe.el.scrollTop = top; });
+      return { jump: scroll().showScrollBottom, compact: scroll().readingBack };
+    };
+    const tail = geometry.height - geometry.viewport;
+
+    // At the tail: neither flag.
+    expect(await readAt(tail)).toEqual({ jump: false, compact: false });
+
+    // Past the jump-button threshold but short of the compaction one: the
+    // button is offered, the composer is NOT shrunk.
+    expect(await readAt(tail - 150)).toEqual({ jump: true, compact: false });
+
+    // Further back: both.
+    expect(await readAt(tail - 400)).toEqual({ jump: true, compact: true });
+
+    // Coming back: the composer stays shrunk through the jump-button window,
+    // so the 24px a compaction gives back cannot release it.
+    expect(await readAt(tail - 150)).toEqual({ jump: true, compact: true });
+
+    // The tail releases it.
+    expect(await readAt(tail)).toEqual({ jump: false, compact: false });
+    await unmountProbe(probe);
+  });
 });

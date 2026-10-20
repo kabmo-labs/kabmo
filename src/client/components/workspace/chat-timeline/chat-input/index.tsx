@@ -54,6 +54,7 @@ export function ChatInput({
   deferredComposerPickRef = NO_PENDING_PICK,
   chatRunning,
   expandable = false,
+  shrinkWhileReading = false,
 }: ChatInputProps) {
   const [internalAttachments, setInternalAttachments] = useState<Attachment[]>([]);
   // The Goal modal is owned here, not by the toolbar: the button is a toggle,
@@ -64,6 +65,10 @@ export function ChatInput({
   // layout preference for one draft, not a setting, and the URL is what carries
   // the session it belongs to.
   const [expanded, setExpanded] = useState(false);
+  // Whether anything inside the card has focus. A compacted composer restores
+  // itself the moment the user reaches for it: shrinking the box under a finger
+  // that is already typing is the one way this can be wrong.
+  const [composerFocused, setComposerFocused] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { selectedModel, setSelectedModel, thinkingLevels, currentThinking, selectThinking } = useModelSelection({
@@ -137,7 +142,13 @@ export function ChatInput({
   // Enter, so the covered toolbar would be the only way to send). Docked, the
   // card is inside the chat's own column and the measurement is unused.
   const keyboardInset = useKeyboardInset(cardRef, expandable && expanded);
-  const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset });
+  // A phone gives its height back to the transcript while the reader is
+  // scrolling back — but only when there is nothing to lose: a draft means the
+  // user is writing, and the box must stay the size it was. A focused composer
+  // is the same rule from the other side (the tap that re-opens it must not be
+  // undone by the scroll position it was tapped from).
+  const compact = shrinkWhileReading && !composerFocused && !value.trim() && attachments.length === 0;
+  const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset, compact });
 
   // Escape returns to the docked composer. Bound to the document rather than to
   // the textarea so it works while the picker has focus — the picker consumes
@@ -182,6 +193,13 @@ export function ChatInput({
       ref={cardRef}
       className={`@container transition-colors flex flex-col ${layout.cardPositionClass} ${layout.cardClass} ${layout.cardLayoutClass} ${className}`}
       style={layout.style}
+      // focusin/focusout BUBBLE, unlike focus/blur: the card has to learn that
+      // the textarea inside it was focused, and a capture-phase `onFocus` on
+      // this element is not the same question (it fires for the card's own
+      // focus, which never happens). Preact maps `onFocusIn`/`onFocusOut` to
+      // the native bubble-phase events.
+      onFocusIn={() => setComposerFocused(true)}
+      onFocusOut={() => setComposerFocused(false)}
       {...dropProps}
     >
       <DropOverlay visible={isDragging} />
@@ -212,7 +230,7 @@ export function ChatInput({
 
       {/* Refused plan/goal command notice. */}
       {(notice || modes?.error) && (
-        <div className="flex items-start gap-1.5 border-b border-error/20 bg-error/5 px-3 py-1.5 text-[11px] text-error">
+        <div className="flex items-start gap-1.5 bg-error/5 px-3 py-1.5 text-[11px] text-error">
           <AlertTriangle size={11} className="mt-0.5 shrink-0" />
           <span className="min-w-0 flex-1 break-words">{notice || modes?.error}</span>
           <button

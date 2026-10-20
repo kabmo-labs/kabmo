@@ -64,6 +64,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     scrollRef,
     contentRef,
     showScrollBottom,
+    readingBack,
     handleScroll,
     jumpToBottom,
     handleSend,
@@ -300,6 +301,11 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                 sessionModel={typeof sessionData?.model === 'object' ? sessionData.model : null}
                 sessionThinkingLevel={sessionData?.thinkingLevel}
                 variant={variant}
+                // The same scroll geometry that draws the scroll-to-bottom
+                // button, with hysteresis: the reader is back through the
+                // transcript, so a phone composer may give its height back.
+                // `composerExpansion` ignores it on a desktop.
+                shrinkWhileReading={readingBack}
               />
             )}
           </>

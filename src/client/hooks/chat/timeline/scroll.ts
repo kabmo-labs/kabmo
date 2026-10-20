@@ -33,6 +33,20 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 /** Distance from the tail, in pixels, that still counts as "at the bottom". */
 const FOLLOW_BOTTOM_THRESHOLD_PX = 100;
 
+/**
+ * How much further back the reader must be for a phone composer to give its
+ * height back, on top of {@link FOLLOW_BOTTOM_THRESHOLD_PX}.
+ *
+ * This is hysteresis, and it is load-bearing: shrinking the composer grows the
+ * scroller's viewport by the height it gave back (68 → 44px, i.e. 24px), which
+ * by itself moves the reader 24px CLOSER to the tail. Without the margin a
+ * reader sitting just past the threshold would shrink the box, land inside the
+ * threshold, restore it, and land outside it again — a loop that re-renders the
+ * composer forever. The margin exceeds the give-back, so a compaction can never
+ * cross back over the restore threshold on its own.
+ */
+const COMPACT_TRIGGER_PX = FOLLOW_BOTTOM_THRESHOLD_PX + 64;
+
 /** How long a bottom jump counts as settling. The scroll handler reads "the
  *  viewport is at the top, fetch older history" from geometry, and a jump that
  *  STARTS at the top (the button, on a session scrolled back to its head)
@@ -51,6 +65,14 @@ export interface ChatTimelineScrollResult {
   /** Attach to the timeline's inner content wrapper so its growth is observed. */
   contentRef: (node: HTMLDivElement | null) => void;
   showScrollBottom: boolean;
+  /**
+   * The reader is back through the transcript, with hysteresis: it engages
+   * further from the tail than {@link showScrollBottom} does and releases at
+   * the same distance, so a surface that CHANGES SIZE in response cannot
+   * oscillate around the threshold. A phone composer uses it to give its height
+   * back to the conversation.
+   */
+  readingBack: boolean;
   /** Streaming auto-scroll gates on this: pinned to the tail = true. */
   followRef: RefObject<boolean>;
   /** Bottom jumps issued so far. A paging request stamps its viewport anchor
@@ -82,6 +104,11 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  // Hysteretic twin of `showScrollBottom` (see `ChatTimelineScrollResult`): it
+  // engages past `COMPACT_TRIGGER_PX` and releases at
+  // `FOLLOW_BOTTOM_THRESHOLD_PX`, so a consumer that resizes itself in
+  // response cannot flip the flag back and forth.
+  const [readingBack, setReadingBack] = useState(false);
   // True while the viewport is (or should stay) pinned to the tail. A ref, not
   // state: scroll chunks read it every frame and a flip must not re-render.
   const followRef = useRef(true);
@@ -111,7 +138,12 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   const syncFollowBottom = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight >= FOLLOW_BOTTOM_THRESHOLD_PX);
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBottom(distance >= FOLLOW_BOTTOM_THRESHOLD_PX);
+    // Two thresholds, one direction each: engaged further back, released at
+    // the tail. The setter is called with the SAME value on every scroll that
+    // does not cross one of them, and React bails out of that render.
+    setReadingBack((wasReading) => (wasReading ? distance >= FOLLOW_BOTTOM_THRESHOLD_PX : distance >= COMPACT_TRIGGER_PX));
   }, []);
 
   const handleScroll = useCallback(() => {
@@ -216,6 +248,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     scrollRef,
     contentRef,
     showScrollBottom,
+    readingBack,
     followRef,
     jumpCountRef,
     jumpActiveRef,

@@ -52,6 +52,13 @@ interface ComposerDockProps {
   sessionModel: { provider: string; modelId: string } | null;
   sessionThinkingLevel?: string | null;
   variant: 'desktop' | 'mobile';
+  /**
+   * The phone reader is scrolled back through the transcript, so the composer
+   * may give its height back (`ChatInput.shrinkWhileReading`). Derived from the
+   * timeline's own scroll geometry — the same signal that draws the
+   * scroll-to-bottom affordance.
+   */
+  shrinkWhileReading?: boolean;
 }
 
 /**
@@ -91,6 +98,7 @@ export function ComposerDock({
   sessionModel,
   sessionThinkingLevel,
   variant,
+  shrinkWhileReading = false,
 }: ComposerDockProps) {
   // Side questions take over the composer entirely: the chat's own input is
   // hidden while the form is open, so a stray Enter cannot send to the wrong
@@ -159,6 +167,7 @@ export function ComposerDock({
             sessionThinkingLevel={sessionThinkingLevel}
             variant={variant}
             expandable
+            shrinkWhileReading={shrinkWhileReading}
           />
         )}
       </div>

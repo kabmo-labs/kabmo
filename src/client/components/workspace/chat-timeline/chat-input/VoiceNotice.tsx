@@ -19,7 +19,7 @@ export interface VoiceNoticeProps {
 export function VoiceNotice({ status, error }: VoiceNoticeProps) {
   if (status) {
     return (
-      <div className="flex items-center gap-1.5 border-t border-ink/10 bg-canvas/40 px-3 py-1.5 text-[11px] text-ink/60">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-ink/60">
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink/50 animate-pulse" />
         <span className="min-w-0 flex-1 break-words">{status}</span>
       </div>
@@ -28,7 +28,7 @@ export function VoiceNotice({ status, error }: VoiceNoticeProps) {
 
   if (error) {
     return (
-      <div className="flex items-start gap-1.5 border-t border-error/20 bg-error/5 px-3 py-1.5 text-[11px] text-error">
+      <div className="flex items-start gap-1.5 bg-error/5 px-3 py-1.5 text-[11px] text-error">
         <AlertTriangle size={11} className="mt-0.5 shrink-0" />
         <span className="min-w-0 flex-1 break-words">{error}</span>
       </div>
