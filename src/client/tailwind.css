@@ -43,6 +43,12 @@
      of the K's upper arm (`public/icon.svg`) — and it is the only chroma
      outside the error red. */
   --color-brand: #f26522;
+  /* The icon's tile and the ink on it, also not theme tokens: the wordmark's K
+     is the app icon (`public/icon.svg`), so its green plate and cream strokes
+     must be identical in every palette — including the dark ones, where a
+     themed surface would turn the plate into a hole. */
+  --color-brand-tile: #0b5d3b;
+  --color-brand-cream: #f7f4ea;
 }
 
 @layer base {
