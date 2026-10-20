@@ -186,8 +186,17 @@ test.describe('mobile layout', () => {
     await expect(page.getByRole('button', { name: 'Open Sessions' })).toBeVisible();
     await expect(page.locator('link[data-plugin-stylesheet="session-info"]')).toHaveCount(1);
     // The surface the content script mounted into — what the plugin's own CSS
-    // is scoped to.
-    await expect(page.locator('[data-plugin-surface="session-info"]')).toHaveCount(1);
+    // is scoped to. Scoped to the `<body>` child the host appends, because a
+    // surface is no longer unique to the content script: `headerPanel` entries
+    // render on the phone too (`f8c3f080`), and each trigger is wrapped in a
+    // `PluginIdProvider` so the plugin's CSS can reach it. A bare count would
+    // pass on the navbar trigger alone with no content script mounted at all —
+    // the very failure this spec exists to catch.
+    const surfaces = page.locator('body > [data-plugin-surface="session-info"]');
+    await expect(surfaces).toHaveCount(1);
+    // What the script appends into that surface, which is the other half: the
+    // root can exist with nothing in it if the mount threw.
+    await expect(surfaces.getByText('session info active')).toBeVisible();
   });
 
   test('stretches the composer to the viewport and collapses on send', async ({ harness, page }) => {
