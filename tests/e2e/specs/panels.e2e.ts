@@ -20,6 +20,7 @@
 
 import { test, expect, openApp } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
+import { TESTID } from '../fixtures/selectors';
 
 test.describe('right panel', () => {
   test('switches the active view from the activity bar', async ({ harness, page }) => {
@@ -61,6 +62,52 @@ test.describe('right panel', () => {
     await persisted;
 
     await openApp(page, url);
+    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+
+    workspace.dispose();
+  });
+
+  test('the panels opened in a NEW chat survive its first send', async ({ harness, page }) => {
+    // The reported bug: click New Session, open a few right-panel views, send
+    // the first prompt — and the panel collapsed back to its default, because
+    // the spawn renames the session (`new-…` → omp UUID) and the adoption
+    // migrates the pending slot AFTER every `useSessionState` copy had already
+    // re-read the still-empty adopted one. The view is asserted by its own
+    // content, the way a reader sees it.
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-panels-adopt');
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-panels-adopt').first()).toBeVisible();
+
+    // The FOLDER's own New Session, not the toolbar's: the toolbar one inherits
+    // the active session's folder, and a spec that opened the app with
+    // `?folderId=` and clicked no session has none — the composer then stays
+    // disabled ("Please select a workspace above") and the send never happens.
+    // The pending slot's own blob must have LOADED before the panel click: the
+    // provider only marks itself ready once that fetch settles, and while it is
+    // in flight a later `ready` flip would mask the bug by re-reading the store
+    // after the migration. Waiting on the response is the same condition the
+    // panel restore itself depends on.
+    const pendingStateLoaded = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        /^\/api\/sessions\/new-.+\/state$/.test(new URL(response.url()).pathname),
+    );
+    await page.getByRole('button', { name: /^new session$/i }).last().click();
+    await expect(page).toHaveURL(/sessionId=new-/);
+    await pendingStateLoaded;
+
+    await page.getByRole('button', { name: 'Source Control' }).click();
+    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeEnabled();
+    await input.fill('adopt me');
+    await input.press('Enter');
+
+    // The spawn answers with the real id; the panel must still be on the view
+    // the user picked, with nothing re-clicked.
+    await expect(page).toHaveURL(/sessionId=(?!new-)/, { timeout: 30_000 });
     await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
 
     workspace.dispose();

@@ -68,7 +68,7 @@
  * - chat.draftAttachments     attachment metadata array
  */
 
-import { notifySessionKey } from '@/shared/lib/workspace/session-state/listeners';
+import { notifySessionKey, notifySessionReplaced } from '@/shared/lib/workspace/session-state/listeners';
 
 type SessionState = Record<string, unknown>;
 
@@ -263,8 +263,10 @@ export async function loadSession(sessionId: string): Promise<void> {
   }
   evictIfNeeded(sessionId);
   // The blob replaces every slot at once, so a follower that read the store
-  // before it arrived (no pick yet) has to re-read.
+  // before it arrived (no pick yet) has to re-read — including a private copy
+  // held by `useSessionState`, which does not follow per-slot writes.
   notifySessionKey(sessionId);
+  notifySessionReplaced(sessionId);
 }
 
 /** Seed the cache synchronously (e.g. from SSR-provided data). */
@@ -274,6 +276,7 @@ export function hydrateSession(sessionId: string | null, state: SessionState): v
   touchCacheEntry(sessionId);
   evictIfNeeded(sessionId);
   notifySessionKey(sessionId);
+  notifySessionReplaced(sessionId);
 }
 
 /**
@@ -308,6 +311,7 @@ export function forgetSession(sessionId: string): void {
   dirtySessions.delete(sessionId);
   lastTouched.delete(sessionId);
   notifySessionKey(sessionId);
+  notifySessionReplaced(sessionId);
 }
 
 /**
@@ -327,4 +331,11 @@ export function migrateSessionState(fromId: string, toId: string): void {
   // The adopted slot gained the whole transient state; the transient one lost it.
   notifySessionKey(toId);
   notifySessionKey(fromId);
+  // Both entries were REPLACED, not written slot by slot. `ready` does not
+  // change across an adoption (it was already true for the pending id), so
+  // without this a private copy kept the fallback it read on the commit the
+  // URL moved — the reported "opening panels in a new chat and sending the
+  // first prompt closes them all".
+  notifySessionReplaced(toId);
+  notifySessionReplaced(fromId);
 }

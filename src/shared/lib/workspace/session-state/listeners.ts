@@ -21,6 +21,19 @@
 /** Listeners per session, then per slot (`ALL_SLOTS` = every slot of it). */
 const listeners = new Map<string, Map<string, Set<() => void>>>();
 
+/**
+ * Listeners for a session's blob being REPLACED wholesale (a fetch landing, a
+ * spawn-adoption migrate, a delete) — not for one slot being written.
+ *
+ * Separate from the per-slot bus because the two mean different things to a
+ * private copy. `useSessionState` hands every caller its own `useState`, which
+ * deliberately does not follow another component's writes to the same key; but
+ * a replacement invalidates the copy outright (the store now holds different
+ * state for the whole session), so a reader must re-read or it keeps rendering
+ * a stale — often fallback — value forever.
+ */
+const replacedListeners = new Map<string, Set<() => void>>();
+
 /** Bucket name for a listener that follows every slot of a session. */
 const ALL_SLOTS = '*';
 
@@ -53,6 +66,31 @@ export function subscribeSessionKey(sessionId: string | null, key: string | null
 
 /** Fire one bucket, tolerating listeners that unsubscribe while notified. */
 function notifyBucket(bucket: Set<() => void> | undefined): void {
+  if (!bucket) return;
+  for (const listener of [...bucket]) listener();
+}
+
+/**
+ * Listen for this session's blob being replaced wholesale. Returns the
+ * unsubscribe.
+ */
+export function subscribeSessionReplaced(sessionId: string | null, listener: () => void): () => void {
+  if (!sessionId) return () => {};
+  let bucket = replacedListeners.get(sessionId);
+  if (!bucket) {
+    bucket = new Set();
+    replacedListeners.set(sessionId, bucket);
+  }
+  bucket.add(listener);
+  return () => {
+    bucket.delete(listener);
+    if (bucket.size === 0) replacedListeners.delete(sessionId);
+  };
+}
+
+/** Announce that this session's whole blob changed under its readers. */
+export function notifySessionReplaced(sessionId: string): void {
+  const bucket = replacedListeners.get(sessionId);
   if (!bucket) return;
   for (const listener of [...bucket]) listener();
 }

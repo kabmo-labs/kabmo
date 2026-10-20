@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { getSessionValue, hydrateSession, setSessionKey } from '@/shared/lib/workspace/session-state/store';
-import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
+import { subscribeSessionKey, subscribeSessionReplaced } from '@/shared/lib/workspace/session-state/listeners';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 
 type LoadedState = Record<string, unknown>;
@@ -13,6 +13,16 @@ type LoadedState = Record<string, unknown>;
  * Returns `[value, setValue, ready]` — `ready` lets panels defer their first
  * fetch/render until restore completed (mirrors the DesktopLayout editor
  * "blip" concern).
+ *
+ * The copy is PRIVATE by design: two callers of the same key never observe
+ * each other's writes (a panel width is owned by one component). It is NOT
+ * private about the store being replaced wholesale — a blob landing, or a
+ * spawn adoption migrating the pending slot onto the real id — because there
+ * the value the copy holds was never written by anyone, it is the fallback
+ * this component read on the commit the session id changed. `ready` does not
+ * move across an adoption (it was already true), so without the second
+ * subscription a pending chat's opened panels and picked view were reset to
+ * their defaults at the exact moment the spawn renamed the session.
  */
 export function useSessionState<T>(key: string, fallback: T): [T, (value: T | ((prev: T) => T)) => void, boolean] {
   const { sessionId, ready } = useSessionStateContext();
@@ -31,6 +41,19 @@ export function useSessionState<T>(key: string, fallback: T): [T, (value: T | ((
     // `key` and `fallback` are stable per call site; session/ready drive restore.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, ready, key]);
+
+  // The store replaced this session's blob under the copy (a load landing, an
+  // adoption migrate, a delete). `ready` may not move, so re-read on the event.
+  useEffect(
+    () =>
+      subscribeSessionReplaced(sessionId, () => {
+        const next = getSessionValue<T>(sessionId, key);
+        setLocal(next === undefined ? fallback : next);
+      }),
+    // `key` and `fallback` are stable per call site.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionId, key],
+  );
 
   const setValue = (value: T | ((prev: T) => T)) => {
     const resolved = typeof value === 'function' ? (value as (prev: T) => T)(getSessionValue<T>(sessionId, key) ?? local) : value;

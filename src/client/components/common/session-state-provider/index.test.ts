@@ -25,7 +25,8 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
-import { flushSession } from '@/shared/lib/workspace/session-state/store';
+import { adoptPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { flushSession, forgetSession } from '@/shared/lib/workspace/session-state/store';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
 /** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -138,5 +139,25 @@ describe('SessionStateProvider on a pending session', () => {
     // issued by the transition itself, and the stored blob it owns is read.
     expect(calls.some((c) => c.url === '/api/sessions/real-9/state' && c.method === 'GET')).toBe(true);
     expect(calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  test('a spawn adoption carries the panels the user opened onto the real id', async () => {
+    // The reported bug: open a new chat, open some right-panel views, send the
+    // first prompt — the spawn renames the session and everything the user had
+    // opened closed again. The provider migrates the pending slot in its OWN
+    // effect, which Preact runs AFTER its children's: each `useSessionState`
+    // copy had already re-read the (still empty) adopted slot, landed on its
+    // fallback, and never re-read because `ready` does not move across an
+    // adoption.
+    const pending = 'new-test-adopt';
+    const el = await mountPending(pending);
+    (el.querySelector('button') as HTMLButtonElement).click();
+    await act(async () => {});
+
+    adoptPendingSession(pending, 'omp-adopted', 1);
+    await switchTo(el, 'omp-adopted');
+
+    expect(el.textContent).toContain('git');
+    forgetSession('omp-adopted');
   });
 });
