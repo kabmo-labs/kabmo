@@ -77,8 +77,17 @@ jobs:
       # platform/build-tools pair this project declares is not necessarily one
       # of them — AGP downloads what it needs only when the licences are
       # accepted, and a missing licence fails the build instead of prompting.
+      #
+      # `packages:` is stated because the action's DEFAULT is
+      # `tools platform-tools`, and `tools` was removed from the SDK repository:
+      # measured on the v0.2.0 release run, the action's own install answered
+      # `Warning: Failed to find package 'tools'` and `sdkmanager` exited 1, so
+      # the job died in setup and no APK was ever built. The two packages this
+      # project actually needs are installed by the next step.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install SDK packages
         run: |
