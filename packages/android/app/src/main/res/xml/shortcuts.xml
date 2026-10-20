@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The launcher shortcut.
+
+  It targets MainActivity, NOT SettingsActivity, and that is the whole reason it
+  works: a shortcut intent is launched with the LAUNCHER's identity, so a
+  non-exported target is refused ("Permission Denial: … not exported from uid").
+  SettingsActivity stays unexported — no other app may drive the shell's server
+  address — and MainActivity, which is exported for the launcher anyway, opens
+  it when this action arrives.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="server_settings"
+        android:shortcutLongLabel="@string/settings_title"
+        android:shortcutShortLabel="@string/settings_short">
+        <intent
+            android:action="dev.kabmo.shell.OPEN_SETTINGS"
+            android:targetClass="dev.kabmo.shell.MainActivity"
+            android:targetPackage="dev.kabmo.shell" />
+    </shortcut>
+</shortcuts>

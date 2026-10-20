@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Platform theme only — no AppCompat, no Material. `windowBackground` is
+      Kabmo's paper so the frame between launch and first paint matches the app
+      rather than flashing white or black.
+    -->
+    <style name="Theme.Kabmo" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/kabmo_paper</item>
+        <item name="android:statusBarColor">@color/kabmo_paper</item>
+        <item name="android:navigationBarColor">@color/kabmo_paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorAccent">@color/kabmo_ink</item>
+        <item name="android:textColorPrimary">@color/kabmo_ink</item>
+    </style>
+</resources>

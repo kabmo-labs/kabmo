@@ -459,3 +459,40 @@ jobs:
       # teardown flaked.
       run-gates: false
     secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # 3. The Android shell. After `app`, because it ATTACHES to the release that
+  # job created — `gh release upload` has nothing to upload to before that.
+  #
+  # A call, like the two publish bodies above, so the steps exist once and a
+  # re-run cannot drift from a release run. Deliberately NOT an npm publish: the
+  # APK is the whole artifact and it goes to the GitHub release. Nothing is
+  # tagged here either — the tag is `app`'s.
+  #
+  # `needs: app` (rather than naming the gates too) is what makes the gates
+  # transitive: `app` -> `marketplace` -> `packages` -> both gate jobs, and
+  # `tests/ci-gates.test.ts` asserts that closure on the graph.
+  #
+  # The `if:` matches `app-publish`'s: a push whose commits ask for no version
+  # bump produces no tag, so there is no release to attach an APK to.
+  #
+  # `version-code` is the run number. Android refuses an install whose
+  # `versionCode` is not higher than the installed one, so a fixed value would
+  # make every release after the first uninstallable over the previous one.
+  # ---------------------------------------------------------------------------
+  apk:
+    name: Publish the Android APK
+    needs: app
+    if: needs.app.outputs.released == 'true'
+    # `contents: write` on the CALLER, not only the callee: a reusable workflow
+    # can only DOWNGRADE the permissions it inherits, so `read` here would turn
+    # the body's `contents: write` into read and `gh release upload` would fail
+    # with 403 after a full build. Unlike `app-publish` (which reads a commit
+    # and pushes to npm), this job writes to the release.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-android.yml
+    with:
+      tag: ${{ needs.app.outputs.tag }}
+      version-code: ${{ github.run_number }}
+    secrets: inherit

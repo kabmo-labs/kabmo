@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      A paper-flat palette matching Kabmo's own light theme, so the launch frame
+      and the settings screens do not flash a different product. Colours are
+      literal here rather than themed: the shell has no theme engine, and the
+      webview paints Kabmo's palette as soon as it loads.
+    -->
+    <color name="kabmo_paper">#FAF8F3</color>
+    <color name="kabmo_ink">#141310</color>
+</resources>

@@ -1,0 +1,262 @@
+# Kabmo Android shell
+
+A thin Android app that shows a Kabmo console in a WebView. It is a **shell only**:
+the server (Bun + `omp` + PTY + `git`) runs elsewhere — a laptop, a workstation, a
+NAS — and this app points at it.
+
+Kotlin, no AndroidX, no Compose, no Material. The APK contains the platform
+WebView and this source; every dependency added here is weight the shell does not
+need.
+
+## Why a shell and not a server
+
+Kabmo's server needs `omp`, a POSIX PTY shell, `git` and `rg` on the host. Android
+has none of them, and `ompStartupError()` refuses to boot without the `omp` binary.
+The phone is a viewer.
+
+## Requirements
+
+| | |
+|---|---|
+| JDK | 17 (`JAVA_HOME` must point at it — AGP rejects 8 and 11) |
+| Android SDK | `platforms;android-35`, `build-tools;35.0.0`, `platform-tools` |
+| Gradle | via `./gradlew` (8.9, pinned in `gradle/wrapper/`) |
+
+`local.properties` is **not committed** — it names the SDK on this machine:
+
+```properties
+sdk.dir=/path/to/android-sdk
+```
+
+## Build
+
+```bash
+cd packages/android
+export JAVA_HOME=/path/to/jdk-17
+./gradlew :app:assembleDebug
+# → app/build/outputs/apk/debug/app-debug.apk      (measured 900,638 B)
+
+./gradlew :app:assembleRelease
+# → app/build/outputs/apk/release/app-release.apk  (measured 65,069 B, R8 + resource shrink)
+
+./gradlew :app:testDebugUnitTest
+# → 8 tests over UrlNormalizer (plain JVM, no emulator)
+```
+
+The release APK is **65 KB** because it carries no library: one `classes.dex` of
+42 KB, the five launcher densities, and the platform WebView. The debug build is
+900 KB because it is not minified and carries the debug symbols.
+
+Install on a connected device:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+## Signing
+
+`assembleRelease` falls back to the **debug keystore** so a release APK is always
+buildable. That is fine for sideloading and wrong for distribution: a debug key
+cannot be upgraded over a different install, and Play rejects it.
+
+To sign properly, create `keystore.properties` **at `packages/android/`** (gitignored).
+The build reads it at configuration time and switches the release `signingConfig` to
+it; without the file the debug key is used:
+
+```properties
+storeFile=/absolute/path/to/release.jks
+storePassword=…
+keyAlias=…
+keyPassword=…
+```
+
+A keystore can be created with:
+
+```bash
+keytool -genkeypair -v -keystore release.jks -keyalg RSA -keysize 4096 \
+  -validity 10000 -alias kabmo
+```
+
+## Releases
+
+The APK is released by `.github/workflows/release.yml` on every push to `main`
+that cuts a version, as its **last** job (`apk`). It is not an npm package:
+`packages/android` is a private application, so the only artifact is the `.apk`
+attached to the GitHub release the `app` job created.
+
+```
+release.yml
+  gates ─┐
+  e2e  ──┴─> packages ─> marketplace ─> app ─> app-publish
+                                          └──> apk   ← publish-android.yml
+```
+
+- **After the gates, and after `app`.** `gh release upload` needs the release to
+  exist, so the job `needs: app`; the gates are transitive through
+  `app → marketplace → packages → gates/e2e`.
+- **`versionName` = the tag** (without the leading `v`), **`versionCode` = the
+  workflow run number.** Android refuses an install whose `versionCode` does not
+  increase, so a fixed value would make every release after the first
+  uninstallable over the previous one. Both reach Gradle as
+  `-PkabmoVersionName` / `-PkabmoVersionCode`, and the built APK is checked with
+  `aapt2 dump badging` before upload.
+- **The artifact is `kabmo-android-<tag>.apk`.**
+- **Signing is optional.** With `ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` set
+  as repository secrets, the release is signed with that key; without them it is
+  debug-signed, which sideloads fine but cannot upgrade a properly signed
+  install. The keystore and `keystore.properties` are deleted in an `always()`
+  step.
+- **The Android unit tests run here, not in `gates.yml`**, so a pull request
+  never pays for the Android toolchain.
+
+## First run
+
+1. The app opens **Server settings** (there is nothing to load yet).
+2. Type the address — scheme, host and port only: `http://192.168.1.20:3000`.
+   A bare `192.168.1.20:3000` works and defaults to `http`.
+3. **Test connection** calls `GET /api/health` and reports the server's version,
+   port, whether a password is required, and whether it is in demo mode. A
+   response from something that is not Kabmo is refused by name.
+4. **Connect** saves the address and clears cookies — a different address is a
+   different server, and a stale session cookie would be sent to it.
+
+### Page zoom
+
+**Page zoom** is on the same screen: a slider from **50% to 200% in 10% steps**,
+with the current percent beside the label and a **Reset to 100%** button.
+
+- It saves on every change — there is no Apply — because the console behind the
+  screen is what the user is judging, and a value that needed confirming could not
+  be previewed.
+- It applies on the WebView as `setInitialScale(percent)`, and the value is
+  re-applied on every `onResume`, so it survives navigation and a cold start.
+  `WebSettings.textZoom` was deliberately not used: it scales text only and
+  leaves layout at 100%, which reflows a two-column phone view into something
+  that no longer matches its boxes.
+- **It is not the pinch zoom.** A two-finger spread zooms the VIEWPORT, the same
+  gesture Chrome gives a page, and the two are independent: the slider sets where
+  a load starts, a pinch overrides it for that session, and a fresh load returns
+  to the slider's value (measured: pinch 1 → 2.88, then a cold start back at 1).
+  The gesture was switched OFF in the first build (`setSupportZoom`,
+  `builtInZoomControls` both false), which is why the shell felt frozen next to a
+  browser; all three are on now with `displayZoomControls = false`, so the
+  gesture works and no +/- buttons appear.
+- A stored value is snapped onto the slider's grid on read (`ServerConfig.zoom`),
+  so a percent written by hand — through `adb`, or by an older build — cannot put
+  the thumb at one end while the page scales by another value. `ZoomClampTest`
+  asserts that for every integer from -100 to 400.
+
+**A path is refused on purpose.** Every client call is root-relative
+(`fetch('/api/…')`), and both sockets derive their URL from `window.location`, so
+`http://host:3000/kabmo` would send `/api/health` to `http://host:3000/api/health`.
+The field says so instead of accepting a URL that breaks.
+
+### Getting back to it
+
+**One entry point: long-press the Kabmo icon → *Server settings*.**
+
+There is deliberately no in-app control. The WebView fills the display, and every
+edge of it belongs to Kabmo's own chrome — a floating button sits on a control it
+is not, and an edge tab covers the transcript's scroll gutter. The launcher
+shortcut is also the only entry point that still works when the saved address no
+longer answers, which is exactly when it is needed.
+
+The shortcut intent targets `MainActivity`, not `SettingsActivity`: a shortcut is
+launched with the launcher's identity, so a non-exported target is refused
+(`Permission Denial: … not exported from uid`). `SettingsActivity` stays
+unexported and `MainActivity` opens it when the action arrives — on create and
+again in `onNewIntent`, because `singleTask` delivers a re-launch to the running
+instance.
+
+## The APK download button
+
+The console's sidebar footer carries a **Download** control directly after
+*About*, and it is drawn only when BOTH facts hold:
+
+1. **This page is inside the Android app.** The APK appends
+   `KabmoAndroid/<version>` to its WebView User-Agent, and the server parses it
+   into `shellVersion` in the bootstrap payload — so the page is served already
+   knowing, with no bridge and no extra request. A browser has no token and never
+   sees the button.
+2. **A newer APK is published.** `GET /api/updates/android` reads the newest
+   GitHub release's asset list and takes the version from the asset NAME
+   (`kabmo-android-v1.2.3.apk` → `1.2.3`). The release TAG cannot be used: the
+   APK is attached to the app's release, whose tag names the *server* version,
+   and the two move independently.
+
+An app that is already current shows nothing — a button that downloads the build
+already installed is worse than no button — and so does one that is *ahead* of
+the published asset (a sideloaded newer build).
+
+The probe is lazy (only when a shell is detected), cached five minutes per
+process, and a failure answers `{url: null, latest: null}` rather than a 500: a
+button the console cannot back with a link must not appear.
+
+## Plain http, and what it costs
+
+Cleartext is enabled app-wide (`res/xml/network_security_config.xml`), because the
+server address is typed at runtime and cannot be listed in a per-domain exception.
+The consequences are shown on the setup screen rather than hidden:
+
+| | |
+|---|---|
+| Password + session cookie | cross the network unencrypted |
+| Voice dictation | **unavailable** — `getUserMedia` needs a secure context |
+| Clipboard | falls back to `execCommand` |
+| Realtime sockets | `ws://` permitted by the same rule |
+
+For a network you do not trust: use a tunnel (Tailscale, Cloudflare Tunnel, Caddy)
+and enter the `https://` URL. `--tls` self-signed works only in debug builds, where
+`debug-overrides` trusts user-installed CAs; a release APK fails closed on an
+unknown issuer and says so.
+
+## What the WebView implements, and why each matters
+
+Every one of these is a Kabmo feature that dies silently without it:
+
+| WebView hook | Feature it keeps alive |
+|---|---|
+| `onShowFileChooser` | the composer's 📎 attach button |
+| `onCreateWindow` | provider OAuth login (`window.open(…, '_blank')`), release notes, social links |
+| `setDownloadListener` + cookie forwarding | the editor's Download button |
+| `onReceivedSslError` | a named refusal instead of a blank page |
+| `shouldOverrideUrlLoading` | external links leave the shell instead of replacing Kabmo |
+| `window.__kabmoBack()` | the back button closes the drawer / editor / settings first |
+
+The back button is a **page-delegated** decision: Kabmo's phone layout keeps its
+screens in React state (`MobileLayoutWrapper`'s `currentScreen`), not in the URL,
+so `history.back()` alone would reopen a previous session while leaving the drawer
+that opened it on screen. `src/client/lib/native/back.ts` owns the handler stack;
+the shell calls it and falls back to WebView history, then to `finish()`.
+
+## Layout
+
+```
+packages/android/
+├── app/src/main/
+│   ├── AndroidManifest.xml          cleartext, launcher shortcut, single Task
+│   ├── java/dev/kabmo/shell/
+│   │   ├── MainActivity.kt          WebView + back
+│   │   ├── SettingsActivity.kt      native server settings (first run too)
+│   │   ├── KabmoWebView.kt          settings, cookies, origin comparison
+│   │   ├── KabmoWebViewClient.kt    navigation policy, SSL refusals
+│   │   ├── KabmoChromeClient.kt     window.open, file chooser
+│   │   ├── KabmoDownloads.kt        DownloadManager + session cookie
+│   │   ├── HealthProbe.kt           GET /api/health
+│   │   └── ServerConfig.kt          storage + URL normalization
+│   └── res/                         strings, colours, theme, icons, xml
+├── build.gradle.kts                 AGP + Kotlin pins
+└── gradle/wrapper/                  Gradle 8.9
+```
+
+## Client-side counterpart
+
+One file in the main app serves this shell:
+
+- `src/client/lib/native/back.ts` — `window.__kabmoBack()` and the handler stack,
+  which is how the hardware back button closes a drawer, the editor or a dialog
+  before the shell walks WebView history.
+
+It is inert in a browser: the shell is the only caller, and `main.tsx` installs
+the dispatcher unconditionally because a function nothing calls costs nothing.

@@ -1,0 +1,24 @@
+# Android shell (packages/android)
+
+# Gradle build output, caches and the generated wrapper distribution.
+.gradle/
+.kotlin/
+build/
+*.apk
+*.aab
+*.ap_
+*.hprof
+
+# Machine-local SDK location. Every machine puts the SDK somewhere different,
+# so this file is never committed — android/README.md says how to create it.
+local.properties
+
+# Signing material. A release keystore and its passwords must never be in the
+# repository; the release build falls back to the debug key when they are
+# absent, which is why an unsigned APK is still buildable here.
+*.jks
+*.keystore
+keystore.properties
+
+# The Gradle wrapper distribution is downloaded per machine; `gradlew` and
+# `gradle/wrapper/*` ARE committed so a checkout builds with the pinned version.

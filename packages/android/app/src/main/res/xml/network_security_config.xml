@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext is permitted app-wide, and that is a deliberate, documented trade.
+
+  A Kabmo server is normally reached at a LAN address the user types at runtime
+  (`http://192.168.1.20:3000`), so the host is not known when this file is
+  compiled and cannot be listed in a per-domain exception. The alternative —
+  requiring HTTPS — would force every self-hosted install onto a public
+  certificate or a tunnel before the app could be used at all.
+
+  Consequences, which the setup screen states rather than hides:
+  - a UI password and the session cookie cross the network in cleartext,
+  - `window.isSecureContext` is false, so dictation (`getUserMedia`) is
+    unavailable and clipboard falls back to `execCommand`,
+  - `ws://` realtime sockets are permitted by the same rule.
+
+  Self-signed certificates are trusted only for debug builds (`debug-overrides`),
+  so a release APK still fails closed on an unknown issuer instead of silently
+  accepting any certificate.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

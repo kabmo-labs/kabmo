@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kabmo</string>
+    <string name="settings_title">Server settings</string>
+    <string name="settings_short">Settings</string>
+
+    <string name="url_label">Server URL</string>
+    <string name="url_hint">http://192.168.1.20:3000</string>
+    <string name="url_help">Scheme, host and port only — a path is not supported.</string>
+    <string name="zoom_label">Page zoom</string>
+    <string name="zoom_value">%1$d%%</string>
+    <string name="zoom_help">Scales the whole console. 100% is the page\'s own size; this applies immediately, with no reload.</string>
+    <string name="zoom_reset">Reset to 100%</string>
+    <string name="test_button">Test connection</string>
+    <string name="save_button">Connect</string>
+    <string name="clear_cookies">Clear cookies</string>
+    <string name="testing">Checking…</string>
+
+    <string name="cleartext_warning">Plain http: your password and session cookie travel unencrypted on this network, and voice dictation is unavailable (the browser withholds the microphone outside a secure context).</string>
+    <string name="shortcut_hint">Long-press the Kabmo icon → Server settings to come back here.</string>
+
+    <string name="err_empty">Enter a server URL.</string>
+    <string name="err_scheme">Only http:// and https:// are supported.</string>
+    <string name="err_path">Use the origin only, without a path (Kabmo is served at the root).</string>
+    <string name="err_shape">Expected something like http://192.168.1.20:3000</string>
+    <string name="err_unreachable">Could not reach the server. Check the address and that the device is on the same network.</string>
+    <string name="err_not_kabmo">Something answered, but it is not a Kabmo server.</string>
+
+    <string name="ok_connected">Connected to Kabmo %1$s on port %2$d.</string>
+    <string name="ok_connected_auth">Connected to Kabmo %1$s on port %2$d — password required.</string>
+    <string name="ok_connected_mock">Connected to Kabmo %1$s on port %2$d (demo data).</string>
+
+    <string name="webview_error_settings">Server settings</string>
+
+    <string name="ssl_title">Certificate not trusted</string>
+    <string name="ssl_body">The server presented a certificate this device does not trust.\n\n%1$s\n\nInstall the certificate on this device, or connect over plain http on a trusted network.</string>
+</resources>

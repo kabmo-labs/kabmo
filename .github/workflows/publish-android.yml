@@ -1,0 +1,201 @@
+name: Publish the Android APK
+
+# The APK body, as a REUSABLE workflow — the same shape `publish-app.yml` and
+# `publish-packages.yml` take, and for the same reason: the steps exist once, so
+# the release run and a manual re-run cannot drift apart.
+#
+# It is NOT an npm publish. The shell is a private application, so the only
+# artifact is the `.apk` attached to the GitHub release `release.yml` already
+# created for the app tag. That is why there is no `environment: npm` here and no
+# registry credential: the only thing this job needs is `contents: write` on the
+# release it uploads to.
+#
+# The gates are NOT called here. `release.yml`'s `apk` job `needs: app`, which
+# already depends transitively on both gate jobs — the APK is built from the same
+# commit that was tagged, and re-running the whole matrix for a packaging step
+# would add minutes without adding coverage. `publish-app.yml` DOES call them,
+# because a tag can be pushed by hand and nothing else would have verified it;
+# this body is only reachable through `release.yml`.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to attach the APK to (e.g. v1.2.3).
+        required: true
+        type: string
+      # Android refuses to install an APK whose versionCode is not higher than
+      # the installed one, so the code must move on every release. The workflow
+      # run number is monotonic per workflow and needs no state of its own.
+      #
+      # Typed `string`, not `number`: `github.run_number` is a STRING context
+      # value, and a `number` input rejects it — actionlint reports "string value
+      # cannot be assigned". The build script parses it and falls back to the
+      # checked-in default when it is not a positive integer.
+      version-code:
+        description: versionCode for the APK. Must increase across releases.
+        required: true
+        type: string
+    secrets:
+      # Base64 of the release keystore (`release.jks`). Optional: without it the
+      # APK is signed with the debug key, which installs fine by sideload but
+      # cannot upgrade a properly signed install.
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+
+jobs:
+  apk:
+    name: Build and attach the APK
+    runs-on: ubuntu-latest
+    permissions:
+      # Uploading an asset to an existing release needs `contents: write`.
+      contents: write
+    steps:
+      # The tag, not the branch: the APK must be built from the commit the
+      # release names, and that commit is what the gates verified.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      # AGP 8.7 requires JDK 17. The runner's default JDK is not guaranteed to
+      # be 17 (it moved to 21), and a mismatch fails with a message that names
+      # Gradle rather than the toolchain.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The Android SDK is preinstalled on `ubuntu-latest`, but the exact
+      # platform/build-tools pair this project declares is not necessarily one
+      # of them — AGP downloads what it needs only when the licences are
+      # accepted, and a missing licence fails the build instead of prompting.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "build-tools;34.0.0"
+          yes | sdkmanager --licenses > /dev/null
+
+      # `local.properties` is gitignored (it names a machine-local SDK path), so
+      # the checkout has none. `ANDROID_HOME` is enough for AGP, but writing the
+      # file makes the failure mode explicit if the SDK root ever moves.
+      - name: Point Gradle at the SDK
+        run: echo "sdk.dir=${ANDROID_HOME}" > packages/android/local.properties
+
+      # The release keystore, when the repository carries one.
+      #
+      # The emptiness check is in the SHELL, not an `if:`: the `secrets` context
+      # is not available in a step condition (the workflow fails to parse), and a
+      # step's own `env:` is not reliably in scope for its `if:` either. A guard
+      # inside the script has neither problem and says out loud what it did.
+      #
+      # The files are gitignored, and the cleanup step removes them so a failure
+      # later in the job cannot leave signing material in an artifact.
+      - name: Prepare the release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "No ANDROID_KEYSTORE_BASE64 — the APK will be signed with the debug key."
+            echo "That installs fine by sideload but cannot upgrade a properly signed install."
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > packages/android/release.jks
+          cat > packages/android/keystore.properties <<EOF
+          storeFile=${GITHUB_WORKSPACE}/packages/android/release.jks
+          storePassword=${KEYSTORE_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          keyPassword=${KEY_PASSWORD}
+          EOF
+
+      - name: Build the release APK
+        env:
+          # Derived from the tag, without the leading `v`: an Android
+          # `versionName` is a display string, and `v1.2.3` reads as a tag inside
+          # the app rather than as a version.
+          VERSION_NAME: ${{ inputs.tag }}
+          VERSION_CODE: ${{ inputs.version-code }}
+        run: |
+          set -euo pipefail
+          cd packages/android
+          ./gradlew :app:assembleRelease --no-daemon --console=plain \
+            "-PkabmoVersionName=${VERSION_NAME#v}" \
+            "-PkabmoVersionCode=${VERSION_CODE}"
+
+      # The unit suite is `UrlNormalizer` only — plain JVM, no emulator — and it
+      # is the one piece of the shell with real logic. Running it here rather
+      # than in `gates.yml` keeps the Android toolchain out of every pull
+      # request; the APK job is the only place it can pay for itself.
+      - name: Unit tests
+        run: |
+          set -euo pipefail
+          cd packages/android
+          ./gradlew :app:testDebugUnitTest --no-daemon --console=plain
+
+      # A version check on the artifact, not on the build file: `aapt2` reads
+      # what the APK actually declares, so a `-P` that failed to reach
+      # `defaultConfig` is caught here instead of shipping a release whose APK
+      # cannot be installed over the previous one.
+      - name: Verify the APK version
+        env:
+          VERSION_NAME: ${{ inputs.tag }}
+          VERSION_CODE: ${{ inputs.version-code }}
+        run: |
+          set -euo pipefail
+          apk=packages/android/app/build/outputs/apk/release/app-release.apk
+          test -f "$apk" || { echo "No release APK was produced."; exit 1; }
+          badging="$("$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$apk")"
+          echo "$badging" | head -1
+          echo "$badging" | grep -q "versionName='${VERSION_NAME#v}'" \
+            || { echo "versionName is not ${VERSION_NAME#v}"; exit 1; }
+          echo "$badging" | grep -q "versionCode='${VERSION_CODE}'" \
+            || { echo "versionCode is not ${VERSION_CODE}"; exit 1; }
+
+      # Renamed so the download is identifiable: GitHub asset names are unique
+      # per release, and `app-release.apk` says nothing about what it is.
+      #
+      # The name comes from the TAG input, never `GITHUB_REF_NAME`: a reusable
+      # workflow called from `release.yml` runs on the caller's ref, which is
+      # `main` — measured, the first version produced `kabmo-android-main.apk`.
+      - name: Name the artifact
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          src=packages/android/app/build/outputs/apk/release/app-release.apk
+          cp "$src" "kabmo-android-${TAG}.apk"
+          ls -l ./*.apk
+
+      # `--clobber` because a re-run of this body must replace its own asset
+      # rather than fail on the duplicate. The tag is checked first: uploading to
+      # a tag with no release is a confusing 404, and `release.yml` only calls
+      # this after `app` cut one.
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --json tagName > /dev/null \
+            || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
+          gh release upload "$TAG" ./*.apk --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'
+
+      # Signing material never survives the job, including on failure.
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f packages/android/keystore.properties packages/android/release.jks

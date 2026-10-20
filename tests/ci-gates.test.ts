@@ -31,8 +31,16 @@ const E2E = './.github/workflows/e2e-specs.yml';
  * are the reason a release run now publishes instead of dispatching: a `uses:`
  * reference to one of these from `release.yml` is what makes publishing the
  * last action of the run rather than a second run beside it.
+ *
+ * `publish-android.yml` is the exception to "they call the gates": the APK is a
+ * packaging step over a commit `release.yml` already gated, and it is only
+ * reachable from there. The gate contract below therefore treats it as a body
+ * that does NOT provide gates, and asserts that instead.
  */
 const PUBLISH_BODIES = ['publish-app.yml', 'publish-packages.yml'];
+
+/** The Android APK body: a publish body that is not an npm publish and not a gate. */
+const ANDROID_BODY = 'publish-android.yml';
 
 /** Every workflow that can tag or publish, and therefore must be gated. */
 const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
@@ -51,7 +59,7 @@ async function load(file: string): Promise<Record<string, any>> {
 
 describe('the gate contract', () => {
   test('the reusable workflows exist and are callable', async () => {
-    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES]) {
+    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY]) {
       expect(existsSync(join(WORKFLOWS, file))).toBe(true);
       const doc = await load(file);
       // `workflow_call` is what makes a file callable at all. Without it the
@@ -62,7 +70,7 @@ describe('the gate contract', () => {
 
   test('every local reusable-workflow reference resolves and declares workflow_call', async () => {
     const seen = new Set<string>();
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -75,15 +83,15 @@ describe('the gate contract', () => {
         expect(callee.on?.workflow_call, `${uses} does not declare workflow_call`).toBeDefined();
       }
     }
-    // Four: the two gates, plus the two publish bodies a release calls.
-    expect(seen.size).toBe(4);
+    // Five: the two gates, the two npm publish bodies, and the Android APK body.
+    expect(seen.size).toBe(5);
   });
 
   test('a caller passes only inputs the callee declares', async () => {
     // An input the callee does not declare is a run-time failure ("Invalid
     // input, ... is not defined in the referenced workflow"), and it is exactly
     // the kind of typo a rename produces.
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         if (typeof job?.uses !== 'string' || !job.uses.startsWith('./')) continue;
@@ -316,5 +324,54 @@ describe('the gate contract', () => {
 
     // The app publish names the TAG the release job cut, not a branch.
     expect(appPublish.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+  });
+
+  test('the APK is attached to the release the app job cut, and never published to a registry', async () => {
+    // The Android shell is a private application: there is no registry for it,
+    // and the only artifact is the `.apk` on the GitHub release. Three facts
+    // keep that true, and each fails silently on its own:
+    //
+    //   1. the job WAITS for `app`, because `gh release upload` needs the
+    //      release to exist — running first would 404;
+    //   2. it uploads the TAG `app` produced, not a branch;
+    //   3. it asks for no npm publish, so nothing about it can drift into one.
+    const doc = await load('release.yml');
+    const apk = doc.jobs.apk;
+
+    expect(apk?.uses, 'release.yml:apk must call the APK body').toBe(`./.github/workflows/${ANDROID_BODY}`);
+    expect(apk.needs, 'release.yml:apk must wait for the app release').toContain('app');
+    expect(apk.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+
+    // Android refuses an install whose versionCode does not increase, so a
+    // fixed value would make every release after the first uninstallable over
+    // the previous one. The run number is monotonic and needs no state.
+    expect(apk.with?.['version-code'], 'the APK versionCode must move every release').toBe(
+      '${{ github.run_number }}',
+    );
+
+    // No registry credential, no `npm` environment: a publish body that grew
+    // either would be publishing an application package nobody asked for.
+    const body = await load(ANDROID_BODY);
+    expect(body.jobs.apk.environment, 'the APK body must not join the npm environment').toBeUndefined();
+    const steps = body.jobs.apk.steps as Array<{ run?: string; uses?: string; env?: Record<string, string> }>;
+    const text = JSON.stringify(steps);
+    expect(text, 'the APK body must not publish to npm').not.toContain('npm publish');
+    expect(text, 'the APK body must not read NPM_TOKEN').not.toContain('NPM_TOKEN');
+
+    // And it DOES attach: a build with no upload step would produce an artifact
+    // nobody can download, which is the failure this test exists for.
+    expect(text, 'the APK body must upload to the GitHub release').toContain('gh release upload');
+  });
+
+  test('the APK is built from the tag, so it matches the release it belongs to', async () => {
+    // The tag, never the branch: `release.yml` gates the pushed commit, but the
+    // release commit is a LATER one written by semantic-release — and the APK is
+    // attached to that release. Checking out `main` would build a different tree
+    // than the one the release names.
+    const body = await load(ANDROID_BODY);
+    const checkout = (body.jobs.apk.steps as Array<{ uses?: string; with?: Record<string, string> }>).find((step) =>
+      step.uses?.startsWith('actions/checkout'),
+    );
+    expect(checkout?.with?.ref, 'the APK checkout must name the release tag').toBe('${{ inputs.tag }}');
   });
 });
