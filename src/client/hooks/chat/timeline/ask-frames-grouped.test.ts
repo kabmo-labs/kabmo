@@ -63,7 +63,7 @@ describe('splitAskFrames with a grouped ask frame', () => {
     expect(split.modalRequest).toBeNull();
   });
 
-  test('an unowned grouped frame stays for the modal', () => {
+  test('an unowned grouped frame becomes an inline orphan, never a modal', () => {
     const stranger: ExtensionUiDialogRequest = {
       ...grouped,
       id: 'frame-2',
@@ -71,6 +71,50 @@ describe('splitAskFrames with a grouped ask frame', () => {
     };
     const split = splitAskFrames([message()], [stranger], true);
     expect(split.framesByTool.get('call-ask')).toBeUndefined();
-    expect(split.modalRequest).toBe(stranger);
+    // The timeline draws it (`OrphanAsks`); the modal has no `ask` body, so a
+    // grouped frame handed to it rendered an empty panel.
+    expect(split.orphanAsks).toEqual([stranger]);
+    expect(split.modalRequest).toBeNull();
+  });
+
+  test('a grouped frame whose questions carry no ids still claims its card', () => {
+    // Measured on 2 of 161 real `ask` calls: omp's schema requires an id, but
+    // a call written by an older build carried none. The id walk then matched
+    // nothing and the frame fell through to the MODAL.
+    const tool = askTool();
+    tool.input = {
+      questions: [
+        { id: '', question: 'Pick colors', options: [{ label: 'red' }], multi: true },
+        { id: '', question: 'Pick a size', options: [{ label: 's' }] },
+      ],
+    };
+    const unkeyed: ExtensionUiDialogRequest = {
+      ...grouped,
+      id: 'frame-3',
+      questions: [
+        { id: '', question: 'Pick colors', options: [{ label: 'red' }], multi: true },
+        { id: '', question: 'Pick a size', options: [{ label: 's' }] },
+      ],
+    };
+    const history = { id: 'm1', role: 'ai', content: '', toolCalls: [tool] } as unknown as ChatMessageData;
+
+    const split = splitAskFrames([history], [unkeyed], true);
+    expect(split.framesByTool.get('call-ask')?.length).toBe(2);
+    expect(split.orphanAsks).toEqual([]);
+    expect(split.modalRequest).toBeNull();
+  });
+
+  test('a grouped frame matches its card by question text when ids differ', () => {
+    const retitled: ExtensionUiDialogRequest = {
+      ...grouped,
+      id: 'frame-4',
+      questions: [
+        { id: 'omp-a', question: 'Pick colors', options: [{ label: 'red' }], multi: true },
+        { id: 'omp-b', question: 'Pick a size', options: [{ label: 's' }] },
+      ],
+    };
+    const split = splitAskFrames([message()], [retitled], true);
+    expect(split.framesByTool.get('call-ask')?.length).toBe(2);
+    expect(split.orphanAsks).toEqual([]);
   });
 });

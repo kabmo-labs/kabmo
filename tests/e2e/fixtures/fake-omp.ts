@@ -29,6 +29,9 @@
  *                    `CoordinationDetails` snapshot every 500 ms (the real
  *                    `wait` tool's progress frames)
  *   `ask:<text>`     raise an `extension_ui_request` and wait for the reply
+ *   `orphan-ask:<text>` the same dialog with NO tool call behind it — what a
+ *                    subagent or an extension's own `askDialog` produces, so
+ *                    the card cannot exist and the timeline must draw it
  *   `error:<text>`   fail the turn with a provider error
  *   `retry:<n>`      emit `auto_retry_start`/`auto_retry_end` around the turn
  *   `slow`           stream the answer one character at a time
@@ -173,6 +176,10 @@ async function runTurn(prompt: string, requestId: string) {
   const wait = /wait:(\d+)/.exec(prompt);
   const waitLimit = prompt.includes('waitcap');
   const ask = /ask:(.+)/.exec(prompt);
+  // A grouped ask with no tool call behind it — what a subagent or an
+  // extension's own `askDialog` produces. The card cannot exist, so the dialog
+  // must render inline rather than as the empty modal it used to.
+  const orphanAsk = /orphan-ask:(.+)/.exec(prompt);
   const error = /error:(.+)/.exec(prompt);
   const retry = /retry:(\d+)/.exec(prompt);
   const slow = prompt.includes('slow');
@@ -192,7 +199,9 @@ async function runTurn(prompt: string, requestId: string) {
   if (waitLimit) await streamWaitLimit();
   else if (wait) await streamWait(Number(wait[1]));
   if (tool) await streamToolCall(tool[1], cmd?.[1].trim());
-  if (ask) await runAsk(ask[1].trim());
+  // `orphan-ask:` contains `ask:`, so the cardless form is tested FIRST.
+  if (orphanAsk) await runAsk(orphanAsk[1].trim(), false);
+  else if (ask) await runAsk(ask[1].trim());
 
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
   if (error) {
@@ -250,7 +259,7 @@ const pendingAsks = new Map<string, (answers: AskAnswer[]) => void>();
  * fixture that skipped the block or the wait would leave the card unrenderable
  * or the post-submit window untestable — the two things a spec needs here.
  */
-async function runAsk(text: string) {
+async function runAsk(text: string, withCard = true) {
   const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
   const questions = [
@@ -274,19 +283,26 @@ async function runAsk(text: string) {
     },
   ];
   const args = { questions };
-  const block = { type: 'toolCall', id: callId, name: 'ask', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
-  const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+  if (withCard) {
+    const block = { type: 'toolCall', id: callId, name: 'ask', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+    const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
 
-  write({ type: 'message_start', messageId, message });
-  write({ type: 'message_end', messageId, message });
-  write({ type: 'turn_end', message, toolResults: [] });
+    write({ type: 'message_start', messageId, message });
+    write({ type: 'message_end', messageId, message });
+    write({ type: 'turn_end', message, toolResults: [] });
 
-  write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'ask', args });
+    write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'ask', args });
+  }
   const uiRequestId = `ui-${crypto.randomUUID().slice(0, 8)}`;
   const answers = await new Promise<AskAnswer[]>((resolve) => {
     pendingAsks.set(uiRequestId, resolve);
     write({ type: 'extension_ui_request', id: uiRequestId, method: 'ask', questions });
   });
+
+  // A cardless ask (a subagent's, an extension's own `askDialog`) writes no
+  // tool result — there is no tool call to write one for. The dialog is the
+  // whole interaction, and its answer is what unblocks the child.
+  if (!withCard) return;
 
   const text2 = answers
     .map((answer) => `${answer.id}: ${answer.customInput ?? answer.selectedOptions.join(', ')}`)

@@ -94,7 +94,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   // fetch lands) has no card to be matched against yet, so deciding "no card
   // owns this" during that window painted the ask modal and then took it back —
   // the flash on switching to a session parked on a question.
-  const { framesByTool, modalRequest } = useMemo(
+  const { framesByTool, orphanAsks, modalRequest } = useMemo(
     () => splitAskFrames(localMessages, extensionDialogs, !sessionLoading),
     [localMessages, extensionDialogs, sessionLoading],
   );
@@ -103,8 +103,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     resolveExtensionDialog(request.id);
   }, [respondToExtensionUi, resolveExtensionDialog]);
   const askFrames = useMemo<AskFramesHandle>(
-    () => ({ framesByTool, respond: respondToFrame }),
-    [framesByTool, respondToFrame],
+    () => ({ framesByTool, orphanAsks, respond: respondToFrame }),
+    [framesByTool, orphanAsks, respondToFrame],
   );
 
   const [newChatInitialContent, setNewChatInitialContent] = useState<string | null>(null);

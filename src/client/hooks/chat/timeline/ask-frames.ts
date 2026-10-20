@@ -12,23 +12,31 @@
  * (approval gates under `always-ask`, extension pickers) has no card of its own
  * and keeps the modal.
  *
- * The two are told apart by the running ask tool calls: a frame whose title
- * names one of their questions is theirs, and a frame that follows such a frame
- * (the `editor` omp opens after "Other (type your own)") belongs with it too.
- * Any frame left over is modal material — including an ask-shaped frame whose
- * tool call the timeline has not seen, which must stay answerable rather than
- * silently vanish.
+ * An `ask` frame is therefore NEVER modal material, in any state. It is either
+ * claimed by the card that raised it, or returned as an ORPHAN the timeline
+ * draws inline: a question whose tool call this client never saw (a subagent's,
+ * an extension's own `askDialog`, a tool call outside the loaded window) still
+ * blocks the agent, and the one place it must not appear is a dialog over the
+ * conversation. That is what an empty modal was — `ExtensionDialog` has no
+ * `ask` body, so an orphaned frame painted a panel with no question in it and a
+ * single button whose click omp rejected ("Ask dialog response must carry N
+ * answers"), leaving the run parked.
  *
- * That fallback must wait for the session's own history, though. Ownership is
- * decided against the ask tool calls in `messages`, and on session open the
+ * The claim walks two keys, because omp gives the frame less than the tool call
+ * does: the question IDS when both carry them, and the question TEXT (what
+ * omp's own per-question loop matches on). A frame that matches neither is an
+ * orphan, not a modal — and deliberately not "the only open ask", which would
+ * steal a ratchet approval or an extension's own `askDialog` into a tool card
+ * that did not raise it.
+ *
+ * The modal is also held until the session's own history has loaded. Ownership
+ * is decided against the ask tool calls in `messages`, and on session open the
  * pending dialogs are replayed from the agent-state probe — which answers out
- * of the wrapper's local flags — long before the JSONL fetch lands. Every
- * replayed frame therefore looks unowned for that window, and rendering one as
- * a modal painted the question on screen and yanked it away the instant the
- * timeline arrived and its card claimed it: the flash seen when switching to a
- * session parked on an ask. `historyLoaded` holds the modal — never the card
- * claim — until there is a timeline to decide against; a frame no card claims
- * after that still gets its modal.
+ * of the wrapper's local flags — long before the JSONL fetch lands. Rendering a
+ * replayed APPROVAL as a modal in that window painted it on screen and yanked
+ * it away the instant the timeline arrived and its card claimed it: the flash
+ * seen when switching to a session parked on an ask. `historyLoaded` holds the
+ * modal — never the card claim — until there is a timeline to decide against.
  */
 
 import { createContext, useContext } from 'preact/compat';
@@ -40,17 +48,21 @@ import type { ExtensionDialogResponse } from '@/client/components/workspace/chat
 export interface AskFramesSplit {
   /** The ask's dialogs, bucketed per question, keyed by ask tool-call id. */
   framesByTool: Map<string, ExtensionUiDialogRequest[][]>;
-  /** Oldest request no ask card owns — the one the modal renders, if any. */
+  /** Ask dialogs no card can own — the timeline draws them inline. */
+  orphanAsks: ExtensionUiDialogRequest[];
+  /** Oldest non-ask request nothing claimed — the one the modal renders. */
   modalRequest: ExtensionUiDialogRequest | null;
 }
 
 export interface AskFramesHandle {
   framesByTool: AskFramesSplit['framesByTool'];
+  /** Ask dialogs with no tool card to render them (see `orphanAsks`). */
+  orphanAsks: AskFramesSplit['orphanAsks'];
   /** Answer one ask dialog and drop it from the pending queue. */
   respond: (request: ExtensionUiDialogRequest, response: ExtensionDialogResponse) => void;
 }
 
-const EMPTY: AskFramesHandle = { framesByTool: new Map(), respond: () => {} };
+const EMPTY: AskFramesHandle = { framesByTool: new Map(), orphanAsks: [], respond: () => {} };
 
 export const AskFramesContext = createContext<AskFramesHandle>(EMPTY);
 
@@ -67,7 +79,7 @@ export function splitAskFrames(
   historyLoaded: boolean,
 ): AskFramesSplit {
   const framesByTool = new Map<string, ExtensionUiDialogRequest[][]>();
-  if (pending.length === 0) return { framesByTool, modalRequest: null };
+  if (pending.length === 0) return { framesByTool, orphanAsks: [], modalRequest: null };
 
   // Match against the asks that can still own a dialog: a reloaded session
   // reads its tool calls back from the JSONL, where a call still parked on a
@@ -95,25 +107,61 @@ export function splitAskFrames(
 
   const owned = new Map<string, ExtensionUiDialogRequest[]>();
   const claimed = new Set<ExtensionUiDialogRequest>();
+  const orphanAsks: ExtensionUiDialogRequest[] = [];
   let lastOwner: string | null = null;
 
   for (const request of pending) {
+    // An `ask` frame is never modal material, whatever it carries. A malformed
+    // one (no `questions`) has nothing for a card to draw either, but handing it
+    // to the title/lastOwner walk below would file it under an unrelated ask's
+    // question — so it is orphaned like any other cardless ask.
+    const isAskFrame = request.method === 'ask';
     // A GROUPED ask frame (`method:"ask"`, sent after `set_ask_dialog`) carries
     // every question of one call and no `title` at all, so the title walk below
     // can never place it. Its questions carry omp's own ids, which is the
     // exact key the tool call's arguments use — match on those.
-    const grouped = Array.isArray(request.questions) && request.questions.length > 0 ? request.questions : null;
+    const grouped = isAskFrame && Array.isArray(request.questions) && request.questions.length > 0
+      ? request.questions
+      : null;
+    if (isAskFrame && !grouped) {
+      if (historyLoaded) orphanAsks.push(request);
+      continue;
+    }
     if (grouped) {
       const ids = new Set(grouped.map((question) => question.id).filter(Boolean));
-      const owner = [...openAsks].reverse().find((candidate) =>
+      let groupedOwner = [...openAsks].reverse().find((candidate) =>
         candidate.questions.some((question) => question.id && ids.has(question.id)),
       );
-      if (owner) {
-        claimed.add(request);
-        lastOwner = owner.toolId;
-        owned.set(owner.toolId, [...(owned.get(owner.toolId) ?? []), request]);
-        continue;
+      // The id walk is the exact key, but it is not the only one omp gives us:
+      // a call whose questions carry no `id` (measured on 2 of 161 real `ask`
+      // calls) yields an empty id set, and the frame then matched nothing and
+      // fell through to the MODAL — an ask dialog shown outside the timeline,
+      // which is the one place it must never be. The question TEXT is what
+      // omp's own per-question loop matches on, so it is the fallback here.
+      if (!groupedOwner) {
+        const titles = new Set(grouped.map((question) => normalizeAskText(question.question)).filter(Boolean));
+        groupedOwner = [...openAsks].reverse().find((candidate) =>
+          candidate.questions.some((question) => titles.has(normalizeAskText(question.question))),
+        );
       }
+      if (groupedOwner) {
+        claimed.add(request);
+        lastOwner = groupedOwner.toolId;
+        owned.set(groupedOwner.toolId, [...(owned.get(groupedOwner.toolId) ?? []), request]);
+      }
+      // A grouped ask is NEVER modal material: with no card to claim it, it is
+      // an orphan the timeline draws inline (see the module note). It must not
+      // fall through to the title/lastOwner walk either — that walk exists for
+      // the per-question `select` loop, and handing a grouped frame to it would
+      // file one dialog under a single question.
+      //
+      // The orphan row waits for the history for the same reason the modal
+      // does: a frame replayed on session open looks cardless until the JSONL
+      // lands, so drawing it now would paint the question at the tail of the
+      // timeline and then move it onto its card. The frame stays queued, so
+      // nothing is lost — the split simply re-runs.
+      if (!groupedOwner && historyLoaded) orphanAsks.push(request);
+      continue;
     }
 
     const title = typeof request.title === 'string' ? normalizeAskText(request.title) : '';
@@ -164,9 +212,11 @@ export function splitAskFrames(
   }
 
   // The frame stays queued either way — only the modal waits for the history,
-  // so nothing is dropped and nothing flashes.
-  return {
-    framesByTool,
-    modalRequest: historyLoaded ? pending.find((request) => !claimed.has(request)) ?? null : null,
-  };
+  // so nothing is dropped and nothing flashes. An `ask` frame is excluded here
+  // in BOTH states: it is answered by a card or by the orphan row, and the
+  // modal has no body for it.
+  const modalRequest = historyLoaded
+    ? pending.find((request) => !claimed.has(request) && request.method !== 'ask') ?? null
+    : null;
+  return { framesByTool, orphanAsks, modalRequest };
 }

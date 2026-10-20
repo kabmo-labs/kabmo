@@ -4,6 +4,7 @@ import { MessageList } from '@/client/components/workspace/chat-timeline/Message
 import { MinimapShortcuts } from '@/client/components/workspace/chat-timeline/MinimapShortcuts';
 import { MobileTurnJump } from '@/client/components/workspace/chat-timeline/MobileTurnJump';
 import { LoadingOlderIndicator } from '@/client/components/workspace/chat-timeline/SessionSkeleton';
+import { OrphanAsks } from '@/client/components/workspace/chat-timeline/tool-renderers/ask-panel/OrphanAsks';
 import type { Attachment, ChatMessageData, UserTurnRef } from '@/shared/types';
 
 interface TimelineBodyProps {
@@ -115,6 +116,11 @@ export function TimelineBody({
             onNewChat={onNewChat}
             isMobile={isMobile}
           />
+          {/* An ask whose tool card this client cannot see (a subagent's, an
+              extension's own dialog, a call outside the loaded window) still
+              blocks the agent. It renders HERE, as the last row of the
+              conversation, never as a modal over it. */}
+          <OrphanAsks />
         </div>
       </div>
 

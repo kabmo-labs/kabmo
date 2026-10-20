@@ -111,6 +111,7 @@ afterAll(() => restoreDomGlobals());
 function mount(tool: ToolCallData, groups: ExtensionUiDialogRequest[][]): void {
   const handle: AskFramesHandle = {
     framesByTool: new Map([[tool.id, groups]]),
+    orphanAsks: [],
     respond: (request, response) => calls.push({ request, response }),
   };
   act(() => {

@@ -65,7 +65,7 @@ describe('splitAskFrames', () => {
     const gate = confirmFrame('g1', 'Run bash?');
 
     // The regression: the frame has been replayed, its tool call has not.
-    expect(splitAskFrames([], [question], false)).toEqual({ framesByTool: new Map(), modalRequest: null });
+    expect(splitAskFrames([], [question], false)).toEqual({ framesByTool: new Map(), orphanAsks: [], modalRequest: null });
     // The hold is uniform — a gate cannot be told from an ask before history
     // either, and it is re-decided the moment the history settles.
     expect(splitAskFrames([], [gate], false).modalRequest).toBeNull();
