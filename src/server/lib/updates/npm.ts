@@ -2,7 +2,7 @@
  * npm registry reads for the update check.
  *
  * npm is where both targets are actually published, and therefore the version an
- * install can move to: `kabmo update` runs `bun add -g @rajebdev/kabmo@<version>`,
+ * install can move to: `kabmo update` runs `bun add -g kabmo@<version>`,
  * and omp's own `omp update --check` resolves its metadata from the registry too
  * (verified against omp 18.6.0 with a header-recording stub: the check issued
  * exactly one request, `<registry>/@oh-my-pi%2fpi-coding-agent/latest`). Reading
@@ -26,12 +26,12 @@ const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
  * SCOPED, and that is not cosmetic: npm refuses the bare name `kabmo` with
  * `403 — Package name too similar to existing package karma` (verified against
  * the registry: the name is unclaimed, so it is a typo-squat guard rather than
- * an ownership conflict). `@rajebdev/kabmo` is the scope the maintainer's own
+ * an ownership conflict). `kabmo` is the scope the maintainer's own
  * npm account owns, so the publish needs no extra organisation grant, and the
  * `bin` stays `kabmo` — the COMMAND a user types did not change, only the
  * specifier `bun add -g` resolves.
  */
-export const KABMO_PACKAGE = '@rajebdev/kabmo';
+export const KABMO_PACKAGE = 'kabmo';
 
 /**
  * The package name before the rename — a read-only fallback.
