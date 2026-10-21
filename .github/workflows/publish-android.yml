@@ -153,16 +153,18 @@ jobs:
 
       - name: Build the release APK
         env:
-          # Derived from the tag, without the leading `v`: an Android
-          # `versionName` is a display string, and `v1.2.3` reads as a tag inside
-          # the app rather than as a version.
-          VERSION_NAME: ${{ inputs.tag }}
+          # The version is NOT the tag. It is `version.properties`, bumped by the
+          # `android` job of `release.yml` when the shell changed — which is what
+          # makes the number the console compares against the one the running app
+          # reports on its User-Agent (`KabmoAndroid/<versionName>`).
           VERSION_CODE: ${{ inputs.version-code }}
         run: |
           set -euo pipefail
           cd packages/android
+          version="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*//p' | sed 's/[[:space:]]*$//' version.properties | tail -1)"
+          test -n "$version" || { echo "version.properties declares no versionName"; exit 1; }
+          echo "Shell version: $version"
           ./gradlew :app:assembleRelease --no-daemon --console=plain \
-            "-PkabmoVersionName=${VERSION_NAME#v}" \
             "-PkabmoVersionCode=${VERSION_CODE}"
 
       # The unit suite is `UrlNormalizer` only — plain JVM, no emulator — and it
@@ -176,37 +178,41 @@ jobs:
           ./gradlew :app:testDebugUnitTest --no-daemon --console=plain
 
       # A version check on the artifact, not on the build file: `aapt2` reads
-      # what the APK actually declares, so a `-P` that failed to reach
-      # `defaultConfig` is caught here instead of shipping a release whose APK
-      # cannot be installed over the previous one.
+      # what the APK actually declares, so a missing `version.properties` read is
+      # caught here instead of shipping a release whose APK cannot be installed
+      # over the previous one — or, worse, one whose version does not match the
+      # number the console compares against.
       - name: Verify the APK version
         env:
-          VERSION_NAME: ${{ inputs.tag }}
           VERSION_CODE: ${{ inputs.version-code }}
         run: |
           set -euo pipefail
+          expected="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*//p' | sed 's/[[:space:]]*$//' packages/android/version.properties | tail -1)"
           apk=packages/android/app/build/outputs/apk/release/app-release.apk
           test -f "$apk" || { echo "No release APK was produced."; exit 1; }
           badging="$("$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$apk")"
           echo "$badging" | head -1
-          echo "$badging" | grep -q "versionName='${VERSION_NAME#v}'" \
-            || { echo "versionName is not ${VERSION_NAME#v}"; exit 1; }
+          echo "$badging" | grep -q "versionName='${expected}'" \
+            || { echo "versionName is not ${expected}"; exit 1; }
           echo "$badging" | grep -q "versionCode='${VERSION_CODE}'" \
             || { echo "versionCode is not ${VERSION_CODE}"; exit 1; }
 
       # Renamed so the download is identifiable: GitHub asset names are unique
       # per release, and `app-release.apk` says nothing about what it is.
       #
-      # The name comes from the TAG input, never `GITHUB_REF_NAME`: a reusable
-      # workflow called from `release.yml` runs on the caller's ref, which is
-      # `main` — measured, the first version produced `kabmo-android-main.apk`.
+      # The name carries the SHELL's version, never the release tag — the
+      # console reads the published version out of the asset name
+      # (`versionFromAssetName`), so a name carrying the app's tag would compare
+      # a server version against the version the running app reports and offer
+      # an update that does not exist (or hide one that does). Two releases can
+      # therefore carry the same asset name; they are different releases, and
+      # `--clobber` only ever replaces this job's own asset.
       - name: Name the artifact
-        env:
-          TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          version="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*//p' | sed 's/[[:space:]]*$//' packages/android/version.properties | tail -1)"
           src=packages/android/app/build/outputs/apk/release/app-release.apk
-          cp "$src" "kabmo-android-${TAG}.apk"
+          cp "$src" "kabmo-android-v${version}.apk"
           ls -l ./*.apk
 
       # `--clobber` because a re-run of this body must replace its own asset

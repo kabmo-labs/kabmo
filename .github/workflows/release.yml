@@ -1,8 +1,9 @@
 name: Release
 
 # A push to `main` cuts every release this repository makes, in ONE run, in a
-# fixed order: the published packages first, then the app — and each of them is
-# PUBLISHED by this same run, as its last action.
+# fixed order: the published packages, the bundled plugin and shell version
+# bumps, then the app — and each release is PUBLISHED by this same run, as its
+# last action.
 #
 # NOTHING IS TAGGED UNTIL THE GATES AND THE BROWSER SPECS HAVE PASSED. The two
 # gate jobs below CALL `.github/workflows/gates.yml` and
@@ -254,8 +255,8 @@ jobs:
     secrets: inherit
 
   # ---------------------------------------------------------------------------
-  # 1b. The bundled marketplace plugins. Between `packages` and `app`, and that
-  # position is the whole design.
+  # 1b. The bundled marketplace plugins. Between `packages` and the shell bump,
+  # and that position is the whole design.
   #
   # Named `marketplace`, NOT `plugins`: `publish-plugins.yml` already means the
   # npm packages `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui`, and a job called
@@ -352,16 +353,102 @@ jobs:
           git log --oneline -1
 
   # ---------------------------------------------------------------------------
-  # 2. The app. Waits for the packages AND the marketplace bumps, so its
-  # dependency pins are current and its tarball carries the plugin versions a
-  # user needs.
+  # 1c. The Android shell's version. Between `marketplace` and `app`, for the
+  # same reason the plugins sit there: the app job fast-forwards to the commit
+  # this job makes, and the APK is built from the tag `app` cuts — so a bump
+  # landing after it would reach installs one release late.
+  #
+  # The APK's `versionName` used to be the app's release tag, which tied two
+  # independent cadences together: a shell-only fix shipped under a server
+  # version, and the number the console compares (`KabmoAndroid/<versionName>`
+  # against the published asset's name) said nothing about whether the shell had
+  # changed. `packages/android/version.properties` now holds it, and this job is
+  # the only writer.
+  #
+  # Nothing is tagged and nothing is published: the APK is attached to the
+  # app's release, so a shell bump reaches an installed app on the NEXT app
+  # release — the same lag a bundled plugin bump has, and for the same reason
+  # (the artifact rides the app's release rather than having one of its own).
+  # ---------------------------------------------------------------------------
+  android:
+    name: Bump the Android shell
+    needs: marketplace
+    runs-on: ubuntu-latest
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      any: ${{ steps.bump.outputs.any }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # After the sync, so the range starts at the commit `marketplace` made.
+      - name: Sync to the current remote
+        run: |
+          git fetch origin main
+          git merge --ff-only FETCH_HEAD
+          git log --oneline -1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Bump the shell version
+        id: bump
+        # `release/android.js` holds the file and the watermark pattern, and
+        # `release/android.test.js` asserts them against the tree. The bump LEVEL
+        # is the app's own rule set, so a `fix` is a patch and a `feat` a minor.
+        run: node release/release-android.mjs
+
+      # Committed HERE, not by the app job: semantic-release's release commit
+      # carries only its own `assets`, so an uncommitted bump would be discarded
+      # when that job resets to its checkout — and the tag would build the OLD
+      # shell version.
+      - name: Commit the bump
+        if: steps.bump.outputs.any == 'true'
+        env:
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+        # A `chore`, which releases nothing on its own (`release/release-rules.js`),
+        # so this commit cannot cut a version by itself. `[skip ci]` because the
+        # gates already ran on the push that produced it.
+        run: |
+          git add packages/android/version.properties
+          if git diff --cached --quiet; then
+            echo "Nothing staged; the bump produced no change."
+            exit 0
+          fi
+          git commit -q -m "chore(release): bump the android shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
+          git push origin HEAD:main
+          git log --oneline -1
+
+  # ---------------------------------------------------------------------------
+  # 2. The app. Waits for the packages, the marketplace bumps AND the shell
+  # bump, so its dependency pins are current, its tarball carries the plugin
+  # versions a user needs, and the tag it cuts carries the shell version the APK
+  # will declare.
   # ---------------------------------------------------------------------------
   app:
     name: Release the app
-    # `marketplace` already `needs: packages`, and `packages` already `needs:`
-    # both gate jobs, so naming `marketplace` is what makes the app wait for
-    # everything.
-    needs: marketplace
+    # `android` already `needs: marketplace`, which already `needs: packages`,
+    # which already `needs:` both gate jobs — so naming `android` is what makes
+    # the app wait for everything.
+    needs: android
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -470,8 +557,13 @@ jobs:
   # tagged here either — the tag is `app`'s.
   #
   # `needs: app` (rather than naming the gates too) is what makes the gates
-  # transitive: `app` -> `marketplace` -> `packages` -> both gate jobs, and
-  # `tests/ci-gates.test.ts` asserts that closure on the graph.
+  # transitive: `app` -> `android` -> `marketplace` -> `packages` -> both gate
+  # jobs, and `tests/ci-gates.test.ts` asserts that closure on the graph.
+  #
+  # The `versionName` the APK declares is NOT the tag: it is
+  # `packages/android/version.properties`, which the `android` job bumped before
+  # `app` tagged. That number is what the running shell reports on its
+  # User-Agent, and `publish-android.yml` names the asset from the same file.
   #
   # The `if:` matches `app-publish`'s: a push whose commits ask for no version
   # bump produces no tag, so there is no release to attach an APK to.

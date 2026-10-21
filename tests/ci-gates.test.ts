@@ -204,17 +204,18 @@ describe('the gate contract', () => {
     }
   });
 
-  test('the app release still waits for the packages, through the marketplace bumps', async () => {
+  test('the app release waits for the packages, the plugin bumps and the shell bump', async () => {
     // The ordering is load-bearing and it is the one thing the transitive check
     // above cannot see: `app` could depend on the gates directly and still race
     // the lockfile refresh.
     //
-    // The chain is `packages -> marketplace -> app`, and BOTH hops matter.
-    // `packages` commits the refreshed `bun.lock`, and a `workspace:` spec is
-    // substituted from that record, so the app must not pack before it.
+    // The chain is `packages -> marketplace -> android -> app`, and every hop
+    // matters. `packages` commits the refreshed `bun.lock`, and a `workspace:`
+    // spec is substituted from that record, so the app must not pack before it.
     // `marketplace` bumps the bundled plugins' versions into the same branch, and
-    // the app's tarball is what carries them — so a bump landing after the app
-    // packed would reach existing installs one release late.
+    // the app's tarball is what carries them. `android` bumps the shell version
+    // into the same branch, and the APK is built from the tag `app` cuts — so a
+    // bump landing after it would reach installs one release late.
     const doc = await load('release.yml');
     const needsOf = (id: string): string[] => {
       const value = doc.jobs[id]?.needs;
@@ -223,7 +224,30 @@ describe('the gate contract', () => {
     };
 
     expect(needsOf('marketplace')).toContain('packages');
-    expect(needsOf('app')).toContain('marketplace');
+    expect(needsOf('android')).toContain('marketplace');
+    expect(needsOf('app')).toContain('android');
+  });
+
+  test('the shell bump runs before the app tags, and only writes its own version file', async () => {
+    // A bump that ran after the app would be discarded (the release commit
+    // carries only semantic-release's own assets) and the APK would be built
+    // from a tag holding the OLD shell version — a fix no installed app is ever
+    // offered. The commit step's file list is asserted because staging `-A` would
+    // sweep a lockfile change into a `chore` that claims to be a version bump.
+    const doc = await load('release.yml');
+    const job = doc.jobs.android;
+    expect(job, 'release.yml has no android bump job').toBeDefined();
+
+    const steps = (job.steps as Array<{ run?: string; name?: string }>) ?? [];
+    const bump = steps.findIndex((step) => String(step.run ?? '').includes('release-android.mjs'));
+    const commit = steps.findIndex((step) => String(step.run ?? '').includes('git commit'));
+    expect(bump, 'the shell bump must run its own script').toBeGreaterThanOrEqual(0);
+    expect(commit, 'the bump must be committed, or the tag builds the old version').toBeGreaterThan(bump);
+
+    const text = JSON.stringify(steps);
+    expect(text, 'the bump commit must stage only version.properties').toContain(
+      'git add packages/android/version.properties',
+    );
   });
 
   test('nothing publishes before the gates in a publish workflow', async () => {

@@ -16,7 +16,7 @@
  * asserts it against the tree, so a directory can only be stated here.
  */
 
-import { spawnSync } from 'node:child_process';
+import { commitsSince as genericCommitsSince, versionWatermark as genericWatermark } from './watermark.js';
 
 /**
  * One bundled plugin.
@@ -53,18 +53,7 @@ export const BUNDLED_PLUGINS = [
  * @returns {string|null} A commit hash, or null when the file has no such line.
  */
 export function versionWatermark(dir, cwd) {
-  const result = spawnSync(
-    'git',
-    ['log', '-s', '--format=%H', '-L', `/"version"/,+1:${dir}/package.json`],
-    { cwd, encoding: 'utf8' },
-  );
-
-  if (result.status !== 0) return null;
-
-  // Newest first, so the first line of output is the commit being asked for.
-  const hash = result.stdout.split('\n').map((line) => line.trim()).find((line) => line !== '');
-
-  return hash ?? null;
+  return genericWatermark(`${dir}/package.json`, '/"version"/', cwd);
 }
 
 /**
@@ -83,26 +72,5 @@ export function versionWatermark(dir, cwd) {
  * @returns {Array<{hash: string, message: string}>}
  */
 export function commitsSinceWatermark(dir, cwd, limit = 200) {
-  const watermark = versionWatermark(dir, cwd);
-  const range = watermark ? `${watermark}..HEAD` : `-${limit}`;
-
-  const result = spawnSync('git', ['log', `--format=%H%x1f%B%x1e`, range, '--', dir], {
-    cwd,
-    encoding: 'utf8',
-    // A long history of full messages is still far below this; the default 1 MB
-    // would truncate silently and drop commits from the analysis.
-    maxBuffer: 256 * 1024 * 1024,
-  });
-
-  if (result.status !== 0) return [];
-
-  return result.stdout
-    .split('\x1e')
-    .map((chunk) => chunk.replace(/^\n+/, ''))
-    .filter((chunk) => chunk.trim() !== '')
-    .map((chunk) => {
-      const [hash, ...body] = chunk.split('\x1f');
-
-      return { hash, message: body.join('\x1f').trim() };
-    });
+  return genericCommitsSince(dir, cwd, `${dir}/package.json`, '/"version"/', limit);
 }

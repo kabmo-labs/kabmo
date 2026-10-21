@@ -31,71 +31,14 @@
  * usage: node release/release-marketplace.mjs [--dry-run]
  */
 
-import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
-import appConfig from '../release.config.mjs';
+import { analyzerConfig, bumpVersion, setOutput, toCommit } from './bump.js';
 import { BUNDLED_PLUGINS, commitsSinceWatermark } from './marketplace.js';
 import { repoRoot } from './packages.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
-
-/**
- * The analyzer exactly as `release.config.mjs` hands it to semantic-release —
- * looked up by name rather than restated, so a `feat` means the same thing
- * here as in the app's release.
- */
-const analyzerEntry = appConfig.plugins.find(
-  (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/commit-analyzer',
-);
-
-if (!analyzerEntry) {
-  throw new Error('release.config.mjs no longer declares @semantic-release/commit-analyzer');
-}
-
-const analyzerConfig = analyzerEntry[1];
-
-/**
- * A commit shaped like the ones semantic-release collects from `git log`.
- *
- * `analyzeCommits` reads `notes`, `type`, `subject` and `message`; the parser
- * that normally fills them is not in the loop here, so the fields it would
- * derive are left empty and the analyzer falls back to `message` — which is the
- * whole commit, header and body, and therefore carries a `BREAKING CHANGE:`
- * footer exactly as it does in the real pipeline.
- */
-function toCommit(entry) {
-  const subject = entry.message.split('\n')[0] ?? '';
-
-  return {
-    hash: entry.hash,
-    message: entry.message,
-    subject,
-    notes: [],
-    type: null,
-    scope: null,
-    header: subject,
-    body: entry.message.split('\n').slice(1).join('\n'),
-    footer: '',
-    revert: null,
-    author: { name: 'release', email: 'release@localhost' },
-    committer: { name: 'release', email: 'release@localhost' },
-  };
-}
-
-/** The version one level up from `version`, for the three levels that matter. */
-function bumpVersion(version, type) {
-  const [major, minor, patch] = version.split('.').map((part) => Number.parseInt(part, 10));
-
-  if (![major, minor, patch].every(Number.isInteger)) {
-    throw new Error(`cannot bump ${JSON.stringify(version)}: it is not a three-part version`);
-  }
-
-  if (type === 'major') return `${major + 1}.0.0`;
-  if (type === 'minor') return `${major}.${minor + 1}.0`;
-
-  return `${major}.${minor}.${patch + 1}`;
-}
 
 /**
  * Replace the two version LINES in a manifest's own text.
@@ -134,15 +77,6 @@ function replaceVersionLines(text, previous, next) {
   }
 
   return out;
-}
-
-/** Write `key=value` for the workflow step that reads it. */
-function setOutput(key, value) {
-  const file = process.env.GITHUB_OUTPUT;
-
-  if (file) {
-    appendFileSync(file, `${key}=${value}\n`);
-  }
 }
 
 const outcomes = [];

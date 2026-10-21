@@ -42,20 +42,31 @@ android {
     }
 
     /**
-     * The version the release pipeline hands in, or the checked-in default.
+     * The shell's own version, from `version.properties`.
      *
-     * The release workflow passes `-PkabmoVersionName=<tag without v>` and
-     * `-PkabmoVersionCode=<run number>`, so the APK attached to a GitHub release
-     * names the same version as the release it belongs to. Android refuses an
-     * install whose `versionCode` is not higher than the installed one, so the
-     * code has to move on every release — the run number is monotonic, and a
-     * local build falls back to `1`.
+     * ONE source, and it is a file rather than a `-P` flag: the release pipeline
+     * bumps that file (`release/release-android.mjs`) and the console compares
+     * the published asset's version against the one the running app reports on
+     * its User-Agent. A version handed in at build time would make the number
+     * the pipeline published and the number the app reports two separate
+     * decisions, and the download button's whole job is comparing them.
      *
-     * Gradle properties rather than an env var: `versionName` is read at
-     * CONFIGURATION time, and a property is what `-P` sets before that runs.
+     * It is deliberately NOT the app's release tag any more. Tying the two made
+     * a shell-only fix ship under a server version, and a server release ship an
+     * APK whose version said nothing about whether the shell had changed.
+     *
+     * `versionCode` still comes from the workflow (`-PkabmoVersionCode`), because
+     * Android refuses an install whose code is not higher than the installed
+     * one: it is a monotonic counter, not a version, and a local build falls
+     * back to `1`.
      */
-    val appVersionName = (project.findProperty("kabmoVersionName") as String?)?.trim()
-        ?.takeIf { it.isNotEmpty() } ?: "0.1.0"
+    val shellProperties = Properties().apply {
+        val file = rootProject.file("version.properties")
+        check(file.exists()) { "packages/android/version.properties is missing — it declares versionName" }
+        file.inputStream().use { load(it) }
+    }
+    val appVersionName = shellProperties.getProperty("versionName")?.trim()?.takeIf { it.isNotEmpty() }
+        ?: error("version.properties declares no versionName")
     val appVersionCode = (project.findProperty("kabmoVersionCode") as String?)?.toIntOrNull()
         ?.takeIf { it > 0 } ?: 1
 
