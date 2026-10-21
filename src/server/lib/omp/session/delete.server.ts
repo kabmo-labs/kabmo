@@ -34,6 +34,7 @@ import { findSessionFileById } from '@/server/lib/omp/session/locator';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
+import { failWaitingOn } from '@/server/lib/waiting/store.server';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 
@@ -121,6 +122,13 @@ export async function purgeSessionData(sessionId: string): Promise<SessionPurgeR
 
   const db = await getDb();
   const rowChanges = await purgeKabmoRows(db, sessionId);
+
+  // A prompt waiting on this session will never be released: the dependency is
+  // gone. Fail it BY NAME rather than letting it wait for a session that no
+  // longer exists — and keep the row, because its error text is the only thing
+  // that tells the user what happened to the prompt they wrote.
+  const strandedPrompts = await failWaitingOn(sessionId, 'The session being waited for was deleted.');
+  if (strandedPrompts > 0) emitRealtimeSignal('waiting-changed');
 
   // Both caches outlive the mutation by their own keys: the file list/scan pair
   // is mtime-keyed (a delete bumps the parent directory, but the memo can still

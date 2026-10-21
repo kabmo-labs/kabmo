@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 import { useTimelineScope } from '@/client/hooks/chat/timeline/scope';
 import type { ChatMessageData } from '@/shared/types';
 import { useOmpAgent } from '@/client/hooks/chat/omp';
@@ -9,7 +9,6 @@ import { useGeneratingState } from '@/client/hooks/chat/timeline/generating';
 import { useTimelineAutoScroll } from '@/client/hooks/chat/timeline/auto-scroll';
 import { useChatTimelineActions } from '@/client/hooks/chat/timeline/actions';
 import { useChatTimelineSend } from '@/client/hooks/chat/timeline/send';
-import type { ComposerModelPick } from '@/client/hooks/chat/timeline/deferred-model';
 import { useSessionLoad } from '@/client/hooks/chat/timeline/session-load';
 import { useUserTurns } from '@/client/hooks/chat/timeline/user-turns';
 import { useRailJump } from '@/client/hooks/chat/timeline/rail-jump';
@@ -19,6 +18,8 @@ import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-m
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
 import { useComposerDraft } from '@/client/hooks/chat/composer/use-draft';
 import { isChatRunning } from '@/client/hooks/chat/omp/session-statuses';
+import { useWaitingDependencyChoice } from '@/client/hooks/chat/waiting/choice';
+import { useComposerRefs } from '@/client/hooks/chat/timeline/composer-refs';
 
 interface UseChatTimelineOptions {
   folders?: any[];
@@ -157,27 +158,17 @@ export function useChatTimeline({
   });
   const jumpToUserTurn = useRailJump(pagedJumpToTurn, { followRef, scrollRef });
 
-  // Composer picks made BEFORE the omp session exists (pending "new-…" view):
-  // there is no live session to receive the RPC yet, so the selection is held
-  // here and applied to the spawn command on first send.
-  const pendingComposerModelRef = useRef<{ provider: string; modelId: string } | null>(null);
-  const pendingThinkingLevelRef = useRef<string | null>(null);
-  // Live mirror of the composer's model/thinking pick: the enqueue path
-  // snapshots it onto queued items so auto-delivery replays those settings.
-  const composerModelRef = useRef<{ provider: string; modelId: string; thinkingLevel: string } | null>(null);
-  // Picks made WHILE a turn streams: held here so they cannot re-target the
-  // answer in flight (omp applies set_model to the running turn), and pushed
-  // onto the session right before the next prompt.
-  const deferredComposerPickRef = useRef<ComposerModelPick | null>(null);
-  // A stashed pick belongs to ONE session's next prompt: carrying it across a
-  // switch would silently re-target the session the user just opened.
-  useEffect(() => {
-    deferredComposerPickRef.current = null;
-  }, [sessionId]);
+  // The composer's model/thinking mirrors and the mid-run stash (see the hook).
+  const { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef } =
+    useComposerRefs(sessionId);
 
   // Access control is a GLOBAL, persisted user preference (unlike the
   // per-session model/thinking picks).
   const { accessMode, accessModeRef, setAccessMode: handleAccessModeChange } = useChatTimelineAccessMode(appSettings);
+
+  // "Wait for session" on a NEW chat: the pick, and the ref the send handler
+  // reads (see `choice.ts` for why both).
+  const waitingDependency = useWaitingDependencyChoice(sessionId);
 
   const persistMessages = useCallback((messagesToSave: any[]) => {
     if (!sessionId) return;
@@ -291,6 +282,10 @@ export function useChatTimeline({
     composerModelRef,
     deferredComposerPickRef,
     accessModeRef,
+    waitingDependencyRef: waitingDependency.ref,
+    clearWaitingDependency: waitingDependency.clear,
+    streamStatusMap,
+    spawnSelectionRef: modes.spawnSelectionRef,
     setSearchParams,
     reportActionError,
   });
@@ -343,6 +338,7 @@ export function useChatTimeline({
     planReview,
     composerModelRef,
     deferredComposerPickRef,
+    waitingDependency,
     extensionDialogs,
     resolveExtensionDialog,
     respondToExtensionUi: ompAgent.respondToExtensionUi,

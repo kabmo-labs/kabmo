@@ -22,6 +22,7 @@ import {
   TOPIC_SIDEBAR,
   TOPIC_SIDEBAR_STATUS,
   TOPIC_USAGE,
+  TOPIC_WAITING,
   sessionPlanTopic,
   sessionQueueTopic,
   sessionTelemetryTopic,
@@ -67,6 +68,7 @@ export const EXACT_TOPICS = new Map<string, TopicDescriptor>([
   [TOPIC_USAGE, { resolve: () => globalDescriptor(TOPIC_USAGE).resolve(TOPIC_USAGE) }],
   [TOPIC_PANELS, { resolve: () => globalDescriptor(TOPIC_PANELS).resolve(TOPIC_PANELS) }],
   [TOPIC_MODELS, { resolve: () => globalDescriptor(TOPIC_MODELS).resolve(TOPIC_MODELS) }],
+  [TOPIC_WAITING, { resolve: () => globalDescriptor(TOPIC_WAITING).resolve(TOPIC_WAITING) }],
 ]);
 
 /** Suffixes a `session:<id>:<suffix>` topic may carry. */

@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedMouseEvent } from 'preact';
 import { createPortal } from 'preact/compat';
-import { Archive, ArchiveRestore, Pencil, Trash2, WandSparkles } from 'lucide-preact';
+import { Archive, ArchiveRestore, Hourglass, Pencil, Trash2, WandSparkles } from 'lucide-preact';
 
 /** Viewport coordinates the menu hangs off, plus which edge it aligns to. */
 export interface MenuAnchor {
@@ -90,6 +90,13 @@ export interface SessionActionsMenuProps {
   onRenameWithAi?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  /**
+   * Drop this row's held prompt (a `new-…` chat whose prompt is waiting on
+   * another session). Omitted for every other row: a wait is the only state a
+   * pending chat can cancel from here, and offering the item elsewhere would
+   * promise an action with nothing behind it.
+   */
+  onCancelWait?: () => void;
   onClose: () => void;
 }
 
@@ -100,6 +107,7 @@ export function SessionActionsMenu({
   onRenameWithAi,
   onArchive,
   onDelete,
+  onCancelWait,
   onClose,
 }: SessionActionsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -188,6 +196,19 @@ export function SessionActionsMenu({
             <span>Rename with AI</span>
           </button>
         )}
+        {/* A held prompt is the row's whole content, so dropping it belongs in
+            the same menu as the row's other verbs rather than on the row face. */}
+        {onCancelWait && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={run(onCancelWait)}
+            className="w-full text-left px-3 py-1.5 hover:bg-ink/5 flex items-center gap-2 transition-colors cursor-pointer"
+          >
+            <Hourglass size={12} className="text-ink/60" />
+            <span>Cancel waiting prompt</span>
+          </button>
+        )}
         {onArchive && (
           <button
             type="button"
@@ -201,7 +222,7 @@ export function SessionActionsMenu({
             <span>{isArchived ? 'Unarchive' : 'Archive'}</span>
           </button>
         )}
-        {(onRename || onRenameWithAi || onArchive) && onDelete && <div className="my-1 border-t border-ink/10" />}
+        {(onRename || onRenameWithAi || onArchive || onCancelWait) && onDelete && <div className="my-1 border-t border-ink/10" />}
         {onDelete && (
           <button
             type="button"

@@ -15,6 +15,7 @@ import type { DbClient } from '@/server/lib/db/client';
 import { migrateQueueTableFk } from '@/server/lib/queue/schema-migration.server';
 import { ensureBtwSchema } from '@/server/lib/btw/schema.server';
 import { ensureScheduleSchema } from '@/server/lib/schedule/schema.server';
+import { ensureWaitingSchema } from '@/server/lib/waiting/schema.server';
 import { ensurePluginSchema } from '@/server/lib/plugins/schema.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
@@ -104,6 +105,8 @@ export async function initSchema(db: DbClient): Promise<void> {
   await ensureBtwSchema(db);
   // Scheduled-task tables, same reasoning: their own module.
   await ensureScheduleSchema(db);
+  // Prompts held until another session finishes, same reasoning.
+  await ensureWaitingSchema(db);
   // The plugin platform's own tables (kv, records, settings).
   await ensurePluginSchema(db);
 

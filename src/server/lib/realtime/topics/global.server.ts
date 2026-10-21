@@ -20,9 +20,11 @@ import {
   TOPIC_PANELS,
   TOPIC_SCHEDULE,
   TOPIC_USAGE,
+  TOPIC_WAITING,
 } from '@/shared/lib/realtime/protocol';
 import { type TopicDescriptor } from '@/server/lib/realtime/hub.server';
 import { listScheduledTasks } from '@/server/lib/schedule/store.server';
+import { listWaitingPrompts } from '@/server/lib/waiting/store.server';
 import { buildUsageReport } from '@/server/lib/usage/report.server';
 import { discoverPanelPlugins } from '@/server/lib/panels/registry.server';
 import { loadModelsWithCache } from '@/server/lib/models/registry.server';
@@ -34,6 +36,9 @@ import { loadModelsWithCache } from '@/server/lib/models/registry.server';
  */
 const RESOLVERS: Record<string, () => Promise<unknown>> = {
   [TOPIC_SCHEDULE]: () => listScheduledTasks(),
+  // The waiting list is the same read the runtime sweeps over, so a client and
+  // the dispatcher can never disagree about which prompt is still held.
+  [TOPIC_WAITING]: () => listWaitingPrompts(),
   // The SAME builder `GET /api/settings/usage` answers with: the panel renders
   // whichever path arrived first, so the two payloads must not diverge.
   [TOPIC_USAGE]: () => buildUsageReport(),

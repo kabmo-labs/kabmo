@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Loader2, MoreHorizontal } from 'lucide-preact';
+import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
 import type { SessionItemData } from '@/shared/types';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
@@ -28,6 +28,11 @@ export interface MobileSessionRowProps {
   onRenameWithAi?: () => void;
   /** Draw a checkbox and let the row's tap toggle the selection instead of
    *  opening the session (batch mode). */
+  /** The row's prompt is held until another session finishes (see the desktop
+   *  row's `waitingFor`: a pending chat has nothing else to show). */
+  waitingFor?: { title: string | null };
+  /** Drop this row's held prompt, from the row's own menu. */
+  onCancelWait?: () => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -47,6 +52,8 @@ export function MobileSessionRow({
   onDelete,
   onRename,
   onRenameWithAi,
+  waitingFor,
+  onCancelWait,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -65,7 +72,8 @@ export function MobileSessionRow({
   const renaming = useSessionRenaming(session.id);
   // One trigger for every row action; also reachable by long-press contextmenu.
   const menu = useRowMenu();
-  const hasActions = Boolean(onRename || onArchive || onDelete);
+  const hasActions = Boolean(onRename || onArchive || onDelete || onCancelWait);
+  const waiting = Boolean(waitingFor);
 
   // The roster toggle is the row's LAST element, so its glyph lands in the same
   // column as the folder header's expand chevron — one vertical line of
@@ -135,6 +143,10 @@ export function MobileSessionRow({
                 </span>
               ) : awaitingInput ? (
                 <CircleQuestionMark size={13} className="text-ink/70 animate-pulse" />
+              ) : waiting ? (
+                <span role="status" aria-label={`Waiting for ${waitingFor?.title ?? 'another session'}`}>
+                  <Hourglass size={13} className="text-ink/60 animate-pulse" />
+                </span>
               ) : status === 'stream' ? (
                 <Loader2 size={13} className="text-ink/50 animate-spin" />
               ) : status ? (
@@ -142,7 +154,14 @@ export function MobileSessionRow({
               ) : null}
             </span>
             )}
-            <span className="text-xs truncate leading-snug ml-2">{title}</span>
+            <span className="flex flex-col min-w-0 ml-2 leading-snug">
+              <span className="text-xs truncate">{title}</span>
+              {waiting && (
+                <span className="text-[10px] text-ink/40 truncate">
+                  waiting for {waitingFor?.title ?? 'another session'}
+                </span>
+              )}
+            </span>
           </div>
 
           <span className="text-[11px] text-ink/45 font-mono flex-shrink-0 ml-2">{timeAgo ?? ''}</span>
@@ -194,6 +213,7 @@ export function MobileSessionRow({
           onRenameWithAi={onRenameWithAi}
           onArchive={onArchive}
           onDelete={onDelete}
+          onCancelWait={onCancelWait}
           onClose={menu.close}
         />
       )}

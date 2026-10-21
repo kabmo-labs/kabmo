@@ -56,7 +56,16 @@ export type RealtimeSignal =
    * snapshot and then never moved — the panels rendered whatever existed when
    * they subscribed and only a reload showed the new state.
    */
-  | 'session-data-dirty';
+  | 'session-data-dirty'
+  /**
+   * A waiting prompt was created, cancelled, dispatched or failed.
+   *
+   * Both halves read it: the server republishes the `waiting` topic, and the
+   * client's dispatch watcher adopts the session a prompt became. Nothing else
+   * reports a dispatch — no user action causes it, and the spawned session's own
+   * transcript is seconds away.
+   */
+  | 'waiting-changed';
 
 export interface RealtimeSignalEvent {
   signal: RealtimeSignal;

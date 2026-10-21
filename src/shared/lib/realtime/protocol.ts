@@ -101,6 +101,16 @@ export const TOPIC_USAGE = 'usage';
 /** Scheduled tasks. */
 export const TOPIC_SCHEDULE = 'schedule';
 
+/**
+ * Prompts held until another session finishes.
+ *
+ * A global topic rather than per-session: the row belongs to the session that
+ * has NOT been created yet, and the dependency it names is a different session
+ * again. Both the sidebar (to draw the waiting row) and the composer (to offer
+ * the dependencies) read it.
+ */
+export const TOPIC_WAITING = 'waiting';
+
 /** Installed panel plugins and their catalog. */
 export const TOPIC_PANELS = 'panels';
 

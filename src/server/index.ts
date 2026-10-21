@@ -25,6 +25,7 @@ import { isMockMode } from '@/server/mock.server';
 import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
 import { stopDiscoveryRootsWatch, syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
+import { startWaitingRuntime, stopWaitingRuntime } from '@/server/lib/waiting/runtime.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 import { syncBundledPlugins } from '@/server/lib/panels/sync.server';
 import { startPanelAutoUpdate } from '@/server/lib/panels/auto-update.server';
@@ -256,6 +257,13 @@ try {
 startScheduleRuntime();
 
 /**
+ * The waiting-prompt clock: a prompt held until another session finishes. Same
+ * shape and the same placement — after the listener and the watchers, because
+ * the first sweep may spawn an omp child.
+ */
+startWaitingRuntime();
+
+/**
  * Bring installed BUNDLED plugins up to the copy this package ships.
  *
  * A Kabmo update replaces the store and leaves the install — it is a
@@ -320,6 +328,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {
     stopDiscoveryRootsWatch();
     stopScheduleRuntime();
+    stopWaitingRuntime();
     void app.stop();
     // Plugins own children and listeners nothing else releases, and a detached
     // child outlives its parent — so this is awaited BEFORE the exit. It is

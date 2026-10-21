@@ -194,6 +194,7 @@ describe('schema bootstrap', () => {
       'workspace_folders', 'sessions', 'app_settings', 'chat_sessions', 'deleted_workspaces',
       'archived_sessions', 'session_ui_state', 'queued_messages', 'session_stream_state',
       'files', 'btw_topics', 'btw_turns', 'scheduled_tasks', 'scheduled_task_runs',
+      'waiting_prompts',
     ]) {
       expect(first).toContain(expected);
     }

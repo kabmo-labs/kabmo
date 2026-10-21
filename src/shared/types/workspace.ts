@@ -30,6 +30,14 @@ export interface SessionItemData {
    *  provider/model in every tab and Kabmo instances. Absent for a session
    *  with no run row; callers fall back to the transcript's model entry. */
   runModel?: { provider: string; modelId: string };
+  /**
+   * Set on a PENDING row whose prompt is held until another session finishes.
+   *
+   * The row has no transcript and no omp id yet — it exists because the user
+   * sent a prompt that is deferred, and the cue is the only thing on screen
+   * saying so. Absent means the row is not waiting (the normal case).
+   */
+  waitingFor?: { waitId: string; sessionId: string; title: string | null };
 }
 
 /**

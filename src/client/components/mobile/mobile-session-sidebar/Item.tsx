@@ -32,6 +32,8 @@ interface MobileSessionCategoryProps {
   batch?: BatchBinding;
   /** Start a session selection scoped to this workspace, from its `⋯` menu. */
   onStartSessionSelection?: (folderId: number) => void;
+  /** Drop a held prompt from its row's menu. */
+  onCancelWait?: (waitId: string) => void;
 }
 
 export function MobileSessionCategory({
@@ -46,6 +48,7 @@ export function MobileSessionCategory({
   onToast,
   batch,
   onStartSessionSelection,
+  onCancelWait,
 }: MobileSessionCategoryProps) {
   const { visibleCount, showMore, showLess, canShowLess } = useShowMore();
   const { refresh } = useSidebarData();
@@ -271,6 +274,12 @@ export function MobileSessionCategory({
                   onRename={sessionKey.startsWith('new-') ? undefined : (name) => void handleRename(session, name)}
                   onRenameWithAi={
                     sessionKey.startsWith('new-') ? undefined : () => void handleRenameWithAi(session)
+                  }
+                  waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
+                  onCancelWait={
+                    session.waitingFor
+                      ? () => onCancelWait?.(session.waitingFor!.waitId)
+                      : undefined
                   }
                   selectable={sessionCheckboxes}
                   selected={Boolean(batch?.selected.includes(sessionKey))}

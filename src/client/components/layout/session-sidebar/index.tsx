@@ -16,6 +16,8 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
+import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
+import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
@@ -64,6 +66,9 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
     window.__OMP_BOOTSTRAP__?.isAndroid,
   );
   const { toasts, pushToast, dismissToast } = useToasts();
+  const cancelWait = useCancelWait(pushToast);
+  // Follows a held prompt to its session — in whichever tab or instance sent it.
+  useWaitingDispatch({ onNotice: pushToast });
 
   // Sidebar inline states
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -199,6 +204,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
             onToast={pushToast}
             batch={batchBinding}
             onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
+            onCancelWait={cancelWait}
           />
         )}
 

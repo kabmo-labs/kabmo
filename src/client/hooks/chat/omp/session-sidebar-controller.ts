@@ -30,6 +30,8 @@ import {
   reconcilePendingSessions,
   usePendingSessions,
 } from '@/client/hooks/chat/omp/pending-sessions';
+import { markPendingSessionWaiting } from '@/client/hooks/chat/omp/pending-waiting';
+import { useWaitingPrompts } from '@/client/hooks/chat/waiting/store';
 import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
 import { writeSetting } from '@/shared/lib/settings/client';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
@@ -150,6 +152,11 @@ export function useSessionSidebarController(
   // A chat omp has not written a transcript for yet. The store owns the row's
   // whole life — see `pending-sessions.ts` — so the sidebar only reads it here.
   const pendingEntries = usePendingSessions();
+  // A held prompt is a property of the SERVER row, not of this tab: a reload (or
+  // a second tab) re-enters a pending chat whose wait it never created, and the
+  // row has to keep saying what it waits for. The cue is therefore re-stamped
+  // from the list on every publish, and cleared when the row is gone.
+  const { prompts: waitingPrompts, loaded: waitingLoaded } = useWaitingPrompts();
   const runningIds = useMemo(
     () => new Set(Object.entries(sessionStatus).filter(([, status]) => status === 'stream').map(([id]) => id)),
     [sessionStatus],
@@ -164,6 +171,28 @@ export function useSessionSidebarController(
     if (folders.some((folder) => (folder.sessions ?? []).some((s) => String(s.id) === sessionParam))) return;
     hydratePendingSession(sessionParam, folderIdParam, sessionStatus[sessionParam] === 'stream');
   }, [sessionParam, folders, initializing, folderIdParam, sessionStatus]);
+
+  // The cue is STAMPED from the server list, never cleared from an absence.
+  //
+  // An absence is not evidence: the effect runs on the render a hold triggers,
+  // one frame before the topic's first snapshot, and a snapshot resolved before
+  // the create does not carry the row either. Clearing on that deleted the cue
+  // the user had just made — and, with it, the id the dispatch watcher needs to
+  // adopt. A wait ENDS through a terminal row, which the watcher
+  // (`waiting/dispatch.ts`) reads: dispatched, cancelled or failed.
+  useEffect(() => {
+    if (initializing || !waitingLoaded) return;
+    for (const entry of pendingEntries) {
+      const id = String(entry.id);
+      const held = waitingPrompts.find((prompt) => prompt.pendingId === id && prompt.status === 'waiting');
+      if (!held || entry.waiting?.waitId === held.id) continue;
+      markPendingSessionWaiting(id, {
+        waitId: held.id,
+        dependsOn: held.dependsOn,
+        dependsOnTitle: held.dependsOnTitle,
+      });
+    }
+  }, [pendingEntries, waitingPrompts, waitingLoaded, initializing]);
 
   // A pending chat's row is kept only while its draft still holds something,
   // so the reconcile below has to re-run when a draft SLOT moves — the blob

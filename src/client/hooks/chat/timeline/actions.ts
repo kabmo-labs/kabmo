@@ -19,14 +19,15 @@ import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { SetSearchParams } from '@/client/lib/router/search-params';
 import { applyComposerPick, consumeComposerPick, stashComposerPick, type DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
 import { useNewChatSubmit } from '@/client/hooks/chat/timeline/new-chat';
-import { dispatchBtwCommand } from '@/client/hooks/chat/btw/intercept';
-import { dispatchPluginCommand } from '@/client/hooks/chat/timeline/plugin-commands';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
+import { dispatchLocalCommand } from '@/client/hooks/chat/timeline/local-commands';
 import { createQueueActions } from '@/client/hooks/chat/timeline/queue-actions';
 import { reportSteerOutcome } from '@/shared/lib/chat/timeline/steer-report';
 import { createRewindActions } from '@/client/hooks/chat/timeline/rewind-actions';
-import { prepareQueuedAttachments } from '@/shared/lib/chat/attachments';
+import { enqueuePreparedFollowUp } from '@/client/hooks/chat/timeline/enqueue-follow-up';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
+import { holdFromComposer } from '@/client/hooks/chat/waiting/hold';
+import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 
 export interface ChatTimelineActionsDeps {
   inputValue: string;
@@ -80,6 +81,20 @@ export interface ChatTimelineActionsDeps {
   deferredComposerPickRef: DeferredModelStore;
   /** Global access-control mode, snapshotted onto queued items. */
   accessModeRef: { current: ApprovalMode };
+  /**
+   * The composer's "wait for session" pick, mirrored in a ref: the send handler
+   * is created once per deps record, and reading the pick from render state
+   * would send with whatever it was when that closure was built.
+   */
+  waitingDependencyRef?: { current: WaitingCandidate | null };
+  /** Clear the pick once the prompt is held (the wait now owns it). */
+  clearWaitingDependency?: () => void;
+  /** Server-tracked `stream` rows: re-checked at send, so a dependency that
+   *  finished while the draft was being written sends normally. */
+  streamStatusMap?: Record<string, 'stream' | 'finish' | 'abort'>;
+  /** Plan/goal flags the held spawn must carry (read when the wait is created,
+   *  because the dispatch happens in another process later). */
+  spawnSelectionRef?: { current: { plan: boolean; goal: boolean } | null };
   setSearchParams: SetSearchParams;
   /**
    * Surface a footer action that failed (rewind refused, send rejected). Undo
@@ -137,17 +152,14 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
   // they are built once per render from it rather than re-listing every field.
   const queueActions = useMemo(() => createQueueActions(deps), [deps]);
 
-  /** Snapshot the composer's model/thinking plus the live access mode onto a
-   *  queued item, so server-side auto-delivery replays exactly these settings.
-   *  The queue row is JSON — a `File` does not survive it — so text contents
-   *  and display fields are captured while the live handle still exists. */
-  const enqueueFollowUp = useCallback((text: string, attachments: Attachment[]) => {
-    const composerPick = composerModelRef.current;
-    const model = composerPick ? { ...composerPick, accessMode: accessModeRef.current } : null;
-    void prepareQueuedAttachments(attachments).then((prepared) => {
-      enqueueMessage({ text, attachments: prepared, model });
-    });
-  }, [composerModelRef, accessModeRef, enqueueMessage]);
+  const enqueueFollowUp = useCallback(
+    (text: string, attachments: Attachment[]) => enqueuePreparedFollowUp(
+      { composerModelRef, accessModeRef, enqueueMessage },
+      text,
+      attachments,
+    ),
+    [composerModelRef, accessModeRef, enqueueMessage],
+  );
 
   const handleSend = useCallback(async (attachments: Attachment[], options?: { steering?: boolean }) => {
     const textToSend = inputValue.trim();
@@ -157,26 +169,8 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // resume delivering after this run ends.
     stopHoldRef.current = false;
 
-    // `/btw [question]` is the side-question entry point, not chat text: the
-    // panel owns it (omp's `/btw` is TUI-only, so nothing downstream would
-    // understand the token). A bare `/btw` only opens the panel's history.
-    //
-    // MUST run before the TUI-only guard below: `/btw` is in that table (omp
-    // implements it in the TUI only), so the guard would refuse the very
-    // command Kabmo answers with a panel.
-    if (dispatchBtwCommand(textToSend, attachments)) {
-      setInputValue('');
-      return;
-    }
-
-    // A command a PLUGIN contributed through the `commandPaletteAction` slot is
-    // answered by that plugin, exactly like a Kabmo command: it is local work
-    // the popup advertised, so it must never reach the model as literal text
-    // (RPC has no expansion for it, and omp would improvise a whole turn around
-    // the string). MUST run before the TUI-only guard below: a plugin may
-    // legitimately claim a name omp implements only in its TUI, and refusing
-    // the row the popup just offered would be the composer contradicting itself.
-    if (dispatchPluginCommand(textToSend)) {
+    // Commands Kabmo answers ITSELF, before anything can reach the model.
+    if (dispatchLocalCommand(textToSend, attachments)) {
       setInputValue('');
       return;
     }
@@ -186,6 +180,11 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // an improvisation. Answer it here, before it is queued or steered, and
     // keep the draft so the user can edit or retype it.
     if (blockTuiOnlySend(textToSend, setLocalMessages)) return;
+
+    // A NEW chat whose prompt is held for another session: nothing is sent now,
+    // and the pending row stays on screen saying what it waits for. Checked
+    // before the queue-vs-send split — a pending chat has no run to queue behind.
+    if (await holdFromComposer(deps, textToSend, attachments, isGenerating || chatRunning)) return;
 
     // "A run is in flight" is the CHAT-level flag, not this client's own:
     // `isGenerating` only knows the run THIS page started, so a second tab, a
@@ -234,7 +233,7 @@ export function useChatTimelineActions(deps: ChatTimelineActionsDeps): ChatTimel
     // branch would rather than losing the message. Every other failure may
     // already have been accepted, and is reported by the send path instead.
     if (result.busy) enqueueFollowUp(textToSend, attachments);
-  }, [inputValue, isGenerating, chatRunning, executeSend, enqueueMessage, enqueueFollowUp, isOmpSession, appSettings, steerOmpAgent, setInputValue, abortControllerRef, setGenerating, stopHoldRef, composerModelRef, accessModeRef, setLocalMessages]);
+  }, [deps, inputValue, isGenerating, chatRunning, executeSend, enqueueMessage, enqueueFollowUp, isOmpSession, appSettings, steerOmpAgent, setInputValue, abortControllerRef, setGenerating, stopHoldRef, composerModelRef, accessModeRef, setLocalMessages]);
 
   const handleEditQueueItem = useCallback((item: QueuedMessage) => {
     queueActions.handleEditQueueItem(item);

@@ -32,6 +32,7 @@ import {
   type AutoTitleHost,
 } from '@/server/lib/omp/session/auto-title.server';
 import { scheduleQueueDelivery, type QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
+import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
 import { markStreamStatus, loadStreamStatuses } from '@/shared/lib/omp/session/stream-state.server';
 import { driveGoalAfterTurn } from '@/server/lib/omp/session/goal-driver.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
@@ -81,6 +82,12 @@ export function settleTerminalRun(host: TerminalSettleHost, messages: unknown): 
     void driveGoalAfterTurn({ host, messages });
     scheduleQueueDelivery(host);
   }
+  // A prompt held until this session finished is released HERE, and not only by
+  // the sweep tick: the run end is the event the wait was about. The delay is
+  // the settle grace — the stream row this frame just wrote needs to age past it
+  // before the dependency reads as finished, and a queued follow-up armed by the
+  // line above needs its window to go out first.
+  requestWaitingSweep();
   // A run's work may have touched files and certainly advanced usage; the
   // realtime layer republishes whichever workspace topics are actually watched
   // (see `republishWatchedWorkspaceTopics`).

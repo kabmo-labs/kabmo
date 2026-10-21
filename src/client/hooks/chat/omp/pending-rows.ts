@@ -64,6 +64,10 @@ export function withPendingRows(
       // newest and reshuffled LATEST_SESSION ordering mid-run.
       created_at: stamp,
       updated_at: stamp,
+      // The row's own reason for existing past the click: its prompt is held.
+      ...(entry.waiting
+        ? { waitingFor: { waitId: entry.waiting.waitId, sessionId: entry.waiting.dependsOn, title: entry.waiting.dependsOnTitle } }
+        : {}),
     };
     result = result.map((folder) => (
       folder.id === target.id

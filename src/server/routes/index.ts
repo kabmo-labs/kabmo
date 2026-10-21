@@ -8,6 +8,7 @@ import { chamberBindings } from '@/server/routes/chamber';
 import { chatBindings } from '@/server/routes/chat';
 import { sessionsBindings } from '@/server/routes/sessions';
 import { scheduleBindings } from '@/server/routes/schedule/bindings';
+import { waitingBindings } from '@/server/routes/waiting/bindings';
 import { settingsBindings } from '@/server/routes/settings';
 import { fsBindings } from '@/server/routes/fs';
 import { foldersBindings } from '@/server/routes/folders';
@@ -37,6 +38,7 @@ const allBindings: HandlerBinding[] = [
   ...chatBindings,
   ...sessionsBindings,
   ...scheduleBindings,
+  ...waitingBindings,
   ...settingsBindings,
   ...fsBindings,
   ...foldersBindings,

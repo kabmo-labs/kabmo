@@ -1,5 +1,5 @@
 import type { TargetedMouseEvent } from 'preact';
-import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Loader2, MoreHorizontal } from 'lucide-preact';
+import { Check, ChevronDown, ChevronRight, CircleQuestionMark, Hourglass, Loader2, MoreHorizontal } from 'lucide-preact';
 import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
@@ -30,6 +30,14 @@ export interface SessionItemProps {
   isExpanded?: boolean;
   hasSubagents?: boolean;
   onToggleExpand?: (e: TargetedMouseEvent<HTMLElement>) => void;
+  /**
+   * The row's prompt is held until another session finishes. A pending row has
+   * no transcript and no omp id, so this cue is the only thing on screen saying
+   * the chat exists and what it is waiting for.
+   */
+  waitingFor?: { title: string | null };
+  /** Drop this row's held prompt, from the row's own menu. */
+  onCancelWait?: () => void;
   /** Draw a checkbox and let the row's click toggle the selection instead of
    *  opening the session (batch mode). */
   selectable?: boolean;
@@ -54,6 +62,8 @@ export function SessionItem({
   isExpanded = false,
   hasSubagents = false,
   onToggleExpand,
+  waitingFor,
+  onCancelWait,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -70,7 +80,8 @@ export function SessionItem({
   // or expanded: it is the only affordance left worth showing, and making it
   // hover-only would leave the roster reachable only by hovering exactly the
   // right 16px.
-  const liveRun = awaitingInput || status === 'stream';
+  const waiting = Boolean(waitingFor);
+  const liveRun = awaitingInput || status === 'stream' || waiting;
   const chevronPinned = showChevron && !liveRun && !renaming;
   const showStatus = Boolean(renaming || awaitingInput || status) && !chevronPinned;
   const {
@@ -84,7 +95,7 @@ export function SessionItem({
   } = useInlineRename(title, onRename);
   // One trigger for every row action; also reachable by right-clicking the row.
   const menu = useRowMenu();
-  const hasActions = Boolean(onRename || onArchive || onDelete);
+  const hasActions = Boolean(onRename || onArchive || onDelete || onCancelWait);
 
   return (
     <>
@@ -163,6 +174,10 @@ export function SessionItem({
                 </span>
               ) : awaitingInput ? (
                 <CircleQuestionMark size={12} className="animate-pulse text-ink/80" />
+              ) : waiting ? (
+                <span role="status" aria-label={`Waiting for ${waitingFor?.title ?? 'another session'}`}>
+                  <Hourglass size={12} className="animate-pulse text-ink/60" />
+                </span>
               ) : status === 'stream' ? (
                 <Loader2 size={12} className="animate-spin" />
               ) : (
@@ -190,8 +205,17 @@ export function SessionItem({
             className="flex-1 min-w-0 bg-paper border border-ink/25 rounded px-1 py-0.5 text-xs text-ink outline-none focus:border-ink/50"
           />
         ) : (
-          <span className="flex-1 min-w-0 truncate leading-snug">
-            {title.charAt(0).toUpperCase() + title.slice(1)}
+          <span className="flex-1 min-w-0 flex flex-col leading-snug">
+            <span className="truncate">
+              {title.charAt(0).toUpperCase() + title.slice(1)}
+            </span>
+            {/* One muted line under the title: the row is a real chat, and this
+                is why it has not started yet. */}
+            {waiting && (
+              <span className="truncate text-[10px] text-ink/40 font-normal">
+                waiting for {waitingFor?.title ?? 'another session'}
+              </span>
+            )}
           </span>
         )}
 
@@ -234,6 +258,7 @@ export function SessionItem({
           onRenameWithAi={onRenameWithAi}
           onArchive={onArchive}
           onDelete={onDelete}
+          onCancelWait={onCancelWait}
           onClose={menu.close}
         />
       )}

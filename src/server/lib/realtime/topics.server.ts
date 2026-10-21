@@ -20,6 +20,7 @@ import {
   TOPIC_SIDEBAR,
   TOPIC_SIDEBAR_STATUS,
   TOPIC_USAGE,
+  TOPIC_WAITING,
   isValidTopic,
   reposTopic,
   sessionTopic,
@@ -93,6 +94,7 @@ export function initRealtimeTopics(): void {
     else if (signal === 'workspace-dirty') republishWatchedWorkspaceTopics();
     else if (signal === 'session-data-dirty' && sessionId) republishSessionDataTopics(sessionId);
     else if (signal === 'repos-scanned' && root) publishTopic(reposTopic(root));
+    else if (signal === 'waiting-changed') publishTopic(TOPIC_WAITING);
   });
 }
 

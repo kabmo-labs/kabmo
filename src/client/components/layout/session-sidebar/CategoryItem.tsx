@@ -30,6 +30,7 @@ export function Category({
   onToast,
   batch,
   onStartSessionSelection,
+  onCancelWait,
 }: { 
   folder: WorkspaceFolderData;
   activeSessionId: number | string | null;
@@ -43,6 +44,8 @@ export function Category({
   batch?: BatchBinding;
   /** Start a session selection scoped to this workspace, from its `⋯` menu. */
   onStartSessionSelection?: (folderId: number) => void;
+  /** Drop the held prompt of one row (`waitingFor.waitId`). */
+  onCancelWait?: (waitId: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(folder.isExpanded || false);
   const [showMenu, setShowMenu] = useState(false);
@@ -226,6 +229,12 @@ export function Category({
                   hasSubagents={hasSubagents}
                   isExpanded={isExpanded}
                   onToggleExpand={() => handleToggleSessionExpand(sessionKey)}
+                  waitingFor={session.waitingFor ? { title: session.waitingFor.title } : undefined}
+                  onCancelWait={
+                    session.waitingFor
+                      ? () => onCancelWait?.(session.waitingFor!.waitId)
+                      : undefined
+                  }
                   selectable={sessionCheckboxes}
                   selected={Boolean(batch?.selected.includes(sessionKey))}
                   onToggleSelect={batch ? () => batch.toggle(sessionKey) : undefined}

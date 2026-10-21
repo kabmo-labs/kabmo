@@ -5,7 +5,7 @@ import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import type { Attachment } from '@/shared/types';
 import type { UserTurnRef } from '@/shared/types/chat';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
-import { EmptyWorkspacePrompt } from '@/client/components/workspace/chat-timeline/EmptyWorkspacePrompt';
+import { PendingChatView } from '@/client/components/workspace/chat-timeline/PendingChatView';
 import { SessionSkeleton } from '@/client/components/workspace/chat-timeline/SessionSkeleton';
 import { SubagentView } from '@/client/components/workspace/chat-timeline/SubagentView';
 import { TimelineBody } from '@/client/components/workspace/chat-timeline/TimelineBody';
@@ -15,12 +15,14 @@ import { useSessionTitle } from '@/client/hooks/chat/timeline/session-title';
 import { useSubagentView } from '@/client/hooks/chat/timeline/subagent-view';
 import { useUndoConfirmation } from '@/client/hooks/chat/timeline/undo-confirmation';
 import { useModelNames } from '@/client/hooks/models/use-model-names';
+import { useRunIdentity } from '@/client/hooks/chat/timeline/run-identity';
 import { useProviderNames } from '@/client/hooks/models/use-provider-names';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { ChatOverlays } from '@/client/components/workspace/chat-timeline/ChatOverlays';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { composerRootFor } from '@/shared/lib/workspace/active-project';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
+import { useHeldWait } from '@/client/hooks/chat/waiting/held';
 
 interface ChatTimelineProps {
   className?: string;
@@ -36,7 +38,7 @@ interface ChatTimelineProps {
 }
 
 export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle, variant = 'desktop' }: ChatTimelineProps) {
-  const { folders, streamStatusMap } = useSidebarData();
+  const { folders, streamStatusMap, titleHint } = useSidebarData();
   const isMobile = variant === 'mobile';
   const { toasts, pushToast, dismissToast } = useToasts();
   const {
@@ -82,6 +84,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     planReview,
     composerModelRef,
     deferredComposerPickRef,
+    waitingDependency,
     extensionDialogs,
     resolveExtensionDialog,
     respondToExtensionUi,
@@ -151,24 +154,14 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
 
   const modelNames = useModelNames();
   const providerNames = useProviderNames();
-  // The run's model is persisted beside the stream status and rides the sidebar
-  // payload, so the indicator names the real provider/model even for a run this
-  // page never started — the transcript is the fallback, not the source.
-  const runModel = useMemo(
-    () => folders.flatMap((f) => f.sessions ?? []).find((s) => String(s.id) === String(sessionId))?.runModel ?? null,
-    [folders, sessionId],
-  );
-  const fallbackModel = typeof sessionData?.model === 'object' ? sessionData.model : null;
-  const sessionProvider = runModel?.provider ?? fallbackModel?.provider;
-  const sessionModelId = runModel?.modelId ?? fallbackModel?.modelId;
-  const sessionModelName = sessionModelId
-    ? (modelNames[sessionModelId] ?? sessionModelId)
-    : (typeof sessionData?.model === 'string' ? sessionData.model : undefined);
+  const { sessionProvider, sessionModelName } = useRunIdentity({ folders, sessionId, sessionData, modelNames });
 
   // A pending "new-…" session has no messages yet, so the workspace picker
   // must stay available until the first chat is sent (which spawns the real
   // omp session). Never lock the user into a folder before sending.
   const isPendingSession = Boolean(sessionId?.startsWith('new-'));
+
+  const { heldWait, cancelHeldWait } = useHeldWait(sessionId, isPendingSession, pushToast);
   const composerRoot = composerRootFor(folders, sessionId, selectedFolderId);
 
   // The chat-level "a run is in flight" flag is computed in `useChatTimeline`
@@ -184,7 +177,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
 
   if (!sessionId || isPendingSession) {
     return (
-      <EmptyWorkspacePrompt
+      <PendingChatView
         className={className}
         folders={folders}
         selectedFolderId={selectedFolderId}
@@ -216,6 +209,12 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         onUndo={handleRequestUndo}
         onRetry={handleRetry}
         onNewChat={handleNewChat}
+        streamStatusMap={streamStatusMap}
+        titleForSession={titleHint}
+        waitingFor={waitingDependency.value}
+        onWaitingForChange={waitingDependency.set}
+        heldWait={heldWait ? { title: heldWait.dependsOnTitle } : null}
+        onCancelWait={cancelHeldWait}
       />
     );
   }

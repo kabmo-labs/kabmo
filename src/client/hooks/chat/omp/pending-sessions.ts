@@ -57,6 +57,19 @@ export interface PendingSessionEntry {
   /** Epoch ms a prompt was dispatched for this chat, or null while it is a
    *  draft the user has not sent in. */
   sentAt: number | null;
+  /**
+   * Set while this chat's prompt is HELD for another session to finish.
+   *
+   * The row is drawn exactly as it was before the send — same id, same folder —
+   * because the session does not exist yet: what the user asked for is that the
+   * row stays put and says what it is waiting on. `waitId` is the server row
+   * that owns the wait, so cancelling from the row reaches it.
+   */
+  waiting?: {
+    waitId: string;
+    dependsOn: string;
+    dependsOnTitle: string | null;
+  };
 }
 
 /** How long a SENT entry may outlive its switch with no real row behind it.
@@ -90,11 +103,15 @@ function createdAtFor(id: string): number {
 /** Write an entry, emitting only when it actually moved. */
 function upsert(entry: PendingSessionEntry): void {
   const current = entries.get(entry.id);
+  const sameWait = current?.waiting?.waitId === entry.waiting?.waitId
+    && current?.waiting?.dependsOn === entry.waiting?.dependsOn
+    && current?.waiting?.dependsOnTitle === entry.waiting?.dependsOnTitle;
   if (
     current
     && current.folderId === entry.folderId
     && current.createdAt === entry.createdAt
     && current.sentAt === entry.sentAt
+    && sameWait
   ) {
     return;
   }
@@ -160,6 +177,8 @@ export function adoptPendingSession(
     folderId: from?.folderId ?? folderId ?? null,
     createdAt: from?.createdAt ?? createdAtFor(toId),
     sentAt: from?.sentAt ?? Date.now(),
+    // The wait ended when the spawn answered: the new row is a real session
+    // from this moment, and a cue left on it would say it is still held.
   });
 }
 
@@ -216,6 +235,28 @@ export function hydratePendingSession(
   upsert({ id, folderId, createdAt: createdAtFor(id), sentAt: running ? Date.now() : null });
 }
 
+/**
+ * Rewrite one entry through the store's own write path.
+ *
+ * Exported for the WAITING half (`pending-waiting.ts`): the field is a normal
+ * part of the entry, so it must go through the same no-op check and the same
+ * emit rather than mutating the map behind the store's back.
+ */
+export function patchPendingEntry(
+  id: string,
+  update: (entry: PendingSessionEntry) => PendingSessionEntry | null,
+): void {
+  const entry = entries.get(id);
+  if (!entry) return;
+  const next = update(entry);
+  if (next === null) {
+    entries.delete(id);
+    emit();
+    return;
+  }
+  upsert(next);
+}
+
 /** Drop an entry (a released draft, a session that went away). */
 export function releasePendingSession(id: string): void {
   if (entries.delete(id)) emit();
@@ -252,6 +293,12 @@ export function reconcilePendingSessions(input: {
     // A live run holds its row wherever the user navigates: the spinner and
     // the row it belongs to are the same fact.
     if (input.running.has(id)) continue;
+    // A HELD prompt holds its row for as long as the wait lasts. The settle
+    // window below exists because a sent prompt's transcript is seconds away;
+    // a held prompt has no transcript at all yet, so expiring it after 30s
+    // would delete the very row the user is waiting on. The server's own list
+    // is what ends this — the dispatch watcher clears the cue.
+    if (entry.waiting) continue;
     if (entry.sentAt !== null) {
       if (now - entry.sentAt > PENDING_SETTLE_MS) {
         entries.delete(id);

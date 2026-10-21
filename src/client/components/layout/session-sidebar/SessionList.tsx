@@ -15,6 +15,8 @@ interface SessionSidebarSessionListProps {
   /** Present only while a batch selection is active. */
   batch?: BatchBinding;
   onStartSessionSelection?: (folderId: number) => void;
+  /** Drop a held prompt from its row's menu. */
+  onCancelWait?: (waitId: string) => void;
 }
 
 export function SessionSidebarSessionList({
@@ -28,6 +30,7 @@ export function SessionSidebarSessionList({
   onToast,
   batch,
   onStartSessionSelection,
+  onCancelWait,
 }: SessionSidebarSessionListProps) {
   // No fade wiring here: the app-wide scrollbar rule reveals this list's bar
   // from the document's own capture-phase listener (`lib/scrollbar-activity`),
@@ -52,6 +55,7 @@ export function SessionSidebarSessionList({
             onToast={onToast}
             batch={batch}
             onStartSessionSelection={onStartSessionSelection}
+            onCancelWait={onCancelWait}
           />
         ))
       )}

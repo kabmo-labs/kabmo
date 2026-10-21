@@ -21,7 +21,8 @@
  */
 
 import { claimHeadQueueItem, hasQueuedItem, requeueHeadQueueItem } from '@/server/lib/queue/store.server';
-import { composeMessageWithTextAttachments } from '@/shared/lib/chat/attachments';
+import { applyModelSnapshot, promptCommand } from '@/server/lib/queue/payload';
+import { requestWaitingSweep } from '@/server/lib/waiting/sweep-trigger';
 import type { QueuedMessage } from '@/shared/types/chat';
 
 /** Settling time between agent_end and the next prompt dispatch. Small on
@@ -94,45 +95,15 @@ function clearPendingTimer(sessionId: string): void {
 
 /** Send one queued item to the session as a normal prompt. The model snapshot
  *  rides first (set_model / set_thinking_level) exactly like the composer's
- *  queued delivery did. Returns false when the dispatch failed. */
+ *  queued delivery did. Returns false when the dispatch failed.
+ *
+ *  The command itself is built by `queue/payload.ts`, shared with the waiting
+ *  prompt's dispatcher: both send a prompt nobody typed in this tab, from the
+ *  same persisted shape. */
 async function dispatchQueuedItem(session: QueueDeliveryHost, item: QueuedMessage): Promise<boolean> {
   try {
-    if (item.model) {
-      await session.send({ type: 'set_model', provider: item.model.provider, modelId: item.model.modelId });
-      if (item.model.thinkingLevel !== 'auto') {
-        await session.send({ type: 'set_thinking_level', level: item.model.thinkingLevel });
-      }
-    }
-    // Attachments reach this point as the persisted display fields — the live
-    // `File` never survived the queue's JSON round trip. The base64 payload and
-    // the MIME type are therefore read from the fields that DID persist:
-    // `dataBase64` for the bytes, `type` for the media type. (Matching on a
-    // `data:` preview used to yield zero images, because the composer's preview
-    // is a `blob:` object URL that the server cannot read.)
-    const images = item.attachments
-      .filter((a) => typeof a?.dataBase64 === 'string' && a.dataBase64.length > 0)
-      .map((a) => ({
-        type: 'image' as const,
-        data: a.dataBase64 as string,
-        mimeType: typeof a.type === 'string' && a.type.startsWith('image/') ? a.type : 'image/png',
-      }));
-    // Text attachments are inlined into the prompt, exactly as the composer
-    // does at send time — the item's own `text` is the raw composer input, so
-    // without this a queued file would deliver as a bare filename mention.
-    const textFiles = item.attachments
-      .filter((a) => typeof a?.content === 'string' && a.content.length > 0)
-      .map((a) => ({
-        name: typeof a.name === 'string' && a.name ? a.name : 'attachment',
-        mimeType: typeof a.type === 'string' ? a.type : 'text/plain',
-        content: a.content as string,
-        size: typeof a.size === 'number' ? a.size : (a.content as string).length,
-      }));
-    await session.send({
-      type: 'prompt',
-      message: composeMessageWithTextAttachments(item.text, textFiles),
-      ...(images.length ? { images } : {}),
-      ...(item.model ? { accessMode: item.model.accessMode } : {}),
-    });
+    await applyModelSnapshot(session.send, item.model);
+    await session.send(promptCommand({ text: item.text, attachments: item.attachments, model: item.model }));
     return true;
   } catch (error) {
     console.error(`[queue] delivery failed for session ${session.sessionId}:`, error);
@@ -231,7 +202,13 @@ async function deliverNext(session: QueueDeliveryHost): Promise<boolean> {
     return false;
   }
   const item = await claimHeadQueueItem(sessionId);
-  if (!item) return false;
+  if (!item) {
+    // The queue just drained: a prompt held until this session finished may now
+    // be free to go. The sweep re-checks the queue itself, so requesting one
+    // here cannot release a prompt ahead of an item that is still waiting.
+    requestWaitingSweep();
+    return false;
+  }
   const ok = await dispatchQueuedItem(session, item);
   if (!ok) {
     await requeueHeadQueueItem(sessionId, item);
@@ -240,7 +217,22 @@ async function deliverNext(session: QueueDeliveryHost): Promise<boolean> {
     await armRetryIfQueued(session);
     return false;
   }
+  // This delivery may have been the last one: ask for a sweep so a dependent
+  // prompt does not sit until the next tick after the queue emptied.
+  requestWaitingSweep();
   return true;
+}
+
+/**
+ * Whether this process already holds a delivery slot for the session.
+ *
+ * Read by the waiting-prompt sweep: a run end arms a delivery 500 ms out, so a
+ * dependency that looks settled for a moment may still have its queued
+ * follow-up about to go out. Waiting for the slot to clear is what keeps a
+ * dependent prompt from starting a second turn in the gap.
+ */
+export function hasPendingDelivery(sessionId: string): boolean {
+  return getPendingTimers().has(sessionId);
 }
 
 /**

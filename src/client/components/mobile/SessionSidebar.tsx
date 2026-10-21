@@ -11,6 +11,8 @@ import { UpdatePopup } from '@/client/components/layout/update-popup';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
+import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
+import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
@@ -80,6 +82,8 @@ export function MobileSessionSidebar({
     window.__OMP_BOOTSTRAP__?.isAndroid,
   );
   const { toasts, pushToast, dismissToast } = useToasts();
+  const cancelWait = useCancelWait(pushToast);
+  useWaitingDispatch({ onNotice: pushToast });
 
   // The popup's "Update now" hands the run over rather than starting its own —
   // see the desktop sidebar. The phone must also bring the drawer forward, or
@@ -229,6 +233,7 @@ export function MobileSessionSidebar({
           onToast={pushToast}
           batch={batchBinding}
           onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
+          onCancelWait={cancelWait}
         />
       )}
 

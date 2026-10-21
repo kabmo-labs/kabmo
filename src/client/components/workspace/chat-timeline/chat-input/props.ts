@@ -13,6 +13,7 @@ import type { SetStateAction } from 'preact/compat';
 import type { Attachment } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
+import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 
 export interface ChatInputProps {
   value: string;
@@ -104,4 +105,19 @@ export interface ChatInputProps {
    * reader reaches the tail, types, or focuses the box.
    */
   shrinkWhileReading?: boolean;
+  /**
+   * "Wait for session": the pick, the sessions that may be waited on, and the
+   * setter.
+   *
+   * Omitted by every composer that is not a NEW chat's — the pick defers a
+   * prompt that has no session yet, so an existing chat has nothing to defer.
+   * The chat composer never passes it either: its own timeline renders
+   * `EmptyWorkspacePrompt` while the session is pending, and that is where the
+   * picker lives.
+   */
+  waiting?: {
+    value: WaitingCandidate | null;
+    candidates: WaitingCandidate[];
+    onChange: (candidate: WaitingCandidate | null) => void;
+  };
 }

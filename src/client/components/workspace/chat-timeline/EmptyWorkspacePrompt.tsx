@@ -10,6 +10,12 @@ import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter
 import { GeneratingIndicator } from '@/client/components/workspace/chat-timeline/GeneratingIndicator';
 import { resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import {
+  WaitingDependencyPicker,
+  waitingCandidates,
+  type WaitingCandidate,
+} from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
+import { Hourglass } from 'lucide-preact';
 
 interface EmptyWorkspacePromptProps {
   className?: string;
@@ -55,6 +61,17 @@ interface EmptyWorkspacePromptProps {
   onUndo?: (id: string, content?: string) => void;
   onRetry?: (id: string) => void;
   onNewChat?: (content: string, attachments?: Attachment[]) => void;
+  /** Server-tracked `stream` ids: the only sessions the wait may name. */
+  streamStatusMap?: Record<string, string | undefined>;
+  /** A name for a streaming session the sidebar has not scanned yet. */
+  titleForSession?: (id: string) => string | undefined;
+  /** The "wait for session" pick, persisted per chat. */
+  waitingFor?: WaitingCandidate | null;
+  onWaitingForChange?: (candidate: WaitingCandidate | null) => void;
+  /** A held prompt for THIS chat: the composer is disabled until it is released
+   *  or cancelled, because there is no session to send a second prompt to. */
+  heldWait?: { title: string | null } | null;
+  onCancelWait?: () => void;
 }
 
 export function EmptyWorkspacePrompt({
@@ -89,6 +106,12 @@ export function EmptyWorkspacePrompt({
   onUndo,
   onRetry,
   onNewChat,
+  streamStatusMap = {},
+  titleForSession,
+  waitingFor = null,
+  onWaitingForChange,
+  heldWait = null,
+  onCancelWait,
 }: EmptyWorkspacePromptProps) {
   const [showWorkspace, setShowWorkspace] = useState(false);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -98,6 +121,13 @@ export function EmptyWorkspacePrompt({
   const selectedFolder = useMemo(() => {
     return folders?.find(f => f.id === selectedFolderId);
   }, [folders, selectedFolderId]);
+
+  // Sessions the wait may name: the ones with a run in flight, from the same
+  // server-tracked map the sidebar's spinner is drawn from.
+  const candidates = useMemo(
+    () => waitingCandidates(folders, streamStatusMap, null, titleForSession),
+    [folders, streamStatusMap, titleForSession],
+  );
 
   // Run footers are boundary rows: emitted after the run's last row, so a
   // trailing notice never separates the footer from the next user message.
@@ -128,6 +158,7 @@ export function EmptyWorkspacePrompt({
             background). Hidden once a chat has been sent — the session now has
             a target workspace, so the composer is the only focus. */}
         {messages.length === 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
           <div className="relative shrink-0" ref={workspaceRef}>
           <button 
             type="button"
@@ -171,6 +202,21 @@ export function EmptyWorkspacePrompt({
                 )}
               </div>
             </div>
+          )}
+        </div>
+          {/* The wait picker sits BESIDE the workspace picker, because both
+              answer the same question about the chat that has not started:
+              where it runs, and what it waits for. It only appears while there
+              is something to wait for (or a pick already made). */}
+          {onWaitingForChange && (waitingFor || candidates.length > 0) && (
+            <WaitingDependencyPicker
+              folders={folders}
+              streamStatusMap={streamStatusMap}
+              sessionId={null}
+              titleFor={titleForSession}
+              value={waitingFor}
+              onChange={onWaitingForChange}
+            />
           )}
         </div>
         )}
@@ -232,6 +278,27 @@ export function EmptyWorkspacePrompt({
             providerNames={providerNames}
           />
         )}
+        {/* A held prompt owns this chat until it is released: there is no
+            session to send a second prompt to, and a composer that looked live
+            would accept one that could not be delivered. */}
+        {heldWait && (
+          <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2 text-xs text-ink/70">
+            <Hourglass size={12} className="shrink-0 animate-pulse text-ink/60" />
+            <span className="min-w-0 flex-1 truncate">
+              Waiting for {heldWait.title ?? 'another session'} to finish before this prompt is sent.
+            </span>
+            {onCancelWait && (
+              <button
+                type="button"
+                data-testid="cancel-held-prompt"
+                onClick={onCancelWait}
+                className="shrink-0 rounded border border-ink/20 px-2 py-0.5 text-[11px] text-ink/70 hover:bg-ink/5 hover:text-ink cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
         <ChatInput
           value={inputValue}
           onChange={setInputValue}
@@ -240,7 +307,7 @@ export function EmptyWorkspacePrompt({
           onAttachmentsChange={setInputAttachments}
           onSend={onSend}
           isGenerating={isGenerating}
-          disabled={!selectedFolderId}
+          disabled={!selectedFolderId || Boolean(heldWait)}
           className="w-full shrink-0"
           appSettings={appSettings}
           onThinkingLevelChange={onThinkingLevelChange}

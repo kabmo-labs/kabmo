@@ -126,9 +126,15 @@ export function CategoryHeader({
           a checkbox is a second thing the click could mean. */}
       {!batchActive && (
         <div className="flex items-center space-x-0.5 pl-1">
+          {/* `aria-label` as well as `title`, like the phone's row: the button
+              is icon-only, so `title` alone leaves it unnamed to assistive tech
+              and to `getByRole` — and naming the FOLDER is what tells this
+              button apart from the toolbar's own New Session, which inherits
+              the current session's folder instead of naming one. */}
           <button
             type="button"
             title="New Session"
+            aria-label={`New session in ${folder.name}`}
             className="w-5 h-5 flex items-center justify-center text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer transition-colors"
             onClick={(e) => { e.stopPropagation(); onNewSession(); }}
           >
