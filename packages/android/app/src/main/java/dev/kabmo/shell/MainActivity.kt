@@ -33,6 +33,8 @@ import android.webkit.WebView
 class MainActivity : Activity() {
 
     private lateinit var webView: WebView
+    private lateinit var overlay: LoadingOverlay
+    private var loading = LoadingState.done()
     private var loadedUrl: String? = null
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -40,7 +42,31 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
-        setContentView(webView)
+        overlay = LoadingOverlay(this).apply {
+            onRetry = { retryLoad() }
+            onOpenSettings = { openSettings() }
+        }
+
+        // The overlay is a SIBLING of the WebView, never a view inside the page:
+        // the page cannot report its own readiness (its bundle is what renders
+        // the app), and a page-drawn overlay would vanish exactly when the page
+        // fails to load.
+        val root = android.widget.FrameLayout(this)
+        root.addView(
+            webView,
+            android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        root.addView(
+            overlay,
+            android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        setContentView(root)
 
         configureWebView()
 
@@ -87,21 +113,23 @@ class MainActivity : Activity() {
             flushCookies()
         }
         loadedUrl = url
-        webView.loadUrl(url)
+        startLoad(url)
     }
 
     /**
      * Force the cookie store to disk.
      *
      * Chromium persists cookies on a timer and on a CLEAN shutdown; an app
-     * swiped away from recents gets neither, so a session created seconds
-     * earlier was simply lost and the next launch asked for the password again
-     * — the reported "harus login terus menerus pas buka tutup". Measured on
-     * Android 15: a fresh login left `app_webview/Default/Cookies` with zero
-     * rows at t+5s and t+15s, and the row appeared at t+30s.
+     * swiped away from recents or force-stopped gets neither, so a session
+     * created seconds earlier was simply lost and the next launch asked for the
+     * password again — the reported "harus login terus menerus pas buka tutup".
+     * Measured on Android 15: a fresh login left `app_webview/Default/Cookies`
+     * with zero rows at t+5s and t+15s, and the row appeared at t+30s.
      *
-     * `onPause` is the last moment the process is guaranteed to be alive, so
-     * that is where a session that already exists is written out.
+     * Called at every point a session can have just been created (a page
+     * finished loading, which is what a successful login navigates into) and
+     * whenever the shell leaves the foreground, because that is the last moment
+     * the process is guaranteed to be alive.
      */
     private fun flushCookies() {
         CookieManager.getInstance().flush()
@@ -113,12 +141,48 @@ class MainActivity : Activity() {
     }
 
     /**
+     * Begin a load with the overlay up.
+     *
+     * The state is armed BEFORE `loadUrl`, because a cached document can call
+     * `onPageStarted` on the same tick: arming afterwards would let the first
+     * progress frame of a real load be ignored as "already finished".
+     */
+    private fun startLoad(url: String) {
+        loading = LoadingState.connecting()
+        overlay.render(loading)
+        webView.loadUrl(url)
+    }
+
+    /**
+     * Retry from the overlay's own button.
+     *
+     * A failed load leaves the WebView on Chromium's error page, which is not a
+     * document the console can recover from; reloading the saved address is the
+     * only retry that means anything. `loadedUrl` is deliberately NOT cleared —
+     * it is what keeps a resume from clearing the cookie jar.
+     */
+    private fun retryLoad() {
+        val url = ServerConfig.read(this) ?: return
+        startLoad(url)
+    }
+
+    private fun applyLoading(next: LoadingState) {
+        loading = next
+        overlay.render(next)
+    }
+
+    /**
      * Apply the saved page zoom — the page's STARTING scale.
      *
      * `WebSettings.textZoom` is not usable here: it scales text only and leaves
      * layout at 100%, which reflows a two-column phone view into something that
-     * no longer matches its boxes. `setInitialScale` scales the page itself, as a
-     * percentage of the device's default.
+     * no longer matches its boxes. `setInitialScale` scales the page itself.
+     *
+     * The argument is NOT the saved percent: `setInitialScale` counts percent of
+     * the device's default scale, so the display density has to be multiplied in
+     * (`ServerConfig.initialScaleFor`). Passing the percent straight through is
+     * what made the setting look dead — at density 2.625 a 100% page rendered at
+     * 0.38x and the whole slider stayed below 1.0x.
      *
      * It does NOT block a pinch. Measured on Android 15 with a real two-finger
      * gesture: with this call in force and `setSupportZoom(true)`, a pinch took
@@ -172,15 +236,25 @@ class MainActivity : Activity() {
         webView.webViewClient = KabmoWebViewClient(
             activity = this,
             onCertificateProblem = { description -> showCertificateDialog(description) },
-            // A successful login is a NAVIGATION, so a finished page is the
-            // first moment the new session cookie exists. Chromium would write
-            // it out on its own schedule (~30 s measured), which a user who
-            // closes the app right after signing in never reaches.
-            onLoadFinished = { flushCookies() },
+            // Only `startLoad` re-opens the overlay. A later in-app navigation
+            // (the login submit is one) must NOT flash it: the state machine
+            // ignores progress once it has finished, so a navigation after the
+            // console is up costs nothing — while a FAILED main-frame load still
+            // surfaces its reason, which is the blank-screen case worth covering.
+            onLoadFinished = {
+                applyLoading(loading.finished())
+                // A successful login is a NAVIGATION, so this is the first
+                // moment the new session cookie exists. Chromium would write it
+                // out on its own schedule (~30 s measured), which a user who
+                // closes the app right after signing in never reaches.
+                flushCookies()
+            },
+            onLoadFailed = { failure -> applyLoading(loading.failedBecause(failure)) },
         )
         webView.webChromeClient = KabmoChromeClient(
             activity = this,
             onFileChooser = { callback -> showFileChooser(callback) },
+            onProgress = { percent -> applyLoading(loading.progressed(percent)) },
         )
         webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
             KabmoDownloads.start(this, url, contentDisposition, mimeType)

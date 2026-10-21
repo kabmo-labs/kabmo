@@ -34,18 +34,19 @@ sdk.dir=/path/to/android-sdk
 cd packages/android
 export JAVA_HOME=/path/to/jdk-17
 ./gradlew :app:assembleDebug
-# → app/build/outputs/apk/debug/app-debug.apk      (measured 900,638 B)
+# → app/build/outputs/apk/debug/app-debug.apk      (measured 884,847 B)
 
 ./gradlew :app:assembleRelease
-# → app/build/outputs/apk/release/app-release.apk  (measured 65,069 B, R8 + resource shrink)
+# → app/build/outputs/apk/release/app-release.apk  (measured 73,877 B, R8 + resource shrink)
 
 ./gradlew :app:testDebugUnitTest
-# → 8 tests over UrlNormalizer (plain JVM, no emulator)
+# → 31 tests: URL normalization, zoom math, the overlay's state rules
+#   (plain JVM, no emulator)
 ```
 
-The release APK is **65 KB** because it carries no library: one `classes.dex` of
-42 KB, the five launcher densities, and the platform WebView. The debug build is
-900 KB because it is not minified and carries the debug symbols.
+The release APK is **74 KB** because it carries no library: one `classes.dex`,
+the five launcher densities, and the platform WebView. The debug build is
+885 KB because it is not minified and carries the debug symbols.
 
 Install on a connected device:
 
@@ -123,6 +124,37 @@ release.yml
    cookie would be sent to it. Pressing Connect on the address already saved
    keeps the session, because this is also the screen the zoom slider lives on:
    it used to sign the user out for adjusting the zoom and then confirming.
+
+### Launch overlay
+
+From the tap until the console paints, the shell draws a **progress overlay**:
+the wordmark, a bar, and one sentence naming what is happening. It is a
+**sibling of the WebView in a `FrameLayout`**, never a view inside the page —
+the page cannot report its own readiness (its own bundle is what renders the
+app), and a page-drawn overlay would vanish exactly when the page fails to load.
+
+- **The bar is indeterminate until the WebView reports real progress.** A
+  determinate bar sitting at 0 is indistinguishable from a stuck one, and the
+  first seconds of a cold start are when the user is deciding whether the app is
+  broken. Chromium's 0% tick is therefore ignored (`LoadingState.progressed`).
+- **100% is not a finish, and progress never moves backwards.** The WebView
+  reports 100 before `onPageFinished`, and the server's shell is still fetching
+  the client bundle at that point; a redirect restarts the document and reports
+  100 then 10 again, which would make the bar snap back and read as a stall.
+- **A failed main-frame load keeps the overlay up with the reason** — host not
+  found, connection refused, timeout, untrusted certificate, or a catch-all —
+  plus **Retry** and **Server settings**. The main-frame test is what makes this
+  usable: a page that loads but cannot reach one of its assets reports an error
+  too, and treating that as a failed page would cover a console that already
+  works.
+- **`onPageFinished` does not clear a failure.** A failed load still finishes on
+  the error page Chromium renders; hiding the overlay there is exactly the blank
+  paper screen with no explanation that the overlay exists to remove. Retry
+  reloads the saved address, because the error page is not a document the
+  console can recover from.
+
+The rules live in `LoadingState` (pure, JVM-tested — every one of them is an
+ordering the platform actually produces) and the drawing in `LoadingOverlay`.
 
 ### Staying signed in
 
@@ -283,7 +315,9 @@ packages/android/
 ├── app/src/main/
 │   ├── AndroidManifest.xml          cleartext, launcher shortcut, single Task
 │   ├── java/dev/kabmo/shell/
-│   │   ├── MainActivity.kt          WebView + back
+│   │   ├── MainActivity.kt          WebView + launch overlay + back
+│   │   ├── LoadingOverlay.kt        progress bar, failure sentence, Retry
+│   │   ├── LoadingState.kt          the overlay's rules (pure, JVM-tested)
 │   │   ├── SettingsActivity.kt      native server settings (first run too)
 │   │   ├── KabmoWebView.kt          settings, cookies, origin comparison
 │   │   ├── KabmoWebViewClient.kt    navigation policy, SSL refusals

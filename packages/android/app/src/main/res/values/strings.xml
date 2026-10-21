@@ -32,6 +32,22 @@
 
     <string name="webview_error_settings">Server settings</string>
 
+    <!--
+      The launch overlay. The sentences name what is happening rather than
+      "Loading…", because the failure cases are what the user needs to tell
+      apart: a server that is off, a wrong address, and an untrusted certificate
+      all look identical behind a blank screen.
+    -->
+    <string name="load_connecting">Connecting to the server…</string>
+    <string name="load_progress">Loading the console… %1$d%%</string>
+    <string name="load_retry">Retry</string>
+    <string name="load_settings">Server settings</string>
+    <string name="load_err_host">The server address could not be found. Check the host and that this device is on the same network.</string>
+    <string name="load_err_connect">Could not connect. Check that Kabmo is running and the port is right.</string>
+    <string name="load_err_timeout">The server did not answer in time. It may still be starting.</string>
+    <string name="load_err_ssl">The certificate is not trusted. See Server settings for the certificate details.</string>
+    <string name="load_err_other">The console could not be loaded. Retry, or check the server address.</string>
+
     <string name="ssl_title">Certificate not trusted</string>
     <string name="ssl_body">The server presented a certificate this device does not trust.\n\n%1$s\n\nInstall the certificate on this device, or connect over plain http on a trusted network.</string>
 </resources>

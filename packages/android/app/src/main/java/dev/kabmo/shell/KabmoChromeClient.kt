@@ -27,6 +27,8 @@ import android.webkit.WebViewClient
 class KabmoChromeClient(
     private val activity: Activity,
     private val onFileChooser: (ValueCallback<Array<Uri>>) -> Unit,
+    /** The main document's own progress, 0–100. */
+    private val onProgress: (Int) -> Unit = {},
 ) : WebChromeClient() {
 
     /**
@@ -72,6 +74,11 @@ class KabmoChromeClient(
         webViewTransport.webView = transport
         resultMsg.sendToTarget()
         return true
+    }
+
+    override fun onProgressChanged(view: WebView, newProgress: Int) {
+        super.onProgressChanged(view, newProgress)
+        onProgress(newProgress)
     }
 
     override fun onShowFileChooser(

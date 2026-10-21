@@ -3,10 +3,10 @@ package dev.kabmo.shell
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -28,8 +28,10 @@ import android.webkit.WebViewClient
 class KabmoWebViewClient(
     private val activity: Activity,
     private val onCertificateProblem: (String) -> Unit,
-    /** The main frame finished loading. */
+    /** The main frame finished — including the error page a failed load renders. */
     private val onLoadFinished: () -> Unit = {},
+    /** A main-frame resource failed; a broken image must not count. */
+    private val onLoadFailed: (LoadingState.Failure) -> Unit = {},
 ) : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -65,13 +67,25 @@ class KabmoWebViewClient(
         onCertificateProblem("${error.url.orEmpty()}\n$description")
     }
 
-    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-        super.onPageStarted(view, url, favicon)
-    }
-
     override fun onPageFinished(view: WebView, url: String?) {
         super.onPageFinished(view, url)
         onLoadFinished()
+    }
+
+    /**
+     * A failed load keeps the overlay up with a reason, and the main-frame test
+     * is what makes it usable: a page that loads but cannot reach one of its
+     * assets (a favicon, a CDN font) reports an error here too, and treating
+     * that as a failed page would cover a console that is already working.
+     */
+    override fun onReceivedError(
+        view: WebView,
+        request: WebResourceRequest,
+        error: WebResourceError,
+    ) {
+        super.onReceivedError(view, request, error)
+        if (!request.isForMainFrame) return
+        onLoadFailed(LoadingState.failureFor(error.errorCode))
     }
 
     private fun openExternally(url: String): Boolean = try {
