@@ -52,16 +52,18 @@ describe('fetchAndroidRelease', () => {
   beforeEach(() => resetAndroidReleaseCache());
 
   test('picks the APK asset and its version', async () => {
-    const { impl } = stubFetch({
-      html_url: 'https://github.com/kabmo-labs/kabmo/releases/tag/v9.9.9',
-      assets: [
-        { name: 'source.tar.gz', browser_download_url: 'https://x/src.tgz' },
-        {
-          name: 'kabmo-android-v1.2.3.apk',
-          browser_download_url: 'https://x/kabmo-android-v1.2.3.apk',
-        },
-      ],
-    });
+    const { impl } = stubFetch([
+      {
+        html_url: 'https://github.com/kabmo-labs/kabmo/releases/tag/v9.9.9',
+        assets: [
+          { name: 'source.tar.gz', browser_download_url: 'https://x/src.tgz' },
+          {
+            name: 'kabmo-android-v1.2.3.apk',
+            browser_download_url: 'https://x/kabmo-android-v1.2.3.apk',
+          },
+        ],
+      },
+    ]);
 
     const release = await fetchAndroidRelease(impl);
     expect(release).toEqual({
@@ -71,10 +73,54 @@ describe('fetchAndroidRelease', () => {
     });
   });
 
-  test('answers null for a release with no APK', async () => {
-    const { impl } = stubFetch({ html_url: 'https://x', assets: [{ name: 'notes.md' }] });
-    const release = await fetchAndroidRelease(impl);
-    expect(release).toEqual({ url: null, latest: null, releaseUrl: 'https://x' });
+  test('skips a newer release that carries no APK', async () => {
+    // This is the shape that broke the button: `release.yml` releases the npm
+    // packages FIRST, so `kabmo-sdk/v0.0.2` is newer than the app release that
+    // holds the APK. Asking `/releases/latest` answered the package release and
+    // the button vanished while the APK sat one entry below.
+    const { impl } = stubFetch([
+      { html_url: 'https://x/kabmo-sdk', assets: [{ name: 'source.tar.gz' }] },
+      { html_url: 'https://x/kabmo-ui', assets: [] },
+      {
+        html_url: 'https://x/app',
+        assets: [{ name: 'kabmo-android-v0.3.0.apk', browser_download_url: 'https://x/a.apk' }],
+      },
+    ]);
+
+    expect(await fetchAndroidRelease(impl)).toEqual({
+      url: 'https://x/a.apk',
+      latest: '0.3.0',
+      releaseUrl: 'https://x/app',
+    });
+  });
+
+  test('skips drafts and prereleases', async () => {
+    const { impl } = stubFetch([
+      {
+        draft: true,
+        html_url: 'https://x/draft',
+        assets: [{ name: 'kabmo-android-v9.9.9.apk', browser_download_url: 'https://x/draft.apk' }],
+      },
+      {
+        prerelease: true,
+        html_url: 'https://x/pre',
+        assets: [{ name: 'kabmo-android-v8.0.0.apk', browser_download_url: 'https://x/pre.apk' }],
+      },
+      {
+        html_url: 'https://x/app',
+        assets: [{ name: 'kabmo-android-v0.3.0.apk', browser_download_url: 'https://x/a.apk' }],
+      },
+    ]);
+
+    expect((await fetchAndroidRelease(impl))?.latest).toBe('0.3.0');
+  });
+
+  test('answers null for a list with no APK anywhere', async () => {
+    const { impl } = stubFetch([
+      { html_url: 'https://x', assets: [{ name: 'notes.md' }] },
+      { html_url: 'https://y', assets: [] },
+    ]);
+    expect(await fetchAndroidRelease(impl)).toEqual({ url: null, latest: null, releaseUrl: null });
   });
 
   test('answers null when the probe fails', async () => {

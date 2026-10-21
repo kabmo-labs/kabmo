@@ -3,8 +3,9 @@
  *
  * The APK is NOT an npm package (see `.github/workflows/publish-android.yml`), so
  * the npm probe that answers for the app and for `omp` cannot answer here. The
- * only record of a published APK is the GitHub release asset, which means one
- * unauthenticated REST read of the newest release.
+ * only record of a published APK is a GitHub release asset, which means one
+ * unauthenticated REST read of the release LIST — not `/releases/latest`, which
+ * answers the newest release of ANY kind (see `fetchAndroidRelease`).
  *
  * Two facts travel back, and they answer different questions:
  *
@@ -52,7 +53,17 @@ export function versionFromAssetName(name: string): string | null {
 }
 
 /**
- * The newest release's APK.
+ * The newest release that actually carries an APK.
+ *
+ * NOT `/releases/latest`, which answers the newest release of ANY kind. This
+ * repository publishes three artifacts from one push, and the packages are
+ * released FIRST (`packages → marketplace → android → app` in `release.yml`),
+ * so their `kabmo-sdk/v*` / `kabmo-ui/v*` releases are newer than the app
+ * release that carries the APK. `@semantic-release/github` runs in both
+ * pipelines, so those are real releases — measured against a stub that answered
+ * a package release: `/releases/latest` produced `{url: null, latest: null}` and
+ * the sidebar's button disappeared even though the APK sat on the release
+ * directly below.
  *
  * One request, cached for five minutes on `globalThis` for the same reason the
  * database handle is anchored there: `bun --hot` re-evaluates this module while
@@ -65,7 +76,7 @@ export async function fetchAndroidRelease(fetchImpl: typeof fetch = fetch): Prom
   if (cache.entry && now - cache.at < CACHE_MS) return cache.entry;
 
   try {
-    const response = await fetchImpl(`${githubApiBase()}/repos/${REPO}/releases/latest`, {
+    const response = await fetchImpl(`${githubApiBase()}/repos/${REPO}/releases?per_page=${RELEASE_SCAN}`, {
       headers: {
         accept: 'application/vnd.github+json',
         // GitHub rejects a request with no User-Agent.
@@ -74,37 +85,61 @@ export async function fetchAndroidRelease(fetchImpl: typeof fetch = fetch): Prom
     });
     if (!response.ok) return cache.entry ?? null;
 
-    const body = (await response.json()) as {
-      html_url?: unknown;
-      assets?: unknown;
+    const body = (await response.json()) as unknown;
+    // A body that is not the release list is a failed probe, not an empty
+    // repository: answering `{url: null, latest: null}` here would be
+    // indistinguishable from "no release carries an APK", and the caller would
+    // cache that mistake for five minutes.
+    if (!Array.isArray(body)) return cache.entry ?? null;
+
+    // Drafts are not published and prereleases are not what a console offers an
+    // installed app — the same two the `latest` endpoint excluded.
+    const published = body.filter(
+      (entry): entry is Record<string, unknown> =>
+        entry !== null && typeof entry === 'object' && entry.draft !== true && entry.prerelease !== true,
+    );
+
+    const release = published
+      .map((entry) => ({ entry, asset: apkAsset(entry.assets) }))
+      .find((candidate) => candidate.asset !== null);
+
+    if (!release?.asset) {
+      const fallback: AndroidRelease = { url: null, latest: null, releaseUrl: null };
+      cache.entry = fallback;
+      cache.at = now;
+      return fallback;
+    }
+
+    const resolved: AndroidRelease = {
+      url: typeof release.asset.browser_download_url === 'string' ? release.asset.browser_download_url : null,
+      latest: versionFromAssetName(String(release.asset.name)),
+      releaseUrl: typeof release.entry.html_url === 'string' ? release.entry.html_url : null,
     };
-    // A body that is not the release document is a failed probe, not an empty
-    // release: answering `{url: null, latest: null}` here would be
-    // indistinguishable from "a release with no APK", and the caller would cache
-    // that mistake for five minutes.
-    if (!Array.isArray(body.assets)) return cache.entry ?? null;
 
-    const assets = body.assets;
-    const asset = assets
-      .map((entry) => (entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : null))
-      .find((entry) => entry && typeof entry.name === 'string' && versionFromAssetName(entry.name) !== null);
-
-    const name = typeof asset?.name === 'string' ? asset.name : '';
-    const url = typeof asset?.browser_download_url === 'string' ? asset.browser_download_url : null;
-    const release: AndroidRelease = {
-      url,
-      latest: versionFromAssetName(name),
-      releaseUrl: typeof body.html_url === 'string' ? body.html_url : null,
-    };
-
-    cache.entry = release;
+    cache.entry = resolved;
     cache.at = now;
-    return release;
+    return resolved;
   } catch {
     // Keep the last good answer rather than replacing it with a failure: a
     // momentary outage must not remove a download button that was valid.
     return cache.entry ?? null;
   }
+}
+
+/** How many releases to look back through for the APK. */
+const RELEASE_SCAN = 20;
+
+/** The first asset of a release that names an APK, or null. */
+function apkAsset(assets: unknown): Record<string, unknown> | null {
+  if (!Array.isArray(assets)) return null;
+
+  for (const entry of assets) {
+    if (entry === null || typeof entry !== 'object') continue;
+    const asset = entry as Record<string, unknown>;
+    if (typeof asset.name === 'string' && versionFromAssetName(asset.name) !== null) return asset;
+  }
+
+  return null;
 }
 
 const CACHE_MS = 5 * 60_000;
