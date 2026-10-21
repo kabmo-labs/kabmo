@@ -16,7 +16,7 @@
  * environment condition, not a bug, so the suite is skipped rather than failed.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,6 +28,23 @@ import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/r
 import { removeDir } from '@/test-support/remove-dir';
 
 const hasGit = Boolean(Bun.which('git'));
+
+/**
+ * The suite drives REAL git processes — `init`, `add`, `commit`, `ls-remote`,
+ * `fetch`, `reset`, and a plugin build — and one test of it pays for most of
+ * them. Bun's default per-test budget is 5s, which a Linux runner clears in
+ * ~1.2s and a Windows runner does not: measured on `windows-latest`, the update
+ * test timed out at 5072ms and failed `expect(result.ok).toBe(true)` because the
+ * timeout fired mid-await (the run reported 1 fail + 1 unhandled error, and the
+ * suite is green locally). Process spawn on that runner costs several times what
+ * it does on POSIX, and this is the only suite here that spawns this many.
+ *
+ * A budget, not a skip: the behaviour under test — a shallow clone advancing past
+ * its boundary — is identical on both platforms, and skipping it there would
+ * report the update path as unverified on the platform the CLI ships to.
+ */
+const GIT_TEST_TIMEOUT_MS = 30_000;
+setDefaultTimeout(GIT_TEST_TIMEOUT_MS);
 
 let root = '';
 let work = '';

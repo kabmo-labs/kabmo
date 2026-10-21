@@ -161,8 +161,13 @@ jobs:
         run: |
           set -euo pipefail
           cd packages/android
-          version="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*//p' | sed 's/[[:space:]]*$//' version.properties | tail -1)"
-          test -n "$version" || { echo "version.properties declares no versionName"; exit 1; }
+          # `release/android-version.mjs` is the ONE reader of that file — the
+          # same `readVersionName` the bump script and its tests use. The inline
+          # `sed -n 's/^versionName=//p' | sed …` this replaced was wrong twice:
+          # `sed -n` with no file argument reads STDIN, so the first stage
+          # consumed the pipeline and the second read nothing, and the empty
+          # result only surfaced later as `versionName is not versionName=0.3.0`.
+          version="$(node ../../release/android-version.mjs)"
           echo "Shell version: $version"
           ./gradlew :app:assembleRelease --no-daemon --console=plain \
             "-PkabmoVersionCode=${VERSION_CODE}"
@@ -187,15 +192,15 @@ jobs:
           VERSION_CODE: ${{ inputs.version-code }}
         run: |
           set -euo pipefail
-          expected="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*//p' | sed 's/[[:space:]]*$//' packages/android/version.properties | tail -1)"
+          expected="$(node release/android-version.mjs)"
           apk=packages/android/app/build/outputs/apk/release/app-release.apk
           test -f "$apk" || { echo "No release APK was produced."; exit 1; }
           badging="$("$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$apk")"
           echo "$badging" | head -1
           echo "$badging" | grep -q "versionName='${expected}'" \
-            || { echo "versionName is not ${expected}"; exit 1; }
+            || { echo "the APK declares a versionName other than ${expected}"; exit 1; }
           echo "$badging" | grep -q "versionCode='${VERSION_CODE}'" \
-            || { echo "versionCode is not ${VERSION_CODE}"; exit 1; }
+            || { echo "the APK declares a versionCode other than ${VERSION_CODE}"; exit 1; }
 
       # Renamed so the download is identifiable: GitHub asset names are unique
       # per release, and `app-release.apk` says nothing about what it is.
@@ -210,7 +215,7 @@ jobs:
       - name: Name the artifact
         run: |
           set -euo pipefail
-          version="$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*//p' | sed 's/[[:space:]]*$//' packages/android/version.properties | tail -1)"
+          version="$(node release/android-version.mjs)"
           src=packages/android/app/build/outputs/apk/release/app-release.apk
           cp "$src" "kabmo-android-v${version}.apk"
           ls -l ./*.apk

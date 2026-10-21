@@ -109,9 +109,68 @@ describe('the shell version is one declared fact', () => {
       'kabmoVersionName',
     );
   });
+
+  test('the APK workflow reads the version through the tested reader, never through sed', () => {
+    // Measured on the v0.3.0 release: the inline read was
+    // `sed -n 's/^versionName=//p' | sed 's/[[:space:]]*$//' version.properties`.
+    // `sed -n` with no FILE argument reads STDIN, so the first stage consumed
+    // the pipeline's input and printed nothing, the second stage read that empty
+    // stream, and `version` came out EMPTY — the verify step then grepped the
+    // APK's badging for the literal string `versionName=0.3.0` and failed with
+    // `versionName is not versionName=0.3.0`. Every read of that file must go
+    // through `release/android-version.mjs`, which is `readVersionName`.
+    const workflow = readFileSync(join(repoRoot, '.github/workflows/publish-android.yml'), 'utf8');
+
+    expect(workflow, 'every version read must use the shared reader').toContain(
+      'node release/android-version.mjs',
+    );
+    // A pipeline stage that names the file AFTER a `sed -n` that has no file of
+    // its own is the exact shape that failed. Any `sed` touching the properties
+    // file is refused outright: there is one parser and this is not it.
+    expect(workflow, 'the workflow must not parse version.properties with sed').not.toMatch(
+      /sed[^\n]*version\.properties/,
+    );
+  });
 });
 
 describe('reading and rewriting the version line', () => {
+  test('the CLI prints the version and nothing else', () => {
+    // The workflow captures this with `$( … )`, so a trailing newline or any
+    // other output would land INSIDE the version string and make the `aapt2`
+    // comparison fail on whitespace. Run as a real process for that reason:
+    // calling `readVersionName` in-process proves nothing about what the shell
+    // captures.
+    const dir = mkdtempSync(join(tmpdir(), 'kabmo-android-cli-'));
+    scratch.push(dir);
+    const file = join(dir, 'version.properties');
+    writeFileSync(file, properties('1.2.3'));
+
+    const result = spawnSync(process.execPath, [join(repoRoot, 'release/android-version.mjs'), '--file', file], {
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('1.2.3');
+  });
+
+  test('the CLI exits 1 and says why when the file declares no version', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kabmo-android-cli-'));
+    scratch.push(dir);
+    const file = join(dir, 'version.properties');
+    writeFileSync(file, '# dropped\n');
+
+    const result = spawnSync(process.execPath, [join(repoRoot, 'release/android-version.mjs'), '--file', file], {
+      encoding: 'utf8',
+    });
+
+    // An EMPTY stdout is what made the original release failure unreadable: the
+    // verify step compared against `''` and reported the mismatch as if the APK
+    // were wrong.
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toContain('declares no versionName');
+  });
+
   test('reads the value, ignoring comments and surrounding space', () => {
     expect(readVersionName('# a comment\nversionName=1.2.3\n')).toBe('1.2.3');
     expect(readVersionName('  versionName = 1.2.3  \n')).toBe('1.2.3');
