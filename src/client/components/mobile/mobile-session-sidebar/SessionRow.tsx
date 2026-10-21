@@ -157,7 +157,12 @@ export function MobileSessionRow({
                   <Hourglass size={13} className="text-ink/60 animate-pulse" />
                 </span>
               ) : status === 'stream' ? (
-                <Loader2 size={13} className="text-ink/50 animate-spin" />
+                // Same label the desktop row carries, for the same reason: the
+                // phone draws the identical cue, and an unlabelled spinner is
+                // both unreachable to a screen reader and unassertable.
+                <span role="status" aria-label="Running">
+                  <Loader2 size={13} className="text-ink/50 animate-spin" />
+                </span>
               ) : status ? (
                 <Check size={13} className="text-ink/50" />
               ) : null}

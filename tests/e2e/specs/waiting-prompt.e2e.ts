@@ -45,15 +45,28 @@ async function newChatIn(page: Page, folderName: string) {
  * the second chat has to be opened while the first one is still streaming. A
  * send that waited for the answer would finish the dependency before the pick
  * was even possible — and then there is nothing to wait for.
+ *
+ * The gate is the ROW's own "Running" cue, not just the optimistic bubble. The
+ * bubble is painted by the send path before the server has a `stream` row, and
+ * the picker is derived from that row — so asserting the bubble and then racing
+ * the picker was the measured failure on the Windows runner: the dependency's
+ * run had ended by the time the picker's own timeout expired. Waiting for the
+ * cue proves the row reached the CLIENT, which is the only state the picker can
+ * be built from.
  */
 async function sendAndKeepRunning(page: Page, text: string) {
   const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
   await expect(input).toBeVisible();
   await input.fill(text);
   await input.press('Enter');
-  // The optimistic bubble is the send's own receipt; the run behind it is what
-  // the picker needs, and that is written at dispatch.
+  // The optimistic bubble is the send's own receipt.
   await expect(page.getByText(text).first()).toBeVisible({ timeout: 15_000 });
+  // And the sidebar row confirms the server registered the run, which is what
+  // the picker reads. Scoped to a row rather than the sidebar: the row is the
+  // element that carries the cue, and `session-item` is the testid it exposes.
+  await expect(
+    page.locator('[data-testid="session-item"] [role="status"][aria-label="Running"]').first(),
+  ).toBeVisible({ timeout: 20_000 });
 }
 
 /** Read the server's waiting rows through the page's own API. */
@@ -65,6 +78,11 @@ async function waitingRows(page: Page) {
   });
 }
 
+// A dependency run outlives the pick by design, so the file needs more than the
+// 60s default: the first case waits for A to END (up to 60s of its own) after
+// having spent the pick window getting there.
+test.describe.configure({ timeout: 120_000 });
+
 test.describe('wait for session', () => {
   test('holds a new chat prompt until the picked session finishes', async ({ harness, page }) => {
     const server = await harness('real');
@@ -74,10 +92,15 @@ test.describe('wait for session', () => {
 
     // Session A: a long run, still streaming when the second chat opens — the
     // picker offers exactly the sessions whose run is in flight, so the window
-    // has to outlast opening a second chat and picking it. Measured: 8s was
-    // not enough, and the picker was simply empty by the time it rendered.
+    // has to outlast opening a second chat and picking it. Measured: 8s was not
+    // enough; 20s then made the window the SAME length as the picker's own
+    // timeout, so a slow runner expired the run while the assertion was still
+    // counting (the Windows leg failed this way twice on one push while Linux
+    // passed). 30s is the window the pick needs; the `Running` gate above is
+    // what makes it sufficient, because the picker's own assertion no longer
+    // starts before the row has reached the client.
     await newChatIn(page, 'e2e-wait');
-    await sendAndKeepRunning(page, 'delay:20000 session A');
+    await sendAndKeepRunning(page, 'delay:30000 session A');
 
     // Session B: a NEW chat, with A picked as its dependency.
     await newChatIn(page, 'e2e-wait');
@@ -127,7 +150,8 @@ test.describe('wait for session', () => {
     await expect(page.getByText('e2e-wait-cancel').first()).toBeVisible();
 
     await newChatIn(page, 'e2e-wait-cancel');
-    await sendAndKeepRunning(page, 'delay:20000 session A');
+    // Same window as the first test, for the same reason.
+    await sendAndKeepRunning(page, 'delay:30000 session A');
 
     await newChatIn(page, 'e2e-wait-cancel');
     const picker = page.locator(`[data-testid="${TESTID.waitPicker}"]`);

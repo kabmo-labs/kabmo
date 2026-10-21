@@ -179,7 +179,18 @@ export function SessionItem({
                   <Hourglass size={12} className="animate-pulse text-ink/60" />
                 </span>
               ) : status === 'stream' ? (
-                <Loader2 size={12} className="animate-spin" />
+                // The run spinner is the ONE thing on this row that says a run
+                // is in flight, and it was an unlabelled icon: a screen reader
+                // got a bare `svg`, and a test had no accessible way to ask
+                // "is this session running". `waiting-for.e2e.ts` needs exactly
+                // that as its gate — the wait picker only appears once this
+                // session's `stream` row has reached the client, so asserting
+                // the picker without asserting the row was a race measured on
+                // the Windows runner (the dependency's 20s run expired while the
+                // picker's own 20s timeout was still counting).
+                <span role="status" aria-label="Running">
+                  <Loader2 size={12} className="animate-spin" />
+                </span>
               ) : (
                 <Check size={12} />
               )}
