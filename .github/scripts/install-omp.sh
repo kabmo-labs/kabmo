@@ -46,7 +46,21 @@ fi
 # one RPC-wire addition is `narration` on a thinking block — which Kabmo
 # already presents as answer text (`parseMessageBlocks`), so no RPC change was
 # needed for it.
-OMP_VERSION="${OMP_VERSION:-18.12.0}"
+#
+# 18.12.4 (2026-10-21): the schema's `source` line moves to 559 settings and the
+# panel gains four rows (`advisor.continueSeverity`, `async.widgets`,
+# `computer.backgroundFallback`, `tui.completeScrollback`), plus three
+# description-only updates and one enum widening — `tools.approvalMode` gains
+# `always-ask-cached` (18.12.3's "Ask and remember"). The composer's
+# `APPROVAL_MODES` is deliberately still the three older values: that mode's
+# distinguishing feature is `prompt.grants` (remember a file or a folder), which
+# Kabmo's confirm dialog does not render — offering it would spawn a session
+# whose prompts cannot do the thing the mode is named for. The settings row does
+# carry it, because there the value goes straight to `omp config set`. Verified
+# against `omp config list --json` (559 keys, every added or changed row
+# present) and a wire-schema diff against 18.12.0 (283 definitions, 0 added, 0
+# removed, 0 changed; `builtin-names.ts` identical).
+OMP_VERSION="${OMP_VERSION:-18.12.4}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
