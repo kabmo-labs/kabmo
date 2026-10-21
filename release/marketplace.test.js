@@ -239,9 +239,9 @@ describe('the bump level', () => {
 
   test('a fix is a patch, a feat is a minor, a breaking footer is a major', async () => {
     const { analyzeCommits } = await import('@semantic-release/commit-analyzer');
-    const config = (await import('../release.config.mjs')).default.plugins.find(
-      (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/commit-analyzer',
-    )[1];
+    // The shared export, not a scan of `plugins`: the app's analyzer is a step
+    // key now (`release/app-scope.js`), so a lookup by plugin name finds nothing.
+    const { analyzerOptions: config } = await import('../release.config.mjs');
 
     const level = async (messages) => {
       const commits = typeFor(messages);

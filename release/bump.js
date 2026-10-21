@@ -14,24 +14,15 @@
  */
 
 import { appendFileSync } from 'node:fs';
-import appConfig from '../release.config.mjs';
+import { analyzerOptions } from '../release.config.mjs';
 
 /**
  * The analyzer exactly as `release.config.mjs` hands it to semantic-release —
- * looked up by name rather than restated, so a `feat` means the same thing
- * here as in the app's release.
+ * exported from there rather than looked up in `plugins`, because the app's
+ * analyzer is a STEP KEY now (it reads a scoped commit list, see
+ * `release/app-scope.js`) and a `feat` has to mean one thing everywhere.
  */
-export const analyzerConfig = (() => {
-  const entry = appConfig.plugins.find(
-    (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/commit-analyzer',
-  );
-
-  if (!entry) {
-    throw new Error('release.config.mjs no longer declares @semantic-release/commit-analyzer');
-  }
-
-  return entry[1];
-})();
+export const analyzerConfig = analyzerOptions;
 
 /**
  * A commit shaped like the ones semantic-release collects from `git log`.

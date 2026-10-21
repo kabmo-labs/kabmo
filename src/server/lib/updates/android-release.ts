@@ -126,8 +126,17 @@ export async function fetchAndroidRelease(fetchImpl: typeof fetch = fetch): Prom
   }
 }
 
-/** How many releases to look back through for the APK. */
-const RELEASE_SCAN = 20;
+/**
+ * How many releases to look back through for the APK.
+ *
+ * One push can publish FOUR: `kabmo-sdk/v*`, `kabmo-ui/v*`, the shell's own
+ * `kabmo-android/v*` (only when the app did not release) and the app's `v*`.
+ * A 20-entry window is therefore about five pushes, which is not enough history
+ * to be sure the newest APK is inside it during a busy week — and the failure is
+ * silent: the probe answers "no APK published" and the download button vanishes
+ * for an install that IS behind. One request either way.
+ */
+const RELEASE_SCAN = 50;
 
 /** The first asset of a release that names an APK, or null. */
 function apkAsset(assets: unknown): Record<string, unknown> | null {
