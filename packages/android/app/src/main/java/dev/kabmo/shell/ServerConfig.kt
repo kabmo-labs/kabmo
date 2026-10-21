@@ -133,6 +133,23 @@ sealed interface NormalizedUrl {
  */
 object UrlNormalizer {
 
+    /**
+     * Whether `candidate` names the SAME server as `saved`.
+     *
+     * Both sides are `normalize` output, so a path, query or fragment cannot
+     * reach either one, and scheme and host are case-insensitive in an origin —
+     * which makes a case-insensitive compare of the whole string exact.
+     *
+     * This is the decision the settings screen uses to decide whether a Connect
+     * must sign the user out. The screen used to clear the cookie unconditionally,
+     * so a user who only dragged the zoom slider and then tapped Connect was
+     * signed out of a server whose address had not changed at all.
+     */
+    fun sameOrigin(saved: String?, candidate: String): Boolean {
+        if (saved.isNullOrBlank()) return false
+        return saved.trimEnd('/').equals(candidate.trimEnd('/'), ignoreCase = true)
+    }
+
     fun normalize(raw: String): NormalizedUrl {
         val trimmed = raw.trim()
         if (trimmed.isEmpty()) return NormalizedUrl.Error("empty")

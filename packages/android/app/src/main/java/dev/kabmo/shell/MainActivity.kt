@@ -84,10 +84,32 @@ class MainActivity : Activity() {
         // there, and the login screen is skipped into a 401 loop.
         if (loadedUrl != null) {
             CookieManager.getInstance().removeAllCookies(null)
-            CookieManager.getInstance().flush()
+            flushCookies()
         }
         loadedUrl = url
         webView.loadUrl(url)
+    }
+
+    /**
+     * Force the cookie store to disk.
+     *
+     * Chromium persists cookies on a timer and on a CLEAN shutdown; an app
+     * swiped away from recents gets neither, so a session created seconds
+     * earlier was simply lost and the next launch asked for the password again
+     * — the reported "harus login terus menerus pas buka tutup". Measured on
+     * Android 15: a fresh login left `app_webview/Default/Cookies` with zero
+     * rows at t+5s and t+15s, and the row appeared at t+30s.
+     *
+     * `onPause` is the last moment the process is guaranteed to be alive, so
+     * that is where a session that already exists is written out.
+     */
+    private fun flushCookies() {
+        CookieManager.getInstance().flush()
+    }
+
+    override fun onPause() {
+        flushCookies()
+        super.onPause()
     }
 
     /**
@@ -150,6 +172,11 @@ class MainActivity : Activity() {
         webView.webViewClient = KabmoWebViewClient(
             activity = this,
             onCertificateProblem = { description -> showCertificateDialog(description) },
+            // A successful login is a NAVIGATION, so a finished page is the
+            // first moment the new session cookie exists. Chromium would write
+            // it out on its own schedule (~30 s measured), which a user who
+            // closes the app right after signing in never reaches.
+            onLoadFinished = { flushCookies() },
         )
         webView.webChromeClient = KabmoChromeClient(
             activity = this,

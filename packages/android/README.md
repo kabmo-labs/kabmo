@@ -118,8 +118,28 @@ release.yml
 3. **Test connection** calls `GET /api/health` and reports the server's version,
    port, whether a password is required, and whether it is in demo mode. A
    response from something that is not Kabmo is refused by name.
-4. **Connect** saves the address and clears cookies — a different address is a
-   different server, and a stale session cookie would be sent to it.
+4. **Connect** saves the address and clears cookies **only when the address
+   changed** — a different origin is a different server, and a stale session
+   cookie would be sent to it. Pressing Connect on the address already saved
+   keeps the session, because this is also the screen the zoom slider lives on:
+   it used to sign the user out for adjusting the zoom and then confirming.
+
+### Staying signed in
+
+The session cookie is HttpOnly with a 12-hour lifetime (7 days with *Trust this
+device*), and the shell keeps it across a restart in two ways:
+
+- **`CookieManager.flush()` is called the moment a page finishes loading and on
+  every `onPause`.** Chromium persists its cookie store on a timer and on a clean
+  shutdown; an app swiped out of recents or force-stopped gets neither, so a
+  session created seconds earlier was lost and the next launch asked for the
+  password again. Measured on Android 15: the cookie row appeared in
+  `app_webview/Default/Cookies` at **t+30 s** after signing in, so closing the app
+  inside that window always cost a login. With the flush it is on disk by t+4 s,
+  and a force-stop → reopen comes back signed in.
+- **Cookies are cleared only when the origin changes** (`UrlNormalizer.sameOrigin`
+  in the settings screen, and `loadedUrl` in `MainActivity`). A cookie is scoped
+  to a host and port, so the same address keeps it.
 
 ### Page zoom
 

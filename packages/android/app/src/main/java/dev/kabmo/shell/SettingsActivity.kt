@@ -293,6 +293,13 @@ class SettingsActivity : Activity() {
      * explanation, and the next launch has no way to tell a wrong address from a
      * stopped server. The check is cheap (one dependency-free route) and the
      * screen already has to run it to show a version.
+     *
+     * **The cookies are cleared only when the ORIGIN changes.** A cookie is
+     * scoped to a host and port, so the same address keeps its session — and
+     * this screen is also where the zoom slider lives, so pressing Connect after
+     * adjusting the zoom used to sign the user out of the server they were
+     * already on. The address is what makes a stale cookie wrong; nothing else
+     * on this screen does.
      */
     private fun save() {
         val normalized = UrlNormalizer.normalize(urlField.text.toString())
@@ -301,6 +308,7 @@ class SettingsActivity : Activity() {
             return
         }
         val base = (normalized as NormalizedUrl.Ok).url
+        val previous = ServerConfig.read(this)
 
         setBusy(true)
         status.text = getString(R.string.testing)
@@ -314,8 +322,10 @@ class SettingsActivity : Activity() {
                     return@runOnUiThread
                 }
                 ServerConfig.write(this, base)
-                CookieManager.getInstance().removeAllCookies(null)
-                CookieManager.getInstance().flush()
+                if (!UrlNormalizer.sameOrigin(previous, base)) {
+                    CookieManager.getInstance().removeAllCookies(null)
+                    CookieManager.getInstance().flush()
+                }
                 startActivity(Intent(this, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 })

@@ -28,6 +28,8 @@ import android.webkit.WebViewClient
 class KabmoWebViewClient(
     private val activity: Activity,
     private val onCertificateProblem: (String) -> Unit,
+    /** The main frame finished loading. */
+    private val onLoadFinished: () -> Unit = {},
 ) : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -65,6 +67,11 @@ class KabmoWebViewClient(
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
+    }
+
+    override fun onPageFinished(view: WebView, url: String?) {
+        super.onPageFinished(view, url)
+        onLoadFinished()
     }
 
     private fun openExternally(url: String): Boolean = try {
