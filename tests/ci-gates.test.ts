@@ -214,9 +214,8 @@ describe('the gate contract', () => {
     // spec is substituted from that record, so the app must not pack before it.
     // `marketplace` bumps the bundled plugins' versions into the same branch, and
     // the app's tarball is what carries them. `android` bumps the shell version
-    // into the same branch, and both release channels build from a tag that
-    // carries it — so a bump landing after `app` would reach installs one
-    // release late.
+    // into the same branch, and the APK is built from the tag `app` cuts — so a
+    // bump landing after it would reach installs one release late.
     const doc = await load('release.yml');
     const needsOf = (id: string): string[] => {
       const value = doc.jobs[id]?.needs;
@@ -227,11 +226,6 @@ describe('the gate contract', () => {
     expect(needsOf('marketplace')).toContain('packages');
     expect(needsOf('android')).toContain('marketplace');
     expect(needsOf('app')).toContain('android');
-
-    // The shell's own release also waits for `app`: its APK must carry the shell
-    // version the bump wrote, and a tag cut before the bump commit landed would
-    // build the previous one.
-    expect(needsOf('shell-release')).toContain('app');
   });
 
   test('the shell bump runs before the app tags, and only writes its own version file', async () => {
@@ -354,5 +348,54 @@ describe('the gate contract', () => {
 
     // The app publish names the TAG the release job cut, not a branch.
     expect(appPublish.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+  });
+
+  test('the APK is attached to the release the app job cut, and never published to a registry', async () => {
+    // The Android shell is a private application: there is no registry for it,
+    // and the only artifact is the `.apk` on the GitHub release. Three facts
+    // keep that true, and each fails silently on its own:
+    //
+    //   1. the job WAITS for `app`, because `gh release upload` needs the
+    //      release to exist — running first would 404;
+    //   2. it uploads the TAG `app` produced, not a branch;
+    //   3. it asks for no npm publish, so nothing about it can drift into one.
+    const doc = await load('release.yml');
+    const apk = doc.jobs.apk;
+
+    expect(apk?.uses, 'release.yml:apk must call the APK body').toBe(`./.github/workflows/${ANDROID_BODY}`);
+    expect(apk.needs, 'release.yml:apk must wait for the app release').toContain('app');
+    expect(apk.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+
+    // Android refuses an install whose versionCode does not increase, so a
+    // fixed value would make every release after the first uninstallable over
+    // the previous one. The run number is monotonic and needs no state.
+    expect(apk.with?.['version-code'], 'the APK versionCode must move every release').toBe(
+      '${{ github.run_number }}',
+    );
+
+    // No registry credential, no `npm` environment: a publish body that grew
+    // either would be publishing an application package nobody asked for.
+    const body = await load(ANDROID_BODY);
+    expect(body.jobs.apk.environment, 'the APK body must not join the npm environment').toBeUndefined();
+    const steps = body.jobs.apk.steps as Array<{ run?: string; uses?: string; env?: Record<string, string> }>;
+    const text = JSON.stringify(steps);
+    expect(text, 'the APK body must not publish to npm').not.toContain('npm publish');
+    expect(text, 'the APK body must not read NPM_TOKEN').not.toContain('NPM_TOKEN');
+
+    // And it DOES attach: a build with no upload step would produce an artifact
+    // nobody can download, which is the failure this test exists for.
+    expect(text, 'the APK body must upload to the GitHub release').toContain('gh release upload');
+  });
+
+  test('the APK is built from the tag, so it matches the release it belongs to', async () => {
+    // The tag, never the branch: `release.yml` gates the pushed commit, but the
+    // release commit is a LATER one written by semantic-release — and the APK is
+    // attached to that release. Checking out `main` would build a different tree
+    // than the one the release names.
+    const body = await load(ANDROID_BODY);
+    const checkout = (body.jobs.apk.steps as Array<{ uses?: string; with?: Record<string, string> }>).find((step) =>
+      step.uses?.startsWith('actions/checkout'),
+    );
+    expect(checkout?.with?.ref, 'the APK checkout must name the release tag').toBe('${{ inputs.tag }}');
   });
 });

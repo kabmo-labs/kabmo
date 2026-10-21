@@ -5,13 +5,6 @@ name: Release
 # bumps, then the app — and each release is PUBLISHED by this same run, as its
 # last action.
 #
-# The APP's release is scoped away from `packages/android` (`release/app-scope.js`),
-# because the shell has a cadence of its own. A push that touches only the shell
-# therefore cuts no app version: `shell-release` cuts `kabmo-android/v<version>`
-# instead, and `apk` uploads to whichever release carries this run's shell
-# version. Exactly one of those two channels runs per push, and one APK is
-# built.
-#
 # NOTHING IS TAGGED UNTIL THE GATES AND THE BROWSER SPECS HAVE PASSED. The two
 # gate jobs below CALL `.github/workflows/gates.yml` and
 # `.github/workflows/e2e-specs.yml` — the same reusable workflows `ci.yml` and
@@ -362,8 +355,8 @@ jobs:
   # ---------------------------------------------------------------------------
   # 1c. The Android shell's version. Between `marketplace` and `app`, for the
   # same reason the plugins sit there: the app job fast-forwards to the commit
-  # this job makes, and BOTH release channels build from a commit that carries
-  # it — so a bump landing after them would reach installs one release late.
+  # this job makes, and the APK is built from the tag `app` cuts — so a bump
+  # landing after it would reach installs one release late.
   #
   # The APK's `versionName` used to be the app's release tag, which tied two
   # independent cadences together: a shell-only fix shipped under a server
@@ -372,10 +365,10 @@ jobs:
   # changed. `packages/android/version.properties` now holds it, and this job is
   # the only writer.
   #
-  # This job does NOT tag anything and does NOT publish: it writes a number and
-  # commits it. `shell-release` (below) reads that number and cuts the shell's
-  # own GitHub release when the app did not release, and `apk` uploads to
-  # whichever release carries it.
+  # Nothing is tagged and nothing is published: the APK is attached to the
+  # app's release, so a shell bump reaches an installed app on the NEXT app
+  # release — the same lag a bundled plugin bump has, and for the same reason
+  # (the artifact rides the app's release rather than having one of its own).
   # ---------------------------------------------------------------------------
   android:
     name: Bump the Android shell
@@ -445,90 +438,7 @@ jobs:
           git log --oneline -1
 
   # ---------------------------------------------------------------------------
-  # 2b. The Android shell's OWN release.
-  #
-  # The app's release is scoped away from `packages/android`
-  # (`release/app-scope.js`), so a push that touches only the shell cuts no app
-  # version — and until this job existed that push would have produced a bump
-  # commit and then NOTHING: the APK could only ride an app release. The shell
-  # has its own version, its own bump and now its own tag and GitHub release.
-  #
-  # **The trigger is the tag's STATE, not `android.outputs.any`.** The bump
-  # commit lands on `main` even when a run dies before tagging, and the
-  # watermark has moved, so the next run will not bump again; a release driven
-  # by the bump output would raise a version that never ships an APK.
-  # `release/android-release.js` reads the release list instead, which makes the
-  # step idempotent and self-healing:
-  #
-  #   absent        create the release; `apk` builds and uploads against it
-  #   missing-asset the release lost its APK (a build that failed after the tag)
-  #                 — create nothing, and let `apk` attach one
-  #   published     report no tag, and `apk` stands down
-  #
-  # `kabmo-android/v*` matches neither the app's `tagFormat` (`^v(.+)`) nor
-  # `publish-plugins.yml`'s prefixes, so this tag starts no other pipeline.
-  # ---------------------------------------------------------------------------
-  shell-release:
-    name: Cut the Android shell release
-    needs: app
-    # Only when the app did NOT release. A push that does release the app
-    # attaches the APK to the app's release, exactly as before — one artifact,
-    # one release, whichever channel produced it.
-    #
-    # The `result` test is not decoration: a FAILED `app` job leaves its
-    # `released` output empty, which reads as "the app did not release" and
-    # would cut a shell release from a run whose tag step just broke.
-    if: ${{ needs.app.result == 'success' && needs.app.outputs.released != 'true' }}
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
-    permissions:
-      # Creating the release and its tag is a write.
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          # The shell's notes are generated from the commits that touched its
-          # directory since the version was written, so a shallow clone would
-          # see none of them.
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      # `release/android-release.mjs` imports `release.config.mjs` for the notes
-      # options, which is the same dependency the `android` job's bump has.
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      # After the sync, so the tag is created at the commit the bumps landed in.
-      - name: Sync to the current remote
-        run: |
-          git fetch origin main
-          git merge --ff-only FETCH_HEAD
-          git log --oneline -1
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Cut the release
-        id: release
-        env:
-          # The notes generator credits contributors through the API; without a
-          # token it credits privacy addresses only, which is a degraded answer
-          # rather than a failure.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node release/android-release.mjs
-
-  # ---------------------------------------------------------------------------
-  # 2c. The app. Waits for the packages, the marketplace bumps AND the shell
+  # 2. The app. Waits for the packages, the marketplace bumps AND the shell
   # bump, so its dependency pins are current, its tarball carries the plugin
   # versions a user needs, and the tag it cuts carries the shell version the APK
   # will declare.
@@ -638,30 +548,25 @@ jobs:
     secrets: inherit
 
   # ---------------------------------------------------------------------------
-  # 3. The Android APK. It attaches to WHICHEVER release carries this run's shell
-  # version, and there is exactly one:
-  #
-  #   - the app released  -> its release (the `shell-release` job stood down)
-  #   - the app did not   -> the shell's own release, cut by `shell-release`
-  #
-  # One build per run, never two. `needs` names both jobs and the `if` accepts
-  # either, which is why it carries `!cancelled()`: a SKIPPED job in `needs`
-  # makes the dependent job skip by default, and exactly one of these two is
-  # always skipped. A cancelled run still stands down.
+  # 3. The Android shell. After `app`, because it ATTACHES to the release that
+  # job created — `gh release upload` has nothing to upload to before that.
   #
   # A call, like the two publish bodies above, so the steps exist once and a
   # re-run cannot drift from a release run. Deliberately NOT an npm publish: the
-  # APK is the whole artifact and it goes to the GitHub release.
+  # APK is the whole artifact and it goes to the GitHub release. Nothing is
+  # tagged here either — the tag is `app`'s.
   #
-  # `needs: [app, shell-release]` (rather than naming the gates too) is what
-  # makes the gates transitive: `app` -> `android` -> `marketplace` ->
-  # `packages` -> both gate jobs, and `tests/ci-gates.test.ts` asserts that
-  # closure on the graph.
+  # `needs: app` (rather than naming the gates too) is what makes the gates
+  # transitive: `app` -> `android` -> `marketplace` -> `packages` -> both gate
+  # jobs, and `tests/ci-gates.test.ts` asserts that closure on the graph.
   #
-  # The `versionName` the APK declares is NOT either tag: it is
+  # The `versionName` the APK declares is NOT the tag: it is
   # `packages/android/version.properties`, which the `android` job bumped before
-  # either release was cut. That number is what the running shell reports on its
+  # `app` tagged. That number is what the running shell reports on its
   # User-Agent, and `publish-android.yml` names the asset from the same file.
+  #
+  # The `if:` matches `app-publish`'s: a push whose commits ask for no version
+  # bump produces no tag, so there is no release to attach an APK to.
   #
   # `version-code` is the run number. Android refuses an install whose
   # `versionCode` is not higher than the installed one, so a fixed value would
@@ -669,14 +574,8 @@ jobs:
   # ---------------------------------------------------------------------------
   apk:
     name: Publish the Android APK
-    needs: [app, shell-release]
-    # `!cancelled()` is required because a SKIPPED job in `needs` makes the
-    # dependent job skip by default, and exactly one of these two producers is
-    # always skipped. But `!cancelled()` alone would also let this job run after
-    # a FAILED `shell-release`, with an empty tag — `gh release view ""` then
-    # fails on the wrong thing, hiding the real failure. The `result` test is
-    # what keeps a failed producer from being papered over.
-    if: ${{ !cancelled() && (needs.app.outputs.released == 'true' || (needs.shell-release.result == 'success' && needs.shell-release.outputs.tag != '')) }}
+    needs: app
+    if: needs.app.outputs.released == 'true'
     # `contents: write` on the CALLER, not only the callee: a reusable workflow
     # can only DOWNGRADE the permissions it inherits, so `read` here would turn
     # the body's `contents: write` into read and `gh release upload` would fail
@@ -686,6 +585,6 @@ jobs:
       contents: write
     uses: ./.github/workflows/publish-android.yml
     with:
-      tag: ${{ needs.app.outputs.tag || needs.shell-release.outputs.tag }}
+      tag: ${{ needs.app.outputs.tag }}
       version-code: ${{ github.run_number }}
     secrets: inherit

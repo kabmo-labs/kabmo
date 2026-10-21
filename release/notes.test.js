@@ -1,16 +1,14 @@
 import { expect, test } from 'bun:test';
 import { generateNotes } from '@semantic-release/release-notes-generator';
 import { fileURLToPath } from 'node:url';
-import { notesOptions } from '../release.config.mjs';
+import config from '../release.config.mjs';
 
 const cwd = fileURLToPath(new URL('..', import.meta.url));
 
-/**
- * The notes plugin exactly as `release.config.mjs` hands it to semantic-release
- * — read from the named export, because the generator is a STEP KEY there now
- * (see `release/app-scope.js`).
- */
-const notesConfig = notesOptions;
+/** The notes plugin exactly as `release.config.mjs` hands it to semantic-release. */
+const notesConfig = config.plugins.find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/release-notes-generator',
+)[1];
 
 const MAINTAINER = '12345+kabmo-labs@users.noreply.github.com';
 

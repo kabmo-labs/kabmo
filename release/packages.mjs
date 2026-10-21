@@ -32,7 +32,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { analyzeCommits as analyzeCommitsStep } from '@semantic-release/commit-analyzer';
 import { generateNotes as generateNotesStep } from '@semantic-release/release-notes-generator';
-import { analyzerOptions, notesOptions } from '../release.config.mjs';
+import appConfig from '../release.config.mjs';
 import { filesForCommits } from './commits.js';
 import { tagPrefix } from './packages.js';
 import { versionPackagePlugin } from './version-package.mjs';
@@ -41,9 +41,29 @@ import { versionPackagePlugin } from './version-package.mjs';
  * The repo root, from this module's own location.
  *
  * `fileURLToPath` rather than `.pathname`: a checkout path with a space in it
- * (or a Windows drive letter) would otherwise arrive percent-encoded.
+ * is percent-encoded in a URL, and `git` would be handed the encoded form.
  */
 export const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+
+/**
+ * The plugin options the app's config already derived: the type list, the
+ * parser options and the version rules. Reading them from there is what keeps
+ * a `feat` meaning the same thing in both pipelines.
+ */
+const [analyzerName, analyzerOptions] = appConfig.plugins.find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/commit-analyzer',
+);
+
+const [notesName, notesOptions] = appConfig.plugins.find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/release-notes-generator',
+);
+
+// Both names are asserted rather than used: the entries are looked up by name
+// above, so a rename in the app config should fail loudly here instead of
+// silently releasing packages with no version rules.
+if (analyzerName !== '@semantic-release/commit-analyzer' || notesName !== '@semantic-release/release-notes-generator') {
+  throw new Error('release.config.mjs no longer declares the commit-analyzer and release-notes-generator plugins');
+}
 
 /**
  * The commits that touched a directory, in the shape the analyzer and the notes
@@ -162,7 +182,12 @@ export function packageReleaseConfig(entry) {
     analyzeCommits: [
       [
         scopedAnalyzeCommits(dir),
-        { ...analyzerOptions },
+        {
+          preset: 'conventionalcommits',
+          presetConfig: analyzerOptions.presetConfig,
+          parserOpts: analyzerOptions.parserOpts,
+          releaseRules: analyzerOptions.releaseRules,
+        },
       ],
     ],
     generateNotes: [[scopedGenerateNotes(dir), { ...notesOptions }]],

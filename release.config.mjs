@@ -35,7 +35,6 @@
  */
 import { readFileSync } from 'node:fs';
 import conventionalcommits from 'conventional-changelog-conventionalcommits';
-import { scopedAnalyzeAppCommits, scopedGenerateAppNotes } from './release/app-scope.js';
 import { attachThanks, withThanksClause } from './release/contributors.js';
 import { parserOpts, releaseRules } from './release/release-rules.js';
 
@@ -148,43 +147,18 @@ const finalizeContext = async (context, _options, commits) => {
   return context;
 };
 
-/**
- * The commit-analyzer's options, exported because they are the ONE place a
- * `feat` is a minor and a `chore` releases nothing.
- *
- * `release/packages.mjs`, `release/bump.js` and their tests used to find this
- * object by scanning `plugins` for the analyzer's name. That lookup cannot
- * survive the analyzer moving to a STEP KEY (below), and a second copy of these
- * options is how a `fix` starts meaning two things in one repository.
- */
-export const analyzerOptions = {
-  preset: 'conventionalcommits',
-  presetConfig: { types: commitTypes },
-  parserOpts,
-  releaseRules,
-};
-
-/** The notes generator's options, exported for the same reason. */
-export const notesOptions = {
-  preset: 'conventionalcommits',
-  presetConfig: { types: commitTypes },
-  parserOpts,
-  writerOpts: { commitPartial, headerPartial, mainTemplate, finalizeContext },
-};
-
 export default {
   branches: ['main'],
   tagFormat: 'v${version}',
-  // The analyzer and the notes generator live on their OWN step keys, not in
-  // `plugins`, because they have to read a SCOPED commit list: a commit that
-  // touches only `packages/android` belongs to the shell's release, which has a
-  // tag and a GitHub release of its own (`release/app-scope.js`). semantic-release
-  // validates a `plugins` entry differently from a step entry — `validatePlugin`
-  // requires the first element to be a string or a plain object, while
-  // `validateStep` accepts a function — so a wrapper can only be placed here.
-  analyzeCommits: [[scopedAnalyzeAppCommits(), analyzerOptions]],
-  generateNotes: [[scopedGenerateAppNotes(), notesOptions]],
   plugins: [
+    [
+      '@semantic-release/commit-analyzer',
+      { preset: 'conventionalcommits', presetConfig: { types: commitTypes }, parserOpts, releaseRules },
+    ],
+    [
+      '@semantic-release/release-notes-generator',
+      { preset: 'conventionalcommits', presetConfig: { types: commitTypes }, parserOpts, writerOpts: { commitPartial, headerPartial, mainTemplate, finalizeContext } },
+    ],
     ['@semantic-release/changelog', { changelogFile: changelog, changelogTitle: changelogIntro }],
     ['@semantic-release/npm', { npmPublish: false }],
     [

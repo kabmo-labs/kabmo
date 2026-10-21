@@ -13,18 +13,14 @@
 import { expect, test } from 'bun:test';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { fileURLToPath } from 'node:url';
-import { analyzerOptions } from '../release.config.mjs';
+import config from '../release.config.mjs';
 
 const cwd = fileURLToPath(new URL('..', import.meta.url));
 
-/**
- * The analyzer exactly as `release.config.mjs` hands it to semantic-release.
- *
- * Read from the named export rather than scanned out of `plugins`: the app's
- * analyzer is a STEP KEY (it reads a scoped commit list — `release/app-scope.js`),
- * and a lookup by plugin name would silently find nothing.
- */
-const analyzerConfig = analyzerOptions;
+/** The analyzer exactly as `release.config.mjs` hands it to semantic-release. */
+const analyzerConfig = config.plugins.find(
+  (plugin) => Array.isArray(plugin) && plugin[0] === '@semantic-release/commit-analyzer',
+)[1];
 
 /** A commit shaped like the ones semantic-release collects from `git log`. */
 const commit = (message) => ({
