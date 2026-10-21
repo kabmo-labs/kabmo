@@ -7,6 +7,7 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 import { withChord } from '@/client/lib/ui/with-chord';
+import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
 interface TopNavbarProps {
   sessionTitle: string | null;
@@ -59,10 +60,11 @@ export function TopNavbar({
   );
   return (
     <header 
-      className="h-10 flex-shrink-0 border-b border-ink/10 bg-paper flex items-center justify-between pr-4 z-20 titlebar-drag-region select-none"
+      className="h-10 flex-shrink-0 border-b border-ink/10 bg-paper flex items-center justify-between z-20 titlebar-drag-region select-none"
       style={{
-        paddingLeft: !showLeftPanel ? 'max(1rem, env(titlebar-area-x, 0px))' : undefined,
-        paddingRight: 'max(1rem, calc(100vw - env(titlebar-area-width, 100vw)))',
+        // The sidebar's own header carries the left inset while it is open.
+        paddingLeft: !showLeftPanel ? titlebarPaddingLeft('1rem') : undefined,
+        paddingRight: titlebarPaddingRight('1rem'),
       }}
     >
       <div className="flex items-center space-x-2 px-4 min-w-0">

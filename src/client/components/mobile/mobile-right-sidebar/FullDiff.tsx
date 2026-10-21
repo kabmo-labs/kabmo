@@ -3,6 +3,7 @@ import { FileIcon } from '@/client/components/common/file-icon';
 import { DiffPanel } from '@/client/components/workspace/diff-panel';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { diffTabId } from '@/shared/lib/workspace/file-tab-id';
+import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
 interface MobileFullDiffProps {
   diff: {
@@ -37,8 +38,8 @@ export function MobileFullDiff({ diff, onClose, onFileSaved }: MobileFullDiffPro
         style={{
           height: 'calc(3rem + env(safe-area-inset-top, 0px))',
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+          paddingLeft: titlebarPaddingLeft('0.75rem', true),
+          paddingRight: titlebarPaddingRight('0.75rem', true),
         }}
       >
         <div className="flex items-center space-x-2 min-w-0 pr-2">

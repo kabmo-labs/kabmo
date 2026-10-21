@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Save, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
+import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
 interface EditorHeaderProps {
   fileName: string;
@@ -47,8 +48,8 @@ export function EditorHeader({
       style={{
         height: 'calc(3rem + env(safe-area-inset-top, 0px))',
         paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-        paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+        paddingLeft: titlebarPaddingLeft('0.75rem', true),
+        paddingRight: titlebarPaddingRight('0.75rem', true),
       }}
     >
       <div className="flex items-center space-x-2 min-w-0 pr-2">

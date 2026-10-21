@@ -9,6 +9,7 @@ import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
+import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
 interface MobileRightSidebarProps {
   enabled?: boolean;
@@ -94,8 +95,8 @@ export function MobileRightSidebar({
         style={{
           height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+          paddingLeft: titlebarPaddingLeft('0.75rem', true),
+          paddingRight: titlebarPaddingRight('0.75rem', true),
         }}
       >
 

@@ -56,4 +56,49 @@ test.describe('shell', () => {
     expect(payload.mock).toBe(true);
     expect(payload.port).toBe(server.port);
   });
+
+  /**
+   * The navbar's last control sits a base padding from the window's right edge.
+   *
+   * In a PWA with `display_override: window-controls-overlay` the header also
+   * reserves the window controls, and WHICH EDGE they occupy is the platform's
+   * choice: `titlebar-area-x` is ~76px on macOS (traffic lights on the left) and
+   * 0 on Windows (controls on the right). The header used to derive its right
+   * inset as `100vw - titlebar-area-width`, which on macOS charges the traffic
+   * lights' width to the WRONG edge — a measured 76px of dead space between the
+   * last control and the window edge, with nothing in it.
+   *
+   * A browser tab cannot activate the overlay, so the env variables take their
+   * fallbacks and this spec measures the geometry a tab does produce (the base
+   * padding). What it can also prove is that the live header reads the CORRECT
+   * expression — `titlebar-area-x` subtracted alongside the width — because that
+   * is the half that only differs on macOS. `titlebar.test.ts` evaluates both
+   * platform geometries.
+   */
+  test('the navbar reserves the window controls on the correct edge', async ({ app }) => {
+    const header = app.locator('header').first();
+    await expect(header).toBeVisible();
+
+    const geometry = await header.evaluate((element) => {
+      const inline = (element as HTMLElement).style.paddingRight;
+      const rect = element.getBoundingClientRect();
+      const controls = [...element.querySelectorAll('button')];
+      const last = controls[controls.length - 1]?.getBoundingClientRect() ?? null;
+      return {
+        inline,
+        computed: getComputedStyle(element).paddingRight,
+        gap: last ? Math.round(rect.right - last.right) : null,
+      };
+    });
+
+    // The overlay's width is what remains AFTER the title bar area, so both
+    // coordinates are subtracted. The old form omitted `titlebar-area-x`.
+    expect(geometry.inline).toContain('env(titlebar-area-x');
+    expect(geometry.inline).toContain('env(titlebar-area-width');
+
+    // A tab has no overlay, so only the base padding is left — and that is
+    // exactly what the last control must clear.
+    expect(geometry.computed).toBe('16px');
+    expect(geometry.gap).toBe(16);
+  });
 });

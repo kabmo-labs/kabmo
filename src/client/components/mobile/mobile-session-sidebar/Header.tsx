@@ -1,5 +1,6 @@
 import { X } from 'lucide-preact';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
+import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
 export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClose: () => void; viewLabel?: string }) {
   return (
@@ -10,8 +11,10 @@ export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClo
         // `px-3`, the toolbar's own inset: the wordmark above and the New
         // Session button below share one left edge, which the header's old
         // 14px did not.
-        paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px), env(titlebar-area-x, 0px))',
-        paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+        paddingLeft: titlebarPaddingLeft('0.75rem', true),
+        // The drawer is the full window width, so on a desktop showing the
+        // mobile layout its close button sits under the window controls too.
+        paddingRight: titlebarPaddingRight('0.75rem', true),
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
