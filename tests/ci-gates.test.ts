@@ -458,6 +458,32 @@ describe('the gate contract', () => {
     expect(attachText, 'the attach must upload to the GitHub release').toContain('gh release upload');
     expect(attachText, 'the attach must not run Gradle').not.toContain('gradlew');
 
+    //   6b. `gh` needs a repository CONTEXT, and the attach checks nothing out —
+    //      its only input is the artifact it downloads. `gh` resolves the repo
+    //      from a git remote in the working directory, so without `GH_REPO`
+    //      every command there dies with `fatal: not a git repository`, and the
+    //      `||` guard reports it as "No GitHub release for <tag>" — a wrong
+    //      reason for a real failure. Measured on run 39690728834: the release
+    //      existed and was empty while the artifact sat in the same run, so the
+    //      release shipped with no shell for the second time, for a new reason.
+    const attachStep = (body.jobs.attach.steps as Array<any>).find((step) =>
+      String(step.run ?? '').includes('gh release upload'),
+    );
+    expect(attachStep, 'the attach must have a step that uploads').toBeDefined();
+    expect(
+      attachStep?.env?.GH_REPO,
+      'the attach must name the repository: it checks nothing out, so gh has no remote to read',
+    ).toBeDefined();
+    // A checkout would also work, and would be slower; either way the job must
+    // not depend on a working directory it never created.
+    const attachUsesCheckout = (body.jobs.attach.steps as Array<any>).some((step) =>
+      String(step.uses ?? '').includes('actions/checkout'),
+    );
+    expect(
+      attachUsesCheckout || attachStep?.env?.GH_REPO,
+      'the attach needs either a checkout or GH_REPO',
+    ).toBeTruthy();
+
     //   7. the artifact NAME is a literal both phases read, never an input.
     //      It was an input with a default, which is empty on a
     //      `workflow_dispatch` — the dispatch path declares no such input, so

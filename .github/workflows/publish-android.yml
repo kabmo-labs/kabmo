@@ -407,6 +407,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag }}
+          # `gh` resolves the repository from a git remote in the working
+          # directory, and this job deliberately checks NOTHING out — its only
+          # input is the artifact it just downloaded. Without this, every command
+          # below died with `failed to run git: fatal: not a git repository`,
+          # which the `||` guard then reported as "No GitHub release for v0.5.0"
+          # — a wrong reason for a real failure, measured on run 39690728834:
+          # the release existed and was empty, and the artifact was sitting in
+          # the same run. Naming the repo is the fix, and it costs no checkout.
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           ls -l ./*.apk
