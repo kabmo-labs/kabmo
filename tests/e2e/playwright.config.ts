@@ -27,6 +27,18 @@ import { defineConfig, devices } from '@playwright/test';
 
 const IS_CI = process.env.CI === 'true';
 
+/**
+ * The specs written for the PHONE surface, which the desktop projects skip.
+ *
+ * One regex, used by every project, so a new phone spec cannot be picked up by
+ * `chromium` and quietly exercise the desktop tree at a phone width — which is
+ * what happened to `mobile-dock.e2e.ts` while this list named one file.
+ */
+// NOT anchored: Playwright matches this against the file PATH
+// (`…/specs/mobile.e2e.ts`), so `^mobile` matched nothing and the whole mobile
+// project reported "No tests found".
+const MOBILE_SPECS = /\/mobile(-dock)?\.e2e\.ts$/;
+
 export default defineConfig({
   // Relative to THIS file (`tests/e2e/`), which is how Playwright resolves it.
   testDir: './specs',
@@ -64,29 +76,29 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      // The mobile spec is a viewport-specific run; it belongs to the mobile
-      // project, and running it here too would exercise the desktop tree at a
+      // The mobile specs are viewport-specific runs; they belong to the mobile
+      // project, and running them here too would exercise the desktop tree at a
       // phone width for no reason.
-      testIgnore: /mobile\.e2e\.ts$/,
+      testIgnore: MOBILE_SPECS,
     },
     // Cross-browser legs, off by default (see the plan's P5). Enable with
     // `--project=firefox` / `--project=webkit` or a label-gated CI job.
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testIgnore: /mobile\.e2e\.ts$/,
+      testIgnore: MOBILE_SPECS,
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testIgnore: /mobile\.e2e\.ts$/,
+      testIgnore: MOBILE_SPECS,
     },
     {
-      // ONLY the phone spec: a device-emulated project runs the specs written
+      // ONLY the phone specs: a device-emulated project runs the specs written
       // for that surface, not the desktop ones at a narrow width.
       name: 'mobile-chromium',
       use: { ...devices['Pixel 7'] },
-      testMatch: /mobile\.e2e\.ts$/,
+      testMatch: MOBILE_SPECS,
     },
   ],
 });

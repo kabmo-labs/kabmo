@@ -1,7 +1,7 @@
 import { X } from 'lucide-preact';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 
-export function MobileSessionHeader({ onClose }: { onClose: () => void }) {
+export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClose: () => void; viewLabel?: string }) {
   return (
     <div 
       className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
@@ -20,7 +20,7 @@ export function MobileSessionHeader({ onClose }: { onClose: () => void }) {
           <BrandWordmark className="text-[16px]" />
         </span>
         <span className="text-ink/25 text-xs select-none">/</span>
-        <span className="text-[11px] font-semibold text-ink/60 uppercase tracking-wider font-mono">Sessions</span>
+        <span className="text-[11px] font-semibold text-ink/60 uppercase tracking-wider font-mono">{viewLabel}</span>
       </div>
 
       <button

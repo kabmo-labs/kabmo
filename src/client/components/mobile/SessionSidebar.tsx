@@ -3,11 +3,7 @@ import { MobileSessionHeader } from '@/client/components/mobile/mobile-session-s
 import { MobileSessionToolbar } from '@/client/components/mobile/mobile-session-sidebar/Toolbar';
 import { MobileSessionList } from '@/client/components/mobile/mobile-session-sidebar/List';
 import { MobileSessionFooter } from '@/client/components/mobile/mobile-session-sidebar/Footer';
-import { ToastStack } from '@/client/components/common/ToastStack';
-import { AboutModal, NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
 import { useAndroidDownload } from '@/client/hooks/ui/updates/android-download';
-import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
-import { UpdatePopup } from '@/client/components/layout/update-popup';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
@@ -17,12 +13,14 @@ import { useUpdates } from '@/client/hooks/ui/updates';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
-import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
 import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
 import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
+import { dockBodyProps, useMobileDock } from '@/client/components/mobile/mobile-session-sidebar/use-dock';
+import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
+import { MobileDrawerDialogs } from '@/client/components/mobile/mobile-session-sidebar/Dialogs';
 import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
-import { BatchDeleteModal } from '@/client/components/common/batch-selection/BatchDeleteModal';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
 
@@ -34,6 +32,12 @@ interface MobileSessionSidebarProps {
   onClose: () => void;
   onDesktopToggle?: () => void;
   appSettings?: Record<string, any>;
+  /** The active workspace's root, for a plugin panel placed on the dock. */
+  rootPath?: string;
+  /** Bumped after a write so a placed panel re-reads, like the right drawer. */
+  refreshKey?: number;
+  onRefresh?: () => void;
+  onOpenFile?: (file: unknown) => void;
 }
 
 export function MobileSessionSidebar({
@@ -43,7 +47,11 @@ export function MobileSessionSidebar({
   onNewSessionForFolder,
   onClose,
   onDesktopToggle,
-  appSettings = {}
+  appSettings = {},
+  rootPath,
+  refreshKey = 0,
+  onRefresh,
+  onOpenFile,
 }: MobileSessionSidebarProps) {
   const {
     folders,
@@ -190,66 +198,103 @@ export function MobileSessionSidebar({
     else batch.begin('workspace');
   };
 
+  const dock = useMobileDock();
+  const showingSessions = dock.showingSessions;
+  const activeView = dock.activeView;
+  const dockBody = dockBodyProps({
+    sessionId: activeSessionId,
+    refreshKey,
+    rootPath,
+    onRefresh,
+    onOpenFile,
+    onClose,
+  });
+
   return (
     <div className="flex flex-col h-full w-full bg-canvas text-ink relative select-none">
-      
-      <MobileSessionHeader onClose={onClose} />
 
-      <MobileSessionToolbar
-        searchQuery={searchQuery}
-        sortOption={sortOption}
-        optionsOpen={optionsOpen}
-        showArchived={showArchived}
-        optionsRef={optionsRef}
-        onNewSession={handleNewSessionAndClose}
-        onNewWorkspace={() => setNewWorkspaceOpen(true)}
-        onScheduler={() => setSchedulerOpen(true)}
-        scheduledCount={scheduledCount}
-        onRefresh={refreshNow}
-        refreshing={isRefreshing}
-        onToggleOptions={() => setOptionsOpen(!optionsOpen)}
-        onSortChange={handleSortChange}
-        onResetSort={() => handleSortChange('A-Z')}
-        onToggleArchived={handleToggleArchived}
-        onHideArchived={() => setShowArchived(false)}
-        onSearchChange={setSearchQuery}
-        onClearSearch={() => setSearchQuery('')}
-        onSelectWorkspaces={startWorkspaceSelection}
-        selecting={batch.mode !== null}
+      <MobileSessionHeader
+        onClose={onClose}
+        viewLabel={showingSessions ? 'Sessions' : dock.activePanel?.label ?? 'Panel'}
       />
 
-      {initializing ? (
-        <MobileSessionListSkeleton />
-      ) : (
-        <MobileSessionList
-          folders={processedFolders}
-          activeSessionId={activeSessionId}
-          expandedFolders={expandedFolders}
-          showArchived={showArchived}
-          sessionStatus={sessionStatus}
-          onSelectSession={handleSelectSession}
-          onNewSessionForFolder={handleNewSessionForFolderAndClose}
-          onToggleFolder={toggleFolder}
-          onToast={pushToast}
-          batch={batchBinding}
-          onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
-          onCancelWait={cancelWait}
-        />
-      )}
+      {/* The strip appears only once there is something to switch TO: with the
+          rail off, or with nothing placed on it, a row holding one chip would
+          be chrome that never changes. The exception is a stored view that no
+          longer resolves — the body is a notice, and without the strip the
+          session list would be unreachable (the desktop has the same escape in
+          its rail, which always holds Sessions). */}
+      {phoneLeftStripVisible(dock.enabled, dock.placed.length, showingSessions) ? (
+        <MobileDockStrip panels={dock.catalog} activeId={activeView} onSelect={dock.setActiveView} />
+      ) : null}
 
-      {batch.mode && (
-        <BatchActionBar
-          drawer
-          mode={batch.mode}
-          count={batchSelected.length}
-          total={batchAvailable.length}
-          busy={batchDelete.isDeleting}
-          scopeLabel={scopeFolder?.name}
-          onSelectAll={() => batch.selectAllOf(batchAvailable)}
-          onUnselectAll={() => batch.unselectAllOf(batchAvailable)}
-          onDelete={() => batchDelete.request(batchSelected)}
-          onCancel={batch.end}
-        />
+      {/* The list is HIDDEN, never unmounted, while a panel is on screen — the
+          same rule the desktop dock follows (`LeftDockView`): its folder
+          expansion, scroll position and batch selection must survive a look at
+          another view, and a re-mount would also re-seed every expansion from
+          the server's flags. */}
+      <div className={showingSessions ? 'contents' : 'hidden'}>
+        <>
+          <MobileSessionToolbar
+            searchQuery={searchQuery}
+            sortOption={sortOption}
+            optionsOpen={optionsOpen}
+            showArchived={showArchived}
+            optionsRef={optionsRef}
+            onNewSession={handleNewSessionAndClose}
+            onNewWorkspace={() => setNewWorkspaceOpen(true)}
+            onScheduler={() => setSchedulerOpen(true)}
+            scheduledCount={scheduledCount}
+            onRefresh={refreshNow}
+            refreshing={isRefreshing}
+            onToggleOptions={() => setOptionsOpen(!optionsOpen)}
+            onSortChange={handleSortChange}
+            onResetSort={() => handleSortChange('A-Z')}
+            onToggleArchived={handleToggleArchived}
+            onHideArchived={() => setShowArchived(false)}
+            onSearchChange={setSearchQuery}
+            onClearSearch={() => setSearchQuery('')}
+            onSelectWorkspaces={startWorkspaceSelection}
+            selecting={batch.mode !== null}
+          />
+
+          {initializing ? (
+            <MobileSessionListSkeleton />
+          ) : (
+            <MobileSessionList
+              folders={processedFolders}
+              activeSessionId={activeSessionId}
+              expandedFolders={expandedFolders}
+              showArchived={showArchived}
+              sessionStatus={sessionStatus}
+              onSelectSession={handleSelectSession}
+              onNewSessionForFolder={handleNewSessionForFolderAndClose}
+              onToggleFolder={toggleFolder}
+              onToast={pushToast}
+              batch={batchBinding}
+              onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
+              onCancelWait={cancelWait}
+            />
+          )}
+
+          {batch.mode && (
+            <BatchActionBar
+              drawer
+              mode={batch.mode}
+              count={batchSelected.length}
+              total={batchAvailable.length}
+              busy={batchDelete.isDeleting}
+              scopeLabel={scopeFolder?.name}
+              onSelectAll={() => batch.selectAllOf(batchAvailable)}
+              onUnselectAll={() => batch.unselectAllOf(batchAvailable)}
+              onDelete={() => batchDelete.request(batchSelected)}
+              onCancel={batch.end}
+            />
+          )}
+        </>
+      </div>
+      {showingSessions ? null : (
+        <MobileDockBody panelKey={activeView} panel={dock.activePanel} body={dockBody} />
       )}
 
       <MobileSessionFooter
@@ -264,51 +309,23 @@ export function MobileSessionSidebar({
         }}
       />
 
-      {/* Reusable Modals */}
-      <NewWorkspaceModal
-        isOpen={newWorkspaceOpen}
-        onClose={() => setNewWorkspaceOpen(false)}
-        onCreate={createWorkspaceFolder}
-        onClone={cloneWorkspaceFolder}
-      />
-      <SchedulerModal
-        isOpen={schedulerOpen}
-        onClose={() => setSchedulerOpen(false)}
-        activeSessionId={activeSessionId === null ? null : String(activeSessionId)}
-        onToast={pushToast}
-      />
-      <AboutModal
-        isOpen={aboutOpen}
-        onClose={() => setAboutOpen(false)}
+      <MobileDrawerDialogs
+        activeSessionId={activeSessionId}
+        newWorkspaceOpen={newWorkspaceOpen}
+        onCloseNewWorkspace={() => setNewWorkspaceOpen(false)}
+        schedulerOpen={schedulerOpen}
+        onCloseScheduler={() => setSchedulerOpen(false)}
+        aboutOpen={aboutOpen}
+        onCloseAbout={() => setAboutOpen(false)}
         updates={updates}
-        onToast={pushToast}
-      />
-
-      {/* "Update available" announcement — once per version, gated on the check.
-          Its "Update now" hands the run to the About modal below. */}
-      <UpdatePopup updates={updates} />
-
-      {/* Batch delete confirmation — same dialog the desktop draws. */}
-      <BatchDeleteModal
-        mode={batch.mode ?? 'session'}
-        count={batchDelete.pending.length}
+        pushToast={pushToast}
+        batchDelete={batchDelete}
+        batchMode={batch.mode}
+        onEndBatch={batch.end}
         scopeLabel={scopeFolder?.name}
-        isDeleting={batchDelete.isDeleting}
-        outcome={batchDelete.outcome}
-        onClose={() => {
-          const refusedCount = batchDelete.outcome?.refused.length ?? 0;
-          batchDelete.cancel();
-          if (batchDelete.outcome && refusedCount === 0) batch.end();
-        }}
-        onConfirm={() => {
-          const mode = batch.mode ?? 'session';
-          void batchDelete.confirm(mode).then((result) => {
-            if (result && result.refused.length === 0) batch.end();
-          });
-        }}
+        toasts={toasts}
+        dismissToast={dismissToast}
       />
-
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
     </div>
   );

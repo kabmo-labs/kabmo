@@ -239,6 +239,10 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
           onClose={() => setCurrentScreen('main')}
           onDesktopToggle={onDesktopToggle}
           appSettings={appSettings}
+          rootPath={activeProjectPath ?? undefined}
+          refreshKey={refreshKey}
+          onRefresh={handleWorkspaceChanged}
+          onOpenFile={handleOpenFile}
         />
       </div>
 

@@ -5,9 +5,10 @@ import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
-import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
-import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
+import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
+import { PanelChips } from '@/client/components/mobile/panel-chips';
 
 interface MobileRightSidebarProps {
   enabled?: boolean;
@@ -50,8 +51,17 @@ export function MobileRightSidebar({
   // panel on the left hide it from every phone. The dock's own session list is
   // filtered out below: the phone already has that as its own drawer screen,
   // and a second copy inside this one would be two lists of the same sessions.
-  const catalog = usePanelCatalog('all').filter((panel) => panel.id !== SESSIONS_VIEW_ID);
-  const activePanel = catalog.find((panel) => panel.id === activeTab);
+  //
+  // The exception is the one case where the LEFT drawer can now reach them
+  // itself: with the rail on, a placed panel gets a chip there, and listing it
+  // here as well would put one panel on two strips of one phone.
+  const dock = useLeftDock();
+  const catalog = phoneRightPanels(usePanelCatalog('all'), SESSIONS_VIEW_ID, dock.enabled);
+  // A stored tab can name a panel the user has since placed on the LEFT rail.
+  // It is gone from this catalog, and saying "No session selected" over a
+  // drawer that has views would be a wrong answer — the first view is drawn
+  // instead, and the stored id is replaced on the next click.
+  const activePanel = catalog.find((panel) => panel.id === activeTab) ?? catalog[0];
   // Same source the desktop activity bar uses — the Source Control view's own
   // repo pick, read shared so switching repos moves this dot too. Polls only
   // while this drawer is the mounted screen (the poll is visibility-gated).
@@ -89,32 +99,12 @@ export function MobileRightSidebar({
         }}
       >
 
-        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1">
-          {catalog.map((panel) => (
-            <button
-              key={panel.id}
-              type="button"
-              onClick={() => setActiveTab(panel.id)}
-              className={`relative flex items-center transition-all cursor-pointer ${
-                activeTab === panel.id
-                  ? 'space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-ink text-canvas shadow-sm'
-                  : 'p-2 rounded-lg text-ink/70 hover:bg-ink/5'
-              }`}
-              title={panel.title}
-            >
-              {panel.builtin ? panel.icon : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={PANEL_MARK_SIZE} />}
-              {activeTab === panel.id && (
-                <span className={panel.id === 'git' ? 'tracking-wide' : undefined}>{panel.label}</span>
-              )}
-              {panel.id === 'git' && hasGitChanges && (
-                <span
-                  className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-info"
-                  title="Uncommitted changes"
-                />
-              )}
-            </button>
-          ))}
-        </div>
+        <PanelChips
+          panels={catalog}
+          activeId={activePanel?.id ?? activeTab}
+          onSelect={setActiveTab}
+          hasGitChanges={hasGitChanges}
+        />
 
         <button
           type="button"
