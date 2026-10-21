@@ -18,12 +18,12 @@
  * (or a focused composer) never enters compact at all.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input';
-import { resetRealtimeClient } from '@/shared/lib/realtime/client';
+import { restoreRealtime, silenceRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'Event', 'MouseEvent', 'KeyboardEvent', 'FocusEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -47,14 +47,22 @@ afterAll(() => {
 
 let container: HTMLElement | null = null;
 
+beforeEach(() => {
+  // Per case, because `restoreRealtime` clears the constructor: the composer's
+  // model picker subscribes on every mount, and this origin has no listener to
+  // reach, so a real dial would fail after the globals are restored.
+  silenceRealtime();
+});
+
 afterEach(() => {
   container?.remove();
   container = null;
   // The composer's model picker subscribes to the realtime topic, and its
   // reconnect timer outlives this file's DOM — it then fires into a torn-down
   // `window` and surfaces as an unhandled error in whichever test runs next.
-  // Resetting the client is what the app's own suites do for the same reason.
-  resetRealtimeClient();
+  // `restoreRealtime` resets the client AND puts the real constructor back, so
+  // the silence does not follow this file into the next one.
+  restoreRealtime();
 });
 
 interface MountOptions {

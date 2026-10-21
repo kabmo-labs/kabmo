@@ -32,6 +32,7 @@ import { act } from 'preact/test-utils';
 import { ModelDropdown } from '@/client/components/workspace/model-dropdown/index';
 import type { AIModelOption } from '@/shared/types';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
+import { restoreRealtime, silenceRealtime } from '@/test-support/silent-socket';
 
 const MODEL: AIModelOption = {
   id: 'deepseek-v4-1-flash',
@@ -43,6 +44,12 @@ let container: HTMLElement;
 
 beforeEach(() => {
   installDomGlobals(new Window());
+  // The picker reads the `models` topic on mount, and this window has no origin
+  // (`about:blank`), so a real dial would target `ws:///api/realtime/ws` and
+  // fail asynchronously — after this suite has restored the globals, which
+  // reports as an unhandled error in the NEXT file. The channel is not what this
+  // file measures.
+  silenceRealtime();
   container = document.createElement('div');
   document.body.appendChild(container);
 });
@@ -50,6 +57,7 @@ beforeEach(() => {
 afterEach(() => {
   render(null, container);
   container.remove();
+  restoreRealtime();
   restoreDomGlobals();
 });
 

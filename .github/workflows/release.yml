@@ -479,8 +479,26 @@ jobs:
     name: Build the Android APK
     needs: android
     permissions:
-      # The build reads the tree and uploads a run artifact.
-      contents: read
+      # `contents: write`, NOT `read`, and the reason is a parse-time check
+      # rather than anything this job does. GitHub validates a reusable
+      # workflow's permission CEILING against the whole CALLEE FILE before any
+      # job or `if:` is considered — `publish-android.yml` also declares an
+      # `attach` job with `contents: write`, so a `read` ceiling here rejected
+      # the entire release run with `startup_failure` and nothing else:
+      #
+      #   Error calling workflow '…/publish-android.yml@<sha>'.
+      #   The nested job 'attach' is requesting 'contents: write',
+      #   but is only allowed 'contents: read'.
+      #
+      # Measured on run 39681067473: `startup_failure` after 1s, no job started,
+      # no log. The `build` phase itself only reads the tree and uploads a run
+      # artifact, so this grants a capability it does not use — that is the
+      # price of one body covering both phases, which the repair dispatch needs
+      # (a dispatch has no earlier call in its own run, so it must build AND
+      # attach from one file). `tests/ci-gates.test.ts` pins the ceiling for
+      # every caller→callee pair so a new write job cannot break a run silently
+      # again.
+      contents: write
     uses: ./.github/workflows/publish-android.yml
     with:
       mode: build

@@ -31,6 +31,7 @@ import { PanelChips } from '@/client/components/mobile/panel-chips';
 import { MobileDockBody } from '@/client/components/mobile/mobile-session-sidebar/Dock';
 import type { ResolvedPanel } from '@/client/components/workspace/plugin-panel/catalog';
 import type { PanelBodyProps } from '@/client/components/workspace/panels/builtin';
+import { restoreRealtime, silenceRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'MouseEvent'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -48,6 +49,11 @@ beforeEach(() => {
     if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
     target[key] = (win as unknown as Record<string, unknown>)[key];
   }
+  // The dock's body renders panels, and a real panel reads a realtime topic on
+  // mount. This window's origin is `localhost`, where nothing listens, so a real
+  // dial fails asynchronously — after this suite has restored the globals, which
+  // reports as an unhandled error in the NEXT file.
+  silenceRealtime();
   container = document.createElement('div');
   document.body.appendChild(container);
 });
@@ -55,6 +61,7 @@ beforeEach(() => {
 afterEach(() => {
   render(null, container);
   container.remove();
+  restoreRealtime();
 });
 
 afterAll(() => {

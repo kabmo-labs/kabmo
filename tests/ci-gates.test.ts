@@ -119,6 +119,49 @@ describe('the gate contract', () => {
     }
   });
 
+  test('every caller grants the permissions its callee declares', async () => {
+    // A reusable workflow's permission CEILING is validated against the WHOLE
+    // callee file, at PARSE time, before any job or `if:` is considered — and a
+    // violation is not a failed job, it is `startup_failure` for the entire run:
+    // no job starts, no log is produced, and the only place the reason exists is
+    // the run page's annotation. Measured on run 39681067473:
+    //
+    //   The nested job 'attach' is requesting 'contents: write',
+    //   but is only allowed 'contents: read'.
+    //
+    // caused by `release.yml:apk-build` granting `contents: read` to a body
+    // that also declares an `attach` job with `contents: write`. Nothing in this
+    // repository caught it, because every other assertion here reads `needs:`
+    // and `with:` — the permission block is not part of either.
+    //
+    // The rule is the platform's, not a preference: a caller may only DOWNGRADE
+    // what it holds, and the callee's declared `write` must therefore be
+    // matched. A caller that declares no `permissions:` block inherits the
+    // default (which includes `contents: write`), so it is never a violation.
+    const WRITE = 'write';
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY]) {
+      const doc = await load(file);
+      for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
+        const uses = job?.uses;
+        if (typeof uses !== 'string' || !uses.startsWith('./')) continue;
+        const callee = await load(uses.replace('./.github/workflows/', ''));
+        const granted = job.permissions;
+        for (const [calleeJob, entry] of Object.entries<any>(callee.jobs ?? {})) {
+          for (const [scope, level] of Object.entries<any>(entry?.permissions ?? {})) {
+            if (level !== WRITE) continue;
+            // No block at all inherits the workflow default, which is a superset
+            // of every scope a release needs.
+            if (!granted) continue;
+            expect(
+              granted[scope],
+              `${file}:${id} grants ${scope}: ${granted[scope] ?? 'none'} but ${uses}:${calleeJob} declares ${scope}: write`,
+            ).toBe(WRITE);
+          }
+        }
+      }
+    }
+  });
+
   test('a releasing workflow gates every job that acts', async () => {
     // A job is a GATE PROVIDER when it calls a gate workflow directly, or when
     // it calls one of the publish bodies (which call both gates themselves —

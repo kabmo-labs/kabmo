@@ -28,6 +28,7 @@ import type { QueuedMessage } from '@/shared/types';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { useChatTimelineQueue, type ChatTimelineQueueResult } from '@/client/hooks/chat/timeline/queue';
 import { requestRewind } from '@/client/hooks/chat/timeline/rewind';
+import { restoreRealtime, silenceRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown so later files still have them. */
@@ -80,12 +81,17 @@ afterAll(() => {
   }
 });
 beforeEach(() => {
+  // The queue hook subscribes to its session topic on mount, and this origin has
+  // no listener: a real dial would fail asynchronously, after the globals are
+  // restored. Per case, because `restoreRealtime` clears the constructor.
+  silenceRealtime();
   calls.length = 0;
   canonical = [];
   gate = null;
   stubFetch();
 });
 afterEach(() => {
+  restoreRealtime();
   if (container) render(null, container);
   container?.remove();
   latest = null;
