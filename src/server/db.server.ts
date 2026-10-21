@@ -41,6 +41,19 @@ interface DbSlot {
   promise: Promise<DbClient> | null;
   /** Resolved handle for `getDbSync`; hot paths must not await. */
   resolved: DbClient | null;
+  /**
+   * Set when a caller retired this slot while an open was still in flight.
+   *
+   * An open is asynchronous (`getDatabasePath` → `createDb` → `initSchema`), so
+   * a teardown that clears the slot mid-open does not stop it: the continuation
+   * used to keep running and assign `state.resolved` on the DROPPED slot object,
+   * leaving an open `bun:sqlite` handle nothing could ever close. On Windows
+   * that is a locked temp directory — measured on the Release gate, where
+   * `releaseDb` failed with `EBUSY … a handle outlived its test` and reported
+   * the two preceding cases as failed. The continuation now closes the handle
+   * it opened and rejects instead of caching it.
+   */
+  disposed: boolean;
 }
 
 declare global {
@@ -49,7 +62,30 @@ declare global {
 }
 
 function slot(): DbSlot {
-  return (globalThis.__kabmoDb ??= { promise: null, resolved: null });
+  return (globalThis.__kabmoDb ??= { promise: null, resolved: null, disposed: false });
+}
+
+/**
+ * Retire the current handle so the next `getDb()` opens the path configured
+ * NOW, closing whatever is open.
+ *
+ * The one caller is `test-support/isolated-db.ts`, but the rule it enforces is
+ * a lifecycle one: a handle must never outlive the configuration it was opened
+ * under. An in-flight open is marked `disposed` rather than awaited, and the
+ * continuation closes its own handle — see {@link DbSlot.disposed}.
+ */
+export function closeDb(): void {
+  const state = globalThis.__kabmoDb;
+  globalThis.__kabmoDb = undefined;
+  if (!state) return;
+  state.disposed = true;
+  try {
+    state.resolved?.raw.close();
+  } catch {
+    // Already closed by a failed open; the slot is gone either way.
+  }
+  state.resolved = null;
+  state.promise = null;
 }
 
 export async function getDatabasePath(): Promise<string> {
@@ -110,6 +146,18 @@ export async function getDb(): Promise<DbClient> {
     }
 
     await migrateLegacyProjectSettings(db);
+
+    // The slot may have been retired while this open was in flight. Assigning
+    // `state.resolved` then would cache a handle on an object nothing reaches
+    // any more — an open connection whose temp directory can never be deleted.
+    if (state.disposed) {
+      try {
+        db.raw.close();
+      } catch {
+        // Nothing to do: the caller already moved on.
+      }
+      throw new Error('database open was retired before it finished');
+    }
 
     state.resolved = db;
     return db;

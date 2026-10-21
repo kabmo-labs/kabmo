@@ -23,14 +23,14 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { closeDb } from '@/server/db.server';
 import { removeDir } from '@/test-support/remove-dir';
 
 let dir: string | null = null;
 
 /** Point the process at a fresh database. Call from `beforeEach`. */
 export function isolateDb(): string {
-  globalThis.__kabmoDb?.resolved?.raw.close();
-  globalThis.__kabmoDb = undefined;
+  closeDb();
 
   dir = mkdtempSync(join(tmpdir(), 'omc-db-'));
   const path = join(dir, 'db.sqlite');
@@ -40,8 +40,7 @@ export function isolateDb(): string {
 
 /** Close the handle and drop the temp directory. Call from `afterEach`. */
 export function releaseDb(): void {
-  globalThis.__kabmoDb?.resolved?.raw.close();
-  globalThis.__kabmoDb = undefined;
+  closeDb();
   delete Bun.env.KABMO_DB_PATH;
   // `removeDir`, not a bare `rmSync`: a closed SQLite handle is released by the
   // OS asynchronously on Windows, so the delete races it and fails with EBUSY —

@@ -121,7 +121,7 @@ describe('resolveRoot / resolveReferencedPath / getDefaultFsRoot', () => {
     Bun.env.SYNC_WORKSPACE = 'false';
     Bun.env.KABMO_DB_PATH = dbPath;
     delete Bun.env.DB_PATH;
-    globalThis.__kabmoDb = { promise: null, resolved: null };
+    globalThis.__kabmoDb = { promise: null, resolved: null, disposed: false };
     const db = await getDb();
     await db.run('INSERT INTO workspace_folders (name, project_path) VALUES (?, ?)', ['proj', registeredDir]);
   });

@@ -33,7 +33,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import * as path from 'node:path';
 
-import { getDatabasePath, getDb } from '@/server/db.server';
+import { closeDb, getDatabasePath, getDb } from '@/server/db.server';
 import { removeDir } from '@/test-support/remove-dir';
 
 const saved = {
@@ -146,6 +146,57 @@ describe('a failed open is not cached', () => {
       const db = await getDb();
       expect(db).toBeDefined();
       db.raw.close();
+    } finally {
+      globalThis.__kabmoDb = savedSlot;
+    }
+  });
+});
+
+describe('closeDb', () => {
+  test('retires an open that is still in flight, and closes its handle', async () => {
+    // The bug this pins, measured on the Release gate: `releaseDb` cleared the
+    // slot while `getDb()` was still opening, so the continuation assigned
+    // `resolved` on the DROPPED slot object. Nothing could reach that handle
+    // again, and on Windows its temp directory stayed locked — `EBUSY … a
+    // handle outlived its test`, reported against the two PRECEDING cases.
+    const savedSlot = globalThis.__kabmoDb;
+    try {
+      Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'in-flight', 'db.sqlite');
+      globalThis.__kabmoDb = undefined;
+
+      // Start the open and retire the slot in the SAME tick, so the async
+      // continuation is still pending when `closeDb` runs.
+      const pending = getDb();
+      const retired = globalThis.__kabmoDb as { disposed?: boolean } | undefined;
+      closeDb();
+      expect(retired?.disposed).toBe(true);
+
+      // The open settles as a refusal rather than handing back a handle whose
+      // owner is gone, and the slot stays clear for the next caller.
+      await expect(pending).rejects.toThrow(/retired/);
+      expect(globalThis.__kabmoDb ?? null).toBeNull();
+
+      // A later open under a NEW path works, which is what a test isolating
+      // itself between cases needs.
+      Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'after', 'db.sqlite');
+      const db = await getDb();
+      expect(db).toBeDefined();
+      closeDb();
+    } finally {
+      globalThis.__kabmoDb = savedSlot;
+    }
+  });
+
+  test('closes a resolved handle and clears the slot', async () => {
+    const savedSlot = globalThis.__kabmoDb;
+    try {
+      Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'resolved', 'db.sqlite');
+      globalThis.__kabmoDb = undefined;
+      const db = await getDb();
+      closeDb();
+      expect(globalThis.__kabmoDb ?? null).toBeNull();
+      // A closed handle refuses further work rather than silently succeeding.
+      expect(() => db.raw.exec('SELECT 1')).toThrow();
     } finally {
       globalThis.__kabmoDb = savedSlot;
     }
