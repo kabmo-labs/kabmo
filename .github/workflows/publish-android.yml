@@ -37,9 +37,18 @@ on:
         required: true
         type: string
     secrets:
-      # Base64 of the release keystore (`release.jks`). Optional: without it the
-      # APK is signed with the debug key, which installs fine by sideload but
-      # cannot upgrade a properly signed install.
+      # Base64 of the release keystore (`release.jks`).
+      #
+      # Declared optional so the workflow PARSES, not because a missing one is
+      # acceptable: the "Prepare the release keystore" step fails the job with a
+      # named error instead. `required: true` would be a validation failure that
+      # reads as a broken workflow, and it cannot be satisfied by the
+      # `workflow_dispatch` path at all (a dispatch has no caller to pass a
+      # secret, so the value comes from the repository's own secrets).
+      #
+      # Without it the release build falls back to the debug key — which is a
+      # DIFFERENT key on every runner, so no APK it produces can be installed
+      # over the previous one.
       ANDROID_KEYSTORE_BASE64:
         required: false
       ANDROID_KEYSTORE_PASSWORD:
@@ -121,12 +130,22 @@ jobs:
       - name: Point Gradle at the SDK
         run: echo "sdk.dir=${ANDROID_HOME}" > packages/android/local.properties
 
-      # The release keystore, when the repository carries one.
+      # The release keystore — REQUIRED, and a missing one fails the job.
+      #
+      # It used to fall back to the debug key with a log line, and that shipped
+      # three releases (`v0.2.0`, `v0.3.0`, `v0.4.0`) each signed by a DIFFERENT
+      # throwaway key, because `~/.android/debug.keystore` is regenerated on
+      # every runner. Every one of those APKs was uninstallable over the last:
+      # measured on an emulator, `adb install` answered
+      # `INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package dev.kabmo.shell
+      # signatures do not match newer version`, and the same three signatures are
+      # visible in `apksigner verify --print-certs` on the published assets. A
+      # warning in a log nobody reads is not a guard: the artifact is useless, so
+      # the job must stop before it builds one.
       #
       # The emptiness check is in the SHELL, not an `if:`: the `secrets` context
       # is not available in a step condition (the workflow fails to parse), and a
-      # step's own `env:` is not reliably in scope for its `if:` either. A guard
-      # inside the script has neither problem and says out loud what it did.
+      # step's own `env:` is not reliably in scope for its `if:` either.
       #
       # The files are gitignored, and the cleanup step removes them so a failure
       # later in the job cannot leave signing material in an artifact.
@@ -139,9 +158,11 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${KEYSTORE_BASE64:-}" ]; then
-            echo "No ANDROID_KEYSTORE_BASE64 — the APK will be signed with the debug key."
-            echo "That installs fine by sideload but cannot upgrade a properly signed install."
-            exit 0
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set. Refusing to build an APK that"
+            echo "::error::cannot be installed over the one already on a device — a debug key"
+            echo "::error::is generated fresh on every runner, so every release would carry a"
+            echo "::error::different signature. See packages/android/README.md → Signing."
+            exit 1
           fi
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > packages/android/release.jks
           cat > packages/android/keystore.properties <<EOF
@@ -201,6 +222,44 @@ jobs:
             || { echo "the APK declares a versionName other than ${expected}"; exit 1; }
           echo "$badging" | grep -q "versionCode='${VERSION_CODE}'" \
             || { echo "the APK declares a versionCode other than ${VERSION_CODE}"; exit 1; }
+
+      # The signature, checked on the ARTIFACT.
+      #
+      # The keystore step above proves a keystore was provided; this proves the
+      # APK was actually signed with it. `build.gradle.kts` picks the release
+      # signingConfig only when `keystore.properties` exists, so a change to that
+      # condition — or a Gradle path that ignores the file — would silently fall
+      # back to the debug key and every installed app would refuse the update
+      # with INSTALL_FAILED_UPDATE_INCOMPATIBLE. `apksigner verify --print-certs`
+      # reads the certificate the artifact really carries, and the expected
+      # fingerprint comes from the keystore itself rather than a checked-in
+      # constant (a rotated key must not need this file edited).
+      - name: Verify the APK signature
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          apk=packages/android/app/build/outputs/apk/release/app-release.apk
+          signer="$ANDROID_HOME"/build-tools/35.0.0/apksigner
+          # `keytool` prints the fingerprint UPPERCASE and `apksigner` prints it
+          # lowercase, so both are folded before they are compared — otherwise
+          # the check would fail on a correctly signed APK.
+          expected="$("$JAVA_HOME"/bin/keytool -list -v \
+            -keystore packages/android/release.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
+          actual="$("$signer" verify --print-certs "$apk" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
+          echo "keystore: $expected"
+          echo "apk:      $actual"
+          test -n "$expected" || { echo "could not read the keystore's fingerprint"; exit 1; }
+          test "$expected" = "$actual" || {
+            echo "::error::the APK is not signed with the release keystore."
+            echo "::error::It cannot be installed over an existing Kabmo — every release"
+            echo "::error::would carry a different signature."
+            exit 1
+          }
 
       # Renamed so the download is identifiable: GitHub asset names are unique
       # per release, and `app-release.apk` says nothing about what it is.

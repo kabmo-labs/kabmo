@@ -141,6 +141,17 @@ class MainActivity : Activity() {
     }
 
     /**
+     * The shell is one Activity, recreated by a process restart and by the
+     * install that replaces this APK. The update flow's static dialog and the
+     * installer's callback both hold an Activity, so both are released here
+     * rather than left to leak into the next instance.
+     */
+    override fun onDestroy() {
+        UpdateFlow.dismissAll()
+        super.onDestroy()
+    }
+
+    /**
      * Begin a load with the overlay up.
      *
      * The state is armed BEFORE `loadUrl`, because a cached document can call
@@ -270,7 +281,18 @@ class MainActivity : Activity() {
             onProgress = { percent -> applyLoading(loading.progressed(percent)) },
         )
         webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
-            KabmoDownloads.start(this, url, contentDisposition, mimeType)
+            // An APK is the ONE download the shell finishes itself: the console
+            // offered it by name (the sidebar's "Update APK"), and handing the
+            // file to Downloads would make the user find it, tap it, and get
+            // through the same system dialog anyway — three steps later.
+            if (ApkUpdate.isApkDownload(url, contentDisposition, mimeType)) {
+                UpdateFlow.start(
+                    this,
+                    UpdateFlow.Download(url, ApkUpdate.fileNameFrom(contentDisposition, url)),
+                )
+            } else {
+                KabmoDownloads.start(this, url, contentDisposition, mimeType)
+            }
         }
     }
 

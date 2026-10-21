@@ -12,6 +12,15 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!--
+      The in-app APK update (`ApkInstaller`). Android requires the permission to
+      CREATE an install session at all; the user still grants the per-app
+      "install unknown apps" toggle once, and the system still shows its own
+      confirmation dialog for every install. This is what removes the file
+      manager from the flow, not the consent.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -49,5 +58,20 @@
             android:exported="false"
             android:label="@string/settings_title"
             android:theme="@style/Theme.Kabmo" />
+
+        <!--
+          The installer's answer. Declared here rather than registered in code
+          because an install can outlive the Activity: Android kills the process
+          it is replacing, so a runtime-registered receiver would be gone exactly
+          when the terminal status arrives. Not exported — only the system's
+          installer sends this action.
+        -->
+        <receiver
+            android:name=".InstallResultReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.kabmo.shell.INSTALL_STATUS" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

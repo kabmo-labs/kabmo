@@ -40,9 +40,10 @@ export JAVA_HOME=/path/to/jdk-17
 # → app/build/outputs/apk/release/app-release.apk  (measured 76,917 B, R8 + resource shrink)
 
 ./gradlew :app:testDebugUnitTest
-# → 44 tests: URL normalization, zoom math, the overlay's state rules (including
-#   what makes a reload a reload), and the wordmark drawable against the README
-#   SVG (plain JVM, no emulator)
+# → 60 tests: URL normalization, zoom math, the overlay's state rules (including
+#   what makes a reload a reload), the update decisions (what counts as an APK,
+#   what counts as an upgrade, what each installer status means), and the
+#   wordmark drawable against the README SVG (plain JVM, no emulator)
 ```
 
 The release APK is **77 KB** because it carries no library: one `classes.dex`,
@@ -57,27 +58,78 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Signing
 
-`assembleRelease` falls back to the **debug keystore** so a release APK is always
-buildable. That is fine for sideloading and wrong for distribution: a debug key
-cannot be upgraded over a different install, and Play rejects it.
+**The release keystore is not optional, and losing it breaks every update.** An
+APK can only be installed over one signed by the same key: Android refuses a
+mismatch with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and there is no override.
+The keystore is the app's identity for as long as it is installed.
 
-To sign properly, create `keystore.properties` **at `packages/android/`** (gitignored).
-The build reads it at configuration time and switches the release `signingConfig` to
-it; without the file the debug key is used:
+The keystore lives outside the repository (`~/Documents/Kabmo-CREDS/kabmo-release.jks`
+on the machine that created it, with its password in `.storepass` beside it) and
+reaches the build two ways:
+
+- **CI** — the four repository secrets `ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`.
+  `publish-android.yml` **fails the job** when the base64 secret is absent, and
+  then verifies the built APK's certificate against the keystore's own
+  fingerprint before uploading.
+- **Locally** — `keystore.properties` at `packages/android/` (gitignored):
 
 ```properties
-storeFile=/absolute/path/to/release.jks
+storeFile=/absolute/path/to/kabmo-release.jks
 storePassword=…
-keyAlias=…
+keyAlias=kabmo
 keyPassword=…
 ```
+
+Without that file `assembleRelease` falls back to the **debug keystore** — which
+is a different key on every machine and every CI runner. That fallback is why
+`v0.2.0`, `v0.3.0` and `v0.4.0` were published under three different
+certificates and none could be installed over another. It remains, because a
+checkout with no signing material must still produce a buildable APK for a
+contributor; it is simply never what the release job does any more.
 
 A keystore can be created with:
 
 ```bash
-keytool -genkeypair -v -keystore release.jks -keyalg RSA -keysize 4096 \
-  -validity 10000 -alias kabmo
+keytool -genkeypair -v -keystore release.jks -storetype PKCS12 \
+  -keyalg RSA -keysize 4096 -validity 10000 -alias kabmo
 ```
+
+`version.properties` carries `versionName=0.5.0` for the signing migration:
+every APK up to 0.4.0 was debug-signed with a throwaway key, so 0.5.0 is the
+first one that can be upgraded in place. It still needs one uninstall to get
+onto a device that holds an older build.
+
+## Updating an installed app
+
+The console's sidebar offers **Update APK** when a newer shell is published.
+Tapping it is the whole flow:
+
+1. The shell downloads the APK itself (`ApkInstaller`) into its cache, with a
+   progress bar.
+2. It verifies the file **before** the installer sees it: it must parse as a
+   package, its package name must be `dev.kabmo.shell`, and its `versionCode`
+   must be higher than the installed one. A file that fails any of those is
+   refused with the reason and nothing is installed.
+3. It commits one `PackageInstaller` session, which raises Android's own
+   **"Do you want to update this app?"** dialog. Tapping Update finishes it; the
+   app is replaced in place, keeping its saved server URL and cookies.
+
+What it cannot do: install silently. Android reserves that for device-owner apps
+and Play-managed ones, so a sideloaded shell always shows the confirmation. The
+one-time prerequisite is the per-app **"Allow from this source"** toggle, which
+the shell opens for you when it is missing.
+
+Anything that is not an APK (the editor's Download button) still goes to
+`DownloadManager` and the Downloads folder, unchanged.
+
+Two failure sentences are worth knowing by name, because each has exactly one
+fix:
+
+| Message | Meaning |
+|---|---|
+| `signed with a different key` | The APK and the installed app were signed by different keystores. Uninstall once; every release after that updates in place. |
+| `Allow updates from Kabmo` | Android's per-app install permission is off. The dialog's button opens the toggle. |
 
 ## Releases
 
@@ -119,12 +171,13 @@ release.yml
 - **A shell bump reaches an installed app on the next app release.** The APK rides
   the app's GitHub release rather than having a tag of its own, so the bump lands
   on `main` immediately and the artifact follows with the next tag.
-- **Signing is optional.** With `ANDROID_KEYSTORE_BASE64`,
-  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` set
-  as repository secrets, the release is signed with that key; without them it is
-  debug-signed, which sideloads fine but cannot upgrade a properly signed
-  install. The keystore and `keystore.properties` are deleted in an `always()`
-  step.
+- **Signing is required.** `ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` must
+  be repository secrets; a missing base64 fails the job with a named error rather
+  than shipping a debug-signed APK. The built artifact's certificate is then
+  checked against the keystore's own fingerprint, so a build that fell back to the
+  debug key cannot be uploaded. The keystore and `keystore.properties` are deleted
+  in an `always()` step.
 - **The Android unit tests run here, not in `gates.yml`**, so a pull request
   never pays for the Android toolchain.
 

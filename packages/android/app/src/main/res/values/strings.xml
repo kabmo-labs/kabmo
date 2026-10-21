@@ -50,4 +50,29 @@
 
     <string name="ssl_title">Certificate not trusted</string>
     <string name="ssl_body">The server presented a certificate this device does not trust.\n\n%1$s\n\nInstall the certificate on this device, or connect over plain http on a trusted network.</string>
+
+    <!--
+      The in-app APK update. Each failure names what actually went wrong: the
+      three that a user can act on (permission, signature conflict, storage) are
+      the reason this list is not one generic sentence.
+    -->
+    <string name="update_downloading">Downloading the update…</string>
+    <string name="update_installed">Update installed. Kabmo will reopen with the new version.</string>
+    <string name="update_permission_title">Allow updates from Kabmo</string>
+    <string name="update_permission_body">Android installs an app update only with your permission. Turn on \"Allow from this source\" for Kabmo, then tap Update APK again.</string>
+    <string name="update_permission_open">Open settings</string>
+
+    <string name="update_err_download">The update could not be downloaded. Check the connection and try again.</string>
+    <string name="update_err_not_a_package">The file that arrived is not an Android app. Nothing was installed.</string>
+    <string name="update_err_wrong_package">That file is a different app, not Kabmo. Nothing was installed.</string>
+    <string name="update_err_not_an_upgrade">That build is not newer than the one installed, so Android would refuse it. Nothing was installed.</string>
+    <string name="update_err_not_permitted">Android does not allow Kabmo to install updates yet. Turn on \"Allow from this source\" for Kabmo in Settings.</string>
+    <string name="update_err_session">The installer could not start. Try again, or install the APK from your Downloads folder.</string>
+    <string name="update_err_aborted">The update was cancelled. Nothing was changed.</string>
+    <string name="update_err_blocked">Android blocked the install. Turn on \"Allow from this source\" for Kabmo in Settings.</string>
+    <string name="update_err_conflict">This update was signed with a different key than the installed Kabmo, so Android refused it. Uninstall Kabmo once and install the new APK; every release after that updates in place.</string>
+    <string name="update_err_incompatible">This build does not support this device\'s Android version.</string>
+    <string name="update_err_invalid">The downloaded file is damaged. Try the download again.</string>
+    <string name="update_err_storage">There is not enough free space to install the update.</string>
+    <string name="update_err_other">The update could not be installed.</string>
 </resources>
