@@ -88,20 +88,36 @@ attached to the GitHub release the `app` job created.
 ```
 release.yml
   gates ─┐
-  e2e  ──┴─> packages ─> marketplace ─> app ─> app-publish
-                                          └──> apk   ← publish-android.yml
+  e2e  ──┴─> packages ─> marketplace ─> android ─> app ─> app-publish
+                                                        └──> apk   ← publish-android.yml
 ```
 
 - **After the gates, and after `app`.** `gh release upload` needs the release to
   exist, so the job `needs: app`; the gates are transitive through
-  `app → marketplace → packages → gates/e2e`.
-- **`versionName` = the tag** (without the leading `v`), **`versionCode` = the
-  workflow run number.** Android refuses an install whose `versionCode` does not
-  increase, so a fixed value would make every release after the first
-  uninstallable over the previous one. Both reach Gradle as
-  `-PkabmoVersionName` / `-PkabmoVersionCode`, and the built APK is checked with
-  `aapt2 dump badging` before upload.
-- **The artifact is `kabmo-android-<tag>.apk`.**
+  `app → android → marketplace → packages → gates/e2e`.
+- **The shell has its OWN version, in `packages/android/version.properties`, and
+  the pipeline bumps it.** `versionName` is that number; `versionCode` is still
+  the workflow run number, because Android refuses an install whose code does not
+  increase and a counter is not a version. The `android` job runs
+  `release/release-android.mjs` **before** `app` tags: it reads the commits since
+  the version line was last written, asks the same `release-rules.js` analyzer the
+  app uses for the level (`fix` → patch, `feat` → minor, a `BREAKING CHANGE:` →
+  major), rewrites the one line, and commits it. A `chore`/`docs`/`test`-only
+  change to the shell asks for no bump and none is written.
+- **Why a version of its own.** The number is the entire delivery mechanism: the
+  shell appends `KabmoAndroid/<versionName>` to its WebView User-Agent, and the
+  console offers a download only when the published asset's version is *newer*
+  than that. When `versionName` was the app's release tag, a shell-only fix could
+  not reach an installed app unless the server also cut a version — and the number
+  it reported said nothing about whether the shell had changed.
+- **The artifact is `kabmo-android-v<versionName>.apk`** — the shell's version,
+  never the release tag, because `versionFromAssetName` reads the published
+  version out of the asset name. The built APK is checked with
+  `aapt2 dump badging` against `version.properties` and the run number before
+  upload.
+- **A shell bump reaches an installed app on the next app release.** The APK rides
+  the app's GitHub release rather than having a tag of its own, so the bump lands
+  on `main` immediately and the artifact follows with the next tag.
 - **Signing is optional.** With `ANDROID_KEYSTORE_BASE64`,
   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` set
   as repository secrets, the release is signed with that key; without them it is
@@ -249,19 +265,37 @@ instance.
 
 ## The APK download button
 
-The console's sidebar footer carries a **Download** control directly after
-*About*, and it is drawn only when BOTH facts hold:
+The console's sidebar footer carries one control directly after *About*, and it
+is one of TWO offers:
 
-1. **This page is inside the Android app.** The APK appends
-   `KabmoAndroid/<version>` to its WebView User-Agent, and the server parses it
-   into `shellVersion` in the bootstrap payload — so the page is served already
-   knowing, with no bridge and no extra request. A browser has no token and never
-   sees the button.
-2. **A newer APK is published.** `GET /api/updates/android` reads the newest
-   GitHub release's asset list and takes the version from the asset NAME
-   (`kabmo-android-v1.2.3.apk` → `1.2.3`). The release TAG cannot be used: the
-   APK is attached to the app's release, whose tag names the *server* version,
-   and the two move independently.
+| Where | Offer | When |
+|---|---|---|
+| Inside the APK | **Update** — `Update Kabmo <version> for Android` | the published APK is newer than the one running |
+| Chrome / Brave / Firefox **on Android** | **Install** — `Install Kabmo <version> for Android` | an APK is published |
+| A desktop browser, an iPad | nothing | an APK cannot be installed there |
+
+The second row exists because a reader on a phone browser may not know the
+native shell exists at all — and because nothing is installed there, it names the
+newest published APK rather than comparing versions.
+
+Both facts travel on the User-Agent, which the server reads for the very request
+that renders the shell — no bridge, no extra round trip:
+
+1. **Which APK is asking.** The APK appends `KabmoAndroid/<version>`, parsed into
+   `shellVersion`. A browser has no token.
+2. **Whether this is an Android device at all**, parsed into `isAndroid` from the
+   `Android` platform token — which an Android tablet also sends (without
+   `Mobile`) and an iPad does not.
+
+The third input is the published APK itself: `GET /api/updates/android` scans the
+release list and takes the newest one whose assets include an APK, reading the
+version from the asset NAME (`kabmo-android-v1.2.3.apk` → `1.2.3`). The release
+TAG cannot be used — the APK is attached to the app's release, whose tag names
+the *server* version, and the two move independently. It is deliberately **not**
+`/releases/latest`: one push publishes three artifacts and the npm packages are
+released before the app, so their `kabmo-sdk/v*` release is newer than the one
+carrying the APK — asking for the latest answered a release with no APK and the
+button disappeared.
 
 An app that is already current shows nothing — a button that downloads the build
 already installed is worse than no button — and so does one that is *ahead* of
