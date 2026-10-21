@@ -10,6 +10,8 @@ import { InstallForm } from '@/client/components/settings/categories/panel-plugi
 import { AvailableList } from '@/client/components/settings/categories/panel-plugins/AvailableList';
 import { InstalledList } from '@/client/components/settings/categories/panel-plugins/InstalledList';
 import { BuiltinList } from '@/client/components/settings/categories/panel-plugins/BuiltinList';
+import { LeftDockSettings } from '@/client/components/settings/categories/panel-plugins/LeftDockSettings';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { PluginToolbar } from '@/client/components/settings/categories/panel-plugins/Toolbar';
 import { SyncBlockedNotice } from '@/client/components/settings/categories/panel-plugins/SyncBlockedNotice';
 
@@ -85,6 +87,7 @@ export function PanelPluginsSection() {
     usePanelRegistry();
   const { slots, failures } = usePanelSlots();
   const actions = usePanelPluginActions();
+  const dock = useLeftDock();
 
   const refresh = () => void refreshPanelRegistry();
 
@@ -136,6 +139,11 @@ export function PanelPluginsSection() {
       {/* Built-ins first, and always — they are Kabmo's own views, so
           they are listed whether or not the registry read settled. */}
       <BuiltinList disabled={disabledPanels} busy={actions.busy} onSetEnabled={actions.setEnabled} />
+
+      {/* After the built-ins, because it places the panels those rows switch on:
+          a placement for a panel that is switched off would be a row for
+          nothing. */}
+      <LeftDockSettings dock={dock} plugins={plugins} slots={slots} />
 
       {ready && available.length === 0 && plugins.length === 0 && errors.length === 0 ? (
         <div className="text-xs text-ink/60 space-y-1.5">

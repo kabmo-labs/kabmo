@@ -1,18 +1,11 @@
 import { useMemo } from 'preact/hooks';
-import type { ComponentType, ReactNode } from 'preact/compat';
+import type { ComponentType } from 'preact/compat';
 import type { RightPanelProps } from '@kabmo-labs/kabmo-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
-import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { pluginIdOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
-import { resolvePluginPanelWidths } from '@/shared/lib/workspace/panel-widths';
-import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { panelOf, rightPanelOf } from '@/client/lib/plugins/slots';
 import { PluginError } from '@/client/components/workspace/plugin-panel/Error';
-import {
-  enabledBuiltinPanels,
-  type BuiltinPanelView,
-  type PanelBodyProps,
-} from '@/client/components/workspace/panels/builtin';
+import type { PanelBodyProps } from '@/client/components/workspace/panels/builtin';
 
 export type { PanelBodyProps };
 
@@ -153,111 +146,4 @@ export function useActiveEditorPanel(activeKey: string | null): ResolvedPluginPa
   return activeKey ? plugins.find((panel) => panel.panelKey === activeKey) ?? null : null;
 }
 
-/** A built-in view's catalog entry, with its renderer closed over its component. */
-function builtinEntry(view: BuiltinPanelView): ResolvedPanel {
-  const View = view.Component;
-  return {
-    id: view.id,
-    title: view.title,
-    label: view.label,
-    icon: view.icon,
-    name: '',
-    builtin: true,
-    requiresWorkspace: view.requiresWorkspace,
-    liveWhileHidden: view.liveWhileHidden === true,
-    minWidth: view.minWidth,
-    defaultWidth: view.defaultWidth,
-    defaultFraction: view.defaultFraction,
-    render: (props) => <View {...props} />,
-  };
-}
-
-/** One panel in the merged catalog — a built-in view or an installed plugin. */
-export interface ResolvedPanel {
-  /** The panel id: a bare built-in view id, or `plugin:<pluginId>`. */
-  id: string;
-  /** The activity bar's tooltip. */
-  title: string;
-  /** The phone's chip label. */
-  label: string;
-  /** A built-in view's own icon; a plugin draws its mark instead. */
-  icon?: ReactNode;
-  /** A plugin's icon URL, when its manifest declares one. */
-  iconUrl?: string;
-  /** The plugin's display name; empty for a built-in view. */
-  name: string;
-  builtin: boolean;
-  requiresWorkspace: boolean;
-  liveWhileHidden: boolean;
-  minWidth: number;
-  /** The px width the view opens at before the group's area is measured. */
-  defaultWidth: number;
-  defaultFraction: number;
-  /** Render the body. One call, so both layouts draw a view the same way. */
-  render: (props: PanelBodyProps) => ReactNode;
-}
-
-/**
- * The panel catalog the activity bar and the panel stack render.
- *
- * ONE list, two sources: the built-in views (in `RIGHT_PANEL_TYPES` order) and
- * the installed plugins (in the registry's order). Enablement is ONE set of ids
- * — a built-in view is off by its bare id and a plugin by `plugin:<id>` — so a
- * view the user switched off disappears from the bar, the phone's strip and the
- * right-click menu alike, whichever kind it is.
- *
- * The BASE order is built-ins then plugins, which is what makes the bar stable
- * across reloads rather than following whichever import finished first; the
- * user's own order (`usePanelOrder`) is laid over it, so a dragged button stays
- * where it was put and a panel the order does not name keeps its base position.
- * Applied HERE rather than in the bar, because the desktop stack and the phone's
- * tab strip render from this same list — ordering at one call site would leave
- * the other two drawing the base order.
- */
-export function usePanelCatalog(): ResolvedPanel[] {
-  const { panels, disabledPanels } = usePanelRegistry();
-  const { slots } = usePanelSlots();
-  const { apply } = usePanelOrder();
-
-  return useMemo(() => {
-    const out: ResolvedPanel[] = [];
-
-    for (const view of enabledBuiltinPanels(disabledPanels)) {
-      out.push(builtinEntry(view));
-    }
-
-    for (const panel of panels) {
-      const entry = slots.get(panel.pluginId);
-      const Component = entry ? rightPanelOf(entry) : undefined;
-      if (!Component) continue;
-      const key = pluginPanelKey(panel.pluginId);
-      if (disabledPanels.includes(key)) continue;
-      const size = entry?.sizing.rightPanel;
-      const widths = resolvePluginPanelWidths({ ...size });
-      out.push({
-        id: key,
-        title: `${entry?.titles.rightPanel ?? panel.name} — ${panel.name}`,
-        label: entry?.titles.rightPanel ?? panel.name,
-        name: panel.name,
-        builtin: false,
-        // A plugin reads whatever the host published and draws what it can, so
-        // gating it on a workspace folder would hide a panel that works.
-        requiresWorkspace: false,
-        liveWhileHidden: false,
-        minWidth: widths.min,
-        defaultWidth: widths.px,
-        defaultFraction: widths.fraction,
-        ...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {}),
-        // Wrapped so the kit's participant hooks resolve THIS plugin's id while
-        // its panel renders — the scope is what `useRpc`/`useRealtime` read.
-        render: (props) => (
-          <PluginIdProvider pluginId={panel.pluginId}>
-            <Component sessionId={props.sessionId ?? null} workspacePath={null} />
-          </PluginIdProvider>
-        ),
-      });
-    }
-
-    return apply(out);
-  }, [panels, slots, disabledPanels, apply]);
-}
+export { usePanelCatalog, isSessionsPanel, type PanelCatalogSide, type ResolvedPanel } from '@/client/components/workspace/plugin-panel/catalog';

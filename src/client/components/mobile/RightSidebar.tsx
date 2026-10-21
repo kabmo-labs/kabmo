@@ -7,6 +7,7 @@ import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
 import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
+import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 
 interface MobileRightSidebarProps {
   enabled?: boolean;
@@ -43,11 +44,13 @@ export function MobileRightSidebar({
   // the user never asked for a search. Restoring the tab they left also keeps
   // the phone and the desktop on the same view.
   const [activeTab, setActiveTab] = useSessionState<string>('layout.mobileRightPanel', 'files');
-  // ONE catalog, the same one the desktop bar reads: the built-in views and the
-  // installed plugins are one list, in one order, so the phone cannot become a
-  // second list that drifts from the desktop's. A view switched off is absent
-  // here for the same reason it is absent there.
-  const catalog = usePanelCatalog();
+  // ONE catalog, the same one the desktop bars read, and deliberately `all`:
+  // a phone has ONE drawer, so a plugin panel the user placed on the left must
+  // stay reachable here — reading only the right column would make placing a
+  // panel on the left hide it from every phone. The dock's own session list is
+  // filtered out below: the phone already has that as its own drawer screen,
+  // and a second copy inside this one would be two lists of the same sessions.
+  const catalog = usePanelCatalog('all').filter((panel) => panel.id !== SESSIONS_VIEW_ID);
   const activePanel = catalog.find((panel) => panel.id === activeTab);
   // Same source the desktop activity bar uses — the Source Control view's own
   // repo pick, read shared so switching repos moves this dot too. Polls only

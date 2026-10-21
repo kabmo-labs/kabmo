@@ -20,7 +20,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { RightActivityBar } from '@/client/components/layout/RightActivityBar';
+import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider/index';
 import { useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { primeKabmoSettings, readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
@@ -110,13 +110,13 @@ async function mount() {
     render(
       h(SessionStateProvider, {
         sessionId: SESSION,
-        children: h('div', null, h(Picker, { repo: '.' }), h(RightActivityBar, {
+        children: h('div', null, h(Picker, { repo: '.' }), h(ActivityBar, {
+          side: 'right',
           activePanel: 'git',
           onChangePanel: () => {},
           isPanelOpen: true,
           hasActiveContext: true,
           activeProjectPath: ROOT,
-          refreshKey: 0,
         })),
       }),
       container,
@@ -129,7 +129,7 @@ async function mount() {
 
 const dot = () => Boolean(container.querySelector('[title="Ada perubahan git"]'));
 
-describe('RightActivityBar git dot', () => {
+describe('ActivityBar git dot', () => {
   test('reports the selected repo, and follows the picker to the root', async () => {
     await mount();
 
@@ -200,7 +200,7 @@ async function dragOnto(from: string, to: string) {
   for (let i = 0; i < 8; i += 1) await act(async () => {});
 }
 
-describe('RightActivityBar panel order', () => {
+describe('ActivityBar panel order', () => {
   test('a drag reorders the bar and persists the new order', async () => {
     primeKabmoSettings({});
     await mount();

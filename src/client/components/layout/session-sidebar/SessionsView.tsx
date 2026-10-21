@@ -1,20 +1,13 @@
 import { useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
-import { AboutModal, NewWorkspaceModal, SettingsModal } from '@/client/components/layout/session-sidebar/Modals';
+import { NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
-import { UpdatePopup } from '@/client/components/layout/update-popup';
-import { SessionSidebarHeader } from '@/client/components/layout/session-sidebar/Header';
 import { SessionSidebarToolbar } from '@/client/components/layout/session-sidebar/Toolbar';
-import { SessionSidebarFooter } from '@/client/components/layout/session-sidebar/Footer';
-import { useAndroidDownload } from '@/client/hooks/ui/updates/android-download';
 import { SessionSidebarSessionList } from '@/client/components/layout/session-sidebar/SessionList';
 import { SessionListSkeleton } from '@/client/components/layout/session-sidebar/Skeleton';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
-import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
-import { useUpdates } from '@/client/hooks/ui/updates';
-import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
 import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
@@ -27,9 +20,37 @@ import { BatchActionBar } from '@/client/components/common/batch-selection/Batch
 import { BatchDeleteModal } from '@/client/components/common/batch-selection/BatchDeleteModal';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
-import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
-export function SessionSidebar({ className = '', onClose, appSettings = {}, streamStatus }: { className?: string, onClose?: () => void, appSettings?: Record<string, any>, streamStatus?: AgentStreamStatus }) {
+/**
+ * The session list — the left dock's own view.
+ *
+ * It used to BE the left column. The column is a dock now, and this is the view
+ * that fills it unless the user places a plugin panel there; the strip below it
+ * (Settings · About · the APK offer) is the DOCK's, not this view's, because
+ * those controls act on Kabmo rather than on the list.
+ *
+ * Three things are deliberately NOT here any more:
+ *
+ * - **The header.** It is the COLUMN's title row now, and it spans the rail too
+ *   (see `LeftColumn`): a title that stopped at the dock body would leave the
+ *   rail starting above it, with a gap under the app's own titlebar.
+ * - **The footer.** It is dock furniture, and a plugin view on the same dock
+ *   must not take it away — moving to a plugin panel would otherwise lose the
+ *   only visible way into Settings.
+ * - **The update popup and the About modal it hands over to.** Both are app
+ *   level: they are about the console, not about one view, and the dock renders
+ *   them so they survive a view switch.
+ *
+ * Everything else — the header's collapse control, the toolbar, the batch bar,
+ * the workspace and scheduler dialogs — belongs to the list and stays.
+ */
+export function SessionsView({
+  className = '',
+  appSettings = {},
+}: {
+  className?: string;
+  appSettings?: Record<string, any>;
+}) {
   const {
     folders,
     initializing,
@@ -51,26 +72,14 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
   } = useSessionSidebarController(appSettings, { expandSearchMatches: true });
   const [, setSearchParams] = useSearchParams();
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
-
-  // Modals for new workspace and scheduler
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const scheduledCount = useScheduledTaskCount();
-  const updates = useUpdates();
-  // The Android offer: an UPDATE inside the APK, an INSTALL on an Android
-  // browser, and nothing anywhere else — see `useAndroidDownload`.
-  const androidDownload = useAndroidDownload(
-    window.__OMP_BOOTSTRAP__?.shellVersion,
-    window.__OMP_BOOTSTRAP__?.isAndroid,
-  );
   const { toasts, pushToast, dismissToast } = useToasts();
   const cancelWait = useCancelWait(pushToast);
   // Follows a held prompt to its session — in whichever tab or instance sent it.
   useWaitingDispatch({ onNotice: pushToast });
 
-  // Sidebar inline states
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
   // Batch selection: two separate modes (sessions from a workspace's `⋯` menu,
@@ -109,20 +118,6 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
     if (batch.mode === 'workspace') batch.end();
     else batch.begin('workspace');
   };
-
-  // The popup's "Update now" hands the run over instead of starting its own: the
-  // About modal is where an update has always been driven from and it owns the
-  // live output, so this opens it and starts the run it will draw. The popup
-  // dispatches this only after it has closed, so the two dialogs never stack.
-  useKabmoEvent(UPDATE_REQUEST_EVENT, () => {
-    setInfoOpen(true);
-    void updates.apply('kabmo').then((result) => {
-      // A null result means the run was aborted with the page; there is nobody
-      // left to tell. A `manual` answer is the command to run, not a success.
-      if (!result) return;
-      pushToast(result.message, result.success && !result.manual ? 'success' : 'error');
-    });
-  });
 
   /** The folder whose context a new session will inherit — same resolution
    *  the send path uses, so the prewarmed cwd matches the spawn cwd. */
@@ -164,9 +159,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
 
   return (
     <>
-      <aside className={`flex flex-col bg-paper h-full ${className}`}>
-        <SessionSidebarHeader streamStatus={streamStatus} onCollapse={onClose} />
-
+      <div className={`flex flex-col h-full ${className}`}>
         <SessionSidebarToolbar
           isSearchVisible={isSearchVisible}
           searchQuery={searchQuery}
@@ -221,33 +214,7 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
             onCancel={batch.end}
           />
         )}
-
-        <SessionSidebarFooter
-          onSettings={() => setSettingsOpen(true)}
-          onInfo={() => setInfoOpen(true)}
-          androidDownload={androidDownload}
-          updateAvailable={updates.hasUpdate}
-          onUpdateClick={() => {
-            setInfoOpen(true);
-            void updates.check();
-          }}
-        />
-      </aside>
-
-      {/* Settings Modal */}
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} appSettings={appSettings} />
-
-      {/* Info Modal */}
-      <AboutModal
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        updates={updates}
-        onToast={pushToast}
-      />
-
-      {/* "Update available" announcement — once per version, gated on the check.
-          Its "Update now" hands the run to the About modal below. */}
-      <UpdatePopup updates={updates} />
+      </div>
 
       {/* Batch delete confirmation. It stays open on a refusal so the reasons
           can be read; a fully successful run closes itself and leaves the mode. */}

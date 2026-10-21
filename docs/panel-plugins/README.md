@@ -490,7 +490,7 @@ module error.
 
 | Method | Where it appears | Props |
 |---|---|---|
-| `app.rightPanel({ id, title, component, minWidth?, defaultFraction? })` | A button in the right-panel activity bar; the view opens in the right panel. | `{ sessionId, workspacePath }` |
+| `app.rightPanel({ id, title, component, minWidth?, defaultFraction? })` | A button in a panel activity bar; the view opens in that panel. The RIGHT column unless the user places it on the left dock (`Settings → Panel Plugins → Left dock`), which is a per-install preference and needs no change on your side. | `{ sessionId, workspacePath }` |
 | `app.panel({ id, title, component, minWidth?, defaultFraction? })` | The editor COLUMN, taken over whole. | `{ sessionId, workspacePath }` |
 | `app.headerPanel({ id, title, component, dropdown? })` | An entry in the navbar, on BOTH layouts. | `{ sessionId, workspacePath }` |
 | `app.settingsSection({ id, title, component })` | A block in Settings → Panel Plugins, under the plugin's row. | `{ pluginId }` |

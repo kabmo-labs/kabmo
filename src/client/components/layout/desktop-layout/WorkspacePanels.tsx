@@ -5,7 +5,7 @@ import { Group, Panel, type PanelImperativeHandle } from '@/client/components/la
 import { ChatTimeline } from '@/client/components/workspace/chat-timeline/index';
 import { usePanelCatalog, PluginPanelBody, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
 import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
-import { RightActivityBar } from '@/client/components/layout/RightActivityBar';
+import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHandle';
@@ -320,7 +320,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
         </Panel>
       </Group>
 
-      <RightActivityBar activePanel={activeRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
+      <ActivityBar side="right" activePanel={activeRightPanel} onChangePanel={onChangeRightPanel} isPanelOpen={showRightPanel} hasActiveContext={hasActiveContext} activeProjectPath={activeProjectPath} />
     </div>
   );
 }

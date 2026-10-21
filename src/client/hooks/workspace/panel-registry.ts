@@ -124,6 +124,19 @@ export function seedPanelRegistry(payload: PanelRegistryPayload): void {
 }
 
 /**
+ * Forget the adopted payload — a test seam, and nothing else.
+ *
+ * The store is anchored on `globalThis` (a `bun --hot` reload must not lose it),
+ * which is also why it survives between test files in one `bun test` process: a
+ * suite that adopts a payload with a plugin in it leaves every later suite
+ * drawing that plugin's button. A file that adopts one has to put the store
+ * back.
+ */
+export function resetPanelRegistry(): void {
+  globalThis.__kabmoPanelRegistry = undefined;
+}
+
+/**
  * Re-read the marketplace from disk, bypassing the server's scan cache.
  *
  * A topic refresh cannot express this: the scan is TTL'd, so a plugin copied in

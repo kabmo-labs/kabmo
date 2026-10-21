@@ -22,6 +22,7 @@ import {
   RIGHT_PANEL_TYPES,
   type RightPanelType,
 } from '@/shared/lib/workspace/right-panels';
+import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
 /**
  * Props a panel BODY may receive.
@@ -51,6 +52,13 @@ export interface PanelBodyProps {
   onClose?: () => void;
   /** The phone's drawer hides a view's own header; the desktop stack does not. */
   showHeader?: boolean;
+  /**
+   * The boot settings snapshot, for the views that read it (the session list
+   * passes it to its own Settings modal and to the prewarm's access mode).
+   */
+  appSettings?: Record<string, any>;
+  /** The live agent stream status, for the session list's wordmark badge. */
+  streamStatus?: AgentStreamStatus;
 }
 
 /**

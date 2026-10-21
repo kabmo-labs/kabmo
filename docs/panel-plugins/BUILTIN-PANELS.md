@@ -80,6 +80,29 @@ idempotent: a second read finds nothing to fold, and a view the user switches
 back on afterwards cannot be re-adopted. An entry already in the disabled set
 wins — it is the newer store.
 
+## The left dock
+
+The left column is a dock too, and a plugin panel can be placed on it — but the
+placement is the USER's, never the plugin's, and the rail is OPTIONAL:
+
+- `definePluginApp((app) => app.rightPanel(...))` stays the only registration. A
+  placement is a per-install preference (`app_settings.omp_left_panels`), so one
+  id (`plugin:<id>`) keeps meaning one panel for the enablement set, the width
+  map, the stored order and the server's own bundle gate.
+- The dock's own view is `sessions` — the session list. It is drawn by the same
+  catalog, with the same button and the same visibility menu, and it is the one
+  row the menu marks pinned: a chat with no way back to a conversation is a dead
+  end.
+- The rail is OFF by default. With it off there is no rail, no second width to
+  reserve and no catalog read, so the feature costs nothing for the users who
+  never place a panel there. With it off the dock also shows its own view,
+  because there would be no control to switch back.
+- Widths are per VIEW (`omp_left_dock_widths`): a session list reads at 280px and
+  a table does not. The session list's fallback stays the width it has always
+  had (`omp_sidebar_width`).
+- A phone has ONE drawer, so it reads the `all` catalog and filters the dock's
+  own view out — a panel placed on the left must stay reachable there.
+
 ## Adding a built-in view
 
 One row in `builtin.tsx`: the id in `RIGHT_PANEL_TYPES`, the meta, the `lazy()`
@@ -92,8 +115,9 @@ edits.
 | Path | Role |
 |---|---|
 | `src/client/components/workspace/panels/builtin.tsx` | The eleven views: id, meta, component, sizing, `requiresWorkspace` |
-| `src/client/components/workspace/plugin-panel/resolve.tsx` | `usePanelCatalog()` — the merged list both layouts render |
-| `src/client/components/layout/RightActivityBar.tsx` | The bar and the enablement menu |
+| `src/client/components/workspace/plugin-panel/catalog.tsx` | `usePanelCatalog(side)` — the merged list, split per column |
+| `src/client/components/workspace/plugin-panel/resolve.tsx` | Plugin-only resolvers (`usePluginPanels`, the editor column) |
+| `src/client/components/layout/ActivityBar.tsx` | The rail for EITHER column, and the enablement menu |
 | `src/client/components/layout/desktop-layout/WorkspacePanels.tsx` | The desktop panel stack |
 | `src/client/components/mobile/RightSidebar.tsx` | The phone's drawer |
 | `src/client/components/settings/categories/panel-plugins/BuiltinList.tsx` | The `Built-in` settings group |
@@ -104,6 +128,10 @@ Removed with the change: `panel-meta.tsx` and `lazy-panels.tsx` (both replaced b
 the table above) and `hooks/workspace/panel-visibility.ts` (the hide axis).
 
 ## Verifying
+
+Left-dock specifics: `left-dock.test.ts` (placement and width rules),
+`LeftActivityBar.test.ts` (what the left rail draws, and that the sessions row is
+pinned).
 
 ```bash
 bun test                       # builtin.test.ts, state.server.test.ts, registry.server.test.ts
