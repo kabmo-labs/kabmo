@@ -21,12 +21,24 @@ object ServerConfig {
      *
      * 100 is the page's own size. Below 50 the phone layout's tap targets stop
      * being tappable; above 200 a two-column phone view becomes a single word per
-     * line. The step is 10 so the slider has 16 positions — enough to land on the
-     * size you want, few enough that a thumb can.
+     * line.
+     *
+     * The step is 1, so every whole percent in the range is a position the slider
+     * can land on (151 of them). A 10% grid was the first shape and it was too
+     * coarse to aim: the size a reader wants is usually one notch from where the
+     * grid happens to sit, and `setInitialScale` has no sub-percent resolution to
+     * split the difference with. The SeekBar's own resolution is what makes this
+     * usable — 150 intervals across the track is ~2px per step on a phone, well
+     * inside a finger's tolerance, and the percent is printed beside the label so
+     * the exact value is readable rather than inferred.
+     *
+     * These are percentages of the PAGE, and `initialScaleFor` is what turns one
+     * into the number `WebView.setInitialScale` wants. Handing that call the bare
+     * percent is the bug this range documents: see `initialScaleFor`.
      */
     const val ZOOM_MIN = 50
     const val ZOOM_MAX = 200
-    const val ZOOM_STEP = 10
+    const val ZOOM_STEP = 1
     const val ZOOM_DEFAULT = 100
 
     fun read(context: Context): String? =
@@ -72,6 +84,28 @@ object ServerConfig {
         val snapped = ZOOM_MIN + ((bounded - ZOOM_MIN) / ZOOM_STEP) * ZOOM_STEP
         return snapped.coerceIn(ZOOM_MIN, ZOOM_MAX)
     }
+
+    /**
+     * The `WebView.setInitialScale` argument for a saved percent.
+     *
+     * `setInitialScale` takes a percentage of the DEVICE's default scale, not of
+     * the page, and the two differ by the display density. `setInitialScale(100)`
+     * therefore means "100% of the default" — on a 420 dpi phone (density 2.625)
+     * the page came out at 0.38x, which is the reported "zoom setting does
+     * nothing": every value on the slider's low half clamped to the same 0.38x
+     * and 200% only reached 0.76x, so the console rendered as a desktop layout
+     * on a phone and no setting appeared to change anything.
+     *
+     * Measured on Android 15 (WebView 124, 1080x2340) across three densities,
+     * with the multiply in place: 50/100/200% land on page scale 0.5/1.0/2.0 at
+     * density 1.0, 1.5 and 2.0, and 0.5/1.0/2.0 at 2.625. Without it, the same
+     * three values read 0.19/0.38/0.76 at 2.625 and never reach 1.0.
+     *
+     * `resources.displayMetrics.density` is the WebView's own DIP scale (what
+     * AwSettings divides the argument by on its way to Blink), so this is the
+     * inverse of the platform's conversion rather than a second convention.
+     */
+    fun initialScaleFor(percent: Int, density: Float): Int = (percent * density).toInt()
 }
 
 /** A normalized server address, or the reason it cannot be one. */

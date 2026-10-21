@@ -104,10 +104,15 @@ class MainActivity : Activity() {
      * slider sets where a load starts while a pinch overrides it for the
      * session. The gesture is gated by `setSupportZoom` alone (see
      * `KabmoWebView`).
+     *
+     * Applying it on resume takes effect on the live page with no reload
+     * (verified: 100% -> 150% in the settings screen -> Back moved
+     * `visualViewport.scale` 0.998 -> 1.499 on the same document).
      */
     private fun applyZoom() {
         val percent = ServerConfig.zoom(this)
-        webView.setInitialScale(percent)
+        val density = resources.displayMetrics.density
+        webView.setInitialScale(ServerConfig.initialScaleFor(percent, density))
     }
 
     /** Opens the native settings screen. Reached from the launcher shortcut. */

@@ -133,10 +133,12 @@ class SettingsActivity : Activity() {
      * Page zoom: a `SeekBar` with a live percentage and a reset.
      *
      * A slider rather than a text field because the value is a size the user is
-     * judging by eye, not a number they know: 16 detents from 50% to 200% can be
-     * explored in one drag. It saves on EVERY change — no Apply button — since
-     * the effect is visible in the console behind this screen, and a value that
-     * needed confirming would be a value the user could not preview.
+     * judging by eye, not a number they know: the range from 50% to 200% can be
+     * explored in one drag, and the percent is printed as the thumb moves so the
+     * exact value is readable rather than guessed. It saves on EVERY change — no
+     * Apply button — since the effect is visible in the console behind this
+     * screen, and a value that needed confirming would be a value the user could
+     * not preview.
      *
      * `SeekBar` is the platform widget (no Material, no AndroidX): it is a
      * `ProgressBar` with a thumb and a drag gesture, which is the whole job.

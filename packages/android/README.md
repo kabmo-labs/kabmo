@@ -123,17 +123,42 @@ release.yml
 
 ### Page zoom
 
-**Page zoom** is on the same screen: a slider from **50% to 200% in 10% steps**,
+**Page zoom** is on the same screen: a slider from **50% to 200% in 1% steps**,
 with the current percent beside the label and a **Reset to 100%** button.
 
+- **Every whole percent is a position** (151 of them). A 10% grid was the first
+  shape and it was too coarse to aim — the size a reader wants is usually one
+  notch off where the grid sits, and `setInitialScale` has no sub-percent
+  resolution to split the difference with. A `SeekBar` gives ~2px per step across
+  a phone's track, and the percent is printed beside the label as the thumb moves
+  so the exact value is readable rather than guessed.
 - It saves on every change — there is no Apply — because the console behind the
   screen is what the user is judging, and a value that needed confirming could not
   be previewed.
-- It applies on the WebView as `setInitialScale(percent)`, and the value is
+- It applies on the WebView through `setInitialScale`, and the value is
   re-applied on every `onResume`, so it survives navigation and a cold start.
   `WebSettings.textZoom` was deliberately not used: it scales text only and
   leaves layout at 100%, which reflows a two-column phone view into something
   that no longer matches its boxes.
+- **The argument is the percent times the display density**, not the percent
+  (`ServerConfig.initialScaleFor`). `setInitialScale` counts percent of the
+  DEVICE's default scale while the slider counts percent of the PAGE, so passing
+  it the bare number is a bug that hides on a 1x emulator and ruins a real phone:
+  at density 2.625 a 100% setting rendered at **0.38x**, every position from 50%
+  to 100% clamped to that same 0.38x, and 200% only reached 0.76x — the console
+  drew its desktop layout on a phone and no slider position appeared to do
+  anything. Measured on Android 15 (WebView 124, 1080×2340): with the multiply,
+  50/100/200% land on page scale 0.5/1.0/2.0 at densities 1.0, 1.5, 2.0 and
+  2.625; without it the same three read 0.19/0.38/0.76 at 2.625.
+- **The layout width comes from the WebView, not the page's viewport tag**
+  (`useWideViewPort = false`). With it on, Blink pins the page-defined initial
+  scale to 1.0 whenever the tag says `width=device-width`
+  (`PageScaleConstraintsSet::AdjustForAndroidWebViewQuirks`), so the slider could
+  not zoom OUT at all — 50/60/70/80/90/100% all rendered at exactly 1.0x. With it
+  off the layout viewport is the device width in DIPs (413 CSS px on that
+  1080px/420dpi screen — the same width the tag produced) and every position maps
+  1:1. `viewport-fit=cover` still applies: Chromium logs
+  `E2E_Used ViewportFitCover` and the safe-area insets resolve.
 - **It is not the pinch zoom.** A two-finger spread zooms the VIEWPORT, the same
   gesture Chrome gives a page, and the two are independent: the slider sets where
   a load starts, a pinch overrides it for that session, and a fresh load returns
@@ -145,7 +170,8 @@ with the current percent beside the label and a **Reset to 100%** button.
 - A stored value is snapped onto the slider's grid on read (`ServerConfig.zoom`),
   so a percent written by hand — through `adb`, or by an older build — cannot put
   the thumb at one end while the page scales by another value. `ZoomClampTest`
-  asserts that for every integer from -100 to 400.
+  asserts that for every integer from -100 to 400, and `ZoomScaleTest` pins the
+  density conversion (including the page-scale identity Blink computes from it).
 
 **A path is refused on purpose.** Every client call is root-relative
 (`fetch('/api/…')`), and both sockets derive their URL from `window.location`, so

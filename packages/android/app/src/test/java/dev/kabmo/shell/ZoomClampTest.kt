@@ -22,12 +22,13 @@ class ZoomClampTest {
     }
 
     @Test
-    fun snapsBetweenStepsDown() {
-        // 10% steps from 50: 104 is not a position the slider has, and the thumb
-        // must land on one it does.
-        assertEquals(100, ServerConfig.clampZoom(104))
-        assertEquals(100, ServerConfig.clampZoom(109))
-        assertEquals(110, ServerConfig.clampZoom(110))
+    fun keepsEveryWholePercent() {
+        // The grid is 1%, so a stored value is already a slider position. The
+        // earlier 10% grid snapped 104 down to 100, which is the coarseness this
+        // test now pins the absence of.
+        assertEquals(104, ServerConfig.clampZoom(104))
+        assertEquals(151, ServerConfig.clampZoom(151))
+        assertEquals(199, ServerConfig.clampZoom(199))
     }
 
     @Test

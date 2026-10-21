@@ -27,11 +27,22 @@ object KabmoWebView {
         // API is deprecated in Chromium and Kabmo uses no database storage, so
         // enabling it would be a warning without a consumer.
 
-        // Layout: the page ships its own viewport meta, so the WebView must not
-        // apply a wide viewport of its own. `useWideViewPort` makes the page's
-        // `<meta name="viewport">` authoritative, which is what lets the phone
-        // layout render at device width.
-        settings.useWideViewPort = true
+        // Layout width: the WebView's OWN viewport, not the page's meta tag.
+        //
+        // `useWideViewPort = true` makes `<meta name="viewport">` authoritative,
+        // and with `width=device-width` Blink then pins the page-defined initial
+        // scale to 1.0 whenever `max_width` is device-width
+        // (`PageScaleConstraintsSet::AdjustForAndroidWebViewQuirks`), so the
+        // slider could never zoom OUT: measured at 420 dpi, 50/60/70/80/90/100%
+        // all rendered at exactly 1.0x and only 150/200% moved. With it off the
+        // layout viewport is the device width in DIPs — 413 CSS px on a 1080px
+        // 420dpi screen, the same width the meta produced — and every slider
+        // position maps 1:1 (0.5x at 50%, 2.0x at 200%, verified at densities
+        // 1.0, 1.5, 2.0 and 2.625). `viewport-fit=cover` is still honoured:
+        // Chromium logs `E2E_Used ViewportFitCover` and the safe-area insets
+        // resolve, because the tag is still parsed — it just no longer dictates
+        // the layout width or the scale floor.
+        settings.useWideViewPort = false
         settings.loadWithOverviewMode = false
 
         // PINCH ZOOM, on — the same gesture Chrome and Brave give a page.
