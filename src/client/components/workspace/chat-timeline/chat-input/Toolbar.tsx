@@ -115,7 +115,7 @@ export function ComposerToolbar({
             selectedModel={selectedModel ?? undefined}
             onSelectModel={onSelectModel}
             onThinkingLevelChange={onThinkingLevelChange}
-            className={isMobile ? 'min-w-0 max-w-[58%]' : undefined}
+            className="min-w-0"
           />
         )}
 

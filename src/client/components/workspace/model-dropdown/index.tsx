@@ -239,10 +239,10 @@ export function ModelDropdown({
                 />
               )}
             </span>
-            <span className="flex items-center space-x-1 min-w-0 max-w-[280px]">
-              <span className="text-ink/50 font-normal truncate">{selectedModel.provider}</span>
+            <span className="flex items-center space-x-1 min-w-0">
+              <span className="shrink-0 text-ink/50 font-normal">{selectedModel.provider}</span>
               <span className="text-ink/30 flex-shrink-0">•</span>
-              <span className="truncate">{selectedModel.name}</span>
+              <span className="min-w-0 flex-1 truncate">{selectedModel.name}</span>
             </span>
           </>
         ) : (
