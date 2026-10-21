@@ -40,8 +40,9 @@ export JAVA_HOME=/path/to/jdk-17
 # → app/build/outputs/apk/release/app-release.apk  (measured 76,917 B, R8 + resource shrink)
 
 ./gradlew :app:testDebugUnitTest
-# → 38 tests: URL normalization, zoom math, the overlay's state rules, and the
-#   wordmark drawable against the README SVG (plain JVM, no emulator)
+# → 44 tests: URL normalization, zoom math, the overlay's state rules (including
+#   what makes a reload a reload), and the wordmark drawable against the README
+#   SVG (plain JVM, no emulator)
 ```
 
 The release APK is **77 KB** because it carries no library: one `classes.dex`,
@@ -183,6 +184,18 @@ app), and a page-drawn overlay would vanish exactly when the page fails to load.
   paper screen with no explanation that the overlay exists to remove. Retry
   reloads the saved address, because the error page is not a document the
   console can recover from.
+- **A reload from the console's own header shows the overlay too, and the url is
+  the only signal that it is one.** The page's Reload control calls
+  `location.reload()`, which the WebView reports as an ordinary document load:
+  no reload flag reaches `onPageStarted` and `doUpdateVisitedHistory` says
+  `isReload=false` (measured on Android 15). What it does report is the SAME url
+  the WebView is already showing, while a `location.href = '/other'` navigation
+  reports a different one — so `LoadingState.isDocumentReload(startedUrl,
+  shownUrl, phase)` compares them. Two rules make that safe: it only fires from
+  `DONE` (`startLoad` arms the overlay itself before `loadUrl`, and a cold
+  start's first `onPageStarted` would otherwise restart its own arm), and the
+  shown url is latched in `onPageFinished` rather than read from `view.url`,
+  which already points at the incoming document once the next load begins.
 
 The rules live in `LoadingState` (pure, JVM-tested — every one of them is an
 ordering the platform actually produces) and the drawing in `LoadingOverlay`.
@@ -365,11 +378,11 @@ packages/android/
 │   ├── AndroidManifest.xml          cleartext, launcher shortcut, single Task
 │   ├── java/dev/kabmo/shell/
 │   │   ├── MainActivity.kt          WebView + launch overlay + back
-│   │   ├── LoadingOverlay.kt        progress bar, failure sentence, Retry
+│   │   ├── LoadingOverlay.kt        wordmark, progress bar, failure sentence, Retry
 │   │   ├── LoadingState.kt          the overlay's rules (pure, JVM-tested)
 │   │   ├── SettingsActivity.kt      native server settings (first run too)
 │   │   ├── KabmoWebView.kt          settings, cookies, origin comparison
-│   │   ├── KabmoWebViewClient.kt    navigation policy, SSL refusals
+│   │   ├── KabmoWebViewClient.kt    navigation policy, reload signal, SSL refusals
 │   │   ├── KabmoChromeClient.kt     window.open, file chooser
 │   │   ├── KabmoDownloads.kt        DownloadManager + session cookie
 │   │   ├── HealthProbe.kt           GET /api/health

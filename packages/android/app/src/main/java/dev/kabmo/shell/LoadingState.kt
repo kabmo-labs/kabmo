@@ -76,6 +76,33 @@ data class LoadingState(
         copy(phase = Phase.FAILED, failure = failure)
 
     companion object {
+        /**
+         * Whether a `onPageStarted` means the user asked for the page again.
+         *
+         * A page's own reload control calls `location.reload()`, which the
+         * WebView reports as an ordinary document load — no `isReload` flag
+         * reaches `onPageStarted`, and `doUpdateVisitedHistory` reports
+         * `isReload=false` for it too (measured on Android 15 against a stub
+         * that reloads itself: `shouldOverrideUrlLoading`, then `onPageStarted`
+         * with the SAME url, while a `location.href = '/other'` navigation
+         * reports a different one).
+         *
+         * So the URL is the only signal there is: a load that starts at the
+         * address already on screen is the same document being fetched again.
+         * That is what makes a reload show the overlay while an in-app
+         * navigation (the login submit's `location.replace('/')` included) does
+         * not — and the comparison is on the FULL url, because a query or hash
+         * change is a navigation to a different view, not a re-fetch.
+         *
+         * Only a document that has FINISHED counts. `startLoad` arms the overlay
+         * itself before it calls `loadUrl`, and the first `onPageStarted` of a
+         * cold start therefore arrives while the WebView still shows the
+         * previous document's address — treating that as a reload would restart
+         * the state machine's own arm.
+         */
+        fun isDocumentReload(startedUrl: String?, shownUrl: String?, phase: Phase): Boolean =
+            phase == Phase.DONE && !startedUrl.isNullOrEmpty() && startedUrl == shownUrl
+
         /** A load is about to start, or has started and reported nothing yet. */
         fun connecting(): LoadingState = LoadingState(Phase.CONNECTING)
 

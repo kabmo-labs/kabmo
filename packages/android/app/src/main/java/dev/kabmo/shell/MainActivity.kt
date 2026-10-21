@@ -236,11 +236,24 @@ class MainActivity : Activity() {
         webView.webViewClient = KabmoWebViewClient(
             activity = this,
             onCertificateProblem = { description -> showCertificateDialog(description) },
-            // Only `startLoad` re-opens the overlay. A later in-app navigation
-            // (the login submit is one) must NOT flash it: the state machine
-            // ignores progress once it has finished, so a navigation after the
-            // console is up costs nothing — while a FAILED main-frame load still
-            // surfaces its reason, which is the blank-screen case worth covering.
+            // Only `startLoad` and a RELOAD re-open the overlay. A later in-app
+            // navigation (the login submit is one) must NOT flash it: the state
+            // machine ignores progress once it has finished, so a navigation
+            // after the console is up costs nothing — while a FAILED main-frame
+            // load still surfaces its reason, which is the blank-screen case
+            // worth covering.
+            //
+            // The page's own Reload control is the exception, and it is what
+            // this callback exists for: `location.reload()` fetches the SAME
+            // address again, which from the shell's side is a cold start in
+            // miniature — the console is replaced by a blank document while the
+            // bundle is re-fetched, and leaving the overlay hidden there made
+            // the header's button look like it did nothing.
+            onLoadStarted = { startedUrl, shownUrl ->
+                if (LoadingState.isDocumentReload(startedUrl, shownUrl, loading.phase)) {
+                    applyLoading(LoadingState.connecting())
+                }
+            },
             onLoadFinished = {
                 applyLoading(loading.finished())
                 // A successful login is a NAVIGATION, so this is the first

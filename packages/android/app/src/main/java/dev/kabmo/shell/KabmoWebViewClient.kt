@@ -32,7 +32,30 @@ class KabmoWebViewClient(
     private val onLoadFinished: () -> Unit = {},
     /** A main-frame resource failed; a broken image must not count. */
     private val onLoadFailed: (LoadingState.Failure) -> Unit = {},
+    /**
+     * A document load started, with the url it started at and the one on screen.
+     *
+     * Both are passed because the only signal a reload gives is that the two are
+     * equal — see `LoadingState.isDocumentReload`.
+     */
+    private val onLoadStarted: (startedUrl: String?, shownUrl: String?) -> Unit = { _, _ -> },
 ) : WebViewClient() {
+
+    /**
+     * The address the WebView is showing, latched by `onPageFinished`.
+     *
+     * `view.url` is the document being LOADED, not the one on screen, so it
+     * cannot answer "was this the same page?" — that answer has to be recorded
+     * when a load completes, before the next one starts.
+     */
+    private var shownUrl: String? = null
+
+    override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+        super.onPageStarted(view, url, favicon)
+        // Reported, not decided: whether this is a reload is the state machine's
+        // call (`LoadingState.isDocumentReload`), and it needs the phase.
+        onLoadStarted(url, shownUrl)
+    }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url.toString()
@@ -69,6 +92,10 @@ class KabmoWebViewClient(
 
     override fun onPageFinished(view: WebView, url: String?) {
         super.onPageFinished(view, url)
+        // Latched HERE, not read from `view.url` later: by the time the next
+        // `onPageStarted` arrives the view already points at the incoming
+        // document, so the comparison would match every navigation.
+        shownUrl = url
         onLoadFinished()
     }
 

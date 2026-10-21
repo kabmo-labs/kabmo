@@ -104,6 +104,103 @@ class LoadingStateTest {
         assertTrue(previous.visible.not())
     }
 
+    // ------------------------------------------------------------- reload
+
+    @Test
+    fun aLoadAtTheAddressAlreadyOnScreenIsAReload() {
+        // The page's own Reload control calls `location.reload()`, and the
+        // WebView reports it as an ordinary document load — measured: the same
+        // url reaches `onPageStarted`, and `doUpdateVisitedHistory` says
+        // `isReload=false`. The url is therefore the only signal.
+        val done = LoadingState.connecting().progressed(100).finished()
+        assertTrue(
+            LoadingState.isDocumentReload(
+                "http://192.168.1.20:3000/",
+                "http://192.168.1.20:3000/",
+                done.phase,
+            ),
+        )
+    }
+
+    @Test
+    fun aNavigationToAnotherAddressIsNotAReload() {
+        // The login submit's `location.replace('/')` and the owner redirect both
+        // arrive here, and flashing the overlay over a console that is already
+        // up is the bug the old rule existed to prevent.
+        val done = LoadingState.connecting().progressed(100).finished()
+        assertFalse(
+            LoadingState.isDocumentReload(
+                "http://192.168.1.20:3000/",
+                "http://192.168.1.20:3000/?sessionId=abc",
+                done.phase,
+            ),
+        )
+    }
+
+    @Test
+    fun theSamePathOnAnotherOriginIsNotAReload() {
+        // A saved-URL change is a different server; `startLoad` arms the overlay
+        // for it, and the comparison must not decide that on its behalf.
+        val done = LoadingState.connecting().finished()
+        assertFalse(
+            LoadingState.isDocumentReload(
+                "http://192.168.1.20:3001/",
+                "http://192.168.1.20:3000/",
+                done.phase,
+            ),
+        )
+    }
+
+    @Test
+    fun anUnfinishedLoadIsNeverAReload() {
+        // `startLoad` arms the overlay itself before it calls `loadUrl`, so the
+        // first `onPageStarted` of a cold start arrives with the overlay already
+        // up and the PREVIOUS document's address latched. Treating that as a
+        // reload would restart the arm it just made.
+        val connecting = LoadingState.connecting()
+        assertFalse(
+            LoadingState.isDocumentReload(
+                "http://192.168.1.20:3000/",
+                "http://192.168.1.20:3000/",
+                connecting.phase,
+            ),
+        )
+        val loading = connecting.progressed(40)
+        assertFalse(
+            LoadingState.isDocumentReload(
+                "http://192.168.1.20:3000/",
+                "http://192.168.1.20:3000/",
+                loading.phase,
+            ),
+        )
+    }
+
+    @Test
+    fun aFailedLoadIsNotAReloaded() {
+        // The error page Chromium renders finishes too, and Retry reloads the
+        // saved address through `startLoad` — which arms the overlay with the
+        // reason on screen. A reload taken from here would drop the message.
+        val failed = LoadingState.connecting().failedBecause(LoadingState.Failure.CONNECT)
+        assertFalse(
+            LoadingState.isDocumentReload(
+                "http://192.168.1.20:3000/",
+                "http://192.168.1.20:3000/",
+                failed.phase,
+            ),
+        )
+    }
+
+    @Test
+    fun aReloadArmsAFreshLoadRatherThanReusingTheFinishedBar() {
+        // The reload path calls `connecting()` itself; this pins the shape that
+        // makes that correct — the bar is indeterminate again and the percent is
+        // back at 0, instead of sitting at the previous load's 100.
+        val reload = LoadingState.connecting()
+        assertTrue(reload.visible)
+        assertTrue(reload.indeterminate)
+        assertEquals(0, reload.percent)
+    }
+
     @Test
     fun errorCodesMapToTheReasonsTheOverlayWords() {
         assertEquals(
