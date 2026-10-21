@@ -17,6 +17,26 @@
 export const SHELL_UA_PREFIX = 'KabmoAndroid/';
 
 /**
+ * Whether this request came from an Android device at all — the app or a
+ * browser on it.
+ *
+ * The download button has two reasons to appear and they are different offers:
+ * an installed APK that is behind (an UPDATE), and a reader using Chrome or
+ * Brave on a phone who may not know a native shell exists (an INSTALL). The
+ * second one needs this fact, which the shell token cannot supply: a browser
+ * carries no `KabmoAndroid/` token, and "no token" alone means "not the app" on
+ * every platform, including a desktop where an APK is useless.
+ *
+ * Matched on `Android`, the platform token every Android browser sends, and NOT
+ * on `Mobile`: an iPad sends `Mobile` and cannot install an APK, while an
+ * Android tablet sends `Android` without it.
+ */
+export function isAndroidDevice(userAgent: string | null | undefined): boolean {
+  if (!userAgent) return false;
+  return /\bAndroid\b/.test(userAgent);
+}
+
+/**
  * The APK version that sent this request, or null when it is not the app.
  *
  * The FIRST matching token wins: the suffix is appended once, and a duplicate

@@ -57,9 +57,12 @@ export function SessionSidebar({ className = '', onClose, appSettings = {}, stre
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const scheduledCount = useScheduledTaskCount();
   const updates = useUpdates();
-  // The Android download offer: null in a browser and null when this APK is
-  // already the newest published one, so the footer draws nothing.
-  const androidDownload = useAndroidDownload(window.__OMP_BOOTSTRAP__?.shellVersion);
+  // The Android offer: an UPDATE inside the APK, an INSTALL on an Android
+  // browser, and nothing anywhere else — see `useAndroidDownload`.
+  const androidDownload = useAndroidDownload(
+    window.__OMP_BOOTSTRAP__?.shellVersion,
+    window.__OMP_BOOTSTRAP__?.isAndroid,
+  );
   const { toasts, pushToast, dismissToast } = useToasts();
 
   // Sidebar inline states

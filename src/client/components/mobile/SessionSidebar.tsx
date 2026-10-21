@@ -73,9 +73,12 @@ export function MobileSessionSidebar({
   const scheduledCount = useScheduledTaskCount();
   const [aboutOpen, setAboutOpen] = useState(false);
   const updates = useUpdates();
-  // Null in a browser, and null when this APK is already current — see
-  // `useAndroidDownload`.
-  const androidDownload = useAndroidDownload(window.__OMP_BOOTSTRAP__?.shellVersion);
+  // An update inside the APK, an install on an Android browser, nothing
+  // elsewhere — see `useAndroidDownload`.
+  const androidDownload = useAndroidDownload(
+    window.__OMP_BOOTSTRAP__?.shellVersion,
+    window.__OMP_BOOTSTRAP__?.isAndroid,
+  );
   const { toasts, pushToast, dismissToast } = useToasts();
 
   // The popup's "Update now" hands the run over rather than starting its own —

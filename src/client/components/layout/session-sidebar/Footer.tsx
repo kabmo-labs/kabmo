@@ -1,12 +1,16 @@
 import { Download, Info, Settings } from 'lucide-preact';
+import {
+  androidDownloadLabel,
+  type AndroidDownload,
+} from '@/client/hooks/ui/updates/android-download';
 
 interface SessionSidebarFooterProps {
   onSettings: () => void;
   onInfo: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
-  /** The newer APK to offer, or null. Only ever set inside the Android app. */
-  androidDownload?: { url: string; latest: string; releaseUrl: string | null } | null;
+  /** The APK to offer, or null. Set inside the app (an update) or on an Android browser (an install). */
+  androidDownload?: AndroidDownload | null;
 }
 
 /**
@@ -42,16 +46,16 @@ export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUp
           <Info size={16} />
         </button>
         {androidDownload && (
-          // Next to About, and only when BOTH facts hold: this page is inside
-          // the Android app, and a newer APK is published. An up-to-date app
-          // shows nothing here, and a browser never does — see
-          // `useAndroidDownload`.
+          // Next to About. Two reasons to be here, and the label says which:
+          // an installed APK that is behind (an update), or an Android browser
+          // whose reader may not know the shell exists (an install). A desktop
+          // browser gets neither — see `useAndroidDownload`.
           <a
             href={androidDownload.url}
             target="_blank"
             rel="noopener noreferrer"
-            title={`Download Kabmo ${androidDownload.latest} for Android`}
-            aria-label={`Download Kabmo ${androidDownload.latest} for Android`}
+            title={androidDownloadLabel(androidDownload)}
+            aria-label={androidDownloadLabel(androidDownload)}
             className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
           >
             <Download size={16} />

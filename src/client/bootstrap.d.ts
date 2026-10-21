@@ -26,10 +26,19 @@ export interface KabmoBootstrap {
    * The Android shell's version, when this page was requested by the APK
    * (`KabmoAndroid/<version>` in the User-Agent). Null in every browser.
    *
-   * The sidebar uses it to decide whether a download button applies at all, and
-   * whether this install is behind the published APK.
+   * The sidebar uses it to decide whether an UPDATE applies — this install is
+   * behind the published APK.
    */
   shellVersion?: string | null;
+  /**
+   * Whether this request came from an Android device at all — the app, or a
+   * browser running on it.
+   *
+   * The wider fact, and it exists for the INSTALL offer: a reader on Chrome or
+   * Brave for Android carries no shell token, so `shellVersion` alone cannot
+   * tell them from a desktop where an APK is useless.
+   */
+  isAndroid?: boolean;
 }
 
 declare global {

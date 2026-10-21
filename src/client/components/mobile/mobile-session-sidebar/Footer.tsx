@@ -1,13 +1,17 @@
 import { Download, Info, Monitor, Settings } from 'lucide-preact';
 import packageJson from '@/../package.json';
+import {
+  androidDownloadLabel,
+  type AndroidDownload,
+} from '@/client/hooks/ui/updates/android-download';
 
 interface MobileSessionFooterProps {
   onSettings: () => void;
   onAbout: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
-  /** The newer APK to offer, or null. Only ever set inside the Android app. */
-  androidDownload?: { url: string; latest: string; releaseUrl: string | null } | null;
+  /** The APK to offer, or null. Set inside the app (an update) or on an Android browser (an install). */
+  androidDownload?: AndroidDownload | null;
   /** Switch the app to the desktop layout for this page session only. The
    *  choice is not persisted, so the next load re-detects the device. */
   onDesktopToggle?: () => void;
@@ -48,16 +52,20 @@ export function MobileSessionFooter({
           // button: the download is the browser's (or the WebView's) job, and
           // `target="_blank"` hands it to the system browser so the console is
           // not replaced by a file download.
+          //
+          // The visible word is the OFFER, not the file type: `APK` told a
+          // reader what the bytes are but not what the control does, and on a
+          // browser it is the only place the native shell is ever mentioned.
           <a
             href={androidDownload.url}
             target="_blank"
             rel="noopener noreferrer"
-            title={`Download Kabmo ${androidDownload.latest} for Android`}
-            aria-label={`Download Kabmo ${androidDownload.latest} for Android`}
+            title={androidDownloadLabel(androidDownload)}
+            aria-label={androidDownloadLabel(androidDownload)}
             className="flex items-center space-x-1 hover:text-ink transition-colors"
           >
             <Download size={14} />
-            <span>APK</span>
+            <span>{androidDownload.kind === 'update' ? 'Update APK' : 'Get APK'}</span>
           </a>
         )}
         {onDesktopToggle && (
