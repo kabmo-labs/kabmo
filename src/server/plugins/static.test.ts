@@ -17,6 +17,11 @@ beforeAll(() => {
   writeFileSync(join(PUBLIC_DIR, 'manifest.webmanifest'), '{"name":"Kabmo"}');
   writeFileSync(join(PUBLIC_DIR, 'sw.js'), 'self.addEventListener("fetch", () => {});');
   writeFileSync(join(PUBLIC_DIR, 'index.html'), '<!doctype html><title>shell</title>');
+  // Above the compression floor, and compressible: the production bundle is the
+  // asset this rule exists for, so a fixture too small to compress would pass
+  // while every real client still downloaded 10 MB.
+  writeFileSync(join(PUBLIC_DIR, 'bundle.js'), `const x = 1;\n${'// padding\n'.repeat(200)}`);
+  writeFileSync(join(PUBLIC_DIR, 'photo.png'), new Uint8Array(2048));
 });
 
 afterAll(() => {
@@ -56,5 +61,59 @@ describe('servePublicAsset', () => {
 
   test('returns null for a missing asset so the request reaches the app', async () => {
     expect(await servePublicAsset('/nope.svg', ROOTS)).toBeNull();
+  });
+});
+
+describe('servePublicAsset compression', () => {
+  const accept = (encoding: string) =>
+    new Request('http://127.0.0.1/bundle.js', { headers: { 'accept-encoding': encoding } });
+
+  test('sends a compressible asset compressed, and says so', async () => {
+    const response = await servePublicAsset('/bundle.js', ROOTS, accept('gzip, zstd'));
+    expect(response?.headers.get('content-encoding')).toBe('zstd');
+    expect(response?.headers.get('vary')).toBe('accept-encoding');
+    // The declared length is the COMPRESSED one, or a client that trusts it
+    // would wait for bytes that are never sent.
+    const body = new Uint8Array(await response!.arrayBuffer());
+    expect(Number(response?.headers.get('content-length'))).toBe(body.byteLength);
+    expect(body.byteLength).toBeLessThan(2000);
+  });
+
+  // The body must decode back to the file's own bytes, not merely be smaller.
+  test('the compressed body decompresses to the file', async () => {
+    const response = await servePublicAsset('/bundle.js', ROOTS, accept('gzip'));
+    const body = new Uint8Array(await response!.arrayBuffer());
+    expect(Bun.gunzipSync(body)).toEqual(new Uint8Array(await Bun.file(join(PUBLIC_DIR, 'bundle.js')).arrayBuffer()));
+  });
+
+  test('a client that accepts nothing gets the raw bytes, with no Vary claim to honour', async () => {
+    const response = await servePublicAsset('/bundle.js', ROOTS, new Request('http://127.0.0.1/bundle.js'));
+    expect(response?.headers.get('content-encoding')).toBeNull();
+    expect(response?.headers.get('vary')).toBe('accept-encoding');
+    expect(Number(response?.headers.get('content-length'))).toBe(
+      (await Bun.file(join(PUBLIC_DIR, 'bundle.js')).stat()).size,
+    );
+  });
+
+  // A PNG compresses to itself, so buffering one to find that out is work that
+  // buys nothing — and `Vary` would fragment its cache entry for no reason.
+  test('leaves an already-compressed type alone', async () => {
+    const response = await servePublicAsset('/photo.png', ROOTS, accept('gzip, zstd'));
+    expect(response?.headers.get('content-encoding')).toBeNull();
+    expect(response?.headers.get('vary')).toBeNull();
+  });
+
+  // The `304` must carry `Vary` too: a shared cache that stored the identity
+  // variant would otherwise hand it to a client that accepts gzip.
+  test('the 304 carries the same Vary as the body it stands in for', async () => {
+    const first = await servePublicAsset('/bundle.js', ROOTS, accept('gzip'));
+    const etag = first!.headers.get('etag')!;
+    const second = await servePublicAsset(
+      '/bundle.js',
+      ROOTS,
+      new Request('http://127.0.0.1/bundle.js', { headers: { 'accept-encoding': 'gzip', 'if-none-match': etag } }),
+    );
+    expect(second?.status).toBe(304);
+    expect(second?.headers.get('vary')).toBe('accept-encoding');
   });
 });

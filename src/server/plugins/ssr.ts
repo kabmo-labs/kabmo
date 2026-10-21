@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { getDb } from '@/server/db.server';
 import { isAuthEnabled, isAuthenticatedRequest } from '@/server/lib/auth/guard';
 import { tryServeStatic } from '@/server/plugins/static';
+import { maybeCompress } from '@/server/plugins/compress';
 import { renderShell, SHELL_MARKER } from '@/server/plugins/shell.server';
 import {
   DEV_ASSETS_ENABLED,
@@ -199,13 +200,20 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // so a `/_bun/` string inside the settings payload is left alone.
   const shellHtml = DEV_ASSETS_ENABLED ? rewriteDevAssetUrls(rendered.html) : rendered.html;
 
-  return new Response(
-    shellHtml
-      .replace('data-theme="paper"', `data-theme="${theme.id}"`)
-      .replace('data-theme-variant="light"', `data-theme-variant="${theme.variant}"`)
-      .replace('<meta name="theme-color" content="#faf8f3" />', `<meta name="theme-color" content="${chrome}" />`)
-      .replace('<!--app-head-->', themeStyle + fontLink)
-      .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
-    { headers: HTML_HEADERS },
+  return maybeCompress(
+    new Response(
+      shellHtml
+        .replace('data-theme="paper"', `data-theme="${theme.id}"`)
+        .replace('data-theme-variant="light"', `data-theme-variant="${theme.variant}"`)
+        .replace('<meta name="theme-color" content="#faf8f3" />', `<meta name="theme-color" content="${chrome}" />`)
+        .replace('<!--app-head-->', themeStyle + fontLink)
+        .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
+      { headers: HTML_HEADERS },
+    ),
+    // 24 KB of markup the browser can never store (`no-store`), so every
+    // navigation pays for it again — compressed, it is about a fifth of that.
+    // `maybeCompress` adds the `Vary` this response needs for the same reason
+    // the static route does.
+    request.headers.get('accept-encoding'),
   );
 });

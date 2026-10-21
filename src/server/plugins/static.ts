@@ -1,22 +1,34 @@
 import { extname, join, normalize, resolve, sep } from 'path';
 
 import { notModified } from '@/server/lib/assets/conditional.server';
+import { compressedAsset } from '@/server/lib/assets/compressed-cache.server';
 import { FONT_STYLESHEET_ROUTE, serveFontFile, serveFontStylesheet } from '@/server/lib/assets/font-css.server';
 import { FONT_ROUTE_PREFIX } from '@/server/lib/assets/fonts.server';
 import { packageDir } from '@/server/lib/fs/package-root';
+import { compressBytes, isCompressible, maybeCompress, MIN_BYTES, pickEncoding } from '@/server/plugins/compress';
 
 /**
- * File serving for `public/` and the font routes.
+ * File serving for `public/`, the font routes and the production build's own
+ * assets.
  *
- * The client bundle is NOT served from here. Bun's own routing owns the assets
- * it emits — `/_bun/asset/*` and `/_bun/client/*` in development, `/chunk-*` in
- * production — and answers them from its bundle table before a request reaches
- * Elysia. In development those responses are reached a second way, through
- * `lib/assets/dev-assets.server.ts`: Bun's table wins for the paths it declares,
- * so the shell points at `/_dev-assets/*` and that module fetches the bytes back
- * from the listener to add the `Cache-Control` and `ETag`/`304` handling Bun's
- * dev asset routes lack. `dist/client` no longer exists, so the `/static/`
- * branch and its content-hashed caching went with it.
+ * Which layer serves the client bundle depends on how the server was started,
+ * and both shapes are real:
+ *
+ * - `kabmo serve` (and `bun run start` after `bun run build`) runs the AOT
+ *   bundle from `dist/client/index.js`, whose assets are `/static/*` FILES — the
+ *   `/static/` branch below serves them, with the compression and validators
+ *   this module adds.
+ * - Running `src/server/index.ts` with `NODE_ENV=production` makes Bun bundle
+ *   the HTML route itself and answer `/chunk-*` from its own routing table,
+ *   before a request reaches Elysia. Those responses cannot be compressed from
+ *   here: Bun's table wins for the paths it declares, and `Bun.serve` has no
+ *   compression option (verified — `compression: 'gzip'` left a 650 KB body
+ *   untouched). This is the source-run shape, not the installed product.
+ * - In development the same table serves `/_bun/asset/*` and `/_bun/client/*`,
+ *   and the shell points at `/_dev-assets/*` so
+ *   `lib/assets/dev-assets.server.ts` can fetch the bytes back from the
+ *   listener and add the `Cache-Control` and `ETag`/`304` handling Bun's dev
+ *   asset routes lack.
  *
  * Hand-rolled rather than `@elysiajs/static`: that plugin registers its own
  * catch-all, which would shadow this app's SSR route. Exposing one lookup
@@ -80,6 +92,14 @@ function resolveWithin(root: string, pathname: string): string | null {
  * Size+mtime is what `plugins/static.ts` can produce from the `stat` it already
  * performs, and a wrong `304` from it needs both a same-size edit and a
  * preserved mtime, which is not something a build or an editor does.
+ *
+ * A compressible asset is sent compressed, because production served it raw:
+ * the client bundle is 10.4 MB and reached every first visit at full size.
+ * `lib/assets/compressed-cache.server.ts` keeps the result per ETag, so the
+ * ~20 ms zstd pass happens once per build rather than once per client. The
+ * `Vary` header is set on EVERY response for such a type, the `304` included —
+ * a shared cache that stored the identity variant would otherwise hand it to a
+ * client that accepts gzip.
  */
 async function serveFile(filePath: string, cacheControl: string, request?: Request): Promise<Response | null> {
   let stat;
@@ -95,20 +115,36 @@ async function serveFile(filePath: string, cacheControl: string, request?: Reque
   // Weak on purpose: the validator identifies the file as the same version, and
   // byte equality is not what it promises.
   const etag = `W/"${stat.size}-${Math.floor(stat.mtimeMs / 1000)}"`;
-  const headers = {
+  const compressible = isCompressible(type);
+  const headers: Record<string, string> = {
     'content-type': type,
     'cache-control': cacheControl,
     'last-modified': lastModified,
     etag,
   };
+  if (compressible) headers.vary = 'accept-encoding';
 
   if (request && notModified(request, etag, stat.mtimeMs)) {
     // No `content-length`: a 304 describes the validator, not a body.
     return new Response(null, { status: 304, headers });
   }
 
-  return new Response(Bun.file(filePath).stream(), {
-    headers: { ...headers, 'content-length': String(stat.size) },
+  const encoding = request && compressible && stat.size >= MIN_BYTES
+    ? pickEncoding(request.headers.get('accept-encoding'))
+    : null;
+  if (!encoding) {
+    return new Response(Bun.file(filePath).stream(), {
+      headers: { ...headers, 'content-length': String(stat.size) },
+    });
+  }
+
+  const bytes = await compressedAsset(`${etag}:${encoding}`, async () =>
+    compressBytes(
+      new Uint8Array(await Bun.file(filePath).arrayBuffer()) as Uint8Array<ArrayBuffer>,
+      encoding,
+    ));
+  return new Response(bytes, {
+    headers: { ...headers, 'content-encoding': encoding, 'content-length': String(bytes.byteLength) },
   });
 }
 
@@ -156,7 +192,13 @@ export async function tryServeStatic(pathname: string, request?: Request): Promi
   // Neither is given a conditional here: the stylesheet is `no-store` (nothing
   // is ever stored to revalidate) and a font file is `immutable` (the browser
   // does not ask again). A validator on either would be dead code.
-  if (pathname === FONT_STYLESHEET_ROUTE) return serveFontStylesheet();
+  //
+  // The stylesheet IS compressed, though: it is 4 KB of text served on every
+  // page load because it cannot be stored, which is exactly the kind of asset
+  // a phone pays for repeatedly.
+  if (pathname === FONT_STYLESHEET_ROUTE) {
+    return maybeCompress(await serveFontStylesheet(), request?.headers.get('accept-encoding') ?? null);
+  }
   if (pathname.startsWith(FONT_ROUTE_PREFIX)) {
     return serveFontFile(decodeURIComponent(pathname.slice(FONT_ROUTE_PREFIX.length)));
   }

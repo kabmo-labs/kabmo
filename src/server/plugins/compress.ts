@@ -19,14 +19,25 @@ import { brotliCompressSync, constants } from 'node:zlib';
  * 0.007 ms for gzip at 2 KiB). Brotli remains for a client that accepts `br`
  * but not `zstd`, and gzip is the floor every client has.
  */
-const MIN_BYTES = 1024;
+export const MIN_BYTES = 1024;
 
 const COMPRESSIBLE = /^(text\/|application\/(json|javascript|xml|wasm|svg))/;
 
 /** Compression encodings this server can produce, best first. */
 const ENCODINGS = ['zstd', 'br', 'gzip'] as const;
 
-type Encoding = (typeof ENCODINGS)[number];
+export type Encoding = (typeof ENCODINGS)[number];
+
+/**
+ * Whether a content type is worth compressing at all.
+ *
+ * Exported because the static asset route decides the same thing before it
+ * reads a file: buffering a PNG or a woff2 to discover it compresses to itself
+ * is work that buys nothing.
+ */
+export function isCompressible(contentType: string): boolean {
+  return COMPRESSIBLE.test(contentType);
+}
 
 /**
  * The best encoding the client accepts, or null.
@@ -35,14 +46,15 @@ type Encoding = (typeof ENCODINGS)[number];
  * browser's `Accept-Encoding` is an explicit set of alternatives, not a
  * preference ordering this server has to weigh.
  */
-function negotiateEncoding(acceptEncoding: string): Encoding | null {
+export function pickEncoding(acceptEncoding: string | null): Encoding | null {
+  if (!acceptEncoding) return null;
   for (const encoding of ENCODINGS) {
     if (acceptEncoding.includes(encoding)) return encoding;
   }
   return null;
 }
 
-function compress(body: Uint8Array<ArrayBuffer>, encoding: Encoding): Uint8Array {
+export function compressBytes(body: Uint8Array<ArrayBuffer>, encoding: Encoding): Uint8Array {
   if (encoding === 'zstd') return Bun.zstdCompressSync(body, { level: 3 });
   if (encoding === 'br') {
     return brotliCompressSync(body, { params: { [constants.BROTLI_PARAM_QUALITY]: 4 } });
@@ -57,7 +69,7 @@ export async function maybeCompress(response: Response, acceptEncoding: string |
   if (!COMPRESSIBLE.test(contentType)) return response;
   if (response.status === 204 || response.status === 304) return response;
 
-  const encoding = negotiateEncoding(acceptEncoding);
+  const encoding = pickEncoding(acceptEncoding);
   if (!encoding) return response;
 
   const buffer = new Uint8Array(await response.arrayBuffer()) as Uint8Array<ArrayBuffer>;
@@ -66,7 +78,7 @@ export async function maybeCompress(response: Response, acceptEncoding: string |
     return rebuild(response, buffer);
   }
 
-  const compressed = compress(buffer, encoding);
+  const compressed = compressBytes(buffer, encoding);
   const headers = new Headers(response.headers);
   headers.set('content-encoding', encoding);
   headers.set('content-length', String(compressed.byteLength));
