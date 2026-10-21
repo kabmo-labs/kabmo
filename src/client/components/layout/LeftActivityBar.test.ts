@@ -183,7 +183,10 @@ describe('left activity bar', () => {
     registerPluginBundle('demo', {
       default: definePluginApp((app) => app.rightPanel({ id: 'main', title: 'Demo panel', component: () => null })),
     });
-    primeKabmoSettings({ [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['plugin:demo'] } });
+    // The INSTANCE key (plugin + slot). A bare `plugin:demo` still resolves —
+    // to the right-panel instance — but the dock holds instance keys, so that
+    // is what a placement writes.
+    primeKabmoSettings({ [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['plugin:demo:rightPanel'] } });
     await mount();
     expect(labels()).toEqual(['Sessions', 'Demo panel — demo']);
 

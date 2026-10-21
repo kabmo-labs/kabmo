@@ -271,6 +271,7 @@ export function Editor({
     );
   }
 
+
   if (openedFiles.length === 0) {
     return (
       <div className={`flex flex-col h-full bg-canvas items-center justify-center text-ink/40 ${className}`}>

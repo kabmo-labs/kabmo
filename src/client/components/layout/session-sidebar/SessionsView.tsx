@@ -137,12 +137,15 @@ export function SessionsView({
       const currentFolder = currentSessionId
         ? folders.find(f => f.sessions?.some((s) => String(s.id) === String(currentSessionId)))
         : undefined;
-      next.set('sessionId', startPendingSession(currentFolder?.id ?? null));
-      if (currentFolder) {
-        next.set('folderId', currentFolder.id.toString());
-      } else {
-        next.delete('folderId');
-      }
+      // The folder the chat will run in: the active session's, else the one the
+      // URL already names. Dropping the URL's own `folderId` (the previous
+      // `else next.delete`) left a chat opened with `?folderId=` with NO context
+      // — its composer then stayed disabled ("Please select a workspace above")
+      // and the first send never happened.
+      const contextFolderId = currentFolder?.id ?? (prev.get('folderId') ? Number(prev.get('folderId')) : null);
+      next.set('sessionId', startPendingSession(contextFolderId));
+      if (contextFolderId != null) next.set('folderId', String(contextFolderId));
+      else next.delete('folderId');
       return next;
     }, { replace: true });
   };

@@ -3,7 +3,8 @@ import { Suspense, lazy } from 'preact/compat';
 import type { ReactNode, RefObject } from 'preact/compat';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { ChatTimeline } from '@/client/components/workspace/chat-timeline/index';
-import { usePanelCatalog, PluginPanelBody, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
+import { usePanelCatalog, PluginPanelBody, usePanelSlotPlugins, type PanelBodyProps } from '@/client/components/workspace/plugin-panel/resolve';
+import { EditorPluginRail } from '@/client/components/workspace/editor/PluginRail';
 import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { ActivityBar } from '@/client/components/layout/ActivityBar';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
@@ -46,6 +47,9 @@ interface WorkspacePanelsProps {
   showRightPanel: boolean;
   /** A built-in view id or a plugin panel key (`plugin:<id>/<panel>`). */
   activeRightPanel: string;
+  /** The `plugin:<id>` whose panel owns the editor column, or null. */
+  activeEditorPanelKey: string | null;
+  onSelectEditorPanel: (panelKey: string | null) => void;
   rightPanelRef: RefObject<PanelImperativeHandle | null>;
   /** Remembered width per panel, keyed the same way the layout reports them. */
   panelWidths: PanelWidths;
@@ -77,6 +81,8 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     editorPanelRef,
     showRightPanel,
     activeRightPanel,
+    activeEditorPanelKey,
+    onSelectEditorPanel,
     rightPanelRef,
     panelWidths,
     editorWidthMode,
@@ -127,6 +133,10 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
   const catalog = usePanelCatalog();
   const { sessionId } = useSessionStateContext();
   const activePanel = catalog.find((panel) => panel.id === activeRightPanel);
+  // The EDITOR column's plugin slot (`panel`): a takeover, so it has no tab in
+  // the strip and this rail is its only switch. Empty until a plugin registers
+  // one, which is why a Kabmo without one looks exactly as it did.
+  const editorPlugins = usePanelSlotPlugins();
 
   // Separators present in this group, which also consume width.
   const handleCount = (showEditor ? 1 : 0) + (showRightPanel ? 1 : 0);
@@ -256,12 +266,18 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
 
         {showEditor && <ResizeHandle />}
         <Panel panelRef={editorPanelRef} id="editor-panel" defaultSize={editorWidth} minSize={MIN_EDITOR_PANEL_WIDTH} maxSize={editorMaxSize} collapsed={!showEditor}>
-          <div className="relative w-full h-full" {...drop.dropProps}>
+          <div className="flex w-full h-full" {...drop.dropProps}>
             <EditorDropOverlay visible={drop.isDragging} />
+            <EditorPluginRail
+              activeKey={activeEditorPanelKey}
+              onSelect={onSelectEditorPanel}
+              plugins={editorPlugins}
+            />
+            <div className="relative flex-1 min-w-0 h-full">
             <PanelSuspense>
             <Editor
               className="w-full h-full"
-              activeEditorPanelKey={null}
+              activeEditorPanelKey={activeEditorPanelKey}
               openedFiles={openedFiles}
               activeFileId={activeFileId}
               onSelectFile={onSetActiveFileId}
@@ -271,6 +287,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               onFileSaved={onRefreshWorkspace}
             />
             </PanelSuspense>
+            </div>
           </div>
         </Panel>
 

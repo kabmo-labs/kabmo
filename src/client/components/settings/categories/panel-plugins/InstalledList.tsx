@@ -6,7 +6,7 @@ import { PluginMark } from '@/client/components/settings/categories/panel-plugin
 import { PluginReadmeModal } from '@/client/components/settings/categories/panel-plugins/ReadmeModal';
 import { GitFreshness } from '@/client/components/settings/categories/panel-plugins/GitFreshness';
 import type { PluginSlots, SlotName } from '@/client/lib/plugins/slots';
-import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
 
 /** The four slots a plugin may fill, in the order a card lists them. */
 const SLOT_ORDER: readonly SlotName[] = ['rightPanel', 'panel', 'headerPanel', 'settingsSection'];
@@ -74,7 +74,7 @@ export function InstalledList({
           // The ENABLEMENT key is the panel key, not the plugin id: it is the
           // id the client filters its panel catalog by, so a switch that wrote
           // the bare id would report success while the panel stayed hidden.
-          const panelKey = pluginPanelKey(plugin.pluginId);
+          const panelKey = pluginEnablementKey(plugin.pluginId);
           const toggling = busy === `enable:${panelKey}` || busy === `disable:${panelKey}`;
           const contributed = entry ? SLOT_ORDER.filter((slot) => entry.components[slot]) : [];
 

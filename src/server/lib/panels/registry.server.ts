@@ -46,7 +46,7 @@ import { toManifest, toMarketplaceCatalog } from '@/server/lib/panels/manifest';
 import { basenameOf, bundleUrl, cssUrl, iconUrl, readmeUrlFor } from '@/server/lib/panels/assets.server';
 import { readBundledCatalog } from '@/server/lib/panels/bundled-catalog.server';
 import { describeIncompatibility, runningVersions } from '@/server/lib/panels/compat.server';
-import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
 
 /** The marketplace root: `<data>/marketplace`, overridable for tests. */
 export function getMarketplaceDir(): string {
@@ -205,7 +205,7 @@ async function runPanelScan(): Promise<PanelScan> {
     // panel id (`plugin:<id>`), so one stored list answers for both kinds. Testing
     // the bare manifest id here made a disabled plugin still report `enabled:
     // true` while its panel stayed hidden — two answers for one question.
-    const enabled = !disabled.has(pluginPanelKey(manifest.id));
+    const enabled = !disabled.has(pluginEnablementKey(manifest.id));
     const entries = [manifest.app, manifest.server].filter((entry): entry is string => Boolean(entry));
     let missingEntry: string | undefined;
     for (const entry of entries) {

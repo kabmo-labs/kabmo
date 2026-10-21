@@ -31,7 +31,7 @@
  */
 
 import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
-import { pluginKeyOf } from '@/shared/lib/workspace/panel-ids';
+import { pluginKeyOf, pluginSlotOf, type PluginPanelSlot } from '@/shared/lib/workspace/panel-ids';
 
 /** `app_settings` key holding the dock's own state. */
 export const LEFT_DOCK_SETTING_KEY = 'omp_left_panels';
@@ -39,14 +39,49 @@ export const LEFT_DOCK_SETTING_KEY = 'omp_left_panels';
 /** The built-in view that owns the left column unless the user places another. */
 export const SESSIONS_VIEW_ID = 'sessions';
 
-/** Which column a panel is drawn in. */
-export type PanelSide = 'left' | 'right';
+/**
+ * Where a panel is drawn.
+ *
+ * `editor` is the third destination and it is the one that makes a two-panel
+ * plugin coherent: `session-info` registers a `rightPanel` AND a `panel`, and
+ * with per-instance placement they are independent — either may sit on the left,
+ * the other may stay right or take the editor column. Placement is per PANEL, so
+ * moving one never drags its sibling along.
+ *
+ * The left column holds ONE panel, and a plugin's second panel goes to the
+ * editor column — that is what its `panel` slot is FOR. A second left pane was
+ * built and removed: it made the left column two columns' worth of width for a
+ * plugin that already had a home for its second panel, and a pane with no
+ * switcher is a surface whose occupant nothing on screen names.
+ */
+export type PanelSide = 'left' | 'right' | 'editor';
+
+/** The destinations a PLUGIN panel may be placed on. */
+export const PLUGIN_SIDES: readonly PanelSide[] = ['left', 'right', 'editor'];
+
+/**
+ * Where a panel may go, given its SLOT.
+ *
+ * Not every slot can use every destination, and the rule is the slot's shape:
+ *
+ * - `rightPanel` is a VIEW — an activity-bar button and a body in a column — so
+ *   it may sit on the left dock or on the right, never in the editor column
+ *   (which a takeover owns whole).
+ * - `panel` is a TAKEOVER — it draws the editor column with no tab strip and no
+ *   chrome — so it may sit there and nowhere else. A takeover on a rail would be
+ *   a button that opens a column that is not the one it is on.
+ */
+export function ridesSides(slot: PluginPanelSlot | null): readonly PanelSide[] {
+  if (slot === 'panel') return ['editor'];
+  if (slot === 'rightPanel') return ['left', 'right'];
+  return [];
+}
 
 /** The dock's stored state, validated. */
 export interface LeftDockState {
   /** Whether the dock's activity bar is drawn at all. OFF unless set. */
   enabled: boolean;
-  /** Panel ids the user placed on the left, in bar order. */
+  /** Panel ids the user placed on the left dock, in bar order. */
   panels: string[];
 }
 
@@ -93,7 +128,15 @@ export function writeLeftDock(patch: Partial<LeftDockState>): LeftDockState {
   const current = readLeftDock();
   const next: LeftDockState = {
     enabled: patch.enabled ?? current.enabled,
-    panels: patch.panels ? [...new Set(patch.panels.filter(isLeftDockPanelId))] : current.panels,
+    panels: patch.panels
+      ? [
+          ...new Set(
+            patch.panels.filter(
+              (id) => isLeftDockPanelId(id) && ridesSides(pluginSlotOf(id)).includes('left'),
+            ),
+          ),
+        ]
+      : current.panels,
   };
   writeSetting(LEFT_DOCK_SETTING_KEY, next);
   return next;
@@ -114,6 +157,10 @@ export function writeLeftDock(patch: Partial<LeftDockState>): LeftDockState {
  */
 export function setPanelSide(panelId: string, side: PanelSide): LeftDockState {
   if (!isLeftDockPanelId(panelId) || panelId === SESSIONS_VIEW_ID) return readLeftDock();
+  // A destination the slot cannot use is refused, not stored: a `panel`
+  // takeover on a rail, or a view inside the editor column, is a placement
+  // that could never be drawn.
+  if (!ridesSides(pluginSlotOf(panelId)).includes(side)) return readLeftDock();
   const current = readLeftDock();
   const placed = current.panels.includes(panelId);
   if (side === 'left') {
@@ -133,7 +180,12 @@ export function setPanelSide(panelId: string, side: PanelSide): LeftDockState {
  */
 export function panelSideOf(panelId: string, dock: LeftDockState = readLeftDock()): PanelSide {
   if (panelId === SESSIONS_VIEW_ID) return 'left';
-  return dock.panels.includes(panelId) ? 'left' : 'right';
+  const key = pluginKeyOf(panelId) ?? panelId;
+  if (dock.panels.includes(key)) return 'left';
+  // A takeover's home is the editor column: that is the only place its slot can
+  // be drawn, so it is where it is when the user has not moved it.
+  if (pluginSlotOf(panelId) === 'panel') return 'editor';
+  return 'right';
 }
 
 /**

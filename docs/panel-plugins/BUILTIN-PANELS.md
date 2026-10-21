@@ -100,6 +100,21 @@ placement is the USER's, never the plugin's, and the rail is OPTIONAL:
 - Widths are per VIEW (`omp_left_dock_widths`): a session list reads at 280px and
   a table does not. The session list's fallback stays the width it has always
   had (`omp_sidebar_width`).
+- **One panel on the left, never two.** The dock holds a single view beside the
+  list; a plugin that contributes a second panel uses the EDITOR column for it,
+  which is what the `panel` slot is for. A second left pane was built and
+  removed: it bought nothing a plugin did not already have, and it made the left
+  column two columns' worth of width.
+- **Ids are per PANEL INSTANCE** (`plugin:<id>:rightPanel`, `plugin:<id>:panel`),
+  while ENABLEMENT is per plugin (`plugin:<id>`). A plugin that ships two panels
+  therefore has two placements, two widths and two active selections, but one
+  switch — the switch also gates the plugin's bundle on the server, so splitting
+  it would leave a bundle served while half its panels were "off". The bare
+  `plugin:<id>` still resolves, to the `rightPanel` instance, which is what every
+  row written before the slot segment meant.
+- **A slot decides its destinations.** A `rightPanel` is a view: left dock or
+  right column. A `panel` is a takeover: the editor column only, because a
+  takeover on a rail would be a button that opens a column it is not on.
 - A phone has ONE drawer, so it reads the `all` catalog and filters the dock's
   own view out — a panel placed on the left must stay reachable there.
 

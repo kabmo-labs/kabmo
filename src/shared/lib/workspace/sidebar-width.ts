@@ -43,6 +43,10 @@ export const DEFAULT_LEFT_PANEL_WIDTH = 280;
  * `MIN_CHAT_PANEL_WIDTH` in `panel-widths.ts`: the sidebar cannot open past 500
  * and still leave the editor (320) and a browser view (320) room on a 1440px
  * display.
+ *
+ * It was raised to 720 for a second left pane and put back when that pane was
+ * removed: the dock holds ONE panel beside the list, and a wider ceiling would
+ * only invite a column nothing else in the layout budgets for.
  */
 export const MIN_LEFT_PANEL_WIDTH = 264;
 export const MAX_LEFT_PANEL_WIDTH = 500;

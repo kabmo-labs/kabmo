@@ -9,6 +9,7 @@ import { useFileTabs } from '@/client/hooks/workspace/file-tabs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
 import { WorkspacePanels } from '@/client/components/layout/desktop-layout/WorkspacePanels';
+import { usePanelSlotPlugins } from '@/client/components/workspace/plugin-panel/resolve';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { usePanelWidths } from '@/client/hooks/workspace/panel-widths';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
@@ -41,10 +42,12 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   const [activeRightPanel, setActiveRightPanel] = useSessionState<string>('layout.activeRightPanel', (appSettings.activeRightPanel as string) ?? 'files');
   const [showLeftPanel, setShowLeftPanel] = useSessionState<boolean>('layout.showLeftPanel', appSettings.showLeftPanel ?? true);
   const [activeLeftView, setActiveLeftView] = useSessionState<string>('layout.activeLeftPanel', SESSIONS_VIEW_ID);
+  // Which plugin panel, if any, owns the editor column. Per session, like every
+  // other layout choice: two chats may be working on different things.
+  const [activeEditorPanelKey, setActiveEditorPanelKey] = useSessionState<string | null>('layout.activeEditorPanel', null);
   const { widths: panelWidths, commitWidths } = usePanelWidths();
-  // The left dock's width is per VIEW and global, like the right panel's order:
-  // the dock lists the same views in every chat. A view the user has never
-  // dragged falls back to the width that view shipped with.
+  // The dock's width is per VIEW and global, like the right panel's order: it
+  // lists the same views in every chat.
   const dock = useLeftDock();
   // What the dock actually shows: a stored id naming a panel that has moved to
   // the right column falls back to the session list, while one naming nothing at
@@ -84,7 +87,17 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     convertDiffToEditor,
   } = useFileTabs(activeProjectPath, sessionId || '', handleOpenTab);
 
-  const showEditor = openedFiles.length > 0 && (userToggledEditor ?? true);
+  // Three ways the column has content: a file, a chosen takeover, and a
+  // takeover that merely exists. Only the first two OPEN it — installing a
+  // plugin must not push a column onto the screen — but the third is what the
+  // toggle has to open on to, since the rail lives inside the column.
+  const editorTakeovers = usePanelSlotPlugins();
+  // The user's own switch wins over every default, in both directions.
+  const editorHasContent =
+    openedFiles.length > 0 || activeEditorPanelKey !== null || editorTakeovers.length > 0;
+  const showEditor =
+    editorHasContent &&
+    (userToggledEditor ?? (openedFiles.length > 0 || activeEditorPanelKey !== null));
 
   // A diff wants room a source file does not, so the editor panel keeps a
   // separate remembered width per tab kind.
@@ -93,13 +106,9 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     [openedFiles, activeFileId],
   );
 
-  // Width restoration is declarative: every panel's `defaultSize` is derived
-  // from the remembered width for its current slot, and `Panel` adopts a
-  // changed `defaultSize` itself. That covers the two cases that used to need
-  // an imperative push — a right-panel view switch and an editor source↔diff
-  // switch, both of which keep the panel mounted while only its width slot
-  // changes — and it cannot go stale, because there is no cached layout to
-  // disagree with the props.
+  // Width restoration is declarative: each panel's `defaultSize` comes from the
+  // remembered width for its current slot and `Panel` adopts a change, so a
+  // view switch needs no imperative push and no cached layout can go stale.
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategoryId>('appearance');
@@ -126,13 +135,9 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   const { toasts, pushToast, dismissToast } = useToasts();
 
   /**
-   * A drop on the workspace either opens a file or is refused, and the refusal
-   * has a reason worth reading ("outside every workspace", "not text") — a
-   * silent no-op would read as a broken drop target.
-   *
-   * The TARGET itself is not here: it belongs to the chat and editor panels
-   * (`WorkspacePanels`), because the sidebar and the right panel are panels in
-   * the same group and a layout-wide target would accept a drop over them too.
+   * A refused drop names its reason ("outside every workspace", "not text") —
+   * a silent no-op reads as a broken target. The TARGET is `WorkspacePanels`':
+   * a layout-wide one would accept a drop over the sidebar and right panel too.
    */
   const handleDropResult = useCallback(
     (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
@@ -154,21 +159,21 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     : undefined;
 
   /**
-   * The workspace's own shortcuts, resolved from the shared keymap so the
-   * tooltips on the panel toggles name the chord that is actually bound.
-   *
-   * `⌘S` is deliberately absent here: the editor panel already owns it (it is
-   * the only surface with a buffer to save), and binding it twice would save
-   * the file twice.
+   * The workspace shortcuts, from the shared keymap so the toggles' tooltips
+   * name the bound chord. `⌘S` is absent: the editor owns it, and binding it
+   * twice would save the file twice.
    */
   useWindowEvent('keydown', (e) => {
     const command = resolveBinding(WORKSPACE_KEY_BINDINGS, e);
     if (!command) return;
     if (command === 'saveFile') return;
     if (command === 'toggleEditorPanel' && !showEditor) {
-      // The editor panel is only meaningful with a file open, and `showEditor`
-      // already folds in the user's own toggle.
-      if (openedFiles.length === 0) return;
+      // The editor panel needs something to show — a file or a takeover — and
+      // `showEditor` already folds in the user's own toggle.
+      // The toggle is also the only way to REACH a takeover while the column is
+      // closed, since the rail lives inside the column: with no file and no
+      // takeover there would be nothing to open on to, and with one there is.
+      if (openedFiles.length === 0 && !activeEditorPanelKey && editorTakeovers.length === 0) return;
     }
     e.preventDefault();
     if (command === 'toggleSidebar') setShowLeftPanel((previous) => !previous);
@@ -193,34 +198,17 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     setSettingsOpen(true);
   });
 
+  // Clicking the ACTIVE view on an open panel collapses that panel; any other
+  // click selects and opens. One handler for both columns' rails.
   const handleChangeRightPanel = (panel: string) => {
-    let nextShow = showRightPanel;
-    let nextActive = activeRightPanel;
-
-    if (activeRightPanel === panel && showRightPanel) {
-      nextShow = false;
-    } else {
-      nextActive = panel;
-      nextShow = true;
-    }
-
-    setShowRightPanel(nextShow);
-    setActiveRightPanel(nextActive);
+    const collapsing = activeRightPanel === panel && showRightPanel;
+    setShowRightPanel(!collapsing);
+    if (!collapsing) setActiveRightPanel(panel);
   };
 
-  const handleToggleLeftPanel = (show: boolean) => {
-    setShowLeftPanel(show);
-  };
-
-  const handleToggleRightPanel = () => {
-    setShowRightPanel(!showRightPanel);
-  };
-
-  const handleToggleEditor = () => {
-    setUserToggledEditor(!showEditor);
-    // The editor panel keeps its own remembered width per tab kind, so a
-    // dragged width survives the toggle without being re-applied here.
-  };
+  const handleToggleLeftPanel = (show: boolean) => setShowLeftPanel(show);
+  const handleToggleRightPanel = () => setShowRightPanel(!showRightPanel);
+  const handleToggleEditor = () => setUserToggledEditor(!showEditor);
 
   return (
     <div
@@ -287,6 +275,13 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 editorPanelRef={editorPanelRef}
                 showRightPanel={showRightPanel}
                 activeRightPanel={activeRightPanel}
+                activeEditorPanelKey={activeEditorPanelKey}
+                onSelectEditorPanel={(panelKey) => {
+                  setActiveEditorPanelKey(panelKey);
+                  // Choosing a takeover must OPEN the column, or the click would
+                  // land on a panel that is still collapsed.
+                  if (panelKey) setUserToggledEditor(true);
+                }}
                 rightPanelRef={rightPanelRef}
                 panelWidths={panelWidths}
                 editorWidthMode={editorWidthMode}

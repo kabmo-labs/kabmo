@@ -35,7 +35,7 @@ import {
 import { usePanelPluginActions, usePanelRegistry } from '@/client/hooks/workspace/panel-registry';
 import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { usePanelReorder } from '@/client/hooks/workspace/panel-reorder';
-import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
 import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 import { SESSIONS_VIEW_ID, isLeftDockPanelId } from '@/shared/lib/workspace/left-dock';
 import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
@@ -189,7 +189,7 @@ function useAllPanelItems(side: PanelCatalogSide): PanelVisibilityItem[] {
     for (const panel of BUILTIN_PANELS) items.push({ id: panel.id, title: panel.title, removable: true });
   }
   for (const plugin of plugins) {
-    const id = pluginPanelKey(plugin.pluginId);
+    const id = pluginEnablementKey(plugin.pluginId);
     // A plugin is offered on both rails: its placement decides which one draws
     // it, and the switch is the same switch on either.
     if (side === 'left' && !isLeftDockPanelId(id)) continue;

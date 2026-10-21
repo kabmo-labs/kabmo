@@ -2,7 +2,9 @@ import { useMemo } from 'preact/hooks';
 import type { ComponentType } from 'preact/compat';
 import type { RightPanelProps } from '@kabmo-labs/kabmo-sdk/app';
 import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
-import { pluginIdOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { pluginEnablementKey, pluginIdOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { panelSideOf } from '@/shared/lib/workspace/left-dock';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { panelOf, rightPanelOf } from '@/client/lib/plugins/slots';
 import { PluginError } from '@/client/components/workspace/plugin-panel/Error';
 import type { PanelBodyProps } from '@/client/components/workspace/panels/builtin';
@@ -53,7 +55,7 @@ export function usePluginPanels(activePanel: string): PluginPanels {
       if (!Component) continue;
       const size = entry?.sizing.rightPanel;
       out.push({
-        panelKey: pluginPanelKey(panel.pluginId),
+        panelKey: pluginPanelKey(panel.pluginId, 'rightPanel'),
         pluginId: panel.pluginId,
         name: panel.name,
         title: entry?.titles.rightPanel ?? panel.name,
@@ -107,8 +109,9 @@ export function PluginPanelBody({ panelKey }: { panelKey: string }) {
  * it renders, so nothing here assumes what it contains.
  */
 export function usePanelSlotPlugins(): ResolvedPluginPanel[] {
-  const { panels } = usePanelRegistry();
+  const { panels, disabledPanels } = usePanelRegistry();
   const { slots } = usePanelSlots();
+  const dock = useLeftDock();
 
   return useMemo(() => {
     const out: ResolvedPluginPanel[] = [];
@@ -116,9 +119,17 @@ export function usePanelSlotPlugins(): ResolvedPluginPanel[] {
       const entry = slots.get(panel.pluginId);
       const Component = entry ? panelOf(entry) : undefined;
       if (!Component) continue;
+      // Enablement is per PLUGIN, so a switched-off plugin contributes nothing
+      // to any column — the same rule the right-panel catalog uses.
+      if (disabledPanels.includes(pluginEnablementKey(panel.pluginId))) continue;
+      const key = pluginPanelKey(panel.pluginId, 'panel');
+      // The column is one destination, and a `panel` slot only rides it. A row
+      // in the dock's placement list naming this instance is therefore ignored
+      // by `panelSideOf`'s slot rule rather than honoured.
+      if (panelSideOf(key, dock) !== 'editor') continue;
       const size = entry?.sizing.panel;
       out.push({
-        panelKey: pluginPanelKey(panel.pluginId),
+        panelKey: key,
         pluginId: panel.pluginId,
         name: panel.name,
         title: entry?.titles.panel ?? panel.name,
@@ -129,7 +140,7 @@ export function usePanelSlotPlugins(): ResolvedPluginPanel[] {
       });
     }
     return out;
-  }, [panels, slots]);
+  }, [panels, slots, disabledPanels, dock]);
 }
 
 /**

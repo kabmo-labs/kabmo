@@ -38,7 +38,7 @@ import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { rightPanelOf } from '@/client/lib/plugins/slots';
-import { pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import { pluginEnablementKey, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 import { SESSIONS_VIEW_ID, panelSideOf, type PanelSide } from '@/shared/lib/workspace/left-dock';
 import { resolvePluginPanelWidths } from '@/shared/lib/workspace/panel-widths';
 import { DEFAULT_LEFT_PANEL_WIDTH, MIN_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
@@ -155,14 +155,15 @@ export function usePanelCatalog(side: PanelCatalogSide = 'right'): ResolvedPanel
       const entry = slots.get(panel.pluginId);
       const Component = entry ? rightPanelOf(entry) : undefined;
       if (!Component) continue;
-      const key = pluginPanelKey(panel.pluginId);
-      if (disabledPanels.includes(key)) continue;
+      const key = pluginPanelKey(panel.pluginId, 'rightPanel');
+      if (disabledPanels.includes(pluginEnablementKey(panel.pluginId))) continue;
       const size = entry?.sizing.rightPanel;
       const widths = resolvePluginPanelWidths({ ...size });
       const resolved: ResolvedPanel = {
         id: key,
-        // Where the USER put it. A plugin registers one `rightPanel`; the dock
-        // decides which column draws it, so one id keeps meaning one panel.
+        // Where the USER put it, keyed per PANEL INSTANCE. A plugin that also
+        // contributes a takeover has a second, independent key, so placing this
+        // one on the left never moves that one.
         side: panelSideOf(key, dock),
         title: `${entry?.titles.rightPanel ?? panel.name} — ${panel.name}`,
         label: entry?.titles.rightPanel ?? panel.name,
@@ -184,6 +185,9 @@ export function usePanelCatalog(side: PanelCatalogSide = 'right'): ResolvedPanel
           </PluginIdProvider>
         ),
       };
+      // `editor` is not a column this catalog draws: the takeover has its own
+      // list (`usePanelSlotPlugins`) and its own rail in the editor column.
+      if (resolved.side === 'editor') continue;
       if (resolved.side === 'left') left.push(resolved);
       else if (side !== 'left') out.push(resolved);
     }

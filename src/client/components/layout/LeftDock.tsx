@@ -90,7 +90,11 @@ export function LeftDockView({
 
   return (
     <DockSuspense>
-      <div className={`relative h-full ${className}`}>
+      {/* `aside`, not a `div`: this IS the sidebar landmark — the session list
+          lives here — and the browser specs address it as one (`aside` scopes a
+          query to the sidebar rather than to the whole page). The dock body was
+          a `div` for one revision and two specs went red on it. */}
+      <aside className={`relative h-full ${className}`}>
         {catalog.map((panel) => {
           const isActive = panel.id === activeView;
           if (!panel.builtin && !isActive) return null;
@@ -109,7 +113,7 @@ export function LeftDockView({
             <PluginPanelBody panelKey={activeView} />
           </div>
         ) : null}
-      </div>
+      </aside>
     </DockSuspense>
   );
 }

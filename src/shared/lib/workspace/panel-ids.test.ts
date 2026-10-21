@@ -13,24 +13,48 @@
  */
 
 import { test, expect, describe } from 'bun:test';
-import { isPanelId, pluginIdOf, pluginKeyOf, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
+import {
+  isPanelId,
+  migrateLegacyPanelId,
+  pluginEnablementKey,
+  pluginIdOf,
+  pluginKeyOf,
+  pluginPanelKey,
+  pluginSlotOf,
+} from '@/shared/lib/workspace/panel-ids';
 
 describe('pluginPanelKey', () => {
-  test('builds the id from the plugin id', () => {
-    expect(pluginPanelKey('hello')).toBe('plugin:hello');
+  test('names ONE panel: the plugin id AND the slot', () => {
+    expect(pluginPanelKey('hello', 'rightPanel')).toBe('plugin:hello:rightPanel');
+    expect(pluginPanelKey('hello', 'panel')).toBe('plugin:hello:panel');
+    // Two panels of one plugin are two keys, which is what lets a placement and
+    // a width follow one of them without dragging the other along.
+    expect(pluginPanelKey('hello', 'panel')).not.toBe(pluginPanelKey('hello', 'rightPanel'));
+  });
+});
+
+describe('pluginEnablementKey', () => {
+  test('names the PLUGIN, whatever it contributes', () => {
+    // Enablement is per plugin: the switch says "Disable <plugin>" and the
+    // server gates that plugin's bundle on this key, so one switch is one id.
+    expect(pluginEnablementKey('hello')).toBe('plugin:hello');
   });
 });
 
 describe('pluginKeyOf', () => {
-  test('accepts a well-formed plugin key', () => {
-    expect(pluginKeyOf('plugin:hello')).toBe('plugin:hello');
+  test('accepts both forms, normalizing the retired one to rightPanel', () => {
+    expect(pluginKeyOf('plugin:hello:rightPanel')).toBe('plugin:hello:rightPanel');
+    expect(pluginKeyOf('plugin:hello:panel')).toBe('plugin:hello:panel');
+    // The form that shipped, before the slot segment: the only reachable slot
+    // then was the right panel, so that is where such a row still points.
+    expect(pluginKeyOf('plugin:hello')).toBe('plugin:hello:rightPanel');
   });
 
-  test('rejects a bare prefix and an extra segment', () => {
+  test('rejects a bare prefix, a slash, a third segment and an unknown slot', () => {
     expect(pluginKeyOf('plugin:')).toBeNull();
-    // The id used to carry a panel segment; a blob written then must not be
-    // adopted as a plugin id that no registry can report.
     expect(pluginKeyOf('plugin:hello/greeter')).toBeNull();
+    expect(pluginKeyOf('plugin:a:b:c')).toBeNull();
+    expect(pluginKeyOf('plugin:hello:headerPanel')).toBeNull();
   });
 
   test('rejects a built-in view id and a non-string', () => {
@@ -40,9 +64,33 @@ describe('pluginKeyOf', () => {
   });
 });
 
+describe('migrateLegacyPanelId', () => {
+  test('reports the retired form and what it becomes', () => {
+    expect(migrateLegacyPanelId('plugin:hello')).toEqual({
+      from: 'plugin:hello',
+      to: 'plugin:hello:rightPanel',
+    });
+  });
+
+  test('says nothing for a value that is already current or not a panel id', () => {
+    expect(migrateLegacyPanelId('plugin:hello:panel')).toBeNull();
+    expect(migrateLegacyPanelId('files')).toBeNull();
+    expect(migrateLegacyPanelId(null)).toBeNull();
+  });
+});
+
+describe('pluginSlotOf', () => {
+  test('names the slot, so a placement can be per panel', () => {
+    expect(pluginSlotOf('plugin:hello:panel')).toBe('panel');
+    expect(pluginSlotOf('plugin:hello')).toBe('rightPanel');
+    expect(pluginSlotOf('files')).toBeNull();
+  });
+});
+
 describe('pluginIdOf', () => {
-  test('unwraps the plugin id', () => {
+  test('unwraps the plugin id, from either form', () => {
     expect(pluginIdOf('plugin:hello')).toBe('hello');
+    expect(pluginIdOf('plugin:hello:panel')).toBe('hello');
     expect(pluginIdOf('files')).toBeNull();
   });
 });
@@ -54,8 +102,9 @@ describe('isPanelId', () => {
     expect(isPanelId('plan')).toBe(true);
   });
 
-  test('accepts a plugin key', () => {
+  test('accepts a plugin panel key, in both forms', () => {
     expect(isPanelId('plugin:hello')).toBe(true);
+    expect(isPanelId('plugin:hello:panel')).toBe(true);
   });
 
   test('rejects an unknown view and a malformed plugin key', () => {

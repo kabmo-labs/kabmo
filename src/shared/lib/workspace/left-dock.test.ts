@@ -29,6 +29,7 @@ import {
   leftPanelIds,
   panelSideOf,
   readLeftDock,
+  ridesSides,
   setPanelSide,
   writeLeftDock,
 } from '@/shared/lib/workspace/left-dock';
@@ -49,11 +50,14 @@ describe('readLeftDock', () => {
 
   test('a malformed row is filtered rather than keyed', () => {
     primeKabmoSettings({
-      [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['plugin:a', 3, '', null, 'plugin:a', 'git', 'plugin:b'] },
+      [LEFT_DOCK_SETTING_KEY]: { enabled: true, panels: ['plugin:a:rightPanel', 3, '', null, 'plugin:a:rightPanel', 'git', 'plugin:b:rightPanel'] },
     });
     // Built-in ids and duplicates are dropped: a bare `git` names a view whose
     // floor and width slot were declared for the RIGHT column.
-    expect(readLeftDock()).toEqual({ enabled: true, panels: ['plugin:a', 'plugin:b'] });
+    expect(readLeftDock()).toEqual({
+      enabled: true,
+      panels: ['plugin:a:rightPanel', 'plugin:b:rightPanel'],
+    });
   });
 
   test('the sessions view is never a placed panel', () => {
@@ -71,15 +75,15 @@ describe('writeLeftDock / setPanelSide', () => {
   test('the switch and the placement are independent halves', () => {
     writeLeftDock({ enabled: true });
     expect(readLeftDock()).toEqual({ enabled: true, panels: [] });
-    setPanelSide('plugin:a', 'left');
-    expect(readLeftDock()).toEqual({ enabled: true, panels: ['plugin:a'] });
+    setPanelSide('plugin:a:rightPanel', 'left');
+    expect(readLeftDock()).toEqual({ enabled: true, panels: ['plugin:a:rightPanel'] });
   });
 
   test('placing twice is idempotent, and moving back removes it', () => {
-    setPanelSide('plugin:a', 'left');
-    setPanelSide('plugin:a', 'left');
-    expect(readLeftDock().panels).toEqual(['plugin:a']);
-    setPanelSide('plugin:a', 'right');
+    setPanelSide('plugin:a:rightPanel', 'left');
+    setPanelSide('plugin:a:rightPanel', 'left');
+    expect(readLeftDock().panels).toEqual(['plugin:a:rightPanel']);
+    setPanelSide('plugin:a:rightPanel', 'right');
     expect(readLeftDock().panels).toEqual([]);
   });
 
@@ -96,47 +100,81 @@ describe('placing a panel turns the rail on', () => {
     // the rail still off is a move with no button and no view, which reads as
     // nothing having happened.
     expect(readLeftDock().enabled).toBe(false);
-    setPanelSide('plugin:a', 'left');
-    expect(readLeftDock()).toEqual({ enabled: true, panels: ['plugin:a'] });
+    setPanelSide('plugin:a:rightPanel', 'left');
+    expect(readLeftDock()).toEqual({ enabled: true, panels: ['plugin:a:rightPanel'] });
   });
 
   test('moving a panel back to the right leaves the rail as the user set it', () => {
     // The switch is the user's, so only a PLACEMENT turns it on; a removal must
     // not turn it off behind their back.
     writeLeftDock({ enabled: true });
-    setPanelSide('plugin:a', 'left');
-    setPanelSide('plugin:a', 'right');
+    setPanelSide('plugin:a:rightPanel', 'left');
+    setPanelSide('plugin:a:rightPanel', 'right');
     expect(readLeftDock()).toEqual({ enabled: true, panels: [] });
   });
 
   test('a placement made BY HAND on a disabled dock stays off until the UI places it', () => {
     // `writeLeftDock` is the raw store; the coupling lives at the placement
     // action, so a blob written directly is not silently rewritten.
-    writeLeftDock({ enabled: false, panels: ['plugin:a'] });
-    expect(readLeftDock()).toEqual({ enabled: false, panels: ['plugin:a'] });
+    writeLeftDock({ enabled: false, panels: ['plugin:a:rightPanel'] });
+    expect(readLeftDock()).toEqual({ enabled: false, panels: ['plugin:a:rightPanel'] });
   });
 });
 
 describe('panelSideOf / leftPanelIds', () => {
   test('the sessions view is left; a placed plugin is left; everything else right', () => {
-    setPanelSide('plugin:a', 'left');
+    setPanelSide('plugin:a:rightPanel', 'left');
     expect(panelSideOf(SESSIONS_VIEW_ID)).toBe('left');
-    expect(panelSideOf('plugin:a')).toBe('left');
-    expect(panelSideOf('plugin:b')).toBe('right');
+    expect(panelSideOf('plugin:a:rightPanel')).toBe('left');
+    expect(panelSideOf('plugin:b:rightPanel')).toBe('right');
     expect(panelSideOf('git')).toBe('right');
   });
 
   test('the bar order is the sessions view then the placed panels', () => {
-    setPanelSide('plugin:b', 'left');
-    setPanelSide('plugin:a', 'left');
-    expect(leftPanelIds()).toEqual([SESSIONS_VIEW_ID, 'plugin:b', 'plugin:a']);
+    setPanelSide('plugin:b:rightPanel', 'left');
+    setPanelSide('plugin:a:rightPanel', 'left');
+    expect(leftPanelIds()).toEqual([SESSIONS_VIEW_ID, 'plugin:b:rightPanel', 'plugin:a:rightPanel']);
+  });
+});
+
+describe('slot rules', () => {
+  test('a view rides the rails; a takeover rides the editor column', () => {
+    // The rule is the SLOT's shape, not the plugin's identity: a `rightPanel` is
+    // an activity-bar view, a `panel` takes the editor column over whole.
+    expect(ridesSides('rightPanel')).toEqual(['left', 'right']);
+    expect(ridesSides('panel')).toEqual(['editor']);
+  });
+
+  test('a takeover cannot be placed on a rail', () => {
+    // A button on a rail that opens a column somewhere else is a control that
+    // lies about where it goes.
+    setPanelSide('plugin:x:panel', 'left');
+    expect(readLeftDock().panels).toEqual([]);
+  });
+
+  test('a view cannot be placed in the editor column', () => {
+    setPanelSide('plugin:x:rightPanel', 'editor');
+    // Refused, and the refusal leaves the panel where it was: the right column.
+    expect(panelSideOf('plugin:x:rightPanel')).toBe('right');
+  });
+
+  test('a takeover is in the editor column by default', () => {
+    expect(panelSideOf('plugin:x:panel')).toBe('editor');
+  });
+
+  test('two panels of one plugin are placed independently', () => {
+    // The whole reason placement is per PANEL: moving the right panel onto the
+    // left dock must not drag the plugin's editor takeover with it.
+    setPanelSide('plugin:session-info:rightPanel', 'left');
+    expect(panelSideOf('plugin:session-info:rightPanel')).toBe('left');
+    expect(panelSideOf('plugin:session-info:panel')).toBe('editor');
   });
 });
 
 describe('isLeftDockPanelId', () => {
   test('accepts the sessions view and a plugin key only', () => {
     expect(isLeftDockPanelId(SESSIONS_VIEW_ID)).toBe(true);
-    expect(isLeftDockPanelId('plugin:a')).toBe(true);
+    expect(isLeftDockPanelId('plugin:a:rightPanel')).toBe(true);
     expect(isLeftDockPanelId('files')).toBe(false);
     expect(isLeftDockPanelId('plugin:')).toBe(false);
   });
@@ -144,12 +182,12 @@ describe('isLeftDockPanelId', () => {
 
 describe('left dock widths', () => {
   test('a remembered width wins and is clamped to the view floor', () => {
-    saveLeftDockWidth('plugin:a', 400);
-    expect(resolveLeftDockWidth('plugin:a')).toBe(400);
-    saveLeftDockWidth('plugin:a', 10);
-    expect(resolveLeftDockWidth('plugin:a')).toBe(MIN_LEFT_DOCK_PLUGIN_WIDTH);
-    saveLeftDockWidth('plugin:a', 10_000);
-    expect(resolveLeftDockWidth('plugin:a')).toBe(MAX_LEFT_PANEL_WIDTH);
+    saveLeftDockWidth('plugin:a:rightPanel', 400);
+    expect(resolveLeftDockWidth('plugin:a:rightPanel')).toBe(400);
+    saveLeftDockWidth('plugin:a:rightPanel', 10);
+    expect(resolveLeftDockWidth('plugin:a:rightPanel')).toBe(MIN_LEFT_DOCK_PLUGIN_WIDTH);
+    saveLeftDockWidth('plugin:a:rightPanel', 10_000);
+    expect(resolveLeftDockWidth('plugin:a:rightPanel')).toBe(MAX_LEFT_PANEL_WIDTH);
   });
 
   test('the session list keeps its own floor, and the setting it already had', () => {
@@ -158,8 +196,8 @@ describe('left dock widths', () => {
     saveLeftDockWidth(SESSIONS_VIEW_ID, 10);
     expect(resolveLeftDockWidth(SESSIONS_VIEW_ID)).toBe(MIN_LEFT_PANEL_WIDTH);
     // The dock's map is its own key: a plugin's width never rewrites the list's.
-    saveLeftDockWidth('plugin:a', 500);
+    saveLeftDockWidth('plugin:a:rightPanel', 500);
     expect(resolveLeftDockWidth(SESSIONS_VIEW_ID)).toBe(MIN_LEFT_PANEL_WIDTH);
-    expect((readKabmoSetting<Record<string, number>>(LEFT_DOCK_WIDTHS_SETTING_KEY) ?? {})['plugin:a']).toBe(500);
+    expect((readKabmoSetting<Record<string, number>>(LEFT_DOCK_WIDTHS_SETTING_KEY) ?? {})['plugin:a:rightPanel']).toBe(500);
   });
 });
