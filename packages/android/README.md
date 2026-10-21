@@ -134,29 +134,45 @@ fix:
 ## Releases
 
 The APK is released by `.github/workflows/release.yml` on every push to `main`
-that cuts a version, as its **last** job (`apk`). It is not an npm package:
-`packages/android` is a private application, so the only artifact is the `.apk`
-attached to the GitHub release the `app` job created.
+that cuts a version. It is not an npm package: `packages/android` is a private
+application, so the only artifact is the `.apk` attached to the GitHub release
+the `app` job created.
+
+**Building the APK is a GATE on the release, not a step after it.** The body runs
+in two phases and `release.yml` calls it twice:
 
 ```
 release.yml
   gates ─┐
-  e2e  ──┴─> packages ─> marketplace ─> android ─> app ─> app-publish
-                                                        └──> apk   ← publish-android.yml
+  e2e  ──┴─> packages ─> marketplace ─> android ─> apk-build ─> app ─> app-publish
+                                                  (mode: build)  │
+                                                                 └──> apk      ← mode: attach
 ```
 
-- **After the gates, and after `app`.** `gh release upload` needs the release to
-  exist, so the job `needs: app`; the gates are transitive through
-  `app → android → marketplace → packages → gates/e2e`.
+- **`apk-build` runs BEFORE the tag.** It compiles, runs the unit tests, verifies
+  the version and the signature, and uploads the APK as a run artifact. `app`
+  `needs: apk-build`, so a toolchain that moved, a missing keystore, a Kotlin
+  error or a signature mismatch stops the release before anything is tagged or
+  published. It used to be built after the tag, and that is the failure this
+  shape removes: a build that died left a release already out with no shell
+  attached, repaired only by a hand-run dispatch.
+- **`apk` only attaches.** It downloads the artifact from the same run and
+  uploads it to the release `app` created — `gh release upload` needs the release
+  to exist, so it still comes after `app`, but it no longer builds anything, so
+  it cannot be the step that discovers a broken APK. Artifacts are scoped to the
+  run, so the uploaded bytes are exactly the ones the checks passed.
 - **The shell has its OWN version, in `packages/android/version.properties`, and
   the pipeline bumps it.** `versionName` is that number; `versionCode` is still
   the workflow run number, because Android refuses an install whose code does not
   increase and a counter is not a version. The `android` job runs
-  `release/release-android.mjs` **before** `app` tags: it reads the commits since
-  the version line was last written, asks the same `release-rules.js` analyzer the
-  app uses for the level (`fix` → patch, `feat` → minor, a `BREAKING CHANGE:` →
-  major), rewrites the one line, and commits it. A `chore`/`docs`/`test`-only
-  change to the shell asks for no bump and none is written.
+  `release/release-android.mjs` **before** `apk-build` compiles: it reads the
+  commits since the version line was last written, asks the same
+  `release-rules.js` analyzer the app uses for the level (`fix` → patch,
+  `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and
+  commits it. A `chore`/`docs`/`test`-only change to the shell asks for no bump
+  and none is written. `apk-build` checks out `main` rather than the trigger
+  commit for exactly this reason — the bump is on `main`, and building the
+  starting commit would declare the previous version.
 - **Why a version of its own.** The number is the entire delivery mechanism: the
   shell appends `KabmoAndroid/<versionName>` to its WebView User-Agent, and the
   console offers a download only when the published asset's version is *newer*
@@ -167,17 +183,22 @@ release.yml
   never the release tag, because `versionFromAssetName` reads the published
   version out of the asset name. The built APK is checked with
   `aapt2 dump badging` against `version.properties` and the run number before
-  upload.
+  it is uploaded as an artifact.
 - **A shell bump reaches an installed app on the next app release.** The APK rides
   the app's GitHub release rather than having a tag of its own, so the bump lands
   on `main` immediately and the artifact follows with the next tag.
 - **Signing is required.** `ANDROID_KEYSTORE_BASE64`,
   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` must
-  be repository secrets; a missing base64 fails the job with a named error rather
-  than shipping a debug-signed APK. The built artifact's certificate is then
+  be repository secrets; a missing base64 fails the build job with a named error
+  rather than shipping a debug-signed APK. The built artifact's certificate is then
   checked against the keystore's own fingerprint, so a build that fell back to the
   debug key cannot be uploaded. The keystore and `keystore.properties` are deleted
   in an `always()` step.
+- **A failed build can be repaired on its own**, without re-running the release:
+  dispatch **Publish the Android APK** with the release tag and a higher
+  `versionCode`. A dispatch always builds — there is no earlier call in its own
+  run to have uploaded an artifact — and then attaches to the tag it was given,
+  which is exactly the repair for a release that went out with no shell.
 - **The Android unit tests run here, not in `gates.yml`**, so a pull request
   never pays for the Android toolchain.
 

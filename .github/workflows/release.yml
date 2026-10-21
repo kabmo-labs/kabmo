@@ -37,6 +37,15 @@ name: Release
 # releases — so the app is always built and pinned against the packages that
 # were just released.
 #
+# The APK build sits in that chain as a GATE, between the shell bump and `app`.
+# It used to run after the tag, which made a broken APK a failure discovered only
+# once the release had already shipped: the tag existed, the npm publish had
+# run, and the GitHub release carried no shell — repaired by a hand-run dispatch
+# if anyone noticed. Now `app` `needs: apk-build`, so a toolchain that moved, a
+# missing keystore or a Kotlin error stops the release before anything is
+# tagged; the `apk` job after `app` only attaches the artifact the build
+# uploaded, so the post-tag step cannot discover a broken APK.
+#
 # One run also keeps concurrency simple. Two workflows sharing a concurrency
 # group is not a lock: a group is a queue that DROPS pending members as it
 # grows, and sharing one across workflows let each cancel the other's releases.
@@ -438,17 +447,61 @@ jobs:
           git log --oneline -1
 
   # ---------------------------------------------------------------------------
-  # 2. The app. Waits for the packages, the marketplace bumps AND the shell
-  # bump, so its dependency pins are current, its tarball carries the plugin
-  # versions a user needs, and the tag it cuts carries the shell version the APK
-  # will declare.
+  # 1d. The APK, BUILT — and this job is a GATE on the app release, not a
+  # consequence of it.
+  #
+  # It used to be built after `app` tagged, which made a broken APK a failure
+  # nobody noticed until the release was already out: the tag existed, the npm
+  # publish had run, and the GitHub release carried no shell — repaired only by
+  # a hand-run dispatch, if anyone looked. Measured: the `tools` package was
+  # removed from the SDK repository and the job died in setup, so a release went
+  # out with no APK at all and the console kept offering the previous one.
+  #
+  # Building BEFORE the tag inverts that: a toolchain that moved, a missing
+  # keystore, a Kotlin error, a signature mismatch — any of them stops `app`,
+  # so nothing is tagged and nothing is published. The artifact is uploaded to
+  # the RUN, and the `apk` job below attaches it after `app` created the
+  # release; the two calls are one pipeline because artifacts are scoped to the
+  # run, so no rebuild happens between the check and the upload.
+  #
+  # `ref: main`, not the trigger commit: the `android` job just pushed the
+  # shell version bump, and the APK must declare THAT version — building the
+  # starting commit would produce an APK declaring the previous one, which is
+  # an update no installed app is ever offered. `main` resolves against the
+  # remote, so it lands on the bump (the same reason `packages-publish` names
+  # it).
+  #
+  # A run whose commits ask for no version bump still builds here; there is no
+  # way to know whether `app` will tag before `app` runs, and a build that
+  # might be wasted is the price of the gate.
+  # ---------------------------------------------------------------------------
+  apk-build:
+    name: Build the Android APK
+    needs: android
+    permissions:
+      # The build reads the tree and uploads a run artifact.
+      contents: read
+    uses: ./.github/workflows/publish-android.yml
+    with:
+      mode: build
+      ref: main
+      version-code: ${{ github.run_number }}
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # 2. The app. Waits for the packages, the marketplace bumps, the shell bump
+  # AND the APK build, so its dependency pins are current, its tarball carries
+  # the plugin versions a user needs, the tag it cuts carries the shell version
+  # the APK declares — and a release is never tagged when the shell cannot be
+  # built.
   # ---------------------------------------------------------------------------
   app:
     name: Release the app
-    # `android` already `needs: marketplace`, which already `needs: packages`,
-    # which already `needs:` both gate jobs — so naming `android` is what makes
-    # the app wait for everything.
-    needs: android
+    # `apk-build` already `needs: android`, which already `needs: marketplace`,
+    # which already `needs: packages`, which already `needs:` both gate jobs —
+    # so naming `apk-build` is what makes the app wait for everything, and the
+    # APK build sits in the chain rather than after it.
+    needs: apk-build
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -548,8 +601,16 @@ jobs:
     secrets: inherit
 
   # ---------------------------------------------------------------------------
-  # 3. The Android shell. After `app`, because it ATTACHES to the release that
+  # 3. Attaching the shell. After `app`, because it uploads to the release that
   # job created — `gh release upload` has nothing to upload to before that.
+  #
+  # It does NOT build. The APK was built and verified by `apk-build` BEFORE the
+  # tag, and this call only downloads that run artifact and attaches it. That
+  # split is the fix for a release going out with no shell in it: a build that
+  # fails here could only be discovered after the tag and the npm publish, so
+  # the artifact was missing from a release that had already shipped. A
+  # packaging step cannot fail for a toolchain reason — there is no toolchain in
+  # it — and the file it uploads is the exact one the checks passed.
   #
   # A call, like the two publish bodies above, so the steps exist once and a
   # re-run cannot drift from a release run. Deliberately NOT an npm publish: the
@@ -557,23 +618,26 @@ jobs:
   # tagged here either — the tag is `app`'s.
   #
   # `needs: app` (rather than naming the gates too) is what makes the gates
-  # transitive: `app` -> `android` -> `marketplace` -> `packages` -> both gate
-  # jobs, and `tests/ci-gates.test.ts` asserts that closure on the graph.
+  # transitive: `app` -> `apk-build` -> `android` -> `marketplace` -> `packages`
+  # -> both gate jobs, and `tests/ci-gates.test.ts` asserts that closure on the
+  # graph.
   #
   # The `versionName` the APK declares is NOT the tag: it is
   # `packages/android/version.properties`, which the `android` job bumped before
-  # `app` tagged. That number is what the running shell reports on its
+  # `apk-build` compiled it. That number is what the running shell reports on its
   # User-Agent, and `publish-android.yml` names the asset from the same file.
   #
   # The `if:` matches `app-publish`'s: a push whose commits ask for no version
   # bump produces no tag, so there is no release to attach an APK to.
   #
-  # `version-code` is the run number. Android refuses an install whose
-  # `versionCode` is not higher than the installed one, so a fixed value would
-  # make every release after the first uninstallable over the previous one.
+  # `version-code` is not passed: the artifact was built with the run number
+  # already, and re-stating it here would suggest this call could change it.
   # ---------------------------------------------------------------------------
   apk:
-    name: Publish the Android APK
+    name: Attach the Android APK
+    # `needs: app` alone is enough, and the build is still a gate: `app`
+    # `needs: apk-build`, so a failed build skips `app`, and a skipped `app`
+    # leaves `released` empty and this job skipped with it.
     needs: app
     if: needs.app.outputs.released == 'true'
     # `contents: write` on the CALLER, not only the callee: a reusable workflow
@@ -585,6 +649,6 @@ jobs:
       contents: write
     uses: ./.github/workflows/publish-android.yml
     with:
+      mode: attach
       tag: ${{ needs.app.outputs.tag }}
-      version-code: ${{ github.run_number }}
     secrets: inherit

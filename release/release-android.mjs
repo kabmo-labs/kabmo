@@ -4,10 +4,12 @@
  * version was last written.
  *
  * Run by the `android` job of `.github/workflows/release.yml`, between
- * `marketplace` and `app`. **That position is the whole design**: the app job
- * fast-forwards to the commit this script makes and only then tags, so the bump
- * is inside the tag the APK is built from — and `publish-android.yml` reads
- * `versionName` out of the checked-out tag rather than out of the app's tag.
+ * `marketplace` and `apk-build`. **That position is the whole design**: the APK
+ * is compiled BEFORE the app tags, from `main` — the branch this commit lands
+ * on — so the bump is inside the tree the artifact is built from, and
+ * `publish-android.yml` reads `versionName` out of that checkout rather than out
+ * of the app's tag. Building the run's STARTING commit would declare the
+ * previous shell version, which is an update no installed app is ever offered.
  *
  * **Why a bump is the release.** The APK is not published anywhere
  * (`packages/android` is a private application), so the version it declares is

@@ -1,28 +1,79 @@
-name: Publish the Android APK
+name: Build and attach the Android APK
 
 # The APK body, as a REUSABLE workflow — the same shape `publish-app.yml` and
 # `publish-packages.yml` take, and for the same reason: the steps exist once, so
 # the release run and a manual re-run cannot drift apart.
 #
-# It is NOT an npm publish. The shell is a private application, so the only
-# artifact is the `.apk` attached to the GitHub release `release.yml` already
-# created for the app tag. That is why there is no `environment: npm` here and no
-# registry credential: the only thing this job needs is `contents: write` on the
-# release it uploads to.
+# TWO PHASES, and the split is the whole point of this file.
 #
-# The gates are NOT called here. `release.yml`'s `apk` job `needs: app`, which
-# already depends transitively on both gate jobs — the APK is built from the same
-# commit that was tagged, and re-running the whole matrix for a packaging step
-# would add minutes without adding coverage. `publish-app.yml` DOES call them,
-# because a tag can be pushed by hand and nothing else would have verified it;
-# this body is only reachable through `release.yml`.
+#   - `build` compiles and verifies the APK and uploads it as a run artifact.
+#     `release.yml` calls it BEFORE `app` tags, so a build that fails (a
+#     toolchain that moved, a missing keystore, a Kotlin error) stops the
+#     release instead of shipping a tag whose GitHub release carries no APK.
+#     That is the reported failure this shape removes: the tag and the npm
+#     publish had already happened, so the only way to repair the artifact was
+#     a hand-run dispatch — and the release that "went out" had no shell in it.
+#   - `attach` downloads that artifact and attaches it to the GitHub release
+#     `app` created. It runs after the tag, because `gh release upload` has
+#     nothing to upload to before the release exists — but it no longer
+#     BUILDS anything, so it cannot be the step that discovers a broken APK.
+#
+# Artifacts are scoped to the workflow RUN, not to a job, so the attach call
+# reaches the artifact uploaded by the earlier call in the same run. That is
+# what makes two calls of one body correct: the file is uploaded and downloaded
+# inside one run, never found across runs. The name is a LITERAL both phases
+# read — it was an input with a default, and a `workflow_dispatch` declares no
+# such input, so `inputs.<name>` resolved to `''` there and a repair dispatch
+# would have built an APK and attached none of it, silently.
+#
+# It is NOT an npm publish. The shell is a private application, so the only
+# artifact is the `.apk` attached to the GitHub release. That is why there is no
+# `environment: npm` here and no registry credential: the only thing the attach
+# job needs is `contents: write` on the release it uploads to.
+#
+# The gates are NOT called here. `release.yml`'s `apk-build` job `needs:
+# android`, which already depends transitively on both gate jobs — and `app`
+# `needs: apk-build`, so nothing is tagged from a tree this body failed to
+# build. `publish-app.yml` DOES call them, because a tag can be pushed by hand
+# and nothing else would have verified it; this body is only reachable through
+# `release.yml` or a manual dispatch that names an existing release.
 
 on:
   workflow_call:
     inputs:
+      # Which phase to run.
+      #
+      # `build` — compile, verify and upload the artifact. `release.yml`'s
+      # `apk-build` job uses this, with no tag, so nothing is attached before
+      # the release exists.
+      #
+      # `attach` — download the artifact from THIS run and upload it to
+      # `tag`. `release.yml`'s `apk` job uses this after `app` tagged.
+      mode:
+        description: build (compile + upload artifact) or attach (upload to a release).
+        required: false
+        type: string
+        default: build
+      # The commit to build, in this order: `ref`, then `tag`, then the caller's
+      # own commit.
+      #
+      # `release.yml` passes `main`, never the run's starting sha: the `android`
+      # bump job has just pushed the shell version, and the bump is what the
+      # APK's `versionName` comes from — building the trigger commit would
+      # produce an APK declaring the PREVIOUS shell version, an update no
+      # installed app is ever offered.
+      #
+      # The `tag` step in that chain is the repair path: a dispatch names an
+      # existing release and builds ITS tree, so the artifact matches the
+      # release it is attached to rather than whatever `main` says today.
+      ref:
+        description: Commit to build the APK from; empty falls back to the tag, then the caller's commit.
+        required: false
+        type: string
+      # The release to attach to. Empty means build only.
       tag:
-        description: Release tag to attach the APK to (e.g. v1.2.3).
-        required: true
+        description: Release tag to attach the APK to; empty builds without attaching.
+        required: false
         type: string
       # Android refuses to install an APK whose versionCode is not higher than
       # the installed one, so the code must move on every release. The workflow
@@ -32,9 +83,12 @@ on:
       # value, and a `number` input rejects it — actionlint reports "string value
       # cannot be assigned". The build script parses it and falls back to the
       # checked-in default when it is not a positive integer.
+      #
+      # Optional because `attach` does not build: it uploads a file that already
+      # carries the code it was built with.
       version-code:
         description: versionCode for the APK. Must increase across releases.
-        required: true
+        required: false
         type: string
     secrets:
       # Base64 of the release keystore (`release.jks`).
@@ -46,9 +100,9 @@ on:
       # `workflow_dispatch` path at all (a dispatch has no caller to pass a
       # secret, so the value comes from the repository's own secrets).
       #
-      # Without it the release build falls back to the debug key — which is a
-      # DIFFERENT key on every runner, so no APK it produces can be installed
-      # over the previous one.
+      # Without it the build step FAILS rather than falling back to the debug
+      # key — a debug key is generated fresh on every runner, so no APK it
+      # produced could be installed over the previous one.
       ANDROID_KEYSTORE_BASE64:
         required: false
       ANDROID_KEYSTORE_PASSWORD:
@@ -65,9 +119,13 @@ on:
   # missing. A `workflow_dispatch` builds against an existing tag and re-attaches
   # with `--clobber`, which is exactly the repair.
   #
-  # `inputs` resolves for BOTH contexts, so the job below reads `inputs.tag`
-  # whichever way it was started; `secrets` are read from the repository for a
-  # dispatch and from the caller for a `workflow_call`.
+  # `mode` is deliberately NOT an input here: a dispatch has no earlier call in
+  # its own run to have uploaded an artifact, so an attach-only dispatch would
+  # have nothing to download. Every dispatch BUILDS, and attaches when it was
+  # given a tag — which is exactly the repair for a release that went out with
+  # no APK. `inputs` resolves for BOTH contexts, so the jobs below read
+  # `inputs.tag` whichever way they were started; `secrets` are read from the
+  # repository for a dispatch and from the caller for a `workflow_call`.
   workflow_dispatch:
     inputs:
       tag:
@@ -78,21 +136,36 @@ on:
         description: versionCode — must be higher than the one already published
         required: true
         type: string
+      ref:
+        description: Commit to build; empty builds the tag, so the repair matches its release
+        required: false
+        type: string
 
 jobs:
-  apk:
-    name: Build and attach the APK
+  # ---------------------------------------------------------------------------
+  # Phase 1 — the gate. `release.yml` runs this before `app` tags.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build the APK
+    # Everything except an explicit `attach` call. Stated as "not attach" rather
+    # than "== build" because a `workflow_dispatch` carries no `mode` at all,
+    # and a dispatch must build — an equality test would silently skip the build
+    # and leave the attach with nothing to download.
+    if: ${{ inputs.mode != 'attach' }}
     runs-on: ubuntu-latest
     permissions:
-      # Uploading an asset to an existing release needs `contents: write`.
-      contents: write
+      # The build reads the tree and uploads a run artifact; it needs no write
+      # access to the repository.
+      contents: read
     steps:
-      # The tag, not the branch: the APK must be built from the commit the
-      # release names, and that commit is what the gates verified.
+      # The commit to build, not the branch: `release.yml` names `main`, because
+      # the shell bump job pushed the version the APK must declare. A manual
+      # dispatch names a TAG and builds that, so a repair matches the release it
+      # repairs. The `github.sha` fallback covers a caller that names neither.
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.ref || inputs.tag || github.sha }}
 
       # AGP 8.7 requires JDK 17. The runner's default JDK is not guaranteed to
       # be 17 (it moved to 21), and a mismatch fails with a message that names
@@ -279,6 +352,53 @@ jobs:
           cp "$src" "kabmo-android-v${version}.apk"
           ls -l ./*.apk
 
+      # The artifact is what the `attach` phase uploads — and what makes the two
+      # calls one pipeline rather than two independent builds. It is the APK the
+      # checks above passed, so attaching cannot substitute a different one.
+      #
+      # Retention is a day: the only consumer is the attach call in this same
+      # run (or a dispatch's own attach), so a longer window would only clutter
+      # the run's artifacts with binaries nothing reads.
+      - name: Upload the APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabmo-android-apk
+          path: ./*.apk
+          if-no-files-found: error
+          retention-days: 1
+
+      # Signing material never survives the job, including on failure.
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f packages/android/keystore.properties packages/android/release.jks
+
+  # ---------------------------------------------------------------------------
+  # Phase 2 — the upload. `release.yml` runs this after `app` tagged.
+  # ---------------------------------------------------------------------------
+  attach:
+    name: Attach the APK to the release
+    needs: build
+    # `always()` because a skipped `build` must not skip the attach with it: the
+    # release run calls this body twice, and the second call is attach-only. The
+    # result check keeps a FAILED build blocking the upload — there would be no
+    # artifact to attach, and a release carrying a stale one is worse than a
+    # release with none.
+    if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      # Uploading an asset to an existing release needs `contents: write`.
+      contents: write
+    steps:
+      # The artifact from the build call in THIS run. `name` rather than a
+      # pattern: there is exactly one, and a pattern that matched nothing would
+      # leave an empty directory for `gh release upload` to complain about.
+      - name: Download the APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kabmo-android-apk
+          path: .
+
       # `--clobber` because a re-run of this body must replace its own asset
       # rather than fail on the duplicate. The tag is checked first: uploading to
       # a tag with no release is a confusing 404, and `release.yml` only calls
@@ -289,13 +409,8 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          ls -l ./*.apk
           gh release view "$TAG" --json tagName > /dev/null \
             || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
           gh release upload "$TAG" ./*.apk --clobber
           gh release view "$TAG" --json assets --jq '.assets[].name'
-
-      # Signing material never survives the job, including on failure.
-      - name: Remove signing material
-        if: always()
-        run: |
-          rm -f packages/android/keystore.properties packages/android/release.jks

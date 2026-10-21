@@ -32,14 +32,20 @@ const E2E = './.github/workflows/e2e-specs.yml';
  * reference to one of these from `release.yml` is what makes publishing the
  * last action of the run rather than a second run beside it.
  *
- * `publish-android.yml` is the exception to "they call the gates": the APK is a
- * packaging step over a commit `release.yml` already gated, and it is only
- * reachable from there. The gate contract below therefore treats it as a body
- * that does NOT provide gates, and asserts that instead.
+ * `publish-android.yml` is the exception to "they call the gates": the APK is
+ * built and verified in a job that `app` DEPENDS on — so it gates the release —
+ * but it does not call the two gate workflows itself, and it is only reachable
+ * from `release.yml` (or a manual dispatch that names an existing release). The
+ * gate contract below therefore treats it as a body that does NOT provide gates,
+ * and asserts the `needs:` chain that makes its build a gate instead.
  */
 const PUBLISH_BODIES = ['publish-app.yml', 'publish-packages.yml'];
 
-/** The Android APK body: a publish body that is not an npm publish and not a gate. */
+/**
+ * The Android APK body: not an npm publish and not a gate provider, but its
+ * `build` phase IS a gate on `app` — `app` `needs: apk-build`, so a release is
+ * never tagged from a tree whose shell could not be built.
+ */
 const ANDROID_BODY = 'publish-android.yml';
 
 /** Every workflow that can tag or publish, and therefore must be gated. */
@@ -209,13 +215,14 @@ describe('the gate contract', () => {
     // above cannot see: `app` could depend on the gates directly and still race
     // the lockfile refresh.
     //
-    // The chain is `packages -> marketplace -> android -> app`, and every hop
-    // matters. `packages` commits the refreshed `bun.lock`, and a `workspace:`
-    // spec is substituted from that record, so the app must not pack before it.
-    // `marketplace` bumps the bundled plugins' versions into the same branch, and
-    // the app's tarball is what carries them. `android` bumps the shell version
-    // into the same branch, and the APK is built from the tag `app` cuts — so a
-    // bump landing after it would reach installs one release late.
+    // The chain is `packages -> marketplace -> android -> apk-build -> app`, and
+    // every hop matters. `packages` commits the refreshed `bun.lock`, and a
+    // `workspace:` spec is substituted from that record, so the app must not
+    // pack before it. `marketplace` bumps the bundled plugins' versions into the
+    // same branch, and the app's tarball is what carries them. `android` bumps
+    // the shell version into the same branch, `apk-build` compiles it from that
+    // commit — and it is a GATE, because a release tagged while the shell cannot
+    // be built is a release that ships without an APK.
     const doc = await load('release.yml');
     const needsOf = (id: string): string[] => {
       const value = doc.jobs[id]?.needs;
@@ -225,7 +232,8 @@ describe('the gate contract', () => {
 
     expect(needsOf('marketplace')).toContain('packages');
     expect(needsOf('android')).toContain('marketplace');
-    expect(needsOf('app')).toContain('android');
+    expect(needsOf('apk-build')).toContain('android');
+    expect(needsOf('app')).toContain('apk-build');
   });
 
   test('the shell bump runs before the app tags, and only writes its own version file', async () => {
@@ -350,52 +358,100 @@ describe('the gate contract', () => {
     expect(appPublish.with?.tag).toBe('${{ needs.app.outputs.tag }}');
   });
 
-  test('the APK is attached to the release the app job cut, and never published to a registry', async () => {
-    // The Android shell is a private application: there is no registry for it,
-    // and the only artifact is the `.apk` on the GitHub release. Three facts
-    // keep that true, and each fails silently on its own:
-    //
-    //   1. the job WAITS for `app`, because `gh release upload` needs the
-    //      release to exist — running first would 404;
-    //   2. it uploads the TAG `app` produced, not a branch;
-    //   3. it asks for no npm publish, so nothing about it can drift into one.
+  test('the APK is BUILT before the app tags, and only attached after', async () => {
+    // The shell is a private application: there is no registry for it, and the
+    // only artifact is the `.apk` on the GitHub release. The failure this test
+    // exists for is the one that shipped: the APK used to be built AFTER `app`
+    // tagged, so a build failure (measured — the SDK's `tools` package was
+    // removed, and setup died before Gradle ran) left a release that was already
+    // tagged and published with no shell attached, repaired only by a hand-run
+    // dispatch. Building before the tag makes the APK a GATE on the release.
     const doc = await load('release.yml');
+    const build = doc.jobs['apk-build'];
     const apk = doc.jobs.apk;
 
+    //   1. the build runs BEFORE `app`, and `app` waits for it;
+    expect(build, 'release.yml has no apk-build job').toBeDefined();
+    expect(build.uses, 'release.yml:apk-build must call the APK body').toBe(
+      `./.github/workflows/${ANDROID_BODY}`,
+    );
+    expect(build.with?.mode, 'apk-build must build').toBe('build');
+    expect(build.needs, 'the APK build must wait for the shell bump').toContain('android');
+    expect(doc.jobs.app.needs, 'the app must not tag unless the APK built').toContain('apk-build');
+
+    //   2. the attach runs AFTER `app`, because `gh release upload` needs the
+    //      release to exist — running first would 404;
     expect(apk?.uses, 'release.yml:apk must call the APK body').toBe(`./.github/workflows/${ANDROID_BODY}`);
+    expect(apk.with?.mode, 'the post-tag job must not rebuild the APK').toBe('attach');
     expect(apk.needs, 'release.yml:apk must wait for the app release').toContain('app');
     expect(apk.with?.tag).toBe('${{ needs.app.outputs.tag }}');
 
-    // Android refuses an install whose versionCode does not increase, so a
-    // fixed value would make every release after the first uninstallable over
-    // the previous one. The run number is monotonic and needs no state.
-    expect(apk.with?.['version-code'], 'the APK versionCode must move every release').toBe(
+    //   3. Android refuses an install whose versionCode does not increase, so a
+    //      fixed value would make every release after the first uninstallable
+    //      over the previous one. It is stated at BUILD time, on the run number,
+    //      and nowhere else — the attach uploads a file that already carries it.
+    expect(build.with?.['version-code'], 'the APK versionCode must move every release').toBe(
       '${{ github.run_number }}',
     );
+    expect(apk.with?.['version-code'], 'the attach must not restate the versionCode').toBeUndefined();
 
-    // No registry credential, no `npm` environment: a publish body that grew
-    // either would be publishing an application package nobody asked for.
+    //   4. the build compiles from the branch the shell bump landed on, not the
+    //      commit this run was triggered by — otherwise the APK declares the
+    //      PREVIOUS shell version and no installed app is offered it.
+    expect(build.with?.ref, 'the APK must build the bumped shell version').toBe('main');
+
+    //   5. it asks for no npm publish, so nothing about it can drift into one.
     const body = await load(ANDROID_BODY);
-    expect(body.jobs.apk.environment, 'the APK body must not join the npm environment').toBeUndefined();
-    const steps = body.jobs.apk.steps as Array<{ run?: string; uses?: string; env?: Record<string, string> }>;
+    expect(body.jobs.build.environment, 'the APK body must not join the npm environment').toBeUndefined();
+    const steps = body.jobs.build.steps as Array<{ run?: string; uses?: string; env?: Record<string, string> }>;
     const text = JSON.stringify(steps);
     expect(text, 'the APK body must not publish to npm').not.toContain('npm publish');
     expect(text, 'the APK body must not read NPM_TOKEN').not.toContain('NPM_TOKEN');
 
-    // And it DOES attach: a build with no upload step would produce an artifact
-    // nobody can download, which is the failure this test exists for.
-    expect(text, 'the APK body must upload to the GitHub release').toContain('gh release upload');
+    //   6. the attach uploads and never compiles — a compile in the post-tag job
+    //      is the failure this split removes, and it would also attach a
+    //      different binary than the one the checks in `build` verified.
+    const attachText = JSON.stringify(body.jobs.attach.steps as Array<any>);
+    expect(attachText, 'the attach must upload to the GitHub release').toContain('gh release upload');
+    expect(attachText, 'the attach must not run Gradle').not.toContain('gradlew');
+
+    //   7. the artifact NAME is a literal both phases read, never an input.
+    //      It was an input with a default, which is empty on a
+    //      `workflow_dispatch` — the dispatch path declares no such input, so
+    //      `inputs.artifact-name` resolves to `''` and the download matches
+    //      nothing while the upload wrote a named artifact. A repair dispatch
+    //      would build an APK and attach none of it, silently.
+    const artifactStep = (steps: Array<any>) =>
+      steps.find((step) => String(step.uses ?? '').includes('artifact'));
+    const buildArtifact = artifactStep(body.jobs.build.steps as Array<any>);
+    const attachArtifact = artifactStep(body.jobs.attach.steps as Array<any>);
+    expect(String(buildArtifact?.uses), 'the build must upload the APK as a run artifact').toContain(
+      'upload-artifact',
+    );
+    expect(String(attachArtifact?.uses), 'the attach must download that artifact').toContain(
+      'download-artifact',
+    );
+    expect(buildArtifact?.with?.name, 'the two phases must name the same artifact').toBe(
+      attachArtifact?.with?.name,
+    );
+    expect(String(buildArtifact?.with?.name), 'the artifact name must not be an input').not.toContain('inputs.');
   });
 
-  test('the APK is built from the tag, so it matches the release it belongs to', async () => {
-    // The tag, never the branch: `release.yml` gates the pushed commit, but the
-    // release commit is a LATER one written by semantic-release — and the APK is
-    // attached to that release. Checking out `main` would build a different tree
-    // than the one the release names.
+  test('the APK is built from the branch the shell bump landed on', async () => {
+    // The tag, never the branch, was the old rule — because the APK was built
+    // after `app`. Now the build happens BEFORE the tag exists, so it names the
+    // branch that carries the bump; the attach names the tag. Checking out the
+    // trigger commit would build the previous shell version.
+    //
+    // The dispatch fallback is the TAG, so a hand-run repair builds the tree the
+    // release names rather than whatever `main` says today — the whole reason
+    // `publish-android.yml` keeps its own `workflow_dispatch` at all.
     const body = await load(ANDROID_BODY);
-    const checkout = (body.jobs.apk.steps as Array<{ uses?: string; with?: Record<string, string> }>).find((step) =>
+    const checkout = (body.jobs.build.steps as Array<{ uses?: string; with?: Record<string, string> }>).find((step) =>
       step.uses?.startsWith('actions/checkout'),
     );
-    expect(checkout?.with?.ref, 'the APK checkout must name the release tag').toBe('${{ inputs.tag }}');
+    expect(checkout?.with?.ref, 'the APK build must name the ref it was given').toBe(
+      '${{ inputs.ref || inputs.tag || github.sha }}',
+    );
   });
 });
