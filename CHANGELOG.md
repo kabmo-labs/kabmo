@@ -4,6 +4,26 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.4.0](https://github.com/kabmo-labs/kabmo/compare/v0.3.1...v0.4.0) — 2026-10-21
+
+### Added
+
+* **android:** draw the README wordmark on the launch overlay ([3eaed86](https://github.com/kabmo-labs/kabmo/commit/3eaed86d6437f0e461dbd75ec9736bf958b444bf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** hold a new chat's prompt until another session finishes ([5e7922e](https://github.com/kabmo-labs/kabmo/commit/5e7922e4a7e3dd64c6d566fca78c0201d9968587)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panels:** make the left column a dock with an optional plugin rail ([eb9348b](https://github.com/kabmo-labs/kabmo/commit/eb9348b8404dd4f06f15566d999aee2fb157d10c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panels:** reach the editor slot, and place each panel instance ([32862cf](https://github.com/kabmo-labs/kabmo/commit/32862cf315b24bb3654c7aa93b15db80ddf52368)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **server:** compress the production bundle, the shell and the font sheet ([d1fb9fe](https://github.com/kabmo-labs/kabmo/commit/d1fb9fe219b342197beb291ac8c4e304c7677e66)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** show the launch overlay when the console reloads itself ([1460a4a](https://github.com/kabmo-labs/kabmo/commit/1460a4a35b689c1da33ff40c354b103279a896bf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ci:** repair the three failures on the main pipeline ([916f9cc](https://github.com/kabmo-labs/kabmo/commit/916f9cccc6c39048eba8d9dad85a67164000d297)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **db:** close a handle whose open was retired mid-flight ([4ce4e33](https://github.com/kabmo-labs/kabmo/commit/4ce4e337030d5cea9903825e6beae49412fe9007)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** align drawer columns, transcript gutter and compact composer ([64cda9f](https://github.com/kabmo-labs/kabmo/commit/64cda9f3f9b2d627f9df9d5f57b22e7388806d96)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.3.1](https://github.com/kabmo-labs/kabmo/compare/v0.3.0...v0.3.1) — 2026-10-21
 
 ### Fixed
