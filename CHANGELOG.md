@@ -4,6 +4,24 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.3.0](https://github.com/kabmo-labs/kabmo/compare/v0.2.0...v0.3.0) — 2026-10-21
+
+### Added
+
+* **android:** show a progress overlay from launch until the console paints ([a8fa459](https://github.com/kabmo-labs/kabmo/commit/a8fa45903e62126503a4c0bace74b9b305be581d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **android:** version the shell from its own file, bumped by the release ([6d64752](https://github.com/kabmo-labs/kabmo/commit/6d64752e537e99e4542aa900c75f3257938a6393)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** offer the APK to an Android browser, not only to the app ([0da4700](https://github.com/kabmo-labs/kabmo/commit/0da4700ad4474dbbaf8adc421bb5da2bf282c7c5)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* record the shell version bump and the two APK offers ([251692c](https://github.com/kabmo-labs/kabmo/commit/251692c337c3c8c68f85227ca5044dd717efc1b0)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** keep the session across a zoom change and a restart ([8810628](https://github.com/kabmo-labs/kabmo/commit/88106283303a0bdd060a1746e549f40663c306bf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **android:** make the page-zoom slider scale the page it names ([5e14428](https://github.com/kabmo-labs/kabmo/commit/5e14428fd6376ba920395f522b5d3cb52ed0204d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **updates:** find the APK by scanning releases, not by asking for the latest ([602229b](https://github.com/kabmo-labs/kabmo/commit/602229bdbbc3d8cd99cf44d752138bcdb4975021)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.2.0](https://github.com/kabmo-labs/kabmo/compare/v0.1.0...v0.2.0) — 2026-10-20
 
 ### Added
