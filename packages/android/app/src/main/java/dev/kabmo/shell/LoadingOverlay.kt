@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -32,7 +33,7 @@ import android.widget.TextView
  */
 class LoadingOverlay(context: Context) : FrameLayout(context) {
 
-    private val wordmark: TextView
+    private val wordmark: ImageView
     private val bar: ProgressBar
     private val status: TextView
     private val actions: LinearLayout
@@ -55,11 +56,16 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
             setPadding(dp(32), 0, dp(32), 0)
         }
 
-        wordmark = TextView(context).apply {
-            text = context.getString(R.string.app_name)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-            setTextColor(Color.parseColor("#141310"))
-            gravity = Gravity.CENTER
+        // The wordmark is the ARTWORK, not the app's name in a text view: it is
+        // the same lockup README.md embeds (`public/kabmo-wordmark.svg`),
+        // carried here as a VectorDrawable because a launch overlay is native
+        // views and has no renderer for SVG. `app_name` stays the accessibility
+        // name — the drawable's job is to be the mark, not to replace the word
+        // for a screen reader.
+        wordmark = ImageView(context).apply {
+            setImageResource(R.drawable.kabmo_wordmark)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = context.getString(R.string.app_name)
         }
 
         bar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -90,7 +96,14 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
             visibility = View.GONE
         }
 
-        column.addView(wordmark)
+        // 180dp wide is the drawable's own intrinsic width, so the lockup lands
+        // at 57.83dp tall (486.38 x 156.25 viewport). Fixed rather than
+        // `WRAP_CONTENT` so the column's height does not depend on how a given
+        // platform measures a vector's intrinsic bounds.
+        column.addView(
+            wordmark,
+            LinearLayout.LayoutParams(dp(180), dp(58)),
+        )
         column.addView(
             bar,
             LinearLayout.LayoutParams(dp(180), ViewGroup.LayoutParams.WRAP_CONTENT).apply {

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Kabmo wordmark, for the launch overlay.
+
+  A port of `public/kabmo-wordmark.svg` — the file README.md embeds — not a
+  redrawn copy: same plate, same three K strokes, same outlined word, same
+  colours. Three things differ, and only because a VectorDrawable is not an
+  SVG:
+
+  1. **Every y is shifted by +128.12.** The README file is authored around a
+     baseline at y=0 (its viewBox starts at -128.12), and a VectorDrawable
+     viewport has no negative origin.
+  2. **The plate is a path, not a `<rect>`.** VectorDrawable has no rect
+     element; this is the same 156.25 tile with the same 34.18 corner radius.
+  3. **The gradient is inline**, as `userSpaceOnUse` coordinates translated
+     into viewport space (startX/startY/endX/endY) — which is the same
+     horizontal amber-to-orange run the README file declares.
+
+  Gradients in a VectorDrawable need API 24, which is the shell's minSdk.
+  `WordmarkDrawableTest` pins this file against the README source, so the two
+  cannot drift apart silently.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="180dp"
+    android:height="57.83dp"
+    android:viewportWidth="486.38"
+    android:viewportHeight="156.25">
+
+    <!-- The icon tile: 156.25 square, 34.18 corners, the brand green. -->
+    <path
+        android:pathData="M34.18,0 L122.07,0 A34.18,34.18 0 0 1 156.25,34.18 L156.25,122.07 A34.18,34.18 0 0 1 122.07,156.25 L34.18,156.25 A34.18,34.18 0 0 1 0,122.07 L0,34.18 A34.18,34.18 0 0 1 34.18,0 Z"
+        android:fillColor="#0B5D3B" />
+
+    <!-- The K: cream stem and lower arm, orange upper arm, 17.09 round caps. -->
+    <path
+        android:pathData="M 48.83,36.62 V 119.62"
+        android:strokeColor="#F7F4EA"
+        android:strokeWidth="17.09"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+    <path
+        android:pathData="M 48.83,78.12 102.54,36.62"
+        android:strokeColor="#F26522"
+        android:strokeWidth="17.09"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+    <path
+        android:pathData="M 48.83,78.12 102.54,119.62"
+        android:strokeColor="#F7F4EA"
+        android:strokeWidth="17.09"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- `ab`, the amber-to-orange gradient run. -->
+    <path android:pathData="M 146.49,129.46 Q 139.31,129.46,133.7,127.01 Q 128.1,124.56,124.95,119.63 Q 121.79,114.7,121.79,107.31 Q 121.79,101.07,123.97,96.78 Q 126.15,92.48,130.05,89.8 Q 133.94,87.11,138.97,85.7 Q 144.01,84.29,149.71,83.82 Q 156.09,83.29,159.98,82.65 Q 163.87,82.01,165.68,80.74 Q 167.5,79.46,167.5,77.18 L 167.5,76.91 Q 167.5,74.29,166.29,72.48 Q 165.08,70.67,162.8,69.73 Q 160.52,68.79,157.29,68.79 Q 154.07,68.79,151.56,69.73 Q 149.04,70.67,147.43,72.42 Q 145.82,74.16,145.15,76.51 L 123.94,73.76 Q 125.42,67.31,129.74,62.45 Q 134.07,57.58,141.09,54.86 Q 148.1,52.15,157.5,52.15 Q 164.48,52.15,170.55,53.79 Q 176.62,55.44,181.19,58.62 Q 185.75,61.81,188.3,66.48 Q 190.85,71.14,190.85,77.18 L 190.85,128.12 L 168.84,128.12 L 168.84,117.58 L 168.23,117.58 Q 166.22,121.48,163.1,124.09 Q 159.98,126.71,155.85,128.09 Q 151.72,129.46,146.49,129.46 Z M 153.6,113.96 Q 157.56,113.96,160.75,112.35 Q 163.94,110.74,165.82,107.92 Q 167.7,105.1,167.7,101.41 L 167.7,94.23 Q 166.69,94.76,165.18,95.23 Q 163.67,95.7,161.86,96.07 Q 160.05,96.44,158.23,96.74 Q 156.42,97.05,154.74,97.31 Q 151.32,97.78,148.91,98.93 Q 146.49,100.07,145.21,101.88 Q 143.94,103.69,143.94,106.24 Q 143.94,108.72,145.21,110.44 Q 146.49,112.15,148.64,113.05 Q 150.78,113.96,153.6,113.96 Z M 247.95,129.19 Q 242.25,129.19,238.05,127.28 Q 233.86,125.37,231.11,122.35 Q 228.35,119.33,226.88,115.97 L 226.07,115.97 L 226.07,128.12 L 202.92,128.12 L 202.92,28.12 L 226.34,28.12 L 226.34,65.97 L 226.88,65.97 Q 228.29,62.55,231.01,59.4 Q 233.72,56.24,237.92,54.19 Q 242.11,52.15,248.09,52.15 Q 256.01,52.15,262.82,56.27 Q 269.63,60.4,273.82,68.96 Q 278.02,77.52,278.02,90.67 Q 278.02,103.42,273.99,111.98 Q 269.97,120.54,263.12,124.86 Q 256.27,129.19,247.95,129.19 Z M 239.97,110.94 Q 244.46,110.94,247.58,108.42 Q 250.7,105.91,252.31,101.31 Q 253.93,96.71,253.93,90.67 Q 253.93,84.56,252.31,80.03 Q 250.7,75.5,247.62,72.99 Q 244.53,70.47,239.97,70.47 Q 235.47,70.47,232.31,72.92 Q 229.16,75.37,227.48,79.9 Q 225.8,84.43,225.8,90.67 Q 225.8,96.78,227.48,101.34 Q 229.16,105.91,232.35,108.42 Q 235.54,110.94,239.97,110.94 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="117.76"
+                android:startY="128.12"
+                android:endX="279.42"
+                android:endY="128.12"
+                android:startColor="#F59E0B"
+                android:endColor="#EA580C" />
+        </aapt:attr>
+    </path>
+
+    <!-- `mo`: the README file's single ink, chosen there to hold on any
+         background rather than to follow a theme. -->
+    <path
+        android:pathData="M 289.88,128.12 L 289.88,53.09 L 311.43,53.09 L 312.77,72.55 L 311.16,72.55 Q 312.9,65.23,316.36,60.74 Q 319.82,56.24,324.41,54.16 Q 329.01,52.08,334.11,52.08 Q 342.16,52.08,347.1,57.25 Q 352.03,62.42,354.71,74.16 L 352.1,74.16 Q 353.91,66.31,357.8,61.41 Q 361.69,56.51,366.93,54.29 Q 372.16,52.08,377.8,52.08 Q 384.85,52.08,390.25,55.13 Q 395.65,58.19,398.74,63.86 Q 401.83,69.53,401.83,77.52 L 401.83,128.12 L 378.47,128.12 L 378.47,82.82 Q 378.47,77.11,375.49,74.16 Q 372.5,71.21,367.87,71.21 Q 364.58,71.21,362.13,72.68 Q 359.68,74.16,358.41,76.81 Q 357.13,79.46,357.13,83.09 L 357.13,128.12 L 334.65,128.12 L 334.65,82.48 Q 334.65,77.31,331.76,74.26 Q 328.88,71.21,324.18,71.21 Q 320.96,71.21,318.51,72.68 Q 316.06,74.16,314.68,76.88 Q 313.31,79.6,313.31,83.56 L 313.31,128.12 Z M 448.73,129.53 Q 436.98,129.53,428.53,124.66 Q 420.07,119.8,415.54,111.11 Q 411.01,102.42,411.01,90.87 Q 411.01,79.26,415.54,70.57 Q 420.07,61.88,428.53,57.01 Q 436.98,52.15,448.73,52.15 Q 460.47,52.15,468.93,57.01 Q 477.39,61.88,481.88,70.57 Q 486.38,79.26,486.38,90.87 Q 486.38,102.42,481.88,111.11 Q 477.39,119.8,468.93,124.66 Q 460.47,129.53,448.73,129.53 Z M 448.73,111.61 Q 453.22,111.61,456.31,108.99 Q 459.4,106.38,460.98,101.68 Q 462.55,96.98,462.55,90.74 Q 462.55,84.5,460.98,79.83 Q 459.4,75.17,456.31,72.62 Q 453.22,70.07,448.73,70.07 Q 444.23,70.07,441.14,72.62 Q 438.06,75.17,436.48,79.83 Q 434.9,84.5,434.9,90.74 Q 434.9,96.98,436.48,101.68 Q 438.06,106.38,441.14,108.99 Q 444.23,111.61,448.73,111.61 Z"
+        android:fillColor="#7E7A72" />
+</vector>

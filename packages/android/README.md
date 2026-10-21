@@ -34,19 +34,19 @@ sdk.dir=/path/to/android-sdk
 cd packages/android
 export JAVA_HOME=/path/to/jdk-17
 ./gradlew :app:assembleDebug
-# → app/build/outputs/apk/debug/app-debug.apk      (measured 884,847 B)
+# → app/build/outputs/apk/debug/app-debug.apk      (measured 890,798 B)
 
 ./gradlew :app:assembleRelease
-# → app/build/outputs/apk/release/app-release.apk  (measured 73,877 B, R8 + resource shrink)
+# → app/build/outputs/apk/release/app-release.apk  (measured 76,917 B, R8 + resource shrink)
 
 ./gradlew :app:testDebugUnitTest
-# → 31 tests: URL normalization, zoom math, the overlay's state rules
-#   (plain JVM, no emulator)
+# → 38 tests: URL normalization, zoom math, the overlay's state rules, and the
+#   wordmark drawable against the README SVG (plain JVM, no emulator)
 ```
 
-The release APK is **74 KB** because it carries no library: one `classes.dex`,
-the five launcher densities, and the platform WebView. The debug build is
-885 KB because it is not minified and carries the debug symbols.
+The release APK is **77 KB** because it carries no library: one `classes.dex`,
+the five launcher densities, the wordmark vector, and the platform WebView. The
+debug build is 891 KB because it is not minified and carries the debug symbols.
 
 Install on a connected device:
 
@@ -148,6 +148,21 @@ the wordmark, a bar, and one sentence naming what is happening. It is a
 **sibling of the WebView in a `FrameLayout`**, never a view inside the page —
 the page cannot report its own readiness (its own bundle is what renders the
 app), and a page-drawn overlay would vanish exactly when the page fails to load.
+
+- **The wordmark is the artwork README.md embeds, not the app's name in a
+  text view.** `res/drawable/kabmo_wordmark.xml` is a port of
+  `public/kabmo-wordmark.svg` — the same icon plate, the same three K strokes,
+  the same outlined word, the same colours — carried as a VectorDrawable
+  because the overlay is platform views and has no SVG renderer. Three things
+  differ, and only because a VectorDrawable is not an SVG: every y is shifted
+  by `+128.12` (the SVG is authored around a baseline at 0, and a viewport
+  cannot start below the origin), the plate is a path rather than a `<rect>`,
+  and the gradient is inline as `startX/startY/endX/endY` in viewport space.
+  `WordmarkDrawableTest` re-derives the drawable from the SVG — every path,
+  every coordinate, the gradient span and its two stops, the stroke weight and
+  the per-stroke colours — so the two copies cannot drift apart silently. The
+  `app_name` string stays as the `ImageView`'s `contentDescription`: the
+  drawable is the mark, not a replacement for the accessible name.
 
 - **The bar is indeterminate until the WebView reports real progress.** A
   determinate bar sitting at 0 is indistinguishable from a stuck one, and the
@@ -360,6 +375,7 @@ packages/android/
 │   │   ├── HealthProbe.kt           GET /api/health
 │   │   └── ServerConfig.kt          storage + URL normalization
 │   └── res/                         strings, colours, theme, icons, xml
+│       └── drawable/kabmo_wordmark.xml  the README wordmark as a VectorDrawable
 ├── build.gradle.kts                 AGP + Kotlin pins
 └── gradle/wrapper/                  Gradle 8.9
 ```
