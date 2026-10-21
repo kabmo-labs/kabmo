@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.3.1](https://github.com/kabmo-labs/kabmo/compare/v0.3.0...v0.3.1) — 2026-10-21
+
+### Fixed
+
+* **android:** read the shell version through the tested reader, not a broken sed ([0f4c70e](https://github.com/kabmo-labs/kabmo/commit/0f4c70e561c865c0cc63118ca27d2199e585c130)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.3.0](https://github.com/kabmo-labs/kabmo/compare/v0.2.0...v0.3.0) — 2026-10-21
 
 ### Added
