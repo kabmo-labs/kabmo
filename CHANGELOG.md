@@ -4,6 +4,25 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.5.0](https://github.com/kabmo-labs/kabmo/compare/v0.4.0...v0.5.0) — 2026-10-21
+
+### Added
+
+* **mobile:** give the phone a left dock with a chip strip ([7dfd658](https://github.com/kabmo-labs/kabmo/commit/7dfd6589d2711ac72610f9f0999113911a72774b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **release:** give the Android shell its own release channel ([2bc7b11](https://github.com/kabmo-labs/kabmo/commit/2bc7b110a451389bd2aeae6ce28cb5697bf09c87)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** sign every release with one keystore and install updates in-app ([88e01d1](https://github.com/kabmo-labs/kabmo/commit/88e01d1090cea12b6e324ee9ff44374e9872ce5b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ci:** grant the APK build the ceiling its body declares ([4fecbf4](https://github.com/kabmo-labs/kabmo/commit/4fecbf4c86eb719c51f3df4fc19a0531d92feb5d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** let the model label use the room it has ([3028778](https://github.com/kabmo-labs/kabmo/commit/3028778b5e40b8ade7cb2bd00f6a7222e94ee5e6)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **layout:** reserve the PWA window controls on the correct edge ([c0de76b](https://github.com/kabmo-labs/kabmo/commit/c0de76b8e80a7aa9c494ce13bb3af9aef019dd95)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** name the run spinner so the wait picker can be gated ([cb542d5](https://github.com/kabmo-labs/kabmo/commit/cb542d5958c849a7dde1fa1ae2afa19faa6b3604)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Removed
+
+* drop the Android shell's separate release channel ([11a1185](https://github.com/kabmo-labs/kabmo/commit/11a11856c2a786d21031271e105ecee5076c930a)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.4.0](https://github.com/kabmo-labs/kabmo/compare/v0.3.1...v0.4.0) — 2026-10-21
 
 ### Added
