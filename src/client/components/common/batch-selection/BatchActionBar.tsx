@@ -35,6 +35,12 @@ export interface BatchActionBarProps {
   onUnselectAll: () => void;
   onDelete: () => void;
   onCancel: () => void;
+  /**
+   * The bar sits in the phone drawer, whose list and toolbar are both `p-3`.
+   * The desktop sidebar's list is `p-2`, so its bar keeps the tighter inset —
+   * one shared value would leave the phone's bar 2px inside the rows it counts.
+   */
+  drawer?: boolean;
 }
 
 export function BatchActionBar({
@@ -47,6 +53,7 @@ export function BatchActionBar({
   onUnselectAll,
   onDelete,
   onCancel,
+  drawer = false,
 }: BatchActionBarProps) {
   const noun = mode === 'workspace' ? 'workspace' : 'session';
   const plural = count === 1 ? noun : `${noun}s`;
@@ -55,7 +62,7 @@ export function BatchActionBar({
   return (
     <div
       data-testid="batch-action-bar"
-      className="border-t border-ink/15 bg-paper px-2.5 py-2 flex flex-col gap-1.5 flex-shrink-0"
+      className={`border-t border-ink/15 bg-paper ${drawer ? 'px-3' : 'px-2.5'} py-2 flex flex-col gap-1.5 flex-shrink-0`}
     >
       <div className="flex items-center justify-between gap-2 text-[11px]">
         <span className="min-w-0 truncate text-ink/70">

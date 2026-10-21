@@ -110,7 +110,9 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
       {/* Transcript */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-overlay-container p-4 pb-10"
+        className={`flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-overlay-container ${
+          isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
+        }`}
       >
         <div className="mx-auto w-full max-w-[970px]">
           {isLoading && messages.length === 0 ? (
@@ -137,6 +139,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
                     isStreaming={isLoading}
                     isPrevAssistant={isPrevAssistant}
                     userActions={false}
+                    isMobile={isMobile}
                     className={isNoticeRow(msg) ? 'mt-3 mb-1' : isPrevAssistant ? 'mt-1' : 'mt-3'}
                   />
                   {footer && (

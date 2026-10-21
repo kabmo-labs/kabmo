@@ -109,6 +109,15 @@ export function MobileSessionRow({
         data-testid="session-item"
         data-session-id={String(session.id)}
         onContextMenu={hasActions && !selectable ? menu.openAtCursor : undefined}
+        // The tint covers the WHOLE row — the `⋯` included. It is the row that
+        // is active, not the part of it left over after the triggers, and a
+        // block that stopped short of the trigger read as a half-painted
+        // selection.
+        //
+        // The gap between the trigger's ink and the block's rounded corner is
+        // `pr-1.5` INSIDE the trigger (see below), never padding on this row:
+        // a row inset would shrink the tint and pull every trailing glyph 6px
+        // left of the folder header's chevron.
         className={`w-full rounded-lg flex items-center transition-colors ${
           selectable && selected
             ? 'bg-ink/10 ring-1 ring-inset ring-ink/20 text-ink'
@@ -118,7 +127,7 @@ export function MobileSessionRow({
         <button
           type="button"
           onClick={selectable ? onToggleSelect : onSelect}
-          className="flex-1 text-left pl-2 pr-3 py-2 flex items-center justify-between min-w-0"
+          className="flex-1 text-left py-2 flex items-center justify-between min-w-0"
         >
           <div className="flex items-center min-w-0 pr-2">
             {/* Status slot, 16px at the same x as the folder header's icon slot,
@@ -170,10 +179,10 @@ export function MobileSessionRow({
         {/* One trigger for rename / archive / delete, always visible: a touch
             surface has no hover, and the always-on action buttons this replaced
             consumed a third of a phone's row width.
-            `mr-1` only when the row has NO roster toggle — it reserves that
-            column so the trailing glyph's centre stays 19px from the row's right
-            edge whether the last element is this trigger or the chevron. Without
-            it the glyphs step in and out from row to row. */}
+            `pl-1.5 pr-1`: the BOX still ends on the row's trailing edge (so its
+            right edge matches the folder header's chevron and the toolbar's
+            last control), while the glyph's ink sits 4px inside it — clear of
+            the tinted block's rounded corner without shrinking that block. */}
         {hasActions && !selectable && (
           <button
             type="button"
@@ -182,15 +191,14 @@ export function MobileSessionRow({
             aria-label="Session actions"
             aria-haspopup="menu"
             aria-expanded={menu.anchor !== null}
-            className={`flex-shrink-0 p-2 text-ink/35 hover:text-ink rounded-lg cursor-pointer ${showChevron ? '' : 'mr-1'}`}
+            className="flex-shrink-0 py-1.5 pl-1.5 pr-1 text-ink/35 hover:text-ink rounded-lg cursor-pointer"
           >
             <MoreHorizontal size={16} />
           </button>
         )}
 
-        {/* Last element, so its glyph sits in the folder header's chevron column.
-            `p-1.5 mr-1.5` centres a 14px glyph on that column while keeping a
-            touch-sized tap target. */}
+        {/* Last element, so its glyph shares the trigger's column — the same
+            inset pair and the same 4px ink margin. */}
         {showChevron && !selectable && (
           <button
             type="button"
@@ -198,7 +206,7 @@ export function MobileSessionRow({
             title={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
             aria-expanded={isExpanded}
             aria-label={isExpanded ? 'Collapse subagents' : 'Expand subagents'}
-            className="flex-shrink-0 p-1.5 mr-1.5 flex items-center justify-center text-ink/50 hover:text-ink rounded-lg cursor-pointer"
+            className="flex-shrink-0 py-1.5 pl-1.5 pr-1 flex items-center justify-center text-ink/50 hover:text-ink rounded-lg cursor-pointer"
           >
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>

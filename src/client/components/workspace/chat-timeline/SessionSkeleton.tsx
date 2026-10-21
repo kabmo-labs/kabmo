@@ -50,7 +50,7 @@ export function SessionSkeleton() {
   return (
     <div aria-hidden className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Timeline body — mirrors the real container's padding in both variants. */}
-      <div className="flex-1 min-h-0 overflow-hidden px-3 py-3 pb-8 sm:p-4 sm:pb-10">
+      <div className="flex-1 min-h-0 overflow-hidden pl-4 pr-3 py-3 pb-8 sm:p-4 sm:pb-10">
         <div className="mx-auto w-full max-w-[970px]">
           {rows.map((row, i) => (
             <SkeletonBubble key={i} row={row} index={i} />

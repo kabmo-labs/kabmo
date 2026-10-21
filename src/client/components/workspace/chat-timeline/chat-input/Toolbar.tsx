@@ -102,7 +102,12 @@ export function ComposerToolbar({
       // No separator and no tinted strip: the composer is one card, so its
       // toolbar shares the card's surface. `rounded-b-[inherit]` still follows
       // the frame (the phone's stretched composer is `rounded-none`).
-      className={`@container flex items-center justify-between rounded-b-[inherit] ${isMobile ? 'px-2 py-2' : 'px-3 py-2'}`}
+      // `py-1.5`, and the phone's controls are `w-8 h-8`: measured on a Pixel 7,
+      // the row was 56px tall for a 40px button, which made the composer's
+      // footer read as a second, heavier bar under the draft. A 32px target
+      // still clears the 28px minimum for a touch control while bringing the
+      // row to 44px — the same height as the compact textarea above it.
+      className="@container flex items-center justify-between rounded-b-[inherit] px-3 py-1.5"
     >
       <div className={`flex items-center min-w-0 ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
         {showModel && (
@@ -166,7 +171,7 @@ export function ComposerToolbar({
                   ? 'bg-error text-canvas animate-pulse shadow-xs cursor-pointer'
                   : 'text-ink/50 hover:text-ink hover:bg-ink/10 cursor-pointer'
             } ${
-              isMobile ? 'w-10 h-10 rounded-lg' : 'w-7 h-7'
+              isMobile ? 'w-8 h-8 rounded-md' : 'w-7 h-7'
             }`}
             title={
               voiceBusy
@@ -177,11 +182,11 @@ export function ComposerToolbar({
             }
           >
             {voiceBusy ? (
-              <Loader2 size={isMobile ? 16 : 12} className="animate-spin" />
+              <Loader2 size={isMobile ? 14 : 12} className="animate-spin" />
             ) : voiceListening ? (
-              <MicOff size={isMobile ? 16 : 12} />
+              <MicOff size={isMobile ? 14 : 12} />
             ) : (
-              <Mic size={isMobile ? 16 : 12} />
+              <Mic size={isMobile ? 14 : 12} />
             )}
           </button>
         )}
@@ -192,12 +197,12 @@ export function ComposerToolbar({
             onClick={onStop}
             className={`flex items-center justify-center rounded transition-colors cursor-pointer shadow-xs animate-in zoom-in-90 duration-150 flex-shrink-0 ${
               isMobile
-                ? 'w-10 h-10 rounded-lg border border-ink/25 text-ink hover:bg-error hover:text-canvas hover:border-error'
+                ? 'w-8 h-8 rounded-md border border-ink/25 text-ink hover:bg-error hover:text-canvas hover:border-error'
                 : 'w-7 h-7 bg-ink text-canvas hover:bg-error hover:text-canvas'
             }`}
             title="Stop generation"
           >
-            <Square size={isMobile ? 14 : 10} className="fill-current" />
+            <Square size={isMobile ? 12 : 10} className="fill-current" />
           </button>
         )}
 
@@ -206,12 +211,12 @@ export function ComposerToolbar({
           onClick={onSend}
           disabled={sendDisabled}
           className={`flex items-center justify-center rounded bg-ink text-canvas hover:bg-ink/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 ${
-            isMobile ? 'w-10 h-10 rounded-lg' : 'w-7 h-7'
+            isMobile ? 'w-8 h-8 rounded-md' : 'w-7 h-7'
           }`}
           title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
           aria-label={chatInFlight ? 'Queue follow-up message' : 'Send message'}
         >
-          <Send size={isMobile ? 16 : 12} className="ml-px" />
+          <Send size={isMobile ? 14 : 12} className="ml-px" />
         </button>
       </div>
     </div>

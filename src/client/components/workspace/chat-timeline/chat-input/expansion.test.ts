@@ -23,14 +23,16 @@ import { describe, expect, test } from 'bun:test';
 
 import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';
 
-const base = { expanded: false, isDragging: false, keyboardInset: 0, compact: false } as const;
+const base = { expanded: false, isDragging: false, keyboardInset: 0 } as const;
 
 describe('composerExpansion docked', () => {
   test('a phone keeps its touch-sized box and opens the popup upward', () => {
     const layout = composerExpansion({ ...base, variant: 'mobile' });
     expect(layout.cardPositionClass).toBe('relative');
     expect(layout.textareaClass).toContain('min-h-[68px]');
-    expect(layout.textareaClass).toContain('text-base');
+    // The transcript's own size, not a larger one: a draft read at 16px beside
+    // 13px messages looked like a different document pasted underneath.
+    expect(layout.textareaClass).toContain('text-[13px]');
     expect(layout.pickerPlacement).toBe('up');
     expect(layout.style).toBeUndefined();
   });
@@ -38,7 +40,7 @@ describe('composerExpansion docked', () => {
   test('a desktop keeps its 80px box', () => {
     const layout = composerExpansion({ ...base, variant: 'desktop' });
     expect(layout.textareaClass).toContain('min-h-[80px]');
-    expect(layout.textareaClass).toContain('text-sm');
+    expect(layout.textareaClass).toContain('text-[13px]');
     expect(layout.pickerPlacement).toBe('up');
   });
 
@@ -88,32 +90,31 @@ describe('composerExpansion frame matches a tool card', () => {
 });
 
 /**
- * The phone's compact composer: a reader scrolled back through the transcript
- * gets the height back. The rules that matter are which layout may shrink (only
- * a docked phone — a desktop sits beside the chat, a stretched one IS the
- * screen) and that it stays a card and a touch target rather than becoming a
- * second, differently shaped control.
+ * The compact composer is a DECISION ONE LEVEL UP, not a size in this table.
+ *
+ * A phone reader scrolled back through the transcript with an empty draft gets
+ * the height back by not rendering the textarea at all (`ChatInput`), and the
+ * attachment row then carries a "Type here" target that brings it back. So this
+ * module has nothing left to say about it — and the cases below pin that a
+ * docked or stretched layout is unchanged by the feature.
  */
-describe('composerExpansion compact', () => {
-  test('a docked phone shrinks to a 44px box, still framed as a card', () => {
-    const layout = composerExpansion({ ...base, variant: 'mobile', compact: true });
-    // A fixed height, not a min-height: a textarea's own `rows` sets its
-    // height, so a minimum alone never shrinks it.
-    expect(layout.textareaClass).toContain('h-11');
-    expect(layout.textareaClass).not.toContain('min-h-[68px]');
+describe('composerExpansion has no compact size', () => {
+  test('a docked phone keeps its full box: compact removes the element instead', () => {
+    const layout = composerExpansion({ ...base, variant: 'mobile' });
+    expect(layout.textareaClass).toContain('min-h-[68px]');
+    expect(layout.textareaClass).not.toContain('h-9');
+    // Still the same card frame as a tool card.
     expect(layout.cardClass).toContain('rounded-xl');
     expect(layout.cardClass).toContain('shadow-sm');
-    // The frame's own state does not change: compact is a SIZE, not a style.
-    expect(layout.cardClass).toContain('border-ink/10');
   });
 
-  test('a desktop ignores it: its composer sits beside the chat', () => {
-    const layout = composerExpansion({ ...base, variant: 'desktop', compact: true });
+  test('a desktop is untouched', () => {
+    const layout = composerExpansion({ ...base, variant: 'desktop' });
     expect(layout.textareaClass).toContain('min-h-[80px]');
   });
 
-  test('a stretched phone is the screen, so there is nothing to give back', () => {
-    const layout = composerExpansion({ ...base, expanded: true, variant: 'mobile', compact: true });
+  test('a stretched phone is the screen', () => {
+    const layout = composerExpansion({ ...base, expanded: true, variant: 'mobile' });
     expect(layout.cardClass).toContain('rounded-none');
     expect(layout.textareaClass).toContain('h-full');
   });

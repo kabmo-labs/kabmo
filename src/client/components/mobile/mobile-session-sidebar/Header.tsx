@@ -4,11 +4,14 @@ import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 export function MobileSessionHeader({ onClose }: { onClose: () => void }) {
   return (
     <div 
-      className="border-b border-ink/10 flex items-center justify-between px-3.5 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
+      className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
       style={{
         height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
-        paddingLeft: 'max(0.875rem, env(safe-area-inset-left, 0px), env(titlebar-area-x, 0px))',
-        paddingRight: 'max(0.875rem, env(safe-area-inset-right, 0px))',
+        // `px-3`, the toolbar's own inset: the wordmark above and the New
+        // Session button below share one left edge, which the header's old
+        // 14px did not.
+        paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px), env(titlebar-area-x, 0px))',
+        paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >

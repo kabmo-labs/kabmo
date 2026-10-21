@@ -90,6 +90,7 @@ export const MessageList = memo(function MessageList({
               onNewChat={onNewChat}
               isPrevAssistant={isPrevAssistant}
               userActions={userActions}
+              isMobile={isMobile}
               className={isNoticeRow(msg) ? 'mt-3 mb-1' : isAiFragment ? 'mt-1' : 'mt-3'}
             />
             {footer && (

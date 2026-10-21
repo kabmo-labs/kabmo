@@ -24,9 +24,17 @@ interface AttachmentToolbarProps {
    */
   expanded?: boolean;
   onToggleExpand?: () => void;
+  /**
+   * The phone's compact composer: the textarea is gone, so this row carries the
+   * affordance that brings it back — a "Type here" target beside the paperclip.
+   * Tapping it (or the card) is what expands the composer, which is why it is a
+   * button rather than a label.
+   */
+  compact?: boolean;
+  onExpandComposer?: () => void;
 }
 
-export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand }: AttachmentToolbarProps) {
+export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, modes, onOpenGoal, expanded, onToggleExpand, compact = false, onExpandComposer }: AttachmentToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
@@ -49,6 +57,22 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
         >
           <Paperclip size={14} />
         </button>
+
+        {/* The compact composer's own placeholder. The textarea is not rendered
+            at all in that state, so this is the only thing that says the card
+            is still a composer — and the only thing a tap can hit to bring the
+            box back. It sits right beside the paperclip, where the text used to
+            start, so the row keeps its reading order. */}
+        {compact && (
+          <button
+            type="button"
+            data-composer-reopen
+            onClick={onExpandComposer}
+            className="min-w-0 flex-1 text-left text-[13px] text-ink/40 truncate"
+          >
+            Type here
+          </button>
+        )}
 
         {attachments.map(att => (
           <div key={att.id} className="relative flex items-center bg-canvas border border-ink/10 rounded-md p-0.5 pr-6 text-xs shadow-sm group">

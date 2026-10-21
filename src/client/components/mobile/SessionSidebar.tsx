@@ -239,6 +239,7 @@ export function MobileSessionSidebar({
 
       {batch.mode && (
         <BatchActionBar
+          drawer
           mode={batch.mode}
           count={batchSelected.length}
           total={batchAvailable.length}

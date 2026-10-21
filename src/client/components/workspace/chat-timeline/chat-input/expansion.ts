@@ -59,13 +59,6 @@ export interface ComposerExpansionInput {
    * `useKeyboardInset`. 0 when there is no keyboard (or no `visualViewport`).
    */
   keyboardInset: number;
-  /**
-   * A phone reader is scrolled back through the transcript and the draft is
-   * empty, so the composer gives the conversation its height back. Only the
-   * docked phone layout has anything to give: a desktop composer sits beside
-   * the chat rather than over it, and a stretched one is the screen.
-   */
-  compact: boolean;
 }
 
 export interface ComposerExpansion {
@@ -95,7 +88,6 @@ export function composerExpansion({
   expanded,
   isDragging,
   keyboardInset,
-  compact,
 }: ComposerExpansionInput): ComposerExpansion {
   const mobile = variant === 'mobile';
   // Same frame as a tool card (`ToolCardShell`): `rounded-xl`, `border-ink/10`
@@ -112,18 +104,18 @@ export function composerExpansion({
       cardClass: `border rounded-xl bg-paper shadow-sm ${border}`,
       cardPositionClass: 'relative',
       cardLayoutClass: '',
-      // A compact phone composer gives the transcript its height back. `h-11`
-      // rather than a `min-h`: a textarea's height comes from its `rows`
-      // (two lines by default), so a min-height alone never shrinks it —
-      // measured, `min-h-[44px]` still laid out at 64px. The box is fixed at
-      // 44px, the smallest reliable touch target, and it never needs to grow:
-      // a draft restores the full composer on the same commit the first
-      // character lands in it.
+      // The phone's compact state does not render a textarea at all (see
+      // `ChatInput`), so there is no size to return here. The class below is
+      // what a DOCKED composer uses; compact is decided one level up, by
+      // whether the element exists.
+      // Same type as the transcript it sits under: `text-[13px] leading-relaxed`
+      // is what every message row uses, so a draft reads at the size of the
+      // conversation it is replying to. `composer-type` carries the iOS guard —
+      // see the rule in tailwind.css, where a sub-16px control would make
+      // Safari zoom the page on focus.
       textareaClass: mobile
-        ? compact
-          ? 'px-3 py-2 text-base h-11 max-h-40'
-          : 'px-3 py-3 text-base min-h-[68px] max-h-40'
-        : 'px-3 py-3 text-sm min-h-[80px]',
+        ? 'px-3 py-3 text-[13px] leading-relaxed composer-type min-h-[68px] max-h-40'
+        : 'px-3 py-3 text-[13px] leading-relaxed composer-type min-h-[80px]',
       wrapperClass: '',
       pickerPlacement: 'up',
       style: undefined,
@@ -139,7 +131,7 @@ export function composerExpansion({
       cardClass: 'border-0 rounded-none bg-paper shadow-none',
       cardPositionClass: 'fixed inset-0 z-40',
       cardLayoutClass: '',
-      textareaClass: 'h-full px-3 py-3 text-base',
+      textareaClass: 'h-full px-3 py-3 text-[13px] leading-relaxed composer-type',
       wrapperClass: 'flex-1 min-h-0',
       pickerPlacement: 'over',
       style: {

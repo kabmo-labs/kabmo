@@ -82,7 +82,7 @@ export function TimelineBody({
         ref={scrollRef}
         onScroll={handleScroll}
         className={`flex-1 scrollbar-overlay-container overscroll-contain scroll-smooth overflow-x-hidden ${
-          isMobile ? 'px-3 py-3 pb-8' : 'p-4 pb-10'
+          isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
         }`}
       >
         <div ref={contentRef} className="mx-auto w-full max-w-[970px]">

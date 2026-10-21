@@ -14,6 +14,7 @@ import { PluginMessageActions } from '@/client/components/workspace/chat-timelin
 import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { isNoticeRow, messageAnswerText } from '@/shared/lib/chat/notice-row';
 import { formatMessageStamp } from '@/shared/lib/format/time';
+import { transcriptBlockPadding, transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 
 interface ChatMessageItemProps {
   msg: ChatMessageData | any;
@@ -37,6 +38,11 @@ interface ChatMessageItemProps {
    * instead of rendering buttons that do nothing.
    */
   userActions?: boolean;
+  /**
+   * Phone layout. A framed block's margin is then the timeline gutter itself
+   * rather than an inset — see `transcriptGutter`.
+   */
+  isMobile?: boolean;
 }
 
 export const ChatMessageItem = memo(function ChatMessageItem({
@@ -47,6 +53,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   className = '',
   isPrevAssistant = false,
   userActions = true,
+  isMobile = false,
 }: ChatMessageItemProps) {
   const isUser = msg.role === 'user';
 
@@ -88,7 +95,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     return (
       <div id={msg.id} className={`flex flex-col items-end space-y-1.5 w-full max-w-full ${className}`}>
         {/* User bubble - standardized to text-[13px] with markdown support */}
-        <div className="bg-paper p-3.5 sm:p-4 rounded-xl border border-ink/15 text-[13px] text-ink shadow-xs max-w-[92%] sm:max-w-[85%] break-words overflow-hidden flex flex-col space-y-2 font-sans select-text mx-3" style={{ lineHeight: 'var(--markdown-body-line-height)' }}>
+        <div className={`bg-paper ${transcriptBlockPadding(isMobile)} sm:p-4 rounded-xl border border-ink/15 text-[13px] text-ink shadow-xs max-w-[92%] sm:max-w-[85%] break-words overflow-hidden flex flex-col space-y-2 font-sans select-text ${transcriptGutter(isMobile)}`} style={{ lineHeight: 'var(--markdown-body-line-height)' }}>
           {isAgentAttributed && (
             <div className="flex items-center space-x-1.5 pb-1.5 mb-1 border-b border-ink/10 text-[11px] font-mono text-ink/70">
               <Bot size={12} className="text-ink shrink-0" />
@@ -186,7 +193,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       <div className="w-full space-y-2.5 font-sans leading-relaxed">
         
         {/* System Notice Alert (a notice carrying the answer renders as content below) */}
-        {isNotice && <SystemNotice notice={msg.notice} source={msg.noticeSource} />}
+        {isNotice && <SystemNotice notice={msg.notice} source={msg.noticeSource} isMobile={isMobile} />}
 
         {/* Thinking / Reasoning Accordion */}
         {thinkingData && (
@@ -194,12 +201,13 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             thinking={thinkingData} 
             defaultExpanded={false}
             showSeparator={isPrevAssistant}
+            isMobile={isMobile}
           />
         )}
 
         {/* Provider / API Error Alert */}
         {msg.error && (
-          <div className="flex items-start space-x-2.5 bg-error/10 border border-error/30 rounded-lg mx-3 px-3.5 py-2.5 text-[12px] text-ink select-text">
+          <div className={`flex items-start space-x-2.5 bg-error/10 border border-error/30 rounded-lg ${transcriptGutter(isMobile)} px-3.5 py-2.5 text-[12px] text-ink select-text`}>
             <AlertCircle size={15} className="text-error flex-shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex items-center space-x-2 flex-wrap">
@@ -252,6 +260,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
           <ToolCallingSection 
             tools={allToolCalls}
             defaultExpanded={false}
+            isMobile={isMobile}
           />
         )}
 
@@ -270,6 +279,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
           <ToolCallingSection 
             tools={secondaryToolCalls}
             defaultExpanded={true}
+            isMobile={isMobile}
           />
         )}
 

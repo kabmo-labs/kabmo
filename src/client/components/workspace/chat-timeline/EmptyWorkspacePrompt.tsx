@@ -243,6 +243,7 @@ export function EmptyWorkspacePrompt({
                       isStreaming={isLoading}
                       onUndo={onUndo}
                       onNewChat={onNewChat}
+                      isMobile={variant === 'mobile'}
                       className={isAiFragment ? 'mt-1' : 'mt-8'}
                     />
                     {footer && (

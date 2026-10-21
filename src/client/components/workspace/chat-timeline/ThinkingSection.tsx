@@ -3,17 +3,21 @@ import { BrainCircuit, ChevronDown, Sparkles } from 'lucide-preact';
 import type { ThinkingData } from '@/shared/types';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CopyButton } from '@/client/components/common/CopyButton';
+import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 
 interface ThinkingSectionProps {
   thinking: ThinkingData | string;
   defaultExpanded?: boolean;
   showSeparator?: boolean;
+  /** Phone layout: the section's frame is the timeline gutter itself. */
+  isMobile?: boolean;
 }
 
 export function ThinkingSection({ 
   thinking, 
   defaultExpanded = false,
-  showSeparator = false
+  showSeparator = false,
+  isMobile = false,
 }: ThinkingSectionProps) {
   const isGenerating = typeof thinking === 'object' ? Boolean(thinking.isGenerating) : false;
   const [isOpen, setIsOpen] = useState(defaultExpanded || isGenerating);
@@ -43,7 +47,7 @@ export function ThinkingSection({
   if (!cleanThought) return null;
 
   return (
-    <div className={`mx-3 ${showSeparator ? 'space-y-1.5' : ''}`}>
+    <div className={`${transcriptGutter(isMobile)} ${showSeparator ? 'space-y-1.5' : ''}`}>
       {showSeparator && (
         <div className="flex items-center gap-2 px-1 pt-0.5">
           <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/35">

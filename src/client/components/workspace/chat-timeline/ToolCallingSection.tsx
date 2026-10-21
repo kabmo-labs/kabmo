@@ -8,10 +8,13 @@ import { useMemo } from 'preact/hooks';
 import type { AgentActionData, ToolCallData, ToolType } from '@/shared/types';
 import { ToolCallCard } from '@/client/components/workspace/chat-timeline/ToolCallCard';
 import { useToolOpenState } from '@/client/hooks/chat/timeline/tool-open';
+import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 
 interface ToolCallingSectionProps {
   tools: (ToolCallData | AgentActionData)[];
   defaultExpanded?: boolean;
+  /** Phone layout: the section's frame is the timeline gutter itself. */
+  isMobile?: boolean;
 }
 
 function normalizeToolData(action: ToolCallData | AgentActionData, index: number): ToolCallData {
@@ -53,7 +56,7 @@ function normalizeToolData(action: ToolCallData | AgentActionData, index: number
   };
 }
 
-export function ToolCallingSection({ tools, defaultExpanded = false }: ToolCallingSectionProps) {
+export function ToolCallingSection({ tools, defaultExpanded = false, isMobile = false }: ToolCallingSectionProps) {
   const normalizedTools = useMemo(() => {
     return (tools || []).map((t, i) => normalizeToolData(t, i));
   }, [tools]);
@@ -65,7 +68,7 @@ export function ToolCallingSection({ tools, defaultExpanded = false }: ToolCalli
   if (!normalizedTools || normalizedTools.length === 0) return null;
 
   return (
-    <div className="mx-3 space-y-1.5">
+    <div className={`${transcriptGutter(isMobile)} space-y-1.5`} data-tool-section>
       {normalizedTools.map((tool) => {
         const intent = tool.intent?.trim();
         return (

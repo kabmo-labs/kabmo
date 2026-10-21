@@ -10,6 +10,7 @@ import { parseGoalNotice, type GoalNoticeData } from '@/shared/lib/omp/mode/noti
 import { GoalNotice } from '@/client/components/workspace/chat-timeline/GoalNotice';
 import { TaskResultContent } from '@/client/components/workspace/chat-timeline/TaskResultContent';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
+import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 
 const KIND_LABEL: Record<GoalNoticeData['kind'], string> = {
   start: 'Goal started',
@@ -43,12 +44,14 @@ interface SystemNoticeProps {
   /** The `customType` this notice came from, when it has one — the only way to
    *  recognize a goal's opening turn, whose text is the bare objective. */
   source?: string;
+  /** Phone layout: the card's frame is the timeline gutter itself. */
+  isMobile?: boolean;
 }
 
 /** System notice card — handles generic notices, structured <task-result> agent
  *  jobs, and <system-reminder> blocks, all collapsed by default; a goal-mode
  *  injection renders open and has no collapse control (see `forcedOpen`). */
-export function SystemNotice({ notice, source }: SystemNoticeProps) {
+export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeProps) {
   const [userOpen, setUserOpen] = useState(false);
   useSyntaxReady();
 
@@ -195,7 +198,7 @@ export function SystemNotice({ notice, source }: SystemNoticeProps) {
 
   return (
     <div
-      className={`mx-3 overflow-hidden rounded-xl border border-ink/10 bg-paper text-[12px] text-ink transition-colors ${
+      className={`${transcriptGutter(isMobile)} overflow-hidden rounded-xl border border-ink/10 bg-paper text-[12px] text-ink transition-colors ${
         canToggle ? 'hover:border-ink/20' : ''
       } select-text`}
     >

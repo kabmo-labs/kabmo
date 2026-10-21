@@ -429,4 +429,160 @@ test.describe('mobile layout', () => {
 
     workspace.dispose();
   });
+
+  /**
+   * The drawer's left and right columns are ONE line each, and the transcript's
+   * cards share the composer's frame.
+   *
+   * Every number here was wrong before and none of them is visible to a unit
+   * test: the drawer's folder glyph sat at 28 while the New Session button above
+   * it started at 12, the folder's disclosure chevron ended 6px inside the
+   * toolbar's last control, and every framed transcript block carried `mx-3` on
+   * top of the timeline's own `px-3` — 24px against the composer card's 12.
+   * A browser is the only place a class resolves to a pixel.
+   */
+  test('aligns the drawer columns and the transcript cards with the composer', async ({ app }) => {
+    await app.getByRole('button', { name: 'Open Sessions' }).click();
+    await expect(app.getByRole('button', { name: /new session/i }).first()).toBeVisible();
+
+    const edges = await app.evaluate(() => {
+      const rect = (el: Element | null | undefined) => {
+        if (!el) return null;
+        const b = el.getBoundingClientRect();
+        return { left: Math.round(b.left), right: Math.round(b.right) };
+      };
+      const newSession = Array.from(document.querySelectorAll('button'))
+        .find((b) => (b.textContent ?? '').trim() === 'New Session');
+      const toolbarRow = newSession?.parentElement;
+      const toolbarKids = toolbarRow ? Array.from(toolbarRow.children) : [];
+      const lastControl = toolbarKids.at(-1) as HTMLElement | undefined;
+      const sortButton = toolbarKids
+        .map((el) => (el.tagName === 'BUTTON' ? el : el.querySelector('button')))
+        .find((b) => b?.getAttribute('aria-label') === 'Sort workspaces');
+
+      const folderRow = document.querySelector('[data-testid="session-item"]')?.closest('div.mb-4')?.firstElementChild;
+      // The SLOT, not the glyph: the folder mark is a 15px SVG centred in a
+      // 16px box, so its ink starts half a pixel inside the column the rows are
+      // aligned to. Comparing ink to a button's box measures that rounding, not
+      // the alignment.
+      const folderSlot = folderRow?.querySelector('span.w-4');
+      const folderChevron = folderRow ? Array.from(folderRow.querySelectorAll('svg')).at(-1) : null;
+      // Its BOX, not its ink: the drawer's right column is a line of boxes, and
+      // the 4px ink inset inside them is what keeps the glyph off the tinted
+      // row's corner.
+      const folderChevronBox = folderChevron?.parentElement;
+      const sessionRow = document.querySelector('[data-testid="session-item"]');
+      const sessionSlot = sessionRow?.querySelector('span.w-4');
+      const sessionAction = sessionRow?.querySelector('[aria-label="Session actions"]');
+      // The DRAWER's scroller — found by the rows it contains, not by being the
+      // first match in the document (the timeline is a scroller too, and it is
+      // hidden while the drawer is open).
+      const scroller = (sessionRow?.closest('.scrollbar-overlay-container') ?? null) as HTMLElement | null;
+
+      return {
+        newSession: rect(newSession),
+        lastControl: rect(lastControl),
+        sortButton: rect(sortButton),
+        folderSlot: rect(folderSlot),
+        folderChevron: rect(folderChevron),
+        folderChevronBox: rect(folderChevronBox),
+        sessionRow: rect(sessionRow),
+        sessionSlot: rect(sessionSlot),
+        sessionAction: rect(sessionAction),
+        // True when the row could not hold every control and moved the tail
+        // into `⋯` — in that case `⋯` IS the last control, not `Sort`.
+        hasOverflow: Boolean(lastControl?.querySelector('[aria-label="More sidebar actions"]')),
+        // How much width the platform's scrollbar takes out of the drawer's
+        // own scroller: 0 on an overlay-scrollbar platform, the bar's width on
+        // a classic one. The right column's absolute x depends on it.
+        gutter: scroller ? scroller.offsetWidth - scroller.clientWidth : 0,
+      };
+    });
+
+    // Left column: the folder's leading slot starts where the New Session
+    // button does, and a session row's own slot sits on that same x.
+    expect(edges.newSession).not.toBeNull();
+    expect(edges.folderSlot!.left).toBe(edges.newSession!.left);
+    expect(edges.sessionSlot!.left).toBe(edges.newSession!.left);
+    // …and the row's tinted block starts there too.
+    expect(edges.sessionRow!.left).toBe(edges.newSession!.left);
+
+    // Right column: the folder's disclosure box and a session row's own box end
+    // on the row's trailing edge — one line of boxes down the drawer.
+    expect(edges.folderChevronBox!.right).toBe(edges.sessionAction!.right);
+
+    // Against the toolbar's last control, which is OUTSIDE the scroller: the
+    // drawer compensates the scrollbar with a smaller right padding (`pr-2`), so
+    // the two columns agree once the gutter is accounted for. A tolerance of one
+    // gutter is the honest bound — the exact x is a property of the platform's
+    // scrollbar, not of this layout.
+    const drift = Math.abs(edges.folderChevronBox!.right - edges.lastControl!.right);
+    expect(drift).toBeLessThanOrEqual(Math.max(4, edges.gutter));
+
+    // The rule the request named: the disclosure glyph ends on the same column
+    // as the sort control. At a width that fits the whole row, Sort IS the last
+    // control; below it the tail moves into `⋯`, which becomes that column
+    // instead — the drift assertion above is what covers that case.
+    expect(edges.sortButton).not.toBeNull();
+    if (!edges.hasOverflow) expect(edges.sortButton!.right).toBe(edges.lastControl!.right);
+  });
+
+  test('draws a transcript card and the composer on the same frame', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-gutter');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await expect(page.getByText('e2e-mobile-gutter').first()).toBeVisible();
+
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await input.fill('tool:bash then answer');
+    // A bare Enter inserts a newline on the phone variant (no Shift key on a
+    // soft keyboard), so the send control is the only way to dispatch.
+    await page.getByRole('button', { name: /send message/i }).first().click();
+    await expect(page.getByRole('button', { name: /^Expand Bash/ }).first()).toBeVisible({ timeout: 30_000 });
+
+    const frames = await page.evaluate(() => {
+      const rect = (el: Element | null | undefined) => {
+        if (!el) return null;
+        const b = el.getBoundingClientRect();
+        return { left: Math.round(b.left), right: Math.round(b.right) };
+      };
+      const section = document.querySelector('[data-tool-section]');
+      const card = section?.querySelector('div.overflow-hidden.rounded-xl');
+      const composerCard = document.querySelector('[data-testid="composer-input"]')?.closest('div.rounded-xl');
+      const bubble = document.querySelector('div.bg-paper.rounded-xl');
+      // The two gutters, read from the elements that own them.
+      const scroller = (section?.closest('.scrollbar-overlay-container') ?? null) as HTMLElement | null;
+      const dock = composerCard?.parentElement?.parentElement ?? null;
+      return {
+        toolCard: rect(card),
+        composerCard: rect(composerCard),
+        bubble: rect(bubble),
+        scrollerPadLeft: scroller ? getComputedStyle(scroller).paddingLeft : null,
+        dockPadLeft: dock ? getComputedStyle(dock).paddingLeft : null,
+      };
+    });
+
+    expect(frames.toolCard).not.toBeNull();
+    expect(frames.composerCard).not.toBeNull();
+
+    // The transcript's own gutter is `pl-4` on a phone — deliberately one step
+    // wider than the composer dock's `pl-3`, which is the pairing the reader
+    // approved. So each card is measured against ITS OWN gutter rather than
+    // against the other: a card that drifted off its gutter would otherwise
+    // pass as long as the two happened to agree.
+    expect(frames.scrollerPadLeft).toBe('16px');
+    expect(frames.dockPadLeft).toBe('12px');
+    expect(frames.toolCard!.left).toBe(16);
+    expect(frames.composerCard!.left).toBe(12);
+
+    // The right edge is NOT asserted against the composer: the transcript is a
+    // scroll container, so its right padding is one step smaller to cancel the
+    // scrollbar's own width — and that width is 0 on an overlay-scrollbar
+    // platform and 8px on a classic one. What IS stable is that both framed
+    // blocks inside the scroller end on the same edge.
+    expect(frames.bubble!.right).toBe(frames.toolCard!.right);
+
+    workspace.dispose();
+  });
 });

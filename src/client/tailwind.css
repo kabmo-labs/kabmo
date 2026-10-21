@@ -182,6 +182,28 @@
   overflow-y: auto;
 }
 
+/* The composer reads at the transcript's own size — 13px — EXCEPT on iOS.
+ *
+ * Every message row in the timeline is `text-[13px] leading-relaxed`, and a
+ * draft written at 16px looked like a different document pasted under the
+ * conversation. The size itself is a utility on the textarea; this rule exists
+ * for the one platform where 13px is not allowed to apply.
+ *
+ * iOS Safari ZOOMS the viewport when a text control below 16px takes focus,
+ * and it does not zoom back out — the page is left wider than the screen with
+ * the composer half off it. So iOS keeps 16px and every other platform reads
+ * at the transcript's size. `-webkit-touch-callout` is the standard
+ * iOS-only probe (it is a Safari-only property), and it cannot be expressed as
+ * a Tailwind variant, which is why this is a class rather than a utility.
+ *
+ * The PLACEHOLDER needs no rule of its own: `::placeholder` inherits
+ * `font-size` from its textarea, so both move together. */
+@supports (-webkit-touch-callout: none) {
+  textarea.composer-type {
+    font-size: 16px;
+  }
+}
+
 /* Reveal-on-hover controls are written `opacity-0 group-hover:opacity-100`
  * (or `hidden group-hover:flex`), and Tailwind v4 emits every one of those
  * variants inside `@media (hover: hover)` — verified in the emitted

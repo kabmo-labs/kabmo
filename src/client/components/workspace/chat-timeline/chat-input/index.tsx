@@ -19,6 +19,7 @@ import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import { useKeyboardInset } from '@/client/hooks/ui/keyboard-inset';
 import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';
+import { useComposerCompact } from '@/client/hooks/chat/composer/compact';
 import type { ChatInputProps } from '@/client/components/workspace/chat-timeline/chat-input/props';
 
 export function ChatInput({ 
@@ -142,13 +143,16 @@ export function ChatInput({
   // Enter, so the covered toolbar would be the only way to send). Docked, the
   // card is inside the chat's own column and the measurement is unused.
   const keyboardInset = useKeyboardInset(cardRef, expandable && expanded);
-  // A phone gives its height back to the transcript while the reader is
-  // scrolling back — but only when there is nothing to lose: a draft means the
-  // user is writing, and the box must stay the size it was. A focused composer
-  // is the same rule from the other side (the tap that re-opens it must not be
-  // undone by the scroll position it was tapped from).
-  const compact = shrinkWhileReading && !composerFocused && !value.trim() && attachments.length === 0;
-  const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset, compact });
+  const { compact, reopen, onCardPointerDown } = useComposerCompact({
+    cardRef,
+    isMobile,
+    shrinkWhileReading,
+    composerFocused,
+    setComposerFocused,
+    value,
+    attachments,
+  });
+  const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset });
 
   // Escape returns to the docked composer. Bound to the document rather than to
   // the textarea so it works while the picker has focus — the picker consumes
@@ -199,7 +203,22 @@ export function ChatInput({
       // focus, which never happens). Preact maps `onFocusIn`/`onFocusOut` to
       // the native bubble-phase events.
       onFocusIn={() => setComposerFocused(true)}
-      onFocusOut={() => setComposerFocused(false)}
+      // A focusout is NOT proof the reader left the card. Re-opening from the
+      // compact state REMOVES the "Type here" button that had focus, and the
+      // browser emits a focusout for it after the new textarea has already been
+      // focused — so the flag went false one tick later and the composer
+      // collapsed again (measured: `focusin:BUTTON, focusout:BUTTON,
+      // added:DIV, removed:DIV, added:BUTTON` — open and shut within a frame).
+      // The question is where focus ENDED UP, which is only answerable after
+      // the focus change has settled.
+      onFocusOut={() => {
+        requestAnimationFrame(() => {
+          if (!cardRef.current?.contains(document.activeElement)) setComposerFocused(false);
+        });
+      }}
+      // Press-time, not click-time — see `useComposerCompact` for why a click
+      // never arrives in the compact state.
+      onPointerDown={onCardPointerDown}
       {...dropProps}
     >
       <DropOverlay visible={isDragging} />
@@ -226,6 +245,8 @@ export function ChatInput({
         // (the New Chat modal) gets no control and cannot be stretched.
         expanded={expandable ? expanded : undefined}
         onToggleExpand={expandable ? () => setExpanded((prev) => !prev) : undefined}
+        compact={compact}
+        onExpandComposer={reopen}
       />
 
       {/* Refused plan/goal command notice. */}
@@ -244,25 +265,31 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Textarea */}
-      <ComposerTextarea
-        value={value}
-        onChange={onChange}
-        onSend={handleSubmit}
-        disabled={disabled}
-        appSettings={appSettings}
-        rootPath={rootPath}
-        enablePicker={enablePicker}
-        placement={layout.pickerPlacement}
-        wrapperClassName={layout.wrapperClass}
-        placeholder={placeholder ?? (disabled ? "Please select a workspace above to start prompting..." : "@ for files/agents; / for commands and skills (Paste images/files here)")}
-        className={`w-full bg-transparent border-none focus:outline-none resize-none text-ink placeholder-ink/40 disabled:opacity-50 disabled:cursor-not-allowed ${layout.textareaClass}`}
-        onPaste={handlePaste}
-        variant={variant}
-        textareaRef={autoGrow ? growRef : undefined}
-        onReady={onTextareaReady}
-      />
-
+      {/* Textarea. Not rendered at all while compact: the phone gives the
+          transcript its height back by removing the box, not by shrinking it,
+          and `AttachmentToolbar` then carries the "Type here" target that
+          brings it back. Rendering it at `h-0` would keep a focusable element
+          with no pixels, which is exactly the trap the `inert` rules elsewhere
+          exist to avoid. */}
+      {!compact && (
+        <ComposerTextarea
+          value={value}
+          onChange={onChange}
+          onSend={handleSubmit}
+          disabled={disabled}
+          appSettings={appSettings}
+          rootPath={rootPath}
+          enablePicker={enablePicker}
+          placement={layout.pickerPlacement}
+          wrapperClassName={layout.wrapperClass}
+          placeholder={placeholder ?? (disabled ? "Please select a workspace above to start prompting..." : "@ for files/agents; / for commands and skills (Paste images/files here)")}
+          className={`w-full bg-transparent border-none focus:outline-none resize-none text-ink placeholder-ink/40 disabled:opacity-50 disabled:cursor-not-allowed ${layout.textareaClass}`}
+          onPaste={handlePaste}
+          variant={variant}
+          textareaRef={autoGrow ? growRef : undefined}
+          onReady={onTextareaReady}
+        />
+      )}
       {/* Dictation progress / failure, above the toolbar that owns the mic. */}
       <VoiceNotice status={voiceStatus} error={displayedVoiceError} />
 

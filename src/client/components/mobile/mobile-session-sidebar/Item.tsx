@@ -1,5 +1,5 @@
 import { useRef, useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight, ChevronUp, GitBranch, MessageSquare, MoreHorizontal, Plus } from 'lucide-preact';
+import { ChevronDown, ChevronRight, GitBranch, MessageSquare, MoreHorizontal, Plus } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { MobileSessionRow } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import { SubagentList } from '@/client/components/common/subagent-list';
@@ -17,6 +17,7 @@ import type { WorkspaceFolderData } from '@/shared/types';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
+import { SessionRevealRow } from '@/client/components/mobile/mobile-session-sidebar/RevealRow';
 
 interface MobileSessionCategoryProps {
   folder: WorkspaceFolderData;
@@ -128,7 +129,7 @@ export function MobileSessionCategory({
     <div className="mb-4">
       <div
         onClick={batch ? undefined : onToggleExpand}
-        className="flex items-center justify-between pl-4 pr-3 py-2 cursor-pointer hover:bg-ink/5 rounded-lg select-none transition-colors"
+        className="flex items-center justify-between gap-2 py-2 cursor-pointer hover:bg-ink/5 rounded-lg select-none transition-colors"
       >
         <div className="flex items-center space-x-2 min-w-0">
           {folderCheckbox && folderSummary ? (
@@ -141,11 +142,11 @@ export function MobileSessionCategory({
             />
           ) : (
           <>
-          {/* The folder glyph occupies the same 16px left slot the session rows
-              give their roster toggle, so the two columns line up down the
-              drawer — the icon, the chevron and every row's status glyph share
-              one x. Desktop gets this from one shared slot; the drawer's
-              padding is what differs, hence the matching `pl-4`. */}
+          {/* The folder glyph occupies the same 16px slot the session rows give
+              their status/roster glyph, and the row carries NO leading inset of
+              its own: the drawer list's `p-3` is the gutter, so this glyph starts
+              at the same x as the New Session button above it (12px) and as the
+              search field's frame. One left edge down the whole drawer. */}
           <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">
             {folder.customIconUrl ? (
               <img
@@ -230,14 +231,23 @@ export function MobileSessionCategory({
             )}
           </div>
 
-          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {/* The disclosure glyph's BOX ends on the list's content edge — the
+              same x the toolbar row's last control ends on above it — and its
+              ink sits 4px inside it (`pr-1`), which is the inset a session
+              row's `⋯` / roster chevron uses. So the drawer's right column is
+              one line of INK, not just one line of boxes: measured before, the
+              folder chevron's ink ran 6px further right than every row glyph
+              beneath it. */}
+          <span className="flex items-center justify-center pr-1">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
           </>
           )}
         </div>
       </div>
 
       {listOpen && (
-        <div className="mt-0.5 space-y-0.5 pl-2">
+        <div className="mt-0.5 space-y-0.5">
           {visibleSessions.map((session) => {
             const sessionKey = String(session.id);
             const isSessionActive = String(activeSessionId) === sessionKey;
@@ -292,42 +302,13 @@ export function MobileSessionCategory({
             );
           })}
 
-          {/* Reveal / collapse controls, one row — parity with the desktop
-              category. Same window, so the phone cannot offer a different
-              boundary than the sidebar. */}
-          {(hiddenCount > 0 || canShowLess) && !sessionCheckboxes && (
-            <div className="flex items-center gap-1">
-              {hiddenCount > 0 && (
-                <button
-                  type="button"
-                  onClick={showMore}
-                  className="flex items-center min-w-0 text-left pl-2 pr-3 py-2 text-xs text-ink/60 hover:text-ink"
-                >
-                  {/* `pl-2` inside the `pl-2` list is what lands this chevron's
-                      centre on the folder header's icon column (16px + 8px), and
-                      the label then starts at 40px — the x a row's title occupies
-                      (16px slot + 8px gap). The `space-x-1.5` this replaced put
-                      both 4px left of the list they belong to. */}
-                  <span className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
-                    <ChevronDown size={12} />
-                  </span>
-                  <span className="w-2 shrink-0" />
-                  <span className="truncate">Show more sessions ({hiddenCount})</span>
-                </button>
-              )}
+          <SessionRevealRow
+            hiddenCount={sessionCheckboxes ? 0 : hiddenCount}
+            canShowLess={!sessionCheckboxes && canShowLess}
+            onShowMore={showMore}
+            onShowLess={showLess}
+          />
 
-              {canShowLess && (
-                <button
-                  type="button"
-                  onClick={showLess}
-                  className="ml-auto shrink-0 flex items-center gap-1 text-xs text-ink/60 hover:text-ink px-3 py-2"
-                >
-                  <ChevronUp size={12} />
-                  <span className="truncate">Show less</span>
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
 
