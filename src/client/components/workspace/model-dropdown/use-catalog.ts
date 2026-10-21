@@ -12,8 +12,14 @@ function toOption(m: ModelEntry): AIModelOption {
   const cost = m.cost;
   return {
     id: m.id,
-    name: m.name,
-    provider: m.provider,
+    name: m.name || m.id,
+    // A row without a provider still has to render. `/api/models` is read from
+    // omp's registry, and a partial entry (a custom provider whose `provider`
+    // field never landed) used to crash the whole picker — `buildPickerGroups`
+    // upper-cased `undefined` and the composer's model pill took the chat input
+    // down with it. `unknown` keeps the row visible and gives it a stable
+    // section instead of dropping a model the user may have selected.
+    provider: m.provider || 'unknown',
     contextWindow: m.contextWindow,
     thinkingLevel: ladder[0] ?? 'off',
     thinkingLevels: ladder,

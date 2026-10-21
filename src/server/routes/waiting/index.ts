@@ -18,6 +18,7 @@
  * client that did not.
  */
 
+import { isAbsolute } from 'path';
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
@@ -67,7 +68,11 @@ async function createPrompt(request: Request) {
     return json({ error: 'The prompt is empty', code: 'prompt_required' }, { status: 400 });
   }
   const cwd = typeof body.cwd === 'string' ? body.cwd.trim() : '';
-  if (!cwd.startsWith('/')) {
+  // `isAbsolute`, not `startsWith('/')`: a Windows workspace names its directory
+  // `C:\…`, and the POSIX-only test refused every hold there with
+  // `cwd_required` — the prompt was sent immediately instead of being held
+  // (measured on the Windows CI leg of `waiting-prompt.e2e.ts`).
+  if (!isAbsolute(cwd)) {
     return json({ error: 'An absolute working directory is required', code: 'cwd_required' }, { status: 400 });
   }
   if (await isDependencySettled(dependsOn)) {

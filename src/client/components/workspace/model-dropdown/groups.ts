@@ -75,7 +75,13 @@ export function buildPickerGroups(
 
   const byProvider: Record<string, AIModelOption[]> = {};
   for (const model of filtered) {
-    const provider = model.provider.toUpperCase();
+    // `String(…)` rather than a bare call: this is the composer's picker, and a
+    // row whose provider never landed must not take the chat input down. Rows
+    // that reach here from `/api/models` are normalized in `toOption`; this is
+    // the guard for every other caller (a plugin panel, a stored snapshot).
+    // An EMPTY string is the same problem as a missing one — it would render a
+    // heading with no name — so both land in `unknown`.
+    const provider = String(model.provider || 'unknown').toUpperCase();
     (byProvider[provider] ??= []).push(model);
   }
 

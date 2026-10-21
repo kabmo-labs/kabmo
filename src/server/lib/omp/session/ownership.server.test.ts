@@ -22,7 +22,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { testPosix } from '@/test-support/platform';
@@ -39,6 +39,7 @@ import { getRpcSession, startRpcSession } from '@/server/lib/omp/rpc/session-reg
 import { removeDir } from '@/test-support/remove-dir';
 
 let root: string;
+let holderLog = '';
 let savedXdg: string | undefined;
 let savedDbPath: string | undefined;
 let savedAgentDir: string | undefined;
@@ -89,7 +90,12 @@ async function holdLeaseInChild(sessionId: string): Promise<number> {
   // The background process must NOT inherit the wrapper's stdout pipe, or
   // reading `$!` would block until that process exits.
   const inner = `exec ${JSON.stringify(process.execPath)} -e ${shellQuote(script)} ${shellQuote(lease)}`;
-  const child = Bun.spawn(['sh', '-c', `{ ${inner} >/dev/null 2>&1 & } ; echo $!`], {
+  // The holder's stderr goes to a FILE, not to `ignore`: when the child fails
+  // to take the lock (a missing libc, a broken FFI bind, a Bun that could not
+  // start), the reason is the only useful evidence, and discarding it is what
+  // made the Linux CI failure a bare "expected promise that rejects".
+  holderLog = join(root, 'holder.log');
+  const child = Bun.spawn(['sh', '-c', `{ ${inner} >>${shellQuote(holderLog)} 2>&1 & } ; echo $!`], {
     stdout: 'pipe',
     stderr: 'ignore',
     env: { ...Bun.env, XDG_STATE_HOME: root, PI_CODING_AGENT_DIR: join(root, 'agent') },
@@ -104,10 +110,45 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-/** Wait until a process other than this one actually holds the lease. */
+/**
+ * How long a detached `sh -c` holder gets to take the lock.
+ *
+ * Polling real time is unavoidable here: the condition is an OS `flock` taken
+ * by ANOTHER process, which no fake timer can advance. The budget is generous
+ * on purpose — a cold CI runner spawns Bun and imports the FFI helper before it
+ * locks — and a miss is an ERROR, never a silent proceed.
+ */
+const FOREIGN_HOLDER_TIMEOUT_MS = 15_000;
+
+/**
+ * Wait until a process other than this one actually holds the lease.
+ *
+ * THROWS rather than returning on timeout. It used to give up silently after
+ * 3 s, which turned an infrastructure gap into a green-looking test that proved
+ * nothing: `startRpcSession` then found no foreign owner, spawned normally, and
+ * the assertion below failed with "Expected promise that rejects" — measured on
+ * the Linux CI leg, where the helper burned its whole budget (3075 ms) and the
+ * real reason (the detached holder never took the lock) was nowhere in the
+ * output. A slow cold runner is a reason to wait longer, never to proceed.
+ */
 async function waitForForeignHolder(leasePath: string): Promise<void> {
-  for (let attempt = 0; attempt < 300; attempt++) {
+  const deadline = Date.now() + FOREIGN_HOLDER_TIMEOUT_MS;
+  for (;;) {
     if (leaseHeldByAnother(leasePath) === true && fileHolderPid(leasePath) !== process.pid) return;
+    if (Date.now() >= deadline) {
+      const holder = fileHolderPid(leasePath);
+      let log = '';
+      try {
+        log = readFileSync(holderLog, 'utf8').trim();
+      } catch {
+        // The child never wrote anything: it did not start.
+      }
+      throw new Error(
+        `no foreign holder took ${leasePath} within ${FOREIGN_HOLDER_TIMEOUT_MS} ms ` +
+          `(held=${String(leaseHeldByAnother(leasePath))}, holderPid=${String(holder)}, ` +
+          `childPids=${JSON.stringify(children)})${log ? `\nholder log:\n${log}` : '\nholder log: (empty)'}`,
+      );
+    }
     await Bun.sleep(10);
   }
 }
