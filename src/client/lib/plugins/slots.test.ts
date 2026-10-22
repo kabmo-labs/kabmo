@@ -19,6 +19,7 @@ import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
 import {
   failPluginBundle,
   headerDropdownOf,
+  headerOpensPanelOf,
   headerTriggerOf,
   panelOf,
   pluginSlotState,
@@ -78,6 +79,59 @@ describe('registerPluginBundle', () => {
     const slots = pluginSlotState().slots.get('demo')!;
     expect(headerTriggerOf(slots)).toBe(Noop);
     expect(headerDropdownOf(slots)).toBeUndefined();
+  });
+
+  test('an opensPanel header keeps the slot it opens, and no dropdown', () => {
+    // The navbar resolves this to `plugin:<id>:<slot>` and the layout decides
+    // the COLUMN, so the store has to carry the slot and nothing else.
+    registerPluginBundle('demo', {
+      default: definePluginApp((app) => {
+        app.rightPanel({ id: 'r', component: Noop });
+        app.headerPanel({ id: 'h', component: Noop, opensPanel: 'rightPanel' });
+      }),
+    });
+
+    const slots = pluginSlotState().slots.get('demo')!;
+    expect(headerOpensPanelOf(slots)).toBe('rightPanel');
+    expect(headerDropdownOf(slots)).toBeUndefined();
+  });
+
+  test('a header may not declare both a dropdown and opensPanel', () => {
+    // One click cannot open two things. Refused at registration rather than
+    // drawing a button that silently does one of them.
+    registerPluginBundle('demo', {
+      default: definePluginApp((app) =>
+        app.headerPanel({ id: 'h', component: Noop, opensPanel: 'panel', dropdown: { component: Noop } }),
+      ),
+    });
+
+    const failure = pluginSlotState().failures.find((entry) => entry.pluginId === 'demo');
+    expect(failure?.reason).toContain('both a dropdown and opensPanel');
+    expect(pluginSlotState().slots.has('demo')).toBe(false);
+  });
+
+  test('an opensPanel naming a panel the plugin never registered is refused', () => {
+    // A header that opens a panel this bundle did not contribute is a click
+    // with nothing behind it, so the registration is refused by name.
+    registerPluginBundle('demo', {
+      default: definePluginApp((app) => app.headerPanel({ id: 'h', component: Noop, opensPanel: 'panel' })),
+    });
+
+    const failure = pluginSlotState().failures.find((entry) => entry.pluginId === 'demo');
+    expect(failure?.reason).toContain('names a panel this plugin did not register');
+    expect(pluginSlotState().slots.has('demo')).toBe(false);
+  });
+
+  test('the panel may be registered AFTER the header that opens it', () => {
+    registerPluginBundle('demo', {
+      default: definePluginApp((app) => {
+        app.headerPanel({ id: 'h', component: Noop, opensPanel: 'rightPanel' });
+        app.rightPanel({ id: 'r', component: Noop });
+      }),
+    });
+
+    expect(pluginSlotState().failures).toEqual([]);
+    expect(headerOpensPanelOf(pluginSlotState().slots.get('demo')!)).toBe('rightPanel');
   });
 
   test('refuses a second registration in the same slot, with the slot named', () => {

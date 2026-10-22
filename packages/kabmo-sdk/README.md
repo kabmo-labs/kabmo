@@ -78,12 +78,31 @@ nothing. `isPluginAppDefinition` is the check the host applies.
 |---|---|---|
 | `app.rightPanel({ id, title?, component, minWidth?, defaultFraction? })` | The right panel's body, behind an activity-bar button. | `{ sessionId, workspacePath }` |
 | `app.panel({ … })` | The editor column, taken over whole — no tabs, no file tree, no chrome. | `{ sessionId, workspacePath }` |
-| `app.headerPanel({ id, title?, component, dropdown? })` | The navbar, on both layouts. Without `dropdown` the trigger is inert text, not a button. | `{ sessionId, workspacePath }` |
+| `app.headerPanel({ id, title?, component, dropdown?, opensPanel? })` | The navbar, on both layouts. Without `dropdown` or `opensPanel` the trigger is inert text, not a button. | `{ sessionId, workspacePath }` |
 | `app.settingsSection({ id, title?, component })` | A block in Settings → Panel Plugins. | `{ pluginId }` |
 
 A second registration for the same positional slot **throws**: the layout gives
 a plugin one button, one navbar entry and one column, so a second one would be
 unreachable and a quiet overwrite would hide a broken plugin.
+
+**`opensPanel` turns a header trigger into an action.** It names a SLOT
+(`'rightPanel'` or `'panel'`), and the host opens that registration's panel
+**wherever the user placed it** — the left dock, the right column, the editor
+column, or the phone drawer that holds it. A plugin never names a column, so a
+user who moved the panel does not break the readout. It cannot be combined with
+`dropdown` (one click opens one thing), and naming a panel the plugin did not
+register is refused at registration:
+
+```tsx
+app.rightPanel({ id: 'stats', title: 'Resources', component: StatsPanel });
+app.headerPanel({ id: 'resources', title: 'Stats', component: StatsReadout, opensPanel: 'rightPanel' });
+```
+
+On a phone too narrow to hold the entry beside the session title, an
+`opensPanel` trigger moves into the header's `⋯` menu — the same action, one
+click away — rather than shrinking or being dropped. A `dropdown` or a static
+readout never folds: the first needs its trigger's anchor, the second has no
+action to move.
 
 `minWidth` (px, never below 320) and `defaultFraction` (clamped to 0.2–0.9)
 size a panel. Absent means the host's default.

@@ -65,6 +65,17 @@ export interface PluginSlots {
    * dropdown is a static readout rather than a broken button.
    */
   headerDropdown?: unknown;
+  /**
+   * The panel a header trigger OPENS, when it declared `opensPanel`.
+   *
+   * Held here rather than on `components` for the same reason the dropdown is:
+   * it is a property of the header registration, and the surface that draws the
+   * button (the navbar) is not the surface that draws the panel. The host
+   * resolves it to `plugin:<id>:<slot>` at the moment of the click, so the
+   * placement rules (left dock, right column, editor column, phone drawer) all
+   * apply exactly as they do for the activity bar's own button.
+   */
+  headerOpensPanel?: 'rightPanel' | 'panel';
 }
 
 /** One plugin's bundle could not be loaded, or refused to register. */
@@ -119,6 +130,11 @@ export function headerDropdownOf(slots: PluginSlots): ComponentType<HeaderDropdo
   return slots.headerDropdown as ComponentType<HeaderDropdownProps> | undefined;
 }
 
+/** The panel a header trigger opens, when it declared `opensPanel`. */
+export function headerOpensPanelOf(slots: PluginSlots): 'rightPanel' | 'panel' | undefined {
+  return slots.headerOpensPanel;
+}
+
 export function settingsSectionOf(slots: PluginSlots): ComponentType<SettingsSectionProps> | undefined {
   return slots.components.settingsSection as ComponentType<SettingsSectionProps> | undefined;
 }
@@ -142,6 +158,7 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
   const titles: PluginSlots['titles'] = {};
   const sizing: PluginSlots['sizing'] = {};
   let headerDropdown: unknown;
+  let headerOpensPanel: 'rightPanel' | 'panel' | undefined;
 
   // A bundle re-imported under a new URL (a rebuild) registers AGAIN, and the
   // list slots refuse a duplicate id — so the previous rows go first. Doing it
@@ -171,9 +188,15 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
       register('rightPanel', component, id, title, { minWidth, defaultFraction }),
     panel: ({ id, title, component, minWidth, defaultFraction }) =>
       register('panel', component, id, title, { minWidth, defaultFraction }),
-    headerPanel: ({ id, title, component, dropdown }) => {
+    headerPanel: ({ id, title, component, dropdown, opensPanel }) => {
       register('headerPanel', component, id, title);
+      if (dropdown && opensPanel) {
+        throw new Error(
+          `headerPanel "${id}" declares both a dropdown and opensPanel — a trigger has one click, so it can open one of them`,
+        );
+      }
       if (dropdown) headerDropdown = dropdown.component;
+      if (opensPanel) headerOpensPanel = opensPanel;
     },
     settingsSection: ({ id, title, component }) => register('settingsSection', component, id, title),
     // The list slots: each is a keyed registration that RETURNS its own
@@ -205,6 +228,18 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
     return;
   }
 
+  // Checked AFTER `setup`, because a plugin may register the header before the
+  // panel it names. A button that opens a panel this bundle never contributed
+  // is a click with nothing behind it, so it is refused by name rather than
+  // drawn.
+  if (headerOpensPanel && !components[headerOpensPanel]) {
+    failPluginBundle(
+      pluginId,
+      `headerPanel opensPanel "${headerOpensPanel}" names a panel this plugin did not register`,
+    );
+    return;
+  }
+
   const slots = new Map(state.slots);
   slots.set(pluginId, {
     pluginId,
@@ -212,6 +247,7 @@ export function registerPluginBundle(pluginId: string, module: unknown): void {
     titles,
     sizing,
     ...(headerDropdown ? { headerDropdown } : {}),
+    ...(headerOpensPanel ? { headerOpensPanel } : {}),
   });
   publish({ slots, failures: state.failures.filter((entry) => entry.pluginId !== pluginId) });
 }

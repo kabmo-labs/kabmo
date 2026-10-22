@@ -1,7 +1,29 @@
 # Stats
 
 A right-panel view of what the omp stack actually consumes — CPU and RAM, per
-process, across Kabmo and everything it spawned.
+process, across Kabmo and everything it spawned — plus a navbar readout of the
+same two figures.
+
+## The navbar readout
+
+Two columns in the header, on both layouts:
+
+```
+CPU   RAM
+18%   2.5G
+```
+
+It is the same measurement as the panel's totals, spelled for a header (one
+character of unit, one decimal past megabytes). Clicking it opens the panel —
+wherever the panel lives, which is the user's placement: the right column, the
+left dock, or the phone drawer that holds it. On a phone narrower than 430px the
+entry moves into the header's `⋯` menu rather than crowding the session title.
+
+The readout arms the sampler while it is on screen and releases it on unmount or
+while the tab is hidden, so a figure nobody is looking at costs nothing. Before
+the first sample both columns read `—`; the first sample has no CPU rate (a rate
+needs two readings), and a platform with no probe reports `—` in both rather
+than printing zeros as measurements.
 
 ## What it shows
 
@@ -60,9 +82,9 @@ A process that appeared since the last sample shows `—` too, for the same reas
 
 ## Sampling only while you are looking
 
-The server half samples **only while a Stats panel is open**. Opening the panel
-arms the loop; closing it disarms it. Nothing walks the process table in the
-background.
+The server half samples **only while a Stats panel — or the navbar readout — is
+on screen**. Opening either arms the loop; closing it disarms it. Nothing walks
+the process table in the background, and a hidden tab releases its watch.
 
 ## Auto-refresh, and the Refresh button
 

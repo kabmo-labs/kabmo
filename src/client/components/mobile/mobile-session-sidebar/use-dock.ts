@@ -25,7 +25,7 @@ import type { PanelBodyProps } from '@/client/components/workspace/panels/builti
 import { usePanelCatalog, useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
 import type { ResolvedPanel } from '@/client/components/workspace/plugin-panel/catalog';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
-import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { useSharedSessionState } from '@/client/hooks/workspace/session-state';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 
 export interface MobileDockState {
@@ -43,7 +43,11 @@ export interface MobileDockState {
 export function useMobileDock(): MobileDockState {
   const dock = useLeftDock();
   const catalog = usePanelCatalog('left');
-  const [stored, setStored] = useSessionState<string>('layout.mobileLeftPanel', SESSIONS_VIEW_ID);
+  // SHARED, not private: the navbar's own readout can ask for this view, and
+  // the write it makes is a different component's. A private copy would keep
+  // the selection it read at mount and the drawer would open on the old view —
+  // the same rule `useResolvedRepo` follows for a value a second surface moves.
+  const [stored, setStored] = useSharedSessionState<string>('layout.mobileLeftPanel', SESSIONS_VIEW_ID);
   const activeView = useLeftDockView(stored, dock.enabled);
 
   return {

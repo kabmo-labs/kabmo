@@ -4,6 +4,7 @@ import { ReloadPageButton } from '@/client/components/common/ReloadPageButton';
 import { SignOutButton } from '@/client/components/common/SignOutButton';
 import { ContextUsageButton } from '@/client/components/common/context-usage-button';
 import { HeaderPanelButtons } from '@/client/components/common/header-panel-buttons';
+import { useHeaderEntries } from '@/client/components/common/header-panel-buttons/entries';
 import { HeaderMoreMenu } from '@/client/components/common/header-controls/MoreMenu';
 import { useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
 import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
@@ -104,11 +105,15 @@ export function HeaderControls({
   const wideEnoughForAll = layout === 'desktop' || wideRow;
   // A phone folds the two rare controls only while the row cannot hold them.
   const folded = layout === 'mobile' && !wideEnoughForAll;
+  // ONE resolution of what the plugin entries do, because two surfaces draw it:
+  // the row (inline) and the `⋯` menu (folded). Asking twice would be two media
+  // queries deciding one row, and the two halves could disagree mid-resize.
+  const headerEntries = useHeaderEntries(layout);
 
   return (
     <div className="flex items-center space-x-1">
       {layout === 'desktop' && <PWAInstallButton />}
-      <HeaderPanelButtons layout={layout} />
+      <HeaderPanelButtons layout={layout} entries={headerEntries.inline} />
       {/* The cluster's ORDER is fixed; what changes on a narrow phone is that
           reload and sign-out move behind `⋯`, which sits in the slot they
           left. Nothing is hidden at a width that can hold it: measured, the
@@ -150,7 +155,9 @@ export function HeaderControls({
           {showRightPanel ? <PanelRightClose size={size} /> : <PanelRight size={size} />}
         </button>
       )}
-      {folded && <HeaderMoreMenu />}
+      {(folded || headerEntries.folded.length > 0) && (
+        <HeaderMoreMenu entries={headerEntries.folded} />
+      )}
       {layout === 'desktop' && onSwitchToMobile && (
         <button
           type="button"

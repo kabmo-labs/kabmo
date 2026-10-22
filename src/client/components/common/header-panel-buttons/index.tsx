@@ -1,20 +1,14 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { ComponentType } from 'preact';
-import type { HeaderDropdownProps, HeaderTriggerProps } from '@kabmo-labs/kabmo-sdk/app';
-import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-registry';
-import { headerDropdownOf, headerTriggerOf } from '@/client/lib/plugins/slots';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
+import { requestOpenPanel } from '@/shared/lib/workspace/panel-open';
+import {
+  MOBILE_HEADER_ENTRY_MAX_PX,
+  type HeaderEntry,
+} from '@/client/components/common/header-panel-buttons/entries';
 
-interface HeaderEntry {
-  pluginId: string;
-  title: string;
-  /** What the navbar entry reads. */
-  Trigger: ComponentType<HeaderTriggerProps>;
-  /** What opening it shows, when the plugin declared one. */
-  Dropdown?: ComponentType<HeaderDropdownProps>;
-}
+export { MOBILE_HEADER_ACTION_PX, useHeaderEntries, type HeaderEntry } from '@/client/components/common/header-panel-buttons/entries';
 
 /**
  * The navbar entries a plugin's `header` panel contributes — on BOTH layouts.
@@ -37,39 +31,39 @@ interface HeaderEntry {
  * row) and the second would cover the first, so the open one is held here as one
  * id rather than as a flag per entry.
  */
-export function HeaderPanelButtons({ layout = 'desktop' }: { layout?: 'desktop' | 'mobile' }) {
-  const { panels } = usePanelRegistry();
-  const { slots } = usePanelSlots();
+export function HeaderPanelButtons({
+  layout = 'desktop',
+  entries,
+}: {
+  layout?: 'desktop' | 'mobile';
+  /**
+   * What stands in the row, already resolved.
+   *
+   * The header resolves the split ONCE (`useHeaderEntries`) because the `⋯`
+   * menu draws the other half of the same answer — resolving here as well would
+   * be two media queries and two registry reads deciding one row.
+   */
+  entries: HeaderEntry[];
+}) {
+  const inline = entries;
   const { sessionId } = useSessionStateContext();
   const [openKey, setOpenKey] = useState<string | null>(null);
-
-  const entries: HeaderEntry[] = [];
-  for (const panel of panels) {
-    const entry = slots.get(panel.pluginId);
-    const Trigger = entry ? headerTriggerOf(entry) : undefined;
-    // A plugin whose bundle has not loaded yet has no component; it appears
-    // once the import settles rather than as an empty entry now.
-    if (!Trigger) continue;
-    const Dropdown = entry ? headerDropdownOf(entry) : undefined;
-    entries.push({
-      pluginId: panel.pluginId,
-      title: entry?.titles.headerPanel ?? panel.name,
-      Trigger,
-      ...(Dropdown ? { Dropdown } : {}),
-    });
-  }
 
   // A plugin that is uninstalled or switched off while its dropdown is open
   // would leave an empty box on screen; closing is the honest answer.
   useEffect(() => {
-    if (openKey && !entries.some((entry) => entry.pluginId === openKey)) setOpenKey(null);
-  }, [openKey, entries]);
+    if (openKey && !inline.some((entry) => entry.pluginId === openKey)) setOpenKey(null);
+  }, [openKey, inline]);
 
-  if (entries.length === 0) return null;
+  // An entry the row could not hold is NOT lost: it is a row of the `⋯` menu,
+  // which `HeaderControls` draws from the same resolver. This component draws
+  // only what stands in the row, so nothing here reserves space for a control
+  // that moved.
+  if (inline.length === 0) return null;
 
   return (
     <div className="flex items-center space-x-1">
-      {entries.map((entry) => (
+      {inline.map((entry) => (
         <HeaderPanelEntry
           key={entry.pluginId}
           entry={entry}
@@ -123,6 +117,48 @@ function HeaderPanelEntry({ entry, layout, sessionId, open, onToggle, onClose }:
     </PluginIdProvider>
   );
 
+  const triggerClass = layout === 'mobile'
+    ? 'flex items-center gap-1 w-8 h-8 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer'
+    : 'flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer';
+  /**
+   * An ACTION entry's hit area grows with its readout.
+   *
+   * The fixed 32px square is right for an icon and wrong for two columns of
+   * numbers: measured on a 390px phone, the readout inside `w-8 h-8` reported
+   * `scrollWidth > clientWidth`, so `1.4G` was clipped by the button that was
+   * supposed to present it. The height stays 32px (the phone's tool row) and
+   * the width comes from the content, with padding as the only host-imposed
+   * number.
+   */
+  const actionClass = layout === 'mobile'
+    ? 'flex items-center gap-1 h-8 px-1.5 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer'
+    : 'flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer';
+
+  // An ACTION entry: the readout is a button that asks the layout to show the
+  // plugin's own panel. The event carries the panel key and nothing else —
+  // where that panel lives (left dock, right column, editor column, a phone
+  // drawer) is the layout's answer, because it is the user's placement.
+  if (entry.opensPanelKey) {
+    const panelKey = entry.opensPanelKey;
+    return (
+      <button
+        type="button"
+        onClick={() => requestOpenPanel(panelKey)}
+        className={`${actionClass} ${open ? 'text-ink' : 'text-ink/70 hover:text-ink'}`}
+        // A plugin owns its trigger's markup, so the row needs a ceiling: a
+        // readout that grew without one would push the session title and the
+        // controls beside it out of a phone header. The cap is generous for a
+        // two-column readout and clips anything past it rather than letting the
+        // row overflow.
+        style={layout === 'mobile' ? { maxWidth: `${MOBILE_HEADER_ENTRY_MAX_PX}px` } : undefined}
+        title={entry.title}
+        aria-label={entry.title}
+      >
+        {trigger}
+      </button>
+    );
+  }
+
   if (!entry.Dropdown) {
     return (
       <div className="flex items-center px-1.5 text-ink/70" title={entry.title}>
@@ -144,9 +180,6 @@ function HeaderPanelEntry({ entry, layout, sessionId, open, onToggle, onClose }:
         right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
       }
     : undefined;
-  const triggerClass = layout === 'mobile'
-    ? 'flex items-center gap-1 w-8 h-8 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer'
-    : 'flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer';
 
   return (
     <div className="relative" ref={ref}>

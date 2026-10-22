@@ -31,11 +31,22 @@ import { Ellipsis, Lock, LockOpen, RefreshCw } from 'lucide-preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { logout, useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
+import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
+import { requestOpenPanel } from '@/shared/lib/workspace/panel-open';
+import type { HeaderEntry } from '@/client/components/common/header-panel-buttons/entries';
 
 const ROW_CLASS =
   'w-full text-left px-3 py-2 flex items-center gap-2 transition-colors text-ink/75 hover:bg-ink/5 hover:text-ink cursor-pointer';
 
-export function HeaderMoreMenu() {
+/**
+ * `entries` are the plugin header entries the row could not hold.
+ *
+ * They are ACTION entries only — a dropdown needs its trigger's anchor and a
+ * static readout has no action, so neither can become a menu row. Here the
+ * action is the same one the row would have performed: the panel key travels on
+ * the same event, and the layout opens it wherever the user placed it.
+ */
+export function HeaderMoreMenu({ entries = [] }: { entries?: HeaderEntry[] }) {
   const authEnabled = useAuthEnabled();
   const authState = useAuthState();
   const [open, setOpen] = useState(false);
@@ -114,6 +125,32 @@ export function HeaderMoreMenu() {
             <RefreshCw size={14} />
             <span>Reload page</span>
           </button>
+
+          {entries.map((entry) => (
+            <button
+              key={entry.pluginId}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                if (entry.opensPanelKey) requestOpenPanel(entry.opensPanelKey);
+              }}
+              className={ROW_CLASS}
+              // The row IS the plugin's readout — naming it twice (a label plus
+              // the same figures) was what the first cut rendered. The title is
+              // the accessible name and the tooltip, exactly as it is on the
+              // button this row stands in for.
+              title={entry.title}
+              aria-label={entry.title}
+            >
+              {/* Scoped to its plugin: `useRpc` and `useRealtime` read the id
+                  from this provider, so without it a folded entry would render
+                  a dash over a live figure. */}
+              <PluginIdProvider pluginId={entry.pluginId}>
+                <entry.Trigger sessionId={null} workspacePath={null} />
+              </PluginIdProvider>
+            </button>
+          ))}
 
           {canSignOut && (
             <button

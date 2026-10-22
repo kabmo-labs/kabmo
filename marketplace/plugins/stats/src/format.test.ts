@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { formatAge, formatBytes, formatPercent } from './format';
+import { formatAge, formatBytes, formatCompactBytes, formatCompactPercent, formatPercent } from './format';
 import { procProbe } from './proc';
 import { readDaemonRegistry } from './daemons';
 
@@ -121,5 +121,31 @@ describe('procProbe against this machine', () => {
       expect(typeof daemon.name).toBe('string');
       expect(Number.isInteger(daemon.pid)).toBe(true);
     }
+  });
+});
+
+describe('formatCompactBytes', () => {
+  test('one character of unit, one decimal past megabytes', () => {
+    expect(formatCompactBytes(0)).toBe('0B');
+    expect(formatCompactBytes(512)).toBe('512B');
+    expect(formatCompactBytes(2048)).toBe('2K');
+    expect(formatCompactBytes(512 * 1024 ** 2)).toBe('512M');
+    expect(formatCompactBytes(2.5 * 1024 ** 3)).toBe('2.5G');
+    expect(formatCompactBytes(3 * 1024 ** 3)).toBe('3G');
+  });
+
+  test('a sub-megabyte figure never rounds to 0M', () => {
+    // The failure this pins: a header reading `0M` looks like "this stack uses
+    // nothing", which is the opposite of what a 410 KB figure means.
+    expect(formatCompactBytes(0.4 * 1024 ** 2)).toBe('410K');
+  });
+});
+
+describe('formatCompactPercent', () => {
+  test('whole percent, and a dash for no measurement', () => {
+    expect(formatCompactPercent(null)).toBe('—');
+    expect(formatCompactPercent(0)).toBe('0%');
+    expect(formatCompactPercent(18.4)).toBe('18%');
+    expect(formatCompactPercent(140.2)).toBe('140%');
   });
 });

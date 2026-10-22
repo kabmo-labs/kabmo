@@ -16,6 +16,7 @@ import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { MIN_LEFT_PANEL_WIDTH } from '@/shared/lib/workspace/sidebar-width';
 import { MIN_LEFT_DOCK_PLUGIN_WIDTH } from '@/shared/lib/workspace/left-dock-width';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
+import { useOpenPanelRequest } from '@/client/hooks/workspace/open-panel';
 import { useLeftDock, useLeftDockWidth } from '@/client/hooks/workspace/left-dock';
 import { useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
 import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
@@ -196,6 +197,26 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   const handleToggleLeftPanel = (show: boolean) => setShowLeftPanel(show);
   const handleToggleRightPanel = () => setShowRightPanel(!showRightPanel);
   const handleToggleEditor = () => setUserToggledEditor(!showEditor);
+
+  // A panel asked to be shown from somewhere that is not its own rail — a
+  // plugin's navbar readout (`app.headerPanel({ opensPanel })`). Where it lives
+  // is the USER's placement, so the handler resolves the column from the dock
+  // state and opens it; see `useOpenPanelRequest`.
+  useOpenPanelRequest({
+    dock,
+    onLeft: (panelKey) => {
+      setActiveLeftView(panelKey);
+      setShowLeftPanel(true);
+    },
+    onEditor: (panelKey) => {
+      setActiveEditorPanelKey(panelKey);
+      setUserToggledEditor(true);
+    },
+    onRight: (panelKey) => {
+      setActiveRightPanel(panelKey);
+      setShowRightPanel(true);
+    },
+  });
 
   return (
     <div

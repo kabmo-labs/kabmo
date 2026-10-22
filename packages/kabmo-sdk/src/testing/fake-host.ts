@@ -115,6 +115,8 @@ export interface FakeRegistrations extends FakeListRegistrations {
   settingsSection?: SettingsSectionRegistration;
   /** The header's dropdown component, when the registration declared one. */
   headerDropdown?: ComponentType<HeaderDropdownProps>;
+  /** The panel a header trigger opens, when the registration declared one. */
+  headerOpensPanel?: 'rightPanel' | 'panel';
   /** Titles the bundle declared, for a tooltip or a tab label. */
   titles: Partial<Record<SlotName, string>>;
   /** Sizing the bundle declared for its panels, where it declared any. */
@@ -205,11 +207,17 @@ function createRegistrar(pluginId: string, registrations: () => FakeRegistration
     // The dropdown is part of the header registration but not a slot of its
     // own, exactly as the host holds it: a header without one is a static
     // readout rather than a button that opens nothing.
-    headerPanel: ({ dropdown, ...registration }) => {
+    headerPanel: ({ dropdown, opensPanel, ...registration }) => {
       validate('headerPanel', registration);
+      if (dropdown && opensPanel) {
+        throw new Error(
+          `headerPanel "${registration.id}" declares both a dropdown and opensPanel — a trigger has one click, so it can open one of them`,
+        );
+      }
       const state = registrations();
       state.headerPanel = registration;
       if (dropdown) state.headerDropdown = dropdown.component;
+      if (opensPanel) state.headerOpensPanel = opensPanel;
     },
     settingsSection: (registration) => {
       validate('settingsSection', registration);
@@ -257,6 +265,14 @@ export function createFakeKabmoHost(options: FakeKabmoHostOptions): FakeKabmoHos
         definition.setup(createRegistrar(pluginId, () => next));
       } catch (error) {
         record(error instanceof Error ? error.message : String(error));
+        return false;
+      }
+      // After `setup`, because a plugin may register its header before the
+      // panel it names. A button opening a panel this bundle never contributed
+      // is a click with nothing behind it.
+      const opens = next.headerOpensPanel;
+      if (opens && !next[opens]) {
+        record(`headerPanel opensPanel "${opens}" names a panel this plugin did not register`);
         return false;
       }
       registrations = next;

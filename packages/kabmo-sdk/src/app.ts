@@ -108,6 +108,20 @@ export interface PanelRegistration extends SlotRegistration, PanelSizing {
 export interface HeaderPanelRegistration extends SlotRegistration {
   component: ComponentType<HeaderTriggerProps>;
   dropdown?: { component: ComponentType<HeaderDropdownProps> };
+  /**
+   * Make the trigger an ACTION that opens one of this plugin's own panels.
+   *
+   * The value names the SLOT, not a column: `'rightPanel'` opens what
+   * `app.rightPanel(...)` registered, `'panel'` what `app.panel(...)` did. The
+   * host resolves it to that panel's instance key (`plugin:<id>:<slot>`) and
+   * opens it WHERE THE USER PLACED IT — the left dock, the right column, the
+   * editor column, or the phone drawer that holds it. A plugin therefore never
+   * names a column, and a user who moved the panel did not break the readout.
+   *
+   * Without it the trigger stays what it always was: inert text when there is
+   * no `dropdown`, a dropdown button when there is.
+   */
+  opensPanel?: 'rightPanel' | 'panel';
 }
 
 export interface SettingsSectionRegistration extends SlotRegistration {

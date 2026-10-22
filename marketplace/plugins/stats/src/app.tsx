@@ -33,6 +33,7 @@ import { Empty, Note, Panel } from '@kabmo-labs/kabmo-ui/components';
 import { ProcessTable } from './ProcessTable';
 import { Sparkline } from './Sparkline';
 import { MachineFacts, TotalsBar } from './TotalsBar';
+import { StatsHeaderReadout } from './HeaderReadout';
 import { formatAge, formatBytes, formatPercent } from './format';
 import type { StatsSnapshot } from './sampler';
 
@@ -179,5 +180,15 @@ export default definePluginApp((app) => {
     // Telemetry tables need room before they wrap — the same floor the
     // Kabmo's own Context view takes.
     minWidth: 420,
+  });
+  // The navbar readout: CPU and RAM in two columns, and a click that opens the
+  // panel above. `opensPanel` names the SLOT, not a column — the host resolves
+  // it to this plugin's `rightPanel` instance and shows it wherever the user
+  // placed it (left dock, right column, or the phone drawer that holds it).
+  app.headerPanel({
+    id: 'resources',
+    title: 'Stats — CPU & RAM',
+    component: StatsHeaderReadout,
+    opensPanel: 'rightPanel',
   });
 });

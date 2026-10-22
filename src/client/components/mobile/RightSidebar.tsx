@@ -4,7 +4,7 @@ import { usePanelCatalog, type PanelBodyProps } from '@/client/components/worksp
 import { PanelHostProvider } from '@kabmo-labs/kabmo-ui';
 import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useResolvedRepo } from '@/client/hooks/workspace/repo-scope';
-import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { useSharedSessionState } from '@/client/hooks/workspace/session-state';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
@@ -45,7 +45,7 @@ export function MobileRightSidebar({
   // back on the Search view re-ran a query that can hold thousands of hits, and
   // the user never asked for a search. Restoring the tab they left also keeps
   // the phone and the desktop on the same view.
-  const [activeTab, setActiveTab] = useSessionState<string>('layout.mobileRightPanel', 'files');
+  const [activeTab, setActiveTab] = useSharedSessionState<string>('layout.mobileRightPanel', 'files');
   // ONE catalog, the same one the desktop bars read, and deliberately `all`:
   // a phone has ONE drawer, so a plugin panel the user placed on the left must
   // stay reachable here — reading only the right column would make placing a

@@ -492,7 +492,7 @@ module error.
 |---|---|---|
 | `app.rightPanel({ id, title, component, minWidth?, defaultFraction? })` | A button in a panel activity bar; the view opens in that panel. The RIGHT column unless the user places it on the left dock (`Settings → Panel Plugins → Left dock`), which is a per-install preference and needs no change on your side. | `{ sessionId, workspacePath }` |
 | `app.panel({ id, title, component, minWidth?, defaultFraction? })` | The editor COLUMN, taken over whole. | `{ sessionId, workspacePath }` |
-| `app.headerPanel({ id, title, component, dropdown? })` | An entry in the navbar, on BOTH layouts. | `{ sessionId, workspacePath }` |
+| `app.headerPanel({ id, title, component, dropdown?, opensPanel? })` | An entry in the navbar, on BOTH layouts. `opensPanel` makes it an ACTION that opens one of your own panels. | `{ sessionId, workspacePath }` |
 | `app.settingsSection({ id, title, component })` | A block in Settings → Panel Plugins, under the plugin's row. | `{ pluginId }` |
 
 **One registration per slot.** A second call THROWS: the layout gives a plugin
@@ -745,6 +745,36 @@ Header entries render on BOTH layouts, in the same position of the same row
 dropdown opens: anchored under its trigger on the desktop, pinned to the
 viewport on a phone, which has no room for a 320px panel hanging off a control
 near the right edge.
+
+#### `opensPanel` — a readout that opens your panel
+
+```tsx
+app.rightPanel({ id: 'stats', title: 'Resources', component: StatsPanel });
+app.headerPanel({
+  id: 'resources',
+  title: 'Stats — CPU & RAM',
+  component: StatsReadout,   // the readout: `CPU 18%` / `RAM 2.5G`
+  opensPanel: 'rightPanel',  // a SLOT, never a column
+});
+```
+
+The host wraps the trigger in a button and opens that registration's panel
+**wherever the user placed it** — the left dock, the right column, the editor
+column, or the phone drawer that holds it. Naming a slot rather than a column is
+what keeps the readout working after the user moves the panel.
+
+- `opensPanel` cannot be combined with `dropdown`: a trigger has one click.
+- Naming a panel your bundle did not register is refused at registration (the
+  bundle reports `headerPanel opensPanel "…" names a panel this plugin did not
+  register`), because the button would open nothing.
+- **A narrow phone folds it into `⋯`.** The row is 320–430px and already holds
+  the wordmark, the session title and four controls; measured, a 73px readout at
+  390px cut the title to 48px of its 74px. An ACTION entry therefore moves into
+  the menu below 430px, where it is the same action one click away. A dropdown
+  or a static readout never folds — the first needs its trigger's anchor, the
+  second has no action to move.
+- The trigger's own markup is capped on a phone (96px) so one plugin cannot take
+  the row.
 
 ### Hooks
 

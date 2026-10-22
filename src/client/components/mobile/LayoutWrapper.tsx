@@ -20,6 +20,10 @@ import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { mobileEditorFileFrom, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
+import { useLeftDock } from '@/client/hooks/workspace/left-dock';
+import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
+import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { OPEN_PANEL_EVENT, phoneDrawerForPanel, type OpenPanelDetail } from '@/shared/lib/workspace/panel-open';
 
 interface MobileLayoutWrapperProps {
   onDesktopToggle?: () => void;
@@ -30,6 +34,11 @@ export type MobileScreen = 'main' | 'session' | 'right';
 
 export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: MobileLayoutWrapperProps) {
   const { folders } = useSidebarData();
+  // The placement state the panel-open event resolves against, and the session
+  // the tab it writes belongs to — read once here rather than per drawer,
+  // because the drawer that receives the selection is not mounted yet.
+  const dock = useLeftDock();
+  const { sessionId: stateSessionId } = useSessionStateContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionParam = searchParams.get('sessionId');
   const sessionId = sessionParam ? (Number.isNaN(Number(sessionParam)) ? sessionParam : Number(sessionParam)) : null;
@@ -134,6 +143,33 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // a separate screen, so the tap must also bring it forward — otherwise the
   // transcript opens behind the drawer and the tap reads as a no-op.
   useKabmoEvent('omp:view-subagent', () => setCurrentScreen('main'));
+
+  /**
+   * A plugin's navbar readout asking for its own panel.
+   *
+   * A phone has no rail, so "show this panel" is two decisions: which DRAWER can
+   * reach it, and which chip inside that drawer is the view. Both are answered
+   * from the placement state (`phoneDrawerForPanel`), never from the panel's
+   * slot — a panel placed on the left is drawn by the RIGHT drawer while the
+   * rail is off, and naming the drawer from the slot would open one that does
+   * not list it.
+   *
+   * The tab is written through the session store rather than through a prop:
+   * the drawer mounts on this screen change and reads the stored tab, so the
+   * selection has to be in the store before it mounts. An `editor`-slot
+   * takeover resolves to null — the phone has no editor column — and the click
+   * then does nothing rather than opening a drawer that cannot show it.
+   */
+  useKabmoEvent(OPEN_PANEL_EVENT, (event) => {
+    const panelKey = (event as CustomEvent<OpenPanelDetail>).detail?.panelKey;
+    if (!panelKey) return;
+    const drawer = phoneDrawerForPanel(panelKey, dock);
+    if (!drawer) return;
+    // The phone's two drawers are SCREENS, not columns: the session screen
+    // draws the left dock and the right screen draws the panel drawer.
+    setSessionKey(stateSessionId, drawer === 'left' ? 'layout.mobileLeftPanel' : 'layout.mobileRightPanel', panelKey);
+    setCurrentScreen(drawer === 'left' ? 'session' : 'right');
+  });
 
   // Settings requests (e.g. the model dropdown asking for Settings → Providers
   // when no provider is configured) arrive on the same global channel the
