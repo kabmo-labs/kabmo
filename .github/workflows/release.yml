@@ -869,6 +869,106 @@ jobs:
       mode: build
       ref: main
 
+  # ---------------------------------------------------------------------------
+  # 1k. The Linux shell's version, and its build.
+  #
+  # The bump is chained after `macos` for the same reason every other shell bump
+  # is: the app job fast-forwards to the commits these jobs make, so a bump
+  # landing after it would reach installs one release late. `linux-build` hangs off
+  # `linux` so it waits for every shell version while the graph stays linear.
+  #
+  # Nothing is tagged and nothing is published separately: the archive rides the
+  # app's release, exactly like the APK, the IPA and the two desktop apps.
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Bump the Linux shell
+    needs: macos
+    runs-on: ubuntu-latest
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      any: ${{ steps.bump.outputs.any }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # After the sync, so the range starts at the commit `macos` made.
+      - name: Sync to the current remote
+        run: |
+          git fetch origin main
+          git merge --ff-only FETCH_HEAD
+          git log --oneline -1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Bump the shell version
+        id: bump
+        # `release/linux.js` holds the file and the watermark pattern, and
+        # `release/linux.test.js` asserts them against the tree. The bump LEVEL is
+        # the app's own rule set, so a `fix` is a patch and a `feat` a minor.
+        run: node release/release-linux.mjs
+
+      # Committed HERE, not by the app job: semantic-release's release commit
+      # carries only its own `assets`, so an uncommitted bump would be discarded
+      # when that job resets to its checkout — and the archive would carry the
+      # OLD shell version.
+      - name: Commit the bump
+        if: steps.bump.outputs.any == 'true'
+        env:
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+        # A `chore`, which releases nothing on its own (`release/release-rules.js`),
+        # so this commit cannot cut a version by itself. `[skip ci]` because the
+        # gates already ran on the push that produced it.
+        run: |
+          git add packages/linux/version.properties
+          if git diff --cached --quiet; then
+            echo "Nothing staged; the bump produced no change."
+            exit 0
+          fi
+          git commit -q -m "chore(release): bump the linux shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
+          git push origin HEAD:main
+          git log --oneline -1
+
+  # The Linux app, BUILT — a gate on the app release, for the macOS/Windows reason:
+  # a Rust error, a missing GTK/WebKitGTK development package or a rules-suite
+  # failure must stop `app` before it tags.
+  #
+  # `ref: main`, not the trigger commit: the `linux` job just pushed the shell
+  # version, and `build.rs` bakes that number into the binary — building the
+  # starting commit would declare the previous one.
+  linux-build:
+    name: Build the Linux app
+    needs: linux
+    permissions:
+      # `contents: write` for the parse-time reason `apk-build` documents: GitHub
+      # validates a reusable workflow's permission CEILING against the whole CALLEE
+      # FILE, and `publish-linux.yml` also declares an `attach` job with
+      # `contents: write`. A `read` ceiling here fails the whole release run with
+      # `startup_failure` and no log — measured on the Android twin.
+      contents: write
+    uses: ./.github/workflows/publish-linux.yml
+    with:
+      mode: build
+      ref: main
+
   app:
     name: Release the app
     # `apk-build` and `ipa-build` each already reach both gate jobs through
@@ -877,9 +977,9 @@ jobs:
     # rather than after it. Naming `ipa-build` as well as `apk-build` is not
     # redundant: `ipa-build` hangs off `ios`, which hangs off `android`, and a release
     # is never tagged from a tree whose IPA could not be built either. `macos-build`
-    # hangs off `macos`, the last bump in the chain, so it waits for every shell
+    # hangs off `macos` and `linux-build` off `linux`, so it waits for every shell
     # version while the graph stays linear.
-    needs: [apk-build, ipa-build, win-build, macos-build]
+    needs: [apk-build, ipa-build, win-build, macos-build, linux-build]
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -1122,6 +1222,30 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/publish-macos.yml
+    with:
+      mode: attach
+      tag: ${{ needs.app.outputs.tag }}
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # 4d. Attaching the Linux app. After `app`, for the APK's reason: `gh release
+  # upload` has nothing to upload to before the release exists.
+  #
+  # It does NOT build. The archive was packaged and verified by `linux-build`
+  # BEFORE the tag, and this call only downloads that run artifact and attaches it
+  # — so a packaging step cannot be the step that discovers a broken app.
+  # ---------------------------------------------------------------------------
+  linux-app:
+    name: Attach the Linux app
+    needs: app
+    if: needs.app.outputs.released == 'true'
+    # `contents: write` on the CALLER, not only the callee: a reusable workflow can
+    # only DOWNGRADE the permissions it inherits, so `read` here would turn the
+    # body's `contents: write` into read and the upload would fail with 403 after a
+    # full build.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-linux.yml
     with:
       mode: attach
       tag: ${{ needs.app.outputs.tag }}

@@ -1,0 +1,49 @@
+[package]
+name = "kabmo-desktop"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Native Linux shell for a Kabmo console"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "kabmo_desktop"
+path = "src/lib.rs"
+
+# The BINARY is `Kabmo`, not the crate's name. GTK derives the process name, the
+# window's `WM_CLASS` and the taskbar label from the executable, so a binary called
+# `kabmo-desktop` put `kabmo-desktop` in the window list and the app menu while the
+# window's own title said Kabmo — the same drift the macOS shell fixed by naming
+# its SwiftPM product `Kabmo` (see `packages/macos/README.md`). The crate keeps its
+# lowercase name because Cargo names are lowercase by convention and it is never
+# published.
+[[bin]]
+name = "Kabmo"
+path = "src/main.rs"
+
+[dependencies]
+# GTK 3 + WebKitGTK 4.1: the pair every current distribution ships. The `v2_22`
+# feature is the floor the shell's API use actually needs (a script message
+# channel, a user script at document start, the inspector); asking for a newer
+# feature would exclude Ubuntu 22.04 and Debian 11 for nothing.
+gtk = "0.18"
+webkit2gtk = { version = "2.0", features = ["v2_22"] }
+javascriptcore-rs = "1.1"
+# The health probe is one GET with a hard timeout, and it must work over https
+# for a remote server, so the client carries its own TLS rather than depending on
+# a system library the shell would have to link against separately.
+ureq = { version = "2", features = ["tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+
+[profile.release]
+strip = true
+lto = "thin"
+
+# The rules suite: a plain executable, like the macOS shell's, because it must run
+# on a machine with no display and no `omp` install.
+[[bin]]
+name = "kabmo-desktop-tests"
+path = "rules/main.rs"

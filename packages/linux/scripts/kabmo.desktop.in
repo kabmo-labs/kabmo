@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Kabmo
+GenericName=AI Agent Console
+Comment=Web console and diagnostic workbench for AI coding agents
+Exec=@EXEC@
+TryExec=@TRY_EXEC@
+Icon=@ICON@
+Terminal=false
+Categories=Development;
+Keywords=kabmo;ai;agent;console;terminal;
+StartupNotify=true
+StartupWMClass=Kabmo
+X-GNOME-UsesNotifications=false

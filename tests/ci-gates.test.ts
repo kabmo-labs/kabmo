@@ -70,6 +70,13 @@ const MACOS_BODY = 'publish-macos.yml';
  */
 const WINDOWS_BODY = 'publish-windows.yml';
 
+/**
+ * The Linux app body: the fourth shell, same contract again — its `build` phase is
+ * a gate on `app` (`app` `needs: linux-build`). It runs on `ubuntu-latest`, which is
+ * the only runner with the GTK 3 and WebKitGTK 4.1 development packages.
+ */
+const LINUX_BODY = 'publish-linux.yml';
+
 /** Every workflow that can tag or publish, and therefore must be gated. */
 const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
 
@@ -87,7 +94,7 @@ async function load(file: string): Promise<Record<string, any>> {
 
 describe('the gate contract', () => {
   test('the reusable workflows exist and are callable', async () => {
-    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
+    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY, LINUX_BODY]) {
       expect(existsSync(join(WORKFLOWS, file))).toBe(true);
       const doc = await load(file);
       // `workflow_call` is what makes a file callable at all. Without it the
@@ -98,7 +105,7 @@ describe('the gate contract', () => {
 
   test('every local reusable-workflow reference resolves and declares workflow_call', async () => {
     const seen = new Set<string>();
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY, LINUX_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -111,16 +118,16 @@ describe('the gate contract', () => {
         expect(callee.on?.workflow_call, `${uses} does not declare workflow_call`).toBeDefined();
       }
     }
-    // Seven: the two gates, the two npm publish bodies, and the three shell bodies
-    // (Android APK, iOS IPA, macOS app).
-    expect(seen.size).toBe(8);
+    // Nine: the two gates, the two npm publish bodies, and the four shell bodies
+    // (Android APK, iOS IPA, macOS app, Linux app).
+    expect(seen.size).toBe(9);
   });
 
   test('a caller passes only inputs the callee declares', async () => {
     // An input the callee does not declare is a run-time failure ("Invalid
     // input, ... is not defined in the referenced workflow"), and it is exactly
     // the kind of typo a rename produces.
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY, LINUX_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         if (typeof job?.uses !== 'string' || !job.uses.startsWith('./')) continue;
@@ -162,7 +169,7 @@ describe('the gate contract', () => {
     // matched. A caller that declares no `permissions:` block inherits the
     // default (which includes `contents: write`), so it is never a violation.
     const WRITE = 'write';
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY, LINUX_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -281,8 +288,9 @@ describe('the gate contract', () => {
     // above cannot see: `app` could depend on the gates directly and still race
     // the lockfile refresh.
     //
-    // The chain is `packages -> marketplace -> android -> ios -> macos ->
-    // {ipa-build, apk-build} -> macos-build -> app`, and
+    // The chain is `packages -> marketplace -> android -> ios -> windows -> macos ->
+    // linux -> {ipa-build, apk-build} -> win-build -> macos-build -> linux-build ->
+    // app`, and
     // every hop matters. `packages` commits the refreshed `bun.lock`, and a
     // `workspace:` spec is substituted from that record, so the app must not
     // pack before it. `marketplace` bumps the bundled plugins' versions into the
@@ -302,15 +310,18 @@ describe('the gate contract', () => {
     expect(needsOf('ios')).toContain('android');
     expect(needsOf('windows')).toContain('ios');
     expect(needsOf('macos')).toContain('windows');
+    expect(needsOf('linux')).toContain('macos');
     expect(needsOf('apk-build')).toContain('macos');
     expect(needsOf('ipa-build')).toContain('macos');
     expect(needsOf('win-build')).toContain('apk-build');
     expect(needsOf('win-build')).toContain('ipa-build');
     expect(needsOf('macos-build')).toContain('macos');
+    expect(needsOf('linux-build')).toContain('linux');
     expect(needsOf('app')).toContain('apk-build');
     expect(needsOf('app')).toContain('ipa-build');
     expect(needsOf('app')).toContain('win-build');
     expect(needsOf('app')).toContain('macos-build');
+    expect(needsOf('app')).toContain('linux-build');
 
     // The three attach jobs are the only ones allowed to hang off `app` alone: they
     // upload to the release `app` created, so they cannot run earlier, and their own
@@ -319,6 +330,7 @@ describe('the gate contract', () => {
     expect(needsOf('ipa')).toEqual(['app']);
     expect(needsOf('windows-app')).toEqual(['app']);
     expect(needsOf('macos-app')).toEqual(['app']);
+    expect(needsOf('linux-app')).toEqual(['app']);
   });
 
   test('the shell bump runs before the app tags, and only writes its own version file', async () => {
@@ -351,6 +363,7 @@ describe('the gate contract', () => {
       ['ios', 'release-ios.mjs', 'git add packages/ios/version.properties'],
       ['windows', 'release-windows.mjs', 'git add packages/windows/version.properties'],
       ['macos', 'release-macos.mjs', 'git add packages/macos/version.properties'],
+      ['linux', 'release-linux.mjs', 'git add packages/linux/version.properties'],
     ] as const) {
       const shell = doc.jobs[id];
       expect(shell, `release.yml has no ${id} bump job`).toBeDefined();
@@ -408,6 +421,75 @@ describe('the gate contract', () => {
     expect(text, 'the body must package with ditto, or the signature is stripped').toContain('ditto');
     expect(text, 'the body must run the logic suite').toContain('kabmo-desktop-tests');
     expect(text, 'the body must run the window suite').toContain('kabmo-desktop-window-tests');
+  });
+
+  test('the Linux app is BUILT before the app tags, and only attached after', async () => {
+    // The fourth shell, same contract as the APK, the IPA and the macOS app: a Rust
+    // error, a missing GTK/WebKitGTK development package or a rules-suite failure
+    // must stop the release BEFORE a tag exists. `publish-linux.yml` also verifies
+    // the version the BINARY reports — `build.rs` bakes `version.properties` into
+    // it, so a build reading a stale file publishes a shell whose page shows a
+    // number the pipeline never released.
+    const doc = await load('release.yml');
+    const build = doc.jobs['linux-build'];
+    const attach = doc.jobs['linux-app'];
+
+    expect(build, 'release.yml has no linux-build job').toBeDefined();
+    expect(build.uses, 'release.yml:linux-build must call the Linux body').toBe(
+      `./.github/workflows/${LINUX_BODY}`,
+    );
+    expect(build.with?.mode, 'linux-build must build').toBe('build');
+    expect(build.needs, 'the Linux build must come after the Linux bump').toContain('linux');
+    expect(doc.jobs.linux.needs, 'the Linux bump must come after the macOS bump').toContain('macos');
+    expect(doc.jobs.app.needs, 'the app must not tag unless the Linux app built').toContain(
+      'linux-build',
+    );
+
+    // `main`, not the trigger commit: the bump just landed there, and `build.rs`
+    // bakes that number in.
+    expect(build.with?.ref, 'the Linux build must compile the bumped branch').toBe('main');
+
+    expect(attach?.uses, 'release.yml:linux-app must call the Linux body').toBe(
+      `./.github/workflows/${LINUX_BODY}`,
+    );
+    expect(attach.with?.mode, 'the post-tag job must not rebuild the app').toBe('attach');
+    expect(attach.needs, 'release.yml:linux-app must wait for the app release').toContain('app');
+    expect(attach.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+
+    // The body itself: the native libraries, the rules suite, and the installer.
+    const body = await load(LINUX_BODY);
+    expect(body.jobs.build['runs-on'], 'the Linux body must run on a Linux runner').toContain(
+      'ubuntu',
+    );
+    const text = JSON.stringify(body.jobs.build.steps as Array<{ run?: string }>);
+    expect(text, 'the body must install the GTK and WebKitGTK packages').toContain(
+      'libwebkit2gtk-4.1-dev',
+    );
+    expect(text, 'the body must install the entry validator').toContain('desktop-file-utils');
+    expect(text, 'the body must run the rules suite').toContain('kabmo-desktop-tests');
+    expect(text, 'the body must read the version from version.properties').toContain(
+      'release/linux-version.mjs',
+    );
+    expect(text, 'the body must verify the built binary carries that version').toContain(
+      'the binary reports',
+    );
+    // The binary is named after the APP: GTK takes the process name, `WM_CLASS` and
+    // the taskbar label from the executable's file name, so `kabmo-desktop` put that
+    // string in the window list on a shell whose own title says Kabmo.
+    expect(text, 'the body must verify the app-named binary').toContain('$out/Kabmo');
+    // The installer is the thing a user runs, so the workflow RUNS it into a
+    // throwaway prefix instead of only checking that the file exists — that is what
+    // catches a template placeholder the script stopped filling in.
+    expect(text, 'the body must run the installer').toContain('$out/install.sh');
+    expect(text, 'the body must check the installed binary').toContain('$prefix/bin/Kabmo');
+    expect(text, 'the body must validate the entry the installer wrote').toContain(
+      'desktop-file-validate',
+    );
+    expect(text, 'the body must remove it again').toContain('--uninstall');
+    // The archive unpacks to `Kabmo/`, so the download is not a crate name.
+    expect(text, 'the archive must carry the app-named directory').toMatch(
+      /tar -C packages\/linux\/build -czf .* Kabmo/,
+    );
   });
 
   test('the IPA is BUILT before the app tags, and only attached after', async () => {

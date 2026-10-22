@@ -1,0 +1,256 @@
+name: Build and attach the Linux shell
+
+# The Linux app body, as a REUSABLE workflow — the same shape
+# `publish-android.yml`, `publish-ios.yml`, `publish-windows.yml`, `publish-macos.yml`
+# and `publish-app.yml` take, and for the same reason: the steps exist once, so a
+# release run and a manual re-run cannot drift apart.
+#
+# TWO PHASES, like the Windows and macOS bodies:
+#
+#   - `build` compiles the Rust crate, runs the rules suite, verifies the version the
+#     BINARY reports and uploads the packaged directory as a run artifact.
+#     `release.yml` calls it BEFORE `app` tags, so a toolchain that moved, a missing
+#     GTK/WebKitGTK development package or a compile error stops the release instead
+#     of shipping a tag whose GitHub release carries no shell.
+#   - `attach` downloads that artifact and attaches it to the release `app` created.
+#     It runs after the tag, because `gh release upload` has nothing to upload to
+#     before the release exists — and it no longer BUILDS anything, so it cannot be
+#     the step that discovers a broken build.
+#
+# It is NOT an npm publish. The shell is a private application, so the only artifact
+# is the `.tar.gz` attached to the GitHub release.
+#
+# The gates are NOT called here. `release.yml`'s `linux-build` job `needs: linux`,
+# which depends transitively on both gate jobs — and `app` `needs: linux-build`, so
+# nothing is tagged from a tree this body failed to build.
+
+on:
+  workflow_call:
+    inputs:
+      # Which phase to run. `build` compiles and uploads the artifact; `attach`
+      # downloads it from THIS run and uploads it to `tag`.
+      mode:
+        description: build (compile + upload artifact) or attach (upload to a release).
+        required: false
+        type: string
+        default: build
+      # The commit to build, in this order: `ref`, then `tag`, then the caller's own
+      # commit.
+      #
+      # `release.yml` passes `main`, never the run's starting sha: the `linux` bump
+      # job has just pushed the shell version, and `build.rs` bakes that version into
+      # the binary. Building the trigger commit would produce a shell reporting the
+      # PREVIOUS version, which no one could tell from the last download.
+      ref:
+        description: Commit to build the app from; empty falls back to the tag, then the caller's commit.
+        required: false
+        type: string
+      # The release to attach to. Empty means build only.
+      tag:
+        description: Release tag to attach the app to; empty builds without attaching.
+        required: false
+        type: string
+  # The re-run path every other publish body has. `mode` is deliberately NOT an
+  # input here: a dispatch has no earlier call in its own run to have uploaded an
+  # artifact, so an attach-only dispatch would have nothing to download. Every
+  # dispatch BUILDS, and attaches when it was given a tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the app to (e.g. v0.6.0)
+        required: false
+        type: string
+      ref:
+        description: Commit to build; empty builds the tag, so the repair matches its release
+        required: false
+        type: string
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Phase 1 — the gate. `release.yml` runs this before `app` tags.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build the Linux app
+    # "not attach" rather than "== build", because a `workflow_dispatch` carries no
+    # `mode` at all and a dispatch must build.
+    if: ${{ inputs.mode != 'attach' }}
+    runs-on: ubuntu-latest
+    permissions:
+      # The build reads the tree and uploads a run artifact; it needs no write
+      # access to the repository.
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || inputs.tag || github.sha }}
+
+      # The two native libraries the shell links against, plus the entry validator.
+      # `pkg-config` is what the `gtk` and `webkit2gtk` crates use to find them, and
+      # its ABSENCE is the failure that looks like a code error ("The system library
+      # `gtk` required by crate `gtk-sys` was not found") rather than a missing
+      # package. `desktop-file-utils` is what the installer validates the launcher
+      # entry with — one apt run rather than a second, later one.
+      - name: Install the GTK and WebKitGTK development packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
+            desktop-file-utils
+
+      # Pinned rather than inherited: the runner's default toolchain moves, and
+      # `rust-version` in `Cargo.toml` is the floor the crate is written against.
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache the build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/linux
+
+      # The rules the panel obeys: what a row may offer, and what it may stop. No
+      # display, no `omp` install — the suite is written to run on a bare runner,
+      # which is why it is a plain executable rather than `cargo test`.
+      - name: Rules suite
+        working-directory: packages/linux
+        run: cargo run --release --bin kabmo-desktop-tests
+
+      # The version is NOT the tag. It is `packages/linux/version.properties`,
+      # bumped by the `linux` job of `release.yml` when the shell changed — which is
+      # what makes the number the archive carries the number the running shell
+      # reports over the bridge.
+      #
+      # `release/linux-version.mjs` is the ONE reader of that file: the same
+      # `readVersionName` the bump script and its tests use.
+      - name: Read the shell version
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(node release/linux-version.mjs)"
+          echo "Shell version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Package the app
+        run: packages/linux/scripts/build-app.sh
+
+      # A version check on the ARTIFACT, not on the source: this asks the built
+      # binary what it reports, so a missing or unparsed `version.properties` is
+      # caught here instead of shipping a shell whose page shows a number the
+      # pipeline never published.
+      - name: Verify the artifact's version
+        env:
+          EXPECTED: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          out=packages/linux/build/Kabmo
+          # The binary is named after the APP: GTK takes the process name, the
+          # window's `WM_CLASS` and the taskbar label from the executable's file
+          # name, so `kabmo-desktop` put that string in the window list on a shell
+          # whose own title says Kabmo.
+          test -x "$out/Kabmo" || { echo "no binary in $out"; exit 1; }
+          test -f "$out/kabmo.desktop.in" || { echo "no launcher template in $out"; exit 1; }
+          test -f "$out/kabmo.png" || { echo "no icon in $out"; exit 1; }
+          test -x "$out/install.sh" || { echo "no installer in $out"; exit 1; }
+
+          # The binary's own answer, through the flag that exists for exactly this:
+          # `--version` prints `KABMO_SHELL_VERSION` (from `build.rs`, from
+          # `version.properties`) before GTK starts, so it works on a runner with no
+          # display. Reading the string out of the file with `grep` would also pass
+          # for a binary whose bridge reports something else.
+          reported="$("$out/Kabmo" --version | awk '{print $2}')"
+          if [ "$reported" != "$EXPECTED" ]; then
+            echo "the binary reports '$reported', expected '$EXPECTED'"
+            exit 1
+          fi
+
+          # The launcher entry must name the app, not the crate.
+          grep -q '^Name=Kabmo$' "$out/kabmo.desktop.in" \
+            || { echo "the launcher template is not named Kabmo"; exit 1; }
+          grep -q '^StartupWMClass=Kabmo$' "$out/kabmo.desktop.in" \
+            || { echo "the launcher template names the wrong WM class"; exit 1; }
+
+          # The installer is the thing a user runs, so it is RUN — into a throwaway
+          # prefix — rather than only checked for existence. This is the check that
+          # catches a template placeholder the script stopped filling in, and the
+          # entry it produces is validated by the script itself when the tool is
+          # present (it is, on this runner: `desktop-file-utils`).
+          command -v desktop-file-validate >/dev/null \
+            || { echo "desktop-file-validate is missing"; exit 1; }
+          prefix="$(mktemp -d)"
+          PREFIX="$prefix" "$out/install.sh"
+          test -x "$prefix/bin/Kabmo" || { echo "the installer placed no binary"; exit 1; }
+          test -f "$prefix/share/applications/kabmo.desktop" \
+            || { echo "the installer wrote no launcher entry"; exit 1; }
+          desktop-file-validate "$prefix/share/applications/kabmo.desktop" \
+            || { echo "the installed launcher entry is not valid"; exit 1; }
+          grep -qx "Exec=\"$prefix/bin/Kabmo\"" "$prefix/share/applications/kabmo.desktop" \
+            || { echo "the entry's Exec does not name the installed binary"; exit 1; }
+          "$prefix/bin/Kabmo" --version
+          PREFIX="$prefix" "$out/install.sh" --uninstall
+          test ! -e "$prefix/share/applications/kabmo.desktop" \
+            || { echo "uninstall left the launcher entry behind"; exit 1; }
+          rm -rf "$prefix"
+
+          echo "artifact OK ($EXPECTED)"
+
+      # Renamed so the download is identifiable: a bare `Kabmo.tar.gz` says nothing
+      # about which build it is. The name carries the SHELL's version,
+      # never the release tag — nothing in the console parses it (a desktop app is
+      # installed by hand from the release page), so the number is here so a person
+      # can tell two builds apart.
+      - name: Name the artifact
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tar -C packages/linux/build -czf "kabmo-linux-v${VERSION}.tar.gz" Kabmo
+          ls -l ./*.tar.gz
+
+      - name: Upload the app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabmo-linux-app
+          path: ./*.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Phase 2 — the upload. `release.yml` runs this after `app` tagged.
+  # ---------------------------------------------------------------------------
+  attach:
+    name: Attach the app to the release
+    needs: build
+    # `always()` because a skipped `build` must not skip the attach with it: the
+    # release run calls this body twice, and the second call is attach-only. The
+    # result check keeps a FAILED build blocking the upload — there would be no
+    # artifact to attach, and a release carrying a stale one is worse than a
+    # release with none.
+    if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the app artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kabmo-linux-app
+          path: .
+
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          # `gh` resolves the repository from a git remote in the working directory,
+          # and this job checks NOTHING out — its only input is the artifact it just
+          # downloaded. Without this every command below dies with
+          # `failed to run git: fatal: not a git repository`, which a `||` guard then
+          # reports as "No GitHub release for <tag>" — a wrong reason for a real
+          # failure, measured on the Android twin.
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -l ./*.tar.gz
+          gh release view "$TAG" --json tagName > /dev/null \
+            || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
+          gh release upload "$TAG" ./*.tar.gz --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'

@@ -33,12 +33,13 @@ playwright-report/
 # Scratch reproduction harnesses (not committed).
 tmp-repro/
 
-# SwiftPM writes a dot-directory BESIDE the sources, which `build/` above does
-# not cover — measured: `packages/macos/.build` alone is 3,745 untracked entries
-# after one `swift build`, and a `git add packages/macos` would commit all of it.
+# The native shells' build output. `build/` above covers the assembled bundles
+# (`packages/macos/build/Kabmo.app`), but SwiftPM and Cargo write a dot-directory
+# BESIDE the sources, which no pattern covers — measured: `packages/macos/.build`
+# alone is 3,745 untracked entries after one `swift build`.
 packages/macos/.build/
-# .NET writes `bin/` and `obj/` INSIDE each project, not at the shell's root, so
-# `build/` above does not cover them: measured, `packages/windows` alone is 3,000+
-# untracked entries after one `dotnet build`.
+packages/linux/.build/
+packages/linux/target/
+# .NET writes `bin/` and `obj/` inside the project, not at the shell's root.
 packages/windows/**/bin/
 packages/windows/**/obj/
