@@ -4,6 +4,14 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.5.2](https://github.com/kabmo-labs/kabmo/compare/v0.5.1...v0.5.2) — 2026-10-22
+
+### Fixed
+
+* **e2e:** gate the wait spec on the composer, not the sidebar row ([8bba8f0](https://github.com/kabmo-labs/kabmo/commit/8bba8f0121df5a2ebea5ff38d7813b5afd148b0f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **e2e:** gate the wait spec on the spawn's adoption ([339d151](https://github.com/kabmo-labs/kabmo/commit/339d1518190ffc449a91c5370b97347a80ed9d0e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **e2e:** size the wait picker's budget against the dependency's window ([fd76fcd](https://github.com/kabmo-labs/kabmo/commit/fd76fcd3fcd0b5f52d5b6d9d484f49f55ef108ad)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.5.1](https://github.com/kabmo-labs/kabmo/compare/v0.5.0...v0.5.1) — 2026-10-22
 
 ### Fixed
