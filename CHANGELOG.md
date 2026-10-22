@@ -4,6 +4,13 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.5.1](https://github.com/kabmo-labs/kabmo/compare/v0.5.0...v0.5.1) — 2026-10-22
+
+### Fixed
+
+* **ci:** give the APK attach a repository to upload to ([eadc3bb](https://github.com/kabmo-labs/kabmo/commit/eadc3bb051ab7f9927ac3ab5a17e88c5d3b7b597)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **e2e:** give the wait picker a window longer than its own gate ([4a261cd](https://github.com/kabmo-labs/kabmo/commit/4a261cdfecdee67a4ae4355f08b51145e02d0696)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.5.0](https://github.com/kabmo-labs/kabmo/compare/v0.4.0...v0.5.0) — 2026-10-21
 
 ### Added
