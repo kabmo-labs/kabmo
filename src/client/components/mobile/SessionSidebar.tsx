@@ -3,7 +3,7 @@ import { MobileSessionHeader } from '@/client/components/mobile/mobile-session-s
 import { MobileSessionToolbar } from '@/client/components/mobile/mobile-session-sidebar/Toolbar';
 import { MobileSessionList } from '@/client/components/mobile/mobile-session-sidebar/List';
 import { MobileSessionFooter } from '@/client/components/mobile/mobile-session-sidebar/Footer';
-import { useAndroidDownload } from '@/client/hooks/ui/updates/android-download';
+import { useShellOffer } from '@/client/hooks/ui/updates/shell-download';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
@@ -83,12 +83,9 @@ export function MobileSessionSidebar({
   const scheduledCount = useScheduledTaskCount();
   const [aboutOpen, setAboutOpen] = useState(false);
   const updates = useUpdates();
-  // An update inside the APK, an install on an Android browser, nothing
-  // elsewhere — see `useAndroidDownload`.
-  const androidDownload = useAndroidDownload(
-    window.__OMP_BOOTSTRAP__?.shellVersion,
-    window.__OMP_BOOTSTRAP__?.isAndroid,
-  );
+  // An update inside a native shell, an install on an Android browser, nothing
+  // elsewhere — see `useShellOffer`.
+  const shellDownload = useShellOffer();
   const { toasts, pushToast, dismissToast } = useToasts();
   const cancelWait = useCancelWait(pushToast);
   useWaitingDispatch({ onNotice: pushToast });
@@ -298,7 +295,7 @@ export function MobileSessionSidebar({
       <MobileSessionFooter
         onSettings={() => window.dispatchEvent(new CustomEvent('omp:open-settings', { detail: {} }))}
         onAbout={() => setAboutOpen(true)}
-        androidDownload={androidDownload}
+        shellDownload={shellDownload}
         onDesktopToggle={onDesktopToggle}
         updateAvailable={updates.hasUpdate}
         onUpdateClick={() => {

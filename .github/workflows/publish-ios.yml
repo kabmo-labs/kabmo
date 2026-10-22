@@ -1,0 +1,233 @@
+name: Build and attach the iOS shell
+
+# The IPA body, as a REUSABLE workflow — the same shape `publish-android.yml`,
+# `publish-app.yml` and `publish-packages.yml` take, and for the same reason: the
+# steps exist once, so a release run and a manual re-run cannot drift apart.
+#
+# **This does NOT produce an installable artifact, and that is the platform.** iOS
+# refuses an app that is not signed by an Apple-issued certificate bound to a team
+# and a device set, and no public API lets an app install another app. There is no
+# `PackageInstaller` equivalent. So the two consumers of this body are:
+#
+#   - the **release**, which attaches the unsigned bundle so the version the console
+#     compares is published and inspectable; and
+#   - a **developer**, who re-signs it with their own profile and installs it on a
+#     registered device — or, far more usually, opens the package in Xcode and
+#     archives to TestFlight.
+#
+# It runs on macOS, which is the only runner with the iOS SDK. That is a real cost
+# (a macOS minute is ten Linux minutes) and the reason the IPA build is a separate
+# body rather than a step in the Android job: a pull request never pays for it, and
+# a release pays for it once.
+#
+# TWO PHASES, like the APK body:
+#
+#   - `build` compiles, runs the logic suite, verifies the bundle's version and
+#     uploads the IPA as a run artifact. `release.yml` calls it BEFORE `app` tags, so
+#     a Swift error or a missing SDK stops the release instead of shipping a tag
+#     whose GitHub release carries no shell.
+#   - `attach` downloads that artifact and attaches it to the release `app` created.
+#     It runs after the tag, because `gh release upload` has nothing to upload to
+#     before the release exists — and it no longer BUILDS anything, so it cannot be
+#     the step that discovers a broken IPA.
+
+on:
+  workflow_call:
+    inputs:
+      # Which phase to run.
+      #
+      # `build` — compile, verify and upload the artifact. `release.yml`'s `ipa-build`
+      # job uses this, with no tag, so nothing is attached before the release exists.
+      #
+      # `attach` — download the artifact from THIS run and upload it to `tag`.
+      mode:
+        description: build (compile + upload artifact) or attach (upload to a release).
+        required: false
+        type: string
+        default: build
+      # The commit to build: `ref`, then `tag`, then the caller's own commit.
+      #
+      # `release.yml` passes `main`, never the run's starting sha: the `ios` bump job
+      # has just pushed the shell version, and the bump is what the IPA's
+      # `CFBundleShortVersionString` comes from.
+      ref:
+        description: Commit to build the IPA from; empty falls back to the tag, then the caller's commit.
+        required: false
+        type: string
+      # The release to attach to. Empty means build only.
+      tag:
+        description: Release tag to attach the IPA to; empty builds without attaching.
+        required: false
+        type: string
+      # The bundle's `CFBundleVersion`. It must move for the App Store to accept a new
+      # build, and the workflow run number is monotonic per workflow with no state.
+      #
+      # Typed `string`: `github.run_number` is a string context value, and a `number`
+      # input rejects it (actionlint: "string value cannot be assigned").
+      build-number:
+        description: CFBundleVersion for the IPA. Must increase across releases.
+        required: false
+        type: string
+  # The re-run path: a failed build can be retried without re-running the whole
+  # release, which matters more here than for the APK because the macOS runner is the
+  # one that can be unavailable. A dispatch always BUILDS, and attaches when given a
+  # tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the IPA to (e.g. v0.2.0)
+        required: false
+        type: string
+      build-number:
+        description: CFBundleVersion — must be higher than the one already published
+        required: false
+        type: string
+      ref:
+        description: Commit to build; empty builds the tag, so the repair matches its release
+        required: false
+        type: string
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Phase 1 — the gate. `release.yml` runs this before `app` tags.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build the IPA
+    # Everything except an explicit `attach` call. Stated as "not attach" rather than
+    # "== build" because a `workflow_dispatch` carries no `mode` at all, and a dispatch
+    # must build.
+    if: ${{ inputs.mode != 'attach' }}
+    # macOS is REQUIRED: the iOS SDK ships with Xcode, and no Linux runner has it.
+    runs-on: macos-15
+    permissions:
+      # The build reads the tree and uploads a run artifact.
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || inputs.tag || github.sha }}
+
+      # The build script runs under Node, and the logic suite under Swift. Node is on
+      # the macOS runner, but naming the version keeps the release job's toolchain the
+      # same as the other bodies'.
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The version the bundle declares, read through the tested reader rather than
+      # inline (`sed -n` with no file argument consumes STDIN — measured on the Android
+      # twin, where it produced an empty version and an unreadable failure).
+      - name: Read the shell version
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(node release/ios-version.mjs)"
+          echo "value=${version}" >> "$GITHUB_OUTPUT"
+          echo "Shell version: $version"
+
+      # The logic suite — the rules that fail silently on a device — before the bundle
+      # is built. It runs on the runner's own macOS SDK, so it needs no simulator.
+      - name: Logic tests
+        run: |
+          set -euo pipefail
+          cd packages/ios
+          swift run kabmo-shell-tests
+
+      # The bundle. `KABMO_IOS_BUILD` is what the Info.plist's `CFBundleVersion` gets;
+      # `--output` puts it where the artifact step expects it.
+      - name: Build the IPA
+        env:
+          KABMO_IOS_BUILD: ${{ inputs.build-number || github.run_number }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+          cd packages/ios
+          ./scripts/build-ipa.sh --output "$GITHUB_WORKSPACE/kabmo-ios-v${VERSION}.ipa"
+
+      # The version check on the ARTIFACT, not on the build file: the bundle is
+      # unpacked and its `CFBundleShortVersionString` read back, so a plist that did
+      # not receive the value is caught here instead of shipping an IPA whose version
+      # does not match the number the console compares against.
+      - name: Verify the bundle version
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          BUILD_NUMBER: ${{ inputs.build-number || github.run_number }}
+        run: |
+          set -euo pipefail
+          ipa="kabmo-ios-v${VERSION}.ipa"
+          test -f "$ipa" || { echo "No IPA was produced."; exit 1; }
+          rm -rf /tmp/kabmo-ipa && mkdir -p /tmp/kabmo-ipa
+          ditto -x -k "$ipa" /tmp/kabmo-ipa
+          app=/tmp/kabmo-ipa/Payload/Kabmo.app
+          test -d "$app" || { echo "The IPA has no Payload/Kabmo.app."; exit 1; }
+          short="$(plutil -extract CFBundleShortVersionString raw "$app/Info.plist")"
+          bundle="$(plutil -extract CFBundleVersion raw "$app/Info.plist")"
+          echo "bundle: $short ($bundle)"
+          test "$short" = "$VERSION" || { echo "the bundle declares $short, not $VERSION"; exit 1; }
+          test "$bundle" = "$BUILD_NUMBER" || { echo "the bundle declares build $bundle, not $BUILD_NUMBER"; exit 1; }
+          # The NAME, on the artifact. `CFBundleDisplayName` is what the Home Screen
+          # prints; a build that renamed it would ship a shell called something else
+          # with nothing failing, so it is checked here as well as in the build script
+          # (the script guards a local run, this guards the artifact that ships).
+          name="$(plutil -extract CFBundleDisplayName raw "$app/Info.plist")"
+          short="$(plutil -extract CFBundleName raw "$app/Info.plist")"
+          executable="$(plutil -extract CFBundleExecutable raw "$app/Info.plist")"
+          echo "name: $short / $name (executable $executable)"
+          test "$name" = "Kabmo" || { echo "CFBundleDisplayName is '$name', not 'Kabmo'"; exit 1; }
+          test "$short" = "Kabmo" || { echo "CFBundleName is '$short', not 'Kabmo'"; exit 1; }
+
+          # The executable must be present and executable, or the bundle installs to a
+          # blank icon that crashes on launch.
+          test -x "$app/$executable" || { echo "CFBundleExecutable names '$executable', which the bundle does not carry"; exit 1; }
+          file "$app/$executable"
+
+      # The artifact is what the `attach` phase uploads — and what makes the two calls
+      # one pipeline rather than two independent builds. Retention is a day: the only
+      # consumer is the attach call in this same run.
+      - name: Upload the IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabmo-ios-ipa
+          path: ./*.ipa
+          if-no-files-found: error
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Phase 2 — the upload. `release.yml` runs this after `app` tagged.
+  # ---------------------------------------------------------------------------
+  attach:
+    name: Attach the IPA to the release
+    needs: build
+    # `always()` because a skipped `build` must not skip the attach with it: the
+    # release run calls this body twice, and the second call is attach-only. The result
+    # check keeps a FAILED build blocking the upload.
+    if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      # Uploading an asset to an existing release needs `contents: write`.
+      contents: write
+    steps:
+      - name: Download the IPA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kabmo-ios-ipa
+          path: .
+
+      # `--clobber` because a re-run of this body must replace its own asset rather
+      # than fail on the duplicate. `GH_REPO` because this job deliberately checks
+      # nothing out, and `gh` otherwise dies with "not a git repository" — a wrong
+      # reason for a real failure, measured on the Android twin.
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -l ./*.ipa
+          gh release view "$TAG" --json tagName > /dev/null \
+            || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
+          gh release upload "$TAG" ./*.ipa --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'

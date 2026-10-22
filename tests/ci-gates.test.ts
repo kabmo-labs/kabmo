@@ -48,6 +48,14 @@ const PUBLISH_BODIES = ['publish-app.yml', 'publish-packages.yml'];
  */
 const ANDROID_BODY = 'publish-android.yml';
 
+/**
+ * The iOS IPA body: the same shape as the Android one, and the same contract — its
+ * `build` phase is a gate on `app` (`app` `needs: ipa-build`), so a release is never
+ * tagged from a tree whose shell could not be built. It is macOS-only, because the
+ * iOS SDK ships with Xcode and no Linux runner has it.
+ */
+const IOS_BODY = 'publish-ios.yml';
+
 /** Every workflow that can tag or publish, and therefore must be gated. */
 const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
 
@@ -65,7 +73,7 @@ async function load(file: string): Promise<Record<string, any>> {
 
 describe('the gate contract', () => {
   test('the reusable workflows exist and are callable', async () => {
-    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY]) {
+    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
       expect(existsSync(join(WORKFLOWS, file))).toBe(true);
       const doc = await load(file);
       // `workflow_call` is what makes a file callable at all. Without it the
@@ -76,7 +84,7 @@ describe('the gate contract', () => {
 
   test('every local reusable-workflow reference resolves and declares workflow_call', async () => {
     const seen = new Set<string>();
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -89,15 +97,16 @@ describe('the gate contract', () => {
         expect(callee.on?.workflow_call, `${uses} does not declare workflow_call`).toBeDefined();
       }
     }
-    // Five: the two gates, the two npm publish bodies, and the Android APK body.
-    expect(seen.size).toBe(5);
+    // Six: the two gates, the two npm publish bodies, and the two shell bodies
+    // (Android APK, iOS IPA).
+    expect(seen.size).toBe(6);
   });
 
   test('a caller passes only inputs the callee declares', async () => {
     // An input the callee does not declare is a run-time failure ("Invalid
     // input, ... is not defined in the referenced workflow"), and it is exactly
     // the kind of typo a rename produces.
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         if (typeof job?.uses !== 'string' || !job.uses.startsWith('./')) continue;
@@ -139,7 +148,7 @@ describe('the gate contract', () => {
     // matched. A caller that declares no `permissions:` block inherits the
     // default (which includes `contents: write`), so it is never a violation.
     const WRITE = 'write';
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -275,8 +284,17 @@ describe('the gate contract', () => {
 
     expect(needsOf('marketplace')).toContain('packages');
     expect(needsOf('android')).toContain('marketplace');
-    expect(needsOf('apk-build')).toContain('android');
+    expect(needsOf('ios')).toContain('android');
+    expect(needsOf('apk-build')).toContain('ios');
+    expect(needsOf('ipa-build')).toContain('ios');
     expect(needsOf('app')).toContain('apk-build');
+    expect(needsOf('app')).toContain('ipa-build');
+
+    // The two attach jobs are the only ones allowed to hang off `app` alone: they
+    // upload to the release `app` created, so they cannot run earlier, and their own
+    // `if:` keeps a no-release run from calling them at all.
+    expect(needsOf('apk')).toEqual(['app']);
+    expect(needsOf('ipa')).toEqual(['app']);
   });
 
   test('the shell bump runs before the app tags, and only writes its own version file', async () => {
@@ -299,6 +317,53 @@ describe('the gate contract', () => {
     expect(text, 'the bump commit must stage only version.properties').toContain(
       'git add packages/android/version.properties',
     );
+  });
+
+  test('the IPA is BUILT before the app tags, and only attached after', async () => {
+    // The iOS twin of the APK rule, and it exists for the same failure: a shell built
+    // AFTER the tag means a Swift error leaves a release already published with no
+    // shell attached. Building first makes the IPA a GATE on `app`.
+    const doc = await load('release.yml');
+    const build = doc.jobs['ipa-build'];
+    const attach = doc.jobs.ipa;
+
+    expect(build, 'release.yml has no ipa-build job').toBeDefined();
+    expect(build.uses, 'release.yml:ipa-build must call the IPA body').toBe(
+      `./.github/workflows/${IOS_BODY}`,
+    );
+    expect(build.with?.mode, 'ipa-build must build').toBe('build');
+    // `windows` rather than `ios`: `windows` needs `ios`, so the IPA waits for the
+    // third shell bump through the one chain while the Android/iOS bumps stay behind
+    // it. Reachability, not a direct edge.
+    expect(build.needs, 'the IPA build must wait for the shell bump').toContain('ios');
+    expect(doc.jobs.app.needs, 'the app must not tag unless the IPA built').toContain('ipa-build');
+
+    expect(attach?.uses, 'release.yml:ipa must call the IPA body').toBe(`./.github/workflows/${IOS_BODY}`);
+    expect(attach.with?.mode, 'the post-tag job must not rebuild the IPA').toBe('attach');
+    expect(attach.needs, 'release.yml:ipa must wait for the app release').toContain('app');
+    expect(attach.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+
+    // The bundle's CFBundleVersion must move, for the same reason the APK's
+    // versionCode must: the store refuses a build whose number does not increase. It
+    // is stated at BUILD time and nowhere else.
+    expect(build.with?.['build-number'], 'the bundle build number must move every release').toBe(
+      '${{ github.run_number }}',
+    );
+    expect(attach.with?.['build-number'], 'the attach must not restate the build number').toBeUndefined();
+
+    // The bundle must declare the BUMPED version, so it compiles from the branch the
+    // bump landed on rather than the commit this run was triggered by.
+    expect(build.with?.ref, 'the IPA must build the bumped shell version').toBe('main');
+
+    // The body needs the iOS SDK, which only a macOS runner has.
+    const body = await load(IOS_BODY);
+    expect(body.jobs.build['runs-on'], 'the IPA body must run on macOS').toContain('macos');
+
+    // The logic suite runs there, not in `gates.yml`: a pull request must not pay for
+    // the Apple toolchain.
+    const buildText = JSON.stringify(body.jobs.build.steps as Array<any>);
+    expect(buildText, 'the IPA body must run the logic tests').toContain('swift run kabmo-shell-tests');
+    expect(buildText, 'the IPA body must not publish to npm').not.toContain('npm publish');
   });
 
   test('nothing publishes before the gates in a publish workflow', async () => {
@@ -419,7 +484,11 @@ describe('the gate contract', () => {
       `./.github/workflows/${ANDROID_BODY}`,
     );
     expect(build.with?.mode, 'apk-build must build').toBe('build');
-    expect(build.needs, 'the APK build must wait for the shell bump').toContain('android');
+    // `ios` rather than `android`: `ios` needs `android`, so the APK build waits for
+    // BOTH shell bumps through one chain. What matters is that the Android bump is
+    // behind it, which is reachability rather than a direct edge.
+    expect(build.needs, 'the APK build must come after the Android bump').toContain('ios');
+    expect(doc.jobs.ios.needs, 'the iOS bump must come after the Android bump').toContain('android');
     expect(doc.jobs.app.needs, 'the app must not tag unless the APK built').toContain('apk-build');
 
     //   2. the attach runs AFTER `app`, because `gh release upload` needs the

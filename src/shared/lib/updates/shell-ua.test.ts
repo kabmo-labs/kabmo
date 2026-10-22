@@ -5,51 +5,83 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { androidShellVersion, isAndroidDevice, SHELL_UA_PREFIX } from '@/shared/lib/updates/shell-ua';
+import { isAndroidDevice, shellVersion, SHELL_UA_PREFIXES } from '@/shared/lib/updates/shell-ua';
 
 /**
- * The token is the only signal that a page is running inside the Android app,
- * and it decides whether a download button appears. Two failure modes matter:
- * a browser mistaken for the app (a button in a place it does not belong) and a
+ * The token is the only signal that a page is running inside a native shell, and
+ * it decides whether a download button appears. Two failure modes matter: a
+ * browser mistaken for the shell (a button in a place it does not belong) and a
  * malformed token read as a version (a comparison against `''`).
+ *
+ * Both shells are exercised against the same parser, because the grammar is one
+ * grammar and only the prefix differs — the shape that silently reads the other
+ * shell's version.
  */
-describe('androidShellVersion', () => {
-  test('reads the version from a real WebView UA', () => {
+describe('shellVersion', () => {
+  test('reads the version from a real Android WebView UA', () => {
     const ua =
       'Mozilla/5.0 (Linux; Android 15; Pixel 6 Build/AP4A; wv) AppleWebKit/537.36 (KHTML, like Gecko) '
-      + `Version/4.0 Chrome/124.0.6367.219 Mobile Safari/537.36 ${SHELL_UA_PREFIX}0.1.0`;
-    expect(androidShellVersion(ua)).toBe('0.1.0');
+      + `Version/4.0 Chrome/124.0.6367.219 Mobile Safari/537.36 ${SHELL_UA_PREFIXES.android}0.1.0`;
+    expect(shellVersion(ua, 'android')).toBe('0.1.0');
+    expect(shellVersion(ua, 'ios')).toBeNull();
+  });
+
+  test('reads the version from a real iOS WKWebView UA', () => {
+    const ua =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) '
+      + `Mobile/15E148 ${SHELL_UA_PREFIXES.ios}0.1.0`;
+    expect(shellVersion(ua, 'ios')).toBe('0.1.0');
+    // The platform token is `iPhone`, not `Android` — so the Android install
+    // offer must not fire for the iOS shell.
+    expect(isAndroidDevice(ua)).toBe(false);
   });
 
   test('is null for a plain browser', () => {
-    expect(androidShellVersion('Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/124.0 Safari/537.36')).toBeNull();
-    expect(androidShellVersion('')).toBeNull();
-    expect(androidShellVersion(null)).toBeNull();
-    expect(androidShellVersion(undefined)).toBeNull();
+    const browser = 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/124.0 Safari/537.36';
+    expect(shellVersion(browser, 'android')).toBeNull();
+    expect(shellVersion(browser, 'ios')).toBeNull();
+    expect(shellVersion('', 'android')).toBeNull();
+    expect(shellVersion(null, 'android')).toBeNull();
+    expect(shellVersion(undefined, 'ios')).toBeNull();
   });
 
   test('is null when the token carries no usable version', () => {
     // A forged or truncated token must not read as version '' — that would make
     // `isNewer(latest, '')` true for every release and show a button always.
-    expect(androidShellVersion('Mozilla/5.0 KabmoAndroid/')).toBeNull();
-    expect(androidShellVersion('Mozilla/5.0 KabmoAndroid/abc')).toBeNull();
-    expect(androidShellVersion('Mozilla/5.0 KabmoAndroid/1.x.3')).toBeNull();
+    expect(shellVersion('Mozilla/5.0 KabmoAndroid/', 'android')).toBeNull();
+    expect(shellVersion('Mozilla/5.0 KabmoAndroid/abc', 'android')).toBeNull();
+    expect(shellVersion('Mozilla/5.0 KabmoAndroid/1.x.3', 'android')).toBeNull();
+    expect(shellVersion('Mozilla/5.0 KabmoIOS/', 'ios')).toBeNull();
+    expect(shellVersion('Mozilla/5.0 KabmoIOS/1.x.3', 'ios')).toBeNull();
   });
 
   test('accepts one-, two- and three-part versions and a prerelease', () => {
-    expect(androidShellVersion('KabmoAndroid/1')).toBe('1');
-    expect(androidShellVersion('KabmoAndroid/1.2')).toBe('1.2');
-    expect(androidShellVersion('KabmoAndroid/1.2.3')).toBe('1.2.3');
-    expect(androidShellVersion('KabmoAndroid/1.2.3-beta.1')).toBe('1.2.3-beta.1');
+    for (const prefix of Object.values(SHELL_UA_PREFIXES)) {
+      const kind = prefix === SHELL_UA_PREFIXES.android ? 'android' : 'ios';
+      expect(shellVersion(`${prefix}1`, kind)).toBe('1');
+      expect(shellVersion(`${prefix}1.2`, kind)).toBe('1.2');
+      expect(shellVersion(`${prefix}1.2.3`, kind)).toBe('1.2.3');
+      expect(shellVersion(`${prefix}1.2.3-beta.1`, kind)).toBe('1.2.3-beta.1');
+    }
   });
 
   test('takes the first token when the UA was crafted twice', () => {
-    expect(androidShellVersion('KabmoAndroid/1.0.0 KabmoAndroid/9.9.9')).toBe('1.0.0');
+    expect(shellVersion('KabmoAndroid/1.0.0 KabmoAndroid/9.9.9', 'android')).toBe('1.0.0');
+    expect(shellVersion('KabmoIOS/1.0.0 KabmoIOS/9.9.9', 'ios')).toBe('1.0.0');
   });
 
   test('does not match a lookalike token', () => {
-    expect(androidShellVersion('KabmoAndroidX/1.0.0')).toBeNull();
-    expect(androidShellVersion('Mozilla KabmoAndroid')).toBeNull();
+    expect(shellVersion('KabmoAndroidX/1.0.0', 'android')).toBeNull();
+    expect(shellVersion('Mozilla KabmoAndroid', 'android')).toBeNull();
+    expect(shellVersion('KabmoIOSX/1.0.0', 'ios')).toBeNull();
+    expect(shellVersion('Mozilla KabmoIOS', 'ios')).toBeNull();
+  });
+
+  test('the two prefixes are distinct', () => {
+    // A shared prefix would make one shell's token readable as the other's, and
+    // the two artifacts are on separate release tracks.
+    expect(SHELL_UA_PREFIXES.android).not.toBe(SHELL_UA_PREFIXES.ios);
+    expect(SHELL_UA_PREFIXES.android.startsWith(SHELL_UA_PREFIXES.ios)).toBe(false);
   });
 });
 
@@ -82,7 +114,7 @@ describe('isAndroidDevice', () => {
     expect(
       isAndroidDevice(
         `Mozilla/5.0 (Linux; Android 15; Pixel 6 Build/AP4A; wv) AppleWebKit/537.36 (KHTML, like Gecko) `
-        + `Version/4.0 Chrome/124.0.6367.219 Mobile Safari/537.36 ${SHELL_UA_PREFIX}0.3.0`,
+        + `Version/4.0 Chrome/124.0.6367.219 Mobile Safari/537.36 ${SHELL_UA_PREFIXES.android}0.3.0`,
       ),
     ).toBe(true);
   });
@@ -114,7 +146,7 @@ describe('isAndroidDevice', () => {
   });
 
   test('does not match a lookalike word', () => {
-    // `` is what stops a crafted or unrelated token from counting.
+    // `` is what stops a crafted or unrelated token from counting.
     expect(isAndroidDevice('Mozilla/5.0 (compatible; NotAndroidBot/1.0)')).toBe(false);
     expect(isAndroidDevice('Mozilla/5.0 AndroidX/1.0')).toBe(false);
   });

@@ -31,6 +31,17 @@ export interface KabmoBootstrap {
    */
   shellVersion?: string | null;
   /**
+   * The iOS shell's version, when this page was requested by the IPA
+   * (`KabmoIOS/<version>` in the User-Agent). Null in every browser.
+   *
+   * A separate field from `shellVersion` rather than one "shell version",
+   * because the two shells are two different artifacts on two different release
+   * tracks: an APK update is an `.apk` download, an IPA update is an App Store
+   * or TestFlight page. Folding them would let one shell's version be compared
+   * against the other's published artifact.
+   */
+  iosShellVersion?: string | null;
+  /**
    * Whether this request came from an Android device at all — the app, or a
    * browser running on it.
    *

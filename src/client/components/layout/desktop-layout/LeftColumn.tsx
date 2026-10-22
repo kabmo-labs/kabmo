@@ -46,7 +46,7 @@ import { SettingsModal } from '@/client/components/settings/LazyModal';
 import { SessionSidebarFooter } from '@/client/components/layout/session-sidebar/Footer';
 import { SessionSidebarHeader } from '@/client/components/layout/session-sidebar/Header';
 import { ToastStack } from '@/client/components/common/ToastStack';
-import { useAndroidDownload } from '@/client/hooks/ui/updates/android-download';
+import { useShellOffer } from '@/client/hooks/ui/updates/shell-download';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useUpdates } from '@/client/hooks/ui/updates';
@@ -95,10 +95,7 @@ export function LeftColumn({
   const [infoOpen, setInfoOpen] = useState(false);
   const updates = useUpdates();
   const { toasts, pushToast, dismissToast } = useToasts();
-  const androidDownload = useAndroidDownload(
-    window.__OMP_BOOTSTRAP__?.shellVersion,
-    window.__OMP_BOOTSTRAP__?.isAndroid,
-  );
+  const shellDownload = useShellOffer();
 
   // The update popup's "Update now" hands the run to the About modal, which owns
   // the live output. The column owns both, so a view switch cannot lose them.
@@ -151,7 +148,7 @@ export function LeftColumn({
           <SessionSidebarFooter
             onSettings={() => setSettingsOpen(true)}
             onInfo={() => setInfoOpen(true)}
-            androidDownload={androidDownload}
+            shellDownload={shellDownload}
             updateAvailable={updates.hasUpdate}
             onUpdateClick={() => {
               setInfoOpen(true);

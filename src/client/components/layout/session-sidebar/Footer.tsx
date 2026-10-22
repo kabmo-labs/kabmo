@@ -1,16 +1,16 @@
 import { Download, Info, Settings } from 'lucide-preact';
 import {
-  androidDownloadLabel,
-  type AndroidDownload,
-} from '@/client/hooks/ui/updates/android-download';
+  shellDownloadLabel,
+  type ShellDownload,
+} from '@/client/hooks/ui/updates/shell-download';
 
 interface SessionSidebarFooterProps {
   onSettings: () => void;
   onInfo: () => void;
   updateAvailable?: boolean;
   onUpdateClick?: () => void;
-  /** The APK to offer, or null. Set inside the app (an update) or on an Android browser (an install). */
-  androidDownload?: AndroidDownload | null;
+  /** The native-shell artifact to offer, or null. Set inside a shell (an update) or on an Android browser (an install). */
+  shellDownload?: ShellDownload | null;
 }
 
 /**
@@ -23,7 +23,7 @@ interface SessionSidebarFooterProps {
  * is unreachable by keyboard"). It is also what lets a browser spec address
  * these controls by role and name instead of by their position in the DOM.
  */
-export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUpdateClick, androidDownload }: SessionSidebarFooterProps) {
+export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUpdateClick, shellDownload }: SessionSidebarFooterProps) {
   return (
     <div className="h-10 px-3 border-t border-ink/10 flex items-center justify-between text-ink/60 shrink-0">
       <div className="flex space-x-1">
@@ -45,17 +45,17 @@ export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUp
         >
           <Info size={16} />
         </button>
-        {androidDownload && (
+        {shellDownload && (
           // Next to About. Two reasons to be here, and the label says which:
-          // an installed APK that is behind (an update), or an Android browser
+          // an installed shell that is behind (an update), or an Android browser
           // whose reader may not know the shell exists (an install). A desktop
-          // browser gets neither — see `useAndroidDownload`.
+          // browser and an iOS browser get neither — see `useShellDownload`.
           <a
-            href={androidDownload.url}
+            href={shellDownload.url}
             target="_blank"
             rel="noopener noreferrer"
-            title={androidDownloadLabel(androidDownload)}
-            aria-label={androidDownloadLabel(androidDownload)}
+            title={shellDownloadLabel(shellDownload)}
+            aria-label={shellDownloadLabel(shellDownload)}
             className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
           >
             <Download size={16} />

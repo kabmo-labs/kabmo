@@ -446,8 +446,126 @@ jobs:
           git push origin HEAD:main
           git log --oneline -1
 
+  # 1d. The iOS shell's version. Beside the Android bump and for the same reason:
+  # the app job fast-forwards to the commit this job makes, so a bump landing after
+  # it would reach installs one release late.
+  #
+  # Nothing is tagged and nothing is published: the IPA is attached to the app's
+  # release, so a shell bump reaches an installed app on the NEXT app release. That
+  # is the same lag a bundled plugin bump has, and for the same reason (the artifact
+  # rides the app's release rather than having one of its own).
+  #
+  # `needs: android` rather than `packages`: the two shell bumps are independent of
+  # each other, but both must land before `app` packs the tarball, and chaining them
+  # keeps ONE ordering in the graph rather than a fan-out whose branches `app` would
+  # have to name individually.
   # ---------------------------------------------------------------------------
-  # 1d. The APK, BUILT — and this job is a GATE on the app release, not a
+  ios:
+    name: Bump the iOS shell
+    needs: android
+    runs-on: ubuntu-latest
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      any: ${{ steps.bump.outputs.any }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # After the sync, so the range starts at the commit `android` made.
+      - name: Sync to the current remote
+        run: |
+          git fetch origin main
+          git merge --ff-only FETCH_HEAD
+          git log --oneline -1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Bump the shell version
+        id: bump
+        # `release/ios.js` holds the file and the watermark pattern, and
+        # `release/ios.test.js` asserts them against the tree. The bump LEVEL is the
+        # app's own rule set, so a `fix` is a patch and a `feat` a minor.
+        run: node release/release-ios.mjs
+
+      # Committed HERE, not by the app job: semantic-release's release commit carries
+      # only its own `assets`, so an uncommitted bump would be discarded when that job
+      # resets to its checkout — and the artifact would declare the OLD shell version.
+      - name: Commit the bump
+        if: steps.bump.outputs.any == 'true'
+        env:
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+        # A `chore`, which releases nothing on its own (`release/release-rules.js`), so
+        # this commit cannot cut a version by itself. `[skip ci]` because the gates
+        # already ran on the push that produced it.
+        run: |
+          git add packages/ios/version.properties
+          if git diff --cached --quiet; then
+            echo "Nothing staged; the bump produced no change."
+            exit 0
+          fi
+          git commit -q -m "chore(release): bump the ios shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
+          git push origin HEAD:main
+          git log --oneline -1
+
+  # 1e. The IPA, BUILT — a GATE on the app release, for the APK's reason.
+  #
+  # `packages/ios` is a private application: there is no registry for it, and the
+  # only artifact is the `.ipa` on the GitHub release. Building it BEFORE the tag
+  # means a Swift error or an unavailable macOS runner stops `app`, so nothing is
+  # tagged and nothing is published — instead of a release that goes out with no
+  # shell in it, repaired only by a hand-run dispatch.
+  #
+  # `ref: main`, not the trigger commit: the `ios` job just pushed the shell version,
+  # and the bundle must declare THAT number — building the starting commit would
+  # produce an IPA declaring the previous one, which is an update no installed app is
+  # ever offered.
+  #
+  # It does NOT gate on the shell having changed: whether `app` will tag is not
+  # knowable before `app` runs, and a build that might be wasted is the price of the
+  # gate. The same is true of `apk-build`.
+  # ---------------------------------------------------------------------------
+  ipa-build:
+    name: Build the iOS IPA
+    # `ios`, the shell this body builds: the bump that wrote its version is what it
+    # must compile from, and a chain (`packages -> marketplace -> android -> ios`)
+    # keeps `app` naming one dependency rather than every bump.
+    needs: ios
+    permissions:
+      # `contents: write`, and the reason is a parse-time check rather than anything
+      # this job does: GitHub validates a reusable workflow's permission CEILING
+      # against the whole CALLEE FILE, and `publish-ios.yml` also declares an `attach`
+      # job with `contents: write`. A `read` ceiling here fails the entire release run
+      # with `startup_failure` and no log — measured on the Android twin, run
+      # 39681067473. `tests/ci-gates.test.ts` pins the ceiling for every
+      # caller→callee pair.
+      contents: write
+    uses: ./.github/workflows/publish-ios.yml
+    with:
+      mode: build
+      ref: main
+      build-number: ${{ github.run_number }}
+
+  # ---------------------------------------------------------------------------
+  # 1f. The APK, BUILT — and this job is a GATE on the app release, not a
   # consequence of it.
   #
   # It used to be built after `app` tagged, which made a broken APK a failure
@@ -477,7 +595,10 @@ jobs:
   # ---------------------------------------------------------------------------
   apk-build:
     name: Build the Android APK
-    needs: android
+    # `ios`, not `android`: `ios` needs `android`, so this waits for BOTH shell bumps
+    # while the graph keeps one chain. Both artifacts must be built from a tree that
+    # carries both versions, and both are gates on `app`.
+    needs: ios
     permissions:
       # `contents: write`, NOT `read`, and the reason is a parse-time check
       # rather than anything this job does. GitHub validates a reusable
@@ -515,11 +636,13 @@ jobs:
   # ---------------------------------------------------------------------------
   app:
     name: Release the app
-    # `apk-build` already `needs: android`, which already `needs: marketplace`,
-    # which already `needs: packages`, which already `needs:` both gate jobs —
-    # so naming `apk-build` is what makes the app wait for everything, and the
-    # APK build sits in the chain rather than after it.
-    needs: apk-build
+    # `apk-build` and `ipa-build` each already reach both gate jobs through
+    # `android`/`ios` -> `marketplace` -> `packages` -> the gates, so naming them is
+    # what makes the app wait for everything — and BOTH shell builds sit in the chain
+    # rather than after it. Naming `ipa-build` as well as `apk-build` is not
+    # redundant: `ipa-build` hangs off `ios`, which hangs off `android`, and a release
+    # is never tagged from a tree whose IPA could not be built either.
+    needs: [apk-build, ipa-build]
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -617,6 +740,38 @@ jobs:
       # teardown flaked.
       run-gates: false
     secrets: inherit
+
+  # 2b. Attaching the iOS shell. After `app`, for the APK's reason: `gh release
+  # upload` has nothing to upload to before the release exists.
+  #
+  # It does NOT build. The IPA was built and verified by `ipa-build` BEFORE the tag,
+  # and this call only downloads that run artifact and attaches it. `needs: app`
+  # alone is enough, and the build is still a gate: `app` `needs: ipa-build`, so a
+  # failed build skips `app`, and a skipped `app` leaves `released` empty and this job
+  # skipped with it.
+  #
+  # The `versionName` the bundle declares is NOT the tag: it is
+  # `packages/ios/version.properties`, which the `ios` job bumped before `ipa-build`
+  # compiled it. That number is what the running shell reports on its User-Agent, and
+  # the asset name carries it so `fetchShellRelease('ios')` reads the same number.
+  #
+  # `build-number` is not passed: the artifact was built with the run number already,
+  # and re-stating it here would suggest this call could change it.
+  # ---------------------------------------------------------------------------
+  ipa:
+    name: Attach the iOS IPA
+    needs: app
+    if: needs.app.outputs.released == 'true'
+    # `contents: write` on the CALLER, not only the callee: a reusable workflow can
+    # only DOWNGRADE the permissions it inherits, so `read` here would turn the body's
+    # `contents: write` into read and the upload would fail with 403 after a full
+    # build.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-ios.yml
+    with:
+      mode: attach
+      tag: ${{ needs.app.outputs.tag }}
 
   # ---------------------------------------------------------------------------
   # 3. Attaching the shell. After `app`, because it uploads to the release that

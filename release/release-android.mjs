@@ -16,11 +16,11 @@
  * the entire delivery mechanism. Two readers depend on it moving:
  *
  * - the shell appends `KabmoAndroid/<versionName>` to its WebView User-Agent,
- *   the console parses it into `shellVersion`, and `GET /api/updates/android`
+ *   the console parses it into the bootstrap's `shellVersion`, and `GET /api/updates/android`
  *   offers a download only when the published asset is NEWER. A fix whose
  *   version did not move is an update no installed app is ever told about.
- * - `fetchAndroidRelease` reads the version out of the asset NAME, so the name
- *   has to carry this number rather than the app's tag.
+ * - `fetchShellRelease('android')` reads the version out of the asset NAME, so the
+ *   name has to carry this number rather than the app's tag.
  *
  * Before this existed the APK's `versionName` WAS the app's tag, which tied two
  * independent release cadences together: a shell-only fix shipped under a server

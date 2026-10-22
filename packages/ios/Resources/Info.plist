@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The iOS shell's bundle.
+
+  Assembled by `scripts/build-ipa.sh`, which fills `CFBundleShortVersionString`
+  from `version.properties` — the ONE place the shell version is declared, the same
+  file the Android shell uses and the same number the console reads off the
+  User-Agent.
+
+  Three entries are load-bearing and each is explained where it sits: cleartext
+  traffic (a self-hosted console on a LAN), the Home Screen quick action (the only
+  way back to the server settings), and `UIRequiredDeviceCapabilities`.
+-->
+<plist version="1.0">
+<dict>
+  <!--
+    The app's name, and the ONE place it is declared for iOS. `CFBundleDisplayName`
+    is what the Home Screen and Settings print; `CFBundleName` is the short name
+    (16 characters max, used in a few system surfaces and as the fallback). Both say
+    `Kabmo`, because a shell whose icon reads one thing and whose Settings row reads
+    another is two products on one device.
+
+    `CFBundleExecutable` is `Kabmo` — the FILE inside the bundle, not the SwiftPM
+    product. The product stays `kabmo-shell` (a lower-case binary name is the
+    platform's convention for an executable, and SwiftPM derives it from the target),
+    and `scripts/build-ipa.sh` copies it to `Kabmo` so the bundle's own file matches
+    the name macOS's shell uses for the same reason. `ShellNameTests` pins all three.
+  -->
+  <key>CFBundleName</key>
+  <string>Kabmo</string>
+  <key>CFBundleDisplayName</key>
+  <string>Kabmo</string>
+  <key>CFBundleExecutable</key>
+  <string>Kabmo</string>
+  <key>CFBundleIdentifier</key>
+  <string>dev.kabmo.shell</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.0.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>LSRequiresIPhoneOS</key>
+  <true/>
+  <!-- An empty launch-screen dictionary, which is how a modern bundle opts out of
+       the deprecated launch images. The window's own background is Kabmo's paper
+       (see `AppDelegate`), so the frame between launch and first paint matches the
+       app rather than flashing white or black. -->
+  <key>UILaunchScreen</key>
+  <dict/>
+
+  <!-- The icon set. `CFBundleIconName` points at an asset-catalog name an Xcode
+       build produces; the flat `CFBundleIconFiles` list is what a bundle assembled
+       without `actool` uses, and iOS picks the closest size for the device. Both are
+       present so the same plist works for this script and for an Xcode archive. -->
+  <key>CFBundleIcons</key>
+  <dict>
+    <key>CFBundlePrimaryIcon</key>
+    <dict>
+      <key>CFBundleIconName</key>
+      <string>AppIcon</string>
+      <key>CFBundleIconFiles</key>
+      <array>
+        <string>Icon-60</string>
+        <string>Icon-76</string>
+        <string>Icon-120</string>
+        <string>Icon-152</string>
+        <string>Icon-167</string>
+        <string>Icon-180</string>
+      </array>
+    </dict>
+  </dict>
+
+  <!--
+    Portrait and landscape, but NOT upside down: a phone held upside down is a
+    mis-detection far more often than an intention, and the console's fixed
+    composer would be at the top of the screen.
+  -->
+  <key>UISupportedInterfaceOrientations</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+  <key>UISupportedInterfaceOrientations~ipad</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+
+  <key>UIRequiredDeviceCapabilities</key>
+  <array>
+    <string>arm64</string>
+  </array>
+
+  <!--
+    A plain HTTP server on a LAN is the normal case, and the address is typed at
+    runtime so it cannot be listed in a per-domain exception. Without this the web
+    view refuses every `http://` address the user enters.
+
+    `NSAllowsArbitraryLoadsInWebContent` is the narrow key for exactly this: it
+    permits cleartext in a WKWebView while leaving URLSession's own rules alone —
+    which is why the health probe still fails closed on a certificate it does not
+    trust.
+  -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoadsInWebContent</key>
+    <true/>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+  </dict>
+
+  <!--
+    The Home Screen quick action. This is the shell's ONE settings entry point:
+    the web view fills the display, so an in-app control would sit on a control it
+    is not, and a saved address that no longer answers is exactly when the screen
+    is needed.
+  -->
+  <key>UIApplicationShortcutItems</key>
+  <array>
+    <dict>
+      <key>UIApplicationShortcutItemType</key>
+      <string>dev.kabmo.shell.openSettings</string>
+      <key>UIApplicationShortcutItemTitle</key>
+      <string>Server settings</string>
+      <key>UIApplicationShortcutItemIconType</key>
+      <string>UIApplicationShortcutIconTypeCompose</string>
+    </dict>
+  </array>
+
+  <!--
+    No `UIApplicationSceneManifest`: the shell has one window, and scene support
+    would add a delegate whose only job is to create the same window while iPad
+    multi-window opened a second shell onto the same server with its own cookies.
+    See `AppDelegate`.
+  -->
+
+  <!--
+    Declared because the shell stores two values in `UserDefaults`. The platform
+    requires the declaration for the API at all, not because the values are
+    sensitive — the address and a zoom percent.
+  -->
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

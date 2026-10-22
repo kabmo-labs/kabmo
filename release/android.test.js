@@ -5,10 +5,11 @@
  * delivery mechanism — and the failure it can cause is silent in a way nothing
  * else in this repository is. Two readers depend on the number moving:
  *
- * - the console compares the published asset's version (`versionFromAssetName`)
- *   against the one the running app reports on its User-Agent, and offers a
- *   download only when the published one is NEWER. A shell fix whose version did
- *   not move is an update no installed app is ever told about.
+ * - the console compares the published asset's version
+ *   (`versionFromAssetName('android', …)`) against the one the running app reports on
+ *   its User-Agent, and offers a download only when the published one is NEWER. A
+ *   shell fix whose version did not move is an update no installed app is ever told
+ *   about.
  * - `publish-android.yml` names the asset from the same file, so a name taken
  *   from anywhere else makes the comparison meaningless rather than broken.
  *

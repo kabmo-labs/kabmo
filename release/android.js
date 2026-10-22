@@ -5,13 +5,13 @@
  * so — exactly like a bundled marketplace plugin — the version it declares is
  * the whole delivery mechanism. Two things read it:
  *
- * - `androidShellVersion` parses `KabmoAndroid/<versionName>` off the WebView's
- *   User-Agent into the console's bootstrap, and `GET /api/updates/android`
+ * - `shellVersion(userAgent, 'android')` parses `KabmoAndroid/<versionName>` off the
+ *   WebView's User-Agent into the console's bootstrap, and `GET /api/updates/android`
  *   compares the published asset's version against it to decide whether to offer
  *   a download. That comparison is only meaningful if the number MOVES when the
  *   shell changes.
- * - `fetchAndroidRelease` reads the version out of the asset NAME, so the name
- *   has to carry this same number rather than the app's tag.
+ * - `fetchShellRelease('android')` reads the version out of the asset NAME, so the
+ *   name has to carry this same number rather than the app's tag.
  *
  * Before this file existed the APK's `versionName` was the app's release tag:
  * a fix that touched only `packages/android` could not reach an installed app

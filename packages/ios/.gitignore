@@ -1,0 +1,21 @@
+# iOS shell (packages/ios)
+
+# SwiftPM build products and the generated bundle.
+.build/
+build/
+*.ipa
+*.app
+*.dSYM
+.swiftpm/
+
+# Xcode's per-user state, if someone opens the package in Xcode.
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Signing material. A certificate and a provisioning profile are per-developer and
+# must never be in the repository; `scripts/build-ipa.sh` produces an UNSIGNED bundle
+# precisely so a checkout needs none.
+*.p12
+*.mobileprovision
+*.cer

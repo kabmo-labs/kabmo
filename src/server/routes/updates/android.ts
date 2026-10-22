@@ -1,5 +1,5 @@
 import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
-import { fetchAndroidRelease, type AndroidRelease } from '@/server/lib/updates/android-release';
+import { fetchShellRelease, type ShellRelease } from '@/server/lib/updates/shell-release';
 
 /**
  * GET /api/updates/android — the newest APK a visitor can download.
@@ -14,7 +14,7 @@ import { fetchAndroidRelease, type AndroidRelease } from '@/server/lib/updates/a
  * is to omit a button it cannot back with a link.
  */
 export async function loader() {
-  const release: AndroidRelease | null = await fetchAndroidRelease();
+  const release: ShellRelease | null = await fetchShellRelease('android');
   return json(
     release ?? { url: null, latest: null, releaseUrl: null },
     { headers: NO_STORE_HEADERS },

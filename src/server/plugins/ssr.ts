@@ -16,7 +16,7 @@ import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
-import { androidShellVersion, isAndroidDevice } from '@/shared/lib/updates/shell-ua';
+import { isAndroidDevice, shellVersion } from '@/shared/lib/updates/shell-ua';
 
 /** HTML-escape a string for interpolation into the failure page's `<pre>`. */
 function escapeHtmlText(value: string): string {
@@ -157,15 +157,18 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   const theme = resolveTheme(settingsBlob.theme);
   const userAgent = request.headers.get('user-agent') ?? '';
   const initialIsMobile = MOBILE_UA.test(userAgent);
-  // Which APK is asking, when the request came from the Android shell. Read
-  // HERE because the shell is rendered per request and the client's download
-  // button needs the answer before its first paint: a fetch after hydration
-  // would draw the button late, or draw it and then remove it.
+  // Which shell is asking, and which build of it. Read HERE because the shell
+  // is rendered per request and the client's download control needs the answer
+  // before its first paint: a fetch after hydration would draw the button late,
+  // or draw it and then remove it.
   //
-  // `isAndroid` is the wider fact and it exists for the INSTALL offer: a reader
-  // on Chrome or Brave for Android carries no shell token, and "not the app"
-  // alone cannot tell them from a desktop where an APK is useless.
-  const shellVersion = androidShellVersion(userAgent);
+  // `isAndroid` is the wider fact and it exists for the Android INSTALL offer: a
+  // reader on Chrome or Brave for Android carries no shell token, and "not the
+  // app" alone cannot tell them from a desktop where an APK is useless. There is
+  // no `isIos`: an IPA cannot be installed from a browser, so only an installed
+  // iOS shell is ever offered an update.
+  const androidVersion = shellVersion(userAgent, 'android');
+  const iosVersion = shellVersion(userAgent, 'ios');
   const isAndroid = isAndroidDevice(userAgent);
 
   const rendered = await renderShell();
@@ -178,7 +181,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // questions: "this browser has a session" versus "there is a session to have".
   // A Kabmo running open answers `authenticated: true` for every visitor, so
   // the navbar cannot use it to decide whether a sign-out control applies.
-  const bootstrap = JSON.stringify({ initialIsMobile, shellVersion, isAndroid, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: settings }).replace(/</g, '\\u003c');
+  const bootstrap = JSON.stringify({ initialIsMobile, shellVersion: androidVersion, iosShellVersion: iosVersion, isAndroid, authenticated, authEnabled: isAuthEnabled(), production: !DEV_ASSETS_ENABLED, appSettings: settings }).replace(/</g, '\\u003c');
   // The template's own `<meta name="theme-color">` is REWRITTEN, not joined by
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
