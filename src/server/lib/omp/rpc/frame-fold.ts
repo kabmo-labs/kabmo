@@ -269,8 +269,13 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
     case 'session_info_update':
       // A rename rewrote the fixed-width title slot in place; the scan cache is
       // keyed on file mtime, which that write cannot move, so the list must be
-      // rebuilt explicitly.
+      // rebuilt explicitly. Published HERE, not only from the `message_end`
+      // fallback: the title frame is the last thing a rename produces, and
+      // without this the sidebar kept the placeholder until the next turn's
+      // tool call republished it — measured as a session that had a name in the
+      // header and `New Session - <timestamp>` in the list.
       clearSessionFileCaches();
+      publishSidebarStructure();
       break;
     // omp's own goal transitions. The wrapper keeps the record so a snapshot
     // (`get_state` plus the live frame) can report the mode without a round

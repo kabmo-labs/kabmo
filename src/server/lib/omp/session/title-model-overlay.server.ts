@@ -120,42 +120,63 @@ async function writeOverlay(selector: string | undefined): Promise<void> {
 }
 
 /**
- * Serializes the write → settle → run → reset sequence.
+ * Holders of the pin, and the selector each asked for.
  *
- * The overlay is ONE file for every session, so two concurrent renames would
- * otherwise interleave: the second's write would land inside the first's
- * generation and reset the role out from under it. Renames are user-initiated
- * and rare, so queueing them costs nothing a user can perceive.
+ * The overlay is ONE file for every session, so a pin cannot be "owned" by one
+ * request while another waits: a title model can take a minute, and queueing
+ * the second request behind the first would make the operator's next prompt
+ * wait on a generation it has nothing to do with. Instead the pin is
+ * NEWEST-WINS — every holder is recorded, the file always carries the most
+ * recent selector, and the file is cleared only when the last holder leaves.
+ * A request that is superseded mid-generation is one omp cancels anyway
+ * (`renameTitle` reserves a title revision), so it loses nothing it could have
+ * kept.
  */
-let queue: Promise<unknown> = Promise.resolve();
+interface PinHolder {
+  selector: string;
+  order: number;
+}
+const holders = new Set<PinHolder>();
+let nextOrder = 1;
+/** Serializes the FILE writes; a write is one atomic replace, never held. */
+let writeQueue: Promise<unknown> = Promise.resolve();
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-/**
- * Run `fn` with the title role pointed at `selector`, then restore the overlay
- * to its empty state.
- *
- * `selector` of `undefined` (a session whose model cannot be read) runs `fn`
- * untouched: naming a session with a model the conversation never used is worse
- * than the role the user configured. The reset is in a `finally`, so a refused
- * or failed rename cannot leave the role pinned for the next child that loads
- * the overlay.
- */
-export function withTitleModelOverride<T>(selector: string | undefined, fn: () => Promise<T>): Promise<T> {
-  if (!selector) return fn();
-  const run = queue.then(async () => {
-    await writeOverlay(selector);
-    await wait(OVERLAY_SETTLE_MS);
-    try {
-      return await fn();
-    } finally {
-      await writeOverlay(undefined);
-    }
-  });
-  // Keep the chain alive on failure without swallowing the caller's rejection.
-  queue = run.then(
+/** Write the selector the current holders agree on (newest wins), or clear. */
+function syncOverlay(): Promise<void> {
+  const newest = [...holders].sort((a, b) => b.order - a.order)[0];
+  const selector = newest?.selector;
+  const run = writeQueue.then(() => writeOverlay(selector));
+  writeQueue = run.then(
     () => undefined,
     () => undefined,
   );
   return run;
+}
+
+/**
+ * Run `fn` with the title role pointed at `selector`, and release the pin when
+ * `fn` settles.
+ *
+ * `selector` of `undefined` (a session whose model cannot be read) runs `fn`
+ * untouched: naming a session with a model the conversation never used is worse
+ * than the role the user configured. The release is in a `finally`, so a refused
+ * or failed rename cannot leave the role pinned for the next child that loads
+ * the overlay.
+ *
+ * `fn` should resolve when the generation is DONE, not when the request is
+ * dispatched: omp resolves the title role again for the card request that
+ * follows a successful title, so releasing on the ack names the session with
+ * the configured role — the failure this pin exists to prevent.
+ */
+export function withTitleModelOverride<T>(selector: string | undefined, fn: () => Promise<T>): Promise<T> {
+  if (!selector) return fn();
+  const holder: PinHolder = { selector, order: nextOrder++ };
+  holders.add(holder);
+  return syncOverlay()
+    .then(() => Bun.sleep(OVERLAY_SETTLE_MS))
+    .then(fn)
+    .finally(async () => {
+      holders.delete(holder);
+      await syncOverlay();
+    });
 }

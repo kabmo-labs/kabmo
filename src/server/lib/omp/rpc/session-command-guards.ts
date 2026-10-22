@@ -49,6 +49,10 @@ export interface SessionCommandHost extends WebStateHost {
   /** Arm the deadline watchdog for a dispatch whose turn never opened. Optional
    *  so a test host can omit it; the real wrapper always implements it. */
   armAgentStartWatchdog?(): void;
+  /** The background `/rename` dispatch a following prompt must be ordered
+   *  behind (see `session/title-request.server.ts`). Absent on a host that
+   *  never titles, which is why the barrier treats it as idle. */
+  autoTitleDispatch?: Promise<void> | null;
   destroyAndWait(): Promise<void>;
 }
 

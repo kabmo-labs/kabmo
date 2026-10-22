@@ -36,9 +36,13 @@
  */
 
 import { getRpcSession, resolveSpawnCwd, startRpcSession } from '@/server/lib/omp/rpc/manager';
-import { PROMPT_ACK_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
-import { markTitleRequestSent, type AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
+import type { AutoTitleHost } from '@/server/lib/omp/session/auto-title.server';
+import {
+  GENERATE_TITLE_COMMAND,
+  releaseTitleClaim,
+  sendTitleRequest,
+} from '@/server/lib/omp/session/title-request.server';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { loadSessionModel } from '@/server/lib/omp/session/messages';
@@ -169,29 +173,41 @@ export function awaitTitleFrame(host: TitleFrameHost): Promise<RenameWithAiResul
   });
 
   const timer = setTimeout(() => {
+    // A request that never answered can never be answered: drop its claim, or
+    // it would swallow the operator's next `command_output` as "our rename".
+    releaseTitleClaim(host);
     finish({ ok: false, error: 'Timed out waiting for a generated title.', status: 504 });
   }, GENERATE_TIMEOUT_MS);
   // A pending generation must never hold the event loop open on its own.
   timer.unref?.();
 
-  // The window is claimed BEFORE the send, not after its ack: omp's response to
-  // the prompt and the rename's own frames are separate frames, and a fast
-  // child could deliver the title first — in which case a window marked on the
-  // ack would let that one frame through to the timeline. A send that never
-  // reached omp clears it again, so nothing is left claimed.
-  markTitleRequestSent(host);
-  void (async () => {
-    try {
-      await host.proc.sendCommand({ type: 'prompt', message: '/rename' }, PROMPT_ACK_TIMEOUT_MS);
-    } catch (error) {
-      host.autoTitleWindowUntil = 0;
-      finish({
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-        status: 502,
-      });
-    }
-  })();
+  // The claim is armed by the shared dispatcher BEFORE the send (and released
+  // by it if the send never reached omp), so the `command_output` this request
+  // answers with stays out of the timeline. The claim is deliberately NOT
+  // released on the success frame: omp emits `session_info_update` first and
+  // the `command_output` a few milliseconds later, and releasing on the title
+  // would let that second frame render as a notice row.
+  //
+  // The dispatch slot is claimed SYNCHRONOUSLY, before the first await, so a
+  // prompt the operator sends while this rename is still generating waits for
+  // it instead of racing it (`awaitTitleDispatch` in the prompt path).
+  const previous = host.autoTitleDispatch ?? null;
+  const request = sendTitleRequest(host, GENERATE_TITLE_COMMAND, previous);
+  const dispatched = request.then(
+    () => undefined,
+    () => undefined,
+  );
+  host.autoTitleDispatch = dispatched;
+  void dispatched.then(() => {
+    if (host.autoTitleDispatch === dispatched) host.autoTitleDispatch = null;
+  });
+  void request.catch((error: unknown) => {
+    finish({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      status: 502,
+    });
+  });
 
   return promise;
 }

@@ -35,7 +35,9 @@ interface FakeProc {
   sent: Promise<void>;
 }
 
-function makeHost(options: { sendFails?: boolean } = {}): { host: TitleFrameHost; proc: FakeProc } {
+function makeHost(
+  options: { sendFails?: boolean; onSend?: (host: TitleFrameHost) => void } = {},
+): { host: TitleFrameHost; proc: FakeProc } {
   const listeners = new Set<(frame: Frame) => void>();
   const sent = Promise.withResolvers<void>();
   const proc: FakeProc = {
@@ -46,6 +48,7 @@ function makeHost(options: { sendFails?: boolean } = {}): { host: TitleFrameHost
     },
     async sendCommand<T>(command: { type: string; [key: string]: unknown }): Promise<T> {
       proc.commands.push(command);
+      options.onSend?.(host);
       sent.resolve();
       if (options.sendFails) throw new Error('omp RPC process has exited');
       // omp acks /rename before it has a title — the case that makes waiting
@@ -56,10 +59,12 @@ function makeHost(options: { sendFails?: boolean } = {}): { host: TitleFrameHost
 
   const host = {
     sessionId: 'sess-1',
-    autoTitleInFlight: false,
     autoTitleWindowUntil: 0,
+    autoTitleClaims: 0,
+    autoTitleDispatch: null,
     autoTitlePending: false,
     autoTitleRequested: false,
+    autoTitleModel: null,
     proc: {
       sendCommand: proc.sendCommand,
       onFrame(listener: (frame: Frame) => void) {
@@ -117,14 +122,21 @@ describe('renameSessionWithAi frame handling', () => {
   });
 
   test('the request claims the output window before sending, so the frames stay out of the timeline', async () => {
-    const { host, proc } = makeHost();
+    let claimsAtSend = -1;
+    const { host, proc } = makeHost({
+      onSend: (h) => {
+        claimsAtSend = h.autoTitleClaims;
+      },
+    });
     const pending = awaitTitleFrame(host);
 
-    // Claimed synchronously with the call, not on the ack — a title frame that
-    // overtakes the ack must still be attributed to this request.
+    // Armed before the `prompt` reaches the wire, not on its ack: omp answers
+    // within the same tick (measured ~3 ms), so a claim armed after the ack can
+    // already be too late for the frame it was meant to cover.
+    await proc.sent;
+    expect(claimsAtSend).toBe(1);
     expect(host.autoTitleWindowUntil).toBeGreaterThan(Date.now());
 
-    await proc.sent;
     proc.emit({ type: 'session_info_update', title: 'Named' });
     await pending;
   });

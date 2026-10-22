@@ -128,25 +128,40 @@ describe('title-model overlay', () => {
     expect(readFileSync(path, 'utf8')).toBe('{}\n');
   });
 
-  test('concurrent overrides are serialized, so one cannot reset the other mid-flight', async () => {
+  test('concurrent overrides are newest-wins, and the last holder releases the pin', async () => {
+    // The overlay is ONE file for every session, and a title model can take a
+    // minute — queueing a second request behind the first would make the
+    // operator's next prompt wait on a generation it has nothing to do with.
+    // So the most recent request owns the file, and the file is cleared only
+    // when no request holds it.
     const { withTitleModelOverride, ensureTitleModelOverlay, titleModelOverlayPath } = await overlay();
     ensureTitleModelOverlay();
     const path = titleModelOverlayPath();
-    const order: string[] = [];
+    const seen: string[] = [];
+    const releaseFirst = Promise.withResolvers<void>();
+    const firstHolds = Promise.withResolvers<void>();
 
-    await Promise.all([
-      withTitleModelOverride('first/model', async () => {
-        expect(readFileSync(path, 'utf8')).toContain('first/model');
-        order.push('first');
-      }),
-      withTitleModelOverride('second/model', async () => {
-        // The first has already reset by the time this one runs.
-        expect(readFileSync(path, 'utf8')).toContain('second/model');
-        order.push('second');
-      }),
-    ]);
+    const first = withTitleModelOverride('first/model', async () => {
+      expect(readFileSync(path, 'utf8')).toContain('first/model');
+      seen.push('first');
+      firstHolds.resolve();
+      // Still generating when the second request arrives.
+      await releaseFirst.promise;
+    });
+    await firstHolds.promise;
 
-    expect(order).toEqual(['first', 'second']);
+    const second = withTitleModelOverride('second/model', async () => {
+      // The newer request owns the file even though the older one is running.
+      expect(readFileSync(path, 'utf8')).toContain('second/model');
+      seen.push('second');
+    });
+    await second;
+
+    // The older holder leaving must NOT clear the newer pin.
+    releaseFirst.resolve();
+    await first;
+
+    expect(seen).toEqual(['first', 'second']);
     expect(readFileSync(path, 'utf8')).toBe('{}\n');
   });
 });

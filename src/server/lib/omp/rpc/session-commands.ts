@@ -12,6 +12,7 @@
 import { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
 import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT_MS, GET_STATE_TIMEOUT_MS, IMAGE_BEARING_COMMANDS, PASSTHROUGH_COMMANDS, PROMPT_ACK_TIMEOUT_MS, RESTARTING_MESSAGE, STEER_ACK_TIMEOUT_MS, WebRpcError, toImageContents, type RpcSessionState, validateAgentImages } from '@/server/lib/omp/rpc/constants';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
+import { awaitTitleDispatch } from '@/server/lib/omp/session/title-request.server';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
 import { clearStreamStatus, markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import { buildWebState } from '@/server/lib/omp/rpc/web-state';
@@ -45,6 +46,12 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
       // refusal from clearing a running turn's flags when the prompt was a
       // steer aimed at that turn.
       if (refuseTuiOnlyPrompt(host, command.message, Boolean(command.streamingBehavior))) return null;
+      // A rename the finished run asked for must be ON THE WIRE before this
+      // prompt is: both are separate frames on one stdin, and a prompt admitted
+      // first lets the rename name a conversation that has already moved on.
+      // The wait is the dispatch ack (~3 ms), never the generation, and it is
+      // bounded so a wedged child cannot hold the operator's prompt.
+      await awaitTitleDispatch(host);
       const streamingBehavior = command.streamingBehavior as 'steer' | 'followUp' | undefined;
       // The live `stream` row starts with the DISPATCH, not with agent_start:
       // the spawn/ack round trip that precedes agent_start must not read as

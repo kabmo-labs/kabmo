@@ -82,6 +82,30 @@ describe('guards before dispatch', () => {
 });
 
 describe('prompt', () => {
+  test('a prompt waits for the rename a finished run asked for', async () => {
+    // Both are separate frames on one stdin. Without the barrier the prompt can
+    // be admitted first, and the rename then names a conversation that has
+    // already moved on — measured on a real session as a title derived from the
+    // second prompt instead of the first run.
+    const { promise: dispatchAck, resolve: ack } = Promise.withResolvers<void>();
+    const h = makeHarness({ autoTitleDispatch: dispatchAck });
+    h.respond(() => ({ agentInvoked: true }));
+
+    let admitted = false;
+    const prompt = dispatchSessionCommand(h.host, { type: 'prompt', message: 'second' }).then(() => {
+      admitted = true;
+    });
+    for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    // The rename is still on its way to the child, so the prompt must not have
+    // reached it.
+    expect(admitted).toBe(false);
+    expect(h.calls).toEqual([]);
+
+    ack();
+    await prompt;
+    expect(h.calls).toEqual([{ type: 'prompt', message: 'second' }]);
+  });
+
   test('the accepted ack arms the agent-start watchdog instead of clearing the turn', async () => {
     const h = makeHarness();
     h.respond(() => ({ agentInvoked: true }));

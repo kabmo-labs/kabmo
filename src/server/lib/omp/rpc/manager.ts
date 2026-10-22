@@ -81,24 +81,29 @@ export class AgentSessionWrapper {
   // Public so `RunSettle` can retire a stranded entry on omp's own quiescence
   // verdict (see `run-settle.server.ts`).
   readonly subagents = new SubagentLiveness();
-  // One background `/rename` at a time. The first run makes up to two attempts
-  // (the early one at the first user message, the fallback at run end), and two
-  // overlapping generations would race to write the same title slot.
-  autoTitleInFlight = false;
+  // The `/rename` dispatch chain (see `session/title-request.server.ts`): a
+  // prompt after the run end waits here so the rename goes first.
+  autoTitleDispatch: Promise<void> | null = null;
   /** omp's own plan/goal mode, mirrored from the frames. */
   readonly modeMirror = new ModeMirror();
-  // One-shot: the FIRST run of this conversation is the only one Kabmo
-  // may ask omp to name it from. Seeded in applyIdentity from omp's own message
-  // count, so a session reclaimed and respawned with `--resume` (which reports
-  // the messages it restored) never re-titles from its newest turn.
+  // One-shot: the FIRST run is the only one Kabmo may ask omp to name from.
+  // Seeded in applyIdentity from omp's own message count, so a child resumed
+  // with `--resume` (which reports the messages it restored) never re-titles.
   autoTitlePending = true;
-  // True once this run's early attempt (the first settled user message) has
-  // been made. Reset at each `agent_start`, so a queued steer message inside the
-  // same run cannot re-ask and cancel the generation already in flight.
+  // True once this run's early attempt was made, so a queued steer cannot
+  // re-ask inside the run. Reset at each `agent_start`.
   autoTitleRequested = false;
-  // Epoch ms until which `command_output` frames belong to our own background
-  // rename and must not reach the timeline. 0 when nothing is outstanding.
+  // Epoch ms until which `command_output` frames belong to our own rename.
   autoTitleWindowUntil = 0;
+  // Outstanding requests, one claim each: both attempts can be unanswered at
+  // once, and one slot let the first one's output reach the timeline.
+  autoTitleClaims = 0;
+  /** The pin a title request runs under (see `auto-title.server.ts`). A GETTER
+   *  over `runModel`: `get_state`, the `set_model` ack and the fallback probe all
+   *  write that one field, and a second copy would pin a model the session left. */
+  get autoTitleModel(): SessionRunModel | null {
+    return this.runModel;
+  }
   /** Idle reclaim. Its own object because the rules are self-contained: a busy
    *  session is never reclaimed, and every frame defers the deadline. */
   readonly idle: IdleReaper;

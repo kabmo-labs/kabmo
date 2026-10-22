@@ -27,8 +27,9 @@ import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
 function makeHost(overrides: Partial<SessionFrameHost> = {}): SessionFrameHost {
   return {
     sessionId: '',
-    autoTitleInFlight: false,
     autoTitleWindowUntil: 0,
+    autoTitleClaims: 0,
+    autoTitleDispatch: null,
     autoTitlePending: true,
     autoTitleRequested: false,
     promptRunning: false,
@@ -296,5 +297,33 @@ describe('releasesStreamRowOnPromptResult', () => {
 
   test('does nothing before the session id is known', () => {
     expect(releasesStreamRowOnPromptResult({ agentInvoked: false }, { streaming: false, sessionId: '' })).toBe(false);
+  });
+});
+
+/**
+ * A rename writes the title SLOT in place, which no mtime-keyed scan can see.
+ *
+ * The sidebar therefore has to be republished from this frame, not only from
+ * the turn-boundary signals: measured, a session named by its own run kept
+ * `New Session - <timestamp>` in the list while the header already showed the
+ * title, until an unrelated tool call happened to republish.
+ */
+describe('session_info_update', () => {
+  test('drops the sidebar scan cache, which the in-place title write cannot invalidate itself', () => {
+    // The title is rewritten in a fixed-width slot INSIDE the session file, so
+    // the mtime the scan cache keys on does not move. Without this the list
+    // kept `New Session - <timestamp>` while the header already showed the
+    // title, until an unrelated tool call happened to republish.
+    globalThis.__kabmoSidebarDataCache = {
+      data: {} as never,
+      expiresAt: Date.now() + 60_000,
+      inFlight: null,
+    };
+
+    const host = makeHost({ sessionId: 's1' });
+    const result = foldSessionFrame(host, { type: 'session_info_update', title: 'A new name' });
+
+    expect(result.suppressForward).toBe(false);
+    expect(globalThis.__kabmoSidebarDataCache?.expiresAt).toBe(0);
   });
 });
