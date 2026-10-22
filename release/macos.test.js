@@ -20,7 +20,7 @@
  * would break the moment a commit landed and would prove nothing about the code.
  */
 import { expect, test, describe, afterEach } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -115,6 +115,27 @@ describe('the table matches the tree', () => {
     // The version the bundle declares is verified, not assumed.
     expect(body).toContain('CFBundleShortVersionString');
     expect(body).toContain('CFBundleName');
+  });
+
+  /**
+   * The app target must not contain a file named `main.swift`, and this is a
+   * Swift rule rather than a style choice.
+   *
+   * A file with that exact name is compiled as TOP-LEVEL CODE, and `@main` is
+   * rejected in a module that contains any: "error: 'main' attribute cannot be
+   * used in a module that contains top-level code". The build failed that way on
+   * the release runner (Swift 6.1.2) while a newer local toolchain (6.4)
+   * accepted it — which is precisely why a source-layout assertion belongs here
+   * rather than a note in the file that the next rename can undo.
+   */
+  test('the app target has no main.swift, so @main is legal', () => {
+    const sources = join(repoRoot, 'packages/macos/Sources/kabmo-desktop');
+    const names = readdirSync(sources);
+    expect(names).not.toContain('main.swift');
+    expect(names).toContain('App.swift');
+    // And `@main` must actually be there: a rename that dropped the entry point
+    // would leave a package that builds nothing runnable.
+    expect(readFileSync(join(sources, 'App.swift'), 'utf8')).toContain('@main');
   });
 
   /**

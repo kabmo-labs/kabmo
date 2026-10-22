@@ -6,6 +6,14 @@
 /**
  * The shell's application: one window, one bridge, two facts it owns.
  *
+ * **This file is `App.swift`, not `main.swift`, and that is a Swift rule rather
+ * than a preference.** A file named `main.swift` is compiled as TOP-LEVEL CODE,
+ * and `@main` is rejected inside a module that contains any — "error: 'main'
+ * attribute cannot be used in a module that contains top-level code". Measured
+ * on the release runner (Swift 6.1.2), where it failed the macOS build; a newer
+ * local toolchain (6.4) accepts it, which is exactly why this was not caught
+ * before the pipeline ran.
+ *
  * What it deliberately does NOT do:
  *
  * - **It never sets `KABMO_DATA_DIR`.** The managed server inherits the
