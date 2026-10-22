@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.5.3](https://github.com/kabmo-labs/kabmo/compare/v0.5.2...v0.5.3) — 2026-10-22
+
+### Fixed
+
+* **mobile:** draw the left dock strip whenever its rail is on ([5d37e0d](https://github.com/kabmo-labs/kabmo/commit/5d37e0d83bb89c224a71c5c7764fc14721d64ac0)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.5.2](https://github.com/kabmo-labs/kabmo/compare/v0.5.1...v0.5.2) — 2026-10-22
 
 ### Fixed
