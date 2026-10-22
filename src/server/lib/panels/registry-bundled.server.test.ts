@@ -53,18 +53,18 @@ function withStore(run: (bundled: string) => Promise<void>): Promise<void> {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   root = fs.mkdtempSync(join(tmpdir(), 'kabmo-store-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
   // The scan reads the disabled set, so it needs a database of its own before
   // the first read — see `@/test-support/isolated-db`.
-  isolateDb();
+  await isolateDb();
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
-  releaseDb();
+  await releaseDb();
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
 });

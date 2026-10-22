@@ -62,19 +62,19 @@ function writePlugin(dirName: string, manifest: unknown): string {
   return dir;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   root = fs.mkdtempSync(join(tmpdir(), 'kabmo-marketplace-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
   // The scan reads the disabled set, which is a DATABASE read — so the suite
   // needs a database of its own before the first scan, or it opens the real one
   // and a `setPluginEnabled` below rewrites a live install.
-  isolateDb();
+  await isolateDb();
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
-  releaseDb();
+  await releaseDb();
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
 });

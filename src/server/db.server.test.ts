@@ -168,7 +168,7 @@ describe('closeDb', () => {
       // continuation is still pending when `closeDb` runs.
       const pending = getDb();
       const retired = globalThis.__kabmoDb as { disposed?: boolean } | undefined;
-      closeDb();
+      await closeDb();
       expect(retired?.disposed).toBe(true);
 
       // The open settles as a refusal rather than handing back a handle whose
@@ -181,7 +181,7 @@ describe('closeDb', () => {
       Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'after', 'db.sqlite');
       const db = await getDb();
       expect(db).toBeDefined();
-      closeDb();
+      await closeDb();
     } finally {
       globalThis.__kabmoDb = savedSlot;
     }
@@ -193,10 +193,51 @@ describe('closeDb', () => {
       Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'resolved', 'db.sqlite');
       globalThis.__kabmoDb = undefined;
       const db = await getDb();
-      closeDb();
+      await closeDb();
       expect(globalThis.__kabmoDb ?? null).toBeNull();
       // A closed handle refuses further work rather than silently succeeding.
       expect(() => db.raw.exec('SELECT 1')).toThrow();
+    } finally {
+      globalThis.__kabmoDb = savedSlot;
+    }
+  });
+
+  test('the returned promise settles only once the in-flight handle is closed', async () => {
+    // The bug this pins is a RACE, and it is the one the Release gate hit:
+    // retiring the slot is synchronous, but an open already in flight still
+    // reaches `createDb` and OPENS a file. A caller that deleted the temp
+    // directory on the strength of a synchronous return raced a handle that did
+    // not exist yet — and could never win, because `removeDir` retries with
+    // `Bun.sleepSync`, which blocks the very continuation that closes it.
+    //
+    // Asserted on the observable the caller needs: after `await closeDb()`, no
+    // handle is open and none is about to be. A database file that was opened
+    // and closed again reports no further work through it, and the slot is
+    // clear, so the next open uses whatever path is configured by then.
+    const savedSlot = globalThis.__kabmoDb;
+    try {
+      const dir = tempRoot();
+      Bun.env.KABMO_DB_PATH = path.join(dir, 'settle', 'db.sqlite');
+      globalThis.__kabmoDb = undefined;
+
+      const pending = getDb();
+      const retiring = closeDb();
+
+      // A synchronous return is the bug, not a detail: it is what let a caller
+      // delete the directory while the open was still about to create a file.
+      expect(retiring).toBeInstanceOf(Promise);
+
+      // Both settle, and the retirement is what decides when the caller may
+      // touch the directory — so it must not resolve before the open has been
+      // closed. The open's own rejection is expected and is not an error.
+      await expect(pending).rejects.toThrow(/retired/);
+      await expect(retiring).resolves.toBeUndefined();
+      expect(globalThis.__kabmoDb ?? null).toBeNull();
+
+      // The proof the caller needs: the directory can be removed the moment the
+      // promise settles, with no retry window spent.
+      removeDir(dir);
+      expect(existsSync(dir)).toBe(false);
     } finally {
       globalThis.__kabmoDb = savedSlot;
     }

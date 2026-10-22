@@ -56,12 +56,12 @@ function makeProc(): RpcProcess {
  * path at a temp file (the order is the point), and `releaseDb` closes it again
  * before deleting — the only shape that works on Windows.
  */
-beforeEach(() => {
-  isolateDb();
+beforeEach(async () => {
+  await isolateDb();
 });
 
-afterEach(() => {
-  releaseDb();
+afterEach(async () => {
+  await releaseDb();
 });
 
 /** A wrapper with a live run and a matching `stream` row behind it. */

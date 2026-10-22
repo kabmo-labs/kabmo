@@ -47,7 +47,7 @@ function writePlugin(dir: string, manifest: unknown, files: Record<string, strin
   }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   root = fs.mkdtempSync(join(tmpdir(), 'omp-sync-work-'));
   store = fs.mkdtempSync(join(tmpdir(), 'omp-sync-store-'));
   work = fs.mkdtempSync(join(tmpdir(), 'omp-sync-repos-'));
@@ -55,14 +55,14 @@ beforeEach(() => {
   process.env.KABMO_BUNDLED_MARKETPLACE_DIR = store;
   // The baseline and refusal records live in `app_settings`, so this suite needs
   // an isolated database: a shared handle would read the developer's real one.
-  isolateDb();
+  await isolateDb();
   invalidatePanelScan();
 });
 
-afterEach(() => {
+afterEach(async () => {
   delete process.env.KABMO_MARKETPLACE_DIR;
   delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
-  releaseDb();
+  await releaseDb();
   invalidatePanelScan();
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(store, { recursive: true, force: true });

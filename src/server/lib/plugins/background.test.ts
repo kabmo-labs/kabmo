@@ -26,11 +26,11 @@ let root = '';
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'omp-plugin-background-'));
-  isolateDb();
+  await isolateDb();
 });
 
 afterAll(async () => {
-  releaseDb();
+  await releaseDb();
   await rm(root, { recursive: true, force: true });
 });
 

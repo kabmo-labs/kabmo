@@ -29,8 +29,10 @@ import { removeDir } from '@/test-support/remove-dir';
 let dir: string | null = null;
 
 /** Point the process at a fresh database. Call from `beforeEach`. */
-export function isolateDb(): string {
-  closeDb();
+export async function isolateDb(): Promise<string> {
+  // Awaited: an open that was still in flight would otherwise reach `createDb`
+  // AFTER the new path was set and open a file this call then loses track of.
+  await closeDb();
 
   dir = mkdtempSync(join(tmpdir(), 'omc-db-'));
   const path = join(dir, 'db.sqlite');
@@ -38,9 +40,19 @@ export function isolateDb(): string {
   return path;
 }
 
-/** Close the handle and drop the temp directory. Call from `afterEach`. */
-export function releaseDb(): void {
-  closeDb();
+/**
+ * Close the handle and drop the temp directory. Call from `afterEach`.
+ *
+ * **`await` it.** `closeDb` is only synchronous about retiring the SLOT; an
+ * open already in flight still reaches `createDb` and opens a file. Deleting
+ * the directory first raced that handle — and could not be won, because the
+ * retry loop spins with `Bun.sleepSync` and blocks the very continuation that
+ * would close it. Measured on the Release gate: `EBUSY … a handle outlived its
+ * test` after the full 5s window, reported against the two PRECEDING cases,
+ * plus "Unhandled error between tests" from the continuation's own rejection.
+ */
+export async function releaseDb(): Promise<void> {
+  await closeDb();
   delete Bun.env.KABMO_DB_PATH;
   // `removeDir`, not a bare `rmSync`: a closed SQLite handle is released by the
   // OS asynchronously on Windows, so the delete races it and fails with EBUSY —

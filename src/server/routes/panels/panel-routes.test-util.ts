@@ -104,19 +104,19 @@ export { getMarketplacePluginsDir };
  *   entry makes a later "no errors" assertion pass or fail for the wrong reason.
  */
 export function usePanelRouteFixtures(): void {
-  beforeEach(() => {
+  beforeEach(async () => {
     dirs.root = fs.mkdtempSync(join(tmpdir(), 'omc-panel-routes-'));
     dirs.bundled = fs.mkdtempSync(join(tmpdir(), 'omc-panel-store-'));
     process.env.KABMO_MARKETPLACE_DIR = dirs.root;
     process.env.KABMO_BUNDLED_MARKETPLACE_DIR = dirs.bundled;
-    isolateDb();
+    await isolateDb();
     invalidatePanelScan();
   });
 
   afterEach(async () => {
     await disposeAllPlugins();
     globalThis.__kabmoPluginLoadErrors = undefined;
-    releaseDb();
+    await releaseDb();
     delete process.env.KABMO_MARKETPLACE_DIR;
     delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
     invalidatePanelScan();

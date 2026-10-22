@@ -38,11 +38,11 @@ const ROOT = path.join(os.tmpdir(), `kabmo-waiting-store-${process.pid}`);
 
 beforeAll(async () => {
   fs.mkdirSync(ROOT, { recursive: true });
-  isolateDb();
+  await isolateDb();
 });
 
 afterAll(async () => {
-  releaseDb();
+  await releaseDb();
   fs.rmSync(ROOT, { recursive: true, force: true });
 });
 

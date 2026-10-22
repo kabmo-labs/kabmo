@@ -38,12 +38,12 @@ async function readChamberBlob(): Promise<Record<string, unknown>> {
   return readSettingsJson<Record<string, unknown>>(db, 'omp_chamber_settings', {});
 }
 
-beforeEach(() => {
-  isolateDb();
+beforeEach(async () => {
+  await isolateDb();
 });
 
-afterEach(() => {
-  releaseDb();
+afterEach(async () => {
+  await releaseDb();
 });
 
 describe('hiddenRightPanels migration', () => {

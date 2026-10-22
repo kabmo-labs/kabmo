@@ -44,11 +44,11 @@ async function call(body: unknown): Promise<{ status: number; body: Record<strin
 
 beforeAll(async () => {
   fs.mkdirSync(ROOT, { recursive: true });
-  isolateDb();
+  await isolateDb();
 });
 
 afterAll(async () => {
-  releaseDb();
+  await releaseDb();
   fs.rmSync(ROOT, { recursive: true, force: true });
 });
 

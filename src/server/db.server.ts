@@ -73,11 +73,25 @@ function slot(): DbSlot {
  * a lifecycle one: a handle must never outlive the configuration it was opened
  * under. An in-flight open is marked `disposed` rather than awaited, and the
  * continuation closes its own handle — see {@link DbSlot.disposed}.
+ *
+ * **The returned promise is the contract, and it is not decoration.** Marking
+ * the slot `disposed` does not stop an open that is already running: the
+ * continuation still reaches `createDb`, which OPENS a file. A caller that
+ * deleted the temp directory on the strength of a synchronous return therefore
+ * raced a handle that did not exist yet — measured on the Release gate, where
+ * `releaseDb` failed with `EBUSY … a handle outlived its test` after burning
+ * the whole retry window, and the continuation's own rejection surfaced as
+ * "Unhandled error between tests". The retry could not win, and the reason is
+ * worth stating: `removeDir` spins with `Bun.sleepSync`, which BLOCKS the event
+ * loop, so the very continuation that would close the handle could never
+ * progress while the delete was being retried.
+ *
+ * Awaiting this promise means "no handle is open, and none is about to be".
  */
-export function closeDb(): void {
+export function closeDb(): Promise<void> {
   const state = globalThis.__kabmoDb;
   globalThis.__kabmoDb = undefined;
-  if (!state) return;
+  if (!state) return Promise.resolve();
   state.disposed = true;
   try {
     state.resolved?.raw.close();
@@ -85,7 +99,17 @@ export function closeDb(): void {
     // Already closed by a failed open; the slot is gone either way.
   }
   state.resolved = null;
+  const pending = state.promise;
   state.promise = null;
+  // Swallowed deliberately: the caller is RETIRING this handle, so the
+  // continuation's "retired before it finished" rejection is the expected
+  // outcome rather than an error. Letting it escape here would resurrect the
+  // unhandled-rejection noise this await exists to remove.
+  return pending ? pending.then(noop, noop) : Promise.resolve();
+}
+
+function noop(): void {
+  // See `closeDb`: the settlement is the signal, not the value.
 }
 
 export async function getDatabasePath(): Promise<string> {

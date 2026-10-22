@@ -36,12 +36,12 @@ import { action as httpAction } from '@/server/routes/plugins/http';
 import { registerRpcMethod, resetPluginRpc } from '@/server/lib/plugins/rpc.server';
 import { createPluginHttp, resetPluginHttp } from '@/server/lib/plugins/http.server';
 
-beforeAll(() => {
-  isolateDb();
+beforeAll(async () => {
+  await isolateDb();
 });
 
-afterAll(() => {
-  releaseDb();
+afterAll(async () => {
+  await releaseDb();
 });
 
 afterEach(() => {

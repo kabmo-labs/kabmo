@@ -27,12 +27,12 @@ import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { getDb } from '@/server/db.server';
 import { writeSettingsJson } from '@/server/lib/db/settings-store';
 
-beforeEach(() => {
-  isolateDb();
+beforeEach(async () => {
+  await isolateDb();
 });
 
-afterEach(() => {
-  releaseDb();
+afterEach(async () => {
+  await releaseDb();
 });
 
 describe('baselines', () => {

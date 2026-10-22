@@ -37,11 +37,11 @@ let root = '';
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'omp-plugin-platform-'));
-  isolateDb();
+  await isolateDb();
 });
 
 afterAll(async () => {
-  releaseDb();
+  await releaseDb();
   await rm(root, { recursive: true, force: true });
 });
 

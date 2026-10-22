@@ -60,19 +60,19 @@ function call(loader: (args: never) => unknown, params: Record<string, string>) 
   return loader({ params, request: new Request('http://local/') } as never) as Promise<Response>;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   root = fs.mkdtempSync(join(tmpdir(), 'omc-panel-css-'));
   bundled = fs.mkdtempSync(join(tmpdir(), 'omc-panel-store-'));
   process.env.KABMO_MARKETPLACE_DIR = root;
   process.env.KABMO_BUNDLED_MARKETPLACE_DIR = bundled;
   // A database of this suite's own, BEFORE the first scan: the scan reads the
   // disabled set, and a path set while a cached handle exists is never read.
-  isolateDb();
+  await isolateDb();
   invalidatePanelScan();
 });
 
-afterEach(() => {
-  releaseDb();
+afterEach(async () => {
+  await releaseDb();
   delete process.env.KABMO_MARKETPLACE_DIR;
   delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
   invalidatePanelScan();

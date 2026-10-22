@@ -16,8 +16,23 @@
 # scripts are pinned to LF because a CRLF shebang line makes a shell script
 # unrunnable on POSIX (`#!/bin/sh\r` names an interpreter that does not exist).
 #
+# `eol=lf` is what makes that promise hold in the WORKING TREE, and it is not
+# implied by `text=auto`. `text=auto` alone normalises only the INDEX; on
+# checkout git honours `core.autocrlf`, which a Windows runner sets to `true`,
+# so every file arrived CRLF there while the repository said LF. Measured on the
+# Windows gate: `release/linux.test.js` read `Cargo.toml` and matched
+# `/\[\[bin\]\]\nname = "Kabmo"/` against `[[bin]]\r\nname = …` and failed — the
+# same class of invisible-`\r` failure this file was written to prevent, still
+# present because the earlier rule stopped one step short.
+#
+# `*.bat` is the one exception and it is deliberate: `cmd.exe` parses batch
+# files line by line and has long-standing trouble with a bare LF around labels
+# and `goto`, so the platform's own convention is kept for the files that run
+# under it.
+#
 # Do not add a per-file `-text` override for anything the suite reads as text.
-* text=auto
+* text=auto eol=lf
+*.bat text eol=crlf
 
 # Shell scripts and anything else executed through a shebang: LF, always.
 *.sh text eol=lf

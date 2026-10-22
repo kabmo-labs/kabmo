@@ -39,7 +39,7 @@ beforeAll(async () => {
   marketplaceRoot = await mkdtemp(join(tmpdir(), 'omp-plugin-e2e-'));
   previousOverride = Bun.env.KABMO_MARKETPLACE_DIR;
   Bun.env.KABMO_MARKETPLACE_DIR = marketplaceRoot;
-  isolateDb();
+  await isolateDb();
 
   // Copy the bundled plugin into the working marketplace and build it there —
   // the same two steps an install performs.
@@ -58,7 +58,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await disposePlugin(PLUGIN_ID);
-  releaseDb();
+  await releaseDb();
   if (previousOverride === undefined) delete Bun.env.KABMO_MARKETPLACE_DIR;
   else Bun.env.KABMO_MARKETPLACE_DIR = previousOverride;
   await rm(marketplaceRoot, { recursive: true, force: true });

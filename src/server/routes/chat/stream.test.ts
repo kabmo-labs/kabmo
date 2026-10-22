@@ -33,16 +33,16 @@ import { action } from '@/server/routes/chat/stream';
 
 const savedMock = Bun.env.MOCK;
 
-beforeEach(() => {
-  isolateDb();
+beforeEach(async () => {
+  await isolateDb();
   localRuns().clear();
   Bun.env.MOCK = 'true';
 });
 
-afterEach(() => {
+afterEach(async () => {
   Bun.env.MOCK = savedMock;
   localRuns().clear();
-  releaseDb();
+  await releaseDb();
 });
 
 /** Resolve on the next `stream-status` write — the write's own signal. */

@@ -50,13 +50,13 @@ beforeEach(async () => {
   // suite that pointed at `~/.omp/agent` would rewrite a live install's roles.
   agentDir = mkdtempSync(join(tmpdir(), 'omc-role-presets-'));
   Bun.env.PI_CODING_AGENT_DIR = agentDir;
-  isolateDb();
+  await isolateDb();
   await initSchema(await getDb());
   Bun.env.MOCK = 'true';
 });
 
-afterEach(() => {
-  releaseDb();
+afterEach(async () => {
+  await releaseDb();
   removeDir(agentDir);
   if (originalAgentDir === undefined) delete Bun.env.PI_CODING_AGENT_DIR;
   else Bun.env.PI_CODING_AGENT_DIR = originalAgentDir;
