@@ -3,6 +3,7 @@ import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { withChord } from '@/client/lib/ui/with-chord';
 import { titlebarPaddingLeft } from '@/shared/lib/ui/titlebar';
+import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 
 /**
@@ -28,9 +29,10 @@ export function SessionSidebarHeader({
 }) {
   const label = withChord('toggleSidebar', 'Collapse Sidebar');
   return (
-    <div 
+    <div
       className="h-10 flex-shrink-0 flex items-center justify-between px-4 border-b border-ink/10 titlebar-drag-region select-none"
-      style={{ paddingLeft: titlebarPaddingLeft('1rem') }}
+      {...dragRegionProps()}
+      style={{ paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('1rem')) }}
     >
       {/* The stream indicator badges the wordmark's top-right corner, the
           same placement the phone's header uses — it reads as part of the

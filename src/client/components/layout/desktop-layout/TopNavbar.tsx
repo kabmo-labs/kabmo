@@ -1,4 +1,5 @@
-import { Loader2, MoreHorizontal, PanelLeft } from 'lucide-preact';
+import { useRef, useState } from 'preact/hooks';
+import { Loader2, MoreHorizontal, PanelLeft, ServerCog } from 'lucide-preact';
 import { HeaderControls } from '@/client/components/common/header-controls';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
@@ -8,6 +9,12 @@ import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 import { withChord } from '@/client/lib/ui/with-chord';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import { ServerSwitcher } from '@/client/components/common/server-switcher';
+import { useDesktopServers } from '@/client/hooks/desktop/servers';
+import { isDesktopShell } from '@/client/lib/desktop/bridge';
+import { dragRegionProps, drawsWindowControls, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
+import { WindowControls } from '@/client/components/common/window-controls';
+import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 
 interface TopNavbarProps {
   sessionTitle: string | null;
@@ -55,15 +62,29 @@ export function TopNavbar({
   // sidebar row may be scrolled out of view — so the header says the wait is
   // happening even when the row that started it is not on screen.
   const renaming = useSessionRenaming(sessionId);
+  // The shell's server control: which server this window is on, and how to
+  // change it. Absent in a browser — there is no shell to control there, and a
+  // button that opened onto "not available" would never work.
+  const shell = isDesktopShell();
+  const [serverPanelOpen, setServerPanelOpen] = useState(false);
+  const serverPanelRef = useRef<HTMLDivElement>(null);
+  const servers = useDesktopServers(serverPanelOpen);
+  const activeServer =
+    servers.state?.entries.find((entry) => entry.id === servers.state?.activeId) ??
+    servers.state?.detected.find((entry) => entry.url === servers.state?.activeUrl) ??
+    null;
+  useOnClickOutside(serverPanelRef, () => setServerPanelOpen(false));
+
   const hasSessionActions = Boolean(
     sessionActions && (sessionActions.onRename || sessionActions.onRenameWithAi || sessionActions.onArchive || sessionActions.onDelete)
   );
   return (
-    <header 
+    <header
       className="h-10 flex-shrink-0 border-b border-ink/10 bg-paper flex items-center justify-between z-20 titlebar-drag-region select-none"
+      {...dragRegionProps()}
       style={{
         // The sidebar's own header carries the left inset while it is open.
-        paddingLeft: !showLeftPanel ? titlebarPaddingLeft('1rem') : undefined,
+        paddingLeft: !showLeftPanel ? titlebarInsetLeft(titlebarPaddingLeft('1rem')) : undefined,
         paddingRight: titlebarPaddingRight('1rem'),
       }}
     >
@@ -142,6 +163,37 @@ export function TopNavbar({
       <div className="flex items-center space-x-3 titlebar-no-drag">
         {/* One cluster, one order, shared with the phone's header. Each layout
             passes only what it has; the order is stated in `HeaderControls`. */}
+        {shell && (
+          <div className="relative" ref={serverPanelRef}>
+            <button
+              type="button"
+              onClick={() => setServerPanelOpen((open) => !open)}
+              title={
+                activeServer
+                  ? `Server: ${activeServer.label} — ${activeServer.running ? 'running' : 'stopped'}`
+                  : 'Choose a server'
+              }
+              aria-label="Servers"
+              aria-haspopup="dialog"
+              aria-expanded={serverPanelOpen}
+              className="flex items-center gap-1.5 rounded px-1.5 py-1 text-ink/60 hover:text-ink hover:bg-ink/10 transition-colors cursor-pointer"
+            >
+              <ServerCog size={16} />
+              {activeServer && (
+                <span className="max-w-[120px] truncate text-[11px] font-medium text-ink/70">
+                  {activeServer.label}
+                </span>
+              )}
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  activeServer?.running ? 'bg-success' : 'bg-ink/25'
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+            <ServerSwitcher open={serverPanelOpen} onClose={() => setServerPanelOpen(false)} />
+          </div>
+        )}
         <HeaderControls
           layout="desktop"
           sessionId={sessionId ?? null}
@@ -151,6 +203,10 @@ export function TopNavbar({
           onToggleEditor={onToggleEditor}
           onSwitchToMobile={onSwitchToMobile}
         />
+        {/* The Windows shell is borderless and its webview is an HWND, so the
+            system's caption buttons cannot be drawn over it — the page owns
+            them there. Absent on macOS, whose traffic lights are the system's. */}
+        {drawsWindowControls() && <WindowControls />}
       </div>
 
       {menu.anchor && sessionActions && (

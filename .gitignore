@@ -32,3 +32,8 @@ playwright-report/
 
 # Scratch reproduction harnesses (not committed).
 tmp-repro/
+
+# SwiftPM writes a dot-directory BESIDE the sources, which `build/` above does
+# not cover — measured: `packages/macos/.build` alone is 3,745 untracked entries
+# after one `swift build`, and a `git add packages/macos` would commit all of it.
+packages/macos/.build/

@@ -129,6 +129,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
   # ---------------------------------------------------------------------------
   # 0. The gates. Nothing below runs until both of these pass.
   # ---------------------------------------------------------------------------
@@ -545,10 +546,10 @@ jobs:
   # ---------------------------------------------------------------------------
   ipa-build:
     name: Build the iOS IPA
-    # `ios`, the shell this body builds: the bump that wrote its version is what it
-    # must compile from, and a chain (`packages -> marketplace -> android -> ios`)
-    # keeps `app` naming one dependency rather than every bump.
-    needs: ios
+    # `macos`, not `ios`: `macos` needs `ios`, which needs `android`, so this waits
+    # for every shell bump while the chain stays linear — and the IPA must compile
+    # from a tree that carries all of the versions.
+    needs: macos
     permissions:
       # `contents: write`, and the reason is a parse-time check rather than anything
       # this job does: GitHub validates a reusable workflow's permission CEILING
@@ -595,10 +596,11 @@ jobs:
   # ---------------------------------------------------------------------------
   apk-build:
     name: Build the Android APK
-    # `ios`, not `android`: `ios` needs `android`, so this waits for BOTH shell bumps
-    # while the graph keeps one chain. Both artifacts must be built from a tree that
-    # carries both versions, and both are gates on `app`.
-    needs: ios
+    # `macos`, not `android`: `macos` needs `ios`, which needs `android`, so this
+    # waits for EVERY shell bump while the graph keeps one chain. Each artifact must
+    # be built from a tree that carries all of the versions, and each is a gate on
+    # `app`.
+    needs: macos
     permissions:
       # `contents: write`, NOT `read`, and the reason is a parse-time check
       # rather than anything this job does. GitHub validates a reusable
@@ -628,21 +630,154 @@ jobs:
     secrets: inherit
 
   # ---------------------------------------------------------------------------
+  # 1g. The Windows app, PACKAGED — a GATE on the app release, for the APK's and
+  # the IPA's reason.
+  #
+  # Packaging BEFORE the tag means a .NET toolchain that moved, a compile error or
+  # a WebView2 package that no longer restores stops `app`, so nothing is tagged
+  # and nothing is published — instead of a release that goes out with no Windows
+  # artifact in it.
+  #
+  # `ref: main`, not the trigger commit: the `windows` job just pushed the shell
+  # version, and the artifact must declare THAT number — building the starting
+  # commit would produce an app reporting the previous one.
+  #
+  # It does NOT gate on the shell having changed: whether `app` will tag is not
+  # knowable before `app` runs, and a build that might be wasted is the price of
+  # the gate. The same is true of `apk-build` and `ipa-build`.
+  # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # 1h. The macOS shell's version. Beside the Windows bump and for the same
+  # reason: the app job fast-forwards to the commit this job makes, so a bump
+  # landing after it would reach installs one release late.
+  #
+  # Nothing is tagged and nothing is published: the `.app` is attached to the
+  # app's release, so a shell bump reaches a user on the NEXT app release — the
+  # same lag a bundled plugin bump has, and for the same reason (the artifact
+  # rides the app's release rather than having one of its own).
+  #
+  # `needs: ios` rather than `android`: the shell bumps are independent of each
+  # other, but all must land before `app` packs the tarball, and chaining them
+  # keeps ONE ordering in the graph rather than a fan-out whose branches `app`
+  # would have to name individually.
+  # ---------------------------------------------------------------------------
+  macos:
+    name: Bump the macOS shell
+    needs: ios
+    runs-on: ubuntu-latest
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      any: ${{ steps.bump.outputs.any }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # After the sync, so the range starts at the commit `windows` made.
+      - name: Sync to the current remote
+        run: |
+          git fetch origin main
+          git merge --ff-only FETCH_HEAD
+          git log --oneline -1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Bump the shell version
+        id: bump
+        # `release/macos.js` holds the file and the watermark pattern, and
+        # `release/macos.test.js` asserts them against the tree. The bump LEVEL is
+        # the app's own rule set, so a `fix` is a patch and a `feat` a minor.
+        run: node release/release-macos.mjs
+
+      # Committed HERE, not by the app job: semantic-release's release commit
+      # carries only its own `assets`, so an uncommitted bump would be discarded
+      # when that job resets to its checkout — and the bundle would declare the
+      # OLD shell version.
+      - name: Commit the bump
+        if: steps.bump.outputs.any == 'true'
+        env:
+          GIT_AUTHOR_NAME: kabmo-bot[bot]
+          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: kabmo-bot[bot]
+          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
+        # A `chore`, which releases nothing on its own (`release/release-rules.js`),
+        # so this commit cannot cut a version by itself. `[skip ci]` because the
+        # gates already ran on the push that produced it.
+        run: |
+          git add packages/macos/version.properties
+          if git diff --cached --quiet; then
+            echo "Nothing staged; the bump produced no change."
+            exit 0
+          fi
+          git commit -q -m "chore(release): bump the macos shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
+          git push origin HEAD:main
+          git log --oneline -1
+
+  # ---------------------------------------------------------------------------
   # 2. The app. Waits for the packages, the marketplace bumps, the shell bump
   # AND the APK build, so its dependency pins are current, its tarball carries
   # the plugin versions a user needs, the tag it cuts carries the shell version
   # the APK declares — and a release is never tagged when the shell cannot be
   # built.
   # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # 1i. The macOS app, BUILT — a GATE on the app release, for the APK's reason.
+  #
+  # `packages/macos` is a private application: there is no registry for it, and the
+  # only artifact is the `.zip` on the GitHub release. Building it BEFORE the tag
+  # means a Swift error, a missing toolchain or a bundle declaring the wrong version
+  # stops `app`, so nothing is tagged and nothing is published — instead of a release
+  # that goes out with no app in it, repaired only by a hand-run dispatch.
+  #
+  # `ref: main`, not the trigger commit: the `macos` job just pushed the shell
+  # version, and the bundle must declare THAT number.
+  #
+  # It does NOT gate on the shell having changed: whether `app` will tag is not
+  # knowable before `app` runs, and a build that might be wasted is the price of the
+  # gate. The same is true of `apk-build` and `ipa-build`.
+  # ---------------------------------------------------------------------------
+  macos-build:
+    name: Build the macOS app
+    needs: macos
+    permissions:
+      # `contents: write`, for the parse-time reason `apk-build` documents: GitHub
+      # validates a reusable workflow's permission CEILING against the whole CALLEE
+      # FILE, and `publish-macos.yml` also declares an `attach` job with
+      # `contents: write`. A `read` ceiling here fails the entire release run with
+      # `startup_failure` and no log — measured on the Android twin, run 39681067473.
+      # `tests/ci-gates.test.ts` pins the ceiling for every caller→callee pair.
+      contents: write
+    uses: ./.github/workflows/publish-macos.yml
+    with:
+      mode: build
+      ref: main
+
   app:
     name: Release the app
     # `apk-build` and `ipa-build` each already reach both gate jobs through
     # `android`/`ios` -> `marketplace` -> `packages` -> the gates, so naming them is
-    # what makes the app wait for everything — and BOTH shell builds sit in the chain
+    # what makes the app wait for everything — and EVERY shell build sits in the chain
     # rather than after it. Naming `ipa-build` as well as `apk-build` is not
     # redundant: `ipa-build` hangs off `ios`, which hangs off `android`, and a release
-    # is never tagged from a tree whose IPA could not be built either.
-    needs: [apk-build, ipa-build]
+    # is never tagged from a tree whose IPA could not be built either. `macos-build`
+    # hangs off `macos`, the last bump in the chain, so it waits for every shell
+    # version while the graph stays linear.
+    needs: [apk-build, ipa-build, macos-build]
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -821,6 +956,39 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/publish-android.yml
+    with:
+      mode: attach
+      tag: ${{ needs.app.outputs.tag }}
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # 4b. Attaching the macOS app. After `app`, for the APK's reason: `gh release
+  # upload` has nothing to upload to before the release exists.
+  #
+  # It does NOT build. The `.zip` was assembled and verified by `macos-build`
+  # BEFORE the tag, and this call only downloads that run artifact and attaches
+  # it — so a packaging step cannot be the step that discovers a broken app.
+  #
+  # The `versionName` the bundle declares is NOT the tag: it is
+  # `packages/macos/version.properties`, which the `macos` job bumped before
+  # `macos-build` compiled it. `publish-macos.yml` names the asset from the same
+  # file, so the number a user downloads and the number the app reports are one
+  # fact.
+  #
+  # The `if:` matches `app-publish`'s: a push whose commits ask for no version bump
+  # produces no tag, so there is no release to attach an app to.
+  # ---------------------------------------------------------------------------
+  macos-app:
+    name: Attach the macOS app
+    needs: app
+    if: needs.app.outputs.released == 'true'
+    # `contents: write` on the CALLER, not only the callee: a reusable workflow can
+    # only DOWNGRADE the permissions it inherits, so `read` here would turn the
+    # body's `contents: write` into read and the upload would fail with 403 after a
+    # full build.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-macos.yml
     with:
       mode: attach
       tag: ${{ needs.app.outputs.tag }}

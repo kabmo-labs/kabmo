@@ -1,0 +1,195 @@
+name: Build and attach the macOS app
+
+# The `.app` body, as a REUSABLE workflow — the same shape `publish-android.yml`
+# and `publish-ios.yml` take, and for the same reason: the steps exist once, so
+# the release run and a manual re-run cannot drift apart.
+#
+# TWO PHASES, and the split is the whole point of this file.
+#
+#   - `build` compiles the SwiftPM package, assembles `Kabmo.app`, verifies the
+#     version it declares and uploads it as a run artifact. `release.yml` calls it
+#     BEFORE `app` tags, so a Swift error, a missing toolchain or a bundle that
+#     declares the wrong version stops the release instead of shipping a tag whose
+#     GitHub release carries no app.
+#   - `attach` downloads that artifact and attaches it to the GitHub release `app`
+#     created. It runs after the tag, because `gh release upload` has nothing to
+#     upload to before the release exists — but it no longer BUILDS anything, so it
+#     cannot be the step that discovers a broken build.
+#
+# Artifacts are scoped to the workflow RUN, so the attach call reaches the artifact
+# the earlier call in the same run uploaded. The name is a LITERAL both phases read:
+# it was an input with a default in the Android twin, and a `workflow_dispatch`
+# declares no such input, so `inputs.<name>` resolved to `''` there and a repair
+# dispatch silently attached nothing.
+#
+# It is NOT an npm publish, and there is no `environment: npm`: the shell is a
+# private application, so the only artifact is the `.zip` on the GitHub release.
+#
+# The gates are NOT called here. `release.yml`'s `macos-build` job `needs: macos`,
+# which already depends transitively on both gate jobs — and `app` `needs:
+# macos-build`, so nothing is tagged from a tree this body failed to build.
+
+on:
+  workflow_call:
+    inputs:
+      # Which phase to run. `build` compiles and uploads the artifact; `attach`
+      # downloads it from THIS run and uploads it to `tag`.
+      mode:
+        description: build (compile + upload artifact) or attach (upload to a release).
+        required: false
+        type: string
+        default: build
+      # The commit to build, in this order: `ref`, then `tag`, then the caller's own
+      # commit. `release.yml` passes `main`, never the run's starting sha: the
+      # `macos` job just pushed the version bump, and building the starting commit
+      # would produce an app declaring the previous version.
+      ref:
+        description: Commit to build from; empty falls back to the tag, then the caller's commit.
+        required: false
+        type: string
+        default: ''
+      # The release tag to attach to; empty builds without attaching.
+      tag:
+        description: Release tag to attach the app to; empty builds without attaching.
+        required: false
+        type: string
+        default: ''
+  # A manual dispatch repairs a release whose asset failed to upload. It names an
+  # existing tag, so the rebuild matches the release it repairs.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the app to (e.g. v0.5.3)
+        required: true
+      ref:
+        description: Commit to build; empty builds the tag, so the repair matches its release
+        required: false
+
+jobs:
+  build:
+    name: Build the macOS app
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || inputs.tag || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The toolchain this repository is built with. `swift build` on the runner's
+      # default Xcode is what a developer uses, so nothing is pinned beyond it —
+      # `packages/macos/Package.swift` states the platform floor.
+      - name: Show the toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build the package
+        working-directory: packages/macos
+        run: swift build -c release
+
+      # The rules the panel obeys: what a row may offer, and what it may stop.
+      # A failure here is a bug in the shell's decisions, not in its rendering.
+      - name: Run the logic suite
+        working-directory: packages/macos
+        run: swift run -c release kabmo-desktop-tests
+
+      # The window chrome, on a real window: a press on the header moves it, a
+      # press on a control does not, and the bar's menu and shortcuts exist. This
+      # needs a window server, which the macOS runner provides.
+      - name: Run the window suite
+        working-directory: packages/macos
+        run: swift run -c release kabmo-desktop-window-tests
+
+      - name: Assemble the app bundle
+        run: packages/macos/scripts/build-app.sh
+
+      # The version the bundle declares is the one `release/release-macos.mjs`
+      # bumped, and the one the asset name will carry. Checked here rather than
+      # trusted: a plist that disagrees with `version.properties` would publish an
+      # app whose own About panel names a different build than its download.
+      - name: Verify the bundle version
+        run: |
+          set -euo pipefail
+          version="$(node release/macos-version.mjs)"
+          echo "Shell version: $version"
+          app=packages/macos/build/Kabmo.app
+          short="$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")"
+          build="$(plutil -extract CFBundleVersion raw "$app/Contents/Info.plist")"
+          name="$(plutil -extract CFBundleName raw "$app/Contents/Info.plist")"
+          exe="$(plutil -extract CFBundleExecutable raw "$app/Contents/Info.plist")"
+          test "$short" = "$version" || { echo "CFBundleShortVersionString is $short, expected $version"; exit 1; }
+          test "$build" = "$version" || { echo "CFBundleVersion is $build, expected $version"; exit 1; }
+          # The app is called Kabmo everywhere a person sees it.
+          test "$name" = "Kabmo" || { echo "CFBundleName is $name, expected Kabmo"; exit 1; }
+          test "$exe" = "Kabmo" || { echo "CFBundleExecutable is $exe, expected Kabmo"; exit 1; }
+          test -x "$app/Contents/MacOS/Kabmo" || { echo "the executable is missing"; exit 1; }
+          codesign --verify --deep --strict "$app" || { echo "the bundle is not signed"; exit 1; }
+          echo "bundle OK"
+
+      # `ditto` rather than `zip`: it preserves the bundle's extended attributes
+      # and its code signature. A `zip -r` round trip strips them, and the result
+      # is an app macOS refuses to launch ("damaged") with nothing in the archive
+      # to say why.
+      - name: Package the app
+        run: |
+          set -euo pipefail
+          version="$(node release/macos-version.mjs)"
+          ditto -c -k --sequesterRsrc --keepParent \
+            packages/macos/build/Kabmo.app "kabmo-macos-v${version}.zip"
+          ls -l ./*.zip
+
+      - name: Upload the app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabmo-macos-app
+          path: ./*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Phase 2 — the upload. `release.yml` runs this after `app` tagged.
+  # ---------------------------------------------------------------------------
+  attach:
+    name: Attach the app to the release
+    needs: build
+    # `always()` because a skipped `build` must not skip the attach with it: the
+    # release run calls this body twice, and the second call is attach-only. The
+    # result check keeps a FAILED build blocking the upload — there would be no
+    # artifact to attach, and a release carrying a stale one is worse than a
+    # release with none.
+    if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      # Uploading an asset to an existing release needs `contents: write`.
+      contents: write
+    steps:
+      - name: Download the app artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kabmo-macos-app
+          path: .
+
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          # `gh` resolves the repository from a git remote in the working
+          # directory, and this job deliberately checks NOTHING out — its only
+          # input is the artifact it just downloaded. Without this, every command
+          # below dies with `failed to run git: fatal: not a git repository`,
+          # which a `||` guard then reports as "No GitHub release for <tag>" — a
+          # wrong reason for a real failure, measured on the Android twin.
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -l ./*.zip
+          gh release view "$TAG" --json tagName > /dev/null \
+            || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
+          gh release upload "$TAG" ./*.zip --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'

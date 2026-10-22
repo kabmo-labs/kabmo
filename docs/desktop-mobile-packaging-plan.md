@@ -273,7 +273,40 @@ console depends on. Client side: `window.__kabmoBack()`, so the hardware back
 button closes the drawer, editor and dialog before walking history. Build steps:
 `packages/android/README.md`.
 
-**Desktop is still at P0.** Nothing above P4 has been started.
+**The macOS shell is shipped, as a NATIVE port rather than the Tauri/Electrobun
+wrapper this research proposed.** `packages/macos` is Swift + AppKit + WKWebView
+(696 KB `.app`, ad-hoc signed). It is thin: it picks a server, spawns/stops a
+LOCAL one, and owns the window chrome. It does not bundle a server by default
+(P0's packaging work), and it does not implement the framework comparison above —
+the measurements in that table are why: a native webview host needs no runtime in
+the bundle, and the thing that actually broke under Electrobun (the drag region)
+is one platform API (`NSWindow.sendEvent`).
+
+Windows and Linux are still at P0.
+
+### How the macOS shell ships
+
+The `.app` is a **release artifact attached to the app's GitHub release**, not a
+registry package. `packages/macos/version.properties` is the only place its version
+is declared: `scripts/build-app.sh` fills `CFBundleShortVersionString` from it
+through `release/macos-version.mjs`, and `publish-macos.yml` names the asset
+`kabmo-macos-v<version>.zip` from the same file.
+
+The `macos` job bumps that version from the same Conventional Commits rules the app
+uses and commits it; `macos-build` compiles the package, runs both Swift suites,
+verifies the plist and the signature, and uploads the archive — **before `app`
+tags**, so a Swift error stops the release instead of shipping a tag with no app.
+`macos-app` attaches that artifact after the release exists, and never rebuilds.
+The chain is `packages → marketplace → android → ios → macos → {ipa-build,
+apk-build} → macos-build → app`, pinned by `tests/ci-gates.test.ts`.
+
+Two details are load-bearing. The archive is made with `ditto`, never `zip`: a
+`zip -r` round trip strips the bundle's extended attributes and code signature, and
+macOS then refuses to launch the result ("damaged"). And **there is no User-Agent
+token**, unlike the Android and iOS shells — those two are downloaded from the
+console, which compares the published asset's version against the running shell's
+on every request; a macOS app is installed by hand from the release page, so
+nothing parses it.
 
 ## Verification log
 

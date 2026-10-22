@@ -56,6 +56,13 @@ const ANDROID_BODY = 'publish-android.yml';
  */
 const IOS_BODY = 'publish-ios.yml';
 
+/**
+ * The macOS app body: the third shell, and the same contract as the two mobile
+ * ones — its `build` phase is a gate on `app` (`app` `needs: macos-build`). It runs
+ * on `macos-15`, which is the only runner with the Swift toolchain and AppKit.
+ */
+const MACOS_BODY = 'publish-macos.yml';
+
 /** Every workflow that can tag or publish, and therefore must be gated. */
 const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
 
@@ -73,7 +80,7 @@ async function load(file: string): Promise<Record<string, any>> {
 
 describe('the gate contract', () => {
   test('the reusable workflows exist and are callable', async () => {
-    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
+    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
       expect(existsSync(join(WORKFLOWS, file))).toBe(true);
       const doc = await load(file);
       // `workflow_call` is what makes a file callable at all. Without it the
@@ -84,7 +91,7 @@ describe('the gate contract', () => {
 
   test('every local reusable-workflow reference resolves and declares workflow_call', async () => {
     const seen = new Set<string>();
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -97,16 +104,16 @@ describe('the gate contract', () => {
         expect(callee.on?.workflow_call, `${uses} does not declare workflow_call`).toBeDefined();
       }
     }
-    // Six: the two gates, the two npm publish bodies, and the two shell bodies
-    // (Android APK, iOS IPA).
-    expect(seen.size).toBe(6);
+    // Seven: the two gates, the two npm publish bodies, and the three shell bodies
+    // (Android APK, iOS IPA, macOS app).
+    expect(seen.size).toBe(7);
   });
 
   test('a caller passes only inputs the callee declares', async () => {
     // An input the callee does not declare is a run-time failure ("Invalid
     // input, ... is not defined in the referenced workflow"), and it is exactly
     // the kind of typo a rename produces.
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         if (typeof job?.uses !== 'string' || !job.uses.startsWith('./')) continue;
@@ -148,7 +155,7 @@ describe('the gate contract', () => {
     // matched. A caller that declares no `permissions:` block inherits the
     // default (which includes `contents: write`), so it is never a violation.
     const WRITE = 'write';
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -267,7 +274,8 @@ describe('the gate contract', () => {
     // above cannot see: `app` could depend on the gates directly and still race
     // the lockfile refresh.
     //
-    // The chain is `packages -> marketplace -> android -> apk-build -> app`, and
+    // The chain is `packages -> marketplace -> android -> ios -> macos ->
+    // {ipa-build, apk-build} -> macos-build -> app`, and
     // every hop matters. `packages` commits the refreshed `bun.lock`, and a
     // `workspace:` spec is substituted from that record, so the app must not
     // pack before it. `marketplace` bumps the bundled plugins' versions into the
@@ -285,16 +293,20 @@ describe('the gate contract', () => {
     expect(needsOf('marketplace')).toContain('packages');
     expect(needsOf('android')).toContain('marketplace');
     expect(needsOf('ios')).toContain('android');
-    expect(needsOf('apk-build')).toContain('ios');
-    expect(needsOf('ipa-build')).toContain('ios');
+    expect(needsOf('macos')).toContain('ios');
+    expect(needsOf('apk-build')).toContain('macos');
+    expect(needsOf('ipa-build')).toContain('macos');
+    expect(needsOf('macos-build')).toContain('macos');
     expect(needsOf('app')).toContain('apk-build');
     expect(needsOf('app')).toContain('ipa-build');
+    expect(needsOf('app')).toContain('macos-build');
 
-    // The two attach jobs are the only ones allowed to hang off `app` alone: they
+    // The three attach jobs are the only ones allowed to hang off `app` alone: they
     // upload to the release `app` created, so they cannot run earlier, and their own
     // `if:` keeps a no-release run from calling them at all.
     expect(needsOf('apk')).toEqual(['app']);
     expect(needsOf('ipa')).toEqual(['app']);
+    expect(needsOf('macos-app')).toEqual(['app']);
   });
 
   test('the shell bump runs before the app tags, and only writes its own version file', async () => {
@@ -317,6 +329,72 @@ describe('the gate contract', () => {
     expect(text, 'the bump commit must stage only version.properties').toContain(
       'git add packages/android/version.properties',
     );
+
+    // The same contract for every other shell: its own bump job, its own script,
+    // its own single staged file. A shell whose bump staged `-A` would sweep a
+    // lockfile change into a `chore` that claims to be a version bump, and one
+    // whose bump was never committed is discarded when `app` resets to its
+    // checkout — the artifact would declare the OLD version.
+    for (const [id, script, file] of [
+      ['ios', 'release-ios.mjs', 'git add packages/ios/version.properties'],
+      ['macos', 'release-macos.mjs', 'git add packages/macos/version.properties'],
+    ] as const) {
+      const shell = doc.jobs[id];
+      expect(shell, `release.yml has no ${id} bump job`).toBeDefined();
+      const shellSteps = (shell.steps as Array<{ run?: string }>) ?? [];
+      const bumpAt = shellSteps.findIndex((step) => String(step.run ?? '').includes(script));
+      const commitAt = shellSteps.findIndex((step) => String(step.run ?? '').includes('git commit'));
+      expect(bumpAt, `${id} must run ${script}`).toBeGreaterThanOrEqual(0);
+      expect(commitAt, `${id} must commit its bump`).toBeGreaterThan(bumpAt);
+      expect(JSON.stringify(shellSteps), `${id} must stage only its own version file`).toContain(file);
+    }
+  });
+
+  test('the macOS app is BUILT before the app tags, and only attached after', async () => {
+    // The third shell, and the same contract as the APK and the IPA: a build
+    // failure must stop the release BEFORE a tag exists, so a release never goes
+    // out with no app attached. `publish-macos.yml` also verifies the version the
+    // bundle declares, which is the macOS-specific failure — a plist that
+    // disagrees with `version.properties` publishes an app whose own About panel
+    // names a different build than its download.
+    const doc = await load('release.yml');
+    const build = doc.jobs['macos-build'];
+    const attach = doc.jobs['macos-app'];
+
+    expect(build, 'release.yml has no macos-build job').toBeDefined();
+    expect(build.uses, 'release.yml:macos-build must call the macOS body').toBe(
+      `./.github/workflows/${MACOS_BODY}`,
+    );
+    expect(build.with?.mode, 'macos-build must build').toBe('build');
+    expect(build.needs, 'the macOS build must come after the macOS bump').toContain('macos');
+    expect(doc.jobs.macos.needs, 'the macOS bump must come after the iOS bump').toContain('ios');
+    expect(doc.jobs.app.needs, 'the app must not tag unless the macOS app built').toContain('macos-build');
+
+    // The build compiles from `main`, not the trigger commit: the bump just landed
+    // there, and the starting commit declares the OLD version.
+    expect(build.with?.ref, 'the macOS build must compile the bumped branch').toBe('main');
+
+    expect(attach?.uses, 'release.yml:macos-app must call the macOS body').toBe(
+      `./.github/workflows/${MACOS_BODY}`,
+    );
+    expect(attach.with?.mode, 'the post-tag job must not rebuild the app').toBe('attach');
+    expect(attach.needs, 'release.yml:macos-app must wait for the app release').toContain('app');
+    expect(attach.with?.tag).toBe('${{ needs.app.outputs.tag }}');
+
+    // The body itself: a macOS runner, the version read from the properties file
+    // and verified on the assembled bundle, and an archive that keeps the
+    // signature (`ditto`, never `zip`).
+    const body = await load(MACOS_BODY);
+    const steps = (body.jobs.build.steps as Array<{ run?: string }>) ?? [];
+    const text = JSON.stringify(steps);
+    expect(body.jobs.build['runs-on'], 'the macOS body must run on a macOS runner').toContain('macos');
+    expect(text, 'the body must read the version from version.properties').toContain(
+      'release/macos-version.mjs',
+    );
+    expect(text, 'the body must verify the bundle version').toContain('CFBundleShortVersionString');
+    expect(text, 'the body must package with ditto, or the signature is stripped').toContain('ditto');
+    expect(text, 'the body must run the logic suite').toContain('kabmo-desktop-tests');
+    expect(text, 'the body must run the window suite').toContain('kabmo-desktop-window-tests');
   });
 
   test('the IPA is BUILT before the app tags, and only attached after', async () => {
@@ -332,10 +410,10 @@ describe('the gate contract', () => {
       `./.github/workflows/${IOS_BODY}`,
     );
     expect(build.with?.mode, 'ipa-build must build').toBe('build');
-    // `windows` rather than `ios`: `windows` needs `ios`, so the IPA waits for the
-    // third shell bump through the one chain while the Android/iOS bumps stay behind
-    // it. Reachability, not a direct edge.
-    expect(build.needs, 'the IPA build must wait for the shell bump').toContain('ios');
+    // `macos` rather than `ios`: `macos` needs `ios`, which needs `android`, so the
+    // IPA waits for every shell bump through the one chain. Reachability, not a
+    // direct edge.
+    expect(build.needs, 'the IPA build must wait for the shell bumps').toContain('macos');
     expect(doc.jobs.app.needs, 'the app must not tag unless the IPA built').toContain('ipa-build');
 
     expect(attach?.uses, 'release.yml:ipa must call the IPA body').toBe(`./.github/workflows/${IOS_BODY}`);
@@ -487,7 +565,7 @@ describe('the gate contract', () => {
     // `ios` rather than `android`: `ios` needs `android`, so the APK build waits for
     // BOTH shell bumps through one chain. What matters is that the Android bump is
     // behind it, which is reachability rather than a direct edge.
-    expect(build.needs, 'the APK build must come after the Android bump').toContain('ios');
+    expect(build.needs, 'the APK build must come after the Android bump').toContain('macos');
     expect(doc.jobs.ios.needs, 'the iOS bump must come after the Android bump').toContain('android');
     expect(doc.jobs.app.needs, 'the app must not tag unless the APK built').toContain('apk-build');
 
