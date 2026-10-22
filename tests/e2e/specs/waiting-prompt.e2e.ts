@@ -46,18 +46,23 @@ async function newChatIn(page: Page, folderName: string) {
  * send that waited for the answer would finish the dependency before the pick
  * was even possible — and then there is nothing to wait for.
  *
- * The gate is the ROW's own "Running" cue, not just the optimistic bubble. The
- * bubble is painted by the send path before the server has a `stream` row, and
- * the picker is derived from that row — so asserting the bubble and then racing
- * the picker was the measured failure on the Windows runner: the dependency's
- * run had ended by the time the picker's own timeout expired.
+ * The gate is the composer's OWN "Stop generation" control, not the sidebar
+ * row's spinner. The bubble is painted by the send path before the server has a
+ * `stream` row, and the picker is derived from that row — so asserting the
+ * bubble and then racing the picker was the measured failure on the Windows
+ * runner: the dependency's run had ended by the time the picker's timeout
+ * expired.
  *
- * The cue is LATE by construction, and that is why its budget is generous: the
- * row is drawn under a pending `new-…` id first, which never carries a status
- * (the server's `stream` row names omp's own uuid), so the cue appears only
- * after the spawn answers and the row is adopted. Measured locally: ~1s. On the
- * Windows runner the same path took longer than the first 20s budget, which is
- * what failed the two attempts before this.
+ * A sidebar-row gate cannot work here, and the page snapshot proves it: a new
+ * chat's row is drawn under the pending `new-…` id, while the server's `stream`
+ * row names omp's own uuid, so the row renders no status until the spawn answers
+ * AND the structure scan catches up. Measured on the Windows runner it had still
+ * not happened after 30s (`Delay:75000 session A now` in the snapshot), which is
+ * why the two attempts before this failed on the gate rather than on the picker.
+ *
+ * `Stop generation` is a property of the composer the run belongs to: it is
+ * rendered whenever that chat is in flight, from the client's own generating
+ * state, so it needs no sidebar render and no scan.
  */
 async function sendAndKeepRunning(page: Page, text: string) {
   const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
@@ -66,12 +71,9 @@ async function sendAndKeepRunning(page: Page, text: string) {
   await input.press('Enter');
   // The optimistic bubble is the send's own receipt.
   await expect(page.getByText(text).first()).toBeVisible({ timeout: 15_000 });
-  // And the sidebar row confirms the server registered the run, which is what
-  // the picker reads. Scoped to a row rather than the sidebar: the row is the
-  // element that carries the cue, and `session-item` is the testid it exposes.
-  await expect(
-    page.locator('[data-testid="session-item"] [role="status"][aria-label="Running"]').first(),
-  ).toBeVisible({ timeout: 30_000 });
+  // And the run is really in flight — the composer swaps Send for Stop for as
+  // long as its chat is generating.
+  await expect(page.getByTitle('Stop generation')).toBeVisible({ timeout: 30_000 });
 }
 
 /** Read the server's waiting rows through the page's own API. */

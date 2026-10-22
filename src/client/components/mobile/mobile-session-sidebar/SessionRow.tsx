@@ -159,7 +159,7 @@ export function MobileSessionRow({
               ) : status === 'stream' ? (
                 // Same label the desktop row carries, for the same reason: the
                 // phone draws the identical cue, and an unlabelled spinner is
-                // both unreachable to a screen reader and unassertable.
+                // unreachable to a screen reader.
                 <span role="status" aria-label="Running">
                   <Loader2 size={13} className="text-ink/50 animate-spin" />
                 </span>
