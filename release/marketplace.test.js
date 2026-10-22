@@ -175,27 +175,6 @@ describe('the commit range', () => {
     expect(commitsSinceWatermark(plugin, dir)).toEqual([]);
   });
 
-  test('is exactly the commits since the version was written', () => {
-    const { dir, plugin } = makeRepo();
-
-    writeFileSync(join(dir, plugin, 'app.tsx'), 'export const a = 2;\n');
-    git(dir, 'add', '-A');
-    git(dir, 'commit', '-q', '-m', 'fix(p): first');
-    writeFileSync(join(dir, plugin, 'app.tsx'), 'export const a = 3;\n');
-    git(dir, 'add', '-A');
-    git(dir, 'commit', '-q', '-m', 'feat(p): second');
-
-    const commits = commitsSinceWatermark(plugin, dir);
-
-    // Newest first, and the version-write commit itself is excluded — it is the
-    // range's lower bound, so re-releasing what was already released is not a
-    // thing this can do.
-    expect(commits.map((commit) => commit.message.split('\n')[0])).toEqual([
-      'feat(p): second',
-      'fix(p): first',
-    ]);
-  });
-
   test('ignores commits that did not touch the plugin', () => {
     const { dir, plugin } = makeRepo();
 

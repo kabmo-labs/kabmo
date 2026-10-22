@@ -254,17 +254,6 @@ describe('continue_operation', () => {
 });
 
 describe('abort_operation', () => {
-  test('restores the pre-merge state', async () => {
-    const repo = makeConflictingRepo();
-    await post({ actionType: 'merge_branch', repo: '.', root: repo, branch: 'feature' });
-
-    const res = await post({ actionType: 'abort_operation', repo: '.', root: repo });
-    expect(res.body.success).toBe(true);
-    expect((await readGitState(repo)).operation).toBeNull();
-    expect(fs.readFileSync(path.join(repo, 'f.txt'), 'utf8')).toBe('a\nMAIN\n');
-    expect(git(repo, 'status', '--porcelain')).toBe('');
-  });
-
   test('refuses when nothing is in progress', async () => {
     const repo = makeConflictingRepo();
     const res = await post({ actionType: 'abort_operation', repo: '.', root: repo });

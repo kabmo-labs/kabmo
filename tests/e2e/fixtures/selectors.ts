@@ -41,26 +41,6 @@ export const TESTID = {
   /** The editor column's scroll container (and the diff views' — same id). */
   editorScroller: 'editor-scroller',
   diffScroller: 'diff-scroller',
-  /**
-   * The composer's "wait for session" control and its dropdown rows.
-   *
-   * Both are needed, and neither can be addressed by role alone: the trigger's
-   * accessible name CHANGES with the pick ("Wait for session" → "Waiting for
-   * <title>"), and a candidate's title also appears on the sidebar row of the
-   * session it names — so a `getByRole('button', { name: /session A/i })`
-   * resolves to the sidebar, and clicking it opens the dependency instead of
-   * choosing it. Measured in `waiting-prompt.e2e.ts`.
-   */
-  waitPicker: 'wait-picker',
-  waitCandidate: 'wait-candidate',
-  /**
-   * The strip above the composer while a prompt is held, and its Cancel.
-   *
-   * By testid rather than by name: the word "Cancel" is also a row's, and the
-   * strip's own `✕` controls are unnamed — `getByRole('button', { name: /cancel/i
-   * }).first()` resolved to an unnamed one and clicked nothing.
-   */
-  cancelHeldPrompt: 'cancel-held-prompt',
 } as const;
 
 /** Locators for the shell and the chat surface, resolved per page. */

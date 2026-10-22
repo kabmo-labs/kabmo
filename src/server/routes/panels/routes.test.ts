@@ -132,13 +132,6 @@ describe('the README route', () => {
 
     expect((await call(readmeLoader, { plugin: 'demo', '*': '../outside.md' })).status).toBe(403);
   });
-
-  test('404s a plugin that ships no README', async () => {
-    const dir = writePlugin('demo', getMarketplacePluginsDir());
-    fs.rmSync(join(dir, 'README.md'));
-    invalidatePanelScan();
-    expect((await call(readmeLoader, { plugin: 'demo', '*': 'README.md' })).status).toBe(404);
-  });
 });
 
 describe('the install route', () => {

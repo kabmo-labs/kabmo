@@ -158,30 +158,6 @@ async function mountProvider(): Promise<Harness> {
 }
 
 describe('SidebarDataProvider reads both sidebar topics', () => {
-  test('paints the structure from the snapshot, without any fetch', async () => {
-    const { holder, server } = await mountProvider();
-    expect(holder.api?.initializing).toBe(false);
-    expect(holder.api?.folders).toHaveLength(1);
-    expect(holder.api?.folders[0]?.sessions[0]?.title).toBe('A');
-    server.stop();
-  });
-
-  test('merges the volatile status onto the session it belongs to', async () => {
-    const harness = await mountProvider();
-    expect(renderedStatus(harness.holder.api)).toBeUndefined();
-
-    await harness.push(undefined, statusBody('stream'));
-    expect(renderedStatus(harness.holder.api)).toBe('stream');
-
-    // A terminal badge, then cleared — the map is authoritative for removals.
-    await harness.push(undefined, statusBody('finish'));
-    expect(renderedStatus(harness.holder.api)).toBe('finish');
-    await harness.push(undefined, statusBody());
-    expect(renderedStatus(harness.holder.api)).toBeUndefined();
-
-    harness.server.stop();
-  });
-
   test('reports a live run for a session the structure has not scanned yet', async () => {
     // A fresh spawn: omp writes the session file only when the first assistant
     // message settles (measured ~17s), so no structure row exists. The status

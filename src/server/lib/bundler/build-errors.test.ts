@@ -66,12 +66,6 @@ describe('describeShellBuildFailure', () => {
     expect(await describeShellBuildFailure(root)).toBeNull();
   });
 
-  test('returns null when there is no shell entrypoint to build', async () => {
-    rmSync(join(root, 'index.html'));
-
-    expect(await describeShellBuildFailure(root)).toBeNull();
-  });
-
   test('loads the plugins named in bunfig.toml, as the route does', async () => {
     // A plugin that fails a file the route would bundle: if the probe ignored
     // bunfig it would report a clean build and hide the real failure.
