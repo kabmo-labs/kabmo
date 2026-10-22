@@ -95,9 +95,10 @@ async function waitingRows(page: Page) {
 }
 
 // A dependency run outlives the pick by design, so the file needs more than the
-// 60s default: the first case spends up to 30s proving the run reached the
-// client, then waits for that run to END (up to `delay`) after the pick.
-test.describe.configure({ timeout: 180_000 });
+// 60s default: the first case spends up to 30s on adoption and up to 45s on the
+// picker, then waits for that run to END (up to its `delay`) after the pick.
+// 240s is the sum with slack, not a guess.
+test.describe.configure({ timeout: 240_000 });
 
 test.describe('wait for session', () => {
   test('holds a new chat prompt until the picked session finishes', async ({ harness, page }) => {
@@ -123,7 +124,12 @@ test.describe('wait for session', () => {
     // The picker appears once the sidebar's status map reports A as streaming,
     // which arrives over the realtime socket rather than with the send.
     const picker = page.locator(`[data-testid="${TESTID.waitPicker}"]`);
-    await expect(picker).toBeVisible({ timeout: 20_000 });
+    // The picker is derived from the sidebar's status map, which reaches this
+    // tab over the realtime socket — a round trip after the spawn, not a local
+    // consequence of it. 20s was measured short on the Windows runner while
+    // Linux cleared it easily, so the budget is stated against the dependency's
+    // own window (75s) rather than against a guess.
+    await expect(picker).toBeVisible({ timeout: 45_000 });
     await expect(picker).toBeEnabled();
     await picker.click();
     // The CANDIDATE, scoped to the dropdown: the same title is on A's sidebar
@@ -174,7 +180,12 @@ test.describe('wait for session', () => {
 
     await newChatIn(page, 'e2e-wait-cancel');
     const picker = page.locator(`[data-testid="${TESTID.waitPicker}"]`);
-    await expect(picker).toBeVisible({ timeout: 20_000 });
+    // The picker is derived from the sidebar's status map, which reaches this
+    // tab over the realtime socket — a round trip after the spawn, not a local
+    // consequence of it. 20s was measured short on the Windows runner while
+    // Linux cleared it easily, so the budget is stated against the dependency's
+    // own window (75s) rather than against a guess.
+    await expect(picker).toBeVisible({ timeout: 45_000 });
     await picker.click();
     const candidates = page.locator(`[data-testid="${TESTID.waitCandidate}"]`);
     await expect(candidates).toHaveCount(1);
