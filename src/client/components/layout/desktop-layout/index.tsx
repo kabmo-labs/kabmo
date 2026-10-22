@@ -19,10 +19,9 @@ import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { useLeftDock, useLeftDockWidth } from '@/client/hooks/workspace/left-dock';
 import { useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
 import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
-import { useKabmoEvent, useWindowEvent } from '@/client/hooks/ui/window-event';
+import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useWorkspaceKeybindings } from '@/client/hooks/workspace/keybindings';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
-import { WORKSPACE_KEY_BINDINGS } from '@/shared/lib/workspace/keymap';
-import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { ToastStack } from '@/client/components/common/ToastStack';
@@ -158,32 +157,20 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
       }
     : undefined;
 
-  /**
-   * The workspace shortcuts, from the shared keymap so the toggles' tooltips
-   * name the bound chord. `⌘S` is absent: the editor owns it, and binding it
-   * twice would save the file twice.
-   */
-  useWindowEvent('keydown', (e) => {
-    const command = resolveBinding(WORKSPACE_KEY_BINDINGS, e);
-    if (!command) return;
-    if (command === 'saveFile') return;
-    if (command === 'toggleEditorPanel' && !showEditor) {
-      // The editor panel needs something to show — a file or a takeover — and
-      // `showEditor` already folds in the user's own toggle.
-      // The toggle is also the only way to REACH a takeover while the column is
-      // closed, since the rail lives inside the column: with no file and no
-      // takeover there would be nothing to open on to, and with one there is.
-      if (openedFiles.length === 0 && !activeEditorPanelKey && editorTakeovers.length === 0) return;
-    }
-    e.preventDefault();
-    if (command === 'toggleSidebar') setShowLeftPanel((previous) => !previous);
-    else if (command === 'toggleEditorPanel') setUserToggledEditor((previous) => !(previous ?? showEditor));
-    else if (command === 'toggleRightPanel') setShowRightPanel((previous) => !previous);
-    else if (command === 'openSettings') {
+  // The workspace shortcuts, from the shared keymap so the toggles' tooltips
+  // name the bound chord. `⌘S` is absent: the editor owns it, and binding it
+  // twice would save the file twice.
+  useWorkspaceKeybindings({
+    showEditor,
+    editorHasContent,
+    toggleSidebar: () => setShowLeftPanel((previous) => !previous),
+    toggleEditor: () => setUserToggledEditor((previous) => !(previous ?? showEditor)),
+    toggleRightPanel: () => setShowRightPanel((previous) => !previous),
+    openSettings: () => {
       setSettingsCategory('appearance');
       setAutoOpenAddProvider(false);
       setSettingsOpen((previous) => !previous);
-    }
+    },
   });
 
   // Global event listener for settings triggers
