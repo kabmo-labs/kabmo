@@ -46,23 +46,32 @@ async function newChatIn(page: Page, folderName: string) {
  * send that waited for the answer would finish the dependency before the pick
  * was even possible — and then there is nothing to wait for.
  *
- * The gate is the composer's OWN "Stop generation" control, not the sidebar
- * row's spinner. The bubble is painted by the send path before the server has a
- * `stream` row, and the picker is derived from that row — so asserting the
- * bubble and then racing the picker was the measured failure on the Windows
- * runner: the dependency's run had ended by the time the picker's timeout
- * expired.
+ * The gate is URL ADOPTION: `?sessionId=` stops naming the pending `new-…` id
+ * and starts naming omp's own. That is the client's own record that the spawn
+ * answered, and it is the only one available — the bubble is painted before the
+ * spawn is even requested, so asserting the bubble and then racing the picker
+ * was the measured failure on the Windows runner (the dependency's run ended
+ * while the picker's timeout was still counting).
  *
- * A sidebar-row gate cannot work here, and the page snapshot proves it: a new
- * chat's row is drawn under the pending `new-…` id, while the server's `stream`
- * row names omp's own uuid, so the row renders no status until the spawn answers
- * AND the structure scan catches up. Measured on the Windows runner it had still
- * not happened after 30s (`Delay:75000 session A now` in the snapshot), which is
- * why the two attempts before this failed on the gate rather than on the picker.
+ * Four observables were tried before this one, and each was disproved by a
+ * failing run rather than by reasoning. None of them exists for a chat omp has
+ * not written a transcript for yet:
  *
- * `Stop generation` is a property of the composer the run belongs to: it is
- * rendered whenever that chat is in flight, from the client's own generating
- * state, so it needs no sidebar render and no scan.
+ * - the sidebar row's `Running` cue — the row is drawn under the pending id
+ *   while the server's `stream` row names omp's uuid, so it needs the spawn AND
+ *   a structure scan (measured: absent after 30s, the row reading
+ *   `Delay:75000 session A now`);
+ * - `/api/sessions/list` — it merges status onto sessions the SCAN found, so a
+ *   session with no transcript is not in it (measured: 0 running ids for 30s);
+ * - the composer's `Stop generation` — rendered from the client's generating
+ *   flag, which the send path sets itself, so it is true before the server
+ *   agrees;
+ * - `GET /api/agent/<id>` — the pending id is never registered server-side
+ *   (`POST /api/agent/new` answers with omp's id and the client adopts it), so
+ *   the probe answered `running: false` for the whole budget.
+ *
+ * Adoption is what the run being real looks like from here, and the dependency
+ * window below is sized on top of it.
  */
 async function sendAndKeepRunning(page: Page, text: string) {
   const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
@@ -71,9 +80,9 @@ async function sendAndKeepRunning(page: Page, text: string) {
   await input.press('Enter');
   // The optimistic bubble is the send's own receipt.
   await expect(page.getByText(text).first()).toBeVisible({ timeout: 15_000 });
-  // And the run is really in flight — the composer swaps Send for Stop for as
-  // long as its chat is generating.
-  await expect(page.getByTitle('Stop generation')).toBeVisible({ timeout: 30_000 });
+  // The spawn answered and the row moved onto omp's id, which is the client's
+  // own receipt that a run exists.
+  await expect(page).not.toHaveURL(/sessionId=new-/, { timeout: 30_000 });
 }
 
 /** Read the server's waiting rows through the page's own API. */
