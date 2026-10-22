@@ -60,7 +60,16 @@ fi
 # against `omp config list --json` (559 keys, every added or changed row
 # present) and a wire-schema diff against 18.12.0 (283 definitions, 0 added, 0
 # removed, 0 changed; `builtin-names.ts` identical).
-OMP_VERSION="${OMP_VERSION:-18.12.4}"
+#
+# 18.12.6 (2026-10-22): the schema's `source` line stays at 559 settings and no
+# row is added or removed; the only generated change is `providers.
+# cacheRetention`'s `long` option, relabelled `Long (1h+)` with the wider TTL
+# (18.12.5: OpenAI GPT-5.6+ Responses caches 12h). The RPC wire is unchanged
+# again — 67 commands and 283 definitions, 0 added/removed/changed against
+# 18.12.4 — and `builtin-names.ts` is byte-identical, so nothing Kabmo reads
+# moved; the release is ACP-side (steering extension, `/mcp reauth`) and
+# TUI-side (deferred extension loading), neither of which this bridge speaks.
+OMP_VERSION="${OMP_VERSION:-18.12.6}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
