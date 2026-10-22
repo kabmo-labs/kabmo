@@ -96,6 +96,32 @@ test.describe('mobile left dock', () => {
     workspace.dispose();
   });
 
+  test('with the rail ON and nothing placed, the drawer still draws its rail', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-dock-empty');
+    // The switch on its own, with no plugin placed on the left: the state a
+    // user reaches by turning "Show the left activity bar" on and nothing else.
+    // Before the strip followed the switch, this drawer drew NO chip — the
+    // switch changed a boolean and nothing on screen, which reads as broken.
+    await fetch(`${server.baseURL}/api/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ omp_left_panels: { enabled: true, panels: [] } }),
+    });
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openSessions(page);
+
+    // One chip, and it is the session list — the same picture the desktop
+    // column's rail draws when the dock holds only its own view.
+    const sessionsChip = page.getByRole('button', { name: 'Sessions', exact: true });
+    await expect(sessionsChip).toBeVisible();
+    await expect(sessionsChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /new session/i }).first()).toBeVisible();
+
+    workspace.dispose();
+  });
+
   test('a panel placed on the left is not drawn on the right drawer too', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-mobile-dock-split');

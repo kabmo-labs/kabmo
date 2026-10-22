@@ -13,6 +13,15 @@
  * the left drawer draws the dock too, so leaving `all` in the right one puts a
  * single panel on two strips of one phone.
  *
+ * **The left drawer's strip follows the rail SWITCH and nothing else.** It used
+ * to need a second destination (a placed panel, or a stored view that no longer
+ * resolves), on the reasoning that a strip holding only `Sessions` is chrome
+ * that never changes. That rule made the Settings switch — "Show the left
+ * activity bar" — a no-op on every phone with no plugin panel placed on the
+ * left: the rail was on, the desktop column drew its `Sessions` button, and the
+ * phone drawer drew nothing, which reads as the switch being broken. On a phone
+ * the strip IS the rail, so it is drawn whenever the rail is on.
+ *
  * Pure, and separate from both components, so the two drawers cannot drift and
  * the rule can be tested without mounting either.
  */
@@ -45,11 +54,11 @@ export function phoneRightPanels<T extends SidedPanel>(
 /**
  * Whether the left drawer draws its chip strip.
  *
- * A strip holding one chip is chrome that never changes, so it needs a second
- * destination — either a placed panel, or a stored view that no longer
- * resolves. The second half is the escape hatch: that body is a notice, and
- * without the strip the session list would be unreachable.
+ * The switch alone: on a phone the strip is the rail, so "Show the left activity
+ * bar" that draws nothing is a control with no effect. The strip holding one
+ * `Sessions` chip is the honest picture of a rail with one view on it — the same
+ * picture the desktop column draws — and it grows the moment a panel is placed.
  */
-export function phoneLeftStripVisible(dockEnabled: boolean, placedCount: number, showingSessions: boolean): boolean {
-  return dockEnabled && (placedCount > 0 || !showingSessions);
+export function phoneLeftStripVisible(dockEnabled: boolean): boolean {
+  return dockEnabled;
 }

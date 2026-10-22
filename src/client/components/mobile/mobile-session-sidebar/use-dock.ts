@@ -31,8 +31,6 @@ import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 export interface MobileDockState {
   /** The strip's chips: `sessions` and every placed panel. */
   catalog: ResolvedPanel[];
-  /** The placed panels only — what makes the strip worth drawing. */
-  placed: ResolvedPanel[];
   activeView: string;
   setActiveView: (id: string) => void;
   /** True while the session list is the view on screen. */
@@ -47,11 +45,9 @@ export function useMobileDock(): MobileDockState {
   const catalog = usePanelCatalog('left');
   const [stored, setStored] = useSessionState<string>('layout.mobileLeftPanel', SESSIONS_VIEW_ID);
   const activeView = useLeftDockView(stored, dock.enabled);
-  const placed = catalog.filter((panel) => panel.id !== SESSIONS_VIEW_ID);
 
   return {
     catalog,
-    placed,
     activeView,
     setActiveView: setStored,
     showingSessions: activeView === SESSIONS_VIEW_ID,

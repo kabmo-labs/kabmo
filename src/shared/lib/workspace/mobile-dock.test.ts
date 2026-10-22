@@ -46,20 +46,14 @@ describe('phoneRightPanels', () => {
 
 describe('phoneLeftStripVisible', () => {
   test('no rail, no strip', () => {
-    expect(phoneLeftStripVisible(false, 2, true)).toBe(false);
+    expect(phoneLeftStripVisible(false)).toBe(false);
   });
 
-  test('a strip holding only Sessions is chrome that never changes', () => {
-    expect(phoneLeftStripVisible(true, 0, true)).toBe(false);
-  });
-
-  test('a placed panel is a second destination, so the strip appears', () => {
-    expect(phoneLeftStripVisible(true, 1, true)).toBe(true);
-  });
-
-  test('a stored view that no longer resolves still gets the strip — its body is a notice', () => {
-    // Without this the drawer would be stuck on a notice with no way back to
-    // the session list: the body has no chips of its own.
-    expect(phoneLeftStripVisible(true, 0, false)).toBe(true);
+  test('the rail being on IS the strip, even with nothing placed', () => {
+    // The bug this pins: the rule used to require a second destination, so the
+    // Settings switch "Show the left activity bar" drew nothing at all on a
+    // phone with no plugin panel placed on the left — a switch whose only
+    // effect was a stored boolean. On a phone the strip is the rail.
+    expect(phoneLeftStripVisible(true)).toBe(true);
   });
 });

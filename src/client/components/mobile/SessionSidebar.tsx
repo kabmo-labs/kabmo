@@ -218,13 +218,11 @@ export function MobileSessionSidebar({
         viewLabel={showingSessions ? 'Sessions' : dock.activePanel?.label ?? 'Panel'}
       />
 
-      {/* The strip appears only once there is something to switch TO: with the
-          rail off, or with nothing placed on it, a row holding one chip would
-          be chrome that never changes. The exception is a stored view that no
-          longer resolves — the body is a notice, and without the strip the
-          session list would be unreachable (the desktop has the same escape in
-          its rail, which always holds Sessions). */}
-      {phoneLeftStripVisible(dock.enabled, dock.placed.length, showingSessions) ? (
+      {/* The strip is the phone's RAIL, so it follows the switch: with the rail
+          on it always draws, exactly like the desktop column's rail (which
+          always holds Sessions). Requiring a second destination made the
+          Settings switch a no-op on a phone with nothing placed. */}
+      {phoneLeftStripVisible(dock.enabled) ? (
         <MobileDockStrip panels={dock.catalog} activeId={activeView} onSelect={dock.setActiveView} />
       ) : null}
 
