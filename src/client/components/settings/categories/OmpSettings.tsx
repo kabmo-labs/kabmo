@@ -24,6 +24,7 @@ import type { ConfigEntry } from '@/server/lib/omp/config/config-cli';
 import { OMP_SCHEMA } from '@/shared/lib/omp/config/schema';
 import { ConfigTabs } from '@/client/components/settings/categories/omp-settings/ConfigTabs';
 import { RoleEditor } from '@/client/components/settings/categories/omp-settings/RoleEditor';
+import { useModelRoles } from '@/client/hooks/settings/model-roles';
 import { ExtensionsPanel } from '@/client/components/settings/categories/omp-settings/ExtensionsPanel';
 
 interface OmpSettingsProps {
@@ -50,7 +51,6 @@ export function OmpSettings(_props: OmpSettingsProps) {
   const [state, setState] = useState<AgentState | null>(null);
   const [stateRunning, setStateRunning] = useState(false);
   const [entries, setEntries] = useState<Record<string, ConfigEntry>>({});
-  const [modelRoles, setModelRoles] = useState<Record<string, string>>({});
   const [extensions, setExtensions] = useState<ExtensionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTabId, setActiveTabId] = useState(OMP_SCHEMA.tabs[0]?.id ?? 'model');
@@ -59,6 +59,16 @@ export function OmpSettings(_props: OmpSettingsProps) {
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
   const [saveErrors, setSaveErrors] = useState<Map<string, string>>(new Map());
+
+  /** Flash a saved badge for one key, then clear it. */
+  const flashSaved = useCallback((key: string) => {
+    setSavedKey(key);
+    setTimeout(() => setSavedKey((current) => (current === key ? null : current)), 2000);
+  }, []);
+
+  // The role map, its presets and the role dropdowns' catalog. Its writes answer
+  // with the server's whole map/list, so the panel never renders a guess.
+  const modelRoles = useModelRoles(flashSaved);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -72,19 +82,14 @@ export function OmpSettings(_props: OmpSettingsProps) {
         if (stateData.running && stateData.state) setState(stateData.state as AgentState);
         setStateRunning(Boolean(stateData.running));
         if (configData.entries) setEntries(configData.entries as Record<string, ConfigEntry>);
-        if (rolesData.roles && typeof rolesData.roles === 'object') setModelRoles(rolesData.roles as Record<string, string>);
+        modelRoles.applyPayload(rolesData);
         if (Array.isArray(extensionsData.extensions)) setExtensions(extensionsData.extensions as ExtensionItem[]);
       })
       .catch((err) => console.error('Failed to load omp settings:', err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [modelRoles.applyPayload]);
 
   useEffect(() => { load(); }, [load]);
-
-  const flashSaved = (key: string) => {
-    setSavedKey(key);
-    setTimeout(() => setSavedKey((current) => (current === key ? null : current)), 2000);
-  };
 
   /**
    * Apply one write's outcome. A failure keeps omp's OWN sentence, not just a
@@ -173,23 +178,6 @@ export function OmpSettings(_props: OmpSettingsProps) {
       return next;
     });
   }, []);
-
-  const handleSaveRole = (role: string, value: string) => {
-    const next = { ...modelRoles };
-    if (value.trim()) next[role] = value.trim();
-    else delete next[role];
-    setModelRoles(next);
-    fetch('/api/model-roles', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roles: next }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) flashSaved(`role-${role}`);
-      })
-      .catch((err) => console.error('Failed to save model roles:', err));
-  };
 
   const handleToggleExtension = (extension: ExtensionItem) => {
     fetch('/api/omp/extensions', {
@@ -286,7 +274,7 @@ export function OmpSettings(_props: OmpSettingsProps) {
               {searchQuery.trim() && ' — matching keys only'}
             </p>
           </div>
-          {savedKey && !savedKey.startsWith('role-') && !savedKey.startsWith('ext-') && (
+          {savedKey && savedKey !== 'role-map' && !savedKey.startsWith('ext-') && (
             <span className="inline-flex items-center gap-1 text-[10px] text-ink/60">saved {savedKey}</span>
           )}
         </div>
@@ -306,9 +294,17 @@ export function OmpSettings(_props: OmpSettingsProps) {
       </div>
 
       <RoleEditor
-        modelRoles={modelRoles}
-        onSaveRole={handleSaveRole}
-        savedRole={savedKey?.startsWith('role-') ? savedKey.slice(5) : null}
+        roles={modelRoles.roles}
+        presets={modelRoles.presets}
+        candidates={modelRoles.candidates}
+        candidatesError={modelRoles.candidatesError}
+        onSaveRoles={modelRoles.writeRoles}
+        onSavePreset={modelRoles.savePreset}
+        onUpdatePreset={modelRoles.updatePreset}
+        onDeletePreset={modelRoles.deletePreset}
+        savedRole={savedKey === 'role-map' ? 'roles' : null}
+        writeError={modelRoles.writeError}
+        onDismissWriteError={modelRoles.clearWriteError}
       />
 
       <ExtensionsPanel

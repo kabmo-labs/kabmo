@@ -12,6 +12,7 @@
  */
 
 import type { ModelsData, ProviderItem } from '@/shared/types';
+import type { ModelRoleCandidate } from '@/shared/types/model-roles';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 
 declare global {
@@ -19,6 +20,15 @@ declare global {
   var __kabmoModelsCache: { data: ModelsData; expiresAt: number } | undefined;
   // eslint-disable-next-line no-var
   var __kabmoProvidersRpcCache: { data: ProviderItem[]; expiresAt: number } | undefined;
+  /**
+   * The role dropdowns' candidate list (`lib/model-roles/catalog.server.ts`).
+   * Declared HERE because it is dropped by the same signal: a model removed
+   * from models.yml, or a provider that lost its credential, must leave the
+   * role pickers too — otherwise they keep offering a selector omp can no
+   * longer resolve.
+   */
+  // eslint-disable-next-line no-var
+  var __kabmoRoleCandidatesCache: { data: ModelRoleCandidate[]; expiresAt: number } | undefined;
 }
 
 /**
@@ -33,5 +43,6 @@ declare global {
 export function invalidateModelsCaches(): void {
   globalThis.__kabmoModelsCache = undefined;
   globalThis.__kabmoProvidersRpcCache = undefined;
+  globalThis.__kabmoRoleCandidatesCache = undefined;
   emitRealtimeSignal('models-changed');
 }
