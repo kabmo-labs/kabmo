@@ -18,6 +18,7 @@ import type { BatchBinding } from '@/client/components/common/batch-selection/ty
 import { folderBatchState } from '@/client/components/common/batch-selection/folder-state';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import { SessionRevealRow } from '@/client/components/mobile/mobile-session-sidebar/RevealRow';
+import { folderGroupGap } from '@/client/components/mobile/mobile-session-sidebar/folder-gap';
 
 interface MobileSessionCategoryProps {
   folder: WorkspaceFolderData;
@@ -126,10 +127,16 @@ export function MobileSessionCategory({
   const listOpen = isExpanded || sessionCheckboxes;
 
   return (
-    <div className="mb-4">
+    <div className={folderGroupGap(listOpen)} data-testid="session-folder">
       <div
         onClick={batch ? undefined : onToggleExpand}
-        className="flex items-center justify-between gap-2 py-2 cursor-pointer hover:bg-ink/5 rounded-lg select-none transition-colors"
+        // `py-1`, not `py-2`: the header's height is set by its own action
+        // buttons (27px, `p-1.5` around a 15px glyph — the touch target), so
+        // 8px of vertical padding made a folder header 43px against the 33px
+        // of the session rows it stands in for. A closed folder is a row, and
+        // two of them read as one list only if they are built like rows.
+        // Measured on a 390px phone: 43px → 35px, 2px off a session row.
+        className="flex items-center justify-between gap-2 py-1 cursor-pointer hover:bg-ink/5 rounded-lg select-none transition-colors"
       >
         <div className="flex items-center space-x-2 min-w-0">
           {folderCheckbox && folderSummary ? (

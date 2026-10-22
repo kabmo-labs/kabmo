@@ -460,7 +460,10 @@ test.describe('mobile layout', () => {
         .map((el) => (el.tagName === 'BUTTON' ? el : el.querySelector('button')))
         .find((b) => b?.getAttribute('aria-label') === 'Sort workspaces');
 
-      const folderRow = document.querySelector('[data-testid="session-item"]')?.closest('div.mb-4')?.firstElementChild;
+      // The folder GROUP, by its own testid — not `div.mb-4`, which is only the
+      // EXPANDED group's class now (a closed folder takes a row-sized gap, see
+      // `Item.tsx`), so a class lookup would silently find nothing there.
+      const folderRow = document.querySelector('[data-testid="session-folder"]')?.firstElementChild;
       // The SLOT, not the glyph: the folder mark is a 15px SVG centred in a
       // 16px box, so its ink starts half a pixel inside the column the rows are
       // aligned to. Comparing ink to a button's box measures that rounding, not
@@ -525,6 +528,78 @@ test.describe('mobile layout', () => {
     // instead — the drift assertion above is what covers that case.
     expect(edges.sortButton).not.toBeNull();
     if (!edges.hasOverflow) expect(edges.sortButton!.right).toBe(edges.lastControl!.right);
+  });
+
+  /**
+   * A CLOSED folder is a row, so it takes a row's gap AND a row's height.
+   *
+   * The reported "folder session yang tertutup jaraknya terlalu jauh" had two
+   * causes, and fixing only the first still left the list looking loose. (1)
+   * The group gap (`mb-4`, 16px) separated folders whether or not they had rows
+   * under them, so two closed folders sat 59px apart on a 390px phone — 39px of
+   * blank ink between their names, twice the list's own row rhythm. (2) The
+   * header itself was 43px tall (`py-2` 8px + its 27px action buttons) against
+   * a session row's 33px, so a closed folder was 10px taller than the rows it
+   * stands in for even at a row-sized gap.
+   *
+   * Measured here because both are layout: `happy-dom` resolves none, so a
+   * mounted unit test can only read the classes back.
+   */
+  test('keeps a closed folder on the list row rhythm, not the group gap', async ({ app }) => {
+    await app.getByRole('button', { name: 'Open Sessions' }).click();
+    const folders = app.locator('[data-testid="session-folder"]');
+    await expect(folders.first()).toBeVisible();
+
+    // A row's own height, read while the folders are still expanded.
+    const rowHeight = await app.evaluate(() => {
+      const row = document.querySelector('[data-testid="session-item"]');
+      return row ? Math.round(row.getBoundingClientRect().height) : 0;
+    });
+    expect(rowHeight).toBeGreaterThan(0);
+
+    // Collapse every folder through its own header — the name is inside the
+    // clickable row, and the demo folders open expanded. Collapsing only the
+    // first leaves no two CLOSED neighbours to measure.
+    const count = await folders.count();
+    for (let i = 0; i < count; i += 1) {
+      const name = folders.nth(i).locator('span.font-semibold').first();
+      if (await name.isVisible()) await name.click();
+    }
+
+    const gaps = await app.evaluate(() => {
+      const groups = Array.from(document.querySelectorAll('[data-testid="session-folder"]'));
+      const read = (el: Element) => {
+        const header = el.firstElementChild as HTMLElement;
+        return {
+          top: Math.round(header.getBoundingClientRect().top),
+          bottom: Math.round(header.getBoundingClientRect().bottom),
+          height: Math.round(header.getBoundingClientRect().height),
+          open: el.querySelector('[data-testid="session-item"]') !== null,
+        };
+      };
+      const measured = groups.map(read);
+      const closedGaps: number[] = [];
+      for (let i = 1; i < measured.length; i += 1) {
+        // Only two CLOSED neighbours: a group that owns rows keeps the group
+        // gap, and that gap is measured from its last row, not its header.
+        if (!measured[i - 1].open && !measured[i].open) {
+          closedGaps.push(measured[i].top - measured[i - 1].bottom);
+        }
+      }
+      return { measured, closedGaps };
+    });
+
+    const closed = gaps.measured.filter((m) => !m.open);
+    expect(closed.length).toBeGreaterThanOrEqual(2);
+    expect(gaps.closedGaps.length).toBeGreaterThan(0);
+
+    // The gap: 4px (`mb-1`) against the 16px (`mb-4`) the group gap imposed.
+    for (const gap of gaps.closedGaps) expect(gap).toBeLessThanOrEqual(8);
+
+    // The height: a closed folder's header is built like a row, so it must not
+    // tower over the rows it replaces. 2px of tolerance is the rounding of the
+    // 27px action boxes inside a 35px row against a row's own 33px.
+    for (const header of closed) expect(header.height).toBeLessThanOrEqual(rowHeight + 2);
   });
 
   test('draws a transcript card and the composer on the same frame', async ({ harness, page }) => {
