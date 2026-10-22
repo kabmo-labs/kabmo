@@ -37,3 +37,8 @@ tmp-repro/
 # not cover — measured: `packages/macos/.build` alone is 3,745 untracked entries
 # after one `swift build`, and a `git add packages/macos` would commit all of it.
 packages/macos/.build/
+# .NET writes `bin/` and `obj/` INSIDE each project, not at the shell's root, so
+# `build/` above does not cover them: measured, `packages/windows` alone is 3,000+
+# untracked entries after one `dotnet build`.
+packages/windows/**/bin/
+packages/windows/**/obj/

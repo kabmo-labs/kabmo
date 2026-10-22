@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The rules, deliberately free of Win32.
+
+    `net8.0` and not `net8.0-windows`: this assembly holds the server list's
+    decisions, the health probe and the process supervisor, and none of them
+    needs a window. Keeping it platform-neutral is what lets the test runner
+    execute on the machine that builds it — the macOS shell's equivalent split
+    (`KabmoDesktop` library vs the `Kabmo` app) exists for the same
+    reason, and it is why 43 of its checks run without a window server.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>KabmoDesktop</RootNamespace>
+    <AssemblyName>KabmoDesktop</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

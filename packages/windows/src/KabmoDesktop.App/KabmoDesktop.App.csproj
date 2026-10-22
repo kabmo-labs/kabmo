@@ -1,0 +1,89 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The window. `net8.0-windows` + WPF, and `EnableWindowsTargeting` so the
+    project can be BUILT (not run) from a non-Windows machine — which is how the
+    library suite and the compile gate are checked here.
+
+    WPF rather than WinForms for one reason: `WindowChrome` gives a borderless
+    window the resize border and the correct maximised geometry, which WinForms
+    leaves to hand-written `WM_NCHITTEST` and `WM_GETMINMAXINFO` handlers.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>KabmoDesktop.App</RootNamespace>
+    <!--
+      The app's NAME, not its project name.
+
+      `Kabmo.exe` is what Explorer, the taskbar and Task Manager show, and it is
+      the same name the macOS shell ships (`Kabmo.app` / executable `Kabmo`). The
+      project stays `KabmoDesktop.App` because the library beside it is
+      `KabmoDesktop` — a project name is a build-time fact, the assembly name is
+      what a user sees.
+    -->
+    <AssemblyName>Kabmo</AssemblyName>
+    <AssemblyTitle>Kabmo</AssemblyTitle>
+    <Product>Kabmo</Product>
+    <Description>Kabmo — a window around a Kabmo console.</Description>
+    <Company>Kabmo Labs</Company>
+    <!--
+      The version is NOT written here — see the `ReadShellVersion` target below.
+
+      It lives in `packages/windows/version.properties`, the one file
+      `release/release-windows.mjs` bumps and `publish-windows.yml` names the
+      release asset from. A number stated in this file as well would be a second
+      copy that drifts the first time either is bumped, and the failure is silent:
+      the app would report a version the pipeline never published, and the
+      console's update offer would compare two unrelated numbers.
+    -->
+    <FileVersion>$(Version)</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <Copyright>Apache-2.0</Copyright>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../KabmoDesktop/KabmoDesktop.csproj" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+  </ItemGroup>
+
+  <!--
+    The shell's version, read from `packages/windows/version.properties` — the
+    same shape the Android and iOS shells use.
+
+    `BeforeTargets` covers both consumers: `GetAssemblyVersion` (what the
+    compiler bakes into the assembly, and therefore what the shell reports to the
+    page as `shellVersion`) and `GenerateAssemblyInfo` (the file and product
+    attributes).
+
+    Read through `Regex` rather than `ReadLinesFromFile` plus a `StartsWith`
+    filter: the item-metadata form evaluates to the LITERAL text
+    `@(_VersionLine)` when the item is empty, which the SDK then rejects with
+    `NETSDK1018: Invalid NuGet version string` — measured. The regex fails the
+    build with a sentence instead.
+  -->
+  <PropertyGroup>
+    <ShellVersionFile>$(MSBuildThisFileDirectory)../../version.properties</ShellVersionFile>
+  </PropertyGroup>
+
+  <Target Name="ReadShellVersion" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">
+    <PropertyGroup>
+      <_ShellVersionText Condition="Exists('$(ShellVersionFile)')">$([System.IO.File]::ReadAllText('$(ShellVersionFile)'))</_ShellVersionText>
+      <_ShellVersion>$([System.Text.RegularExpressions.Regex]::Match($(_ShellVersionText), 'versionName\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value)</_ShellVersion>
+      <Version Condition="'$(_ShellVersion)' != ''">$(_ShellVersion)</Version>
+    </PropertyGroup>
+    <Error
+      Condition="'$(_ShellVersion)' == ''"
+      Text="packages/windows/version.properties declares no versionName." />
+  </Target>
+
+</Project>

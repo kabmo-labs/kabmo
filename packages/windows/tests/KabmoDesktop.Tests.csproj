@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The rules suite. A console app rather than xunit: it needs nothing but the
+    library, it runs on any machine that can build `net8.0`, and its exit code is
+    the gate.
+
+    Not a `*Test` project on purpose — `dotnet test` would want a test SDK and a
+    runner package, and the library has no Windows dependency to exercise.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>KabmoDesktopTests</RootNamespace>
+    <AssemblyName>Kabmo.Tests</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../src/KabmoDesktop/KabmoDesktop.csproj" />
+  </ItemGroup>
+
+</Project>

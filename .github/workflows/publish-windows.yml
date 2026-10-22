@@ -1,0 +1,285 @@
+name: Build and attach the Windows shell
+
+# The Windows app body, as a REUSABLE workflow — the same shape
+# `publish-android.yml`, `publish-ios.yml`, `publish-app.yml` and
+# `publish-packages.yml` take, and for the same reason: the steps exist once, so a
+# release run and a manual re-run cannot drift apart.
+#
+# TWO PHASES, like the APK body:
+#
+#   - `build` compiles, runs the rules suite, verifies the version the ARTIFACT
+#     declares and uploads it as a run artifact. `release.yml` calls it BEFORE
+#     `app` tags, so a toolchain that moved or a compile error stops the release
+#     instead of shipping a tag whose GitHub release carries no shell.
+#   - `attach` downloads that artifact and attaches it to the release `app`
+#     created. It runs after the tag, because `gh release upload` has nothing to
+#     upload to before the release exists — and it no longer BUILDS anything, so
+#     it cannot be the step that discovers a broken app.
+#
+# It is NOT an npm publish. The shell is a private application, so the only
+# artifact is the installer attached to the GitHub release. That is why there is
+# no `environment: npm` here and no registry credential: the only thing the attach
+# job needs is `contents: write` on the release it uploads to.
+#
+# **The artifact is an INSTALLER (`kabmo-windows-v<v>-setup.exe`), not a ZIP.** A
+# ZIP leaves no Add/remove-programs entry, no Start-menu entry and no uninstaller,
+# so "which version is this" and "how do I remove it" both have no answer. It is
+# built by Inno Setup — `ISCC.exe` is preinstalled on `windows-latest` (verified
+# against actions/runner-images: "InnoSetup 6.7.1" on both Windows 2022 and 2025),
+# so this needs no third-party action and no download at run time.
+#
+# It is NOT an MSIX. MSIX requires a certificate bound to a publisher identity:
+# without one Windows refuses the package, and a self-signed one shows a
+# certificate warning before the installer will run. Inno produces an ordinary
+# `.exe` that installs unsigned (SmartScreen warns — the README says so),
+# per-user, and uninstalls cleanly. Adding a real certificate later is `SignTool=`
+# in `packages/windows/installer/kabmo.iss` plus one step here.
+#
+# The gates are NOT called here. `release.yml`'s `win-build` job `needs:
+# windows`, which depends transitively on both gate jobs — and `app` `needs:
+# win-build`, so nothing is tagged from a tree this body failed to build.
+# `publish-app.yml` DOES call them, because a tag can be pushed by hand and nothing
+# else would have verified it; this body is only reachable through `release.yml` or
+# a manual dispatch that names an existing release.
+
+on:
+  workflow_call:
+    inputs:
+      # Which phase to run.
+      #
+      # `build` — compile, verify and upload the artifact. `release.yml`'s
+      # `win-build` job uses this, with no tag, so nothing is attached before the
+      # release exists.
+      #
+      # `attach` — download the artifact from THIS run and upload it to `tag`.
+      mode:
+        description: build (compile + upload artifact) or attach (upload to a release).
+        required: false
+        type: string
+        default: build
+      # The commit to build, in this order: `ref`, then `tag`, then the caller's own
+      # commit.
+      #
+      # `release.yml` passes `main`, never the run's starting sha: the `windows`
+      # bump job has just pushed the shell version, and the bump is what the
+      # assembly's `Version` — and therefore the asset name — comes from. Building
+      # the trigger commit would produce an app declaring the PREVIOUS shell
+      # version, an update no installed app is ever offered.
+      ref:
+        description: Commit to build the app from; empty falls back to the tag, then the caller's commit.
+        required: false
+        type: string
+      # The release to attach to. Empty means build only.
+      tag:
+        description: Release tag to attach the app to; empty builds without attaching.
+        required: false
+        type: string
+  # The re-run path, which every other publish body has. Without it a failed
+  # Windows build could only be retried by re-running the whole release — and when
+  # the failure is in the TOOLCHAIN (a moved .NET SDK, a missing WebView2 package),
+  # the release itself is fine and only this artifact is missing.
+  #
+  # `mode` is deliberately NOT an input here: a dispatch has no earlier call in its
+  # own run to have uploaded an artifact, so an attach-only dispatch would have
+  # nothing to download. Every dispatch BUILDS, and attaches when it was given a
+  # tag — which is exactly the repair for a release that went out with no app.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the app to (e.g. v0.6.0)
+        required: false
+        type: string
+      ref:
+        description: Commit to build; empty builds the tag, so the repair matches its release
+        required: false
+        type: string
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Phase 1 — the gate. `release.yml` runs this before `app` tags.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build the Windows app
+    # Everything except an explicit `attach` call. Stated as "not attach" rather
+    # than "== build" because a `workflow_dispatch` carries no `mode` at all, and a
+    # dispatch must build — an equality test would silently skip the build and leave
+    # the attach with nothing to download.
+    if: ${{ inputs.mode != 'attach' }}
+    runs-on: windows-latest
+    permissions:
+      # The build reads the tree and uploads a run artifact; it needs no write
+      # access to the repository.
+      contents: read
+    steps:
+      # The commit to build, not the branch: `release.yml` names `main`, because the
+      # shell bump job pushed the version the app must declare. A manual dispatch
+      # names a TAG and builds that, so a repair matches the release it repairs. The
+      # `github.sha` fallback covers a caller that names neither.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || inputs.tag || github.sha }}
+
+      # .NET 8: the app targets `net8.0-windows`, and the runner's default SDK is
+      # not guaranteed to be 8 (it moves). `dotnet` is preinstalled on
+      # `windows-latest`, but pinning the channel is what makes the build
+      # reproducible rather than a property of the image.
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # The rules suite — the server list's decisions, the probe, the record reader,
+      # the wire format. Plain `net8.0`, no window server, so it is the one piece of
+      # the shell with real logic that can be checked in a second.
+      #
+      # It runs HERE rather than in `gates.yml` for the Android suite's reason: the
+      # .NET toolchain would otherwise be installed for every pull request, and this
+      # job is the only place it pays for itself.
+      - name: Rules suite
+        run: dotnet run --project packages/windows/tests/KabmoDesktop.Tests.csproj -c Release
+
+      # The version is NOT the tag. It is `packages/windows/version.properties`,
+      # bumped by the `windows` job of `release.yml` when the shell changed — which
+      # is what makes the number the asset carries the number the running app
+      # reports over the bridge.
+      #
+      # `release/windows-version.mjs` is the ONE reader of that file: the same
+      # `readVersionName` the bump script and its tests use.
+      - name: Read the shell version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node release/windows-version.mjs)"
+          echo "Shell version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Self-contained so the artifact runs on a machine with no .NET installed —
+      # the same reason the macOS shell prefers a bundled server over a PATH lookup.
+      #
+      # The version is NOT passed here: `KabmoDesktop.App.csproj` reads
+      # `version.properties` itself (`ReadShellVersion`), so a `-p:Version` would be
+      # a second source that could disagree with the file the asset name comes from.
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish packages/windows/src/KabmoDesktop.App/KabmoDesktop.App.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=false `
+            -o build/Kabmo
+
+      # A version check on the ARTIFACT, not on the build file: this reads what
+      # `Kabmo.exe` actually declares, so a missing or unparsed `version.properties`
+      # is caught here instead of shipping a release whose app reports a number the
+      # pipeline never published.
+      - name: Verify the artifact's version
+        shell: pwsh
+        env:
+          EXPECTED: ${{ steps.version.outputs.version }}
+        run: |
+          $exe = 'build/Kabmo/Kabmo.exe'
+          if (-not (Test-Path $exe)) { throw "publish produced no $exe" }
+          $info = (Get-Item $exe).VersionInfo
+          Write-Host "product=$($info.ProductName) file=$($info.FileVersion) productVersion=$($info.ProductVersion)"
+          if ($info.ProductName -ne 'Kabmo') { throw "the app's product name is '$($info.ProductName)', not 'Kabmo'" }
+          # `FileVersion` is four-part (`0.1.0.0`); the declared version is three.
+          if (-not $info.FileVersion.StartsWith("$env:EXPECTED.")) {
+            throw "Kabmo.exe declares $($info.FileVersion), not $env:EXPECTED"
+          }
+
+      # The installer. `ISCC.exe` is preinstalled on the runner, so this is a
+      # compile step rather than a download.
+      #
+      # The version is passed on the COMMAND LINE from the file — `/DAppVersion` —
+      # rather than written into the `.iss`, for the same reason the csproj does not
+      # state it: one declared fact, `packages/windows/version.properties`.
+      - name: Build the installer
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup not found at $iscc" }
+          & $iscc `
+            "/DAppVersion=$env:VERSION" `
+            "/DSourceDir=$PWD\build\Kabmo" `
+            packages/windows/installer/kabmo.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
+
+      # A version check on the INSTALLER, not only on the app: the file a user
+      # downloads must declare the number the release carries, or the release page
+      # and the thing it hands out disagree. `OutputBaseFilename` is
+      # `kabmo-windows-v<v>-setup`, so the name is the assertion.
+      - name: Verify the installer
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $expected = "kabmo-windows-v$env:VERSION-setup.exe"
+          $installer = "build/installer/$expected"
+          if (-not (Test-Path $installer)) {
+            throw "no $installer was produced"
+          }
+          $info = (Get-Item $installer).VersionInfo
+          Write-Host "installer=$expected product=$($info.ProductName) version=$($info.ProductVersion)"
+          # Inno writes the AppVersion it compiled with into the file's own
+          # metadata, so this reads the artifact rather than the script.
+          if (-not $info.ProductVersion.StartsWith($env:VERSION)) {
+            throw "the installer declares $($info.ProductVersion), not $env:VERSION"
+          }
+          Get-ChildItem build/installer/*.exe | Format-Table Name, Length
+
+      # The artifact is what the `attach` phase uploads — and what makes the two
+      # calls one pipeline rather than two independent builds. It is the installer
+      # the checks above passed, so attaching cannot substitute a different one.
+      #
+      # Retention is a day: the only consumer is the attach call in this same run
+      # (or a dispatch's own attach), so a longer window would only clutter the run's
+      # artifacts with binaries nothing reads.
+      - name: Upload the app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabmo-windows-app
+          path: build/installer/*.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Phase 2 — the upload. `release.yml` runs this after `app` tagged.
+  # ---------------------------------------------------------------------------
+  attach:
+    name: Attach the Windows app to the release
+    needs: build
+    # `always()` because a skipped `build` must not skip the attach with it: the
+    # release run calls this body twice, and the second call is attach-only. The
+    # result check keeps a FAILED build blocking the upload — there would be no
+    # artifact to attach, and a release carrying a stale one is worse than a release
+    # with none.
+    if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      # Uploading an asset to an existing release needs `contents: write`.
+      contents: write
+    steps:
+      # The artifact from the build call in THIS run. `name` rather than a pattern:
+      # there is exactly one, and a pattern that matched nothing would leave an empty
+      # directory for `gh release upload` to complain about.
+      - name: Download the app artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kabmo-windows-app
+          path: .
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          ls -l ./*.exe
+          # `--clobber` so a repair dispatch replaces the asset rather than failing
+          # on a name that already exists.
+          gh release upload "$TAG" ./*.exe --clobber

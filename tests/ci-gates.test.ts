@@ -63,6 +63,13 @@ const IOS_BODY = 'publish-ios.yml';
  */
 const MACOS_BODY = 'publish-macos.yml';
 
+/**
+ * The Windows app body: the same contract as the two mobile ones — its `build`
+ * phase is a gate on `app` (`app` `needs: win-build`). It runs on
+ * `windows-latest`, which is the only runner with the .NET 8 SDK and WebView2.
+ */
+const WINDOWS_BODY = 'publish-windows.yml';
+
 /** Every workflow that can tag or publish, and therefore must be gated. */
 const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
 
@@ -80,7 +87,7 @@ async function load(file: string): Promise<Record<string, any>> {
 
 describe('the gate contract', () => {
   test('the reusable workflows exist and are callable', async () => {
-    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
+    for (const file of ['gates.yml', 'e2e-specs.yml', ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
       expect(existsSync(join(WORKFLOWS, file))).toBe(true);
       const doc = await load(file);
       // `workflow_call` is what makes a file callable at all. Without it the
@@ -91,7 +98,7 @@ describe('the gate contract', () => {
 
   test('every local reusable-workflow reference resolves and declares workflow_call', async () => {
     const seen = new Set<string>();
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -106,14 +113,14 @@ describe('the gate contract', () => {
     }
     // Seven: the two gates, the two npm publish bodies, and the three shell bodies
     // (Android APK, iOS IPA, macOS app).
-    expect(seen.size).toBe(7);
+    expect(seen.size).toBe(8);
   });
 
   test('a caller passes only inputs the callee declares', async () => {
     // An input the callee does not declare is a run-time failure ("Invalid
     // input, ... is not defined in the referenced workflow"), and it is exactly
     // the kind of typo a rename produces.
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         if (typeof job?.uses !== 'string' || !job.uses.startsWith('./')) continue;
@@ -155,7 +162,7 @@ describe('the gate contract', () => {
     // matched. A caller that declares no `permissions:` block inherits the
     // default (which includes `contents: write`), so it is never a violation.
     const WRITE = 'write';
-    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY]) {
+    for (const file of [...RELEASING, ...Object.keys(TRIGGERS), ...PUBLISH_BODIES, ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY]) {
       const doc = await load(file);
       for (const [id, job] of Object.entries<any>(doc.jobs ?? {})) {
         const uses = job?.uses;
@@ -293,12 +300,16 @@ describe('the gate contract', () => {
     expect(needsOf('marketplace')).toContain('packages');
     expect(needsOf('android')).toContain('marketplace');
     expect(needsOf('ios')).toContain('android');
-    expect(needsOf('macos')).toContain('ios');
+    expect(needsOf('windows')).toContain('ios');
+    expect(needsOf('macos')).toContain('windows');
     expect(needsOf('apk-build')).toContain('macos');
     expect(needsOf('ipa-build')).toContain('macos');
+    expect(needsOf('win-build')).toContain('apk-build');
+    expect(needsOf('win-build')).toContain('ipa-build');
     expect(needsOf('macos-build')).toContain('macos');
     expect(needsOf('app')).toContain('apk-build');
     expect(needsOf('app')).toContain('ipa-build');
+    expect(needsOf('app')).toContain('win-build');
     expect(needsOf('app')).toContain('macos-build');
 
     // The three attach jobs are the only ones allowed to hang off `app` alone: they
@@ -306,6 +317,7 @@ describe('the gate contract', () => {
     // `if:` keeps a no-release run from calling them at all.
     expect(needsOf('apk')).toEqual(['app']);
     expect(needsOf('ipa')).toEqual(['app']);
+    expect(needsOf('windows-app')).toEqual(['app']);
     expect(needsOf('macos-app')).toEqual(['app']);
   });
 
@@ -337,6 +349,7 @@ describe('the gate contract', () => {
     // checkout — the artifact would declare the OLD version.
     for (const [id, script, file] of [
       ['ios', 'release-ios.mjs', 'git add packages/ios/version.properties'],
+      ['windows', 'release-windows.mjs', 'git add packages/windows/version.properties'],
       ['macos', 'release-macos.mjs', 'git add packages/macos/version.properties'],
     ] as const) {
       const shell = doc.jobs[id];
@@ -367,7 +380,7 @@ describe('the gate contract', () => {
     );
     expect(build.with?.mode, 'macos-build must build').toBe('build');
     expect(build.needs, 'the macOS build must come after the macOS bump').toContain('macos');
-    expect(doc.jobs.macos.needs, 'the macOS bump must come after the iOS bump').toContain('ios');
+    expect(doc.jobs.macos.needs, 'the macOS bump must come after the Windows bump').toContain('windows');
     expect(doc.jobs.app.needs, 'the app must not tag unless the macOS app built').toContain('macos-build');
 
     // The build compiles from `main`, not the trigger commit: the bump just landed

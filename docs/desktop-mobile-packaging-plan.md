@@ -273,40 +273,66 @@ console depends on. Client side: `window.__kabmoBack()`, so the hardware back
 button closes the drawer, editor and dialog before walking history. Build steps:
 `packages/android/README.md`.
 
-**The macOS shell is shipped, as a NATIVE port rather than the Tauri/Electrobun
-wrapper this research proposed.** `packages/macos` is Swift + AppKit + WKWebView
-(696 KB `.app`, ad-hoc signed). It is thin: it picks a server, spawns/stops a
-LOCAL one, and owns the window chrome. It does not bundle a server by default
-(P0's packaging work), and it does not implement the framework comparison above —
-the measurements in that table are why: a native webview host needs no runtime in
-the bundle, and the thing that actually broke under Electrobun (the drag region)
-is one platform API (`NSWindow.sendEvent`).
+**Desktop shells are shipped as NATIVE ports rather than the Tauri/Electrobun
+wrapper this research proposed.**
 
-Windows and Linux are still at P0.
+- `packages/macos` — macOS, Swift + AppKit + WKWebView (660 KB `.app`, ~40 MB RSS).
+- `packages/windows` — Windows, .NET 8 + WPF + WebView2, ported from the macOS
+  shell so the two share one bridge contract and the client cannot tell them
+  apart.
 
-### How the macOS shell ships
+Each is thin: it picks a server, spawns/stops a LOCAL one, and owns the window
+chrome. None bundles a server by default (P0's packaging work), and none
+implements the framework comparison above — the measurements in that table are
+why: a native webview host needs no runtime in the bundle, and the two things
+that actually broke under Electrobun (the drag region and the maximised
+geometry) are one platform API each (`NSWindow.sendEvent` on macOS,
+`WindowChrome` + `IsNonClientRegionSupportEnabled` on Windows).
 
-The `.app` is a **release artifact attached to the app's GitHub release**, not a
-registry package. `packages/macos/version.properties` is the only place its version
-is declared: `scripts/build-app.sh` fills `CFBundleShortVersionString` from it
-through `release/macos-version.mjs`, and `publish-macos.yml` names the asset
-`kabmo-macos-v<version>.zip` from the same file.
+### How the shells ship
 
-The `macos` job bumps that version from the same Conventional Commits rules the app
-uses and commits it; `macos-build` compiles the package, runs both Swift suites,
-verifies the plist and the signature, and uploads the archive — **before `app`
-tags**, so a Swift error stops the release instead of shipping a tag with no app.
-`macos-app` attaches that artifact after the release exists, and never rebuilds.
-The chain is `packages → marketplace → android → ios → macos → {ipa-build,
-apk-build} → macos-build → app`, pinned by `tests/ci-gates.test.ts`.
+All four shells are **release artifacts attached to the app's GitHub release**,
+not registry packages, and they follow one shape:
 
-Two details are load-bearing. The archive is made with `ditto`, never `zip`: a
-`zip -r` round trip strips the bundle's extended attributes and code signature, and
-macOS then refuses to launch the result ("damaged"). And **there is no User-Agent
-token**, unlike the Android and iOS shells — those two are downloaded from the
-console, which compares the published asset's version against the running shell's
-on every request; a macOS app is installed by hand from the release page, so
-nothing parses it.
+| Shell | Version file | Build job | Asset |
+|---|---|---|---|
+| Android | `packages/android/version.properties` | `apk-build` | `kabmo-android-v<v>.apk` |
+| iOS | `packages/ios/version.properties` | `ipa-build` | `kabmo-ios-v<v>.ipa` |
+| Windows | `packages/windows/version.properties` | `win-build` | `kabmo-windows-v<v>-setup.exe` |
+| macOS | `packages/macos/version.properties` | `macos-build` | `kabmo-macos-v<v>.zip` |
+
+Each has a bump job (`android` / `ios` / `windows` / `macos`), a `publish-*.yml`
+reusable body with a `build` and an `attach` phase, and a place in the chain
+`packages → marketplace → android → ios → windows → macos → {ipa-build,
+apk-build} → win-build → macos-build → app`. **The build is a gate, not a
+consequence**: `app` `needs:` every build job, so a shell that cannot compile
+stops the release before a tag exists — instead of a release that goes out with no
+artifact in it, repaired only by a hand-run dispatch. `attach` runs after `app`
+because `gh release upload` needs the release to exist, and it never rebuilds.
+
+The bump is the release. Each version file is the only place its shell's version
+is declared, the level comes from the same Conventional Commits rules the app
+uses, and the bump commit is a `chore` that releases nothing on its own — so a
+shell-only fix reaches a user on the next app release, without cutting a server
+version for it.
+
+The artifact's SHAPE follows each platform's own convention, and that is not
+cosmetic: **Windows gets an installer** (`kabmo-windows-v<v>-setup.exe`, compiled
+from `packages/windows/installer/kabmo.iss`), because a ZIP leaves no
+Add/remove-programs entry, no Start-menu entry and no uninstaller — so "which
+version is this" and "how do I remove it" both have no answer. macOS gets a `.zip`
+holding the `.app`, which IS the macOS convention; Linux gets a `.tar.gz`, because
+it has no installer convention to follow. The installer is unsigned (SmartScreen
+warns) and therefore not an MSIX: MSIX requires a certificate bound to a publisher
+identity and refuses to install without one.
+
+Two per-shell differences are deliberate. **Android and iOS carry a User-Agent
+token** (`KabmoAndroid/<v>`, `KabmoIOS/<v>`) because the console downloads them
+and compares the published asset's version against the running shell's; macOS,
+Windows and Linux do not, because a desktop app is installed by hand from the release page
+and nothing in the console offers it. And **Android's `versionCode` is the
+workflow run number**, stated at build time and nowhere else — a fixed value makes
+every release after the first uninstallable over the previous one.
 
 ## Verification log
 
