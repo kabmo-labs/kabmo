@@ -22,12 +22,29 @@
  * `MERGE_HEAD` file are the whole subject.
  */
 
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { GIT_BRANCH_ACTIONS } from '@/server/lib/fs/git-actions-branch';
 import { removeDir } from '@/test-support/remove-dir';
+
+/**
+ * The suite drives REAL git processes — `init`, `clone`, `commit`, `push`,
+ * `fetch`, `pull`, `merge` — and one test of it pays for most of them. Bun's
+ * default per-test budget is 5s, which a Linux runner clears and a Windows
+ * runner does not: measured on `windows-latest`, "reconciles a diverged branch"
+ * timed out at 5001ms while the same suite is green locally in 1.4s. Process
+ * spawn on that runner costs several times what it does on POSIX, and the
+ * log line above the failure (`killed 1 dangling process`) is the timeout
+ * firing mid-`git`.
+ *
+ * A budget, not a skip: the behaviour — a diverged branch reconciled by a merge
+ * and then pushed — is identical on both platforms, and skipping it there would
+ * report the Sync button as unverified on a platform the CLI ships to. The same
+ * budget is stated for the same reason in `git-update.server.test.ts`.
+ */
+setDefaultTimeout(30_000);
 
 const tempDirs: string[] = [];
 
