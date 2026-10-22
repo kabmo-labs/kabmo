@@ -14,6 +14,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, jest, mock, test } from 'bun:test';
 import type { QueuedMessage } from '@/shared/types/chat';
+import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 import {
   MODEL,
   beginQueueTest,
@@ -79,6 +80,39 @@ describe('queue dispatch', () => {
     await settleDelivery(host);
 
     expect(sent).toEqual([{ type: 'prompt', message: 'session model' }]);
+  });
+
+  // The real wrapper's `send` is a CLASS METHOD that reads its own runtime state
+  // through `this`, so a dispatch that hands it over detached runs against
+  // `undefined`. Measured in production on every queued item that carried a
+  // model snapshot: `undefined is not an object (evaluating 'e.restarting')`,
+  // the item was re-queued, and the queue retried it every 2s forever — the
+  // follow-up only ever left the queue when the operator re-sent it by hand.
+  // `makeHost`'s arrow function cannot see this, so the host here is an object
+  // whose `send` reads a field of itself.
+  test('the model snapshot and the prompt keep the session as their receiver', async () => {
+    const sessionId = beginQueueTest();
+    queue.set(sessionId, [queueItem('receiver check')]);
+    const sent: Record<string, unknown>[] = [];
+    let receiverLost = false;
+    const host: QueueDeliveryHost = {
+      sessionId,
+      isAlive: () => true,
+      isBusy: () => false,
+      // `this` is the host: the detached call sites read `restarting` off it.
+      restarting: false,
+      async send(this: { restarting: boolean }, command: Record<string, unknown>) {
+        if (this?.restarting !== false) receiverLost = true;
+        sent.push(command);
+        return {};
+      },
+    } as QueueDeliveryHost;
+
+    await settleDelivery(host);
+
+    expect(receiverLost).toBe(false);
+    expect(sent.map((c) => c.type)).toEqual(['set_model', 'set_thinking_level', 'prompt']);
+    expect(queue.get(sessionId)).toEqual([]);
   });
 
   // Attachments reach the server as the persisted display fields only: the

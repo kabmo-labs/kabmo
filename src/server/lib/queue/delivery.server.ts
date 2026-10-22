@@ -101,9 +101,18 @@ function clearPendingTimer(sessionId: string): void {
  *  prompt's dispatcher: both send a prompt nobody typed in this tab, from the
  *  same persisted shape. */
 async function dispatchQueuedItem(session: QueueDeliveryHost, item: QueuedMessage): Promise<boolean> {
+  // BOUND, never passed detached: the wrapper's `send` reaches its own runtime
+  // state through `this`, so `applyModelSnapshot(session.send, …)` ran it against
+  // `undefined` — measured in production as `undefined is not an object
+  // (evaluating 'e.restarting')` on every queued item that carried a model
+  // snapshot. The item was then re-queued and retried every 2s forever, and the
+  // client's nudge hit the same path, so the follow-up never left the queue and
+  // only a manual re-send got it out. The waiting-prompt dispatcher binds for the
+  // same reason (`waiting/runtime.server.ts`).
+  const send = session.send.bind(session);
   try {
-    await applyModelSnapshot(session.send, item.model);
-    await session.send(promptCommand({ text: item.text, attachments: item.attachments, model: item.model }));
+    await applyModelSnapshot(send, item.model);
+    await send(promptCommand({ text: item.text, attachments: item.attachments, model: item.model }));
     return true;
   } catch (error) {
     console.error(`[queue] delivery failed for session ${session.sessionId}:`, error);
