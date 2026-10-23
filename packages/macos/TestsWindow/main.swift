@@ -70,6 +70,9 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   var window: RecordingWindow!
   var webView: WKWebView!
   var ready = false
+  /// Where the suite is, for the watchdog's message. "The suite stopped" is
+  /// useless without it.
+  var phase = "the page was still loading"
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     let rect = NSRect(x: 200, y: 200, width: 700, height: 480)
@@ -117,7 +120,38 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { self.runCases() }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+      self.phase = "running the cases"
+      self.runCases()
+    }
+  }
+
+  /**
+   A page that never loads must FAIL the suite, not park it forever.
+
+   `runCases` is reached only from `didFinish`, so a load that neither finishes
+   nor errors leaves the process inside `app.run()` for as long as the job
+   allows — and `publish-macos.yml` declares no `timeout-minutes`, so that is
+   GitHub's six-hour default. Measured on this repository's release run: both
+   macOS legs sat in this step for over an hour with every other job finished.
+   */
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    fail("the page failed to load: \(error.localizedDescription)")
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    didFailProvisionalNavigation navigation: WKNavigation!,
+    withError error: Error
+  ) {
+    fail("the page failed to load provisionally: \(error.localizedDescription)")
+  }
+
+  func fail(_ reason: String) {
+    print("  FAIL \(reason)")
+    print("\nwindow suite could not run")
+    failures += 1
+    exit(1)
   }
 
   func press(at point: NSPoint) {
@@ -478,4 +512,26 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let runner = Runner()
 app.delegate = runner
+
+/**
+ A ceiling, because this suite runs inside a RELEASE gate.
+
+ Everything in the suite is already deadline-bounded, but two things are not
+ ours to bound: `app.run()` never returns if the page neither loads nor errors,
+ and AppKit's own mouse-tracking loops block the main thread. Measured on this
+ repository's release run: both macOS legs sat in `Run the window suite` for over
+ an hour while every other job had finished, and there was nothing to stop them —
+ the workflow declares no `timeout-minutes`, so the ceiling was GitHub's
+ six-hour default.
+
+ The timer runs on a BACKGROUND queue deliberately: the main thread is exactly
+ what gets stuck, so a `RunLoop` timer would be starved by the thing it watches
+ for. `exit` terminates the process from there (verified against a main thread
+ blocked in a modal loop).
+ */
+DispatchQueue.global().asyncAfter(deadline: .now() + 120) {
+  print("\nWATCHDOG: the window suite did not finish within 120s (phase: \(runner.phase))")
+  exit(3)
+}
+
 app.run()
