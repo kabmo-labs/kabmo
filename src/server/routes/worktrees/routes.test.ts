@@ -131,7 +131,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  invalidateWorktreeTopology();
+  await invalidateWorktreeTopology();
   // The session-file caches are keyed on `globalThis` and this file writes
   // session files, so a case that leaves one behind would be counted by the next.
   clearSessionFileCaches();

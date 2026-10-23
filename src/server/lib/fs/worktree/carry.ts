@@ -17,8 +17,8 @@
  * tracked, or that does not exist, is skipped rather than guessed at.
  */
 
-import { existsSync } from 'fs';
-import { mkdir } from 'fs/promises';
+import { existsSync, statSync } from 'fs';
+import { copyFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { runGit } from '@/server/lib/fs/git-run';
 import { pathExists } from '@/server/lib/omp/core/paths';
@@ -67,6 +67,15 @@ async function isIgnored(repo: string, relative: string): Promise<boolean> {
 /** `cp -c` (APFS clonefile) / `cp --reflink=auto` / `cp -R`, plus a Windows branch. */
 async function copyTree(source: string, destination: string, strategy: CopyStrategy): Promise<void> {
   await mkdir(path.dirname(destination), { recursive: true });
+  // A regular FILE (`.env`) is not a tree, and every branch below is a tree
+  // copy. `robocopy` takes directories: measured on a Windows runner, a `.env`
+  // source produced no file at the destination and no exit code the caller
+  // reads as a failure, so the carry reported success and the worktree had no
+  // env file — the one thing that path exists to prevent.
+  if (!statSync(source).isDirectory()) {
+    await copyFile(source, destination);
+    return;
+  }
   if (process.platform === 'win32') {
     const result = Bun.spawnSync({
       cmd: ['robocopy', source, destination, '/MIR', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS', '/NP'],

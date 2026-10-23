@@ -86,8 +86,8 @@ function depsFor(records: Map<string, { startRef: string; projectId: string }>):
   };
 }
 
-afterAll(() => {
-  invalidateWorktreeTopology();
+afterAll(async () => {
+  await invalidateWorktreeTopology();
   removeDir(FIXTURE_ROOT);
 });
 

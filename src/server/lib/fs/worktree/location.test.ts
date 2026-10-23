@@ -119,17 +119,23 @@ describe('deriveProjectId', () => {
 });
 
 describe('worktree location', () => {
-  const checkout = '/repo';
+  // A literal POSIX spelling is not portable: `path.resolve('/repo', '.worktrees')`
+  // answers `D:\repo\.worktrees` on a Windows runner, which is the CORRECT
+  // answer for that platform and not a product bug. Every expectation is
+  // therefore built through `path`, so the rule is asserted rather than the
+  // separator.
+  const checkout = path.resolve('/repo');
+  const home = path.resolve('/home/u');
 
   test('three spellings, and the resolved value is always the parent', () => {
     expect(resolveConfiguredWorktreeRoot('', checkout)).toBeNull();
     expect(resolveConfiguredWorktreeRoot(null, checkout)).toBeNull();
     expect(resolveConfiguredWorktreeRoot('   ', checkout)).toBeNull();
-    expect(resolveConfiguredWorktreeRoot('../wt', checkout)).toBe(path.resolve('/wt'));
-    expect(resolveConfiguredWorktreeRoot('.worktrees', checkout)).toBe('/repo/.worktrees');
-    expect(resolveConfiguredWorktreeRoot('/abs/wt', checkout)).toBe('/abs/wt');
-    expect(resolveConfiguredWorktreeRoot('~/wt', checkout, '/home/u')).toBe('/home/u/wt');
-    expect(resolveConfiguredWorktreeRoot('~', checkout, '/home/u')).toBe('/home/u');
+    expect(resolveConfiguredWorktreeRoot('../wt', checkout)).toBe(path.resolve(checkout, '..', 'wt'));
+    expect(resolveConfiguredWorktreeRoot('.worktrees', checkout)).toBe(path.join(checkout, '.worktrees'));
+    expect(resolveConfiguredWorktreeRoot('/abs/wt', checkout)).toBe(path.resolve(checkout, '/abs/wt'));
+    expect(resolveConfiguredWorktreeRoot('~/wt', checkout, home)).toBe(path.join(home, 'wt'));
+    expect(resolveConfiguredWorktreeRoot('~', checkout, home)).toBe(home);
   });
 
   test('the default root is keyed per repository, outside every checkout', () => {

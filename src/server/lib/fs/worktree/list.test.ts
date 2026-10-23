@@ -51,8 +51,8 @@ function makeRepo(name: string): string {
   return dir;
 }
 
-afterAll(() => {
-  invalidateWorktreeTopology();
+afterAll(async () => {
+  await invalidateWorktreeTopology();
   removeDir(FIXTURE_ROOT);
 });
 
@@ -198,7 +198,10 @@ describe('session → worktree', () => {
     // Cached: the new worktree is not visible yet.
     expect((await readProjectWorktrees(repo)).length).toBe(1);
 
-    invalidateWorktreeTopology(await canonicalPath(repo));
+    // AWAITED: the invalidation resolves the canonical key asynchronously, so an
+    // un-awaited call races the read below — measured on both CI legs, where the
+    // read won and the cache still answered one entry.
+    await invalidateWorktreeTopology(await canonicalPath(repo));
     expect((await readProjectWorktrees(repo)).length).toBe(2);
   });
 });
