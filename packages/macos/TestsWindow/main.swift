@@ -41,6 +41,10 @@ let page = """
 </body></html>
 """
 
+/// A point on the header strip that belongs to the page: past the strip macOS
+/// reserves for its traffic lights (`trafficLightInset`), which the buttons own.
+let blankBarX: CGFloat = trafficLightInset + 24
+
 var failures = 0
 func check(_ label: String, _ condition: Bool) {
   if condition { print("  ok   \(label)") } else { print("  FAIL \(label)"); failures += 1 }
@@ -71,7 +75,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     let rect = NSRect(x: 200, y: 200, width: 700, height: 480)
     window = RecordingWindow(
       contentRect: rect,
-      styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+      styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered, defer: false
     )
     window.titleVisibility = .hidden
@@ -126,18 +130,54 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     window.sendEvent(event)
   }
 
+  /// Let the run loop run for `seconds`, so an animated window action can land.
+  func pump(_ seconds: TimeInterval) {
+    let deadline = Date().addingTimeInterval(seconds)
+    while Date() < deadline {
+      RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
+    }
+  }
+
+  /// A whole click: a press, then the release that makes it one.
+  ///
+  /// Posted into the app's own queue rather than handed to `sendEvent`, because
+  /// an `NSButton` tracks the mouse in a modal loop that PULLS from that queue —
+  /// a press delivered directly starts the loop and then blocks it forever with
+  /// no release to find. Returns once the queue has been drained.
+  func click(at point: NSPoint) {
+    let now = ProcessInfo.processInfo.systemUptime
+    for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+      guard let event = NSEvent.mouseEvent(
+        with: type, location: point, modifierFlags: [], timestamp: now,
+        windowNumber: window.windowNumber, context: nil,
+        eventNumber: 1, clickCount: 1, pressure: 1
+      ) else { return }
+      NSApp.postEvent(event, atStart: false)
+    }
+    let deadline = Date().addingTimeInterval(1.0)
+    while Date() < deadline {
+      guard let next = NSApp.nextEvent(
+        matching: .any, until: Date().addingTimeInterval(0.02),
+        inMode: .default, dequeue: true
+      ) else { continue }
+      NSApp.sendEvent(next)
+      if next.type == .leftMouseUp { break }
+    }
+  }
+
   func runCases() {
     ready = true
     let height = window.contentView!.bounds.height
 
     // A blank stretch of the header strip (top 40px, so near `height - 20` in
-    // window coordinates, which are bottom-left).
-    press(at: NSPoint(x: 60, y: height - 20))
+    // window coordinates, which are bottom-left) — to the RIGHT of the traffic
+    // lights, because the strip behind them belongs to the buttons.
+    press(at: NSPoint(x: blankBarX, y: height - 20))
     check("a press on blank header is claimed as a drag", window.claimed)
     check("...and is not passed to the page", !window.passedThrough)
 
     // A control inside the header must stay a control.
-    press(at: NSPoint(x: 60 + 200 + 20, y: height - 20))
+    press(at: NSPoint(x: 280, y: height - 20))
     check("a press on a header control is NOT a drag", !window.claimed)
     check("...and reaches the page", window.passedThrough)
 
@@ -147,11 +187,227 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     check("...and reaches the page", window.passedThrough)
 
     proveWindowMoves()
+    runTrafficLightCases()
     runShortcutCases()
     runDoubleClickCases()
     runMenuCases()
+    proveClickCloses()
     runSplashCases()
     finish()
+  }
+
+  /**
+   The system's traffic lights stay clickable.
+
+   The page marks its whole header `[data-drag-region]` and reserves its leftmost
+   76px for these buttons, so `elementFromPoint` at a traffic light answers "a
+   drag handle" — the press was claimed by the window and the button never saw
+   it. Close, minimise and zoom were all dead in the shipped app while the same
+   strip still moved the window, which is exactly the shape of a hit test that
+   asks the page before it asks the system.
+
+   The button frames are read from the window rather than hard-coded, because
+   macOS decides where they sit; the assertion is that a press INSIDE one is not
+   a drag, and that the strip beside them still is.
+   */
+  func runTrafficLightCases() {
+    let height = window.contentView!.bounds.height
+    guard let close = window.standardWindowButton(.closeButton),
+          let zoom = window.standardWindowButton(.zoomButton) else {
+      check("the window has standard buttons", false)
+      return
+    }
+    for (label, button) in [("close", close), ("zoom", zoom)] {
+      let rect = button.convert(button.bounds, to: nil)
+      check("\(label) is not hidden", !button.isHidden)
+      check("the \(label) button's frame is a real box", rect.width > 0 && rect.height > 0)
+      let centre = NSPoint(x: rect.midX, y: rect.midY)
+      check("the \(label) button's centre reads as a standard button",
+            window.hitsStandardButton(at: centre))
+      window.claimed = false
+      window.passedThrough = false
+      press(at: centre)
+      check("a press on \(label) is NOT a drag", !window.claimed)
+      check("...and reaches the button", window.passedThrough)
+    }
+    // The gap to the RIGHT of the lights is still the bar: the fix must not
+    // turn the reserved strip into dead window.
+    let gap = NSPoint(x: trafficLightInset - 8, y: height - 20)
+    check("the gap after the lights is not a standard button",
+          !window.hitsStandardButton(at: gap))
+    window.claimed = false
+    window.passedThrough = false
+    press(at: gap)
+    check("a press in the gap after the lights is still a drag", window.claimed)
+  }
+
+  /**
+   The window's standard actions, which a page-drawn bar has to provide itself.
+
+   A `titled` window answers ⌘W/⌘M/⌃⌘F through AppKit's own routing; this one is
+   `fullSizeContentView` with the title hidden, and the shortcuts did nothing
+   until the window declared it handles them. `validateUserInterfaceItem` is what
+   the menu system asks before enabling an item, so it is also the gate that
+   keeps the menu live.
+   */
+  func runShortcutCases() {
+    let actions: [(String, Selector)] = [
+      ("close", #selector(NSWindow.performClose(_:))),
+      ("minimise", #selector(NSWindow.performMiniaturize(_:))),
+      ("zoom", #selector(NSWindow.performZoom(_:))),
+      ("full screen", #selector(NSWindow.toggleFullScreen(_:))),
+    ]
+    for (label, action) in actions {
+      let item = NSMenuItem(title: label, action: action, keyEquivalent: "")
+      check("the window handles \(label)", window.validateUserInterfaceItem(item))
+    }
+    // And it must not claim an action it cannot perform.
+    let unrelated = NSMenuItem(title: "x", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+    check("an unrelated action is not claimed", !window.validateUserInterfaceItem(unrelated))
+  }
+
+  /**
+   Double-click obeys the SYSTEM preference, not a hard-coded behaviour.
+
+   macOS exposes it as `AppleActionOnDoubleClick` (`Maximize` by default,
+   `Minimize`, `None`) and a native title bar obeys it. Measured on this machine
+   the key is unset, so the default branch is what runs — and a user who set
+   "minimise" must get a minimised window, not a zoomed one.
+   */
+  func runDoubleClickCases() {
+    check("the default preference is maximize", DoubleClickAction.fromPreference(nil) == .maximize)
+    check("'Minimize' is read case-insensitively", DoubleClickAction.fromPreference("minimize") == .minimize)
+    check("'None' disables the gesture", DoubleClickAction.fromPreference("None") == .none)
+    check("an unknown value falls back to the default",
+          DoubleClickAction.fromPreference("sideways") == .maximize)
+
+    // A double-click on the bar with the preference set to None must pass the
+    // click THROUGH, so a control under the pointer still receives it.
+    window.doubleClickAction = { .none }
+    window.claimed = false
+    window.passedThrough = false
+    doubleClick(at: NSPoint(x: blankBarX, y: window.contentView!.bounds.height - 20))
+    check("with the preference off, a double-click is not swallowed", !window.claimed)
+    check("...and reaches the page", window.passedThrough)
+
+    // With it on, the window zooms: assert the gesture is CLAIMED, because zoom
+    // itself depends on the current frame and would make this flaky.
+    window.doubleClickAction = { .maximize }
+    window.claimed = false
+    window.passedThrough = false
+    doubleClick(at: NSPoint(x: blankBarX, y: window.contentView!.bounds.height - 20))
+    check("with the preference on, a double-click is claimed", !window.passedThrough)
+    window.doubleClickAction = { .current() }
+  }
+
+  /**
+   The bar's right-click menu, which a native title bar raises for free.
+
+   Asserted through the window's own item list rather than by popping a menu: a
+   modal menu cannot be dismissed from a test process.
+   */
+  func runMenuCases() {
+    let titles = window.barMenuTitles()
+    // "Zoom" and "Restore" are the same item in two states, so the assertion is
+    // on the pair rather than on one spelling.
+    let hasZoom = titles.contains("Zoom") || titles.contains("Restore")
+    for expected in ["Move Window", "Minimize", "Enter Full Screen", "Close"] {
+      check("the bar menu offers \(expected)", titles.contains(expected))
+    }
+    check("the bar menu offers Zoom/Restore", hasZoom)
+  }
+
+  func doubleClick(at point: NSPoint) {
+    // `sendEvent` resets `passedThrough` on every left press, so a double-click
+    // has to be observed by the WINDOW: `claimed` records that the bar took it.
+    window.claimed = false
+    window.passedThrough = false
+    guard let event = NSEvent.mouseEvent(
+      with: .leftMouseDown, location: point, modifierFlags: [],
+      timestamp: ProcessInfo.processInfo.systemUptime,
+      windowNumber: window.windowNumber, context: nil,
+      eventNumber: 1, clickCount: 2, pressure: 1
+    ) else { return }
+    window.sendEvent(event)
+  }
+
+  /**
+   The window actually MOVES, through the shipped drag code.
+
+   `performWindowDragWithEvent:` was the first implementation and cannot be
+   proved here: its loop reads the physical pointer through the event tap, and
+   with no accessibility grant a posted press moves nothing (measured — before
+   (640,149), during (640,149), after (640,149), with the cursor warped and the
+   events posted into the app's own queue). The shell therefore follows the
+   pointer itself, and this drives that path: press the header, move the pointer
+   160×90, read the origin.
+   */
+  func proveWindowMoves() {
+    let start = window.frame.origin
+    press(at: NSPoint(x: blankBarX, y: window.contentView!.bounds.height - 20))
+    guard window.claimed else {
+      check("the drag started", false)
+      return
+    }
+    // The shell keeps the pointer's offset from the window, so a pointer 160×90
+    // from where it was pressed moves the window exactly that far.
+    guard let pressedAt = window.dragStartPointer else {
+      check("the press recorded a pointer", false)
+      return
+    }
+    window.drag(to: NSPoint(x: pressedAt.x + 160, y: pressedAt.y + 90))
+
+    // The assertion is on the ARITHMETIC, not on the raw origin, because
+    // `setFrameOrigin` CONSTRAINS the frame to the screen: measured, asking for
+    // (5200, 5200) lands at (2520, 930) on a 2560×1440 display. The CI runner's
+    // display is small enough that +90 in y was clamped away, so the window DID
+    // move (the "origin did not move" note never printed) and the case still
+    // failed — a test of the runner's screen, not of the drag.
+    //
+    // `constrainFrameRect` is AppKit's own prediction of that clamp, verified
+    // here to match `setFrameOrigin` exactly for both an in-bounds and an
+    // out-of-bounds request. Comparing against it keeps the case honest on any
+    // display while still proving the window followed the pointer.
+    let wanted = NSRect(
+      x: start.x + 160,
+      y: start.y + 90,
+      width: window.frame.width,
+      height: window.frame.height
+    )
+    let expected = window.constrainFrameRect(wanted, to: window.screen).origin
+    let moved = window.frame.origin
+    check("the window follows the pointer by the same delta",
+          abs(moved.x - expected.x) < 0.5 && abs(moved.y - expected.y) < 0.5)
+    // A window that ignored the drag entirely is still a failure, however the
+    // screen constrains it — that is the bug this case exists for.
+    check("...and actually moved from where it started", moved != start)
+    if moved == start { print("  note: origin did not move: \(moved)") }
+
+    window.cancelDrag()
+    window.setFrameOrigin(start)
+  }
+
+  /**
+   A whole click on a traffic light CLOSES the window.
+
+   The cases above prove the press reaches the button; this proves the button
+   then does its job, which is the half a press-through assertion cannot see — a
+   button that never tracks the mouse still "receives" the press. Close is the
+   one of the three that needs no Dock and no active app: measured here,
+   `performMiniaturize` answers false in an `.accessory` process that was never
+   activated, so a minimise assertion would report the harness rather than the
+   shell. Runs LAST because it takes the window away.
+   */
+  func proveClickCloses() {
+    guard let close = window.standardWindowButton(.closeButton) else {
+      check("the window has a close button", false)
+      return
+    }
+    let rect = close.convert(close.bounds, to: nil)
+    check("the window starts visible", window.isVisible)
+    click(at: NSPoint(x: rect.midX, y: rect.midY))
+    pump(0.4)
+    check("a click on close closes the window", !window.isVisible)
   }
 
   /**
@@ -210,152 +466,6 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     splash.render(.done)
     check("the finished splash draws nothing", splash.isHidden)
     splash.removeFromSuperview()
-  }
-
-  /**
-   The window's standard actions, which a page-drawn bar has to provide itself.
-
-   A `titled` window answers ⌘W/⌘M/⌃⌘F through AppKit's own routing; this one is
-   `fullSizeContentView` with the title hidden, and the shortcuts did nothing
-   until the window declared it handles them. `validateUserInterfaceItem` is what
-   the menu system asks before enabling an item, so it is also the gate that
-   keeps the menu live.
-   */
-  func runShortcutCases() {
-    let actions: [(String, Selector)] = [
-      ("close", #selector(NSWindow.performClose(_:))),
-      ("minimise", #selector(NSWindow.performMiniaturize(_:))),
-      ("zoom", #selector(NSWindow.performZoom(_:))),
-      ("full screen", #selector(NSWindow.toggleFullScreen(_:))),
-    ]
-    for (label, action) in actions {
-      let item = NSMenuItem(title: label, action: action, keyEquivalent: "")
-      check("the window handles \(label)", window.validateUserInterfaceItem(item))
-    }
-    // And it must not claim an action it cannot perform.
-    let unrelated = NSMenuItem(title: "x", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
-    check("an unrelated action is not claimed", !window.validateUserInterfaceItem(unrelated))
-  }
-
-  /**
-   Double-click obeys the SYSTEM preference, not a hard-coded behaviour.
-
-   macOS exposes it as `AppleActionOnDoubleClick` (`Maximize` by default,
-   `Minimize`, `None`) and a native title bar obeys it. Measured on this machine
-   the key is unset, so the default branch is what runs — and a user who set
-   "minimise" must get a minimised window, not a zoomed one.
-   */
-  func runDoubleClickCases() {
-    check("the default preference is maximize", DoubleClickAction.fromPreference(nil) == .maximize)
-    check("'Minimize' is read case-insensitively", DoubleClickAction.fromPreference("minimize") == .minimize)
-    check("'None' disables the gesture", DoubleClickAction.fromPreference("None") == .none)
-    check("an unknown value falls back to the default",
-          DoubleClickAction.fromPreference("sideways") == .maximize)
-
-    // A double-click on the bar with the preference set to None must pass the
-    // click THROUGH, so a control under the pointer still receives it.
-    window.doubleClickAction = { .none }
-    window.claimed = false
-    window.passedThrough = false
-    doubleClick(at: NSPoint(x: 60, y: window.contentView!.bounds.height - 20))
-    check("with the preference off, a double-click is not swallowed", !window.claimed)
-    check("...and reaches the page", window.passedThrough)
-
-    // With it on, the window zooms: assert the gesture is CLAIMED, because zoom
-    // itself depends on the current frame and would make this flaky.
-    window.doubleClickAction = { .maximize }
-    window.claimed = false
-    window.passedThrough = false
-    doubleClick(at: NSPoint(x: 60, y: window.contentView!.bounds.height - 20))
-    check("with the preference on, a double-click is claimed", !window.passedThrough)
-    window.doubleClickAction = { .current() }
-  }
-
-  /**
-   The bar's right-click menu, which a native title bar raises for free.
-
-   Asserted through the window's own item list rather than by popping a menu: a
-   modal menu cannot be dismissed from a test process.
-   */
-  func runMenuCases() {
-    let titles = window.barMenuTitles()
-    // "Zoom" and "Restore" are the same item in two states, so the assertion is
-    // on the pair rather than on one spelling.
-    let hasZoom = titles.contains("Zoom") || titles.contains("Restore")
-    for expected in ["Move Window", "Minimize", "Enter Full Screen", "Close"] {
-      check("the bar menu offers \(expected)", titles.contains(expected))
-    }
-    check("the bar menu offers Zoom/Restore", hasZoom)
-  }
-
-  func doubleClick(at point: NSPoint) {
-    // `sendEvent` resets `passedThrough` on every left press, so a double-click
-    // has to be observed by the WINDOW: `claimed` records that the bar took it.
-    window.claimed = false
-    window.passedThrough = false
-    guard let event = NSEvent.mouseEvent(
-      with: .leftMouseDown, location: point, modifierFlags: [],
-      timestamp: ProcessInfo.processInfo.systemUptime,
-      windowNumber: window.windowNumber, context: nil,
-      eventNumber: 1, clickCount: 2, pressure: 1
-    ) else { return }
-    window.sendEvent(event)
-  }
-
-  /**
-   The window actually MOVES, through the shipped drag code.
-
-   `performWindowDragWithEvent:` was the first implementation and cannot be
-   proved here: its loop reads the physical pointer through the event tap, and
-   with no accessibility grant a posted press moves nothing (measured — before
-   (640,149), during (640,149), after (640,149), with the cursor warped and the
-   events posted into the app's own queue). The shell therefore follows the
-   pointer itself, and this drives that path: press the header, move the pointer
-   160×90, read the origin.
-   */
-  func proveWindowMoves() {
-    let start = window.frame.origin
-    press(at: NSPoint(x: 60, y: window.contentView!.bounds.height - 20))
-    guard window.claimed else {
-      check("the drag started", false)
-      return
-    }
-    // The shell keeps the pointer's offset from the window, so a pointer 160×90
-    // from where it was pressed moves the window exactly that far.
-    guard let pressedAt = window.dragStartPointer else {
-      check("the press recorded a pointer", false)
-      return
-    }
-    window.drag(to: NSPoint(x: pressedAt.x + 160, y: pressedAt.y + 90))
-
-    // The assertion is on the ARITHMETIC, not on the raw origin, because
-    // `setFrameOrigin` CONSTRAINS the frame to the screen: measured, asking for
-    // (5200, 5200) lands at (2520, 930) on a 2560×1440 display. The CI runner's
-    // display is small enough that +90 in y was clamped away, so the window DID
-    // move (the "origin did not move" note never printed) and the case still
-    // failed — a test of the runner's screen, not of the drag.
-    //
-    // `constrainFrameRect` is AppKit's own prediction of that clamp, verified
-    // here to match `setFrameOrigin` exactly for both an in-bounds and an
-    // out-of-bounds request. Comparing against it keeps the case honest on any
-    // display while still proving the window followed the pointer.
-    let wanted = NSRect(
-      x: start.x + 160,
-      y: start.y + 90,
-      width: window.frame.width,
-      height: window.frame.height
-    )
-    let expected = window.constrainFrameRect(wanted, to: window.screen).origin
-    let moved = window.frame.origin
-    check("the window follows the pointer by the same delta",
-          abs(moved.x - expected.x) < 0.5 && abs(moved.y - expected.y) < 0.5)
-    // A window that ignored the drag entirely is still a failure, however the
-    // screen constrains it — that is the bug this case exists for.
-    check("...and actually moved from where it started", moved != start)
-    if moved == start { print("  note: origin did not move: \(moved)") }
-
-    window.cancelDrag()
-    window.setFrameOrigin(start)
   }
 
   func finish() {

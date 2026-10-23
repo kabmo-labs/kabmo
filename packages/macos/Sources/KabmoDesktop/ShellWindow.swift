@@ -128,6 +128,16 @@ open class ShellWindow: NSWindow {
   open override func sendEvent(_ event: NSEvent) {
     switch event.type {
     case .leftMouseDown:
+      // The system's own controls come FIRST, before the page is asked
+      // anything. The page marks its whole header `[data-drag-region]` and the
+      // leftmost 76px of that header is reserved for the traffic lights, so a
+      // press on the close button is — as far as `elementFromPoint` can tell —
+      // a press on a drag handle, and claiming it here meant the event never
+      // reached the button: none of close / minimise / zoom could be clicked,
+      // while the same strip still moved the window.
+      if hitsStandardButton(at: event.locationInWindow) {
+        break
+      }
       if isOnBar(event) {
         // A double-click on the bar is the system gesture, never a drag start:
         // the first click of a double-click has already begun one, and starting
@@ -151,6 +161,25 @@ open class ShellWindow: NSWindow {
       break
     }
     super.sendEvent(event)
+  }
+
+  /// Whether the press landed on one of the system's own title-bar controls.
+  ///
+  /// `standardWindowButton(_:)` is the only way to reach them: they live in the
+  /// private titlebar container view, not in `contentView`, so no hit test over
+  /// the content can find them. Their frames are converted to WINDOW
+  /// coordinates, which is what `event.locationInWindow` is in.
+  ///
+  /// A hidden button (a window without `.closable` and friends) occupies no
+  /// room, so it is skipped rather than reserving a dead strip.
+  public func hitsStandardButton(at windowPoint: NSPoint) -> Bool {
+    let types: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
+    for type in types {
+      guard let button = standardWindowButton(type), !button.isHidden else { continue }
+      let rect = button.convert(button.bounds, to: nil)
+      if NSMouseInRect(windowPoint, rect, false) { return true }
+    }
+    return false
   }
 
   /// Exposed for the window test: the same predicate a press uses, against a
