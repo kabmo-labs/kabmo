@@ -204,6 +204,31 @@ describe('DELETE /api/worktrees', () => {
     expect(worktreesOf(listed.body).some((entry) => entry.path === path)).toBe(false);
   });
 
+  test('a dirty worktree is refused with 409 and its count, so a caller can tell a retry from a bad request', async () => {
+    const created = await call(createAction, base(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mode: 'new', branch: 'wt/route-dirty' }),
+    });
+    const path = String((created.body.worktree as Record<string, unknown>).path);
+    writeFileSync(join(path, 'scratch.txt'), 'not committed\n');
+
+    const refused = await call(removeAction, base(), {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path, deleteBranch: true }),
+    });
+    // 409: the request is well-formed and the tree is the obstacle — the same
+    // distinction `mock_mode` draws. A 400 here reads as "fix your request".
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('dirty');
+    expect(Number(refused.body.count)).toBeGreaterThan(0);
+
+    // A refusal is not a partial removal.
+    const listed = await call(listLoader, base());
+    expect(worktreesOf(listed.body).some((entry) => entry.path === path)).toBe(true);
+  });
+
   test('a missing path is refused by name, not by a crash', async () => {
     const refused = await call(removeAction, base(), {
       method: 'DELETE',

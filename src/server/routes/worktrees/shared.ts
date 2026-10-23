@@ -17,6 +17,7 @@ import { isMockMode } from '@/server/mock.server';
 import { getDb } from '@/server/db.server';
 import { resolveRoot } from '@/server/lib/fs/root';
 import { asWorktreeFailure } from '@/server/lib/fs/worktree/errors';
+import type { WorktreeFailure } from '@/shared/lib/workspace/worktree/types';
 
 /** A registered workspace's `project_path`, or null when the folder is unbound. */
 export async function projectPathForFolder(folderId: number | string | null): Promise<string | null> {
@@ -67,9 +68,21 @@ export function mockRefusal(): Response {
   );
 }
 
+/**
+ * A refusal's HTTP status, from what the refusal MEANS.
+ *
+ * `dirty` is a conflict with the tree's current state rather than a malformed
+ * request — the same distinction `session_not_running` and `mock_mode` draw with
+ * 409 — and a caller that retries after committing needs to tell the two apart
+ * without parsing the message.
+ */
+const REFUSAL_STATUS: Partial<Record<WorktreeFailure['code'], number>> = {
+  dirty: 409,
+};
+
 export function worktreeFailureResponse(error: unknown, status = 400): Response {
   const failure = asWorktreeFailure(error);
-  return json({ error: failure.message, ...failure }, { status });
+  return json({ error: failure.message, ...failure }, { status: REFUSAL_STATUS[failure.code] ?? status });
 }
 
 export function isMock(): boolean {
