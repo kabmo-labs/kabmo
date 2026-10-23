@@ -20,6 +20,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
+import { useState } from 'preact/hooks';
 import { act } from 'preact/test-utils';
 import { useToolOpenState, TOOL_OPEN_STATE_KEY, type ToolOpenState } from '@/client/hooks/chat/timeline/tool-open';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
@@ -137,5 +138,78 @@ describe('useToolOpenState', () => {
     setSessionKey(SESSION, TOOL_OPEN_STATE_KEY, { a: true });
     const remounted = await mountHook([tool('a')]);
     expect(remounted.current?.openMap.a).toBe(true);
+  });
+});
+
+describe('useToolOpenState — a streaming eval opens itself', () => {
+  /**
+   * Mount a probe whose tools can be REPLACED, so a status transition is
+   * observable: the reported bug is about a card that was open for the run and
+   * must not snap shut when the call returns.
+   */
+  async function mountMutable(initial: ToolCallData[]) {
+    const api: { current: ToolOpenState | null; setTools: (next: ToolCallData[]) => void } = {
+      current: null,
+      setTools: () => {},
+    };
+    function Probe() {
+      const [tools, setTools] = useState(initial);
+      api.setTools = setTools;
+      api.current = useToolOpenState(tools, false);
+      return null;
+    }
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    await act(async () => {
+      render(h(SessionStateProvider, { sessionId: SESSION, children: h(Probe, {}) }), container);
+    });
+    await act(async () => {
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    });
+    return api;
+  }
+
+  const evalTool = (partial: Partial<ToolCallData> = {}) =>
+    tool('e1', { type: 'eval', name: 'eval', title: 'Counting lines', ...partial });
+
+  test('a running eval is open, so its streamed output is visible', async () => {
+    const api = await mountMutable([evalTool({ status: 'running' })]);
+    expect(api.current?.openMap.e1).toBe(true);
+  });
+
+  test('it STAYS open once the call settles', async () => {
+    const api = await mountMutable([evalTool({ status: 'running' })]);
+    await act(async () => {
+      api.setTools([evalTool({ status: 'success', output: 'line 1' })]);
+    });
+    // Re-deriving from `status` alone closed the card at the exact moment the
+    // reader wants the result — the `wait` lesson, restated for eval.
+    expect(api.current?.openMap.e1).toBe(true);
+  });
+
+  test('a settled eval from a reloaded transcript stays closed', async () => {
+    // History is not a live run: opening every past eval would bury the
+    // conversation under scripts nobody asked to see again.
+    const api = await mountMutable([evalTool({ status: 'success', output: 'line 1' })]);
+    expect(api.current?.openMap.e1).toBe(false);
+  });
+
+  test('a running bash is still folded', async () => {
+    // The auto-open is for the card whose body IS the answer, not for every
+    // streaming call — a bash log belongs folded.
+    const api = await mountMutable([tool('b1', { status: 'running' })]);
+    expect(api.current?.openMap.b1).toBe(false);
+  });
+
+  test('the reader can still close a running eval, and it stays closed', async () => {
+    const api = await mountMutable([evalTool({ status: 'running' })]);
+    await act(async () => {
+      api.current?.toggle('e1');
+    });
+    expect(api.current?.openMap.e1).toBe(false);
+    await act(async () => {
+      api.setTools([evalTool({ status: 'success', output: 'line 1' })]);
+    });
+    expect(api.current?.openMap.e1).toBe(false);
   });
 });
