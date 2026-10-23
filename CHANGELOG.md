@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.6.1](https://github.com/kabmo-labs/kabmo/compare/v0.6.0...v0.6.1) — 2026-10-23
+
+### Fixed
+
+* **windows:** name GH_REPO on the attach step, which checks nothing out ([0ebc8ad](https://github.com/kabmo-labs/kabmo/commit/0ebc8adbcfc02f5395a4009f04eb501150504063)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.6.0](https://github.com/kabmo-labs/kabmo/compare/v0.5.3...v0.6.0) — 2026-10-23
 
 ### Added
