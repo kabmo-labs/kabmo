@@ -245,6 +245,25 @@
   }
 }
 
+/* The Files panel's tree, on a finger.
+ *
+ * Every row is `select-none`, but a long press on iOS/Android still raises the
+ * native callout and a selection of the CONTAINER's text — measured on a phone:
+ * holding a file row highlighted the whole panel instead of opening its menu.
+ * `user-select` alone does not stop it; `-webkit-touch-callout` is what removes
+ * the callout menu, and `user-select: none` on the scroller (not only the rows)
+ * is what keeps a press that drifts between two rows from selecting the text of
+ * both. Rows themselves stay `select-none` and no row carries `select-text`:
+ * a path is copied through the context menu's Copy Path, never by dragging over
+ * it, and a selectable row makes every press a candidate for a selection.
+ */
+.file-tree-touch,
+.file-tree-touch * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Horizontally scrollable strips (mobile tab bars) that pan without a visible
  * scrollbar track eating vertical space. */
 .no-scrollbar {

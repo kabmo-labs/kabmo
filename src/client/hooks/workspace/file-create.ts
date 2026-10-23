@@ -4,7 +4,8 @@
  */
 
 /**
- * Creating one empty file in a named folder of the Files panel, and opening it.
+ * Creating one entry in a named folder of the Files panel, and opening it when
+ * it is a file.
  *
  * Extracted from `useFileActions` because the Files panel needs the SAME flow
  * from two places that share no target: a row's context menu (create beside the
@@ -12,6 +13,12 @@
  * root). A second copy would drift on the two things that matter — a refusal
  * keeps the dialog open with the server's reason beside the field, and a success
  * OPENS the file, because the user asked for something to work on.
+ *
+ * The name may carry SEGMENTS (`lib/parse.ts`), so one dialog creates a nested
+ * path and every directory that leads to it. The grammar that keeps the result
+ * inside the named folder is the server's (`normalizeRelativePath`); this side
+ * only reports its refusal, because a second copy of that rule is how the field
+ * accepts something the route then rejects.
  */
 
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -21,30 +28,46 @@ import { useFetcher } from '@/client/lib/router/fetcher';
 /** The shape `/api/fs/action` answers a create with. */
 interface CreateResponse {
   success?: boolean;
-  /** Relative path of the file that was created. */
+  /** `file` or `folder` — what the request asked for. */
+  kind?: 'file' | 'folder';
+  /** Relative path of the entry that was created. */
   path?: string;
   error?: string;
 }
 
+/** What a create produced, for the caller to place in its tree. */
+export interface CreatedEntry {
+  path: string;
+  name: string;
+  kind: 'file' | 'folder';
+}
+
 export interface FileCreateDeps {
-  /** Folder the file goes in, relative to the listed root (`.` for the root). */
+  /** Folder the entry goes in, relative to the listed root (`.` for the root). */
   folderPath: string;
   rootPath?: string;
   repo?: string;
-  /** Fired after the file exists, so the tree re-reads. */
-  onCreated: () => void;
-  /** Fired with the new file's relative path, so the panel can open its tab. */
+  /**
+   * Fired after the entry exists. The tree inserts it directly rather than
+   * re-reading: a create answers with the whole result, and a reload would cost
+   * one request per open folder to learn what this call already knows.
+   */
+  onCreated: (entry: CreatedEntry) => void;
+  /** Fired with a created FILE's relative path, so the panel can open its tab. */
   onOpenCreated?: (file: { path: string; name: string }) => void;
 }
 
 export interface FileCreate {
   open: boolean;
+  /** Whether the open dialog makes a folder; a row's menu offers both. */
+  kind: 'file' | 'folder';
   name: string;
   setName: (value: string) => void;
   /** The server's refusal, rendered inside the dialog. */
   error: string | null;
   busy: boolean;
-  openDialog: () => void;
+  /** Open the dialog; `kind` defaults to a file. */
+  openDialog: (kind?: 'file' | 'folder') => void;
   closeDialog: () => void;
   submit: (event: FormEvent) => void;
 }
@@ -52,6 +75,7 @@ export interface FileCreate {
 export function useFileCreate({ folderPath, rootPath, repo, onCreated, onOpenCreated }: FileCreateDeps): FileCreate {
   const fetcher = useFetcher<CreateResponse>();
   const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<'file' | 'folder'>('file');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -71,24 +95,29 @@ export function useFileCreate({ folderPath, rootPath, repo, onCreated, onOpenCre
     // The fetcher parses the body whatever the status, so a refusal arrives as
     // `data.error` rather than as a throw — which is what keeps the dialog open.
     if (data.success && data.path) {
+      const createdKind = data.kind === 'folder' ? 'folder' : 'file';
       setOpen(false);
       setName('');
       setError(null);
-      onCreated();
-      onOpenCreated?.({ path: data.path, name: data.path.split('/').pop() || data.path });
+      const name = data.path.split('/').pop() || data.path;
+      onCreated({ path: data.path, name, kind: createdKind });
+      // A folder has nothing to open: the user is about to put something in it.
+      if (createdKind === 'file') onOpenCreated?.({ path: data.path, name });
     } else {
-      setError(data.error || 'Could not create the file');
+      setError(data.error || `Could not create the ${kind}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.state, fetcher.data]);
 
   return {
     open,
+    kind,
     name,
     setName,
     error,
     busy: fetcher.state !== 'idle',
-    openDialog: () => {
+    openDialog: (nextKind: 'file' | 'folder' = 'file') => {
+      setKind(nextKind);
       setName('');
       setError(null);
       setOpen(true);
@@ -103,6 +132,7 @@ export function useFileCreate({ folderPath, rootPath, repo, onCreated, onOpenCre
       formData.append('actionType', 'create');
       formData.append('path', folderPath);
       formData.append('name', trimmed);
+      if (kind === 'folder') formData.append('kind', 'folder');
       if (repo && repo !== '.') formData.append('repo', repo);
       if (rootPath) formData.append('root', rootPath);
       void fetcher.submit(formData, { method: 'post', action: '/api/fs/action' });

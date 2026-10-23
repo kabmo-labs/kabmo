@@ -6,12 +6,12 @@
 /**
  * The Files panel's "New file" branch.
  *
- * Two rules are load-bearing and neither is visible from the happy path: the
- * name may not carry a path separator (the folder is named by `path`, and a
- * separator would turn a name into an arbitrary write under the root), and an
- * existing file is REFUSED rather than truncated. The second one is the one a
- * naive `Bun.write` gets wrong: `Bun.write` creates or truncates, so a name
- * that collides with a real file would silently blank it.
+ * Two rules are load-bearing and neither is visible from the happy path. The
+ * name may carry SEGMENTS (that is the nested-path grammar, and its refusals
+ * live in `action-nested.test.ts`), and an existing file is REFUSED rather
+ * than truncated — the second is the one a naive `Bun.write` gets wrong:
+ * `Bun.write` creates or truncates, so a name that collides with a real file
+ * would silently blank it.
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -34,7 +34,10 @@ async function create(folderPath: string, name: string) {
   form.append('path', folderPath);
   form.append('name', name);
   const res = await action({ request: new Request('http://localhost/api/fs/action', { method: 'POST', body: form }) } as never);
-  return { status: res.status, body: (await res.json()) as { success?: boolean; path?: string; error?: string } };
+  return {
+    status: res.status,
+    body: (await res.json()) as { success?: boolean; kind?: string; path?: string; error?: string },
+  };
 }
 
 describe('fs create', () => {
@@ -43,7 +46,7 @@ describe('fs create', () => {
     const { status, body } = await create('tmp-create-probe', 'notes.md');
 
     expect(status).toBe(200);
-    expect(body).toEqual({ success: true, path: 'tmp-create-probe/notes.md' });
+    expect(body).toEqual({ success: true, kind: 'file', path: 'tmp-create-probe/notes.md' });
     expect(fs.readFileSync(path.join(DIR, 'notes.md'), 'utf8')).toBe('');
   });
 
@@ -67,12 +70,14 @@ describe('fs create', () => {
     expect(fs.readFileSync(path.join(DIR, 'keep.txt'), 'utf8')).toBe('important');
   });
 
-  test('refuses a name carrying a path separator', async () => {
+  test('a path separator is a NESTED path, and `..` is still refused', async () => {
     fs.mkdirSync(DIR, { recursive: true });
-    for (const name of ['../escape.txt', 'sub/escape.txt', 'sub\\escape.txt']) {
-      const { status } = await create('tmp-create-probe', name);
-      expect(status).toBe(400);
-    }
+    // A forward or back separator names a nested destination, which the dialog
+    // is for — the escape itself is the `..` segment, and that stays refused.
+    expect((await create('tmp-create-probe', 'sub/inside.txt')).status).toBe(200);
+    expect((await create('tmp-create-probe', 'sub\\also-inside.txt')).status).toBe(200);
+    expect((await create('tmp-create-probe', '../escape.txt')).status).toBe(400);
+    expect(fs.existsSync(path.join(DIR, 'sub/inside.txt'))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), 'escape.txt'))).toBe(false);
   });
 

@@ -74,4 +74,14 @@ export interface FsActionResponse {
   error?: string;
   /** The path a create or a transfer landed at, relative to the listed root. */
   path?: string;
+  /** What a create made, so the tree can draw the row it just added. */
+  kind?: 'file' | 'folder';
+  /**
+   * The path a rename moved FROM, relative to the listed root.
+   *
+   * A rename answers with both ends so the panel can move the row in place:
+   * re-reading every open folder to discover a path it was just told is the
+   * reload this field exists to avoid.
+   */
+  previousPath?: string;
 }

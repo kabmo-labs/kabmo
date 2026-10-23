@@ -37,7 +37,7 @@ const IS_CI = process.env.CI === 'true';
 // NOT anchored: Playwright matches this against the file PATH
 // (`…/specs/mobile.e2e.ts`), so `^mobile` matched nothing and the whole mobile
 // project reported "No tests found".
-const MOBILE_SPECS = /\/mobile(-dock)?\.e2e\.ts$/;
+const MOBILE_SPECS = /\/mobile(-dock|-files)?\.e2e\.ts$/;
 
 export default defineConfig({
   // Relative to THIS file (`tests/e2e/`), which is how Playwright resolves it.

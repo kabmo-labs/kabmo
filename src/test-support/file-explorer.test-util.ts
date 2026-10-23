@@ -7,14 +7,11 @@
  * The Files panel's test harness: a fake disk, a real realtime server, and the
  * click helpers the panel's specs drive it with.
  *
- * Extracted because TWO spec files exercise the same panel — the listing
- * behaviours and the root context menu — and each was carrying its own copy of
- * the mount, the HTTP stub and the click helpers. A second copy is how the two
- * files drift into testing different setups.
- *
- * The HTTP stub is a real directory model: specs mutate `disk` between reads,
- * which is what makes a refresh assertion fail on a panel that answered from
- * its children cache instead of from the server.
+ * Extracted because several spec files exercise the same panel, and each was
+ * carrying its own copy of the mount, the HTTP stub and the helpers. The HTTP
+ * stub is a real directory model (see `file-explorer-disk.test-util`): specs
+ * mutate `disk` between reads, which is what makes a refresh assertion fail on a
+ * panel that answered from its children cache instead of from the server.
  */
 
 import { Window } from 'happy-dom';
@@ -29,14 +26,13 @@ import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support
 import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';
 import type { GitStatusPayload } from '@/server/lib/fs/git-status-read';
+import { diskHas, entriesOf, moveOnDisk, writeToDisk, type Disk } from '@/test-support/file-explorer-disk.test-util';
+
+export type { Disk } from '@/test-support/file-explorer-disk.test-util';
 
 export const ROOT = '/ws';
 export const SESSION = 'new-files-panel';
 const TOPIC = fsTopic(`${ROOT}\u0000.`);
-
-/** The fake disk: `path -> child -> (null for a folder, 'file' for a file)`. */
-export type Disk = Record<string, Record<string, null | 'file'> | undefined>;
-
 const GIT_STATUS: GitStatusPayload = { changes: [], branch: 'main', branches: [], remoteBranches: [] };
 
 export interface FileExplorerHarness {
@@ -46,9 +42,9 @@ export interface FileExplorerHarness {
   dirReads: string[];
   /** Paths whose NEXT read answers a non-JSON 500 (a transport failure). */
   failNext: Set<string>;
-  /** Every create the panel posted, as its form fields. */
+  /** Every create / rename / transfer the panel posted, as its form fields. */
   createRequests: Array<Record<string, string>>;
-  /** Every duplicate/paste the panel posted, as its form fields. */
+  renameRequests: Array<Record<string, string>>;
   transferRequests: Array<Record<string, string>>;
   /** Files the panel asked the editor to open, in order. */
   openedFiles: Array<{ path: string; name: string }>;
@@ -66,36 +62,27 @@ export interface FileExplorerHarness {
   panelBackground: () => HTMLElement;
   /** Right-click the background, leaving its menu open. */
   openMenuOnBackground: () => Promise<void>;
-  /** Right-click the background and click the menu's New File row. */
+  /** Right-click the background and click its New File / New Folder row. */
   openRootNewFile: () => Promise<void>;
+  openRootNewFolder: () => Promise<void>;
   /** Type a name into the open create dialog and submit it. */
   submitNewFile: (name: string) => Promise<void>;
+  /** Type a destination into the open rename dialog and submit it. */
+  submitRename: (path: string) => Promise<void>;
+  renameInput: () => HTMLInputElement | null;
+  /** Every row name the tree is currently drawing, in order. */
+  visibleNames: () => string[];
+  /** The whole rendered document's text — a dialog's inline refusal lives here. */
+  documentText: () => string;
   /** Every button label currently in the document — the menu assertions read it. */
   buttonLabels: () => string[];
   /** Click a button by its exact label (a context-menu row, a dialog action). */
   clickMenuRow: (label: string) => Promise<void>;
-  /**
-   * Drag the row named `from` onto the row named `to`, or onto the panel
-   * background when `to` is null — the whole gesture, in the order the browser
-   * raises it: dragstart on the source, dragover on the target (where a target
-   * refuses), then drop.
-   */
+  /** Drag `from` onto `to` (or the background when null): dragstart, dragover, drop. */
   dragRow: (from: string, to: string | null) => Promise<void>;
-  /** Install the DOM globals (call from `beforeAll`). */
+  /** DOM globals for the whole file (call from beforeAll / afterAll). */
   install: () => void;
-  /** Restore the runner's own globals (call from `afterAll`). */
   restore: () => void;
-}
-
-/** One directory's entries as the server emits them: folders with `children: null`. */
-function entriesOf(disk: Disk, path: string): unknown[] {
-  const dir = disk[path] ?? {};
-  return Object.keys(dir).map((child) => {
-    const rel = path === '.' ? child : `${path}/${child}`;
-    return dir[child] === null
-      ? { id: rel, name: child, type: 'folder', path: rel, children: null, ignored: false }
-      : { id: rel, name: child, type: 'file', path: rel, ignored: false };
-  });
 }
 
 export function createFileExplorerHarness(): FileExplorerHarness {
@@ -104,6 +91,7 @@ export function createFileExplorerHarness(): FileExplorerHarness {
     dirReads: [],
     failNext: new Set(),
     createRequests: [],
+    renameRequests: [],
     transferRequests: [],
     openedFiles: [],
     container: null as unknown as HTMLElement,
@@ -127,6 +115,7 @@ export function createFileExplorerHarness(): FileExplorerHarness {
     async mount() {
       harness.failNext = new Set();
       harness.createRequests = [];
+      harness.renameRequests = [];
       harness.transferRequests = [];
       harness.openedFiles = [];
       // A fresh mount is a fresh session: the panel's per-session UI state
@@ -144,8 +133,8 @@ export function createFileExplorerHarness(): FileExplorerHarness {
       target.WebSocket = pristineWebSocket;
       target.fetch = async (input: unknown, init?: RequestInit) => {
         const url = String(input);
-        const json = (body: unknown) => new Response(JSON.stringify(body), {
-          status: 200,
+        const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+          status,
           headers: { 'content-type': 'application/json' },
         });
         if (url.includes('/state')) return json({ sessionId: SESSION, state: {} });
@@ -161,11 +150,25 @@ export function createFileExplorerHarness(): FileExplorerHarness {
             harness.transferRequests.push(fields);
             return json({ success: true, path: `moved-${fields.actionType}` });
           }
+          if (fields.actionType === 'rename') {
+            harness.renameRequests.push(fields);
+            // The real route refuses an existing destination; the disk is the
+            // authority here too, so a refusal spec drives the same path.
+            const destination = fields.newPath;
+            if (destination !== fields.path && diskHas(harness.disk, destination)) {
+              return json({ error: `${destination} already exists` }, 409);
+            }
+            moveOnDisk(harness.disk, fields.path, destination);
+            return json({ success: true, path: destination, previousPath: fields.path });
+          }
           harness.createRequests.push(fields);
-          // The create route answers with the new file's path relative to the
+          // The create route answers with the new entry's path relative to the
           // LISTED root; the folder is `.` for the panel's own background menu.
-          const rel = fields.path === '.' ? fields.name : `${fields.path}/${fields.name}`;
-          return json({ success: true, path: rel });
+          // `kind` rides back because the tree draws a folder differently from a
+          // file, and the request is the only place it is stated.
+          const kind = fields.kind === 'folder' ? 'folder' : 'file';
+          const rel = writeToDisk(harness.disk, fields.path, fields.name, kind);
+          return json({ success: true, kind, path: rel });
         }
         if (url.includes('/api/fs/dir')) {
           const path = new URL(url, 'http://127.0.0.1').searchParams.get('path') ?? '.';
@@ -241,8 +244,36 @@ export function createFileExplorerHarness(): FileExplorerHarness {
       await harness.openMenuOnBackground();
       await harness.clickMenuRow('New File');
     },
+    async openRootNewFolder() {
+      await harness.openMenuOnBackground();
+      await harness.clickMenuRow('New Folder');
+    },
+    async submitRename(path) {
+      const input = harness.renameInput();
+      if (!input) throw new Error('no rename dialog');
+      await act(async () => {
+        input.value = path;
+        input.dispatchEvent(new window.Event('input', { bubbles: true }));
+      });
+      for (let i = 0; i < 5; i += 1) await act(async () => {});
+      await harness.clickMenuRow('Rename');
+      for (let i = 0; i < 20; i += 1) await act(async () => {});
+    },
+    renameInput() {
+      return document.querySelector('input[aria-label^="Rename "]') as HTMLInputElement | null;
+    },
+    visibleNames() {
+      // A row's name span is the leaf that carries it; the row wrapper reads the
+      // same text, so the SPAN is what is collected (one per row).
+      return [...harness.container.querySelectorAll('span')]
+        .map((el) => el.textContent?.trim() ?? '')
+        .filter((text) => text.length > 0);
+    },
+    documentText() {
+      return document.body.textContent ?? '';
+    },
     async submitNewFile(name) {
-      const input = document.querySelector('input[aria-label="New file name"]') as HTMLInputElement | null;
+      const input = document.querySelector('input[aria-label^="New "]') as HTMLInputElement | null;
       if (!input) throw new Error('no create dialog');
       await act(async () => {
         input.value = name;

@@ -29,7 +29,7 @@
 
 import { createPortal } from 'preact/compat';
 import type { ReactNode, RefObject } from 'preact/compat';
-import { ClipboardPaste, Copy, CopyPlus, Edit2, ExternalLink, Eye, FilePlus, GitCompare, History, Scissors, Trash2 } from 'lucide-preact';
+import { ClipboardPaste, Copy, CopyPlus, Edit2, ExternalLink, Eye, FilePlus, FolderPlus, GitCompare, History, Scissors, Trash2 } from 'lucide-preact';
 
 interface ContextMenuProps {
   x: number;
@@ -61,6 +61,7 @@ function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLa
 
   if (isFolder) {
     entries.push({ kind: 'item', id: 'new_file', label: 'New File', icon: <FilePlus size={13} className="text-ink/60" /> });
+    entries.push({ kind: 'item', id: 'new_folder', label: 'New Folder', icon: <FolderPlus size={13} className="text-ink/60" /> });
     entries.push({ kind: 'separator' });
   } else {
     entries.push({ kind: 'item', id: 'view', label: 'View', icon: <Eye size={13} className="text-ink/60" /> });

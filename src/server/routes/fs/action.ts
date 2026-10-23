@@ -3,10 +3,11 @@ import { errorResponse } from '@/server/lib/route-adapter';
 import fs from 'fs';
 import path from 'path';
 import { isMockMode } from '@/server/mock.server';
-import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { getDefaultFsRoot, isWithinRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
 import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
-import { duplicateEntry, nextDuplicateName, pasteEntry } from '@/server/lib/fs/transfer';
+import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
+import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
 
@@ -104,13 +105,15 @@ export async function action({ request }: ActionFunctionArgs) {
       await Bun.write(fullPath, content);
       return json({ success: true });
     } else if (actionType === 'create') {
-      // The Files panel's "New file": an empty file beside the folder that was
-      // right-clicked. Only a NAME is accepted, never a path — a separator
-      // would let the panel write anywhere under the root, and the folder is
-      // already named by `path`.
-      const name = ((formData.get('name') as string) ?? '').trim();
-      if (!name || name === '.' || name === '..' || /[/\\\0]/.test(name)) {
-        return json({ error: 'Enter a file name without slashes' }, { status: 400 });
+      // The Files panel's "New file"/"New folder": an empty entry beside the
+      // folder that was right-clicked. The NAME may carry segments
+      // (`lib/parse.ts`), so one dialog creates a nested path and every
+      // intermediate directory with it — the grammar that keeps it inside the
+      // named folder lives in `normalizeRelativePath`, not in a slash test here.
+      const kind = formData.get('kind') === 'folder' ? 'folder' : 'file';
+      const name = normalizeRelativePath((formData.get('name') as string) ?? '');
+      if (!name) {
+        return json({ error: 'Enter a name without .. or a leading slash' }, { status: 400 });
       }
       const target = resolveWithinRoot(scopedRoot, path.join(filePath || '.', name));
       if (!target) {
@@ -122,21 +125,49 @@ export async function action({ request }: ActionFunctionArgs) {
       if ((await Bun.file(target).stat().catch(() => null)) !== null) {
         return json({ error: `${name} already exists` }, { status: 409 });
       }
-      await fs.promises.mkdir(path.dirname(target), { recursive: true });
-      await Bun.write(target, '');
+      if (kind === 'folder') await fs.promises.mkdir(target, { recursive: true });
+      else {
+        await fs.promises.mkdir(path.dirname(target), { recursive: true });
+        await Bun.write(target, '');
+      }
       // Relative to the LISTED root, which is the identity the tree renders by.
-      return json({ success: true, path: path.relative(scopedRoot, target).split(path.sep).join('/') });
+      return json({ success: true, kind, path: toRelPath(scopedRoot, target) });
     } else if (actionType === 'delete') {
       await fs.promises.rm(fullPath, { recursive: true, force: true });
       return json({ success: true });
     } else if (actionType === 'rename') {
-      const newPath = formData.get('newPath') as string;
-      const fullNewPath = path.resolve(rootDir, newPath);
-      if (fullNewPath !== rootDir && !fullNewPath.startsWith(rootDir + path.sep)) {
+      // `newPath` is relative to the LISTED root, exactly like `path` is. It
+      // used to be resolved against `rootDir`, so renaming inside a nested repo
+      // resolved to a path under the workspace root instead of the repo — a
+      // move out of the tree the row belongs to.
+      const newPath = normalizeRelativePath((formData.get('newPath') as string) ?? '');
+      if (!newPath) {
+        return json({ error: 'Enter a name without .. or a leading slash' }, { status: 400 });
+      }
+      const fullNewPath = resolveWithinRoot(scopedRoot, newPath);
+      if (!fullNewPath) {
         return json({ error: 'Invalid new path' }, { status: 403 });
       }
+      if (fullNewPath === fullPath) return json({ success: true, path: newPath, previousPath: filePath });
+      const source = await Bun.file(fullPath).stat().catch(() => null);
+      if (!source) return json({ error: 'That entry no longer exists' }, { status: 404 });
+      // A folder cannot be moved into itself: `rename(a, a/b)` fails with
+      // EINVAL on every platform, but with an errno the panel cannot explain —
+      // and the destination directory may not exist yet, so the check has to be
+      // on the PATHS rather than on the filesystem.
+      if (source.isDirectory() && isWithinRoot(fullPath, fullNewPath)) {
+        return json({ error: 'A folder cannot be moved inside itself' }, { status: 400 });
+      }
+      // `rename` clobbers silently, so an existing destination is refused: the
+      // entry the user meant to keep would otherwise disappear without a word.
+      if ((await Bun.file(fullNewPath).stat().catch(() => null)) !== null) {
+        return json({ error: `${newPath} already exists` }, { status: 409 });
+      }
+      // The destination's parents are created, which is what makes a rename
+      // INTO a new folder work — the same nested grammar the create accepts.
+      await fs.promises.mkdir(path.dirname(fullNewPath), { recursive: true });
       await fs.promises.rename(fullPath, fullNewPath);
-      return json({ success: true });
+      return json({ success: true, path: newPath, previousPath: filePath });
     } else if (actionType === 'open_explorer') {
       const isDir = (await Bun.file(fullPath).stat().catch(() => null))?.isDirectory() ?? false;
       // A file reveals its containing directory — there is no portable "select

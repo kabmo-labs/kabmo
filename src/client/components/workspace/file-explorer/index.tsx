@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { RefreshCw, Search } from 'lucide-preact';
 import type { FsNode } from '@/shared/types';
-import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
+import { FileExplorerToolbar } from '@/client/components/workspace/file-explorer/Toolbar';
 import { FileTreeItem } from '@/client/components/workspace/file-explorer/TreeItem';
 import { RootContextMenu } from '@/client/components/workspace/file-explorer/RootMenu';
 import { FileCreateModal } from '@/client/components/workspace/file-explorer/Modals';
@@ -11,9 +10,12 @@ import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
 import { useFileClipboard, type ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
+import { rekeyExpansion } from '@/shared/lib/fs/file-tree';
+import { filterFileTree } from '@/client/components/workspace/file-explorer/filter';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { useToasts } from '@/client/hooks/ui/toasts';
+import { useTouchDevice } from '@/client/hooks/ui/touch-device';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { fsTopic } from '@/shared/lib/realtime/protocol';
 
@@ -99,6 +101,53 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   };
 
   /**
+   * Open every folder that leads to `path`.
+   *
+   * A nested create (`lib/parse.ts`) and a rename into a new folder both make
+   * directories the user has never opened, and a row placed inside a collapsed
+   * folder is a row nobody can see — the write would look like it failed. EVERY
+   * ancestor is opened, not only the direct parent: expanding just the last one
+   * still hides the entry behind a collapsed `lib`.
+   */
+  const revealPath = (path: string) => {
+    const segments = path.split('/').slice(0, -1);
+    if (segments.length === 0) return;
+    const chain = segments.map((_, index) => segments.slice(0, index + 1).join('/'));
+    setExpandedPaths(prev => {
+      if (chain.every((folder) => prev.has(folder))) return prev;
+      const next = new Set(prev);
+      for (const folder of chain) next.add(folder);
+      setStoredExpandedPaths(Array.from(next));
+      return next;
+    });
+  };
+
+  /** Place a row a create just produced, without re-reading the tree. */
+  const insertCreated = (entry: { path: string; kind: 'file' | 'folder' }) => {
+    listing.insertEntry(entry);
+    revealPath(entry.path);
+  };
+
+  /**
+   * Move a row a rename just relocated, without re-reading.
+   *
+   * A folder's descendants and every open branch beneath it carry its path as a
+   * prefix, so the expansion set is rekeyed in the same step — an open `src`
+   * renamed to `lib` must stay open as `lib`, not collapse.
+   */
+  const moveRenamed = (fromPath: string, toPath: string) => {
+    listing.moveEntry(fromPath, toPath);
+    setExpandedPaths(prev => {
+      const next = rekeyExpansion(prev, fromPath, toPath);
+      setStoredExpandedPaths(Array.from(next));
+      return next;
+    });
+    // A rename INTO a new folder (`a.ts` → `nested/a.ts`) has the same problem a
+    // nested create does: the destination folder is one nobody has opened.
+    revealPath(toPath);
+  };
+
+  /**
    * Re-read everything this panel shows. Defined ABOVE the `!enabled` return so
    * the create flow below can use it: a hook cannot be called after a branch.
    */
@@ -111,6 +160,9 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   // One clipboard for the whole tree, owned here and passed down: a
   // subscription per row would be hundreds of listeners for a value that
   // changes on a right-click.
+  // A row is a drag source; on a finger the native drag is what turned a long
+  // press into a text selection of the whole panel (see `useLongPress`).
+  const touch = useTouchDevice();
   const { toasts, pushToast, dismissToast } = useToasts();
   const clipboard = useFileClipboard({
     rootPath,
@@ -155,7 +207,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     folderPath: '.',
     rootPath,
     repo: activeRepo,
-    onCreated: refresh,
+    onCreated: insertCreated,
     onOpenCreated: (file) => onOpenFile?.({ ...file, root: rootPath, repo: activeRepo }),
   });
   /** Portals need a real document; the first client render is the gate. */
@@ -172,34 +224,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
 
   const tree = listing.files;
 
-  const getFilteredFiles = () => {
-    if (!searchQuery.trim()) return tree;
-
-    const lowerQuery = searchQuery.toLowerCase();
-
-    const filterNode = (node: any): any => {
-      const isMatch = node.name.toLowerCase().includes(lowerQuery);
-
-      if (node.type === 'folder') {
-        const filteredChildren = (node.children || []).map(filterNode).filter(Boolean);
-
-        if (isMatch || filteredChildren.length > 0) {
-          return {
-            ...node,
-            children: isMatch && filteredChildren.length === 0 ? node.children : filteredChildren,
-            forceExpanded: true
-          };
-        }
-        return null;
-      }
-
-      return isMatch ? node : null;
-    };
-
-    return tree.map(filterNode).filter(Boolean);
-  };
-
-  const files = getFilteredFiles();
+  const files = filterFileTree(tree, searchQuery);
   // The button spins for this panel's own read OR a topic push: the server
   // republishes `fs:` on every tool call, so the tree moved with nothing on
   // screen saying so otherwise.
@@ -207,40 +232,23 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
 
   return (
     <div className={`flex flex-col h-full bg-paper ${className}`}>
-      <div className="p-3 border-b border-ink/10 flex flex-col space-y-2">
-        <div className="flex items-center justify-between">
-          <GitRepoPicker
-            rootPath={rootPath}
-            activeRepo={activeRepo}
-            onSelectRepo={handleSelectRepo}
-            repos={repos}
-            scanning={reposScanning}
-            onRefreshRepos={rescanRepos}
-          />
-          <button
-            onClick={refresh}
-            className="p-1.5 text-ink/40 hover:text-ink hover:bg-ink/5 rounded transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-          </button>
-        </div>
-        <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink/40" />
-          <input
-            type="text"
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.currentTarget.value)}
-            className="w-full bg-canvas border border-ink/20 rounded pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-ink transition-colors text-ink placeholder-ink/40"
-          />
-        </div>
-      </div>
+      <FileExplorerToolbar
+        rootPath={rootPath}
+        activeRepo={activeRepo}
+        repos={repos}
+        reposScanning={reposScanning}
+        onRefreshRepos={rescanRepos}
+        onSelectRepo={handleSelectRepo}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onRefresh={refresh}
+        refreshing={isRefreshing}
+      />
 
       <div
         className={`flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80 ${
-          rootAcceptsDrop ? 'bg-info/[0.06]' : ''
-        }`}
+          touch ? 'file-tree-touch' : ''
+        } ${rootAcceptsDrop ? 'bg-info/[0.06]' : ''}`}
         onContextMenu={(e) => {
           // The panel's own background. A row stops propagation before this
           // runs, so this handler only ever sees a right-click that named NO
@@ -273,7 +281,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
         ) : (
           files.map(file => (
             <FileTreeItem
-              key={file.id}
+              key={file.path}
               file={file}
               rootPath={rootPath}
               basePath={listing.root}
@@ -281,6 +289,8 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
               onLoadChildren={loadChildren}
               onOpenFile={onOpenFile}
               onActionComplete={refresh}
+              onCreated={insertCreated}
+              onRenamed={moveRenamed}
               expandedPaths={expandedPaths}
               onToggleFolder={handleToggleFolder}
               gitFileMap={gitFileMap}
@@ -293,6 +303,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
                 if (!dragging) return;
                 clipboard.move(dragging, target);
               }}
+              touch={touch}
             />
           ))
         )}
@@ -312,7 +323,8 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           busy={clipboard.busy}
           onAction={(action) => {
             setRootMenu(null);
-            if (action === 'new_file') rootCreate.openDialog();
+            if (action === 'new_file') rootCreate.openDialog('file');
+            if (action === 'new_folder') rootCreate.openDialog('folder');
             if (action === 'paste') clipboard.paste(rootTarget);
           }}
         />
@@ -321,6 +333,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
       {mounted && rootCreate.open && (
         <FileCreateModal
           folderPath="."
+          kind={rootCreate.kind}
           value={rootCreate.name}
           error={rootCreate.error}
           isLoading={rootCreate.busy}

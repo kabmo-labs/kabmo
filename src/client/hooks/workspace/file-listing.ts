@@ -25,7 +25,7 @@
 
 import { useRef, useState } from 'preact/hooks';
 import type { FsNode } from '@/shared/types';
-import { rehydrateTree, setChildrenAt } from '@/shared/lib/fs/file-tree';
+import { placeEntry, rehydrateTree, setChildrenAt, takeEntry, rekeyCache } from '@/shared/lib/fs/file-tree';
 import { isRecord } from '@/shared/lib/util/guards';
 
 /**
@@ -86,6 +86,20 @@ export interface FileListing {
   loadChildren: (path: string) => Promise<void>;
   /** Adopt a realtime root snapshot, then re-read the open folders. */
   adoptRoot: (payload: unknown) => void;
+  /**
+   * Insert a row the panel just created, without a reload.
+   *
+   * A create answers with the entry's path, so the tree already knows the whole
+   * result; re-reading the root plus every open folder to learn it back would
+   * be one request per open folder for an answer the caller holds.
+   */
+  insertEntry: (entry: { path: string; kind: 'file' | 'folder' }) => void;
+  /**
+   * Move a row the panel just renamed, without a reload. Returns the folders
+   * whose path moved, so the caller can rekey its expansion set — a renamed
+   * folder's open branches are still open, under their new names.
+   */
+  moveEntry: (fromPath: string, toPath: string) => void;
   /** Forget the root listing and every cached child (a repo switch). */
   reset: () => void;
 }
@@ -117,6 +131,8 @@ export function useFileListing({
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
   const listedScopeRef = useRef('');
+  /** The absolute base dir the current listing was read for — what `commit` stamps. */
+  const listedRootRef = useRef('');
   const expandedPathsRef = useRef(expandedPaths);
   expandedPathsRef.current = expandedPaths;
 
@@ -132,6 +148,7 @@ export function useFileListing({
   /** Render the tree from the current root listing plus the children cache. */
   const commit = (requested: string, root: string) => {
     listedScopeRef.current = requested;
+    listedRootRef.current = root;
     setState({
       scope: requested,
       files: rehydrateTree(rootFilesRef.current, childrenCacheRef.current),
@@ -223,7 +240,43 @@ export function useFileListing({
     childrenCacheRef.current = {};
     rootFilesRef.current = [];
     listedScopeRef.current = '';
+    listedRootRef.current = '';
     setState({ scope: '', files: [], root: '' });
+  };
+
+  /**
+   * The tree edits below patch the same two sources a read fills — the root
+   * list and the children cache — and then commit, so `rehydrateTree` remains
+   * the only thing that builds what is rendered. Editing the rendered tree
+   * directly would be undone by the next commit, which rebuilds from these.
+   */
+  const insertEntry = (entry: { path: string; kind: 'file' | 'folder' }): void => {
+    const requested = scopeRef.current;
+    if (listedScopeRef.current !== requested) return;
+    const node: FsNode = {
+      name: entry.path.slice(entry.path.lastIndexOf('/') + 1),
+      path: entry.path,
+      type: entry.kind,
+      ignored: false,
+    };
+    const placed = placeEntry(rootFilesRef.current, childrenCacheRef.current, node);
+    if (placed.nodes === rootFilesRef.current) return;
+    rootFilesRef.current = placed.nodes;
+    childrenCacheRef.current = placed.cache;
+    commit(requested, listedRootRef.current);
+  };
+
+  const moveEntry = (fromPath: string, toPath: string): void => {
+    const requested = scopeRef.current;
+    if (listedScopeRef.current !== requested) return;
+    const taken = takeEntry(rootFilesRef.current, childrenCacheRef.current, fromPath);
+    if (!taken.entry) return;
+    childrenCacheRef.current = rekeyCache(taken.cache, fromPath, toPath);
+    const moved: FsNode = { ...taken.entry, path: toPath, name: toPath.slice(toPath.lastIndexOf('/') + 1) };
+    const placed = placeEntry(taken.nodes, childrenCacheRef.current, moved);
+    rootFilesRef.current = placed.nodes;
+    childrenCacheRef.current = placed.cache;
+    commit(requested, listedRootRef.current);
   };
 
   // A listing read for another scope is not this one's to render: the panel
@@ -237,6 +290,8 @@ export function useFileListing({
     reload,
     loadChildren,
     adoptRoot,
+    insertEntry,
+    moveEntry,
     reset,
   };
 }

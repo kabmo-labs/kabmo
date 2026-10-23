@@ -7,6 +7,7 @@ import { getGitStatusInfo, type FolderGitStatusInfo } from '@/shared/lib/fs/git-
 import { useFileActions } from '@/client/hooks/workspace/file-tree-actions';
 import { useFileRowDrag } from '@/client/hooks/workspace/file-row-drag';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { useLongPress } from '@/client/hooks/ui/long-press';
 import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
 import type { GitChange } from '@/shared/types/git';
 
@@ -18,7 +19,12 @@ interface FileTreeItemProps {
   repo?: string;
   onLoadChildren?: (path: string) => Promise<void>;
   onOpenFile?: (file: any) => void;
+  /** Re-read the tree — a DELETE has no local answer. */
   onActionComplete: () => void;
+  /** Place a row this row's menu just created, without a reload. */
+  onCreated?: (entry: { path: string; kind: 'file' | 'folder' }) => void;
+  /** Move a row this row's menu just renamed, without a reload. */
+  onRenamed?: (fromPath: string, toPath: string) => void;
   expandedPaths?: Set<string>;
   onToggleFolder?: (path: string, open: boolean) => void;
   gitFileMap?: Map<string, GitChange>;
@@ -31,6 +37,13 @@ interface FileTreeItemProps {
   onDragStart: (target: ClipboardTarget) => void;
   onDragEnd: () => void;
   onDropOn: (target: ClipboardTarget) => void;
+  /**
+   * True on a device typed into with a finger. A row is a drag SOURCE, and on
+   * touch a long press starts a native drag of the whole panel — the reported
+   * "it selects all of the UI" — while no `contextmenu` reaches this row. The
+   * native drag is dropped there and the press opens the menu instead.
+   */
+  touch?: boolean;
 }
 
 /**
@@ -63,6 +76,8 @@ export function FileTreeItem({
   onLoadChildren,
   onOpenFile,
   onActionComplete,
+  onCreated,
+  onRenamed,
   expandedPaths,
   onToggleFolder,
   gitFileMap,
@@ -72,6 +87,7 @@ export function FileTreeItem({
   onDragStart,
   onDragEnd,
   onDropOn,
+  touch = false,
 }: FileTreeItemProps) {
   const isFolder = file.type === 'folder';
   const [isOpen, setIsOpen] = useState(false);
@@ -115,13 +131,23 @@ export function FileTreeItem({
     diff: { staged: gitChange?.staged || (gitChange?.status ? gitChange.status[0] !== ' ' && gitChange.status[0] !== '?' : false), status: gitStatusInfo?.charStatus },
     onOpenFile,
     onActionComplete,
+    onCreated,
+    onRenamed,
     clipboard,
     isFolder,
   });
   useOnClickOutside(actions.contextMenuRef, actions.closeContextMenu);
 
+  // A press-and-hold opens the same menu a right-click does; the click the same
+  // gesture produces is swallowed, or lifting the finger would toggle the row.
+  const longPress = useLongPress({
+    enabled: touch,
+    onLongPress: (x, y) => actions.openContextMenu(x, y),
+  });
+
   const handleToggle = (e: globalThis.MouseEvent) => {
     e.stopPropagation();
+    if (longPress.consume()) return;
     if (isFolder) {
       const next = !actualIsOpen;
       setIsOpen(next);
@@ -175,16 +201,20 @@ export function FileTreeItem({
   return (
     <div>
       <div
-        className={`flex items-center space-x-1.5 py-1 px-2 hover:bg-ink/5 cursor-pointer rounded group ${
+        className={`flex items-center space-x-1.5 py-1 px-2 hover:bg-ink/5 cursor-pointer rounded group select-none ${
           drag.isDragging ? 'opacity-40' : ''
         } ${drag.acceptsDrop ? 'bg-info/10 ring-1 ring-info/40 ring-inset' : ''}`}
-        draggable
+        draggable={!touch}
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
         onDragStart={drag.onDragStart}
         onDragEnd={drag.onDragEnd}
         onDragOver={drag.onDragOver}
         onDrop={drag.onDrop}
+        onTouchStart={longPress.onTouchStart}
+        onTouchMove={longPress.onTouchMove}
+        onTouchEnd={longPress.onTouchEnd}
+        onTouchCancel={longPress.onTouchCancel}
       >
         {isFolder ? (
           actualIsOpen ? <ChevronDown size={12} className="flex-shrink-0 text-ink/40" /> : <ChevronRight size={12} className="flex-shrink-0 text-ink/40" />
@@ -228,7 +258,7 @@ export function FileTreeItem({
         <div className="ml-3 border-l border-ink/10 pl-1">
           {children.map((child: any) => (
             <FileTreeItem
-              key={child.id}
+              key={child.path}
               file={child}
               rootPath={rootPath}
               basePath={basePath}
@@ -236,6 +266,8 @@ export function FileTreeItem({
               onLoadChildren={onLoadChildren}
               onOpenFile={onOpenFile}
               onActionComplete={onActionComplete}
+              onCreated={onCreated}
+              onRenamed={onRenamed}
               expandedPaths={expandedPaths}
               onToggleFolder={onToggleFolder}
               gitFileMap={gitFileMap}
@@ -245,6 +277,7 @@ export function FileTreeItem({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               onDropOn={onDropOn}
+              touch={touch}
             />
           ))}
         </div>
@@ -265,6 +298,7 @@ export function FileTreeItem({
       {mounted && actions.showCreateModal && (
         <FileCreateModal
           folderPath={file.path}
+          kind={actions.createKind}
           value={actions.createName}
           error={actions.createError}
           isLoading={actions.busy}
@@ -289,6 +323,7 @@ export function FileTreeItem({
           isFolder={isFolder}
           renameValue={actions.renameValue}
           originalPath={file.path}
+          error={actions.renameError}
           isLoading={actions.busy}
           onChange={actions.setRenameValue}
           onCancel={actions.closeRename}

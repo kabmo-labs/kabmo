@@ -4,10 +4,12 @@ import { History, RefreshCw, X } from 'lucide-preact';
 import type { FsActionResponse } from '@/shared/types';
 
 interface NewFileModalProps {
-  /** Folder the file will be created in, relative to the listed root. */
+  /** Folder the entry will be created in, relative to the listed root. */
   folderPath: string;
+  /** What the dialog creates — a file or a folder. */
+  kind: 'file' | 'folder';
   value: string;
-  /** Server's refusal (a name that already exists, a bad character), shown inline. */
+  /** Server's refusal (a name that already exists, a bad path), shown inline. */
   error?: string | null;
   isLoading: boolean;
   onChange: (value: string) => void;
@@ -16,21 +18,26 @@ interface NewFileModalProps {
 }
 
 /**
- * The "New File" dialog.
+ * The "New File" / "New Folder" dialog.
  *
- * Only a name is asked for — the folder is the one that was right-clicked, and
- * showing it as a fixed prefix is what makes the field's meaning unambiguous.
+ * The folder is the one that was right-clicked, shown as a fixed prefix so the
+ * field's meaning is unambiguous — and the name may carry SEGMENTS
+ * (`lib/parse.ts`, `src/nested/x.ts`), which creates every directory on the way
+ * in one step. The grammar that keeps that inside the named folder is the
+ * server's, so the field does not restate it; it only says what it accepts.
+ *
  * The input starts empty (no `.txt` default): a name is what the user has in
  * mind, and a prefilled suffix is a character to delete before every keystroke
  * lands. The server's refusal is rendered INLINE rather than as a toast: the
  * field is still open, and "already exists" is a message about what to type
  * next, not a notification about something that happened.
  */
-export function FileCreateModal({ folderPath, value, error, isLoading, onChange, onCancel, onSubmit }: NewFileModalProps) {
+export function FileCreateModal({ folderPath, kind, value, error, isLoading, onChange, onCancel, onSubmit }: NewFileModalProps) {
+  const label = kind === 'folder' ? 'Folder' : 'File';
   return createPortal(
     <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <form onSubmit={onSubmit} className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
-        <h3 className="font-semibold text-ink mb-3 text-sm">New File</h3>
+        <h3 className="font-semibold text-ink mb-3 text-sm">New {label}</h3>
         <div className="flex items-center gap-1 mb-1 text-xs font-mono text-ink/50 min-w-0">
           <span className="truncate" title={folderPath}>{folderPath || '.'}/</span>
         </div>
@@ -39,12 +46,15 @@ export function FileCreateModal({ folderPath, value, error, isLoading, onChange,
           type="text"
           value={value}
           onChange={e => onChange(e.currentTarget.value)}
-          placeholder="file name"
-          aria-label="New file name"
-          className={`w-full bg-paper border rounded px-2 py-1.5 text-xs font-mono focus:outline-none mb-2 ${
+          placeholder={kind === 'folder' ? 'folder name or nested/path' : 'file name or nested/path'}
+          aria-label={`New ${label.toLowerCase()} name`}
+          className={`w-full bg-paper border rounded px-2 py-1.5 text-xs font-mono focus:outline-none mb-1 ${
             error ? 'border-error' : 'border-ink/20 focus:border-ink'
           }`}
         />
+        <p className="text-[10px] text-ink/40 mb-2">
+          Nested paths create the folders they need — <span className="font-mono">lib/parse.ts</span>.
+        </p>
         {error && <p className="text-[11px] text-error mb-2">{error}</p>}
         <div className="flex justify-end space-x-2 mt-2">
           <button
@@ -109,13 +119,24 @@ interface RenameModalProps {
   isFolder: boolean;
   renameValue: string;
   originalPath: string;
+  /** The server's refusal (an existing destination, a bad path), shown inline. */
+  error?: string | null;
   isLoading: boolean;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSubmit: (e: FormEvent) => void;
 }
 
-export function FileRenameModal({ isFolder, renameValue, originalPath, isLoading, onChange, onCancel, onSubmit }: RenameModalProps) {
+/**
+ * Rename, with the WHOLE path in the field.
+ *
+ * The field holds the path relative to the listed root, not just the leaf name,
+ * because that is what makes a nested destination reachable: `src/a.ts` →
+ * `lib/deep/a.ts` both renames the file and moves it, and its parents are
+ * created on the way. A leaf-only field would have made that a create-then-
+ * delete, which is not a rename.
+ */
+export function FileRenameModal({ isFolder, renameValue, originalPath, error, isLoading, onChange, onCancel, onSubmit }: RenameModalProps) {
   return createPortal(
     <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <form onSubmit={onSubmit} className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
@@ -125,8 +146,15 @@ export function FileRenameModal({ isFolder, renameValue, originalPath, isLoading
           type="text" 
           value={renameValue}
           onChange={e => onChange(e.currentTarget.value)}
-          className="w-full bg-paper border border-ink/20 rounded px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-ink mb-4"
+          aria-label={`Rename ${isFolder ? 'folder' : 'file'} path`}
+          className={`w-full bg-paper border rounded px-2 py-1.5 text-xs font-mono focus:outline-none mb-1 ${
+            error ? 'border-error' : 'border-ink/20 focus:border-ink'
+          }`}
         />
+        <p className="text-[10px] text-ink/40 mb-2">
+          Paths are relative to the tree — <span className="font-mono">lib/deep/name.ts</span> moves it too.
+        </p>
+        {error && <p className="text-[11px] text-error mb-2">{error}</p>}
         <div className="flex justify-end space-x-2">
           <button 
             type="button"

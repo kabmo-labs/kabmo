@@ -22,7 +22,7 @@ import type { FormEvent, RefObject } from 'preact/compat';
 import { useFetcher } from '@/client/lib/router/fetcher';
 import { toAbsolutePath } from '@/shared/lib/fs/paths';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
-import { useFileCreate } from '@/client/hooks/workspace/file-create';
+import { useFileCreate, type CreatedEntry } from '@/client/hooks/workspace/file-create';
 import type { FileClipboard } from '@/client/hooks/workspace/file-clipboard';
 import type { FsActionResponse } from '@/shared/types';
 
@@ -40,7 +40,17 @@ export interface FileActionDeps {
   /** Which diff to open, when the row is a changed file. */
   diff?: { staged?: boolean; status?: string };
   onOpenFile?: (file: { path: string; name: string; root?: string; repo?: string }) => void;
+  /** Re-read the tree — a DELETE has no local answer, so it re-reads. */
   onActionComplete: () => void;
+  /**
+   * A row the panel just created, placed locally.
+   *
+   * A create answers with the whole result, so the tree inserts it rather than
+   * re-reading the root plus every open folder to learn it back.
+   */
+  onCreated?: (entry: CreatedEntry) => void;
+  /** A row the panel just renamed, moved locally — same reason as `onCreated`. */
+  onRenamed?: (fromPath: string, toPath: string) => void;
   /** The panel's clipboard: Cut/Copy fill it, Paste reads it. */
   clipboard: FileClipboard;
   /** Whether this row is a folder — what Cut/Copy/Paste need to name their target. */
@@ -56,12 +66,16 @@ export interface FileActions {
   showDeleteModal: boolean;
   showHistoryModal: boolean;
   showCreateModal: boolean;
+  /** Whether the open create dialog makes a folder. */
+  createKind: 'file' | 'folder';
   /** The server's refusal for the create request, rendered inside its dialog. */
   createError: string | null;
   createName: string;
   setCreateName: (value: string) => void;
   renameValue: string;
   setRenameValue: (value: string) => void;
+  /** The server's refusal for the rename request, rendered inside its dialog. */
+  renameError: string | null;
   /** True while a request is in flight; every dialog's buttons read it. */
   busy: boolean;
   /** Label of the row's Paste action, or null when a paste cannot land here. */
@@ -79,7 +93,7 @@ export interface FileActions {
   closeHistory: () => void;
 }
 
-export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipboard, isFolder }: FileActionDeps): FileActions {
+export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCreated, onRenamed, clipboard, isFolder }: FileActionDeps): FileActions {
   const actionFetcher = useFetcher<FsActionResponse>();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -87,6 +101,7 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [renameValue, setRenameValue] = useState(file.path);
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   const repo = file.repo;
   const rootPath = file.rootPath;
@@ -98,7 +113,10 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
     folderPath: file.path,
     rootPath,
     repo,
-    onCreated: onActionComplete,
+    // The tree places the entry itself and does NOT reload: the response names
+    // the whole result, and re-reading the root plus every open folder to learn
+    // it back is the reload this path exists to avoid.
+    onCreated: (entry) => (onCreated ? onCreated(entry) : onActionComplete()),
     onOpenCreated: (created) => onOpenFile?.({ ...created, root: rootPath, repo: repo || '.' }),
   });
 
@@ -124,7 +142,15 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
     if (data.success && !data.type) {
       setShowRenameModal(false);
       setShowDeleteModal(false);
-      onActionComplete();
+      setRenameError(null);
+      // A rename response names both ends, so the tree moves the row locally
+      // instead of re-reading every open folder to discover the move.
+      if (data.previousPath && data.path && onRenamed) onRenamed(data.previousPath, data.path);
+      else onActionComplete();
+    } else if (!data.success && data.error && showRenameModal) {
+      // A refusal keeps the dialog open with the server's own words beside the
+      // field: "already exists" is a message about what to type next.
+      setRenameError(data.error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFetcher.state, actionFetcher.data]);
@@ -155,6 +181,7 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
 
   const handleAction = (actionType: string) => {
     setContextMenu(null);
+    setRenameError(null);
     if (actionType === 'view') {
       openFile();
     } else if (actionType === 'diff') {
@@ -186,7 +213,9 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
       setRenameValue(file.path);
       setShowRenameModal(true);
     } else if (actionType === 'new_file') {
-      create.openDialog();
+      create.openDialog('file');
+    } else if (actionType === 'new_folder') {
+      create.openDialog('folder');
     } else if (actionType === 'delete') {
       setShowDeleteModal(true);
     } else if (actionType === 'cut') {
@@ -202,6 +231,7 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
 
   const submitRename = (e: FormEvent) => {
     e.preventDefault();
+    setRenameError(null);
     const fd = new FormData();
     fd.append('actionType', 'rename');
     fd.append('path', file.path);
@@ -225,11 +255,13 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, clipb
     showDeleteModal,
     showHistoryModal,
     showCreateModal: create.open,
+    createKind: create.kind,
     createError: create.error,
     createName: create.name,
     setCreateName: create.setName,
     renameValue,
     setRenameValue,
+    renameError,
     busy: actionFetcher.state !== 'idle' || create.busy || clipboard.busy,
     pasteLabel,
     fetcherState: actionFetcher.state,
