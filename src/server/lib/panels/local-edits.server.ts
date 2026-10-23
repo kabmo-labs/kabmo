@@ -124,3 +124,36 @@ export function changedPaths(baseline: TrackedFileHashes, current: TrackedFileHa
   }
   return [...changed].sort();
 }
+
+/**
+ * Whether a recorded baseline still describes this install.
+ *
+ * A baseline can only be evidence about the user while it agrees with what is on
+ * disk, and the test is exact and one-directional:
+ *
+ * > wherever the install and the store AGREE, the baseline must agree too.
+ *
+ * Kabmo is the only thing that writes store content into an install, and it
+ * re-takes the baseline when it does — so a path where the install already
+ * equals the store while the baseline says otherwise proves the baseline
+ * describes a copy this install never had. That is not hypothetical: the product
+ * rename rewrote every bundled file while an older baseline was still recorded,
+ * and reading that baseline as "the user edited 24 files" made the update refuse
+ * forever, with remove-and-reinstall as the only way out (measured).
+ *
+ * The converse is deliberately NOT required, so a genuine edit stays detectable:
+ * a user edit makes the install differ from the store, so those paths are
+ * skipped here and the remaining ones still vouch for the baseline. The edit is
+ * then reported by `changedPaths` rather than overwritten.
+ */
+export function baselineDescribesInstall(
+  baseline: TrackedFileHashes,
+  install: TrackedFileHashes,
+  store: TrackedFileHashes,
+): boolean {
+  for (const [path, hash] of Object.entries(install)) {
+    if (hash !== store[path]) continue;
+    if (baseline[path] !== hash) return false;
+  }
+  return true;
+}

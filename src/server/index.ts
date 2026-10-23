@@ -268,7 +268,9 @@ startWaitingRuntime();
  *
  * A Kabmo update replaces the store and leaves the install — it is a
  * copied directory of ordinary files — so this is the only thing that notices.
- * It is version-gated and skips git clones, so a plugin the user installed from
+ * An install Kabmo wrote is compared by CONTENT, so a shipped fix applies even
+ * when its version did not move; a directory of unknown provenance keeps the
+ * version gate, and git clones are skipped, so a plugin the user installed from
  * a URL is never overwritten by a store entry that happens to share its id.
  *
  * BEFORE the server halves load, and that order is the whole point: a plugin's
@@ -283,7 +285,10 @@ startWaitingRuntime();
 try {
   const synced = await syncBundledPlugins();
   for (const item of synced.updated) {
-    console.log(`[kabmo] plugins:        synced ${item.pluginId} ${item.from} → ${item.to}`);
+    // A content-only sync has no version to show, and printing `1.0.0 → 1.0.0`
+    // would read as a no-op when a shipped fix actually landed.
+    const span = item.contentOnly ? `${item.to} (content changed, version unchanged)` : `${item.from} → ${item.to}`;
+    console.log(`[kabmo] plugins:        synced ${item.pluginId} ${span}`);
     if (item.warning) console.error(`[plugins] ${item.pluginId}: rebuild after sync failed — ${item.warning}`);
   }
   for (const failure of synced.failed) console.error(`[plugins] ${failure.pluginId}: bundled sync failed — ${failure.error}`);

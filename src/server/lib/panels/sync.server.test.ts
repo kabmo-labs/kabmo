@@ -8,65 +8,48 @@
  *
  * Three properties decide whether this pass is safe to run on every boot, and
  * each of them is a failure that is invisible until it has already overwritten
- * something: the version gate (an older store must not roll an install back), the
- * git exclusion (a clone that shares an id with a store entry must not be
- * replaced by it), and the preservation of `node_modules`/`dist` (the store ships
- * no build output, so wiping those would leave the plugin unservable until a
- * rebuild).
+ * something: the provenance gate (a hand-copied directory must not be replaced
+ * just because a store entry shares its id), the git exclusion (a clone that
+ * shares an id must not be replaced by it), and the preservation of
+ * `node_modules`/`dist` (the store ships no build output, so wiping those would
+ * leave the plugin unservable until a rebuild).
+ *
+ * The local-edit gate has its own suite (`sync.local-edits.test.ts`).
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { forceSyncBundledPlugin, syncBundledPlugins } from '@/server/lib/panels/sync.server';
 import { installPanelPluginFromGit } from '@/server/lib/panels/install.server';
-import { hashTrackedFiles } from '@/server/lib/panels/local-edits.server';
-import { readBlockedSyncs, writeBaseline } from '@/server/lib/panels/baseline.server';
-import { invalidatePanelScan } from '@/server/lib/panels/registry.server';
-import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+import { changedPaths, hashTrackedFiles } from '@/server/lib/panels/local-edits.server';
+import { readBaseline, readBlockedSyncs, writeBaseline } from '@/server/lib/panels/baseline.server';
+import {
+  FIXTURE_MANIFEST as MANIFEST,
+  installBundled,
+  setupSyncFixture,
+  teardownSyncFixture,
+  writePlugin,
+  type SyncFixture,
+} from '@/server/lib/panels/sync.fixture.test-util';
 
 const hasGit = Boolean(Bun.which('git'));
 
+let fixture: SyncFixture;
 let root = '';
 let store = '';
 let work = '';
 
-const MANIFEST = { id: 'demo', name: 'Demo', version: '1.0.0', app: 'dist/app.js' };
-
-/** A plugin directory: manifest, bundle, and optionally a marker file. */
-function writePlugin(dir: string, manifest: unknown, files: Record<string, string> = {}): void {
-  fs.mkdirSync(join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(join(dir, 'kabmo.json'), JSON.stringify(manifest));
-  fs.writeFileSync(join(dir, 'dist', 'app.js'), 'export default {};');
-  for (const [name, content] of Object.entries(files)) {
-    const target = join(dir, name);
-    fs.mkdirSync(join(target, '..'), { recursive: true });
-    fs.writeFileSync(target, content);
-  }
-}
-
 beforeEach(async () => {
-  root = fs.mkdtempSync(join(tmpdir(), 'omp-sync-work-'));
-  store = fs.mkdtempSync(join(tmpdir(), 'omp-sync-store-'));
-  work = fs.mkdtempSync(join(tmpdir(), 'omp-sync-repos-'));
-  process.env.KABMO_MARKETPLACE_DIR = root;
-  process.env.KABMO_BUNDLED_MARKETPLACE_DIR = store;
-  // The baseline and refusal records live in `app_settings`, so this suite needs
-  // an isolated database: a shared handle would read the developer's real one.
-  await isolateDb();
-  invalidatePanelScan();
+  fixture = await setupSyncFixture();
+  root = fixture.root;
+  store = fixture.store;
+  work = fixture.work;
 });
 
 afterEach(async () => {
-  delete process.env.KABMO_MARKETPLACE_DIR;
-  delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;
-  await releaseDb();
-  invalidatePanelScan();
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.rmSync(store, { recursive: true, force: true });
-  fs.rmSync(work, { recursive: true, force: true });
+  await teardownSyncFixture(fixture);
 });
 
 describe('syncBundledPlugins', () => {
@@ -95,7 +78,8 @@ describe('syncBundledPlugins', () => {
     expect(fs.readFileSync(join(root, 'plugins', 'demo', 'src', 'marker.txt'), 'utf8')).toBe('installed');
   });
 
-  test('leaves an equal version alone', async () => {
+  test('leaves an equal version alone when Kabmo cannot prove it wrote the install', async () => {
+    // No baseline, so provenance is unknown and the version gate governs.
     writePlugin(join(root, 'plugins', 'demo'), MANIFEST, { 'src/marker.txt': 'installed' });
     writePlugin(join(store, 'plugins', 'demo'), MANIFEST, { 'src/marker.txt': 'store' });
 
@@ -167,142 +151,136 @@ describe('syncBundledPlugins', () => {
 });
 
 /**
- * The local-edit gate. The sync REPLACES files, so a plugin whose tree no longer
- * matches what the install wrote is refused — and the baseline has to be stable
- * across the install's own build, or every install would read as edited the first
- * time it built and the sync would never run again.
+ * The reported bug: a store change that did NOT move the manifest version was
+ * never applied, so the only way to get it was to remove the plugin and install
+ * it again.
+ *
+ * Measured on a real install: the product rename rewrote every bundled file AND
+ * reset the versions to `0.0.1`, so the version gate saw "not newer" forever
+ * while the recorded baseline still described the pre-rename files — which made
+ * the local-edit gate report the store's own updates as the user's edits.
  */
-describe('local edit protection', () => {
-  /**
-   * Install a bundled plugin the way the install path does: the store's copy is
-   * written into the working marketplace, and the baseline is taken from what
-   * landed. `files` therefore go into the STORE, or the install would carry a
-   * file the store never had — a state an install cannot produce.
-   */
-  async function installBundled(version: string, files: Record<string, string> = {}): Promise<void> {
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version }, files);
-    writePlugin(join(root, 'plugins', 'demo'), { ...MANIFEST, version }, files);
-    await writeBaseline('demo', await hashTrackedFiles(join(root, 'plugins', 'demo')));
-  }
+describe('store content that did not bump its version', () => {
+  test('a fix shipped without a version bump is applied', async () => {
+    await installBundled(fixture, '1.0.0', { 'src/app.tsx': 'export default { old: true };' });
+    // The store changes, the version does not — a shipped fix whose bump was
+    // missed, which is exactly what left users stuck.
+    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '1.0.0' }, {
+      'src/app.tsx': 'export default { fixed: true };',
+    });
 
-  test('an edited file blocks the sync and is named', async () => {
-    await installBundled('1.0.0', { 'src/note.txt': 'original' });
+    const result = await syncBundledPlugins();
+    expect(result.blocked).toEqual([]);
+    expect(result.updated).toHaveLength(1);
+    expect(result.updated[0]).toMatchObject({ pluginId: 'demo', contentOnly: true });
+    expect(fs.readFileSync(join(root, 'plugins', 'demo', 'src', 'app.tsx'), 'utf8')).toContain('fixed');
+  });
+
+  test('a stale baseline does not read as the user editing every file', async () => {
+    // The install and the store already agree, but the recorded baseline
+    // describes a copy that no longer exists — the state the rename produced.
+    writePlugin(join(store, 'plugins', 'demo'), MANIFEST, { 'src/app.tsx': 'export default { current: true };' });
+    writePlugin(join(root, 'plugins', 'demo'), MANIFEST, { 'src/app.tsx': 'export default { current: true };' });
+    await writeBaseline('demo', { 'src/app.tsx': 'a-hash-of-a-file-that-is-gone', 'package.json': 'also-gone' });
+
+    // Now the store moves on again. The stale baseline must not block it.
+    writePlugin(join(store, 'plugins', 'demo'), MANIFEST, { 'src/app.tsx': 'export default { newer: true };' });
+
+    const result = await syncBundledPlugins();
+    expect(result.blocked).toEqual([]);
+    expect(result.updated).toHaveLength(1);
+    expect(fs.readFileSync(join(root, 'plugins', 'demo', 'src', 'app.tsx'), 'utf8')).toContain('newer');
+  });
+
+  test('a stale baseline is healed even when the store has nothing new', async () => {
+    // The exact state the rename left on a real install: the store and the
+    // install already agree, and the baseline describes neither. Nothing is
+    // applied, so this pass must still re-record the baseline — otherwise the
+    // NEXT release's fix reads as a user edit on every path and the plugin is
+    // stuck until it is reinstalled.
+    writePlugin(join(store, 'plugins', 'demo'), MANIFEST, { 'src/app.tsx': 'export default { current: true };' });
+    writePlugin(join(root, 'plugins', 'demo'), MANIFEST, { 'src/app.tsx': 'export default { current: true };' });
+    await writeBaseline('demo', { 'src/app.tsx': 'a-hash-of-a-file-that-is-gone' });
+
+    expect((await syncBundledPlugins()).updated).toEqual([]);
+    const healed = await readBaseline('demo');
+    expect(healed).not.toBeNull();
+    expect(changedPaths(healed ?? {}, await hashTrackedFiles(join(root, 'plugins', 'demo')))).toEqual([]);
+
+    // And the next release's fix then applies with no further action.
+    writePlugin(join(store, 'plugins', 'demo'), MANIFEST, { 'src/app.tsx': 'export default { newer: true };' });
+    const next = await syncBundledPlugins();
+    expect(next.blocked).toEqual([]);
+    expect(next.updated).toHaveLength(1);
+  });
+
+  test('a real edit still blocks, even with a trusted baseline', async () => {
+    // The healing above must not become "overwrite whatever the user wrote":
+    // an install that differs from BOTH the baseline and the store is the
+    // user's own work.
+    await installBundled(fixture, '1.0.0', { 'src/note.txt': 'original' });
     fs.writeFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'mine');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
+    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '1.0.0' }, { 'src/note.txt': 'original' });
 
     const result = await syncBundledPlugins();
     expect(result.updated).toEqual([]);
-    expect(result.blocked).toHaveLength(1);
     expect(result.blocked[0].changed).toEqual(['src/note.txt']);
-    // The edit survives — that is the whole point.
     expect(fs.readFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'utf8')).toBe('mine');
-    // And the refusal is recorded for the pane.
-    expect((await readBlockedSyncs())['demo'].changed).toEqual(['src/note.txt']);
   });
 
-  test('an added file blocks the sync', async () => {
-    await installBundled('1.0.0');
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'src-extra.js'), 'export default {};');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
+  test('a hand-copied directory still keeps the version gate', async () => {
+    // No baseline means unknown provenance: an equal-version store entry must
+    // not replace a directory Kabmo cannot prove it wrote.
+    writePlugin(join(root, 'plugins', 'demo'), MANIFEST, { 'src/note.txt': 'mine' });
+    writePlugin(join(store, 'plugins', 'demo'), MANIFEST, { 'src/note.txt': 'store' });
 
-    const result = await syncBundledPlugins();
-    expect(result.blocked[0].changed).toContain('src-extra.js');
+    expect((await syncBundledPlugins()).updated).toEqual([]);
+    expect(fs.readFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'utf8')).toBe('mine');
   });
 
-  test('a deleted file blocks the sync', async () => {
-    await installBundled('1.0.0', { 'src/note.txt': 'original' });
-    fs.rmSync(join(root, 'plugins', 'demo', 'src', 'note.txt'));
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
-
-    expect((await syncBundledPlugins()).blocked[0].changed).toEqual(['src/note.txt']);
-  });
-
-  test('an unchanged tree syncs, and the new baseline allows the NEXT sync', async () => {
-    await installBundled('1.0.0');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
+  test('a second pass is a no-op once the copy has landed', async () => {
+    await installBundled(fixture, '1.0.0', { 'src/app.tsx': 'export default { old: true };' });
+    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '1.0.0' }, {
+      'src/app.tsx': 'export default { fixed: true };',
+    });
     expect((await syncBundledPlugins()).updated).toHaveLength(1);
 
-    // The baseline was re-taken after the build, so the tree the sync just wrote
-    // is not read as an edit — without this the pass would block itself forever.
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '3.0.0' });
-    const second = await syncBundledPlugins();
-    expect(second.updated).toHaveLength(1);
-    expect(second.blocked).toEqual([]);
+    // The baseline was re-taken after the build, so the pass that just ran must
+    // not be read as a difference on the next boot — a sync that re-applies
+    // forever would rebuild the plugin on every start.
+    expect((await syncBundledPlugins()).updated).toEqual([]);
   });
+});
 
-  test('build output and lockfiles are not edits', async () => {
-    // A plugin WITH source: its `dist` is this build's output, so its hashes
-    // change on every build and tracking it would block the sync forever.
-    await installBundled('1.0.0', { 'src/app.tsx': 'export default {};' });
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'bun.lock'), '{}');
-    fs.mkdirSync(join(root, 'plugins', 'demo', 'node_modules', 'dep'), { recursive: true });
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'node_modules', 'dep', 'package.json'), '{"name":"dep"}');
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'dist', 'app.js'), 'export default { built: true };');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' }, { 'src/app.tsx': 'export default {};' });
-
-    const result = await syncBundledPlugins();
-    expect(result.blocked).toEqual([]);
-    expect(result.updated).toHaveLength(1);
-  });
-
-  test('an edited bundle of a plugin with no SOURCE blocks the sync', async () => {
-    // The shape this gate exists for: a plugin with no `src/` DISTRIBUTES its
-    // bundle, so `dist` is content the user can edit rather than build output.
-    // Excluding it let the sync silently overwrite the edit — measured against a
-    // live server before this case existed.
-    writePlugin(join(store, 'plugins', 'demo'), MANIFEST);
+/**
+ * The override: the user has seen which files differ and asked for the store's
+ * copy anyway.
+ */
+describe('forceSyncBundledPlugin', () => {
+  test('refuses a plugin that is not a bundled install', async () => {
     writePlugin(join(root, 'plugins', 'demo'), MANIFEST);
-    await writeBaseline('demo', await hashTrackedFiles(join(root, 'plugins', 'demo')));
-
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'dist', 'app.js'), 'export default { MINE: true };');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
-
-    const result = await syncBundledPlugins();
-    expect(result.blocked).toHaveLength(1);
-    expect(result.blocked[0].changed).toEqual(['dist/app.js']);
-    expect(fs.readFileSync(join(root, 'plugins', 'demo', 'dist', 'app.js'), 'utf8')).toContain('MINE');
+    const result = await forceSyncBundledPlugin('demo');
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('No bundled plugin');
   });
 
-  test('a plugin with no baseline runs, so an upgrade cannot freeze it', async () => {
-    // An install written before this check existed. Refusing would leave it on
-    // the old version forever with no way to say why.
-    writePlugin(join(root, 'plugins', 'demo'), MANIFEST);
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
-
-    expect((await syncBundledPlugins()).updated).toHaveLength(1);
-  });
-
-  test('reverting the edit lets the next pass sync, with no user action', async () => {
-    await installBundled('1.0.0', { 'src/note.txt': 'original' });
+  test('applies the store copy even when its version is not newer', async () => {
+    // The case the override most often exists for: a stale baseline refusing an
+    // update whose version did not move. Clearing the baseline and re-running
+    // the pass made this a no-op, because a cleared baseline reads as unknown
+    // provenance and the version gate then declines.
+    await installBundled(fixture, '1.0.0', { 'src/note.txt': 'original' });
     fs.writeFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'mine');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
-    expect((await syncBundledPlugins()).blocked).toHaveLength(1);
-
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'original');
-    const result = await syncBundledPlugins();
-    expect(result.updated).toHaveLength(1);
-    expect(result.blocked).toEqual([]);
-    // The refusal record is cleared, or the pane would keep reporting a fault
-    // the user has already resolved.
-    expect(await readBlockedSyncs()).toEqual({});
-  });
-
-  test('the override replaces the edited files and clears the refusal', async () => {
-    await installBundled('1.0.0', { 'src/note.txt': 'original' });
-    fs.writeFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'mine');
-    writePlugin(join(store, 'plugins', 'demo'), { ...MANIFEST, version: '2.0.0' });
     expect((await syncBundledPlugins()).blocked).toHaveLength(1);
 
     const forced = await forceSyncBundledPlugin('demo');
     expect(forced.ok).toBe(true);
     expect(fs.readFileSync(join(root, 'plugins', 'demo', 'src', 'note.txt'), 'utf8')).toBe('original');
     expect(await readBlockedSyncs()).toEqual({});
-  });
-
-  test('the override refuses a plugin that is not a bundled install', async () => {
-    writePlugin(join(root, 'plugins', 'demo'), MANIFEST);
-    const result = await forceSyncBundledPlugin('demo');
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('No bundled plugin');
+    // The baseline now describes what the override wrote, so the next pass is
+    // not read as a fresh edit.
+    const after = await hashTrackedFiles(join(root, 'plugins', 'demo'));
+    expect((await syncBundledPlugins()).blocked).toEqual([]);
+    expect(after['src/note.txt']).toBeDefined();
   });
 });
