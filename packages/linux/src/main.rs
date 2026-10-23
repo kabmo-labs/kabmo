@@ -21,6 +21,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gtk::gdk;
 use gtk::prelude::*;
@@ -84,7 +85,7 @@ struct Shell {
     window: gtk::Window,
     view: WebView,
     splash: Rc<Splash>,
-    supervisor: Rc<Supervisor>,
+    supervisor: Arc<Supervisor>,
     store: Rc<RefCell<ServerStore<SystemDeps>>>,
     progress: Rc<RefCell<Progress>>,
     /// The URL the window is on, so a Retry reloads the same one.
@@ -121,7 +122,7 @@ impl Shell {
 
         window.add(&overlay);
 
-        let supervisor = Rc::new(Supervisor::new());
+        let supervisor = Arc::new(Supervisor::new());
         let store = Rc::new(RefCell::new(ServerStore::new(
             SystemDeps {
                 supervisor: supervisor.clone(),
@@ -385,10 +386,30 @@ impl Shell {
             // A child server must not outlive the window that started it. A
             // force-quit cannot be caught, which is why the store records the
             // pids it spawned — the next launch adopts exactly those.
-            supervisor.stop_all();
+            //
+            // The stop runs on its OWN thread, and the quit is posted back to
+            // the loop. `stop_all` waits for each child to die (SIGTERM, then
+            // a bounded SIGKILL escalation), and doing that on the GTK main
+            // loop froze the window for the whole wait — the reported "not
+            // responding" on quit. The work needs nothing from GTK (the
+            // supervisor's state is behind a `Mutex`), and only the final
+            // `main_quit` has to be on the loop.
+            //
+            // `Propagation::Stop` keeps the window up until that quit runs, so
+            // the servers are gone before the app is.
             save_geometry(&window_for_save);
-            gtk::main_quit();
-            gtk::glib::Propagation::Proceed
+            // A CLONE per press: this is an `Fn` closure, so moving the captured
+            // `Arc` into the thread would move it out of the handler itself.
+            let supervisor = supervisor.clone();
+            std::thread::spawn(move || {
+                supervisor.stop_all();
+                // `MainContext::invoke` is the cross-thread way onto the GTK
+                // loop — `idle_add_local` must be CALLED from the main thread,
+                // and this is not it. The closure needs nothing from GTK
+                // beyond the quit itself, so it stays `Send`.
+                gtk::glib::MainContext::default().invoke(gtk::main_quit);
+            });
+            gtk::glib::Propagation::Stop
         });
     }
 

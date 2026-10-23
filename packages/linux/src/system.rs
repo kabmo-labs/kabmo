@@ -395,9 +395,32 @@ impl StartFailure {
     }
 }
 
+/// True when the child is still running — and it REAPS it when it is not.
+///
+/// `kill(pid, 0)` alone is wrong for a child this process spawned, and the
+/// difference is seconds. A process that has exited but not been waited for is
+/// a ZOMBIE, and a zombie still answers 0 to `kill(pid, 0)` — measured on
+/// macOS with the identical code: the "wait until it is gone" loop in
+/// `kill_group` never saw it go, ran its full 40 × 50 ms budget and fired a
+/// pointless SIGKILL at an already-empty group, **2.27 s per server** for a
+/// child that died in 60 ms.
+///
+/// `waitpid(pid, &status, WNOHANG)` is the honest check for a child of ours: 0
+/// means still running, the pid means it was reaped and is now gone, and -1
+/// means it is not our child at all (an adopted pid from a previous launch,
+/// whose real parent is init) — there a zombie is impossible, so the signal
+/// probe is the only answer available.
 pub fn is_alive(pid: i32) -> bool {
-    // `kill(pid, 0)` answers ESRCH once the process is gone, which is the only
-    // portable-enough liveness check that does not need a wait handle.
+    let mut status: libc::c_int = 0;
+    let reaped = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
+    if reaped == pid {
+        return false;
+    }
+    if reaped == 0 {
+        return true;
+    }
+    // -1: not our child (ECHILD) or already reaped. `kill(pid, 0)` is what an
+    // adopted process needs.
     unsafe { libc::kill(pid, 0) == 0 }
 }
 
@@ -516,7 +539,7 @@ fn is_executable(path: &Path) -> bool {
 /// children, and two supervisors would mean two sets of pids with no way to stop
 /// the other's.
 pub struct SystemDeps {
-    pub supervisor: std::rc::Rc<Supervisor>,
+    pub supervisor: std::sync::Arc<Supervisor>,
 }
 
 impl Deps for SystemDeps {

@@ -28,6 +28,10 @@ public sealed class ShellHost
     private ServerStore? _store;
     /// <summary>What the splash is showing. The view only draws it.</summary>
     private SplashState _splashState = SplashState.Done;
+    /// <summary>Guards a second close while the shutdown pass is running.</summary>
+    private bool _shuttingDown;
+    /// <summary>Set once the shutdown pass is done, so its own Close() passes.</summary>
+    private bool _allowClose;
     /// <summary>The address the webview has FINISHED on, latched on completion.</summary>
     private string? _shownUrl;
     /// <summary>
@@ -56,16 +60,51 @@ public sealed class ShellHost
         RenderSplash(SplashState.Connecting);
 
         _window.Loaded += (_, _) => _ = StartAsync();
-        _window.Closed += (_, _) =>
+        // Stop the children on the way out, without parking the UI thread.
+        //
+        // The previous shape was `_supervisor.StopAllAsync().Wait(6s)` inside
+        // `Closed`. It did not deadlock — every await in the library is
+        // `ConfigureAwait(false)`, so nothing queues behind the wait — but it
+        // still FROZE the window for the whole shutdown: a child that ignores
+        // the job kill costs the full 40 x 50 ms budget, which the user sees as
+        // a hung app on the way out.
+        //
+        // `Closing` is the cancellable hook, so it is the one that can defer:
+        // cancel the close, run the stop off the UI thread, then close for real
+        // and let `ShutdownMode.OnMainWindowClose` end the process. `Closed`
+        // cannot defer anything — by then WPF is already tearing the app down.
+        _window.Closing += (_, args) =>
         {
-            // A child server must not outlive the window that started it. A
-            // force-quit cannot be caught, which is why the store records the pids
-            // it spawned — the next launch adopts exactly those.
-            //
-            // Waiting on the UI thread is safe here because the library awaits
-            // with `ConfigureAwait(false)` throughout: nothing inside resumes on
-            // this thread, so the continuation cannot be queued behind the wait.
-            _supervisor.StopAllAsync().Wait(TimeSpan.FromSeconds(6));
+            // ONE handler, deliberately. Two handlers would be two votes on one
+            // flag: WPF lets any handler clear `Cancel` that another set, so a
+            // second `if (_allowClose) args.Cancel = false` would un-cancel the
+            // deferred close and the window would vanish before the children
+            // were stopped.
+            if (_allowClose) return;
+            args.Cancel = true;
+            if (_shuttingDown) return;
+            _shuttingDown = true;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _supervisor.StopAllAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // A failed stop must not keep the app alive; the store's
+                    // recorded pids are what the next launch adopts.
+                }
+                finally
+                {
+                    // Close on the dispatcher — the window is WPF's.
+                    await _window.Dispatcher.InvokeAsync(() =>
+                    {
+                        _allowClose = true;
+                        _window.Close();
+                    });
+                }
+            });
         };
     }
 
