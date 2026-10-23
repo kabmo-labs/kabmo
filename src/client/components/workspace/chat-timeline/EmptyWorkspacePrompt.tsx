@@ -127,10 +127,6 @@ export function EmptyWorkspacePrompt({
 }: EmptyWorkspacePromptProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
 
-  const selectedFolder = useMemo(() => {
-    return folders?.find(f => f.id === selectedFolderId);
-  }, [folders, selectedFolderId]);
-
   // Sessions the wait may name: the ones with a run in flight, from the same
   // server-tracked map the sidebar's spinner is drawn from.
   const candidates = useMemo(

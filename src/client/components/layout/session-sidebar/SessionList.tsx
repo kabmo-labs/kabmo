@@ -52,6 +52,7 @@ export function SessionSidebarSessionList({
             activeSessionId={activeSessionId}
             onSelectSession={onSelectSession}
             onNewSessionForFolder={onNewSessionForFolder}
+            onNewWorktreeSession={onNewWorktreeSession}
             forceExpanded={!!searchQuery}
             showArchived={showArchived}
             sessionStatus={sessionStatus}
