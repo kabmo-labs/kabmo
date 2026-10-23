@@ -87,10 +87,13 @@ the edges.
   rewritten to fix.
 - **The three caption buttons are drawn by the PAGE** (`WindowControls`), because
   a WebView2 is an HWND and no WPF element can be painted on top of it. The
-  shell says so with `windowControls: true` in its identity, and the navbar
-  renders them only there. **Snap Layouts is the one thing a page-drawn maximise
-  button cannot offer** — that is a real loss against the native bar, and it is
-  stated here rather than hidden.
+  shell says so with `windowControls: true` in its identity, and the shared
+  control cluster renders them on BOTH layouts — a window can be narrower than
+  the app's 768px layout breakpoint (this shell allows 720px), and the phone
+  layout used to draw no caption buttons at all, leaving a narrowed window with
+  no way to close, minimise or maximise it. **Snap Layouts is the one thing a
+  page-drawn maximise button cannot offer** — that is a real loss against the
+  native bar, and it is stated here rather than hidden.
 - The shell reports **no** left inset (`trafficLightInset` is macOS-only), so the
   navbar's padding is its own. Charging macOS's 76px to this platform is the bug
   `src/shared/lib/desktop/titlebar.test.ts` pins.

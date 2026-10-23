@@ -79,8 +79,11 @@ native title bar does for free then has to be done here:
   does receive clicks over a webview (measured: an overlay button got the click
   and the page did not), so native buttons would work — but the page's set already
   exists for Windows and is tested, and a second set would be a second thing to
-  keep in step. Verified end to end: the square control maximized the window to
-  the full screen and restored it to its previous geometry, the first control
+  keep in step. They render on BOTH layouts, because this window can be narrower
+  than the app's 768px layout breakpoint (`MIN_WIDTH` is 720) and the phone
+  layout used to draw none — a narrowed window had no way to close, minimise or
+  maximise. Verified end to end: the square control maximized the window to the
+  full screen and restored it to its previous geometry, the first control
   minimized it, and the last closed it.
 - **Double-click** obeys `gtk-titlebar-double-click` (`toggle-maximize` by
   default, also `maximize` and `minimize`) — a native bar reads that preference,
