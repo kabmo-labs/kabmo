@@ -118,6 +118,10 @@ jobs:
             deb: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    # A ceiling on a job that otherwise inherits GitHub's six-hour default. The
+    # x86_64 leg measured 25 minutes once for the apt step alone (a slow mirror),
+    # against 30 seconds on the arm64 leg, so the budget is generous but finite.
+    timeout-minutes: 45
     permissions:
       # The build reads the tree and uploads a run artifact; it needs no write
       # access to the repository.
@@ -346,6 +350,7 @@ jobs:
     # release with none.
     if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:

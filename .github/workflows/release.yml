@@ -147,6 +147,7 @@ jobs:
     name: Release the plugin packages
     needs: [gates, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       any: ${{ steps.release.outputs.any }}
       released: ${{ steps.release.outputs.released }}
@@ -292,6 +293,7 @@ jobs:
     name: Bump the marketplace plugins
     needs: packages
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
@@ -383,6 +385,7 @@ jobs:
     name: Bump the Android shell
     needs: marketplace
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
@@ -464,6 +467,7 @@ jobs:
     name: Bump the iOS shell
     needs: android
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
@@ -546,6 +550,7 @@ jobs:
     name: Bump the Windows shell
     needs: ios
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
@@ -747,6 +752,7 @@ jobs:
     name: Bump the macOS shell
     needs: windows
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
@@ -884,6 +890,7 @@ jobs:
     name: Bump the Linux shell
     needs: macos
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
@@ -981,6 +988,7 @@ jobs:
     # version while the graph stays linear.
     needs: [apk-build, ipa-build, win-build, macos-build, linux-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       released: ${{ steps.release.outputs.released }}
       tag: ${{ steps.release.outputs.tag }}

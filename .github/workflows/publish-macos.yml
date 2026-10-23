@@ -110,6 +110,11 @@ jobs:
             macho: x86_64
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
+    # A hard ceiling, because a hung step otherwise costs GitHub's six-hour
+    # default. Measured on this repository's release run: the window suite sat in
+    # `Run the window suite` for over an hour with every other job finished, and
+    # nothing above it declared a timeout. A normal build here is ~1 minute.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -287,6 +292,7 @@ jobs:
     # release with none.
     if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       # Uploading an asset to an existing release needs `contents: write`.
       contents: write

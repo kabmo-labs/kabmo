@@ -99,6 +99,7 @@ jobs:
     if: ${{ inputs.mode != 'attach' }}
     # macOS is REQUIRED: the iOS SDK ships with Xcode, and no Linux runner has it.
     runs-on: macos-15
+    timeout-minutes: 30
     permissions:
       # The build reads the tree and uploads a run artifact.
       contents: read
@@ -209,6 +210,7 @@ jobs:
     # check keeps a FAILED build blocking the upload.
     if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       # Uploading an asset to an existing release needs `contents: write`.
       contents: write

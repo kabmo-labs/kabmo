@@ -153,6 +153,7 @@ jobs:
     # and leave the attach with nothing to download.
     if: ${{ inputs.mode != 'attach' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       # The build reads the tree and uploads a run artifact; it needs no write
       # access to the repository.
@@ -394,6 +395,7 @@ jobs:
     # release with none.
     if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       # Uploading an asset to an existing release needs `contents: write`.
       contents: write
