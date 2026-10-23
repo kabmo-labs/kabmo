@@ -4,6 +4,44 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.8.0](https://github.com/kabmo-labs/kabmo/compare/v0.7.0...v0.8.0) — 2026-10-23
+
+### Added
+
+* **files:** nested create and rename, New Folder, and a long-press menu on touch ([5c35f17](https://github.com/kabmo-labs/kabmo/commit/5c35f1767de16751fe9d11172f9bf007424d631d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** a check-for-update button on every native shell ([b329219](https://github.com/kabmo-labs/kabmo/commit/b32921947cf63aa8712a15c553e3a4dc2fa0f3a4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** one launch splash on all five shells, drawn from the README wordmark ([8619f6b](https://github.com/kabmo-labs/kabmo/commit/8619f6b23b308fd47b49ec04141a9ae7a83937c8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktree:** a chat is born in a git worktree, chosen before the first send ([01fe3ac](https://github.com/kabmo-labs/kabmo/commit/01fe3ac59282b5180e6672d5c39258fa1b8307df)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **agents:** three shell bugs, stated where the next edit will look ([b58fa04](https://github.com/kabmo-labs/kabmo/commit/b58fa04d058cb52378c6e252bd760a1ffa4603b8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** plan the CodeMirror 6 replacement, with measurements ([079a63e](https://github.com/kabmo-labs/kabmo/commit/079a63e19505dd77427e0e9f0f9948d009fcbed3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** research transport security and QR pairing ([0bd0bf2](https://github.com/kabmo-labs/kabmo/commit/0bd0bf29f3f82786acf14288dba9c09869b44ae6)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** the caption buttons are a shared cluster's job ([88c531b](https://github.com/kabmo-labs/kabmo/commit/88c531bf8029c3cca4f3be36cad28389abe8d158)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** the desktop shells document the update offer they now have ([64542b8](https://github.com/kabmo-labs/kabmo/commit/64542b8ab8aafabc0913baaa2ab5ecdacd20378f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktree:** record the seven defects the port found, and what is out of scope ([a9d67cd](https://github.com/kabmo-labs/kabmo/commit/a9d67cd532374a9674744b296f93c7d554f98019)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** open a running eval card so its streamed output is visible ([3c1807e](https://github.com/kabmo-labs/kabmo/commit/3c1807e277149d66a577167d09c732e49b51c327)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **eval:** line the gutter up with the code it numbers ([930c0ff](https://github.com/kabmo-labs/kabmo/commit/930c0ffe9cec2b75a87433fa73af9bacdfc831bc)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ios:** the splash wordmark is drawn in sRGB, not Generic RGB ([ded47ac](https://github.com/kabmo-labs/kabmo/commit/ded47ac57ab5a2fb71278556ef38db71c3cbf630)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux,windows:** stop child servers without freezing the window ([5c0a1b5](https://github.com/kabmo-labs/kabmo/commit/5c0a1b5ce1d1137b0887bb6abcfe66a6ebf4d407)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** fail the window suite instead of hanging, and cap it at 120s ([61a7336](https://github.com/kabmo-labs/kabmo/commit/61a733641904f4fac0e1d1923ca280358f671057)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** let the traffic lights be clicked ([93bc11e](https://github.com/kabmo-labs/kabmo/commit/93bc11ecd38b5c78a6e76165b18b74b1482aca49)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** quit without freezing the window ([d795d44](https://github.com/kabmo-labs/kabmo/commit/d795d44756fb9cf1f2fd7ac3ffe839c6c5dcf369)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** stop the window suite hanging on a press into a traffic light ([69b20ca](https://github.com/kabmo-labs/kabmo/commit/69b20ca8235ffa17accbbfb5682e5b03374eaf6e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panels:** apply bundled plugin updates when the store's version did not move ([08d024d](https://github.com/kabmo-labs/kabmo/commit/08d024db806dea008f10a66f9affe74f87876e5e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** a drag region must not swallow its own controls ([b0dcd17](https://github.com/kabmo-labs/kabmo/commit/b0dcd1750d6b36d5fc35bfd63d37bbb319affc20)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** resolve a folder's sessions through the canonical path ([cb74af8](https://github.com/kabmo-labs/kabmo/commit/cb74af8d160ac492f7b260273586ed1687a79500)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktree-modal:** seed the form on mount so the first paint is usable ([538ad34](https://github.com/kabmo-labs/kabmo/commit/538ad34a766521b9e539d18d1d05833aaa6430a5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktrees:** answer a dirty refusal with 409, not 400 ([3baa68a](https://github.com/kabmo-labs/kabmo/commit/3baa68aed06583408685ba055b6cbc8bc4e433e0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktrees:** copy env files as files, and await the topology invalidation ([ba90775](https://github.com/kabmo-labs/kabmo/commit/ba9077599760dafa2097c23af40a9d6377c0c15d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktrees:** count chats in a worktree that lives outside the checkout ([64ec214](https://github.com/kabmo-labs/kabmo/commit/64ec214359b5a16d9e44585b5030e15546e23999)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktrees:** name a worktree by its last segment on any separator ([d21d0e0](https://github.com/kabmo-labs/kabmo/commit/d21d0e07f31df343d47a0bf000d054df57a51134)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktree:** the sidebar row reaches Category, and drop the dead dropdown local ([b6b5c2b](https://github.com/kabmo-labs/kabmo/commit/b6b5c2b0034048804b84f6d8231be622cabf51e9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.7.0](https://github.com/kabmo-labs/kabmo/compare/v0.6.1...v0.7.0) — 2026-10-23
 
 ### Added
