@@ -4,6 +4,30 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.6.0](https://github.com/kabmo-labs/kabmo/compare/v0.5.3...v0.6.0) — 2026-10-23
+
+### Added
+
+* **ios:** a native iOS shell, and one update contract for both shells ([5f147d8](https://github.com/kabmo-labs/kabmo/commit/5f147d8b42d092cb327b34e0e767447fa694c757)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#if](https://github.com/kabmo-labs/kabmo/issues/if)
+* **linux:** a native Linux shell, released by a version bump ([221f631](https://github.com/kabmo-labs/kabmo/commit/221f6318a018fe37a0df3816865cbb2c60c01f9b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** a native macOS shell, released by a version bump ([e7f60ea](https://github.com/kabmo-labs/kabmo/commit/e7f60ea9223a1e9a0a1da0ed9af4fcf9f954ca2c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** model role presets with a model picker per role ([57345d7](https://github.com/kabmo-labs/kabmo/commit/57345d70d204e11b6601b504adfae7351df5ccad)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **stats:** a CPU/RAM navbar readout that opens the panel ([3d8b48e](https://github.com/kabmo-labs/kabmo/commit/3d8b48e87e9f090cc9c4b9a050feada7ed73b4fc)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **windows:** a native Windows shell, released by a version bump ([383adbc](https://github.com/kabmo-labs/kabmo/commit/383adbc8ce03c5a715c948152f1e49ef06d1face)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **desktop-layout:** extract the workspace keybindings ([17b493a](https://github.com/kabmo-labs/kabmo/commit/17b493af23ed8e71915835ad4e90bf255469684e)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** always title a session after its first run, on the session's model ([e5eebb8](https://github.com/kabmo-labs/kabmo/commit/e5eebb8e63600495d16dd93f8817b4ad03f33c05)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ci:** pin working-tree line endings, and await the db close before deleting ([0c7de50](https://github.com/kabmo-labs/kabmo/commit/0c7de50315e62f997ca2e6324f80e05cfd11c723)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** assert the drag against the screen's own constraint, not a raw origin ([fc3cd2e](https://github.com/kabmo-labs/kabmo/commit/fc3cd2e3896d4806094883d6c7feed32bce4df5e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** rename the app entry point off main.swift so [@main](https://github.com/main) compiles ([eb58e98](https://github.com/kabmo-labs/kabmo/commit/eb58e984c956acd86d3688b8209597a989b60527)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** tighten a closed workspace folder to the list row rhythm ([230fb65](https://github.com/kabmo-labs/kabmo/commit/230fb65d2ed7fba8418b71651794d17bd280acb5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **queue:** keep the session receiver on a queued dispatch ([07d187d](https://github.com/kabmo-labs/kabmo/commit/07d187d9f6ba928e10f4f08c19d338db7dde8e09)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.5.3](https://github.com/kabmo-labs/kabmo/compare/v0.5.2...v0.5.3) — 2026-10-22
 
 ### Fixed
