@@ -765,4 +765,35 @@ describe('the gate contract', () => {
       '${{ inputs.ref || inputs.tag || github.sha }}',
     );
   });
+
+  test('every attach step names GH_REPO, because it checks nothing out', async () => {
+    // The attach jobs download an artifact and upload it, so they deliberately
+    // check nothing out — and `gh` needs a repository to talk to. Without
+    // `GH_REPO` it dies with "failed to run git: fatal: not a git repository",
+    // which names the checkout it is not doing rather than the upload that never
+    // happened. Measured on `publish-windows.yml` for `v0.6.0`: the artifact
+    // downloaded, `ls -l ./*.exe` printed, and the job failed before
+    // `gh release upload` ran at all.
+    //
+    // Asserted on the ENV of every step that runs `gh release upload`, in every
+    // shell body, so a new one cannot ship without it.
+    const bodies = [ANDROID_BODY, IOS_BODY, MACOS_BODY, WINDOWS_BODY, LINUX_BODY];
+    let checked = 0;
+    for (const file of bodies) {
+      const doc = await load(file);
+      const steps = Object.values<any>(doc.jobs ?? {}).flatMap(
+        (job) => (job?.steps as Array<{ run?: string; env?: Record<string, string> }>) ?? [],
+      );
+      for (const step of steps) {
+        if (!step.run?.includes('gh release upload')) continue;
+        checked += 1;
+        expect(step.env?.GH_REPO, `${file}: a 'gh release upload' step has no GH_REPO`).toBe(
+          '${{ github.repository }}',
+        );
+      }
+    }
+    // The assertion is vacuous if the search stopped matching — a renamed command
+    // would make every body pass while uploading nothing.
+    expect(checked, 'no gh release upload step was found in any shell body').toBeGreaterThanOrEqual(5);
+  });
 });

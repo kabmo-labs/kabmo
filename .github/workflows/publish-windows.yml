@@ -273,10 +273,16 @@ jobs:
           name: kabmo-windows-app
           path: .
 
+      # `GH_REPO` because this job deliberately checks nothing out, and `gh`
+      # otherwise dies with "not a git repository" — a wrong reason for a real
+      # failure, measured on the Android twin. Verified on this body: the run for
+      # `v0.6.0` failed exactly that way, with the artifact downloaded and
+      # `ls -l ./*.exe` printed, so the upload itself was never attempted.
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           ls -l ./*.exe
