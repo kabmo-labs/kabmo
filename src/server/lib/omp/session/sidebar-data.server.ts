@@ -27,6 +27,7 @@ import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.se
 import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
+import { canonicalPath } from '@/server/lib/fs/canonical';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 import type { OmpSession } from '@/shared/types/omp/session';
 
@@ -238,7 +239,18 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
 
   return Promise.all(folderRows.map(async (folder) => {
     const root = folder.project_path ?? '';
-    const rootSessions: OmpSession[] = root ? sessionsByRoot.get(root) ?? [] : [];
+    // The bucket key is CANONICAL: `resolveRootsByCwd` resolves each session's
+    // cwd through `resolveProjectRoot`, which realpaths it, while a folder row
+    // holds the spelling the user's path was registered under. On macOS those
+    // differ for anything under `/var` (a symlink to `/private/var`), so a
+    // project in a temp directory or under a symlinked home listed ZERO sessions
+    // — measured: every real-mode session was missing from the sidebar, and the
+    // worktree badge could never appear because the session was not even in the
+    // folder it belongs to.
+    const rootKey = root ? await canonicalPath(root) : '';
+    const rootSessions: OmpSession[] = root
+      ? (sessionsByRoot.get(rootKey) ?? sessionsByRoot.get(root) ?? [])
+      : [];
     // One topology read per repository, however many sessions it has. A chat in
     // the checkout itself is absent from this map, which is exactly what the row
     // draws (an ordinary row with no badge).
