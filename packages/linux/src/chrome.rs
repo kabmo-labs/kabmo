@@ -127,30 +127,12 @@ pub fn handle_chrome(
     }
 }
 
-/// `scheme://host:port` — scheme, host and port only.
-fn origin_of(url: &str) -> Option<String> {
-    let scheme_end = url.find("://")?;
-    let scheme = &url[..scheme_end];
-    let rest = &url[scheme_end + 3..];
-    let authority = rest.split(['/', '?', '#']).next().unwrap_or(rest);
-    if authority.is_empty() {
-        return None;
-    }
-    Some(format!(
-        "{}://{}",
-        scheme.to_lowercase(),
-        authority.to_lowercase()
-    ))
-}
-
+/// Whether a navigation leaves the console.
+///
+/// The rule lives in the library (`navigation::decide`) so the rules suite can
+/// reach it; this is the binary's one call site.
 pub fn same_origin(here: &str, there: &str) -> bool {
-    match (origin_of(here), origin_of(there)) {
-        (Some(a), Some(b)) => a == b,
-        // An about:blank or an internal page has no origin to compare; treating
-        // it as "not the console" would send a same-document navigation out to a
-        // browser, which is worse than letting it load.
-        _ => true,
-    }
+    kabmo_desktop::navigation::same_origin(here, there)
 }
 
 pub fn open_external(url: &str) {

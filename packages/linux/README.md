@@ -157,9 +157,13 @@ commits releases nothing on its own.
 
 There is deliberately **no User-Agent token**, unlike the Android and iOS shells.
 Those two are downloaded *from the console*, which compares the published asset's
-version against the one the running shell reports on every request. A Linux app is
-installed by a person from the release page and nothing in the console offers it, so
-nothing has to parse it.
+version against the one the running shell reports on every request.
+
+The console still offers this app an **update**, and the version arrives over the
+bridge instead: `build.rs` bakes `version.properties` into the binary as
+`KABMO_SHELL_VERSION`, the shell reports it as `__kabmoDesktop.shellVersion`, and
+the sidebar compares it against the published asset. A UA token would mean every
+asset request carried it for a string the bridge already supplies.
 
 ### Releasing
 

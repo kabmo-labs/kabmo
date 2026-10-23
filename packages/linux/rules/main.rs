@@ -21,6 +21,7 @@
  */
 
 mod bridge;
+mod navigation;
 mod splash;
 mod store;
 mod support;
@@ -40,6 +41,7 @@ fn main() {
     wordmark::cases(&mut r);
     window::cases(&mut r);
     system::cases(&mut r);
+    navigation::cases(&mut r);
 
     println!("\n{}/{} checks passed", r.checks - r.failures, r.checks);
     std::process::exit(if r.failures == 0 { 0 } else { 1 });

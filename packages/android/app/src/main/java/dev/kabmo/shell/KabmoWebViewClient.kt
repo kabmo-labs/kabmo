@@ -66,11 +66,19 @@ class KabmoWebViewClient(
             return openExternally(url)
         }
 
-        if (KabmoWebView.isInternal(activity, url)) return false
+        if (KabmoWebView.isInternal(activity, url)) return false;
+
+        // An APK link without `target="_blank"` reaches this path instead of the
+        // popup one, and it is the same offer: the shell installs it rather than
+        // sending the user to a Downloads folder.
+        if (ApkUpdate.isApkDownload(url, null, null)) {
+            UpdateFlow.start(activity, UpdateFlow.Download(url, ApkUpdate.fileNameFrom(null, url)))
+            return true
+        }
 
         // An oauth callback may come back on a different origin; that still
         // belongs to the user's provider flow, so it opens in the browser too.
-        return openExternally(url)
+        return openExternally(url);
     }
 
     override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {

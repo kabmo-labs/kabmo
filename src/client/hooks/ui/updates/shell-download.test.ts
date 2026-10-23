@@ -6,8 +6,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  desktopShellFromIdentity,
   parseShellRelease,
   shellDownloadLabel,
+  shellDownloadShortLabel,
   shellFromBootstrap,
   shellReleasePath,
   shouldOfferShellDownload,
@@ -153,5 +155,76 @@ describe('shellReleasePath', () => {
   test('is one endpoint per shell', () => {
     expect(shellReleasePath('android')).toBe('/api/updates/android');
     expect(shellReleasePath('ios')).toBe('/api/updates/ios');
+  });
+});
+
+describe('the desktop shells', () => {
+  test('each desktop shell reads its own route, with an explicit kind', () => {
+    // ONE route with a required `kind`, so no absence can silently mean a
+    // platform — the reason the mobile pair has two routes.
+    expect(shellReleasePath('macos')).toBe('/api/updates/desktop?kind=macos');
+    expect(shellReleasePath('windows')).toBe('/api/updates/desktop?kind=windows');
+    expect(shellReleasePath('linux')).toBe('/api/updates/desktop?kind=linux');
+  });
+
+  test('a desktop shell offers an update when it is behind', () => {
+    // The reported gap: an installed desktop app that is behind had no way to
+    // learn it, because nothing in the console read its version.
+    expect(shouldOfferShellDownload('macos', '0.1.0', null, RELEASE)).toEqual({
+      ...RELEASE,
+      kind: 'update',
+      platform: 'macos',
+    });
+    expect(shouldOfferShellDownload('windows', '0.1.0', null, RELEASE)?.platform).toBe('windows');
+    expect(shouldOfferShellDownload('linux', '0.1.0', null, RELEASE)?.platform).toBe('linux');
+  });
+
+  test('a desktop shell that is current, or ahead, offers nothing', () => {
+    expect(shouldOfferShellDownload('macos', '1.2.3', null, RELEASE)).toBeNull();
+    expect(shouldOfferShellDownload('macos', '1.3.0', null, RELEASE)).toBeNull();
+  });
+
+  test('a desktop BROWSER is offered nothing', () => {
+    // A desktop app is installed by hand from the release page; a tab that
+    // advertised one would be a button for a product the reader did not ask for.
+    expect(shouldOfferShellDownload('macos', null, false, RELEASE)).toBeNull();
+    expect(shouldOfferShellDownload('windows', undefined, undefined, RELEASE)).toBeNull();
+  });
+
+  test('the label names the desktop platform', () => {
+    const update: ShellDownload = { ...RELEASE, kind: 'update', platform: 'linux' };
+    expect(shellDownloadLabel(update)).toBe('Update Kabmo 1.2.3 for Linux');
+    expect(shellDownloadShortLabel(update)).toBe('Update Linux');
+  });
+
+  test('the short label keeps the mobile spellings', () => {
+    expect(shellDownloadShortLabel(UPDATE)).toBe('Update APK');
+    expect(shellDownloadShortLabel(INSTALL)).toBe('Get APK');
+    expect(shellDownloadShortLabel({ ...UPDATE, platform: 'ios' })).toBe('Update app');
+  });
+});
+
+describe('desktopShellFromIdentity', () => {
+  test('reads the bridge identity the shell injects', () => {
+    expect(desktopShellFromIdentity({ platform: 'macos', shellVersion: '0.2.0' })).toEqual({
+      platform: 'macos',
+      version: '0.2.0',
+    });
+    expect(desktopShellFromIdentity({ platform: 'windows', shellVersion: '0.2.0' })?.platform).toBe('windows');
+    expect(desktopShellFromIdentity({ platform: 'linux', shellVersion: '0.2.0' })?.platform).toBe('linux');
+  });
+
+  test('is null in a browser, and for an identity with no version', () => {
+    expect(desktopShellFromIdentity(null)).toBeNull();
+    expect(desktopShellFromIdentity(undefined)).toBeNull();
+    expect(desktopShellFromIdentity({ platform: 'macos' })).toBeNull();
+    expect(desktopShellFromIdentity({ shellVersion: '0.2.0' })).toBeNull();
+  });
+
+  test('an unknown platform is not compared against a published artifact', () => {
+    // A newer shell reporting a fourth platform must not be matched to a file
+    // nobody publishes.
+    expect(desktopShellFromIdentity({ platform: 'beos', shellVersion: '1.0.0' })).toBeNull();
+    expect(desktopShellFromIdentity({ platform: 'android', shellVersion: '1.0.0' })).toBeNull();
   });
 });

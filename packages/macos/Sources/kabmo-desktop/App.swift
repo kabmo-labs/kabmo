@@ -101,12 +101,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// gone, which is the "did it hang?" state the splash exists to remove.
   private var progressObservation: NSKeyValueObservation?
 
-  private static let desktopInfo = DesktopInfo(
-    platform: "macos",
-    shellVersion: "0.1.0",
-    overlayTitlebar: true,
-    trafficLightInset: "5rem"
-  )
+  /// What the shell reports about itself, once, before the page asks anything.
+  ///
+  /// The version is READ from the bundle, never written here: `version.properties`
+  /// is the one place it is declared, `scripts/build-app.sh` fills
+  /// `CFBundleShortVersionString` from it, and a literal in this file was a
+  /// second number that drifted — the release pipeline bumped the properties file
+  /// to `0.2.0` while the app went on reporting `0.1.0` to the console.
+  ///
+  /// Empty from a `swift run` binary, which has no bundle; the page reads that as
+  /// "this shell cannot say", so no update is offered rather than a bogus one.
+  private static var desktopInfo: DesktopInfo {
+    DesktopInfo(
+      platform: "macos",
+      shellVersion: ShellVersion.current(),
+      overlayTitlebar: true,
+      trafficLightInset: "5rem"
+    )
+  }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     // Before anything reads the list: an install that has been running keeps its
@@ -270,6 +282,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
 
   func windowDidExitFullScreen(_ notification: Notification) {
     window.fullScreenStateChanged()
+  }
+
+  /// Where a link goes, and the reason the shell needs to say.
+  ///
+  /// Without this every link replaced the console: `WKNavigationDelegate` was
+  /// wired for the splash and nothing else. That is a trap for the update control
+  /// the console draws (a desktop offer links the RELEASE PAGE, since every
+  /// desktop artifact is per-architecture) and it was already wrong for the
+  /// release notes, the social links and every citation in a chat.
+  ///
+  /// A same-origin navigation stays; anything else goes to the system browser,
+  /// which is what a user expects from a link that leaves the app.
+  func webView(
+    _ webView: WKWebView,
+    decidePolicyFor navigationAction: WKNavigationAction,
+    decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+  ) {
+    let destination = navigationAction.request.url?.absoluteString
+    // `webView.url` is the document being SHOWN at this point: the incoming one
+    // has not committed yet, which is exactly the "where are we leaving from"
+    // this decision needs.
+    guard NavigationPolicy.decide(from: webView.url?.absoluteString, to: destination) == .external else {
+      decisionHandler(.allow)
+      return
+    }
+
+    if let destination, let url = URL(string: destination) {
+      NSWorkspace.shared.open(url)
+    }
+    decisionHandler(.cancel)
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {

@@ -462,6 +462,9 @@ else
         Wordmark.Paths.All(d => d.TrimStart().StartsWith('M')));
 }
 
+// Where a link goes: inside this window, or out to the browser.
+NavigationPolicyCases.Run(Check, Group);
+
 Console.WriteLine($"\n{checks - failures}/{checks} checks passed");
 return failures == 0 ? 0 : 1;
 

@@ -14,6 +14,7 @@ URLNormalizerTests.run()
 ShellSettingsTests.run()
 LoadingStateTests.run()
 ShellUpdateTests.run()
+AppReleaseTests.run()
 HealthProbeTests.run()
 WordmarkTests.run()
 

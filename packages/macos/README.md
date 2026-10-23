@@ -199,9 +199,15 @@ it commits releases nothing on its own.
 
 There is deliberately **no User-Agent token**, unlike the Android and iOS shells.
 Those two are downloaded *from the console*, which compares the published asset's
-version against the one the running shell reports on every request. A macOS app is
-installed by a person from the release page and nothing in the console offers it,
-so nothing has to parse it.
+version against the one the running shell reports on every request.
+
+The console still offers this app an **update**, and the version arrives over the
+bridge instead: `App.swift` reports `ShellVersion.current()` — read from
+`CFBundleShortVersionString`, which `scripts/build-app.sh` fills from
+`version.properties` — as `__kabmoDesktop.shellVersion`, and the sidebar compares
+it against the published asset. A literal in the source was a second number for
+one build, and it drifted (the pipeline bumped the properties file while the app
+kept reporting the old version), which is why the bundle is the only source.
 
 ### Releasing
 

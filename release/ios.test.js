@@ -148,13 +148,15 @@ describe('the shell version is one declared fact', () => {
     const ts = readFileSync(join(repoRoot, 'src/shared/lib/updates/shell-ua.ts'), 'utf8');
     expect(ts, 'the TypeScript parser must know the same prefix').toContain("ios: 'KabmoIOS/'");
 
-    const probe = readFileSync(join(repoRoot, 'src/server/lib/updates/shell-release.ts'), 'utf8');
-    // The prefix is the app's NAME and the extension names the platform; the
-    // legacy spelling stays readable so the releases already published still
-    // answer the update probe.
-    expect(probe, 'the asset prefix must match the workflow').toContain("prefix: 'Kabmo-'");
-    expect(probe, 'the extension must name the platform').toContain("extension: '-ios.ipa'");
-    expect(probe, 'the legacy spelling must stay readable').toContain("legacyPrefix: 'kabmo-ios-v'");
+    // The asset table lives in `shell-assets.ts` (split out of `shell-release.ts`
+    // when the desktop trio joined it), and the extension is what keeps one
+    // shell's artifact from answering for another.
+    const probe = readFileSync(join(repoRoot, 'src/server/lib/updates/shell-assets.ts'), 'utf8');
+    // The pattern is built with `new RegExp`, so the assertion names the platform
+    // SEGMENT and the extension rather than trying to reproduce its escaping.
+    expect(probe, 'the iOS asset segment must name the platform').toContain('-ios');
+    expect(probe, 'the extension must be an IPA').toContain('ipa');
+    expect(probe, 'the legacy spelling must stay readable').toContain("legacy: { prefix: 'kabmo-ios-v'");
   });
 });
 

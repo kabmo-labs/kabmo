@@ -372,18 +372,21 @@ describe('the shell version is one declared fact', () => {
     );
   });
 
-  test('there is no console download path for a desktop app', () => {
-    // A token with no reader is a channel nothing maintains: the console serves
-    // `/api/updates/{android,ios}` because a phone can be handed an install link,
-    // and a desktop cannot. Adding a `windows` kind here without a surface that
-    // offers it would be a route nobody calls, and the same is true of the UA.
+  test('the console can offer this app an update, without a User-Agent token', () => {
+    // A desktop app still needs to learn that it is behind, and it does that over
+    // the BRIDGE rather than the UA: the shell injects `__kabmoDesktop` before the
+    // page's first script, and the console compares `shellVersion` against the
+    // published asset. There is deliberately no `KabmoLinux/` token — a desktop
+    // request would have to carry it for every asset too, for one string the
+    // bridge already supplies.
     const kinds = readFileSync(join(repoRoot, 'src/shared/lib/updates/shell-ua.ts'), 'utf8');
-    expect(kinds, 'the shell kinds are the two DOWNLOADABLE shells').toContain(
-      "export type ShellKind = 'android' | 'ios';",
+    expect(kinds, 'the shell kinds include every published artifact').toContain(
+      "export type DesktopShellKind = 'macos' | 'windows' | 'linux';",
     );
+    expect(kinds, 'no desktop UA token').not.toContain('KabmoLinux');
 
-    const probe = readFileSync(join(repoRoot, 'src/server/lib/updates/shell-release.ts'), 'utf8');
-    expect(probe, 'the asset table must not grow a linux row').not.toContain("linux: { prefix:");
+    const assets = readFileSync(join(repoRoot, 'src/server/lib/updates/shell-assets.ts'), 'utf8');
+    expect(assets, 'the asset table must know the Linux spelling').toContain('-linux-');
   });
 
   test('the release chain bumps, builds, and only then tags', () => {

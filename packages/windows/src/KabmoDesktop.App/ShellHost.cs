@@ -12,6 +12,7 @@
  * `main.swift`'s `@main` and `AppDelegate`.
  */
 
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -196,9 +197,44 @@ public sealed class ShellHost
     private void OnNavigationStarting(CoreWebView2NavigationStartingEventArgs args)
     {
         if (args.IsRedirected) return;
+
+        // Where the navigation GOES is decided before the splash question: a link
+        // to another origin leaves for the system browser, and cancelling it here
+        // is the only place that is possible. Without this every link replaced the
+        // console — a trap for the update control the console draws (a desktop
+        // offer links the RELEASE PAGE, since every desktop artifact is
+        // per-architecture) and already wrong for the release notes, the social
+        // links and every citation in a chat.
+        var here = _window.WebView.CoreWebView2?.Source;
+        if (NavigationPolicy.Decide(here, args.Uri) == NavigationTarget.External)
+        {
+            args.Cancel = true;
+            OpenExternally(args.Uri);
+            return;
+        }
+
         if (args.NavigationKind == CoreWebView2NavigationKind.Reload)
         {
             RenderSplash(SplashState.Connecting);
+        }
+    }
+
+    /// <summary>Hand a URL to the system's default handler.</summary>
+    ///
+    /// `UseShellExecute` is what makes a URL work at all: without it
+    /// `Process.Start` tries to execute the string as a program. A failure is
+    /// swallowed — there is nothing else to do with a URL nothing can open, and
+    /// the navigation is already cancelled.
+    private static void OpenExternally(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // Nothing can open it. The console is still on screen, which is the
+            // better outcome than replacing it with a dead page.
         }
     }
 

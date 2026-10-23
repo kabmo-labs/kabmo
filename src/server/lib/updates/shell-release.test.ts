@@ -5,75 +5,16 @@
 
 import { beforeEach, describe, expect, test } from 'bun:test';
 
-import { fetchShellRelease, resetShellReleaseCache, versionFromAssetName } from '@/server/lib/updates/shell-release';
+import { fetchShellRelease, resetShellReleaseCache } from '@/server/lib/updates/shell-release';
 
 /**
- * The asset name is the only place a shell artifact's version exists: the
- * release TAG names the SERVER version, and the two move independently. A parser
- * that read the tag would compare a server version against a shell version.
+ * A fetch double that answers one body, and counts its calls.
  *
- * Both shells are pinned here, because they share the parser and differ only by
- * prefix/extension — the shape that silently accepts the other shell's asset.
+ * `text()` is provided as well as `json()`: the public-pages fallback reads Atom
+ * and HTML, and a stub that only answered `json()` would throw inside it and make
+ * a broken parse look like a clean "no release" — the exact confusion these
+ * tests exist to prevent.
  */
-describe('versionFromAssetName', () => {
-  test('reads the version the release workflows write', () => {
-    expect(versionFromAssetName('android', 'Kabmo-0.5.0-android.apk')).toBe('0.5.0');
-    expect(versionFromAssetName('ios', 'Kabmo-0.1.0-ios.ipa')).toBe('0.1.0');
-  });
-
-  /**
-   * The old spelling is still READ, and that is not sentiment.
-   *
-   * These names are the only record of a published shell, and every release
-   * already on GitHub carries `kabmo-android-v<v>.apk`. A parser that only knew
-   * the new scheme would answer "no update" for an installed shell the moment
-   * this shipped — silently, because a name that does not match reads exactly
-   * like a release with no artifact.
-   */
-  test('still reads the legacy spelling every published release carries', () => {
-    expect(versionFromAssetName('android', 'kabmo-android-v0.5.0.apk')).toBe('0.5.0');
-    expect(versionFromAssetName('ios', 'kabmo-ios-v0.1.0.ipa')).toBe('0.1.0');
-  });
-
-  test('ignores anything that is not that shell’s artifact', () => {
-    expect(versionFromAssetName('android', 'Kabmo-1.2.3-android.apk.zip')).toBeNull();
-    expect(versionFromAssetName('android', 'source.tar.gz')).toBeNull();
-    expect(versionFromAssetName('android', 'Kabmo-latest-android.apk')).toBeNull();
-    expect(versionFromAssetName('android', 'Kabmo--android.apk')).toBeNull();
-    expect(versionFromAssetName('android', '')).toBeNull();
-  });
-
-  /**
-   * The desktop assets share the `Kabmo-` prefix, so the EXTENSION is what keeps
-   * them out. A probe that matched on the prefix alone would offer a Mac `.dmg`
-   * to an Android phone.
-   */
-  test('does not read a desktop asset as a mobile one', () => {
-    for (const name of [
-      'Kabmo-0.1.2-mac-arm64.zip',
-      'Kabmo-0.1.2-mac-arm64.dmg',
-      'Kabmo-0.1.0-win-x64-setup.exe',
-      'Kabmo-0.1.0-linux-x86_64.tar.gz',
-      'Kabmo-0.1.0-linux-amd64.deb',
-      'Kabmo-0.1.0-linux-x86_64.AppImage',
-    ]) {
-      expect(versionFromAssetName('android', name), name).toBeNull();
-      expect(versionFromAssetName('ios', name), name).toBeNull();
-    }
-  });
-
-  test('does not accept one shell’s asset for the other', () => {
-    // The two probes read the SAME release list, so a parser that ignored the
-    // kind would let an iOS probe answer with the APK (and offer an `.apk` to an
-    // iPhone).
-    expect(versionFromAssetName('ios', 'Kabmo-0.5.0-android.apk')).toBeNull();
-    expect(versionFromAssetName('android', 'Kabmo-0.1.0-ios.ipa')).toBeNull();
-    expect(versionFromAssetName('ios', 'kabmo-android-v1.2.3.apk')).toBeNull();
-    expect(versionFromAssetName('android', 'kabmo-ios-v1.2.3.ipa')).toBeNull();
-  });
-});
-
-/** A fetch double that answers one body, and counts its calls. */
 function stubFetch(body: unknown, ok = true) {
   const calls: string[] = [];
   const impl = (async (input: string | URL | Request) => {
@@ -81,7 +22,41 @@ function stubFetch(body: unknown, ok = true) {
     return {
       ok,
       json: async () => body,
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
     } as Response;
+  }) as unknown as typeof fetch;
+  return { impl, calls };
+}
+
+/**
+ * A double that routes by URL, for the two-path probe.
+ *
+ * `api` answers the REST read (or fails, which is what a spent quota does) and
+ * `pages` answers the Atom feed and each release's asset fragment. Returning
+ * `null` for a route means "this request fails", which is how the fallback is
+ * entered at all.
+ */
+function routedFetch(routes: {
+  api?: unknown;
+  atom?: string;
+  assets?: Record<string, string>;
+}) {
+  const calls: string[] = [];
+  const impl = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+
+    if (url.includes('/repos/')) {
+      if (routes.api === undefined) return { ok: false, json: async () => ({}), text: async () => '' } as Response;
+      return { ok: true, json: async () => routes.api, text: async () => JSON.stringify(routes.api) } as Response;
+    }
+    if (url.endsWith('/releases.atom')) {
+      const body = routes.atom ?? '';
+      return { ok: Boolean(routes.atom), json: async () => ({}), text: async () => body } as Response;
+    }
+    const tag = url.slice(url.lastIndexOf('/') + 1);
+    const body = routes.assets?.[decodeURIComponent(tag)];
+    return { ok: body !== undefined, json: async () => ({}), text: async () => body ?? '' } as Response;
   }) as unknown as typeof fetch;
   return { impl, calls };
 }
@@ -241,15 +216,45 @@ describe('fetchShellRelease', () => {
   });
 
   test('answers null when the probe fails', async () => {
-    // An offline box or a rate-limited GitHub must not take the sidebar down,
-    // and a failure must not be read as "no newer version" either — it is
-    // simply no offer.
-    const { impl } = stubFetch({}, false);
+    // An offline box must not take the sidebar down, and a failure must not be
+    // read as "no newer version" either — it is simply no offer. BOTH paths are
+    // down here: the API refuses and the feed is unreachable, which is the only
+    // shape that means "cannot ask" rather than "nothing published".
+    const { impl } = routedFetch({});
     expect(await fetchShellRelease('android', impl)).toBeNull();
   });
 
   test('answers null when the body is malformed', async () => {
-    const { impl } = stubFetch({ assets: 'nope' });
+    // The API answers 200 with something that is not a release list, and the
+    // feed is unreachable — the API's answer is a failed probe, not an empty
+    // repository.
+    const { impl } = routedFetch({ api: { assets: 'nope' } });
     expect(await fetchShellRelease('android', impl)).toBeNull();
+  });
+
+  /**
+   * The desktop trio reads the same release list and answers the RELEASE PAGE.
+   *
+   * Every desktop artifact is per-architecture, and this server cannot know which
+   * architecture the window asking is running on — it may be a remote console on
+   * another machine. Naming one arch's file would hand half the readers a build
+   * that will not launch, so the link is the page that lists all of them.
+   */
+  test('a desktop probe answers the release page, never one architecture', async () => {
+    const { impl } = stubFetch([
+      {
+        html_url: 'https://x/app',
+        assets: [
+          { name: 'Kabmo-0.2.0-mac-arm64.zip', browser_download_url: 'https://x/mac-arm.zip' },
+          { name: 'Kabmo-0.2.0-mac-x64.dmg', browser_download_url: 'https://x/mac-x64.dmg' },
+        ],
+      },
+    ]);
+
+    expect(await fetchShellRelease('macos', impl)).toEqual({
+      url: 'https://x/app',
+      latest: '0.2.0',
+      releaseUrl: 'https://x/app',
+    });
   });
 });

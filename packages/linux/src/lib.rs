@@ -23,6 +23,7 @@
 pub const APP_NAME: &str = "Kabmo";
 
 pub mod bridge;
+pub mod navigation;
 pub mod persisted;
 pub mod splash;
 pub mod splash_view;

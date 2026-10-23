@@ -201,13 +201,38 @@ describe('the table matches the tree', () => {
   });
 
   /**
-   * No User-Agent token, and that is a decision rather than an omission: the
-   * console never offers this app, so nothing parses a version off a request.
+   * No User-Agent token, and that is a decision rather than an omission.
+   *
+   * The console DOES offer this app an update now, but it learns the installed
+   * version over the BRIDGE (`__kabmoDesktop.shellVersion`), not the UA: a
+   * desktop app carries no `KabmoMacOS/` token, and adding one would mean every
+   * asset request carried it for a string the bridge already supplies before the
+   * first paint.
    */
   test('the macOS shell reports no User-Agent token', () => {
     const ua = readFileSync(join(repoRoot, 'src/shared/lib/updates/shell-ua.ts'), 'utf8');
     expect(ua).not.toContain('KabmoMacOS');
     expect(ua).not.toContain('KabmoMac');
+  });
+
+  /**
+   * The version the shell REPORTS must be the bundle's, not a literal.
+   *
+   * `App.swift` used to declare `shellVersion: "0.1.0"`, which is a second number
+   * for one build: the release pipeline bumped `version.properties` to `0.2.0`
+   * while the running app went on telling the console `0.1.0`, so the console
+   * compared a published artifact against a version that did not exist.
+   */
+  test('the reported version comes from the bundle', () => {
+    const app = readFileSync(join(repoRoot, MACOS_SHELL.dir, 'Sources/kabmo-desktop/App.swift'), 'utf8');
+    expect(app, 'the shell must read its version').toContain('ShellVersion.current()');
+    expect(app, 'a literal version is the drift this prevents').not.toMatch(/shellVersion: "\d+\.\d+\.\d+"/);
+
+    const reader = readFileSync(
+      join(repoRoot, MACOS_SHELL.dir, 'Sources/KabmoDesktop/ShellVersion.swift'),
+      'utf8',
+    );
+    expect(reader, 'the plist key macOS reads').toContain('CFBundleShortVersionString');
   });
 });
 

@@ -53,9 +53,24 @@ class KabmoChromeClient(
                 popup: WebView,
                 request: WebResourceRequest,
             ): Boolean {
-                openExternally(request.url.toString())
-                // The URL is handed to the browser, so the transport is finished:
-                // keeping it alive would leak a WebView per popup.
+                val url = request.url.toString()
+                // An APK link is the ONE popup the shell finishes itself, and
+                // this is the path it actually takes: the sidebar's update
+                // control is an `<a target="_blank">`, so the click arrives HERE
+                // rather than at the download listener — and handing it to the
+                // browser (the previous behaviour) sent the user to Downloads to
+                // find the file, tap it, and get through the same system dialog
+                // three steps later.
+                if (ApkUpdate.isApkDownload(url, null, null)) {
+                    UpdateFlow.start(
+                        activity,
+                        UpdateFlow.Download(url, ApkUpdate.fileNameFrom(null, url)),
+                    )
+                } else {
+                    openExternally(url)
+                }
+                // The URL is handed on, so the transport is finished: keeping it
+                // alive would leak a WebView per popup.
                 popup.destroy()
                 popups.remove(popup)
                 return true

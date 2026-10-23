@@ -19,13 +19,33 @@
  */
 
 /** The native shells that report themselves on the UA. */
-export type ShellKind = 'android' | 'ios';
+export type MobileShellKind = 'android' | 'ios';
 
-/** The token's name, before the slash, per shell. */
-export const SHELL_UA_PREFIXES: Record<ShellKind, string> = {
+/**
+ * The desktop shells. They carry NO User-Agent token — a desktop app is not
+ * downloaded from the console, so the server has nothing to parse per request.
+ * They report their version over the shell bridge instead (`__kabmoDesktop`),
+ * which is why they are a separate family: the version exists, the UA channel
+ * does not.
+ */
+export type DesktopShellKind = 'macos' | 'windows' | 'linux';
+
+/** Every shell Kabmo publishes an artifact for. */
+export type ShellKind = MobileShellKind | DesktopShellKind;
+
+/** The token's name, before the slash, per MOBILE shell. */
+export const SHELL_UA_PREFIXES: Record<MobileShellKind, string> = {
   android: 'KabmoAndroid/',
   ios: 'KabmoIOS/',
 };
+
+/** The desktop family, in the order their release tracks were added. */
+export const DESKTOP_SHELL_KINDS: readonly DesktopShellKind[] = ['macos', 'windows', 'linux'];
+
+/** Whether a shell reports itself over the bridge rather than the User-Agent. */
+export function isDesktopShellKind(kind: string): kind is DesktopShellKind {
+  return (DESKTOP_SHELL_KINDS as readonly string[]).includes(kind);
+}
 
 /**
  * Whether this request came from an Android device at all — the app or a
@@ -60,7 +80,7 @@ export function isAndroidDevice(userAgent: string | null | undefined): boolean {
  */
 export function shellVersion(
   userAgent: string | null | undefined,
-  kind: ShellKind,
+  kind: MobileShellKind,
 ): string | null {
   if (!userAgent) return null;
 

@@ -16,6 +16,21 @@
     <string name="clear_cookies">Clear cookies</string>
     <string name="testing">Checking…</string>
 
+    <!--
+      The APP's own update, asked against the console. Distinct from the
+      connection check above, which answers for the server: these sentences name
+      a version of the app, never a version of Kabmo the server.
+    -->
+    <string name="update_section">Kabmo app</string>
+    <string name="update_installed_version">Installed: %1$s</string>
+    <string name="update_check">Check for update</string>
+    <string name="update_checking">Checking for a newer app…</string>
+    <string name="update_available">Kabmo %1$s is published — this build is %2$s.</string>
+    <string name="update_current">Kabmo %1$s is the newest published build.</string>
+    <string name="update_install">Update to %1$s</string>
+    <string name="update_need_server">Connect to a server first, so the app can ask what is published.</string>
+    <string name="update_check_failed">Could not ask the server. The check needs a reachable console.</string>
+
     <string name="cleartext_warning">Plain http: your password and session cookie travel unencrypted on this network, and voice dictation is unavailable (the browser withholds the microphone outside a secure context).</string>
     <string name="shortcut_hint">Long-press the Kabmo icon → Server settings to come back here.</string>
 

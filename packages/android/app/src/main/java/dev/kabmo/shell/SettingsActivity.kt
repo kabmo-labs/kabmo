@@ -35,6 +35,8 @@ class SettingsActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var testButton: Button
     private lateinit var saveButton: Button
+    private lateinit var updateButton: Button
+    private lateinit var updateStatus: TextView
 
     /** The slider's current value; written through on every user change. */
     private var zoomPercent = ServerConfig.ZOOM_DEFAULT
@@ -72,6 +74,11 @@ class SettingsActivity : Activity() {
         // no reload), so it is not part of "connect to a server" and must not
         // read as a field the Connect button submits.
         column.addView(zoomSection())
+
+        // The APP's own update, above the actions: it is not part of "connect to
+        // a server", and it is the one answer this screen can give that the
+        // console behind it cannot.
+        column.addView(updateSection())
 
         column.addView(actions())
 
@@ -223,6 +230,109 @@ class SettingsActivity : Activity() {
         addView(testButton)
         addView(saveButton)
         addView(button(getString(R.string.clear_cookies), filled = false) { clearCookies() })
+    }
+
+    /**
+     * "Check for update" — the app's OWN version, not the server's.
+     *
+     * Two versions are on this screen and they are different products: the
+     * console behind the WebView, and this APK. The health check above answers
+     * for the server; this answers for the app, which is the one thing a user
+     * cannot otherwise discover — the sidebar's offer only appears once the
+     * console has loaded, which is exactly what a stale shell may fail to do.
+     *
+     * The check reads the CONSOLE's route rather than GitHub (see `AppRelease`):
+     * the console already falls back to the public release pages when GitHub's
+     * per-IP API quota is spent, which on mobile data it routinely is.
+     *
+     * It uses the address SAVED, falling back to the one typed in the field, so
+     * a first-run user who has not connected yet can still ask.
+     */
+    private fun updateSection(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, dp(24), 0, 0)
+
+        addView(label(getString(R.string.update_section)))
+
+        val installed = TextView(this@SettingsActivity).apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextColor(Color.parseColor("#5A554A"))
+            text = getString(R.string.update_installed_version, BuildConfig.VERSION_NAME)
+            setPadding(0, dp(4), 0, 0)
+        }
+        addView(installed)
+
+        updateStatus = TextView(this@SettingsActivity).apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextColor(Color.parseColor("#5A554A"))
+            setPadding(0, dp(8), 0, 0)
+        }
+        addView(updateStatus)
+
+        val row = LinearLayout(this@SettingsActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START
+            setPadding(0, dp(10), 0, 0)
+        }
+        updateButton = button(getString(R.string.update_check), filled = false) { checkForUpdate() }
+        row.addView(updateButton)
+        addView(row)
+    }
+
+    /**
+     * Ask the console, and either report the answer or offer the install.
+     *
+     * A newer build is not installed from here directly: it becomes a button
+     * that hands the artifact to the same `UpdateFlow` the sidebar uses, so the
+     * permission prompt, the progress bar and every failure sentence are the one
+     * implementation rather than a second copy on this screen.
+     */
+    private fun checkForUpdate() {
+        val typed = UrlNormalizer.normalize(urlField.text.toString())
+        val base = ServerConfig.read(this)
+            ?: (typed as? NormalizedUrl.Ok)?.url
+        if (base == null) {
+            reportUpdate(getString(R.string.update_need_server), error = true)
+            return
+        }
+
+        updateButton.isEnabled = false
+        reportUpdate(getString(R.string.update_checking))
+
+        AppUpdateCheck.check(base, BuildConfig.VERSION_NAME) { result ->
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                updateButton.isEnabled = true
+                when (result) {
+                    is AppRelease.Result.Available -> offerUpdate(result.release)
+
+                    is AppRelease.Result.Current -> reportUpdate(
+                        getString(R.string.update_current, result.installed),
+                    )
+
+                    is AppRelease.Result.Failed -> reportUpdate(
+                        getString(R.string.update_check_failed),
+                        error = true,
+                    )
+                }
+            }
+        }
+    }
+
+    /** Turn the check's answer into an install button, in the same row. */
+    private fun offerUpdate(release: AppRelease.Release) {
+        reportUpdate(getString(R.string.update_available, release.latest, BuildConfig.VERSION_NAME))
+
+        updateButton.text = getString(R.string.update_install, release.latest)
+        updateButton.isEnabled = true
+        updateButton.setOnClickListener {
+            UpdateFlow.start(this, UpdateFlow.Download(release.url, ApkUpdate.fileNameFrom(null, release.url)))
+        }
+    }
+
+    private fun reportUpdate(text: String, error: Boolean = false) {
+        updateStatus.setTextColor(Color.parseColor(if (error) "#B3261E" else "#5A554A"))
+        updateStatus.text = text
     }
 
     private fun button(text: String, filled: Boolean, onClick: (() -> Unit)? = null): Button =

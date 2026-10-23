@@ -496,6 +496,10 @@ await storeCases()
 await systemCases()
 // The launch splash: its state machine, and the wordmark it draws.
 splashCases()
+// The version the shell reports to the console.
+shellVersionCases()
+// Where a link goes: inside this window, or out to the browser.
+navigationPolicyCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

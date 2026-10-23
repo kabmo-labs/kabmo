@@ -22,6 +22,29 @@ final class SettingsViewController: UIViewController {
   private let connectButton = UIButton(type: .system)
   private let zoomSlider = UISlider()
   private let zoomValue = UILabel()
+  private let updateButton = UIButton(type: .system)
+  private let updateStatus = UILabel()
+
+  /**
+   * The build the last check offered, if any.
+
+   * ONE action handler serves the button (`updateButtonTapped`), which either
+   * checks or opens what the check found. Adding a second handler per result —
+   * `removeTarget(nil, …)` and a fresh `UIAction` — is how one tap ends up
+   * running two actions, because `UIAction` registrations are additive.
+   */
+  private var pendingUpdate: AppRelease.Release?
+
+  /// This build's version, read from the bundle.
+  ///
+  /// The ONE source is `Info.plist`, which `scripts/build-ipa.sh` fills from
+  /// `packages/ios/version.properties` — never a literal here, because two
+  /// numbers for one build is the drift the properties file exists to prevent.
+  /// It is what the update check compares against, and what the console reads
+  /// off `KabmoIOS/<version>`.
+  private var installedVersion: String {
+    (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.0.0"
+  }
 
   private var zoomPercent: Int
   private var busy = false {
@@ -96,6 +119,12 @@ final class SettingsViewController: UIViewController {
     // field the Connect button submits.
     column.addArrangedSubview(SettingsControls.spacer(20))
     column.addArrangedSubview(zoomSection())
+
+    // The APP's own update, above the actions: it is not part of "connect to a
+    // server", and it is the one answer this screen can give that the console
+    // behind it cannot.
+    column.addArrangedSubview(SettingsControls.spacer(24))
+    column.addArrangedSubview(updateSection())
 
     column.addArrangedSubview(SettingsControls.spacer(20))
     column.addArrangedSubview(actions())
@@ -196,6 +225,44 @@ final class SettingsViewController: UIViewController {
     return row
   }
 
+  /// "Check for update" — the app's OWN version, not the server's.
+  ///
+  /// Two versions are on this screen and they are different products: the console
+  /// behind the web view, and this app. The health check above answers for the
+  /// server; this answers for the app, which is the one thing a user cannot
+  /// otherwise discover — the sidebar's offer only appears once the console has
+  /// loaded, which is exactly what a stale shell may fail to do.
+  ///
+  /// The check reads the CONSOLE's route rather than GitHub (see `AppRelease`):
+  /// the console already falls back to the public release pages when GitHub's
+  /// per-IP API quota is spent, which on mobile data it routinely is.
+  ///
+  /// It uses the address SAVED, falling back to the one typed in the field, so a
+  /// first-run user who has not connected yet can still ask.
+  private func updateSection() -> UIView {
+    let section = UIStackView()
+    section.axis = .vertical
+    section.spacing = 6
+
+    section.addArrangedSubview(SettingsControls.label("Kabmo app"))
+    section.addArrangedSubview(
+      SettingsControls.hint("Installed: \(installedVersion)")
+    )
+
+    updateStatus.font = .systemFont(ofSize: 12)
+    updateStatus.textColor = Palette.inkMuted
+    updateStatus.numberOfLines = 0
+    section.addArrangedSubview(updateStatus)
+
+    updateButton.setTitle("Check for update", for: .normal)
+    updateButton.addAction(UIAction { [weak self] _ in self?.updateButtonTapped() }, for: .touchUpInside)
+
+    let row = UIStackView(arrangedSubviews: [SettingsControls.style(updateButton, filled: false), UIView()])
+    row.axis = .horizontal
+    section.addArrangedSubview(row)
+    return section
+  }
+
   // MARK: - Actions
 
   private func zoomChanged() {
@@ -261,6 +328,84 @@ final class SettingsViewController: UIViewController {
       self.onSaved?()
       self.dismiss(animated: true)
     }
+  }
+
+  /// Ask the console, and either report the answer or offer the download.
+  ///
+  /// A newer build is not installed from here: iOS cannot install an app from a
+  /// file at all, so the offer is the RELEASE PAGE (which is also what
+  /// `ShellUpdate` decides for an IPA download). What this adds over the console's
+  /// own sidebar button is that it works BEFORE the console has loaded — the case
+  /// a stale shell is most likely to be in.
+  private func checkForUpdate() {
+    let typed = URLNormalizer.normalize(urlField.text ?? "")
+    let base = settings.url ?? typed.url
+    guard let base else {
+      reportUpdate("Connect to a server first, so the app can ask what is published.", failure: true)
+      return
+    }
+
+    updateButton.isEnabled = false
+    // A new question supersedes the last answer: leaving the previous offer
+    // armed would let a tap open a release the check just said is current.
+    pendingUpdate = nil
+    updateButton.setTitle("Check for update", for: .normal)
+    reportUpdate("Checking for a newer app…")
+
+    Task { @MainActor in
+      let release = await Self.fetchRelease(baseURL: base)
+      self.updateButton.isEnabled = true
+
+      switch AppRelease.decide(release, installed: self.installedVersion) {
+      case let .available(published, installed):
+        self.reportUpdate("Kabmo \(published.latest) is published — this build is \(installed).")
+        self.offerUpdate(published)
+      case let .current(latest, installed):
+        self.reportUpdate("Kabmo \(installed) is the newest published build (\(latest)).")
+      case .failed:
+        self.reportUpdate("Could not ask the server. The check needs a reachable console.", failure: true)
+      }
+    }
+  }
+
+  /// The console's answer, or nil when it could not be read.
+  ///
+  /// A failure is nil and not an empty release, so `AppRelease.decide` can keep
+  /// "the read failed" and "you are up to date" apart — the distinction that made
+  /// the reported stale APK invisible.
+  private static func fetchRelease(baseURL: String) async -> AppRelease.Release? {
+    guard let url = URL(string: AppRelease.url(for: baseURL)) else { return nil }
+    var request = URLRequest(url: url)
+    request.timeoutInterval = 8
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+    guard
+      let (data, response) = try? await URLSession.shared.data(for: request),
+      let http = response as? HTTPURLResponse,
+      (200..<300).contains(http.statusCode)
+    else { return nil }
+
+    return AppRelease.parse(data)
+  }
+
+  /// One action for the button: open what the check found, or ask again.
+  private func updateButtonTapped() {
+    guard let release = pendingUpdate else {
+      checkForUpdate()
+      return
+    }
+    guard let url = URL(string: release.releaseUrl ?? release.url) else { return }
+    UIApplication.shared.open(url)
+  }
+
+  private func offerUpdate(_ release: AppRelease.Release) {
+    pendingUpdate = release
+    updateButton.setTitle("Open release \(release.latest)", for: .normal)
+  }
+
+  private func reportUpdate(_ text: String, failure: Bool = false) {
+    updateStatus.text = text
+    updateStatus.textColor = failure ? Palette.error : Palette.inkMuted
   }
 
   private func confirmClearCookies() {

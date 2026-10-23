@@ -1,12 +1,11 @@
 /**
- * What the sidebar should offer for a native shell, and why.
+ * What the console should offer for a native shell, and why.
  *
  * TWO DIFFERENT OFFERS, from two different facts:
  *
- * - **`update`** — this page is running inside the shell (`shellVersion` from
- *   the bootstrap) and a newer build is published. An up-to-date shell offers
- *   nothing: a button that downloads the build already installed is worse than
- *   no button.
+ * - **`update`** — this page is running inside the shell and a newer build is
+ *   published. An up-to-date shell offers nothing: a button that downloads the
+ *   build already installed is worse than no button.
  * - **`install`** — this page is an Android BROWSER (Chrome, Brave, Firefox) and
  *   an APK is published. The reader may not know a native shell exists, and
  *   telling them is the whole point of the offer; there is no installed version
@@ -16,18 +15,25 @@
  * an APK can — iOS has no sideload-by-URL path — so a browser on an iPhone is
  * offered nothing, and only an installed iOS shell ever sees this control.
  *
- * A desktop browser gets neither: an APK cannot be installed there, and the
- * app's own update badge already covers the server.
+ * There is NO desktop BROWSER offer either, but there IS a desktop SHELL one: a
+ * desktop app is installed by hand from the release page, so nothing in a tab
+ * should advertise it — while an installed app that is behind has exactly the
+ * same problem the mobile pair had, and used to have no way to learn it.
  *
- * The probe is lazy: it runs only when a shell token or an Android device is
- * present, so a console that can never show the button makes no request for it.
- * ONE hook for both shells, because the decision table is identical and only the
- * artifact, the endpoint and the platform word differ.
+ * The probe is lazy: it runs only when an installed shell (a bootstrap token, or
+ * a bridge identity) or an Android device is present, so a console that can
+ * never show the button makes no request for it. ONE hook for every shell,
+ * because the decision table is identical and only the artifact, the endpoint
+ * and the platform word differ.
  */
 
 import { useEffect, useState } from 'preact/hooks';
 import { isNewer } from '@/shared/lib/updates/semver';
-import type { ShellKind } from '@/shared/lib/updates/shell-ua';
+import {
+  isDesktopShellKind,
+  type DesktopShellKind,
+  type ShellKind,
+} from '@/shared/lib/updates/shell-ua';
 
 /** Which shell the offer is for. */
 export type ShellPlatform = ShellKind;
@@ -36,7 +42,13 @@ export type ShellPlatform = ShellKind;
 export type ShellOfferKind = 'update' | 'install';
 
 export interface ShellDownload {
-  /** The artifact to download. */
+  /**
+   * What the control links to.
+   *
+   * The artifact itself for the mobile pair (an APK the shell installs, an IPA
+   * the release page explains), and the RELEASE PAGE for a desktop shell: every
+   * desktop build is per-architecture, so the console cannot name one file.
+   */
   url: string;
   /** The version that artifact ships. */
   latest: string;
@@ -58,6 +70,9 @@ interface ReleasePayload {
 const PLATFORM_NAMES: Record<ShellPlatform, string> = {
   android: 'Android',
   ios: 'iOS',
+  macos: 'macOS',
+  windows: 'Windows',
+  linux: 'Linux',
 };
 
 /**
@@ -126,8 +141,14 @@ export function shellDownloadLabel(download: ShellDownload): string {
   return `${verb} Kabmo ${download.latest} for ${PLATFORM_NAMES[download.platform]}`;
 }
 
-/** The endpoint that answers for one shell. */
+/**
+ * The endpoint that answers for one shell.
+ *
+ * The desktop trio shares ONE route with an explicit `kind`, so no absence can
+ * silently mean a platform — the reason the mobile pair has two.
+ */
 export function shellReleasePath(platform: ShellPlatform): string {
+  if (isDesktopShellKind(platform)) return `/api/updates/desktop?kind=${platform}`;
   return `/api/updates/${platform}`;
 }
 
@@ -147,6 +168,27 @@ export function shellFromBootstrap(bootstrap: {
 }
 
 /**
+ * Which DESKTOP shell this page is running inside, from the bridge identity.
+ *
+ * The desktop trio reports itself over `window.__kabmoDesktop` rather than the
+ * User-Agent, because a desktop app is not downloaded from the console and the
+ * server has nothing to parse per request. The identity is injected at document
+ * start, before the page's own scripts, so this answers on the FIRST paint.
+ *
+ * An identity whose `platform` is not one of the three is not a desktop shell
+ * this build knows how to update — a newer shell reporting a fourth platform
+ * must not be compared against an artifact nobody publishes.
+ */
+export function desktopShellFromIdentity(identity: {
+  platform?: string;
+  shellVersion?: string;
+} | null | undefined): { platform: DesktopShellKind; version: string } | null {
+  if (!identity?.platform || !identity.shellVersion) return null;
+  if (!isDesktopShellKind(identity.platform)) return null;
+  return { platform: identity.platform, version: identity.shellVersion };
+}
+
+/**
  * Fetch the published artifact and decide what to offer.
  *
  * `fetchImpl` is a seam for the tests: the cases that matter (no release, a
@@ -159,7 +201,18 @@ export function useShellDownload(
   onAndroid: boolean | null | undefined,
   fetchImpl: typeof fetch = fetch,
 ): ShellDownload | null {
-  const [release, setRelease] = useState<Omit<ShellDownload, 'kind' | 'platform'> | null>(null);
+  /**
+   * The answer, TAGGED with the platform it was read for.
+   *
+   * A bare payload is not enough: this hook is called with a different platform
+   * when a page's shell changes (a desktop identity arriving, a spawn adoption),
+   * and an untagged answer would be compared against the new platform's version
+   * — offering an Android APK to a Mac for one render.
+   */
+  const [answer, setAnswer] = useState<{
+    platform: ShellPlatform;
+    release: Omit<ShellDownload, 'kind' | 'platform'> | null;
+  } | null>(null);
   const wanted = Boolean(version) || (platform === 'android' && Boolean(onAndroid));
 
   useEffect(() => {
@@ -171,7 +224,7 @@ export function useShellDownload(
         const response = await fetchImpl(shellReleasePath(platform));
         if (!response.ok) return;
         const payload: unknown = await response.json();
-        if (!cancelled) setRelease(parseShellRelease(payload));
+        if (!cancelled) setAnswer({ platform, release: parseShellRelease(payload) });
       } catch {
         // A probe that cannot answer is a button that must not appear.
       }
@@ -182,7 +235,23 @@ export function useShellDownload(
     };
   }, [wanted, platform, fetchImpl]);
 
+  // A stale answer belongs to the platform it was read for, not this one.
+  const release = answer?.platform === platform ? answer.release : null;
   return shouldOfferShellDownload(platform, version, onAndroid, release);
+}
+
+/** The bridge identity a desktop shell injects before the page's first script. */
+export interface DesktopIdentity {
+  platform?: string;
+  shellVersion?: string;
+}
+
+function readDesktopIdentity(): DesktopIdentity | null {
+  if (typeof window === 'undefined') return null;
+  // `window.__kabmoDesktop` is declared by `lib/desktop/bridge` — the same
+  // object the shell injects, so this reads the shell's own contract rather
+  // than re-declaring its shape here.
+  return window.__kabmoDesktop ?? null;
 }
 
 /**
@@ -191,19 +260,32 @@ export function useShellDownload(
  *
  * The single entry point both sidebar layouts call, so the two cannot disagree
  * about which shell they are in or which endpoint they read. It reads the
- * bootstrap the SERVER wrote for this request rather than sniffing the UA
- * client-side, because the server already parsed it for the very response that
- * carried the page.
+ * bootstrap the SERVER wrote for this request (and, for a desktop shell, the
+ * identity the shell injected) rather than sniffing the UA client-side, because
+ * the server already parsed it for the very response that carried the page.
+ *
+ * `desktop` is a parameter so the tests can drive the bridge identity without a
+ * real shell; production reads it from `window.__kabmoDesktop`.
  */
-export function useShellOffer(fetchImpl: typeof fetch = fetch): ShellDownload | null {
+export function useShellOffer(
+  fetchImpl: typeof fetch = fetch,
+  desktop: DesktopIdentity | null = readDesktopIdentity(),
+): ShellDownload | null {
   const bootstrap = typeof window === 'undefined' ? undefined : window.__OMP_BOOTSTRAP__;
-  const shell = shellFromBootstrap(bootstrap);
-  return useShellDownload(
-    shell?.platform ?? 'android',
-    shell?.version ?? null,
-    bootstrap?.isAndroid,
-    fetchImpl,
-  );
+  const mobile = shellFromBootstrap(bootstrap);
+  const fromBridge = desktopShellFromIdentity(desktop);
+
+  // The desktop identity is checked FIRST and is authoritative when present: a
+  // desktop shell never carries a mobile UA token, and a page that somehow had
+  // both is in the desktop app, whose version is the one being compared.
+  //
+  // ONE call, with the resolved platform — never two conditional calls. A hook
+  // behind an `if` changes the hook order between renders, which React/Preact
+  // treats as a different component.
+  const platform = fromBridge?.platform ?? mobile?.platform ?? 'android';
+  const version = fromBridge?.version ?? mobile?.version ?? null;
+
+  return useShellDownload(platform, version, fromBridge ? null : bootstrap?.isAndroid, fetchImpl);
 }
 
 /**
@@ -212,9 +294,11 @@ export function useShellOffer(fetchImpl: typeof fetch = fetch): ShellDownload | 
  * It names the OFFER, and for Android it names the file type because that is
  * what a reader recognises (`APK` is the thing they will see in Downloads). An
  * iOS update is an IPA, which nobody installs by hand — the shell finishes the
- * install itself — so the platform word is the honest one there.
+ * install itself — so the platform word is the honest one there. A desktop
+ * update opens the release page, so it names the platform too.
  */
 export function shellDownloadShortLabel(download: ShellDownload): string {
   if (download.platform === 'ios') return 'Update app';
+  if (isDesktopShellKind(download.platform)) return `Update ${PLATFORM_NAMES[download.platform]}`;
   return download.kind === 'update' ? 'Update APK' : 'Get APK';
 }
