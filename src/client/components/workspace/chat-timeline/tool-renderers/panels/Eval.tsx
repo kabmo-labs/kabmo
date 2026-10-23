@@ -6,6 +6,24 @@ import { highlightCode, highlightJson, tryParseJson } from '@/shared/lib/code/sy
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
 
+/**
+ * The line box both sides of a code card share — gutter row and code line.
+ *
+ * A gutter row and the code line beside it are separate elements, so they agree
+ * only when their line boxes do. They did not: the gutter was `text-[10px]`
+ * while the code was `text-[11px]`, and both inherited `leading-relaxed` — a
+ * RATIO, so 10 × 1.625 = 16.25px against 11 × 1.625 = 17.875px. Each number
+ * then sat 1.6px higher than its line, and by the tenth line the number was a
+ * whole line above the code it labels (measured in the browser after a reload:
+ * `gutterRowH 16.25`, `preLineHeight 17.875`, `firstRowOffset 10`).
+ *
+ * The box is stated ONCE and applied to both containers, because a `<div>`
+ * holding one line takes its height from `line-height` — no per-row `h-[…]`
+ * that could drift from the constant. This is the same shape `Read.tsx` and
+ * `ExcerptCode` use.
+ */
+const LINE_BOX = 'leading-[18px]';
+
 /** Panel khusus untuk tool `eval` — eksekusi kode script, browser eval, dsb. */
 export function Eval({ tool }: { tool: ToolCallData }) {
   const input = tool.input;
@@ -78,14 +96,14 @@ export function Eval({ tool }: { tool: ToolCallData }) {
               … {truncatedCode.skipped} earlier lines hidden
             </div>
           )}
-          <div className="flex max-h-56 items-start overflow-x-auto font-mono text-[11px] leading-relaxed select-text">
-            <div className="sticky left-0 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-right text-[10px] text-ink/25">
+          <div className={`flex max-h-56 items-start overflow-x-auto font-mono text-[11px] ${LINE_BOX} select-text`}>
+            <div className={`sticky left-0 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-right text-[10px] ${LINE_BOX} tabular-nums text-ink/25`}>
               {truncatedCode.text.split('\n').map((_, idx) => (
                 <div key={idx}>{idx + 1}</div>
               ))}
             </div>
             <pre
-              className="flex-1 overflow-x-auto p-2.5 whitespace-pre text-ink/85 font-mono"
+              className={`flex-1 overflow-x-auto p-2.5 whitespace-pre ${LINE_BOX} text-ink/85 font-mono`}
               dangerouslySetInnerHTML={{ __html: highlightedCode }}
             />
           </div>
@@ -157,14 +175,14 @@ export function Eval({ tool }: { tool: ToolCallData }) {
           </div>
 
           {jsonResult.isValid && jsonResult.pretty ? (
-            <div className="flex max-h-56 items-start overflow-x-auto font-mono text-[11px] leading-relaxed select-text">
-              <div className="sticky left-0 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/50 py-2 pl-2.5 pr-2 text-right text-[10px] text-ink/25">
+            <div className={`flex max-h-56 items-start overflow-x-auto font-mono text-[11px] ${LINE_BOX} select-text`}>
+              <div className={`sticky left-0 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-right text-[10px] ${LINE_BOX} tabular-nums text-ink/25`}>
                 {jsonResult.pretty.split('\n').map((_, idx) => (
                   <div key={idx}>{idx + 1}</div>
                 ))}
               </div>
               <pre
-                className="flex-1 overflow-x-auto p-2.5 whitespace-pre text-ink/85 font-mono"
+                className={`flex-1 overflow-x-auto p-2.5 whitespace-pre ${LINE_BOX} text-ink/85 font-mono`}
                 dangerouslySetInnerHTML={{ __html: highlightedJson }}
               />
             </div>
