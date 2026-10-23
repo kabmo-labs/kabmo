@@ -25,6 +25,7 @@ import { loader as listLoader } from '@/server/routes/worktrees/list';
 import { action as createAction, validateAction } from '@/server/routes/worktrees/create';
 import { action as removeAction } from '@/server/routes/worktrees/remove';
 import { invalidateWorktreeTopology } from '@/server/lib/fs/worktree/topology';
+import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import { removeDir } from '@/test-support/remove-dir';
 
@@ -44,7 +45,15 @@ function git(cwd: string, ...args: string[]): string {
 
 let workRoot: string;
 let repo: string;
-const saved = { MOCK: Bun.env.MOCK, SYNC_WORKSPACE: Bun.env.SYNC_WORKSPACE };
+/** Where the session files live, so a count can be observed without omp. */
+let sessionsRoot: string;
+const saved = {
+  MOCK: Bun.env.MOCK,
+  SYNC_WORKSPACE: Bun.env.SYNC_WORKSPACE,
+  agentDir: Bun.env.PI_CODING_AGENT_DIR,
+  xdg: Bun.env.XDG_DATA_HOME,
+  dataDir: Bun.env.KABMO_DATA_DIR,
+};
 
 /**
  * Call a route module the way the adapter does — with `params`, which every
@@ -57,6 +66,27 @@ async function call(
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = (await handler({ request: new Request(url, init), params: {} })) as Response;
   return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+}
+
+/** Put an env var back, or unset it when the file started without one. */
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete Bun.env[name];
+  else Bun.env[name] = value;
+}
+
+/** One session file whose cwd is `cwd`, as the agent would record it. */
+function writeSession(id: string, cwd: string): void {
+  const lines = [
+    JSON.stringify({ type: 'session', id, cwd, timestamp: '2026-10-23T00:00:00.000Z' }),
+    JSON.stringify({
+      type: 'message',
+      id: `${id}-m1`,
+      parentId: null,
+      timestamp: '2026-10-23T00:00:01.000Z',
+      message: { role: 'user', content: 'where am I' },
+    }),
+  ];
+  writeFileSync(join(sessionsRoot, 'project', `${id}.jsonl`), `${lines.join('\n')}\n`);
 }
 
 /** The `worktrees` array of a list payload, narrowed once. */
@@ -78,6 +108,18 @@ beforeAll(() => {
   git(repo, 'init', '-q', '-b', 'main', '.');
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'base');
+
+  // A sessions root of this file's own: the worktree count reads it, and
+  // without the override it would scan the developer's real `~/.omp/agent`.
+  const agent = join(workRoot, 'agent');
+  sessionsRoot = join(agent, 'sessions');
+  mkdirSync(join(sessionsRoot, 'project'), { recursive: true });
+  Bun.env.PI_CODING_AGENT_DIR = agent;
+  // XDG would redirect the sessions dir to $XDG_DATA_HOME/omp when it exists.
+  delete Bun.env.XDG_DATA_HOME;
+  // A worktree's default location is `<data>/worktrees/<projectId>/<name>`, so
+  // without this the suite writes into the developer's own `~/.kabmo`.
+  Bun.env.KABMO_DATA_DIR = join(workRoot, 'data');
 });
 
 beforeEach(async () => {
@@ -90,15 +132,22 @@ beforeEach(async () => {
 
 afterEach(async () => {
   invalidateWorktreeTopology();
+  // The session-file caches are keyed on `globalThis` and this file writes
+  // session files, so a case that leaves one behind would be counted by the next.
+  clearSessionFileCaches();
   await releaseDb();
 });
 
 afterAll(() => {
   removeDir(workRoot);
-  for (const [key, value] of Object.entries(saved)) {
-    if (value === undefined) delete Bun.env[key];
-    else Bun.env[key] = value;
-  }
+  // Explicitly mapped: the record's keys are not the env names, and an
+  // `Object.entries` restore would silently leave `PI_CODING_AGENT_DIR` pointed
+  // at a directory this file just deleted.
+  restoreEnv('MOCK', saved.MOCK);
+  restoreEnv('SYNC_WORKSPACE', saved.SYNC_WORKSPACE);
+  restoreEnv('PI_CODING_AGENT_DIR', saved.agentDir);
+  restoreEnv('XDG_DATA_HOME', saved.xdg);
+  restoreEnv('KABMO_DATA_DIR', saved.dataDir);
 });
 
 describe('GET /api/worktrees', () => {
@@ -112,6 +161,25 @@ describe('GET /api/worktrees', () => {
     expect(primary.branch).toBe('main');
     expect(String(primary.head).length).toBeGreaterThan(0);
     expect(primary.dirty).toBe(0);
+  });
+
+  test('counts a session running in a worktree that lives OUTSIDE the repository', async () => {
+    const created = await call(createAction, base(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mode: 'new', branch: 'wt/route-counted' }),
+    });
+    const path = String((created.body.worktree as Record<string, unknown>).path);
+    // The default location is under the data directory, not inside the checkout
+    // — which is the case a `primaryRoot` prefix test counted zero for.
+    expect(path.startsWith(repo)).toBe(false);
+
+    writeSession('route-counted-session', path);
+
+    const listed = await call(listLoader, base());
+    const row = worktreesOf(listed.body).find((entry) => entry.path === path);
+    // The number the delete dialog warns with: a chat is running here.
+    expect(row?.sessions).toBe(1);
   });
 
   test('a folder with no project binding is refused, not answered for the app root', async () => {
@@ -204,6 +272,16 @@ describe('DELETE /api/worktrees', () => {
     expect(worktreesOf(listed.body).some((entry) => entry.path === path)).toBe(false);
   });
 
+  test('a missing path is refused by name, not by a crash', async () => {
+    const refused = await call(removeAction, base(), {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe('invalid_name');
+  });
+
   test('a dirty worktree is refused with 409 and its count, so a caller can tell a retry from a bad request', async () => {
     const created = await call(createAction, base(), {
       method: 'POST',
@@ -227,15 +305,5 @@ describe('DELETE /api/worktrees', () => {
     // A refusal is not a partial removal.
     const listed = await call(listLoader, base());
     expect(worktreesOf(listed.body).some((entry) => entry.path === path)).toBe(true);
-  });
-
-  test('a missing path is refused by name, not by a crash', async () => {
-    const refused = await call(removeAction, base(), {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    expect(refused.status).toBe(400);
-    expect(refused.body.code).toBe('invalid_name');
   });
 });

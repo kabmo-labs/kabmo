@@ -16,6 +16,7 @@
  * can see under it.
  */
 
+import path from 'node:path';
 import { json } from '@/server/lib/remix-compat';
 import type { LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { getDataDir } from '@/server/lib/lifecycle/paths';
@@ -53,10 +54,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const base = resolveConfiguredWorktreeRoot(settings.directory, primaryRoot)
       ?? defaultWorktreeRoot(getDataDir(), projectId);
 
-    const [entries, rows, sessionCwds] = await Promise.all([
-      listWorktrees(primaryRoot),
+    const entries = await listWorktrees(primaryRoot);
+    const [rows, sessionCwds] = await Promise.all([
       listWorktreeRows(db, primaryRoot),
-      sessionCwdsUnder(primaryRoot),
+      // Every tree that can be counted, not just the repository: a worktree does
+      // NOT have to live inside it. Kabmo's own default puts one under the data
+      // directory (`<data>/worktrees/<projectId>/<name>`), so a `primaryRoot`
+      // prefix test counted ZERO sessions for every worktree at the default
+      // location — the number the delete dialog warns with.
+      sessionCwdsUnder([primaryRoot, ...entries.map((entry) => entry.path)]),
     ]);
     const rowByPath = new Map(rows.map((row) => [row.path, row]));
 
@@ -77,7 +83,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         dirty,
         aheadOfStart: ahead,
         startRef: row?.start_ref ?? '',
-        sessions: sessionCwds.filter((cwd) => cwd === entry.path || cwd.startsWith(`${entry.path}/`)).length,
+        sessions: sessionCwds.filter((cwd) => cwd === entry.path || cwd.startsWith(`${entry.path}${path.sep}`)).length,
       });
     }
 
@@ -91,15 +97,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-/** Every session's recorded cwd, canonicalized, for the per-worktree count. */
-async function sessionCwdsUnder(primaryRoot: string): Promise<string[]> {
+/**
+ * Every session's recorded cwd, canonicalized, restricted to the trees that can
+ * be counted — the primary checkout and each worktree.
+ *
+ * Both sides are canonicalized, for the same reason `canonicalPath` exists: the
+ * recorded cwd is the spelling the agent was spawned with while a worktree path
+ * comes back realpath'd from git, and on macOS those differ for anything under
+ * `/var` (a symlink to `/private/var`) — a raw prefix test would then count zero
+ * for a worktree that is right there.
+ */
+async function sessionCwdsUnder(roots: string[]): Promise<string[]> {
   const files = await listSessionFiles();
   const infos = await Promise.all(files.map((file) => scanSessionInfoCached(file)));
+  const canonicalRoots = [...new Set(await Promise.all(roots.map((root) => canonicalPath(root))))];
   const cwds: string[] = [];
+  const seen = new Set<string>();
   for (const info of infos) {
-    if (!info?.cwd) continue;
-    if (!info.cwd.startsWith(primaryRoot)) continue;
-    cwds.push(await canonicalPath(info.cwd));
+    if (!info?.cwd || seen.has(info.cwd)) continue;
+    seen.add(info.cwd);
+    const cwd = await canonicalPath(info.cwd);
+    if (!canonicalRoots.some((root) => cwd === root || cwd.startsWith(`${root}${path.sep}`))) continue;
+    cwds.push(cwd);
   }
   return cwds;
 }
