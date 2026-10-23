@@ -269,9 +269,30 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
     window.drag(to: NSPoint(x: pressedAt.x + 160, y: pressedAt.y + 90))
 
+    // The assertion is on the ARITHMETIC, not on the raw origin, because
+    // `setFrameOrigin` CONSTRAINS the frame to the screen: measured, asking for
+    // (5200, 5200) lands at (2520, 930) on a 2560×1440 display. The CI runner's
+    // display is small enough that +90 in y was clamped away, so the window DID
+    // move (the "origin did not move" note never printed) and the case still
+    // failed — a test of the runner's screen, not of the drag.
+    //
+    // `constrainFrameRect` is AppKit's own prediction of that clamp, verified
+    // here to match `setFrameOrigin` exactly for both an in-bounds and an
+    // out-of-bounds request. Comparing against it keeps the case honest on any
+    // display while still proving the window followed the pointer.
+    let wanted = NSRect(
+      x: start.x + 160,
+      y: start.y + 90,
+      width: window.frame.width,
+      height: window.frame.height
+    )
+    let expected = window.constrainFrameRect(wanted, to: window.screen).origin
     let moved = window.frame.origin
     check("the window follows the pointer by the same delta",
-          abs(moved.x - (start.x + 160)) < 0.5 && abs(moved.y - (start.y + 90)) < 0.5)
+          abs(moved.x - expected.x) < 0.5 && abs(moved.y - expected.y) < 0.5)
+    // A window that ignored the drag entirely is still a failure, however the
+    // screen constrains it — that is the bug this case exists for.
+    check("...and actually moved from where it started", moved != start)
     if moved == start { print("  note: origin did not move: \(moved)") }
 
     window.cancelDrag()
