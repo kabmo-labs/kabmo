@@ -53,34 +53,26 @@ function asFailure(error: unknown): WorktreeFailure {
 
 const FIELD_CLASS = 'w-full h-8 rounded-md border border-ink/15 bg-paper px-2 text-xs text-ink outline-none focus:border-ink/40';
 
-export function NewWorktreeModal({
-  isOpen,
-  onClose,
-  root,
-  folderId,
-  folderName,
-  onCreated,
-}: NewWorktreeModalProps) {
+export function NewWorktreeModal(props: NewWorktreeModalProps) {
+  // Mounted fresh on every open, never reset by an effect. Preact runs effects
+  // AFTER paint, so an effect-seeded form is on screen and focusable while its
+  // fields still hold the previous open's values — and anything typed in that
+  // window is discarded. Measured in the browser: the branch field was filled
+  // with `main`, the effect then restored the generated name, and the dialog
+  // created `wt/calm-iguana` instead of reporting that `main` is taken.
+  if (!props.isOpen) return null;
+  return <WorktreeForm {...props} />;
+}
+
+function WorktreeForm({ onClose, root, folderId, folderName, onCreated }: NewWorktreeModalProps) {
   const [mode, setMode] = useState<Mode>('new');
-  const [branch, setBranch] = useState('');
+  // Seeded by the initial state, so the very first paint carries a usable form.
+  const [branch, setBranch] = useState(defaultWorktreeBranch);
   const [basedOn, setBasedOn] = useState('');
-  const [folder, setFolder] = useState('');
+  const [folder, setFolder] = useState(() => folderNameForBranch(branch));
   const [folderFollowsBranch, setFolderFollowsBranch] = useState(true);
   const [failure, setFailure] = useState<WorktreeFailure | null>(null);
   const [creating, setCreating] = useState(false);
-
-  // A fresh form on every open: an effect-based reset lands AFTER the dialog is
-  // on screen and focusable, and anything typed in that window is discarded
-  // (measured on the New Workspace modal, which lost a typed path that way).
-  useEffect(() => {
-    if (!isOpen) return;
-    setMode('new');
-    setBranch(defaultWorktreeBranch());
-    setBasedOn('');
-    setFolder('');
-    setFolderFollowsBranch(true);
-    setFailure(null);
-  }, [isOpen]);
 
   // The folder mirrors the branch while the user has not renamed it.
   useEffect(() => {
@@ -101,7 +93,7 @@ export function NewWorktreeModal({
   // Debounced server validation, after the first edit — the answers depend on
   // git state a keystroke cannot know.
   useEffect(() => {
-    if (!isOpen || !root) return;
+    if (!root) return;
     const timer = setTimeout(() => {
       void validateWorktree({ root, folderId }, request).then((result) => {
         setFailure(result.ok ? null : result.failures[0] ?? null);
@@ -111,7 +103,7 @@ export function NewWorktreeModal({
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [isOpen, root, folderId, request]);
+  }, [root, folderId, request]);
 
   const canCreate = Boolean(root) && branch.trim().length > 0 && folder.trim().length > 0 && !creating && !failure;
 
@@ -130,8 +122,6 @@ export function NewWorktreeModal({
       setCreating(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const choiceColumn = (
     <div className="flex flex-col gap-4">
