@@ -129,16 +129,17 @@ open class ShellWindow: NSWindow {
     switch event.type {
     case .leftMouseDown:
       // The system's own controls come FIRST, before the page is asked
-      // anything. The page marks its whole header `[data-drag-region]` and the
-      // leftmost 76px of that header is reserved for the traffic lights, so a
-      // press on the close button is — as far as `elementFromPoint` can tell —
-      // a press on a drag handle, and claiming it here meant the event never
-      // reached the button: none of close / minimise / zoom could be clicked,
-      // while the same strip still moved the window.
+      // anything — `claimsBarPress` is that ordering, stated once. The page marks
+      // its whole header `[data-drag-region]` and the leftmost 76px of that
+      // header is reserved for the traffic lights, so a press on the close button
+      // is — as far as `elementFromPoint` can tell — a press on a drag handle,
+      // and claiming it here meant the event never reached the button: none of
+      // close / minimise / zoom could be clicked, while the same strip still
+      // moved the window.
       if hitsStandardButton(at: event.locationInWindow) {
         break
       }
-      if isOnBar(event) {
+      if isOnBar(at: event.locationInWindow) {
         // A double-click on the bar is the system gesture, never a drag start:
         // the first click of a double-click has already begun one, and starting
         // a second would leave two monitors on the same press.
@@ -153,7 +154,7 @@ open class ShellWindow: NSWindow {
     case .rightMouseDown:
       // The title bar's own menu. A page right-click is a different gesture and
       // stays the page's — this only fires on the bar.
-      if isOnBar(event) {
+      if isOnBar(at: event.locationInWindow) {
         showBarMenu(with: event)
         return
       }
@@ -161,6 +162,21 @@ open class ShellWindow: NSWindow {
       break
     }
     super.sendEvent(event)
+  }
+
+  /**
+   Whether a press at `windowPoint` is the BAR's — the one decision the ordering
+   above exists to make.
+
+   Exposed so the window suite can assert the outcome without delivering a real
+   press into an `NSWindowButton`: a `leftMouseDown` sent there opens AppKit's
+   tracking loop, which pulls the queue for a mouse-up that a synthetic press
+   never posts, and the suite hung on both CI legs. The predicate is the same one
+   `sendEvent` uses, so the test cannot drift from the behaviour.
+   */
+  public func claimsBarPress(at windowPoint: NSPoint) -> Bool {
+    if hitsStandardButton(at: windowPoint) { return false }
+    return isOnBar(at: windowPoint)
   }
 
   /// Whether the press landed on one of the system's own title-bar controls.
@@ -190,7 +206,7 @@ open class ShellWindow: NSWindow {
   }
 
   /// Whether the press landed on a point the page marks as the bar.
-  private func isOnBar(_ event: NSEvent) -> Bool {
+  private func isOnBar(at windowPoint: NSPoint) -> Bool {
     guard let webView = shellWebView(in: self), let probe = dragRegionProbe else { return false }
     // The event arrives in window coordinates; the page needs CSS pixels inside
     // its own viewport. `convert(_:from: nil)` already answers in the webview's
@@ -199,7 +215,7 @@ open class ShellWindow: NSWindow {
     // expects. Subtracting from the height here inverted every probe: a press at
     // the top of the window read as a press at the bottom, and the header never
     // matched.
-    let inWeb = webView.convert(event.locationInWindow, from: nil)
+    let inWeb = webView.convert(windowPoint, from: nil)
     return probe(inWeb)
   }
 
@@ -283,7 +299,7 @@ open class ShellWindow: NSWindow {
 
   /// True when the press was a drag handle and the window has taken it over.
   private func startDragIfHandle(_ event: NSEvent) -> Bool {
-    guard isOnBar(event) else {
+    guard isOnBar(at: event.locationInWindow) else {
       onPress?(false)
       return false
     }

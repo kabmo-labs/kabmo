@@ -172,33 +172,6 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
   }
 
-  /// A whole click: a press, then the release that makes it one.
-  ///
-  /// Posted into the app's own queue rather than handed to `sendEvent`, because
-  /// an `NSButton` tracks the mouse in a modal loop that PULLS from that queue —
-  /// a press delivered directly starts the loop and then blocks it forever with
-  /// no release to find. Returns once the queue has been drained.
-  func click(at point: NSPoint) {
-    let now = ProcessInfo.processInfo.systemUptime
-    for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-      guard let event = NSEvent.mouseEvent(
-        with: type, location: point, modifierFlags: [], timestamp: now,
-        windowNumber: window.windowNumber, context: nil,
-        eventNumber: 1, clickCount: 1, pressure: 1
-      ) else { return }
-      NSApp.postEvent(event, atStart: false)
-    }
-    let deadline = Date().addingTimeInterval(1.0)
-    while Date() < deadline {
-      guard let next = NSApp.nextEvent(
-        matching: .any, until: Date().addingTimeInterval(0.02),
-        inMode: .default, dequeue: true
-      ) else { continue }
-      NSApp.sendEvent(next)
-      if next.type == .leftMouseUp { break }
-    }
-  }
-
   func runCases() {
     ready = true
     let height = window.contentView!.bounds.height
@@ -231,7 +204,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   }
 
   /**
-   The system's traffic lights stay clickable.
+   The system's traffic lights are claimed by the SYSTEM before the page is asked.
 
    The page marks its whole header `[data-drag-region]` and reserves its leftmost
    76px for these buttons, so `elementFromPoint` at a traffic light answers "a
@@ -240,9 +213,17 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
    strip still moved the window, which is exactly the shape of a hit test that
    asks the page before it asks the system.
 
-   The button frames are read from the window rather than hard-coded, because
-   macOS decides where they sit; the assertion is that a press INSIDE one is not
-   a drag, and that the strip beside them still is.
+   **A press is deliberately NOT delivered into one of these buttons.** A real
+   `NSWindowButton` answers a bare `leftMouseDown` by entering AppKit's own
+   mouse-tracking loop, which PULLS from the event queue waiting for a mouse-up
+   that a lone press never posts — the case that proved the fix therefore HUNG
+   the suite instead. Measured on both macOS release legs: the run printed the
+   three checks below and then sat there until the 120 s watchdog killed it, on
+   arm64 and x64 alike, while a local run passed because the window was never
+   key and AppKit never entered the loop. That is a harness trap, not a shell
+   behaviour, so what is asserted here is the predicate `sendEvent` itself
+   consults — a standard button wins, and the strip beside the lights is still
+   the bar. `proveClickCloses` proves the button then does its job.
    */
   func runTrafficLightCases() {
     let height = window.contentView!.bounds.height
@@ -258,11 +239,14 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       let centre = NSPoint(x: rect.midX, y: rect.midY)
       check("the \(label) button's centre reads as a standard button",
             window.hitsStandardButton(at: centre))
-      window.claimed = false
-      window.passedThrough = false
-      press(at: centre)
-      check("a press on \(label) is NOT a drag", !window.claimed)
-      check("...and reaches the button", window.passedThrough)
+      // The page DOES mark this point as the bar — which is why the system's own
+      // check has to run first. `claimsBarPress` is the ordering itself, so this
+      // asserts the decision `sendEvent` makes rather than restating its inputs:
+      // without the system check the answer would be `true` and the button would
+      // never see the press, which is the bug this pins.
+      check("the page marks the \(label) button's point as the bar",
+            window.debugIsOnBar(centre))
+      check("a press on \(label) is NOT claimed as the bar", !window.claimsBarPress(at: centre))
     }
     // The gap to the RIGHT of the lights is still the bar: the fix must not
     // turn the reserved strip into dead window.
@@ -422,24 +406,30 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   }
 
   /**
-   A whole click on a traffic light CLOSES the window.
+   A click on close CLOSES the window.
 
-   The cases above prove the press reaches the button; this proves the button
-   then does its job, which is the half a press-through assertion cannot see — a
-   button that never tracks the mouse still "receives" the press. Close is the
-   one of the three that needs no Dock and no active app: measured here,
-   `performMiniaturize` answers false in an `.accessory` process that was never
-   activated, so a minimise assertion would report the harness rather than the
-   shell. Runs LAST because it takes the window away.
+   The cases above prove the system's own buttons win the hit test; this proves
+   the button then does its job, which is the half a hit-test assertion cannot
+   see. Close is the one of the three that needs no Dock and no active app:
+   measured here, `performMiniaturize` answers false in an `.accessory` process
+   that was never activated, so a minimise assertion would report the harness
+   rather than the shell. Runs LAST because it takes the window away.
+
+   **`performClick`, not a synthetic mouse event.** A real `NSWindowButton` opens
+   AppKit's tracking loop on a `leftMouseDown` and pulls the queue for a mouse-up;
+   a queued pair is no better here, because this process is never key on a
+   runner (`isKeyWindow` false, measured on both CI legs) so the button's tracking
+   never completes and the window stays open. `performClick` is the button's own
+   action path, which is what the shipped app reaches once AppKit has tracked a
+   real click.
    */
   func proveClickCloses() {
     guard let close = window.standardWindowButton(.closeButton) else {
       check("the window has a close button", false)
       return
     }
-    let rect = close.convert(close.bounds, to: nil)
     check("the window starts visible", window.isVisible)
-    click(at: NSPoint(x: rect.midX, y: rect.midY))
+    close.performClick(nil)
     pump(0.4)
     check("a click on close closes the window", !window.isVisible)
   }
