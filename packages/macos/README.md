@@ -97,6 +97,13 @@ free is then done in `ShellWindow.swift`:
   `dragRegionSelector` at the press point. The walk stops at any interactive
   element, so a new button in the header is inert by construction rather than by
   remembering to mark it.
+- **The traffic lights are asked about FIRST.** The page marks the whole header,
+  including the 76px it reserves for the buttons, so a press on close / minimise
+  / zoom reads as a drag handle to `elementFromPoint` — and claiming it there
+  left all three unclickable while the same strip still moved the window.
+  `hitsStandardButton(at:)` tests `standardWindowButton(_:)` in window
+  coordinates (they live in the private titlebar container, not `contentView`)
+  and lets the press through to the button.
 - The window then **follows the pointer itself** (`beginDrag` → `draggedOrigin`),
   rather than calling `performWindowDragWithEvent:`. Three bugs were found by
   testing this the hard way, and each is a comment in `ShellWindow.swift`:
@@ -135,16 +142,44 @@ vanish exactly when the page fails to load.
   platform's own (`URLError`'s names the address and the error), and Retry.
 - **`didFinish` does not clear a failure**: a failed load still finishes on the error
   page WebKit renders.
-- **A reload from the console's own header shows the splash again.**
-  `location.reload()` arrives as an ordinary navigation with the same address;
-  `SplashState.isDocumentReload` compares it against the one on screen, and only from
-  a finished document so a cold start does not restart its own arm. (WebView2 exposes
-  this as a flag, which is why the Windows shell does not compare addresses.)
+- **A reload from the console's own header shows the splash again.** `location.reload()`
+  arrives as an ordinary navigation with the same address; `SplashState.isDocumentReload`
+  compares it against the one on screen, and only from a finished document so a cold
+  start does not restart its own arm. (WebView2 exposes this as a flag, which is why
+  the Windows shell does not compare addresses.)
 
 `TestsWindow` renders the splash in a real window and asserts the assembled view —
 the mark present and in the artwork's aspect, the bar determinate only once a real
 percentage arrives, the sentence the state's, Retry only on a failure — because a
 splash that drew the wrong phase would pass every state-machine case.
+
+## Quitting
+
+Two bugs made Quit feel like a hang, and both are stated here because neither is
+visible from the code alone:
+
+- **The quit was a main-actor deadlock.** `applicationWillTerminate` ran a
+  `Task` and then `DispatchSemaphore.wait`ed on the MAIN thread. `NSApplicationDelegate`
+  methods are `@MainActor`, so the task that would signal needed the main actor
+  to resume — the one blocked in the wait. The app beachballed for the whole 6 s
+  timeout on every quit. `applicationShouldTerminate` + `.terminateLater` is
+  AppKit's own deferral: the work runs detached, and `reply(toApplicationShouldTerminate:)`
+  ends the quit when it finishes.
+- **The spawned child inherited a blocked SIGTERM.** `posix_spawn` copies the
+  caller's signal MASK, and `POSIX_SPAWN_SETSIGDEF` resets only the DISPOSITION.
+  The app blocks SIGTERM (Swift concurrency), so the server was spawned with it
+  blocked, `kill(-group, SIGTERM)` left it pending, the child never died, and
+  `killGroup` always ran its full 40 × 50 ms budget before SIGKILL — **2.27 s per
+  server** for one that dies in 60 ms. `POSIX_SPAWN_SETSIGMASK` with an empty set
+  is the missing flag; verified A/B (`died from SIGTERM? false` → `true`).
+- **A zombie answered "alive".** `isAlive` polled `kill(pid, 0)`, and an
+  exited-but-unreaped child still answers 0, so the grace loop never saw it go.
+  It now uses `waitpid(WNOHANG)`, which also reaps — and falls back to the
+  signal probe for an adopted pid that is not our child (`ECHILD`).
+
+`swift run kabmo-desktop-tests` measures all of it: an exited child is not
+"alive", a well-behaved child is released in under 0.5 s, and a child that
+IGNORES SIGTERM is still killed after the escalation.
 
 ## The bridge
 

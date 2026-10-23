@@ -82,6 +82,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// Strong reference to the message handler (the content controller's is weak).
   private var bridgeHandler: BridgeHandler?
   private var splash: SplashView?
+  /// Guards a double Quit while the shutdown pass is running.
+  private var terminating = false
   /// What the launch splash is showing. Owned here because the window outlives
   /// every navigation; `SplashView` only draws it.
   ///
@@ -138,16 +140,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
-  func applicationWillTerminate(_ notification: Notification) {
-    // A child server must not outlive the window that started it. A force-quit
-    // cannot be caught, which is why the store records the pids it spawned — the
-    // next launch adopts exactly those.
-    let semaphore = DispatchSemaphore(value: 0)
-    Task {
-      await supervisor.stopAll()
-      semaphore.signal()
+  /**
+   Quit is DEFERRED until the child servers are gone, rather than blocking.
+
+   The previous shape was `applicationWillTerminate` + `DispatchSemaphore.wait`:
+   a `Task` ran `supervisor.stopAll()` and signalled, while the MAIN THREAD sat
+   in `wait`. It cannot work. `NSApplicationDelegate` methods are `@MainActor`,
+   so the `Task` that signals is also main-actor-bound: after its first `await`
+   it needs the main actor to resume, and the main thread is inside the wait
+   that is waiting for it. The result is the reported beachball — the app is
+   unresponsive for the whole 6s timeout, on EVERY quit, because the work it
+   waits for can never start.
+
+   `applicationShouldTerminate` + `.terminateLater` is AppKit's own answer to
+   exactly this: return `later`, do the work off the main thread, then answer
+   `reply(toApplicationShouldTerminate:)`. The window stays up for those
+   milliseconds (a server measured at 57 ms), the UI thread keeps running, and
+   the timeout is a real ceiling on a hung child rather than on ourselves.
+
+   A quit that arrives while this is already running gets `cancel` — pressing
+   Quit twice must not run `stopAll` twice, and the second press has no work of
+   its own to do.
+   */
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    if terminating { return .terminateCancel }
+    terminating = true
+    // Detached, so the work cannot be scheduled onto the main actor it is
+    // meant to keep free.
+    Task.detached { [supervisor] in
+      let finished = await withTaskGroup(of: Bool.self) { group -> Bool in
+        group.addTask {
+          await supervisor.stopAll()
+          return true
+        }
+        // The ceiling. A child that ignores SIGTERM is already SIGKILLed inside
+        // `killGroup`, so this is the outer bound on a genuinely wedged server.
+        group.addTask {
+          try? await Task.sleep(nanoseconds: 6_000_000_000)
+          return false
+        }
+        let first = await group.next() ?? false
+        group.cancelAll()
+        return first
+      }
+      _ = finished
+      await MainActor.run { sender.reply(toApplicationShouldTerminate: true) }
     }
-    _ = semaphore.wait(timeout: .now() + 6)
+    return .terminateLater
+  }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    // Deliberately empty of work: everything that must happen before the
+    // process dies happens in `applicationShouldTerminate`, which AppKit waits
+    // for. Reaching here with a child still alive means the 6s ceiling expired,
+    // and the store's recorded pids are what the next launch adopts.
   }
 
   // ---------------------------------------------------------------- window

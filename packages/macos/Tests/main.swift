@@ -386,6 +386,110 @@ func systemCases() async {
     }
   }
 
+  /**
+   Quitting must not block the main thread, and stopping a child must not wait
+   on a zombie or on a signal the child never received.
+
+   Three bugs, all measured, none visible to a test that only checks "the server
+   stopped":
+
+   1. **The quit path was a main-actor deadlock.** `applicationWillTerminate`
+      ran a `Task` and then `DispatchSemaphore.wait`ed on the MAIN thread. A
+      `Task` created in a `@MainActor` context needs the main actor to resume
+      after its first `await`, so it could never signal — the app beachballed
+      for the full 6 s timeout on EVERY quit. The fix is
+      `applicationShouldTerminate` + `.terminateLater`, AppKit's own deferral.
+   2. **A zombie answered "alive".** `isAlive` used `kill(pid, 0)`, and an
+      exited-but-unreaped child still answers 0 — measured: the SIGTERM grace
+      loop in `killGroup` never saw the child go, ran its full 40 x 50 ms budget
+      and fired a pointless SIGKILL, **2.27 s per server** for a child that died
+      in 60 ms. `waitpid(WNOHANG)` is the honest check, and it reaps as it looks.
+   3. **The spawned child inherited a BLOCKED SIGTERM.** `posix_spawn` copies the
+      caller's signal MASK, and `POSIX_SPAWN_SETSIGDEF` resets only the
+      DISPOSITION — so the child never received the grace signal at all, and the
+      escalation was the only way out. Verified A/B: with only SETSIGDEF the
+      child "died from SIGTERM? false"; adding POSIX_SPAWN_SETSIGMASK with an
+      empty set, "true".
+
+   Together those are why quit felt like a hang: 2.27 s of grace loop, times the
+   number of servers, on a thread that could not run the task doing it.
+   */
+  group("shutdown timing")
+  do {
+    // A child this process spawns, killed and NOT reaped: the exact zombie.
+    var attr = posix_spawnattr_t(nil as OpaquePointer?)
+    posix_spawnattr_init(&attr)
+    posix_spawnattr_setflags(&attr, Int16(POSIX_SPAWN_SETPGROUP))
+    posix_spawnattr_setpgroup(&attr, 0)
+    var pid: pid_t = 0
+    let argv: [UnsafeMutablePointer<CChar>?] = [strdup("/bin/sh"), strdup("-c"), strdup("sleep 30"), nil]
+    let env: [UnsafeMutablePointer<CChar>?] = [nil]
+    let spawned = posix_spawn(&pid, "/bin/sh", nil, &attr, argv, env) == 0
+
+    if spawned {
+      kill(pid, SIGKILL)
+      usleep(200_000)
+      // The bug: this answered true forever, because nobody had waited.
+      check("an exited child is not 'alive' (it is reaped, not polled)", !isAlive(pid))
+    } else {
+      check("a child could be spawned for the timing case", false)
+    }
+  }
+
+  /**
+   The grace loop's own budget, measured end to end through the REAL spawn path.
+
+   A local copy of `posix_spawn` would pass while the app stayed broken — the
+   mask bug lives in the spawn flags — so this drives `spawnGroupLeader` and
+   `killGroup` exactly as the app does.
+   */
+  group("killGroup timing")
+  do {
+    let logURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("kabmo-killgroup-\(UUID().uuidString).log")
+    FileManager.default.createFile(atPath: logURL.path, contents: nil)
+    guard let log = try? FileHandle(forWritingTo: logURL) else {
+      check("a log handle could be opened", false)
+      return
+    }
+    defer {
+      try? log.close()
+      try? FileManager.default.removeItem(at: logURL)
+    }
+
+    func spawned(_ script: String) -> Int32? {
+      try? spawnGroupLeader(program: "/bin/sh", args: ["-c", script], cwd: nil, log: log)
+    }
+
+    if let pid = spawned("sleep 30") {
+      let start = Date()
+      await killGroup(pid)
+      let elapsed = Date().timeIntervalSince(start)
+      // Both real bugs produced 2.27s. A quarter of a second is far above the
+      // ~60ms this takes once the child is reaped and actually receives SIGTERM.
+      check("a well-behaved child is released in under 0.5s", elapsed < 0.5)
+      check("...and it is actually gone", !isAlive(pid))
+    } else {
+      check("a child could be spawned for the kill case", false)
+    }
+
+    // A child that IGNORES SIGTERM, so the escalation is the only way out.
+    // `sh` EXECS its last command, so `trap '' TERM; sleep 30` replaces the
+    // shell with `sleep` and the trap dies with it — measured, that child exited
+    // on SIGTERM in 60 ms and proved nothing. The loop keeps the shell alive,
+    // and the wait lets the trap be installed before the signal arrives.
+    if let pid = spawned("trap '' TERM; while true; do sleep 0.2; done") {
+      try? await Task.sleep(nanoseconds: 250_000_000)
+      let start = Date()
+      await killGroup(pid)
+      let elapsed = Date().timeIntervalSince(start)
+      check("a SIGTERM-ignoring child is still killed", !isAlive(pid))
+      check("...after the escalation, not before it", elapsed >= 1.9)
+    } else {
+      check("a stubborn child could be spawned", false)
+    }
+  }
+
   group("stateFileURL")
   check("the shell's list lives outside the data directory",
         !stateFileURL().path.contains("/.kabmo/"))

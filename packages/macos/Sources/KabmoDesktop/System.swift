@@ -231,10 +231,35 @@ public struct AlreadyServed: Error, Sendable {
   public let url: String
 }
 
-func isAlive(_ pid: Int32) -> Bool {
-  // `kill(pid, 0)` answers ESRCH once the process is gone, which is the only
-  // portable-enough liveness check that does not need a waitpid handle.
-  kill(pid, 0) == 0
+/**
+ True when the child is still running — and it REAPS it when it is not.
+
+ `kill(pid, 0)` alone is wrong for a child this process spawned, and the
+ difference is seconds. A process that has exited but not been waited for is a
+ ZOMBIE, and a zombie still answers 0 to `kill(pid, 0)` — measured here: a
+ child SIGKILLed and never reaped reported "STILL ALIVE" for as long as it was
+ left, and only answered ESRCH after `waitpid`. So the "wait until it is gone"
+ loop in `killGroup` never saw it go, ran its full 40 × 50 ms budget, and
+ fired a pointless SIGKILL at a group that had already emptied: **2.27 s per
+ server, on every Stop and on every quit**, for a child that died in 60 ms.
+
+ `waitpid(pid, &status, WNOHANG)` is the honest check for a child of ours: 0
+ means still running, the pid means it was reaped and is now gone, and -1 means
+ it is not our child at all (an adopted pid from a previous launch, whose real
+ parent is init) — in that case `kill(pid, 0)` is the only answer available,
+ and a zombie is impossible because we are not the parent.
+
+ `ECHILD` is the signal for that third case. It is not an error worth
+ reporting: it means the pid was never ours to reap.
+ */
+public func isAlive(_ pid: Int32) -> Bool {
+  var status: Int32 = 0
+  let reaped = waitpid(pid, &status, WNOHANG)
+  if reaped == pid { return false }
+  if reaped == 0 { return true }
+  // -1: not our child (ECHILD) or an already-reaped pid. Fall back to the
+  // signal probe, which is what an adopted process needs.
+  return kill(pid, 0) == 0
 }
 
 /**
@@ -245,7 +270,7 @@ func isAlive(_ pid: Int32) -> Bool {
  the group was the CLI's, and signalling the bare pid left the server alive). The
  group is read with `getpgid`, which is the group the spawn created.
  */
-func killGroup(_ pid: Int32) async {
+public func killGroup(_ pid: Int32) async {
   let group = getpgid(pid)
   let target = group > 0 ? -group : -pid
   kill(target, SIGTERM)
@@ -254,6 +279,16 @@ func killGroup(_ pid: Int32) async {
     try? await Task.sleep(nanoseconds: 50_000_000)
   }
   kill(target, SIGKILL)
+  // The escalation has to be COLLECTED, not just sent. SIGKILL is asynchronous:
+  // returning here leaves the child a zombie for a moment, and a caller that
+  // then asks `isAlive` — or starts another server on the same port — sees a
+  // process that is "still alive" and a port that is "still taken". Measured:
+  // the stubborn-child case released in 2.17 s but reported it as alive,
+  // because nothing had waited for the kill to land.
+  for _ in 0..<40 {
+    if !isAlive(pid) { return }
+    try? await Task.sleep(nanoseconds: 50_000_000)
+  }
 }
 
 struct Launch {
@@ -320,7 +355,7 @@ func which(_ name: String) -> String? {
  process group, and without that Stop cannot signal the group — the PTY shells and
  plugin children the server starts would be orphaned on every quit.
  */
-func spawnGroupLeader(program: String, args: [String], cwd: String?, log: FileHandle) throws -> Int32 {
+public func spawnGroupLeader(program: String, args: [String], cwd: String?, log: FileHandle) throws -> Int32 {
   // Darwin declares these as pointers, so the Swift spelling is an Optional
   // initialized to nil and passed by reference — `T()` does not exist for them.
   var fileActions: posix_spawn_file_actions_t?
@@ -339,9 +374,28 @@ func spawnGroupLeader(program: String, args: [String], cwd: String?, log: FileHa
   var attributes: posix_spawnattr_t?
   posix_spawnattr_init(&attributes)
   defer { posix_spawnattr_destroy(&attributes) }
-  // Own process group (0 = the child's pid), and a clean signal mask so Ctrl-C in
-  // a terminal does not take the server down with the shell that started it.
-  posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF))
+  // Own process group (0 = the child's pid), and a CLEAN signal mask.
+  //
+  // `SETSIGDEF` alone is not that, and this was the bug that made every Stop and
+  // every quit wait the full SIGKILL escalation. `SETSIGDEF` resets each
+  // signal's DISPOSITION (handler) — the signal MASK is a separate inheritance,
+  // and a blocked signal stays blocked across `posix_spawn`. Measured on this
+  // machine: the test/app process blocks SIGTERM (Swift concurrency does), so
+  // the child was spawned with it blocked, `kill(-group, SIGTERM)` left it
+  // PENDING rather than delivering it, the child never died, and `killGroup` ran
+  // its whole 40 × 50 ms budget before SIGKILL. Verified A/B: with only
+  // SETSIGDEF the child "died from SIGTERM? false"; adding SETSIGMASK with an
+  // empty set, "true".
+  //
+  // The comment above claimed a clean mask and the code never asked for one —
+  // which is why the server took 2.27 s to stop when it could die in 60 ms.
+  var emptyMask = sigset_t()
+  sigemptyset(&emptyMask)
+  posix_spawnattr_setsigmask(&attributes, &emptyMask)
+  posix_spawnattr_setflags(
+    &attributes,
+    Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK)
+  )
   posix_spawnattr_setpgroup(&attributes, 0)
 
   let argv: [UnsafeMutablePointer<CChar>?] = ([program] + args).map { strdup($0) } + [nil]
