@@ -144,7 +144,11 @@ jobs:
         run: |
           set -euo pipefail
           cd packages/ios
-          ./scripts/build-ipa.sh --output "$GITHUB_WORKSPACE/kabmo-ios-v${VERSION}.ipa"
+          # The project's ONE naming rule — `<App>-<version>-<platform>.<ext>` — so
+          # the release page reads consistently with the APK and the three desktop
+          # shells. No architecture: the IPA contains only the device slice
+          # (`arm64-apple-ios`), so there is no second artifact to distinguish.
+          ./scripts/build-ipa.sh --output "$GITHUB_WORKSPACE/Kabmo-${VERSION}-ios.ipa"
 
       # The version check on the ARTIFACT, not on the build file: the bundle is
       # unpacked and its `CFBundleShortVersionString` read back, so a plist that did
@@ -156,7 +160,7 @@ jobs:
           BUILD_NUMBER: ${{ inputs.build-number || github.run_number }}
         run: |
           set -euo pipefail
-          ipa="kabmo-ios-v${VERSION}.ipa"
+          ipa="Kabmo-${VERSION}-ios.ipa"
           test -f "$ipa" || { echo "No IPA was produced."; exit 1; }
           rm -rf /tmp/kabmo-ipa && mkdir -p /tmp/kabmo-ipa
           ditto -x -k "$ipa" /tmp/kabmo-ipa

@@ -179,7 +179,7 @@ release.yml
   than that. When `versionName` was the app's release tag, a shell-only fix could
   not reach an installed app unless the server also cut a version — and the number
   it reported said nothing about whether the shell had changed.
-- **The artifact is `kabmo-android-v<versionName>.apk`** — the shell's version,
+- **The artifact is `Kabmo-<versionName>-android.apk`** — the shell's version,
   never the release tag, because `versionFromAssetName` reads the published
   version out of the asset name. The built APK is checked with
   `aapt2 dump badging` against `version.properties` and the run number before
@@ -391,7 +391,7 @@ that renders the shell — no bridge, no extra round trip:
 
 The third input is the published APK itself: `GET /api/updates/android` scans the
 release list and takes the newest one whose assets include an APK, reading the
-version from the asset NAME (`kabmo-android-v1.2.3.apk` → `1.2.3`). The release
+version from the asset NAME (`Kabmo-1.2.3-android.apk` → `1.2.3`). The release
 TAG cannot be used — the APK is attached to the app's release, whose tag names
 the *server* version, and the two move independently. It is deliberately **not**
 `/releases/latest`: one push publishes three artifacts and the npm packages are

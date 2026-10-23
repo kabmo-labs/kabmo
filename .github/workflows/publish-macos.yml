@@ -1,26 +1,40 @@
 name: Build and attach the macOS app
 
-# The `.app` body, as a REUSABLE workflow — the same shape `publish-android.yml`
-# and `publish-ios.yml` take, and for the same reason: the steps exist once, so
-# the release run and a manual re-run cannot drift apart.
+# The `.app` body, as a REUSABLE workflow — the same shape `publish-android.yml`,
+# `publish-ios.yml`, `publish-windows.yml` and `publish-linux.yml` take, and for
+# the same reason: the steps exist once, so the release run and a manual re-run
+# cannot drift apart.
 #
 # TWO PHASES, and the split is the whole point of this file.
 #
-#   - `build` compiles the SwiftPM package, assembles `Kabmo.app`, verifies the
-#     version it declares and uploads it as a run artifact. `release.yml` calls it
-#     BEFORE `app` tags, so a Swift error, a missing toolchain or a bundle that
-#     declares the wrong version stops the release instead of shipping a tag whose
-#     GitHub release carries no app.
-#   - `attach` downloads that artifact and attaches it to the GitHub release `app`
-#     created. It runs after the tag, because `gh release upload` has nothing to
-#     upload to before the release exists — but it no longer BUILDS anything, so it
-#     cannot be the step that discovers a broken build.
+#   - `build` compiles the SwiftPM package on BOTH architectures, assembles
+#     `Kabmo.app`, verifies the version it declares and uploads one `.zip` per
+#     architecture as a run artifact. `release.yml` calls it BEFORE `app` tags, so
+#     a Swift error, a missing toolchain or a bundle that declares the wrong
+#     version stops the release instead of shipping a tag whose GitHub release
+#     carries no app.
+#   - `attach` downloads those artifacts and attaches them to the GitHub release
+#     `app` created. It runs after the tag, because `gh release upload` has
+#     nothing to upload to before the release exists — and it no longer BUILDS
+#     anything, so it cannot be the step that discovers a broken build.
 #
-# Artifacts are scoped to the workflow RUN, so the attach call reaches the artifact
-# the earlier call in the same run uploaded. The name is a LITERAL both phases read:
-# it was an input with a default in the Android twin, and a `workflow_dispatch`
-# declares no such input, so `inputs.<name>` resolved to `''` there and a repair
-# dispatch silently attached nothing.
+# WHY A MATRIX, AND WHY TWO RUNNERS RATHER THAN ONE CROSS-BUILD. Apple silicon
+# and Intel are separate builds of the same package: the shell links AppKit and
+# WebKit, so a universal binary would need both slices assembled and re-signed,
+# and `swift build` on a CLT-only machine has no `xcodebuild -create-xcframework`
+# to do it with. Each GitHub-hosted macOS image IS one of the two architectures
+# (`macos-15` is arm64, `macos-15-intel` is Intel), so each row compiles natively
+# and the artifact it uploads is the one its runner ran.
+#
+# The asset name carries the architecture (`Kabmo-<v>-mac-<arch>.zip`), because two
+# files with one name would collide on the release — `gh release upload` would
+# either fail or silently replace one build with the other.
+#
+# Artifacts are scoped to the workflow RUN, so the attach call reaches the
+# artifacts the earlier call in the same run uploaded. The name prefix is a
+# LITERAL both phases read: it was an input with a default in the Android twin,
+# and a `workflow_dispatch` declares no such input, so `inputs.<name>` resolved to
+# `''` there and a repair dispatch silently attached nothing.
 #
 # It is NOT an npm publish, and there is no `environment: npm`: the shell is a
 # private application, so the only artifact is the `.zip` on the GitHub release.
@@ -32,8 +46,8 @@ name: Build and attach the macOS app
 on:
   workflow_call:
     inputs:
-      # Which phase to run. `build` compiles and uploads the artifact; `attach`
-      # downloads it from THIS run and uploads it to `tag`.
+      # Which phase to run. `build` compiles and uploads the artifacts; `attach`
+      # downloads them from THIS run and uploads them to `tag`.
       mode:
         description: build (compile + upload artifact) or attach (upload to a release).
         required: false
@@ -66,9 +80,36 @@ on:
         required: false
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Phase 1 — the gate. `release.yml` runs this before `app` tags.
+  # ---------------------------------------------------------------------------
   build:
-    name: Build the macOS app
-    runs-on: macos-15
+    name: Build the macOS app (${{ matrix.arch }})
+    # Everything except an explicit `attach` call, the same guard the Windows and
+    # Linux bodies carry. Without it an attach-only call (the second call in a
+    # release run) rebuilt both architectures for artifacts it then ignored.
+    if: ${{ inputs.mode != 'attach' }}
+    # `fail-fast: false` so one architecture failing still reports the other's
+    # result: a repair needs to know whether BOTH slices are broken or only one.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The image IS the architecture — verified against actions/runner-images:
+          # `macos-15` is arm64 (Apple silicon), `macos-15-intel` is Intel x64.
+          #
+          # `macho` is what `lipo -archs` prints for this row's slice, and it is a
+          # separate field because the two spellings genuinely differ: the release
+          # asset says `x64` (the word a person downloads) while Mach-O says
+          # `x86_64`. Comparing the asset name against `lipo`'s output would fail on
+          # every Intel build.
+          - arch: arm64
+            macho: arm64
+            runner: macos-15
+          - arch: x64
+            macho: x86_64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -84,10 +125,19 @@ jobs:
       # The toolchain this repository is built with. `swift build` on the runner's
       # default Xcode is what a developer uses, so nothing is pinned beyond it —
       # `packages/macos/Package.swift` states the platform floor.
+      #
+      # The architecture line is the assertion that this row built the slice its
+      # name claims: a runner that silently changed architecture would otherwise
+      # upload an arm64 binary under an `x64` name.
       - name: Show the toolchain
+        env:
+          MACHO: ${{ matrix.macho }}
         run: |
           swift --version
           xcodebuild -version
+          echo "host arch: $(uname -m)"
+          test "$(uname -m)" = "$MACHO" \
+            || { echo "this runner is $(uname -m), but the matrix row targets $MACHO"; exit 1; }
 
       - name: Build the package
         working-directory: packages/macos
@@ -101,7 +151,7 @@ jobs:
 
       # The window chrome, on a real window: a press on the header moves it, a
       # press on a control does not, and the bar's menu and shortcuts exist. This
-      # needs a window server, which the macOS runner provides.
+      # needs a window server, which both macOS runners provide.
       - name: Run the window suite
         working-directory: packages/macos
         run: swift run -c release kabmo-desktop-window-tests
@@ -113,7 +163,13 @@ jobs:
       # bumped, and the one the asset name will carry. Checked here rather than
       # trusted: a plist that disagrees with `version.properties` would publish an
       # app whose own About panel names a different build than its download.
-      - name: Verify the bundle version
+      #
+      # The executable's own architecture is checked too — the same reason the
+      # Windows body reads the built `.exe` instead of the project file.
+      - name: Verify the bundle version and architecture
+        env:
+          ARCH: ${{ matrix.arch }}
+          MACHO: ${{ matrix.macho }}
         run: |
           set -euo pipefail
           version="$(node release/macos-version.mjs)"
@@ -130,25 +186,91 @@ jobs:
           test "$exe" = "Kabmo" || { echo "CFBundleExecutable is $exe, expected Kabmo"; exit 1; }
           test -x "$app/Contents/MacOS/Kabmo" || { echo "the executable is missing"; exit 1; }
           codesign --verify --deep --strict "$app" || { echo "the bundle is not signed"; exit 1; }
-          echo "bundle OK"
 
-      # `ditto` rather than `zip`: it preserves the bundle's extended attributes
-      # and its code signature. A `zip -r` round trip strips them, and the result
-      # is an app macOS refuses to launch ("damaged") with nothing in the archive
-      # to say why.
+          # `lipo -archs` prints the slices a Mach-O binary actually contains, so a
+          # cross-compiled or universal build cannot pass as this row's slice.
+          slices="$(lipo -archs "$app/Contents/MacOS/Kabmo")"
+          echo "Mach-O slices: $slices"
+          test "$slices" = "$MACHO" || { echo "the binary carries '$slices', expected '$MACHO' for $ARCH"; exit 1; }
+          echo "bundle OK ($ARCH, $version)"
+
+      # Two shapes, and both are needed. The `.zip` is what an updater and a
+      # scripted install consume — it round-trips the bundle's extended attributes
+      # and its signature, which is why `ditto` makes it and `zip` must not. The
+      # `.dmg` is what a PERSON expects to download: a window opens with the app in
+      # it and an Applications alias beside it, and installing is a drag.
+      #
+      # Neither replaces the other. A `.dmg` cannot be extracted by a build script
+      # without mounting it, and a `.zip` gives a first-time user no obvious move.
+      #
+      # The name follows the release's own scheme —
+      # `<App>-<version>-<platform>-<arch>.<ext>` — so one release page reads
+      # consistently and the two architectures cannot collide.
+      #
+      # `Kabmo` with a capital K, because it is the product's NAME rather than a
+      # package slug: the same word the window title, the installer and the
+      # `.desktop` entry carry.
       - name: Package the app
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           version="$(node release/macos-version.mjs)"
-          ditto -c -k --sequesterRsrc --keepParent \
-            packages/macos/build/Kabmo.app "kabmo-macos-v${version}.zip"
-          ls -l ./*.zip
+          base="Kabmo-${version}-mac-${ARCH}"
 
+          ditto -c -k --sequesterRsrc --keepParent \
+            packages/macos/build/Kabmo.app "${base}.zip"
+
+          # The staging directory holds the bundle plus the Applications alias that
+          # makes the drag obvious. `ln -s /Applications` is the convention every
+          # Mac user already knows, and its absence is the difference between "drag
+          # it over" and "where am I supposed to put this".
+          staging="$(mktemp -d)"
+          cp -R packages/macos/build/Kabmo.app "$staging/"
+          ln -s /Applications "$staging/Applications"
+
+          # `hdiutil create` rather than a third-party DMG tool: it ships with
+          # macOS, it is what Apple's own installers are made with, and it is the
+          # one piece of this build that cannot drift from the OS.
+          #
+          # It prints a deprecation warning pointing at `diskutil image create
+          # from`, and that alternative is NOT usable here: it takes no `-fs`, so a
+          # folder source becomes an APFS volume — and a DMG is a user-facing
+          # artifact, where HFS+ is the format every macOS from 10.x up mounts. A
+          # warning in the log is cheaper than a download some machine cannot open.
+          #
+          # `-fs HFS+` because the image carries a symlink and a signed bundle, and
+          # HFS+ stores both. `-format UDZO` is compressed read-only, the only
+          # sensible format for a download.
+          rm -f "${base}.dmg"
+          hdiutil create \
+            -volname "Kabmo" \
+            -srcfolder "$staging" \
+            -fs HFS+ \
+            -format UDZO \
+            -ov \
+            "${base}.dmg" > /dev/null
+          rm -rf "$staging"
+
+          # Both files must exist and be non-trivial: `hdiutil` can exit 0 having
+          # produced an empty image when the source folder is wrong.
+          for f in "${base}.zip" "${base}.dmg"; do
+            test -s "$f" || { echo "$f is missing or empty"; exit 1; }
+          done
+          ls -l ./*.zip ./*.dmg
+
+      # One artifact per architecture: the attach phase merges them back, and a
+      # single shared name would make the second row overwrite the first.
+      #
+      # Both shapes ride in it — a pattern naming only `*.zip` would build the
+      # `.dmg` and then throw it away.
       - name: Upload the app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kabmo-macos-app
-          path: ./*.zip
+          name: kabmo-macos-app-${{ matrix.arch }}
+          path: |
+            *.zip
+            *.dmg
           if-no-files-found: error
           retention-days: 1
 
@@ -169,10 +291,14 @@ jobs:
       # Uploading an asset to an existing release needs `contents: write`.
       contents: write
     steps:
-      - name: Download the app artifact
+      # `pattern` rather than a name: the build phase uploads one artifact per
+      # architecture, and `merge-multiple` puts both archives in one directory so
+      # a single `gh release upload` carries the pair.
+      - name: Download the app artifacts
         uses: actions/download-artifact@v4
         with:
-          name: kabmo-macos-app
+          pattern: kabmo-macos-app-*
+          merge-multiple: true
           path: .
 
       - name: Attach to the GitHub release
@@ -181,15 +307,32 @@ jobs:
           TAG: ${{ inputs.tag }}
           # `gh` resolves the repository from a git remote in the working
           # directory, and this job deliberately checks NOTHING out — its only
-          # input is the artifact it just downloaded. Without this, every command
+          # input is the artifacts it just downloaded. Without this, every command
           # below dies with `failed to run git: fatal: not a git repository`,
           # which a `||` guard then reports as "No GitHub release for <tag>" — a
           # wrong reason for a real failure, measured on the Android twin.
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          ls -l ./*.zip
+          # An unmatched pattern stays literal, so `set -- *.dmg` would report one
+          # argument holding the text `*.dmg` — measured, and it would let a missing
+          # architecture pass a count of 1.
+          shopt -s nullglob
+          ls -l
+          # Both architectures must be present, and in BOTH shapes, or a release goes
+          # out that installs on one Mac family and not the other.
+          #
+          # Counted through the shell's own positional parameters rather than by
+          # parsing `ls`: a filename is arbitrary bytes and `ls` mangles some of them.
+          # The unquoted `$pattern` is deliberate — it is a GLOB, and quoting it
+          # would count the pattern string itself.
+          for pattern in '*.zip' '*.dmg'; do
+            # shellcheck disable=SC2086
+            set -- $pattern
+            test "$#" = "2" \
+              || { echo "expected 2 $pattern (arm64 + x64), found $#: $*"; exit 1; }
+          done
           gh release view "$TAG" --json tagName > /dev/null \
             || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
-          gh release upload "$TAG" ./*.zip --clobber
+          gh release upload "$TAG" ./*.zip ./*.dmg --clobber
           gh release view "$TAG" --json assets --jq '.assets[].name'

@@ -3,9 +3,15 @@
 #
 # Assemble a runnable folder around the published app.
 #
-# It produces the INSTALLER (`build/installer/kabmo-windows-v<v>-setup.exe`) by
+# It produces the INSTALLER (`build/installer/Kabmo-<v>-win-<arch>-setup.exe`) by
 # compiling `packages/windows/installer/kabmo.iss` with Inno Setup, and leaves the
 # plain folder beside it for a developer who just wants to run the app.
+#
+# `-Arch` picks the target: `x64` (the default, and what most machines are) or
+# `arm64`. It travels into `dotnet publish -r` and into the `.iss` as
+# `/DAppArch`, which is what names the file and sets its `ArchitecturesAllowed` —
+# one value, two consumers, so the installer can never be named for an
+# architecture it does not run on.
 #
 # Signing is the one thing it does NOT do: a distributable needs a code-signing
 # certificate this repository does not carry, and a script that pretended to make
@@ -17,7 +23,7 @@
 # the WebView2 loader, and — when the server binary exists — the bundled server
 # the window starts on a machine with no `kabmo` on PATH.
 #
-# Usage:  scripts/build-app.ps1 [-Configuration Release] [-ServerPath <exe>]
+# Usage:  scripts/build-app.ps1 [-Configuration Release] [-Arch x64|arm64] [-ServerPath <exe>]
 #
 # Requires the .NET 8 SDK. WebView2 itself is an OS component (the Evergreen
 # Runtime ships with Windows 11 and is installed by Windows Update on 10); the
@@ -25,6 +31,8 @@
 
 param(
   [string]$Configuration = 'Release',
+  [ValidateSet('x64', 'arm64')]
+  [string]$Arch = 'x64',
   [string]$ServerPath = ''
 )
 
@@ -35,10 +43,10 @@ $out = Join-Path $here "build/Kabmo"
 
 $version = (& node (Join-Path $here '../../release/windows-version.mjs')).Trim()
 if (-not $version) { throw 'version.properties declares no versionName' }
-Write-Host "building $Configuration (shell version $version)"
+Write-Host "building $Configuration for $Arch (shell version $version)"
 dotnet publish (Join-Path $here 'src/KabmoDesktop.App/KabmoDesktop.App.csproj') `
   -c $Configuration `
-  -r win-x64 `
+  -r "win-$Arch" `
   --self-contained false `
   -p:PublishSingleFile=false `
   -o $out | Out-Host
@@ -77,9 +85,9 @@ Write-Host "built $exe"
 # preinstalled, and a developer needs https://jrsoftware.org/isdl.php.
 $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
 if (Test-Path $iscc) {
-  & $iscc "/DAppVersion=$version" "/DSourceDir=$out" (Join-Path $here 'installer/kabmo.iss')
+  & $iscc "/DAppVersion=$version" "/DAppArch=$Arch" "/DSourceDir=$out" (Join-Path $here 'installer/kabmo.iss')
   if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
-  Write-Host "built $(Join-Path $here "build/installer/kabmo-windows-v$version-setup.exe")"
+  Write-Host "built $(Join-Path $here "build/installer/Kabmo-$version-win-$Arch-setup.exe")"
 } else {
   Write-Host "Inno Setup not found — skipping the installer; $out is runnable as-is"
 }

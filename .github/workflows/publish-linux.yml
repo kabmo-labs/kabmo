@@ -1,24 +1,33 @@
 name: Build and attach the Linux shell
 
 # The Linux app body, as a REUSABLE workflow — the same shape
-# `publish-android.yml`, `publish-ios.yml`, `publish-windows.yml`, `publish-macos.yml`
-# and `publish-app.yml` take, and for the same reason: the steps exist once, so a
-# release run and a manual re-run cannot drift apart.
+# `publish-android.yml`, `publish-ios.yml`, `publish-windows.yml`,
+# `publish-macos.yml` and `publish-app.yml` take, and for the same reason: the
+# steps exist once, so a release run and a manual re-run cannot drift apart.
 #
 # TWO PHASES, like the Windows and macOS bodies:
 #
-#   - `build` compiles the Rust crate, runs the rules suite, verifies the version the
-#     BINARY reports and uploads the packaged directory as a run artifact.
-#     `release.yml` calls it BEFORE `app` tags, so a toolchain that moved, a missing
-#     GTK/WebKitGTK development package or a compile error stops the release instead
-#     of shipping a tag whose GitHub release carries no shell.
-#   - `attach` downloads that artifact and attaches it to the release `app` created.
-#     It runs after the tag, because `gh release upload` has nothing to upload to
-#     before the release exists — and it no longer BUILDS anything, so it cannot be
-#     the step that discovers a broken build.
+#   - `build` compiles the Rust crate on BOTH architectures, runs the rules suite,
+#     verifies the version AND the ELF machine type the BINARY reports, and uploads
+#     one `.tar.gz` per architecture as a run artifact. `release.yml` calls it
+#     BEFORE `app` tags, so a toolchain that moved, a missing GTK/WebKitGTK
+#     development package or a compile error stops the release instead of shipping
+#     a tag whose GitHub release carries no shell.
+#   - `attach` downloads those artifacts and attaches them to the release `app`
+#     created. It runs after the tag, because `gh release upload` has nothing to
+#     upload to before the release exists — and it no longer BUILDS anything, so
+#     it cannot be the step that discovers a broken build.
 #
 # It is NOT an npm publish. The shell is a private application, so the only artifact
 # is the `.tar.gz` attached to the GitHub release.
+#
+# WHY A MATRIX OVER TWO NATIVE RUNNERS. The shell links GTK 3 and WebKitGTK 4.1,
+# which are native libraries: a cross-compile would need an Arm64 sysroot and a
+# cross `pkg-config`, and the binary it produced would never have been run. GitHub
+# hosts an Arm64 Linux image (`ubuntu-24.04-arm`, verified in the hosted-runner
+# reference), so each row compiles natively on the architecture it ships. The
+# artifact names carry the architecture (`Kabmo-<v>-linux-<arch>.tar.gz`), because
+# two archives with one name would collide on the release.
 #
 # The gates are NOT called here. `release.yml`'s `linux-build` job `needs: linux`,
 # which depends transitively on both gate jobs — and `app` `needs: linux-build`, so
@@ -27,8 +36,8 @@ name: Build and attach the Linux shell
 on:
   workflow_call:
     inputs:
-      # Which phase to run. `build` compiles and uploads the artifact; `attach`
-      # downloads it from THIS run and uploads it to `tag`.
+      # Which phase to run. `build` compiles and uploads the artifacts; `attach`
+      # downloads them from THIS run and uploads them to `tag`.
       mode:
         description: build (compile + upload artifact) or attach (upload to a release).
         required: false
@@ -70,11 +79,45 @@ jobs:
   # Phase 1 — the gate. `release.yml` runs this before `app` tags.
   # ---------------------------------------------------------------------------
   build:
-    name: Build the Linux app
+    name: Build the Linux app (${{ matrix.arch }})
     # "not attach" rather than "== build", because a `workflow_dispatch` carries no
     # `mode` at all and a dispatch must build.
     if: ${{ inputs.mode != 'attach' }}
-    runs-on: ubuntu-latest
+    # `fail-fast: false` so one architecture failing still reports the other's
+    # result: a repair needs to know whether BOTH archives are broken or only one.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Four names per row, and they are four different facts:
+          #
+          #   - `arch`    — the ASSET label, the word a person downloads. It follows
+          #                 the same `<platform>-<arch>` scheme the macOS `.zip` and
+          #                 the Windows installer use, so one release reads
+          #                 consistently.
+          #   - `host`    — what `uname -m` answers on that image, which is how the
+          #                 build asserts it is on the machine its row claims.
+          #   - `machine` — the ELF `e_machine` value (62 = x86-64, 183 = AArch64),
+          #                 read out of the built binary's own header.
+          #   - `deb`     — Debian's spelling of the same architecture. It is NOT the
+          #                 asset's and NOT `uname`'s: dpkg refuses a package whose
+          #                 `Architecture:` field it does not know, and for x86-64 it
+          #                 says `amd64`. RPM and AppImage both accept the `host`
+          #                 spelling, which is why only this one needs its own field.
+          #
+          # `ubuntu-latest` is x64 and `ubuntu-24.04-arm` is arm64 — verified in the
+          # hosted-runner reference.
+          - arch: x86_64
+            host: x86_64
+            machine: 62
+            deb: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            host: aarch64
+            machine: 183
+            deb: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       # The build reads the tree and uploads a run artifact; it needs no write
       # access to the repository.
@@ -85,18 +128,35 @@ jobs:
         with:
           ref: ${{ inputs.ref || inputs.tag || github.sha }}
 
-      # The two native libraries the shell links against, plus the entry validator.
-      # `pkg-config` is what the `gtk` and `webkit2gtk` crates use to find them, and
-      # its ABSENCE is the failure that looks like a code error ("The system library
-      # `gtk` required by crate `gtk-sys` was not found") rather than a missing
-      # package. `desktop-file-utils` is what the installer validates the launcher
-      # entry with — one apt run rather than a second, later one.
-      - name: Install the GTK and WebKitGTK development packages
+      # The two native libraries the shell links against, plus everything the three
+      # PACKAGE FORMATS need. `pkg-config` is what the `gtk` and `webkit2gtk` crates
+      # use to find the libraries, and its ABSENCE is the failure that looks like a
+      # code error ("The system library `gtk` required by crate `gtk-sys` was not
+      # found") rather than a missing package. `desktop-file-utils` is what every
+      # format validates its launcher entry with.
+      #
+      # The packaging half, and each is load-bearing:
+      #   - `dpkg-dev` + `fakeroot` → `dpkg-deb` (and root-owned entries without
+      #     running as root);
+      #   - `rpm` → `rpmbuild`, for the Fedora/RHEL family;
+      #   - `zsync` → lets `appimagetool` write the `.zsync` delta metadata. Without
+      #     it the AppImage still builds; `AppImageUpdate` just downloads in full;
+      #   - `file` → `appimagetool` REQUIRES it and reports the absence badly
+      #     ("file command is missing but required, please install it") only after
+      #     downloading and unpacking itself;
+      #   - `curl` → `package-appimage.sh` fetches the pinned `appimagetool`.
+      #
+      # `file` and `curl` are preinstalled on both images, but the requirement is
+      # this workflow's, so it is stated here rather than inherited from the image.
+      #
+      # All of them are in the Ubuntu archive on BOTH architectures, so the arm64
+      # row installs the same list.
+      - name: Install the GTK, WebKitGTK and packaging tools
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
-            desktop-file-utils
+            desktop-file-utils dpkg-dev fakeroot rpm zsync file curl
 
       # Pinned rather than inherited: the runner's default toolchain moves, and
       # `rust-version` in `Cargo.toml` is the floor the crate is written against.
@@ -137,12 +197,26 @@ jobs:
       # binary what it reports, so a missing or unparsed `version.properties` is
       # caught here instead of shipping a shell whose page shows a number the
       # pipeline never published.
-      - name: Verify the artifact's version
+      #
+      # The ELF machine type is checked too, from the file's own header: a runner
+      # that silently changed architecture would otherwise upload an x86-64 binary
+      # under an `aarch64` name, and it would fail on the user's machine and nowhere
+      # in this pipeline.
+      - name: Verify the artifact's version and architecture
         env:
           EXPECTED: ${{ steps.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          HOST: ${{ matrix.host }}
+          EXPECTED_MACHINE: ${{ matrix.machine }}
         run: |
           set -euo pipefail
           out=packages/linux/build/Kabmo
+
+          # The runner IS the architecture this row ships, or nothing below means
+          # anything: a cross-compiled binary would pass every other check.
+          test "$(uname -m)" = "$HOST" \
+            || { echo "this runner is $(uname -m), but the matrix row targets $HOST"; exit 1; }
+
           # The binary is named after the APP: GTK takes the process name, the
           # window's `WM_CLASS` and the taskbar label from the executable's file
           # name, so `kabmo-desktop` put that string in the window list on a shell
@@ -162,6 +236,17 @@ jobs:
             echo "the binary reports '$reported', expected '$EXPECTED'"
             exit 1
           fi
+
+          # ELF header: `e_machine` is the 2-byte field at offset 18. Read with `od`,
+          # which is in coreutils on both images. This is the check a cross-build
+          # would fail, and the one that keeps an `arm64`-named archive from
+          # carrying an x86-64 binary.
+          machine="$(od -An -tu2 -j18 -N2 "$out/Kabmo" | tr -d ' ')"
+          if [ "$machine" != "$EXPECTED_MACHINE" ]; then
+            echo "the binary's ELF machine is $machine, expected $EXPECTED_MACHINE for $ARCH"
+            exit 1
+          fi
+          echo "ELF machine $machine OK for $ARCH ($HOST)"
 
           # The launcher entry must name the app, not the crate.
           grep -q '^Name=Kabmo$' "$out/kabmo.desktop.in" \
@@ -191,26 +276,60 @@ jobs:
             || { echo "uninstall left the launcher entry behind"; exit 1; }
           rm -rf "$prefix"
 
-          echo "artifact OK ($EXPECTED)"
+          echo "artifact OK ($EXPECTED, $ARCH)"
 
-      # Renamed so the download is identifiable: a bare `Kabmo.tar.gz` says nothing
-      # about which build it is. The name carries the SHELL's version,
-      # never the release tag — nothing in the console parses it (a desktop app is
-      # installed by hand from the release page), so the number is here so a person
-      # can tell two builds apart.
-      - name: Name the artifact
+      # The archive, and the three PACKAGE FORMATS beside it. Each is a different
+      # answer to "how do I install this", and none of them replaces another:
+      #
+      #   `.tar.gz`   — unpack anywhere, `install.sh` puts it in `~/.local`. The
+      #                 format that works on any distribution and needs no root.
+      #   `.deb`      — Ubuntu/Debian: apt owns it, upgrades and removes it.
+      #   `.rpm`      — Fedora/RHEL/openSUSE: dnf/zypper own it.
+      #   `.AppImage` — one file, no install: Arch, NixOS, immutable distros.
+      #
+      # The packaging scripts take the architecture in each ecosystem's OWN
+      # spelling, which is why the matrix carries three of them (`arch` for the
+      # asset name, `deb` for Debian's `amd64`, `host` for RPM's and AppImage's
+      # `aarch64`/`x86_64`).
+      - name: Package the app in every Linux format
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          HOST: ${{ matrix.host }}
+          DEB_ARCH: ${{ matrix.deb }}
         run: |
           set -euo pipefail
-          tar -C packages/linux/build -czf "kabmo-linux-v${VERSION}.tar.gz" Kabmo
-          ls -l ./*.tar.gz
+          # `artifacts/` rather than `dist/` or `release/`, and both alternatives
+          # are wrong for a reason: `dist/` is the client bundle's own output
+          # (gitignored, written by `bun run build`, so a later step can delete a
+          # release artifact or a glob can pick up a stale chunk), and `release/`
+          # is TRACKED SOURCE — the bump scripts and their tests live there.
+          mkdir -p artifacts
+          tar -C packages/linux/build -czf "artifacts/Kabmo-${VERSION}-linux-${ARCH}.tar.gz" Kabmo
+          packages/linux/scripts/package-deb.sh \
+            packages/linux/build/Kabmo artifacts "$DEB_ARCH" "$VERSION"
+          packages/linux/scripts/package-rpm.sh \
+            packages/linux/build/Kabmo artifacts "$HOST" "$VERSION"
+          packages/linux/scripts/package-appimage.sh \
+            packages/linux/build/Kabmo artifacts "$HOST" "$VERSION"
+          ls -l artifacts/
 
+      # One artifact per architecture: the attach phase merges them back, and a
+      # single shared name would make the second row overwrite the first.
+      #
+      # Every format rides in it — the archive, the `.deb`, the `.rpm`, the
+      # `.AppImage` and its `.zsync`. A pattern that named only `*.tar.gz` would
+      # build the packages and then throw them away.
       - name: Upload the app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kabmo-linux-app
-          path: ./*.tar.gz
+          name: kabmo-linux-app-${{ matrix.arch }}
+          path: |
+            artifacts/*.tar.gz
+            artifacts/*.deb
+            artifacts/*.rpm
+            artifacts/*.AppImage
+            artifacts/*.AppImage.zsync
           if-no-files-found: error
           retention-days: 1
 
@@ -230,10 +349,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download the app artifact
+      # `pattern` rather than a name: the build phase uploads one artifact per
+      # architecture, and `merge-multiple` puts both archives in one directory so a
+      # single `gh release upload` carries the pair.
+      - name: Download the app artifacts
         uses: actions/download-artifact@v4
         with:
-          name: kabmo-linux-app
+          pattern: kabmo-linux-app-*
+          merge-multiple: true
           path: .
 
       - name: Attach to the GitHub release
@@ -241,7 +364,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag }}
           # `gh` resolves the repository from a git remote in the working directory,
-          # and this job checks NOTHING out — its only input is the artifact it just
+          # and this job checks NOTHING out — its only input is the artifacts it just
           # downloaded. Without this every command below dies with
           # `failed to run git: fatal: not a git repository`, which a `||` guard then
           # reports as "No GitHub release for <tag>" — a wrong reason for a real
@@ -249,8 +372,48 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          ls -l ./*.tar.gz
+          # A pattern that matches NOTHING stays literal, so `set -- *.rpm` reports
+          # one argument holding the text `*.rpm` — measured, and it would let a
+          # missing format pass a count of 1. `nullglob` makes an unmatched pattern
+          # expand to zero words, which is what every count below assumes.
+          shopt -s nullglob
+          ls -l
+          # EVERY format must arrive in BOTH architectures, or a release goes out
+          # that installs on one machine and not the other — and the failure is
+          # per-format: a build that produced the `.deb` but not the `.rpm` would
+          # otherwise publish a release page with a gap nobody notices.
+          #
+          # Counted through the shell's own positional parameters rather than by
+          # parsing `ls`: a filename is arbitrary bytes and `ls` mangles some of
+          # them. `set --` also resets `$#` per pattern, so each count is its own.
+          # The unquoted `$pattern` is deliberate — it is a GLOB, and quoting it
+          # would count the pattern string itself.
+          for pattern in '*.tar.gz' '*.deb' '*.rpm' '*.AppImage'; do
+            # shellcheck disable=SC2086
+            set -- $pattern
+            test "$#" = "2" \
+              || { echo "expected 2 $pattern (x86_64 + arm64), found $#: $*"; exit 1; }
+          done
+          # The `.zsync` is OPTIONAL: `appimagetool` writes it only when `zsyncmake`
+          # is installed, and the AppImage runs without it. Zero is a warning, one
+          # per AppImage is the expected shape.
+          set -- *.AppImage.zsync
+          zsync_count="$#"
+          if [ "$zsync_count" = "0" ]; then
+            echo "note: no .zsync metadata; AppImageUpdate will download in full"
+          elif [ "$zsync_count" != "2" ]; then
+            echo "expected 0 or 2 .zsync files, found $zsync_count: $*"; exit 1
+          fi
           gh release view "$TAG" --json tagName > /dev/null \
             || { echo "No GitHub release for $TAG — the app job must run first."; exit 1; }
-          gh release upload "$TAG" ./*.tar.gz --clobber
+          # `--clobber` so a repair dispatch replaces the assets rather than failing
+          # on names that already exist.
+          gh release upload "$TAG" ./*.tar.gz ./*.deb ./*.rpm ./*.AppImage --clobber
+          # Uploaded separately and only when present: `gh release upload` fails the
+          # whole command on a glob that matches nothing, which would turn "no zsync
+          # metadata" into a failed release. The count was taken above, and `[ -e
+          # ./*.zsync ]` would error with "too many arguments" on two matches.
+          if [ "$zsync_count" = "2" ]; then
+            gh release upload "$TAG" ./*.AppImage.zsync --clobber
+          fi
           gh release view "$TAG" --json assets --jq '.assets[].name'

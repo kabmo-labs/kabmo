@@ -167,9 +167,55 @@ nothing has to parse it.
 `linux-build` job calls it with `mode: build` and `ref: main` BEFORE `app` tags — so
 a compile error, a missing `libwebkit2gtk-4.1-dev`, or a rules-suite failure stops
 the release instead of shipping a tag whose GitHub release carries no shell — and
-`linux-app` calls it again with `mode: attach` after the release exists. The asset
-is `kabmo-linux-v<version>.tar.gz`, unpacked and installed with the `install.sh`
-inside it (see Installing, below).
+`linux-app` calls it again with `mode: attach` after the release exists. It builds
+**both architectures** natively (`x86_64` on `ubuntu-latest`, `arm64` on
+`ubuntu-24.04-arm`), and each row produces every format listed below — the
+`.tar.gz`, the `.deb`, the `.rpm` and the `.AppImage`.
+
+## Package formats
+
+Each release carries the shell in **five shapes**, because "how do I install this"
+has a different answer per distribution:
+
+| Asset | Who it is for | How it installs |
+|---|---|---|
+| `Kabmo-<v>-linux-x86_64.tar.gz` | anyone, no root | unpack, `./install.sh` → `~/.local` |
+| `Kabmo-<v>-linux-amd64.deb` | Ubuntu, Debian, Mint, Pop!_OS | `sudo apt install ./Kabmo-….deb` |
+| `Kabmo-<v>-linux-x86_64.rpm` | Fedora, RHEL, Rocky, openSUSE | `sudo dnf install ./Kabmo-….rpm` |
+| `Kabmo-<v>-linux-x86_64.AppImage` | Arch, NixOS, immutable distros | `chmod +x`, run it |
+| `Kabmo-<v>-linux-x86_64.AppImage.zsync` | `AppImageUpdate` | delta updates |
+
+Built by three scripts beside `build-app.sh`, each invoked from the matrix in
+`publish-linux.yml`:
+
+- `package-deb.sh` — `dpkg-deb`, `Depends: libgtk-3-0t64, libwebkit2gtk-4.1-0`.
+  The `t64` suffix is not cosmetic: Ubuntu 24.04 renamed GTK 3's runtime package
+  in the 64-bit `time_t` transition, and a `.deb` naming the old `libgtk-3-0`
+  there is **uninstallable** — apt answers "no installation candidate" rather
+  than naming a missing library.
+- `package-rpm.sh` — `rpmbuild`, with the Fedora-family names (`gtk3`,
+  `webkit2gtk4.1`). The build host is Ubuntu, so its own package names are the
+  wrong ones for the machine the RPM installs on; a spec that copied them builds
+  cleanly and then resolves on nothing.
+- `package-appimage.sh` — `appimagetool` (pinned), with
+  `APPIMAGE_EXTRACT_AND_RUN=1` because a container or a minimal runner has no
+  `/dev/fuse`. The `.zsync` is generated when `zsyncmake` is present, and
+  `appimagetool` writes it into the **current directory**, so the script runs it
+  from inside the output directory — an absolute destination silently leaves the
+  delta metadata behind.
+
+**The AppImage is not self-contained the way an Electron one is**, and that is
+deliberate: the shell links GTK 3 and WebKitGTK 4.1, which are large system
+libraries with their own theme, font and sandbox integration. Bundling them
+produces an app that starts and then cannot render text. So it carries the shell
+and expects the same two libraries a `.deb` declares — what it buys is that it
+needs no package manager and leaves nothing behind.
+
+The `.deb` and the `.rpm` name the architecture in their **own** ecosystem's
+spelling (`amd64`/`arm64` for dpkg, `x86_64`/`aarch64` for RPM and AppImage),
+which is why the workflow's matrix carries both `deb` and `host` alongside the
+asset label `arch`. One spelling reused across all three would produce packages
+that install on nothing.
 
 ## Installing
 

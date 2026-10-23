@@ -1,17 +1,18 @@
 name: Build and attach the Windows shell
 
 # The Windows app body, as a REUSABLE workflow — the same shape
-# `publish-android.yml`, `publish-ios.yml`, `publish-app.yml` and
-# `publish-packages.yml` take, and for the same reason: the steps exist once, so a
+# `publish-android.yml`, `publish-ios.yml`, `publish-macos.yml` and
+# `publish-linux.yml` take, and for the same reason: the steps exist once, so a
 # release run and a manual re-run cannot drift apart.
 #
 # TWO PHASES, like the APK body:
 #
-#   - `build` compiles, runs the rules suite, verifies the version the ARTIFACT
-#     declares and uploads it as a run artifact. `release.yml` calls it BEFORE
-#     `app` tags, so a toolchain that moved or a compile error stops the release
-#     instead of shipping a tag whose GitHub release carries no shell.
-#   - `attach` downloads that artifact and attaches it to the release `app`
+#   - `build` compiles on BOTH architectures, runs the rules suite, verifies the
+#     version AND the machine type the ARTIFACT declares, and uploads one installer
+#     per architecture as a run artifact. `release.yml` calls it BEFORE `app` tags,
+#     so a toolchain that moved or a compile error stops the release instead of
+#     shipping a tag whose GitHub release carries no shell.
+#   - `attach` downloads those artifacts and attaches them to the release `app`
 #     created. It runs after the tag, because `gh release upload` has nothing to
 #     upload to before the release exists — and it no longer BUILDS anything, so
 #     it cannot be the step that discovers a broken app.
@@ -21,12 +22,13 @@ name: Build and attach the Windows shell
 # no `environment: npm` here and no registry credential: the only thing the attach
 # job needs is `contents: write` on the release it uploads to.
 #
-# **The artifact is an INSTALLER (`kabmo-windows-v<v>-setup.exe`), not a ZIP.** A
-# ZIP leaves no Add/remove-programs entry, no Start-menu entry and no uninstaller,
-# so "which version is this" and "how do I remove it" both have no answer. It is
-# built by Inno Setup — `ISCC.exe` is preinstalled on `windows-latest` (verified
-# against actions/runner-images: "InnoSetup 6.7.1" on both Windows 2022 and 2025),
-# so this needs no third-party action and no download at run time.
+# **The artifact is an INSTALLER, not a ZIP.** A ZIP leaves no Add/remove-programs
+# entry, no Start-menu entry and no uninstaller, so "which version is this" and
+# "how do I remove it" both have no answer. It is built by Inno Setup —
+# `ISCC.exe` is preinstalled on BOTH Windows images (verified against
+# actions/runner-images: "InnoSetup 6.7.1" on Windows 2022, Windows 2025 and
+# Windows 11 Arm64), so this needs no third-party action and no download at run
+# time.
 #
 # It is NOT an MSIX. MSIX requires a certificate bound to a publisher identity:
 # without one Windows refuses the package, and a self-signed one shows a
@@ -34,6 +36,15 @@ name: Build and attach the Windows shell
 # `.exe` that installs unsigned (SmartScreen warns — the README says so),
 # per-user, and uninstalls cleanly. Adding a real certificate later is `SignTool=`
 # in `packages/windows/installer/kabmo.iss` plus one step here.
+#
+# WHY A MATRIX OVER TWO RUNNERS. x64 and Arm64 are two publishes of the same
+# project (`-r win-x64` / `-r win-arm64`), and each GitHub-hosted Windows image IS
+# one of the two (`windows-latest` is x64, `windows-11-arm` is Arm64). Building
+# each on its own architecture means the rules suite executes on the machine the
+# binary targets and the installer is compiled by a native `ISCC.exe`; a
+# cross-publish would produce an Arm64 binary nothing here ever ran. The artifact
+# names carry the architecture (`Kabmo-<v>-win-<arch>-setup.exe`), because two
+# installers with one name would collide on the release.
 #
 # The gates are NOT called here. `release.yml`'s `win-build` job `needs:
 # windows`, which depends transitively on both gate jobs — and `app` `needs:
@@ -47,11 +58,11 @@ on:
     inputs:
       # Which phase to run.
       #
-      # `build` — compile, verify and upload the artifact. `release.yml`'s
+      # `build` — compile, verify and upload the artifacts. `release.yml`'s
       # `win-build` job uses this, with no tag, so nothing is attached before the
       # release exists.
       #
-      # `attach` — download the artifact from THIS run and upload it to `tag`.
+      # `attach` — download the artifacts from THIS run and upload them to `tag`.
       mode:
         description: build (compile + upload artifact) or attach (upload to a release).
         required: false
@@ -99,13 +110,28 @@ jobs:
   # Phase 1 — the gate. `release.yml` runs this before `app` tags.
   # ---------------------------------------------------------------------------
   build:
-    name: Build the Windows app
+    name: Build the Windows app (${{ matrix.arch }})
     # Everything except an explicit `attach` call. Stated as "not attach" rather
     # than "== build" because a `workflow_dispatch` carries no `mode` at all, and a
     # dispatch must build — an equality test would silently skip the build and leave
     # the attach with nothing to download.
     if: ${{ inputs.mode != 'attach' }}
-    runs-on: windows-latest
+    # `fail-fast: false` so one architecture failing still reports the other's
+    # result: a repair needs to know whether BOTH installers are broken or only one.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # `windows-latest` resolves to the x64 Windows 2025 image.
+          - arch: x64
+            rid: win-x64
+            runner: windows-latest
+          # The Arm64 image. Verified against actions/runner-images: it carries the
+          # .NET 8 SDK and "InnoSetup 6.7.1", which is everything this job needs.
+          - arch: arm64
+            rid: win-arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       # The build reads the tree and uploads a run artifact; it needs no write
       # access to the repository.
@@ -121,9 +147,15 @@ jobs:
           ref: ${{ inputs.ref || inputs.tag || github.sha }}
 
       # .NET 8: the app targets `net8.0-windows`, and the runner's default SDK is
-      # not guaranteed to be 8 (it moves). `dotnet` is preinstalled on
-      # `windows-latest`, but pinning the channel is what makes the build
-      # reproducible rather than a property of the image.
+      # not guaranteed to be 8 (it moves). `dotnet` is preinstalled on both images,
+      # but pinning the channel is what makes the build reproducible rather than a
+      # property of the image.
+      #
+      # No `architecture` input: `setup-dotnet@v4` does not declare one, and it is
+      # not needed — the SDK is installed per image in the image's OWN architecture
+      # (verified: the `windows-11-arm` readme lists .NET 8.0.131 … 8.0.425), so
+      # `8.0.x` resolves to the host build and downloads nothing. The TARGET
+      # architecture is `-r` below, and the artifact's PE header is what proves it.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -135,7 +167,8 @@ jobs:
       #
       # It runs HERE rather than in `gates.yml` for the Android suite's reason: the
       # .NET toolchain would otherwise be installed for every pull request, and this
-      # job is the only place it pays for itself.
+      # job is the only place it pays for itself. It targets `net8.0` with no RID, so
+      # it executes on whichever architecture this runner is.
       - name: Rules suite
         run: dotnet run --project packages/windows/tests/KabmoDesktop.Tests.csproj -c Release
 
@@ -161,24 +194,36 @@ jobs:
       # The version is NOT passed here: `KabmoDesktop.App.csproj` reads
       # `version.properties` itself (`ReadShellVersion`), so a `-p:Version` would be
       # a second source that could disagree with the file the asset name comes from.
+      #
+      # `-r ${{ matrix.rid }}` is the ONLY thing that differs between the two rows,
+      # and it is what makes the artifact's machine type match its name.
       - name: Publish
         shell: pwsh
+        env:
+          RID: ${{ matrix.rid }}
         run: |
           dotnet publish packages/windows/src/KabmoDesktop.App/KabmoDesktop.App.csproj `
             -c Release `
-            -r win-x64 `
+            -r $env:RID `
             --self-contained true `
             -p:PublishSingleFile=false `
             -o build/Kabmo
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)" }
 
       # A version check on the ARTIFACT, not on the build file: this reads what
       # `Kabmo.exe` actually declares, so a missing or unparsed `version.properties`
       # is caught here instead of shipping a release whose app reports a number the
       # pipeline never published.
-      - name: Verify the artifact's version
+      #
+      # The MACHINE TYPE is checked from the PE header rather than assumed from the
+      # `-r` argument: a runtime pack that silently resolved to the host
+      # architecture would produce an `arm64`-named installer carrying an x64 app,
+      # which fails on the user's machine and nowhere in this pipeline.
+      - name: Verify the artifact's version and architecture
         shell: pwsh
         env:
           EXPECTED: ${{ steps.version.outputs.version }}
+          EXPECTED_MACHINE: ${{ matrix.arch == 'arm64' && '0xAA64' || '0x8664' }}
         run: |
           $exe = 'build/Kabmo/Kabmo.exe'
           if (-not (Test-Path $exe)) { throw "publish produced no $exe" }
@@ -190,21 +235,36 @@ jobs:
             throw "Kabmo.exe declares $($info.FileVersion), not $env:EXPECTED"
           }
 
-      # The installer. `ISCC.exe` is preinstalled on the runner, so this is a
+          # PE header: `e_lfanew` at 0x3C points at the COFF header, whose first
+          # field is the machine type. 0x8664 = x64, 0xAA64 = Arm64.
+          $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $exe))
+          $peOffset = [System.BitConverter]::ToInt32($bytes, 0x3C)
+          $machine = '0x{0:X4}' -f [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          Write-Host "machine=$machine expected=$env:EXPECTED_MACHINE"
+          if ($machine -ne $env:EXPECTED_MACHINE) {
+            throw "Kabmo.exe is $machine, expected $env:EXPECTED_MACHINE"
+          }
+
+      # The installer. `ISCC.exe` is preinstalled on both images, so this is a
       # compile step rather than a download.
       #
-      # The version is passed on the COMMAND LINE from the file — `/DAppVersion` —
-      # rather than written into the `.iss`, for the same reason the csproj does not
-      # state it: one declared fact, `packages/windows/version.properties`.
+      # The version and the architecture are passed on the COMMAND LINE —
+      # `/DAppVersion` and `/DAppArch` — rather than written into the `.iss`, for the
+      # same reason the csproj does not state the version: one declared fact. The
+      # `.iss` turns `AppArch` into the installer's own `ArchitecturesAllowed` and
+      # `ArchitecturesInstallIn64BitMode`, so an Arm64 installer cannot install on an
+      # x64 machine (where it would produce a window that never paints).
       - name: Build the installer
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { throw "Inno Setup not found at $iscc" }
           & $iscc `
             "/DAppVersion=$env:VERSION" `
+            "/DAppArch=$env:ARCH" `
             "/DSourceDir=$PWD\build\Kabmo" `
             packages/windows/installer/kabmo.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
@@ -212,13 +272,14 @@ jobs:
       # A version check on the INSTALLER, not only on the app: the file a user
       # downloads must declare the number the release carries, or the release page
       # and the thing it hands out disagree. `OutputBaseFilename` is
-      # `kabmo-windows-v<v>-setup`, so the name is the assertion.
+      # `Kabmo-<v>-win-<arch>-setup`, so the name is the assertion.
       - name: Verify the installer
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          $expected = "kabmo-windows-v$env:VERSION-setup.exe"
+          $expected = "Kabmo-$env:VERSION-win-$env:ARCH-setup.exe"
           $installer = "build/installer/$expected"
           if (-not (Test-Path $installer)) {
             throw "no $installer was produced"
@@ -236,13 +297,16 @@ jobs:
       # calls one pipeline rather than two independent builds. It is the installer
       # the checks above passed, so attaching cannot substitute a different one.
       #
+      # One artifact per architecture: the attach phase merges them back, and a
+      # single shared name would make the second row overwrite the first.
+      #
       # Retention is a day: the only consumer is the attach call in this same run
       # (or a dispatch's own attach), so a longer window would only clutter the run's
       # artifacts with binaries nothing reads.
       - name: Upload the app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kabmo-windows-app
+          name: kabmo-windows-app-${{ matrix.arch }}
           path: build/installer/*.exe
           if-no-files-found: error
           retention-days: 1
@@ -256,21 +320,22 @@ jobs:
     # `always()` because a skipped `build` must not skip the attach with it: the
     # release run calls this body twice, and the second call is attach-only. The
     # result check keeps a FAILED build blocking the upload — there would be no
-    # artifact to attach, and a release carrying a stale one is worse than a release
-    # with none.
+    # artifact to attach, and a release carrying a stale one is worse than a
+    # release with none.
     if: ${{ always() && inputs.tag != '' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       # Uploading an asset to an existing release needs `contents: write`.
       contents: write
     steps:
-      # The artifact from the build call in THIS run. `name` rather than a pattern:
-      # there is exactly one, and a pattern that matched nothing would leave an empty
-      # directory for `gh release upload` to complain about.
-      - name: Download the app artifact
+      # `pattern` rather than a name: the build phase uploads one artifact per
+      # architecture, and `merge-multiple` puts both installers in one directory so
+      # a single `gh release upload` carries the pair.
+      - name: Download the app artifacts
         uses: actions/download-artifact@v4
         with:
-          name: kabmo-windows-app
+          pattern: kabmo-windows-app-*
+          merge-multiple: true
           path: .
 
       # `GH_REPO` because this job deliberately checks nothing out, and `gh`
@@ -285,7 +350,17 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          ls -l ./*.exe
+          # An unmatched pattern stays literal, so `set -- *.exe` would report one
+          # argument holding the text `*.exe` — measured, and it would let a missing
+          # architecture pass a count of 1.
+          shopt -s nullglob
+          ls -l
+          # Both architectures must be present, or a release goes out that installs
+          # on one Windows machine and not the other.
+          set -- ./*.exe
+          test "$#" = "2" \
+            || { echo "expected 2 Windows installers (x64 + arm64), found $#: $*"; exit 1; }
           # `--clobber` so a repair dispatch replaces the asset rather than failing
           # on a name that already exists.
           gh release upload "$TAG" ./*.exe --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'

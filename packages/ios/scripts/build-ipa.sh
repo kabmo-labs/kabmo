@@ -39,7 +39,11 @@ done
 
 VERSION="$(node "$REPO/release/ios-version.mjs")"
 BUILD="${KABMO_IOS_BUILD:-1}"
-OUTPUT="${OUTPUT:-$HERE/build/kabmo-ios-v$VERSION.ipa}"
+# `<App>-<version>-<platform>.<ext>`, the project's one naming rule — the same
+# shape the APK and the desktop shells use. The workflow passes an absolute path
+# so the artifact lands in the workspace; this default is what a developer's own
+# run produces.
+OUTPUT="${OUTPUT:-$HERE/build/Kabmo-$VERSION-ios.ipa}"
 
 echo "Shell version: $VERSION (build $BUILD)"
 

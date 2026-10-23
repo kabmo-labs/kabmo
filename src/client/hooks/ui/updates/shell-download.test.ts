@@ -16,7 +16,7 @@ import {
 
 /** The published release every case compares against. */
 const RELEASE = {
-  url: 'https://github.com/kabmo-labs/kabmo/releases/download/v1.2.3/kabmo-android-v1.2.3.apk',
+  url: 'https://github.com/kabmo-labs/kabmo/releases/download/v1.2.3/Kabmo-1.2.3-android.apk',
   latest: '1.2.3',
   releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v1.2.3',
 };

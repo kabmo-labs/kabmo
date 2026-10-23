@@ -296,19 +296,94 @@ not registry packages, and they follow one shape:
 
 | Shell | Version file | Build job | Asset |
 |---|---|---|---|
-| Android | `packages/android/version.properties` | `apk-build` | `kabmo-android-v<v>.apk` |
-| iOS | `packages/ios/version.properties` | `ipa-build` | `kabmo-ios-v<v>.ipa` |
-| Windows | `packages/windows/version.properties` | `win-build` | `kabmo-windows-v<v>-setup.exe` |
-| macOS | `packages/macos/version.properties` | `macos-build` | `kabmo-macos-v<v>.zip` |
+| Android | `packages/android/version.properties` | `apk-build` | `Kabmo-<v>-android.apk` |
+| iOS | `packages/ios/version.properties` | `ipa-build` | `Kabmo-<v>-ios.ipa` |
+| Windows | `packages/windows/version.properties` | `win-build` | `Kabmo-<v>-win-<arch>-setup.exe` |
+| macOS | `packages/macos/version.properties` | `macos-build` | `Kabmo-<v>-mac-<arch>.zip` + `.dmg` |
+| Linux | `packages/linux/version.properties` | `linux-build` | `.tar.gz`, `.deb`, `.rpm`, `.AppImage` (+ `.zsync`) |
 
-Each has a bump job (`android` / `ios` / `windows` / `macos`), a `publish-*.yml`
-reusable body with a `build` and an `attach` phase, and a place in the chain
-`packages → marketplace → android → ios → windows → macos → {ipa-build,
-apk-build} → win-build → macos-build → app`. **The build is a gate, not a
-consequence**: `app` `needs:` every build job, so a shell that cannot compile
-stops the release before a tag exists — instead of a release that goes out with no
-artifact in it, repaired only by a hand-run dispatch. `attach` runs after `app`
-because `gh release upload` needs the release to exist, and it never rebuilds.
+**Every shell follows ONE naming scheme** — `<App>-<version>-<platform>[-<arch>].<ext>`
+— so a release page reads consistently whatever a person came for. `Kabmo` is
+capitalised because it is the product's name, the same word the window title, the
+installer and the `.desktop` entry carry. The three DESKTOP shells add `-<arch>`
+because each ships two architectures and one name cannot describe two files; the two
+MOBILE shells have no architecture segment because neither artifact is per-arch —
+the APK is one universal build (the shell is pure Kotlin with no native libraries)
+and the IPA holds only the device slice (`arm64-apple-ios`).
+
+**The mobile names are PARSED, so the old spelling stays readable.** The console
+answers "is a newer shell published" by reading the version out of the asset NAME
+(`versionFromAssetName`, `src/server/lib/updates/shell-release.ts`), and every
+release already on GitHub carries `kabmo-android-v<v>.apk` /
+`kabmo-ios-v<v>.ipa`. `SHELL_ASSETS` therefore keeps a `legacyPrefix` and the parser
+tries it after the current scheme — without it, an installed shell would read as
+"no update" from the moment the rename shipped, silently, because a name that does
+not match is indistinguishable from a release carrying no artifact. New releases
+only ever write the current scheme. Nothing parses a desktop name (a desktop app is
+installed by hand from the release page), which is why those three changed without
+a compatibility shim.
+
+| Shell | Architectures | Runners |
+|---|---|---|
+| macOS | `arm64`, `x64` | `macos-15` (Apple silicon), `macos-15-intel` |
+| Windows | `x64`, `arm64` | `windows-latest` (x64), `windows-11-arm` |
+| Linux | `x86_64`, `arm64` | `ubuntu-latest` (x64), `ubuntu-24.04-arm` |
+
+**Each desktop shell ships every package format its platform actually uses**, and
+each format is a different answer to "how do I install this":
+
+| Shell | Formats | Why more than one |
+|---|---|---|
+| macOS | `.zip`, `.dmg` | the `.zip` is what a script or an updater consumes (`ditto`, so the signature survives); the `.dmg` is what a person downloads — `hdiutil` puts the app beside an `Applications` alias, so installing is one drag |
+| Windows | `.exe` (Inno Setup) | Windows' own convention; a ZIP leaves no Add/remove-programs entry, no Start-menu entry and no uninstaller |
+| Linux | `.tar.gz`, `.deb`, `.rpm`, `.AppImage` | no root needed / Debian family / Fedora family / no package manager at all (Arch, NixOS, immutable distros) |
+
+The Linux formats are built by three scripts beside `build-app.sh`
+(`package-deb.sh`, `package-rpm.sh`, `package-appimage.sh`), and two of their rules
+are the kind that fail only on the user's machine:
+
+- **The `.deb` depends on `libgtk-3-0t64`, not `libgtk-3-0`.** Ubuntu 24.04 renamed
+  GTK 3's runtime package in the 64-bit `time_t` transition, and a `.deb` naming
+  the old one is UNINSTALLABLE there — apt reports "no installation candidate"
+  rather than a missing library, which reads as a broken download.
+- **The `.rpm` requires `gtk3` / `webkit2gtk4.1`** — the Fedora-family names. The
+  build host is Ubuntu, so its own package names are the wrong ones for the machine
+  the RPM installs on, and a spec that copied them builds cleanly and resolves
+  nowhere.
+
+The `.deb` names its architecture `amd64`/`arm64` while the `.rpm` and the
+`.AppImage` say `x86_64`/`aarch64` — each ecosystem's own spelling, which is why the
+workflow's matrix carries `deb` and `host` alongside the asset label `arch`. One
+spelling reused across all three would produce packages that install on nothing.
+
+**Every row builds NATIVELY, on a runner that IS that architecture.** All three
+shells link native libraries — AppKit/WebKit, WPF/WebView2, GTK/WebKitGTK — so a
+cross-build would need a sysroot and a cross toolchain, and the binary it produced
+would never have been executed by the job that shipped it. GitHub hosts an image per
+architecture (verified in the hosted-runner reference), so each row compiles,
+runs its rules suite and verifies the artifact on the machine it targets.
+
+Each build also asserts the ARCHITECTURE of the artifact it produced, from the
+file's own header — `lipo -archs` (Mach-O), the PE `machine` field (0x8664 x64 /
+0xAA64 Arm64), the ELF `e_machine` field (62 x86-64 / 183 AArch64). That check is
+what keeps a matrix row's NAME honest: a runtime pack or SDK that silently resolved
+to the host architecture would otherwise publish an `arm64`-named file carrying an
+x64 binary, which fails on the user's machine and nowhere in the pipeline.
+
+The Windows installer's `ArchitecturesAllowed` comes from the same `/DAppArch`
+value that names the file (`x64os` / `arm64`), so the Arm64 installer refuses an x64
+machine and the x64 one refuses Arm64 — `x64compatible` would have matched both via
+emulation, which is now the wrong file for an Arm machine to pick.
+
+Each has a bump job (`android` / `ios` / `windows` / `macos` / `linux`), a
+`publish-*.yml` reusable body with a `build` and an `attach` phase, and a place in
+the chain `packages → marketplace → android → ios → windows → macos → linux →
+{ipa-build, apk-build} → win-build → macos-build → linux-build → app`. **The build
+is a gate, not a consequence**: `app` `needs:` every build job, so a shell that
+cannot compile stops the release before a tag exists — instead of a release that
+goes out with no artifact in it, repaired only by a hand-run dispatch. `attach`
+runs after `app` because `gh release upload` needs the release to exist, and it
+never rebuilds.
 
 The bump is the release. Each version file is the only place its shell's version
 is declared, the level comes from the same Conventional Commits rules the app
@@ -317,7 +392,7 @@ shell-only fix reaches a user on the next app release, without cutting a server
 version for it.
 
 The artifact's SHAPE follows each platform's own convention, and that is not
-cosmetic: **Windows gets an installer** (`kabmo-windows-v<v>-setup.exe`, compiled
+cosmetic: **Windows gets an installer** (`Kabmo-<v>-win-<arch>-setup.exe`, compiled
 from `packages/windows/installer/kabmo.iss`), because a ZIP leaves no
 Add/remove-programs entry, no Start-menu entry and no uninstaller — so "which
 version is this" and "how do I remove it" both have no answer. macOS gets a `.zip`

@@ -113,11 +113,11 @@ describe('the shell version is one declared fact', () => {
     // The ASSET is the installer, named from the version file. `OutputBaseFilename`
     // in the `.iss` is what actually produces it, so both sides are asserted.
     expect(workflow, 'the asset name must come from the shell version').toContain(
-      'kabmo-windows-v$env:VERSION-setup.exe',
+      'Kabmo-$env:VERSION-win-$env:ARCH-setup.exe',
     );
     const iss = readFileSync(join(repoRoot, WINDOWS_SHELL.dir, 'installer/kabmo.iss'), 'utf8');
     expect(iss, 'the installer must name itself from the version it is given').toContain(
-      'OutputBaseFilename=kabmo-windows-v{#AppVersion}-setup',
+      'OutputBaseFilename=Kabmo-{#AppVersion}-win-{#AppArch}-setup',
     );
     // A `-p:Version=` argument would be a second source that can disagree with the
     // asset name. The bare `-p:Version` appears in the comment that explains why it
@@ -128,6 +128,56 @@ describe('the shell version is one declared fact', () => {
     // a looser pattern reads as an inline parse.
     expect(workflow, 'the workflow must not parse version.properties with sed').not.toMatch(
       /\bsed\s+[^\n]*version\.properties/,
+    );
+  });
+
+  /**
+   * Both architectures are built, and the installer refuses the machine it does
+   * not target.
+   *
+   * The `.iss` gate is the half a unit test can check and a user feels: an Arm64
+   * publish installed on x64 Windows succeeds and then opens a window that never
+   * paints, so `ArchitecturesAllowed` has to come from the same value that named
+   * the file.
+   */
+  test('the publish workflow builds both architectures, each on its own runner', () => {
+    const doc = Bun.YAML.parse(
+      readFileSync(join(repoRoot, '.github/workflows/publish-windows.yml'), 'utf8'),
+    );
+    const rows = doc.jobs.build.strategy.matrix.include;
+    expect(rows.map((row) => row.arch)).toEqual(['x64', 'arm64']);
+    expect(rows.map((row) => row.rid)).toEqual(['win-x64', 'win-arm64']);
+    // The runner IS the architecture. A cross-publish would produce a binary the
+    // rules suite never executed and the PE check below would then reject.
+    expect(rows.find((row) => row.arch === 'x64')?.runner).toBe('windows-latest');
+    expect(rows.find((row) => row.arch === 'arm64')?.runner).toBe('windows-11-arm');
+
+    const text = JSON.stringify(doc.jobs.build.steps);
+    expect(text, 'the publish must target the matrix architecture').toContain('-r $env:RID');
+    // 0x8664 = x64, 0xAA64 = Arm64, read from the PE header of the built exe.
+    expect(text, 'the artifact must be checked against its own PE header').toContain('EXPECTED_MACHINE');
+    expect(text, 'one artifact per architecture, or the second row overwrites the first').toContain(
+      'kabmo-windows-app-${{ matrix.arch }}',
+    );
+    expect(
+      JSON.stringify(doc.jobs.attach.steps),
+      'the attach must merge both architecture artifacts back',
+    ).toContain('merge-multiple');
+
+    const iss = readFileSync(join(repoRoot, WINDOWS_SHELL.dir, 'installer/kabmo.iss'), 'utf8');
+    // The gate and the name come from ONE value, or an Arm64 installer could be
+    // named for x64 and refuse the machine it was built for.
+    expect(iss, 'the installer must gate on the target architecture').toContain(
+      'ArchitecturesAllowed={#ArchAllowed}',
+    );
+    expect(iss, 'the installer must use 64-bit install mode on that architecture').toContain(
+      'ArchitecturesInstallIn64BitMode={#ArchAllowed}',
+    );
+    expect(iss, 'arm64 must be its own allowed value').toContain('#define ArchAllowed "arm64"');
+    // `x64compatible` would also match Arm64 Windows (x64 emulation), so the x64
+    // installer would install where the native Arm64 one belongs.
+    expect(iss, 'the x64 installer must not claim Arm64 machines').toContain(
+      '#define ArchAllowed "x64os"',
     );
   });
 

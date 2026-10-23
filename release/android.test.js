@@ -103,8 +103,11 @@ describe('the shell version is one declared fact', () => {
     const workflow = readFileSync(join(repoRoot, '.github/workflows/publish-android.yml'), 'utf8');
 
     expect(workflow).toContain('version.properties');
+    // The project's ONE naming rule: `<App>-<version>-<platform>.<ext>`. No
+    // architecture — the APK is a single universal build (pure Kotlin, no native
+    // libraries), so a `-arm64` here would claim a distinction that does not exist.
     expect(workflow, 'the asset name must come from the shell version').toContain(
-      'kabmo-android-v${version}.apk',
+      'Kabmo-${version}-android.apk',
     );
     expect(workflow, 'the APK must not be built with the release tag as its version').not.toContain(
       'kabmoVersionName',

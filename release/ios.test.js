@@ -113,8 +113,10 @@ describe('the shell version is one declared fact', () => {
     expect(workflow).toContain('release/ios-version.mjs');
     // The name is built from the value `release/ios-version.mjs` printed, which is
     // what makes it the SAME number the bundle declares and the shell reports.
+    // The project's ONE naming rule: `<App>-<version>-<platform>.<ext>`. No
+    // architecture — the IPA holds only the device slice (`arm64-apple-ios`).
     expect(workflow, 'the asset name must come from the shell version').toContain(
-      'kabmo-ios-v${VERSION}.ipa',
+      'Kabmo-${VERSION}-ios.ipa',
     );
     expect(workflow, 'the IPA must not be built with the release tag as its version').not.toContain(
       'kabmoVersionName',
@@ -147,7 +149,12 @@ describe('the shell version is one declared fact', () => {
     expect(ts, 'the TypeScript parser must know the same prefix').toContain("ios: 'KabmoIOS/'");
 
     const probe = readFileSync(join(repoRoot, 'src/server/lib/updates/shell-release.ts'), 'utf8');
-    expect(probe, 'the asset prefix must match the workflow').toContain("ios: { prefix: 'kabmo-ios-', extension: '.ipa' }");
+    // The prefix is the app's NAME and the extension names the platform; the
+    // legacy spelling stays readable so the releases already published still
+    // answer the update probe.
+    expect(probe, 'the asset prefix must match the workflow').toContain("prefix: 'Kabmo-'");
+    expect(probe, 'the extension must name the platform').toContain("extension: '-ios.ipa'");
+    expect(probe, 'the legacy spelling must stay readable').toContain("legacyPrefix: 'kabmo-ios-v'");
   });
 });
 

@@ -17,26 +17,57 @@ import { fetchShellRelease, resetShellReleaseCache, versionFromAssetName } from 
  */
 describe('versionFromAssetName', () => {
   test('reads the version the release workflows write', () => {
-    expect(versionFromAssetName('android', 'kabmo-android-v1.2.3.apk')).toBe('1.2.3');
-    expect(versionFromAssetName('ios', 'kabmo-ios-v1.2.3.ipa')).toBe('1.2.3');
+    expect(versionFromAssetName('android', 'Kabmo-0.5.0-android.apk')).toBe('0.5.0');
+    expect(versionFromAssetName('ios', 'Kabmo-0.1.0-ios.ipa')).toBe('0.1.0');
   });
 
-  test('accepts a hand-uploaded name without the v', () => {
-    expect(versionFromAssetName('android', 'kabmo-android-1.2.3.apk')).toBe('1.2.3');
-    expect(versionFromAssetName('ios', 'kabmo-ios-1.2.3.ipa')).toBe('1.2.3');
+  /**
+   * The old spelling is still READ, and that is not sentiment.
+   *
+   * These names are the only record of a published shell, and every release
+   * already on GitHub carries `kabmo-android-v<v>.apk`. A parser that only knew
+   * the new scheme would answer "no update" for an installed shell the moment
+   * this shipped — silently, because a name that does not match reads exactly
+   * like a release with no artifact.
+   */
+  test('still reads the legacy spelling every published release carries', () => {
+    expect(versionFromAssetName('android', 'kabmo-android-v0.5.0.apk')).toBe('0.5.0');
+    expect(versionFromAssetName('ios', 'kabmo-ios-v0.1.0.ipa')).toBe('0.1.0');
   });
 
   test('ignores anything that is not that shell’s artifact', () => {
-    expect(versionFromAssetName('android', 'kabmo-android-v1.2.3.apk.zip')).toBeNull();
+    expect(versionFromAssetName('android', 'Kabmo-1.2.3-android.apk.zip')).toBeNull();
     expect(versionFromAssetName('android', 'source.tar.gz')).toBeNull();
-    expect(versionFromAssetName('android', 'kabmo-android-latest.apk')).toBeNull();
+    expect(versionFromAssetName('android', 'Kabmo-latest-android.apk')).toBeNull();
+    expect(versionFromAssetName('android', 'Kabmo--android.apk')).toBeNull();
     expect(versionFromAssetName('android', '')).toBeNull();
+  });
+
+  /**
+   * The desktop assets share the `Kabmo-` prefix, so the EXTENSION is what keeps
+   * them out. A probe that matched on the prefix alone would offer a Mac `.dmg`
+   * to an Android phone.
+   */
+  test('does not read a desktop asset as a mobile one', () => {
+    for (const name of [
+      'Kabmo-0.1.2-mac-arm64.zip',
+      'Kabmo-0.1.2-mac-arm64.dmg',
+      'Kabmo-0.1.0-win-x64-setup.exe',
+      'Kabmo-0.1.0-linux-x86_64.tar.gz',
+      'Kabmo-0.1.0-linux-amd64.deb',
+      'Kabmo-0.1.0-linux-x86_64.AppImage',
+    ]) {
+      expect(versionFromAssetName('android', name), name).toBeNull();
+      expect(versionFromAssetName('ios', name), name).toBeNull();
+    }
   });
 
   test('does not accept one shell’s asset for the other', () => {
     // The two probes read the SAME release list, so a parser that ignored the
     // kind would let an iOS probe answer with the APK (and offer an `.apk` to an
     // iPhone).
+    expect(versionFromAssetName('ios', 'Kabmo-0.5.0-android.apk')).toBeNull();
+    expect(versionFromAssetName('android', 'Kabmo-0.1.0-ios.ipa')).toBeNull();
     expect(versionFromAssetName('ios', 'kabmo-android-v1.2.3.apk')).toBeNull();
     expect(versionFromAssetName('android', 'kabmo-ios-v1.2.3.ipa')).toBeNull();
   });
@@ -67,15 +98,15 @@ describe('fetchShellRelease', () => {
         assets: [
           { name: 'source.tar.gz', browser_download_url: 'https://x/src.tgz' },
           {
-            name: 'kabmo-android-v1.2.3.apk',
-            browser_download_url: 'https://x/kabmo-android-v1.2.3.apk',
+            name: 'Kabmo-1.2.3-android.apk',
+            browser_download_url: 'https://x/Kabmo-1.2.3-android.apk',
           },
         ],
       },
     ]);
 
     expect(await fetchShellRelease('android', impl)).toEqual({
-      url: 'https://x/kabmo-android-v1.2.3.apk',
+      url: 'https://x/Kabmo-1.2.3-android.apk',
       latest: '1.2.3',
       releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v9.9.9',
     });
@@ -86,8 +117,8 @@ describe('fetchShellRelease', () => {
       {
         html_url: 'https://x/app',
         assets: [
-          { name: 'kabmo-android-v0.9.0.apk', browser_download_url: 'https://x/a.apk' },
-          { name: 'kabmo-ios-v0.4.0.ipa', browser_download_url: 'https://x/i.ipa' },
+          { name: 'Kabmo-0.9.0-android.apk', browser_download_url: 'https://x/a.apk' },
+          { name: 'Kabmo-0.4.0-ios.ipa', browser_download_url: 'https://x/i.ipa' },
         ],
       },
     ]);
@@ -99,14 +130,54 @@ describe('fetchShellRelease', () => {
     });
   });
 
+  /**
+   * A release that carries BOTH spellings must answer with the current one.
+   *
+   * That state is real: a rename lands, and the previous release's asset stays
+   * beside the new one until `--clobber` replaces it (or a hand-upload adds
+   * one). Measured before the fix: a release holding both
+   * `kabmo-android-v0.4.0.apk` and `Kabmo-0.6.0-android.apk` answered `0.4.0` —
+   * the console offered an update to the version the user already had, and hid
+   * the newer one.
+   */
+  test('prefers the current scheme when a release carries both', async () => {
+    const { impl } = stubFetch([
+      {
+        html_url: 'https://x/r',
+        assets: [
+          { name: 'kabmo-android-v0.4.0.apk', browser_download_url: 'https://x/old.apk' },
+          { name: 'Kabmo-0.6.0-android.apk', browser_download_url: 'https://x/new.apk' },
+        ],
+      },
+    ]);
+
+    expect(await fetchShellRelease('android', impl)).toEqual({
+      url: 'https://x/new.apk',
+      latest: '0.6.0',
+      releaseUrl: 'https://x/r',
+    });
+  });
+
+  /** A release carrying ONLY the old spelling must keep answering. */
+  test('still resolves a release that only has the legacy spelling', async () => {
+    const { impl } = stubFetch([
+      {
+        html_url: 'https://x/r2',
+        assets: [{ name: 'kabmo-android-v0.4.0.apk', browser_download_url: 'https://x/old.apk' }],
+      },
+    ]);
+
+    expect((await fetchShellRelease('android', impl))?.latest).toBe('0.4.0');
+  });
+
   test('the two shells cache separately', async () => {
     // One shared slot would make the second probe answer with the first one's
     // artifact — the release list is the same read, the asset is not.
     const release = {
       html_url: 'https://x/app',
       assets: [
-        { name: 'kabmo-android-v1.0.0.apk', browser_download_url: 'https://x/a.apk' },
-        { name: 'kabmo-ios-v2.0.0.ipa', browser_download_url: 'https://x/i.ipa' },
+        { name: 'Kabmo-1.0.0-android.apk', browser_download_url: 'https://x/a.apk' },
+        { name: 'Kabmo-2.0.0-ios.ipa', browser_download_url: 'https://x/i.ipa' },
       ],
     };
     expect((await fetchShellRelease('android', stubFetch([release]).impl))?.latest).toBe('1.0.0');
@@ -129,7 +200,7 @@ describe('fetchShellRelease', () => {
       { html_url: 'https://x/kabmo-ui', assets: [] },
       {
         html_url: 'https://x/app',
-        assets: [{ name: 'kabmo-android-v0.3.0.apk', browser_download_url: 'https://x/a.apk' }],
+        assets: [{ name: 'Kabmo-0.3.0-android.apk', browser_download_url: 'https://x/a.apk' }],
       },
     ]);
 
@@ -145,16 +216,16 @@ describe('fetchShellRelease', () => {
       {
         draft: true,
         html_url: 'https://x/draft',
-        assets: [{ name: 'kabmo-android-v9.9.9.apk', browser_download_url: 'https://x/draft.apk' }],
+        assets: [{ name: 'Kabmo-9.9.9-android.apk', browser_download_url: 'https://x/draft.apk' }],
       },
       {
         prerelease: true,
         html_url: 'https://x/pre',
-        assets: [{ name: 'kabmo-android-v8.0.0.apk', browser_download_url: 'https://x/pre.apk' }],
+        assets: [{ name: 'Kabmo-8.0.0-android.apk', browser_download_url: 'https://x/pre.apk' }],
       },
       {
         html_url: 'https://x/app',
-        assets: [{ name: 'kabmo-android-v0.3.0.apk', browser_download_url: 'https://x/a.apk' }],
+        assets: [{ name: 'Kabmo-0.3.0-android.apk', browser_download_url: 'https://x/a.apk' }],
       },
     ]);
 

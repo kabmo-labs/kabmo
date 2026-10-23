@@ -17,9 +17,10 @@
  *
  * - `url` is the asset to download. It is resolved from the release's OWN asset
  *   list rather than built as `releases/latest/download/<name>`, because that
- *   path needs the asset name to match exactly and the name carries the tag
- *   (`kabmo-android-v1.2.3.apk`) — a name built here would be a second copy of
- *   the workflow's naming rule, and the first release that renames it 404s.
+ *   path needs the asset name to match exactly and the name carries the shell's
+ *   version (`Kabmo-0.5.0-android.apk`) — a name built here would be a second
+ *   copy of the workflow's naming rule, and the first release that renames it
+ *   404s.
  * - `latest` is the version that asset ships, read from the asset name. The
  *   release TAG cannot be used: the artifact is attached to the app's release,
  *   whose tag names the SERVER version, and the two move independently.
@@ -42,25 +43,67 @@ export interface ShellRelease {
   releaseUrl: string | null;
 }
 
-/** How each shell's asset is named by its publish workflow. */
-export const SHELL_ASSETS: Record<ShellKind, { prefix: string; extension: string }> = {
-  android: { prefix: 'kabmo-android-', extension: '.apk' },
-  ios: { prefix: 'kabmo-ios-', extension: '.ipa' },
+/**
+ * How each shell's asset is named by its publish workflow, plus the prefix it
+ * carried BEFORE the rename.
+ *
+ * ONE scheme for every shell in the project — `<App>-<version>-<platform>.<ext>`:
+ * `Kabmo-0.5.0-android.apk`, `Kabmo-0.1.0-ios.ipa`, and the desktop trio's
+ * `Kabmo-0.1.2-mac-arm64.dmg` / `-win-x64-setup.exe` / `-linux-x86_64.tar.gz`.
+ * The mobile pair carries no architecture because neither artifact is per-arch:
+ * the APK is one universal build (the shell is pure Kotlin with no native
+ * libraries, so there is nothing to split), and the IPA contains only the device
+ * slice (`arm64-apple-ios`). A `-arm64` in those names would claim a distinction
+ * that does not exist and would make the parser look for a second artifact.
+ *
+ * **`legacyPrefix` is not dead code.** These names are PARSED to answer "is a
+ * newer shell published", and every release already on GitHub carries the old
+ * spelling. Dropping it would make the console answer "no update" for an
+ * installed shell the moment this ships — silently, because a name that does not
+ * match reads exactly like a release with no artifact. The probe tries the
+ * current prefix first, then the old one; new releases only ever write the
+ * current one.
+ */
+export const SHELL_ASSETS: Record<
+  ShellKind,
+  { prefix: string; extension: string; legacyPrefix: string; legacyExtension: string }
+> = {
+  android: {
+    prefix: 'Kabmo-',
+    extension: '-android.apk',
+    legacyPrefix: 'kabmo-android-v',
+    legacyExtension: '.apk',
+  },
+  ios: { prefix: 'Kabmo-', extension: '-ios.ipa', legacyPrefix: 'kabmo-ios-v', legacyExtension: '.ipa' },
 };
 
 /**
- * `kabmo-android-v1.2.3.apk` → `1.2.3` (and the `.ipa` twin).
+ * `Kabmo-0.5.0-android.apk` → `0.5.0` (and the `.ipa` twin), plus the legacy
+ * `kabmo-android-v0.5.0.apk` spelling every published release still carries.
  *
- * The `v` is optional because a hand-uploaded asset may omit it, and a version
- * that cannot be read is not evidence of an update — the caller treats null as
- * "no new version".
+ * The version is the MIDDLE of the name in the current scheme and the TAIL of the
+ * legacy one, so the two are parsed by different rules rather than by one that
+ * tries to cover both.
  */
 export function versionFromAssetName(kind: ShellKind, name: string): string | null {
-  const { prefix, extension } = SHELL_ASSETS[kind];
-  if (!name.startsWith(prefix) || !name.endsWith(extension)) return null;
-  const middle = name.slice(prefix.length, -extension.length);
-  const version = middle.startsWith('v') ? middle.slice(1) : middle;
-  return /^\d+\.\d+\.\d+/.test(version) ? version : null;
+  const { prefix, extension, legacyPrefix, legacyExtension } = SHELL_ASSETS[kind];
+
+  // Current: `<prefix><version><extension>`, where the prefix is the app's name
+  // and the extension names the platform.
+  if (name.startsWith(prefix) && name.endsWith(extension)) {
+    const middle = name.slice(prefix.length, -extension.length);
+    if (/^\d+\.\d+\.\d+$/.test(middle)) return middle;
+  }
+
+  // Legacy: `kabmo-android-v<version>.apk`. Kept for the releases already
+  // published; no new release writes it.
+  if (name.startsWith(legacyPrefix) && name.endsWith(legacyExtension)) {
+    const middle = name.slice(legacyPrefix.length, -legacyExtension.length);
+    const version = middle.startsWith('v') ? middle.slice(1) : middle;
+    return /^\d+\.\d+\.\d+$/.test(version) ? version : null;
+  }
+
+  return null;
 }
 
 /**
@@ -144,17 +187,41 @@ export async function fetchShellRelease(
 /** How many releases to look back through for the artifact. */
 const RELEASE_SCAN = 20;
 
-/** The first asset of a release that names this shell's artifact, or null. */
+/**
+ * The asset of a release that names this shell's artifact, or null.
+ *
+ * The CURRENT scheme wins over the legacy one, and that is not cosmetic. A
+ * release that carries both — which happens the moment a rename lands and
+ * `--clobber` has not yet replaced the old asset, or a hand-upload adds one
+ * beside the other — would otherwise resolve to whichever the asset list
+ * happened to order first. Measured: a release holding both
+ * `kabmo-android-v0.4.0.apk` and `Kabmo-0.6.0-android.apk` answered `0.4.0`,
+ * i.e. the console offered an update to a version it already had and hid the
+ * newer one.
+ *
+ * Both schemes are still ACCEPTED (a release with only the old spelling must
+ * keep working), so the preference is a second pass rather than a filter.
+ */
 function shellAsset(kind: ShellKind, assets: unknown): Record<string, unknown> | null {
   if (!Array.isArray(assets)) return null;
 
-  for (const entry of assets) {
-    if (entry === null || typeof entry !== 'object') continue;
-    const asset = entry as Record<string, unknown>;
-    if (typeof asset.name === 'string' && versionFromAssetName(kind, asset.name) !== null) return asset;
-  }
+  const named = assets.filter(
+    (entry): entry is Record<string, unknown> =>
+      entry !== null &&
+      typeof entry === 'object' &&
+      typeof (entry as Record<string, unknown>).name === 'string' &&
+      versionFromAssetName(kind, String((entry as Record<string, unknown>).name)) !== null,
+  );
 
-  return null;
+  const { prefix, extension } = SHELL_ASSETS[kind];
+  return (
+    named.find((asset) => {
+      const name = String(asset.name);
+      return name.startsWith(prefix) && name.endsWith(extension);
+    }) ??
+    named[0] ??
+    null
+  );
 }
 
 const CACHE_MS = 5 * 60_000;

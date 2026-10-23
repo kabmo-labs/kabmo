@@ -170,19 +170,31 @@ so nothing has to parse it.
 `.github/workflows/publish-macos.yml` is a reusable two-phase body, and the split
 is the point:
 
-1. **`build`** compiles the package, runs both Swift suites, assembles
-   `Kabmo.app`, verifies the version the plist declares and the ad-hoc signature,
-   and uploads `kabmo-macos-v<version>.zip` as a run artifact. `release.yml` calls it as
-   `macos-build` **before** `app` tags — so a Swift error, a missing toolchain or a
-   plist that disagrees with `version.properties` stops the release instead of
-   shipping a tag whose GitHub release carries no app.
-2. **`attach`** downloads that artifact and uploads it to the release `app`
-   created. It builds nothing, so it cannot be the step that discovers a broken
-   bundle.
+1. **`build`** compiles the package **on both architectures** (`arm64` on
+   `macos-15`, `x64` on `macos-15-intel`), runs both Swift suites, assembles
+   `Kabmo.app`, verifies the version the plist declares, the ad-hoc signature and
+   the binary's own Mach-O slices, and uploads one artifact per architecture —
+   carrying BOTH shapes, `Kabmo-<version>-mac-<arch>.zip` and
+   `Kabmo-<version>-mac-<arch>.dmg`. `release.yml` calls it as `macos-build`
+   **before** `app` tags — so a Swift error, a missing toolchain or a plist that
+   disagrees with `version.properties` stops the release instead of shipping a tag
+   whose GitHub release carries no app.
+2. **`attach`** downloads both artifacts (one per architecture) and uploads them to
+   the release `app` created. It builds nothing, so it cannot be the step that
+   discovers a broken bundle.
 
-The archive is made with `ditto`, not `zip`: `zip -r` strips the bundle's extended
+**Two shapes ship, and neither replaces the other.** The `.zip` is what a script or
+an updater consumes, made with `ditto` — `zip -r` strips the bundle's extended
 attributes and code signature, and the result is an app macOS refuses to launch
-("damaged") with nothing in the archive to say why.
+("damaged") with nothing in the archive to say why. The `.dmg` is what a PERSON
+downloads: `hdiutil create` puts `Kabmo.app` in a window beside an `Applications`
+alias, so installing is one drag. A `.dmg` cannot be extracted by a build script
+without mounting it, and a `.zip` gives a first-time user no obvious move — hence
+both.
+
+`hdiutil` prints a deprecation warning pointing at `diskutil image create from`,
+and that alternative is unusable here: it takes no `-fs`, so a folder source
+becomes an APFS volume, while HFS+ is what every macOS from 10.x up mounts.
 
 `app` `needs: macos-build`, so the build is a gate rather than a consequence. The
 whole chain is `packages → marketplace → android → ios → windows → macos →

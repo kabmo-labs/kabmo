@@ -75,7 +75,7 @@ swift run kabmo-shell-tests
 
 # The bundle (needs Xcode's iOS SDK):
 ./scripts/build-ipa.sh
-# → build/kabmo-ios-v<version>.ipa
+# → build/Kabmo-<version>-ios.ipa
 ```
 
 `build-ipa.sh` assembles the `.app` by hand — there is no `xcodebuild` and no
@@ -224,7 +224,7 @@ The console's sidebar footer carries one control directly after *About*:
 The version travels on the User-Agent as `KabmoIOS/<version>` — appended through
 `applicationNameForUserAgent`, so it is on the very first request and the server
 answers without a bridge or a round trip. `GET /api/updates/ios` reads the published
-asset's version out of its NAME (`kabmo-ios-v1.2.3.ipa` → `1.2.3`), because the
+asset's version out of its NAME (`Kabmo-1.2.3-ios.ipa` → `1.2.3`), because the
 release tag names the *server* version and the two move independently.
 
 Tapping the control inside the shell downloads the IPA and then explains, rather than
@@ -297,7 +297,7 @@ release.yml
   asks the same `release-rules.js` analyzer the app uses for the level (`fix` → patch,
   `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and commits it.
   A `chore`/`docs`/`test`-only change to the shell asks for no bump.
-- **The artifact is `kabmo-ios-v<version>.ipa`** — the shell's version, never the
+- **The artifact is `Kabmo-<version>-ios.ipa`** — the shell's version, never the
   release tag, because `versionFromAssetName('ios', …)` reads the published version out
   of the asset name.
 - **A shell bump reaches an installed app on the next app release.** The IPA rides the

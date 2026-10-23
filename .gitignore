@@ -3,6 +3,12 @@ build/
 dist/
 coverage/
 
+# Release artifacts produced by the shell packaging scripts
+# (`packages/*/scripts/package-*.sh`) when a developer runs them locally. The
+# pipeline writes them inside a CI workspace, but a local run must not leave
+# binaries staged for commit.
+artifacts/
+
 # A plugin's own lockfile is written by the `bun install` Kabmo runs
 # before building it (see lib/panels/build.server.ts), not by a plugin
 # author — the shipped plugins commit none.

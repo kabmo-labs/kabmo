@@ -37,6 +37,36 @@
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
+
+; The TARGET architecture, passed as /DAppArch=<x64|arm64> by the same command
+; line that passes the version — one value per matrix row, from the row that
+; published the binaries this installer wraps.
+;
+; It decides two things, and both are load-bearing:
+;
+;   - the installer's own name, so the x64 and Arm64 builds of one release are
+;     two files rather than one name that overwrites itself;
+;   - `ArchitecturesAllowed`, so an installer refuses to run where its binaries
+;     cannot. That refusal is the whole point: `dotnet publish -r win-arm64`
+;     produces an Arm64 app, and installing it on x64 Windows succeeds and then
+;     opens a window that never paints, with nothing on screen to explain it.
+;
+; `x64os` rather than `x64compatible` for the x64 build: `x64compatible` also
+; matches Arm64 Windows 11 (which runs x64 through emulation), and now that a
+; NATIVE Arm64 installer ships beside it, an emulated install is the wrong file
+; for that machine to pick. Before this pair existed, `x64compatible` was the
+; only way to reach an Arm64 device at all.
+#ifndef AppArch
+  #define AppArch "x64"
+#endif
+#if AppArch == "arm64"
+  #define ArchAllowed "arm64"
+#elif AppArch == "x64"
+  #define ArchAllowed "x64os"
+#else
+  #error /DAppArch must be x64 or arm64
+#endif
+
 #ifndef SourceDir
   #define SourceDir "..\..\..\build\Kabmo"
 #endif
@@ -67,10 +97,12 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 AllowNoIcons=yes
 
-; x64 only: the publish step builds `win-x64`, and an installer that also ran on
-; arm64 would advertise a build that does not exist.
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+; The TARGET architecture's own gate. `ArchitecturesAllowed` decides where the
+; installer will RUN; `ArchitecturesInstallIn64BitMode` decides whether it uses
+; 64-bit install mode there. Both must never match 32-bit Windows — Inno refuses
+; to start if they do — and neither of these two identifiers does.
+ArchitecturesAllowed={#ArchAllowed}
+ArchitecturesInstallIn64BitMode={#ArchAllowed}
 
 ; WebView2's Evergreen Runtime requires Windows 10 1803 or newer. Stated as a
 ; floor rather than a note in the README: an install that succeeds on an older
@@ -78,7 +110,12 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 
 OutputDir=..\..\..\build\installer
-OutputBaseFilename=kabmo-windows-v{#AppVersion}-setup
+; The architecture is part of the NAME, because the release carries two of these
+; installers and a shared name would make the second upload replace the first.
+; The scheme is `<App>-<version>-<platform>-<arch>` — the same one the macOS
+; `.zip` and the Linux `.tar.gz` use, with `Kabmo` capitalised because it is the
+; product's name rather than a package slug.
+OutputBaseFilename=Kabmo-{#AppVersion}-win-{#AppArch}-setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

@@ -58,22 +58,25 @@ const IOS_BODY = 'publish-ios.yml';
 
 /**
  * The macOS app body: the third shell, and the same contract as the two mobile
- * ones — its `build` phase is a gate on `app` (`app` `needs: macos-build`). It runs
- * on `macos-15`, which is the only runner with the Swift toolchain and AppKit.
+ * ones — its `build` phase is a gate on `app` (`app` `needs: macos-build`). It
+ * builds BOTH architectures, each on the macOS image that IS that architecture:
+ * `macos-15` (Apple silicon) and `macos-15-intel`.
  */
 const MACOS_BODY = 'publish-macos.yml';
 
 /**
  * The Windows app body: the same contract as the two mobile ones — its `build`
- * phase is a gate on `app` (`app` `needs: win-build`). It runs on
- * `windows-latest`, which is the only runner with the .NET 8 SDK and WebView2.
+ * phase is a gate on `app` (`app` `needs: win-build`). It builds BOTH
+ * architectures natively: `x64` on `windows-latest` and `arm64` on
+ * `windows-11-arm`, which also carries the .NET 8 SDK and Inno Setup 6.
  */
 const WINDOWS_BODY = 'publish-windows.yml';
 
 /**
  * The Linux app body: the fourth shell, same contract again — its `build` phase is
- * a gate on `app` (`app` `needs: linux-build`). It runs on `ubuntu-latest`, which is
- * the only runner with the GTK 3 and WebKitGTK 4.1 development packages.
+ * a gate on `app` (`app` `needs: linux-build`). It builds BOTH architectures
+ * natively, on the images that carry the GTK 3 and WebKitGTK 4.1 development
+ * packages for each: `ubuntu-latest` (x64) and `ubuntu-24.04-arm`.
  */
 const LINUX_BODY = 'publish-linux.yml';
 
@@ -407,13 +410,24 @@ describe('the gate contract', () => {
     expect(attach.needs, 'release.yml:macos-app must wait for the app release').toContain('app');
     expect(attach.with?.tag).toBe('${{ needs.app.outputs.tag }}');
 
-    // The body itself: a macOS runner, the version read from the properties file
-    // and verified on the assembled bundle, and an archive that keeps the
-    // signature (`ditto`, never `zip`).
+    // The body itself: a macOS runner PER architecture, the version read from the
+    // properties file and verified on the assembled bundle, and an archive that
+    // keeps the signature (`ditto`, never `zip`).
     const body = await load(MACOS_BODY);
     const steps = (body.jobs.build.steps as Array<{ run?: string }>) ?? [];
     const text = JSON.stringify(steps);
-    expect(body.jobs.build['runs-on'], 'the macOS body must run on a macOS runner').toContain('macos');
+    // `runs-on` is `${{ matrix.runner }}` now, so the platform is a fact about the
+    // MATRIX: a single-arch body would still pass a `contains('macos')` test while
+    // handing one Mac family an app it cannot launch.
+    const runners = (body.jobs.build.strategy?.matrix?.include ?? []).map(
+      (row: { runner?: string }) => row.runner ?? '',
+    );
+    expect(runners.length, 'the macOS body must build both architectures').toBe(2);
+    for (const runner of runners) {
+      expect(runner, 'every macOS matrix row must run on a macOS image').toContain('macos');
+    }
+    expect(runners, 'one row must be Apple silicon').toContain('macos-15');
+    expect(runners, 'one row must be Intel').toContain('macos-15-intel');
     expect(text, 'the body must read the version from version.properties').toContain(
       'release/macos-version.mjs',
     );
@@ -457,10 +471,18 @@ describe('the gate contract', () => {
     expect(attach.with?.tag).toBe('${{ needs.app.outputs.tag }}');
 
     // The body itself: the native libraries, the rules suite, and the installer.
+    // The platform is a fact about the MATRIX (see the macOS note): both rows must
+    // be Linux, and one of them must be the Arm64 image — an x64-only body would
+    // otherwise ship no archive an Arm machine can run.
     const body = await load(LINUX_BODY);
-    expect(body.jobs.build['runs-on'], 'the Linux body must run on a Linux runner').toContain(
-      'ubuntu',
+    const runners = (body.jobs.build.strategy?.matrix?.include ?? []).map(
+      (row: { runner?: string }) => row.runner ?? '',
     );
+    expect(runners.length, 'the Linux body must build both architectures').toBe(2);
+    for (const runner of runners) {
+      expect(runner, 'every Linux matrix row must run on a Linux image').toContain('ubuntu');
+    }
+    expect(runners, 'one row must be the Arm64 image').toContain('ubuntu-24.04-arm');
     const text = JSON.stringify(body.jobs.build.steps as Array<{ run?: string }>);
     expect(text, 'the body must install the GTK and WebKitGTK packages').toContain(
       'libwebkit2gtk-4.1-dev',

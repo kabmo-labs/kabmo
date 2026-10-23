@@ -21,7 +21,7 @@
  * break the moment a commit landed and would prove nothing about the code.
  */
 import { expect, test, describe, afterEach } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -156,7 +156,7 @@ describe('the shell version is one declared fact', () => {
     // the workflow must not carry its own idea of where the number lives.
     expect(workflow).toContain('release/linux-version.mjs');
     expect(workflow, 'the asset name must come from the shell version').toContain(
-      'kabmo-linux-v${VERSION}.tar.gz',
+      'Kabmo-${VERSION}-linux-${ARCH}.tar.gz',
     );
     // Anchored on the COMMAND (`sed -n …` / `sed 's/…'`), not on the word: the
     // workflow's own prose says "a missing or unparsed `version.properties`", which
@@ -164,6 +164,148 @@ describe('the shell version is one declared fact', () => {
     expect(workflow, 'the workflow must not parse version.properties with sed').not.toMatch(
       /\bsed\s+[^\n]*version\.properties/,
     );
+  });
+
+  /**
+   * The Linux shell ships in FOUR shapes, and each answers a different question.
+   *
+   * The `.deb` and the `.rpm` let a package manager own the install — upgrade and
+   * removal included — on the two big distribution families. The `.AppImage` needs
+   * no package manager at all, which is the only thing that works on an immutable
+   * distribution. The `.tar.gz` plus `install.sh` stays because it needs no root
+   * and no tooling.
+   *
+   * Each is invoked from the workflow, so a script that exists but is never called
+   * would build nothing — which is what these assertions are for.
+   */
+  test('the publish workflow builds every Linux package format', () => {
+    const workflow = readFileSync(join(repoRoot, '.github/workflows/publish-linux.yml'), 'utf8');
+    for (const script of ['package-deb.sh', 'package-rpm.sh', 'package-appimage.sh']) {
+      expect(workflow, `${script} must be invoked by the build`).toContain(
+        `packages/linux/scripts/${script}`,
+      );
+      expect(existsSync(join(repoRoot, 'packages/linux/scripts', script)), `${script} must exist`).toBe(
+        true,
+      );
+    }
+
+    // Every format must be UPLOADED, not merely built: an upload pattern naming
+    // only the archive would discard the three packages on the runner.
+    for (const ext of ['*.tar.gz', '*.deb', '*.rpm', '*.AppImage']) {
+      expect(workflow, `the artifact upload must carry ${ext}`).toContain(`artifacts/${ext}`);
+    }
+
+    // The artifacts directory is neither the client bundle's output nor the
+    // tracked `release/` source tree.
+    expect(workflow, 'artifacts must not land in dist/').not.toContain('mkdir -p dist');
+    expect(workflow, 'artifacts must not land in the tracked release/ tree').not.toMatch(
+      /tar -C [^\n]*release\/Kabmo-/,
+    );
+  });
+
+  test('the deb depends on the runtime libraries the shell links', () => {
+    // A `.deb` whose `Depends:` names a package its target distribution does not
+    // have is UNINSTALLABLE — apt reports "no installation candidate" rather than a
+    // missing library, which reads as a broken download.
+    //
+    // Ubuntu 24.04 renamed GTK 3's runtime package to `libgtk-3-0t64` (the 64-bit
+    // time_t transition), so the old `libgtk-3-0` name is exactly that trap.
+    const script = readFileSync(join(repoRoot, 'packages/linux/scripts/package-deb.sh'), 'utf8');
+    expect(script, 'the deb must depend on GTK 3').toContain('libgtk-3-0t64');
+    expect(script, 'the deb must depend on WebKitGTK 4.1').toContain('libwebkit2gtk-4.1-0');
+    // `fakeroot` + `--root-owner-group`: without either the archive records the
+    // BUILD USER as owner, and the install writes a home directory's permissions
+    // into /usr.
+    expect(script, 'the deb must record root ownership').toContain('--root-owner-group');
+    // The entry is generated, not shipped: `Exec` must be an absolute path and the
+    // package's own path is knowable at build time.
+    expect(script, 'the deb must fill the launcher template').toContain('kabmo.desktop.in');
+    expect(script, 'the deb must validate the entry it wrote').toContain('desktop-file-validate');
+  });
+
+  test('the rpm declares the Fedora-family library names, not Debian ones', () => {
+    // The build host is Ubuntu, so `apt` package names are what is on the machine —
+    // and they are the wrong names for the machine this package installs on. A spec
+    // naming `libgtk-3-0t64` builds cleanly and then fails to resolve on every
+    // Fedora box it reaches.
+    const script = readFileSync(join(repoRoot, 'packages/linux/scripts/package-rpm.sh'), 'utf8');
+    expect(script, 'the rpm must require gtk3').toContain('Requires:       gtk3');
+    expect(script, 'the rpm must require webkit2gtk4.1').toContain('Requires:       webkit2gtk4.1');
+    expect(script, 'the rpm must not name a Debian package').not.toContain('Requires:       libgtk');
+    // `--define "_topdir"` keeps rpmbuild out of `~/rpmbuild`, which does not exist
+    // on a CI runner and is not state a build should depend on.
+    expect(script, 'rpmbuild must use a private topdir').toContain('_topdir');
+    expect(script, 'the spec must declare the target architecture').toContain('BuildArch:');
+  });
+
+  test('the AppImage is a real AppDir, and its zsync lands beside it', () => {
+    const script = readFileSync(join(repoRoot, 'packages/linux/scripts/package-appimage.sh'), 'utf8');
+    // The format's contract: `AppRun`, the entry and the icon at the AppDir ROOT.
+    expect(script, 'the AppDir must carry AppRun').toContain('AppRun');
+    expect(script, 'the AppRun must be a symlink to the binary, not a wrapper script').toMatch(
+      /ln -sf usr\/bin\/Kabmo "\$APPDIR\/AppRun"/,
+    );
+    // `APPIMAGE_EXTRACT_AND_RUN` is the documented FUSE fallback, and a container or
+    // a minimal runner has no `/dev/fuse` — without it the build dies with
+    // "dlopen(): error loading libfuse.so.2", a message about the TOOL.
+    expect(script, 'appimagetool must run without FUSE').toContain('APPIMAGE_EXTRACT_AND_RUN=1');
+    // Measured: an absolute destination puts the AppImage in the output directory
+    // and the `.zsync` in the CALLER's cwd, silently leaving the delta metadata
+    // behind on the runner. Running from inside the output directory is the fix.
+    expect(script, 'appimagetool must run from the output directory').toMatch(/\(\s*\n\s*cd "\$OUT"/);
+    // The update information names the ASSET PATTERN, so it has to carry the
+    // architecture — one pattern would offer an x86-64 build to an Arm machine.
+    expect(script, 'the update information must be architecture-specific').toContain(
+      'Kabmo-*-linux-${AI_ARCH}.AppImage.zsync',
+    );
+    // Pinned: `continuous` is a moving tag, and an unpinned download in a release
+    // pipeline is a build that changes without a commit.
+    expect(script, 'the tool must be pinned').toMatch(/TOOL_VERSION="\d+\.\d+\.\d+"/);
+    // The artifact is READ BACK rather than trusted: the AppImage is a squashfs
+    // image behind an ELF stub, so extraction is what proves it is a real one.
+    expect(script, 'the built AppImage must be extracted to verify it').toContain(
+      '--appimage-extract',
+    );
+  });
+
+  /**
+   * Both architectures are built, each natively on the runner that IS that
+   * architecture.
+   *
+   * The shell links GTK 3 and WebKitGTK 4.1, which are native libraries: a
+   * cross-compile would need an Arm64 sysroot and would produce a binary nothing
+   * here ever ran. The ELF check is what turns the matrix from a claim into a fact
+   * about the archive.
+   */
+  test('the publish workflow builds both architectures natively', () => {
+    const doc = Bun.YAML.parse(
+      readFileSync(join(repoRoot, '.github/workflows/publish-linux.yml'), 'utf8'),
+    );
+    const rows = doc.jobs.build.strategy.matrix.include;
+    // `arch` is the ASSET label, so it follows the shared `<platform>-<arch>`
+    // scheme; `host` is what `uname -m` answers on the image, and `machine` is the
+    // ELF `e_machine` value read out of the built binary.
+    expect(rows.map((row) => row.arch)).toEqual(['x86_64', 'arm64']);
+    expect(rows.map((row) => row.host)).toEqual(['x86_64', 'aarch64']);
+    expect(rows.map((row) => row.machine)).toEqual([62, 183]);
+    expect(rows.find((row) => row.arch === 'x86_64')?.runner).toBe('ubuntu-latest');
+    expect(rows.find((row) => row.arch === 'arm64')?.runner).toBe('ubuntu-24.04-arm');
+
+    const text = JSON.stringify(doc.jobs.build.steps);
+    expect(text, 'the artifact must be checked against its own ELF header').toContain('EXPECTED_MACHINE');
+    // The quotes are escaped in the JSON, so the assertion is on the two tokens the
+    // check compares rather than on the literal line.
+    expect(text, 'the build must assert it is on the runner its row claims').toContain('uname -m');
+    expect(text, 'the comparison must be against the row\'s own host architecture').toContain(
+      '= \\"$HOST\\"',
+    );
+    expect(text, 'one artifact per architecture, or the second row overwrites the first').toContain(
+      'kabmo-linux-app-${{ matrix.arch }}',
+    );
+    expect(
+      JSON.stringify(doc.jobs.attach.steps),
+      'the attach must merge both architecture artifacts back',
+    ).toContain('merge-multiple');
   });
 
   test('the packaged artifact carries the version the binary reports', () => {

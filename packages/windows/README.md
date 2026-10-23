@@ -163,8 +163,17 @@ reader. `packages/macos` makes the same call.
 ## The installer
 
 `build-app.ps1` and `publish-windows.yml` produce
-`kabmo-windows-v<version>-setup.exe` from `installer/kabmo.iss` (Inno Setup 6,
-preinstalled on `windows-latest`).
+`Kabmo-<version>-win-<arch>-setup.exe` from `installer/kabmo.iss` (Inno Setup 6,
+preinstalled on both Windows images).
+
+Two installers ship per release, because the shell is published for two
+architectures and each is built natively on the runner that IS that architecture
+(`x64` on `windows-latest`, `arm64` on `windows-11-arm`). The architecture travels
+as `/DAppArch` on the `ISCC` command line and decides two things at once — the
+file's name and its `ArchitecturesAllowed` gate (`x64os` / `arm64`), so the Arm64
+installer refuses an x64 machine and the x64 one refuses Arm64. That refusal
+matters: an Arm64 publish installed on x64 Windows succeeds and then opens a window
+that never paints, with nothing on screen to explain it.
 
 What makes it an installer rather than a renamed archive, and each of these is
 asserted by `release/windows.test.js`:

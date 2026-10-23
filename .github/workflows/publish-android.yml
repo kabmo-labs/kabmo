@@ -337,6 +337,14 @@ jobs:
       # Renamed so the download is identifiable: GitHub asset names are unique
       # per release, and `app-release.apk` says nothing about what it is.
       #
+      # The scheme is the project's ONE naming rule —
+      # `<App>-<version>-<platform>.<ext>` — so the release page reads
+      # consistently: `Kabmo-0.5.0-android.apk` sits beside
+      # `Kabmo-0.1.2-mac-arm64.dmg` and `Kabmo-0.1.0-win-x64-setup.exe`. No
+      # architecture in this one: the APK is a single universal build (the shell is
+      # pure Kotlin with no native libraries, so there is nothing to split), and a
+      # `-arm64` here would claim a distinction that does not exist.
+      #
       # The name carries the SHELL's version, never the release tag — the
       # console reads the published version out of the asset name
       # (`versionFromAssetName`), so a name carrying the app's tag would compare
@@ -349,7 +357,7 @@ jobs:
           set -euo pipefail
           version="$(node release/android-version.mjs)"
           src=packages/android/app/build/outputs/apk/release/app-release.apk
-          cp "$src" "kabmo-android-v${version}.apk"
+          cp "$src" "Kabmo-${version}-android.apk"
           ls -l ./*.apk
 
       # The artifact is what the `attach` phase uploads — and what makes the two

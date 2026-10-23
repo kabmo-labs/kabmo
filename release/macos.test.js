@@ -107,14 +107,76 @@ describe('the table matches the tree', () => {
     expect(script).toContain('Kabmo.app');
   });
 
-  /** The publish body builds from the bump and names the asset from the same file. */
+  /** The publish body builds from the bump and names the assets from the same file. */
   test('the publish workflow names the asset from this version', () => {
     const body = readFileSync(join(repoRoot, '.github/workflows/publish-macos.yml'), 'utf8');
     expect(body).toContain('release/macos-version.mjs');
-    expect(body).toContain('kabmo-macos-v${version}.zip');
+    // `<App>-<version>-<platform>-<arch>.<ext>`: the architecture is part of the
+    // name, or the two builds of one release collide as a single release asset.
+    // The base is built once and both shapes hang off it, so the `.zip` and the
+    // `.dmg` cannot disagree about which build they are.
+    expect(body).toContain('base="Kabmo-${version}-mac-${ARCH}"');
+    expect(body, 'the zip is what a script consumes').toContain('"${base}.zip"');
+    expect(body, 'the dmg is what a person downloads').toContain('"${base}.dmg"');
     // The version the bundle declares is verified, not assumed.
     expect(body).toContain('CFBundleShortVersionString');
     expect(body).toContain('CFBundleName');
+  });
+
+  /**
+   * Both SHAPES ship, and the `.dmg` is a real disk image with an Applications
+   * alias — not a renamed zip.
+   *
+   * The alias is the whole point of a DMG: without it a first-time user opens the
+   * window and has no idea where the app is supposed to go.
+   */
+  test('the publish workflow ships a dmg with an Applications alias', () => {
+    const body = readFileSync(join(repoRoot, '.github/workflows/publish-macos.yml'), 'utf8');
+    expect(body, 'the dmg must be made with hdiutil, which ships with macOS').toContain(
+      'hdiutil create',
+    );
+    expect(body, 'the dmg must be compressed read-only').toContain('-format UDZO');
+    expect(body, 'the dmg must carry an Applications alias').toContain(
+      'ln -s /Applications',
+    );
+    // An empty image is what a wrong source folder produces, and `hdiutil` still
+    // exits 0 — so the artifact is checked rather than trusted.
+    expect(body, 'both shapes must be verified non-empty').toMatch(
+      /for f in "\$\{base\}\.zip" "\$\{base\}\.dmg"; do/,
+    );
+  });
+
+  /**
+   * Both architectures are built, on the runners that ARE those architectures.
+   *
+   * A single-arch body would still publish successfully — it would just hand an
+   * Intel Mac an app it cannot launch. The matrix is the assertion, and the
+   * Mach-O check is what makes it a fact about the artifact rather than about the
+   * runner's label.
+   */
+  test('the publish workflow builds both architectures natively', () => {
+    const doc = Bun.YAML.parse(
+      readFileSync(join(repoRoot, '.github/workflows/publish-macos.yml'), 'utf8'),
+    );
+    const rows = doc.jobs.build.strategy.matrix.include;
+    expect(rows.map((row) => row.arch)).toEqual(['arm64', 'x64']);
+    // The image IS the architecture: `macos-15` is Apple silicon, `macos-15-intel`
+    // is Intel. A shared runner label would cross-compile, which the Mach-O
+    // assertion in the body would then fail.
+    expect(rows.find((row) => row.arch === 'arm64')?.runner).toBe('macos-15');
+    expect(rows.find((row) => row.arch === 'x64')?.runner).toBe('macos-15-intel');
+    // `lipo` prints the Mach-O spelling, which differs from the asset's for Intel.
+    expect(rows.find((row) => row.arch === 'x64')?.macho).toBe('x86_64');
+
+    const text = JSON.stringify(doc.jobs.build.steps);
+    expect(text, 'the artifact must be checked against its own Mach-O header').toContain('lipo -archs');
+    expect(text, 'one artifact per architecture, or the second row overwrites the first').toContain(
+      'kabmo-macos-app-${{ matrix.arch }}',
+    );
+    expect(
+      JSON.stringify(doc.jobs.attach.steps),
+      'the attach must merge both architecture artifacts back',
+    ).toContain('merge-multiple');
   });
 
   /**
