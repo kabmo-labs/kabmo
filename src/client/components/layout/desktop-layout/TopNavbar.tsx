@@ -12,8 +12,7 @@ import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/title
 import { ServerSwitcher } from '@/client/components/common/server-switcher';
 import { useDesktopServers } from '@/client/hooks/desktop/servers';
 import { isDesktopShell } from '@/client/lib/desktop/bridge';
-import { dragRegionProps, drawsWindowControls, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
-import { WindowControls } from '@/client/components/common/window-controls';
+import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 
 interface TopNavbarProps {
@@ -203,10 +202,10 @@ export function TopNavbar({
           onToggleEditor={onToggleEditor}
           onSwitchToMobile={onSwitchToMobile}
         />
-        {/* The Windows shell is borderless and its webview is an HWND, so the
-            system's caption buttons cannot be drawn over it — the page owns
-            them there. Absent on macOS, whose traffic lights are the system's. */}
-        {drawsWindowControls() && <WindowControls />}
+        {/* The Windows/Linux caption buttons come from `HeaderControls` itself:
+            a desktop shell window can be narrower than the mobile breakpoint,
+            so the phone header has to draw them too — and a control that only
+            one layout renders is a control the other layout's window loses. */}
       </div>
 
       {menu.anchor && sessionActions && (

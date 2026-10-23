@@ -9,6 +9,7 @@ import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { HeaderControls } from '@/client/components/common/header-controls';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
 interface MobileHeaderProps {
   activeSessionTitle: string;
@@ -90,9 +91,17 @@ export function MobileHeader({
   return (
     <header
       className="flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between gap-2 px-3 z-20 titlebar-drag-region select-none"
+      {...dragRegionProps()}
       style={{
         height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
-        paddingLeft: titlebarPaddingLeft('0.75rem', true),
+        // The shell's own inset, not only the PWA's. `titlebarPaddingLeft` reads
+        // `env(titlebar-area-x)`, which a native WKWebView never defines — so on
+        // macOS this header's hamburger and wordmark were drawn UNDER the
+        // traffic lights, in the 76px the shell reserves for them. `titlebarInsetLeft`
+        // is what the desktop navbar and the sidebar header already use; a
+        // desktop shell window narrowed past the layout breakpoint lands on this
+        // header, which is why it needs the same treatment.
+        paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('0.75rem', true)),
         paddingRight: titlebarPaddingRight('0.75rem', true),
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}

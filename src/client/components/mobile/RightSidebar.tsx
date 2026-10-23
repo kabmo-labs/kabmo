@@ -10,6 +10,7 @@ import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { phoneRightPanels } from '@/shared/lib/workspace/mobile-dock';
 import { PanelChips } from '@/client/components/mobile/panel-chips';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
 interface MobileRightSidebarProps {
   enabled?: boolean;
@@ -89,28 +90,38 @@ export function MobileRightSidebar({
   return (
     <div className="flex flex-col h-full w-full bg-paper text-ink relative select-none">
 
-      {/* Top Header & Tab Navigation Bar */}
+      {/* Top Header & Tab Navigation Bar. It is the window's title bar while
+          this drawer is the mounted screen: a desktop shell window narrowed
+          past the layout breakpoint shows it, and without `data-drag-region`
+          there is nothing left to move the window by. The chip strip inside is
+          the `titlebar-no-drag` cluster. */}
       <div
-        className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas"
+        className="border-b border-ink/10 flex items-center justify-between px-3 flex-shrink-0 bg-canvas titlebar-drag-region select-none"
+        {...dragRegionProps()}
         style={{
           height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingLeft: titlebarPaddingLeft('0.75rem', true),
+          paddingLeft: titlebarInsetLeft(titlebarPaddingLeft('0.75rem', true)),
           paddingRight: titlebarPaddingRight('0.75rem', true),
         }}
       >
 
-        <PanelChips
-          panels={catalog}
-          activeId={activePanel?.id ?? activeTab}
-          onSelect={setActiveTab}
-          hasGitChanges={hasGitChanges}
-        />
+        {/* The header is now a drag region, so its controls must say so —
+            `app-region` inherits, and a control inside a drag region is a drag
+            handle that swallows its own click on Windows. */}
+        <div className="flex items-center min-w-0 titlebar-no-drag">
+          <PanelChips
+            panels={catalog}
+            activeId={activePanel?.id ?? activeTab}
+            onSelect={setActiveTab}
+            hasGitChanges={hasGitChanges}
+          />
+        </div>
 
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0 ml-2"
+          className="p-1.5 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0 ml-2 titlebar-no-drag"
           title="Close right sidebar"
           aria-label="Close right sidebar"
         >

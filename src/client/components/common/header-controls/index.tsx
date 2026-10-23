@@ -6,6 +6,8 @@ import { ContextUsageButton } from '@/client/components/common/context-usage-but
 import { HeaderPanelButtons } from '@/client/components/common/header-panel-buttons';
 import { useHeaderEntries } from '@/client/components/common/header-panel-buttons/entries';
 import { HeaderMoreMenu } from '@/client/components/common/header-controls/MoreMenu';
+import { WindowControls } from '@/client/components/common/window-controls';
+import { drawsWindowControls } from '@/client/lib/desktop/titlebar';
 import { useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
 import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
 import { withChord } from '@/client/lib/ui/with-chord';
@@ -111,7 +113,17 @@ export function HeaderControls({
   const headerEntries = useHeaderEntries(layout);
 
   return (
-    <div className="flex items-center space-x-1">
+    // `titlebar-no-drag` belongs HERE, on the cluster's own root, not on each
+    // call site. `app-region` INHERITS (WebView2's own spec says so, and
+    // Chromium 152 began enforcing it), so a header that marks itself a drag
+    // region makes every descendant a drag handle unless something below it
+    // says otherwise — a control inside one is unclickable, silently. The
+    // desktop navbar wrapped this cluster in a `titlebar-no-drag` div and the
+    // PHONE's header did not, so on Windows every control in a phone-width
+    // window (reload, context, sign out, the right panel, `⋯`) swallowed its
+    // own click. Stating it on the cluster is what makes the next layout that
+    // draws it correct by construction.
+    <div className="flex items-center space-x-1 titlebar-no-drag">
       {layout === 'desktop' && <PWAInstallButton />}
       <HeaderPanelButtons layout={layout} entries={headerEntries.inline} />
       {/* The cluster's ORDER is fixed; what changes on a narrow phone is that
@@ -169,6 +181,17 @@ export function HeaderControls({
           <Smartphone size={size} />
         </button>
       )}
+      {/* The Windows and Linux shells draw no caption buttons of their own —
+          their webview is the whole window — so the PAGE owns minimise,
+          maximise and close. This lives in the shared cluster rather than in
+          the desktop navbar for a measured reason: a desktop shell window can
+          be NARROWER than the layout breakpoint (`App` switches to the mobile
+          layout below 768px, and all three shells allow a 720px window), and
+          the phone header drew no window controls at all. A user who shrank
+          the window lost close/minimise/maximise entirely, with no title bar
+          behind them to fall back on. macOS never reaches this branch: its
+          traffic lights are the system's, so `drawsWindowControls` is false. */}
+      {drawsWindowControls() && <WindowControls />}
     </div>
   );
 }
