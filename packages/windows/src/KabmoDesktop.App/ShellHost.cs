@@ -25,6 +25,10 @@ public sealed class ShellHost
     private readonly ShellWindow _window;
     private readonly SplashView _splash;
     private ServerStore? _store;
+    /// <summary>What the splash is showing. The view only draws it.</summary>
+    private SplashState _splashState = SplashState.Done;
+    /// <summary>The address the webview has FINISHED on, latched on completion.</summary>
+    private string? _shownUrl;
     /// <summary>
     /// The shell's own version, from the assembly — never a literal beside it.
     ///
@@ -48,7 +52,7 @@ public sealed class ShellHost
         // The webview is an HWND, so WPF content layered over it does not
         // render — a visible splash would sit BEHIND it. The splash is shown by
         // hiding the webview, which is the only way to cover an HWND host.
-        ShowSplash();
+        RenderSplash(SplashState.Connecting);
 
         _window.Loaded += (_, _) => _ = StartAsync();
         _window.Closed += (_, _) =>
@@ -80,8 +84,8 @@ public sealed class ShellHost
         }
         catch (Exception error)
         {
-            ShowSplash();
-            _splash.ShowFailure(
+            RenderSplash(SplashState.Connecting.FailedBecause(SplashState.SplashFailure.Other));
+            _splash.SetDetail(
                 $"{error.Message}\n\nThe WebView2 runtime is required. " +
                 "Install it from https://developer.microsoft.com/microsoft-edge/webview2/");
         }
@@ -112,11 +116,12 @@ public sealed class ShellHost
         core.Settings.IsNonClientRegionSupportEnabled = true;
 
         core.WebMessageReceived += (_, args) => Bridge.OnMessage(_window.WebView, new CommandHost(this), args);
+        core.NavigationStarting += (_, args) => OnNavigationStarting(args);
         core.NavigationCompleted += (_, args) => OnNavigationCompleted(args);
         core.ProcessFailed += (_, _) =>
         {
-            ShowSplash();
-            _splash.ShowFailure("The webview process stopped.");
+            RenderSplash(SplashState.Connecting.FailedBecause(SplashState.SplashFailure.Other));
+            _splash.SetDetail("The webview process stopped.");
         };
 
         var info = new ShellInfo(
@@ -157,42 +162,92 @@ public sealed class ShellHost
     public void Navigate(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed)) return;
-        ShowSplash();
-        _window.WebView.CoreWebView2?.Navigate(parsed.ToString());
+        _shownUrl = null;
+        StartLoad(parsed.ToString());
+    }
+
+    /// <summary>
+    /// Begin a load with the splash up.
+    ///
+    /// The state is armed BEFORE the navigation, because the navigation can
+    /// complete on the same tick (a cached document): arming afterwards would let
+    /// the completion land on the previous state and leave the splash hidden.
+    /// </summary>
+    private void StartLoad(string url)
+    {
+        RenderSplash(SplashState.Connecting);
+        _window.WebView.CoreWebView2?.Navigate(url);
+    }
+
+    /// <summary>
+    /// A navigation is starting. Two things are decided here, and neither is a
+    /// state the shell can ask for afterwards.
+    ///
+    /// 1. **A RELOAD re-opens the splash.** The console's own Reload control calls
+    ///    <c>location.reload()</c>, which replaces the page with a blank document
+    ///    while the bundle is re-fetched; leaving the splash hidden there made the
+    ///    header's button look like it did nothing. WebView2 reports this
+    ///    explicitly as <see cref="CoreWebView2NavigationKind.Reload"/>, so no URL
+    ///    comparison is needed here — unlike macOS and iOS, whose delegates have no
+    ///    such flag.
+    /// 2. **Nothing else re-opens it.** A later in-app navigation (the login submit
+    ///    is one) must not flash the splash over a console that is already up.
+    /// </summary>
+    private void OnNavigationStarting(CoreWebView2NavigationStartingEventArgs args)
+    {
+        if (args.IsRedirected) return;
+        if (args.NavigationKind == CoreWebView2NavigationKind.Reload)
+        {
+            RenderSplash(SplashState.Connecting);
+        }
     }
 
     private void OnNavigationCompleted(CoreWebView2NavigationCompletedEventArgs args)
     {
-        if (args.IsSuccess)
+        // A failed main-frame load keeps the splash with the reason, rather than
+        // leaving a blank window with nothing on screen to explain it.
+        if (!args.IsSuccess)
         {
-            // The splash covers the window only until the first real page paints.
-            // A failed load keeps it, with the reason, rather than showing blank.
-            HideSplash();
+            var failure = FailureFor(args.WebErrorStatus);
+            RenderSplash(_splashState.FailedBecause(failure));
+            _splash.SetDetail(DescribeFailure(args.WebErrorStatus));
             return;
         }
-        _splash.ShowFailure(DescribeFailure(args.WebErrorStatus));
+        // Latched for the next reload decision, and the splash closes only HERE:
+        // the navigation completing is the first moment the document is real.
+        _shownUrl = _window.WebView.CoreWebView2?.Source;
+        RenderSplash(_splashState.Finished());
     }
 
     /// <summary>
-    /// Show the launch surface by HIDING the webview.
+    /// Draw a state, and keep the webview hidden until there is something to show.
     ///
-    /// A WebView2 is a child HWND, and WPF's composition cannot paint over one:
-    /// a splash left visible in the visual tree would be drawn behind the
-    /// webview and never seen. Collapsing the webview is the only way to cover
-    /// it, and it is why the splash is not simply a `Panel` with a higher
-    /// `Panel.ZIndex`.
+    /// A WebView2 is a child HWND, and WPF's composition cannot paint over one: a
+    /// splash left visible in the visual tree would be drawn behind the webview and
+    /// never seen. Hiding the webview is the only way to cover it, and it is why
+    /// the splash is not simply a `Panel` with a higher `Panel.ZIndex`.
     /// </summary>
-    private void ShowSplash()
+    private void RenderSplash(SplashState state)
     {
-        _splash.Visibility = Visibility.Visible;
-        _window.WebView.Visibility = Visibility.Hidden;
+        _splashState = state;
+        _splash.Render(state);
+        _window.WebView.Visibility = state.Visible ? Visibility.Hidden : Visibility.Visible;
     }
 
-    private void HideSplash()
+    /// <summary>Why the load failed, in this shell's own vocabulary.</summary>
+    private static SplashState.SplashFailure FailureFor(CoreWebView2WebErrorStatus status) => status switch
     {
-        _splash.Visibility = Visibility.Collapsed;
-        _window.WebView.Visibility = Visibility.Visible;
-    }
+        CoreWebView2WebErrorStatus.HostNameNotResolved => SplashState.SplashFailure.HostLookup,
+        CoreWebView2WebErrorStatus.CannotConnect
+            or CoreWebView2WebErrorStatus.ServerUnreachable
+            or CoreWebView2WebErrorStatus.ConnectionAborted
+            or CoreWebView2WebErrorStatus.ConnectionReset
+            or CoreWebView2WebErrorStatus.Disconnected => SplashState.SplashFailure.Connect,
+        CoreWebView2WebErrorStatus.Timeout => SplashState.SplashFailure.Timeout,
+        CoreWebView2WebErrorStatus.ClientCertificateContainsErrors
+            or CoreWebView2WebErrorStatus.CertificateCommonNameIsIncorrect => SplashState.SplashFailure.Ssl,
+        _ => SplashState.SplashFailure.Other,
+    };
 
     /// <summary>
     /// The failure in words, because WebView2's status is an enum value.

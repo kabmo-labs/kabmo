@@ -129,13 +129,18 @@ fails to load.
   re-derives every number from `public/kabmo-wordmark.svg` — the viewBox, the shift,
   every path verbatim, the plate, the gradient, the stroke weight and the inks — and
   rasterizes the mark to assert ink where the artwork has ink.
-- **The bar is indeterminate until the web view reports real progress.** A determinate
-  bar at 0 is indistinguishable from a stuck one.
+- **The bar sweeps until the web view reports real progress.** A determinate bar at 0
+  is indistinguishable from a stuck one, and `UIProgressView` has no indeterminate
+  state — so `SweepBar` slides a segment along the same 180-point track, the way the
+  Android shell's `ProgressBar` does. The two share one row (`barRow`), so the
+  sentence does not shift when the phase changes.
 - **100% is not a finish, and progress never moves backwards.** `estimatedProgress`
   reaches 1.0 before `didFinish`, and a redirect runs it back down.
 - **A failed main-frame load keeps the overlay up with the reason** — host not found,
   connection refused, timeout, untrusted certificate, or a catch-all — plus **Retry**
-  and **Server settings**.
+  and **Server settings**, and WebKit's own sentence under ours (`setDetail`), which
+  names the address and the system error. The macOS, Windows and Linux shells print
+  the same pair.
 - **`didFinish` does not clear a failure.** A failed load still finishes on the error
   page WebKit renders; hiding the overlay there is the blank screen the overlay exists
   to remove.
@@ -255,6 +260,7 @@ packages/ios/
 │       ├── ShellNavigationDelegate.swift  navigation policy
 │       ├── ShellDownloads.swift     WKDownload + share sheet (the cookie-carrying path)
 │       ├── LoadingOverlay.swift     the launch overlay
+│       ├── SweepBar.swift           its indeterminate bar (`UIProgressView` has none)
 │       ├── SettingsViewController.swift   server settings
 │       ├── SettingsControls.swift   the screen's layout pieces
 │       ├── SettingsCopy.swift       every sentence it prints

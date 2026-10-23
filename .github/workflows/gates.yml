@@ -90,6 +90,12 @@ jobs:
           NODE_ENV: production
         run: bun run build
 
+      # The three shells' copies of the README wordmark are GENERATED from
+      # `public/kabmo-wordmark.svg`. A stale copy still renders — just not the mark —
+      # so this is the gate that catches a drawing edited in one place only.
+      - name: Check the shells' wordmark copies
+        run: bun run scripts/shell-wordmark.mjs --check
+
       # The file-size ceiling (AGENTS.md §1) is a rule about the source tree, so it is
       # checked against the tree rather than through the build.
       - name: Check the file-size ceiling

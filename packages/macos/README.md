@@ -108,6 +108,44 @@ free is then done in `ShellWindow.swift`:
 - The leftmost **76px** is behind the traffic lights, so the first header on the
   strip uses `TRAFFIC_LIGHT_INSET` (`src/client/lib/desktop/titlebar.ts`).
 
+
+## The launch splash
+
+From the moment the window opens until the console paints, the shell draws the same
+four things the Android and iOS shells draw: the **wordmark**, a **progress bar**,
+one sentence, and — on a failure — **Retry**.
+
+It is a sibling of the webview, never a view inside the page: the page cannot report
+its own readiness (its bundle is what renders the app), and a page-drawn splash would
+vanish exactly when the page fails to load.
+
+- **The wordmark is the artwork `README.md` embeds.** `Wordmark.swift` is GENERATED
+  from `public/kabmo-wordmark.svg` by `scripts/shell-wordmark.mjs`, and
+  `SplashTests` re-derives every number from that file — the viewBox, the shift, each
+  path verbatim, the plate, the gradient, the stroke weight and the inks — then
+  rasterizes the mark to assert ink where the artwork has ink and none where it does
+  not. Two hand copies of one drawing is exactly the shape that drifts silently.
+- **The bar is indeterminate until a real estimate arrives.** `estimatedProgress` is
+  KVO-only — `WKNavigationDelegate` reports started, finished and failed and nothing
+  in between — so a delegate-only splash draws a bar that jumps from sweeping to
+  gone, which is the "did it hang?" state the splash exists to remove.
+- **100% is not a finish, and progress never moves backwards.** The estimate reaches
+  1.0 before `didFinish`, and a redirect runs it back down.
+- **A failed main-frame load keeps the splash up** with our sentence plus the
+  platform's own (`URLError`'s names the address and the error), and Retry.
+- **`didFinish` does not clear a failure**: a failed load still finishes on the error
+  page WebKit renders.
+- **A reload from the console's own header shows the splash again.**
+  `location.reload()` arrives as an ordinary navigation with the same address;
+  `SplashState.isDocumentReload` compares it against the one on screen, and only from
+  a finished document so a cold start does not restart its own arm. (WebView2 exposes
+  this as a flag, which is why the Windows shell does not compare addresses.)
+
+`TestsWindow` renders the splash in a real window and asserts the assembled view —
+the mark present and in the artwork's aspect, the bar determinate only once a real
+percentage arrives, the sentence the state's, Retry only on a failure — because a
+splash that drew the wrong phase would pass every state-machine case.
+
 ## The bridge
 
 The shell injects a user script at document start:

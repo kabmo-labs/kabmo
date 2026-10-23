@@ -39,7 +39,8 @@ final class ShellNavigationDelegate: NSObject, WKNavigationDelegate, WKUIDelegat
 
   var onLoadStarted: ((String?, String?) -> Void)?
   var onLoadFinished: (() -> Void)?
-  var onLoadFailed: ((LoadingState.Failure) -> Void)?
+  /// The reason, and the engine's own sentence for it.
+  var onLoadFailed: ((LoadingState.Failure, String) -> Void)?
   var onCertificateProblem: ((String) -> Void)?
   var onOpenExternally: ((URL) -> Void)?
 
@@ -124,7 +125,7 @@ final class ShellNavigationDelegate: NSObject, WKNavigationDelegate, WKUIDelegat
   private func report(_ error: Error) {
     let code = (error as NSError).code
     if code == NSURLErrorCancelled { return }
-    onLoadFailed?(LoadingState.failure(for: URLError.Code(rawValue: code)))
+    onLoadFailed?(LoadingState.failure(for: URLError.Code(rawValue: code)), error.localizedDescription)
   }
 
   /// Authentication challenges, including an untrusted certificate.

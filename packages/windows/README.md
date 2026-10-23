@@ -95,6 +95,40 @@ the edges.
   navbar's padding is its own. Charging macOS's 76px to this platform is the bug
   `src/shared/lib/desktop/titlebar.test.ts` pins.
 
+
+## The launch splash
+
+From the moment the window opens until the console paints, the shell draws the same
+four things the Android, iOS and macOS shells draw: the **wordmark**, a **progress
+bar**, one sentence, and — on a failure — **Retry**.
+
+It is a sibling of the webview, never a view inside the page: the page cannot report
+its own readiness, and a page-drawn splash would vanish exactly when the page fails
+to load.
+
+- **The wordmark is the artwork `README.md` embeds.** `Wordmark.cs` is GENERATED from
+  `public/kabmo-wordmark.svg` by `scripts/shell-wordmark.mjs`; the rules suite
+  re-derives every number from that file and asserts each path is the SVG's own, so a
+  drifted copy fails a test instead of drawing a different logo.
+- **The bar SWEEPS, and that is a platform fact rather than a choice.** WebView2
+  exposes no progress estimate at all — `NavigationStarting`, `ContentLoading`,
+  `DOMContentLoaded` and `NavigationCompleted` are the whole lifecycle — so a
+  percentage would have to be invented, and a bar that fills on a timer lies about a
+  slow server. The indeterminate bar is the same promise the other shells make before
+  their first estimate.
+- **A reload from the console's own header shows the splash again**, and here it is
+  read from `CoreWebView2NavigationKind.Reload` rather than by comparing addresses —
+  the flag the macOS and iOS delegates do not have.
+- **A failed main-frame load keeps the splash up** with our sentence plus WebView2's
+  own (`WebErrorStatus` names the failure kind), and Retry.
+- **The webview is HIDDEN, not covered.** A WebView2 is a child HWND and WPF cannot
+  paint over one, which is why `RenderSplash` toggles the webview's visibility rather
+  than raising a `Panel.ZIndex`.
+
+`SplashState` (the phases, the rules, the reload test, the sentences) lives in the
+`net8.0` library, so the rules suite runs it on any machine that can build the
+project.
+
 ## The bridge
 
 The shell injects a user script at document start:

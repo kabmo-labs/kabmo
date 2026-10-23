@@ -150,7 +150,66 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runShortcutCases()
     runDoubleClickCases()
     runMenuCases()
+    runSplashCases()
     finish()
+  }
+
+  /**
+   The launch splash, RENDERED in a real window.
+
+   The state machine is `Tests/SplashTests.swift`'s, and a splash that drew the
+   wrong phase — or drew nothing at all — would pass every one of those cases.
+   What this checks is the assembled view: the mark is on screen, the bar exists
+   and is determinate only once a real percentage arrives, the sentence is the
+   state's, and Retry appears only on a failure.
+
+   Measured through the view's own subviews rather than a screenshot: the window
+   is real, but a bitmap comparison would assert the machine's font rendering
+   instead of the shell's behaviour.
+   */
+  func runSplashCases() {
+    print("\nthe launch splash, rendered")
+    let splash = SplashView(frame: window.contentView!.bounds)
+    splash.render(.connecting)
+    window.contentView?.addSubview(splash)
+    // No run-loop pump: every assertion below reads a property `render` set
+    // synchronously. A pump would only be needed for an ANIMATION to land, and a
+    // splash whose phases depended on one would be a splash that lies for the
+    // frames before it finishes.
+    window.contentView?.layoutSubtreeIfNeeded()
+
+    check("the splash is on screen while connecting", !splash.isHidden)
+    let image = splash.subviews.compactMap { $0 as? NSImageView }.first
+    check("the wordmark is drawn", image?.image != nil)
+    if let size = image?.image?.size {
+      // The artwork's own aspect: a mark stretched square is a mark that is not
+      // the lockup README.md embeds.
+      check("the wordmark keeps the artwork's aspect",
+            abs(size.width / size.height - 486.38 / 156.25) < 0.05)
+    }
+    let bar = splash.subviews.compactMap { $0 as? NSProgressIndicator }.first
+    check("a progress bar is present", bar != nil)
+    check("the bar sweeps until a real percentage arrives", bar?.isIndeterminate == true)
+    let sentence = splash.subviews.compactMap { $0 as? NSTextField }.first
+    check("the sentence is the connecting state's",
+          sentence?.stringValue == "Connecting to the server…")
+
+    splash.render(SplashState.connecting.progressed(42))
+    check("a real percentage makes the bar determinate", bar?.isIndeterminate == false)
+    check("the bar carries the percentage", bar?.doubleValue == 42)
+    check("the sentence carries the percentage",
+          sentence?.stringValue == "Loading the console… 42%")
+
+    splash.render(SplashState.connecting.failedBecause(.connect))
+    check("a failure offers Retry",
+          splash.subviews.compactMap { $0 as? NSButton }.contains { !$0.isHidden })
+    check("a failure hides the bar, which would say 'still working'", bar?.isHidden == true)
+    check("the failure sentence names what to check",
+          sentence?.stringValue.contains("Could not connect") == true)
+
+    splash.render(.done)
+    check("the finished splash draws nothing", splash.isHidden)
+    splash.removeFromSuperview()
   }
 
   /**

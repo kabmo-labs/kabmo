@@ -337,6 +337,131 @@ catch (ServerException error)
     Check("an absent install is refused with a sentence", error.Message.Contains("No Kabmo server to start"));
 }
 
+Group("SplashState");
+
+// The launch splash: every ordering below is one WebView2 really produces, and
+// each wrong answer is a splash that is stuck, missing or lying — none of which
+// throws.
+Check("the connecting state is visible and indeterminate",
+    SplashState.Connecting.Visible && SplashState.Connecting.Indeterminate);
+Check("connecting says what it is doing",
+    SplashState.Connecting.Sentence() == "Connecting to the server…");
+
+var splash = SplashState.Connecting;
+splash = splash.Progressed(0);
+Check("a 0% report says nothing", splash.Indeterminate && splash.Phase == SplashState.SplashPhase.Connecting);
+splash = splash.Progressed(42);
+Check("a real report becomes determinate",
+    splash.Phase == SplashState.SplashPhase.Loading && !splash.Indeterminate && splash.Percent == 42);
+Check("the sentence carries the percentage", splash.Sentence() == "Loading the console… 42%");
+
+// A redirect restarts the document: 100 then 10. A bar that snapped back reads as
+// a stall, so the maximum wins.
+splash = splash.Progressed(100).Progressed(10);
+Check("progress never moves backwards within a load", splash.Percent == 100);
+Check("100% is not a finish", splash.Phase == SplashState.SplashPhase.Loading);
+
+splash = splash.Finished();
+Check("only the load's own end closes the splash",
+    splash.Phase == SplashState.SplashPhase.Done && !splash.Visible);
+Check("a finished splash draws nothing", splash.Sentence().Length == 0);
+Check("a report after the end is ignored",
+    splash.Progressed(80).Phase == SplashState.SplashPhase.Done);
+
+// A failed main-frame load still reports completion for the error page the
+// webview renders; adopting that would hide the explanation behind a blank window.
+var failedSplash = SplashState.Connecting.Progressed(60)
+    .FailedBecause(SplashState.SplashFailure.Connect);
+Check("a failure keeps the reason on screen",
+    failedSplash.Phase == SplashState.SplashPhase.Failed && failedSplash.Visible);
+Check("finishing does not overwrite a failure",
+    failedSplash.Finished().Phase == SplashState.SplashPhase.Failed);
+Check("a report after a failure is ignored",
+    failedSplash.Progressed(90).Phase == SplashState.SplashPhase.Failed);
+Check("each reason has its own sentence",
+    new[]
+    {
+        SplashState.SentenceFor(SplashState.SplashFailure.HostLookup),
+        SplashState.SentenceFor(SplashState.SplashFailure.Connect),
+        SplashState.SentenceFor(SplashState.SplashFailure.Timeout),
+        SplashState.SentenceFor(SplashState.SplashFailure.Ssl),
+        SplashState.SentenceFor(SplashState.SplashFailure.Other),
+    }.Distinct().Count() == 5);
+
+Group("SplashState.IsDocumentReload");
+Check("a reload is the same address on a finished page",
+    SplashState.IsDocumentReload("http://127.0.0.1:3000/", "http://127.0.0.1:3000/",
+        SplashState.SplashPhase.Done));
+Check("a navigation to another address is not a reload",
+    !SplashState.IsDocumentReload("http://127.0.0.1:3000/settings", "http://127.0.0.1:3000/",
+        SplashState.SplashPhase.Done));
+// The cold start's own navigation arrives while the webview still shows the
+// previous document; treating it as a reload would restart the arm just made.
+Check("a load that has not finished is never a reload",
+    !SplashState.IsDocumentReload("http://127.0.0.1:3000/", "http://127.0.0.1:3000/",
+        SplashState.SplashPhase.Connecting));
+Check("a missing address is not a reload",
+    !SplashState.IsDocumentReload(null, null, SplashState.SplashPhase.Done));
+
+Group("Wordmark");
+
+// `Wordmark.cs` is GENERATED from `public/kabmo-wordmark.svg` by
+// `scripts/shell-wordmark.mjs`, so these cases re-derive it from that file: a copy
+// that drifted still renders a plausible-looking mark, and only the source can say
+// it is the wrong one.
+var svgPath = RepoFile("public/kabmo-wordmark.svg");
+if (!File.Exists(svgPath))
+{
+    Check("the README's wordmark SVG is readable", false);
+}
+else
+{
+    var svg = File.ReadAllText(svgPath);
+    var viewBox = Numbers(svg, @"viewBox=""([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)""");
+    Check("the SVG has a four-number viewBox", viewBox.Count == 4);
+    if (viewBox.Count == 4)
+    {
+        Check("the viewport width is the SVG's", Math.Abs(Wordmark.ViewBoxWidth - viewBox[2]) < 0.01);
+        Check("the viewport height is the SVG's", Math.Abs(Wordmark.ViewBoxHeight - viewBox[3]) < 0.01);
+        Check("the SVG starts above the origin", viewBox[1] < 0);
+        Check("the shift is -viewBox.y", Math.Abs(Wordmark.Shift + viewBox[1]) < 0.01);
+    }
+
+    var svgPaths = Matches(svg, @"<path\b[^>]*\sd=""([^""]+)""");
+    Check("the SVG has five paths", svgPaths.Count == 5);
+    for (var index = 0; index < svgPaths.Count && index < Wordmark.Paths.Length; index++)
+    {
+        // Verbatim: the y shift is applied when the visual is built, so a copy that
+        // had already been shifted would be shifted twice and still "look right".
+        Check($"path {index} is the SVG's, verbatim", Wordmark.Paths[index] == svgPaths[index]);
+    }
+
+    var plate = Numbers(svg,
+        @"<rect width=""([\d.]+)"" height=""([\d.]+)"" y=""[-\d.]+"" rx=""([\d.]+)"" fill=""#[0-9a-f]{6}""");
+    Check("the plate is the SVG's tile and radius",
+        plate.Count == 3
+        && Math.Abs(Wordmark.PlateSize - plate[0]) < 0.01
+        && Math.Abs(Wordmark.PlateCornerRadius - plate[2]) < 0.01);
+    Check("the plate is the SVG's colour", svg.Contains(Wordmark.PlateColor));
+
+    var gradient = Numbers(svg,
+        @"<linearGradient[^>]*x1=""([\d.]+)"" y1=""[-\d.]+"" x2=""([\d.]+)"" y2=""[-\d.]+""");
+    Check("the gradient runs over the SVG's span",
+        gradient.Count == 2
+        && Math.Abs(Wordmark.GradientX1 - gradient[0]) < 0.01
+        && Math.Abs(Wordmark.GradientX2 - gradient[1]) < 0.01);
+    Check("the gradient keeps both stops",
+        svg.Contains(Wordmark.GradientStart) && svg.Contains(Wordmark.GradientEnd));
+    Check("the mo ink is the SVG's", svg.Contains(Wordmark.WordInk));
+    Check("the stroke weight is the SVG's",
+        svg.Contains($"stroke-width=\"{Wordmark.StrokeWidth.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}\""));
+    Check("three strokes are drawn in three inks", Wordmark.StrokeColors.Length == 3);
+    // Every path must be a drawable `d` string: a leading moveto is what the WPF
+    // splash parses, and a fragment without one is a mark that renders as nothing.
+    Check("every path starts with a moveto",
+        Wordmark.Paths.All(d => d.TrimStart().StartsWith('M')));
+}
+
 Console.WriteLine($"\n{checks - failures}/{checks} checks passed");
 return failures == 0 ? 0 : 1;
 
@@ -346,6 +471,43 @@ return failures == 0 ? 0 : 1;
     var store = new ServerStore(deps, () => persisted, state => box.All.Add(state));
     return (store, box);
 }
+
+/// <summary>
+/// A repository file, found by walking up — the same rule the macOS and iOS
+/// suites use, so a test that cannot find the shared artwork FAILS rather than
+/// skipping (a skipped comparison is a copy nobody is checking).
+/// </summary>
+string RepoFile(string relative)
+{
+    var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+    for (var depth = 0; depth < 8 && directory is not null; depth++)
+    {
+        var candidate = Path.Combine(directory.FullName, relative);
+        if (File.Exists(candidate)) return candidate;
+        directory = directory.Parent;
+    }
+    return Path.Combine(Directory.GetCurrentDirectory(), relative);
+}
+
+/// <summary>The capture groups of the FIRST match, as numbers.</summary>
+List<double> Numbers(string source, string pattern)
+{
+    var match = System.Text.RegularExpressions.Regex.Match(source, pattern);
+    if (!match.Success) return new List<double>();
+    return match.Groups.Cast<System.Text.RegularExpressions.Group>()
+        .Skip(1)
+        .Select(group => double.TryParse(group.Value,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var value) ? value : 0)
+        .ToList();
+}
+
+/// <summary>Every first capture group of every match.</summary>
+List<string> Matches(string source, string pattern) =>
+    System.Text.RegularExpressions.Regex.Matches(source, pattern)
+        .Select(match => match.Groups[1].Value)
+        .ToList();
 
 ServerEntry Entry(string id, string url, int? port = null) =>
     new() { Id = id, Label = id, Url = url, Kind = ServerKind.Managed, Port = port, Running = true, Source = "record" };

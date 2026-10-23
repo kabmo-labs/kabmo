@@ -82,6 +82,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// Strong reference to the message handler (the content controller's is weak).
   private var bridgeHandler: BridgeHandler?
   private var splash: SplashView?
+  /// What the launch splash is showing. Owned here because the window outlives
+  /// every navigation; `SplashView` only draws it.
+  ///
+  /// It starts CONNECTING, not `done`: the window is on screen before `boot()`
+  /// runs, and a splash that began hidden left the first frames as a bare paper
+  /// rectangle — the exact blank start the splash exists to cover.
+  private var loading = SplashState.connecting
+  /// The address the web view has FINISHED on, latched by `didFinish`.
+  ///
+  /// `webView.url` is the document being loaded, not the one on screen, so it
+  /// cannot answer "was this the same page?" — that answer has to be recorded
+  /// when a load completes, before the next one starts.
+  private var shownURL: String?
+  /// The progress observation feeding the bar. `estimatedProgress` is KVO-only:
+  /// `WKNavigationDelegate` reports started, finished and failed, and NOTHING in
+  /// between — a delegate-only shell draws a bar that jumps from indeterminate to
+  /// gone, which is the "did it hang?" state the splash exists to remove.
+  private var progressObservation: NSKeyValueObservation?
 
   private static let desktopInfo = DesktopInfo(
     platform: "macos",
@@ -149,6 +167,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // The page draws the title bar, so it must reach the window's top edge.
     webView.setValue(false, forKey: "drawsBackground")
 
+    // The progress half of the splash. Armed once, on the web view that outlives
+    // every navigation — the state machine ignores an estimate after `done` or
+    // `failed`, so a late one from the previous document costs nothing.
+    progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
+      guard let self, let fraction = change.newValue else { return }
+      self.applyLoading(self.loading.progressed(fraction: fraction))
+    }
+
     let container = NSView(frame: rect)
     container.autoresizingMask = [.width, .height]
     container.addSubview(webView)
@@ -160,6 +186,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     }
 
     let splash = SplashView(frame: rect)
+    splash.onRetry = { [weak self] in self?.retryLoad() }
+    splash.render(loading)
     container.addSubview(splash)
     self.splash = splash
 
@@ -214,7 +242,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   private func load(_ urlString: String) {
     guard let url = URL(string: urlString) else { return }
     pendingBootURL = urlString
+    startLoad(url)
+  }
+
+  /// Begin a load with the splash up.
+  ///
+  /// The state is armed BEFORE `load`, because a cached document can call
+  /// `didStartProvisionalNavigation` on the same tick: arming afterwards would let
+  /// the first estimate of a real load be ignored as "already finished".
+  private func startLoad(_ url: URL) {
+    applyLoading(.connecting)
     webView.load(URLRequest(url: url))
+  }
+
+  private func applyLoading(_ next: SplashState) {
+    loading = next
+    splash?.render(next)
   }
 
   // ---------------------------------------------------------------- navigation
@@ -229,36 +272,77 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     window.fullScreenStateChanged()
   }
 
-  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    // The splash covers the window only until the first real page paints. A
-    // failed load keeps it, with the reason, rather than showing a blank window.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-      self?.dismissSplash()
+  func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+    // Only `startLoad` and a RELOAD re-open the splash. A later in-app navigation
+    // (the login submit is one) must NOT flash it: the state machine ignores
+    // progress once it has finished, so a navigation after the console is up
+    // costs nothing — while a FAILED main-frame load still surfaces its reason,
+    // which is the blank-window case worth covering.
+    //
+    // The page's own Reload control is the exception, and it is what this check
+    // exists for: `location.reload()` fetches the SAME address again, which from
+    // the shell's side is a cold start in miniature — the console is replaced by
+    // a blank document while the bundle is re-fetched, and leaving the splash
+    // hidden there made the header's button look like it did nothing.
+    if SplashState.isDocumentReload(
+      started: webView.url?.absoluteString,
+      shown: shownURL,
+      phase: loading.phase
+    ) {
+      applyLoading(.connecting)
     }
+  }
+
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    // Latched HERE, not read from `webView.url` later: by the time the next
+    // `didStartProvisionalNavigation` arrives the view already points at the
+    // incoming document, so the comparison would match every navigation.
+    shownURL = webView.url?.absoluteString
+    // 100% is not a finish: the server's shell is still fetching the client
+    // bundle when the estimate reaches 1.0, so only this call closes the splash.
+    // The view stays MOUNTED and hidden — `render(.done)` is what hides it — so a
+    // later Reload shows it again with no second instance.
+    applyLoading(loading.finished())
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    showSplashFailure(error.localizedDescription)
+    failSplash(error)
   }
 
-  func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    showSplashFailure(error.localizedDescription)
+  func webView(
+    _ webView: WKWebView,
+    didFailProvisionalNavigation navigation: WKNavigation!,
+    withError error: Error
+  ) {
+    failSplash(error)
   }
 
-  private func dismissSplash() {
-    guard let splash else { return }
-    NSAnimationContext.runAnimationGroup { context in
-      context.duration = 0.18
-      splash.animator().alphaValue = 0
-    } completionHandler: {
-      splash.removeFromSuperview()
+  /// A failed main-frame load keeps the splash with the reason.
+  ///
+  /// A cancelled load is not a failure: a redirect or a `location.replace`
+  /// reports `NSURLErrorCancelled`, and surfacing that would cover a page that is
+  /// loading fine.
+  private func failSplash(_ error: Error) {
+    if (error as NSError).code == NSURLErrorCancelled { return }
+    let failure = SplashState.failure(for: error)
+    applyLoading(loading.failedBecause(failure))
+    // WebKit's own sentence is appended under ours: it names the address and the
+    // system error, which is the detail a reader needs when our wording is the
+    // generic case.
+    splash?.setDetail(error.localizedDescription)
+  }
+
+  /// Retry from the splash's own button.
+  ///
+  /// A failed load leaves the web view on WebKit's error page, which is not a
+  /// document the console can recover from; reloading the saved address is the
+  /// only retry that means anything.
+  private func retryLoad() {
+    guard let urlString = pendingBootURL, let url = URL(string: urlString) else {
+      webView.reload()
+      return
     }
-    self.splash = nil
-  }
-
-  private func showSplashFailure(_ reason: String) {
-    guard let splash else { return }
-    splash.showFailure(reason)
+    startLoad(url)
   }
 
   // ---------------------------------------------------------------- commands

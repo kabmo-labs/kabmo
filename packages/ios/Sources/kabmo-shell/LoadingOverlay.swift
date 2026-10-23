@@ -27,7 +27,10 @@ final class LoadingOverlay: UIView {
 
   private let wordmark = UIImageView()
   private let bar = UIProgressView(progressViewStyle: .bar)
-  private let spinner = UIActivityIndicatorView(style: .medium)
+  /// The bar's indeterminate twin: `UIProgressView` has no such state, so the
+  /// connecting phase slides this instead of showing a spinner the other shells
+  /// do not have.
+  private let sweep = SweepBar()
   private let status = UILabel()
   private let actions = UIStackView()
   private let retryButton = UIButton(type: .system)
@@ -47,10 +50,8 @@ final class LoadingOverlay: UIView {
     bar.progressTintColor = Palette.ink
     bar.trackTintColor = Palette.hairline
     bar.translatesAutoresizingMaskIntoConstraints = false
-    // Indeterminate is not a thing `UIProgressView` does; the connecting state
-    // draws an empty bar and a spinner instead, which is the same promise: "no
-    // number yet" rather than a bar stuck at zero.
     bar.progress = 0
+    sweep.translatesAutoresizingMaskIntoConstraints = false
 
     status.font = .systemFont(ofSize: 12)
     status.textColor = Palette.inkMuted
@@ -70,11 +71,29 @@ final class LoadingOverlay: UIView {
     actions.isHidden = true
     actions.translatesAutoresizingMaskIntoConstraints = false
 
-    let column = UIStackView(arrangedSubviews: [wordmark, bar, spinner, status, actions])
+    // The two bars are the SAME row: exactly one is visible at a time, and a
+    // stack view that held them as siblings would collapse the hidden one and
+    // shift the sentence by its height on every phase change. The container fixes
+    // the row, so the column never moves.
+    let barRow = UIView()
+    barRow.translatesAutoresizingMaskIntoConstraints = false
+    barRow.addSubview(bar)
+    barRow.addSubview(sweep)
+    NSLayoutConstraint.activate([
+      bar.leadingAnchor.constraint(equalTo: barRow.leadingAnchor),
+      bar.trailingAnchor.constraint(equalTo: barRow.trailingAnchor),
+      bar.centerYAnchor.constraint(equalTo: barRow.centerYAnchor),
+      sweep.leadingAnchor.constraint(equalTo: barRow.leadingAnchor),
+      sweep.trailingAnchor.constraint(equalTo: barRow.trailingAnchor),
+      sweep.centerYAnchor.constraint(equalTo: barRow.centerYAnchor),
+      barRow.heightAnchor.constraint(equalToConstant: 4),
+      barRow.widthAnchor.constraint(equalToConstant: 180),
+    ])
+
+    let column = UIStackView(arrangedSubviews: [wordmark, barRow, status, actions])
     column.axis = .vertical
     column.alignment = .center
     column.spacing = 16
-    column.setCustomSpacing(8, after: bar)
     column.setCustomSpacing(18, after: status)
     column.translatesAutoresizingMaskIntoConstraints = false
     addSubview(column)
@@ -89,7 +108,6 @@ final class LoadingOverlay: UIView {
       // a given scale measures the bitmap.
       wordmark.widthAnchor.constraint(equalToConstant: 180),
       wordmark.heightAnchor.constraint(equalToConstant: 58),
-      bar.widthAnchor.constraint(equalToConstant: 180),
     ])
 
     render(.done)
@@ -104,23 +122,25 @@ final class LoadingOverlay: UIView {
   /// `LoadingState`.
   func render(_ state: LoadingState) {
     isHidden = !state.visible
-    guard state.visible else { return }
+    guard state.visible else {
+      // The sweep is a layer animation, and a hidden view keeps animating
+      // nothing: stopping here is what keeps a re-shown overlay from resuming
+      // mid-slide from wherever the last load left it.
+      sweep.stop()
+      return
+    }
 
     let failed = state.phase == .failed
     actions.isHidden = !failed
 
     // A determinate bar at 0 is the "stuck" look this overlay exists to remove, so
-    // the connecting phase shows the spinner instead — and a FAILED load hides both,
-    // because a frozen partial bar says "still working" over a message that says the
+    // the connecting phase sweeps instead — and a FAILED load hides BOTH, because
+    // a frozen partial bar says "still working" over a message that says the
     // opposite.
-    let waiting = state.phase == .connecting
+    let waiting = state.indeterminate
     bar.isHidden = failed || waiting
     bar.setProgress(Float(state.percent) / 100, animated: false)
-    if waiting && !failed {
-      spinner.startAnimating()
-    } else {
-      spinner.stopAnimating()
-    }
+    sweep.isHidden = !waiting || failed
 
     status.textColor = failed ? Palette.error : Palette.inkMuted
     status.text = sentence(for: state)
@@ -137,6 +157,16 @@ final class LoadingOverlay: UIView {
     case .done:
       return ""
     }
+  }
+
+  /// The platform's own sentence, appended under ours on a failure.
+  ///
+  /// Our wording says what the user can DO; `URLError`'s names the address and the
+  /// system error, which is the detail that makes a wrong port diagnosable. The
+  /// other shells do the same (`SplashView.setDetail`, `SplashView.SetDetail`).
+  func setDetail(_ text: String) {
+    guard !isHidden else { return }
+    status.text = "\(status.text ?? "")\n\(text)"
   }
 
   /// One sentence per reason. The failure cases are what the user needs to tell

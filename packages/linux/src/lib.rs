@@ -25,13 +25,17 @@ pub const APP_NAME: &str = "Kabmo";
 pub mod bridge;
 pub mod persisted;
 pub mod splash;
+pub mod splash_view;
 pub mod store;
 pub mod system;
 pub mod window;
+pub mod wordmark;
+mod wordmark_data;
 
 pub use bridge::{bootstrap_script, parse_call, reply_script, DesktopInfo, ShellCall};
 pub use persisted::{read_state, state_file_path, write_state};
-pub use splash::{Phase, Progress, Splash};
+pub use splash::{Failure, Phase, Progress};
+pub use splash_view::Splash;
 pub use store::{
     normalise_url, port_of, server_id_port, server_id_value, Deps, Health, PersistedState,
     ServerEntry, ServerKind, ServerStore, ServersState, ShellError, StartResult, StoredServer,
@@ -40,6 +44,7 @@ pub use system::{
     data_directory, detect_local_servers, free_port, probe_health, which, AlreadyServed, Launch,
     ManagedServer, StartFailure, Supervisor, SystemDeps,
 };
+pub use wordmark::{commands, paint, Command};
 pub use window::{
     cursor_for, edge_at, is_fullscreen, make_window, open_settings, pointer_position,
     remember_press, show_about, toggle_inspector, DoubleClickAction, Geometry, DEFAULT_HEIGHT,

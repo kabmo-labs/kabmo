@@ -173,9 +173,13 @@ final class ShellViewController: UIViewController {
         _ = cookies
       }
     }
-    navigation.onLoadFailed = { [weak self] failure in
+    navigation.onLoadFailed = { [weak self] failure, detail in
       guard let self else { return }
       self.applyLoading(self.loading.failedBecause(failure))
+      // The engine's own sentence under ours: it names the address and the system
+      // error, which is what makes a wrong port diagnosable. Same shape as the
+      // macOS, Windows and Linux shells.
+      self.overlay.setDetail(detail)
     }
     navigation.onCertificateProblem = { [weak self] detail in
       self?.showCertificateAlert(detail)

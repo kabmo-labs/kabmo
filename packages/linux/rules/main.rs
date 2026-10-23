@@ -27,6 +27,7 @@ mod support;
 mod system;
 mod url;
 mod window;
+mod wordmark;
 
 use support::Runner;
 
@@ -36,6 +37,7 @@ fn main() {
     store::cases(&mut r);
     bridge::cases(&mut r);
     splash::cases(&mut r);
+    wordmark::cases(&mut r);
     window::cases(&mut r);
     system::cases(&mut r);
 

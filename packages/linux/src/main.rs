@@ -35,7 +35,8 @@ use webkit2gtk::{
 use kabmo_desktop::bridge::{bootstrap_script, parse_call, reply_script, DesktopInfo};
 use kabmo_desktop::APP_NAME;
 use kabmo_desktop::persisted::{read_state, write_state};
-use kabmo_desktop::splash::{Progress, Splash};
+use kabmo_desktop::splash::Progress;
+use kabmo_desktop::splash_view::Splash;
 use kabmo_desktop::store::ServerStore;
 use kabmo_desktop::system::{Supervisor, SystemDeps};
 use kabmo_desktop::window::{make_window, remember_press, wire_edge_resize};
@@ -88,6 +89,12 @@ struct Shell {
     progress: Rc<RefCell<Progress>>,
     /// The URL the window is on, so a Retry reloads the same one.
     current_url: Rc<RefCell<String>>,
+    /// The URI the view has FINISHED on.
+    ///
+    /// `view.uri()` is the document being loaded, not the one on screen, so it
+    /// cannot answer "was this the same page?" — that answer has to be recorded
+    /// when a load finishes, before the next one starts.
+    shown_uri: Rc<RefCell<Option<String>>>,
     /// The last press the webview saw, so the bar's menu opens where the user
     /// clicked rather than at the pointer's current position.
     last_press: Rc<RefCell<Option<gdk::Event>>>,
@@ -129,8 +136,9 @@ impl Shell {
             splash,
             supervisor,
             store,
-            progress: Rc::new(RefCell::new(Progress::default())),
+            progress: Rc::new(RefCell::new(Progress::connecting())),
             current_url: Rc::new(RefCell::new(String::new())),
+            shown_uri: Rc::new(RefCell::new(None)),
             last_press: Rc::new(RefCell::new(None)),
             info: DesktopInfo::default(),
         };
@@ -216,8 +224,7 @@ impl Shell {
                     // reloads it: the page that asked is about to be replaced,
                     // so its own state would be the previous server's.
                     if let Some(url) = payload.get("__navigate").and_then(|value| value.as_str()) {
-                        *progress.borrow_mut() = Progress::default();
-                        splash.widget.show_all();
+                        *progress.borrow_mut() = Progress::connecting();
                         splash.show_progress(*progress.borrow());
                         view.load_uri(url);
                     }
@@ -239,11 +246,33 @@ impl Shell {
     fn wire_navigation(&self) {
         let progress = self.progress.clone();
         let splash = self.splash.clone();
+        let shown_uri = self.shown_uri.clone();
         self.view.connect_load_changed(move |view, event| {
             match event {
                 webkit2gtk::LoadEvent::Started => {
-                    *progress.borrow_mut() = Progress::default();
-                    splash.show_progress(*progress.borrow());
+                    // Only `load` and a RELOAD re-open the splash. A later in-app
+                    // navigation (the login submit is one) must not flash it over a
+                    // console that is already up — while a FAILED main-frame load
+                    // still surfaces its reason, which is the blank-window case
+                    // worth covering.
+                    //
+                    // The page's own Reload control is the exception, and it is
+                    // what this check exists for: `location.reload()` fetches the
+                    // SAME address again, which from the shell's side is a cold
+                    // start in miniature — the console is replaced by a blank
+                    // document while the bundle is re-fetched, and leaving the
+                    // splash hidden there made the header's button look like it did
+                    // nothing.
+                    let started = view.uri().map(|uri| uri.to_string());
+                    let shown = shown_uri.borrow().clone();
+                    if Progress::is_document_reload(
+                        started.as_deref(),
+                        shown.as_deref(),
+                        progress.borrow().phase,
+                    ) {
+                        *progress.borrow_mut() = Progress::connecting();
+                        splash.show_progress(*progress.borrow());
+                    }
                 }
                 webkit2gtk::LoadEvent::Committed => {
                     let next = progress.borrow().advance(view.estimated_load_progress());
@@ -251,11 +280,16 @@ impl Shell {
                     splash.show_progress(next);
                 }
                 webkit2gtk::LoadEvent::Finished => {
+                    // Latched HERE, not read from `view.uri()` later: by the time
+                    // the next `Started` arrives the view already points at the
+                    // incoming document, so the comparison would match every
+                    // navigation.
+                    *shown_uri.borrow_mut() = view.uri().map(|uri| uri.to_string());
                     // Read and write in two statements: `*x.borrow_mut() = x.borrow().f()`
                     // holds both borrows at once and panics at run time.
                     let finished = progress.borrow().finish();
                     *progress.borrow_mut() = finished;
-                    splash.widget.hide();
+                    splash.show_progress(finished);
                 }
                 _ => {}
             }
@@ -267,9 +301,9 @@ impl Shell {
         let progress_for_failure = self.progress.clone();
         self.view
             .connect_load_failed(move |_view, _event, uri, error| {
-                let failed = progress_for_failure.borrow().fail();
+                let failure = failure_for(error);
+                let failed = progress_for_failure.borrow().failed_because(failure);
                 *progress_for_failure.borrow_mut() = failed;
-                splash_for_failure.widget.show_all();
                 splash_for_failure.show_failure(&format!("{uri}\n{error}"));
                 true
             });
@@ -279,7 +313,7 @@ impl Shell {
         let progress_for_retry = self.progress.clone();
         let splash_for_retry = self.splash.clone();
         self.splash.on_retry(move || {
-            *progress_for_retry.borrow_mut() = Progress::default();
+            *progress_for_retry.borrow_mut() = Progress::connecting();
             splash_for_retry.show_progress(*progress_for_retry.borrow());
             let url = url_for_retry.borrow().clone();
             if url.is_empty() {
@@ -377,11 +411,37 @@ impl Shell {
         self.load(&url);
     }
 
+    /// Begin a load with the splash up.
+    ///
+    /// The state is armed BEFORE `load_uri`, because a cached document can report
+    /// `Started` on the same tick: arming afterwards would let the first estimate
+    /// of a real load be ignored as "already finished".
     fn load(&self, url: &str) {
         *self.current_url.borrow_mut() = url.to_string();
-        *self.progress.borrow_mut() = Progress::default();
-        self.splash.widget.show_all();
+        *self.shown_uri.borrow_mut() = None;
+        *self.progress.borrow_mut() = Progress::connecting();
         self.splash.show_progress(*self.progress.borrow());
         self.view.load_uri(url);
+    }
+}
+
+/// Why a load failed, in the shell's own vocabulary.
+///
+/// WebKitGTK's `NetworkError` is COARSER than the other shells' error enums: it has
+/// `Failed`, `Transport`, `UnknownProtocol`, `Cancelled` and `FileDoesNotExist`,
+/// and nothing that separates a DNS failure from a refused connection. So the split
+/// here is the one the enum can actually support, and the engine's own sentence is
+/// printed under it (`show_failure`) — which is what names the address and the
+/// detail in the cases this cannot tell apart.
+fn failure_for(error: &gtk::glib::Error) -> kabmo_desktop::splash::Failure {
+    use kabmo_desktop::splash::Failure;
+    use webkit2gtk::NetworkError;
+
+    match error.kind::<NetworkError>() {
+        Some(NetworkError::Cancelled) => Failure::Other,
+        Some(NetworkError::Transport) => Failure::Connect,
+        Some(NetworkError::UnknownProtocol) => Failure::HostLookup,
+        Some(NetworkError::FileDoesNotExist) => Failure::Other,
+        _ => Failure::Other,
     }
 }

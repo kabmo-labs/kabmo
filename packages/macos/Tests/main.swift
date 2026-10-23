@@ -494,6 +494,8 @@ final class SimpleHTTPServer: @unchecked Sendable {
 
 await storeCases()
 await systemCases()
+// The launch splash: its state machine, and the wordmark it draws.
+splashCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

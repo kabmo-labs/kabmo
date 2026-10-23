@@ -294,7 +294,10 @@ supported.
 | `src/store.rs` | the server list, its persisted shape, and the ownership rule |
 | `src/system.rs` | `XDG` paths, the health probe, local-server detection, and the supervisor that owns a spawned child's process group |
 | `src/bridge.rs` | the injected JS, the call parser, the reply script, and the `desktopInfo` payload |
-| `src/splash.rs` | the launch overlay and its progress rules |
+| `src/splash.rs` | the launch overlay's RULES: four phases, the progress arithmetic, the reload test, the sentences |
+| `src/splash_view.rs` | the overlay's widget: the wordmark, the bar and its sweep timer, the sentence, Retry |
+| `src/wordmark.rs` | the SVG path parser and the cairo painter for the README's lockup |
+| `src/wordmark_data.rs` | GENERATED from `public/kabmo-wordmark.svg` by `scripts/shell-wordmark.mjs` |
 | `src/window.rs` | the undecorated window, edge resizing, the bar and its menu, zoom, and the geometry arithmetic |
 | `rules/` | the rules suite, an ordinary executable split by domain (`support.rs` holds the runner and the fakes, the rest one file per rule family) — `bun test` has no analogue for a Rust crate |
 
@@ -311,7 +314,10 @@ supported.
   binary.
 - **The window itself is not driven by a pointer in CI.** What can be wrong
   without one — the server list's rules, the probe, the record reader, the bridge's
-  wire shapes, the edge arithmetic, the splash's progress rules — is unit-tested.
+  wire shapes, the edge arithmetic, the splash's progress and reload rules, and the
+  wordmark's parser against the SVG — is unit-tested. The splash itself was verified
+  under Xvfb: against a dead port it renders the mark, the sentence and Retry in the
+  error tone; against a server that stalls, the mark and the sweeping bar.
   The window was verified by hand under Xvfb + openbox: a press on the header and a
   drag moved it (`X 60→120, Y 20→60`), a press on the east edge and a drag widened
   it (1280→1328), the page's square control maximized and restored it
