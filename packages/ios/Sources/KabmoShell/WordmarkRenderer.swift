@@ -108,18 +108,26 @@ public enum WordmarkRenderer {
 
   /// `#rrggbb` as a `CGColor`.
   ///
-  /// Hand-parsed rather than through UIKit, so this module stays drawable in a
-  /// test that has no window server.
+  /// Built in the sRGB space EXPLICITLY, never with `CGColor(red:green:blue:alpha:)`:
+  /// that initialiser makes a colour in Generic RGB, and drawing it into an sRGB
+  /// context converts it — measured, `#0b5d3b` came out `#006e4c`, which is a
+  /// different green from the one the artwork, the app icon and the README all
+  /// declare. Hand-parsed rather than through UIKit, so this module stays
+  /// drawable in a test that has no window server.
   static func color(_ hex: String) -> CGColor {
     let cleaned = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
-    guard cleaned.count == 6, let value = UInt32(cleaned, radix: 16) else {
-      return CGColor(red: 0, green: 0, blue: 0, alpha: 1)
-    }
+    guard cleaned.count == 6,
+          let value = UInt32(cleaned, radix: 16),
+          let space = CGColorSpace(name: CGColorSpace.sRGB)
+    else { return CGColor(gray: 0, alpha: 1) }
     return CGColor(
-      red: CGFloat((value >> 16) & 0xFF) / 255,
-      green: CGFloat((value >> 8) & 0xFF) / 255,
-      blue: CGFloat(value & 0xFF) / 255,
-      alpha: 1
-    )
+      colorSpace: space,
+      components: [
+        CGFloat((value >> 16) & 0xFF) / 255,
+        CGFloat((value >> 8) & 0xFF) / 255,
+        CGFloat(value & 0xFF) / 255,
+        1,
+      ]
+    ) ?? CGColor(gray: 0, alpha: 1)
   }
 }
