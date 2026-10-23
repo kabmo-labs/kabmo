@@ -12,6 +12,7 @@ import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sid
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
 import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
+import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
@@ -150,6 +151,28 @@ export function SessionsView({
     }, { replace: true });
   };
 
+  /**
+   * Start a chat in a worktree made from this folder.
+   *
+   * The pick is written into the PENDING session's own state before the URL
+   * names it, so the composer's target picker draws it and the send path reads
+   * it through its ref — the same key the picker writes. Starting the chat here
+   * rather than only reporting the folder is what makes the entry point useful:
+   * a worktree created from the sidebar with no chat in it is a folder the user
+   * then has to go and find.
+   */
+  const handleNewWorktreeSession = (folderId: number, worktreePath: string) => {
+    prewarmForNewSession(folderId);
+    const pendingId = startPendingSession(folderId);
+    setSessionKey(pendingId, 'chat.spawnTarget', { folderId, worktreePath });
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('sessionId', pendingId);
+      next.set('folderId', folderId.toString());
+      return next;
+    }, { replace: true });
+  };
+
   const handleNewSessionForFolder = (folderId: number) => {
     prewarmForNewSession(folderId);
     setSearchParams(prev => {
@@ -197,6 +220,7 @@ export function SessionsView({
             sessionStatus={sessionStatus}
             onSelectSession={handleSelectSession}
             onNewSessionForFolder={handleNewSessionForFolder}
+            onNewWorktreeSession={handleNewWorktreeSession}
             onToast={pushToast}
             batch={batchBinding}
             onStartSessionSelection={(folderId) => batch.begin('session', folderId)}

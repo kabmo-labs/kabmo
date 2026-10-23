@@ -12,6 +12,7 @@ import { waitingBindings } from '@/server/routes/waiting/bindings';
 import { settingsBindings } from '@/server/routes/settings';
 import { fsBindings } from '@/server/routes/fs';
 import { foldersBindings } from '@/server/routes/folders';
+import { worktreesBindings } from '@/server/routes/worktrees';
 import { filesBindings } from '@/server/routes/files';
 import { telemetryBindings } from '@/server/routes/telemetry';
 import { terminalBindings } from '@/server/routes/terminal';
@@ -42,6 +43,7 @@ const allBindings: HandlerBinding[] = [
   ...settingsBindings,
   ...fsBindings,
   ...foldersBindings,
+  ...worktreesBindings,
   ...filesBindings,
   ...telemetryBindings,
   ...terminalBindings,

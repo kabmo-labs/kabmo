@@ -20,6 +20,7 @@ import type { ComposerModes } from '@/client/components/workspace/chat-timeline/
 import type { WaitingCandidate } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import type { DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
 import { EmptyWorkspacePrompt } from '@/client/components/workspace/chat-timeline/EmptyWorkspacePrompt';
+import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 
 export interface PendingChatViewProps {
   className: string;
@@ -59,6 +60,10 @@ export interface PendingChatViewProps {
   onWaitingForChange: (candidate: WaitingCandidate | null) => void;
   heldWait: { title: string | null } | null;
   onCancelWait: () => void;
+  /** Where the chat will run: the folder, or one of its worktrees. */
+  spawnTarget?: SpawnTarget | null;
+  onSpawnTargetChange?: (next: SpawnTarget | null) => void;
+  onWorktreeReport?: (message: string) => void;
 }
 
 export function PendingChatView(props: PendingChatViewProps) {
@@ -101,6 +106,9 @@ export function PendingChatView(props: PendingChatViewProps) {
       onWaitingForChange={props.onWaitingForChange}
       heldWait={props.heldWait}
       onCancelWait={props.onCancelWait}
+      spawnTarget={props.spawnTarget}
+      onSpawnTargetChange={props.onSpawnTargetChange}
+      onWorktreeReport={props.onWorktreeReport}
     />
   );
 }

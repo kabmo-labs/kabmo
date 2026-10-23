@@ -6,9 +6,12 @@ import { LoadingState } from '@/client/components/settings/LoadingState';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { SettingsMasterDetail } from '@/client/components/settings/master-detail';
+import { WorktreeSettings } from '@/client/components/settings/categories/project-settings/WorktreeSettings';
+import { useToasts } from '@/client/hooks/ui/toasts';
 
 export function ProjectSettings() {
   const masterDetail = useSettingsMasterDetail();
+  const { pushToast } = useToasts();
   const [projects, setProjects] = useState<ProjectConfigItem[]>([]);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [accentColorOptions, setAccentColorOptions] = useState<AccentColorOption[]>([]);
@@ -179,14 +182,25 @@ export function ProjectSettings() {
         }
         detail={
           selectedProject ? (
-            <ProjectDetailsForm
-              project={selectedProject}
-              canDelete={projects.length > 1}
-              onUpdateField={handleUpdateField}
-              onDeleteProject={handleDeleteProject}
-              availableModels={availableModels}
-              accentColorOptions={accentColorOptions}
-            />
+            <div className="flex flex-col">
+              <ProjectDetailsForm
+                project={selectedProject}
+                canDelete={projects.length > 1}
+                onUpdateField={handleUpdateField}
+                onDeleteProject={handleDeleteProject}
+                availableModels={availableModels}
+                accentColorOptions={accentColorOptions}
+              />
+              {/* Worktrees belong to the PROJECT, not to a session: a create here
+                  has no chat, and the next chat picks it from the composer. */}
+              <div className="border-t border-ink/10 px-4 py-4">
+                <WorktreeSettings
+                  root={selectedProject.path}
+                  folderId={selectedProject.folderId ?? null}
+                  onReport={(message, tone) => pushToast(message, tone ?? 'success', { duration: 6000 })}
+                />
+              </div>
+            </div>
           ) : null
         }
       />

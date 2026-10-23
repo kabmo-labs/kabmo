@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
 import { useTimelineScope } from '@/client/hooks/chat/timeline/scope';
+import { useSpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import type { ChatMessageData } from '@/shared/types';
 import { useOmpAgent } from '@/client/hooks/chat/omp';
 import { useChatTimelineQueue } from '@/client/hooks/chat/timeline/queue';
@@ -57,8 +58,7 @@ export function useChatTimeline({
   const { inputValue, setInputValue, inputAttachments, setInputAttachments } = useComposerDraft();
   const [localMessages, setLocalMessages] = useState<ChatMessageData[]>([]);
 
-  // A pending "new-…" session renders the workspace picker, which owns its own
-  // timeline and scroll handling.
+  // A pending "new-…" session renders the workspace picker with its own timeline.
   const isPendingSession = Boolean(sessionId?.startsWith('new-'));
   // Committed history lands asynchronously (session-load.ts), so the container
   // paints at the top first; jump to the tail once per session when it does.
@@ -211,6 +211,8 @@ export function useChatTimeline({
     enqueueExtensionDialog,
     withdrawExtensionDialog,
   }), activityRef);
+  const spawn = useSpawnTarget(sessionId);
+
   const { steerOmpAgent, executeSend } = useChatTimelineSend({
     folders,
     selectedFolderId,
@@ -234,15 +236,15 @@ export function useChatTimeline({
     deferredComposerPickRef,
     accessModeRef,
     spawnSelectionRef: modes.spawnSelectionRef,
+    spawnWorktreeRef: spawn.worktreePathRef,
     abortControllerRef,
     setInputValue,
     setSearchParams,
   });
 
   // Queue auto-delivery moved server-side: the wrapper's terminal `agent_end`
-  // schedules the next queued prompt (`lib/queue/delivery.server.ts`), with a
-  // transactional head claim so no reload/tab race can double-send. The client
-  // panel is a view; `stopHoldRef` remains only for the mock path below.
+  // schedules the next queued prompt, with a transactional head claim so no
+  // reload/tab race can double-send. `stopHoldRef` serves only the mock path.
 
   const {
     handleSend,
@@ -339,6 +341,8 @@ export function useChatTimeline({
     composerModelRef,
     deferredComposerPickRef,
     waitingDependency,
+    spawnTarget: spawn.target,
+    setSpawnTarget: spawn.setTarget,
     extensionDialogs,
     resolveExtensionDialog,
     respondToExtensionUi: ompAgent.respondToExtensionUi,

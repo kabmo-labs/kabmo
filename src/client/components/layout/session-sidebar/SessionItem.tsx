@@ -4,6 +4,8 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
+import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
+import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 
 export interface SessionItemProps {
   /** The session this row draws; the key its in-flight rename is tracked under. */
@@ -38,6 +40,11 @@ export interface SessionItemProps {
   waitingFor?: { title: string | null };
   /** Drop this row's held prompt, from the row's own menu. */
   onCancelWait?: () => void;
+  /**
+   * The worktree this session runs in, when its cwd is a linked checkout. The
+   * server sends it with the row, so no layout and no plugin asks git.
+   */
+  worktree?: SessionWorktreeInfo;
   /** Draw a checkbox and let the row's click toggle the selection instead of
    *  opening the session (batch mode). */
   selectable?: boolean;
@@ -64,6 +71,7 @@ export function SessionItem({
   onToggleExpand,
   waitingFor,
   onCancelWait,
+  worktree,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -224,6 +232,10 @@ export function SessionItem({
                 waiting for {waitingFor?.title ?? 'another session'}
               </span>
             )}
+            {/* A worktree session runs in its own checkout. The chip is the only
+                thing on the row saying so — the folder above it is the project,
+                which is where a reader would otherwise assume the chat writes. */}
+            {worktree && !isEditing && <WorktreeBadge worktree={worktree} />}
           </span>
         )}
 

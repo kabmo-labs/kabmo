@@ -58,6 +58,13 @@ export interface ChatTimelineSendDeps {
    *  outside the render that produced the pick, and it is the FIRST moment a
    *  child exists to carry the selection. */
   spawnSelectionRef: { current: { plan: boolean; goal: boolean } | null };
+  /**
+   * The worktree the pending chat picked (`chat.spawnTarget`), read through a
+   * REF because the composer is remounted by a stretch, a tab switch and a
+   * reload while this handler is created once per deps record — the same reason
+   * the waiting pick keeps one.
+   */
+  spawnWorktreeRef: { current: string | null };
   /** Picks the composer made while a turn was streaming. Pushed onto the
    *  session here, immediately before the prompt they were meant for. */
   deferredComposerPickRef: DeferredModelStore;
@@ -104,6 +111,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     deferredComposerPickRef,
     accessModeRef,
     spawnSelectionRef,
+    spawnWorktreeRef,
     abortControllerRef,
     setInputValue,
     setSearchParams,
@@ -234,7 +242,9 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     // when the spawn fails (e.g. MOCK=true or no workspace context).
     if (!isOmpSession) {
       const currentFolder = folders.find(f => String(f.id) === String(selectedFolderId));
-      const cwd = currentFolder?.project_path || currentFolder?.name;
+      // A worktree pick wins: the chat is BORN there, so no relocation is ever
+      // needed and the child's cwd is right for its whole life.
+      const cwd = spawnWorktreeRef.current || currentFolder?.project_path || currentFolder?.name;
       if (cwd) {
         const images = collectImages(attachments);
         const promptText = await buildPromptText(text, textFiles);

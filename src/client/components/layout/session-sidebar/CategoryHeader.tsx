@@ -14,7 +14,9 @@
  * props; this file only decides how the two states look.
  */
 
+import { useState } from 'preact/hooks';
 import { ChevronDown, ChevronRight, MoreHorizontal, Pin, Plus } from 'lucide-preact';
+import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
@@ -39,6 +41,8 @@ export interface CategoryHeaderProps {
   showMenu: boolean;
   onToggleMenu: () => void;
   onNewSession: () => void;
+  /** Start a chat in a worktree made from this folder. */
+  onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   onOpenFolder?: () => void;
   onSelectSessions?: () => void;
   confirmDelete: boolean;
@@ -58,6 +62,7 @@ export function CategoryHeader({
   showMenu,
   onToggleMenu,
   onNewSession,
+  onNewWorktreeSession,
   onOpenFolder,
   onSelectSessions,
   confirmDelete,
@@ -67,6 +72,10 @@ export function CategoryHeader({
   onCancelDelete,
 }: CategoryHeaderProps) {
   const ProjectIcon = getProjectIcon(folder.icon);
+  // The dialog lives here rather than in the page: the row that opens it is this
+  // one, and the folder it belongs to is what the dialog needs.
+  const [worktreeDialogOpen, setWorktreeDialogOpen] = useState(false);
+  const canCreateWorktree = Boolean(onNewWorktreeSession && folder.project_path);
 
   return (
     <div className="group flex items-center justify-between h-7 text-xs font-semibold text-ink px-2 hover:bg-ink/5 rounded-md transition-colors select-none">
@@ -159,6 +168,7 @@ export function CategoryHeader({
                   isPinned={folder.isPinned}
                   onOpenFolder={onOpenFolder}
                   onSelectSessions={onSelectSessions}
+                  onNewWorktree={canCreateWorktree ? () => { onToggleMenu(); setWorktreeDialogOpen(true); } : undefined}
                   confirmDelete={confirmDelete}
                   onPin={onPin}
                   onDelete={onDelete}
@@ -169,6 +179,20 @@ export function CategoryHeader({
             )}
           </div>
         </div>
+      )}
+
+      {canCreateWorktree && (
+        <NewWorktreeModal
+          isOpen={worktreeDialogOpen}
+          onClose={() => setWorktreeDialogOpen(false)}
+          root={folder.project_path ?? null}
+          folderId={folder.id}
+          folderName={folder.name}
+          onCreated={(created) => {
+            setWorktreeDialogOpen(false);
+            onNewWorktreeSession?.(folder.id, created.path);
+          }}
+        />
       )}
     </div>
   );

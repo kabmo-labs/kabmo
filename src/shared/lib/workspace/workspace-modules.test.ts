@@ -20,7 +20,7 @@
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { activeProjectForSession, composerRootFor } from '@/shared/lib/workspace/active-project';
+import { activeProjectForSession, composerRootFor, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { diffTabId, diffTabName, fileTabId } from '@/shared/lib/workspace/file-tab-id';
 import {
   DEFAULT_RIGHT_PANEL_FRACTION,
@@ -171,6 +171,54 @@ describe('active-project', () => {
 
   test('composerRootFor prefers the session binding over the folder pick', () => {
     expect(composerRootFor(folders, 30, 1)).toBe('/work/gamma');
+  });
+
+  /**
+   * The root the panels follow. A worktree session runs OUTSIDE its folder's
+   * project path, so pointing the panels at `project_path` showed the checkout
+   * the agent had left — measured: every panel kept reading the main tree while
+   * the run wrote to the worktree.
+   */
+  describe('effectiveRootFor', () => {
+    const withWorktree = (status: 'ready' | 'missing'): WorkspaceFolderData[] => [
+      {
+        id: 1,
+        name: 'alpha',
+        project_path: '/work/alpha',
+        isExpanded: true,
+        hasMore: false,
+        totalSessions: 2,
+        sessions: [
+          {
+            id: 'wt-session',
+            folder_id: 1,
+            title: 'in a worktree',
+            worktree: {
+              branch: 'wt/cosmic-dolphin',
+              path: '/data/worktrees/abc/cosmic-dolphin',
+              primaryRoot: '/work/alpha',
+              status,
+              detached: false,
+            },
+          },
+          { id: 'plain', folder_id: 1, title: 'in the checkout' },
+        ],
+      },
+    ];
+
+    test('a ready worktree wins over the folder project path', () => {
+      expect(effectiveRootFor(withWorktree('ready'), 'wt-session')).toBe('/data/worktrees/abc/cosmic-dolphin');
+    });
+
+    test('a MISSING worktree falls back to the project path — a directory that is gone is not a root', () => {
+      expect(effectiveRootFor(withWorktree('missing'), 'wt-session')).toBe('/work/alpha');
+    });
+
+    test('an ordinary session keeps the project path', () => {
+      expect(effectiveRootFor(withWorktree('ready'), 'plain')).toBe('/work/alpha');
+      expect(effectiveRootFor(folders, 30)).toBe('/work/gamma');
+      expect(effectiveRootFor(folders, 999)).toBeNull();
+    });
   });
 
   test('composerRootFor falls back to the selected folder without a session match', () => {

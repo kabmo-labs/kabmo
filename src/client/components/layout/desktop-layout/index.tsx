@@ -4,7 +4,7 @@ import { Group, Panel, type PanelImperativeHandle } from '@/client/components/la
 import { LeftColumn } from '@/client/components/layout/desktop-layout/LeftColumn';
 import { SettingsModal } from '@/client/components/settings/LazyModal';
 import type { SettingsCategoryId } from '@/shared/types';
-import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
+import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { useFileTabs } from '@/client/hooks/workspace/file-tabs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
@@ -71,7 +71,13 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     if (folderIdParam) return folders.find(f => String(f.id) === String(folderIdParam)) ?? null;
     return null;
   }, [folders, sessionId, folderIdParam]);
-  const activeProjectPath = activeProject?.project_path ?? null;
+  // A worktree session runs OUTSIDE its folder's project path, so the panels
+  // follow the session's own root — the checkout it left would otherwise be what
+  // Files, Search, Git and the terminal read.
+  const activeProjectPath = useMemo(
+    () => effectiveRootFor(folders, sessionId || '') ?? activeProject?.project_path ?? null,
+    [folders, sessionId, activeProject],
+  );
   const hasActiveContext = !!activeProject;
 
   const handleOpenTab = useCallback(() => {

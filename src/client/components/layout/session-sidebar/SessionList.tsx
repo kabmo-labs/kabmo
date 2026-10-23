@@ -10,6 +10,8 @@ interface SessionSidebarSessionListProps {
   sessionStatus: Record<string, 'stream' | 'finish' | 'abort'>;
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (id: number) => void;
+  /** Start a chat in a worktree made from this folder. */
+  onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   /** Surfaces a refused folder action (the reveal endpoint's own reason). */
   onToast?: (message: string, type?: 'success' | 'error') => void;
   /** Present only while a batch selection is active. */
@@ -27,6 +29,7 @@ export function SessionSidebarSessionList({
   sessionStatus,
   onSelectSession,
   onNewSessionForFolder,
+  onNewWorktreeSession,
   onToast,
   batch,
   onStartSessionSelection,

@@ -14,6 +14,8 @@
 import path from 'path';
 import { getDb } from '@/server/db.server';
 import { pathExists } from '@/server/lib/omp/core/paths';
+import { canonicalPath } from '@/server/lib/fs/canonical';
+import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 
 const APP_ROOT = process.cwd();
 
@@ -124,8 +126,18 @@ export async function getDefaultFsRoot(mock: boolean): Promise<string> {
  * the server is allowed to operate on.
  *
  * Returns `fallback` when `rawRoot` is missing, does not exist, or is not on
- * the allow-list (app root / subpath / registered project_path), so existing
- * callers keep their previous behavior for unscoped requests.
+ * the allow-list (app root / subpath / registered project_path / **worktree of
+ * a registered project**), so existing callers keep their previous behavior for
+ * unscoped requests.
+ *
+ * The worktree branch is why a worktree session's panels can point anywhere:
+ * a chat started in a linked checkout runs there, and `resolveRoot` answered the
+ * fallback for it — measured, so Files/Search/Git/Terminal silently showed the
+ * app root while the agent wrote to the worktree. The rule is deliberately
+ * narrow: the candidate's own REPOSITORY ROOT must be a registered project, so a
+ * registered project never becomes a filesystem grant. A SUBDIRECTORY is still
+ * refused — the allow-list stays exact roots, and a panel is pointed at the
+ * worktree root, never at a folder inside it.
  */
 export async function resolveRoot(
   rawRoot: string | null | undefined,
@@ -134,22 +146,39 @@ export async function resolveRoot(
   if (!rawRoot || !rawRoot.trim()) return fallback;
 
   const resolved = path.resolve(rawRoot.trim());
+  if (!(await pathExists(resolved))) return fallback;
 
   // Fast path: the app root and anything beneath it are always allowed.
   if (resolved === APP_ROOT || resolved.startsWith(APP_ROOT + path.sep)) {
-    return (await pathExists(resolved)) ? resolved : fallback;
+    return resolved;
   }
 
-  // Registered workspaces are user-opted project roots — allow exact matches.
+  // Registered workspaces are user-opted project roots — allow exact matches,
+  // compared by canonical path so a `/tmp` vs `/private/tmp` spelling of one
+  // directory is not read as two.
   try {
     const db = await getDb();
-    const row = await db.get(
-      'SELECT project_path FROM workspace_folders WHERE project_path IS NOT NULL AND project_path = ? LIMIT 1',
-      [resolved]
-    );
-    if (row && (await pathExists(resolved))) return resolved;
+    const rows = (await db.all(
+      'SELECT project_path FROM workspace_folders WHERE project_path IS NOT NULL'
+    )) as { project_path: string }[];
+    const canonical = await canonicalPath(resolved);
+    for (const row of rows) {
+      if ((await canonicalPath(row.project_path)) === canonical) return resolved;
+    }
+
+    // A worktree ROOT: `resolveProjectRoot` only asks git when the candidate
+    // holds a `.git` entry, so a linked checkout resolves to the main repository
+    // while an ordinary subdirectory resolves to ITSELF and stays refused. That
+    // is what keeps this rule at "the roots of registered repositories" instead
+    // of "anything beneath one".
+    if (rows.length > 0) {
+      const projectRoot = await canonicalPath(await resolveProjectRoot(resolved));
+      for (const row of rows) {
+        if ((await canonicalPath(row.project_path)) === projectRoot) return resolved;
+      }
+    }
   } catch {
-    // Database unavailable — fall through to the safe fallback.
+    // Database or git unavailable — fall through to the safe fallback.
   }
 
   return fallback;

@@ -26,6 +26,8 @@ import { loadStreamStates, type SessionRunModel } from '@/shared/lib/omp/session
 import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.server';
 import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
+import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
+import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 import type { OmpSession } from '@/shared/types/omp/session';
 
 /** What `GET /api/sessions/list` returns and sidebars consume. */
@@ -237,10 +239,18 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
   return Promise.all(folderRows.map(async (folder) => {
     const root = folder.project_path ?? '';
     const rootSessions: OmpSession[] = root ? sessionsByRoot.get(root) ?? [] : [];
+    // One topology read per repository, however many sessions it has. A chat in
+    // the checkout itself is absent from this map, which is exactly what the row
+    // draws (an ordinary row with no badge).
+    const worktrees = await sessionWorktreeMap(
+      root,
+      rootSessions.map((session) => ({ id: session.id, cwd: session.cwd })),
+    );
     const folderSessions = await Promise.all(rootSessions.map(async (session: OmpSession) => {
       const hasSub = session.path
         ? await sessionHasSubagents(session.path, session.modified)
         : false;
+      const worktree: SessionWorktreeInfo | undefined = worktrees.get(session.id);
       return {
         id: session.id,
         folder_id: folder.id,
@@ -250,6 +260,11 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
         is_active: 0,
         is_archived: archivedIds.has(String(session.id)) ? 1 : 0,
         hasSubagents: hasSub,
+        // The session's own working directory, and the worktree it resolves to
+        // when that cwd is a linked checkout. Both travel so no client and no
+        // plugin has to ask git.
+        cwd: session.cwd,
+        ...(worktree ? { worktree } : {}),
       };
     }));
     return {

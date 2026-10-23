@@ -1,9 +1,7 @@
 import type { SetStateAction } from 'preact/compat';
 import { Fragment } from 'preact';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Check, ChevronDown, Folder } from 'lucide-preact';
-import type { Attachment, ChatMessageData } from '@/shared/types';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
+import { useEffect, useMemo, useRef } from 'preact/hooks';
+import type { Attachment, ChatMessageData, WorkspaceFolderData } from '@/shared/types';
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input/index';
 import { ChatMessageItem } from '@/client/components/workspace/chat-timeline/MessageItem';
 import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter';
@@ -16,6 +14,8 @@ import {
   type WaitingCandidate,
 } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import { Hourglass } from 'lucide-preact';
+import { TargetPicker } from '@/client/components/workspace/chat-timeline/target-picker/index';
+import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 
 interface EmptyWorkspacePromptProps {
   className?: string;
@@ -65,6 +65,15 @@ interface EmptyWorkspacePromptProps {
   streamStatusMap?: Record<string, string | undefined>;
   /** A name for a streaming session the sidebar has not scanned yet. */
   titleForSession?: (id: string) => string | undefined;
+  /**
+   * Where this chat will run. The picker draws it and the send path reads it
+   * through its own ref, so a worktree choice survives the remount a stretch or
+   * a reload performs.
+   */
+  spawnTarget?: SpawnTarget | null;
+  onSpawnTargetChange?: (next: SpawnTarget | null) => void;
+  /** Reports a worktree the composer created or failed to create. */
+  onWorktreeReport?: (message: string) => void;
   /** The "wait for session" pick, persisted per chat. */
   waitingFor?: WaitingCandidate | null;
   onWaitingForChange?: (candidate: WaitingCandidate | null) => void;
@@ -108,14 +117,14 @@ export function EmptyWorkspacePrompt({
   onNewChat,
   streamStatusMap = {},
   titleForSession,
+  spawnTarget = null,
+  onSpawnTargetChange,
+  onWorktreeReport,
   waitingFor = null,
   onWaitingForChange,
   heldWait = null,
   onCancelWait,
 }: EmptyWorkspacePromptProps) {
-  const [showWorkspace, setShowWorkspace] = useState(false);
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  useOnClickOutside(workspaceRef, () => setShowWorkspace(false));
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const selectedFolder = useMemo(() => {
@@ -159,51 +168,19 @@ export function EmptyWorkspacePrompt({
             a target workspace, so the composer is the only focus. */}
         {messages.length === 0 && (
           <div className="flex items-center gap-1 flex-wrap">
-          <div className="relative shrink-0" ref={workspaceRef}>
-          <button 
-            type="button"
-            onClick={() => setShowWorkspace(!showWorkspace)}
-            className="group flex items-center space-x-1.5 px-1.5 py-1 rounded-md text-xs font-medium text-ink/75 hover:text-ink hover:bg-ink/5 focus-visible:bg-ink/5 transition-all outline-none cursor-pointer select-none"
-          >
-            <Folder size={13} className="text-ink/50 group-hover:text-ink/80 transition-colors flex-shrink-0" />
-            <span className="flex items-center space-x-1 max-w-[260px] truncate tracking-tight">
-              <span>{selectedFolder ? selectedFolder.name : 'Select Workspace Context'}</span>
-            </span>
-            <ChevronDown size={13} className={`text-ink/40 group-hover:text-ink/70 flex-shrink-0 transition-transform duration-150 ${showWorkspace ? 'rotate-180 text-ink/70' : ''}`} />
-          </button>
-          
-          {showWorkspace && (
-            <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
-              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink/40 font-semibold border-b border-ink/5">
-                Target Workspace
-              </div>
-              <div className="max-h-56 scrollbar-overlay-container py-1">
-                {folders.length === 0 ? (
-                  <div className="px-3 py-2 text-ink/40 italic">No workspaces available</div>
-                ) : (
-                  folders.map((f: any) => (
-                    <button 
-                      key={f.id}
-                      type="button"
-                      onClick={() => { setSelectedFolderId(f.id); setShowWorkspace(false); }}
-                      className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition-colors cursor-pointer ${
-                        selectedFolderId === f.id
-                          ? 'bg-ink/10 text-ink font-semibold'
-                          : 'text-ink/80 hover:bg-ink/5 hover:text-ink'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2 truncate pr-2">
-                        <Folder size={12} className={selectedFolderId === f.id ? "text-ink flex-shrink-0" : "text-ink/50 flex-shrink-0"} />
-                        <span className="truncate font-medium">{f.name}</span>
-                      </div>
-                      {selectedFolderId === f.id && <Check size={12} className="text-ink flex-shrink-0" />}
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+          {/* The target picker asks where the chat runs — the workspace, or one
+              of its worktrees — so a worktree chat is created here rather than
+              in a dialog the user has to find first. */}
+          {onSpawnTargetChange ? (
+            <TargetPicker
+              folders={folders as WorkspaceFolderData[]}
+              selectedFolderId={selectedFolderId}
+              setSelectedFolderId={setSelectedFolderId}
+              target={spawnTarget}
+              setTarget={onSpawnTargetChange}
+              onReport={onWorktreeReport}
+            />
+          ) : null}
           {/* The wait picker sits BESIDE the workspace picker, because both
               answer the same question about the chat that has not started:
               where it runs, and what it waits for. It only appears while there

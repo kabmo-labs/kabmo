@@ -32,7 +32,14 @@ export function spawnCwdForNewSession(
   folders: PrewarmFolderShape[],
   activeSessionId: string | number | null,
   folderId?: number | string,
+  /**
+   * A worktree the draft chose. It wins over the folder's project path, because
+   * that is the whole point of picking one: the chat is born in the worktree and
+   * nothing is ever relocated afterwards.
+   */
+  worktreePath?: string | null,
 ): string | null {
+  if (worktreePath) return worktreePath;
   const target = folderId !== undefined
     ? folders.find((f) => String(f.id) === String(folderId))
     : folders.find((f) => f.sessions?.some((s) => String(s.id) === String(activeSessionId)))

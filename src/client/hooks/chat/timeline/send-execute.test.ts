@@ -160,6 +160,7 @@ function makeSendHarness(options: {
   const params: string[] = [];
   const seeds: SessionSeed[] = [];
   const spawnSelectionRef = { current: { plan: true, goal: false } };
+  const spawnWorktreeRef = { current: null as string | null };
   const adoptedSessionIdRef = { current: null };
   const deps: ChatTimelineSendDeps = {
     folders: options.folders ?? [],
@@ -190,6 +191,7 @@ function makeSendHarness(options: {
     deferredComposerPickRef: options.deferredPick ?? { current: null },
     accessModeRef: { current: 'always-ask' },
     spawnSelectionRef,
+    spawnWorktreeRef,
     abortControllerRef: { current: null },
     setInputValue: (v) => {
       drafts.push(v);

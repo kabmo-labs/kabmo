@@ -10,6 +10,8 @@ interface MobileSessionListProps {
   sessionStatus: Record<string, 'stream' | 'finish' | 'abort'>;
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (folderId: number) => void;
+  /** Start a chat in a worktree made from this folder. */
+  onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   onToggleFolder: (folderId: number) => void;
   /** Surfaces a refused folder action (the reveal endpoint's own reason). */
   onToast?: (message: string, type?: 'success' | 'error') => void;
@@ -28,6 +30,7 @@ export function MobileSessionList({
   sessionStatus,
   onSelectSession,
   onNewSessionForFolder,
+  onNewWorktreeSession,
   onToggleFolder,
   onToast,
   batch,
@@ -55,6 +58,7 @@ export function MobileSessionList({
             activeSessionId={activeSessionId}
             onSelectSession={onSelectSession}
             onNewSessionForFolder={onNewSessionForFolder}
+            onNewWorktreeSession={onNewWorktreeSession}
             isExpanded={expandedFolders[folder.id] ?? true}
             onToggleExpand={() => onToggleFolder(folder.id)}
             showArchived={showArchived}

@@ -3,6 +3,8 @@
  * JSONL discovery and use the omp session UUID (string) as id — hence the
  * union with string ids. Mock/demo mode keeps numeric SQLite ids.
  */
+import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
+
 export interface SessionItemData {
   id: number | string;
   folder_id: number | string;
@@ -38,6 +40,18 @@ export interface SessionItemData {
    * saying so. Absent means the row is not waiting (the normal case).
    */
   waitingFor?: { waitId: string; sessionId: string; title: string | null };
+  /**
+   * The directory the session actually runs in. A worktree session's cwd is the
+   * linked checkout, not the folder's `project_path` — the difference the panels
+   * have to honour and the sidebar badge names.
+   */
+  cwd?: string;
+  /**
+   * The worktree this session runs in, when its cwd is a linked checkout.
+   * Absent for an ordinary session (the common case) and for a session whose cwd
+   * is outside every worktree of its project, which the row draws the same way.
+   */
+  worktree?: SessionWorktreeInfo;
 }
 
 /**

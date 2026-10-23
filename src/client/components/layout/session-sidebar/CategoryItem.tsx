@@ -24,6 +24,7 @@ export function Category({
   activeSessionId, 
   onSelectSession,
   onNewSessionForFolder,
+  onNewWorktreeSession,
   forceExpanded = false,
   showArchived = false,
   sessionStatus = {},
@@ -36,6 +37,7 @@ export function Category({
   activeSessionId: number | string | null;
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (id: number) => void;
+  onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   forceExpanded?: boolean;
   showArchived?: boolean;
   sessionStatus?: Record<string, 'stream' | 'finish' | 'abort'>;
@@ -172,6 +174,7 @@ export function Category({
         showMenu={showMenu}
         onToggleMenu={() => setShowMenu(!showMenu)}
         onNewSession={() => onNewSessionForFolder(folder.id)}
+        onNewWorktreeSession={onNewWorktreeSession}
         onOpenFolder={onOpenFolder}
         onSelectSessions={
           onStartSessionSelection
@@ -211,6 +214,7 @@ export function Category({
                   isArchived={session.is_archived === 1}
                   status={sessionStatus[sessionKey]}
                   awaitingInput={Boolean(session.awaitingInput)}
+                  worktree={session.worktree}
                   timeAgo={relativeTimeAgo(session.updated_at ?? session.created_at)}
                   onClick={() => onSelectSession(session.id)}
                   onArchive={() => handleArchive(session)}

@@ -24,6 +24,29 @@ export function activeProjectForSession(
 }
 
 /**
+ * The root the right-panel tools should operate on for this session: its own
+ * worktree when the session's cwd is a linked checkout, else the folder's
+ * registered project path.
+ *
+ * A worktree session runs OUTSIDE its folder's project directory, so pointing
+ * the panels at `project_path` showed the checkout the agent had left — measured:
+ * every panel kept reading the main tree while the run wrote to the worktree.
+ * The server's `resolveRoot` accepts a worktree of a registered project for the
+ * same reason, so the two agree about what is readable.
+ */
+export function effectiveRootFor(
+  folders: WorkspaceFolderData[],
+  sessionId: string | number | null | undefined,
+): string | null {
+  const { folder } = activeProjectForSession(folders, sessionId);
+  if (!folder) return null;
+  const row = (folder.sessions || []).find((session) => String(session.id) === String(sessionId));
+  const worktree = row?.worktree;
+  if (worktree && worktree.status === 'ready') return worktree.path;
+  return folder.project_path ?? null;
+}
+
+/**
  * Resolve the workspace root the composer should scope `@` file mentions to:
  * the active session's bound project first, then the explicitly selected
  * folder, else null (client falls back to the app root).

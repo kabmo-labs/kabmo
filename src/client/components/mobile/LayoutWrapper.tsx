@@ -9,7 +9,7 @@ import { MobileRightSidebar } from '@/client/components/mobile/RightSidebar';
 import { MobileFullEditor } from '@/client/components/mobile/mobile-right-sidebar/FullEditor';
 import { MobileFullDiff } from '@/client/components/mobile/mobile-right-sidebar/FullDiff';
 import { SettingsModal } from '@/client/components/settings/LazyModal';
-import { activeProjectForSession } from '@/shared/lib/workspace/active-project';
+import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
@@ -23,6 +23,7 @@ import { mobileEditorFileFrom, type MobileEditorFile } from '@/client/components
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
+import { startWorktreeSession } from '@/client/components/mobile/worktree-session';
 import { OPEN_PANEL_EVENT, phoneDrawerForPanel, type OpenPanelDetail } from '@/shared/lib/workspace/panel-open';
 
 interface MobileLayoutWrapperProps {
@@ -106,7 +107,9 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
 
   const { folder: sessionFolder } = activeProjectForSession(folders, sessionId);
   const contextFolder = sessionFolder ?? (folderId ? folders.find(f => String(f.id) === String(folderId)) ?? null : null);
-  const activeProjectPath = contextFolder?.project_path ?? null;
+  // A worktree session runs outside its folder's project path: the phone draws
+  // the same panels as the desktop, so it resolves the same root.
+  const activeProjectPath = effectiveRootFor(folders, sessionId) ?? contextFolder?.project_path ?? null;
   const hasContext = !!contextFolder;
 
   // A phone drop is rare but real (an iPad with a trackpad). The target is the
@@ -145,20 +148,13 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   useKabmoEvent('omp:view-subagent', () => setCurrentScreen('main'));
 
   /**
-   * A plugin's navbar readout asking for its own panel.
-   *
-   * A phone has no rail, so "show this panel" is two decisions: which DRAWER can
-   * reach it, and which chip inside that drawer is the view. Both are answered
-   * from the placement state (`phoneDrawerForPanel`), never from the panel's
-   * slot — a panel placed on the left is drawn by the RIGHT drawer while the
-   * rail is off, and naming the drawer from the slot would open one that does
-   * not list it.
-   *
-   * The tab is written through the session store rather than through a prop:
-   * the drawer mounts on this screen change and reads the stored tab, so the
-   * selection has to be in the store before it mounts. An `editor`-slot
-   * takeover resolves to null — the phone has no editor column — and the click
-   * then does nothing rather than opening a drawer that cannot show it.
+   * A plugin's navbar readout asking for its own panel. A phone has no rail, so
+   * "show this panel" is two decisions — which DRAWER reaches it and which chip
+   * inside it — both answered by `phoneDrawerForPanel` from the PLACEMENT, never
+   * from the panel's slot. The tab is written through the store because the
+   * drawer mounts on this screen change and reads the stored tab; an `editor`
+   * takeover resolves to null and the click does nothing rather than opening a
+   * drawer that cannot show it.
    */
   useKabmoEvent(OPEN_PANEL_EVENT, (event) => {
     const panelKey = (event as CustomEvent<OpenPanelDetail>).detail?.panelKey;
@@ -228,6 +224,15 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
     setCurrentScreen('main');
   };
 
+  // Desktop parity: a worktree made from the phone's folder menu starts its chat
+  // in it. The sequence lives in one module so both layouts share it.
+  const handleNewWorktreeSession = (targetFolderId: number, worktreePath: string) =>
+    startWorktreeSession(
+      { setSearchParams, afterNavigate: () => setCurrentScreen('main') },
+      targetFolderId,
+      worktreePath,
+    );
+
   const handleOpenFile = useCallback((file: unknown) => {
     const next = mobileEditorFileFrom(file, activeProjectPath);
     if (next) setMobileEditorFile(next);
@@ -272,6 +277,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
           onNewSessionForFolder={handleNewSessionForFolder}
+          onNewWorktreeSession={handleNewWorktreeSession}
           onClose={() => setCurrentScreen('main')}
           onDesktopToggle={onDesktopToggle}
           appSettings={appSettings}

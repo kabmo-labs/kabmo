@@ -13,7 +13,7 @@
  * source of truth.
  */
 
-import { FolderOpen, ListChecks, Pin, PinOff, Trash2 } from 'lucide-preact';
+import { FolderOpen, GitBranch, ListChecks, Pin, PinOff, Trash2 } from 'lucide-preact';
 
 interface WorkspaceOptionsMenuProps {
   variant: 'desktop' | 'mobile';
@@ -23,6 +23,12 @@ interface WorkspaceOptionsMenuProps {
   onOpenFolder?: () => void;
   /** Enter the session batch-selection mode scoped to this workspace. */
   onSelectSessions?: () => void;
+  /**
+   * Open the New worktree dialog for this workspace. Offered only for a folder
+   * bound to a repository: a worktree needs one, and a row that opens a dialog
+   * which can only refuse is a row that teaches the user nothing.
+   */
+  onNewWorktree?: () => void;
   confirmDelete: boolean;
   onPin: () => void;
   onDelete: () => void;
@@ -35,6 +41,7 @@ export function WorkspaceOptionsMenu({
   isPinned = false,
   onOpenFolder,
   onSelectSessions,
+  onNewWorktree,
   confirmDelete,
   onPin,
   onDelete,
@@ -71,6 +78,12 @@ export function WorkspaceOptionsMenu({
             <span>Select sessions</span>
           </button>
         )}
+        {onNewWorktree && (
+          <button type="button" onClick={onNewWorktree} className="w-full text-left px-3 py-2 hover:bg-ink/5 text-ink/80 flex items-center space-x-2">
+            <GitBranch size={13} />
+            <span>New worktree…</span>
+          </button>
+        )}
         <button type="button" onClick={onRequestDelete} className="w-full text-left px-3 py-2 hover:bg-error/10 text-error flex items-center space-x-2">
           <Trash2 size={13} />
           <span>Delete Workspace</span>
@@ -103,6 +116,11 @@ export function WorkspaceOptionsMenu({
       {onSelectSessions && (
         <button type="button" onClick={onSelectSessions} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80">
           <ListChecks size={12} /><span>Select sessions</span>
+        </button>
+      )}
+      {onNewWorktree && (
+        <button type="button" onClick={onNewWorktree} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-ink/80">
+          <GitBranch size={12} /><span>New worktree…</span>
         </button>
       )}
       <button type="button" onClick={onRequestDelete} className="w-full text-left px-3 py-1.5 hover:bg-ink/5 cursor-pointer flex items-center space-x-2 text-error">

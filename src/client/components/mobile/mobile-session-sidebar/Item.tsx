@@ -4,6 +4,7 @@ import { useSearchParams } from '@/client/lib/router/search-params';
 import { MobileSessionRow } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import { SubagentList } from '@/client/components/common/subagent-list';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
+import { useWorktreeDialog } from '@/client/components/mobile/mobile-session-sidebar/WorktreeDialog';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
@@ -25,6 +26,8 @@ interface MobileSessionCategoryProps {
   activeSessionId: number | string | null;
   onSelectSession: (id: number | string) => void;
   onNewSessionForFolder: (folderId: number) => void;
+  /** Start a chat in a worktree made from this folder. */
+  onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   showArchived?: boolean;
@@ -43,6 +46,7 @@ export function MobileSessionCategory({
   activeSessionId,
   onSelectSession,
   onNewSessionForFolder,
+  onNewWorktreeSession,
   isExpanded,
   onToggleExpand,
   showArchived = false,
@@ -53,6 +57,11 @@ export function MobileSessionCategory({
   onCancelWait,
 }: MobileSessionCategoryProps) {
   const { visibleCount, showMore, showLess, canShowLess } = useShowMore();
+  // The phone's folder row opens the same dialog the desktop one does. Its state
+  // lives in a hook so this row stays under the size ceiling.
+  const worktreeDialog = useWorktreeDialog(folder, (worktreePath) =>
+    onNewWorktreeSession?.(folder.id, worktreePath),
+  );
   const { refresh } = useSidebarData();
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
   // The viewed transcript, so its session row dims while a roster entry is
@@ -223,6 +232,11 @@ export function MobileSessionCategory({
                   variant="mobile"
                   isPinned={folder.isPinned}
                   onOpenFolder={onOpenFolder}
+                  onNewWorktree={
+                    onNewWorktreeSession && folder.project_path
+                      ? () => { setShowMenu(false); worktreeDialog.open(); }
+                      : undefined
+                  }
                   onSelectSessions={
                     onStartSessionSelection
                       ? () => { setShowMenu(false); onStartSessionSelection(folder.id); }
@@ -326,6 +340,8 @@ export function MobileSessionCategory({
         onClose={sessionDelete.cancelDelete}
         onConfirm={() => void sessionDelete.confirmDelete()}
       />
+
+      {worktreeDialog.dialog}
     </div>
   );
 }

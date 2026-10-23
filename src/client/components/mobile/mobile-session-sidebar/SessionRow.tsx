@@ -4,6 +4,7 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
+import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 
 export interface MobileSessionRowProps {
   session: SessionItemData;
@@ -175,6 +176,10 @@ export function MobileSessionRow({
                   waiting for {waitingFor?.title ?? 'another session'}
                 </span>
               )}
+              {/* The same chip the desktop row draws, from the same field on the
+                  row payload — one layout cannot be the only one that says where
+                  the chat writes. */}
+              {session.worktree ? <WorktreeBadge worktree={session.worktree} /> : null}
             </span>
           </div>
 

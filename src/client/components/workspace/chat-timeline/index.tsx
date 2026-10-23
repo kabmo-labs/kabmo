@@ -88,6 +88,8 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     extensionDialogs,
     resolveExtensionDialog,
     respondToExtensionUi,
+    spawnTarget,
+    setSpawnTarget,
   } = useChatTimeline({ folders, streamStatusMap, appSettings, reportActionError: pushToast });
 
   // Ask dialogs render on their own tool card; anything else omp is blocked on
@@ -215,6 +217,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         onWaitingForChange={waitingDependency.set}
         heldWait={heldWait ? { title: heldWait.dependsOnTitle } : null}
         onCancelWait={cancelHeldWait}
+        spawnTarget={spawnTarget}
+        onSpawnTargetChange={setSpawnTarget}
+        onWorktreeReport={(message) => pushToast(message, 'success', { duration: 6000 })}
       />
     );
   }

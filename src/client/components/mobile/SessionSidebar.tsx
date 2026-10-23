@@ -29,6 +29,8 @@ interface MobileSessionSidebarProps {
   onSelectSession: (id: number | string) => void;
   onNewSession: () => void;
   onNewSessionForFolder: (folderId: number) => void;
+  /** Start a chat in a worktree made from this folder. */
+  onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
   onClose: () => void;
   onDesktopToggle?: () => void;
   appSettings?: Record<string, any>;
@@ -45,6 +47,7 @@ export function MobileSessionSidebar({
   onSelectSession,
   onNewSession,
   onNewSessionForFolder,
+  onNewWorktreeSession,
   onClose,
   onDesktopToggle,
   appSettings = {},
@@ -264,6 +267,11 @@ export function MobileSessionSidebar({
               sessionStatus={sessionStatus}
               onSelectSession={handleSelectSession}
               onNewSessionForFolder={handleNewSessionForFolderAndClose}
+              onNewWorktreeSession={
+                onNewWorktreeSession
+                  ? (id, path) => { onNewWorktreeSession(id, path); onClose(); }
+                  : undefined
+              }
               onToggleFolder={toggleFolder}
               onToast={pushToast}
               batch={batchBinding}
