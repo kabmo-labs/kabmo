@@ -25,6 +25,7 @@ import { useWorktrees } from '@/client/hooks/workspace/worktree/index';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
 import { createWorktree } from '@/client/hooks/workspace/worktree/index';
+import { lastPathSegment } from '@/shared/lib/fs/paths';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export interface TargetPickerProps {
@@ -48,7 +49,7 @@ export function targetLabel(
 ): string {
   const folder = folders.find((candidate) => String(candidate.id) === String(selectedFolderId));
   const name = folder?.name ?? 'Select Workspace Context';
-  const worktree = target?.worktreePath?.split('/').pop();
+  const worktree = lastPathSegment(target?.worktreePath);
   return worktree ? `${name} · ${worktree}` : name;
 }
 
@@ -108,7 +109,7 @@ export function TargetPicker({
         { mode: 'new' },
       );
       pickWorktree(folder, created.path);
-      onReport?.(`Worktree ${created.branch || created.path.split('/').pop()} created`);
+      onReport?.(`Worktree ${created.branch || lastPathSegment(created.path)} created`);
     } catch (error) {
       onReport?.(error instanceof Error ? error.message : String(error));
     } finally {

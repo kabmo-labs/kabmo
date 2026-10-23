@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
+import { isVirtualPath, lastPathSegment, stripReadSelector } from '@/shared/lib/fs/paths';
 
 describe('stripReadSelector', () => {
   test('peels every selector shape omp accepts', () => {
@@ -86,5 +86,28 @@ describe('isVirtualPath', () => {
   test('nothing is not a virtual path', () => {
     expect(isVirtualPath(undefined)).toBe(false);
     expect(isVirtualPath('')).toBe(false);
+  });
+});
+
+describe('lastPathSegment', () => {
+  test('names the last segment on either separator', () => {
+    // The Windows case is the one that shipped broken: the composer's target
+    // trigger read `kabmo · C:\Users\…\cosmic-dolphin`, because `split('/')`
+    // has nothing to cut in a `\`-separated absolute path.
+    expect(lastPathSegment('/data/worktrees/abc/cosmic-dolphin')).toBe('cosmic-dolphin');
+    expect(lastPathSegment('C:\\Users\\u\\AppData\\Local\\worktrees\\abc\\cosmic-dolphin')).toBe('cosmic-dolphin');
+    expect(lastPathSegment('wt/nested/branch')).toBe('branch');
+  });
+
+  test('a trailing separator names the same thing', () => {
+    expect(lastPathSegment('/data/worktrees/abc/cosmic-dolphin/')).toBe('cosmic-dolphin');
+    expect(lastPathSegment('C:\\worktrees\\abc\\cosmic-dolphin\\')).toBe('cosmic-dolphin');
+  });
+
+  test('nothing to name is empty, not a stray separator', () => {
+    expect(lastPathSegment(undefined)).toBe('');
+    expect(lastPathSegment(null)).toBe('');
+    expect(lastPathSegment('')).toBe('');
+    expect(lastPathSegment('/')).toBe('');
   });
 });

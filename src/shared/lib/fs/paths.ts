@@ -107,3 +107,20 @@ export function toAbsolutePath(baseDir: string | null | undefined, relPath: stri
   // Join with the base's own separator: `C:\proj` + `src` → `C:\proj\src`.
   return `${base}${base.includes('\\') && !base.includes('/') ? '\\' : '/'}${rel}`;
 }
+
+/**
+ * The last segment of a path on ANY platform.
+ *
+ * `split('/').pop()` is the shape this replaces, and it is wrong for every
+ * ABSOLUTE path on Windows: a worktree the server created under
+ * `C:\…\worktrees\<id>\cosmic-dolphin` came back whole, so the composer's target
+ * trigger read `kabmo · C:\Users\…\cosmic-dolphin` instead of
+ * `kabmo · cosmic-dolphin` (measured on the Windows E2E leg, which is the only
+ * place it shows — every POSIX path splits the same either way). A trailing
+ * separator is dropped first so `…/cosmic-dolphin/` names the same worktree.
+ */
+export function lastPathSegment(target: string | null | undefined): string {
+  if (!target) return '';
+  const parts = target.replace(/[/\\]+$/, '').split(/[/\\]/);
+  return parts[parts.length - 1] ?? '';
+}

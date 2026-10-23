@@ -104,6 +104,18 @@ describe('targetLabel', () => {
     );
   });
 
+  test('a Windows worktree path names the worktree, not the whole path', () => {
+    // The label was `split('/').pop()`, which has nothing to cut in a
+    // `\`-separated path: the trigger read `kabmo · C:\Users\…\cosmic-dolphin`
+    // on a Windows runner while every POSIX leg passed.
+    expect(
+      targetLabel([folder], 1, {
+        folderId: 1,
+        worktreePath: 'C:\\Users\\u\\AppData\\Local\\Temp\\kabmo\\worktrees\\abc\\cosmic-dolphin',
+      }),
+    ).toBe('kabmo · cosmic-dolphin');
+  });
+
   test('an unresolved folder still says what it is waiting for', () => {
     expect(targetLabel([], null, null)).toBe('Select Workspace Context');
   });
