@@ -16,6 +16,10 @@ import { fetchShellRelease, type ShellRelease } from '@/server/lib/updates/shell
  *
  * A failed probe is a valid answer (`url: null`), never a 500: the sidebar's job
  * is to omit a button it cannot back with a link.
+ *
+ * PUBLIC, for the same reason as `/api/updates/android`: the installed shell
+ * asks it from native code with no session cookie, and the check has to work
+ * before the console can load.
  */
 export async function loader() {
   const release: ShellRelease | null = await fetchShellRelease('ios');

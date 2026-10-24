@@ -12,6 +12,11 @@ import { fetchShellRelease, type ShellRelease } from '@/server/lib/updates/shell
  *
  * A failed probe is a valid answer (`url: null`), never a 500: the sidebar's job
  * is to omit a button it cannot back with a link.
+ *
+ * PUBLIC, unlike its siblings: the Android shell asks this from native code
+ * (`AppUpdateCheck`), which has no session cookie, and its "Check for update"
+ * button is for a shell too stale to load the console. See `PUBLIC_EXACT` in
+ * `lib/auth/guard.ts`.
  */
 export async function loader() {
   const release: ShellRelease | null = await fetchShellRelease('android');

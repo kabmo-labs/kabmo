@@ -30,6 +30,18 @@ describe('public paths', () => {
     expect(isPublicPath('/login')).toBe(true);
   });
 
+  /**
+   * The two shells ask their update check from native code, which has no
+   * session cookie — and the button is for a shell so stale it may not be able
+   * to load the console at all. Gating these answered `401` to every shell on a
+   * password-protected console, which the settings screen could only report as
+   * "Could not ask the server" (measured against a real install).
+   */
+  test('the native shells can ask what is published without a session', () => {
+    expect(isPublicPath('/api/updates/android')).toBe(true);
+    expect(isPublicPath('/api/updates/ios')).toBe(true);
+  });
+
   test('the assets the login screen is built from are public', () => {
     for (const path of [
       '/_dev-assets/client/index-abc.js',
@@ -151,6 +163,22 @@ describe('authentication is per run, never inherited from disk', () => {
     expect(isAuthEnabled()).toBe(true);
     const response = authGate(new Request('http://localhost/api/settings'));
     expect(response?.status).toBe(401);
+  });
+
+  /**
+   * The bug this pins: both shells ask their update check from NATIVE code,
+   * which carries no cookie, so a password-protected console answered `401` and
+   * the settings screen could only say "Could not ask the server" (measured on a
+   * real install). The desktop route stays gated because the CONSOLE asks it,
+   * and the console is behind the login.
+   */
+  test('a password does not gate the native shells\u2019 update check', async () => {
+    useTempDataDir();
+    await initAuth('correct-horse');
+
+    expect(authGate(new Request('http://localhost/api/updates/android'))).toBeUndefined();
+    expect(authGate(new Request('http://localhost/api/updates/ios'))).toBeUndefined();
+    expect(authGate(new Request('http://localhost/api/updates/desktop?kind=macos'))?.status).toBe(401);
   });
 
   test('a document request is redirected to the login screen, not answered 401', async () => {

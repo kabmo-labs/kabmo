@@ -41,6 +41,16 @@ const LOGIN_PATH = '/login';
 /** Paths that never require a session, because they ARE the way in. */
 const PUBLIC_EXACT = new Set([
   '/api/health',
+  // The native shells' own update check. Android and iOS ask these from
+  // NATIVE code (`AppUpdateCheck.kt`, `SettingsViewController.fetchRelease`),
+  // which carries no WebView cookie — and the button exists precisely for a
+  // shell too stale to load the console, so it cannot depend on a session
+  // either. Both answer GitHub's public release list (a version and a download
+  // URL), which is the same data an unauthenticated browser can read from
+  // github.com; `/api/updates/desktop` stays gated because only the CONSOLE
+  // asks it, and the console is behind the login.
+  '/api/updates/android',
+  '/api/updates/ios',
   '/api/auth/state',
   '/api/auth/login',
   '/api/auth/logout',
