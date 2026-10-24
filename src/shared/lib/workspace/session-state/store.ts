@@ -78,6 +78,49 @@ const lastTouched = new Map<string, number>();
 const dirtySessions = new Map<string, boolean>();
 const persistTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+/**
+ * A monotonic counter bumped by every local write, and the counter value each
+ * `(session, key)` was last written at.
+ *
+ * This exists for ONE race, and `dirtySessions` cannot cover it: a load's
+ * response is served from a snapshot taken when the request arrived, while a
+ * write made in the meantime persists on its own schedule. Once that persist
+ * succeeds the dirty flag is cleared — so a response that arrives after it but
+ * was computed before it would be adopted as-is and silently drop the write.
+ * Measured in the browser (a rare e2e failure, `outline.e2e.ts`): a file opened
+ * while the page's first `/state` read was in flight came back with
+ * `layout.openedFiles` gone, so the editor drew "Select a file to open" over a
+ * file the user had just clicked.
+ *
+ * `loadSession` records the counter when it STARTS and merges exactly the keys
+ * written after that point, which is what makes "wrote it while the read was in
+ * flight" survive regardless of when the persist landed.
+ */
+let writeSeq = 0;
+const writeLog = new Map<string, Map<string, number>>();
+
+/** Record that `key` was written locally just now. */
+function noteWrite(sessionId: string, key: string): void {
+  writeSeq += 1;
+  let perSession = writeLog.get(sessionId);
+  if (!perSession) {
+    perSession = new Map();
+    writeLog.set(sessionId, perSession);
+  }
+  perSession.set(key, writeSeq);
+}
+
+/** The keys of `sessionId` written after `since` (strictly later). */
+function keysWrittenAfter(sessionId: string, since: number): Set<string> {
+  const written = new Set<string>();
+  const perSession = writeLog.get(sessionId);
+  if (!perSession) return written;
+  for (const [key, seq] of perSession) {
+    if (seq > since) written.add(key);
+  }
+  return written;
+}
+
 const PERSIST_DEBOUNCE_MS = 600;
 
 // Bounded LRU cache: cap the number of sessions kept in memory so the tab
@@ -120,6 +163,7 @@ function evictIfNeeded(protectedId: string | null): void {
     cache.delete(id);
     dirtySessions.delete(id);
     lastTouched.delete(id);
+    writeLog.delete(id);
     const timer = persistTimers.get(id);
     if (timer) {
       clearTimeout(timer);
@@ -176,6 +220,7 @@ export function setSessionKey(sessionId: string | null, key: string, value: unkn
   cache.set(sessionId, state);
   touchCacheEntry(sessionId);
   dirtySessions.set(sessionId, true);
+  noteWrite(sessionId, key);
   schedulePersist(sessionId);
   evictIfNeeded(sessionId);
   notifySessionKey(sessionId, key);
@@ -193,6 +238,10 @@ export function clearSessionKey(sessionId: string | null, key: string): void {
   delete state[key];
   touchCacheEntry(sessionId);
   dirtySessions.set(sessionId, true);
+  // A DELETE is a write: a blob that still carries the key must not bring it
+  // back (a retired key cleared on this side would return from the other tab's
+  // older snapshot).
+  noteWrite(sessionId, key);
   schedulePersist(sessionId);
   notifySessionKey(sessionId, key);
 }
@@ -241,6 +290,18 @@ export function flushSession(sessionId: string | null): Promise<void> {
 export async function loadSession(sessionId: string): Promise<void> {
   if (!sessionId) return;
   if (typeof window === 'undefined') return;
+  /**
+   * The write counter as of the moment the read STARTED.
+   *
+   * Everything written after this is newer than the response, because the
+   * response describes the row as it was when the request arrived. Two
+   * mechanisms are needed and neither is sufficient alone: `dirtySessions`
+   * covers a write whose persist has not landed yet, while this covers one that
+   * already persisted — at which point the dirty flag is clear and a stale
+   * response would otherwise be adopted wholesale. Measured: a file opened
+   * during the first `/state` read came back with `layout.openedFiles` gone.
+   */
+  const startedAt = writeSeq;
   try {
     const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/state`);
     if (res.ok) {
@@ -253,8 +314,23 @@ export async function loadSession(sessionId: string): Promise<void> {
       // opening the session had cached the pre-write blob, and its stale
       // copy clobbered another tab's fresh writes — queue items written in
       // one tab never appeared in the other.
+      const written = keysWrittenAfter(sessionId, startedAt);
       const dirty = dirtySessions.get(sessionId) === true;
-      const merged = dirty ? { ...incoming, ...existing } : incoming;
+      let merged: SessionState;
+      if (dirty) {
+        merged = { ...incoming, ...existing };
+      } else if (written.size > 0) {
+        merged = { ...incoming };
+        for (const key of written) {
+          // A key the local side still holds wins outright; one it no longer
+          // holds was CLEARED during the read (`clearSessionKey`), so the
+          // response's copy is the stale one and must not resurrect it.
+          if (key in existing) merged[key] = existing[key];
+          else delete merged[key];
+        }
+      } else {
+        merged = incoming;
+      }
       cache.set(sessionId, merged);
       touchCacheEntry(sessionId);
     }
@@ -310,6 +386,7 @@ export function forgetSession(sessionId: string): void {
   cache.delete(sessionId);
   dirtySessions.delete(sessionId);
   lastTouched.delete(sessionId);
+  writeLog.delete(sessionId);
   notifySessionKey(sessionId);
   notifySessionReplaced(sessionId);
 }
@@ -327,6 +404,7 @@ export function migrateSessionState(fromId: string, toId: string): void {
   cache.delete(fromId);
   dirtySessions.delete(fromId);
   lastTouched.delete(fromId);
+  writeLog.delete(fromId);
   evictIfNeeded(toId);
   // The adopted slot gained the whole transient state; the transient one lost it.
   notifySessionKey(toId);

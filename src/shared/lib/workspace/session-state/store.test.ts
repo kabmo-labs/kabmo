@@ -220,6 +220,23 @@ describe('session-state store: blob arrival (loadSession)', () => {
     Reflect.set(globalThis, 'fetch', async () => response);
   }
 
+  /**
+   * A fetch stub that HOLDS the blob read and lets writes through.
+   *
+   * Gating every call deadlocks the case: the write's own persist is a `POST`
+   * to the same path, and a stub that awaits the gate for both means the flush
+   * can never complete while the read is held.
+   */
+  function gateReads(state: unknown): () => void {
+    const { promise: gate, resolve } = Promise.withResolvers<void>();
+    Reflect.set(globalThis, 'fetch', async (_url: string, init?: { method?: string }) => {
+      if (init?.method === 'POST') return { ok: true, json: async () => ({}) };
+      await gate;
+      return { ok: true, json: async () => ({ state }) };
+    });
+    return resolve;
+  }
+
   test('a clean session adopts the stored blob and notifies', async () => {
     const id = use('load-clean');
     stubWindow();
@@ -299,6 +316,65 @@ describe('session-state store: blob arrival (loadSession)', () => {
       if (hadWindow) Object.defineProperty(globalThis, 'window', hadWindow);
       Reflect.set(globalThis, 'fetch', Bun.fetch);
     }
+  });
+
+  /**
+   * A write that lands WHILE the read is in flight must survive the response,
+   * even when its own persist already landed (so the dirty flag is clear).
+   *
+   * This is the race behind a rare e2e failure: the page's first `/state` read
+   * is served from a snapshot taken before the click, the click writes and
+   * persists, the persist clears `dirty`, and the late response was then adopted
+   * wholesale — `layout.openedFiles` came back empty and the editor drew
+   * "Select a file to open" over the file the user had just opened.
+   */
+  test('a key written during the read wins over the response, even once it persisted', async () => {
+    const id = use('load-inflight');
+    stubWindow();
+    const resolve = gateReads({ a: 1, b: 2 });
+
+    const pending = loadSession(id);
+    // The write and its persist both land while the response is held.
+    setSessionKey(id, 'a', 99);
+    await flushSession(id);
+    resolve();
+    await pending;
+
+    expect<number | undefined>(getSessionValue(id, 'a')).toBe(99);
+    // The rest of the blob is still adopted: only the written key is protected.
+    expect<number | undefined>(getSessionValue(id, 'b')).toBe(2);
+  });
+
+  test('a key untouched during the read is adopted from the response', async () => {
+    const id = use('load-untouched');
+    stubWindow();
+    const resolve = gateReads({ a: 1 });
+
+    const pending = loadSession(id);
+    // A DIFFERENT key, written and persisted during the same window.
+    setSessionKey(id, 'other', true);
+    await flushSession(id);
+    resolve();
+    await pending;
+
+    expect<number | undefined>(getSessionValue(id, 'a')).toBe(1);
+    expect<boolean | undefined>(getSessionValue(id, 'other')).toBe(true);
+  });
+
+  test('a cleared key is not resurrected by a response that still carries it', async () => {
+    const id = use('load-cleared');
+    stubWindow();
+    hydrateSession(id, { retired: 'old', keep: 1 });
+    const resolve = gateReads({ retired: 'old', keep: 1 });
+
+    const pending = loadSession(id);
+    clearSessionKey(id, 'retired');
+    await flushSession(id);
+    resolve();
+    await pending;
+
+    expect(getSessionValue(id, 'retired')).toBeUndefined();
+    expect<number | undefined>(getSessionValue(id, 'keep')).toBe(1);
   });
 
   test('flushSession is a resolved no-op without a window or id', async () => {

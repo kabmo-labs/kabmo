@@ -52,24 +52,37 @@ export function useFileTabs(
     [sessionId],
   );
 
-  const activeRootRef = useRef<string | null | undefined>(undefined);
+  /** The last root a wipe was performed FOR; `null` until one is known. */
+  const wipedRootRef = useRef<string | null>(null);
   const { ready: layoutReady } = useSessionStateContext();
-  const wipedRootRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (activeRootRef.current === activeProjectPath) return;
-    activeRootRef.current = activeProjectPath;
-    if (!layoutReady || wipedRootRef.current === activeProjectPath) return;
+    // Only a CHANGE from one known root to another closes the previous
+    // workspace's tabs.
+    //
+    // Two rules, and each was a bug first. A root that is not known yet is not a
+    // root that changed: the path is derived from the sidebar's folder list,
+    // which is empty for a beat on every load (and again whenever the structure
+    // topic re-subscribes), so treating `null` as a root wiped the tabs a user
+    // had just opened. And the FIRST known root is not a change either — it is
+    // the workspace the page was already showing, so wiping on it discarded the
+    // tabs the session blob had just restored (measured: the e2e specs had to
+    // gate every tree click on the `/state` response to survive it, and a click
+    // that lost that race left the editor reading "Select a file to open" over
+    // the file the user had opened).
+    if (!activeProjectPath || !layoutReady) return;
+    const previous = wipedRootRef.current;
     wipedRootRef.current = activeProjectPath;
+    if (previous === null || previous === activeProjectPath) return;
     // The tabs are dropped, but their scroll offsets deliberately are NOT: this
-    // wipe is not a user closing a tab. It fires on every load (the root is null
-    // until the folder resolves), so dropping here erased the offset the session
-    // blob had just restored — measured: the offset persisted as `900`, and came
-    // back as `{}` after a reload. The entry is keyed by the file's path hash, so
-    // it is reused when that file is opened again, which is the point.
+    // wipe is not a user closing a tab. Dropping here erased the offset the
+    // session blob had just restored — measured: the offset persisted as `900`,
+    // and came back as `{}` after a reload. The entry is keyed by the file's
+    // path hash, so it is reused when that file is opened again, which is the
+    // point.
     setOpenedFiles([]);
     setActiveFileId(null);
-  }, [activeProjectPath, sessionId, layoutReady, setOpenedFiles, setActiveFileId]);
+  }, [activeProjectPath, layoutReady, setOpenedFiles, setActiveFileId]);
 
   const handleOpenFile = useCallback((file: OpenFileInput) => {
     const fileEntry: OpenedFile = {
