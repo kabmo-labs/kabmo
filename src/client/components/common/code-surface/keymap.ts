@@ -55,14 +55,25 @@ import type { KeyStroke } from '@/shared/lib/ui/key-binding';
 /** A command as this module invokes it: CM6's `Command` and `StateCommand` both fit. */
 type SurfaceCommand = (view: EditorView) => boolean;
 
-/** Insert a blank line ABOVE the caret's line, which CM6 has no command for. */
+/**
+ * Insert a blank line ABOVE the caret's line, which CM6 has no command for.
+ *
+ * The new line carries the current line's own leading whitespace, and the caret
+ * lands after it — the rule the textarea surface applied, and the one that makes
+ * the key useful inside a block: a bare newline above an indented line left the
+ * caret at column 0 and the new line unindented, so the very next thing typed
+ * was in the wrong place. (CM6's `insertBlankLine`, used for "below", derives
+ * the same indentation from `IndentContext`; this mirrors it without needing a
+ * grammar.)
+ */
 const insertLineAbove: SurfaceCommand = (view) => {
   const { state } = view;
   const range = state.selection.main;
   const line = state.doc.lineAt(range.from);
+  const indent = /^[ \t]*/.exec(line.text)?.[0] ?? '';
   view.dispatch({
-    changes: { from: line.from, insert: '\n' },
-    selection: { anchor: line.from },
+    changes: { from: line.from, insert: `${indent}\n` },
+    selection: { anchor: line.from + indent.length },
   });
   return true;
 };

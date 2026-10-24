@@ -18,9 +18,11 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { EditorState, type TransactionSpec } from '@codemirror/state';
+import type { EditorView } from '@codemirror/view';
 
 import { EDITOR_KEY_BINDINGS } from '@/shared/lib/code/editor/keymap';
-import { codeMirrorKey } from '@/client/components/common/code-surface/keymap';
+import { codeMirrorKey, runSurfaceCommand } from '@/client/components/common/code-surface/keymap';
 
 describe('codeMirrorKey', () => {
   test('maps letters, digits and function keys to the names CM6 matches', () => {
@@ -80,5 +82,52 @@ describe('EDITOR_KEY_BINDINGS coverage', () => {
         seen.set(chord, binding.command);
       }
     }
+  });
+});
+
+/**
+ * The two commands the surface implements itself, run against a state.
+ *
+ * `insertLineAbove` is the one that has no CM6 equivalent, and its indentation
+ * rule is the part a rewrite loses silently: a bare newline above an indented
+ * line puts the caret at column 0, so the next thing typed lands outside the
+ * block. Driven through `runSurfaceCommand` — the palette's and the handle's own
+ * path in — with a `{ state, dispatch }` view, which is all a `StateCommand`
+ * touches.
+ */
+describe('surface commands', () => {
+  /**
+   * The two commands are `StateCommand`s: they read `state` and hand a
+   * transaction SPEC to `dispatch`, nothing else. A view-shaped stand-in is what
+   * `runSurfaceCommand` takes, so the cast states that boundary once rather than
+   * mounting an `EditorView` in happy-dom for a rule with no DOM in it.
+   */
+  function viewFor(doc: string, anchor: number): EditorView {
+    let state = EditorState.create({ doc, selection: { anchor } });
+    const view = {
+      get state() {
+        return state;
+      },
+      // A command dispatches a `TransactionSpec`; `EditorState.update` is the
+      // half of the real view's `dispatch` these commands depend on.
+      dispatch: (...specs: TransactionSpec[]) => {
+        state = state.update(...specs).state;
+      },
+    };
+    return view as unknown as EditorView;
+  }
+
+  test('insertLineAbove keeps the current line’s indentation and lands after it', () => {
+    const view = viewFor('  const a = 1;\nconst b = 2;\n', 4);
+    expect(runSurfaceCommand('insertLineAbove', view)).toBe(true);
+    expect(view.state.doc.toString()).toBe('  \n  const a = 1;\nconst b = 2;\n');
+    expect(view.state.selection.main.head).toBe(2);
+  });
+
+  test('insertLineAbove on an unindented line inserts a bare blank line', () => {
+    const view = viewFor('one\ntwo\n', 5);
+    runSurfaceCommand('insertLineAbove', view);
+    expect(view.state.doc.toString()).toBe('one\n\ntwo\n');
+    expect(view.state.selection.main.head).toBe(4);
   });
 });
