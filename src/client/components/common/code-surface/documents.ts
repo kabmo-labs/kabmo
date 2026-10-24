@@ -29,6 +29,7 @@ import { Compartment, EditorState, type Extension, type StateEffect } from '@cod
 
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { readOnlyExtension, surfaceExtensions, wrapExtension } from '@/client/components/common/code-surface/extensions';
+import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 
 /** States kept alive; past this the least recently used one is dropped. */
 const MAX_CACHED = 12;
@@ -36,6 +37,15 @@ const MAX_CACHED = 12;
 export interface SurfaceOptions {
   wordWrap: boolean;
   readOnly: boolean;
+  /**
+   * The tokenizer's two theme names.
+   *
+   * Part of the live options rather than of the document key: two tabs in
+   * different languages are two states (their decorations are built from
+   * different grammars), but a THEME is one setting for every tab — a new key
+   * per theme would throw away every open tab's undo history on a colour change.
+   */
+  themes: ShikiThemeNames;
 }
 
 export interface DocumentCacheDeps extends SurfaceOptions {
@@ -54,8 +64,14 @@ export interface DocumentCache {
   remember(key: string, state: EditorState): void;
   /** Drop a closed tab's history. */
   drop(key: string): void;
-  /** Effects that bring a view to the current options; empty when nothing moved. */
-  optionsEffects(next: SurfaceOptions): StateEffect<unknown>[];
+  /**
+   * Effects that bring a view to the current options; empty when nothing moved.
+   *
+   * `key` names the document the effects will be dispatched to, because the
+   * tokenizer is per-LANGUAGE: a theme reconfigure must rebuild it from that
+   * document's own grammar, not from whichever one the cache saw last.
+   */
+  optionsEffects(next: SurfaceOptions, key?: string): StateEffect<unknown>[];
   /**
    * Effects that install the CURRENT options unconditionally.
    *
@@ -64,20 +80,43 @@ export interface DocumentCache {
    * while wrap was off came back unwrapped after a toggle. This is the re-apply
    * a document switch owes.
    */
-  currentEffects(): StateEffect<unknown>[];
+  currentEffects(key?: string): StateEffect<unknown>[];
+}
+
+/** Whether two theme pairs name the same Shiki themes. */
+function sameThemes(a: ShikiThemeNames | undefined, b: ShikiThemeNames): boolean {
+  return a !== undefined && a.light === b.light && a.dark === b.dark;
 }
 
 export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
   const states = new Map<string, EditorState>();
-  const options: SurfaceOptions = { wordWrap: deps.wordWrap, readOnly: deps.readOnly };
+  const options: SurfaceOptions = {
+    wordWrap: deps.wordWrap,
+    readOnly: deps.readOnly,
+    themes: deps.themes,
+  };
   const wordWrapCompartment = new Compartment();
   const readOnlyCompartment = new Compartment();
+  const themeCompartment = new Compartment();
+  /** The language each cached state was built for, so a theme reconfigure can
+   *  rebuild its tokenizer with the SAME grammar. */
+  const languages = new Map<string, string>();
+  /**
+   * The theme pair each cached state's tokenizer currently holds.
+   *
+   * Tracked because a theme reconfigure REBUILDS the decoration plugin, which
+   * re-tokenizes the viewport. `currentEffects` runs on every tab switch, and
+   * paying that for a state that already has the right theme is work for
+   * nothing — 2.1 ms on a 20 000-line file, every switch.
+   */
+  const themesByKey = new Map<string, ShikiThemeNames>();
 
   const extensionsFor = (language: string): Extension[] =>
     surfaceExtensions({
       language,
       wordWrapCompartment,
       readOnlyCompartment,
+      themeCompartment,
       onCommand: deps.onCommand,
       onDocChange: deps.onDocChange,
       onState: deps.onState,
@@ -107,6 +146,8 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       }
       const state = EditorState.create({ doc: value, extensions: extensionsFor(language) });
       states.set(key, state);
+      languages.set(key, language);
+      themesByKey.set(key, options.themes);
       evict();
       return state;
     },
@@ -117,24 +158,44 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
 
     drop(key) {
       states.delete(key);
+      languages.delete(key);
+      themesByKey.delete(key);
     },
 
-    optionsEffects(next) {
+    optionsEffects(next, key) {
       const wrapChanged = next.wordWrap !== options.wordWrap;
       const readOnlyChanged = next.readOnly !== options.readOnly;
+      const themeChanged = next.themes.light !== options.themes.light || next.themes.dark !== options.themes.dark;
       options.wordWrap = next.wordWrap;
       options.readOnly = next.readOnly;
+      options.themes = next.themes;
       const effects: StateEffect<unknown>[] = [];
       if (wrapChanged) effects.push(wordWrapCompartment.reconfigure(wrapExtension(options.wordWrap)));
       if (readOnlyChanged) effects.push(readOnlyCompartment.reconfigure(readOnlyExtension(options.readOnly)));
+      // The plugin carries the language, so the tokenizer is rebuilt from THIS
+      // document's grammar. Other cached states are handled by `currentEffects`
+      // when they are applied, which is the moment they need it.
+      const language = key ? languages.get(key) : undefined;
+      if (themeChanged && language) {
+        effects.push(themeCompartment.reconfigure(shikiHighlight(language, options.themes)));
+        if (key) themesByKey.set(key, options.themes);
+      }
       return effects;
     },
 
-    currentEffects() {
-      return [
+    currentEffects(key) {
+      const effects: StateEffect<unknown>[] = [
         wordWrapCompartment.reconfigure(wrapExtension(options.wordWrap)),
         readOnlyCompartment.reconfigure(readOnlyExtension(options.readOnly)),
       ];
+      const language = key ? languages.get(key) : undefined;
+      // Only when this state's tokenizer still holds another theme: a switch
+      // back to a tab that already has it must not re-tokenize.
+      if (key && language && !sameThemes(themesByKey.get(key), options.themes)) {
+        effects.push(themeCompartment.reconfigure(shikiHighlight(language, options.themes)));
+        themesByKey.set(key, options.themes);
+      }
+      return effects;
     },
   };
 }

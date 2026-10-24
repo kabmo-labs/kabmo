@@ -5,7 +5,7 @@ import { useFileDiff } from '@/client/hooks/workspace/diff-file';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
 import { ConflictBanner } from '@/client/components/workspace/diff-panel/ConflictBanner';
-import { MergeDiffView } from '@/client/components/workspace/diff-panel/MergeDiffView';
+import { ThemedMergeDiffView } from '@/client/components/workspace/diff-panel/ThemedMergeDiffView';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
 import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { usePluginDiffView } from '@/client/components/workspace/editor/plugin-file-view';
@@ -301,7 +301,7 @@ export function DiffPanel({
           // diff and the rows, and a shape switch is a re-mount of a different
           // object (an `EditorView` vs a `MergeView`), which is why it is a prop
           // rather than a second component.
-          <MergeDiffView
+          <ThemedMergeDiffView
             original={oldContent}
             next={newContent}
             language={language}

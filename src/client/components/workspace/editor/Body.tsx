@@ -8,6 +8,7 @@ import type { CodeSurfaceHandle } from '@/client/components/common/code-surface'
 import type { RefObject } from 'preact';
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
+import type { EditorThemeState } from '@/client/hooks/editor/theme';
 
 interface EditorBodyProps {
   activeFile: OpenedFile | undefined;
@@ -28,6 +29,7 @@ interface EditorBodyProps {
   setPaletteOpen: (open: boolean) => void;
   runCommand: (command: EditorCommand) => void;
   editorFontFamily: string;
+  editorTheme: EditorThemeState;
   togglePreview: () => void;
   revealActive: boolean;
   missing: boolean;
@@ -61,6 +63,7 @@ export function EditorBody({
   setPaletteOpen,
   runCommand,
   editorFontFamily,
+  editorTheme,
   togglePreview,
   revealActive,
   missing,
@@ -112,6 +115,7 @@ export function EditorBody({
       setPaletteOpen={setPaletteOpen}
       runCommand={runCommand}
       editorFontFamily={editorFontFamily}
+      editorTheme={editorTheme}
       togglePreview={togglePreview}
       revealActive={revealActive}
       missing={missing}

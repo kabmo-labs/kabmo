@@ -5,6 +5,7 @@ import { EditorTabs } from '@/client/components/workspace/editor/Tabs';
 import { EDITOR_KEY_BINDINGS, isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
+import { useEditorTheme } from '@/client/hooks/editor/theme';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
@@ -65,6 +66,7 @@ export function Editor({
   const { sessionId } = useSessionStateContext();
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
   const editorFontFamily = useEditorFontStack();
+  const editorTheme = useEditorTheme();
 
   // A deleted file keeps its tab (its buffer is still on screen), but the tab
   // strip must say so. Only a plain FILE tab is probed: a diff tab's path names
@@ -313,6 +315,7 @@ export function Editor({
         setPaletteOpen={setPaletteOpen}
         runCommand={runCommand}
         editorFontFamily={editorFontFamily}
+        editorTheme={editorTheme}
         togglePreview={togglePreview}
         revealActive={Boolean(searchReveal)}
         missing={activeFileMissing}

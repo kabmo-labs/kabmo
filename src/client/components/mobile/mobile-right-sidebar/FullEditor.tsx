@@ -21,6 +21,7 @@ import {
   EDITOR_MIN_FONT_SIZE,
 } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
+import { useEditorTheme } from '@/client/hooks/editor/theme';
 import { MOBILE_SCROLL_POSITIONS_KEY } from '@/shared/lib/workspace/scroll-positions';
 import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
 import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
@@ -49,6 +50,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   const [fontSize, setFontSize] = useState(EDITOR_DEFAULT_FONT_SIZE);
   const [wordWrap, setWordWrap] = useState(true);
   const editorFontFamily = useEditorFontStack();
+  const editorTheme = useEditorTheme();
 
   const isMd = viewerKind === 'markdown';
   // A byte viewer (image, PDF, DOCX, workbook) owns the whole surface and has
@@ -279,7 +281,11 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           currentMark={currentMark}
           onScroller={setCodeScroller}
           scrollTestId="editor-scroller"
-          className="flex-1 min-h-0 bg-paper text-ink"
+          // No `bg-paper`: an explicit editor theme paints its own surface, and
+          // the panel's colour under it would be a border of the wrong shade.
+          className="flex-1 min-h-0 text-ink"
+          themeVars={editorTheme.vars}
+          themes={editorTheme.themes}
           padding={12}
           style={{
             fontFamily: editorFontFamily,

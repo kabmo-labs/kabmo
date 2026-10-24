@@ -384,6 +384,43 @@
 .shiki span { color: var(--shiki-light); }
 html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
 
+/* No per-token underline in a diff.
+ *
+ * `@codemirror/merge` wraps the characters that changed in `.cm-changedText`
+ * (and a deleted chunk's in `.cm-deletedText`) and its BASE THEME paints a 2px
+ * gradient along the bottom of each fragment. A word-level change is usually
+ * several fragments — `2` → `22` is one — so the reader got a run of short
+ * coloured bars under the code that reads as a second, broken baseline rather
+ * than as emphasis. The row's own band and the gutter marker already say which
+ * side a row belongs to.
+ *
+ * Three facts about how this has to be written, each measured:
+ *
+ * 1. **It cannot be suppressed from the panel's own `EditorView.theme`.** That
+ *    theme rejects the `&light`/`&dark` selectors the package's rules are spelled
+ *    with (`RangeError: Unsupported selector: &light`, which took the whole
+ *    merge view down and left an empty host).
+ * 2. **A plain `.cm-changedText { background: none }` LOSES.** The package's rule
+ *    is `.ͼ2.cm-merge-b .cm-changedText` — two classes on the root plus one on the
+ *    span, i.e. specificity (0,3,0) — and CodeMirror mounts its style modules
+ *    after this sheet, so document order is against us as well.
+ * 3. **So the selector carries three class-level parts of its own** (`.cm-editor`
+ *    + `.cm-merge-b`/`.cm-merge-a` + the span class), which wins on specificity
+ *    rather than by `!important` — an `!important` here would also beat a
+ *    future theme that legitimately wants a different treatment, and this is a
+ *    cosmetic suppression, not a hard override.
+ *
+ * `diff-panel.e2e.ts` asserts the computed `background-image` on a real changed
+ * token, so a package bump that reintroduces the bar fails there rather than in
+ * a screenshot review. */
+.cm-editor.cm-merge-a .cm-changedText,
+.cm-editor.cm-merge-b .cm-changedText,
+.cm-editor.cm-merge-a .cm-deletedChunk .cm-deletedText,
+.cm-editor.cm-merge-b .cm-deletedChunk .cm-deletedText,
+.cm-editor .cm-deletedChunk .cm-deletedText {
+  background: none;
+}
+
 /* Find matches, painted inside the token spans the highlighter emits. An
  * inline <mark> colours a background without moving a glyph, which is what
  * keeps the transparent <textarea> above aligned with this layer — a block or

@@ -132,6 +132,38 @@ test.describe('diff panel views', () => {
     // Full Code, because the collapsed default has no scroll range at all —
     // which is itself the proof that the collapse is real.
     await panel.getByRole('button', { name: 'Full code (whole file, changes marked)' }).click();
+  test('a changed token carries no underline, and the row band still does', async ({ harness, page }) => {
+    const server = await harness('real');
+    const { workspace } = await seedRepo(page, server);
+    const panel = await openDiff(page);
+
+    // `@codemirror/merge` marks the changed characters and its own base theme
+    // paints a 2px gradient along the bottom of each fragment. That reads as a
+    // broken baseline under the code, so `tailwind.css` suppresses it — and the
+    // suppression has to win against a (0,3,0) rule the package mounts later.
+    //
+    // Asserted on the COMPUTED style, not on our rule's presence: a package bump
+    // that reintroduces the bar still leaves our selector in the sheet.
+    const changed = panel.locator('.cm-changedText').first();
+    await expect(changed).toBeVisible({ timeout: 10_000 });
+    const background = await changed.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { image: style.backgroundImage, size: style.backgroundSize };
+    });
+    expect(background.image).toBe('none');
+    // `100% 2px` is the bar's own geometry; it must be gone with the image.
+    expect(background.size).not.toBe('100% 2px');
+
+    // The row band is the signal that remains, and the diff is unreadable
+    // without it — so this asserts both directions rather than only the removal.
+    const band = panel.locator('.cm-changedLine').first();
+    await expect(band).toBeVisible();
+    const bandBackground = await band.evaluate((node) => getComputedStyle(node).backgroundColor);
+    expect(bandBackground).not.toBe('rgba(0, 0, 0, 0)');
+
+    workspace.dispose();
+  });
+
     const scroller = panel.getByTestId('diff-scroller');
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 10_000 })

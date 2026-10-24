@@ -32,6 +32,7 @@ import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { getHighlighterSync, onLanguageReady, onSyntaxReady, requestLanguage } from '@/shared/lib/code/highlighter';
+import { loadEditorTheme, onEditorThemeReady } from '@/shared/lib/code/editor/theme-loader';
 import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 
 /** Lines tokenized above the viewport, to seed the grammar's own state. */
@@ -67,13 +68,26 @@ function styleOf(htmlStyle: Record<string, string> | undefined): string | null {
   return style || null;
 }
 
+/** The two theme names a surface tokenizes with. */
+export interface ShikiThemeNames {
+  light: string;
+  dark: string;
+}
+
+/** The app's dual pair, used when a caller names none. */
+const APP_THEMES: ShikiThemeNames = SHIKI_THEMES;
+
 /**
  * Tokenize the viewport and emit one mark per coloured token.
  *
  * `RangeSetBuilder` requires ascending ranges, which the line walk gives for
  * free: tokens arrive in document order because they are read line by line.
  */
-function buildDecorations(view: EditorView, language: string): DecorationSet {
+function buildDecorations(
+  view: EditorView,
+  language: string,
+  themes: ShikiThemeNames,
+): DecorationSet {
   const highlighter = getHighlighterSync();
   // Not booted yet, or the grammar is still in flight: plain text for this
   // pass, and `subscribe` re-runs the moment either lands.
@@ -92,7 +106,9 @@ function buildDecorations(view: EditorView, language: string): DecorationSet {
   try {
     tokenized = highlighter.codeToTokens(source, {
       lang: language,
-      themes: SHIKI_THEMES,
+      // Shiki's own type is `Partial<Record<string, ThemeRegistrationAny|string>>`;
+      // the pair is a plain string map, which is what it accepts at runtime.
+      themes: themes as unknown as Record<string, string>,
       defaultColor: false,
       tokenizeMaxLineLength: MAX_LINE_CHARS,
     }).tokens as typeof tokenized;
@@ -121,25 +137,46 @@ function buildDecorations(view: EditorView, language: string): DecorationSet {
   return builder.finish();
 }
 
-/** Re-run when the highlighter boots or a grammar lands. */
-function subscribe(onReady: () => void): () => void {
+/**
+ * Re-run when the highlighter boots, a grammar lands, or the theme's module
+ * arrives.
+ *
+ * The theme is the third case and it is not optional: an explicit editor theme
+ * is a module that is fetched on selection, and `codeToTokens` throws for a
+ * theme Shiki has not been given — which the catch below turns into plain text.
+ * Without this subscription a freshly picked theme would leave the surface
+ * uncoloured until something else forced a rebuild.
+ */
+function subscribe(themes: ShikiThemeNames, onReady: () => void): () => void {
   const offBoot = onSyntaxReady(onReady);
   const offLanguage = onLanguageReady(onReady);
+  const wanted = new Set([themes.light, themes.dark]);
+  const offTheme = onEditorThemeReady((id) => {
+    if (wanted.has(id)) onReady();
+  });
+  // A theme the app has never loaded: ask now, and the subscription above
+  // rebuilds once it lands.
+  for (const id of wanted) void loadEditorTheme(id);
   return () => {
     offBoot();
     offLanguage();
+    offTheme();
   };
 }
 
 /**
- * The decoration plugin for one language.
+ * The decoration plugin for one language and theme.
  *
- * The language is baked in because a document's language never changes under a
- * live state: `documentKey` carries it, so a `.ts` tab and a `.py` tab are two
- * cached states (and two editor states cannot share decorations built from
- * different grammars).
+ * Both are baked in because neither changes under a live state: `documentKey`
+ * carries the language (a `.ts` tab and a `.py` tab are two cached states, and
+ * two states cannot share decorations built from different grammars), and a
+ * theme switch is a CSS repaint — the marks carry both palettes as custom
+ * properties, so the values are identical when one theme names both slots.
+ *
+ * `themes` is optional so a caller that has no editor-theme opinion (a diff
+ * card inside a chat message) keeps the app's dual pair.
  */
-export function shikiHighlight(language: string): Extension {
+export function shikiHighlight(language: string, themes: ShikiThemeNames = APP_THEMES): Extension {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
@@ -150,8 +187,8 @@ export function shikiHighlight(language: string): Extension {
 
       constructor(view: EditorView) {
         this.view = view;
-        this.decorations = buildDecorations(view, language);
-        this.unsubscribe = subscribe(() => this.invalidate());
+        this.decorations = buildDecorations(view, language, themes);
+        this.unsubscribe = subscribe(themes, () => this.invalidate());
       }
 
       update(update: ViewUpdate): void {
@@ -165,7 +202,7 @@ export function shikiHighlight(language: string): Extension {
         }
         if (!update.docChanged && !update.viewportChanged && !this.dirty) return;
         this.dirty = false;
-        this.decorations = buildDecorations(update.view, language);
+        this.decorations = buildDecorations(update.view, language, themes);
       }
 
       destroy(): void {

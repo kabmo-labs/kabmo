@@ -96,6 +96,13 @@ jobs:
       - name: Check the shells' wordmark copies
         run: bun run scripts/shell-wordmark.mjs --check
 
+      # The editor theme catalogue is GENERATED from the installed
+      # `@shikijs/themes`. A stale copy still renders the picker — with colours
+      # the installed package no longer ships — so a `@shikijs/themes` bump must
+      # fail here rather than ship a grid of wrong swatches.
+      - name: Check the editor theme catalogue
+        run: bun run scripts/editor-themes.mjs --check
+
       # The file-size ceiling (AGENTS.md §1) is a rule about the source tree, so it is
       # checked against the tree rather than through the build.
       - name: Check the file-size ceiling

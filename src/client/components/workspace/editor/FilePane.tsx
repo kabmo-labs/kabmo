@@ -12,6 +12,7 @@ import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { OpenedFile } from '@/shared/types/fs';
+import type { EditorThemeState } from '@/client/hooks/editor/theme';
 
 interface FilePaneProps {
   activeFile: OpenedFile;
@@ -33,6 +34,7 @@ interface FilePaneProps {
   setPaletteOpen: (open: boolean) => void;
   runCommand: (command: EditorCommand) => void;
   editorFontFamily: string;
+  editorTheme: EditorThemeState;
   togglePreview: () => void;
   /** A search hit was jumped to in this file, so its matches are painted. */
   revealActive: boolean;
@@ -73,6 +75,7 @@ export function FilePane({
   setPaletteOpen,
   runCommand,
   editorFontFamily,
+  editorTheme,
   togglePreview,
   revealActive,
   missing,
@@ -211,6 +214,7 @@ export function FilePane({
           wordWrap={wordWrap}
           zoomLevel={zoomLevel}
           editorFontFamily={editorFontFamily}
+          editorTheme={editorTheme}
           isPreview={isPreview}
           viewerKind={viewerKind}
           revealActive={revealActive}

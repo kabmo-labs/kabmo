@@ -48,6 +48,16 @@ export interface SettingsState {
    * cannot render a broken editor, only a different one.
    */
   editorFont: string;
+  /**
+   * Colour theme for the code editor, INDEPENDENT of `theme` above.
+   *
+   * `auto` (the default) keeps the editor on the app palette. Any other value
+   * is a Shiki theme id from `EDITOR_THEMES` — the editor then paints its own
+   * surface, gutter, selection and tokens while the console around it keeps the
+   * app palette. `resolveEditorTheme` treats an id this build no longer ships
+   * as `auto`, so a downgrade renders the app palette rather than half a theme.
+   */
+  editorTheme: string;
   /** Generate a session title from the first run. omp suppresses its
    *  own auto-titling under `--mode rpc-ui` (PI_NO_TITLE), so without this a
    *  Kabmo session keeps its `New Session - <timestamp>` placeholder. Asked

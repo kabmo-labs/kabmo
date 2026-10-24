@@ -20,6 +20,7 @@ import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
 import { toggleComment } from '@codemirror/commands';
 
 import { readOnlyExtension, surfaceExtensions, wrapExtension } from '@/client/components/common/code-surface/extensions';
+import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 
 /** A state from the component's own stack, with a bare caret on line 1. */
 function stateFor(language: string, doc = 'const alpha = 1;\n') {
@@ -29,8 +30,10 @@ function stateFor(language: string, doc = 'const alpha = 1;\n') {
       language,
       wordWrapCompartment: new Compartment(),
       readOnlyCompartment: new Compartment(),
+      themeCompartment: new Compartment(),
       wordWrap: false,
       readOnly: false,
+      themes: SHIKI_THEMES,
       onDocChange: () => {},
       onState: () => {},
     }),

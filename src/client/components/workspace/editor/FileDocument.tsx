@@ -10,6 +10,7 @@ import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
+import type { EditorThemeState } from '@/client/hooks/editor/theme';
 
 interface FileDocumentProps {
   activeFile: { id: number | string; name: string; path: string; root?: string; repo?: string };
@@ -22,6 +23,7 @@ interface FileDocumentProps {
   wordWrap: boolean;
   zoomLevel: number;
   editorFontFamily: string;
+  editorTheme: EditorThemeState;
   /** The surface this file's kind is drawn by (see `document-kind`). */
   viewerKind: ViewerKind;
   /** The rendered view is on for the active file — render it, not the source. */
@@ -55,6 +57,7 @@ export function FileDocument({
   wordWrap,
   zoomLevel,
   editorFontFamily,
+  editorTheme,
   viewerKind,
   isPreview,
   revealActive,
@@ -123,7 +126,12 @@ export function FileDocument({
           onCommand={onRunCommand}
           onScroller={setCodeScroller}
           scrollTestId="editor-scroller"
-          className="flex-1 min-h-0 bg-paper text-ink select-text"
+          // The editor theme paints its own surface, so the app's `bg-paper`
+          // must not sit under it: an explicit theme's background is opaque and
+          // would be a rectangle inside the panel's own colour.
+          className="flex-1 min-h-0 text-ink select-text"
+          themeVars={editorTheme.vars}
+          themes={editorTheme.themes}
           padding={16}
           style={{
             fontFamily: editorFontFamily,

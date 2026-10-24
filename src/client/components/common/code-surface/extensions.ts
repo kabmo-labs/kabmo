@@ -48,7 +48,7 @@ import { commentSyntaxFor } from '@/shared/lib/code/editor/comment-syntax';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
-import { shikiHighlight } from '@/client/components/common/code-surface/shiki';
+import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
 
 /** Indentation the surface inserts, in spaces. */
@@ -77,8 +77,19 @@ export interface SurfaceExtensionsOptions {
   wordWrapCompartment: Compartment;
   /** Compartment holding `readOnlyExtension`. */
   readOnlyCompartment: Compartment;
+  /**
+   * Compartment holding the tokenizer.
+   *
+   * The editor theme is baked into the decoration plugin (Shiki is handed the
+   * theme NAMES at tokenize time), so a theme change reconfigures this — which
+   * rebuilds the plugin while the document, the selection and the history stay
+   * exactly where they were.
+   */
+  themeCompartment: Compartment;
   wordWrap: boolean;
   readOnly: boolean;
+  /** The two Shiki theme names this surface tokenizes with. */
+  themes: ShikiThemeNames;
   /** Panel-owned commands the editor delegates instead of running. */
   onCommand?: (command: EditorCommand) => void;
   /** Fired for every user edit, with the whole new document. */
@@ -92,8 +103,10 @@ export function surfaceExtensions({
   language,
   wordWrapCompartment,
   readOnlyCompartment,
+  themeCompartment,
   wordWrap,
   readOnly,
+  themes,
   onCommand,
   onDocChange,
   onState,
@@ -113,7 +126,7 @@ export function surfaceExtensions({
     // bare yields an empty list and the command silently does nothing.
     EditorState.languageData.of(() => [{ commentTokens: commentTokens(language) }]),
     findMarksField,
-    shikiHighlight(language),
+    themeCompartment.of(shikiHighlight(language, themes)),
     surfaceTheme(),
     wordWrapCompartment.of(wrapExtension(wordWrap)),
     readOnlyCompartment.of(readOnlyExtension(readOnly)),

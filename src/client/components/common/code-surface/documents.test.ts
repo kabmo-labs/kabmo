@@ -23,11 +23,13 @@ import { undo } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
 
 import { createDocumentCache } from '@/client/components/common/code-surface/documents';
+import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 
 function cache(overrides: Partial<Parameters<typeof createDocumentCache>[0]> = {}) {
   return createDocumentCache({
     wordWrap: false,
     readOnly: false,
+    themes: SHIKI_THEMES,
     onDocChange: () => {},
     onState: () => {},
     ...overrides,
@@ -102,9 +104,9 @@ describe('document cache', () => {
     const documents = cache({ wordWrap: true, readOnly: false });
     documents.stateFor('a', 'typescript', 'x');
 
-    expect(documents.optionsEffects({ wordWrap: true, readOnly: false })).toEqual([]);
-    expect(documents.optionsEffects({ wordWrap: false, readOnly: false })).toHaveLength(1);
-    expect(documents.optionsEffects({ wordWrap: false, readOnly: true })).toHaveLength(1);
+    expect(documents.optionsEffects({ wordWrap: true, readOnly: false, themes: SHIKI_THEMES })).toEqual([]);
+    expect(documents.optionsEffects({ wordWrap: false, readOnly: false, themes: SHIKI_THEMES })).toHaveLength(1);
+    expect(documents.optionsEffects({ wordWrap: false, readOnly: true, themes: SHIKI_THEMES })).toHaveLength(1);
   });
 
   test('a new document is created read-only when that is the current setting', () => {

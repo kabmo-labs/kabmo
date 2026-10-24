@@ -31,7 +31,7 @@ import { Compartment, EditorState, Text, type Extension } from '@codemirror/stat
 import { EditorView, lineNumbers } from '@codemirror/view';
 import { Chunk, MergeView, diff, unifiedMergeView } from '@codemirror/merge';
 
-import { shikiHighlight } from '@/client/components/common/code-surface/shiki';
+import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
 
 /** What the toolbar shows; `diff` collapses the unchanged stretches. */
@@ -54,8 +54,8 @@ function diffTheme(): Extension {
   return EditorView.theme({
     '&': {
       height: '100%',
-      backgroundColor: 'var(--theme-paper)',
-      color: 'var(--theme-ink)',
+      backgroundColor: 'var(--editor-bg, var(--theme-paper))',
+      color: 'var(--editor-fg, var(--theme-ink))',
       fontSize: 'inherit',
       fontFamily: 'inherit',
       lineHeight: 'inherit',
@@ -63,33 +63,39 @@ function diffTheme(): Extension {
     '&.cm-focused': { outline: 'none' },
     '.cm-scroller': { fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' },
     '.cm-gutters': {
-      backgroundColor: 'var(--theme-canvas)',
-      color: 'color-mix(in srgb, var(--theme-ink) 30%, transparent)',
+      backgroundColor: 'var(--editor-bg, var(--theme-canvas))',
+      color: 'var(--editor-gutter-fg, color-mix(in srgb, var(--theme-ink) 30%, transparent))',
       border: 'none',
-      borderRight: '1px solid color-mix(in srgb, var(--theme-ink) 10%, transparent)',
+      borderRight: '1px solid var(--editor-border, color-mix(in srgb, var(--theme-ink) 10%, transparent))',
       fontFamily: 'inherit',
       fontSize: 'inherit',
       lineHeight: 'inherit',
     },
+    // The diff bands follow the editor theme when one is chosen (its own
+    // inserted/removed colours) and the app's signal pair otherwise.
     '&.cm-merge-a .cm-changedLine, .cm-deletedChunk': {
-      backgroundColor: 'color-mix(in srgb, var(--theme-error) 10%, transparent)',
+      backgroundColor: 'var(--editor-removed, color-mix(in srgb, var(--theme-error) 10%, transparent))',
     },
     '&.cm-merge-b .cm-changedLine, .cm-inlineChangedLine': {
-      backgroundColor: 'color-mix(in srgb, var(--theme-success) 10%, transparent)',
+      backgroundColor: 'var(--editor-added, color-mix(in srgb, var(--theme-success) 10%, transparent))',
     },
-    '&.cm-merge-a .cm-changedText, .cm-deletedChunk .cm-deletedText': {
-      background:
-        'linear-gradient(color-mix(in srgb, var(--theme-error) 40%, transparent), color-mix(in srgb, var(--theme-error) 40%, transparent)) bottom/100% 2px no-repeat',
+    // The per-token underline is deliberately NOT drawn, and it CANNOT be
+    // removed from here: `@codemirror/merge`'s base theme paints a 2px gradient
+    // along the bottom of every `.cm-changedText` / `.cm-deletedText` fragment,
+    // and its rules are spelled with the `&light`/`&dark` prefixes that only
+    // `EditorView.baseTheme` accepts — `EditorView.theme` throws
+    // `RangeError: Unsupported selector: &light` (measured; it took the whole
+    // merge view down with an empty host). `tailwind.css` therefore owns the
+    // suppression, under the same `.cm-changedText` class. See the block there.
+    '&.cm-merge-a .cm-changedLineGutter, .cm-deletedLineGutter': {
+      background: 'var(--editor-removed-gutter, var(--theme-error))',
     },
-    '&.cm-merge-b .cm-changedText': {
-      background:
-        'linear-gradient(color-mix(in srgb, var(--theme-success) 40%, transparent), color-mix(in srgb, var(--theme-success) 40%, transparent)) bottom/100% 2px no-repeat',
+    '&.cm-merge-b .cm-changedLineGutter': {
+      background: 'var(--editor-added-gutter, var(--theme-success))',
     },
-    '&.cm-merge-a .cm-changedLineGutter, .cm-deletedLineGutter': { background: 'var(--theme-error)' },
-    '&.cm-merge-b .cm-changedLineGutter': { background: 'var(--theme-success)' },
     '.cm-collapsedLines': {
-      color: 'color-mix(in srgb, var(--theme-ink) 45%, transparent)',
-      background: 'var(--theme-canvas)',
+      color: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 45%, transparent)',
+      background: 'var(--editor-bg, var(--theme-canvas))',
       fontSize: '11px',
     },
     '.cm-changeGutter': { width: '3px', paddingLeft: '1px' },
@@ -105,6 +111,8 @@ export interface DiffViewOptions {
   language: string;
   wordWrap: boolean;
   collapse: CollapseMode;
+  /** The two Shiki theme names; absent keeps the app's dual pair. */
+  themes?: ShikiThemeNames;
   /** `data-testid` for the scroller, so the e2e layer can address it. */
   scrollTestId: string;
   /** The element that scrolls, reported on mount and cleared on unmount. */
@@ -132,7 +140,7 @@ function baseExtensions(options: DiffViewOptions, wrap: Compartment): Extension[
   return [
     ...READ_ONLY,
     lineNumbers(),
-    shikiHighlight(options.language),
+    shikiHighlight(options.language, options.themes),
     surfaceTheme(),
     diffTheme(),
     wrap.of(options.wordWrap ? EditorView.lineWrapping : []),

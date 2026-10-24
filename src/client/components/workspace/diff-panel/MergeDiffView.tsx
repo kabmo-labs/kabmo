@@ -50,6 +50,10 @@ interface MergeDiffViewProps {
   empty: boolean;
   fontFamily: string;
   fontSize: number;
+  /** The editor theme's CSS variables (`editorThemeVars`); absent means `auto`. */
+  themeVars?: Record<string, string>;
+  /** The two Shiki theme names to tokenize with. */
+  themes?: { light: string; dark: string };
 }
 
 export function MergeDiffView({
@@ -65,6 +69,8 @@ export function MergeDiffView({
   empty,
   fontFamily,
   fontSize,
+  themeVars,
+  themes,
 }: MergeDiffViewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const handleRef = useRef<DiffViewHandle | null>(null);
@@ -96,6 +102,7 @@ export function MergeDiffView({
       language,
       wordWrap,
       collapse: contentMode,
+      themes,
       scrollTestId: 'diff-scroller',
       onScroller: setScroller,
     } as const;
@@ -108,10 +115,13 @@ export function MergeDiffView({
       handle.destroy();
       handleRef.current = null;
     };
-    // Re-mounted on the shape, the language and the emptiness only: every other
-    // input is a reconfigure below.
+    // Re-mounted on the shape, the language, the emptiness and the THEME only:
+    // every other input is a reconfigure below. A theme is baked into the
+    // tokenizer plugin (Shiki is handed theme NAMES at tokenize time), so a
+    // colour change rebuilds it — the documents are re-stated by the effect
+    // below, and a diff has no history to lose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, language, empty]);
+  }, [viewMode, language, empty, themes?.light, themes?.dark]);
 
   // Documents changed (a refresh, a stage, a discard, the whitespace toggle).
   useEffect(() => {
@@ -150,6 +160,7 @@ export function MergeDiffView({
       ref={hostRef}
       className="flex-1 min-h-0 overflow-hidden bg-paper text-ink"
       style={{
+        ...themeVars,
         fontFamily,
         fontSize: `${fontSize}px`,
         lineHeight: EDITOR_LINE_HEIGHT,

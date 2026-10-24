@@ -3,6 +3,7 @@ import type { SettingsState } from '@/shared/types';
 import { resolveThemeId } from '@/shared/lib/theme/catalog';
 import { ThemeGrid } from '@/client/components/settings/categories/appearance-settings/ThemeGrid';
 import { EditorFontSection } from '@/client/components/settings/categories/appearance-settings/EditorFontSection';
+import { EditorThemeSection } from '@/client/components/settings/categories/appearance-settings/EditorThemeSection';
 
 interface AppearanceSettingsProps {
   settings: SettingsState;
@@ -25,6 +26,8 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
       </section>
 
       <EditorFontSection settings={settings} onUpdate={onUpdate} />
+
+      <EditorThemeSection settings={settings} onUpdate={onUpdate} />
     </div>
   );
 }

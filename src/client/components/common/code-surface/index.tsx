@@ -35,6 +35,8 @@ import type { CSSProperties } from 'preact';
 import { EditorView } from '@codemirror/view';
 
 import { createDocumentCache, type DocumentCache } from '@/client/components/common/code-surface/documents';
+import type { ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
+import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 import { cancelScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { runSurfaceCommand } from '@/client/components/common/code-surface/keymap';
 import { setFindMarks, type MarkRange } from '@/client/components/common/code-surface/marks';
@@ -73,6 +75,17 @@ export interface CodeSurfaceProps {
   onCommand?: (command: EditorCommand) => void;
   /** A viewer: both `readOnly` and `editable(false)`, so nothing can write. */
   readOnly?: boolean;
+  /**
+   * The editor THEME, as CSS custom properties (`editorThemeVars`).
+   *
+   * Written on the host element, so the chrome repaints through CSS and a theme
+   * switch costs one attribute write. Empty/absent means `auto`: every
+   * declaration in `theme.ts` falls back to the app palette.
+   */
+  themeVars?: Record<string, string>;
+  /** The two Shiki theme names to tokenize with (the same theme twice when the
+   *  editor theme is explicit). Defaults to the app's dual pair. */
+  themes?: ShikiThemeNames;
   /** Font family / size / line height (the zoom control and the font setting). */
   style?: CSSProperties;
   /** Padding around the document, in px. */
@@ -101,6 +114,8 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     currentMark,
     onCommand,
     readOnly = false,
+    themeVars,
+    themes,
     style,
     padding = 16,
     scrollTestId,
@@ -151,6 +166,10 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
   const currentMarkRef = useRef(currentMark ?? -1);
   marksRef.current = marks ?? [];
   currentMarkRef.current = currentMark ?? -1;
+  /** The tokenizer themes, mirrored for the cache's first build. */
+  const activeThemes = themes ?? SHIKI_THEMES;
+  const themesRef = useRef<ShikiThemeNames>(activeThemes);
+  themesRef.current = activeThemes;
 
   // One cache for the component's life: it owns the per-document states.
   const cacheRef = useRef<DocumentCache | null>(null);
@@ -158,6 +177,7 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     cacheRef.current = createDocumentCache({
       wordWrap,
       readOnly,
+      themes: themesRef.current,
       onDocChange: (next) => {
         // Recorded BEFORE the writing guard: this is what the document holds,
         // whether or not the change came from the user.
@@ -210,9 +230,10 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     docKeyRef.current = documentKey;
     view.setState(cache.stateFor(documentKey, language, value));
     // The cached state carries the configuration it was CREATED with, and
-    // `setState` installs that wholesale — so the current wrap/read-only pair is
-    // re-applied, or a tab opened while wrap was off comes back unwrapped.
-    view.dispatch({ effects: cache.currentEffects() });
+    // `setState` installs that wholesale — so the current wrap/read-only pair
+    // and the current editor theme are re-applied, or a tab opened while wrap
+    // was off comes back unwrapped and a theme chosen since comes back stale.
+    view.dispatch({ effects: cache.currentEffects(documentKey) });
     syncExternal(view, value, writingRef, lastValueRef);
     // The marks belonged to the previous document's offsets, and the field lives
     // in that state. A fresh state starts empty, so this re-applies whatever the
@@ -233,15 +254,16 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     syncExternal(view, value, writingRef, lastValueRef);
   }, [value, documentKey]);
 
-  // Wrap and read-only are per-view settings: reconfiguring keeps the document,
-  // the selection and the history, which is what a wrap toggle must not disturb.
+  // Wrap, read-only and the editor theme are per-view settings: reconfiguring
+  // keeps the document, the selection and the history, which is what a wrap
+  // toggle — or a colour change — must not disturb.
   useLayoutEffect(() => {
     const view = viewRef.current;
     const cache = cacheRef.current;
     if (!view || !cache) return;
-    const effects = cache.optionsEffects({ wordWrap, readOnly });
+    const effects = cache.optionsEffects({ wordWrap, readOnly, themes: activeThemes }, docKeyRef.current);
     if (effects.length > 0) view.dispatch({ effects });
-  }, [wordWrap, readOnly]);
+  }, [wordWrap, readOnly, activeThemes.light, activeThemes.dark]);
 
   // Find marks: a field write, never a re-tokenize.
   useLayoutEffect(() => {
@@ -315,6 +337,7 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
   );
 
   const hostStyle = {
+    ...themeVars,
     ...style,
     // The document's padding, read back by the theme as a CSS variable so a
     // per-layout value needs no theme reconfigure.
