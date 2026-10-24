@@ -257,6 +257,13 @@ PORT=3001 bun run dev              # or: PORT=3001 bun run start
 - Nothing is ever signalled to free a port; `kabmo stop --port 3000` is the deliberate way.
 - A process that is **not** Kabmo is never signalled either: the server names the port and
   prints the `lsof -nP -iTCP:<port> -sTCP:LISTEN` command to identify it.
+- **`localhost` is two addresses, and the port is taken if either one is.** `Bun.serve` binds only
+  the family a name resolves to first (`[::1]` for `localhost`), so a check aimed at that family
+  alone reported a free port while another instance held `127.0.0.1` — two servers answering "port
+  3000", and a browser landing on whichever one it resolved. Both `127.0.0.1` and `::1` are now
+  probed (and both are asked over `/api/health`, which is what `status`/`stop` use to find a live
+  instance), and the refusal names the address that is held. A literal address (`--host 0.0.0.0`,
+  `127.0.0.1`) is one address and is probed as exactly that.
 - `bun run dev` hot reload is unaffected: `--hot` re-evaluates the entry inside the running
   process, and a port held by that process is recognized as its own.
 - `status` and `logs` report **every** live instance by default; `--port <port>` narrows them to one.

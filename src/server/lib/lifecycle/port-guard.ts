@@ -18,6 +18,12 @@
  * receive connections. The newcomer would look healthy in its own log while the
  * browser kept talking to the old build; the guard stops that state from being
  * created in the first place.
+ *
+ * "One port" is every ADDRESS the bind host stands for. A name is not one
+ * socket: `localhost` is `127.0.0.1` and `::1`, and Bun binds the one it
+ * resolves first — so asking about that family alone let a stale instance keep
+ * the other, and the browser landed on whichever it resolved. See
+ * `probeAddresses`; the failure message names the address that is held.
  */
 
 import fs from 'fs';
@@ -26,7 +32,7 @@ import { flockAvailable, tryFlock } from '@/server/lib/lifecycle/flock';
 import { getProcessState } from '@/server/lib/lifecycle/identity';
 import { describeOccupant, findOccupant } from '@/server/lib/lifecycle/occupant';
 import { getLockPath } from '@/server/lib/lifecycle/paths';
-import { isPortAvailable } from '@/server/lib/lifecycle/probe';
+import { probeAddresses, unavailableAddresses } from '@/server/lib/lifecycle/probe';
 
 const LOCK_WAIT_MS = 3_000;
 /** Grace period for a port that is settling (a server that just exited, or one that is starting). */
@@ -129,7 +135,13 @@ export async function claimPort({ port, host, listen }: ClaimPortOptions): Promi
   let bindError: unknown = null;
 
   for (;;) {
-    if (await isPortAvailable(port, host)) {
+    // Every address the host can land on, not just the first one it resolves
+    // to. `localhost` is two sockets, Bun binds one of them, and asking about
+    // only that one let a stale instance keep the other half of the port — two
+    // servers, one port, and a browser that reached whichever family it
+    // happened to resolve. See `probeAddresses`.
+    const blocked = await unavailableAddresses(port, host);
+    if (blocked.length === 0) {
       try {
         await listen();
         return;
@@ -148,9 +160,9 @@ export async function claimPort({ port, host, listen }: ClaimPortOptions): Promi
       return;
     }
 
-    if (occupant) throw await buildPortInUseError(port, host, bindError);
+    if (occupant) throw await buildPortInUseError(port, host, bindError, blocked);
 
-    if (Date.now() >= deadline) throw await buildPortInUseError(port, host, bindError);
+    if (Date.now() >= deadline) throw await buildPortInUseError(port, host, bindError, blocked);
     await Bun.sleep(200);
   }
 }
@@ -164,13 +176,33 @@ function portGuidance(): string {
   ].join('\n');
 }
 
-async function buildPortInUseError(port: number, host: string, bindError: unknown): Promise<PortInUseError> {
+/**
+ * The address clause, when the host is a name that stands for more than one.
+ *
+ * `Port 3000 is in use` is not actionable on a machine where `localhost` is two
+ * sockets: it names neither the one that is taken nor the one that is free, and
+ * `lsof` lists both. Naming it is the whole difference between "something is
+ * wrong" and "this address is held, that one is not".
+ */
+function addressClause(host: string, blocked: string[]): string {
+  if (blocked.length === 0) return '';
+  if (probeAddresses(host).length < 2) return '';
+  return ` on ${blocked.join(', ')}`;
+}
+
+async function buildPortInUseError(
+  port: number,
+  host: string,
+  bindError: unknown,
+  blocked: string[],
+): Promise<PortInUseError> {
   const occupant = await findOccupant(port, host);
   const bindDetail = bindError instanceof Error ? `\n  Bind error: ${bindError.message}` : '';
+  const address = addressClause(host, blocked);
 
   if (occupant) {
     return new PortInUseError(
-      `Port ${port} is already served by Kabmo ${describeOccupant(occupant)}.\n`
+      `Port ${port} is already served by Kabmo ${describeOccupant(occupant)}${address}.\n`
       + `  Nothing was stopped — a starting instance never stops another one.\n`
       + `  Stop it first:  kabmo stop --port ${port}\n`
       + `  Or start on another port:\n${portGuidance()}`,
@@ -178,7 +210,7 @@ async function buildPortInUseError(port: number, host: string, bindError: unknow
   }
 
   return new PortInUseError(
-    `Port ${port} is in use by another process (no Kabmo instance answered on it).${bindDetail}\n`
+    `Port ${port} is in use by another process${address} (no Kabmo instance answered on it).${bindDetail}\n`
     + `  Find it with:  lsof -nP -iTCP:${port} -sTCP:LISTEN\n`
     + `  Start on another port:\n${portGuidance()}`,
   );

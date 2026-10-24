@@ -69,25 +69,98 @@ export function isLoopbackHost(host?: string | null): boolean {
 }
 
 /**
- * True when `port` can still be bound on `host`.
+ * Addresses a bind to `host` can land on.
  *
- * The probe binds *the same address the server will bind* — a wildcard server
- * is probed with a wildcard bind. Probing loopback instead would ask a
- * different question: `net` sets SO_REUSEADDR, so a loopback bind can succeed
- * while `0.0.0.0:<port>` is already taken, and the port would look free right
- * up until the real `listen` failed.
+ * A NAME is not one address, and that is the whole bug this function exists
+ * for. `localhost` resolves to both loopback families, while Bun binds only the
+ * one it resolves first — verified: `Bun.serve({ hostname: 'localhost' })`
+ * listens on `[::1]` alone. Asking about that family alone answers "is the
+ * socket I am about to open free", which is not the question a port guard
+ * exists to answer: the other address stays available to a second server, and a
+ * client that resolves THAT one reaches it. Measured on a real dev run against a
+ * stale instance on `127.0.0.1:3000`: both servers reported the port as theirs,
+ * the browser landed on the old build (a MOCK instance), and the newcomer's own
+ * log said the port was free.
+ *
+ * A literal address and a bind-any address are one address by definition. An
+ * arbitrary hostname is deliberately left alone: its resolution belongs to the
+ * OS, a second lookup here could disagree with the one the bind will use, and
+ * only loopback is guaranteed multi-family on every host.
  */
-export async function isPortAvailable(port: number, host?: string | null): Promise<boolean> {
-  if (!Number.isFinite(port) || port <= 0) return false;
-  const bindHost = (host ?? '').trim() || 'localhost';
+export function probeAddresses(host?: string | null): string[] {
+  const value = (host ?? '').trim();
+  if (value.length === 0 || value.toLowerCase() === 'localhost') return ['127.0.0.1', '::1'];
+  return [value];
+}
+
+/**
+ * Addresses a health request should be sent to, for a bind host.
+ *
+ * The same list as `probeAddresses`, with bind-any addresses translated to the
+ * loopback that reaches them. Kept separate because the two questions differ:
+ * occupancy is asked with a BIND (so `0.0.0.0` is a legitimate address to bind)
+ * while identification is asked with a CONNECT (where `0.0.0.0` is not an
+ * address at all).
+ */
+export function connectAddresses(host?: string | null): string[] {
+  return probeAddresses(host).map(probeHost);
+}
+
+/**
+ * Bind failures that mean "this host has no such address", not "someone holds
+ * it": a kernel booted without IPv6 answers `EADDRNOTAVAIL` for `::1`, and
+ * reading that as occupied would refuse every start on that machine.
+ */
+const ABSENT_ADDRESS_CODES: Record<string, true> = {
+  EADDRNOTAVAIL: true,
+  EAFNOSUPPORT: true,
+};
+
+/** Whether one address can be bound. */
+async function bindable(port: number, host: string): Promise<boolean> {
   const { promise, resolve } = Promise.withResolvers<boolean>();
   const probe = net.createServer();
   probe.unref();
-  probe.once('error', () => resolve(false));
-  probe.listen({ port, host: bindHost }, () => {
+  probe.once('error', (error: NodeJS.ErrnoException) => {
+    resolve(ABSENT_ADDRESS_CODES[error.code ?? ''] === true);
+  });
+  probe.listen({ port, host }, () => {
     probe.close(() => resolve(true));
   });
   return await promise;
+}
+
+/**
+ * Every address of `host` where `port` is already taken; empty means free.
+ *
+ * The list rather than a boolean, because the guard's failure message has to
+ * name the address that is held — "port busy" on a name that resolves to two
+ * addresses does not say which one the user has to free.
+ */
+export async function unavailableAddresses(port: number, host?: string | null): Promise<string[]> {
+  if (!Number.isFinite(port) || port <= 0) return [];
+  const blocked: string[] = [];
+  for (const address of probeAddresses(host)) {
+    if (!(await bindable(port, address))) blocked.push(address);
+  }
+  return blocked;
+}
+
+/**
+ * True when `port` can still be bound on `host`.
+ *
+ * The probe binds *the same addresses the server will bind* — a wildcard server
+ * is probed with a wildcard bind, and a name is probed on every address it
+ * resolves to. Probing loopback instead of a wildcard would ask a different
+ * question: `net` sets SO_REUSEADDR, so a loopback bind can succeed while
+ * `0.0.0.0:<port>` is already taken, and the port would look free right up
+ * until the real `listen` failed. Probing one family of a name asks a narrower
+ * question still: whether *this* socket is free, when the answer that matters
+ * is whether the port is free for the name a browser will type.
+ */
+export async function isPortAvailable(port: number, host?: string | null): Promise<boolean> {
+  if (!Number.isFinite(port) || port <= 0) return false;
+  return (await unavailableAddresses(port, host)).length === 0;
 }
 
 /** Poll until the port can be bound, or the deadline passes. */
@@ -137,6 +210,20 @@ export interface HealthPayload {
 }
 
 /**
+ * A host as a URL authority.
+ *
+ * An IPv6 literal has to be bracketed: `http://::1:3000/api/health` is not a
+ * URL, and the failure is a throw rather than a connection attempt — so asking
+ * `::1` without this reads as "nothing there", which is the same silent answer
+ * the multi-address probe exists to stop. `localhost` never reaches this branch
+ * (no colon), and an already-bracketed address is left alone.
+ */
+function urlAuthority(host: string): string {
+  if (host.startsWith('[') || !host.includes(':')) return host;
+  return `[${host}]`;
+}
+
+/**
  * One health request over `scheme`.
  *
  * `rejectUnauthorized: false` is required for the self-signed certificate this
@@ -152,7 +239,7 @@ async function probeHealthOver(
   timeoutMs: number,
 ): Promise<HealthPayload | null> {
   try {
-    const response = await fetch(`${scheme}://${host}:${port}/api/health`, {
+    const response = await fetch(`${scheme}://${urlAuthority(host)}:${port}/api/health`, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(timeoutMs),
       ...(scheme === 'https' ? { tls: { rejectUnauthorized: false } } : {}),
@@ -194,6 +281,15 @@ async function probeHealthOver(
  * caller here is asking "is a Kabmo server on this port", so a foreign
  * HTTP service answers null rather than a half-trusted object.
  *
+ * A NAME is asked on every address it resolves to, concurrently, and the first
+ * answer wins. A single-address request is the false negative that made a live
+ * instance invisible to `status` and `stop`: `localhost` resolves to both
+ * loopback families, a server binds only one of them, and a request aimed at the
+ * other reaches nothing — so a MOCK instance holding `127.0.0.1:3000` answered
+ * no CLI command while the browser kept landing on it. Concurrent rather than
+ * sequential because a port nobody serves must not cost one timeout per family,
+ * and ECONNREFUSED on the family with no listener returns immediately.
+ *
  * `tls: 'auto'` (the default) tries HTTPS first, then HTTP. Discovery cannot
  * know which a live instance chose, and the two are mutually exclusive on a port,
  * so one wasted request is the cheapest way to be right. A caller that DOES know
@@ -206,7 +302,19 @@ export async function fetchHealth(
   tls: boolean | 'auto' = 'auto',
 ): Promise<HealthPayload | null> {
   if (!Number.isFinite(port) || port <= 0) return null;
-  const target = probeHost(host);
+  const answers = await Promise.all(
+    connectAddresses(host).map((target) => probeHealthOn(port, target, timeoutMs, tls)),
+  );
+  return answers.find((answer) => answer !== null) ?? null;
+}
+
+/** One address, in whichever scheme the caller allows. */
+async function probeHealthOn(
+  port: number,
+  target: string,
+  timeoutMs: number,
+  tls: boolean | 'auto',
+): Promise<HealthPayload | null> {
   if (tls === true) return probeHealthOver('https', port, target, timeoutMs);
   if (tls === false) return probeHealthOver('http', port, target, timeoutMs);
 
