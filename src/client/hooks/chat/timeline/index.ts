@@ -18,7 +18,7 @@ import { cancelStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coal
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
 import { useComposerModes } from '@/client/hooks/chat/timeline/composer-modes';
 import { useComposerDraft } from '@/client/hooks/chat/composer/use-draft';
-import { isChatRunning } from '@/client/hooks/chat/omp/session-statuses';
+import { isChatRunning, isSessionStreaming } from '@/client/hooks/chat/omp/session-statuses';
 import { useWaitingDependencyChoice } from '@/client/hooks/chat/waiting/choice';
 import { useComposerRefs } from '@/client/hooks/chat/timeline/composer-refs';
 
@@ -41,10 +41,8 @@ export function useChatTimeline({
 }: UseChatTimelineOptions = {}) {
   const { sessionId, folderId, selectedFolderId, selectContextFolder, setSearchParams } = useTimelineScope();
   // Plan/goal toggles plus the plan-review surface. PER SESSION, unlike the
-  // access mode: they describe what this conversation is doing, and a global
-  // toggle would drag every other open chat into the same mode. One hook
-  // returns both halves, because a mode command can produce a proposal and
-  // answering that proposal is itself a mode command.
+  // access mode: they describe what this conversation is doing, and one hook
+  // returns both halves because a mode command can produce a proposal.
   const { modes, planReview } = useComposerModes(sessionId);
 
   // Ref mirror of loadOlder so the scroll handler can call the latest one
@@ -76,6 +74,7 @@ export function useChatTimeline({
     isGeneratingRef,
     ownRun,
     ownRunRef,
+    streamRunRef,
     setGenerating,
     generatingVerb,
     activityRef,
@@ -125,11 +124,16 @@ export function useChatTimeline({
   // not start is still reported by the server row and never by client state.
   const timelineRunning = isChatRunning(streamStatusMap, sessionId, ownRun);
 
+  // SERVER evidence a prompt was dispatched (the `stream` row), mirrored for
+  // the reconnect guard: a run whose FIRST frame was lost has no `agent_start`.
+  const serverRunRef = useRef(isSessionStreaming(streamStatusMap, sessionId));
+  serverRunRef.current = isSessionStreaming(streamStatusMap, sessionId);
+
   const aiPlaceholderIdRef = useRef<string | null>(null);
 
   const {
     sessionData,
-    adoptedSessionIdRef, refreshSessionMeta, seedSession,
+    adoptedSessionIdRef, refreshSessionMeta, seedSession, reloadMessages, needsReloadRef,
     hasMore,
     loadingOlder, loadOlderError, sessionLoading, loadOlder, jumpToTurn,
   } = useSessionLoad({
@@ -138,8 +142,11 @@ export function useChatTimeline({
     setGenerating,
     isGeneratingRef,
     ownRunRef,
+    streamRunRef,
+    serverRunRef,
     aiPlaceholderIdRef,
     optimisticUserIdRef,
+    pendingUserDisplaysRef,
     cancelStreamingCoalescer,
     metaRefreshedRef,
     scrollRef,
@@ -147,15 +154,10 @@ export function useChatTimeline({
     jumpCountRef,
   });
   loadOlderRef.current = loadOlder;
-
   // Jump rail: the full-history turn index plus the paging walk that reaches a
   // turn outside the mounted window. The walk is wrapped so follow mode stands
   // down until the jump lands (see rail-jump.ts).
-  const { turns: userTurns, jumping: jumpingTurn, jumpToTurn: pagedJumpToTurn } = useUserTurns({
-    sessionId,
-    messages: localMessages,
-    jumpToTurn,
-  });
+  const { turns: userTurns, jumping: jumpingTurn, jumpToTurn: pagedJumpToTurn } = useUserTurns({ sessionId, messages: localMessages, jumpToTurn });
   const jumpToUserTurn = useRailJump(pagedJumpToTurn, { followRef, scrollRef });
 
   // The composer's model/thinking mirrors and the mid-run stash (see the hook).
@@ -210,6 +212,8 @@ export function useChatTimeline({
     appSettings,
     enqueueExtensionDialog,
     withdrawExtensionDialog,
+    reloadMessages,
+    needsReloadRef,
   }), activityRef);
   const spawn = useSpawnTarget(sessionId);
 
@@ -243,20 +247,11 @@ export function useChatTimeline({
   });
 
   // Queue auto-delivery moved server-side: the wrapper's terminal `agent_end`
-  // schedules the next queued prompt, with a transactional head claim so no
+  // schedules the next queued prompt with a transactional head claim, so no
   // reload/tab race can double-send. `stopHoldRef` serves only the mock path.
 
-  const {
-    handleSend,
-    handleEditQueueItem,
-    handleSendNowQueueItem,
-    handleUndo,
-    handleRetry,
-    submitNewChat,
-    stopGenerating,
-    handleThinkingLevelChange,
-    handleModelChange,
-  } = useChatTimelineActions({
+  const { handleSend, handleEditQueueItem, handleSendNowQueueItem, handleUndo, handleRetry,
+    submitNewChat, stopGenerating, handleThinkingLevelChange, handleModelChange } = useChatTimelineActions({
     inputValue,
     setInputValue,
     setInputAttachments,

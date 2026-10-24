@@ -56,6 +56,8 @@ function deps(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgentCallbacks
     appSettings: {},
     enqueueExtensionDialog: () => {},
     withdrawExtensionDialog: () => {},
+    reloadMessages: () => {},
+    needsReloadRef: { current: false },
     ...overrides,
   };
 }

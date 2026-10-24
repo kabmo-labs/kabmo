@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ChatMessageData } from '@/shared/types';
 import { SESSION_META_RETRY_SCHEDULE_MS } from '@/shared/lib/workspace/refresh-cadence';
 import { useSessionPagination } from '@/client/hooks/chat/timeline/session-pagination';
+import { useLostRunRecovery } from '@/client/hooks/chat/timeline/lost-run';
 
 export interface SessionDataShape {
   id?: string;
@@ -52,6 +53,12 @@ export interface UseSessionLoadDeps {
    *  UI sets `isGeneratingRef` too, and treating that as ownership discarded
    *  the whole transcript, leaving an empty timeline over a running session. */
   ownRunRef: { current: boolean };
+  /** The stream has announced the run in flight (see `streamRunRef`). */
+  streamRunRef: { current: boolean };
+  /** The SERVER reports a run for this session (the `stream` row). Together
+   *  with `streamRunRef` this is the evidence the reconnect recovery needs: a
+   *  run whose FIRST frame was lost has no `agent_start` on this client. */
+  serverRunRef: { current: boolean };
   /** Live AI placeholder ref: the row the streaming answer is filling. Read on
    *  a session switch (cleared with the optimistic user id) and by the stream
    *  callbacks; it is NOT the timeline-ownership signal — the placeholder is
@@ -60,6 +67,10 @@ export interface UseSessionLoadDeps {
   /** Live optimistic user bubble ref: cleared together with the placeholder on
    *  a session switch so stale ids cannot survive into the next session. */
   optimisticUserIdRef: { current: string | null };
+  /** Raw composer text of steer/follow-up turns awaiting omp's echo. Cleared
+   *  when a lost run is settled, or a later echo could be re-labelled with an
+   *  earlier message's text. */
+  pendingUserDisplaysRef: { current: { sent: string; display: string }[] };
   /** Drop queued stream updates belonging to the previous session (coalescer). */
   cancelStreamingCoalescer: () => void;
   metaRefreshedRef: { current: string | null };
@@ -73,7 +84,7 @@ export interface UseSessionLoadDeps {
 }
 
 export function useSessionLoad(deps: UseSessionLoadDeps) {
-  const { sessionId, setLocalMessages, setGenerating, isGeneratingRef, ownRunRef, aiPlaceholderIdRef, optimisticUserIdRef, cancelStreamingCoalescer, metaRefreshedRef, scrollRef, jumpActiveRef, jumpCountRef } = deps;
+  const { sessionId, setLocalMessages, setGenerating, isGeneratingRef, ownRunRef, streamRunRef, serverRunRef, aiPlaceholderIdRef, optimisticUserIdRef, pendingUserDisplaysRef, cancelStreamingCoalescer, metaRefreshedRef, scrollRef, jumpActiveRef, jumpCountRef } = deps;
 
   const [sessionData, setSessionData] = useState<SessionDataShape | null>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -163,19 +174,16 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
    *  A committed fetch is a LAGGING snapshot while a run is live. For a fresh
    *  spawn there may be no transcript on disk at all (omp buffers its writes
    *  until the first assistant message settles), and it never carries a segment
-   *  still streaming. Applying one mid-run costs the operator their own turn in
-   *  either direction — measured on real sessions: an empty payload emptied the
-   *  list (the just-sent turn vanished), and a payload carrying the file's own
-   *  copy of that turn was merged UNDER the live rows, whose ids differ
-   *  (`msg-…-user` vs the echoed id), so the turn rendered twice.
+   *  still streaming. Applying one mid-run costs the operator their own turn —
+   *  measured: an empty payload emptied the list, and a payload carrying the
+   *  file's own copy of that turn was merged UNDER the live rows, whose ids
+   *  differ, so the turn rendered twice.
    *
    *  Keyed on the RUN THIS PAGE STARTED, never on `isGeneratingRef` alone: the
-   *  mount probe that resumes a live run's generating UI sets that flag too, so
-   *  keying on it made OPENING a streaming session discard its entire committed
-   *  transcript — measured on a real 333-message run: the timeline held 0 rows
-   *  with only a "Load earlier messages" button, and the button paged a window
-   *  into a list whose head was empty. A run adopted that way must still load
-   *  its history; the stream resume continues from there. */
+   *  mount probe that resumes a live run sets that flag too, so keying on it
+   *  made OPENING a streaming session discard its whole committed transcript
+   *  (measured: 0 rows, only a "Load earlier messages" button). An adopted run
+   *  must still load its history; the resume continues from there. */
   const timelineOwnedByLiveRun = useCallback(
     () => ownRunRef.current && isGeneratingRef.current,
     [isGeneratingRef, ownRunRef],
@@ -192,6 +200,27 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
       isGeneratingRef.current && seededModelRef.current ? { model: seededModelRef.current } : null,
     [isGeneratingRef],
   );
+
+  // A channel that comes back after the run's `message_end`/`agent_end` were
+  // lost with it: the timeline holds the stream's last partial segment and
+  // nothing else will ever finalize it (see `lost-run.ts`). A run that is
+  // STILL LIVE at reconnect is left alone here, but its lost segments are
+  // remembered and re-read when it settles.
+  const { reloadMessages, needsReloadRef } = useLostRunRecovery({
+    sessionId,
+    sessionIdRef,
+    adoptedSessionIdRef,
+    isGeneratingRef,
+    streamRunRef,
+    serverRunRef,
+    setGenerating,
+    setLocalMessages,
+    applyWindow,
+    aiPlaceholderIdRef,
+    optimisticUserIdRef,
+    pendingUserDisplaysRef,
+    cancelStreamingCoalescer,
+  });
 
   // Fetch session messages and details from API
   useEffect(() => {
@@ -313,5 +342,7 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
     adoptedSessionIdRef,
     refreshSessionMeta,
     seedSession,
+    reloadMessages,
+    needsReloadRef,
   };
 }

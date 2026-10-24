@@ -78,8 +78,11 @@ function Probe({ sessionId, api }: { sessionId: string | null; api: ProbeApi }) 
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const isGeneratingRef = useRef(false);
   const ownRunRef = useRef(false);
+  const streamRunRef = useRef(false);
+  const serverRunRef = useRef(false);
   const aiPlaceholderIdRef = useRef<string | null>(null);
   const optimisticUserIdRef = useRef<string | null>(null);
+  const pendingUserDisplaysRef = useRef<{ sent: string; display: string }[]>([]);
   const metaRefreshedRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const jumpActiveRef = useRef(false);
@@ -104,8 +107,11 @@ function Probe({ sessionId, api }: { sessionId: string | null; api: ProbeApi }) 
     setGenerating,
     isGeneratingRef,
     ownRunRef,
+    streamRunRef,
+    serverRunRef,
     aiPlaceholderIdRef,
     optimisticUserIdRef,
+    pendingUserDisplaysRef,
     cancelStreamingCoalescer: () => {},
     metaRefreshedRef,
     scrollRef,

@@ -55,6 +55,8 @@ function makeCallbacks(overrides: Partial<OmpAgentCallbacksDeps> = {}): OmpAgent
     appSettings: {},
     enqueueExtensionDialog: () => {},
     withdrawExtensionDialog: () => {},
+    reloadMessages: () => {},
+    needsReloadRef: { current: false },
     ...overrides,
   };
   return createOmpAgentCallbacks(deps);
@@ -131,6 +133,40 @@ describe('createOmpAgentCallbacks run boundaries', () => {
 
     expect(generating).toEqual([true]);
     expect(verbs).toEqual(['Thinking']);
+  });
+
+  test('a run that lost frames re-reads its transcript when it settles', () => {
+    // A reconnect while the run was STILL streaming cannot reload: its rows are
+    // the stream's, and replacing them mid-turn is the lagging-snapshot bug.
+    // But the segments that finished during the outage have no other way back —
+    // their `message_end` went into the dead socket, and `agent_end` only
+    // materializes turns that stopped abnormally. So the loss is remembered and
+    // the read happens at the settle.
+    const reads: number[] = [];
+    const needsReloadRef = { current: true };
+    const callbacks = recordingCallbacks({
+      reloadMessages: () => { reads.push(1); },
+      needsReloadRef,
+    });
+
+    callbacks.onAgentEnd?.({});
+
+    expect(reads.length).toBe(1);
+    // Consumed: a later run end must not re-read a transcript nothing lost.
+    expect(needsReloadRef.current).toBe(false);
+    callbacks.onAgentEnd?.({});
+    expect(reads.length).toBe(1);
+  });
+
+  test('an ordinary run end does NOT re-read the transcript', () => {
+    // The read is a full parse of the session JSONL; a run that never lost a
+    // frame must not pay it.
+    const reads: number[] = [];
+    const callbacks = recordingCallbacks({ reloadMessages: () => { reads.push(1); } });
+
+    callbacks.onAgentEnd?.({});
+
+    expect(reads).toEqual([]);
   });
 
   test('a real omp frame sequence drives the boundary once per run', () => {

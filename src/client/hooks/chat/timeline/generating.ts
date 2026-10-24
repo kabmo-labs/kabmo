@@ -36,6 +36,14 @@ export interface GeneratingState {
   /** Non-reactive mirror of `ownRun` for the session-load guard. */
   ownRunRef: { current: boolean };
   /**
+   * The STREAM has spoken for the run in flight — an `agent_start` or a resume
+   * of a live run, both of which call `setGenerating(true)` without ownership.
+   * False for a run this page merely DISPATCHED and whose first frame has not
+   * arrived, which is what keeps a reconnect in that window from settling a
+   * turn that has not started.
+   */
+  streamRunRef: { current: boolean };
+  /**
    * Set the generating state. `owned` marks a run THIS PAGE dispatched; every
    * caller but the send path omits it, so an adopted run never claims ownership
    * (a session opened mid-run must not discard its own committed history).
@@ -70,6 +78,7 @@ export function useGeneratingState(): GeneratingState {
   const [isGenerating, setIsGenerating] = useState(false);
   const isGeneratingRef = useRef(false);
   const ownRunRef = useRef(false);
+  const streamRunRef = useRef(false);
   const [ownRun, setOwnRun] = useState(false);
   const [generatingVerb, setGeneratingVerbState] = useState('');
   const activityRef = useRef('');
@@ -80,8 +89,15 @@ export function useGeneratingState(): GeneratingState {
   // then re-rendered again — an unbounded fetch loop.
   const setGenerating = useCallback((v: boolean, owned = false) => {
     isGeneratingRef.current = v;
-    if (!v) ownRunRef.current = false;
-    else if (owned) ownRunRef.current = true;
+    if (!v) {
+      ownRunRef.current = false;
+      streamRunRef.current = false;
+    } else {
+      if (owned) ownRunRef.current = true;
+      // Not owned: the stream itself announced this run (`agent_start`, or the
+      // mount probe resuming a live one).
+      else streamRunRef.current = true;
+    }
     // Mirror onto state: `timelineRunning` is computed during render, so a
     // ref-only ownership flag could not reach the footer's withheld guard.
     setOwnRun(ownRunRef.current);
@@ -98,6 +114,7 @@ export function useGeneratingState(): GeneratingState {
     isGeneratingRef,
     ownRun,
     ownRunRef,
+    streamRunRef,
     setGenerating,
     generatingVerb,
     activityRef,

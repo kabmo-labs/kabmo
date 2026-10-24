@@ -51,6 +51,14 @@ export interface OmpAgentCallbacksDeps {
   enqueueExtensionDialog: (request: ExtensionUiDialogRequest) => void;
   /** Drop a queued request omp withdrew (`method: 'cancel'`). */
   withdrawExtensionDialog: (targetId: string) => void;
+  /** Re-read the committed transcript (see `lost-run.ts`). Used at `agent_end`
+   *  when frames were lost mid-run: the segments that finished during the
+   *  outage have no other way back. */
+  reloadMessages: () => void;
+  /** Set when a run lost frames while STILL STREAMING. Its earlier segments can
+   *  only be recovered by a full read, which is safe only once the run is over —
+   *  so the read happens here, at the settle. */
+  needsReloadRef: { current: boolean };
 }
 
 export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCallbacks {
@@ -70,6 +78,8 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
     appSettings,
     enqueueExtensionDialog,
     withdrawExtensionDialog,
+    reloadMessages,
+    needsReloadRef,
   } = deps;
 
   bindStreamingCoalescer(setLocalMessages, () => scrollToBottom('smooth'));
@@ -245,6 +255,14 @@ export function createOmpAgentCallbacks(deps: OmpAgentCallbacksDeps): OmpAgentCa
       // placeholder until the realtime scan surfaces the row.
       const sid = adoptedSessionIdRef.current ?? sessionIdRef.current;
       if (sid) refreshSessionMeta(sid);
+      // A run that lost frames while still streaming: its earlier segments (a
+      // tool card, a thinking block, an earlier answer) have no other way back.
+      // Read now — the run is over, so a full transcript read cannot clobber a
+      // live row — and `reloadMessages` retries while omp has not flushed.
+      if (needsReloadRef.current) {
+        needsReloadRef.current = false;
+        reloadMessages();
+      }
     },
     onModelChanged: () => {
       // omp's model_changed frame carries no payload — re-read the session

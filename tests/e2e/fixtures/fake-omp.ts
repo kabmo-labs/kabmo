@@ -118,6 +118,33 @@ let messageCount = resume ? 1 : 0;
 let streaming = false;
 /** The title `get_state` reports; `/rename` replaces it, the way omp does. */
 let sessionName = 'Fake session';
+
+/**
+ * Append a turn to the session JSONL, the way omp does as a run proceeds.
+ *
+ * OFF by default, because most specs assert what the STREAM renders and a
+ * transcript on disk would give a page reload a second copy of it. A spec that
+ * exercises the reload path opts in with `FAKE_OMP_PERSIST=1` — the reported
+ * "answer cut off after a reconnect" cannot be observed at all without a
+ * committed turn for the client to read back.
+ *
+ * The entry shape is omp's own (`type:"message"` wrapping `message.content`
+ * blocks); the ids are the fixture's, since nothing asserts them.
+ */
+function persistTurn(role: 'user' | 'assistant', text: string): void {
+  if (!process.env.FAKE_OMP_PERSIST) return;
+  try {
+    appendFileSync(sessionFile, `${JSON.stringify({
+      type: 'message',
+      id: `fake-${role}-${crypto.randomUUID().slice(0, 8)}`,
+      parentId: null,
+      timestamp: new Date().toISOString(),
+      message: { role, content: [{ type: 'text', text }] },
+    })}\n`);
+  } catch {
+    // Persistence is a test convenience; never let it break the child.
+  }
+}
 /** How long `/rename` takes to answer. A real generation is a model call;
  *  this keeps the in-flight window wide enough for a spec to observe. */
 const RENAME_DELAY_MS = 600;
@@ -168,6 +195,7 @@ const AVAILABLE_COMMANDS = [
 /** The whole turn: everything a `prompt` produces on the wire. */
 async function runTurn(prompt: string, requestId: string) {
   streaming = true;
+  persistTurn('user', prompt);
   const delay = /delay:(\d+)/.exec(prompt);
   const tool = /tool:([\w.-]+)/.exec(prompt);
   // The command a `tool:` call carries. Long on purpose in the indicator specs:
@@ -204,12 +232,13 @@ async function runTurn(prompt: string, requestId: string) {
   else if (ask) await runAsk(ask[1].trim());
 
   const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+  const answerText = `Response to: ${prompt}`;
   if (error) {
     const failed = assistantMessage('', 'error', messageId);
     write({ type: 'message_start', messageId, message: { ...failed, errorMessage: error[1].trim() } });
     write({ type: 'message_end', messageId, message: { ...failed, errorMessage: error[1].trim() } });
   } else {
-    const text = `Response to: ${prompt}`;
+    const text = answerText;
     if (slow) {
       const full = assistantMessage(text, 'end_turn', messageId);
       write({ type: 'message_start', messageId, message: full });
@@ -229,6 +258,7 @@ async function runTurn(prompt: string, requestId: string) {
       await streamAnswer(messageId, text);
     }
   }
+  if (!error) persistTurn('assistant', answerText);
 
   messageCount += 2;
   streaming = false;

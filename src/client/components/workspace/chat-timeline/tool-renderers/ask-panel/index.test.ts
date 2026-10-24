@@ -40,6 +40,8 @@ function mountFromFrame(frame: IncomingExtensionUiRequest): ExtensionUiDialogReq
     persistMessages: () => {}, abortControllerRef: { current: null }, appSettings: {},
     enqueueExtensionDialog: (request) => queue.push(request),
     withdrawExtensionDialog: (targetId) => { const i = queue.findIndex((r) => r.id === targetId); if (i >= 0) queue.splice(i, 1); },
+    reloadMessages: () => {},
+    needsReloadRef: { current: false },
   } satisfies OmpAgentCallbacksDeps;
   createOmpAgentCallbacks(deps).onExtensionUiRequest?.(frame);
 
