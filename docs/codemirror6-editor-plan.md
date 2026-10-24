@@ -164,14 +164,20 @@ because each one was a discovery:
   itself here (Phase 2 step 2 says keep the state shape); the hook is the state
   machine, and only its matcher imports changed. Its two test files and the
   harness were kept with it.
-- `marks.ts` and `lines.ts` were **kept**. `lines.ts` is the line arithmetic half
-  the highlighter, the outline and the search panel all use, and `marks.ts` still
-  emits `<mark>` for every surface that is not the editor (the chat card's
-  excerpt, the search panel's rows). Only the editor stopped using them.
+- `marks.ts` and `lines.ts` were **kept, and then trimmed**. `lines.ts` keeps the
+  two facts the highlighter's per-line walk and the find widget's "jump to line
+  N" both read (`lineIndexAt`, `lineStartOffset`); `lineRangeAt`,
+  `lineRangesInSelection` and `countLines` went once their only caller
+  (`line-edits.ts`) did. `marks.ts` still emits `<mark>` for every surface that
+  is not the editor (the chat card's excerpt, the search panel's rows), and its
+  `occurrenceFrom` plumbing went with the ⌘D ranges — nothing passed it any more,
+  so `MARK_OCCURRENCE_OPEN` and its `data-occurrence` rule were dead.
 - `commands.ts` (236 lines) and `line-edits.ts` (its helpers) were **deleted**,
   which the forecast did not list: every command in them is a CM6 command now,
   and the one thing still needed — the comment-token table — became
   `comment-syntax.ts` (56 lines) because `toggleComment` reads exactly that.
+  `line-edits.ts` outlived that pass with no importer at all, which is why it was
+  removed in the review of this migration rather than left as dead weight.
 - `diff-panel/{UnifiedView,SplitView}.tsx`, `shared/lib/fs/diff-parser.ts` and
   the chat card's parser use were **deleted in Phase 3**, not listed here.
 
@@ -197,9 +203,12 @@ Delete — 4,350 lines including tests (measured with `wc -l`), as forecast:
 Rewrite:
 
 - `src/client/components/common/code-surface/index.tsx` — becomes the CM6 mount
-  (`EditorView` lifecycle, the handle, the keymap, the theme) and must be split
-  under the 350-line ceiling into
-  `code-surface/{index.tsx,extensions.ts,shiki.ts,keymap.ts,theme.ts,documents.ts}`.
+  (`EditorView` lifecycle, the keymap, the theme) and must be split under the
+  350-line ceiling into
+  `code-surface/{index.tsx,extensions.ts,handle.ts,shiki.ts,keymap.ts,theme.ts,documents.ts}`.
+  `handle.ts` was not in the forecast: the imperative surface alone is ~70 lines
+  of dispatch, and the mount crossed the ceiling the moment the drop attribute
+  landed on its host.
 - `src/client/hooks/editor/use-scroll-restore.ts` — restore targets the editor's
   own scroller (`handle.getScrollElement()`), not the panel's wrapper.
 - `src/client/components/workspace/editor/FileDocument.tsx` — host layout: the
