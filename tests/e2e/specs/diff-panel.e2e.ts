@@ -57,6 +57,26 @@ async function seedRepo(page: Parameters<typeof openApp>[0], server: Parameters<
   return { workspace, repo };
 }
 
+/**
+ * Click a toolbar control wherever it currently lives.
+ *
+ * The toolbar is ONE row and the tail moves into a `⋯` menu on a narrow panel
+ * (the editor column opens at 320px, where ten-plus controls do not fit). A spec
+ * that assumed a fixed position failed the moment a control crossed that line —
+ * measured: `Full code` was on the row at a wide panel and behind `⋯` at the
+ * floor. The control is the same control either way, so the lookup follows it.
+ */
+async function clickToolbar(page: Parameters<typeof openApp>[0], name: string): Promise<void> {
+  const panel = diffPanel(page);
+  const button = panel.getByRole('button', { name, exact: true });
+  if (await button.isVisible().catch(() => false)) {
+    await button.click();
+    return;
+  }
+  await panel.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name, exact: true }).click();
+}
+
 async function openDiff(page: Parameters<typeof openApp>[0]) {
   await page.getByRole('button', { name: 'Source Control', exact: true }).click();
   const right = page.locator('[data-panel-id="right-panel"]');
@@ -80,13 +100,13 @@ test.describe('diff panel views', () => {
     await expect(collapsed.first()).toBeVisible({ timeout: 10_000 });
     const markers = await collapsed.count();
 
-    await panel.getByRole('button', { name: 'Full code (whole file, changes marked)' }).click();
+    await clickToolbar(page, 'Full code (whole file, changes marked)');
     // The gap is a real range again, so the marker is gone.
     await expect(collapsed).toHaveCount(0, { timeout: 10_000 });
     expect(markers).toBeGreaterThan(0);
 
     // And back: the reconfigure is a compartment, not a re-mount.
-    await panel.getByRole('button', { name: 'Diff only (changed hunks)' }).click();
+    await clickToolbar(page, 'Diff only (changed hunks)');
     await expect(collapsed.first()).toBeVisible({ timeout: 10_000 });
 
     workspace.dispose();
@@ -97,7 +117,7 @@ test.describe('diff panel views', () => {
     const { workspace } = await seedRepo(page, server);
     const panel = await openDiff(page);
 
-    await panel.getByRole('button', { name: 'Split (side-by-side) diff' }).click();
+    await clickToolbar(page, 'Split (side-by-side) diff');
     // A `MergeView`, not a second `EditorView`: two editors in one element.
     await expect(panel.locator('.cm-mergeView')).toBeVisible({ timeout: 10_000 });
     await expect(panel.locator('.cm-editor')).toHaveCount(2, { timeout: 10_000 });
@@ -112,26 +132,6 @@ test.describe('diff panel views', () => {
     workspace.dispose();
   });
 
-  test('the change counts describe the rows on screen', async ({ harness, page }) => {
-    const server = await harness('real');
-    const { workspace } = await seedRepo(page, server);
-    const panel = await openDiff(page);
-
-    // Two one-line edits: one addition and one deletion each.
-    await expect(panel.getByText('+2', { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(panel.getByText('-2', { exact: true })).toBeVisible({ timeout: 10_000 });
-
-    workspace.dispose();
-  });
-
-  test('each shape remembers its own scroll position', async ({ harness, page }) => {
-    const server = await harness('real');
-    const { workspace } = await seedRepo(page, server);
-    const panel = await openDiff(page);
-
-    // Full Code, because the collapsed default has no scroll range at all —
-    // which is itself the proof that the collapse is real.
-    await panel.getByRole('button', { name: 'Full code (whole file, changes marked)' }).click();
   test('a changed token carries no underline, and the row band still does', async ({ harness, page }) => {
     const server = await harness('real');
     const { workspace } = await seedRepo(page, server);
@@ -164,6 +164,26 @@ test.describe('diff panel views', () => {
     workspace.dispose();
   });
 
+  test('the change counts describe the rows on screen', async ({ harness, page }) => {
+    const server = await harness('real');
+    const { workspace } = await seedRepo(page, server);
+    const panel = await openDiff(page);
+
+    // Two one-line edits: one addition and one deletion each.
+    await expect(panel.getByText('+2', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(panel.getByText('-2', { exact: true })).toBeVisible({ timeout: 10_000 });
+
+    workspace.dispose();
+  });
+
+  test('each shape remembers its own scroll position', async ({ harness, page }) => {
+    const server = await harness('real');
+    const { workspace } = await seedRepo(page, server);
+    const panel = await openDiff(page);
+
+    // Full Code, because the collapsed default has no scroll range at all —
+    // which is itself the proof that the collapse is real.
+    await clickToolbar(page, 'Full code (whole file, changes marked)');
     const scroller = panel.getByTestId('diff-scroller');
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 10_000 })
@@ -178,9 +198,9 @@ test.describe('diff panel views', () => {
 
     // Split is a different row shape with its own offset; coming back to
     // Unified must restore the one it was left at.
-    await panel.getByRole('button', { name: 'Split (side-by-side) diff' }).click();
+    await clickToolbar(page, 'Split (side-by-side) diff');
     await expect(panel.locator('.cm-mergeView')).toBeVisible({ timeout: 10_000 });
-    await panel.getByRole('button', { name: 'Unified diff' }).click();
+    await clickToolbar(page, 'Unified diff');
     await expect
       .poll(async () => panel.getByTestId('diff-scroller').evaluate((el) => el.scrollTop), { timeout: 10_000 })
       .toBe(leftAt);

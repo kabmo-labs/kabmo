@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { useSessionUiState } from '@/client/hooks/workspace/session-state';
-import { isUnmergedCode, type ConflictMarkers } from '@/shared/lib/fs/git-unmerged';
+import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import { useFileDiff } from '@/client/hooks/workspace/diff-file';
+import { useDiffGitActions } from '@/client/hooks/workspace/diff-git-actions';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
 import { ConflictBanner } from '@/client/components/workspace/diff-panel/ConflictBanner';
@@ -26,6 +27,12 @@ interface DiffPanelProps {
    * per tab (and per view shape). Null for a host with no tab of its own.
    */
   tabKey?: string | null;
+  /**
+   * Offer the two width-mode buttons. On by default (the editor column is where
+   * they belong); the phone's full-screen overlay turns them off, because it
+   * already covers the chat and the sidebar.
+   */
+  viewModeButtons?: boolean;
 }
 
 export function DiffPanel({
@@ -38,6 +45,7 @@ export function DiffPanel({
   onFileSaved,
   className = '',
   tabKey = null,
+  viewModeButtons = true,
 }: DiffPanelProps) {
   // Read and persist view mode & whitespace preference in session_ui_state
   const [viewMode, setViewMode] = useSessionUiState<DiffViewMode>('diff.viewMode', 'unified');
@@ -45,19 +53,9 @@ export function DiffPanel({
   const [wordWrap, setWordWrap] = useSessionUiState<boolean>('diff.wordWrap', true);
   const [ignoreWhitespace, setIgnoreWhitespace] = useSessionUiState<boolean>('diff.ignoreWhitespace', false);
 
-  const [isBusy, setIsBusy] = useState<boolean>(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [clipboardError, setClipboardError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
-  /**
-   * The side labels from the file's own conflict markers.
-   *
-   * Read only while the file IS conflicted, and only when the status says so —
-   * the read is the whole file, and `status` is what the caller already knows.
-   * A failed read leaves `{}`, which falls back to the words `ours`/`theirs`:
-   * the actions still work, only the naming is less precise.
-   */
-  const [markers, setMarkers] = useState<ConflictMarkers>({});
   /** Additions/deletions of the pair on screen, reported by the merge view. */
   const [counts, setCounts] = useState<{ additions: number; deletions: number }>({ additions: 0, deletions: 0 });
   const editorFontFamily = useEditorFontStack();
@@ -102,117 +100,31 @@ export function DiffPanel({
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       },
-      () => setActionError('Clipboard write was refused by the browser'),
+      () => setClipboardError('Clipboard write was refused by the browser'),
     );
   };
 
   /**
-   * POST one git action and report whether it landed. The panel used to fire
-   * and forget (`fetcher.submit` + an optimistic flip + a 300ms timer), which
-   * made a rejected action indistinguishable from a successful one: the badge
-   * flipped and the diff silently stayed put.
+   * The git writes, their busy flag, their refusals, and the conflict-marker
+   * read behind the banner — see `diff-git-actions.ts`. The one exception is
+   * the clipboard, which is not a write: it reads the buffer already on screen
+   * and must stay available while a write is in flight.
    */
-  const runGitAction = useCallback(
-    async (fields: Record<string, string>): Promise<boolean> => {
-      const fd = new FormData();
-      for (const [key, value] of Object.entries(fields)) fd.set(key, value);
-      fd.set('repo', repo || '.');
-      if (root) fd.set('root', root);
-      try {
-        const res = await fetch('/api/fs/git', { method: 'POST', body: fd });
-        const data = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
-        if (!res.ok || !data?.success) {
-          setActionError(data?.error || `Request failed (HTTP ${res.status})`);
-          return false;
-        }
-        setActionError(null);
-        return true;
-      } catch (err: unknown) {
-        setActionError(err instanceof Error ? err.message : 'Request failed');
-        return false;
-      }
-    },
-    [repo, root],
-  );
-
-  const handleStageUnstage = async () => {
-    if (isBusy) return;
-    const nextStaged = !currentStaged;
-    setIsBusy(true);
-    try {
-      const ok = await runGitAction({
-        actionType: currentStaged ? 'unstage' : 'stage',
-        file: filePath,
-      });
-      if (!ok) return;
-      adoptState({ staged: nextStaged });
-      onFileSaved?.();
-      await fetchDiff({ staged: nextStaged });
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const handleDiscard = () => {
-    setShowDiscardConfirm(true);
-  };
-
-  // The marker labels are fetched when the file turns out to be conflicted, and
-  // re-fetched when the path changes. Keyed on the path and the status so a
-  // resolve (which changes the status away from `UU`) clears the banner.
-  useEffect(() => {
-    if (!conflicted) {
-      setMarkers({});
-      return;
-    }
-    let cancelled = false;
-    const params = new URLSearchParams({ conflictMarkers: '1', file: filePath, repo: repo || '.' });
-    if (root) params.set('root', root);
-    void fetch(`/api/fs/git?${params.toString()}`)
-      .then((res) => res.json() as Promise<{ markers?: ConflictMarkers }>)
-      .then((body) => {
-        if (!cancelled) setMarkers(body.markers ?? {});
-      })
-      .catch(() => {
-        if (!cancelled) setMarkers({});
-      });
-    return () => { cancelled = true; };
-  }, [conflicted, filePath, repo, root]);
-
-  /** Resolve this file: `ours`/`theirs` write a stage, `''` only stages. */
-  const handleResolve = async (side: 'ours' | 'theirs' | '') => {
-    if (isBusy) return;
-    setIsBusy(true);
-    try {
-      const ok = await runGitAction({
-        actionType: 'resolve_conflict',
-        file: filePath,
-        ...(side ? { side } : {}),
-      });
-      if (!ok) return;
-      onFileSaved?.();
-      await fetchDiff();
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const confirmDiscard = async () => {
-    setShowDiscardConfirm(false);
-    setIsBusy(true);
-    try {
-      // `revert` is the server's own name for "restore this file from the index",
-      // and it is the one that handles the untracked case (there the file is
-      // removed). Sending `discard` — which no handler matched — returned
-      // `{success:true}` for doing nothing at all.
-      const ok = await runGitAction({ actionType: 'revert', file: filePath });
-      if (!ok) return;
-      onFileSaved?.();
-      await fetchDiff();
-    } finally {
-      setIsBusy(false);
-    }
-  };
+  const gitActions = useDiffGitActions({
+    filePath,
+    repo,
+    root,
+    status: currentStatus,
+    staged: currentStaged,
+    conflicted,
+    adoptState,
+    fetchDiff,
+    onFileSaved,
+  });
+  const { isBusy, markers } = gitActions;
+  // Two refusal surfaces with one source: the clipboard's own failure is local
+  // to this panel, while a git refusal comes from the server.
+  const actionError = clipboardError ?? gitActions.error;
 
   return (
     // The panel fills, it does not size itself: the caller owns the height
@@ -237,12 +149,13 @@ export function DiffPanel({
         isLoading={isLoading}
         isCopied={isCopied}
         isBusy={isBusy}
+        viewModeButtons={viewModeButtons}
         onSetViewMode={handleSetViewMode}
         onSetContentMode={handleSetContentMode}
         onToggleWordWrap={handleToggleWordWrap}
         onToggleWhitespace={handleToggleWhitespace}
-        onStageUnstage={handleStageUnstage}
-        onDiscard={handleDiscard}
+        onStageUnstage={() => void gitActions.stageUnstage()}
+        onDiscard={() => setShowDiscardConfirm(true)}
         onOpenInEditor={onOpenInEditor}
         onRefresh={() => void fetchDiff()}
         onCopyDiff={handleCopyDiff}
@@ -253,8 +166,11 @@ export function DiffPanel({
           markers={markers}
           isBusy={isBusy}
           error={actionError}
-          onResolve={handleResolve}
-          onDismissError={() => setActionError(null)}
+          onResolve={(side) => void gitActions.resolve(side)}
+          onDismissError={() => {
+            gitActions.dismissError();
+            setClipboardError(null);
+          }}
         />
       )}
 
@@ -264,7 +180,10 @@ export function DiffPanel({
           <span className="min-w-0 flex-1 truncate" title={actionError}>{actionError}</span>
           <button
             type="button"
-            onClick={() => setActionError(null)}
+            onClick={() => {
+              gitActions.dismissError();
+              setClipboardError(null);
+            }}
             className="px-1.5 rounded hover:bg-error/15 cursor-pointer"
             title="Dismiss"
             aria-label="Dismiss"
@@ -336,7 +255,10 @@ export function DiffPanel({
               </button>
               <button
                 type="button"
-                onClick={() => void confirmDiscard()}
+                onClick={() => {
+                  setShowDiscardConfirm(false);
+                  void gitActions.revert();
+                }}
                 className="px-3 py-1.5 text-xs bg-error text-white rounded hover:bg-error/90 font-medium transition-colors cursor-pointer"
               >
                 Discard Changes

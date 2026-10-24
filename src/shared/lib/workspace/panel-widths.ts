@@ -149,6 +149,13 @@ export interface ResolveWidthArgs {
   siblingWidth: number;
   /** Separators in the group, which also consume width. */
   handleCount: number;
+  /**
+   * The CHAT column is collapsed (`compact`/`full` editor views), so it holds no
+   * floor and the pair caps do not apply — both exist to leave the conversation
+   * a share of the group, and neither has anything to reserve once it is off
+   * screen. Keeping them would cap a two-panel layout at 70% of its width.
+   */
+  chatHidden?: boolean;
 }
 
 /**
@@ -172,7 +179,7 @@ export interface ResolveWidthArgs {
  * default pixel width is used unchanged.
  */
 export function resolvePanelWidth(args: ResolveWidthArgs): number {
-  const { stored, defaultFraction, defaultPx, available, min, pairReservePx = 0, siblingWidth, handleCount } = args;
+  const { stored, defaultFraction, defaultPx, available, min, pairReservePx = 0, siblingWidth, handleCount, chatHidden = false } = args;
 
   if (available === null || available <= 0) return Math.max(min, Math.round(stored?.px ?? defaultPx));
 
@@ -182,14 +189,20 @@ export function resolvePanelWidth(args: ResolveWidthArgs): number {
   // `total × available − the sibling's reserved px` — and ROUNDED, because
   // `0.7 × 4000` is `2799.9999…` in binary floating point and flooring it lands
   // a pixel short of the intended share.
-  const ownCap = Math.round(PAIR_MAX_FRACTION * available);
-  const pairCap = Math.round(PAIR_MAX_TOTAL_FRACTION * available) - pairReservePx;
+  //
+  // With the chat COLLAPSED neither cap means anything: the pair's 70% share
+  // and the chat floor are both about leaving the conversation room, and there
+  // is no conversation on screen. Only the group's own width remains a limit,
+  // which is what lets the editor take the width the chat had.
+  const ownCap = chatHidden ? Number.MAX_SAFE_INTEGER : Math.round(PAIR_MAX_FRACTION * available);
+  const pairCap = chatHidden ? Number.MAX_SAFE_INTEGER : Math.round(PAIR_MAX_TOTAL_FRACTION * available) - pairReservePx;
+  const chatFloor = chatHidden ? 0 : MIN_CHAT_PANEL_WIDTH;
   const ceiling = Math.max(
     min,
     Math.min(
       ownCap,
       pairCap,
-      Math.floor(available - MIN_CHAT_PANEL_WIDTH - siblingWidth - handleCount * HANDLE_WIDTH),
+      Math.floor(available - chatFloor - siblingWidth - handleCount * HANDLE_WIDTH),
     ),
   );
 
@@ -263,9 +276,16 @@ export function pairMaxSize(args: {
   siblingMin: number;
   /** The sibling is open and therefore reserves its floor from the pair total. */
   siblingOpen: boolean;
+  /** The chat column is collapsed, so the pair's shared share is the whole group. */
+  chatHidden?: boolean;
 }): number | undefined {
-  const { available, siblingMin, siblingOpen } = args;
+  const { available, siblingMin, siblingOpen, chatHidden = false } = args;
   if (available === null || available <= 0) return undefined;
+  // No chat on screen means nothing to reserve a share FOR: the pair is the
+  // whole row, so each side may be dragged up to the group's width minus the
+  // sibling's floor. The 60% own-cap would freeze a separator halfway across a
+  // layout whose only two panels are the ones being dragged.
+  if (chatHidden) return Math.max(0, Math.floor(available - (siblingOpen ? siblingMin : 0)));
   const ownCap = Math.round(PAIR_MAX_FRACTION * available);
   if (!siblingOpen) return ownCap;
   const pairCap = Math.round(PAIR_MAX_TOTAL_FRACTION * available) - siblingMin;

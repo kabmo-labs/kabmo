@@ -69,6 +69,9 @@ export function MobileFullDiff({ diff, onClose, onFileSaved }: MobileFullDiffPro
       <div className="flex-1 min-h-0">
         <DiffPanel
           className="h-full"
+          // A full-screen phone overlay has no chat column or sidebar beside
+          // it, so the width modes would widen into nothing.
+          viewModeButtons={false}
           filePath={diff.path}
           status={status}
           isStaged={isStaged}

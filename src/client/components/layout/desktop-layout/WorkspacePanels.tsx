@@ -13,18 +13,13 @@ import { ResizeHandle } from '@/client/components/layout/desktop-layout/ResizeHa
 import { useAvailableWidth } from '@/client/hooks/workspace/available-width';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import {
-  DEFAULT_EDITOR_FRACTIONS,
-  DEFAULT_EDITOR_WIDTHS,
   HANDLE_WIDTH,
   MIN_EDITOR_PANEL_WIDTH,
   fillerMinWidth,
-  pairMaxSize,
-  panelFraction,
-  resolvePanelWidth,
   type EditorWidthMode,
   type PanelWidths,
 } from '@/shared/lib/workspace/panel-widths';
-import { DEFAULT_RIGHT_PANEL_FRACTION } from '@/shared/lib/workspace/right-panels';
+import { resolveWorkspacePanelWidths } from '@/shared/lib/workspace/workspace-panel-widths';
 
 const Editor = lazy(() => import('@/client/components/workspace/editor/index').then((m) => ({ default: m.Editor })));
 
@@ -43,6 +38,13 @@ function PanelSuspense({ children }: { children: ReactNode }) {
 interface WorkspacePanelsProps {
   appSettings?: Record<string, any>;
   showEditor: boolean;
+  /**
+   * The chat column is collapsed: the editor's compact/full view took its
+   * width. The chat STAYS MOUNTED (it owns the live stream and the composer)
+   * but is sized to nothing and marked inert, so a run in progress is not
+   * thrown away by widening a document.
+   */
+  chatHidden?: boolean;
   editorPanelRef: RefObject<PanelImperativeHandle | null>;
   showRightPanel: boolean;
   /** A built-in view id or a plugin panel key (`plugin:<id>/<panel>`). */
@@ -78,6 +80,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
   const {
     appSettings,
     showEditor,
+    chatHidden = false,
     editorPanelRef,
     showRightPanel,
     activeRightPanel,
@@ -138,75 +141,27 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
   // one, which is why a Kabmo without one looks exactly as it did.
   const editorPlugins = usePanelSlotPlugins();
 
-  // Separators present in this group, which also consume width.
-  const handleCount = (showEditor ? 1 : 0) + (showRightPanel ? 1 : 0);
-
-  // The active view's own floor, resolved once here rather than at each use, so
-  // the right panel's floor cannot be computed from different values. A view
-  // that is switched off (or a plugin that has not loaded) has no entry, and the
-  // right panel falls back to the editor's own floor — it renders the notice,
-  // not a view.
-  const rightPanelMin = activePanel?.minWidth ?? MIN_EDITOR_PANEL_WIDTH;
-
-  // The editor and the right panel are a COUPLED pair (see `panel-widths.ts`):
-  // they share `PAIR_MAX_TOTAL_FRACTION` and each is capped by `PAIR_MAX_FRACTION`.
-  // The right panel is resolved first, so it reserves the editor's WANTED share
-  // (the editor has no result yet); the editor then reserves the right panel's
-  // ACTUAL width. That asymmetry is deliberate: an editor asking for more than
-  // its default makes the right panel give way first, and the pair still sums
-  // to the total.
-  const editorFraction = panelFraction(panelWidths[editorWidthMode], DEFAULT_EDITOR_FRACTIONS[editorWidthMode], available);
-  const editorReservePx = available != null && available > 0 ? Math.round(editorFraction * available) : 0;
-
-  // Resolve the RIGHT panel first, then the editor against the width it
-  // actually got. The px order is the other half of the contract: each panel's
-  // group budget is `available − chat floor − the sibling's reserved width −
-  // handles`, so reserving only a sibling's FLOOR (the previous shape) let the
-  // two declared widths sum past the group, and flexbox then shrank BOTH —
-  // measured at 1440 with both open: the editor asked for 507 and rendered 477,
-  // the right panel asked for 245 and rendered 230. The right panel is resolved
-  // first because it is the smaller, view-specific slot: it keeps its own width
-  // and the editor absorbs the remainder.
-  const rightWidth = resolvePanelWidth({
-    stored: panelWidths.right?.[activeRightPanel],
-    defaultFraction: activePanel?.defaultFraction ?? DEFAULT_RIGHT_PANEL_FRACTION,
-    defaultPx: activePanel?.defaultWidth ?? MIN_EDITOR_PANEL_WIDTH,
-    available,
-    min: rightPanelMin,
-    // The pair cap: the right panel may not exceed `total − the editor's wanted share`.
-    pairReservePx: showEditor ? editorReservePx : 0,
-    // The editor renders before the right panel and has not been resolved yet,
-    // so only its floor can be reserved here.
-    siblingWidth: showEditor ? MIN_EDITOR_PANEL_WIDTH : 0,
+  // The active view's own floor and defaults are read here and handed to the
+  // resolver: a view that is switched off (or a plugin that has not loaded) has
+  // no entry, and the right panel falls back to the editor's own floor — it
+  // renders the notice, not a view.
+  const {
+    editor: editorWidth,
+    right: rightWidth,
+    editorMax: editorMaxSize,
+    rightMax: rightMaxSize,
+    rightMin: rightPanelMin,
     handleCount,
-  });
-
-  const editorWidth = resolvePanelWidth({
-    stored: panelWidths[editorWidthMode],
-    defaultFraction: DEFAULT_EDITOR_FRACTIONS[editorWidthMode],
-    defaultPx: DEFAULT_EDITOR_WIDTHS[editorWidthMode],
-    available,
-    min: MIN_EDITOR_PANEL_WIDTH,
-    // The pair cap: the editor may not exceed `total − the right panel's width`.
-    pairReservePx: showRightPanel ? rightWidth : 0,
-    // The right panel is resolved above; reserve the width it actually took so
-    // the editor's group budget cannot push the pair past the group.
-    siblingWidth: showRightPanel ? rightWidth : 0,
-    handleCount,
-  });
-
-  /**
-   * Pair-aware maxima for a DRAG. `resolvePanelWidth` already caps the widths
-   * it hands to `defaultSize`, but a separator drag bypasses it — the resizer
-   * transfers pixels between two panels clamped only by their own `maxSize`.
-   * Without these, dragging the editor wide would push the pair past
-   * `PAIR_MAX_TOTAL_FRACTION`. Each panel's max is its own cap and the pair
-   * total minus the sibling's FLOOR (the sibling gives way down to its minimum
-   * during the drag), so the pair cannot exceed 0.7 by dragging either way.
-   * `undefined` before the group is measured (no cap yet).
-   */
-  const editorMaxSize = pairMaxSize({ available, siblingMin: rightPanelMin, siblingOpen: showRightPanel });
-  const rightMaxSize = pairMaxSize({ available, siblingMin: MIN_EDITOR_PANEL_WIDTH, siblingOpen: showEditor });
+  } = resolveWorkspacePanelWidths({
+      available,
+      panelWidths,
+      editorWidthMode,
+      activeRightPanel,
+      activePanel,
+      showEditor,
+      showRightPanel,
+      chatHidden,
+    });
 
   /**
    * Widths of the fixed panels as they are right now, keyed by slot: the
@@ -222,7 +177,11 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     const patch: PanelWidths = {};
     const editor = editorPanelRef.current?.getSize()?.inPixels;
     const right = rightPanelRef.current?.getSize()?.inPixels;
-    if (editor != null && editor > 0) {
+    // With the chat hidden the editor's width is whatever is left over, not a
+    // choice — persisting it would overwrite the width the user set for the
+    // ordinary layout with the one this mode produced. A drag made here still
+    // moves the RIGHT panel, which is the width that was actually chosen.
+    if (!chatHidden && editor != null && editor > 0) {
       patch[editorWidthMode] = { px: Math.round(editor), ...(available ? { fraction: editor / available } : {}) };
     }
     if (right != null && right > 0) {
@@ -250,6 +209,10 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
         <Panel
           id="center-panel"
           filler
+          // Collapsed — not unmounted — in compact/full view: the chat holds the
+          // live run, the composer draft and the scroll position, and widening a
+          // document must not discard any of them.
+          collapsed={chatHidden}
           minSize={fillerMinWidth({
             available,
             reservedPx:
@@ -258,13 +221,13 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               handleCount * HANDLE_WIDTH,
           })}
         >
-          <div className="relative w-full h-full" {...drop.dropProps}>
+          <div className="relative w-full h-full" {...drop.dropProps} inert={chatHidden}>
             <EditorDropOverlay visible={drop.isDragging} />
             <ChatTimeline className="w-full h-full" appSettings={appSettings} onSessionTitle={onSessionTitle} />
           </div>
         </Panel>
 
-        {showEditor && <ResizeHandle />}
+        {showEditor && !chatHidden && <ResizeHandle />}
         <Panel panelRef={editorPanelRef} id="editor-panel" defaultSize={editorWidth} minSize={MIN_EDITOR_PANEL_WIDTH} maxSize={editorMaxSize} collapsed={!showEditor}>
           <div className="flex w-full h-full" {...drop.dropProps}>
             <EditorDropOverlay visible={drop.isDragging} />

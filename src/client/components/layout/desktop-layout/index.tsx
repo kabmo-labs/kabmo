@@ -3,7 +3,6 @@ import { useSearchParams } from '@/client/lib/router/search-params';
 import { Group, Panel, type PanelImperativeHandle } from '@/client/components/layout/desktop-layout/resizer';
 import { LeftColumn } from '@/client/components/layout/desktop-layout/LeftColumn';
 import { SettingsModal } from '@/client/components/settings/LazyModal';
-import type { SettingsCategoryId } from '@/shared/types';
 import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { useFileTabs } from '@/client/hooks/workspace/file-tabs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -18,17 +17,17 @@ import { MIN_LEFT_DOCK_PLUGIN_WIDTH } from '@/shared/lib/workspace/left-dock-wid
 import { SESSIONS_VIEW_ID } from '@/shared/lib/workspace/left-dock';
 import { useOpenPanelRequest } from '@/client/hooks/workspace/open-panel';
 import { useLeftDock, useLeftDockWidth } from '@/client/hooks/workspace/left-dock';
+import { useEditorViewLayout } from '@/client/hooks/workspace/editor-view';
 import { useLeftDockView } from '@/client/components/workspace/plugin-panel/catalog';
 import type { EditorWidthMode } from '@/shared/lib/workspace/panel-widths';
-import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useSettingsModal } from '@/client/hooks/ui/settings-modal';
 import { useWorkspaceKeybindings } from '@/client/hooks/workspace/keybindings';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
-import { useSessionActions } from '@/client/hooks/workspace/session-actions';
-import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
+import { useNavbarSessionActions } from '@/client/hooks/workspace/navbar-session-actions';
 
 interface DesktopLayoutProps {
   sessionId: string | null;
@@ -112,32 +111,30 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     [openedFiles, activeFileId],
   );
 
+  /**
+   * The editor's WIDTH mode (`compact` / `full`), entered from either toolbar.
+   *
+   * It collapses columns around the editor and is resolved here, not in the
+   * panels, because the sidebar is a sibling of the whole workspace group: a
+   * full view that left it standing would not be the width it promises.
+   *
+   * The mode is derived from `showEditor`, so closing the column returns the
+   * chat and the sidebar without writing anything — reopening it comes back to
+   * the width the user chose.
+   */
+  const editorView = useEditorViewLayout(showEditor);
+  const sidebarOpen = showLeftPanel && !editorView.sidebarHidden;
+
   // Width restoration is declarative: each panel's `defaultSize` comes from the
   // remembered width for its current slot and `Panel` adopts a change, so a
   // view switch needs no imperative push and no cached layout can go stale.
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsCategory, setSettingsCategory] = useState<SettingsCategoryId>('appearance');
-  const [autoOpenAddProvider, setAutoOpenAddProvider] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const handleRefreshWorkspace = () => setRefreshKey(k => k + 1);
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
   const streamStatus = useAgentStreamStatus();
+  const settings = useSettingsModal();
 
-  // The navbar's title menu acts on the session on screen. Its row may live in
-  // a folder that is not expanded in the sidebar, so the session is found by id
-  // across every folder rather than by walking the visible list. No row means
-  // nothing to act on — a session the sidebar does not know (a chat running
-  // outside every registered workspace) gets no menu rather than dead items.
-  const activeSession = useMemo(() => {
-    if (!sessionId) return null;
-    for (const folder of folders) {
-      const found = (folder.sessions || []).find((s) => String(s.id) === String(sessionId));
-      if (found) return found;
-    }
-    return null;
-  }, [folders, sessionId]);
-  const sidebar = useSidebarData();
   const { toasts, pushToast, dismissToast } = useToasts();
 
   /**
@@ -149,20 +146,19 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
     [pushToast],
   );
-  const { handleArchive, handleRename, handleRenameWithAi } = useSessionActions(sidebar.refresh, pushToast);
-  const sessionDelete = useSessionDelete();
-  // A pending `new-…` chat has no transcript anywhere yet, so rename and delete
-  // are refused by the server; the menu hides them the way the sidebar does.
-  const isPendingSession = Boolean(sessionId && sessionId.startsWith('new-'));
-  const sessionActions = activeSession
-    ? {
-        isArchived: activeSession.is_archived === 1,
-        onRename: isPendingSession ? undefined : (name: string) => void handleRename(activeSession, name),
-        onRenameWithAi: isPendingSession ? undefined : () => void handleRenameWithAi(activeSession),
-        onArchive: () => handleArchive(activeSession),
-        onDelete: isPendingSession ? undefined : () => sessionDelete.requestDelete(activeSession),
-      }
-    : undefined;
+  const { menu: sessionActions, sessionDelete } = useNavbarSessionActions(folders, sessionId, pushToast);
+
+  /**
+   * Ask for the sidebar (or put it away).
+   *
+   * Full view hides the sidebar, so asking for it must leave that mode —
+   * otherwise the toggle flips a stored flag the layout is ignoring and the
+   * click does nothing. `compact` is the mode that keeps the wider editor.
+   */
+  const handleToggleLeftPanel = (show: boolean) => {
+    if (show) editorView.revealSidebar();
+    setShowLeftPanel(show);
+  };
 
   // The workspace shortcuts, from the shared keymap so the toggles' tooltips
   // name the bound chord. `⌘S` is absent: the editor owns it, and binding it
@@ -170,26 +166,13 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   useWorkspaceKeybindings({
     showEditor,
     editorHasContent,
-    toggleSidebar: () => setShowLeftPanel((previous) => !previous),
+    // Through the handler, not the raw flag: in full view the sidebar is hidden
+    // by the editor's WIDTH mode, so flipping `showLeftPanel` alone would change
+    // a value the layout is ignoring and the chord would do nothing.
+    toggleSidebar: () => handleToggleLeftPanel(!sidebarOpen),
     toggleEditor: () => setUserToggledEditor((previous) => !(previous ?? showEditor)),
     toggleRightPanel: () => setShowRightPanel((previous) => !previous),
-    openSettings: () => {
-      setSettingsCategory('appearance');
-      setAutoOpenAddProvider(false);
-      setSettingsOpen((previous) => !previous);
-    },
-  });
-
-  // Global event listener for settings triggers
-  useKabmoEvent('omp:open-settings', (e) => {
-    const customEvent = e as CustomEvent<{ category?: SettingsCategoryId; autoOpenAdd?: boolean }>;
-    if (customEvent.detail?.category) {
-      setSettingsCategory(customEvent.detail.category);
-    } else {
-      setSettingsCategory('appearance');
-    }
-    setAutoOpenAddProvider(!!customEvent.detail?.autoOpenAdd);
-    setSettingsOpen(true);
+    openSettings: () => (settings.isOpen ? settings.close() : settings.open()),
   });
 
   // Clicking the ACTIVE view on an open panel collapses that panel; any other
@@ -200,7 +183,6 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     if (!collapsing) setActiveRightPanel(panel);
   };
 
-  const handleToggleLeftPanel = (show: boolean) => setShowLeftPanel(show);
   const handleToggleRightPanel = () => setShowRightPanel(!showRightPanel);
   const handleToggleEditor = () => setUserToggledEditor(!showEditor);
 
@@ -243,7 +225,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
         >
           <LeftColumn
             panelRef={leftPanelRef}
-            open={showLeftPanel}
+            open={sidebarOpen}
             railEnabled={dock.enabled}
             view={leftView}
             onSelectView={(panel) => {
@@ -251,7 +233,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
               // toggle would hide the rail the user is aiming at, and the dock
               // has its own collapse control in the header.
               setActiveLeftView(panel);
-              if (!showLeftPanel) handleToggleLeftPanel(true);
+              if (!sidebarOpen) handleToggleLeftPanel(true);
             }}
             onCollapse={() => handleToggleLeftPanel(false)}
             width={sidebarWidth}
@@ -272,20 +254,21 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
               <TopNavbar
                 sessionTitle={sessionTitle}
                 sessionId={sessionId}
-                showLeftPanel={showLeftPanel}
+                showLeftPanel={sidebarOpen}
                 showEditor={showEditor}
                 showRightPanel={showRightPanel}
                 streamStatus={streamStatus}
                 onSwitchToMobile={onSwitchToMobile}
                 onToggleEditor={handleToggleEditor}
                 onToggleRightPanel={handleToggleRightPanel}
-                onToggleLeftPanel={() => handleToggleLeftPanel(!showLeftPanel)}
+                onToggleLeftPanel={() => handleToggleLeftPanel(!sidebarOpen)}
                 sessionActions={sessionActions}
               />
 
               <WorkspacePanels
                 appSettings={appSettings}
                 showEditor={showEditor}
+                chatHidden={editorView.chatHidden}
                 editorPanelRef={editorPanelRef}
                 showRightPanel={showRightPanel}
                 activeRightPanel={activeRightPanel}
@@ -321,15 +304,12 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
       </div>
 
       {/* Global Desktop Settings Modal */}
-      <SettingsModal 
-        isOpen={settingsOpen} 
-        onClose={() => {
-          setSettingsOpen(false);
-          setAutoOpenAddProvider(false);
-        }} 
-        initialCategory={settingsCategory}
-        autoOpenAddProvider={autoOpenAddProvider}
-        appSettings={appSettings} 
+      <SettingsModal
+        isOpen={settings.isOpen}
+        onClose={settings.close}
+        initialCategory={settings.category}
+        autoOpenAddProvider={settings.autoOpenAddProvider}
+        appSettings={appSettings}
       />
 
       {/* The navbar title menu's delete path and the rename-with-AI refusal

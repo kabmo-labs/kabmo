@@ -124,6 +124,27 @@ describe('resolvePanelWidth', () => {
     // panel keeps its minimum and the row clips, rather than collapsing.
     expect(resolvePanelWidth({ ...base, available: 400, siblingWidth: 320, handleCount: 2 })).toBe(320);
   });
+
+  test('a collapsed chat removes the floor AND the pair caps', () => {
+    const available = 2000;
+    // The ordinary layout would cap this at 0.6 × 2000 = 1200 (own cap) and at
+    // 0.7 × 2000 − 320 = 1080 (pair cap, a sibling reserving its floor), and the
+    // chat's 400 floor would bind at 1280. With no chat on screen there is no
+    // conversation to leave room for, so only the group's own width limits it.
+    const wanted = { fraction: 0.9 };
+    expect(resolvePanelWidth({ ...base, available, siblingWidth: 320, handleCount: 1, stored: wanted })).toBe(
+      Math.round(PAIR_MAX_FRACTION * available),
+    );
+    expect(resolvePanelWidth({ ...base, available, siblingWidth: 320, handleCount: 1, stored: wanted, chatHidden: true })).toBe(
+      available - 320 - 1 * 3,
+    );
+  });
+
+  test('the floor still wins with the chat collapsed', () => {
+    // A group narrower than the sibling and this panel's floor: the panel keeps
+    // its minimum rather than collapsing into nothing.
+    expect(resolvePanelWidth({ ...base, available: 400, siblingWidth: 320, handleCount: 1, chatHidden: true })).toBe(320);
+  });
 });
 
 describe('the editor/right-panel pair', () => {
@@ -272,5 +293,14 @@ describe('pairMaxSize (the drag cap)', () => {
 
   test('no measured area means no cap', () => {
     expect(pairMaxSize({ available: null, siblingMin: editorMin, siblingOpen: true })).toBeUndefined();
+  });
+
+  test('a collapsed chat lets a drag reach the whole row', () => {
+    // Two panels and nothing else: the editor may be dragged up to the group's
+    // width minus the right panel's floor. The 0.6 own-cap would have frozen the
+    // separator at 2400 of 4000 with 1600px of empty row behind it.
+    expect(pairMaxSize({ available, siblingMin: rightMin, siblingOpen: true, chatHidden: true })).toBe(available - rightMin);
+    // The sibling closed means nothing to reserve at all.
+    expect(pairMaxSize({ available, siblingMin: 0, siblingOpen: false, chatHidden: true })).toBe(available);
   });
 });

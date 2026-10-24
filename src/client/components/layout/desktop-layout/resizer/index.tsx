@@ -212,11 +212,14 @@ export function Panel(props: {
 
   const baseStyle: CSSProperties = filler
     ? {
-        flex: '1 1 0%',
+        // A collapsed filler keeps its DOM (and therefore its state: the chat
+        // owns the live stream and the composer) but takes no width, so the
+        // sibling panels' own widths are the whole row.
+        flex: collapsed ? '0 0 0%' : '1 1 0%',
         // The filler keeps its floor on the group's axis (and none across it,
         // where it is sized by the container): see the group model note above.
-        minWidth: orientation === 'horizontal' ? minPx : 0,
-        minHeight: orientation === 'horizontal' ? 0 : minPx,
+        minWidth: orientation === 'horizontal' ? (collapsed ? 0 : minPx) : 0,
+        minHeight: orientation === 'horizontal' ? 0 : collapsed ? 0 : minPx,
         overflow: 'hidden',
         position: 'relative',
       }
