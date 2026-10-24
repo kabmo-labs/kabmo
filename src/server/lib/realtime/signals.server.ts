@@ -22,6 +22,16 @@ export type RealtimeSignal =
   | 'stream-status'
   /** The sidebar's structure changed (a session or folder was added/removed). */
   | 'sidebar-structure'
+  /**
+   * A RUNNING session's transcript grew, so its last-activity stamp moved.
+   *
+   * Raised per tool call, which is the whole reason it is not
+   * `sidebar-structure`: that payload is every folder and session (216 KB over
+   * 731 sessions, measured), while only a running session's stamp can move
+   * between turn boundaries. Republishing the structure here is what made a
+   * phone's stream feel slow — one full list per tool call.
+   */
+  | 'sidebar-activity'
   /** An omp child for `sessionId` became reachable, or was torn down. */
   | 'session-attached'
   /** A scheduled task was created, edited, paused, deleted or fired. */

@@ -31,7 +31,7 @@ import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
 import { useInputRequiredAlert } from '@/client/hooks/ui/input-required-alert';
 
 import { realtimeClient } from '@/shared/lib/realtime/client';
-import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
+import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_ACTIVITY, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
 import {
   applySeenStrip,
   SESSION_TITLE_HINT_SIGNAL,
@@ -39,11 +39,11 @@ import {
 import { subscribeClientSignal } from '@/client/lib/signals';
 import { buildSidebarSessionStatus } from '@/client/hooks/chat/omp/session-statuses';
 import type { WorkspaceFolderData } from '@/shared/types';
-import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 
 /** Re-exported so a consumer (and a test) names the shape without reaching
  *  into a server module for it. */
-export type { SidebarPayload, SidebarStatusPayload };
+export type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload };
 
 export interface SidebarDataHandle {
   folders: WorkspaceFolderData[];
@@ -115,9 +115,65 @@ function mergeStatus(
   }));
 }
 
+/**
+ * Advance each row's live fields from the activity payload.
+ *
+ * `sidebar:activity` carries only the RUNNING sessions (see its doc), so an id
+ * it does not name keeps whatever the structure gave it. Three rules, each of
+ * which is a way this can go wrong:
+ *
+ *   - the `updated_at` comparison is what makes two sources safe to
+ *     interleave: the structure is re-scanned at every turn boundary and may
+ *     already carry a stamp this payload has not caught up with, and a late
+ *     activity frame must never move a row BACKWARDS (that reorders the
+ *     sidebar under the reader);
+ *   - `hasSubagents` only ever turns ON, because the payload is a live read of
+ *     what is on disk and a subagent transcript does not disappear when its run
+ *     ends — a `false` here is "not seen yet", not "none exist";
+ *   - nothing else is touched. Every other field of a row changes on a
+ *     STRUCTURAL event, and those publish the structure for their own reason.
+ */
+function mergeActivity(
+  folders: WorkspaceFolderData[],
+  activity: SidebarActivityPayload | null,
+): WorkspaceFolderData[] {
+  if (!activity) return folders;
+  let changed = false;
+  const merged = folders.map((folder) => ({
+    ...folder,
+    sessions: (folder.sessions ?? []).map((session) => {
+      const live = activity[String(session.id)];
+      if (!live) return session;
+      const updated_at = live.updatedAt && isNewerStamp(live.updatedAt, session.updated_at)
+        ? live.updatedAt
+        : session.updated_at;
+      const hasSubagents = session.hasSubagents || live.hasSubagents === true;
+      if (updated_at === session.updated_at && hasSubagents === Boolean(session.hasSubagents)) return session;
+      changed = true;
+      return { ...session, updated_at, hasSubagents };
+    }),
+  }));
+  // A stable identity matters: the sidebar's own `useMemo` chain (filter, sort,
+  // pending overlay) keys on this array, and returning a fresh one per activity
+  // frame would re-sort 731 rows for a stamp that did not move.
+  return changed ? merged : folders;
+}
+
+/** Whether `next` is a later ISO stamp than `current`. An absent current is older. */
+function isNewerStamp(next: string, current?: string): boolean {
+  if (!current) return true;
+  const nextMs = Date.parse(next);
+  const currentMs = Date.parse(current);
+  // An unparseable value on either side is not evidence of a newer stamp; the
+  // structure's own field stays authoritative.
+  if (!Number.isFinite(nextMs) || !Number.isFinite(currentMs)) return false;
+  return nextMs > currentMs;
+}
+
 export function SidebarDataProvider({ children, initialFolders = [] }: { children: ReactNode; initialFolders?: WorkspaceFolderData[] }) {
   const structure = useRealtimeTopic<SidebarPayload>(TOPIC_SIDEBAR);
   const status = useRealtimeTopic<SidebarStatusPayload>(TOPIC_SIDEBAR_STATUS);
+  const activity = useRealtimeTopic<SidebarActivityPayload>(TOPIC_SIDEBAR_ACTIVITY);
 
   // Session ids whose badge the user has already dismissed on this mount.
   // Optimistic strip: keeps the click→disappearance instant and stops the
@@ -132,8 +188,8 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
   const [overlayVersion, setOverlayVersion] = useState(0);
 
   const folders = useMemo(
-    () => mergeStatus(structure.data?.folders ?? initialFolders, status.data),
-    [structure.data, status.data, initialFolders],
+    () => mergeActivity(mergeStatus(structure.data?.folders ?? initialFolders, status.data), activity.data),
+    [structure.data, status.data, activity.data, initialFolders],
   );
   const isMock = structure.data?.isMock ?? false;
   const initializing = structure.data === null;
@@ -173,6 +229,10 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
   const refresh = useCallback(() => {
     realtimeClient.refresh(TOPIC_SIDEBAR);
     realtimeClient.refresh(TOPIC_SIDEBAR_STATUS);
+    // The activity stamps are what a tool call advances, so a manual refresh
+    // that skipped them would re-read the list and leave its labels where they
+    // were.
+    realtimeClient.refresh(TOPIC_SIDEBAR_ACTIVITY);
   }, []);
 
   // The spinner follows a user's click only: it is raised here and lowered when
@@ -188,10 +248,10 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structure.data]);
 
-  // A background push — every tool call republishes the structure — pulses the
-  // topic's own indicator, so the toolbar button spins for it too. Without this
-  // the list moved with nothing on screen saying so.
-  const isRefreshing = refreshing || structure.refreshing;
+  // A background push — every tool call advances a live session's activity —
+  // pulses the topic's own indicator, so the toolbar button spins for it too.
+  // Without this the list moved with nothing on screen saying so.
+  const isRefreshing = refreshing || structure.refreshing || activity.refreshing;
 
   // Fires for ANY session, including one this tab never opened — the cue that an
   // agent is blocked on an answer must not depend on the open timeline.

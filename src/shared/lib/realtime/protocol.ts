@@ -45,6 +45,22 @@ export const TOPIC_SIDEBAR = 'sidebar';
  *  the structure needs a JSONL scan to produce. */
 export const TOPIC_SIDEBAR_STATUS = 'sidebar:status';
 
+/**
+ * The last-activity stamp of each session with a run IN FLIGHT, keyed by id.
+ *
+ * Split from `sidebar` for the same reason `sidebar:status` is, but the cost
+ * difference is far larger: a transcript grows on every tool call, so this
+ * changes per tool call while the structure is a 216 KB payload over 731
+ * sessions (measured on the author's install) that must be re-scanned to
+ * produce. Only a RUNNING session's stamp can move between turn boundaries, so
+ * only those are carried — the payload is one ISO string per live run
+ * (measured: 87 bytes for one), against 216 KB for the whole list.
+ *
+ * The structure remains the authority for every other row; this only ever
+ * ADVANCES a stamp the structure already carries (see `applySidebarActivity`).
+ */
+export const TOPIC_SIDEBAR_ACTIVITY = 'sidebar:activity';
+
 /** One session's live conversation: agent frames, queue and modes. */
 export function sessionTopic(sessionId: string): string {
   return `session:${sessionId}`;

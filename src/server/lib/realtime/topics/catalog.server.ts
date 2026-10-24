@@ -20,6 +20,7 @@ import {
   TOPIC_PANELS,
   TOPIC_SCHEDULE,
   TOPIC_SIDEBAR,
+  TOPIC_SIDEBAR_ACTIVITY,
   TOPIC_SIDEBAR_STATUS,
   TOPIC_USAGE,
   TOPIC_WAITING,
@@ -28,10 +29,11 @@ import {
   sessionTelemetryTopic,
   sessionTodosTopic,
 } from '@/shared/lib/realtime/protocol';
-import type { SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
+import type { SidebarActivityPayload, SidebarPayload, SidebarStatusPayload } from '@/shared/types/realtime';
 import { isValidPluginId } from '@/shared/lib/plugins/protocol';
 import type { TopicDescriptor } from '@/server/lib/realtime/hub.types';
 import { loadSidebarStatus, loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
 import { sessionDescriptor } from '@/server/lib/realtime/topics/session.server';
 import { btwDescriptor } from '@/server/lib/realtime/topics/btw.server';
 import { SESSION_DATA_TOPICS } from '@/server/lib/realtime/topics/session-data.server';
@@ -64,6 +66,7 @@ export const SCOPED_FAMILIES: Record<string, (scope: string) => TopicDescriptor>
 export const EXACT_TOPICS = new Map<string, TopicDescriptor>([
   [TOPIC_SIDEBAR, { resolve: async (): Promise<SidebarPayload> => loadSidebarStructure() }],
   [TOPIC_SIDEBAR_STATUS, { resolve: async (): Promise<SidebarStatusPayload> => loadSidebarStatus() }],
+  [TOPIC_SIDEBAR_ACTIVITY, { resolve: async (): Promise<SidebarActivityPayload> => loadSidebarActivity() }],
   [TOPIC_SCHEDULE, { resolve: () => globalDescriptor(TOPIC_SCHEDULE).resolve(TOPIC_SCHEDULE) }],
   [TOPIC_USAGE, { resolve: () => globalDescriptor(TOPIC_USAGE).resolve(TOPIC_USAGE) }],
   [TOPIC_PANELS, { resolve: () => globalDescriptor(TOPIC_PANELS).resolve(TOPIC_PANELS) }],

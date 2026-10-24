@@ -4,158 +4,33 @@
  */
 
 /**
- * The mounted `SidebarDataProvider` over the unified realtime channel.
+ * The mounted `SidebarDataProvider` over the unified realtime channel: the
+ * STATUS half, the seen-strip overlay, and the title hint.
  *
- * Driven through a REAL server and a real socket rather than a stubbed fetch,
- * because what the provider does now is merge two topics and apply the
- * optimistic overlays — the parts that used to be "does it re-read". A stubbed
- * socket would only prove the fake's timing.
- *
- * Kept: the two-topic merge, the authoritative status map (including a session
- * the structure has not scanned), the seen-strip on an acked terminal badge, and
- * the title hint.
+ * The activity topic's merge rules live in `session-list.activity.test.ts` —
+ * separate because the two halves answer different questions and the file was
+ * over the repo's ceiling with both.
  */
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
-import { h, render } from 'preact';
-import { act } from 'preact/test-utils';
 
 import { applySeenStrip, SESSION_TITLE_HINT_SIGNAL } from '@/client/hooks/chat/omp/sidebar-overlay';
 import { publishClientSignal } from '@/client/lib/signals';
-import { SidebarDataProvider, useSidebarData } from '@/client/hooks/chat/omp/session-list';
-import type { SidebarDataHandle } from '@/client/hooks/chat/omp/session-list';
-import { resetRealtimeClient } from '@/shared/lib/realtime/client';
-import { TOPIC_SIDEBAR, TOPIC_SIDEBAR_STATUS } from '@/shared/lib/realtime/protocol';
-import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
-import type { TopicResolver } from '@/server/lib/realtime/hub.server';
-import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-support/pristine-globals';
-import type { SidebarPayload, SidebarStatusPayload } from '@/client/hooks/chat/omp/session-list';
-import type { WorkspaceFolderData } from '@/shared/types';
+import { restoreDomGlobals } from '@/test-support/pristine-globals';
+import {
+  folders,
+  mountProvider,
+  renderedStatus,
+  statusBody,
+  teardownProvider,
+  withAct,
+} from '@/client/hooks/chat/omp/session-list.test-util';
 
-
-let container: HTMLElement | undefined;
-
-/**
- * Point the DOM globals at a happy-dom window whose origin is the test
- * listener, because the client builds its socket URL from `window.location` —
- * a window on a different port would dial a server that is not there, and the
- * test would be measuring a connection failure rather than the channel.
- */
-function installDom(origin: string): void {
-  const win = new Window({ url: origin });
-  installDomGlobals(win);
-  // happy-dom's WebSocket does not reach a real listener, and the channel is
-  // what is under test, so the real implementation wins this global.
-  (globalThis as unknown as Record<string, unknown>).WebSocket = pristineWebSocket;
-}
-
-
-
-afterEach(() => {
-  if (container) render(null, container);
-  container?.remove();
-  container = undefined;
-  resetRealtimeClient();
-});
+afterEach(teardownProvider);
 
 afterAll(() => {
   restoreDomGlobals();
 });
-
-
-
-type Status = 'stream' | 'finish' | 'abort';
-
-/** A structure payload carrying one session, `a`. */
-function structureBody(): SidebarPayload {
-  return {
-    folders: [{ id: 1, name: 'ws', isExpanded: true, hasMore: false, totalSessions: 1, sessions: [{ id: 'a', folder_id: 1, title: 'A' }] }],
-    isMock: false,
-  };
-}
-
-/** The volatile map for `a`. */
-function statusBody(status?: Status): SidebarStatusPayload {
-  return status ? { a: { streamStatus: status } } : {};
-}
-
-/** One folder holding the given sessions, shaped only as far as the strip reads it. */
-function folders(sessions: Array<{ id: string; streamStatus?: Status }>): WorkspaceFolderData[] {
-  return [{ id: 1, name: 'ws', sessions }] as unknown as WorkspaceFolderData[];
-}
-
-/** The status the provider currently renders for session `a`. */
-function renderedStatus(api: SidebarDataHandle | null): Status | undefined {
-  return api?.folders[0]?.sessions?.[0].streamStatus;
-}
-
-/**
- * Let Preact's queued effects run.
- *
- * A microtask drain, and deliberately nothing more: the socket's own progress
- * is awaited through the harness (`waitForFrames`), so this only has to flush
- * the render a received frame queued.
- */
-async function flush(): Promise<void> {
-  for (let i = 0; i < 8; i += 1) await Promise.resolve();
-}
-
-interface Harness {
-  server: RealtimeTestServer;
-  holder: { api: SidebarDataHandle | null };
-  /** Republish both topics from the current bodies. */
-  push: (structure?: SidebarPayload, status?: SidebarStatusPayload) => Promise<void>;
-}
-
-/** Mount the real provider against a real realtime server. */
-async function mountProvider(): Promise<Harness> {
-  const server = await startRealtimeTestServer(new Map<string, TopicResolver>([
-    [TOPIC_SIDEBAR, async () => structureBody()],
-    [TOPIC_SIDEBAR_STATUS, async () => statusBody()],
-  ]));
-  installDom(`http://127.0.0.1:${server.port}`);
-
-  const holder: { api: SidebarDataHandle | null } = { api: null };
-  function Probe() {
-    holder.api = useSidebarData();
-    return null;
-  }
-  const el = document.createElement('div');
-  document.body.appendChild(el);
-  container = el;
-  await act(async () => {
-    render(h(SidebarDataProvider, { children: h(Probe, null) }), el);
-  });
-  // The structure snapshot must have landed before the provider can report a
-  // value at all; the subscription is opened by the render above, so this
-  // awaits the client's own state rather than a duration.
-  await server.waitForTopic<SidebarPayload>(TOPIC_SIDEBAR, (value) => value !== null);
-  await act(async () => {
-    await flush();
-  });
-
-  return {
-    server,
-    holder,
-    push: async (structure, status) => {
-      // Await the CLIENT's value, not just the publish: the socket round trip
-      // and the provider's merge are the things under test, so resolving on the
-      // send would assert against a state that has not happened yet.
-      if (structure) {
-        server.publish(TOPIC_SIDEBAR, structure);
-        await server.waitForTopic(TOPIC_SIDEBAR, (value) => JSON.stringify(value) === JSON.stringify(structure));
-      }
-      if (status) {
-        server.publish(TOPIC_SIDEBAR_STATUS, status);
-        await server.waitForTopic(TOPIC_SIDEBAR_STATUS, (value) => JSON.stringify(value) === JSON.stringify(status));
-      }
-      await act(async () => {
-        await flush();
-      });
-    },
-  };
-}
 
 describe('SidebarDataProvider reads both sidebar topics', () => {
   test('reports a live run for a session the structure has not scanned yet', async () => {
@@ -227,9 +102,7 @@ describe('SidebarDataProvider carries the sent text for a placeholder row', () =
     const harness = await mountProvider();
     expect(harness.holder.api?.titleHint('omp-1')).toBeUndefined();
 
-    await act(async () => {
-      hint('omp-1', 'Perbaiki tombol stop');
-    });
+    await withAct(() => hint('omp-1', 'Perbaiki tombol stop'));
 
     expect(harness.holder.api?.titleHint('omp-1')).toBe('Perbaiki tombol stop');
     expect(harness.holder.api?.titleHint('omp-2')).toBeUndefined();
@@ -239,14 +112,10 @@ describe('SidebarDataProvider carries the sent text for a placeholder row', () =
 
   test('ignores a blank hint and drops one once the session is listed', async () => {
     const harness = await mountProvider();
-    await act(async () => {
-      hint('a', '   ');
-    });
+    await withAct(() => hint('a', '   '));
     expect(harness.holder.api?.titleHint('a')).toBeUndefined();
 
-    await act(async () => {
-      hint('a', 'sent text');
-    });
+    await withAct(() => hint('a', 'sent text'));
     expect(harness.holder.api?.titleHint('a')).toBe('sent text');
 
     // The session is in the structure, so the placeholder is not drawn and the
@@ -257,3 +126,14 @@ describe('SidebarDataProvider carries the sent text for a placeholder row', () =
     harness.server.stop();
   });
 });
+
+/**
+ * `sidebar:activity` is the topic a tool call republishes, and the merge rules
+ * are what make a payload that carries ONLY the running sessions sufficient.
+ *
+ * The structure is the authority for every row and is re-scanned at every turn
+ * boundary; this topic only ever moves the two fields a run advances mid-turn.
+ * Two ways that can go wrong, both pinned below: a late frame moving a row
+ * BACKWARDS (which reorders the sidebar under the reader), and the merge
+ * re-sorting 731 rows for a stamp that did not move.
+ */

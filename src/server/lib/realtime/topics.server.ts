@@ -18,6 +18,7 @@ import {
   TOPIC_PANELS,
   TOPIC_SCHEDULE,
   TOPIC_SIDEBAR,
+  TOPIC_SIDEBAR_ACTIVITY,
   TOPIC_SIDEBAR_STATUS,
   TOPIC_USAGE,
   TOPIC_WAITING,
@@ -29,6 +30,7 @@ import { getRealtimeHub, registerTopics, type TopicDescriptor } from '@/server/l
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { invalidateOmpSidebarData } from '@/server/lib/omp/session/reader';
 import { loadSidebarStatus, loadSidebarStructure } from '@/server/lib/omp/session/sidebar-data.server';
+import { loadSidebarActivity } from '@/server/lib/omp/session/sidebar-activity.server';
 import { EXACT_TOPICS, descriptorFor, isKnownTopicName } from '@/server/lib/realtime/topics/catalog.server';
 
 declare global {
@@ -78,6 +80,7 @@ export function initRealtimeTopics(): void {
   onRealtimeSignal(({ signal, sessionId, root }) => {
     if (signal === 'stream-status') publishSidebarStatus();
     else if (signal === 'sidebar-structure') publishSidebarStructure();
+    else if (signal === 'sidebar-activity') publishSidebarActivity();
     else if (signal === 'session-attached' && sessionId) publishSessionState(sessionId);
     else if (signal === 'schedule-changed') publishTopic(TOPIC_SCHEDULE);
     else if (signal === 'panels-changed') publishTopic(TOPIC_PANELS);
@@ -242,6 +245,19 @@ export function schedulePublish(topic: string, produce: () => Promise<unknown>):
  */
 export function publishSidebarStatus(): void {
   schedulePublish(TOPIC_SIDEBAR_STATUS, loadSidebarStatus);
+}
+
+/**
+ * A RUNNING session's transcript grew: republish its activity stamps.
+ *
+ * Called per tool call (see `handleToolExecutionEnd`), so it must never be the
+ * structure publish: that one invalidates the discovery scan and re-serializes
+ * every folder and session. This payload carries one ISO string per live run
+ * and re-reads nothing but those files' own summaries (each memoized on
+ * `(size, mtimeMs)`, measured 0.1 ms on a cache miss).
+ */
+export function publishSidebarActivity(): void {
+  schedulePublish(TOPIC_SIDEBAR_ACTIVITY, loadSidebarActivity);
 }
 
 /**

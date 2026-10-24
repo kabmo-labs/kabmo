@@ -117,14 +117,19 @@ function handleMessageEnd(host: SessionFrameHost, event: AgentEvent): void {
  * pays nothing. The session's data topics (todos, telemetry, queue) stay
  * turn-boundary-only on purpose: their resolvers are the expensive ones
  * (whole-transcript parses/scans).
+ *
+ * The SIDEBAR's activity stamp moved too, and it is published on its own topic.
+ * It used to republish the whole structure here — every folder and session —
+ * and that is what made a phone's stream feel slow: measured 216 KB over 731
+ * sessions per tool call, against 87 bytes for the activity payload. Nothing
+ * about the LIST changes on a transcript append, so nothing about the list is
+ * republished: a new session's file is the watcher's `rename` event, a rename is
+ * `session_info_update`, and the turn boundary is `settleTerminalRun` — each
+ * already publishes the structure for its own reason.
  */
 function handleToolExecutionEnd(host: SessionFrameHost): void {
   emitRealtimeSignal('workspace-dirty');
-  // The transcript appended too — the sidebar's `updated_at` (its ordering and
-  // time-ago labels) is read off a scan that only re-runs on this signal, and
-  // the sessions watcher deliberately ignores transcript appends. The coalesce +
-  // dedupe above bound the cost the same way.
-  publishSidebarStructure();
+  emitRealtimeSignal('sidebar-activity');
   // The session's DATA moved as well: a tool result is a transcript entry, so
   // the raw-messages paged view and the session-data topics re-read. Their
   // resolvers are the expensive ones (whole-transcript parses), but the
