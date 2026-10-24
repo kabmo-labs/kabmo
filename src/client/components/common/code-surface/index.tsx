@@ -38,6 +38,7 @@ import { createDocumentCache, type DocumentCache } from '@/client/components/com
 import { cancelScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { runSurfaceCommand } from '@/client/components/common/code-surface/keymap';
 import { setFindMarks, type MarkRange } from '@/client/components/common/code-surface/marks';
+import { syncExternal } from '@/client/components/common/code-surface/sync';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 
 export interface CodeSurfaceHandle {
@@ -123,6 +124,19 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
    * nobody typed.
    */
   const writingRef = useRef(false);
+  /**
+   * The text the view last REPORTED (or last wrote), so the per-render sync can
+   * skip without materializing the document.
+   *
+   * `syncExternal` used to compare `value` against `doc.toString()`, which is a
+   * full stringify on every render — and the parent re-renders on every
+   * keystroke, so a large file paid it twice per character. Measured in Bun:
+   * `toString()` is 7.2 ms at 20 MB, 13.7 ms at 30 MB, and the browser showed
+   * the knee — 34 ms per keystroke at 20 MB, 67 ms at 30, 83 ms at 40. The
+   * parent's `value` is the very string this component handed it, so the usual
+   * comparison is one reference check.
+   */
+  const lastValueRef = useRef(value);
 
   // Live mirrors: the state's own extensions close over these, and rebuilding
   // the state because a callback identity moved would drop the undo history.
@@ -145,6 +159,9 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
       wordWrap,
       readOnly,
       onDocChange: (next) => {
+        // Recorded BEFORE the writing guard: this is what the document holds,
+        // whether or not the change came from the user.
+        lastValueRef.current = next;
         if (writingRef.current) return;
         onChangeRef.current(next);
       },
@@ -169,6 +186,7 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
       parent: host,
     });
     viewRef.current = view;
+    lastValueRef.current = value;
     if (scrollTestId) view.scrollDOM.dataset.testid = scrollTestId;
     onScrollerRef.current?.(view.scrollDOM);
 
@@ -195,7 +213,7 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     // `setState` installs that wholesale — so the current wrap/read-only pair is
     // re-applied, or a tab opened while wrap was off comes back unwrapped.
     view.dispatch({ effects: cache.currentEffects() });
-    syncExternal(view, value, writingRef);
+    syncExternal(view, value, writingRef, lastValueRef);
     // The marks belonged to the previous document's offsets, and the field lives
     // in that state. A fresh state starts empty, so this re-applies whatever the
     // new document's owner asked for rather than leaving a stale set behind.
@@ -212,7 +230,7 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
   useLayoutEffect(() => {
     const view = viewRef.current;
     if (!view || docKeyRef.current !== documentKey) return;
-    syncExternal(view, value, writingRef);
+    syncExternal(view, value, writingRef, lastValueRef);
   }, [value, documentKey]);
 
   // Wrap and read-only are per-view settings: reconfiguring keeps the document,
@@ -305,20 +323,3 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
 
   return <div ref={hostRef} className={className} style={hostStyle} />;
 });
-
-/**
- * Write `value` into the view when it differs from what the document holds.
- *
- * The guard is the whole function: the parent re-renders on every keystroke, so
- * an unguarded write would dispatch a full-document replace on each one — both a
- * second edit and a fresh undo entry per character.
- */
-function syncExternal(view: EditorView, value: string, writingRef: { current: boolean }): void {
-  if (value === view.state.doc.toString()) return;
-  writingRef.current = true;
-  try {
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
-  } finally {
-    writingRef.current = false;
-  }
-}

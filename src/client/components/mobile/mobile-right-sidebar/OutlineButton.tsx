@@ -27,15 +27,21 @@ import { Modal } from '@/client/components/common/Modal';
 import { OutlineKindIcon, outlineKindLabel } from '@/client/components/common/outline-kind-icon';
 import { setLineReveal } from '@/client/lib/line-reveal';
 import type { OutlineSymbol } from '@/shared/lib/code/outline/types';
+import { outlineTruncatedNotice } from '@/shared/lib/code/outline/rows';
 
 interface MobileOutlineButtonProps {
   path: string | null;
+  /** The rows to render — already bounded by the hook. */
   symbols: OutlineSymbol[];
+  /** Every symbol found, so the button can say when it is showing a window. */
+  total: number;
+  /** True when `symbols` is only the first `MAX_OUTLINE_ROWS`. */
+  truncated: boolean;
   /** Why there is nothing to list, when `symbols` is empty. */
   emptyNotice: string;
 }
 
-export function MobileOutlineButton({ path, symbols, emptyNotice }: MobileOutlineButtonProps) {
+export function MobileOutlineButton({ path, symbols, total, truncated, emptyNotice }: MobileOutlineButtonProps) {
   const [open, setOpen] = useState(false);
   if (!path) return null;
 
@@ -52,7 +58,7 @@ export function MobileOutlineButton({ path, symbols, emptyNotice }: MobileOutlin
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={`Outline (${symbols.length} symbols)`}
+          aria-label={`Outline (${total} symbols)`}
           title="Outline"
           className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 bg-paper text-ink/60 shadow-sm transition-all hover:bg-ink/5 hover:text-ink active:scale-95"
         >
@@ -69,7 +75,9 @@ export function MobileOutlineButton({ path, symbols, emptyNotice }: MobileOutlin
             <div className="flex min-w-0 items-center gap-2">
               <ListTree size={15} className="flex-shrink-0 text-ink/50" />
               <span className="text-sm font-medium">Outline</span>
-              <span className="font-mono text-[11px] text-ink/40">{symbols.length}</span>
+              <span className="font-mono text-[11px] text-ink/40">
+                {truncated ? `${symbols.length}/${total}` : total}
+              </span>
             </div>
           }
         >
@@ -91,6 +99,9 @@ export function MobileOutlineButton({ path, symbols, emptyNotice }: MobileOutlin
                   <span className="flex-shrink-0 font-mono text-[10px] text-ink/40">{symbol.line}</span>
                 </button>
               ))
+            )}
+            {truncated && (
+              <div className="px-4 py-2 text-[11px] italic text-ink/40">{outlineTruncatedNotice(total)}</div>
             )}
           </div>
         </Modal>

@@ -144,9 +144,15 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   // The sheet's own list, from the LIVE buffer — the same derivation the
   // desktop section uses, so the two cannot disagree about what a state means.
   // A byte viewer has no text buffer to scan, which is its own sentence.
-  const { symbols: outlineSymbols, notice: outlineNotice } = useOutlineView({
+  const {
+    symbols: outlineSymbols,
+    total: outlineTotal,
+    truncated: outlineTruncated,
+    notice: outlineNotice,
+  } = useOutlineView({
     content,
     language: lang,
+    path: file.path ?? null,
     state: byteViewer ? 'not-a-document' : editor.loadError ? 'error' : editor.loaded ? 'ready' : 'loading',
     note: byteViewer
       ? `${VIEWER_LABELS[viewerKind]} files have no text outline.`
@@ -290,7 +296,13 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           target over the content, list in a sheet. Hidden for a byte viewer,
           which has no text to outline. */}
       {!byteViewer && (
-        <MobileOutlineButton path={file.path ?? null} symbols={outlineSymbols} emptyNotice={outlineNotice} />
+        <MobileOutlineButton
+          path={file.path ?? null}
+          symbols={outlineSymbols}
+          total={outlineTotal}
+          truncated={outlineTruncated}
+          emptyNotice={outlineNotice}
+        />
       )}
 
       <EditorStatusBar

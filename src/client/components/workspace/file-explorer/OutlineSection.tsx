@@ -35,6 +35,7 @@ import { setLineReveal } from '@/client/lib/line-reveal';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useOutlineView } from '@/client/hooks/editor/use-outline-view';
 import type { OutlineSymbol } from '@/shared/lib/code/outline/types';
+import { outlineTruncatedNotice } from '@/shared/lib/code/outline/rows';
 
 export function OutlineSection() {
   const [expanded, setExpanded] = useSessionState<boolean>('files.outlineExpanded', false);
@@ -44,11 +45,12 @@ export function OutlineSection() {
   // Recomputed from the LIVE buffer, so an edit moves the rows with it. The
   // scan is a depth-aware line walk (see `outline/extract.ts`): measured at
   // 0.1–2.2 ms on this repository's largest sources.
-  const { symbols, notice } = useOutlineView({
+  const { symbols, total, truncated, notice } = useOutlineView({
     content: current.content,
     language: current.language,
     state: current.state,
     note: current.note,
+    path: current.path,
   });
 
   // A diff tab HIDES the section rather than explaining that it has none. The
@@ -91,9 +93,9 @@ export function OutlineSection() {
           <span className="w-3 text-center font-mono" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
           <ListTree size={12} />
           <span>Outline</span>
-          {symbols.length > 0 && (
+          {total > 0 && (
             <span className="font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[9px] text-ink/50">
-              {symbols.length}
+              {truncated ? `${symbols.length}/${total.toLocaleString()}` : total}
             </span>
           )}
         </button>
@@ -125,6 +127,11 @@ export function OutlineSection() {
                     <span className="flex-shrink-0 font-mono text-[9px] text-ink/35">{symbol.line}</span>
                   </button>
                 ))}
+                {truncated && (
+                  <div className="px-1 py-1 text-[10px] italic text-ink/40">
+                    {outlineTruncatedNotice(total)}
+                  </div>
+                )}
               </div>
             )}
           </div>
