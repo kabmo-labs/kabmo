@@ -38,7 +38,13 @@ export const TESTID = {
   chatTimeline: 'chat-timeline',
   composerInput: 'composer-input',
   rightPanel: 'right-panel',
-  /** The editor column's scroll container (and the diff views' — same id). */
+  /**
+   * The editor column's scroll container.
+   *
+   * It is CodeMirror's own scroller (`view.scrollDOM`), not a wrapper the panel
+   * renders: the surface owns its scrolling now, so the panel has no scroll
+   * container to mark.
+   */
   editorScroller: 'editor-scroller',
   diffScroller: 'diff-scroller',
 } as const;

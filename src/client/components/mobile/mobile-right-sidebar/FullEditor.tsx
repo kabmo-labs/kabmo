@@ -76,6 +76,12 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
     missing,
   });
 
+  /**
+   * The code surface's scroller, which belongs to CodeMirror and appears only
+   * once its view mounts.
+   */
+  const [codeScroller, setCodeScroller] = useState<HTMLElement | null>(null);
+
   // Closing and reopening the same file is a remount, so the offset is restored
   // from the session's own state — the phone shows one file at a time, and its
   // key is that file's path (a rendered view keeps its own offset, as on the
@@ -88,6 +94,9 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
     // and the desktop drops entries when a tab closes — against ids that mean
     // nothing here.
     slot: MOBILE_SCROLL_POSITIONS_KEY,
+    // The code surface's scroller belongs to CodeMirror and appears only once
+    // its view mounts; the markdown preview owns its own container.
+    element: isMd && isPreview ? undefined : codeScroller,
   });
 
   // A search row on the phone opens this full-screen editor, so the hand-off
@@ -208,7 +217,9 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           content={editor.content}
           revision={editor.revision}
         />
-      ) : (
+      ) : editor.isLoading || editor.unsupported || editor.loadError || (isMd && isPreview) ? (
+        // The states that draw their own scrolling content — and the markdown
+        // preview, which is a document, not an editor — share one scroller.
         <div
           ref={scroll.ref}
           onScroll={scroll.onScroll}
@@ -233,7 +244,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
               <span className="text-xs text-error font-sans">Could not read {file.name}</span>
               <span className="text-[11px] text-ink/50 font-mono break-all">{editor.loadError}</span>
             </div>
-          ) : isMd && isPreview ? (
+          ) : (
             /* Markdown Preview Mode — styled by `.prose-content` (the chat
                timeline's system), see the desktop editor for why there is no
                `prose` wrapper. */
@@ -244,42 +255,32 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
                 scope={{ path: file.path ?? file.name, root: file.root, repo: file.repo }}
               />
             </div>
-          ) : (
-            /* Code Editor with Line Numbers - Desktop styled: gutter bg-canvas border-r border-ink/10 */
-            <CodeSurface
-              ref={surfaceRef}
-              value={content}
-              onValueChange={editor.onChange}
-              language={lang}
-              wordWrap={wordWrap}
-              marks={revealMarks}
-              currentMark={currentMark}
-              rootClassName="flex min-h-full bg-paper"
-              // The gutter auto-sizes to its widest number rather than taking a
-              // fixed width: the numbers scale with the zoom control, and a
-              // pinned `w-10` clipped a 3-digit line number at 18px.
-              gutterClassName="flex flex-col text-right pr-2 select-none text-ink/30 bg-canvas border-r border-ink/10 font-mono flex-shrink-0"
-              gutterLineClassName="min-w-[1.5rem]"
-              gutterStyle={{
-                fontSize,
-                paddingTop: 12,
-                paddingBottom: 12,
-                lineHeight: EDITOR_LINE_HEIGHT,
-                fontFamily: editorFontFamily,
-              }}
-              editorWrapperClassName="flex-1 p-3 overflow-x-auto min-w-0 bg-paper text-ink code-surface"
-              editorClassName="focus:outline-none"
-              editorStyle={{
-                fontFamily: editorFontFamily,
-                fontSize,
-                lineHeight: EDITOR_LINE_HEIGHT,
-                backgroundColor: 'transparent',
-                minHeight: '100%',
-                color: 'var(--theme-ink)',
-              }}
-            />
           )}
         </div>
+      ) : (
+        /* The code surface owns its own scroller (CodeMirror's), so it is NOT
+           wrapped in one: an outer `overflow-auto` resolves the editor's
+           `height: 100%` against an auto-height box, so the editor grew to the
+           document's full height and the panel had nothing to scroll. */
+        <CodeSurface
+          ref={surfaceRef}
+          value={content}
+          onValueChange={editor.onChange}
+          language={lang}
+          wordWrap={wordWrap}
+          documentKey={fileKey}
+          marks={revealMarks}
+          currentMark={currentMark}
+          onScroller={setCodeScroller}
+          scrollTestId="editor-scroller"
+          className="flex-1 min-h-0 bg-paper text-ink"
+          padding={12}
+          style={{
+            fontFamily: editorFontFamily,
+            fontSize: `${fontSize}px`,
+            lineHeight: EDITOR_LINE_HEIGHT,
+          }}
+        />
       )}
 
       {/* The outline is a floating control rather than a panel section: on a

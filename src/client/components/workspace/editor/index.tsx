@@ -5,7 +5,6 @@ import { EditorTabs } from '@/client/components/workspace/editor/Tabs';
 import { EDITOR_KEY_BINDINGS, isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
-import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
@@ -62,8 +61,6 @@ export function Editor({
   const [zoomLevel, setZoomLevel] = useSessionState<number>('editor.zoomLevel', EDITOR_DEFAULT_FONT_SIZE);
   const [isMaximized, setIsMaximized] = useState(false);
   const [wordWrap, setWordWrap] = useSessionState<boolean>('editor.wordWrap', true);
-  /** Extra ⌘D ranges; the surface paints them and the editor edits them by replication. */
-  const [occurrences, setOccurrences] = useState<readonly TextRange[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { sessionId } = useSessionStateContext();
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
@@ -312,8 +309,6 @@ export function Editor({
         setIsMaximized={setIsMaximized}
         zoomLevel={zoomLevel}
         setZoomLevel={setZoomLevel}
-        occurrences={occurrences}
-        setOccurrences={setOccurrences}
         paletteOpen={paletteOpen}
         setPaletteOpen={setPaletteOpen}
         runCommand={runCommand}

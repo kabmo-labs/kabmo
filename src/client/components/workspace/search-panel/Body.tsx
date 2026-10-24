@@ -6,7 +6,7 @@ import { SearchResults } from '@/client/components/workspace/search-panel/Result
 import { setSearchReveal } from '@/client/lib/search-reveal';
 import { groupSearchResults, MAX_SEARCH_RESULTS } from '@/shared/lib/fs/search-list';
 import type { SearchResultItem } from '@/shared/types/fs';
-import type { FindOptions } from '@/shared/lib/code/editor/find';
+import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 
 interface SearchPanelBodyProps {
   className: string;

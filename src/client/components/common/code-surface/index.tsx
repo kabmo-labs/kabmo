@@ -1,32 +1,47 @@
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * The code surface: CodeMirror 6, coloured by Shiki.
+ *
+ * What this replaced, and why it is a mount rather than a component tree: the
+ * old surface was a transparent `<textarea>` over a Shiki-highlighted `<pre>`,
+ * with Kabmo's own line windowing, wrap measurement, undo stack, multi-cursor
+ * replication, find matcher and gutter geometry. Typing on a 4 800-line file
+ * cost a measured 59.6 ms median, because every keystroke re-tokenized the
+ * visible window and replaced the whole highlight layer's HTML; CM6 costs
+ * 2.1 ms and the figure is flat from 8 000 to 20 000 lines, because it renders
+ * and tokenizes only its viewport.
+ *
+ * Two decisions are load-bearing and both are stated elsewhere: Shiki stays the
+ * tokenizer (`shiki.ts` — the app has one palette, and a lezer build would cover
+ * 48 of the 59 ids `shiki-langs` knows), and the handle's contract is unchanged
+ * (`CodeSurfaceHandle`), which is what keeps the find widget, the outline jump,
+ * the line jump and the search reveal working without knowing about CM6.
+ *
+ * The host is a BOUNDED box. Measured: an unconstrained host grows to the
+ * document's height (363 758 px at 20 000 lines), and then the scroll geometry,
+ * the gutter and the restore path all become the outer scroller's problem. CM6
+ * owns its own scroller, and it hands that element to its owner through
+ * `onScroller` (a `ref` cannot reach a node the component does not render, and
+ * the restore has to re-arm when the view mounts).
+ */
+
+import { useImperativeHandle, useLayoutEffect, useRef } from 'preact/hooks';
 import { forwardRef } from 'preact/compat';
 import type { CSSProperties } from 'preact';
+import { EditorView } from '@codemirror/view';
 
-import { CodeEditor, type CodeEditorHandle } from '@/client/components/common/code-editor';
-import { measureRowHeight, measureWrappedLines, type WrappedLines } from '@/client/components/common/code-surface/measure';
-import { findScrollContainer } from '@/client/hooks/editor/scroll-container';
-import { useCodeWindow } from '@/client/hooks/editor/use-code-window';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
-import {
-  measuredGeometry,
-  shouldWindow,
-  uniformGeometry,
-  type LineGeometry,
-  type LineWindow,
-} from '@/shared/lib/code/lazy-window';
-import type { FindMatch } from '@/shared/lib/code/editor/find';
+import { createDocumentCache, type DocumentCache } from '@/client/components/common/code-surface/documents';
+import { cancelScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
+import { runSurfaceCommand } from '@/client/components/common/code-surface/keymap';
+import { setFindMarks, type MarkRange } from '@/client/components/common/code-surface/marks';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
-import { lineIndexAt } from '@/shared/lib/code/editor/lines';
-import type { TextRange } from '@/shared/lib/code/editor/commands';
-import { countLines } from '@/shared/lib/code/editor/lines';
-import { highlightCode } from '@/shared/lib/code/syntax-highlight';
-import { highlightCodeWindow } from '@/shared/lib/code/windowed-highlight';
-
-const WRAP_ON = '!whitespace-pre-wrap !break-words';
-const WRAP_OFF = '!whitespace-pre !break-normal';
 
 export interface CodeSurfaceHandle {
-  /** Current selection offsets in the buffer, or null before the field mounts. */
+  /** Current selection offsets in the buffer, or null before the view mounts. */
   getSelection(): { start: number; end: number } | null;
   /** Select `[start, end)`; `focus` moves keyboard focus into the editor. */
   select(start: number, end: number, focus?: boolean): void;
@@ -42,307 +57,268 @@ export interface CodeSurfaceHandle {
   revealOffset(offset: number): void;
 }
 
-interface CodeSurfaceProps {
+export interface CodeSurfaceProps {
   value: string;
   onValueChange: (value: string) => void;
   /** Shiki language id, already resolved from the file name. */
   language: string;
   wordWrap: boolean;
+  /** Which cached `EditorState` this document owns — a tab switch applies another. */
+  documentKey: string;
   /** Find matches (document offsets) to paint; the current one is marked. */
-  marks?: readonly FindMatch[];
+  marks?: readonly MarkRange[];
   currentMark?: number;
-  /**
-   * Extra ranges the ⌘D workflow has selected. The textarea can only hold one
-   * selection, so the surface paints the others from here — and it must, or
-   * ⌘D would look like it did nothing.
-   */
-  occurrences?: readonly TextRange[];
   /** Commands the editor does not own (find bar chords, word wrap, save). */
   onCommand?: (command: EditorCommand) => void;
-  /** Called with the extra ranges whenever ⌘D / ⌘⇧L change them. */
-  onOccurrencesChange?: (ranges: readonly TextRange[]) => void;
-  /** Outer flex row that holds the gutter and the editor column. */
-  rootClassName?: string;
-  gutterClassName?: string;
-  gutterStyle?: CSSProperties;
-  /** Class on each gutter line number. */
-  gutterLineClassName?: string;
-  /** Column wrapping the CodeEditor (padding/overflow live here). */
-  editorWrapperClassName?: string;
-  editorClassName?: string;
-  editorPadding?: number;
-  editorStyle?: CSSProperties;
+  /** A viewer: both `readOnly` and `editable(false)`, so nothing can write. */
+  readOnly?: boolean;
+  /** Font family / size / line height (the zoom control and the font setting). */
+  style?: CSSProperties;
+  /** Padding around the document, in px. */
+  padding?: number;
+  /** `data-testid` for the scroller, so the e2e layer can address it. */
+  scrollTestId?: string;
+  /**
+   * The element that actually scrolls, reported on mount and cleared on unmount.
+   *
+   * It exists only once the view does, and it is CodeMirror's (`view.scrollDOM`)
+   * — a caller that needs to remember the reader's position (`useScrollRestore`)
+   * cannot reach it through a `ref`, so the surface hands it over.
+   */
+  onScroller?: (element: HTMLElement | null) => void;
+  className?: string;
 }
 
-/**
- * The root must be as tall as the DOCUMENT, never as tall as the scroller it
- * sits in.
- *
- * Both callers put this surface inside a scroll container, and the desktop
- * editor's is `display: flex` — so the default `align-items: stretch` sized the
- * root to the container's viewport height while its content (the highlighted
- * `<pre>`, one box per line) overflowed it. The gutter is a stretched row of
- * that root, so its `bg-canvas` band and its `border-r` rule ended after one
- * viewport's worth of lines: scrolling a long file left the line numbers
- * painting over the scroller's own background, with the divider gone. Measured
- * on a 368-line file in a 770px pane — the gutter's box stayed 770px tall at
- * every scroll offset while the document was 10 218px.
- *
- * `align-self: flex-start` is what escapes the stretch; `min-height: 100%` is
- * the floor that keeps a SHORT document's gutter full-height. Together they
- * give the box the height the phone's layout already had (`min-h-full` inside a
- * non-flex scroller), so the two layouts no longer differ here — and the rule
- * lives in the component, because it is a property of the surface, not of a
- * caller's chrome. `align-self` is inert outside a flex parent.
- */
-const ROOT_STYLE: CSSProperties = { alignSelf: 'flex-start', minHeight: '100%' };
+export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(function CodeSurface(
+  {
+    value,
+    onValueChange,
+    language,
+    wordWrap,
+    documentKey,
+    marks,
+    currentMark,
+    onCommand,
+    readOnly = false,
+    style,
+    padding = 16,
+    scrollTestId,
+    onScroller,
+    className,
+  },
+  ref,
+) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  /** The document the live state holds, so a switch can park it under the right key. */
+  const docKeyRef = useRef<string>('');
+  /** The last mark signature applied, so a re-render does not re-dispatch it. */
+  const markSignatureRef = useRef<string>('');
+  /**
+   * True while this component writes the buffer itself.
+   *
+   * Load-bearing: the update listener reports every document change upward, and
+   * an external sync (a file re-read, a tab switch) must not be reported back as
+   * the user's edit — the write path would then arm an autosave for a change
+   * nobody typed.
+   */
+  const writingRef = useRef(false);
 
-/** Same measurement, so a re-render does not resize every gutter row. */
-function sameWrappedLines(previous: WrappedLines | null, next: WrappedLines | null): boolean {
-  if (previous === next) return true;
-  if (!previous || !next || previous.rowHeight !== next.rowHeight) return false;
-  return (
-    previous.heights.length === next.heights.length &&
-    previous.heights.every((height, index) => height === next.heights[index])
-  );
-}
+  // Live mirrors: the state's own extensions close over these, and rebuilding
+  // the state because a callback identity moved would drop the undo history.
+  const onChangeRef = useRef(onValueChange);
+  onChangeRef.current = onValueChange;
+  const onCommandRef = useRef(onCommand);
+  onCommandRef.current = onCommand;
+  const onScrollerRef = useRef(onScroller);
+  onScrollerRef.current = onScroller;
+  /** The marks as of the last render, for the re-apply a document switch owes. */
+  const marksRef = useRef<readonly MarkRange[]>(marks ?? []);
+  const currentMarkRef = useRef(currentMark ?? -1);
+  marksRef.current = marks ?? [];
+  currentMarkRef.current = currentMark ?? -1;
 
-/**
- * The line-number gutter + syntax-highlighted editing surface shared by the
- * desktop editor and the phone's full-screen editor. Callers own only the
- * layout classes (padding, font, zoom) that genuinely differ per layout; the
- * gutter, word-wrap behaviour and Shiki highlighting live here so the two
- * surfaces cannot drift.
- *
- * The gutter spaces its numbers from the editor's measured wrap layout: with
- * word wrap on, a long line covers several rows and every number below it has
- * to move down by the same amount.
- *
- * A long document is drawn lazily: only the lines inside the scroll container's
- * viewport are highlighted and numbered, and the space of everything else is
- * reserved from the same geometry the caret is aligned to. That keeps opening a
- * 20 000-line file from spending minutes in the tokenizer, and a keystroke in it
- * from re-tokenizing the file at all.
- */
-export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(function CodeSurface({
-  value,
-  onValueChange,
-  language,
-  wordWrap,
-  marks,
-  currentMark,
-  occurrences,
-  onCommand,
-  onOccurrencesChange,
-  rootClassName,
-  gutterClassName,
-  gutterStyle,
-  gutterLineClassName,
-  editorWrapperClassName,
-  editorClassName,
-  editorPadding = 0,
-  editorStyle,
-}, ref) {
-  const wrapClass = wordWrap ? WRAP_ON : WRAP_OFF;
-  const preRef = useRef<HTMLPreElement | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const editorRef = useRef<CodeEditorHandle | null>(null);
-  const [wrapped, setWrapped] = useState<WrappedLines | null>(null);
-  const [rowHeight, setRowHeight] = useState<number | null>(null);
-  /** Lines the last measurement pass described; -1 before the first one runs. */
-  const [measuredLines, setMeasuredLines] = useState(-1);
-  useSyntaxReady();
+  // One cache for the component's life: it owns the per-document states.
+  const cacheRef = useRef<DocumentCache | null>(null);
+  if (!cacheRef.current) {
+    cacheRef.current = createDocumentCache({
+      wordWrap,
+      readOnly,
+      onDocChange: (next) => {
+        if (writingRef.current) return;
+        onChangeRef.current(next);
+      },
+      onState: (state) => {
+        const key = docKeyRef.current;
+        if (key) cacheRef.current?.remember(key, state);
+      },
+      onCommand: (command) => onCommandRef.current?.(command),
+    });
+  }
 
-  const lineCount = useMemo(() => countLines(value), [value]);
-
-  // Re-measured on the inputs that move a wrap point: the text, the wrap
-  // preference, and the editor's font size / padding.
-  const measure = useCallback(() => {
-    const pre = preRef.current;
-    if (!pre) return;
-    // Wrapped heights are only needed with word wrap on; without it every line
-    // is one row and the row height alone describes the document.
-    const next = wordWrap ? measureWrappedLines(pre, value) : null;
-    setWrapped((previous) => (sameWrappedLines(previous, next) ? previous : next));
-    const height = next?.rowHeight ?? measureRowHeight(pre);
-    setRowHeight((previous) => (previous === height ? previous : height));
-    setMeasuredLines(lineCount);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, lineCount, wordWrap, editorPadding, editorStyle?.fontSize]);
-
+  // Mount once. Every later change is a state swap or a dispatch — never a
+  // second view, which would drop the undo history the cache exists to keep.
   useLayoutEffect(() => {
-    measure();
-  }, [measure]);
+    const host = hostRef.current;
+    const cache = cacheRef.current;
+    if (!host || !cache) return;
 
-  // The wrap width also changes without a re-render — dragging the panel
-  // splitter, resizing the window, a zoom that reflows — so the editor's own
-  // box drives a re-measure too.
-  const measureRef = useRef(measure);
-  measureRef.current = measure;
-  useEffect(() => {
-    const pre = preRef.current;
-    if (!pre || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => measureRef.current());
-    observer.observe(pre);
-    return () => observer.disconnect();
+    docKeyRef.current = documentKey;
+    const view = new EditorView({
+      state: cache.stateFor(documentKey, language, value),
+      parent: host,
+    });
+    viewRef.current = view;
+    if (scrollTestId) view.scrollDOM.dataset.testid = scrollTestId;
+    onScrollerRef.current?.(view.scrollDOM);
+
+    return () => {
+      onScrollerRef.current?.(null);
+      view.destroy();
+      viewRef.current = null;
+    };
+    // Mount only: the effects below own every later change, and re-running this
+    // one would rebuild the view (and its history).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const geometry = useMemo<LineGeometry | null>(() => {
-    if (rowHeight === null) return null;
-    return wrapped
-      ? measuredGeometry(wrapped.heights, wrapped.rowHeight, lineCount)
-      : uniformGeometry(rowHeight, lineCount);
-  }, [rowHeight, wrapped, lineCount]);
-
-  // Windowing costs a scroll listener and a spacer; a document short enough to
-  // draw in one pass keeps the plain surface.
-  const lazy = shouldWindow(lineCount, value.length);
-  const virtual = useCodeWindow({
-    rootRef,
-    lineCount,
-    geometry,
-    // A document whose geometry could not be measured still falls back to the
-    // plain surface — but one whose measurement has not run *yet* must not:
-    // that path would draw the whole file, which is what windowing exists to
-    // avoid. `measuredLines` is why switching files (which leaves a geometry
-    // for the previous document behind) does not take it either.
-    enabled: lazy && (measuredLines !== lineCount || geometry !== null),
-  });
-
-  /**
-   * What the highlight layer paints: the find matches, plus every extra ⌘D
-   * range. The find widget's current match is the one the caret is aimed at, so
-   * it keeps `currentMark` — an occurrence range never claims that role.
-   */
-  const painted = useMemo<readonly FindMatch[]>(() => {
-    if (!occurrences || occurrences.length === 0) return marks ?? [];
-    return [...(marks ?? []), ...occurrences];
-  }, [marks, occurrences]);
-  /** Where the extra selections start inside `painted`; -1 when there are none. */
-  const occurrenceFrom = occurrences && occurrences.length > 0 ? (marks?.length ?? 0) : -1;
-
-  const highlight = useCallback(
-    (code: string, range: LineWindow | null) =>
-      range
-        ? highlightCodeWindow(code, language, range, { marks: painted, currentMark, occurrenceFrom })
-        : highlightCode(code, language, { marks: painted, currentMark, occurrenceFrom }),
-    [language, painted, currentMark, occurrenceFrom],
-  );
-
-  /**
-   * Bring `offset`'s row into view without touching the caret.
-   *
-   * `scrollIntoView` cannot be used: the caret's row and the match's row are
-   * different elements (the highlighted `<pre>` is `aria-hidden` and
-   * `pointer-events: none`), and the browser's own scroll-into-view on
-   * `setSelectionRange` would fight this. Instead the row's pixel offset comes
-   * from the same geometry the window is resolved against, so the two agree by
-   * construction, and the scroll is a plain assignment on the container the
-   * window reads.
-   *
-   * A reveal is REPLAYED while the geometry is still moving, and that is
-   * load-bearing rather than defensive. Opening the editor panel animates its
-   * width, so the document is measured once at each intermediate width: a
-   * reveal that scrolled with the first (narrow) measurement put line 800 of a
-   * 900-line file near the bottom, and the settled, wider measurement then left
-   * the scroller clamped there — showing the file's tail with the hit's own
-   * highlight unpainted.
-   */
-  const pendingRevealRef = useRef<{ offset: number; until: number } | null>(null);
-
-  const applyReveal = useCallback(
-    (offset: number) => {
-      const root = rootRef.current;
-      if (!root || !geometry) return;
-      const rowTop = geometry.offsetOf(lineIndexAt(value, offset));
-      const container = findScrollContainer(root);
-      if (!container) return;
-      const frameTop = root.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-      const band = container.clientHeight;
-      const target = frameTop + rowTop;
-      // Only scroll when the row is actually outside the band; a reveal that
-      // always re-centers would make every "next match" jump the whole view.
-      if (target < container.scrollTop + 8 || target + geometry.rowHeight > container.scrollTop + band - 8) {
-        container.scrollTop = Math.max(0, target - band / 3);
-      }
-    },
-    [geometry, value],
-  );
-
-  const revealOffset = useCallback(
-    (offset: number) => {
-      // The window covers the panel's 200ms width transition plus a margin; a
-      // user scrolling within it is not a case this feature has to serve.
-      pendingRevealRef.current = { offset, until: performance.now() + 600 };
-      applyReveal(offset);
-    },
-    [applyReveal],
-  );
-
-  // Re-apply the pending reveal as the geometry moves, and drop it once the
-  // document has settled (or the window closed).
+  // A different document: park the live state, then apply the other one.
   useLayoutEffect(() => {
-    const pending = pendingRevealRef.current;
-    if (!pending) return;
-    if (performance.now() > pending.until) {
-      pendingRevealRef.current = null;
-      return;
-    }
-    applyReveal(pending.offset);
-  }, [applyReveal]);
+    const view = viewRef.current;
+    const cache = cacheRef.current;
+    if (!view || !cache) return;
+    if (docKeyRef.current === documentKey) return;
+    cache.remember(docKeyRef.current, view.state);
+    docKeyRef.current = documentKey;
+    view.setState(cache.stateFor(documentKey, language, value));
+    // The cached state carries the configuration it was CREATED with, and
+    // `setState` installs that wholesale — so the current wrap/read-only pair is
+    // re-applied, or a tab opened while wrap was off comes back unwrapped.
+    view.dispatch({ effects: cache.currentEffects() });
+    syncExternal(view, value, writingRef);
+    // The marks belonged to the previous document's offsets, and the field lives
+    // in that state. A fresh state starts empty, so this re-applies whatever the
+    // new document's owner asked for rather than leaving a stale set behind.
+    markSignatureRef.current = '';
+    view.dispatch({
+      effects: setFindMarks.of({ marks: marksRef.current, current: currentMarkRef.current }),
+    });
+    // `value` is deliberately absent: this effect is about the KEY moving, and
+    // the external sync below covers a document whose bytes were replaced.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentKey]);
+
+  // The parent replaced the buffer (a re-read, a refresh, a replace-all).
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (!view || docKeyRef.current !== documentKey) return;
+    syncExternal(view, value, writingRef);
+  }, [value, documentKey]);
+
+  // Wrap and read-only are per-view settings: reconfiguring keeps the document,
+  // the selection and the history, which is what a wrap toggle must not disturb.
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    const cache = cacheRef.current;
+    if (!view || !cache) return;
+    const effects = cache.optionsEffects({ wordWrap, readOnly });
+    if (effects.length > 0) view.dispatch({ effects });
+  }, [wordWrap, readOnly]);
+
+  // Find marks: a field write, never a re-tokenize.
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const list = marks ?? [];
+    const signature = `${currentMark ?? -1}:${list.map((mark) => `${mark.start}-${mark.end}`).join(',')}`;
+    if (signature === markSignatureRef.current) return;
+    markSignatureRef.current = signature;
+    view.dispatch({ effects: setFindMarks.of({ marks: list, current: currentMark ?? -1 }) });
+  }, [marks, currentMark]);
 
   useImperativeHandle(
     ref,
     () => ({
-      getSelection: () => editorRef.current?.getSelection() ?? null,
-      select: (start, end, focus = true) => editorRef.current?.select(start, end, focus),
-      applyDocument: (next, caretStart, caretEnd) => editorRef.current?.applyDocument(next, caretStart, caretEnd),
-      runCommand: (command) => editorRef.current?.run(command),
-      revealOffset,
+      getSelection: () => {
+        const view = viewRef.current;
+        if (!view) return null;
+        const range = view.state.selection.main;
+        return { start: range.from, end: range.to };
+      },
+      select: (start, end, focus = true) => {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: false });
+        // `focus()` is CM6's own `focusPreventScroll`, which is what stops the
+        // browser scrolling the caret into view a second time — the caller's
+        // `revealOffset` is the only thing that scrolls.
+        if (focus) view.focus();
+      },
+      applyDocument: (next, caretStart, caretEnd) => {
+        const view = viewRef.current;
+        if (!view) return;
+        // Deliberately NOT wrapped in `writingRef`: this is a USER edit (the
+        // find bar's replace), so it has to reach `onValueChange` exactly like
+        // typing does. Suppressing it left the parent holding the pre-replace
+        // buffer — the replacement was invisible to the autosave, and the next
+        // render that compared `value` against the document wrote the OLD text
+        // back over it (measured: replace-all, switch tab, come back → the
+        // original text, and nothing on disk).
+        //
+        // One transaction, so ⌘Z undoes the whole replacement: a replace-all
+        // that took one undo step per match is what the old surface had to
+        // hand-roll a history for.
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: next },
+          selection: { anchor: caretStart, head: caretEnd },
+        });
+      },
+      runCommand: (command) => {
+        const view = viewRef.current;
+        if (!view) return;
+        runSurfaceCommand(command, view, onCommandRef.current);
+      },
+      revealOffset: (offset) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const at = Math.max(0, Math.min(offset, view.state.doc.length));
+        // A reveal is an explicit destination, so a restore still replaying the
+        // remembered offset must stand down — otherwise its `ResizeObserver`
+        // callback (which can run BEFORE the scroll event this dispatch causes)
+        // writes the old position back and the view never moves.
+        cancelScrollRestore(view.scrollDOM);
+        view.dispatch({ effects: EditorView.scrollIntoView(at, { y: 'nearest', yMargin: 24 }) });
+        // `y: 'nearest'` is the rule the old surface hand-rolled: a reveal only
+        // scrolls when the target is outside the visible band, so stepping
+        // through matches does not jump the whole view on every step.
+      },
     }),
-    [revealOffset],
+    [],
   );
 
-  const firstLine = virtual ? virtual.start : 0;
-  const lastLine = virtual ? Math.min(virtual.end, lineCount) : lineCount;
-  const rows: number[] = [];
-  for (let i = firstLine; i < lastLine; i++) rows.push(i);
-  // Row heights are only usable for the document they were measured against.
-  const lineHeights = wrapped && wrapped.heights.length === lineCount ? wrapped.heights : null;
+  const hostStyle = {
+    ...style,
+    // The document's padding, read back by the theme as a CSS variable so a
+    // per-layout value needs no theme reconfigure.
+    '--surface-pad': `${padding}px`,
+  } as CSSProperties;
 
-  return (
-    <div className={rootClassName} style={ROOT_STYLE} ref={rootRef}>
-      <div className={gutterClassName} style={gutterStyle}>
-        {virtual && virtual.top > 0 ? <div style={{ height: virtual.top, flexShrink: 0 }} aria-hidden="true" /> : null}
-        {rows.map((index) => (
-          <div
-            key={index + 1}
-            className={gutterLineClassName}
-            style={lineHeights ? { height: lineHeights[index], flexShrink: 0 } : undefined}
-          >
-            {index + 1}
-          </div>
-        ))}
-      </div>
-      <div className={editorWrapperClassName}>
-        <CodeEditor
-          value={value}
-          onValueChange={onValueChange}
-          highlight={highlight}
-          padding={editorPadding}
-          preRef={preRef}
-          handleRef={editorRef}
-          textareaClassName={`focus:outline-none ${wrapClass}`}
-          preClassName={wrapClass}
-          style={editorStyle}
-          className={editorClassName}
-          virtual={virtual}
-          language={language}
-          occurrences={occurrences}
-          onCommand={onCommand}
-          onOccurrencesChange={onOccurrencesChange}
-        />
-      </div>
-    </div>
-  );
+  return <div ref={hostRef} className={className} style={hostStyle} />;
 });
+
+/**
+ * Write `value` into the view when it differs from what the document holds.
+ *
+ * The guard is the whole function: the parent re-renders on every keystroke, so
+ * an unguarded write would dispatch a full-document replace on each one — both a
+ * second edit and a fresh undo entry per character.
+ */
+function syncExternal(view: EditorView, value: string, writingRef: { current: boolean }): void {
+  if (value === view.state.doc.toString()) return;
+  writingRef.current = true;
+  try {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
+  } finally {
+    writingRef.current = false;
+  }
+}

@@ -3,7 +3,6 @@ import { FilePane } from '@/client/components/workspace/editor/FilePane';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { ResolvedPluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
-import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import type { RefObject } from 'preact';
@@ -25,8 +24,6 @@ interface EditorBodyProps {
   setIsMaximized: (next: boolean) => void;
   zoomLevel: number;
   setZoomLevel: (update: (current: number) => number) => void;
-  occurrences: readonly TextRange[];
-  setOccurrences: (next: readonly TextRange[]) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
   runCommand: (command: EditorCommand) => void;
@@ -60,8 +57,6 @@ export function EditorBody({
   setIsMaximized,
   zoomLevel,
   setZoomLevel,
-  occurrences,
-  setOccurrences,
   paletteOpen,
   setPaletteOpen,
   runCommand,
@@ -113,8 +108,6 @@ export function EditorBody({
       setIsMaximized={setIsMaximized}
       zoomLevel={zoomLevel}
       setZoomLevel={setZoomLevel}
-      occurrences={occurrences}
-      setOccurrences={setOccurrences}
       paletteOpen={paletteOpen}
       setPaletteOpen={setPaletteOpen}
       runCommand={runCommand}

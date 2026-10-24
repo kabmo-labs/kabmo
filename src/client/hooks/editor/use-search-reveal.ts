@@ -29,7 +29,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useSyncExternalStore } from 'preact/compat';
 
-import { findMatches, lineStartOffset, matchIndexAtOrAfter } from '@/shared/lib/code/editor/find';
+import { findMatches, lineStartOffset, matchIndexAtOrAfter } from '@/shared/lib/code/editor/find-scan';
 import {
   getSearchReveal,
   setSearchReveal,

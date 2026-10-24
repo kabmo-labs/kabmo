@@ -23,7 +23,7 @@
  * editor can decide by equality whether the request is for the file it holds.
  */
 
-import type { FindOptions } from '@/shared/lib/code/editor/find';
+import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 
 export interface SearchRevealRequest {
   /** Workspace-relative path of the file the match lives in. */

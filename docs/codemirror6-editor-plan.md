@@ -5,18 +5,23 @@ Replacing the editor panel's hand-built editing surface (`CodeSurface` +
 Kabmo's own windowing, undo, multi-cursor, find bar and keymap) with
 CodeMirror 6.
 
-Status: **plan only, nothing implemented.** Every number below was measured on
-2026-10-23 against `@codemirror/view` 6.43.15 / `state` 6.7.6 / `merge` 6.12.3 in
-headless Chromium, and against this repository's own editor through the e2e
-harness (`startHarnessServer` + Playwright, 1440×900, default panel width).
-Reproduce by pointing a throwaway spec at `tests/e2e/fixtures/server.ts`.
+Status: **implemented.** Phases 1–3 shipped; Phase 4's desktop half is verified
+and its device run is not (see *Phase 4* below). The measurements in this
+document are the 2026-10-23 baseline, kept as the record the migration was
+decided on; the *Verification* section at the end states what was re-measured
+afterwards.
+
+Baseline method: `@codemirror/view` 6.43.15 / `state` 6.7.6 / `merge` 6.12.3 in
+headless Chromium, and this repository's own editor through the e2e harness
+(`startHarnessServer` + Playwright, 1440×900, default panel width). Reproduce by
+pointing a throwaway spec at `tests/e2e/fixtures/server.ts`.
 
 Scope: the desktop editor panel (`src/client/components/workspace/editor/`) and
 the phone's full-screen editor
 (`src/client/components/mobile/mobile-right-sidebar/FullEditor.tsx`), which share
-`CodeSurface`. The diff panel, the chat tool cards, the wiki reader and the
-markdown preview are **out of scope** for the core phases (see Phase 3 for the
-diff panel, which is its own decision).
+`CodeSurface`. The diff panel and the chat tool cards followed in Phase 3 (both
+now render through `@codemirror/merge`); the wiki reader and the markdown
+preview are unchanged and keep their own renderers.
 
 ## Verdict
 
@@ -151,7 +156,26 @@ but *not* a programmatic `dispatch({ changes })` (measured: the change applied);
 
 ## File inventory
 
-Delete — 4,350 lines including tests (measured with `wc -l`):
+**What actually shipped, against the forecast below.** The forecast was right
+about the volume and wrong about four rows, and the deltas are worth stating
+because each one was a discovery:
+
+- `use-editor-find.ts` and `find-state.ts` were **kept**. The plan contradicted
+  itself here (Phase 2 step 2 says keep the state shape); the hook is the state
+  machine, and only its matcher imports changed. Its two test files and the
+  harness were kept with it.
+- `marks.ts` and `lines.ts` were **kept**. `lines.ts` is the line arithmetic half
+  the highlighter, the outline and the search panel all use, and `marks.ts` still
+  emits `<mark>` for every surface that is not the editor (the chat card's
+  excerpt, the search panel's rows). Only the editor stopped using them.
+- `commands.ts` (236 lines) and `line-edits.ts` (its helpers) were **deleted**,
+  which the forecast did not list: every command in them is a CM6 command now,
+  and the one thing still needed — the comment-token table — became
+  `comment-syntax.ts` (56 lines) because `toggleComment` reads exactly that.
+- `diff-panel/{UnifiedView,SplitView}.tsx`, `shared/lib/fs/diff-parser.ts` and
+  the chat card's parser use were **deleted in Phase 3**, not listed here.
+
+Delete — 4,350 lines including tests (measured with `wc -l`), as forecast:
 
 | Path | Lines | Why |
 |---|---|---|
@@ -212,15 +236,19 @@ interface CodeSurfaceProps {
   language: string;            // Shiki id — unchanged
   wordWrap: boolean;
   documentKey: string;         // NEW: which EditorState in the per-tab cache
-  marks?: readonly FindMatch[];
+  marks?: readonly MarkRange[];
   currentMark?: number;
   onCommand?: (command: EditorCommand) => void;
   readOnly?: boolean;          // now actually enforced (readOnly + editable(false))
   style?: CSSProperties;       // font family / size / line height (zoom)
+  padding?: number;            // the document's own padding, as `--surface-pad`
+  scrollTestId?: string;       // `data-testid` on `view.scrollDOM`
+  onScroller?: (el: HTMLElement | null) => void;  // NEW: see below
+  className?: string;
 }
 ```
 
-Handle (four existing methods, one added):
+Handle (the four existing methods; the planned getter was dropped):
 
 ```ts
 interface CodeSurfaceHandle {
@@ -229,9 +257,18 @@ interface CodeSurfaceHandle {
   applyDocument(value: string, caretStart: number, caretEnd: number): void; // one undoable transaction
   runCommand(command: EditorCommand): void;
   revealOffset(offset: number): void;   // EditorView.scrollIntoView(offset, { y: 'nearest' })
-  getScrollElement(): HTMLElement | null; // NEW: view.scrollDOM, for scroll restore
 }
 ```
+
+**Deviation: the scroller is reported, not read back.** The plan called for a
+`getScrollElement()` accessor so `use-scroll-restore` could write to
+`view.scrollDOM`. A getter cannot work there: the element appears only once the
+view mounts, so a caller reading it through a `ref` during render gets `null` and
+never re-runs. `onScroller` hands the element over on mount (and `null` on
+unmount), the panel holds it in state, and `useScrollRestore` takes it as its
+`element` option — which also re-arms the restore on the render the element
+arrives in. An accessor nobody calls would have been dead API, so it is not
+there.
 
 ## Phases
 
@@ -305,18 +342,40 @@ persistence across reload, and the search-panel "jump to hit" path
 
 ### Phase 3 — diff panel on `@codemirror/merge`
 
-Its own decision, because the current panel renders git's unified diff (server
-`-U<n>` probes, table rows, `Diff Only` / `Full Code`, stage/unstage/discard) and
-the merge view needs both sides of the file.
+Shipped. What the plan did not anticipate, and what the implementation had to
+decide:
+
+- **The server sends both sides on every read, and `fullContext` is gone.** The
+  panel compares DOCUMENTS now, so `oldContent`/`newContent` travel on the
+  existing `GET /api/fs/git?fileDiff=1` response (they already did, unused by
+  this panel) and *Diff Only* ↔ *Full Code* is a client-side
+  `collapseUnchanged` reconfigure. The `-U<n>` probe existed only because a
+  table renderer cannot collapse anything.
+- **The counts come from `Chunk.build(a, b)`, not from `diff()`.** `diff()` is a
+  CHARACTER diff: changing `line 5` to `line 5 changed` reports one insertion of
+  `" changed"` and no deletion, so a badge built on it claimed `+2` for two
+  edited lines. `Chunk.build` is the line-level chunking the rows are drawn
+  from, and it needs no view — verified: two edited lines → `+2 -2`, a new file
+  → `+2 -0`, an inserted line → `+1 -0`.
+- **The chat tool card renders the same merge view**, so it does not grow a
+  second diff implementation. It has a PATCH and no documents, so
+  `shared/lib/fs/patch-sides.ts` rebuilds the two sides from the hunks — padding
+  each side to the line its `@@` header names, or the gutter would number a
+  mid-file change from 1. `contentMode: 'diff'` collapses that padding.
+- **`diff-parser.ts` is deleted.** Its only remaining consumer was the card, and
+  the card now needs the two sides rather than per-row line numbers.
+
+The plan's own steps, as they landed:
 
 1. `unifiedMergeView({ original, collapseUnchanged })` for the Unified view:
    measured 4 chunks, `.cm-changedLine`, `.cm-deletedChunk`, inline
    `.cm-changedText`, and `collapseUnchanged` reproducing *Diff Only* (25 viewport
    blocks) vs *Full Code* (80) through one `Compartment`.
 2. `MergeView` for Split (measured: 3 chunks, two editors, aligned unchanged
-   lines), and `diff()` for the toolbar's `+n/-n`.
+   lines), and `Chunk.build(a, b)` for the toolbar's `+n/-n` (see above).
 3. `getChunks(state)` is the read — note it is a *function*, and
-   `state.field(getChunks)` throws (`Field is not present in this state`);
+   `state.field(getChunks)` throws (`Field is not present in this state`); the
+   counts therefore go through `Chunk.build`, which needs no view.
    `collapseUnchanged` is a `Compartment` reconfigure, not a re-mount.
 4. Keep `FileDiffData` (`oldContent` / `newContent` already travel), keep the
    toolbar's stage/unstage/discard and `revert`, keep the word-wrap toggle
@@ -325,27 +384,39 @@ the merge view needs both sides of the file.
 5. Delete `diff-panel/{UnifiedView,SplitView}.tsx` and `diff-parser` once both
    views are on the merge extension.
 
-Acceptance: `git-panel.e2e.ts` unchanged and green; a new spec pins a real
+Acceptance: `git-panel.e2e.ts` green; `diff-panel.e2e.ts` pins a real
 working-tree change rendering the right counts and toggling *Diff Only* ↔ *Full
-Code*; discard/stage still hit the routes they hit today.
+Code*, the split shape's two read-only editors, and the wrapped default;
+discard/stage still hit the routes they hit today.
 
 ### Phase 4 — mobile, IME and the shells
 
 1. `EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off',
-   autocapitalize: 'off', translate: 'no' })` — CM6 already sets these
-   (verified), so this phase is about *verifying*, not adding.
-2. Run the phone editor on a real Android emulator against a live Kabmo: typing,
-   selection handles, soft-keyboard inset (the existing `useKeyboardInset` path),
-   scroll while the keyboard is up, and the drop overlay.
-3. Re-check the two mobile shells' WebViews (Android WebView, iOS WKWebView) —
-   CM6's own changelog through 2026-10-19 is still fixing Chrome Android and iOS
-   composition/selection behaviour, which is the strongest signal that this
-   surface needs device evidence rather than a desktop-only pass.
-4. Keep the composer untouched: it is a `<textarea>` and must stay one.
+   autocapitalize: 'off', translate: 'no' })` — stated explicitly in
+   `code-surface/extensions.ts`, so a future CM6 default cannot silently regress a
+   phone keyboard.
+2. **Device run: not done.** Everything a desktop browser can exercise is
+   covered — `mobile-editor.e2e.ts` opens a file in the phone's full-screen
+   editor, types into it, waits for the autosave to land on disk, and reopens the
+   file to the scroll position it was left at, on the `mobile-chromium` (Pixel 7)
+   project. A soft keyboard, IME composition and selection handles are exactly
+   what a viewport emulation does not have, so they remain unverified.
+3. The two shells' WebViews (Android WebView, iOS WKWebView) are likewise
+   unverified; CM6's changelog through 2026-10-19 was still fixing Chrome Android
+   and iOS composition/selection behaviour.
+4. The composer is untouched: it is a `<textarea>` and must stay one.
 
-Acceptance: the Android emulator checklist above, recorded in the pull request;
-`mobile.e2e.ts` / `mobile-dock.e2e.ts` / `mobile-files.e2e.ts` green; no change to
-composer behaviour.
+Acceptance met: `mobile.e2e.ts` / `mobile-dock.e2e.ts` / `mobile-files.e2e.ts` /
+`mobile-editor.e2e.ts` green on `mobile-chromium`; no change to composer
+behaviour. Outstanding: the emulator checklist in (2) and the shell pass in (3).
+
+**One bug this phase found, which no unit test could:** the phone's editor was
+wrapped in an `overflow-auto` div, and `height: 100%` against an auto-height box
+resolves to `auto` — so the surface grew to the document's full height and the
+panel had nothing to scroll (`scrollHeight === clientHeight`, measured 3 624 px
+in a 3 624 px box). The fix is structural: the code surface is a SIBLING branch
+that is not wrapped, and only the states that own their own content (loading,
+refusal, failed read, markdown preview) keep the scroller.
 
 ## Test strategy
 
@@ -362,16 +433,22 @@ not defined` from `isScrolledToBottom`). Two limits, both measured:
 - Assertions must be about state and DOM structure (document text, selection
   ranges, decoration classes, gutter elements), never about pixels.
 
-New unit coverage to add: the keymap generator (every `EDITOR_KEY_BINDINGS` row
-maps to a binding, and panel-owned commands delegate), the Shiki decoration
-builder (window maths, the long-line bail-out, marks from find ranges), the
-per-document state cache (switch, undo isolation), and the guarded external sync
-(no dispatch when the document already matches).
+New unit coverage, as it landed: `keymap.test.ts` (every `EDITOR_KEY_BINDINGS`
+row resolves to a chord on both platforms, and no two rows claim one),
+`documents.test.ts` (per-tab undo isolation, the caret surviving a switch, the
+LRU bound, read-only), `extensions.test.ts` (the `languageData` shape that makes
+`toggleComment` work, plus the wrap/read-only compartments), and
+`comment-syntax.test.ts`. The Shiki decoration builder has no unit test: its
+window maths are CM6's viewport and its output is a `DecorationSet` over a
+viewport happy-dom does not compute, so it is covered by `editor.e2e.ts` and by
+the typed-text assertions in `find.e2e.ts`.
 
-Specs to rewrite (all measured as bound to today's surface): `editor.e2e.ts`,
-`editor-scroll.e2e.ts`, `outline.e2e.ts`, `search-panel.e2e.ts`; plus
-`fixtures/selectors.ts`'s `editorScroller`. `composer-stretch.e2e.ts` and
-`terminal.e2e.ts` mention `textarea` but never the editor — leave them.
+Specs rewritten (all were bound to the old surface): `editor.e2e.ts`,
+`editor-scroll.e2e.ts`, `outline.e2e.ts`, `search-panel.e2e.ts`, plus
+`fixtures/selectors.ts`'s `editorScroller`. New: `find.e2e.ts`,
+`diff-panel.e2e.ts`, `editor-commands.e2e.ts`, `mobile-editor.e2e.ts`.
+`composer-stretch.e2e.ts` and `terminal.e2e.ts` mention `textarea` but never the
+editor — left alone.
 
 ## Risks
 
@@ -380,10 +457,10 @@ Specs to rewrite (all measured as bound to today's surface): `editor.e2e.ts`,
 | Mobile/IME regressions | CM6 6.43.x changelog fixes Chrome Android select-all/scroll-on-tap and iOS Shift+Enter, composition and native cursor alignment | Phase 4 device run before cutover; desktop shells keep the same WebView rules |
 | e2e locators break by construction | `editor.e2e.ts` uses `locator('textarea')` and `toHaveValue`; `outline.e2e.ts` reads `selectionStart`/`selectionEnd` off the textarea | Rewrite in Phase 1, with the assertion moved to the observable that actually changes (`view.state.selection`, the file on disk) |
 | happy-dom cannot assert geometry | measured above | Keep geometry claims in e2e; keep unit tests on state |
-| Drop-to-open stops working | CM6's `contentDOM` is a `contenteditable` host and may claim drag events | Keep `useEditorDrop` on the wrapping element and verify both drop shapes (Finder handle, `text/uri-list`) in the editor spec |
+| Drop-to-open stops working | CM6's `contentDOM` is a `contenteditable` host and may claim drag events | Keep `useEditorDrop` on the wrapping element. NOT covered by a spec: the editor's drop path has no e2e case, and the harness has no way to synthesise a Finder drag. `useEditorDrop`'s own unit test covers the counter and the refusal shapes. |
 | Panel resize fights CM6's measurement | the panel animates its width for 200 ms; the current surface pays for that with a 600 ms restore replay and a hidden mirror measuring every line | CM6 owns the measurement (verified: it constructs its own `ResizeObserver` and re-measures on layout change), so the replay can collapse to one write on `view.scrollDOM`; if a wrap re-flow still lands late, keep a short replay rather than porting the mirror |
 | Stored scroll offsets do not match the new line heights | `editor.scrollPositions` is px of the old scroller | Treat stored offsets as best-effort (same as today), keep the key and the per-surface split; do not migrate or clear |
-| 350-line ceiling | `code-surface/index.tsx` is 348 lines today and grows when it owns the mount | Split as listed in the inventory; the wrapper, extensions, plugin, keymap, theme and document cache are six files |
+| 350-line ceiling | `code-surface/index.tsx` was 348 lines and grows when it owns the mount | Split as listed; the shipped modules are `index.tsx` 324, `keymap.ts` 256, `shiki.ts` 197, `extensions.ts` 149, `documents.ts` 140, `theme.ts` 91, `marks.ts` 74 |
 
 ## Non-goals
 
@@ -404,14 +481,93 @@ reached from exactly three places (`FileDocument`, `FullEditor`, and the
 type-only imports in `use-line-jump` / `use-editor-outline-bridge`), so no other
 subsystem can be left half-migrated.
 
-## Open questions
+## Open questions — resolved
 
-1. Keep Kabmo's `FindWidget` (themed, persisted, tested) rather than adopting
-   CM6's search panel? Plan says keep; CM6's `search({ createPanel })` is the
-   escape hatch if the widget ever becomes a liability.
-2. Restore scroll as a px offset on `view.scrollDOM` (plan) or as CM6's
-   `scrollSnapshot()`? A snapshot is not serializable, so it cannot serve a
-   reload; the px offset keeps the existing session state.
-3. Do we ever want lezer grammars for a *few* languages to buy folding and
-   bracket matching, accepting two tokenizers in one file? Defer until a user asks
-   for folding.
+1. **Kabmo's `FindWidget` was kept**, and it was the right call for a reason the
+   plan did not state: the widget owns the persisted query and the option
+   toggles, and CM6's panel has no persistence at all. Only its matcher changed.
+   The one thing the move cost was a bug in the widget's geometry — it was
+   330 px wide in a 320 px panel, so its leftmost control was unreachable.
+2. **Scroll is a px offset on the scroller**, as planned. `scrollSnapshot()`
+   cannot be serialized and the offset has to survive a reload.
+3. **No lezer grammars.** Nothing has asked for folding, and the decoration
+   plugin already covers all 59 languages.
+
+Two new questions the migration raises:
+
+4. **Should the outline stop re-scanning the whole buffer per keystroke?** At
+   20 000 lines with the Files panel open, a keystroke costs ~165 ms and the
+   profile is Shiki's `findNextMatchSync` inside `extractOutline`. It is not a
+   regression (the outline always ran on every content change) but it is now the
+   slowest thing in the editor's neighbourhood, and a debounce or a
+   viewport-scoped scan would fix it.
+5. **Should the diff panel's Split view have its own word-wrap control?** It
+   shares `diff.wordWrap`, but the two shapes wrap differently (a split row has
+   half the width), so a reader who wants wrapping in Unified may not want it in
+   Split. Left shared because one setting that means "wrap" is easier to reason
+   about than two that can disagree.
+
+## Verification
+
+Re-measured after the migration, on the same harness and the same 1440×900
+viewport. Every figure below is from a throwaway Playwright spec driving the
+assembled app, not from a unit test.
+
+| Claim | Result |
+|---|---|
+| One keystroke at 4 800 lines, synchronous cost of the edit | **0.2 ms median, 0.5 ms p95** (baseline 59.6 / 78.1) |
+| One keystroke at 20 000 lines | **0.3 ms median, 0.4 ms p95** — flat, as the plan predicted |
+| Rendered `.cm-line` nodes at 20 000 lines | **54** (the budget was ≤ 200) |
+| `<textarea>` inside the editor panel | **0** |
+| Wrap toggle, 600-char single line in a 320 px panel | `scrollWidth 320 = clientWidth 320` wrapped → **4 525** unwrapped |
+| ⌘D twice | two cursors; typing edits both; **one** ⌘Z reverts both |
+| Find on a 200-line file (`alpha1`) | count **111**, one `data-find-current`, stepping moves it |
+| Replace all | one ⌘Z restores the file |
+| Invalid regex | `Invalid pattern`, distinct from `No results` |
+| Mount of a 20 000-line file | ~1.6 s from click to content, including the read |
+| The contenteditable's input attributes | `spellcheck=false`, `autocorrect=off`, `autocapitalize=off`, `translate=no`, `role=textbox` — pinned by `editor.e2e.ts` |
+
+The keystroke figures are the SYNCHRONOUS cost of the DOM edit (what the plan's
+baseline measured). A frame-level figure is dominated by the browser's own
+compositing and reads ~17 ms at any document size, which is why it is not the
+number quoted here.
+
+Two measurements that surprised, both worth keeping:
+
+- **The outline consumer, not the surface, was the slow path at 20 000 lines.**
+  With the Files panel on screen a keystroke cost ~165 ms; with Search on screen
+  it cost ~17 ms and the CPU profile showed Shiki's `findNextMatchSync` at 15%.
+  The outline re-scans the whole buffer per keystroke (`extractOutline`), which is
+  a property of that panel and not of the editor — it is left as it is here
+  because changing it is a different decision, but it is the next thing to fix if
+  a large file with the outline open feels slow.
+- **The find bar was wider than the panel it lives in** (330 px fixed, in a 320 px
+  panel), so its leftmost control hung past the panel edge and a click on it
+  landed on the panel beside it. `max-w-[calc(100%-1rem)]` fixed it; the spec
+  clicks the control.
+- **`applyDocument` must NOT be silenced as an "external" write.** The guard
+  exists so a write that came FROM the parent does not echo back; a replace is a
+  user edit, so suppressing it left the parent holding the pre-replace buffer —
+  the autosave never saw the change, and the next render compared the stale
+  `value` against the document and wrote the OLD text back. Measured: replace-all,
+  switch tab, come back → the original text and nothing on disk. `find.e2e.ts`
+  now asserts both the bytes on disk and the buffer after a tab switch.
+
+### What shipped, in one list
+
+- `code-surface/` is seven modules: `index.tsx` (mount, handle, external sync),
+  `extensions.ts` (the extension stack and the two compartments), `shiki.ts` (the
+  viewport decoration plugin), `keymap.ts` (CM6 bindings generated from
+  `EDITOR_KEY_BINDINGS`), `theme.ts`, `documents.ts` (the per-tab `EditorState`
+  cache), `marks.ts` (find marks as a state field).
+- Deleted: `code-editor/`, `code-surface/measure.ts`, `use-code-window`,
+  `use-editor-history`, `use-occurrences`, `scroll-container`,
+  `shared/lib/code/{lazy-window,windowed-highlight}`,
+  `shared/lib/code/editor/{history,layers,edits,text-commands,occurrences,reset-css}`,
+  `diff-panel/{UnifiedView,SplitView}`, `shared/lib/fs/diff-parser`.
+- Split: `find.ts` → `find-scan.ts` (the `RegExpCursor` walk) +
+  `find-replace.ts` (template expansion), because a caller that only paints
+  matches should not carry the replacement grammar.
+- New specs: `find.e2e.ts`, `diff-panel.e2e.ts`, `mobile-editor.e2e.ts`; and
+  `keymap.test.ts`, `documents.test.ts`, `patch-sides.test.ts` for the parts a
+  browser is not needed to prove.

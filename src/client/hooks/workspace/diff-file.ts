@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import type { DiffContentMode } from '@/client/components/workspace/diff-panel/Toolbar';
 
 interface UseFileDiffOptions {
   filePath: string;
@@ -7,11 +6,14 @@ interface UseFileDiffOptions {
   isStaged: boolean;
   repo: string;
   root?: string;
-  contentMode: DiffContentMode;
 }
 
 export interface FileDiffState {
   rawDiff: string;
+  /** The document before the change (HEAD, or the index for an unstaged read). */
+  oldContent: string;
+  /** The document after it (the working file). */
+  newContent: string;
   currentStatus: string;
   currentStaged: boolean;
   isLoading: boolean;
@@ -31,8 +33,10 @@ export interface FileDiffState {
  * earlier read overwriting a newer one, and a dependency on the staged/status
  * copies re-keying the callback and firing a fetch per render.
  */
-export function useFileDiff({ filePath, status, isStaged, repo, root, contentMode }: UseFileDiffOptions): FileDiffState {
+export function useFileDiff({ filePath, status, isStaged, repo, root }: UseFileDiffOptions): FileDiffState {
   const [rawDiff, setRawDiff] = useState<string>('');
+  const [oldContent, setOldContent] = useState<string>('');
+  const [newContent, setNewContent] = useState<string>('');
   const [currentStatus, setCurrentStatus] = useState<string>(status);
   const [currentStaged, setCurrentStaged] = useState<boolean>(isStaged);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -62,11 +66,9 @@ export function useFileDiff({ filePath, status, isStaged, repo, root, contentMod
         staged: staged ? '1' : '0',
         repo: repo || '.',
       });
-      // `fullContext=1` makes git emit the whole file rather than the hunks.
-      // Only the user's own toggle changes it, so it is safe as a callback
-      // dependency (unlike the staged/status copies above, which the action
-      // path updates while a fetch of its own is already in flight).
-      if (contentMode === 'full') params.set('fullContext', '1');
+      // No `fullContext`: the panel renders both SIDES of the file now, and
+      // how much of them is shown is a client-side collapse. Asking the server
+      // for the whole file as a patch would be a second answer to that question.
       if (statusForFetch) params.set('status', statusForFetch);
       if (root) params.set('root', root);
 
@@ -74,6 +76,8 @@ export function useFileDiff({ filePath, status, isStaged, repo, root, contentMod
       const data = (await res.json().catch(() => null)) as {
         success?: boolean;
         diff?: string;
+        oldContent?: string;
+        newContent?: string;
         status?: string;
         staged?: boolean;
         error?: string;
@@ -83,6 +87,11 @@ export function useFileDiff({ filePath, status, isStaged, repo, root, contentMod
       if (seq !== fetchSeqRef.current) return;
       if (data?.success) {
         setRawDiff(data.diff || '');
+        // Both sides travel on every read: the merge view compares documents,
+        // and a whitespace fold has to be applied to the ORIGINAL, not to the
+        // patch (see `foldWhitespaceOnly`).
+        setOldContent(data.oldContent ?? '');
+        setNewContent(data.newContent ?? '');
         if (data.status) {
           statusRef.current = data.status;
           setCurrentStatus(data.status);
@@ -100,7 +109,7 @@ export function useFileDiff({ filePath, status, isStaged, repo, root, contentMod
     } finally {
       if (seq === fetchSeqRef.current) setIsLoading(false);
     }
-  }, [filePath, repo, root, contentMode]);
+  }, [filePath, repo, root]);
 
   useEffect(() => {
     setCurrentStatus(status);
@@ -124,5 +133,15 @@ export function useFileDiff({ filePath, status, isStaged, repo, root, contentMod
     }
   }, []);
 
-  return { rawDiff, currentStatus, currentStaged, isLoading, errorMessage, fetchDiff, adoptState };
+  return {
+    rawDiff,
+    oldContent,
+    newContent,
+    currentStatus,
+    currentStaged,
+    isLoading,
+    errorMessage,
+    fetchDiff,
+    adoptState,
+  };
 }

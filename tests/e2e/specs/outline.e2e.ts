@@ -8,7 +8,7 @@
  *
  * Every assertion here needs the assembled product. The rows come from a LIVE
  * editor buffer (not a second read of the file), the jump is a real `scrollTop`
- * on a real scroller plus a real caret in a real `<textarea>`, and the preview
+ * on a real scroller plus a real caret in a real contenteditable, and the preview
  * branch only exists in a browser — happy-dom computes no layout, so a unit test
  * can prove the request was published but never that the line it named is the
  * line that ended up on screen.
@@ -107,12 +107,18 @@ async function expandOutline(page: Parameters<typeof openApp>[0]): Promise<void>
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 }
 
-/** The caret's 1-based line in the editor's own textarea. */
+/**
+ * The caret's 1-based line, read from the surface's own selection mirror.
+ *
+ * A `<textarea>` exposed `selectionStart`, and the line was arithmetic over its
+ * value. A `contenteditable` exposes neither, and CM6 renders only its viewport,
+ * so the surface publishes the two facts it used to have natively on
+ * `contentDOM.dataset` (`selection`, `line`) — see `code-surface/extensions.ts`.
+ */
 async function caretLine(page: Parameters<typeof openApp>[0]): Promise<number> {
-  return editorPanel(page).locator('textarea').evaluate((el) => {
-    const input = el as HTMLTextAreaElement;
-    return input.value.slice(0, input.selectionStart).split('\n').length;
-  });
+  return editorPanel(page)
+    .locator('.cm-content')
+    .evaluate((el) => Number((el as HTMLElement).dataset.line ?? '0'));
 }
 
 /**
@@ -123,23 +129,27 @@ async function caretLine(page: Parameters<typeof openApp>[0]): Promise<number> {
  * The selection has to be the declaration's own name.
  */
 async function selectedText(page: Parameters<typeof openApp>[0]): Promise<string> {
-  return editorPanel(page).locator('textarea').evaluate((el) => {
-    const input = el as HTMLTextAreaElement;
-    return input.value.slice(input.selectionStart, input.selectionEnd);
+  return editorPanel(page).locator('.cm-content').evaluate(() => {
+    // The DOM selection is what a reader sees selected, and CM6 keeps it in
+    // step with the editor state while the view has focus.
+    const selection = window.getSelection();
+    return selection ? selection.toString() : '';
   });
 }
 
 /**
  * Whether the selection is actually DRAWN.
  *
- * `selectionStart`/`selectionEnd` are set on an unfocused textarea all the same,
- * but the browser paints no band and no caret — the reported symptom was a jump
- * that scrolled correctly and selected nothing visible. Focus is the observable
- * that separates the two, and asserting the range alone proved only the half
- * that already worked.
+ * A range can be set on a surface that does not have focus all the same, but
+ * the browser paints no band and no caret — the reported symptom was a jump that
+ * scrolled correctly and selected nothing visible. Focus is the observable that
+ * separates the two, and asserting the range alone proved only the half that
+ * already worked.
  */
 async function selectionIsVisible(page: Parameters<typeof openApp>[0]): Promise<boolean> {
-  return editorPanel(page).locator('textarea').evaluate((el) => document.activeElement === el);
+  return editorPanel(page)
+    .locator('.cm-content')
+    .evaluate((el) => document.activeElement === el);
 }
 
 test.describe('file outline', () => {
@@ -179,7 +189,7 @@ test.describe('file outline', () => {
     // The NAME is selected, not the line: `reset` is 3 characters in on that
     // line, and a bare caret at the line's start would select nothing.
     await expect.poll(() => selectedText(page)).toBe('reset');
-    // And the selection is VISIBLE: an unfocused textarea holds the range but
+    // And the selection is VISIBLE: an unfocused surface holds the range but
     // paints no band and no caret.
     await expect.poll(() => selectionIsVisible(page)).toBe(true);
 
@@ -199,12 +209,13 @@ test.describe('file outline', () => {
 
     // Type a declaration at the end WITHOUT saving. The autosave is debounced,
     // so at this moment the file on disk still has 23 lines.
-    await editorPanel(page).locator('textarea').evaluate((el) => {
-      const input = el as HTMLTextAreaElement;
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
-      setter.call(input, `${input.value}\nexport function typedLive() {}\n`);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    // Typed as keystrokes, not inserted as a block: `insertText` with embedded
+    // newlines is a paste-shaped input the contenteditable may coalesce, and the
+    // point here is what a person typing produces.
+    await editorPanel(page).locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('export function typedLive() {}');
 
     // The row appears, and it names the line the buffer holds — a panel that
     // re-read the file would never show it.

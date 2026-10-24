@@ -4,28 +4,27 @@
  */
 
 /**
- * The find widget's arithmetic: what a query matches, where the caret lands
- * after a replacement, and how `$1` is expanded. These are the rules the widget
- * count, the on-screen highlights and the written buffer all read, so each is
- * asserted against the engine's own `String.replace` behaviour where one
- * exists.
+ * The find widget's scan: what a query matches and how the caret anchors to it.
+ *
+ * The scan runs on CodeMirror's `RegExpCursor`, so these cases are the CONTRACT
+ * that cursor has to keep — the same ordered list, the same case/whole-word/regex
+ * options, a broken pattern reported as `invalid` rather than as "no matches",
+ * and the cap. They are asserted here rather than through a live editor because
+ * the widget, the count and the painted marks all read this one function.
  */
 
 import { describe, expect, test } from 'bun:test';
 
 import {
   buildFindRegex,
-  expandReplacement,
   findMatches,
   lineIndexAt,
   lineStartOffset,
   matchIndexAtOrAfter,
   MAX_FIND_MATCHES,
-  replaceAllMatches,
-  replaceMatch,
   stepMatchIndex,
   type FindOptions,
-} from '@/shared/lib/code/editor/find';
+} from '@/shared/lib/code/editor/find-scan';
 
 const PLAIN: FindOptions = { matchCase: false, wholeWord: false, isRegex: false };
 
@@ -83,6 +82,17 @@ describe('findMatches', () => {
     expect(result.invalid).toBe(false);
   });
 
+  test('finds a match that begins at a line start, and one that spans lines', () => {
+    // The cursor searches line by line, so both edges are where it can lose a
+    // match: a pattern anchored at a line start, and one whose `\n` forces the
+    // whole-document path.
+    expect(findMatches('one\ntwo\ntwo', 'two', PLAIN).matches).toEqual([
+      { start: 4, end: 7 },
+      { start: 8, end: 11 },
+    ]);
+    expect(findMatches('one\ntwo', 'one\ntwo', { ...PLAIN, isRegex: true }).matches).toEqual([{ start: 0, end: 7 }]);
+  });
+
   test('caps the collected matches and says so', () => {
     const text = 'a'.repeat(MAX_FIND_MATCHES + 10);
     const result = findMatches(text, 'a', PLAIN);
@@ -101,70 +111,6 @@ describe('buildFindRegex', () => {
   test('returns null for an empty query and for a bad pattern', () => {
     expect(buildFindRegex('', PLAIN)).toBeNull();
     expect(buildFindRegex('[', { ...PLAIN, isRegex: true })).toBeNull();
-  });
-});
-
-describe('replaceMatch', () => {
-  test('literal replacement inserts the field verbatim, dollar signs included', () => {
-    const text = 'const a = 1;';
-    const result = replaceMatch(text, { start: 6, end: 7 }, 'a', '$&x', PLAIN);
-    expect(result?.text).toBe('const $&x = 1;');
-    expect(result?.caret).toBe(6 + 3);
-  });
-
-  test('regex replacement expands capture groups like String.replace', () => {
-    const text = 'key = value';
-    const result = replaceMatch(text, { start: 6, end: 11 }, '(\\w+)', '[$1]', { ...PLAIN, isRegex: true });
-    expect(result?.text).toBe('key = [value]');
-    expect(result?.caret).toBe(13);
-  });
-
-  test('refuses a match that is no longer at its offset', () => {
-    expect(replaceMatch('abc', { start: 5, end: 7 }, 'a', 'z', PLAIN)).toBeNull();
-  });
-});
-
-describe('replaceAllMatches', () => {
-  test('literal replace-all rewrites every occurrence', () => {
-    expect(replaceAllMatches('a a a', 'a', 'b', PLAIN)).toBe('b b b');
-  });
-
-  test('regex replace-all agrees with the engine', () => {
-    const text = 'foo1 bar2';
-    const options: FindOptions = { ...PLAIN, isRegex: true };
-    expect(replaceAllMatches(text, '([a-z]+)(\\d)', '$2-$1', options)).toBe(text.replace(/([a-z]+)(\d)/g, '$2-$1'));
-  });
-
-  test('whole-word replace-all leaves substrings alone', () => {
-    expect(replaceAllMatches('cat category', 'cat', 'dog', { ...PLAIN, wholeWord: true })).toBe('dog category');
-  });
-
-  test('returns null for an unusable query', () => {
-    expect(replaceAllMatches('abc', '(', 'x', { ...PLAIN, isRegex: true })).toBeNull();
-    expect(replaceAllMatches('abc', '', 'x', PLAIN)).toBeNull();
-  });
-});
-
-describe('expandReplacement', () => {
-  /** Indexed by group number, `[0]` unused — the shape `groupsOf` produces. */
-  const groups = { full: 'ab12', numbered: [undefined, 'a', 'b'] as const, named: { tail: '12' } };
-
-  test('expands $&, $1 and $<name>', () => {
-    expect(expandReplacement('$&|$1|$2|$<tail>', groups)).toBe('ab12|a|b|12');
-  });
-
-  test('$$ is a literal dollar and an unknown group is empty', () => {
-    expect(expandReplacement('$$$9', groups)).toBe('$');
-  });
-
-  test('a missing two-digit group falls back to the one-digit group plus the digit', () => {
-    // The engine's own reading of `$12` with two groups: `$1` then a literal `2`.
-    expect('x'.replace(/(x)/, '$12')).toBe('x2');
-    expect(expandReplacement('$12', groups)).toBe('a2');
-  });
-
-  test('a template without a dollar is returned as-is', () => {
-    expect(expandReplacement('plain', groups)).toBe('plain');
   });
 });
 

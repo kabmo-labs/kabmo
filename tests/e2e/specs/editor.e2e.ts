@@ -44,15 +44,18 @@ test.describe('editor', () => {
     await page.getByText('src', { exact: true }).first().click();
     await page.getByText('greeting.txt', { exact: true }).first().click();
 
-    // Scoped to the editor panel: the chat composer is also a `<textarea>`, and
-    // an unscoped locator resolves to that one.
+    // Scoped to the editor panel, and addressed as the contenteditable CM6
+    // renders: the surface is no longer a `<textarea>`, and the chat composer
+    // still is, so an unscoped `textarea` locator would resolve to the composer.
     const editorPanel = page.locator('[data-panel-id="editor-panel"]');
-    const editor = editorPanel.locator('textarea').first();
-    await expect(editor).toHaveValue(/hello world/, { timeout: 15_000 });
+    const editor = editorPanel.locator('.cm-content');
+    await expect(editor).toContainText('hello world', { timeout: 15_000 });
 
     // Edit, then save through the toolbar's own control — it carries the
     // `title`/`aria-label` pair every icon-only button in this app does.
-    await editor.fill('hello e2e\n');
+    await editor.click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.insertText('hello e2e\n');
     const save = editorPanel.getByRole('button', { name: /save file/i }).first();
     await expect(save).toBeEnabled();
     const written = page.waitForResponse(
@@ -64,6 +67,44 @@ test.describe('editor', () => {
     // The file on disk is the claim. Polled, because the write's response can
     // land a tick before the filesystem settles.
     await expect.poll(() => readFileSync(filePath, 'utf8'), { timeout: 15_000 }).toBe('hello e2e\n');
+
+    workspace.dispose();
+  });
+
+  test('the surface is a contenteditable with the mobile input attributes', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-attrs');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'notes.ts'), 'const alpha = 1;\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByText('src', { exact: true }).first().click();
+    await page.getByText('notes.ts', { exact: true }).first().click();
+
+    const content = page.locator('[data-panel-id="editor-panel"] .cm-content');
+    await expect(content).toContainText('const alpha', { timeout: 15_000 });
+
+    // These four are what keep a phone keyboard from "correcting" code: the
+    // browser's spellchecker underlines every identifier, autocorrect rewrites
+    // them, autocapitalise upper-cases a line start, and `translate` would let
+    // a translation extension rewrite the document.
+    const attributes = await content.evaluate((el) => ({
+      spellcheck: el.getAttribute('spellcheck'),
+      autocorrect: el.getAttribute('autocorrect'),
+      autocapitalize: el.getAttribute('autocapitalize'),
+      translate: el.getAttribute('translate'),
+      editable: el.getAttribute('contenteditable'),
+      role: el.getAttribute('role'),
+    }));
+    expect(attributes).toEqual({
+      spellcheck: 'false',
+      autocorrect: 'off',
+      autocapitalize: 'off',
+      translate: 'no',
+      editable: 'true',
+      role: 'textbox',
+    });
 
     workspace.dispose();
   });

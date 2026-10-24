@@ -24,7 +24,7 @@
  */
 
 import { escapeCode } from '@/shared/lib/code/highlighter';
-import type { FindMatch } from '@/shared/lib/code/editor/find';
+import type { FindMatch } from '@/shared/lib/code/editor/find-scan';
 
 /**
  * How `highlightLines` paints its marks. Declared here rather than in the

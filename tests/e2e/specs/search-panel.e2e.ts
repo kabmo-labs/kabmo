@@ -41,7 +41,7 @@ test.describe('search panel', () => {
     // tab the row's own id, which is what a search click then has to match.
     await rightPanel.getByText('src', { exact: true }).first().click();
     await rightPanel.getByText('a.ts', { exact: true }).first().click();
-    await expect(editorPanel.locator('textarea').first()).toHaveValue(/beta/, { timeout: 15_000 });
+    await expect(editorPanel.locator('.cm-content')).toContainText('beta', { timeout: 15_000 });
 
     // Now the same file through a search hit.
     await page.getByRole('button', { name: 'Search', exact: true }).click();
@@ -54,7 +54,7 @@ test.describe('search panel', () => {
 
     // The file is still the document on screen — not the empty notice.
     await expect(editorPanel.getByText('Select a tab to view content')).toHaveCount(0);
-    await expect(editorPanel.locator('textarea').first()).toHaveValue(/beta/, { timeout: 15_000 });
+    await expect(editorPanel.locator('.cm-content')).toContainText('beta', { timeout: 15_000 });
 
     workspace.dispose();
   });

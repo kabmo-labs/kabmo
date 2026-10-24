@@ -8,7 +8,6 @@ import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/e
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
-import type { TextRange } from '@/shared/lib/code/editor/commands';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_MAX_FONT_SIZE, EDITOR_MIN_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { RENDERED_VIEWERS, type ViewerKind } from '@/shared/lib/fs/document-kind';
@@ -30,8 +29,6 @@ interface FilePaneProps {
   setIsMaximized: (next: boolean) => void;
   zoomLevel: number;
   setZoomLevel: (update: (current: number) => number) => void;
-  occurrences: readonly TextRange[];
-  setOccurrences: (next: readonly TextRange[]) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
   runCommand: (command: EditorCommand) => void;
@@ -72,8 +69,6 @@ export function FilePane({
   setIsMaximized,
   zoomLevel,
   setZoomLevel,
-  occurrences,
-  setOccurrences,
   paletteOpen,
   setPaletteOpen,
   runCommand,
@@ -216,8 +211,6 @@ export function FilePane({
           wordWrap={wordWrap}
           zoomLevel={zoomLevel}
           editorFontFamily={editorFontFamily}
-          occurrences={occurrences}
-          onOccurrencesChange={setOccurrences}
           isPreview={isPreview}
           viewerKind={viewerKind}
           revealActive={revealActive}

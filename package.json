@@ -59,6 +59,12 @@
     "publish:plugins": "bash .github/scripts/publish-plugin-packages.sh packages/kabmo-sdk packages/kabmo-ui"
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/merge": "6.12.3",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
     "@fontsource/fira-code": "^5.3.0",
     "@kabmo-labs/kabmo-sdk": "workspace:*",
     "@kabmo-labs/kabmo-ui": "workspace:*",

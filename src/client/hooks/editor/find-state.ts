@@ -14,7 +14,7 @@
  */
 
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
-import type { FindOptions } from '@/shared/lib/code/editor/find';
+import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 
 export interface UseEditorFindOptions {
   /** The buffer on screen. */

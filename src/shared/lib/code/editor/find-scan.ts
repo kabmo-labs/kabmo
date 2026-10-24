@@ -1,0 +1,155 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Find scanning over one document buffer.
+ *
+ * The SCAN is CodeMirror's: `RegExpCursor` walks the document and hands back the
+ * same ordered match list the surface paints, so the matcher and the editor
+ * cannot disagree about where a match is. That replaced a hand-written
+ * `RegExp.exec` loop, which had to re-implement the two things a cursor gets
+ * right for free — never returning a zero-width match (nothing to highlight,
+ * nothing to replace, and stepping past it is what keeps the scan terminating)
+ * and starting the next search after the previous match rather than at its own
+ * index.
+ *
+ * Everything around the scan is still Kabmo's, deliberately: the options shape,
+ * the cap and the `truncated`/`invalid` distinction are the find widget's
+ * contract. Replacement expansion lives in `find-replace.ts`, because a caller
+ * that only paints matches should not carry the template grammar.
+ *
+ * A regex that does not compile is a DIFFERENT answer from "no matches", which
+ * is why `invalid` exists: a user typing `(` must be told their pattern is
+ * broken, not that the file does not contain it.
+ */
+
+import { Text } from '@codemirror/state';
+import { RegExpCursor } from '@codemirror/search';
+
+import { lineIndexAt, lineStartOffset, type TextRange } from '@/shared/lib/code/editor/lines';
+
+export { lineIndexAt, lineStartOffset };
+
+export interface FindOptions {
+  matchCase: boolean;
+  wholeWord: boolean;
+  isRegex: boolean;
+}
+
+/** Half-open `[start, end)` offset range in the document. */
+export type FindMatch = TextRange;
+
+export interface FindResult {
+  matches: FindMatch[];
+  /** The document holds more matches than the cap; the list stops at it. */
+  truncated: boolean;
+  /** A regex query that does not compile — a different answer from "no matches". */
+  invalid: boolean;
+}
+
+/**
+ * Ceiling on collected matches. A one-character query over a large file matches
+ * tens of thousands of times and every match is a decoration, so past this the
+ * list stops and the widget reports `N+`.
+ */
+export const MAX_FIND_MATCHES = 5_000;
+
+export const DEFAULT_FIND_OPTIONS: FindOptions = {
+  matchCase: false,
+  wholeWord: false,
+  isRegex: false,
+};
+
+/**
+ * The pattern a query compiles to, or null when the query is empty or does not
+ * compile. A literal query is escaped here rather than at the call site so the
+ * match scan and the replacement splice can never disagree about what the
+ * pattern was.
+ *
+ * Whole-word is a `\b`-anchored non-capturing group rather than a bare wrap so
+ * an alternation (`foo|bar`) keeps its own precedence.
+ */
+export function buildFindRegex(query: string, options: FindOptions): RegExp | null {
+  if (!query) return null;
+  const source = options.isRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const wrapped = options.wholeWord ? `\\b(?:${source})\\b` : source;
+  try {
+    return new RegExp(wrapped, options.matchCase ? 'g' : 'gi');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The last string converted to a `Text`, kept for one call.
+ *
+ * A cursor needs a `Text`, and `Text.of(text.split('\n'))` builds a rope over
+ * the whole file. The find widget asks for matches on every keystroke in its
+ * query and on every edit, always for the same document, so keeping the last
+ * conversion is the difference between one split per render and one per call.
+ */
+let lastTextSource: string | null = null;
+let lastText: Text | null = null;
+
+function asText(source: string): Text {
+  if (lastTextSource === source && lastText) return lastText;
+  lastText = Text.of(source.split('\n'));
+  lastTextSource = source;
+  return lastText;
+}
+
+/**
+ * Every match of `query` in `text`, in document order.
+ *
+ * `RegExpCursor` searches LINE by line for a pattern that cannot span one, and
+ * falls back to a whole-document cursor when the pattern mentions `\n`, `\r`,
+ * `\s`, `\W`, `\D`, `\b`-free character classes or `[^`. Both return document
+ * offsets, so the caller never learns which one ran.
+ */
+export function findMatches(text: string, query: string, options: FindOptions): FindResult {
+  if (!query) return { matches: [], truncated: false, invalid: false };
+  const pattern = buildFindRegex(query, options);
+  if (!pattern) return { matches: [], truncated: false, invalid: true };
+
+  const matches: FindMatch[] = [];
+  let cursor: RegExpCursor;
+  try {
+    cursor = new RegExpCursor(asText(text), pattern.source, { ignoreCase: !options.matchCase });
+  } catch {
+    // A pattern `new RegExp` accepts but the cursor's own construction refuses
+    // (an unsupported flag combination) is still a broken pattern to the user.
+    return { matches: [], truncated: false, invalid: true };
+  }
+
+  while (matches.length < MAX_FIND_MATCHES && !cursor.next().done) {
+    const { from, to } = cursor.value;
+    if (from === to) continue;
+    matches.push({ start: from, end: to });
+  }
+
+  return { matches, truncated: matches.length >= MAX_FIND_MATCHES, invalid: false };
+}
+
+/**
+ * The match to call "current" for a caret/anchor at `offset`: the first one
+ * that ends after it, so a caret sitting inside a match still counts as being
+ * on that match. Wraps to the first match when the anchor is past the last one,
+ * and reports -1 for an empty list.
+ */
+export function matchIndexAtOrAfter(matches: readonly FindMatch[], offset: number): number {
+  if (matches.length === 0) return -1;
+  for (let index = 0; index < matches.length; index++) {
+    if (matches[index].end > offset) return index;
+  }
+  return 0;
+}
+
+/** Step one match forward (`1`) or back (`-1`), wrapping at either end. */
+export function stepMatchIndex(index: number, count: number, direction: 1 | -1): number {
+  if (count <= 0) return -1;
+  if (index < 0) return direction === 1 ? 0 : count - 1;
+  return (index + direction + count) % count;
+}
+

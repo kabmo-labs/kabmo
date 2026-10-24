@@ -6,10 +6,9 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 
 import { bootSyntax, onLanguageReady, requestLanguage } from '@/shared/lib/code/highlighter';
-import { findMatches } from '@/shared/lib/code/editor/find';
+import { findMatches } from '@/shared/lib/code/editor/find-scan';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { highlightCode, highlightLines } from '@/shared/lib/code/syntax-highlight';
-import { highlightCodeWindow } from '@/shared/lib/code/windowed-highlight';
 
 /** Shiki emits `<span class="shiki">…` with dual-theme CSS variables per token. */
 const SHIKI_RE = /<span class="shiki">/;
@@ -115,54 +114,6 @@ describe('highlightCode', () => {
   });
 });
 
-describe('highlightCodeWindow', () => {
-  const source = Array.from({ length: 120 }, (_, index) =>
-    index === 0 ? 'export const first = 1;' : `export const value${index} = ${index}; // line ${index}`,
-  ).join('\n');
-
-  /** The wrapper the app's `.shiki span` colour rule depends on. */
-  const unwrap = (html: string) => html.replace(/^<span class="shiki">/, '').replace(/<\/span>$/, '');
-
-  test('wraps the window in the class the token colours are scoped to', () => {
-    const window = highlightCodeWindow(source, 'typescript', { start: 0, end: 3 });
-
-    // Without this class no `.shiki span` rule matches, so the tokens would
-    // render in the plain ink colour.
-    expect(window).toMatch(SHIKI_RE);
-    expect(window.endsWith('</span>')).toBe(true);
-  });
-
-  test('returns only the requested lines, joined as the editor renders them', () => {
-    const window = highlightCodeWindow(source, 'typescript', { start: 10, end: 13 });
-    const rows = highlightLines(source, 'typescript');
-
-    expect(unwrap(window).split('\n')).toEqual(rows.slice(10, 13));
-  });
-
-  test('keeps multi-line grammar state from the lines above the window', () => {
-    const commented = ['/*', ' * a block comment', ' * spanning several lines', ' */', 'const after = 1;'].join('\n');
-    const rows = highlightLines(commented, 'typescript');
-    // Line 2 sits inside the comment, whose opening line is outside the window.
-    const window = highlightCodeWindow(commented, 'typescript', { start: 2, end: 4 });
-
-    expect(unwrap(window).split('\n')).toEqual(rows.slice(2, 4));
-  });
-
-  test('renders an over-long line as plain text instead of tokenizing it', () => {
-    const minified = `const bundled = "${'x'.repeat(200)}";\nconst next = 1;`;
-    const window = highlightCodeWindow(minified, 'javascript', { start: 0, end: 2 }, { maxLineLength: 50 });
-
-    expect(window).toContain('const bundled');
-    expect(unwrap(window).split('\n')[0]).not.toContain('--shiki-light:');
-    expect(unwrap(window).split('\n')[1]).toContain('--shiki-light:');
-  });
-
-  test('returns nothing for a window outside the document', () => {
-    expect(highlightCodeWindow('const a = 1;', 'typescript', { start: 5, end: 9 })).toBe('');
-    expect(highlightCodeWindow('const a = 1;', 'typescript', { start: 0, end: 0 })).toBe('');
-  });
-});
-
 describe('find marks', () => {
   const code = 'const alpha = 1;\nconst beta = alpha + 2;\n';
   const PLAIN = { matchCase: false, wholeWord: false, isRegex: false };
@@ -206,35 +157,6 @@ describe('find marks', () => {
     expect(plain).not.toContain('<mark');
   });
 
-  test('keeps a windowed match on its own line, re-based to the slice', () => {
-    const marks = findMatches(code, 'alpha', PLAIN).matches;
-    // The window renders line 1 only. The match on line 0 must not reappear on
-    // line 1's text, and the current index (line 0's match) must not mark
-    // anything here.
-    const window = highlightCodeWindow(code, 'typescript', { start: 1, end: 2 }, { marks, currentMark: 0 });
-
-    expect(marked(window).join('')).toBe('alpha');
-    expect(window).not.toContain('data-find-current');
-  });
-
-  test('re-bases the current index onto the marks inside the window', () => {
-    const marks = findMatches(code, 'alpha', PLAIN).matches;
-    const window = highlightCodeWindow(code, 'typescript', { start: 1, end: 2 }, { marks, currentMark: 1 });
-
-    expect(window.match(/data-find-current/g)?.length).toBe(1);
-    expect(marked(window).join('')).toBe('alpha');
-  });
-
-  test('a mark reaching past the window is clipped to it', () => {
-    // The last line has no trailing newline, so a mark that runs to the end of
-    // the slice would be clamped by the rebase.
-    const window = highlightCodeWindow(code, 'typescript', { start: 1, end: 3 }, {
-      marks: [{ start: 30, end: 999 }],
-      currentMark: 0,
-    });
-
-    expect(marked(window).join('')).toBe('alpha + 2;');
-  });
 });
 
 describe('getLanguageFromPath', () => {

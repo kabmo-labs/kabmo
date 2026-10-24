@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import { useSessionUiState } from '@/client/hooks/workspace/session-state';
-import { parseUnifiedDiff } from '@/shared/lib/fs/diff-parser';
 import { isUnmergedCode, type ConflictMarkers } from '@/shared/lib/fs/git-unmerged';
 import { useFileDiff } from '@/client/hooks/workspace/diff-file';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { DiffToolbar, type DiffContentMode, type DiffViewMode } from '@/client/components/workspace/diff-panel/Toolbar';
 import { ConflictBanner } from '@/client/components/workspace/diff-panel/ConflictBanner';
-import { UnifiedView } from '@/client/components/workspace/diff-panel/UnifiedView';
-import { SplitView } from '@/client/components/workspace/diff-panel/SplitView';
+import { MergeDiffView } from '@/client/components/workspace/diff-panel/MergeDiffView';
+import { useEditorFontStack } from '@/client/hooks/editor/font';
+import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { usePluginDiffView } from '@/client/components/workspace/editor/plugin-file-view';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { AlertCircle, RefreshCw } from 'lucide-preact';
@@ -58,29 +58,23 @@ export function DiffPanel({
    * the actions still work, only the naming is less precise.
    */
   const [markers, setMarkers] = useState<ConflictMarkers>({});
+  /** Additions/deletions of the pair on screen, reported by the merge view. */
+  const [counts, setCounts] = useState<{ additions: number; deletions: number }>({ additions: 0, deletions: 0 });
+  const editorFontFamily = useEditorFontStack();
 
   const {
     rawDiff,
+    oldContent,
+    newContent,
     currentStatus,
     currentStaged,
     isLoading,
     errorMessage,
     fetchDiff,
     adoptState,
-  } = useFileDiff({ filePath, status, isStaged, repo, root, contentMode });
+  } = useFileDiff({ filePath, status, isStaged, repo, root });
   const conflicted = isUnmergedCode(currentStatus);
 
-  // Full-code mode parses the whole file, not the hunks, so the parse is keyed
-  // to its inputs: every render used to re-walk the diff (measured 21 ms on an
-  // 80k-line file), for a result that only changes when the diff or the
-  // whitespace toggle does.
-  // Only the rendered view is built: `views` keeps the shared flush (so the
-  // whitespace decision and the counts cannot diverge) while skipping the
-  // object graph nobody draws.
-  const parsed = useMemo(
-    () => parseUnifiedDiff(rawDiff, { ignoreWhitespace, views: viewMode === 'split' ? 'split' : 'unified' }),
-    [rawDiff, ignoreWhitespace, viewMode],
-  );
   const language = getLanguageFromPath(filePath);
   // A contributed renderer replaces the built-in views below, never the toolbar.
   const pluginDiffView = usePluginDiffView({ path: filePath, diff: rawDiff });
@@ -238,8 +232,8 @@ export function DiffPanel({
         contentMode={contentMode}
         wordWrap={wordWrap}
         ignoreWhitespace={ignoreWhitespace}
-        additions={parsed.additions}
-        deletions={parsed.deletions}
+        additions={counts.additions}
+        deletions={counts.deletions}
         isLoading={isLoading}
         isCopied={isCopied}
         isBusy={isBusy}
@@ -302,10 +296,25 @@ export function DiffPanel({
           <PluginIdProvider pluginId={pluginDiffView.pluginId}>
             <pluginDiffView.Component {...pluginDiffView.props} />
           </PluginIdProvider>
-        ) : viewMode === 'split' ? (
-          <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} tabKey={tabKey} />
         ) : (
-          <UnifiedView lines={parsed.lines} language={language} wordWrap={wordWrap} tabKey={tabKey} />
+          // Both shapes are the SAME component: `@codemirror/merge` owns the
+          // diff and the rows, and a shape switch is a re-mount of a different
+          // object (an `EditorView` vs a `MergeView`), which is why it is a prop
+          // rather than a second component.
+          <MergeDiffView
+            original={oldContent}
+            next={newContent}
+            language={language}
+            viewMode={viewMode}
+            contentMode={contentMode}
+            wordWrap={wordWrap}
+            ignoreWhitespace={ignoreWhitespace}
+            tabKey={tabKey}
+            onCounts={setCounts}
+            empty={!rawDiff || !rawDiff.trim()}
+            fontFamily={editorFontFamily}
+            fontSize={EDITOR_DEFAULT_FONT_SIZE}
+          />
         )}
       </div>
 

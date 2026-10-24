@@ -4,19 +4,20 @@
  */
 
 /**
- * A long diff must SCROLL inside its height ceiling.
+ * A diff card's own chrome: the height ceiling and the counts.
  *
- * The bug: the wrapper carried only `max-h-72 overflow-hidden`, and the panel
- * views resolve `h-full` against their parent. `height: 100%` against a box
- * whose height is `auto` resolves to `auto`, so the view grew to its full
- * content — measured 1521px inside a 288px parent — and `overflow-hidden`
- * clipped the rest. `scrollHeight === clientHeight`, so nothing could scroll
- * and the reader simply could not reach the bottom of the diff.
+ * The bug the ceiling pins: the wrapper carried only `max-h-72 overflow-hidden`
+ * and the view inside resolved `h-full` against its parent. `height: 100%`
+ * against a box whose height is `auto` resolves to `auto`, so the view grew to
+ * its full content — measured 1521px inside a 288px parent — and `overflow-hidden`
+ * clipped the rest. `scrollHeight === clientHeight`, so nothing could scroll.
+ * `min-h-0` on the flex column is what gives the child a definite height.
  *
- * Asserted on the classes the fix depends on, because the failure mode is a
- * LAYOUT resolution that happy-dom does not compute: `min-h-0` on a flex column
- * is what gives the child a definite height, and `overflow-hidden` on the
- * wrapper is what stops a second scroller from appearing.
+ * The ROWS are not asserted here any more. The card renders through
+ * CodeMirror's merge view, which draws only its viewport — and happy-dom
+ * computes no layout, so a viewport is empty. Row rendering is covered where it
+ * can be observed: `git-panel.e2e.ts` against the real panel, and
+ * `patch-sides.test.ts` for the pair the card hands over.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -49,11 +50,11 @@ afterAll(() => {
 /** omp's excerpt diff, long enough to overflow any ceiling. */
 const EXCERPT = Array.from({ length: 120 }, (_, i) => `${i + 1}|line ${i + 1}`).join('\n');
 
-async function mount() {
+async function mount(text = EXCERPT) {
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
-    render(h(DiffView, { text: EXCERPT, path: 'src/x.ts' }), container);
+    render(h(DiffView, { text, path: 'src/x.ts' }), container);
   });
   return container;
 }
@@ -75,25 +76,23 @@ describe('DiffView height ceiling', () => {
     expect(wrap.className).toContain('flex');
     expect(wrap.className).toContain('flex-col');
     // Without `min-h-0` a flex item refuses to shrink below its content, the
-    // view's `h-full` resolves to `auto`, and nothing scrolls.
+    // view's height resolves to `auto`, and nothing scrolls.
     expect(wrap.className).toContain('min-h-0');
   });
 
-  test('the view inside is the element that scrolls', async () => {
-    const el = await mount();
-    const wrap = el.querySelector('div[class*="max-h-72"]') as HTMLElement;
-    const view = wrap.firstElementChild as HTMLElement;
-    expect(view.className).toContain('overflow-auto');
-    expect(view.className).toContain('h-full');
+  test('the header counts come from the patch, not from git', async () => {
+    // ` 1|a / -2|b / +2|c` is an excerpt diff: one deletion, one addition.
+    const el = await mount(' 1|a\n-2|b\n+2|c');
+    const text = el.textContent ?? '';
+    expect(text).toContain('+1');
+    expect(text).toContain('\u22121');
   });
 
-  test('a short diff still renders its rows', async () => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    await act(async () => {
-      render(h(DiffView, { text: ' 1|a\n-2|b\n+2|c', path: 'src/x.ts' }), container);
-    });
-    expect(container.textContent).toContain('c');
-    expect(container.textContent).not.toContain('2|b');
+  test('a header-only patch falls back to the raw text', async () => {
+    const el = await mount('--- a/x\n+++ b/x\n');
+    // Nothing to compare means nothing to draw: the reader still sees the bytes
+    // the tool returned rather than an empty box.
+    expect(el.textContent).toContain('--- a/x');
+    expect(el.querySelector('.cm-editor')).toBeNull();
   });
 });

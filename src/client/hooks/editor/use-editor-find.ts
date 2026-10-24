@@ -8,10 +8,11 @@
  *
  * Owns the query, the option toggles, which match is "current", and the two
  * write paths (replace one, replace all). Every rule it applies lives in
- * `shared/lib/code/editor/find`, so the count in the widget, the marks painted
- * on the surface and the bytes written back are the same list — the failure
- * this shape exists to prevent is a widget that says "3 of 7" over highlights
- * that disagree.
+ * `shared/lib/code/editor/find-scan` (the match list) and `find-replace` (what
+ * one match becomes), so the count in the widget, the marks painted on the
+ * surface and the bytes written back are the same list — the failure this shape
+ * exists to prevent is a widget that says "3 of 7" over highlights that
+ * disagree.
  *
  * The query and the toggles persist per session; whether the bar is OPEN does
  * not. A reload that reopened a find bar over the file would be noise the user
@@ -26,11 +27,10 @@ import {
   findMatches,
   lineStartOffset,
   matchIndexAtOrAfter,
-  replaceAllMatches,
-  replaceMatch,
   stepMatchIndex,
   type FindOptions,
-} from '@/shared/lib/code/editor/find';
+} from '@/shared/lib/code/editor/find-scan';
+import { replaceAllMatches, replaceMatch } from '@/shared/lib/code/editor/find-replace';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import type { EditorFindState, UseEditorFindOptions } from '@/client/hooks/editor/find-state';
 

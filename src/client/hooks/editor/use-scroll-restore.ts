@@ -32,7 +32,7 @@
  *   overwrite the position this hook exists to keep.
  */
 
-import { useCallback, useContext, useLayoutEffect, useRef } from 'preact/hooks';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { SessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import {
@@ -52,6 +52,29 @@ const SAVE_DEBOUNCE_MS = 150;
 /** Scroll deltas below this are rounding, not a move. */
 const NOISE_PX = 1;
 
+/**
+ * The cancel hook of every restore currently armed, by scroller.
+ *
+ * A pending restore REPLAYS while the document settles, and it re-applies
+ * through a `ResizeObserver` — which can fire BEFORE the scroll event a
+ * programmatic reveal causes. Measured: an outline jump scrolled a 2 520-line
+ * file to 34 695 px and the observer wrote the stored 0 back 375 ms later, so
+ * the caret moved and the view stayed at the top.
+ *
+ * An explicit reveal therefore has to CANCEL the restore rather than race it,
+ * and the surface that scrolls is the one that knows. This registry is that
+ * hand-off: keyed by the element, so a caller needs no reference to the hook
+ * instance that armed it (the surface owns the scroller; the panel owns the
+ * hook).
+ */
+const armedRestores = new Map<HTMLElement, () => void>();
+
+/** Stop a pending restore of `element` — a reveal wins over a remembered offset. */
+export function cancelScrollRestore(element: HTMLElement | null): void {
+  if (!element) return;
+  armedRestores.get(element)?.();
+}
+
 /** What a caller attaches to its scroll container. */
 export interface ScrollRestoreBinding {
   ref: (element: HTMLElement | null) => void;
@@ -67,6 +90,16 @@ export interface UseScrollRestoreOptions {
   ready?: boolean;
   /** The session-state slot to read/write; the editor column's by default. */
   slot?: string;
+  /**
+   * The element to restore, for a caller that does not own a `ref` on it.
+   *
+   * The code surface's scroller belongs to CodeMirror (`view.scrollDOM`) and
+   * exists only after the view mounts, so the surface reports it through
+   * `onScroller` and the caller passes it here. `undefined` means "this caller
+   * uses `ref`"; `null` means "the element is not there yet", which re-arms the
+   * restore on the next render that has one.
+   */
+  element?: HTMLElement | null;
 }
 
 export function useScrollRestore({
@@ -74,6 +107,7 @@ export function useScrollRestore({
   surface,
   ready = true,
   slot = SCROLL_POSITIONS_KEY,
+  element: providedElement,
 }: UseScrollRestoreOptions): ScrollRestoreBinding {
   // Read OPTIONALLY: the shared diff views also draw a chat tool card, and a
   // caller may mount one without the provider. A null context makes the whole
@@ -164,12 +198,26 @@ export function useScrollRestore({
     }, SAVE_DEBOUNCE_MS);
   }, [persist, tabKey]);
 
+  // A provided element is not a React-rendered node, so its scroll events have
+  // to be wired here: the caller has no `onScroll` prop to hang them on. The
+  // ref path keeps the caller's own `onScroll`.
+  useEffect(() => {
+    if (!providedElement) return;
+    const listener = () => onScroll();
+    providedElement.addEventListener('scroll', listener, { passive: true });
+    return () => providedElement.removeEventListener('scroll', listener);
+  }, [providedElement, onScroll]);
+
   // A layout effect so the restore lands in the same frame the tab paints — a
   // passive effect would show the document's head for one frame first.
   useLayoutEffect(() => {
     pendingRef.current = null;
     lastTopRef.current = null;
     let observer: ResizeObserver | null = null;
+    // A provided element WINS over the ref: the caller handed us the element it
+    // wants restored, and a stale ref from the other surface of the same tab
+    // must not be restored instead.
+    if (providedElement !== undefined) elementRef.current = providedElement;
     const element = elementRef.current;
 
     if (ready && storeReady && tabKey && element) {
@@ -179,6 +227,9 @@ export function useScrollRestore({
       // of it. "No stored offset" means the top, and the top is where they go.
       const top = readScrollTop(getSessionValue<ScrollPositions>(sessionId, slot), tabKey, surface);
       pendingRef.current = { top, until: performance.now() + RESTORE_WINDOW_MS };
+      armedRestores.set(element, () => {
+        pendingRef.current = null;
+      });
       applyPending();
       // The document's own height is what moves after this commit (measurement,
       // a width animation, spacers landing), so its growth is what re-applies.
@@ -190,6 +241,7 @@ export function useScrollRestore({
     }
 
     return () => {
+      if (element) armedRestores.delete(element);
       observer?.disconnect();
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = undefined;
@@ -203,7 +255,7 @@ export function useScrollRestore({
     };
     // `applyPending`/`persist` are stable, and re-running this effect restarts
     // the restore — which is exactly what a tab or surface change needs.
-  }, [ready, storeReady, tabKey, surface, sessionId, slot, applyPending, persist]);
+  }, [ready, storeReady, tabKey, surface, sessionId, slot, applyPending, persist, providedElement]);
 
   return { ref: attach, onScroll };
 }

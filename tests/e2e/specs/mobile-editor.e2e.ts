@@ -1,0 +1,123 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * The phone's full-screen editor, on the same surface as the desktop one.
+ *
+ * This is the mobile half of the CodeMirror cutover: the surface is one
+ * component on both layouts, and the phone is where it is easiest to get wrong —
+ * the editor is a fixed overlay, its box is the whole screen, and a scroller
+ * nested inside it has nothing to scroll. It also has the only other caller of
+ * the scroll-restore hook, keyed by PATH rather than by tab id.
+ *
+ * What is asserted is what a phone user would notice: the file's text is on
+ * screen, typing into it reaches the buffer, the write lands on disk (the phone
+ * autosaves — it has no Save button except the one that recreates a deleted
+ * file), and closing then reopening the same file comes back to the same place.
+ *
+ * A real device run (soft keyboard, IME composition, selection handles) is the
+ * one thing this cannot cover: a desktop browser has no soft keyboard, and
+ * Playwright's mobile emulation is a viewport, not an input method.
+ */
+
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { test, expect, openApp } from '../fixtures/app';
+import { seedWorkspace } from '../fixtures/seed';
+
+/** Long enough to scroll; short enough to render fast. */
+const LINES = 200;
+
+test.describe('mobile editor', () => {
+  test('opens a file in the full-screen editor and saves an edit', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-editor');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    const filePath = join(dir, 'notes.txt');
+    writeFileSync(filePath, 'first line\nsecond line\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+
+    // The Files drawer is a screen on the phone; the tree's first read is what
+    // the tap needs, so the row is awaited rather than the drawer.
+    await page.getByRole('button', { name: /panel|files/i }).first().click();
+    const row = page.getByText('notes.txt', { exact: true }).first();
+    if (!(await row.isVisible().catch(() => false))) {
+      await page.getByText('src', { exact: true }).first().click();
+    }
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click();
+
+    // CodeMirror, not a textarea: the surface renders `.cm-content`.
+    const content = page.locator('.cm-content').first();
+    await expect(content).toContainText('first line', { timeout: 15_000 });
+
+    await content.click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('third line');
+
+    // The phone autosaves on a debounce, so the write's response is the gate —
+    // there is no Save control to press on this layout.
+    await page.waitForResponse(
+      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.startsWith('/api/fs'),
+      { timeout: 20_000 },
+    );
+    await expect
+      .poll(() => readFileSync(filePath, 'utf8'), { timeout: 15_000 })
+      .toContain('third line');
+
+    workspace.dispose();
+  });
+
+  test('remembers the scroll position of the file it reopens', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-editor-scroll');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'long.txt'), Array.from({ length: LINES }, (_, i) => `line ${i + 1}`).join('\n'));
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByRole('button', { name: /panel|files/i }).first().click();
+    const row = page.getByText('long.txt', { exact: true }).first();
+    if (!(await row.isVisible().catch(() => false))) {
+      await page.getByText('src', { exact: true }).first().click();
+    }
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click();
+
+    const scroller = page.locator('[data-testid="editor-scroller"]').first();
+    await expect(scroller).toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
+      .toBeGreaterThan(500);
+
+    await scroller.evaluate((el) => {
+      el.scrollTop = 800;
+      el.dispatchEvent(new Event('scroll'));
+    });
+    const leftAt = await scroller.evaluate((el) => el.scrollTop);
+    expect(leftAt).toBeGreaterThan(500);
+
+    // The write is debounced, so the POST is the gate rather than a duration.
+    await page.waitForResponse(
+      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/state'),
+    );
+
+    // Close the overlay by its OWN control. A loose `/close/` matches the
+    // drawer's "Close right sidebar" behind the overlay, whose click the overlay
+    // intercepts — the failure names a download icon, not a close button.
+    await page.getByRole('button', { name: 'Close editor', exact: true }).click();
+    await row.click();
+    await expect
+      .poll(async () => page.locator('[data-testid="editor-scroller"]').first().evaluate((el) => el.scrollTop), {
+        timeout: 15_000,
+      })
+      .toBe(leftAt);
+
+    workspace.dispose();
+  });
+});

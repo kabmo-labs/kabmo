@@ -22,7 +22,7 @@ import { EDITOR_KEY_BINDINGS, type EditorCommand } from '@/shared/lib/code/edito
 import { describeBinding } from '@/shared/lib/ui/key-binding';
 import { isMacPlatform } from '@/shared/lib/util/platform';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
-import type { FindOptions } from '@/shared/lib/code/editor/find';
+import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 
 const BUTTON_CLASS =
   'flex items-center justify-center p-1 rounded transition-colors cursor-pointer disabled:cursor-default disabled:opacity-40';
@@ -112,7 +112,12 @@ export function FindWidget({ find }: FindWidgetProps) {
   );
 
   return (
-    <div className="absolute top-2 right-4 z-30 flex flex-col gap-1 bg-paper border border-ink/15 rounded-md shadow-lg p-1.5 text-xs text-ink font-sans w-[330px]">
+    // `w-[330px]` was wider than the panel's own default (320px), so the bar's
+    // leftmost control — Show replace — hung past the panel's edge and its click
+    // landed on whatever was beside it. A max width keeps the bar inside the
+    // panel it belongs to at any width, and `min-w-0` lets the fields shrink
+    // with it instead of pushing the buttons out.
+    <div className="absolute top-2 right-2 z-30 flex w-[330px] max-w-[calc(100%-1rem)] min-w-0 flex-col gap-1 bg-paper border border-ink/15 rounded-md shadow-lg p-1.5 text-xs text-ink font-sans">
       <div className="flex items-center gap-1">
         <button
           type="button"

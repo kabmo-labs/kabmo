@@ -17,20 +17,23 @@
  * first, so ONE parser serves both — and because the conversion recovers the
  * gutter numbers, the rows get real line numbers instead of `...`.
  *
- * The rendering itself is the diff panel's own `UnifiedView`/`SplitView`, so a
- * diff in the chat and a diff of the working tree are the same surface rather
- * than two implementations that drift.
+ * The rendering is the diff panel's own merge view, so a diff in the chat and a
+ * diff of the working tree are the same surface rather than two implementations
+ * that drift. A card has only the PATCH, not the two documents, so the two sides
+ * are reconstructed from the parsed rows — a context row appears on both, a `-`
+ * only on the original, a `+` only on the new one.
  */
 
 import { useMemo, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import { Columns2, Rows3, WrapText } from 'lucide-preact';
-import { parseUnifiedDiff } from '@/shared/lib/fs/diff-parser';
+import { patchSides } from '@/shared/lib/fs/patch-sides';
 import { excerptDiffToUnified, isExcerptDiff } from '@/shared/lib/fs/excerpt-diff';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { CopyButton } from '@/client/components/common/CopyButton';
-import { UnifiedView } from '@/client/components/workspace/diff-panel/UnifiedView';
-import { SplitView } from '@/client/components/workspace/diff-panel/SplitView';
+import { MergeDiffView } from '@/client/components/workspace/diff-panel/MergeDiffView';
+import { useEditorFontStack } from '@/client/hooks/editor/font';
+import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 
 /** A small icon-only toolbar button, `aria-pressed` for its own state. */
 function ToggleButton({
@@ -80,21 +83,19 @@ export function DiffView({ text, path = '', maxHeightClass = 'max-h-72' }: DiffV
   // omp's excerpt is converted first; a git unified diff passes through.
   const unified = useMemo(() => (isExcerptDiff(text) ? excerptDiffToUnified(text) : text), [text]);
 
-  // Only the view on screen is built: a full-context diff would otherwise
-  // allocate both the flat line list and the paired split rows to draw one.
-  const parsed = useMemo(
-    () => parseUnifiedDiff(unified, { views: split ? 'split' : 'unified' }),
-    [unified, split],
-  );
+  // A card has a PATCH and no documents, so the two sides are rebuilt from it:
+  // context on both, `-` on the original, `+` on the new one. That is the same
+  // alignment the merge view would compute from two files, restricted to the
+  // hunks the patch carries.
+  const sides = useMemo(() => patchSides(unified), [unified]);
+  const editorFontFamily = useEditorFontStack();
 
   // The excerpt's header carries no filename, so the caller's path is the only
-  // name the block can show; the unified header is preferred when it exists.
-  const fileLabel = parsed.lines.find((line) => line.type === 'meta')?.text
-    ? ''
-    : path.split('/').pop() ?? '';
-  const language = getLanguageFromPath(path || parsed.splitRows[0]?.right?.text || '');
+  // name the block can show — unless the patch names itself.
+  const fileLabel = sides.hasHunk ? '' : (path.split('/').pop() ?? '');
+  const language = getLanguageFromPath(path || sides.next.split('\n')[0] || '');
 
-  if (parsed.lines.length === 0 && parsed.splitRows.length === 0) {
+  if (sides.rows === 0) {
     return (
       <pre className="max-h-48 overflow-auto rounded-lg border border-ink/8 bg-paper p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all text-ink/80 select-text">
         {text}
@@ -109,8 +110,8 @@ export function DiffView({ text, path = '', maxHeightClass = 'max-h-72' }: DiffV
           <span className="truncate font-mono text-[10.5px] text-ink/60">{fileLabel}</span>
         )}
         <span className="flex items-center gap-1.5 font-mono text-[10px]">
-          <span className="text-success">+{parsed.additions}</span>
-          <span className="text-error">{'\u2212'}{parsed.deletions}</span>
+          <span className="text-success">+{sides.additions}</span>
+          <span className="text-error">{'\u2212'}{sides.deletions}</span>
         </span>
         <span className="ml-auto flex items-center gap-1">
           <ToggleButton
@@ -150,12 +151,24 @@ export function DiffView({ text, path = '', maxHeightClass = 'max-h-72' }: DiffV
           own content and this wrapper only bounds it. */}
       <div className={`flex ${maxHeightClass} min-h-0 flex-col overflow-hidden`}>
         {/* No tab key: this diff lives inside a chat card, and the timeline —
-            not the card — is what the reader scrolls. */}
-        {split ? (
-          <SplitView rows={parsed.splitRows} language={language} wordWrap={wordWrap} tabKey={null} />
-        ) : (
-          <UnifiedView lines={parsed.lines} language={language} wordWrap={wordWrap} tabKey={null} />
-        )}
+            not the card — is what the reader scrolls. No counts either: the
+            header above already prints them from the patch. */}
+        <MergeDiffView
+          original={sides.original}
+          next={sides.next}
+          language={language}
+          viewMode={split ? 'split' : 'unified'}
+          // Collapsed gaps: the reconstructed sides carry blank padding up to
+          // each hunk's real line, so showing every row would draw thousands of
+          // empty lines between two changes.
+          contentMode="diff"
+          wordWrap={wordWrap}
+          ignoreWhitespace={false}
+          tabKey={null}
+          empty={false}
+          fontFamily={editorFontFamily}
+          fontSize={EDITOR_DEFAULT_FONT_SIZE}
+        />
       </div>
     </div>
   );
