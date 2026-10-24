@@ -152,3 +152,36 @@ describe('computeRealSessionTelemetry context anchor', () => {
     expect(telemetry.contextUsed).toBe(2200);
   });
 });
+
+describe('computeRealSessionTelemetry raw items', () => {
+  // The default is the TELEMETRY TOPIC's payload, which the navbar ring keeps
+  // subscribed for every open session and the server republishes on every tool
+  // call. A raw item carries its whole entry as `rawPayload`, so reading 0 as
+  // "unlimited" put the entire transcript on that topic — measured 690 KB of a
+  // 691 KB snapshot on a 111-message session.
+  test('materializes no raw items by default', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'first turn'),
+      assistantMessage('a1', { usage: { input: 10, output: 5 } }),
+      userMessage('u2', 'second turn'),
+      assistantMessage('a2', { usage: { input: 20, output: 5 } }),
+    ]);
+    const telemetry = await computeRealSessionTelemetry(file, 'ses_telemetry');
+    expect(telemetry.messagesCount).toBe(4);
+    expect(telemetry.rawMessages).toEqual([]);
+  });
+
+  test('caps raw items at a positive limit', async () => {
+    const file = await writeSession([
+      header,
+      userMessage('u1', 'first turn'),
+      assistantMessage('a1', { usage: { input: 10, output: 5 } }),
+      userMessage('u2', 'second turn'),
+      assistantMessage('a2', { usage: { input: 20, output: 5 } }),
+    ]);
+    const telemetry = await computeRealSessionTelemetry(file, 'ses_telemetry', undefined, 2);
+    expect(telemetry.rawMessages).toHaveLength(2);
+    expect(telemetry.rawMessages[0]?.id).toBe('u1');
+  });
+});

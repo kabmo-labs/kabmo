@@ -10,6 +10,15 @@ import { scanSessionEntries } from '@/server/lib/omp/session/telemetry/scan';
  * Compute real `SessionContextTelemetry` for a session file (all-zero on
  * unreadable/empty). `rawLimit` caps materialized raw items (0 = none): the
  * panel reads full pages from `computeRawMessagesPage` in ./telemetry-raw.ts.
+ *
+ * The default is 0 — no raw items — and that is load-bearing rather than
+ * tidy: this value is published as the `session:<id>:telemetry` topic, which
+ * the navbar ring subscribes to for EVERY open session and the server
+ * republishes on every tool call. Measured on a 111-message transcript, the
+ * full `rawMessages` list (each item carrying its whole entry as
+ * `rawPayload`) was **690 KB of a 691 KB snapshot** — 99.9% of every push,
+ * per tool call, per tab. Nothing reads it: the panel pages raw items from
+ * `/api/telemetry/raw-messages`, and `/api/telemetry/context` strips them.
  */
 export async function computeRealSessionTelemetry(
   filePath: string,
@@ -106,7 +115,10 @@ export async function computeRealSessionTelemetry(
 
     if (role === 'user' || role === 'assistant') {
       messagesCount++;
-      if (rawLimit === 0 || rawMessages.length < rawLimit) {
+      // `rawLimit` is a CAP, so 0 means "none" — the guard must not read 0 as
+      // "unlimited", which is what it did and what put the whole transcript on
+      // the telemetry topic (see the doc above).
+      if (rawLimit > 0 && rawMessages.length < rawLimit) {
         const isAssistant = role === 'assistant';
         const snippet = text.slice(0, 70);
         rawMessages.push({
