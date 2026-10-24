@@ -116,7 +116,16 @@ export function replaceMatch(
   };
 }
 
-/** Replace every match. Null when the query is empty or does not compile. */
+/**
+ * Replace every match. Null when the query is empty or does not compile.
+ *
+ * A ZERO-WIDTH match is left alone, exactly as the scan leaves it out of the
+ * list: `^`, `$`, `\b` and `a*` have nothing to highlight and nothing to
+ * replace, so a `^` query reads "No results" in the widget — and rewriting every
+ * line start under it was the write disagreeing with the count it was shown
+ * next to. (A non-empty literal query can never match zero characters, so this
+ * only ever applies to regex mode.)
+ */
 export function replaceAllMatches(
   text: string,
   query: string,
@@ -127,6 +136,7 @@ export function replaceAllMatches(
   if (!regex) return null;
   if (!options.isRegex) return text.replace(regex, () => replacement);
   return text.replace(regex, (...args: unknown[]) => {
+    if (String(args[0]).length === 0) return '';
     // A replacer's arguments are `(match, …groups, offset, string, groups?)`;
     // rebuilding an exec result from them keeps one expansion rule for both
     // the single and the bulk path.

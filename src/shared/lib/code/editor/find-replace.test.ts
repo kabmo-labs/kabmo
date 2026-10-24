@@ -20,6 +20,7 @@ import {
   replaceMatch,
 } from '@/shared/lib/code/editor/find-replace';
 import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
+import { findMatches } from '@/shared/lib/code/editor/find-scan';
 
 const PLAIN: FindOptions = { matchCase: false, wholeWord: false, isRegex: false };
 
@@ -61,6 +62,50 @@ describe('replaceAllMatches', () => {
   test('returns null for an unusable query', () => {
     expect(replaceAllMatches('abc', '(', 'x', { ...PLAIN, isRegex: true })).toBeNull();
     expect(replaceAllMatches('abc', '', 'x', PLAIN)).toBeNull();
+  });
+});
+
+/**
+ * The write path and the match list must be the SAME answer.
+ *
+ * They were not, and every case below was silent: the scan runs through
+ * CodeMirror's `RegExpCursor` (`gm` + `u`) while the replacement compiled the
+ * query itself (`g`/`gi`), so the count in the widget and the bytes written
+ * disagreed about anchors, unicode property escapes and which escapes are even
+ * legal. `find-scan.ts` now states the flags once (`BASE_FLAGS`), and these
+ * assert the two ends together rather than one engine in isolation.
+ */
+describe('the write path agrees with the scan', () => {
+  const REGEX: FindOptions = { ...PLAIN, isRegex: true };
+
+  test('an anchored pattern rewrites every line the scan counted', () => {
+    const text = 'foo\nbar\nfoo';
+    expect(findMatches(text, '^foo', REGEX).matches).toHaveLength(2);
+    expect(replaceAllMatches(text, '^foo', 'X', REGEX)).toBe('X\nbar\nX');
+
+    expect(findMatches(text, 'foo$', REGEX).matches).toHaveLength(2);
+    expect(replaceAllMatches(text, 'foo$', 'X', REGEX)).toBe('X\nbar\nX');
+  });
+
+  test('a unicode property escape finds AND replaces', () => {
+    const text = 'a1 b2';
+    expect(findMatches(text, '\\p{L}\\d', REGEX).matches).toHaveLength(2);
+    expect(replaceAllMatches(text, '\\p{L}\\d', 'X', REGEX)).toBe('X X');
+    expect(replaceMatch(text, { start: 0, end: 2 }, '\\p{L}\\d', 'X', REGEX)?.text).toBe('X b2');
+  });
+
+  test('an escape the scan calls invalid is refused by the write too', () => {
+    // `\-` is a legal identity escape without `u` and a syntax error with it.
+    expect(findMatches('a-b', '\\-', REGEX).invalid).toBe(true);
+    expect(replaceAllMatches('a-b', '\\-', 'X', REGEX)).toBeNull();
+  });
+
+  test('a zero-width match is replaced by nothing, exactly as it is uncounted', () => {
+    // The widget says "No results" for `^`; inserting at every line start under
+    // it was the write contradicting the count it was shown beside.
+    expect(findMatches('a\nb', '^', REGEX).matches).toEqual([]);
+    expect(replaceAllMatches('a\nb', '^', 'X', REGEX)).toBe('a\nb');
+    expect(replaceAllMatches('abc', 'x*', 'X', REGEX)).toBe('abc');
   });
 });
 

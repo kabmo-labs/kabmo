@@ -63,6 +63,28 @@ export const DEFAULT_FIND_OPTIONS: FindOptions = {
 };
 
 /**
+ * The flags `RegExpCursor` compiles with, stated once.
+ *
+ * This is not a preference: the cursor builds its own `RegExp` from the pattern
+ * SOURCE with `gm` (plus `u` where the engine has unicode property escapes), and
+ * a write path that compiled the same source with different flags would answer
+ * differently from the list on screen. Measured before this was aligned:
+ *
+ * - `^foo` / `foo$` — the cursor's `m` makes the anchor per LINE, so the widget
+ *   counted 2 matches on a three-line file while Replace All rewrote only the
+ *   first (no `m` = start/end of the whole document).
+ * - `\p{L}\d` — matched three times in the scan and zero in the replacement,
+ *   because a property escape is only a property escape with `u`; without it
+ *   `\p` is a literal `p`, so Replace All and Replace One did nothing at all.
+ * - `\-`, `\A` — invalid escapes under `u`, so the scan called the pattern
+ *   broken while Replace All still edited the file with the non-unicode reading.
+ *
+ * So the flags live here, `buildFindRegex` is the only compiler, and the scan,
+ * the replace preview and both write paths read it.
+ */
+const BASE_FLAGS = 'gm' + ('unicode' in RegExp.prototype ? 'u' : '');
+
+/**
  * The pattern a query compiles to, or null when the query is empty or does not
  * compile. A literal query is escaped here rather than at the call site so the
  * match scan and the replacement splice can never disagree about what the
@@ -76,7 +98,7 @@ export function buildFindRegex(query: string, options: FindOptions): RegExp | nu
   const source = options.isRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const wrapped = options.wholeWord ? `\\b(?:${source})\\b` : source;
   try {
-    return new RegExp(wrapped, options.matchCase ? 'g' : 'gi');
+    return new RegExp(wrapped, options.matchCase ? BASE_FLAGS : `${BASE_FLAGS}i`);
   } catch {
     return null;
   }
