@@ -35,6 +35,7 @@ const RELEASE = {
   url: 'https://github.com/kabmo-labs/kabmo/releases/download/v0.7.0/Kabmo-0.6.0-android.apk',
   latest: '0.6.0',
   releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
+  direct: true,
 };
 
 function Harness({ fetchImpl }: { fetchImpl: typeof fetch }) {
@@ -167,6 +168,31 @@ describe('the desktop shells', () => {
       desktop: { platform: 'linux', shellVersion: '0.1.0' },
     });
     expect(await mount(stubFetch([]))).toBe('update:linux:0.6.0');
+  });
+
+  /**
+   * A shell that reports its architecture asks for THAT machine's artifact.
+   *
+   * Without it the console can only answer the release page — every desktop
+   * artifact is per-architecture — so the offer is a link a human follows instead
+   * of an update the shell installs.
+   */
+  test('reports the arch, so the answer is a file rather than a page', async () => {
+    shell({ desktop: { platform: 'macos', shellVersion: '0.1.0', arch: 'arm64' } });
+    const asked: string[] = [];
+
+    await mount(stubFetch(asked));
+    expect(asked).toEqual(['/api/updates/desktop?kind=macos&arch=arm64']);
+  });
+
+  test('a shell with no arch still asks, and gets the page', async () => {
+    // An older shell must keep working: the offer degrades to the release page
+    // instead of disappearing.
+    shell({ desktop: { platform: 'macos', shellVersion: '0.1.0' } });
+    const asked: string[] = [];
+
+    await mount(stubFetch(asked));
+    expect(asked).toEqual(['/api/updates/desktop?kind=macos']);
   });
 
   test('a refused probe draws no button', async () => {

@@ -44,6 +44,20 @@ pub fn handle_command(
         }
         value
     };
+    // Ask the caller to restart into the image it just installed.
+    //
+    // The path travels with the answer because the caller is what spawns the
+    // replacement — and it must do that AFTER this process exits, or two
+    // instances fight over the managed server's port.
+    let with_relaunch = |mut value: Value, image: &std::path::Path| {
+        if let Value::Object(map) = &mut value {
+            map.insert(
+                "__relaunch".into(),
+                Value::String(image.to_string_lossy().into_owned()),
+            );
+        }
+        value
+    };
 
     match method {
         // The page draws minimise / maximise / close (`windowControls: true`):
@@ -117,6 +131,35 @@ pub fn handle_command(
             let id = text_param(params, "id");
             store.borrow_mut().stop(&id);
             Ok(state(store))
+        }
+
+        // Install a newer build of this app over the image this process runs
+        // from, and ask the caller to restart into it.
+        //
+        // `__relaunch` rather than doing it here for the same reason
+        // `__navigate` exists: the page that asked is about to be replaced, and
+        // the answer has to reach it FIRST. The caller sends the reply, then runs
+        // the relaunch — see `main.rs`.
+        "update_apply" => {
+            let url = text_param(params, "url");
+            let version = text_param(params, "version");
+            let image = std::env::var("APPIMAGE").ok();
+            let Some(image) = kabmo_desktop::update::appimage_of(image.as_deref()) else {
+                return Err(ShellError::new(
+                    "This build is not an AppImage, so it cannot replace itself. Download the release instead.",
+                ));
+            };
+            let installed = env!("KABMO_SHELL_VERSION");
+            let message = kabmo_desktop::update_run::apply(&url, &version, installed, &image)?;
+            Ok(with_relaunch(
+                serde_json::json!({
+                    "success": true,
+                    "version": version,
+                    "message": message,
+                    "relaunching": true,
+                }),
+                &image,
+            ))
         }
 
         other => Err(ShellError::new(format!("Unknown shell command: {other}"))),

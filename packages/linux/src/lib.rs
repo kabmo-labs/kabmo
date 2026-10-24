@@ -29,6 +29,8 @@ pub mod splash;
 pub mod splash_view;
 pub mod store;
 pub mod system;
+pub mod update;
+pub mod update_run;
 pub mod window;
 pub mod wordmark;
 mod wordmark_data;
@@ -44,6 +46,10 @@ pub use store::{
 pub use system::{
     data_directory, detect_local_servers, free_port, probe_health, which, AlreadyServed, Launch,
     ManagedServer, StartFailure, Supervisor, SystemDeps,
+};
+pub use update::{
+    appimage_of, arch, asset_arch, elf_matches_arch, is_newer, is_trusted_download, refusal,
+    relaunch_script, staged_path, EM_AARCH64, EM_X86_64, TRUSTED_HOSTS,
 };
 pub use wordmark::{commands, paint, Command};
 pub use window::{

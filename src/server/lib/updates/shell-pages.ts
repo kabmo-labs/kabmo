@@ -21,7 +21,8 @@
  */
 
 import { REPO } from '@/server/lib/updates/release-url';
-import { SHELL_ASSETS, versionFromAssetName } from '@/server/lib/updates/shell-assets';
+import { SHELL_ASSETS, selfUpdateArtifact, versionFromAssetName } from '@/server/lib/updates/shell-assets';
+import type { ShellArch } from '@/shared/lib/updates/shell-arch';
 import type { ShellKind } from '@/shared/lib/updates/shell-ua';
 
 /** How many tags to walk before giving up. */
@@ -64,6 +65,7 @@ export async function findAssetInPages(
   kind: ShellKind,
   fetchImpl: typeof fetch,
   headers: Record<string, string>,
+  arch: ShellArch | null = null,
 ): Promise<PagesResult> {
   const feed = await fetchImpl(`https://github.com/${REPO}/releases.atom`, {
     headers: { accept: 'application/atom+xml, text/xml', ...headers },
@@ -80,7 +82,7 @@ export async function findAssetInPages(
     );
     if (!page.ok) continue;
 
-    const asset = shellAssetFromPage(kind, await page.text());
+    const asset = shellAssetFromPage(kind, await page.text(), arch);
     if (!asset) continue;
 
     return { kind: 'found', asset, releaseUrl: tag.url };
@@ -121,18 +123,28 @@ export function releaseTags(xml: string): ReleaseTag[] {
  * `shell-release`'s API path documents: a release carrying both spellings must
  * not resolve to the older version.
  */
-export function shellAssetFromPage(kind: ShellKind, html: string): PageAsset | null {
+export function shellAssetFromPage(kind: ShellKind, html: string, arch: ShellArch | null = null): PageAsset | null {
   const found: PageAsset[] = [];
-  const pattern = /href="(\/[^"]+\/releases\/download\/[^"]+)"/g;
 
-  for (const match of html.matchAll(pattern)) {
+  for (const match of html.matchAll(ASSET_HREF)) {
     const path = decodeEntities(match[1] ?? '');
     const name = decodeURIComponent(path.slice(path.lastIndexOf('/') + 1));
     if (versionFromAssetName(kind, name) !== null) found.push({ name, downloadUrl: `https://github.com${path}` });
   }
 
+  // The architecture decides FIRST, for the reason the API path documents: a
+  // desktop shell that named its own machine must not be handed the other
+  // architecture's installer just because the fragment lists it first.
+  if (arch) {
+    const exact = found.find((asset) => selfUpdateArtifact(kind, arch, asset.name) !== null);
+    if (exact) return exact;
+  }
+
   return found.find((asset) => SHELL_ASSETS[kind].current.test(asset.name)) ?? found[0] ?? null;
 }
+
+/** One asset link in a release fragment. Stated once: the loop and the regex must agree. */
+const ASSET_HREF = /href="(\/[^"]+\/releases\/download\/[^"]+)"/g;
 
 /** The entities that appear in a feed title or a link. */
 function decodeEntities(text: string): string {

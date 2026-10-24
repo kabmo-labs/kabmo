@@ -117,9 +117,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     DesktopInfo(
       platform: "macos",
       shellVersion: ShellVersion.current(),
+      arch: shellArch,
       overlayTitlebar: true,
       trafficLightInset: "5rem"
     )
+  }
+
+  /**
+   The architecture this binary was BUILT for.
+
+   A compile-time answer, because Swift has no runtime one — and it is the right
+   answer for a Rosetta launch too: the process is running the x86_64 slice, so
+   the x64 artifact is the one that can replace it without changing how it runs.
+   */
+  private static var shellArch: String {
+    #if arch(arm64)
+    return "arm64"
+    #else
+    return "x64"
+    #endif
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -441,8 +457,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       return [
         "platform": Self.desktopInfo.platform,
         "shellVersion": Self.desktopInfo.shellVersion,
+        "arch": Self.desktopInfo.arch,
         "overlayTitlebar": Self.desktopInfo.overlayTitlebar,
         "trafficLightInset": Self.desktopInfo.trafficLightInset,
+      ]
+
+    /**
+     Install a newer build of this app, then restart into it.
+
+     The console answers `url` and `version` from the release it read; everything
+     else is this side's — the download, the verification and the bundle swap. A
+     refusal is thrown with a SENTENCE (the bridge turns it into the reply the
+     page shows), because "the update failed" tells a user nothing they can act
+     on.
+
+     The restart happens AFTER the reply: `BridgeHandler` awaits this method and
+     only then evaluates the reply script, so terminating here would kill the
+     answer and leave the console spinning over an update that worked.
+     */
+    case "update_apply":
+      let url = params["url"] as? String ?? ""
+      let version = params["version"] as? String ?? ""
+      let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+      let installed = try await ShellUpdater().apply(
+        url: url,
+        version: version,
+        installedBundle: Bundle.main.bundleURL,
+        installedVersion: Self.desktopInfo.shellVersion,
+        caches: caches
+      )
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { Self.relaunchAndQuit() }
+      return [
+        "success": true,
+        "version": installed.version,
+        "message": "Kabmo \(installed.version) installed — restarting.",
+        "relaunching": true,
       ]
 
     case "servers_state":
@@ -485,6 +534,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
 
   func navigate(to url: String) {
     load(url)
+  }
+
+  /**
+   Start the build that was just installed, and quit this one.
+
+   Two ordering facts, and each was a bug waiting to happen:
+
+   1. **The new instance starts AFTER this process is gone.** The managed server
+      listens on a port, and starting the replacement while this app is still
+      shutting its own children down would have the new window find the port
+      taken — by the process it just replaced. So a detached shell waits for this
+      pid to disappear and only then calls `open`.
+   2. **The path is quoted for the shell.** A bundle can live in a directory with
+      a space or a quote in it (`~/Applications/My Apps/Kabmo.app`), and an
+      unquoted path is two arguments to `open`.
+   */
+  private static func relaunchAndQuit() {
+    let bundle = Bundle.main.bundleURL
+    let pid = ProcessInfo.processInfo.processIdentifier
+    let quoted = "'" + bundle.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    let script = "while /bin/kill -0 \(pid) 2>/dev/null; do /bin/sleep 0.2; done; /usr/bin/open -n \(quoted)"
+
+    let waiter = Process()
+    waiter.executableURL = URL(fileURLWithPath: "/bin/sh")
+    waiter.arguments = ["-c", script]
+    // Its own process group, so it outlives this app: a child of a terminating
+    // process is reparented anyway, but a group keeps the shell's own signals
+    // away from the app while it is still up.
+    try? waiter.run()
+
+    NSApp.terminate(nil)
   }
 
   private func encode(_ state: ServersState) -> Any? {

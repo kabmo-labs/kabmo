@@ -43,6 +43,13 @@ use serde::Serialize;
 pub struct DesktopInfo {
     pub platform: String,
     pub shell_version: String,
+    /// The machine's architecture, in the console's vocabulary (`arm64` / `x64`).
+    ///
+    /// Every desktop artifact is per-architecture, so without this the console can
+    /// only offer the release page. A compile-time fact (`update::arch`), which is
+    /// also what makes it right for an emulated launch: the binary that runs is the
+    /// one whose slice it reported.
+    pub arch: String,
     pub overlay_titlebar: bool,
     /**
      * True: this window is undecorated and draws no controls of its own, so the
@@ -65,6 +72,7 @@ impl Default for DesktopInfo {
             // own version: the crate is never published, and two numbers for one
             // build is the drift the properties file exists to prevent.
             shell_version: env!("KABMO_SHELL_VERSION").into(),
+            arch: crate::update::arch().into(),
             overlay_titlebar: true,
             window_controls: true,
         }

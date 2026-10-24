@@ -26,6 +26,7 @@ mod splash;
 mod store;
 mod support;
 mod system;
+mod update;
 mod url;
 mod window;
 mod wordmark;
@@ -42,6 +43,7 @@ fn main() {
     window::cases(&mut r);
     system::cases(&mut r);
     navigation::cases(&mut r);
+    update::cases(&mut r);
 
     println!("\n{}/{} checks passed", r.checks - r.failures, r.checks);
     std::process::exit(if r.failures == 0 { 0 } else { 1 });

@@ -23,10 +23,10 @@ export type MobileShellKind = 'android' | 'ios';
 
 /**
  * The desktop shells. They carry NO User-Agent token — a desktop app is not
- * downloaded from the console, so the server has nothing to parse per request.
- * They report their version over the shell bridge instead (`__kabmoDesktop`),
- * which is why they are a separate family: the version exists, the UA channel
- * does not.
+ * downloaded from a page, so the server has nothing to parse per request. They
+ * report their version and their ARCHITECTURE over the shell bridge instead
+ * (`__kabmoDesktop`), which is why they are a separate family: both facts exist,
+ * the UA channel does not.
  */
 export type DesktopShellKind = 'macos' | 'windows' | 'linux';
 

@@ -24,7 +24,7 @@ import { fetchShellRelease, type ShellRelease } from '@/server/lib/updates/shell
 export async function loader() {
   const release: ShellRelease | null = await fetchShellRelease('ios');
   return json(
-    release ?? { url: null, latest: null, releaseUrl: null },
+    release ?? { url: null, latest: null, releaseUrl: null, direct: false },
     { headers: NO_STORE_HEADERS },
   );
 }

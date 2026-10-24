@@ -84,6 +84,7 @@ describe('fetchShellRelease', () => {
       url: 'https://x/Kabmo-1.2.3-android.apk',
       latest: '1.2.3',
       releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v9.9.9',
+      direct: true,
     });
   });
 
@@ -102,6 +103,7 @@ describe('fetchShellRelease', () => {
       url: 'https://x/i.ipa',
       latest: '0.4.0',
       releaseUrl: 'https://x/app',
+      direct: true,
     });
   });
 
@@ -130,6 +132,7 @@ describe('fetchShellRelease', () => {
       url: 'https://x/new.apk',
       latest: '0.6.0',
       releaseUrl: 'https://x/r',
+      direct: true,
     });
   });
 
@@ -183,6 +186,7 @@ describe('fetchShellRelease', () => {
       url: 'https://x/a.apk',
       latest: '0.3.0',
       releaseUrl: 'https://x/app',
+      direct: true,
     });
   });
 
@@ -212,7 +216,12 @@ describe('fetchShellRelease', () => {
       { html_url: 'https://x', assets: [{ name: 'notes.md' }] },
       { html_url: 'https://y', assets: [] },
     ]);
-    expect(await fetchShellRelease('android', impl)).toEqual({ url: null, latest: null, releaseUrl: null });
+    expect(await fetchShellRelease('android', impl)).toEqual({
+      url: null,
+      latest: null,
+      releaseUrl: null,
+      direct: false,
+    });
   });
 
   test('answers null when the probe fails', async () => {
@@ -230,31 +239,5 @@ describe('fetchShellRelease', () => {
     // repository.
     const { impl } = routedFetch({ api: { assets: 'nope' } });
     expect(await fetchShellRelease('android', impl)).toBeNull();
-  });
-
-  /**
-   * The desktop trio reads the same release list and answers the RELEASE PAGE.
-   *
-   * Every desktop artifact is per-architecture, and this server cannot know which
-   * architecture the window asking is running on — it may be a remote console on
-   * another machine. Naming one arch's file would hand half the readers a build
-   * that will not launch, so the link is the page that lists all of them.
-   */
-  test('a desktop probe answers the release page, never one architecture', async () => {
-    const { impl } = stubFetch([
-      {
-        html_url: 'https://x/app',
-        assets: [
-          { name: 'Kabmo-0.2.0-mac-arm64.zip', browser_download_url: 'https://x/mac-arm.zip' },
-          { name: 'Kabmo-0.2.0-mac-x64.dmg', browser_download_url: 'https://x/mac-x64.dmg' },
-        ],
-      },
-    ]);
-
-    expect(await fetchShellRelease('macos', impl)).toEqual({
-      url: 'https://x/app',
-      latest: '0.2.0',
-      releaseUrl: 'https://x/app',
-    });
   });
 });

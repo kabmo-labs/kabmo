@@ -1,4 +1,9 @@
 /**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
  * Which published native-shell artifact a browser or an installed shell should
  * download, and whether the installed one is behind.
  *
@@ -19,11 +24,12 @@
  *
  * - `url` is what to download. For the mobile pair it is the artifact itself (an
  *   APK the shell installs, an IPA the release page explains). For the DESKTOP
- *   trio it is the RELEASE PAGE, deliberately: every desktop artifact is
- *   per-architecture (`Kabmo-0.2.0-mac-arm64.zip`), and this server cannot know
- *   which architecture the window asking is running on — it may be a remote
- *   console on another machine entirely. Naming one arch's file would hand half
- *   the readers a build that will not launch.
+ *   trio it is the artifact when the caller reported its ARCHITECTURE, and the
+ *   release page otherwise: every desktop artifact is per-architecture, and a
+ *   console served to another machine cannot guess. Naming the wrong arch's file
+ *   would hand half the readers a build that will not launch.
+ * - `direct` says which of the two `url` is, so the client knows whether the
+ *   offer can be installed from inside the shell.
  * - `latest` is the version that asset ships, read from the asset NAME (see
  *   `shell-assets`). The release TAG cannot be used: the artifact is attached to
  *   the app's release, whose tag names the SERVER version.
@@ -34,9 +40,24 @@
  */
 
 import { REPO } from '@/server/lib/updates/release-url';
-import { SHELL_ASSETS, versionFromAssetName } from '@/server/lib/updates/shell-assets';
+import {
+  cacheSlot,
+  CACHE_MS,
+  githubApiBase,
+  gitHubHeaders,
+  shellCacheKey,
+} from '@/server/lib/updates/shell-cache';
+import { SHELL_ASSETS, selfUpdateArtifact, versionFromAssetName } from '@/server/lib/updates/shell-assets';
 import { findAssetInPages } from '@/server/lib/updates/shell-pages';
+import type { ShellArch } from '@/shared/lib/updates/shell-arch';
 import type { ShellKind } from '@/shared/lib/updates/shell-ua';
+
+/**
+ * The test seam for the process-wide answer cache, re-exported here because this
+ * module is what owns the answers. The cache itself lives next door (`shell-cache`)
+ * so its key — shell AND architecture — is stated in one place.
+ */
+export { resetShellReleaseCache } from '@/server/lib/updates/shell-cache';
 
 /** One published shell artifact, as the console needs it. */
 export interface ShellRelease {
@@ -46,7 +67,20 @@ export interface ShellRelease {
   latest: string | null;
   /** The release page, for a "what changed" link. */
   releaseUrl: string | null;
+  /**
+   * True when `url` names the artifact itself rather than the release page.
+   *
+   * This is what tells the console whether the offer can be INSTALLED from
+   * inside the shell. It is true for the mobile pair (one file for every
+   * device) and for a desktop shell that reported its architecture — and false
+   * for a desktop probe without one, which still gets the page that lists every
+   * architecture.
+   */
+  direct: boolean;
 }
+
+/** The answer a probe gives when it found nothing: a valid result, not an error. */
+const EMPTY_RELEASE: ShellRelease = { url: null, latest: null, releaseUrl: null, direct: false };
 
 /**
  * The newest release that actually carries this shell's artifact.
@@ -57,25 +91,32 @@ export interface ShellRelease {
  * `release.yml`), so their `kabmo-sdk/v*` / `kabmo-ui/v*` releases are newer
  * than the app release that carries the shells. `@semantic-release/github` runs
  * in both pipelines, so those are real releases — measured against a stub that
- * answered a package release: `/releases/latest` produced
- * `{url: null, latest: null}` and the sidebar's button disappeared even though
- * the APK sat on the release directly below.
+ * answered a package release: `/releases/latest` produced `{url: null, …}` and
+ * the sidebar's button disappeared even though the APK sat on the release
+ * directly below.
  *
- * Cached for five minutes on `globalThis` for the same reason the database
- * handle is anchored there: `bun --hot` re-evaluates this module while the cache
- * it would otherwise hold lives on.
+ * `arch` is what a DESKTOP shell reports about its own machine, and it is the
+ * difference between "here is the page, pick your build" and "here is your
+ * installer". It is the THIRD parameter so every existing caller — including
+ * every test, which passes `fetchImpl` — keeps its shape.
+ *
+ * Cached for five minutes on `globalThis` (see `shell-cache`) for the same
+ * reason the database handle is anchored there: `bun --hot` re-evaluates this
+ * module while the cache it would otherwise hold lives on.
  */
 export async function fetchShellRelease(
   kind: ShellKind,
   fetchImpl: typeof fetch = fetch,
+  arch: ShellArch | null = null,
 ): Promise<ShellRelease | null> {
-  const cache = cacheSlot(kind);
+  const cache = cacheSlot<ShellRelease>(shellCacheKey(kind, arch));
   const now = Date.now();
   if (cache.entry && now - cache.at < CACHE_MS) return cache.entry;
 
   const headers = gitHubHeaders();
   const resolved =
-    (await readFromApi(kind, fetchImpl, headers)) ?? (await readFromPages(kind, fetchImpl, headers));
+    (await readFromApi(kind, arch, fetchImpl, headers)) ??
+    (await readFromPages(kind, arch, fetchImpl, headers));
   if (!resolved) return cache.entry ?? null;
 
   cache.entry = resolved;
@@ -94,6 +135,7 @@ const RELEASE_SCAN = 20;
  */
 async function readFromApi(
   kind: ShellKind,
+  arch: ShellArch | null,
   fetchImpl: typeof fetch,
   headers: Record<string, string>,
 ): Promise<ShellRelease | null> {
@@ -105,8 +147,8 @@ async function readFromApi(
 
     const body = (await response.json()) as unknown;
     // A body that is not the release list is a failed probe, not an empty
-    // repository: answering `{url: null, latest: null}` here would be
-    // indistinguishable from "no release carries an artifact".
+    // repository: answering `{url: null, …}` here would be indistinguishable
+    // from "no release carries an artifact".
     if (!Array.isArray(body)) return null;
 
     // Drafts are not published and prereleases are not what a console offers an
@@ -117,12 +159,12 @@ async function readFromApi(
     );
 
     const release = published
-      .map((entry) => ({ entry, asset: shellAsset(kind, entry.assets) }))
+      .map((entry) => ({ entry, asset: shellAsset(kind, arch, entry.assets) }))
       .find((candidate) => candidate.asset !== null);
 
-    if (!release?.asset) return { url: null, latest: null, releaseUrl: null };
+    if (!release?.asset) return EMPTY_RELEASE;
 
-    return resolvedRelease(kind, {
+    return resolvedRelease(kind, arch, {
       name: String(release.asset.name),
       downloadUrl:
         typeof release.asset.browser_download_url === 'string' ? release.asset.browser_download_url : null,
@@ -136,14 +178,15 @@ async function readFromApi(
 /** The public-pages read, wrapped so a failure is the caller's `null`. */
 async function readFromPages(
   kind: ShellKind,
+  arch: ShellArch | null,
   fetchImpl: typeof fetch,
   headers: Record<string, string>,
 ): Promise<ShellRelease | null> {
   try {
-    const found = await findAssetInPages(kind, fetchImpl, headers);
+    const found = await findAssetInPages(kind, fetchImpl, headers, arch);
     if (found.kind === 'unreachable') return null;
-    if (found.kind === 'none') return { url: null, latest: null, releaseUrl: null };
-    return resolvedRelease(kind, { ...found.asset, releaseUrl: found.releaseUrl });
+    if (found.kind === 'none') return EMPTY_RELEASE;
+    return resolvedRelease(kind, arch, { ...found.asset, releaseUrl: found.releaseUrl });
   } catch {
     return null;
   }
@@ -152,16 +195,26 @@ async function readFromPages(
 /**
  * The asset of a release that names this shell's artifact, or null.
  *
- * The CURRENT scheme wins over the legacy one, and that is not cosmetic. A
- * release that carries both — which happens the moment a rename lands and
- * `--clobber` has not yet replaced the old asset, or a hand-upload adds one
- * beside the other — would otherwise resolve to whichever the asset list
- * happened to order first. Measured: a release holding both
- * `kabmo-android-v0.4.0.apk` and `Kabmo-0.6.0-android.apk` answered `0.4.0`,
- * i.e. the console offered an update to a version it already had and hid the
- * newer one.
+ * Two questions, in this order:
+ *
+ * 1. **Does an architecture match?** When the caller named one, the only
+ *    acceptable asset is the file that machine installs (`selfUpdateArtifact`).
+ *    Everything else in the release — the other architecture, the `.dmg`, a
+ *    `.deb` — is skipped, and the next release is tried.
+ * 2. **Which spelling?** The CURRENT scheme wins over the legacy one, and that
+ *    is not cosmetic. A release that carries both — which happens the moment a
+ *    rename lands and `--clobber` has not yet replaced the old asset, or a
+ *    hand-upload adds one beside the other — would otherwise resolve to
+ *    whichever the asset list happened to order first. Measured: a release
+ *    holding both `kabmo-android-v0.4.0.apk` and `Kabmo-0.6.0-android.apk`
+ *    answered `0.4.0`, i.e. the console offered an update to a version it
+ *    already had and hid the newer one.
  */
-function shellAsset(kind: ShellKind, assets: unknown): Record<string, unknown> | null {
+function shellAsset(
+  kind: ShellKind,
+  arch: ShellArch | null,
+  assets: unknown,
+): Record<string, unknown> | null {
   if (!Array.isArray(assets)) return null;
 
   const named = assets.filter(
@@ -172,95 +225,38 @@ function shellAsset(kind: ShellKind, assets: unknown): Record<string, unknown> |
       versionFromAssetName(kind, String((entry as Record<string, unknown>).name)) !== null,
   );
 
+  if (arch) {
+    const exact = named.find(
+      (asset) => selfUpdateArtifact(kind, arch, String(asset.name)) !== null,
+    );
+    if (exact) return exact;
+  }
+
   return named.find((asset) => SHELL_ASSETS[kind].current.test(String(asset.name))) ?? named[0] ?? null;
 }
 
-/** Turn one resolved asset into the payload, applying the per-kind link rule. */
+/**
+ * Turn one resolved asset into the payload.
+ *
+ * `direct` is derived from the SAME decision that chose the asset: an arch was
+ * named and the asset is that arch's self-update file. Deriving it separately —
+ * from `directDownload`, or from the platform — is how the client ends up
+ * offering an install for a release page.
+ */
 function resolvedRelease(
   kind: ShellKind,
+  arch: ShellArch | null,
   asset: { name: string; downloadUrl: string | null; releaseUrl: string | null },
 ): ShellRelease {
+  const installable = arch !== null && selfUpdateArtifact(kind, arch, asset.name) !== null;
+  const direct = SHELL_ASSETS[kind].directDownload || installable;
+
   return {
-    // A per-arch desktop build cannot be named from here — see the module
-    // comment — so the link is the page that lists every architecture.
-    url: SHELL_ASSETS[kind].directDownload ? asset.downloadUrl : asset.releaseUrl,
+    // A per-arch desktop build cannot be named without an architecture — see
+    // the module comment — so the link is the page that lists every one.
+    url: direct ? asset.downloadUrl : asset.releaseUrl,
     latest: versionFromAssetName(kind, asset.name),
     releaseUrl: asset.releaseUrl,
+    direct: direct && asset.downloadUrl !== null,
   };
-}
-
-const CACHE_MS = 5 * 60_000;
-
-/**
- * Where the release read goes.
- *
- * Overridable for the same reason the npm probe honours `NPM_CONFIG_REGISTRY`: a
- * test and a rehearsal need to exercise the real parsing against a stub instead
- * of a live GitHub call, and hardcoding the host makes that impossible without
- * intercepting `fetch` globally.
- */
-function githubApiBase(): string {
-  const configured = Bun.env.KABMO_GITHUB_API ?? '';
-  return configured.trim().replace(/\/+$/, '') || 'https://api.github.com';
-}
-
-/**
- * A token, when the operator has one, which lifts the API quota from 60 an hour
- * to 5000 — the difference between the precise read working on a shared address
- * and falling through to the pages every time.
- *
- * Read from the environment rather than a setting: it is a deployment fact, it
- * must never reach the browser, and `kabmo serve` already passes its own
- * environment through.
- */
-function gitHubHeaders(): Record<string, string> {
-  const token = (Bun.env.KABMO_GITHUB_TOKEN ?? Bun.env.GITHUB_TOKEN ?? '').trim();
-  const headers: Record<string, string> = {
-    // GitHub rejects a request with no User-Agent.
-    'user-agent': 'kabmo-console',
-  };
-  if (token) headers.authorization = `Bearer ${token}`;
-  return headers;
-}
-
-interface CacheSlot {
-  entry: ShellRelease | null;
-  at: number;
-}
-
-type ShellCacheHost = typeof globalThis & {
-  __kabmoShellRelease?: Partial<Record<ShellKind, CacheSlot>>;
-};
-
-/**
- * The cache slot for one shell.
- *
- * PER SHELL, not one shared slot: both probes read the same release list but
- * resolve different assets, so one slot would make the second shell answer with
- * the first one's artifact.
- */
-function cacheSlot(kind: ShellKind): CacheSlot {
-  const host = globalThis as ShellCacheHost;
-  host.__kabmoShellRelease ??= {};
-  host.__kabmoShellRelease[kind] ??= { entry: null, at: 0 };
-  return host.__kabmoShellRelease[kind] as CacheSlot;
-}
-
-/**
- * Drop the cached answer for one shell (or every shell, with no argument).
- *
- * The cache lives on `globalThis` so `bun --hot` cannot orphan it, which also
- * means it outlives a test file: without this seam the second case in a suite
- * reads the first case's answer and passes for the wrong reason (measured — the
- * "malformed body" case returned the previous test's release). Production has
- * no caller; it exists because the cache is process-wide by design.
- */
-export function resetShellReleaseCache(kind?: ShellKind): void {
-  const host = globalThis as ShellCacheHost;
-  if (!kind) {
-    host.__kabmoShellRelease = {};
-    return;
-  }
-  host.__kabmoShellRelease ??= {};
-  host.__kabmoShellRelease[kind] = { entry: null, at: 0 };
 }

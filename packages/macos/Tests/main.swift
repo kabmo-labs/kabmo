@@ -604,6 +604,8 @@ splashCases()
 shellVersionCases()
 // Where a link goes: inside this window, or out to the browser.
 navigationPolicyCases()
+// What a self-update may download, install and replace.
+shellUpdateCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

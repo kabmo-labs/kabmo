@@ -29,6 +29,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { isNewer } from '@/shared/lib/updates/semver';
+import { parseShellArch, type ShellArch } from '@/shared/lib/updates/shell-arch';
 import {
   isDesktopShellKind,
   type DesktopShellKind,
@@ -43,11 +44,13 @@ export type ShellOfferKind = 'update' | 'install';
 
 export interface ShellDownload {
   /**
-   * What the control links to.
+   * What the control points at.
    *
    * The artifact itself for the mobile pair (an APK the shell installs, an IPA
-   * the release page explains), and the RELEASE PAGE for a desktop shell: every
-   * desktop build is per-architecture, so the console cannot name one file.
+   * the release page explains), and for a desktop shell EITHER its own
+   * per-architecture artifact (when it reported `arch`) or the RELEASE PAGE (when
+   * it did not). `direct` says which, and that is what decides between a button
+   * and a link.
    */
   url: string;
   /** The version that artifact ships. */
@@ -58,12 +61,22 @@ export interface ShellDownload {
   kind: ShellOfferKind;
   /** Which shell this offer is for. */
   platform: ShellPlatform;
+  /**
+   * True when `url` is the artifact itself, so the SHELL can install it.
+   *
+   * False means `url` is the release page: the console cannot name one file
+   * (a desktop shell that did not report its architecture), so the offer is a
+   * link a human follows. That distinction is what decides between an `<a>` and
+   * a button that drives `update_apply`.
+   */
+  direct: boolean;
 }
 
 interface ReleasePayload {
   url?: unknown;
   latest?: unknown;
   releaseUrl?: unknown;
+  direct?: unknown;
 }
 
 /** The platform's own name, as the label says it. */
@@ -91,6 +104,10 @@ export function parseShellRelease(payload: unknown): Omit<ShellDownload, 'kind' 
     url: body.url,
     latest: body.latest,
     releaseUrl: typeof body.releaseUrl === 'string' ? body.releaseUrl : null,
+    // Absent means "not installable": a shell that cannot install the bytes must
+    // fall back to the link rather than to a button that would download into
+    // nowhere.
+    direct: body.direct === true,
   };
 }
 
@@ -147,8 +164,14 @@ export function shellDownloadLabel(download: ShellDownload): string {
  * The desktop trio shares ONE route with an explicit `kind`, so no absence can
  * silently mean a platform — the reason the mobile pair has two.
  */
-export function shellReleasePath(platform: ShellPlatform): string {
-  if (isDesktopShellKind(platform)) return `/api/updates/desktop?kind=${platform}`;
+export function shellReleasePath(platform: ShellPlatform, arch: ShellArch | null = null): string {
+  if (isDesktopShellKind(platform)) {
+    // The arch is what makes the answer a FILE rather than a page. A shell that
+    // did not report one still asks, and still gets the page that lists every
+    // architecture — the offer is then a link, which is the honest fallback.
+    const base = `/api/updates/desktop?kind=${platform}`;
+    return arch ? `${base}&arch=${arch}` : base;
+  }
   return `/api/updates/${platform}`;
 }
 
@@ -182,10 +205,17 @@ export function shellFromBootstrap(bootstrap: {
 export function desktopShellFromIdentity(identity: {
   platform?: string;
   shellVersion?: string;
-} | null | undefined): { platform: DesktopShellKind; version: string } | null {
+  arch?: string;
+} | null | undefined): { platform: DesktopShellKind; version: string; arch: ShellArch | null } | null {
   if (!identity?.platform || !identity.shellVersion) return null;
   if (!isDesktopShellKind(identity.platform)) return null;
-  return { platform: identity.platform, version: identity.shellVersion };
+  return {
+    platform: identity.platform,
+    version: identity.shellVersion,
+    // A shell too old to report one keeps working: the offer degrades to the
+    // release page instead of disappearing.
+    arch: parseShellArch(identity.arch),
+  };
 }
 
 /**
@@ -200,6 +230,7 @@ export function useShellDownload(
   version: string | null | undefined,
   onAndroid: boolean | null | undefined,
   fetchImpl: typeof fetch = fetch,
+  arch: ShellArch | null = null,
 ): ShellDownload | null {
   /**
    * The answer, TAGGED with the platform it was read for.
@@ -210,10 +241,14 @@ export function useShellDownload(
    * — offering an Android APK to a Mac for one render.
    */
   const [answer, setAnswer] = useState<{
-    platform: ShellPlatform;
+    key: string;
     release: Omit<ShellDownload, 'kind' | 'platform'> | null;
   } | null>(null);
   const wanted = Boolean(version) || (platform === 'android' && Boolean(onAndroid));
+  // The question this hook is asking, arch included: two windows on one console
+  // differ only by architecture, and an answer read for the other one is not an
+  // answer.
+  const key = `${platform}:${arch ?? ''}`;
 
   useEffect(() => {
     if (!wanted) return;
@@ -221,10 +256,10 @@ export function useShellDownload(
     let cancelled = false;
     void (async () => {
       try {
-        const response = await fetchImpl(shellReleasePath(platform));
+        const response = await fetchImpl(shellReleasePath(platform, arch));
         if (!response.ok) return;
         const payload: unknown = await response.json();
-        if (!cancelled) setAnswer({ platform, release: parseShellRelease(payload) });
+        if (!cancelled) setAnswer({ key, release: parseShellRelease(payload) });
       } catch {
         // A probe that cannot answer is a button that must not appear.
       }
@@ -233,10 +268,10 @@ export function useShellDownload(
     return () => {
       cancelled = true;
     };
-  }, [wanted, platform, fetchImpl]);
+  }, [wanted, key, platform, arch, fetchImpl]);
 
-  // A stale answer belongs to the platform it was read for, not this one.
-  const release = answer?.platform === platform ? answer.release : null;
+  // A stale answer belongs to the question it was read for, not this one.
+  const release = answer?.key === key ? answer.release : null;
   return shouldOfferShellDownload(platform, version, onAndroid, release);
 }
 
@@ -285,7 +320,13 @@ export function useShellOffer(
   const platform = fromBridge?.platform ?? mobile?.platform ?? 'android';
   const version = fromBridge?.version ?? mobile?.version ?? null;
 
-  return useShellDownload(platform, version, fromBridge ? null : bootstrap?.isAndroid, fetchImpl);
+  return useShellDownload(
+    platform,
+    version,
+    fromBridge ? null : bootstrap?.isAndroid,
+    fetchImpl,
+    fromBridge?.arch ?? null,
+  );
 }
 
 /**

@@ -25,6 +25,16 @@ import WebKit
 struct DesktopInfo: Codable {
   let platform: String
   let shellVersion: String
+  /**
+   The machine's architecture, in the console's vocabulary (`arm64` / `x64`).
+
+   Every desktop artifact is per-architecture, so without this the console can
+   only offer the release page. `arch` is a COMPILE-TIME fact in Swift — there is
+   no runtime API for "the slice this binary was built for" — which is also what
+   makes it correct for a Rosetta launch: the binary that runs is the one whose
+   slice it reported.
+   */
+  let arch: String
   let overlayTitlebar: Bool
   let trafficLightInset: String
 }

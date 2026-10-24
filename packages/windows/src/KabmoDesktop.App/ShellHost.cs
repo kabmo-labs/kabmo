@@ -46,6 +46,19 @@ public sealed class ShellHost
             ? $"{version.Major}.{version.Minor}.{version.Build}"
             : "0.0.0";
 
+    /// <summary>
+    /// The architecture this binary was BUILT for, in the console's vocabulary.
+    ///
+    /// Read from the runtime rather than the OS: an x64 build on an Arm machine
+    /// runs under emulation, and it is the x64 artifact that replaces it without
+    /// changing how it runs. `ProcessArchitecture` answers exactly that.
+    /// </summary>
+    private static readonly string ShellArch =
+        System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture
+            == System.Runtime.InteropServices.Architecture.Arm64
+            ? "arm64"
+            : "x64";
+
     public Window Window => _window;
 
     public ShellHost()
@@ -170,7 +183,12 @@ public sealed class ShellHost
             OverlayTitlebar: true,
             // The page draws minimise / maximise / close: the webview is an HWND,
             // so nothing the shell renders can sit on top of it.
-            WindowControls: true);
+            WindowControls: true)
+        {
+            // Every desktop artifact is per-architecture, so the console cannot
+            // name one without this — the offer would degrade to a release page.
+            Arch = ShellArch,
+        };
         await core.AddScriptToExecuteOnDocumentCreatedAsync(Bridge.BootstrapScript(info));
 
         _store = new ServerStore(
@@ -361,9 +379,33 @@ public sealed class ShellHost
                     {
                         platform = "windows",
                         shellVersion = ShellVersion,
+                        arch = ShellArch,
                         overlayTitlebar = true,
                         windowControls = true,
                     };
+
+                // Install a newer build of this app, then quit so the installer
+                // can replace the running exe.
+                //
+                // The ANSWER is sent before the shutdown: `Bridge.OnMessage` awaits
+                // this method and only then executes the reply script, so closing
+                // the window here would kill the answer and leave the console
+                // spinning over an update that worked. The shutdown is therefore
+                // scheduled, not performed inline.
+                case "update_apply":
+                {
+                    var url = Text(parameters, "url");
+                    var version = Text(parameters, "version");
+                    var message = await new ShellUpdater().ApplyAsync(url, version, ShellArch, ShellVersion);
+                    // DELAYED, not immediate: `Bridge.OnMessage` awaits this
+                    // method and only then evaluates the reply script, so a close
+                    // posted now would race the answer and the console would keep
+                    // a spinner over an update that worked.
+                    _ = Task.Delay(600).ContinueWith(
+                        _ => _host._window.Dispatcher.Invoke(() => _host._window.Close()),
+                        TaskScheduler.Default);
+                    return new { success = true, version, message, relaunching = true };
+                }
 
                 case "window_minimize":
                     _host._window.WindowState = WindowState.Minimized;

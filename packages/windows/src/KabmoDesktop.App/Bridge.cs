@@ -27,6 +27,15 @@ namespace KabmoDesktop.App;
 /// <summary>What the shell reports about itself, once, before the page asks anything.</summary>
 public sealed record ShellInfo(string Platform, string ShellVersion, bool OverlayTitlebar, bool WindowControls)
 {
+    /// <summary>
+    /// The machine's architecture, in the console's vocabulary (`arm64` / `x64`).
+    ///
+    /// Every desktop artifact is per-architecture, so without this the console can
+    /// only offer the release page. Absent on a shell too old to report it, which
+    /// degrades the offer rather than breaking it.
+    /// </summary>
+    public string? Arch { get; init; }
+
     public string? TrafficLightInset { get; init; }
 }
 

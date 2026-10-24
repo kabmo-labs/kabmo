@@ -1,10 +1,7 @@
-import { Download, Info, Monitor, Settings } from 'lucide-preact';
+import { Info, Monitor, Settings } from 'lucide-preact';
 import packageJson from '@/../package.json';
-import {
-  shellDownloadLabel,
-  shellDownloadShortLabel,
-  type ShellDownload,
-} from '@/client/hooks/ui/updates/shell-download';
+import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
+import { ShellUpdateButton } from '@/client/components/common/shell-update-button';
 
 interface MobileSessionFooterProps {
   onSettings: () => void;
@@ -49,27 +46,18 @@ export function MobileSessionFooter({
           <span>About</span>
         </button>
         {shellDownload && (
-          // Directly after About, matching the desktop footer. An `<a>`, not a
-          // button: the download is the browser's (or the WebView's) job, and
-          // `target="_blank"` hands it to the system browser so the console is
-          // not replaced by a file download.
+          // Directly after About, matching the desktop footer.
           //
           // The visible word is the OFFER, not the file type: `APK` told a
           // reader what the bytes are but not what the control does, and on a
           // browser it is the only place the native shell is ever mentioned. An
           // iOS update is an IPA, so the word names the platform instead of a
           // file extension.
-          <a
-            href={shellDownload.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={shellDownloadLabel(shellDownload)}
-            aria-label={shellDownloadLabel(shellDownload)}
-            className="flex items-center space-x-1 hover:text-ink transition-colors"
-          >
-            <Download size={14} />
-            <span>{shellDownloadShortLabel(shellDownload)}</span>
-          </a>
+          //
+          // The shared control decides link-versus-button: a desktop shell that
+          // knows its architecture installs the artifact itself, and a link
+          // there would leave the file in Downloads.
+          <ShellUpdateButton download={shellDownload} variant="label" />
         )}
         {onDesktopToggle && (
           <button

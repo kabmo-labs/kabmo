@@ -89,6 +89,7 @@ describe('the fallback when the API is unavailable', () => {
       url: 'https://github.com/kabmo-labs/kabmo/releases/download/v0.7.0/Kabmo-0.6.0-android.apk',
       latest: '0.6.0',
       releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
+      direct: true,
     });
     expect(calls.some((url) => url.includes('/repos/'))).toBe(true);
     expect(calls.some((url) => url.endsWith('/releases.atom'))).toBe(true);
@@ -106,13 +107,38 @@ describe('the fallback when the API is unavailable', () => {
     expect((await fetchShellRelease('android', impl))?.latest).toBe('0.6.0');
   });
 
-  test('answers the release page for a desktop shell', async () => {
+  test('answers the release page for a desktop shell with no arch', async () => {
     const { impl } = routedFetch({ atom: ATOM, assets: { 'v0.7.0': ASSETS_V070 } });
 
     expect(await fetchShellRelease('macos', impl)).toEqual({
       url: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
       latest: '0.2.0',
       releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
+      direct: false,
+    });
+  });
+
+  test('answers that arch’s own artifact when the fragment lists it', async () => {
+    // The pages fallback carries the same arch rule as the API read: a desktop
+    // shell that named its machine gets that machine's installer, and a build it
+    // does not publish is never substituted.
+    const { impl } = routedFetch({ atom: ATOM, assets: { 'v0.7.0': ASSETS_V070 } });
+
+    expect(await fetchShellRelease('macos', impl, 'arm64')).toEqual({
+      url: 'https://github.com/kabmo-labs/kabmo/releases/download/v0.7.0/Kabmo-0.2.0-mac-arm64.zip',
+      latest: '0.2.0',
+      releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
+      direct: true,
+    });
+
+    // x64 is not in the fragment, so the page is the answer rather than the
+    // arm64 file.
+    const again = routedFetch({ atom: ATOM, assets: { 'v0.7.0': ASSETS_V070 } });
+    expect(await fetchShellRelease('macos', again.impl, 'x64')).toEqual({
+      url: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
+      latest: '0.2.0',
+      releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v0.7.0',
+      direct: false,
     });
   });
 
@@ -121,7 +147,12 @@ describe('the fallback when the API is unavailable', () => {
     // distinguishable: the first is cacheable and the second keeps the last good
     // answer.
     const { impl } = routedFetch({ atom: ATOM, assets: { 'v0.7.0': '<div></div>' } });
-    expect(await fetchShellRelease('android', impl)).toEqual({ url: null, latest: null, releaseUrl: null });
+    expect(await fetchShellRelease('android', impl)).toEqual({
+      url: null,
+      latest: null,
+      releaseUrl: null,
+      direct: false,
+    });
   });
 
   test('an unreachable feed answers null rather than an empty result', async () => {

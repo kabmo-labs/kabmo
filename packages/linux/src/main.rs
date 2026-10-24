@@ -40,6 +40,7 @@ use kabmo_desktop::splash::Progress;
 use kabmo_desktop::splash_view::Splash;
 use kabmo_desktop::store::ServerStore;
 use kabmo_desktop::system::{Supervisor, SystemDeps};
+use kabmo_desktop::update_run;
 use kabmo_desktop::window::{make_window, remember_press, wire_edge_resize};
 
 mod chrome;
@@ -147,7 +148,23 @@ impl Shell {
         shell
     }
 
-    fn start(&self) {
+    /// Restart into an image that was just installed.
+///
+/// Deferred by a second so the reply reaches the page first — a window that closed
+/// in the same tick would leave the console showing a spinner over an update that
+/// worked. The spawn itself waits for this pid to exit (see
+/// `update::relaunch_script`), because the managed server holds its port until this
+/// process is gone.
+fn schedule_relaunch(image: String, window: gtk::Window) {
+    let _ = gtk::glib::timeout_add_seconds_local(1, move || {
+        let path = std::path::PathBuf::from(&image);
+        update_run::relaunch(&path);
+        window.close();
+        gtk::glib::ControlFlow::Break
+    });
+}
+
+fn start(&self) {
         self.window.show_all();
         // The splash covers the window until the first probe answers; this is
         // what moves it to the server the user was last on.
@@ -229,9 +246,17 @@ impl Shell {
                         splash.show_progress(*progress.borrow());
                         view.load_uri(url);
                     }
+                    // An update asks for a RESTART, and the reply must reach the
+                    // page before this process goes away: the answer is evaluated
+                    // below, so the relaunch is scheduled on the main loop rather
+                    // than performed here.
+                    if let Some(image) = payload.get("__relaunch").and_then(|value| value.as_str()) {
+                        schedule_relaunch(image.to_string(), window.clone());
+                    }
                     let clean = match payload {
                         Value::Object(mut map) => {
                             map.remove("__navigate");
+                            map.remove("__relaunch");
                             Value::Object(map)
                         }
                         other => other,

@@ -1,8 +1,6 @@
-import { Download, Info, Settings } from 'lucide-preact';
-import {
-  shellDownloadLabel,
-  type ShellDownload,
-} from '@/client/hooks/ui/updates/shell-download';
+import { Info, Settings } from 'lucide-preact';
+import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
+import { ShellUpdateButton } from '@/client/components/common/shell-update-button';
 
 interface SessionSidebarFooterProps {
   onSettings: () => void;
@@ -50,16 +48,11 @@ export function SessionSidebarFooter({ onSettings, onInfo, updateAvailable, onUp
           // an installed shell that is behind (an update), or an Android browser
           // whose reader may not know the shell exists (an install). A desktop
           // browser and an iOS browser get neither — see `useShellDownload`.
-          <a
-            href={shellDownload.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={shellDownloadLabel(shellDownload)}
-            aria-label={shellDownloadLabel(shellDownload)}
-            className="p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors"
-          >
-            <Download size={16} />
-          </a>
+          //
+          // A desktop shell that reported its architecture gets a BUTTON: the
+          // shell installs the artifact itself, and a link there would be a file
+          // in Downloads instead of an updated app.
+          <ShellUpdateButton download={shellDownload} variant="icon" />
         )}
       </div>
       {updateAvailable && (

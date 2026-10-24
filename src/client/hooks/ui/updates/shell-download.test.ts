@@ -21,6 +21,7 @@ const RELEASE = {
   url: 'https://github.com/kabmo-labs/kabmo/releases/download/v1.2.3/Kabmo-1.2.3-android.apk',
   latest: '1.2.3',
   releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v1.2.3',
+  direct: true,
 };
 
 const UPDATE: ShellDownload = { ...RELEASE, kind: 'update', platform: 'android' };
@@ -209,6 +210,7 @@ describe('desktopShellFromIdentity', () => {
     expect(desktopShellFromIdentity({ platform: 'macos', shellVersion: '0.2.0' })).toEqual({
       platform: 'macos',
       version: '0.2.0',
+      arch: null,
     });
     expect(desktopShellFromIdentity({ platform: 'windows', shellVersion: '0.2.0' })?.platform).toBe('windows');
     expect(desktopShellFromIdentity({ platform: 'linux', shellVersion: '0.2.0' })?.platform).toBe('linux');

@@ -30,6 +30,14 @@
 export interface DesktopInfo {
   platform: string;
   shellVersion: string;
+  /**
+   * The machine's architecture, in the canonical vocabulary (`arm64` / `x64`).
+   *
+   * Every desktop artifact is per-architecture, so without this the console can
+   * only offer the release page. Absent on a shell too old to report it, which
+   * degrades the offer to that page rather than breaking it.
+   */
+  arch?: string;
   /** True when the shell hides the native title bar and the page draws it. */
   overlayTitlebar: boolean;
   /**
@@ -155,4 +163,41 @@ export function windowToggleMaximize(): Promise<void> {
 
 export function windowClose(): Promise<void> {
   return call<void>('window_close');
+}
+
+/**
+ * What the shell did with an update it was handed.
+ *
+ * The shell owns the whole run — download, verify, replace, relaunch — because
+ * only it can do any of those things: a page cannot replace the executable it is
+ * running inside, and a page's "download" leaves a file in a folder the user has
+ * to find. This is the report it sends back.
+ *
+ * `relaunching` is the honest terminal state on success: the shell is about to
+ * quit, so a caller that keeps a spinner going is describing a page that is
+ * already gone.
+ */
+export interface ShellUpdateOutcome {
+  success: boolean;
+  /** The version the shell installed, when it could read one. */
+  version?: string | null;
+  /** A sentence for the user — the shell's own, never a generic failure. */
+  message: string;
+  relaunching?: boolean;
+}
+
+/**
+ * Ask the shell to install the build it just offered.
+ *
+ * `url` and `version` are the console's answer, passed through rather than
+ * re-derived: the shell has no release list of its own, and asking it to fetch
+ * one would be a second reader of the same GitHub endpoint.
+ *
+ * The shell VERIFIES the bytes before installing them (the platform's own check —
+ * a code signature, an archive shape, a version floor). A console that is
+ * compromised can therefore make the shell download, but not make it run
+ * something the platform will not vouch for.
+ */
+export function applyShellUpdate(url: string, version: string): Promise<ShellUpdateOutcome> {
+  return call<ShellUpdateOutcome>('update_apply', { url, version });
 }
