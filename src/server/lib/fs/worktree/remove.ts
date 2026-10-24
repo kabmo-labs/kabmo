@@ -23,7 +23,7 @@ import { canonicalPath, pathHolds } from '@/server/lib/fs/canonical';
 import { runGit } from '@/server/lib/fs/git-run';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 import { WorktreeError } from '@/server/lib/fs/worktree/errors';
-import { listWorktrees } from '@/server/lib/fs/worktree/list';
+import { isWorkTree, listWorktrees } from '@/server/lib/fs/worktree/list';
 
 /** Changed + untracked count in `directory`; 0 when git cannot answer. */
 export async function dirtyCount(directory: string): Promise<number> {
@@ -85,8 +85,8 @@ export async function removeWorktree(
   const requested = path.resolve(input.worktreePath);
   const insideManagedRoot = input.managedRoot ? await pathHolds(input.managedRoot, requested) : false;
 
-  const insideWorkTree = await runGit(['rev-parse', '--is-inside-work-tree'], { cwd: input.projectPath });
-  if (insideWorkTree.exitCode !== 0 || insideWorkTree.stdout.trim() !== 'true') {
+  const insideWorkTree = await isWorkTree(input.projectPath);
+  if (!insideWorkTree) {
     throw new WorktreeError('not_a_repo', 'This folder is not a Git repository.');
   }
 

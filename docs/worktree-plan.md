@@ -3,7 +3,9 @@
 A chat can start in its own git worktree: its own branch, its own folder, its
 own omp child. Parallel sessions stop stepping on each other's files.
 
-Status: **plan only, nothing implemented.**
+Status: **implemented** (`01fe3ac5`), with one design change against this plan:
+the composer's target is TWO controls, not one merged dropdown — §3.2 records
+what shipped and why the merge was wrong.
 
 Two decisions up front, and everything below follows from them:
 
@@ -134,16 +136,42 @@ Errors land on their field; the footer shows the first one truncated with the
 full text in `title` (a footer that grows with a long git message moves the
 buttons — OpenChamber pins one line and truncates).
 
-### 3.2 Composer target picker — extend `EmptyWorkspacePrompt`
+### 3.2 Composer target — TWO controls, not one dropdown
 
-Today the pending chat shows one picker: `Select Workspace Context` → folders.
-It becomes a **target** picker, one dropdown, grouped, exactly the shape
-OpenChamber's `DraftTargetSelectors` uses:
+**What shipped, and why this plan was wrong about it.** The first implementation
+merged both answers into one menu — folders, create actions and worktrees, all
+under a trigger reading `folder.name · branch`. It read as a *workspace* picker
+with branch rows buried in it: a user looking for another project scrolled
+through worktrees, and a user looking for a worktree had no control of its own
+to look for. OpenChamber draws two (`DraftTargetSelectors.tsx`: a `Popover` for
+the project, then a separate `Select` for the directory/branch), and that split
+is the whole reason its composer stays readable.
+
+So the pending chat renders **two dropdowns side by side**:
+
+```
+[🗀 kabmo ▾]   [⑂ main ▾]                    ← the draft's two questions
+ └ Workspace    └ Worktree
+```
+
+- **`WorkspacePicker`** (`target-picker/WorkspacePicker.tsx`) — the project.
+  Folders only, nothing about worktrees. Its trigger's accessible name is
+  `Workspace: <folder>`, and picking a folder **clears** the worktree pick: a
+  checkout of the previous project names a path the new one cannot resolve.
+- **`WorktreePicker`** (`target-picker/WorktreePicker.tsx`) — the checkout
+  inside that project. Its trigger reads the **branch** (`main`, `wt/fix-socket`,
+  `detached`), not the word "root": a repository sitting on `main` and one
+  sitting on `wt/scratch` are different places to start a chat. A ⚠ replaces
+  the branch glyph when that checkout has uncommitted files, because the notice
+  has to be visible before the first prompt, not in a tooltip.
+
+The worktree menu keeps the three groups, and creating stays ABOVE the list so a
+long list cannot hide it:
 
 ```
 ┌ Project root ───────────────┐
-│ ✓ kabmo · main              │
-├ Quick worktree ─────────────┤
+│ ✓ main                      │
+├─────────────────────────────┤
 │ ⚡ Quick worktree           │
 │ ⑂ New worktree…             │
 ├ Worktrees ──────────────────┤
@@ -152,12 +180,23 @@ OpenChamber's `DraftTargetSelectors` uses:
 └─────────────────────────────┘
 ```
 
-- The **project row** is the current behaviour (`folderId`).
+- The **root row** clears the worktree half (`{folderId, worktreePath: null}`).
 - **Quick worktree** creates one immediately with a generated name and selects
-  it; the row shows `⏳` while it is being created.
+  it; the row reads `Creating…` while it is being created.
 - **New worktree…** opens the dialog (§3.1) with this project preselected.
 - **Worktrees** lists the project's worktrees; picking one targets it.
-- The trigger reads `folder.name · branch` (or `folder.name` at root).
+
+**The control is ABSENT for a workspace that is not a git repository**, and the
+decision is the SERVER's: `GET /api/worktrees` answers `isRepo: false` for a
+plain folder (a 200, not the 500 the identity read used to throw), and the
+picker draws nothing. A permanently disabled control in every notes folder
+would be noise, and a control that can only refuse promises a worktree a folder
+cannot hold.
+
+**The list is read on MOUNT, not only on open** — the trigger's own label is the
+root's branch, so the read cannot wait for a click. Measured on this repository:
+~150 ms, one spawn per worktree for its dirty count. Opening the menu re-reads,
+so a worktree made in another tab appears in the list being looked at.
 
 Selection persists in the session's UI state as `chat.spawnTarget`
 (`{ folderId, worktreePath }`) **with a ref mirror**, because the composer is
@@ -165,9 +204,6 @@ remounted by a stretch, a tab switch and a reload while the send handler is
 created once per deps record — the exact hazard `waiting/choice.ts` documents.
 The send path resolves `spawnCwdForNewSession(folders, sessionId, folderId,
 worktreePath)` → `worktreePath ?? project_path`.
-
-A click on a folder row *clears* the worktree pick (the picker's groups are
-mutually exclusive); a click on a worktree keeps its folder.
 
 ### 3.3 Sidebar rows
 

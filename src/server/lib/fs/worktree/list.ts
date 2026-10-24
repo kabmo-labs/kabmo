@@ -116,6 +116,19 @@ export async function listWorktrees(cwd: string): Promise<WorktreeEntry[]> {
   return entries;
 }
 
+/**
+ * Whether `cwd` is inside a work tree at all.
+ *
+ * The check a plain directory fails, and the one every caller here needs before
+ * it may talk about worktrees: `git worktree list` in a non-repository exits
+ * non-zero, so without this a notes folder bound as a workspace reads as a
+ * BROKEN repository rather than as one that has none.
+ */
+export async function isWorkTree(cwd: string): Promise<boolean> {
+  const probe = await runGit(['rev-parse', '--is-inside-work-tree'], { cwd });
+  return probe.exitCode === 0 && probe.stdout.trim() === 'true';
+}
+
 /** Whether `branch` is checked out in any worktree of this repository, and where. */
 export async function findBranchInUse(cwd: string, branch: string): Promise<{ path: string } | null> {
   const entries = await listWorktrees(cwd);

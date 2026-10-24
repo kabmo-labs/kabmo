@@ -58,7 +58,7 @@ async function readFailure(response: Response): Promise<never> {
 export function useWorktrees(scope: WorktreeRequestScope, enabled: boolean) {
   const [payload, setPayload] = useState<WorktreeListPayload | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<WorktreeFailure | null>(null);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
@@ -67,11 +67,18 @@ export function useWorktrees(scope: WorktreeRequestScope, enabled: boolean) {
       const response = await fetch(`/api/worktrees${queryFor(scope)}`);
       if (!response.ok) await readFailure(response);
       setPayload((await response.json()) as WorktreeListPayload);
-      setError(null);
+      setFailure(null);
     } catch (cause) {
       // Kept apart from the payload: an empty list and a failed read are
-      // different answers, and only one of them means nothing is there.
-      setError(cause instanceof Error ? cause.message : String(cause));
+      // different answers, and only one of them means nothing is there. The
+      // CODE travels too, because "this folder is not a repository" and "git
+      // could not answer" are different states to draw — and the first one is
+      // how a caller knows to offer no worktree control at all.
+      setFailure(
+        cause instanceof WorktreeRequestError
+          ? cause.failure
+          : { code: 'create_failed', message: cause instanceof Error ? cause.message : String(cause) },
+      );
     } finally {
       setLoading(false);
     }
@@ -84,10 +91,18 @@ export function useWorktrees(scope: WorktreeRequestScope, enabled: boolean) {
   return {
     payload,
     worktrees: payload?.worktrees ?? ([] as WorktreeInfo[]),
+    /**
+     * Whether the project is a git repository at all. `null` while it is still
+     * unknown: a caller that draws a worktree control must wait for the answer
+     * rather than offer one a plain folder can never satisfy.
+     */
+    isRepo: payload ? payload.isRepo : null,
     /** The resolved parent directory a create would use. */
     base: payload?.base ?? '',
     loading,
-    error,
+    failure,
+    /** The failure's message, for the surfaces that only print one. */
+    error: failure?.message ?? null,
     refresh,
   };
 }

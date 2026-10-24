@@ -26,7 +26,7 @@ import { scanSessionInfoCached } from '@/server/lib/omp/session/files';
 import { canonicalPath } from '@/server/lib/fs/canonical';
 import { worktreeIdentityFor, listWorktreeRows } from '@/server/lib/db/worktree-registry.server';
 import { dirtyCount, commitsAheadOf } from '@/server/lib/fs/worktree/remove';
-import { listWorktrees } from '@/server/lib/fs/worktree/list';
+import { listWorktrees, isWorkTree } from '@/server/lib/fs/worktree/list';
 import {
   defaultWorktreeRoot,
   resolveConfiguredWorktreeRoot,
@@ -49,6 +49,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   try {
     const db = await getDb();
     const primaryRoot = await resolveProjectRoot(root);
+    // "This folder is not a Git repository" is an ANSWER, not a failure. The
+    // payload has carried `isRepo` for exactly this, and a plain directory (a
+    // notes folder bound as a workspace) must read as "no worktrees here" —
+    // a 500 would make the composer report a broken feature for a folder that
+    // simply has nothing to offer. The probe runs before the identity read,
+    // which is what throws for a directory with no root commit.
+    if (!(await isWorkTree(primaryRoot))) {
+      const empty: WorktreeListPayload = { worktrees: [], base: '', isRepo: false };
+      return json(empty);
+    }
     const settings = await readWorktreeSettings();
     const projectId = await resolveProjectId(primaryRoot, (candidate) => worktreeIdentityFor(db, candidate));
     const base = resolveConfiguredWorktreeRoot(settings.directory, primaryRoot)

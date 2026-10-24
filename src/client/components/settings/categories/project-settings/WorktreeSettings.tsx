@@ -34,7 +34,7 @@ export interface WorktreeSettingsProps {
 }
 
 export function WorktreeSettings({ root, folderId, onReport }: WorktreeSettingsProps) {
-  const { worktrees, base, loading, error, refresh } = useWorktrees({ root, folderId }, Boolean(root));
+  const { worktrees, base, loading, error, isRepo, refresh } = useWorktrees({ root, folderId }, Boolean(root));
   const [directory, setDirectory] = useState(() => {
     const stored = readKabmoSetting<string>(WORKTREE_DIRECTORY_SETTING);
     return typeof stored === 'string' ? stored : '';
@@ -62,7 +62,13 @@ export function WorktreeSettings({ root, folderId, onReport }: WorktreeSettingsP
             Worktrees could not be read: {error}
           </p>
         )}
-        {!loading && !error && removable.length === 0 && (
+        {!loading && !error && isRepo === false && (
+          // The list is empty for a reason the row has to NAME: a folder that
+          // is not a repository can never have a worktree, and "No worktrees
+          // yet" would read as one that could be created.
+          <p className="text-[11px] text-ink/50">Worktrees need a Git repository.</p>
+        )}
+        {!loading && !error && isRepo !== false && removable.length === 0 && (
           <p className="text-[11px] text-ink/50">No worktrees yet.</p>
         )}
         {removable.map((worktree) => (

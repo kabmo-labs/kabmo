@@ -45,7 +45,7 @@ import {
   resolveConfiguredWorktreeRoot,
   resolveTargetDirectory,
 } from '@/server/lib/fs/worktree/location';
-import { findBranchInUse, refExists } from '@/server/lib/fs/worktree/list';
+import { findBranchInUse, isWorkTree, refExists } from '@/server/lib/fs/worktree/list';
 import { resolveProjectId } from '@/server/lib/fs/worktree/project-id';
 
 /**
@@ -113,8 +113,7 @@ export async function planWorktree(
   deps: Pick<CreateWorktreeDeps, 'identityFor' | 'dataDir' | 'configuredDirectory'>,
 ): Promise<{ primaryRoot: string; projectId: string; root: string; name: string; directory: string; branch: string; startRef: string }> {
   const projectPath = path.resolve(input.projectPath);
-  const insideWorkTree = await runGit(['rev-parse', '--is-inside-work-tree'], { cwd: projectPath });
-  if (insideWorkTree.exitCode !== 0 || insideWorkTree.stdout.trim() !== 'true') {
+  if (!(await isWorkTree(projectPath))) {
     throw new WorktreeError('not_a_repo', 'This folder is not a Git repository.');
   }
 

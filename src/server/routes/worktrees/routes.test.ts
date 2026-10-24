@@ -163,6 +163,23 @@ describe('GET /api/worktrees', () => {
     expect(primary.dirty).toBe(0);
   });
 
+  test('a folder that is not a repository answers isRepo:false, not a failure', async () => {
+    // A notes folder bound as a workspace: it can never hold a worktree, and
+    // the composer must read that as "no control here" rather than as a broken
+    // feature. The route used to 500 here, because the identity read throws for
+    // a directory with no root commit.
+    const plain = join(workRoot, 'plain-notes');
+    mkdirSync(plain, { recursive: true });
+    writeFileSync(join(plain, 'todo.md'), '- buy milk\n');
+    const db = await getDb();
+    await db.run('INSERT INTO workspace_folders (name, project_path) VALUES (?, ?)', ['plain', plain]);
+
+    const { status, body } = await call(listLoader, `http://localhost/api/worktrees?root=${encodeURIComponent(plain)}`);
+    expect(status).toBe(200);
+    expect(body.isRepo).toBe(false);
+    expect(worktreesOf(body)).toEqual([]);
+  });
+
   test('counts a session running in a worktree that lives OUTSIDE the repository', async () => {
     const created = await call(createAction, base(), {
       method: 'POST',

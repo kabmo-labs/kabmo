@@ -12,6 +12,10 @@
  * - **The picker creates a real worktree.** It goes through `POST /api/worktrees`
  *   and the answer is checked against `GET /api/worktrees`, so a route that
  *   answered success while writing nothing cannot pass.
+ * - **The worktree control is its own dropdown.** The composer draws the
+ *   workspace (which project) and the worktree (which checkout of it) as two
+ *   controls; a spec that addresses one trigger for both is the merged menu
+ *   coming back.
  * - **The send SPAWNS in the worktree.** The chip under the session's row is
  *   derived from that session's own cwd (`worktreeForCwd`), so it appears only if
  *   the child was born there — a client-side pick that never reached the send
@@ -49,18 +53,28 @@ test.describe('worktree', () => {
 
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
 
-    // The draft's target control, named by the workspace it would run in.
-    const picker = page.getByRole('button', { name: 'e2e-worktree-quick', exact: true }).first();
-    await expect(picker).toBeVisible();
-    await picker.click();
+    // Two controls, two questions: the workspace names the project, the
+    // worktree names the checkout inside it. The worktree control is where a
+    // worktree is made, and it is its own dropdown.
+    const workspacePicker = page.getByRole('button', { name: 'Workspace: e2e-worktree-quick' }).first();
+    await expect(workspacePicker).toBeVisible();
+
+    const worktreePicker = page.getByRole('button', { name: /^Worktree: / }).first();
+    await expect(worktreePicker).toBeVisible();
+    // The root's own branch, read on mount: the trigger says where the chat
+    // would run before the menu is ever opened.
+    await expect(worktreePicker).toHaveAccessibleName('Worktree: main');
+    await worktreePicker.click();
 
     // The menu rows carry `menuitem`, so the role is what proves the control is
     // reachable by keyboard rather than a clickable div.
     await page.getByRole('menuitem', { name: /Quick worktree/ }).first().click();
 
-    // The trigger now names the worktree beside the workspace.
-    const trigger = page.getByRole('button', { name: /e2e-worktree-quick · / }).first();
+    // The WORKTREE trigger now names the worktree, and the workspace trigger is
+    // untouched — the pick moved one half of the target, not both.
+    const trigger = page.getByRole('button', { name: /^Worktree: wt\// }).first();
     await expect(trigger).toBeVisible({ timeout: 20_000 });
+    await expect(workspacePicker).toHaveAccessibleName('Workspace: e2e-worktree-quick');
 
     // A worktree really exists on disk, and it is not the checkout.
     const created = await listWorktrees(server.baseURL, workspace.path);
@@ -110,9 +124,9 @@ test.describe('worktree', () => {
 
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
 
-    const picker = page.getByRole('button', { name: 'e2e-worktree-dialog', exact: true }).first();
-    await expect(picker).toBeVisible();
-    await picker.click();
+    const worktreePicker = page.getByRole('button', { name: /^Worktree: / }).first();
+    await expect(worktreePicker).toBeVisible();
+    await worktreePicker.click();
     await page.getByRole('menuitem', { name: /New worktree/ }).first().click();
 
     const dialog = page.getByRole('dialog');
@@ -136,8 +150,8 @@ test.describe('worktree', () => {
     const listed = await listWorktrees(server.baseURL, workspace.path);
     expect(listed.some((entry) => entry.branch === 'wt/e2e-dialog-made')).toBe(true);
 
-    // The picker adopted it, so the draft runs there.
-    await expect(page.getByRole('button', { name: /e2e-worktree-dialog · e2e-dialog-made/ }).first()).toBeVisible({
+    // The worktree control adopted it, so the draft runs there.
+    await expect(page.getByRole('button', { name: 'Worktree: wt/e2e-dialog-made' }).first()).toBeVisible({
       timeout: 20_000,
     });
 

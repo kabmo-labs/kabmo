@@ -14,7 +14,8 @@ import {
   type WaitingCandidate,
 } from '@/client/components/workspace/chat-timeline/chat-input/WaitingDependencyPicker';
 import { Hourglass } from 'lucide-preact';
-import { TargetPicker } from '@/client/components/workspace/chat-timeline/target-picker/index';
+import { WorkspacePicker } from '@/client/components/workspace/chat-timeline/target-picker/WorkspacePicker';
+import { WorktreePicker } from '@/client/components/workspace/chat-timeline/target-picker/WorktreePicker';
 import type { SpawnTarget } from '@/client/hooks/chat/timeline/spawn-target';
 
 interface EmptyWorkspacePromptProps {
@@ -164,19 +165,26 @@ export function EmptyWorkspacePrompt({
             a target workspace, so the composer is the only focus. */}
         {messages.length === 0 && (
           <div className="flex items-center gap-1 flex-wrap">
-          {/* The target picker asks where the chat runs — the workspace, or one
-              of its worktrees — so a worktree chat is created here rather than
-              in a dialog the user has to find first. */}
-          {onSpawnTargetChange ? (
-            <TargetPicker
+          {/* Two controls, because they answer two questions: the workspace
+              (which project) and the worktree (which checkout of it). The
+              worktree control draws itself only for a git repository, and it
+              reads its list on mount because its own trigger names the branch
+              the project root holds. */}
+          <WorkspacePicker
+            folders={folders as WorkspaceFolderData[]}
+            selectedFolderId={selectedFolderId}
+            setSelectedFolderId={setSelectedFolderId}
+            onClearWorktree={() => onSpawnTargetChange?.(null)}
+          />
+          {onSpawnTargetChange && (
+            <WorktreePicker
               folders={folders as WorkspaceFolderData[]}
               selectedFolderId={selectedFolderId}
-              setSelectedFolderId={setSelectedFolderId}
               target={spawnTarget}
               setTarget={onSpawnTargetChange}
               onReport={onWorktreeReport}
             />
-          ) : null}
+          )}
           {/* The wait picker sits BESIDE the workspace picker, because both
               answer the same question about the chat that has not started:
               where it runs, and what it waits for. It only appears while there
