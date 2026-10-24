@@ -5,8 +5,9 @@ import { bashServiceOf, daemonTone, procUptime } from '@/shared/lib/omp/session/
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { stripAnsiCodes } from '@/shared/lib/code/ansi';
 import { isCodeLike } from '@/shared/lib/code/language';
-import { highlightCode, highlightLines, tryParseJson } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
+import { HighlightedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/HighlightedCode';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
 import { OutputWindow } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/OutputWindow';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
@@ -75,8 +76,9 @@ export function Bash({ tool }: { tool: ToolCallData }) {
     () => (jsonResult.isValid && jsonResult.pretty ? truncateTailLines(jsonResult.pretty, MAX_OUTPUT_LINES) : null),
     [jsonResult]
   );
-  const syntaxReady = useSyntaxReady();
-  const highlightedCommand = useMemo(() => (command ? highlightCode(command, 'bash') : ''), [command, syntaxReady]);
+  // Deferred: a command line is short, but the grammar's first compile is not,
+  // and this card opens while a run streams.
+  const highlightedCommand = useDeferredHighlight(command, 'bash');
 
   const service = bashServiceOf(tool);
   const serviceTone = daemonTone(service?.state);
@@ -181,7 +183,7 @@ export function Bash({ tool }: { tool: ToolCallData }) {
           <div className="flex items-start gap-2.5 px-3 py-2 font-mono text-[11.5px] leading-relaxed">
             <span className="select-none font-bold text-ink/40">$</span>
             <pre
-              className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all text-ink/90 select-text"
+              className="shiki min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-all text-ink/90 select-text"
               dangerouslySetInnerHTML={{ __html: highlightedCommand }}
             />
           </div>
@@ -242,9 +244,10 @@ export function Bash({ tool }: { tool: ToolCallData }) {
             className="max-h-72 overflow-y-auto overscroll-contain p-3 font-mono text-[11px] leading-relaxed select-text"
             render={(visible) =>
               outputIsCode ? (
-                <pre
+                <HighlightedCode
+                  code={visible.join('\n')}
+                  language={outputLang}
                   className="overflow-x-auto whitespace-pre text-ink/85 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: highlightLines(visible.join('\n'), outputLang).join('\n') }}
                 />
               ) : (
                 visible.map((line, idx) => {

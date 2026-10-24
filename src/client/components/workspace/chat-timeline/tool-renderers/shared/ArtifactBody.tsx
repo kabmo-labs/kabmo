@@ -37,8 +37,7 @@ import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspa
 import { artifactViewKind } from '@/shared/lib/chat/tool/artifact-view';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { parseNumberedCode } from '@/shared/lib/code/parser';
-import { highlightLines } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 
 interface ArtifactBodyProps {
   /** The whole artifact, verbatim. */
@@ -103,13 +102,9 @@ export function ArtifactBody({ text, path = '' }: ArtifactBodyProps) {
  * and `121|code`) and a blank line keeps its place in the count.
  */
 function ArtifactCode({ lines, path }: { lines: string[]; path: string }) {
-  const syntaxReady = useSyntaxReady();
   const parsed = useMemo(() => parseNumberedCode(lines.join('\n')), [lines]);
   const lang = getLanguageFromPath(path);
-  const html = useMemo(
-    () => highlightLines(parsed.cleanCode, lang),
-    [parsed.cleanCode, lang, syntaxReady],
-  );
+  const html = useDeferredHighlightLines(parsed.cleanCode, lang);
 
   return (
     <div className="flex items-start font-mono text-[11px] leading-[20px] select-text">

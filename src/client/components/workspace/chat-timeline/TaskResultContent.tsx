@@ -4,20 +4,25 @@ import type { ParsedTaskNotice } from '@/shared/lib/chat/task-result-parser';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { isCodeLike } from '@/shared/lib/code/language';
-import { highlightCode } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
 
 interface TaskResultContentProps {
   task: ParsedTaskNotice;
 }
 
 export function TaskResultContent({ task }: TaskResultContentProps) {
-  useSyntaxReady();
   const structured = task.structuredOutput;
   const isRawCode = !task.formattedJson && isCodeLike(task.rawOutput);
 
   const [activeTab, setActiveTab] = useState<'formatted' | 'raw'>(
     structured || !isRawCode ? 'formatted' : 'raw'
+  );
+
+  // Gated on the tab that draws it: the raw view is one of two, and tokenizing
+  // it while the formatted view is on screen is work nobody sees.
+  const rawHtml = useDeferredHighlight(
+    activeTab === 'raw' ? task.formattedJson || task.rawOutput : '',
+    task.formattedJson ? 'json' : isRawCode ? 'javascript' : 'markdown',
   );
 
   return (
@@ -151,10 +156,7 @@ export function TaskResultContent({ task }: TaskResultContentProps) {
         <pre
           className="max-h-64 overflow-auto rounded-lg border border-ink/8 bg-paper p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/80 scrollbar-overlay-container"
           dangerouslySetInnerHTML={{
-            __html: highlightCode(
-              task.formattedJson || task.rawOutput,
-              task.formattedJson ? 'json' : isRawCode ? 'javascript' : 'markdown'
-            ),
+            __html: rawHtml,
           }}
         />
       )}

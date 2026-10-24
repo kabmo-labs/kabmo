@@ -2,8 +2,7 @@ import { useMemo } from 'preact/hooks';
 import { ArrowRight, CheckCircle2, Clock, Wand2 } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { highlightLines } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 
 interface AstEditItem {
   file?: unknown;
@@ -51,14 +50,17 @@ export function AstEdit({ tool }: { tool: ToolCallData }) {
     ? details.changes
     : parseAstChanges(output);
 
-  const syntaxReady = useSyntaxReady();
   const diffLang = getLanguageFromPath(paths[0]);
-  const diffHtml = useMemo(() => {
-    const contents = diffLines.map((line: string) =>
-      line.startsWith('+') || line.startsWith('-') || line.startsWith(' ') ? line.slice(1) : line
-    );
-    return highlightLines(contents.join('\n'), diffLang);
-  }, [diffLines, diffLang, syntaxReady]);
+  const diffCode = useMemo(
+    () =>
+      diffLines
+        .map((line: string) =>
+          line.startsWith('+') || line.startsWith('-') || line.startsWith(' ') ? line.slice(1) : line
+        )
+        .join('\n'),
+    [diffLines],
+  );
+  const diffHtml = useDeferredHighlightLines(diffCode, diffLang);
 
   // If Staged Proposal Mode (oh-my-pi xd://ast_edit)
   if (isStaged || ops.length > 0 || diffLines.length > 0) {

@@ -2,9 +2,9 @@ import { useMemo } from 'preact/hooks';
 import { AlertCircle, Ban, Clock, Code2, Play } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import { CopyButton } from '@/client/components/common/CopyButton';
-import { highlightCode, highlightJson, tryParseJson } from '@/shared/lib/code/syntax-highlight';
+import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
 
 /**
  * The line box both sides of a code card share — gutter row and code line.
@@ -43,23 +43,20 @@ export function Eval({ tool }: { tool: ToolCallData }) {
   const isError = tool.status === 'error' || output.includes('ToolError:') || output.includes('Command exited with code');
   const isAborted = output.includes('Command aborted') || tool.status === 'aborted';
 
-  const syntaxReady = useSyntaxReady();
-
   const jsonResult = useMemo(
     () => (!isError && !isAborted ? tryParseJson(output) : { isValid: false }),
     [output, isError, isAborted]
   );
 
   const truncatedCode = useMemo(() => truncateTailLines(code, MAX_OUTPUT_LINES), [code]);
-  const highlightedCode = useMemo(
-    () => highlightCode(truncatedCode.text, 'javascript'),
-    [truncatedCode, syntaxReady]
-  );
+  // A cell's script is short but the grammar compile is not, and an eval card
+  // opens while its own output streams.
+  const highlightedCode = useDeferredHighlight(truncatedCode.text, 'javascript');
   // The result is shown whole: an eval's output IS the answer, so hiding its
   // head behind a "… earlier lines hidden" line misreports what the cell returned.
-  const highlightedJson = useMemo(
-    () => (jsonResult.isValid && jsonResult.pretty ? highlightJson(jsonResult.pretty) : ''),
-    [jsonResult, syntaxReady]
+  const highlightedJson = useDeferredHighlight(
+    jsonResult.isValid && jsonResult.pretty ? jsonResult.pretty : '',
+    'json',
   );
 
   return (

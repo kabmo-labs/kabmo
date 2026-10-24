@@ -69,7 +69,9 @@ async function boot(): Promise<HighlighterCore | null> {
     notify();
     // Grammars arrive on demand (`ensureLanguage`); the eager set is only a
     // head start for the languages a chat session hits immediately, and boot
-    // does not wait on it.
+    // does not wait on it. `main.tsx` pays the tokenizer's compile cost once
+    // the eager set has landed — loading a grammar is not compiling it, and the
+    // first card expand used to pay that compile inside the tap.
     void ensureLanguages(highlighter, EAGER_LANGS);
     return highlighter;
   } catch (error) {

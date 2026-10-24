@@ -1,6 +1,7 @@
 import { hydrate } from 'preact';
 import { App } from '@/client/App';
 import { bootSyntax } from '@/shared/lib/code/highlighter';
+import { warmSyntaxTokenizers } from '@/shared/lib/code/highlighter-warmup';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { initDocumentTheme } from '@/client/hooks/ui/theme';
 import { primeWindowChrome } from '@/client/hooks/ui/window-chrome';
@@ -70,7 +71,10 @@ installFileLaunchHandler((result) => {
 });
 
 // Fire-and-forget: warms the Shiki highlighter in parallel with hydration.
-bootSyntax();
+// Once the eager grammars land, each is tokenized once on a tiny sample during
+// idle time — loading a grammar is not compiling it, and the compile used to be
+// paid inside the first tool card the reader expanded.
+void bootSyntax().then(() => warmSyntaxTokenizers());
 
 if (root) {
   hydrate(

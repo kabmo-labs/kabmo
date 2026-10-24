@@ -1,8 +1,7 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
 import { AlertCircle, Bell, Bot, CheckCircle2, ChevronDown, Clock, Info, Layers, Target } from 'lucide-preact';
 import { isCodeLike } from '@/shared/lib/code/language';
-import { highlightCode } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
 import { useIsTruncated } from '@/client/hooks/ui/text-overflow';
 import { parseTaskNotice } from '@/shared/lib/chat/task-result-parser';
 import { isReminderTag, stripNoticeTags, unwrapXmlEnvelope } from '@/shared/lib/chat/xml-envelope';
@@ -53,7 +52,6 @@ interface SystemNoticeProps {
  *  injection renders open and has no collapse control (see `forcedOpen`). */
 export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeProps) {
   const [userOpen, setUserOpen] = useState(false);
-  useSyntaxReady();
 
   // 1. Check if notice contains a structured <task-result> block
   const taskNotice = useMemo(() => parseTaskNotice(notice), [notice]);
@@ -114,6 +112,13 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
       isCode,
     };
   }, [notice]);
+
+  // Deferred and gated: the code branch only renders while the card is open, so
+  // a collapsed notice computes nothing and an opened one paints its text first.
+  const codeHtml = useDeferredHighlight(
+    genericInfo.isCode ? genericInfo.rest || genericInfo.clean : '',
+    'javascript',
+  );
 
   const rawTitle = goalNotice
     ? goalNoticeTitle(goalNotice)
@@ -284,7 +289,7 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
             <pre
               className="max-h-56 overflow-auto font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/75 scrollbar-overlay-container"
               dangerouslySetInnerHTML={{
-                __html: highlightCode(genericInfo.rest || genericInfo.clean, 'javascript'),
+                __html: codeHtml,
               }}
             />
           ) : (

@@ -1,7 +1,6 @@
 import { useMemo } from 'preact/hooks';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { highlightLines } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 
@@ -45,16 +44,17 @@ interface ExcerptCodeProps {
 export function ExcerptCode({ lines, path = '', tag }: ExcerptCodeProps) {
   const rows = useMemo(() => splitExcerptRows(lines), [lines]);
   const lang = getLanguageFromPath(path);
-  const syntaxReady = useSyntaxReady();
 
-  const { html, hidden } = useMemo(() => {
-    // Only the tail is rendered, so only the tail is highlighted — tokenizing
-    // the dropped head would be work whose output is thrown away.
+  // Only the tail is rendered, so only the tail is highlighted — tokenizing the
+  // dropped head would be work whose output is thrown away. The tokenizer itself
+  // runs off the expand that asked for it (see `deferred-highlight`).
+  const { code: visibleCode, hidden } = useMemo(() => {
     const code = rows.map((row) => row.code);
     const truncated = truncateTailLines(code.join('\n'), MAX_OUTPUT_LINES);
     const visible = truncated.skipped > 0 ? code.slice(truncated.skipped) : code;
-    return { html: highlightLines(visible.join('\n'), lang), hidden: truncated.skipped };
-  }, [rows, lang, syntaxReady]);
+    return { code: visible.join('\n'), hidden: truncated.skipped };
+  }, [rows]);
+  const html = useDeferredHighlightLines(visibleCode, lang);
 
   const visibleRows = hidden > 0 ? rows.slice(hidden) : rows;
 

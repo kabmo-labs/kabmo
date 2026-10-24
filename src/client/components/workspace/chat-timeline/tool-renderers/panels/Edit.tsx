@@ -9,8 +9,7 @@ import { ExcerptCode } from '@/client/components/workspace/chat-timeline/tool-re
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { parseEditOutput } from '@/shared/lib/chat/excerpt';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { highlightCode } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { outputMarkdown, readToolOutput } from '@/shared/lib/chat/tool-output';
 import { hashlinePatchFromArgs } from '@/shared/lib/omp/session/hashline-patch';
@@ -146,13 +145,31 @@ export function Edit({ tool }: { tool: ToolCallData }) {
 
   const truncatedOld = useMemo(() => (oldString ? truncateTailLines(oldString, MAX_OUTPUT_LINES) : null), [oldString]);
   const truncatedNew = useMemo(() => (newString ? truncateTailLines(newString, MAX_OUTPUT_LINES) : null), [newString]);
-  const syntaxReady = useSyntaxReady();
-  const highlightedOld = useMemo(() => (truncatedOld ? highlightCode(truncatedOld.text, lang) : ''), [truncatedOld, lang, syntaxReady]);
-  const highlightedNew = useMemo(() => (truncatedNew ? highlightCode(truncatedNew.text, lang) : ''), [truncatedNew, lang, syntaxReady]);
   const previewLineCount = useMemo(() => (newContent ? newContent.split('\n').length : 0), [newContent]);
-  const highlightedPreview = useMemo(
-    () => (newContent ? highlightCode(newContent.split('\n').slice(0, 80).join('\n'), lang) : ''),
-    [newContent, lang, syntaxReady]
+
+  /**
+   * Which of the three blocks this card actually DRAWS.
+   *
+   * They are mutually exclusive in the markup below — a card with a diff shows
+   * neither the replacement pair nor the write preview — and the highlights
+   * used to run for all three on every render regardless: three tokenizer passes
+   * to paint one block, measured as the largest single contributor to an `edit`
+   * card's expand. Gating the input on the branch that renders it makes the two
+   * unused passes `''`, which the hook treats as nothing to compute.
+   */
+  const showsReplacement = !diffText && Boolean(oldString || newString);
+  const showsPreview = !diffText && !oldString && !newString && Boolean(newContent);
+  const highlightedOld = useDeferredHighlight(
+    showsReplacement && truncatedOld ? truncatedOld.text : '',
+    lang,
+  );
+  const highlightedNew = useDeferredHighlight(
+    showsReplacement && truncatedNew ? truncatedNew.text : '',
+    lang,
+  );
+  const highlightedPreview = useDeferredHighlight(
+    showsPreview && newContent ? newContent.split('\n').slice(0, 80).join('\n') : '',
+    lang,
   );
 
   // omp answers an edit with the excerpt it touched, not with prose: numbered

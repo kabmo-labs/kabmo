@@ -2,8 +2,7 @@ import type { ReactNode } from 'preact/compat';
 import { useMemo } from 'preact/hooks';
 import { Braces } from 'lucide-preact';
 import { CopyButton } from '@/client/components/common/CopyButton';
-import { highlightJson } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
 
 interface JsonCodeBlockProps {
   /** Formatted JSON string to render */
@@ -33,8 +32,9 @@ export function JsonCodeBlock({
 }: JsonCodeBlockProps) {
   const effectiveMaxHeight = maxHeightClass || (compact ? 'max-h-40' : 'max-h-56');
   const lines = useMemo(() => jsonString.split('\n'), [jsonString]);
-  const syntaxReady = useSyntaxReady();
-  const highlighted = useMemo(() => highlightJson(jsonString), [jsonString, syntaxReady]);
+  // `json` is an eager grammar, so the memo usually answers on the first paint;
+  // a cold card still draws the text immediately and colours it a beat later.
+  const highlighted = useDeferredHighlight(jsonString, 'json');
 
   return (
     <div className={`overflow-hidden ${compact ? 'rounded-md' : 'rounded-lg'} border border-ink/8 bg-paper ${className}`}>

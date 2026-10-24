@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'preact/hooks';
-import { ChevronRight, FileSearch, FileText, FolderSearch } from 'lucide-preact';
+import { FileSearch, FolderSearch } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import { CopyButton } from '@/client/components/common/CopyButton';
-import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { highlightLines } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { FileMatches } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/FileMatches';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 
 interface MatchLine {
@@ -189,18 +187,6 @@ export function SearchTool({ tool }: { tool: ToolCallData }) {
       .filter((f): f is ParsedFileMatches => f !== null);
   }, [files, filterText]);
 
-  const syntaxReady = useSyntaxReady();
-
-  const highlightedByFile = useMemo(() => {
-    return filteredFiles.map((file) => {
-      const lang = getLanguageFromPath(file.path);
-      return highlightLines(
-        file.lines.map((line) => line.text).join('\n'),
-        lang
-      );
-    });
-  }, [filteredFiles, syntaxReady]);
-
   if (!output && files.length === 0) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-dashed border-ink/15 px-3 py-2.5 text-[11.5px] text-ink/45">
@@ -262,49 +248,13 @@ export function SearchTool({ tool }: { tool: ToolCallData }) {
       )}
       <div className="max-h-80 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
         {filteredFiles.map((file, fileIdx) => (
-          <div key={fileIdx} className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
-            {/* File Header */}
-            <div className="flex items-center justify-between border-b border-ink/6 bg-canvas/40 px-2.5 py-1.5">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <FileText size={12} className="shrink-0 text-ink/40" />
-                <span className="truncate font-mono text-[11px] font-medium text-ink/85">{file.path}</span>
-              </div>
-              {file.matchCount > 0 && !isGlobList && (
-                <span className="ml-2 shrink-0 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9.5px] text-ink/50">
-                  {file.matchCount} {file.matchCount === 1 ? 'hit' : 'hits'}
-                </span>
-              )}
-            </div>
-
-            {/* Code Lines inside file — satu scroll horizontal per file, semua row selebar konten terlebar */}
-            {file.lines.length > 0 && (
-              <div className="overflow-x-auto overscroll-x-contain">
-                <div className="w-max min-w-full divide-y divide-ink/[0.04] font-mono text-[11px] leading-relaxed select-text">
-                  {file.lines.map((line, lineIdx) => (
-                    <div
-                      key={lineIdx}
-                      className={`flex items-start gap-2.5 px-2.5 py-1 transition-colors ${
-                        line.isMatch ? 'bg-warning/[0.08] text-ink' : 'bg-paper text-ink/60 hover:bg-ink/[0.02]'
-                      }`}
-                    >
-                      <span
-                        className={`sticky left-0 z-10 flex w-9 shrink-0 select-none items-center justify-end bg-inherit font-mono text-[10px] ${
-                          line.isMatch ? 'font-semibold text-warning-dark dark:text-warning' : 'text-ink/30'
-                        }`}
-                      >
-                        {line.isMatch && <ChevronRight size={10} className="mr-0.5 text-warning" />}
-                        {line.lineNum}
-                      </span>
-                      <pre
-                        className="shiki whitespace-pre font-mono"
-                        dangerouslySetInnerHTML={{ __html: highlightedByFile[fileIdx]?.[lineIdx] || '&nbsp;' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <FileMatches
+            key={fileIdx}
+            path={file.path}
+            lines={file.lines}
+            matchCount={file.matchCount}
+            isGlobList={isGlobList}
+          />
         ))}
 
         {filteredFiles.length === 0 && (

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { FileCode, FileImage, FileText, Folder, FolderOpen, Info, Loader2 } from 'lucide-preact';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { highlightCode } from '@/shared/lib/code/syntax-highlight';
-import { useSyntaxReady } from '@/client/hooks/ui/syntax-ready';
+import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
 import { parseDirListing, parseNumberedCode } from '@/shared/lib/code/parser';
 import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 import { buildFsRawUrl, isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
@@ -192,11 +191,12 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
   const truncatedCode = useMemo(() => truncateTailLines(parsedCode.cleanCode, MAX_OUTPUT_LINES), [parsedCode.cleanCode]);
   const visibleLines = truncatedCode.skipped > 0 ? parsedCode.lines.slice(truncatedCode.skipped) : parsedCode.lines;
 
-  const syntaxReady = useSyntaxReady();
-  const highlightedCode = useMemo(() => {
-    if (!truncatedCode.text) return '';
-    return highlightCode(truncatedCode.text, lang);
-  }, [truncatedCode, lang, syntaxReady]);
+  // The tokenizer runs off the render that a tap scheduled (see
+  // `deferred-highlight`): a 1000-line read measured a 220–300 ms long task on
+  // a throttled phone, all of it before the card could paint. The plain-text
+  // frame it draws first carries the same characters, and a block already in
+  // the memo renders highlighted on that first paint.
+  const highlightedCode = useDeferredHighlight(truncatedCode.text, lang);
 
   return (
     <div className="space-y-2">
