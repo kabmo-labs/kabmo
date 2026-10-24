@@ -259,6 +259,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
       <div
         className={`flex-1 min-h-0 w-full relative ${currentScreen === 'main' ? 'block' : 'hidden'}`}
         {...editorDrop.dropProps}
+        {...editorDrop.captureDropProps}
       >
         <EditorDropOverlay visible={editorDrop.isDragging} />
         <MobileMainView

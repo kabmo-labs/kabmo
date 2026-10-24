@@ -221,7 +221,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               handleCount * HANDLE_WIDTH,
           })}
         >
-          <div className="relative w-full h-full" {...drop.dropProps} inert={chatHidden}>
+          <div className="relative w-full h-full" {...drop.dropProps} {...drop.captureDropProps} inert={chatHidden}>
             <EditorDropOverlay visible={drop.isDragging} />
             <ChatTimeline className="w-full h-full" appSettings={appSettings} onSessionTitle={onSessionTitle} />
           </div>
@@ -229,7 +229,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
 
         {showEditor && !chatHidden && <ResizeHandle />}
         <Panel panelRef={editorPanelRef} id="editor-panel" defaultSize={editorWidth} minSize={MIN_EDITOR_PANEL_WIDTH} maxSize={editorMaxSize} collapsed={!showEditor}>
-          <div className="flex w-full h-full" {...drop.dropProps}>
+          <div className="flex w-full h-full" {...drop.dropProps} {...drop.captureDropProps}>
             <EditorDropOverlay visible={drop.isDragging} />
             <EditorPluginRail
               activeKey={activeEditorPanelKey}

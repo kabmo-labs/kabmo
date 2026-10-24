@@ -168,6 +168,12 @@ export function MergeDiffView({
         // panel's, which is what its `.cm-mergeView` rule expects.
         ['--surface-pad' as string]: '8px',
       }}
+      // A read-only CodeMirror swallows `drop` too (its handler answers `true`
+      // for a read-only state, which cancels the event), so a file dropped on a
+      // diff would reach neither the panel's handler nor anything else. Marking
+      // the host is what lets the enclosing drop target claim the gesture in the
+      // CAPTURE phase and open the file — the same rule the code surface states.
+      data-code-surface=""
     />
   );
 }

@@ -161,4 +161,65 @@ test.describe('editor', () => {
 
     workspace.dispose();
   });
+
+  /**
+   * A dropped file OPENS; it is never inserted into the buffer.
+   *
+   * CodeMirror handles `drop` itself: for a drag carrying files it reads each
+   * file's TEXT and inserts it at the pointer, then calls `preventDefault`. So
+   * the panel's own handler saw `defaultPrevented` and stood down, and the
+   * debounced autosave then wrote the dropped file's bytes into the OPEN file.
+   * Measured before the fix: dropping `b.ts` on `a.ts` left `a.ts` reading
+   * `DROPPED_CONTENT` on disk.
+   *
+   * Only a browser can prove this — the race is between two real listeners on a
+   * real contenteditable — and the assertion is on the TAB (the file opened) and
+   * on the buffer (the text did not land), which are the two halves of the
+   * promise the drop overlay makes.
+   */
+  test('a dropped file opens instead of being inserted into the buffer', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-drop');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'a.ts'), 'const alpha = 1;\n');
+    writeFileSync(join(dir, 'b.ts'), 'DROPPED_CONTENT\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByText('src', { exact: true }).first().click();
+    await page.getByText('a.ts', { exact: true }).first().click();
+
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    await expect(panel.locator('.cm-content')).toContainText('const alpha', { timeout: 15_000 });
+
+    // A path-carrying drag (`text/uri-list`), which is what a page or a file
+    // manager on Linux hands over. `DataTransfer` cannot be constructed with
+    // files in a page, so this is the shape the spec can produce — and it is the
+    // one the same handler resolves.
+    const prevented = await page.evaluate((absolute) => {
+      const target = document.querySelector('[data-panel-id="editor-panel"] .cm-content');
+      if (!target) return null;
+      const transfer = new DataTransfer();
+      transfer.setData('text/uri-list', `file://${absolute}`);
+      transfer.setData('text/plain', absolute);
+      const event = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+        clientX: 10,
+        clientY: 10,
+      });
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    }, join(dir, 'b.ts'));
+    expect(prevented).toBe(true);
+
+    // The dropped file opened as its own tab…
+    await expect(panel.locator('[title="src/b.ts"]').first()).toBeVisible({ timeout: 15_000 });
+    // …and its text is NOT in the buffer it was dropped on.
+    await expect(panel.locator('.cm-content')).not.toContainText('DROPPED_CONTENT');
+    expect(readFileSync(join(dir, 'a.ts'), 'utf8')).toBe('const alpha = 1;\n');
+
+    workspace.dispose();
+  });
 });

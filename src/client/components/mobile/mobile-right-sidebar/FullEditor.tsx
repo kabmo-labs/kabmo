@@ -165,6 +165,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
     <div
       className="fixed inset-x-0 top-0 h-dvh z-[60] bg-paper flex flex-col font-mono text-xs select-none"
       {...drop.dropProps}
+      {...drop.captureDropProps}
     >
       <EditorDropOverlay visible={drop.isDragging} />
       
@@ -283,7 +284,12 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           scrollTestId="editor-scroller"
           // No `bg-paper`: an explicit editor theme paints its own surface, and
           // the panel's colour under it would be a border of the wrong shade.
-          className="flex-1 min-h-0 text-ink"
+          // `select-text` is the desktop pane's rule, and it matters more here:
+          // the sheet's own root is `select-none` (it is a header-and-status
+          // layout), and the editor is now a `contenteditable` whose selection
+          // and caret are the BROWSER's business — an inherited `user-select:
+          // none` is the one thing that can take that away on a phone.
+          className="flex-1 min-h-0 text-ink select-text"
           themeVars={editorTheme.vars}
           themes={editorTheme.themes}
           padding={12}

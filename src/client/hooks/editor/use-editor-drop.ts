@@ -62,9 +62,34 @@ export interface EditorDropProps {
   onDrop: (e: TargetedDragEvent<HTMLElement>) => void;
 }
 
+/**
+ * Handlers that must run BEFORE a code surface sees the drag.
+ *
+ * CodeMirror handles `drop` itself, on its own `contentDOM`: for a drag carrying
+ * FILES it reads each file's text and INSERTS it into the document, then calls
+ * `preventDefault` — so the panel's own drop handler saw `defaultPrevented` and
+ * stood down. Measured in the browser: dropping `b.ts` on an open `a.ts` put
+ * `DROPPED_CONTENT` at the top of the buffer (and the autosave then wrote it to
+ * disk), while the overlay had promised "Drop a file to open it".
+ *
+ * A capture-phase listener on the panel is what wins that race, because capture
+ * runs from the outermost element inward — the surface's own handler has not run
+ * yet. It claims ONLY a drag that is over a code surface (`[data-code-surface]`,
+ * set by `CodeSurface`), so a drop on the composer still belongs to the composer
+ * and a drop on the chat's own chrome still reaches `onDrop` as before.
+ */
+export interface EditorDropCaptureProps {
+  onDropCapture: (e: TargetedDragEvent<HTMLElement>) => void;
+}
+
+/** The attribute a code surface marks itself with, for the capture handler. */
+export const CODE_SURFACE_ATTRIBUTE = 'data-code-surface';
+
 export interface UseEditorDropResult {
   isDragging: boolean;
   dropProps: EditorDropProps;
+  /** Spread on the same element as `dropProps`. */
+  captureDropProps: EditorDropCaptureProps;
 }
 
 /**
@@ -241,18 +266,9 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
     if (depthRef.current === 0) setIsDragging(false);
   }, []);
 
-  const onDrop = useCallback((e: TargetedDragEvent<HTMLElement>) => {
-    // The composer claimed it: one gesture must not both open the file and
-    // queue it as an attachment. `defaultPrevented` is the platform's own
-    // signal for "someone deeper already handled this".
-    if (e.defaultPrevented) return;
-    if (!isOpenableDrag(e.dataTransfer)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    reset();
-    if (!enabledRef.current || !e.dataTransfer) return;
-
-    const dt = e.dataTransfer;
+  /** Open what a drop carries — shared by the bubble and the capture paths. */
+  const openDropped = useCallback((dt: DataTransfer | null) => {
+    if (!dt) return;
     // Handles first: they are the only shape that carries write access, and a
     // Finder drag has nothing else.
     void openDroppedHandle(dt, onResultRef.current).then((opened) => {
@@ -269,7 +285,44 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
       // several would leave the user on whichever resolved last.
       void openDroppedReference(references[0], onResultRef.current);
     });
-  }, [reset]);
+  }, []);
 
-  return { isDragging, dropProps: { onDragEnter, onDragOver, onDragLeave, onDrop } };
+  const onDrop = useCallback((e: TargetedDragEvent<HTMLElement>) => {
+    // The composer claimed it: one gesture must not both open the file and
+    // queue it as an attachment. `defaultPrevented` is the platform's own
+    // signal for "someone deeper already handled this".
+    if (e.defaultPrevented) return;
+    if (!isOpenableDrag(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    reset();
+    if (!enabledRef.current || !e.dataTransfer) return;
+    openDropped(e.dataTransfer);
+  }, [openDropped, reset]);
+
+  /**
+   * Claim a file drop that is about to land on a code surface.
+   *
+   * Capture phase, so it runs before CodeMirror's own `drop` handler on the
+   * `contentDOM` — that one reads a dropped file's TEXT and inserts it into the
+   * document, which would silently rewrite the open file on the next autosave.
+   * Scoped to `[data-code-surface]` so a drop anywhere else keeps the existing
+   * behaviour, the composer's included.
+   */
+  const onDropCapture = useCallback((e: TargetedDragEvent<HTMLElement>) => {
+    if (!isOpenableDrag(e.dataTransfer)) return;
+    const target = e.target;
+    if (!(target instanceof Element) || !target.closest(`[${CODE_SURFACE_ATTRIBUTE}]`)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    reset();
+    if (!enabledRef.current || !e.dataTransfer) return;
+    openDropped(e.dataTransfer);
+  }, [openDropped, reset]);
+
+  return {
+    isDragging,
+    dropProps: { onDragEnter, onDragOver, onDragLeave, onDrop },
+    captureDropProps: { onDropCapture },
+  };
 }

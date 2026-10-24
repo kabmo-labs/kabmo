@@ -243,3 +243,104 @@ describe('useEditorDrop', () => {
     expect(harness.results).toHaveLength(0);
   });
 });
+
+/**
+ * The capture-phase claim, which exists because CodeMirror handles `drop`
+ * itself: for a drag carrying files it reads each file's TEXT and inserts it
+ * into the document, then calls `preventDefault`, so the panel's own handler saw
+ * `defaultPrevented` and stood down. Measured in the browser: dropping `b.ts` on
+ * an open `a.ts` put `b.ts`'s text at the top of the buffer, and the autosave
+ * wrote it to disk.
+ *
+ * The claim is scoped to a code surface, so a drop on the composer is still the
+ * composer's.
+ */
+describe('useEditorDrop capture claim', () => {
+  /** A drop event whose target is `element`, recording the calls it received. */
+  function captureEvent(target: Node, transfer: DataTransfer) {
+    const calls: string[] = [];
+    const event = {
+      target,
+      dataTransfer: transfer,
+      preventDefault: () => calls.push('preventDefault'),
+      stopPropagation: () => calls.push('stopPropagation'),
+    };
+    return { event: event as never, calls };
+  }
+
+  async function capture(api: UseEditorDropResult | null, event: unknown): Promise<void> {
+    await act(async () => {
+      api?.captureDropProps.onDropCapture(event as never);
+    });
+    for (let pass = 0; pass < 4; pass += 1) {
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+  }
+
+  /** Mount the hook and hand back the API plus a node for each target shape. */
+  async function mountWithTargets() {
+    const results: { ok: boolean; message: string }[] = [];
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const surface = document.createElement('div');
+    surface.setAttribute('data-code-surface', '');
+    const inner = document.createElement('div');
+    surface.appendChild(inner);
+    const composer = document.createElement('div');
+    container.append(surface, composer);
+
+    let api: UseEditorDropResult | null = null;
+    const Probe = () => {
+      api = useEditorDrop({ enabled: true, onResult: (r) => results.push(r) });
+      return null;
+    };
+    await act(async () => {
+      render(h(Probe, {}), container);
+    });
+    return { api: () => api, inner, composer, results };
+  }
+
+  beforeEach(() => {
+    scopeResponse = { ok: true, status: 200, body: {} };
+    fetchCalls = [];
+    opened = [];
+  });
+
+  test('claims a file drop aimed at a code surface, and opens the file', async () => {
+    scopeResponse = {
+      ok: true,
+      status: 200,
+      body: { root: '/repo', path: 'src/b.ts', name: 'b.ts', kind: 'text' },
+    };
+    const { api, inner } = await mountWithTargets();
+    const { event, calls } = captureEvent(inner, fileTransfer('file:///repo/src/b.ts'));
+
+    await capture(api(), event);
+
+    // Claimed BEFORE the surface's own handler could insert the file's text.
+    expect(calls).toEqual(['preventDefault', 'stopPropagation']);
+    expect(opened).toHaveLength(1);
+  });
+
+  test('leaves a drop aimed anywhere else to the bubble handler', async () => {
+    const { api, composer } = await mountWithTargets();
+    const { event, calls } = captureEvent(composer, fileTransfer('file:///repo/src/b.ts'));
+
+    await capture(api(), event);
+
+    expect(calls).toEqual([]);
+    expect(opened).toHaveLength(0);
+  });
+
+  test('ignores a text drag, which CodeMirror should still insert', async () => {
+    const { api, inner } = await mountWithTargets();
+    const textDrag = { types: ['text/plain'], files: [], getData: () => 'copied text' } as unknown as DataTransfer;
+    const { event, calls } = captureEvent(inner, textDrag);
+
+    await capture(api(), event);
+
+    expect(calls).toEqual([]);
+  });
+});

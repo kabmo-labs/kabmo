@@ -37,28 +37,12 @@ import { EditorView } from '@codemirror/view';
 import { createDocumentCache, type DocumentCache } from '@/client/components/common/code-surface/documents';
 import type { ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
-import { cancelScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
-import { runSurfaceCommand } from '@/client/components/common/code-surface/keymap';
+import { createSurfaceHandle, type CodeSurfaceHandle } from '@/client/components/common/code-surface/handle';
 import { setFindMarks, type MarkRange } from '@/client/components/common/code-surface/marks';
 import { syncExternal } from '@/client/components/common/code-surface/sync';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 
-export interface CodeSurfaceHandle {
-  /** Current selection offsets in the buffer, or null before the view mounts. */
-  getSelection(): { start: number; end: number } | null;
-  /** Select `[start, end)`; `focus` moves keyboard focus into the editor. */
-  select(start: number, end: number, focus?: boolean): void;
-  /** Replace the buffer as one undoable edit, caret at `[caretStart, caretEnd)`, focus unchanged. */
-  applyDocument(value: string, caretStart: number, caretEnd: number): void;
-  /** Run an editor command by name (the palette's path into the editor). */
-  runCommand(command: EditorCommand): void;
-  /**
-   * Bring the line holding `offset` into view WITHOUT moving the caret — what
-   * "step to the next match" needs: the user's focus stays in the find field
-   * while the match scrolls under it.
-   */
-  revealOffset(offset: number): void;
-}
+export type { CodeSurfaceHandle } from '@/client/components/common/code-surface/handle';
 
 export interface CodeSurfaceProps {
   value: string;
@@ -276,65 +260,9 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     view.dispatch({ effects: setFindMarks.of({ marks: list, current: currentMark ?? -1 }) });
   }, [marks, currentMark]);
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      getSelection: () => {
-        const view = viewRef.current;
-        if (!view) return null;
-        const range = view.state.selection.main;
-        return { start: range.from, end: range.to };
-      },
-      select: (start, end, focus = true) => {
-        const view = viewRef.current;
-        if (!view) return;
-        view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: false });
-        // `focus()` is CM6's own `focusPreventScroll`, which is what stops the
-        // browser scrolling the caret into view a second time — the caller's
-        // `revealOffset` is the only thing that scrolls.
-        if (focus) view.focus();
-      },
-      applyDocument: (next, caretStart, caretEnd) => {
-        const view = viewRef.current;
-        if (!view) return;
-        // Deliberately NOT wrapped in `writingRef`: this is a USER edit (the
-        // find bar's replace), so it has to reach `onValueChange` exactly like
-        // typing does. Suppressing it left the parent holding the pre-replace
-        // buffer — the replacement was invisible to the autosave, and the next
-        // render that compared `value` against the document wrote the OLD text
-        // back over it (measured: replace-all, switch tab, come back → the
-        // original text, and nothing on disk).
-        //
-        // One transaction, so ⌘Z undoes the whole replacement: a replace-all
-        // that took one undo step per match is what the old surface had to
-        // hand-roll a history for.
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: next },
-          selection: { anchor: caretStart, head: caretEnd },
-        });
-      },
-      runCommand: (command) => {
-        const view = viewRef.current;
-        if (!view) return;
-        runSurfaceCommand(command, view, onCommandRef.current);
-      },
-      revealOffset: (offset) => {
-        const view = viewRef.current;
-        if (!view) return;
-        const at = Math.max(0, Math.min(offset, view.state.doc.length));
-        // A reveal is an explicit destination, so a restore still replaying the
-        // remembered offset must stand down — otherwise its `ResizeObserver`
-        // callback (which can run BEFORE the scroll event this dispatch causes)
-        // writes the old position back and the view never moves.
-        cancelScrollRestore(view.scrollDOM);
-        view.dispatch({ effects: EditorView.scrollIntoView(at, { y: 'nearest', yMargin: 24 }) });
-        // `y: 'nearest'` is the rule the old surface hand-rolled: a reveal only
-        // scrolls when the target is outside the visible band, so stepping
-        // through matches does not jump the whole view on every step.
-      },
-    }),
-    [],
-  );
+  // Built once: the handle closes over refs, so a consumer holding it never
+  // re-subscribes, and the view it reaches is whatever is live at the call.
+  useImperativeHandle(ref, () => createSurfaceHandle({ view: viewRef, onCommand: onCommandRef }), []);
 
   const hostStyle = {
     ...themeVars,
@@ -344,5 +272,16 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     '--surface-pad': `${padding}px`,
   } as CSSProperties;
 
-  return <div ref={hostRef} className={className} style={hostStyle} />;
+  return (
+    <div
+      ref={hostRef}
+      className={className}
+      style={hostStyle}
+      // The panel's drop handler claims a file drop in the CAPTURE phase when
+      // the drag is over this element: CodeMirror's own `drop` handler inserts a
+      // dropped file's TEXT into the document, which would rewrite the open file
+      // on the next autosave. See `use-editor-drop.ts`.
+      data-code-surface=""
+    />
+  );
 });
