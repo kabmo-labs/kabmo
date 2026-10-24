@@ -437,14 +437,6 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
   color: inherit;
   background: color-mix(in srgb, var(--theme-warning) 32%, transparent);
 }
-/* An extra ⌘D selection: same geometry as a find match, different ink. The
- * caret can only live in the primary range, so the two must not look alike —
- * the user has to see where their keystrokes will land. */
-.shiki .find-match[data-occurrence] {
-  background: color-mix(in srgb, var(--theme-info) 30%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--theme-info) 55%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--theme-info) 55%, transparent);
-}
 .shiki .find-match[data-find-current] {
   background: color-mix(in srgb, var(--theme-warning) 55%, transparent);
   border-top: 1px solid color-mix(in srgb, var(--theme-warning) 75%, transparent);

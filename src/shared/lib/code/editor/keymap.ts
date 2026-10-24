@@ -8,9 +8,9 @@
  *
  * One table is the whole truth about an editor shortcut: what it does, which
  * chords reach it on each platform, and what the palette calls it. The
- * textarea's handler, the find bar's buttons, the tooltips and the command
- * palette all read this table, so a shortcut cannot be listed in the palette
- * and unbound in the editor.
+ * generated CodeMirror keymap, the find bar's buttons, the tooltips and the
+ * command palette all read this table, so a shortcut cannot be listed in the
+ * palette and unbound in the editor.
  *
  * VS Code's defaults are followed wherever this editor has an equivalent. Where
  * it has none — folding, go-to-definition, the `⌘K` prefix chords — the command

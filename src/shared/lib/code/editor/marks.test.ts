@@ -57,12 +57,11 @@ describe('tokenMarkup', () => {
     expect(tokenMarkup('<', 0, [{ start: 0, end: 1 }], -1)).toContain('&lt;');
   });
 
-  test('the current match and an extra selection are painted differently', () => {
-    // The caret can only be in the primary range, so the two must not look
-    // alike — the user has to see where their keystrokes will land.
+  test('the current match is painted differently from the others', () => {
+    // The caret is aimed at exactly one match, so the reader has to be able to
+    // see which — and the others must not claim that mark.
     expect(tokenMarkup('a', 0, [{ start: 0, end: 1 }], 0)).toContain('data-find-current');
-    expect(tokenMarkup('a', 0, [{ start: 0, end: 1 }], -1, 0)).toContain('data-occurrence');
-    expect(tokenMarkup('a', 0, [{ start: 0, end: 1 }], -1, 0)).not.toContain('data-find-current');
+    expect(tokenMarkup('a', 0, [{ start: 0, end: 1 }], -1)).not.toContain('data-find-current');
   });
 
   test('a plain match is neither current nor an occurrence', () => {

@@ -215,10 +215,10 @@ export function Editor({
    * Editor shortcuts, on the CAPTURE phase of the panel.
    *
    * Capture is what makes them work while focus is inside the document: the
-   * `<textarea>` has its own handler (Tab, undo, Escape-to-blur) and would
-   * otherwise see these first. Only the commands the PANEL owns are consumed
-   * here — the editor's own keymap runs in the textarea, where it has the
-   * buffer and the caret in hand.
+   * contenteditable has CodeMirror's own handlers (the generated keymap, and
+   * `defaultKeymap` behind it) and would otherwise see these first. Only the
+   * commands the PANEL owns are consumed here — the editor's own keymap runs in
+   * the document, where it has the buffer and the caret in hand.
    *
    * The panel is the scope, not the window: another panel's text field keeps
    * its own ⌘F, and the composer is untouched.

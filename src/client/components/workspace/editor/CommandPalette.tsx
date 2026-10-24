@@ -7,8 +7,8 @@
  * The editor's command palette (⌘⇧P).
  *
  * Every editor command this app implements is listed here with the chord that
- * reaches it, both derived from the same keymap table the textarea matches
- * against. The palette is therefore a VIEW of the keymap rather than a second
+ * reaches it, both derived from the same keymap table the editor binds against.
+ * The palette is therefore a VIEW of the keymap rather than a second
  * list to keep in sync — a command cannot be listed here and unbound there, and
  * a chord cannot be shown that does not work.
  *

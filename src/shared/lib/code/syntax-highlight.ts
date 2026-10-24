@@ -168,12 +168,11 @@ export function highlightLines(
   const rawLines = code.split('\n');
   const marks = options.marks;
   const currentMark = options.currentMark ?? -1;
-  const occurrenceFrom = options.occurrenceFrom ?? -1;
   // A grammar that has not arrived yet, or a highlighter that failed to boot,
   // still gets the find marks: the widget's feedback must not depend on Shiki.
   const plain = (lineIndex: number): string => {
     if (!marks || marks.length === 0) return escapeCode(rawLines[lineIndex]);
-    return tokenMarkup(rawLines[lineIndex], lineStartOffset(code, lineIndex), marks, currentMark, occurrenceFrom);
+    return tokenMarkup(rawLines[lineIndex], lineStartOffset(code, lineIndex), marks, currentMark);
   };
   if (!code) return rawLines;
   const hl = getHighlighterSync();
@@ -191,7 +190,7 @@ export function highlightLines(
       let offset = lineStartOffset(code, lineIndex);
       return lineTokens
         .map((tok) => {
-          const content = tokenMarkup(tok.content, offset, marks, currentMark, occurrenceFrom);
+          const content = tokenMarkup(tok.content, offset, marks, currentMark);
           offset += tok.content.length;
           if (!tok.htmlStyle) return content;
           const style = Object.entries(tok.htmlStyle)
