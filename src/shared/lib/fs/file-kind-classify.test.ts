@@ -28,6 +28,7 @@ import {
   PDF_MAX_FILE_BYTES,
   unsupportedEditorMessage,
 } from '@/shared/lib/fs/file-kind';
+import { formatBytes } from '@/shared/lib/format/number';
 
 const bytes = (...values: number[]): Uint8Array => new Uint8Array(values);
 
@@ -96,8 +97,11 @@ describe('classifyEditorFile', () => {
 
   // The document ceiling does not reach plain text: a 6 MB source file is still
   // refused, because a textarea holds that buffer for the life of the tab.
-  test('plain text keeps the text ceiling', () => {
-    expect(classifyEditorFile({ path: 'big.ts', size: 6 * 1024 * 1024 })).toBe('too-large');
+  test('plain text keeps the text ceiling, which a real source file clears', () => {
+    // 6 MB was over the old 5 MiB ceiling and is a normal generated file, not a
+    // refusal. The ceiling moved; this case is what keeps it from moving back.
+    expect(classifyEditorFile({ path: 'big.ts', size: 6 * 1024 * 1024 })).toBe('text');
+    expect(classifyEditorFile({ path: 'big.log', size: EDITOR_MAX_FILE_BYTES })).toBe('text');
     expect(classifyEditorFile({ path: 'big.log', size: EDITOR_MAX_FILE_BYTES + 1 })).toBe('too-large');
   });
 
@@ -120,24 +124,34 @@ describe('unsupportedEditorMessage', () => {
   });
 
   test('a size refusal names both the actual size and the ceiling', () => {
-    const message = unsupportedEditorMessage('too-large', 9 * 1024 * 1024);
-    expect(message).toContain('9.00 MB');
-    expect(message).toContain('5.00 MB');
+    // Derived, never spelled out: the point of the sentence is that its number
+    // is the one the classifier applied, so a literal here would pass while the
+    // two disagreed.
+    const message = unsupportedEditorMessage('too-large', 40 * 1024 * 1024);
+    expect(message).toContain('40.00 MB');
+    expect(message).toContain(formatBytes(EDITOR_MAX_FILE_BYTES));
   });
 
   test('a size refusal without a measured size names only the ceiling', () => {
     const message = unsupportedEditorMessage('too-large');
-    expect(message).toContain('5.00 MB');
+    expect(message).toContain(formatBytes(EDITOR_MAX_FILE_BYTES));
     expect(message).not.toContain('undefined');
   });
 
+  test('the text ceiling leaves room for a real source file and stops short of the knee', () => {
+    // 32 MiB: measured, the last size before a tab's heap crosses a gigabyte and
+    // a 64 MB file stops opening at all (see the constant's own table).
+    expect(EDITOR_MAX_FILE_BYTES).toBe(32 * 1024 * 1024);
+    expect(EDITOR_MAX_FILE_BYTES).toBeGreaterThan(DOCUMENT_MAX_FILE_BYTES);
+  });
+
   // The sentence names the number the classifier actually applied: a PDF is
-  // refused against 30 MB, so telling the user "5.00 MB" would describe a limit
-  // the file was never measured against.
-  test('a PDF size refusal names the PDF ceiling', () => {
+  // refused against its own ceiling, so naming the text one would describe a
+  // limit the file was never measured against.
+  test('a PDF size refusal names the PDF ceiling, not the text one', () => {
     const message = unsupportedEditorMessage('too-large', 31 * 1024 * 1024, 'docs/report.pdf');
     expect(message).toContain('31.00 MB');
-    expect(message).toContain('30.00 MB');
-    expect(message).not.toContain('5.00 MB');
+    expect(message).toContain(formatBytes(PDF_MAX_FILE_BYTES));
+    expect(message).not.toContain(formatBytes(EDITOR_MAX_FILE_BYTES));
   });
 });

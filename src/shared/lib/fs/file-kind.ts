@@ -143,16 +143,43 @@ export function getImageMimeFromBytes(bytes: Uint8Array): string | null {
 }
 
 /**
- * The largest file the editor will open when its bytes reach the page WHOLE.
+ * The largest text file the editor will open when its bytes reach the page
+ * WHOLE.
  *
- * Not a policy knob: the editor holds the whole file in one string and posts
- * the whole thing back on every save, so a ceiling has to exist. 5 MiB is above
- * any source file and well below the size at which a textarea stops responding.
+ * Not a policy knob: the editor holds the whole file in one string, CodeMirror
+ * holds a second representation of it, and the whole thing is posted back on
+ * every save — so a ceiling has to exist.
  *
- * A DOCX and an XLSX are parsed in the page too, but they get their own, higher
- * number — see `DOCUMENT_MAX_FILE_BYTES`.
+ * **32 MiB, measured.** The number used to be 5 MiB, and its justification died
+ * with the `<textarea>`: that limit existed because a textarea stops responding,
+ * and the surface is CodeMirror 6 now. Re-measured on the assembled app (a
+ * generated source file, Files panel open, Chromium):
+ *
+ * | File | Open | Keystroke | Save | JS heap |
+ * |---|---|---|---|---|
+ * | 5 MB | 99 ms | 17 ms | 289 ms | 73 MB |
+ * | 10 MB | 147 ms | 32 ms | 494 ms | 73 MB |
+ * | 20 MB | 212 ms | 34 ms | 969 ms | 73 MB |
+ * | 30 MB | 323 ms | 39 ms | 2 292 ms | — |
+ * | 40 MB | 283 ms | 45 ms | 1 793 ms | — |
+ * | 50 MB | 372 ms | 72 ms | 2 228 ms | **1 078 MB** |
+ * | 64 MB | never finished loading | — | — | — |
+ *
+ * The curve is flat through 40 MB and breaks at 50: the heap goes from a few
+ * hundred megabytes to over a gigabyte for ONE tab, and a 64 MB file does not
+ * open at all. 32 MiB is the last size with a comfortable margin below that
+ * knee — ten times any source file, and the point past which a tab is a risk to
+ * every other tab in the browser rather than a convenience.
+ *
+ * Two costs had to be removed before this number was reachable, and both were
+ * linear-in-file-size work paid per keystroke: the outline's scan-and-render of
+ * every declaration (`outline/rows.ts`), and a full `doc.toString()` on every
+ * render (`code-surface/index.tsx`).
+ *
+ * A DOCX and an XLSX are parsed in the page too, but they get their own number —
+ * see `DOCUMENT_MAX_FILE_BYTES`.
  */
-export const EDITOR_MAX_FILE_BYTES = 5 * 1024 * 1024;
+export const EDITOR_MAX_FILE_BYTES = 32 * 1024 * 1024;
 
 /**
  * The largest Word document or workbook the editor opens.
@@ -160,9 +187,10 @@ export const EDITOR_MAX_FILE_BYTES = 5 * 1024 * 1024;
  * `mammoth` and `read-excel-file` parse the fetched `ArrayBuffer` in the page,
  * so the file does sit in memory — but it is unzipped and converted once and
  * then released, where a text buffer is held for as long as the tab is open and
- * re-posted on every save. That is why these get four times the text ceiling
- * rather than the text ceiling itself: the reason the 5 MiB limit exists (a
- * textarea that stops responding) does not apply to a read-only conversion.
+ * re-posted on every save. That is why these get a ceiling of their own rather
+ * than the text one: the reason the text limit exists (a buffer that must stay
+ * editable, and a save that re-posts it) does not apply to a read-only
+ * conversion.
  *
  * Measured on a 15 MB workbook: the fetch, the unzip and the grid render all
  * complete, and the panel stays responsive.
@@ -170,8 +198,13 @@ export const EDITOR_MAX_FILE_BYTES = 5 * 1024 * 1024;
 export const DOCUMENT_MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 /**
- * The largest PDF the editor opens — above both, because a PDF is the one
- * document the page never holds.
+ * The largest PDF the editor opens.
+ *
+ * Its own number rather than the text ceiling, because a PDF is the one document
+ * the page never holds — and the only one whose limit is not about a buffer at
+ * all (see below). It is no longer the largest of the three: the TEXT ceiling
+ * moved past it, which is fine because the two numbers answer different
+ * questions rather than ranking a shared budget.
  *
  * `PdfView` points an `<iframe>` at `/api/fs/raw`, so the bytes go straight to
  * Chrome's own viewer, which fetches them with range requests (verified: a
@@ -180,7 +213,8 @@ export const DOCUMENT_MAX_FILE_BYTES = 20 * 1024 * 1024;
  * Nothing in Kabmo buffers the file, so the text ceiling has no reason to
  * apply to it — and applying it was the bug: a 6 MB PDF dragged from Finder was
  * refused as "larger than the 5.00 MB the editor opens" before the document
- * branch was ever reached, because the size test runs first.
+ * branch was ever reached, because the size test runs first. The 30 MB here is
+ * Chrome's own plugin's comfort zone, not Kabmo's memory.
  */
 export const PDF_MAX_FILE_BYTES = 30 * 1024 * 1024;
 

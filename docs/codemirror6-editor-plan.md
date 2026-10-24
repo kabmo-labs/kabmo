@@ -495,12 +495,12 @@ subsystem can be left half-migrated.
 
 Two new questions the migration raises:
 
-4. **Should the outline stop re-scanning the whole buffer per keystroke?** At
-   20 000 lines with the Files panel open, a keystroke costs ~165 ms and the
-   profile is Shiki's `findNextMatchSync` inside `extractOutline`. It is not a
-   regression (the outline always ran on every content change) but it is now the
-   slowest thing in the editor's neighbourhood, and a debounce or a
-   viewport-scoped scan would fix it.
+4. **Should the outline stop re-scanning the whole buffer per keystroke?** —
+   **DONE**, and the measurement was worse than this note estimated: at 10 MB the
+   panel cost 953 ms per keystroke, because it was not only scanning but
+   RENDERING 63 618 rows. Both are bounded now (`outline/rows.ts`: 500 rows,
+   8 MiB scan ceiling; `useOutlineView`: 300 ms debounce), and the same file
+   costs 33 ms. See "File size" below.
 5. **Should the diff panel's Split view have its own word-wrap control?** It
    shares `diff.wordWrap`, but the two shapes wrap differently (a split row has
    half the width), so a reader who wants wrapping in Unified may not want it in
@@ -531,6 +531,39 @@ The keystroke figures are the SYNCHRONOUS cost of the DOM edit (what the plan's
 baseline measured). A frame-level figure is dominated by the browser's own
 compositing and reads ~17 ms at any document size, which is why it is not the
 number quoted here.
+
+### File size: what the surface can actually hold
+
+The 5 MiB ceiling was a `<textarea>` limit, so it was re-measured once the
+surface became CM6. Same harness, a generated source file, Files panel open:
+
+| File | Open | Keystroke | Save | JS heap |
+|---|---|---|---|---|
+| 5 MB | 99 ms | 17 ms | 289 ms | 73 MB |
+| 10 MB | 147 ms | 32 ms | 494 ms | 73 MB |
+| 20 MB | 212 ms | 34 ms | 969 ms | 73 MB |
+| 30 MB | 323 ms | 39 ms | 2 292 ms | — |
+| 40 MB | 283 ms | 45 ms | 1 793 ms | — |
+| 50 MB | 372 ms | 72 ms | 2 228 ms | **1 078 MB** |
+| 64 MB | never finishes loading | — | — | — |
+
+Flat to 40 MB, broken at 50: one tab's heap goes past a gigabyte, and 64 MB does
+not open. The ceiling is therefore **32 MiB**, the last size with a comfortable
+margin below the knee.
+
+Two things had to be removed first, and both were per-keystroke work proportional
+to the file:
+
+- **`doc.toString()` on every render.** `syncExternal` compared the parent's
+  `value` against a full stringify of the document, and the parent re-renders on
+  every keystroke — 7.2 ms at 20 MB, 13.7 at 30 MB, paid twice per character.
+  It compares against `lastValueRef` now: 67 → 39 ms/keystroke at 30 MB.
+- **The outline's scan and its rows.** On a 10 MB source with 63 618
+  declarations the panel mounted **446 308 nodes** and charged **953 ms per
+  keystroke** (2.7 s to expand). `outline/rows.ts` caps the rows at 500 and skips
+  the scan past 8 MiB, and `useOutlineView` debounces the scan by 300 ms — the
+  scan alone is 38 ms at 1 MB, 160 at 5, 262 at 10, 519 at 20. Result: 33 ms and
+  4 495 nodes at 10 MB.
 
 Two measurements that surprised, both worth keeping:
 

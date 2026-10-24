@@ -20,7 +20,8 @@ import fs from 'fs';
 import path from 'path';
 import { testPosix } from '@/test-support/platform';
 import { resolveFileScope } from '@/server/routes/fs/scope';
-import { DOCUMENT_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
+import { DOCUMENT_MAX_FILE_BYTES, EDITOR_MAX_FILE_BYTES, PDF_MAX_FILE_BYTES } from '@/shared/lib/fs/file-kind';
+import { formatBytes } from '@/shared/lib/format/number';
 
 const APP = process.cwd();
 const DIR = path.join(APP, 'tmp-scope-probe');
@@ -158,14 +159,18 @@ describe('fs scope route', () => {
     expect(body.error).toContain('20.00 MB');
   });
 
-  // Plain text keeps the text ceiling: a textarea holds that buffer for the
-  // life of the tab, which is why its limit did not move with the documents'.
-  test('a text file past the text ceiling is still refused', async () => {
-    const target = write('big.log', new Uint8Array(6 * 1024 * 1024).fill(0x61));
-    const { status, body } = await scope(target);
+  // Plain text keeps the text ceiling, which is its own number: the buffer is
+  // held for the life of the tab and re-posted on every save, where a document
+  // is converted once. 6 MB used to be over it; it is a normal generated file
+  // and must open.
+  test('a text file over the text ceiling is refused, and one under it is not', async () => {
+    const ok = await scope(write('big.log', new Uint8Array(6 * 1024 * 1024).fill(0x61)));
+    expect(ok.status).toBe(200);
+    expect(ok.body.kind).toBe('text');
 
-    expect(status).toBe(200);
-    expect(body.kind).toBe('too-large');
-    expect(body.error).toContain('5.00 MB');
+    const over = await scope(write('huge.log', new Uint8Array(EDITOR_MAX_FILE_BYTES + 1).fill(0x61)));
+    expect(over.status).toBe(200);
+    expect(over.body.kind).toBe('too-large');
+    expect(over.body.error).toContain(formatBytes(EDITOR_MAX_FILE_BYTES));
   });
 });

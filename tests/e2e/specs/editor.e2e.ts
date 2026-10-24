@@ -71,6 +71,59 @@ test.describe('editor', () => {
     workspace.dispose();
   });
 
+  // The file ceiling is what the panel will OPEN, and the numbers moved when the
+  // surface became CodeMirror: 5 MiB was a textarea's limit, and a 6 MB generated
+  // source file is ordinary. The ceiling's own table is in `file-kind.ts`; this
+  // case is the assembled proof that a file past the OLD limit opens, edits and
+  // saves, because a constant and a route that disagree is how the number and the
+  // refusal sentence drift apart.
+  test('a file past the old 5 MB ceiling opens, edits and saves', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-big');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    // Built to a SIZE, not a line count: the claim is "past the old 5 MiB
+    // ceiling", so the fixture has to clear it by construction. Each row is ~30
+    // bytes, and a marker sits at the very END so reaching it proves the whole
+    // document arrived rather than just the first viewport.
+    const row = (i: number) => `export const row${i} = ${i};`;
+    const rows: string[] = [];
+    let bytes = 0;
+    for (let i = 0; bytes < 6 * 1024 * 1024; i += 1) {
+      const line = row(i);
+      rows.push(line);
+      bytes += line.length + 1;
+    }
+    rows.push("export const LAST_ROW = 'tail-marker';");
+    const filePath = join(dir, 'big.ts');
+    writeFileSync(filePath, rows.join('\n'));
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByText('src', { exact: true }).first().click();
+    await page.getByText('big.ts', { exact: true }).first().click();
+
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    const editor = panel.locator('.cm-content');
+    // The refusal is a real outcome for this file if the ceiling regresses, so a
+    // failure says which one happened rather than timing out on an empty panel.
+    await expect(editor).toBeVisible({ timeout: 60_000 });
+    await expect(panel).not.toContainText('larger than the');
+
+    await editor.click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.type(' // edited');
+    const save = panel.getByRole('button', { name: /save file/i }).first();
+    const written = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.startsWith('/api/fs'),
+    );
+    await save.click();
+    await written;
+
+    await expect.poll(() => readFileSync(filePath, 'utf8'), { timeout: 30_000 }).toContain('// edited');
+
+    workspace.dispose();
+  });
+
   test('the surface is a contenteditable with the mobile input attributes', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-editor-attrs');
