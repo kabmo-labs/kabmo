@@ -139,6 +139,19 @@ open class ShellWindow: NSWindow {
       if hitsStandardButton(at: event.locationInWindow) {
         break
       }
+      // The frame's OWN chrome comes next, and it is the half the page cannot
+      // know about: the resize band. `fullSizeContentView` puts the page under
+      // the bar, so the page marks its whole top 40px `[data-drag-region]` —
+      // including the strip along the top edge and around both top corners that
+      // `NSThemeFrame` reserves for dragging the window's SIZE. Claiming those as
+      // a window MOVE swallowed every diagonal resize: the measured answer for a
+      // press at (1, H-1) was "the page says drag handle" and the window started
+      // moving instead of resizing. The edges BELOW that 40px strip were
+      // unaffected (the page marks nothing there), which is why the reported
+      // shape was "the diagonals do nothing" rather than "nothing resizes".
+      if frameOwnsPress(at: event.locationInWindow) {
+        break
+      }
       if isOnBar(at: event.locationInWindow) {
         // A double-click on the bar is the system gesture, never a drag start:
         // the first click of a double-click has already begun one, and starting
@@ -153,8 +166,9 @@ open class ShellWindow: NSWindow {
       }
     case .rightMouseDown:
       // The title bar's own menu. A page right-click is a different gesture and
-      // stays the page's — this only fires on the bar.
-      if isOnBar(at: event.locationInWindow) {
+      // stays the page's — this only fires on the bar, and never on the frame's
+      // resize band (a right-click there belongs to the platform).
+      if !frameOwnsPress(at: event.locationInWindow), isOnBar(at: event.locationInWindow) {
         showBarMenu(with: event)
         return
       }
@@ -176,7 +190,30 @@ open class ShellWindow: NSWindow {
    */
   public func claimsBarPress(at windowPoint: NSPoint) -> Bool {
     if hitsStandardButton(at: windowPoint) { return false }
+    // The frame's resize band is not the bar, even though the page marks the
+    // strip behind it — see `frameOwnsPress`.
+    if frameOwnsPress(at: windowPoint) { return false }
     return isOnBar(at: windowPoint)
+  }
+
+  /// Whether the window FRAME owns this press — the resize band along the edges
+  /// and around the corners.
+  ///
+  /// `NSThemeFrame` answers `hitTest` from the frame's own geometry, so the
+  /// answer is the platform's and not a guess about how thick the band is (it is
+  /// not one number: measured on macOS 27, the band is 3px along the top edge,
+  /// 4px along the bottom and the sides, and 8px into the top-left corner
+  /// because the close button's own margin is reserved there).
+  ///
+  /// The rule is stated as "the hit is NOT the content view and NOT inside it",
+  /// rather than "the hit is the frame": a window whose content view is a
+  /// `WKWebView` directly (the window suite's shape) has no container in
+  /// between, and a test that compared against `NSThemeFrame` by name would pin
+  /// AppKit's private class name instead of the behaviour.
+  public func frameOwnsPress(at windowPoint: NSPoint) -> Bool {
+    guard let content = contentView, let frameView = content.superview,
+          let hit = frameView.hitTest(windowPoint) else { return false }
+    return hit !== content && !hit.isDescendant(of: content)
   }
 
   /// Whether the press landed on one of the system's own title-bar controls.

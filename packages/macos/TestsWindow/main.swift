@@ -194,6 +194,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     check("...and reaches the page", window.passedThrough)
 
     proveWindowMoves()
+    runResizeBandCases()
     runTrafficLightCases()
     runShortcutCases()
     runDoubleClickCases()
@@ -201,6 +202,75 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     proveClickCloses()
     runSplashCases()
     finish()
+  }
+
+  /**
+   The frame's own RESIZE BAND is not the page's drag region.
+
+   `fullSizeContentView` puts the page under the title bar, so the page marks its
+   whole top 40px `[data-drag-region]` — including the strip along the top edge
+   and around both top corners that `NSThemeFrame` reserves for dragging the
+   window's SIZE. The shipped window asked the page first, so every press there
+   became a window MOVE: measured through the real `ShellWindow`, a press at
+   (1, H-1), (6, H-6), (W-1, H-1) and (W/2, H-1) all reported "the page says drag
+   handle" and started a move, which is why the reported symptom was that the
+   DIAGONAL resize did nothing while the plain edges still worked (the page marks
+   nothing along the bottom, left or right edge).
+
+   The band's thickness is AppKit's, not ours — measured on macOS 27 as 3px along
+   the top edge, 4px along the bottom and the sides, and 8px into the top-left
+   corner because the close button's own margin is reserved there. It is
+   therefore MEASURED here rather than hard-coded: a fixed probe point passes on
+   one macOS and lands in the page on the next.
+
+   As in `runTrafficLightCases`, no press is DELIVERED at these points: a
+   `leftMouseDown` on the frame's resize band enters AppKit's own resize-tracking
+   loop, which pulls the queue for a mouse-up a synthetic press never posts, and
+   the suite hangs. What is asserted is the predicate `sendEvent` consults.
+   */
+  func runResizeBandCases() {
+    print("\nthe frame's resize band")
+    let W = window.contentView!.bounds.width
+    let H = window.contentView!.bounds.height
+
+    // Top-right: the band, then the page's header again — both directions, or
+    // "fix" that refused every press in the top strip would pass.
+    func topRight(_ d: CGFloat) -> NSPoint { NSPoint(x: W - d, y: H - d) }
+    check("the top-right corner is the frame's resize band", window.frameOwnsPress(at: topRight(1)))
+    check("...so it is NOT claimed as a window drag", !window.claimsBarPress(at: topRight(1)))
+    var d: CGFloat = 1
+    while d < 40, window.frameOwnsPress(at: topRight(d)) { d += 1 }
+    check("the top-right band ends within 40px", d < 40)
+    check("past the top-right band the header is a drag again", window.claimsBarPress(at: topRight(d)))
+
+    // The top edge between the corners, and its inner side.
+    func topEdge(_ dy: CGFloat) -> NSPoint { NSPoint(x: W / 2, y: H - dy) }
+    check("the top edge is the frame's resize band", window.frameOwnsPress(at: topEdge(1)))
+    check("...so it is NOT claimed as a window drag", !window.claimsBarPress(at: topEdge(1)))
+    var dy: CGFloat = 1
+    while dy < 40, window.frameOwnsPress(at: topEdge(dy)) { dy += 1 }
+    check("the top-edge band ends within 40px", dy < 40)
+    check("past the top-edge band the header is a drag again", window.claimsBarPress(at: topEdge(dy)))
+
+    // Top-left: the band is the CLOSE BUTTON's margin here, so the inner side is
+    // asserted only as "not the frame" — the point just past it belongs to the
+    // button, not to the page's header, and `hitsStandardButton` already owns
+    // that case.
+    func topLeft(_ d: CGFloat) -> NSPoint { NSPoint(x: d, y: H - d) }
+    check("the top-left corner is the frame's resize band", window.frameOwnsPress(at: topLeft(1)))
+    check("...so it is NOT claimed as a window drag", !window.claimsBarPress(at: topLeft(1)))
+
+    // The three edges the page does not mark. They resized before this change
+    // and must keep doing so: the fix must not claim the frame's band anywhere.
+    let edges: [(String, NSPoint)] = [
+      ("bottom", NSPoint(x: W / 2, y: 1)),
+      ("left", NSPoint(x: 1, y: H / 2)),
+      ("right", NSPoint(x: W - 1, y: H / 2)),
+    ]
+    for (label, point) in edges {
+      check("the \(label) edge is the frame's resize band", window.frameOwnsPress(at: point))
+      check("...and is not a window drag", !window.claimsBarPress(at: point))
+    }
   }
 
   /**

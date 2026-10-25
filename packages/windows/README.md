@@ -71,8 +71,31 @@ first boot adopted every answering server.
 ## The window bar
 
 `WindowStyle = None` + `WindowChrome { CaptionHeight = 0, UseAeroCaptionButtons =
-false, ResizeBorderThickness = 6 }`: the page owns the top 40px and Windows owns
-the edges.
+false, ResizeBorderThickness = 6 }`: the page owns the top 40px and the shell
+INTENDS Windows to own the edges.
+
+**It does not, and that is a known defect rather than a design.** `WindowChrome`
+answers `WM_NCHITTEST` for the parent window, but the WebView2 is a child HWND
+covering the whole client area, so the mouse never reaches the parent's hit test
+— the page gets the `mousedown` instead. The consequence is that **every** edge
+and corner of this shell is un-resizable, not only the diagonals, and the
+`ResizeBorderThickness = 6` above reserves a band nothing can grab. Measured
+against the platform's own tracker: `MicrosoftEdge/WebView2Feedback#4538` reports
+exactly this shape (a full-window WebView2 under `WindowChrome` cannot be resized,
+and a `Margin` around the control is the only thing that makes the border live
+again) and was closed as a tracked feature request, folded into `#2243`, which
+asks for `app-region` to grow a resize meaning and is still open. `#2243` also
+confirms `app-region: drag` is the only non-client behaviour WebView2 exposes —
+so the drag works and the resize does not.
+
+The fix is the one Gantry documents for the same platform (its `ResizeFrame`): the
+PAGE renders eight thin fixed-position edge/corner strips with the right cursors
+and calls a new `window_resize` bridge command, and the shell posts
+`WM_NCLBUTTONDOWN` with the matching `HT*` code after `ReleaseCapture`, letting
+Windows run its own interactive resize. It is NOT done here because it is a
+product change to the shared client (a strip per edge on every layout) and this
+shell cannot be run on the machine that would write it — a macOS host can only
+compile it. Recorded so the next reader does not assume the border works.
 
 - The header carries **`data-drag-region`** and `app-region: drag`, which WebView2
   turns into `HTCAPTION` once `IsNonClientRegionSupportEnabled` is on — so the

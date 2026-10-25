@@ -112,6 +112,19 @@ free is then done in `ShellWindow.swift`:
   geometry, so subtracting the height inverted every probe; and
   `NSEvent.mouseLocation` is the hardware pointer rather than the event, which
   made a posted drag move nothing.
+- **The frame's resize band is asked about BEFORE the page**, and that ordering is
+  why diagonal resizing works. `fullSizeContentView` puts the page under the bar,
+  so the page marks its whole top 40px — including the strip along the top edge
+  and around both top corners that `NSThemeFrame` reserves for dragging the
+  window's SIZE. Measured through the real window, a press at `(1, H-1)`,
+  `(6, H-6)`, `(W-1, H-1)` and `(W/2, H-1)` all read as "the page says drag
+  handle" and started a window MOVE, so every diagonal resize moved the window
+  instead of resizing it — while the bottom, left and right edges kept working,
+  because the page marks nothing there. `frameOwnsPress(at:)` asks the frame's own
+  `hitTest` (the band's thickness is AppKit's: measured 3px along the top edge,
+  4px along the bottom and the sides, 8px into the top-left corner where the close
+  button's margin is reserved), and `sendEvent` breaks out of the claim so the
+  platform's own resize loop takes the press.
 - The leftmost **76px** is behind the traffic lights, so the first header on the
   strip uses `TRAFFIC_LIGHT_INSET` (`src/client/lib/desktop/titlebar.ts`).
 
