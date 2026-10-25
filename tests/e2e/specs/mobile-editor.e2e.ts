@@ -106,6 +106,8 @@ test.describe('mobile editor', () => {
       .poll(
         async () =>
           scroller.evaluate((el) => {
+            // The input a reader's scroll starts with — see `diff-panel.e2e.ts`.
+            el.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 1 }));
             el.scrollTop = 800;
             el.dispatchEvent(new Event('scroll'));
             return el.scrollTop;

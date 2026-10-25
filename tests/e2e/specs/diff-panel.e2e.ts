@@ -190,6 +190,11 @@ test.describe('diff panel views', () => {
       .toBeGreaterThan(200);
 
     await scroller.evaluate((el) => {
+      // The input a reader's scroll starts with: the hook tells a person's
+      // scroll from the browser's own re-anchoring by whether an input preceded
+      // it, so a bare `scrollTop` assignment is undone as if the document had
+      // corrected itself (measured: read back 0 where 150 was written).
+      el.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 1 }));
       el.scrollTop = 150;
       el.dispatchEvent(new Event('scroll'));
     });
