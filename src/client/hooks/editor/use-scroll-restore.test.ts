@@ -161,6 +161,19 @@ function storedOffsets(): ScrollPositions | undefined {
   return getSessionValue<ScrollPositions>(SESSION, SCROLL_POSITIONS_KEY);
 }
 
+/**
+ * A READER's scroll: the input that causes it, then the movement.
+ *
+ * The hook distinguishes the two, and it has to: a `scroll` with no input behind
+ * it is the browser re-anchoring the document as its real height lands, which
+ * must NOT be read as the reader moving. `wheel` is the simplest input a code
+ * surface sees.
+ */
+function readerScroll(probe: ProbeHandle, top: number): void {
+  probe.el.dispatchEvent(new Event('wheel', { bubbles: true }));
+  probe.el.scrollTop = top;
+}
+
 describe('useScrollRestore', () => {
   test('restores the stored offset for the tab and surface', async () => {
     const probe = await mount('7', 'code', { '7': { code: 900 } });
@@ -181,7 +194,47 @@ describe('useScrollRestore', () => {
 
   test("a reader's own scroll wins over a pending restore", async () => {
     const probe = await mount('7', 'code', { '7': { code: 900 } });
-    probe.el.scrollTop = 120;
+    readerScroll(probe, 120);
+    await act(async () => {
+      StubResizeObserver.latest()?.fire();
+    });
+    expect(probe.el.scrollTop).toBe(120);
+  });
+
+  test('the document re-anchoring is not the reader, and the restore re-applies', async () => {
+    // The bug the e2e spec found: the restore writes 900, the document's real
+    // height lands a frame later, and CodeMirror re-anchors to keep the visible
+    // content stable — `scrollTop` moves to 420 with nobody assigning. Reading
+    // that as the reader's own scroll dropped the pending restore, so the
+    // anchored value became where the reader stayed (measured: opening a tab
+    // moved them 29 lines) and the wrong offset was persisted.
+    const probe = await mount('7', 'code', { '7': { code: 900 } }, 600);
+    expect(probe.el.scrollTop).toBe(100);
+
+    // The browser's own correction: no input event behind it.
+    probe.el.scrollTop = 420;
+    probe.setHeight(5000);
+    await act(async () => {
+      StubResizeObserver.latest()?.fire();
+    });
+
+    // The restore is still in charge, so the reader lands where the session
+    // recorded — not where the anchoring put them.
+    expect(probe.el.scrollTop).toBe(900);
+  });
+
+  test('a reader’s scroll is still theirs after an anchoring correction', async () => {
+    // The discriminator must not swallow the NEXT real scroll: the input that
+    // explains a movement is consumed by it, so a reader who scrolls after the
+    // document settles keeps their own position.
+    const probe = await mount('7', 'code', { '7': { code: 900 } });
+    probe.el.scrollTop = 420; // anchoring, no input
+    await act(async () => {
+      StubResizeObserver.latest()?.fire();
+    });
+    expect(probe.el.scrollTop).toBe(900);
+
+    readerScroll(probe, 120);
     await act(async () => {
       StubResizeObserver.latest()?.fire();
     });
@@ -192,7 +245,7 @@ describe('useScrollRestore', () => {
     const probe = await mount('7', 'code', {});
     jest.useFakeTimers();
     try {
-      probe.el.scrollTop = 350;
+      readerScroll(probe, 350);
       jest.advanceTimersByTime(200);
       await act(async () => {});
     } finally {

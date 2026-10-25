@@ -59,16 +59,7 @@ async function openTab(page: Parameters<typeof openApp>[0], path: string): Promi
 }
 
 /**
- * The offset the APP recorded for the file on screen, read from the session
- * state row it persists.
- *
- * The spec cannot compare against the number it just assigned: CodeMirror does
- * its own scroll anchoring, so when the panel's width animation settles and the
- * lines re-wrap, it adjusts `scrollTop` to keep the visible content stable.
- * Measured on CI: the assignment read back 1255 and the restore landed on 1777 —
- * both numbers the app produced, and 1777 is the one it stored, because that is
- * where the reader actually was when they left. The contract is "returning lands
- * where the session recorded", so that is what is asserted.
+ * The offset the APP recorded for the tab, read from the session state row.
  *
  * The session id is `1`: the page was opened with `?folderId=` only, and the
  * provider falls back to `1` for a workspace view.
@@ -83,37 +74,6 @@ async function storedOffset(page: Parameters<typeof openApp>[0]): Promise<number
     if (typeof surfaces?.code === 'number') return surfaces.code;
   }
   return 0;
-}
-
-/**
- * The offset the app settled on, once its own anchoring has stopped moving it.
- *
- * The number is not the one the spec assigned: CodeMirror keeps the visible
- * content stable while the panel's width animation settles and the lines
- * re-wrap, so it adjusts `scrollTop` a moment later and the app records THAT
- * (`scroll` events are what the hook persists). Reading once therefore catches
- * whichever write happened to land first — measured on both CI legs, every run:
- * the read answered 1255 and the restore landed on 1777, which was the value
- * the app had stored by then.
- *
- * Two consecutive equal reads mean the anchoring has finished and the debounced
- * persist has caught up.
- */
-async function settledOffset(page: Parameters<typeof openApp>[0], floor: number): Promise<number> {
-  let previous = -1;
-  let stable = -1;
-  await expect
-    .poll(
-      async () => {
-        const value = await storedOffset(page);
-        if (value === previous && value > 0) stable = value;
-        previous = value;
-        return stable;
-      },
-      { timeout: 20_000, intervals: [300, 400, 500] },
-    )
-    .toBeGreaterThan(floor);
-  return stable;
 }
 
 /**
@@ -186,22 +146,23 @@ test.describe('editor scroll memory', () => {
       )
       .toBeGreaterThan(1000);
 
+    const leftAt = await scroller.evaluate((el) => el.scrollTop);
+    expect(leftAt).toBeGreaterThan(1000);
+
     // Switch to another file and back. The second file is opened from the tree
     // (which is how it gets a tab), then both switches are TAB clicks — the
     // offset is recorded on the way out and restored on the way in.
     await openFromTree(page, 'short.txt');
     await expect(panel).toContainText('short file');
 
-    // The number the restore has to land on is the one the app records when the
-    // tab is LEFT, not the one visible while it was open. Leaving is when the
-    // hook persists its last scroll event, and by then CodeMirror's anchoring
-    // has moved the offset to keep the visible content stable as the panel's
-    // width settled — measured on both CI legs, every run: 1255 while open,
-    // 1777 recorded on the way out, and the restore lands on 1777.
-    const leftAt = await settledOffset(page, 1000);
-
     await openTab(page, 'src/long.txt');
-    // Polled: the restore is re-applied while the document's height settles.
+    // Polled, because the restore is re-applied while the document's height
+    // settles — and it must land on the recorded offset. It did not before:
+    // CodeMirror re-anchors when the real height lands (measured: 5796 → 7232,
+    // taking `scrollTop` from 1255 to 1777 with nobody assigning), the hook read
+    // that as the reader's own scroll, and the reader arrived 29 lines further
+    // down with the wrong offset persisted. The hook now tells the two apart by
+    // whether an input event preceded the movement.
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollTop), { timeout: 15_000 })
       .toBe(leftAt);
@@ -243,8 +204,9 @@ test.describe('editor scroll memory', () => {
     await page.waitForResponse(
       (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/state'),
     );
-    // The STORED offset, not the one just assigned — see `settledOffset`.
-    const leftAt = await settledOffset(page, 500);
+    const leftAt = await scroller.evaluate((el) => el.scrollTop);
+    // The app recorded exactly this, which is what the reload will restore.
+    expect(await storedOffset(page)).toBe(leftAt);
 
     // The session blob must land BEFORE the tree is clicked: this spec asserts
     // on the offset the blob restores, so a click that beat the read would be

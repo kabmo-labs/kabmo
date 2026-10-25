@@ -134,6 +134,37 @@ export function useScrollRestore({
    * whose height is still growing then stayed where the clamp left it.
    */
   const writingRef = useRef(false);
+  /**
+   * What the element's `scrollTop` was at the last observation, so a scroll
+   * event that moves it WITHOUT anyone assigning can be recognised as the
+   * browser's own anchoring rather than the reader's.
+   *
+   * This is the bug the e2e spec found on CI and could not explain: returning to
+   * a long file landed the reader on line 99 instead of line 70, and the wrong
+   * offset was then persisted. Measured in the browser: the restore wrote 1255,
+   * the document's real height arrived a frame later (5796 → 7232), and
+   * CodeMirror re-anchored — `scrollTop` became 1777 with no assignment from
+   * this hook. That produced a `scroll` event, the handler below compared it
+   * against `restoredTopRef` (1255), read a 522px delta, and treated it as the
+   * reader's own scroll: the pending restore was dropped, and the anchored
+   * value became what got stored. The reader moved 29 lines for opening a tab.
+   *
+   * An anchoring correction is not a reader. It is re-applied like any other
+   * height change, because the target offset is the one the session recorded.
+   */
+  const observedTopRef = useRef(0);
+  /**
+   * Whether the reader has DONE something since the last scroll event — the
+   * only thing that separates their scroll from the browser's own.
+   *
+   * Every way a reader scrolls a code surface starts with an input event: a
+   * wheel, a key (arrows, PageDown, Home/End), a pointer press on the scrollbar
+   * or a drag-select, a touch. CodeMirror re-anchoring starts with none, so a
+   * `scroll` with no input behind it is the document settling. The flag is
+   * cleared by the scroll it explains, so the next unattributed move is read as
+   * anchoring again.
+   */
+  const readerIntentRef = useRef(false);
   /** The last offset the READER produced, persisted on the way out. */
   const lastTopRef = useRef<number | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -147,13 +178,17 @@ export function useScrollRestore({
       pendingRef.current = null;
       return;
     }
-    if (Math.abs(element.scrollTop - pending.top) < NOISE_PX) return;
+    if (Math.abs(element.scrollTop - pending.top) < NOISE_PX) {
+      observedTopRef.current = element.scrollTop;
+      return;
+    }
     writingRef.current = true;
     element.scrollTop = pending.top;
     writingRef.current = false;
     // Read back: the document may be shorter than the target, and the clamped
     // value is what an asynchronous scroll event will report.
     restoredTopRef.current = element.scrollTop;
+    observedTopRef.current = element.scrollTop;
   }, []);
 
   const attach = useCallback(
@@ -186,9 +221,23 @@ export function useScrollRestore({
       // because the event may arrive synchronously (during the assignment) or
       // on a later frame (against the value the write landed on).
       if (writingRef.current) return;
+      // Moved with nobody assigning AND no reader input behind it: CodeMirror
+      // re-anchoring after the document's real height landed. NOT the reader —
+      // re-applying the recorded offset is what keeps them where they were. See
+      // `observedTopRef` for the measurement.
+      const moved = Math.abs(top - observedTopRef.current) >= NOISE_PX;
+      observedTopRef.current = top;
+      if (moved && !readerIntentRef.current) {
+        applyPending();
+        return;
+      }
       if (Math.abs(top - restoredTopRef.current) < NOISE_PX * 2) return;
       pendingRef.current = null;
     }
+    observedTopRef.current = top;
+    // The input this scroll belongs to has now been accounted for; the next
+    // unattributed move is anchoring again.
+    readerIntentRef.current = false;
     lastTopRef.current = top;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -196,7 +245,7 @@ export function useScrollRestore({
       const value = lastTopRef.current;
       if (value !== null) persist(value);
     }, SAVE_DEBOUNCE_MS);
-  }, [persist, tabKey]);
+  }, [applyPending, persist, tabKey]);
 
   // A provided element is not a React-rendered node, so its scroll events have
   // to be wired here: the caller has no `onScroll` prop to hang them on. The
@@ -208,11 +257,30 @@ export function useScrollRestore({
     return () => providedElement.removeEventListener('scroll', listener);
   }, [providedElement, onScroll]);
 
+  // What counts as the reader having scrolled, for `readerIntentRef`. Wired on
+  // the element AND the window, because a keydown goes to the focused editor
+  // while a wheel over the gutter goes to the window's capture phase.
+  useEffect(() => {
+    const element = providedElement ?? elementRef.current;
+    if (!element) return;
+    const note = () => {
+      readerIntentRef.current = true;
+    };
+    const types = ['wheel', 'keydown', 'pointerdown', 'touchstart'] as const;
+    for (const type of types) element.addEventListener(type, note, { passive: true });
+    window.addEventListener('keydown', note, { passive: true });
+    return () => {
+      for (const type of types) element.removeEventListener(type, note);
+      window.removeEventListener('keydown', note);
+    };
+  }, [providedElement]);
+
   // A layout effect so the restore lands in the same frame the tab paints — a
   // passive effect would show the document's head for one frame first.
   useLayoutEffect(() => {
     pendingRef.current = null;
     lastTopRef.current = null;
+    readerIntentRef.current = false;
     let observer: ResizeObserver | null = null;
     // A provided element WINS over the ref: the caller handed us the element it
     // wants restored, and a stale ref from the other surface of the same tab
