@@ -124,6 +124,13 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
     try {
       const created = await createWorktree({ root: scopeRoot, folderId }, { mode: 'new' });
       pickWorktree(created.path);
+      // The list this control reads is the one that was fetched when the menu
+      // opened — before the worktree existed. Without this read the pick names a
+      // path no row holds, `worktreeLabel` falls back to the folder's last
+      // segment, and the trigger says `groovy-yak` where the checkout's branch
+      // is `wt/groovy-yak` (measured in the browser, and for the whole time the
+      // menu stays closed, which is when the label matters).
+      await refresh();
       onReport?.(`Worktree ${created.branch || lastPathSegment(created.path)} created`);
     } catch (failure) {
       onReport?.(failure instanceof Error ? failure.message : String(failure));
@@ -266,6 +273,10 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
         folderName={folder?.name}
         onCreated={(created) => {
           pickWorktree(created.path);
+          // Same reason as the quick path: the pick names a worktree the list
+          // this control holds has never seen, so the trigger would fall back to
+          // the folder name until the menu was opened again.
+          void refresh();
           onReport?.(`Worktree ${created.branch} created`);
         }}
       />

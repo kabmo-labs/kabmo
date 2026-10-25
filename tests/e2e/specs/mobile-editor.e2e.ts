@@ -95,12 +95,25 @@ test.describe('mobile editor', () => {
       .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
       .toBeGreaterThan(500);
 
-    await scroller.evaluate((el) => {
-      el.scrollTop = 800;
-      el.dispatchEvent(new Event('scroll'));
-    });
+    // The scroller's restore REPLAYS for ~600ms after the document opens — the
+    // file's height is still settling, so the hook re-applies the remembered
+    // offset (0 here) on every resize. A single assignment inside that window is
+    // undone by the next replay: measured, `scrollTop` read back as 0 and the
+    // spec failed with "Expected: > 500, Received: 0" on one run in ten. Polling
+    // the assignment makes the gate the CONDITION (the replay has stopped and
+    // the write stuck), not a duration.
+    await expect
+      .poll(
+        async () =>
+          scroller.evaluate((el) => {
+            el.scrollTop = 800;
+            el.dispatchEvent(new Event('scroll'));
+            return el.scrollTop;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(500);
     const leftAt = await scroller.evaluate((el) => el.scrollTop);
-    expect(leftAt).toBeGreaterThan(500);
 
     // The write is debounced, so the POST is the gate rather than a duration.
     await page.waitForResponse(

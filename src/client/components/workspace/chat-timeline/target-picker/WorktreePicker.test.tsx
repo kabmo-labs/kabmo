@@ -104,6 +104,28 @@ function stubList(worktrees: WorktreeInfo[], isRepo = true): string[] {
   return calls;
 }
 
+/**
+ * A stub whose LIST grows once a create has answered — the state a real control
+ * is in the moment after it makes a worktree.
+ */
+function stubCreate(listBefore: WorktreeInfo[], created: WorktreeInfo): string[] {
+  const calls: string[] = [];
+  let created_ = false;
+  (globalThis as unknown as Record<string, unknown>).fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push(`${init?.method ?? 'GET'} ${String(input)}`);
+    if (init?.method === 'POST') {
+      created_ = true;
+      return { ok: true, json: async () => ({ worktree: created }) } as unknown as Response;
+    }
+    const worktrees = created_ ? [...listBefore, created] : listBefore;
+    return {
+      ok: true,
+      json: async () => ({ worktrees, base: '/data/worktrees/x', isRepo: true }),
+    } as unknown as Response;
+  };
+  return calls;
+}
+
 /** Drain the fetch promise chain; each empty `act` is one round. */
 async function settle(): Promise<void> {
   for (let round = 0; round < 10; round += 1) await act(async () => {});
@@ -247,5 +269,51 @@ describe('WorktreePicker', () => {
     // The dirty count is on the trigger too: a chat about to run in a checkout
     // with two changed files should say so before the first prompt.
     expect(host.querySelector('[aria-label="2 uncommitted files in this checkout"]')).not.toBeNull();
+  });
+
+  test('a create re-reads the list, so the trigger names the branch not the folder', async () => {
+    // The pick names a path the list has never seen — exactly the state after a
+    // create. `worktreeLabel` falls back to the folder's last segment there, so
+    // the trigger read `groovy-yak` where the branch is `wt/groovy-yak`, and it
+    // kept reading that until the menu was opened again (measured in the
+    // browser). The list is what the label is derived from, so the create has to
+    // re-read it.
+    const fresh = row({
+      path: '/data/worktrees/x/groovy-yak',
+      branch: 'wt/groovy-yak',
+      isPrimary: false,
+    });
+    const calls = stubCreate([primary], fresh);
+    const picks: Array<{ folderId: number | null; worktreePath: string | null } | null> = [];
+    const host = await mount(
+      h(WorktreePicker, {
+        folders: [folder],
+        selectedFolderId: 1,
+        target: null,
+        setTarget: (next) => picks.push(next),
+      }),
+    );
+    await settle();
+
+    await act(async () => {
+      (host.querySelector('button') as HTMLButtonElement).click();
+    });
+    await settle();
+
+    const quick = [...host.querySelectorAll('[role="menuitem"]')].find((node) =>
+      (node.textContent ?? '').includes('Quick worktree'),
+    ) as HTMLButtonElement | undefined;
+    expect(quick).toBeDefined();
+    await act(async () => {
+      quick?.click();
+    });
+    await settle();
+
+    expect(picks).toEqual([{ folderId: 1, worktreePath: fresh.path }]);
+    // The read AFTER the POST is the one that matters; without it the label is
+    // `groovy-yak`.
+    const postIndex = calls.findIndex((call) => call.startsWith('POST'));
+    expect(postIndex).toBeGreaterThanOrEqual(0);
+    expect(calls.slice(postIndex + 1).some((call) => call.startsWith('GET'))).toBe(true);
   });
 });

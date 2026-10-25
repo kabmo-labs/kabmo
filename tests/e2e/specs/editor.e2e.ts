@@ -217,6 +217,17 @@ test.describe('editor', () => {
     // The dropped file opened as its own tab…
     await expect(panel.locator('[title="src/b.ts"]').first()).toBeVisible({ timeout: 15_000 });
     // …and its text is NOT in the buffer it was dropped on.
+    //
+    // The assertion has to NAME the file it is about. Opening a file ACTIVATES
+    // it, so by the time `b.ts`'s tab is on screen the editor holds `b.ts` —
+    // whose own content is `DROPPED_CONTENT`. The old form (`.cm-content` alone)
+    // passed only by winning a race against the document swap: measured, it held
+    // for 33 consecutive polls with exactly the text it was asking not to see.
+    // `a.ts` is reached through the tree rather than its tab, because the tab
+    // strip at this panel width (320px) shows one tab and keeps the rest behind
+    // "More open files" — a click on a hidden tab is a different assertion.
+    await page.getByText('a.ts', { exact: true }).first().click();
+    await expect(panel.locator('.cm-content')).toContainText('const alpha = 1;');
     await expect(panel.locator('.cm-content')).not.toContainText('DROPPED_CONTENT');
     expect(readFileSync(join(dir, 'a.ts'), 'utf8')).toBe('const alpha = 1;\n');
 
