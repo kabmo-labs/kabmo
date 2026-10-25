@@ -46,6 +46,7 @@ import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
 
 import { commentSyntaxFor } from '@/shared/lib/code/editor/comment-syntax';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
+import { bracketGuide } from '@/client/components/common/code-surface/bracket-guide';
 import { indentFoldService } from '@/client/components/common/code-surface/fold';
 import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
@@ -87,6 +88,16 @@ export interface SurfaceExtensionsOptions {
    * exactly where they were.
    */
   themeCompartment: Compartment;
+  /**
+   * Compartment holding the stream language, when one has loaded.
+   *
+   * Empty on mount: the mode is a lazy import (`stream-language.ts`), so the
+   * surface starts with no parser and the compartment is reconfigured when the
+   * module lands. That reconfigure keeps the document, the selection and the
+   * history — it only swaps the language — which is why it is a compartment and
+   * not a re-mount.
+   */
+  languageCompartment: Compartment;
   wordWrap: boolean;
   readOnly: boolean;
   /** The two Shiki theme names this surface tokenizes with. */
@@ -105,6 +116,7 @@ export function surfaceExtensions({
   wordWrapCompartment,
   readOnlyCompartment,
   themeCompartment,
+  languageCompartment,
   wordWrap,
   readOnly,
   themes,
@@ -121,20 +133,31 @@ export function surfaceExtensions({
     crosshairCursor(),
     EditorState.allowMultipleSelections.of(true),
     indentUnit.of(INDENT),
-    // `toggleComment` with no grammar: the tokens are the entire input it needs.
-    // The provider must return an object KEYED by the data name —
+    // The stream language, when one has loaded. It goes BEFORE the manual
+    // `languageData` table below because `languageDataAt` returns every
+    // provider's answer in order and the commands take the FIRST — measured: a
+    // mode first makes `toggleComment` use the mode's own tokens, while the
+    // manual table first overrides them (a wrong manual entry won and `##`
+    // commented a Rust line).
+    //
+    // The tree it builds is what makes bracket matching token-aware. A lezer
+    // grammar would too, and was rejected on measurement: +39 KB gzip for
+    // JavaScript alone, 24 of 59 languages, and WRONG until its lazy parse
+    // catches up (3 wrong pairs at mount on a 176-line file).
+    languageCompartment.of([]),
+    // `toggleComment` with no mode loaded: the tokens are the entire input it
+    // needs. The provider must return an object KEYED by the data name —
     // `languageDataAt` looks the name up in each result, so returning the tokens
     // bare yields an empty list and the command silently does nothing.
     EditorState.languageData.of(() => [{ commentTokens: commentTokens(language) }]),
     findMarksField,
-    // Bracket matching is TEXTUAL here (there is no lezer tree), so it pairs the
-    // brackets around the caret by scanning — which is right for code and wrong
-    // inside a string: `const a = "{";` … `const c = "}"` pairs the two, 28
-    // characters apart. Accepted deliberately: a token-aware answer needs a
-    // grammar per language (19 of the 59 this app names) and `matchBrackets`
-    // costs 0.008–0.04 ms per move, so the wrong answer is cheap and rare while
-    // the alternative is 115 KB gzip per grammar family.
+    // Bracket matching, plus the vertical guide from the caret's brace to its
+    // pair. With a stream language loaded the pairing is token-aware; without
+    // one it is TEXTUAL, which is right for code and wrong inside a string
+    // (`const a = "{";` … `const c = "}"` pairs the two). The guide reads the
+    // same `matchBrackets` call, so the line and the highlight cannot disagree.
     bracketMatching(),
+    bracketGuide,
     // Folding, on the same reasoning: `foldGutter` supplies the gutter markers
     // and their click, `indentFoldService` answers "is this line foldable" from
     // indentation because `foldNodeProp` needs a tree. `foldGutter` already

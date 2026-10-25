@@ -69,6 +69,7 @@ function stateFor(language: string, doc: string, readOnly = false): EditorState 
       wordWrapCompartment: new Compartment(),
       readOnlyCompartment: new Compartment(),
       themeCompartment: new Compartment(),
+      languageCompartment: new Compartment(),
       wordWrap: false,
       readOnly,
       themes: SHIKI_THEMES,

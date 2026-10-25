@@ -81,6 +81,14 @@ export interface DocumentCache {
    * a document switch owes.
    */
   currentEffects(key?: string): StateEffect<unknown>[];
+  /**
+   * Effects that install a stream language on `key`'s document.
+   *
+   * The mode is a lazy import, so a document is created WITHOUT one and gets it
+   * here when the module lands. Reconfiguring the compartment keeps the
+   * document, the selection and the undo history — it only swaps the parser.
+   */
+  languageEffects(key: string, language: Extension): StateEffect<unknown>[];
 }
 
 /** Whether two theme pairs name the same Shiki themes. */
@@ -98,6 +106,15 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
   const wordWrapCompartment = new Compartment();
   const readOnlyCompartment = new Compartment();
   const themeCompartment = new Compartment();
+  /**
+   * The stream language, when its module has loaded.
+   *
+   * Per DOCUMENT rather than per view: two tabs in different languages are two
+   * states, and a reconfigure of one must not touch the other's tree. It starts
+   * empty and is filled by `languageEffects`, which is what the loader's
+   * notification drives.
+   */
+  const languageCompartment = new Compartment();
   /** The language each cached state was built for, so a theme reconfigure can
    *  rebuild its tokenizer with the SAME grammar. */
   const languages = new Map<string, string>();
@@ -117,6 +134,7 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       wordWrapCompartment,
       readOnlyCompartment,
       themeCompartment,
+      languageCompartment,
       onCommand: deps.onCommand,
       onDocChange: deps.onDocChange,
       onState: deps.onState,
@@ -196,6 +214,13 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
         themesByKey.set(key, options.themes);
       }
       return effects;
+    },
+
+    languageEffects(key, language) {
+      // Only a document this cache owns can be reconfigured; a key it has never
+      // seen is a caller asking about a tab that closed while the mode loaded.
+      if (!states.has(key)) return [];
+      return [languageCompartment.reconfigure(language)];
     },
   };
 }

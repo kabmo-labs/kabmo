@@ -63,6 +63,7 @@
   "dependencies": {
     "@codemirror/commands": "6.11.1",
     "@codemirror/language": "6.13.1",
+    "@codemirror/legacy-modes": "^6.5.5",
     "@codemirror/merge": "6.12.3",
     "@codemirror/search": "6.7.2",
     "@codemirror/state": "6.7.6",

@@ -31,6 +31,7 @@ function stateFor(language: string, doc = 'const alpha = 1;\n') {
       wordWrapCompartment: new Compartment(),
       readOnlyCompartment: new Compartment(),
       themeCompartment: new Compartment(),
+      languageCompartment: new Compartment(),
       wordWrap: false,
       readOnly: false,
       themes: SHIKI_THEMES,

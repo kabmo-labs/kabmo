@@ -40,6 +40,7 @@ import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 import { createSurfaceHandle, type CodeSurfaceHandle } from '@/client/components/common/code-surface/handle';
 import { setFindMarks, type MarkRange } from '@/client/components/common/code-surface/marks';
 import { syncExternal } from '@/client/components/common/code-surface/sync';
+import { loadStreamMode, readyStreamMode } from '@/client/components/common/code-surface/stream-language';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 
 export type { CodeSurfaceHandle } from '@/client/components/common/code-surface/handle';
@@ -248,6 +249,44 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     const effects = cache.optionsEffects({ wordWrap, readOnly, themes: activeThemes }, docKeyRef.current);
     if (effects.length > 0) view.dispatch({ effects });
   }, [wordWrap, readOnly, activeThemes.light, activeThemes.dark]);
+
+  /**
+   * The stream language: fetched for this document's language, installed when it
+   * lands.
+   *
+   * The mode is a lazy import, so the document was created without a parser and
+   * `bracketMatching()` answers textually until this reconfigure runs. A mode
+   * that fails to load leaves that textual matcher, which is a worse answer
+   * rather than a broken editor — `loadStreamMode` never rejects.
+   *
+   * Re-installed on a DOCUMENT SWITCH too: the compartment is per state, and a
+   * cached tab coming back has whatever configuration it was created with.
+   */
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    const cache = cacheRef.current;
+    if (!view || !cache) return;
+
+    let cancelled = false;
+    const install = (mode: unknown) => {
+      if (cancelled || !mode) return;
+      const live = viewRef.current;
+      if (!live) return;
+      const effects = cache.languageEffects(docKeyRef.current, mode as never);
+      if (effects.length > 0) live.dispatch({ effects });
+    };
+
+    // Already loaded (a second tab in the same language): install immediately so
+    // the tree exists on the first paint, not one microtask later.
+    const ready = readyStreamMode(language);
+    if (ready) {
+      install(ready);
+      return () => { cancelled = true; };
+    }
+
+    void loadStreamMode(language).then(install);
+    return () => { cancelled = true; };
+  }, [language, documentKey]);
 
   // Find marks: a field write, never a re-tokenize.
   useLayoutEffect(() => {
