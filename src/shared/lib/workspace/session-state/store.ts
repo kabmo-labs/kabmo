@@ -66,135 +66,52 @@
  *                             from another conversation is never restored
  * - chat.draft                string
  * - chat.draftAttachments     attachment metadata array
+ *
+ * The module is three files, because one had passed the per-file ceiling: this
+ * one owns the PUBLIC API (read, write, load, migrate) and what a write means;
+ * `cache.ts` owns the storage (the maps, the LRU order, the idle TTL, the dirty
+ * flag); `merge.ts` owns the write counter and the "which copy wins when a blob
+ * lands" decision. The maps live only in `cache.ts`, so "is this session dirty"
+ * and "drop this session" cannot be answered from two places that disagree.
  */
 
 import { notifySessionKey, notifySessionReplaced } from '@/shared/lib/workspace/session-state/listeners';
+import {
+  clearDirty,
+  dropEntry,
+  dropPersistTimer,
+  entryForWrite,
+  evictIfNeeded,
+  isDirty,
+  lastAccess,
+  markDirty,
+  readEntry,
+  setPersistTimer,
+  stampAccess,
+  touchEntry,
+  writeEntry,
+} from '@/shared/lib/workspace/session-state/cache';
+import {
+  currentWriteSeq,
+  forgetWrites,
+  keysWrittenAfter,
+  mergeStoredBlob,
+  noteWrite,
+} from '@/shared/lib/workspace/session-state/merge';
 
 type SessionState = Record<string, unknown>;
 
-const cache = new Map<string, SessionState>();
-/** Epoch ms of the last user-driven access per session (get/set/hydrate). */
-const lastTouched = new Map<string, number>();
-const dirtySessions = new Map<string, boolean>();
-const persistTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-/**
- * A monotonic counter bumped by every local write, and the counter value each
- * `(session, key)` was last written at.
- *
- * This exists for ONE race, and `dirtySessions` cannot cover it: a load's
- * response is served from a snapshot taken when the request arrived, while a
- * write made in the meantime persists on its own schedule. Once that persist
- * succeeds the dirty flag is cleared — so a response that arrives after it but
- * was computed before it would be adopted as-is and silently drop the write.
- * Measured in the browser (a rare e2e failure, `outline.e2e.ts`): a file opened
- * while the page's first `/state` read was in flight came back with
- * `layout.openedFiles` gone, so the editor drew "Select a file to open" over a
- * file the user had just clicked.
- *
- * `loadSession` records the counter when it STARTS and merges exactly the keys
- * written after that point, which is what makes "wrote it while the read was in
- * flight" survive regardless of when the persist landed.
- */
-let writeSeq = 0;
-const writeLog = new Map<string, Map<string, number>>();
-
-/** Record that `key` was written locally just now. */
-function noteWrite(sessionId: string, key: string): void {
-  writeSeq += 1;
-  let perSession = writeLog.get(sessionId);
-  if (!perSession) {
-    perSession = new Map();
-    writeLog.set(sessionId, perSession);
-  }
-  perSession.set(key, writeSeq);
-}
-
-/** The keys of `sessionId` written after `since` (strictly later). */
-function keysWrittenAfter(sessionId: string, since: number): Set<string> {
-  const written = new Set<string>();
-  const perSession = writeLog.get(sessionId);
-  if (!perSession) return written;
-  for (const [key, seq] of perSession) {
-    if (seq > since) written.add(key);
-  }
-  return written;
-}
-
 const PERSIST_DEBOUNCE_MS = 600;
 
-// Bounded LRU cache: cap the number of sessions kept in memory so the tab
-// doesn't grow unboundedly as the user visits more sessions.
-const MAX_CACHED_SESSIONS = 10;
-/** A session whose last user access is older than this is evicted regardless
- *  of the size cap, so stale per-session UI state (drafts, panel layouts)
- *  stops occupying memory 10 minutes after the user last opened it. */
-const SESSION_IDLE_TTL_MS = 10 * 60 * 1000;
-
-/**
- * Reorder a cache entry to the end of the Map's iteration order (the
- * most-recently-used position) via delete-then-set. Map.set on an existing
- * key updates the value but keeps its original position, so the explicit
- * delete is required for true LRU semantics.
- */
-function touchCacheEntry(sessionId: string): void {
-  const value = cache.get(sessionId);
-  if (value !== undefined) {
-    cache.delete(sessionId);
-    cache.set(sessionId, value);
-  }
-  lastTouched.set(sessionId, Date.now());
-}
-
-/**
- * Evict the oldest clean sessions until the cache is within bounds.
- *
- * Dirty-safety rule: a session with unsaved writes (`dirtySessions.get(id) ===
- * true`) must never be evicted, or the user's drafts and editor state would be
- * silently lost. If every candidate is dirty (or is the protected id currently
- * being written), stop evicting rather than lose data.
- *
- * Entries idle past SESSION_IDLE_TTL_MS are evicted first — even when the
- * cache is under the size cap — so long-unused sessions drop out on schedule.
- */
-function evictIfNeeded(protectedId: string | null): void {
-  const now = Date.now();
-  const evict = (id: string): void => {
-    cache.delete(id);
-    dirtySessions.delete(id);
-    lastTouched.delete(id);
-    writeLog.delete(id);
-    const timer = persistTimers.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      persistTimers.delete(id);
-    }
-  };
-  // TTL pass: safe to skip only while the timer still holds the unsaved state
-  // or the session is the one currently being written.
-  for (const [id, touched] of lastTouched) {
-    if (now - touched <= SESSION_IDLE_TTL_MS) continue;
-    if (id === protectedId) continue;
-    if (dirtySessions.get(id)) continue;
-    evict(id);
-  }
-  while (cache.size > MAX_CACHED_SESSIONS) {
-    let evicted = false;
-    for (const id of cache.keys()) {
-      if (id === protectedId) continue;
-      if (dirtySessions.get(id)) continue;
-      evict(id);
-      evicted = true;
-      break;
-    }
-    if (!evicted) break;
-  }
+/** Evict past the cap, dropping this session's write history with it. */
+function evictNow(protectedId: string | null): void {
+  evictIfNeeded(protectedId, forgetWrites);
 }
 
 export function getSessionValue<T>(sessionId: string | null, key: string): T | undefined {
   if (!sessionId) return undefined;
-  touchCacheEntry(sessionId);
-  return cache.get(sessionId)?.[key] as T | undefined;
+  touchEntry(sessionId);
+  return readEntry(sessionId)?.[key] as T | undefined;
 }
 
 /**
@@ -210,19 +127,20 @@ export function getSessionValue<T>(sessionId: string | null, key: string): T | u
  */
 export function getSessionState(sessionId: string | null): Readonly<Record<string, unknown>> | undefined {
   if (!sessionId) return undefined;
-  return cache.get(sessionId);
+  return readEntry(sessionId);
 }
 
 export function setSessionKey(sessionId: string | null, key: string, value: unknown): void {
   if (!sessionId) return;
-  const state = cache.get(sessionId) ?? {};
-  state[key] = value;
-  cache.set(sessionId, state);
-  touchCacheEntry(sessionId);
-  dirtySessions.set(sessionId, true);
+  // Mutated IN PLACE, never copied: `useSessionState` compares the store's entry
+  // against its own copy by IDENTITY to decide whether a fresher write exists,
+  // and a copy per write made every reader see a different object for one slot.
+  entryForWrite(sessionId)[key] = value;
+  touchEntry(sessionId);
+  markDirty(sessionId);
   noteWrite(sessionId, key);
   schedulePersist(sessionId);
-  evictIfNeeded(sessionId);
+  evictNow(sessionId);
   notifySessionKey(sessionId, key);
 }
 
@@ -233,11 +151,11 @@ export function setSessionKey(sessionId: string | null, key: string, value: unkn
  */
 export function clearSessionKey(sessionId: string | null, key: string): void {
   if (!sessionId) return;
-  const state = cache.get(sessionId);
+  const state = readEntry(sessionId);
   if (!state || !(key in state)) return;
-  delete state[key];
-  touchCacheEntry(sessionId);
-  dirtySessions.set(sessionId, true);
+  delete (state as SessionState)[key];
+  touchEntry(sessionId);
+  markDirty(sessionId);
   // A DELETE is a write: a blob that still carries the key must not bring it
   // back (a retired key cleared on this side would return from the other tab's
   // older snapshot).
@@ -247,12 +165,11 @@ export function clearSessionKey(sessionId: string | null, key: string): void {
 }
 
 function schedulePersist(sessionId: string): void {
-  const existing = persistTimers.get(sessionId);
-  if (existing) clearTimeout(existing);
-  persistTimers.set(
+  dropPersistTimer(sessionId);
+  setPersistTimer(
     sessionId,
     setTimeout(() => {
-      persistTimers.delete(sessionId);
+      dropPersistTimer(sessionId);
       void persistSession(sessionId);
     }, PERSIST_DEBOUNCE_MS),
   );
@@ -260,9 +177,9 @@ function schedulePersist(sessionId: string): void {
 
 async function persistSession(sessionId: string): Promise<void> {
   if (typeof window === 'undefined' || !sessionId) return;
-  if (!dirtySessions.get(sessionId)) return;
-  dirtySessions.set(sessionId, false);
-  const state = cache.get(sessionId) ?? {};
+  if (!isDirty(sessionId)) return;
+  clearDirty(sessionId);
+  const state = readEntry(sessionId) ?? {};
   try {
     await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/state`, {
       method: 'POST',
@@ -271,18 +188,14 @@ async function persistSession(sessionId: string): Promise<void> {
     });
   } catch (err) {
     console.warn('session-state persist failed:', err);
-    dirtySessions.set(sessionId, true);
+    markDirty(sessionId);
   }
 }
 
 /** Immediately persist any pending writes for a session (used on switch). */
 export function flushSession(sessionId: string | null): Promise<void> {
   if (!sessionId || typeof window === 'undefined') return Promise.resolve();
-  const timer = persistTimers.get(sessionId);
-  if (timer) {
-    clearTimeout(timer);
-    persistTimers.delete(sessionId);
-  }
+  dropPersistTimer(sessionId);
   return persistSession(sessionId);
 }
 
@@ -301,43 +214,23 @@ export async function loadSession(sessionId: string): Promise<void> {
    * response would otherwise be adopted wholesale. Measured: a file opened
    * during the first `/state` read came back with `layout.openedFiles` gone.
    */
-  const startedAt = writeSeq;
+  const startedAt = currentWriteSeq();
   try {
     const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/state`);
     if (res.ok) {
       const data = (await res.json()) as { state?: SessionState };
       const incoming = data.state && typeof data.state === 'object' ? data.state : {};
-      const existing = cache.get(sessionId) ?? {};
-      // Only keys written locally while the fetch was in flight win over the
-      // stored blob. Merging the WHOLE local cache over the blob (the old
-      // behavior) resurrected stale values on every tab: a second browser
-      // opening the session had cached the pre-write blob, and its stale
-      // copy clobbered another tab's fresh writes — queue items written in
-      // one tab never appeared in the other.
-      const written = keysWrittenAfter(sessionId, startedAt);
-      const dirty = dirtySessions.get(sessionId) === true;
-      let merged: SessionState;
-      if (dirty) {
-        merged = { ...incoming, ...existing };
-      } else if (written.size > 0) {
-        merged = { ...incoming };
-        for (const key of written) {
-          // A key the local side still holds wins outright; one it no longer
-          // holds was CLEARED during the read (`clearSessionKey`), so the
-          // response's copy is the stale one and must not resurrect it.
-          if (key in existing) merged[key] = existing[key];
-          else delete merged[key];
-        }
-      } else {
-        merged = incoming;
-      }
-      cache.set(sessionId, merged);
-      touchCacheEntry(sessionId);
+      const existing = readEntry(sessionId) ?? {};
+      writeEntry(
+        sessionId,
+        mergeStoredBlob(incoming, existing, keysWrittenAfter(sessionId, startedAt), isDirty(sessionId)),
+      );
+      touchEntry(sessionId);
     }
   } catch (err) {
     console.warn('session-state load failed:', err);
   }
-  evictIfNeeded(sessionId);
+  evictNow(sessionId);
   // The blob replaces every slot at once, so a follower that read the store
   // before it arrived (no pick yet) has to re-read — including a private copy
   // held by `useSessionState`, which does not follow per-slot writes.
@@ -348,9 +241,9 @@ export async function loadSession(sessionId: string): Promise<void> {
 /** Seed the cache synchronously (e.g. from SSR-provided data). */
 export function hydrateSession(sessionId: string | null, state: SessionState): void {
   if (!sessionId) return;
-  cache.set(sessionId, { ...(cache.get(sessionId) ?? {}), ...state });
-  touchCacheEntry(sessionId);
-  evictIfNeeded(sessionId);
+  writeEntry(sessionId, { ...(readEntry(sessionId) ?? {}), ...state });
+  touchEntry(sessionId);
+  evictNow(sessionId);
   notifySessionKey(sessionId);
   notifySessionReplaced(sessionId);
 }
@@ -361,12 +254,12 @@ export function hydrateSession(sessionId: string | null, state: SessionState): v
  * its last open is within SESSION_IDLE_TTL_MS.
  */
 export function recordSessionOpen(sessionId: string | null): void {
-  if (sessionId) lastTouched.set(sessionId, Date.now());
+  if (sessionId) stampAccess(sessionId);
 }
 
 /** Epoch ms of the user's last open of this session in this tab, if any. */
 export function getLastOpenedAt(sessionId: string): number | undefined {
-  return lastTouched.get(sessionId);
+  return lastAccess(sessionId);
 }
 
 /**
@@ -378,15 +271,8 @@ export function getLastOpenedAt(sessionId: string): number | undefined {
  * the delete and resurrect the state.
  */
 export function forgetSession(sessionId: string): void {
-  const timer = persistTimers.get(sessionId);
-  if (timer) {
-    clearTimeout(timer);
-    persistTimers.delete(sessionId);
-  }
-  cache.delete(sessionId);
-  dirtySessions.delete(sessionId);
-  lastTouched.delete(sessionId);
-  writeLog.delete(sessionId);
+  dropEntry(sessionId);
+  forgetWrites(sessionId);
   notifySessionKey(sessionId);
   notifySessionReplaced(sessionId);
 }
@@ -396,16 +282,14 @@ export function forgetSession(sessionId: string): void {
  * by a spawn, then discard the transient slot.
  */
 export function migrateSessionState(fromId: string, toId: string): void {
-  const from = cache.get(fromId);
-  if (from) cache.set(toId, { ...from, ...(cache.get(toId) ?? {}) });
-  touchCacheEntry(toId);
-  dirtySessions.set(toId, true);
+  const from = readEntry(fromId);
+  if (from) writeEntry(toId, { ...from, ...(readEntry(toId) ?? {}) });
+  touchEntry(toId);
+  markDirty(toId);
   schedulePersist(toId);
-  cache.delete(fromId);
-  dirtySessions.delete(fromId);
-  lastTouched.delete(fromId);
-  writeLog.delete(fromId);
-  evictIfNeeded(toId);
+  dropEntry(fromId);
+  forgetWrites(fromId);
+  evictNow(toId);
   // The adopted slot gained the whole transient state; the transient one lost it.
   notifySessionKey(toId);
   notifySessionKey(fromId);
