@@ -33,7 +33,7 @@ dragged down from maximised, and every hand-written fix for that is a
 | runtime in the bundle | none (system WebView2) | none (system WebKit) | 251 MB Chromium |
 | chrome | `WindowChrome` (resize + snap) | `NSWindow` subclass | CSS `-webkit-app-region` |
 | drag region | **`app-region: drag`** (WebView2 non-client regions) | selector hit test in `sendEvent` | CSS |
-| file drop gives a **path** | yes (`e.Data` → `FileDrop`) | yes (`NSFilenamesPboardType`) | yes |
+| file drop gives a **path** | yes (`e.Data` → `FileDrop`) | yes — the shell reads the pasteboard; the page gets bytes only | yes |
 | language | C# | Swift | JavaScript |
 
 ## Two servers, one window

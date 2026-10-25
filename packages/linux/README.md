@@ -20,7 +20,7 @@ same rules suite. Nothing above `src/client/lib/desktop/` forked.
 | window chrome | `set_decorated(false)` + `begin_resize_drag` on the edges | `NSWindow` subclass | `WindowChrome` |
 | drag region | **the page reports it** (see below) | selector hit test in `sendEvent` | `app-region: drag` |
 | window buttons | **the page draws them** | system traffic lights | the page draws them |
-| file drop gives a **path** | yes (`selection_data` URI list) | yes | yes |
+| file drop gives a **path** | yes (`selection_data` URI list) | yes — the shell reads the pasteboard; the page gets bytes only | yes |
 
 The three shells differ only where the platform forces it, and each difference is
 stated below rather than hidden.

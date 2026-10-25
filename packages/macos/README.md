@@ -30,7 +30,7 @@ same server list, the same ownership rule and the same bridge contract, so
 | main-process RSS | **~40 MB** | ~130 MB | ~420 MB |
 | runtime in the bundle | none (system WebKit) | 63.5 MB Bun | 251 MB Chromium |
 | drag region | **`NSWindow` → selector hit test** | CSS mirrored by a preload | CSS (`-webkit-app-region`) |
-| file drop gives a **path** | **yes** (`NSFilenamesPboardType`) | no | yes (`webUtils.getPathForFile`) |
+| file drop gives a **path** | **yes** — the SHELL reads the pasteboard (`DroppedPaths.swift`); the page gets bytes only | no | yes (`webUtils.getPathForFile`) |
 | languages | Swift | TypeScript | JavaScript |
 
 The measurements are from this machine (macOS 27, arm64), taken against the same
@@ -257,9 +257,51 @@ window.__kabmoReply(id, ok, payload)           // what the shell evaluates back
 ```
 
 Commands: `desktop_info`, `servers_state`, `servers_add`, `servers_remove`,
-`servers_activate`, `servers_start`, `servers_stop`. There is no capability file
-and no per-origin allowance: the shell owns the webview, so the page cannot be
-anything but one this window chose to load.
+`servers_activate`, `servers_start`, `servers_stop`, `dropped_paths`. There is
+no capability file and no per-origin allowance: the shell owns the webview, so
+the page cannot be anything but one this window chose to load.
+
+## File drops carry no path, so the shell reads the pasteboard
+
+Dropping a file from Finder onto the editor did nothing: it was refused with
+"that drop carried no readable file", while the same drop attached fine in the
+chat composer. Measured on macOS 27 by delivering a real Finder pasteboard into
+a `WKWebView`:
+
+    drop: types ["Files"], files [File]
+          getData('text/uri-list') ''      getData('text/plain') ''
+          File.path undefined              DataTransferItem.getAsFileSystemHandle undefined
+
+Both of the page's own routes are therefore dead here. WebKit implements no File
+System Access API (bug 257792 is open), so there is no handle to open; and it
+stopped adding local filenames as URLs to a file drag (changeset 222257), so
+there is no URI list for `/api/fs/scope` to resolve. The composer kept working
+because it only needs the bytes, which is exactly why this looked like an
+editor bug rather than a missing capability.
+
+`DropWebView` (`DroppedPaths.swift`) is the fix: it reads
+`NSFilenamesPboardType` (falling back to `public.file-url`) in
+`performDragOperation` **before** calling `super`, records the paths, and the
+page asks for them with `dropped_paths` from its own `drop` handler. Measured:
+the injection lands ahead of the DOM event, so the handler sees the answer.
+
+Three rules, and each was a bug waiting:
+
+- **`super` is still called, and its return value is the answer.** The page needs
+  the DOM event to know WHERE the drop landed — the editor column, the composer,
+  or a code surface — and the composer attaches files from the bytes the payload
+  carries. Swallowing the drag here would fix the editor by breaking the chat.
+- **The answer is consumed once.** A drag released where no target claimed it
+  leaves the record unread, and answering it to the NEXT drop would open a file
+  the user had already abandoned. `draggingExited` clears it too.
+- **The page age-checks the answer** (`SHELL_DROP_TTL_MS`, 2s). It asks in the
+  drop's own turn, so anything older is a leftover rather than this gesture.
+
+The Linux shell never had this bug: WebKitGTK preloads `text/uri-list` for a
+file-manager drag. Windows does not either: WebView2 is Chromium, where
+`DataTransferItem.getAsFileSystemHandle` is available. Neither needs the
+`dropped_paths` command, and neither implements it — the page's bridge read
+fails and the drop's own payload decides, which is the pre-existing behaviour.
 
 ## Build
 

@@ -18,9 +18,17 @@
  *    `text/uri-list` / `text/plain`. That resolves through `/api/fs/scope`,
  *    because a path can be written back through the server.
  *
+ * 3. **A Finder drag onto a DESKTOP SHELL's webview.** Neither of the above
+ *    exists there: WebKit implements no `getAsFileSystemHandle` (WebKit bug
+ *    257792) and puts no path on the pasteboard the page can read, so a drop
+ *    carried bytes and nothing else and the editor refused it. The shell reads
+ *    the pasteboard itself and hands the paths over — see
+ *    `client/lib/desktop/dropped-paths`.
+ *
  * Handles are tried FIRST: they are the shape that carries write access, and a
  * host that offers both (a Finder drag onto a page that also set a URI list)
- * should keep it.
+ * should keep it. The shell's paths come next — they resolve to a real path,
+ * which is what the editor saves through.
  *
  * The overlay's state is a depth COUNTER, and it is reset by a window-level
  * `dragend`/`drop` too — a drag that ends outside the element (Escape, released
@@ -32,6 +40,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import { collectDroppedFileUris, hasDraggedFiles } from '@/client/hooks/chat/composer/drop-payload';
 import { openHandleAsTab } from '@/client/lib/launch/file-handlers';
+import { readShellDroppedPaths } from '@/client/lib/desktop/dropped-paths';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
 
 /** What `/api/fs/scope` answers with. */
@@ -269,12 +278,23 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
   /** Open what a drop carries — shared by the bubble and the capture paths. */
   const openDropped = useCallback((dt: DataTransfer | null) => {
     if (!dt) return;
+    // The payload is read in THIS tick, before any await. A drop's data store is
+    // released when the handler returns, so a `getData` issued after an IPC
+    // round trip reads an empty string — measured on the shell's `dropped_paths`
+    // call, which is exactly such a round trip.
+    const references = collectDroppedFileUris(dt);
     // Handles first: they are the only shape that carries write access, and a
-    // Finder drag has nothing else.
-    void openDroppedHandle(dt, onResultRef.current).then((opened) => {
+    // Finder drag on a Chromium webview has nothing else.
+    void openDroppedHandle(dt, onResultRef.current).then(async (opened) => {
       if (opened) return;
-      const references = collectDroppedFileUris(dt);
-      if (references.length === 0) {
+      // Then the shell's own read of the pasteboard, which is the ONLY route a
+      // WebKit webview offers: it has no file-system handle and no URI list, so
+      // a Finder drop there carries bytes the editor cannot save. Asked only
+      // when no handle won, and consumed by the shell, so one drop opens one
+      // file.
+      const shellPaths = await readShellDroppedPaths();
+      const first = shellPaths[0] ?? references[0];
+      if (!first) {
         onResultRef.current?.({
           ok: false,
           message: 'That drop carried no readable file — drop it on the composer to attach it instead.',
@@ -283,7 +303,7 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
       }
       // One open per gesture: the editor has a single active tab, so opening
       // several would leave the user on whichever resolved last.
-      void openDroppedReference(references[0], onResultRef.current);
+      await openDroppedReference(first, onResultRef.current);
     });
   }, []);
 

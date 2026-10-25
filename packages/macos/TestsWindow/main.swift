@@ -45,6 +45,7 @@ let page = """
 </div>
 <div style="height:400px;background:#fafafa">body</div>
 <textarea id="composer" style="position:absolute;left:8px;bottom:8px;width:220px;height:40px"></textarea>
+""" + dropRecorderScript + """
 </body></html>
 """
 
@@ -75,7 +76,7 @@ final class RecordingWindow: ShellWindow {
 
 final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   var window: RecordingWindow!
-  var webView: WKWebView!
+  var webView: DropWebView!
   var ready = false
   /// Where the suite is, for the watchdog's message. "The suite stopped" is
   /// useless without it.
@@ -96,7 +97,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true
 
-    webView = WKWebView(frame: rect)
+    webView = DropWebView(frame: rect)
     webView.navigationDelegate = self
     window.contentView = webView
 
@@ -182,6 +183,27 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       eventNumber: 1, clickCount: 1, pressure: 1
     ) else { return }
     window.sendEvent(event)
+  }
+
+  /**
+   Evaluate one expression against the page, synchronously.
+
+   `evaluateJavaScript` is asynchronous and `sendEvent` cannot await, so the same
+   run-loop turn the drag probe uses is what makes this usable from a case that
+   must read what the page recorded right after a drop.
+   */
+  func evaluateSync(_ script: String) -> Any? {
+    var answer: Any?
+    var done = false
+    webView.evaluateJavaScript(script) { value, _ in
+      answer = value
+      done = true
+    }
+    let deadline = Date().addingTimeInterval(2)
+    while !done && Date() < deadline {
+      RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.005))
+    }
+    return answer
   }
 
   /// Let the run loop run for `seconds`, so an animated window action can land.
@@ -357,6 +379,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runEditingCases()
     proveClickCloses()
     runSplashCases()
+    dropPathCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
     finish()
   }
 

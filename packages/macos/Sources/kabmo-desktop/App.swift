@@ -75,7 +75,7 @@ private func setProcessName(_ name: String) {
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, ShellCommandHost, WKNavigationDelegate {
   private var window: ShellWindow!
-  private var webView: WKWebView!
+  private var webView: DropWebView!
   private var supervisor = Supervisor()
   private var store: ServerStore!
   private var pendingBootURL: String?
@@ -235,7 +235,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     configuration.websiteDataStore = .default()
     configuration.preferences.isElementFullscreenEnabled = true
 
-    webView = WKWebView(frame: rect, configuration: configuration)
+    webView = DropWebView(frame: rect, configuration: configuration)
     webView.autoresizingMask = [.width, .height]
     webView.navigationDelegate = self
     // The page draws the title bar, so it must reach the window's top edge.
@@ -496,6 +496,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
 
     case "servers_state":
       return encode(await store.snapshot())
+
+    /**
+     The paths a drag onto the web view carried.
+
+     The page cannot see them: a `WKWebView` gives a Finder drop BYTES and no
+     path, and implements no `getAsFileSystemHandle`, so a file dropped on the
+     editor had no way to become a tab. `DropWebView` reads the pasteboard
+     before the DOM event and this answers what it recorded — ONCE, because a
+     value that outlived its gesture would reopen the previous file on the next
+     drop. `nil` is the honest answer for a drag that carried no path (an
+     in-page drag, a promise-only drag) and the page treats it as "no help".
+     */
+    case "dropped_paths":
+      guard let captured = webView?.dropPaths.take(),
+            let data = try? JSONEncoder().encode(captured),
+            let object = try? JSONSerialization.jsonObject(with: data)
+      else { return nil }
+      return object
 
     case "servers_add":
       try await store.addRemote(
