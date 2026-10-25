@@ -148,23 +148,7 @@ impl Shell {
         shell
     }
 
-    /// Restart into an image that was just installed.
-///
-/// Deferred by a second so the reply reaches the page first — a window that closed
-/// in the same tick would leave the console showing a spinner over an update that
-/// worked. The spawn itself waits for this pid to exit (see
-/// `update::relaunch_script`), because the managed server holds its port until this
-/// process is gone.
-fn schedule_relaunch(image: String, window: gtk::Window) {
-    let _ = gtk::glib::timeout_add_seconds_local(1, move || {
-        let path = std::path::PathBuf::from(&image);
-        update_run::relaunch(&path);
-        window.close();
-        gtk::glib::ControlFlow::Break
-    });
-}
-
-fn start(&self) {
+    fn start(&self) {
         self.window.show_all();
         // The splash covers the window until the first probe answers; this is
         // what moves it to the server the user was last on.
@@ -490,4 +474,20 @@ fn failure_for(error: &gtk::glib::Error) -> kabmo_desktop::splash::Failure {
         Some(NetworkError::FileDoesNotExist) => Failure::Other,
         _ => Failure::Other,
     }
+}
+
+/// Restart into an image that was just installed.
+///
+/// Deferred by a second so the reply reaches the page first — a window that
+/// closed in the same tick would leave the console showing a spinner over an
+/// update that worked. The spawn itself waits for this pid to exit (see
+/// `update::relaunch_script`), because the managed server holds its port until
+/// this process is gone.
+fn schedule_relaunch(image: String, window: gtk::Window) {
+    let _ = gtk::glib::timeout_add_seconds_local(1, move || {
+        let path = std::path::PathBuf::from(&image);
+        update_run::relaunch(&path);
+        window.close();
+        gtk::glib::ControlFlow::Break
+    });
 }
