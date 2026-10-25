@@ -186,15 +186,19 @@ test.describe('editor scroll memory', () => {
       )
       .toBeGreaterThan(1000);
 
-    // What the app settled on, before anything is switched: this is the number
-    // the restore has to land on.
-    const leftAt = await settledOffset(page, 1000);
-
     // Switch to another file and back. The second file is opened from the tree
     // (which is how it gets a tab), then both switches are TAB clicks — the
     // offset is recorded on the way out and restored on the way in.
     await openFromTree(page, 'short.txt');
     await expect(panel).toContainText('short file');
+
+    // The number the restore has to land on is the one the app records when the
+    // tab is LEFT, not the one visible while it was open. Leaving is when the
+    // hook persists its last scroll event, and by then CodeMirror's anchoring
+    // has moved the offset to keep the visible content stable as the panel's
+    // width settled — measured on both CI legs, every run: 1255 while open,
+    // 1777 recorded on the way out, and the restore lands on 1777.
+    const leftAt = await settledOffset(page, 1000);
 
     await openTab(page, 'src/long.txt');
     // Polled: the restore is re-applied while the document's height settles.
