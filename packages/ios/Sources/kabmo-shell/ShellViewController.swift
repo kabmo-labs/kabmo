@@ -108,6 +108,15 @@ final class ShellViewController: UIViewController {
     // set (one assignment; the web view relayouts once).
     applyZoom()
 
+    // Tell the page the app is back, so the realtime channel repairs itself now
+    // rather than at its next watchdog tick. A backgrounded `WKWebView` may never
+    // deliver `visibilitychange`, and a socket the server's heartbeat reaped while
+    // the page was frozen produces no `close` — so the channel would sit on a dead
+    // socket with no frames until something else woke it. Same contract as the
+    // Android shell; `shared/lib/realtime/resume.ts` is the mechanism and its
+    // watchdog covers the case where even this never runs.
+    webView.evaluateJavaScript("window.__kabmoResume && window.__kabmoResume()", completionHandler: nil)
+
     if pendingSettings || pendingShortcut {
       pendingSettings = false
       pendingShortcut = false

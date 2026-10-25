@@ -69,6 +69,25 @@ export interface ConnectionState {
   probeId: number | undefined;
   probeTimer: number | undefined;
   probeSeq: number;
+  /**
+   * When the armed probe was sent.
+   *
+   * A probe armed before the page was frozen keeps its deadline timer frozen
+   * with it, so `probeId` stays set forever and every later probe would return
+   * early — the socket is then never abandoned and nothing ever re-dials. The
+   * timestamp is what lets a probe that outlived its own deadline be discarded.
+   */
+  probeArmedAt: number;
+  /**
+   * When the last frame (or probe answer) arrived on the current socket.
+   *
+   * The watchdog compares this against `IDLE_PROBE_AFTER_MS` to decide whether
+   * an OPEN socket has gone quiet — which is the ONLY signal available when the
+   * browser never delivers a `close` (see `connection.ts`).
+   */
+  lastInboundAt: number;
+  /** The watchdog interval. `undefined` until the first subscription. */
+  livenessTimer: number | undefined;
 }
 
 /**
@@ -101,6 +120,9 @@ export function state(): ConnectionState {
     probeId: undefined,
     probeTimer: undefined,
     probeSeq: 0,
+    probeArmedAt: 0,
+    lastInboundAt: 0,
+    livenessTimer: undefined,
   });
 }
 

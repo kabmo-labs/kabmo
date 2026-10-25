@@ -39,9 +39,8 @@
  */
 
 import { realtimeSocketUrl } from '@/shared/lib/realtime/protocol';
+import { createResumeWatch } from '@/shared/lib/realtime/resume';
 import {
-  WS_CONNECTING,
-  WS_OPEN,
   deliverFrame,
   liveTopics,
   notifyClosed,
@@ -63,12 +62,17 @@ const MAX_FAILED_DIALS = 4;
 const SLOW_RETRY_MS = 30_000;
 /** How long a dial may sit in CONNECTING before it is abandoned and retried. */
 const CONNECT_TIMEOUT_MS = 10_000;
+
 /**
- * How long a socket that LOOKS open has to answer a resume probe. A frozen tab
- * keeps `readyState === OPEN` for a connection the server already tore down, so
- * the only trustworthy answer is the server's own pong.
+ * Resume, watchdog and liveness probe live in `resume.ts`: they are the
+ * mechanism that repairs a connection the browser never reported dead, and they
+ * need `dial` — which this module owns — so the dependency is injected rather
+ * than imported back.
  */
-const WAKE_PROBE_MS = 2_000;
+const resumeWatch = createResumeWatch(() => dial());
+
+/** The tab (or the app, or the radio) is back. See `resume.ts`. */
+export const wake = resumeWatch.wake;
 
 /**
  * The server answered a resume probe: the socket really is alive. Called from
@@ -81,6 +85,7 @@ export function notePong(id: number): void {
   host.probeId = undefined;
   clearTimeout(host.probeTimer);
   host.probeTimer = undefined;
+  host.lastInboundAt = Date.now();
 }
 
 function scheduleReconnect(): void {
@@ -97,111 +102,6 @@ function scheduleReconnect(): void {
     dial();
   }, delay);
 }
-
-/**
- * Ask a socket that LOOKS open whether it still is.
- *
- * A frozen tab keeps `readyState === OPEN` for a connection the server's
- * heartbeat already tore down, and no `close` is delivered until the browser
- * notices. Without this probe the resume path would trust a corpse and the
- * indicator would stay green over a stream that never resumes.
- */
-function probeLiveness(socket: WebSocket): void {
-  const host = state();
-  if (host.probeId !== undefined) return;
-  const id = (host.probeSeq += 1);
-  host.probeId = id;
-  const abandon = (): void => {
-    // A late answer from a socket that has since been replaced must not close
-    // the live one: the deadline is only ever about THIS socket.
-    if (host.probeId !== id) return;
-    host.probeId = undefined;
-    host.probeTimer = undefined;
-    if (host.socket !== socket) return;
-    try {
-      socket.close();
-    } catch {
-      // Already gone.
-    }
-  };
-  host.probeTimer = window.setTimeout(abandon, WAKE_PROBE_MS);
-  if (!send({ t: 'ping', id })) abandon();
-}
-
-/**
- * The tab is back: a background freeze stopped our timers and the server's
- * heartbeat dropped the socket, so the failure count describes a window in
- * which nothing could run. Reset it and dial now if the socket is gone.
- *
- * Fires from `visibilitychange`, `pageshow` (bfcache) and `online` (the radio
- * can come back before the page is visible again). `online` also covers a
- * network that dropped without the tab ever hiding.
- */
-function wake(): void {
-  const host = state();
-  if (!host.wanted) return;
-  host.failures = 0;
-  const socket = host.socket;
-  if (socket && socket.readyState === WS_CONNECTING) return;
-  if (socket && socket.readyState === WS_OPEN) {
-    probeLiveness(socket);
-    return;
-  }
-  if (host.retryTimer !== undefined) {
-    clearTimeout(host.retryTimer);
-    host.retryTimer = undefined;
-  }
-  if (socket) {
-    // Nulled FIRST: `close()` delivers `onclose` synchronously in some engines,
-    // and that handler owns the retry decision for a socket it still believes
-    // in. This socket is being abandoned on purpose, so its late close must
-    // report nothing.
-    host.socket = null;
-    try {
-      socket.close();
-    } catch {
-      // Already gone.
-    }
-    // The server tore this connection down while the tab was frozen, so every
-    // value on screen is of unknown age even though no `close` arrived.
-    notifyClosed();
-  }
-  dial();
-}
-
-/**
- * Install the resume listeners once. A no-op outside a document.
- *
- * The cleanup closes over the `document`/`window` it REGISTERED on rather than
- * reading the globals again when it runs. Those are not necessarily the same
- * objects: a test suite replaces them per case and deletes them when it is
- * done, and `resetConnection` (the teardown seam) would then dereference an
- * absent `document` and throw — measured on CI, where a suite that reset the
- * client after its own `restoreDomGlobals` failed the NEXT file with
- * `ReferenceError: document is not defined`. In a browser the two are always
- * the same object, so this changes nothing there.
- */
-function ensureWakeListeners(): void {
-  const host = state();
-  if (host.wakeCleanup) return;
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  const doc = document;
-  const win = window;
-  const onVisible = (): void => {
-    if (!doc.hidden) wake();
-  };
-  const onOnline = (): void => wake();
-  const onPageShow = (): void => wake();
-  doc.addEventListener('visibilitychange', onVisible);
-  win.addEventListener('online', onOnline);
-  win.addEventListener('pageshow', onPageShow);
-  host.wakeCleanup = () => {
-    doc.removeEventListener('visibilitychange', onVisible);
-    win.removeEventListener('online', onOnline);
-    win.removeEventListener('pageshow', onPageShow);
-  };
-}
-
 function dial(): void {
   const host = state();
   // A retry scheduled before the last subscriber left must not open a socket
@@ -239,6 +139,9 @@ function dial(): void {
     opened = true;
     clearTimeout(connectTimer);
     host.failures = 0;
+    // The socket just proved it is alive; the idle clock starts here so the
+    // watchdog does not probe a connection opened a moment ago.
+    host.lastInboundAt = Date.now();
     if (host.probeId !== undefined) {
       host.probeId = undefined;
       clearTimeout(host.probeTimer);
@@ -252,7 +155,11 @@ function dial(): void {
   };
 
   socket.onmessage = (event) => {
-    if (typeof event.data === 'string') deliverFrame(event.data);
+    if (typeof event.data !== 'string') return;
+    // The idle clock the watchdog reads: every inbound frame — a delta, a
+    // snapshot, a pong — proves the socket is alive.
+    host.lastInboundAt = Date.now();
+    deliverFrame(event.data);
   };
 
   socket.onclose = () => {
@@ -286,7 +193,8 @@ export function connectIfNeeded(): void {
   const host = state();
   setWanted(liveTopics().length > 0);
   if (!host.wanted) return;
-  ensureWakeListeners();
+  resumeWatch.ensureListeners();
+  resumeWatch.start();
   if (host.socket) return;
   if (host.retryTimer !== undefined) return;
   dial();
@@ -295,12 +203,10 @@ export function connectIfNeeded(): void {
 /** Test seam: close the socket and forget the connection state. */
 export function resetConnection(): void {
   const host = state();
-  // Nulled BEFORE the call: a cleanup that throws (a listener target that is
-  // already gone) must not leave the slot set, or the next reset retries the
-  // same throw and the state below is never cleared.
-  const cleanup = host.wakeCleanup;
-  host.wakeCleanup = null;
-  cleanup?.();
+  // Removes the resume listeners AND stops the watchdog. The watch nulls its own
+  // slots before running the cleanup, so a throwing listener target cannot leave
+  // them set and make the next reset retry the same throw.
+  resumeWatch.stop();
   clearTimeout(host.retryTimer);
   clearTimeout(host.probeTimer);
   const socket = host.socket;

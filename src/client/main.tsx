@@ -10,6 +10,7 @@ import { installPluginRuntime } from '@/client/lib/plugins/runtime';
 import { installUiKit } from '@/client/lib/plugins/kit';
 import { installScrollbarActivity } from '@/client/lib/scrollbar-activity';
 import { installBackDispatcher } from '@/client/lib/native/back';
+import { installResumeDispatcher } from '@/client/lib/native/resume';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 
 import '@/client/tailwind.css';
@@ -59,6 +60,13 @@ installScrollbarActivity();
 // Installed before the first render for the same reason the listener above is:
 // a back press during hydration must find the dispatcher, not `undefined`.
 installBackDispatcher();
+
+// The native shell calls `window.__kabmoResume()` when its app returns to the
+// foreground. A backgrounded Android WebView fires no `visibilitychange` and
+// gets no `close` for a socket the server reaped, so the shell's own lifecycle
+// is the only reliable resume signal there — see `shared/lib/realtime/resume.ts`
+// for the watchdog that covers the case no event arrives at all.
+installResumeDispatcher();
 
 // A file the OS handed to Kabmo (PWA File Handling) arrives as a
 // `FileSystemFileHandle` on `launchQueue`, and the consumer must be installed

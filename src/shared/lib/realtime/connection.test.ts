@@ -212,7 +212,10 @@ describe('realtime channel retry lifecycle', () => {
     expect(ping).toBeDefined();
     socket.onmessage?.({ data: JSON.stringify({ t: 'pong', id: ping!.id }) });
 
-    vi.advanceTimersByTime(SLOW_RETRY_MS);
+    // Short of the idle-probe window: an answered probe must not cause a
+    // reconnect of its own. (Past `IDLE_PROBE_AFTER_MS` the watchdog probes
+    // again by design — see the idle case below.)
+    vi.advanceTimersByTime(20_000);
     expect(FakeSocket.instances).toHaveLength(1);
     expect(currentStatus()).toBe('open');
   });
@@ -299,3 +302,4 @@ describe('realtime channel retry lifecycle', () => {
     expect(() => resetRealtimeClient()).not.toThrow();
   });
 });
+

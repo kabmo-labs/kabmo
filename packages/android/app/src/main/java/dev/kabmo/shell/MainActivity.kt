@@ -100,6 +100,21 @@ class MainActivity : Activity() {
         // to set (a float assignment; the WebView relayouts once).
         applyZoom()
 
+        // Tell the page the app is back, so the realtime channel repairs itself
+        // now rather than at its next watchdog tick.
+        //
+        // A backgrounded WebView does NOT reliably deliver what the channel
+        // listens for: the document is never reported hidden, so returning to the
+        // app fires no `visibilitychange`, and a socket the server's 30s
+        // heartbeat reaped while the page was frozen produces no `close` either —
+        // `readyState` still says OPEN. The channel therefore sat on a dead
+        // socket with no frames, the stream froze mid-answer, and only a page
+        // reload repaired it. `window.__kabmoResume()` is the shell's own signal
+        // (`src/client/lib/native/resume.ts`); the watchdog in
+        // `shared/lib/realtime/resume.ts` covers the case where even this never
+        // runs.
+        webView.evaluateJavascript("window.__kabmoResume && window.__kabmoResume()", null)
+
         val url = ServerConfig.read(this)
         if (url == null) return
         if (url == loadedUrl) return
