@@ -4,6 +4,41 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.9.0](https://github.com/kabmo-labs/kabmo/compare/v0.8.0...v0.9.0) — 2026-10-25
+
+### Added
+
+* **editor:** add compact and full width modes to the editor and diff toolbars ([a775579](https://github.com/kabmo-labs/kabmo/commit/a775579d9b4441e83aec86ffbb39f20f01565956)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** give the code editor its own Shiki colour theme ([b3d6b20](https://github.com/kabmo-labs/kabmo/commit/b3d6b20a071e7f51c45563929c91ab832741c63c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** open text files up to 32 MiB ([dccaaa6](https://github.com/kabmo-labs/kabmo/commit/dccaaa69b64481fb2bed169df9bb4f3dd3b975f1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** replace the editing surface with CodeMirror 6 ([6fe0b7f](https://github.com/kabmo-labs/kabmo/commit/6fe0b7fc0fb0459e864bc7cb497cdb5295652d69)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shell:** let the desktop shells install their own updates ([3279572](https://github.com/kabmo-labs/kabmo/commit/32795729d3e031583ca6d2c6725535e79f0194c0)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#if](https://github.com/kabmo-labs/kabmo/issues/if)
+
+### Changed
+
+* **editor:** bound the outline and stop stringifying the document per keystroke ([8f5dd23](https://github.com/kabmo-labs/kabmo/commit/8f5dd237d6c0ec3a43664ec24c9ab7e8dd9d7034)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** drop the dead weight the CodeMirror migration left behind ([00053b6](https://github.com/kabmo-labs/kabmo/commit/00053b63e2a9cad7bd232ae1d7aee02d91fe5de3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** record what the CodeMirror migration review found ([9b10ad3](https://github.com/kabmo-labs/kabmo/commit/9b10ad33e0927263b6a8f0aebc6e2d372c29b25b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** publish a running session's activity instead of the whole list ([779af9e](https://github.com/kabmo-labs/kabmo/commit/779af9ef02344594de00b235b63f4834d20d6065)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tool-renderers:** defer syntax highlighting off the expand tap ([9e47d9c](https://github.com/kabmo-labs/kabmo/commit/9e47d9cc6cb895b85b1c0d563853c7df0d63568a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** split the session-state store under the size ceiling ([becf204](https://github.com/kabmo-labs/kabmo/commit/becf20441fcfa68d4cb276f68e1211a98b7037bc)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **auth:** let the native shells ask their update check without a session ([c11b144](https://github.com/kabmo-labs/kabmo/commit/c11b1441a4eb0f42829e9d88d5e7b17f0f14a69e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** keep a finished turn when a spawn adopts its id late, and fix two Windows paths ([a5363b3](https://github.com/kabmo-labs/kabmo/commit/a5363b349bb34aa9dec198bd7cd2e61aec00b85f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** recover a run whose terminal frames died with the socket ([58d13f0](https://github.com/kabmo-labs/kabmo/commit/58d13f0c337df9511ef5fb41d172d8d8a00e6ae4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** compile find patterns with the cursor's own flags ([4cfcb33](https://github.com/kabmo-labs/kabmo/commit/4cfcb339ce9640e7c401e829f4acbdc777e17f16)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** keep the line's indentation on insert-line-above ([d07c4ea](https://github.com/kabmo-labs/kabmo/commit/d07c4ead5c3c280a95bfbe3a5acdf3a171fd75e1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** open a dropped file instead of inserting its text ([b34a830](https://github.com/kabmo-labs/kabmo/commit/b34a830713ee989b3b0988a614e9ffe5dcf2bffb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** stop reading the document's re-anchoring as the reader's scroll ([567426d](https://github.com/kabmo-labs/kabmo/commit/567426d345dac9b681c6d59fa97b7593065588d3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **lifecycle:** probe every address a bind host stands for ([6434fd8](https://github.com/kabmo-labs/kabmo/commit/6434fd8fbb8f5c318b293e4d0b5438b03171fd3f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux:** keep `schedule_relaunch` out of the `impl Shell` block ([a43edd6](https://github.com/kabmo-labs/kabmo/commit/a43edd6487a24b255c75c2a00005e13780898f36)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **telemetry:** stop shipping the whole transcript on the telemetry topic ([32c0e62](https://github.com/kabmo-labs/kabmo/commit/32c0e62f8d91f9bf9385f43795e057a51c960ed0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **workspace:** keep the editor's tabs across a transient root and a late read ([1ad94eb](https://github.com/kabmo-labs/kabmo/commit/1ad94ebd7db451e12dcacd0424bb2aa6343e254a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktree:** give the worktree its own dropdown, beside the workspace ([d1c60de](https://github.com/kabmo-labs/kabmo/commit/d1c60dee2996c2f830fad13fdb75a7acc0954516)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **worktree:** re-read the list after a create, and de-flake two specs ([8422389](https://github.com/kabmo-labs/kabmo/commit/8422389aa2195ce0b002a6581b0ab341295b871b)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.8.0](https://github.com/kabmo-labs/kabmo/compare/v0.7.0...v0.8.0) — 2026-10-23
 
 ### Added
