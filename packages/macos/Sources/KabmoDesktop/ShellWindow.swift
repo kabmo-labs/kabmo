@@ -427,9 +427,14 @@ open class ShellWindow: NSWindow {
          #selector(performZoom(_:)), #selector(toggleFullScreen(_:)):
       return true
     default:
-      // Not ours: an action this window does not implement must stay unclaimed,
-      // or a menu item for it is enabled and does nothing when pressed.
-      return false
+      // The Edit menu's rows. Answering `false` for them is what made the first
+      // attempt at that menu look broken: the chords were declared, the menu was
+      // built, and ⌘Z still did nothing because this window refused every action
+      // it did not name itself. See `EditMenu.swift`.
+      //
+      // An action this window does not implement must stay unclaimed, or a menu
+      // item for it is enabled and does nothing when pressed.
+      return editMenuHandles(item.action)
     }
   }
 

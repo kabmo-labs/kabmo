@@ -31,6 +31,12 @@ import KabmoDesktop
 
 /// A page with the shape the shell's header has: a marked strip, a control
 /// inside it, and body content below.
+///
+/// The `#composer` field is what the editing cases drive, and it is pinned to the
+/// BOTTOM-LEFT corner on purpose: the press cases below address a body point at
+/// `height - 200`, so a field anywhere in the middle would make "a press on the
+/// body is NOT a drag" also be a press on a text field — a different case wearing
+/// the same name.
 let page = """
 <!doctype html><html><body style="margin:0;font:14px system-ui">
 <div data-drag-region style="height:40px;background:#e8e8e8;display:flex;align-items:center;padding-left:12px">
@@ -38,6 +44,7 @@ let page = """
   <button id="btn" style="margin-left:200px">a control</button>
 </div>
 <div style="height:400px;background:#fafafa">body</div>
+<textarea id="composer" style="position:absolute;left:8px;bottom:8px;width:220px;height:40px"></textarea>
 </body></html>
 """
 
@@ -75,6 +82,11 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   var phase = "the page was still loading"
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    // The menu the app installs, built from the same table — a suite that
+    // declared its own chords would pass while the shipped menu was missing a
+    // row. It is set BEFORE the window, the order `AppDelegate` uses.
+    installEditMenu()
+
     let rect = NSRect(x: 200, y: 200, width: 700, height: 480)
     window = RecordingWindow(
       contentRect: rect,
@@ -117,6 +129,14 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     webView.loadHTMLString(page, baseURL: nil)
     window.makeKeyAndOrderFront(nil)
+    // The editing cases below need a KEY window: AppKit's key-equivalent pass
+    // runs on the key window's responder chain, and an accessory app that was
+    // never activated leaves `isKeyWindow` false — measured, ⌘V then does nothing
+    // even with the menu installed, which would look exactly like the bug this
+    // suite exists to catch. The press cases do not depend on it either way
+    // (they post to `window.sendEvent` directly), so activating costs them
+    // nothing.
+    NSApp.activate(ignoringOtherApps: true)
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -172,6 +192,141 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
   }
 
+  /**
+   The editing chords, driven into the real web view.
+
+   **This is the regression net for the reported bug**: the shell built App,
+   File, View and Window and no Edit menu, and a `WKWebView` is handed ⌘C/⌘V/⌘X/
+   ⌘Z/⌘A only through a menu item that declares the key equivalent. Measured A/B
+   on this SDK: with no Edit menu the composer ignored ⌘V entirely (`value` came
+   back unchanged, the page's own `paste` event never fired) while every other
+   case in this suite still passed — a silent failure, which is why it shipped.
+
+   The chords are posted through `NSApp.sendEvent`, not `window.sendEvent`: the
+   menu bar's key-equivalent pass happens in `NSApplication`'s own dispatch, and
+   a chord sent straight to the window never reaches it. Measured — both paths
+   with the menu installed and a key window give the same answer, but only
+   `NSApp` is the path a keystroke really takes.
+
+   **The undo case runs FIRST, and that ordering is load-bearing.** WebKit keeps
+   ONE undo stack per document, and a programmatic `el.value = …` leaves that
+   stack alone while every chord-driven edit adds to it. Run after the others,
+   ⌘Z undid the CUT from a previous case instead of the typing in front of it
+   (measured: the field came back as `cut-me`), which reads as "undo is broken"
+   when the case is what was wrong. Starting on the pristine field means the
+   first undoable step really is the typing this case performed.
+
+   The pasteboard is written by the test, so no case depends on what the machine
+   had copied.
+   */
+  func runEditingCases() {
+    let field = "document.getElementById('composer')"
+    func value() -> String { (eval("\(field).value") as? String) ?? "<nil>" }
+    func reset(_ text: String = "") {
+      _ = eval("var el = \(field); el.value = \(text.debugDescription); el.focus(); true")
+      pump(0.2)
+    }
+
+    // ⌘Z / ⌘⇧Z — the page's OWN undo stack, which is the reason Undo/Redo are
+    // allowed through the window's validation gate rather than left disabled.
+    reset()
+    chord("h", [], 4)
+    chord("i", [], 34)
+    pump(0.3)
+    check("typing reaches the field", value() == "hi")
+    chord("z", [.command], 6)
+    pump(0.4)
+    // Recorded, not just checked: a redo cannot be proven on top of an undo that
+    // never happened, and asserting `hi` alone would PASS with both chords dead
+    // (the field still holds what was typed).
+    let undone = value() == ""
+    check("⌘Z undoes the typing", undone)
+    chord("z", [.command, .shift], 6)
+    pump(0.4)
+    check("⌘⇧Z redoes it", undone && value() == "hi")
+
+    // ⌘V — the reported failure. It REPLACES the selection, which is the harder
+    // proof: the field already holds `hi`, so a dead chord leaves it untouched
+    // rather than looking like a paste that happened to match.
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString("paste-proof", forType: .string)
+    chord("a", [.command], 0)
+    pump(0.3)
+    check("⌘A selects the field's whole value",
+          (eval("\(field).selectionStart + '-' + \(field).selectionEnd") as? String) == "0-2")
+    chord("v", [.command], 9)
+    pump(0.4)
+    check("⌘V pastes into the page's field", value() == "paste-proof")
+
+    // ⌘C — with the pasteboard EMPTIED first, so a clipboard that already held
+    // the right text cannot make this pass with the chord dead.
+    chord("a", [.command], 0)
+    pump(0.3)
+    check("⌘A selects the pasted value",
+          (eval("\(field).selectionStart + '-' + \(field).selectionEnd") as? String) == "0-11")
+    NSPasteboard.general.clearContents()
+    chord("c", [.command], 8)
+    pump(0.3)
+    check("⌘C copies the selection",
+          NSPasteboard.general.string(forType: .string) == "paste-proof")
+
+    // ⌘X — a fresh value, so "the field is empty" cannot be the starting state
+    // rather than the cut's doing.
+    reset("cut-me")
+    chord("a", [.command], 0)
+    pump(0.3)
+    chord("x", [.command], 7)
+    pump(0.3)
+    check("⌘X cuts the selection out", value() == "")
+    check("⌘X leaves the cut text on the pasteboard",
+          NSPasteboard.general.string(forType: .string) == "cut-me")
+
+    // The menu's own rows, through the gate the menu system asks.
+    for row in editMenuItems {
+      let item = NSMenuItem(title: row.title, action: row.action, keyEquivalent: row.key)
+      check("the window enables Edit › \(row.title)", window.validateUserInterfaceItem(item))
+    }
+
+    reset()
+  }
+
+  /// A chord, dispatched the way a keystroke is: through the application.
+  func chord(_ characters: String, _ modifiers: NSEvent.ModifierFlags, _ keyCode: UInt16) {
+    guard let event = NSEvent.keyEvent(
+      with: .keyDown, location: .zero, modifierFlags: modifiers,
+      timestamp: ProcessInfo.processInfo.systemUptime,
+      windowNumber: window.windowNumber, context: nil,
+      characters: characters, charactersIgnoringModifiers: characters.lowercased(),
+      isARepeat: false, keyCode: keyCode
+    ) else { return }
+    NSApp.sendEvent(event)
+  }
+
+  /// `evaluateJavaScript`, synchronously — the suite is a plain executable, so a
+  /// callback needs a pumped run loop to land.
+  func eval(_ script: String) -> Any? {
+    var answer: Any?
+    var done = false
+    webView.evaluateJavaScript(script) { value, _ in
+      answer = value
+      done = true
+    }
+    let deadline = Date().addingTimeInterval(1)
+    while !done && Date() < deadline {
+      RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+    }
+    return answer
+  }
+
+  /// The shipped Edit menu, from the shipped builder.
+  func installEditMenu() {
+    let top = NSMenuItem()
+    let mainMenu = NSMenu()
+    mainMenu.addItem(top)
+    top.submenu = buildEditMenu()
+    NSApp.mainMenu = mainMenu
+  }
+
   func runCases() {
     ready = true
     let height = window.contentView!.bounds.height
@@ -199,6 +354,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runShortcutCases()
     runDoubleClickCases()
     runMenuCases()
+    runEditingCases()
     proveClickCloses()
     runSplashCases()
     finish()

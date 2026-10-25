@@ -90,8 +90,60 @@ free is then done in `ShellWindow.swift`:
 | right-click on the bar | Move Window / Minimize / Zoom / Enter Full Screen / Close |
 | ⌘W ⌘M ⌃⌘F | close, minimise, full screen (`validateUserInterfaceItem` keeps them live) |
 | ⌘R / ⌘⇧I / ⌘0 ⌘+ ⌘- | reload, inspector, page zoom |
+| ⌘C ⌘V ⌘X ⌘Z ⌘⇧Z ⌘A | copy, paste, cut, undo, redo, select all — **only because of the Edit menu** |
 | green button | full screen; the webview is inset by `safeAreaInsets` so the page does not sit under the menu bar |
 | a press on any control in the bar | reaches the control — the selector stops at interactive elements |
+
+### The Edit menu is what gives the page its clipboard chords
+
+**A `WKWebView` receives no ⌘C / ⌘V / ⌘X / ⌘Z / ⌘A at all unless the app's menu
+bar declares those key equivalents in an Edit menu.** The web view is the first
+responder and it does see the `keydown` (a page can read `metaKey` and
+`key === 'v'`), but the edit COMMANDS travel through the menu system: with no
+menu item claiming the chord, AppKit never asks the responder chain, so `paste:`
+never runs and the page's own `paste` event never fires either. The shell built
+App, File, View and Window and nothing else, so the console's composer silently
+ignored the keyboard's clipboard chords.
+
+Measured on this SDK against a bare `WKWebView` and the same window with the
+menu below:
+
+| | no Edit menu | with the Edit menu |
+|---|---|---|
+| ⌘V | field unchanged, no `paste` event | `paste-proof` |
+| ⌘A | selection `4-4` (unchanged) | `0-11` |
+| ⌘C | pasteboard `nil` | `paste-proof` |
+| ⌘X | `alpha` left in the field | field empty, text on the pasteboard |
+| ⌘Z / ⌘⇧Z | no undo, no redo | `hi` → empty → `hi` |
+
+Three details are load-bearing, and each fails silently:
+
+- **`undo:`/`redo:` have no AppKit-declared selector** (they are `NSResponder`'s
+  informal protocol — not in any public header), so they are spelled as strings.
+  `NSText`'s `cut:` / `copy:` / `paste:` / `delete:` / `selectAll:` are declared
+  and used as selectors, so a typo is a compile error rather than a dead row.
+- **`Redo` carries `⌘⇧Z` explicitly.** A menu item's default mask is `.command`,
+  so `keyEquivalent: "z"` alone would collide with Undo and the row would be
+  unreachable.
+- **`validateUserInterfaceItem` must allow the rows.** The window answered `false`
+  for every action it did not name itself, and `undo:`/`redo:` resolve against
+  the WINDOW (measured: `NSApp.target(forAction:)` answers `NSWindow` for those
+  two and `WKWebView` for the other five) whose own default answer is `false` —
+  so the menu was built, the chords were declared, and ⌘Z still did nothing.
+  `editMenuHandles(_:)` is that gate, in `EditMenu.swift` beside the table.
+- **The menu is BUILT by the library, not by `App.swift`.** `buildEditMenu()` is
+  what both the app and the window suite install, so the suite exercises the
+  shipped rows; a suite that declared its own chords would pass while the app's
+  menu was missing one, which is how the whole Edit menu came to be missing.
+- **The chords need a KEY window.** `NSApp.activate` is what the suite calls
+  before driving them; without it the key-equivalent pass does not run even with
+  the menu installed, which looks exactly like the bug.
+
+`TestsWindow/main.swift` drives every one of these into a real `WKWebView`, and
+the undo case runs FIRST: WebKit keeps one undo stack per document, so an earlier
+chord-driven edit (a cut) would be the thing ⌘Z undoes — measured, the field came
+back as `cut-me` instead of the typing. With the menu removed, 8 of those checks
+fail.
 
 - The header carries **`data-drag-region`**; `ShellWindow.sendEvent` evaluates
   `dragRegionSelector` at the press point. The walk stops at any interactive

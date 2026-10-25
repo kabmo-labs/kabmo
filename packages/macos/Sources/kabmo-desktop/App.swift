@@ -579,12 +579,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /**
    The menu bar a macOS app is expected to have.
 
-   Four menus, because each one is where a user looks for something specific and a
+   Five menus, because each one is where a user looks for something specific and a
    missing menu is not "minimal", it is broken: ⌘W/⌘M/⌃⌘F live in File and Window,
-   the window list lives in Window, and the browser-shaped actions (Reload, zoom,
-   inspector) live in View. The actions are the WINDOW's own selectors so AppKit
-   routes them to whichever window is key — a target of `self` would act on this
-   delegate instead.
+   the window list lives in Window, the browser-shaped actions (Reload, zoom,
+   inspector) live in View, and the editing chords live in Edit. The actions are
+   the WINDOW's own selectors so AppKit routes them to whichever window is key — a
+   target of `self` would act on this delegate instead.
+
+   **Edit is not decoration.** A `WKWebView` is handed ⌘C/⌘V/⌘X/⌘Z/⌘A only
+   through a menu item that declares the key equivalent; with no Edit menu the
+   chords reach the page's `keydown` and nothing else, so the composer ignored
+   ⌘V (see `EditMenu.swift` for the A/B measurement).
    */
   private func buildMenu() {
     let mainMenu = NSMenu()
@@ -612,6 +617,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     let fileMenu = NSMenu(title: "File")
     fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
     fileItem.submenu = fileMenu
+
+    // Edit — the menu that is NOT cosmetic. A WKWebView receives no ⌘C/⌘V/⌘X/⌘Z/⌘A
+    // unless the menu bar declares those key equivalents, so without this menu the
+    // console's composer ignores the keyboard's own clipboard chords (see
+    // `EditMenu.swift` for the measurement).
+    let editItem = NSMenuItem()
+    mainMenu.addItem(editItem)
+    editItem.submenu = buildEditMenu()
 
     // View — the browser-shaped actions.
     let viewItem = NSMenuItem()
