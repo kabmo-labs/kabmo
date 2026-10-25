@@ -86,6 +86,29 @@ describe('editor keymap', () => {
     expect(isFindBarCommand('toggleComment')).toBe(false);
     expect(isFindBarCommand('selectNextOccurrence')).toBe(false);
   });
+
+  test('folding is bound on both platforms, on chords the app already owns', () => {
+    // These are CM6's own `foldKeymap` chords. The reason this test exists is
+    // that the palette and the tooltips read the SAME table: a fold command
+    // listed with a chord nothing binds is the bug the table prevents.
+    expect(commandFor(key('BracketLeft', '[', { ctrlKey: true, shiftKey: true }), false)).toBe('fold');
+    expect(commandFor(key('BracketRight', ']', { ctrlKey: true, shiftKey: true }), false)).toBe('unfold');
+    expect(commandFor(key('BracketLeft', '[', { metaKey: true, altKey: true }), true)).toBe('fold');
+    expect(commandFor(key('BracketRight', ']', { metaKey: true, altKey: true }), true)).toBe('unfold');
+    // Ctrl-Alt on both: CM6 binds it without a platform override, and it is the
+    // one fold chord that cannot collide with macOS's ⌥⌘ pair.
+    expect(commandFor(key('BracketLeft', '[', { ctrlKey: true, altKey: true }), false)).toBe('foldAll');
+    expect(commandFor(key('BracketRight', ']', { ctrlKey: true, altKey: true }), false)).toBe('unfoldAll');
+  });
+
+  test('the fold chords do not collide with indent or outdent', () => {
+    // `⌘]` indents and `⌘⌥]` unfolds: one modifier apart, which is exactly the
+    // pair a hand-written table gets wrong.
+    expect(editorStrokeFor('indent', true, false)).toEqual({ code: 'BracketRight', meta: true });
+    expect(editorStrokeFor('unfold', true, false)).toEqual({ code: 'BracketRight', meta: true, alt: true });
+    expect(editorStrokeFor('indent', false, false)).toEqual({ code: 'BracketRight', ctrl: true });
+    expect(editorStrokeFor('unfold', false, false)).toEqual({ code: 'BracketRight', ctrl: true, shift: true });
+  });
 });
 
 describe('binding labels', () => {

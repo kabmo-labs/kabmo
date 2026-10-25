@@ -13,8 +13,11 @@
  * palette and unbound in the editor.
  *
  * VS Code's defaults are followed wherever this editor has an equivalent. Where
- * it has none — folding, go-to-definition, the `⌘K` prefix chords — the command
- * is absent rather than bound to something that would surprise.
+ * it has none — go-to-definition, the `⌘K` prefix chords — the command is absent
+ * rather than bound to something that would surprise. Folding used to be in that
+ * list; it is here now because the surface folds by INDENTATION (`fold.ts`), so
+ * the commands do something in every language rather than only in the 19 that
+ * have a grammar.
  */
 
 import type { KeyBinding, KeyStroke } from '@/shared/lib/ui/key-binding';
@@ -43,6 +46,10 @@ export type EditorCommand =
   | 'insertLineAbove'
   | 'indent'
   | 'outdent'
+  | 'fold'
+  | 'unfold'
+  | 'foldAll'
+  | 'unfoldAll'
   | 'undo'
   | 'redo'
   | 'lineStart'
@@ -97,6 +104,13 @@ export const EDITOR_KEY_BINDINGS: readonly KeyBinding<EditorCommand>[] = [
 
   { command: 'indent', label: 'Indent line', mac: { code: 'BracketRight', meta: true }, other: { code: 'BracketRight', ctrl: true } },
   { command: 'outdent', label: 'Outdent line', mac: { code: 'BracketLeft', meta: true }, other: { code: 'BracketLeft', ctrl: true } },
+  // The fold chords are CodeMirror's own (`foldKeymap`), kept because they are
+  // the convention every editor uses. `fold`/`unfold` carry `Shift` on
+  // Windows/Linux and `Alt` on macOS — the chords VS Code and CM6 both bind.
+  { command: 'fold', label: 'Fold block', mac: { code: 'BracketLeft', meta: true, alt: true }, other: { code: 'BracketLeft', ctrl: true, shift: true } },
+  { command: 'unfold', label: 'Unfold block', mac: { code: 'BracketRight', meta: true, alt: true }, other: { code: 'BracketRight', ctrl: true, shift: true } },
+  { command: 'foldAll', label: 'Fold all blocks', mac: { code: 'BracketLeft', ctrl: true, alt: true }, other: { code: 'BracketLeft', ctrl: true, alt: true } },
+  { command: 'unfoldAll', label: 'Unfold all blocks', mac: { code: 'BracketRight', ctrl: true, alt: true }, other: { code: 'BracketRight', ctrl: true, alt: true } },
 
   { command: 'undo', label: 'Undo', mac: { code: 'KeyZ', meta: true }, other: { code: 'KeyZ', ctrl: true } },
   {

@@ -12,10 +12,10 @@
  * list to keep in sync — a command cannot be listed here and unbound there, and
  * a chord cannot be shown that does not work.
  *
- * Commands this editor deliberately does not have (folding, go-to-definition,
- * the `⌘K` prefix chords) are absent rather than listed and inert: a palette
- * entry that does nothing is worse than no entry, because the user concludes
- * the editor is broken rather than that the feature is missing.
+ * Commands this editor deliberately does not have (go-to-definition, the `⌘K`
+ * prefix chords) are absent rather than listed and inert: a palette entry that
+ * does nothing is worse than no entry, because the user concludes the editor is
+ * broken rather than that the feature is missing.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';

@@ -47,6 +47,7 @@ import {
   undo,
 } from '@codemirror/commands';
 import { selectNextOccurrence, selectSelectionMatches } from '@codemirror/search';
+import { foldAll, foldCode, unfoldAll, unfoldCode } from '@codemirror/language';
 import { keymap, type Command, type EditorView, type KeyBinding } from '@codemirror/view';
 
 import { EDITOR_KEY_BINDINGS, type EditorCommand } from '@/shared/lib/code/editor/keymap';
@@ -132,6 +133,10 @@ const BUFFER_COMMANDS: Partial<Record<EditorCommand, SurfaceCommand>> = {
   insertLineAbove,
   indent: indentMore as SurfaceCommand,
   outdent: indentLess as SurfaceCommand,
+  fold: foldCode as SurfaceCommand,
+  unfold: unfoldCode as SurfaceCommand,
+  foldAll: foldAll as SurfaceCommand,
+  unfoldAll: unfoldAll as SurfaceCommand,
   lineStart: cursorLineStart as SurfaceCommand,
   lineEnd: cursorLineEnd as SurfaceCommand,
   documentStart: cursorDocStart as SurfaceCommand,

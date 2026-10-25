@@ -98,6 +98,39 @@ describe('surface theme', () => {
     expect(css).toContain('var(--shiki-dark)');
   });
 
+  test('the bracket pair is painted from the palette, and the FOCUSED rule outranks the package', () => {
+    const css = themeCss();
+    // The package's own colours are hardcoded hex (`#328c8252`); a themed app
+    // that did not restate them showed the package's green.
+    expect(css).not.toContain('#328c8252');
+    expect(css).toContain('.cm-matchingBracket');
+    expect(css).toContain('.cm-nonmatchingBracket');
+    // The load-bearing half: the package spells its rule `.ͼ1.cm-focused …`
+    // (specificity 0,2,0), so a bare `.cm-matchingBracket` here is 0,1,1 and
+    // loses. The focused form must be present or the editor is unthemed while
+    // it has focus — which is whenever anyone is looking at it.
+    const focused = /\.\S+\.cm-focused \.cm-matchingBracket \{[^}]*background-color: color-mix/.test(css);
+    expect(focused).toBe(true);
+  });
+
+  test('the fold placeholder is declared LONGHAND, because style-mod cannot parse a var() shorthand', () => {
+    const css = themeCss();
+    // Measured: `border: 1px solid var(--x)` is expanded by style-mod into
+    // `border-width: var(--x); border-style: var(--x)` — garbage that paints
+    // nothing. The longhand form sidesteps the expansion entirely.
+    expect(css).toContain('.cm-foldPlaceholder');
+    expect(css).not.toMatch(/\.cm-foldPlaceholder \{[^}]*border: 1px solid var\(/);
+    expect(css).toMatch(/\.cm-foldPlaceholder \{[^}]*border-width: 1px/);
+    expect(css).toMatch(/\.cm-foldPlaceholder \{[^}]*border-style: solid/);
+    expect(css).toMatch(/\.cm-foldPlaceholder \{[^}]*border-color: /);
+  });
+
+  test('the fold gutter’s glyph is styled, so its box does not shift as blocks open', () => {
+    const css = themeCss();
+    expect(css).toContain('.cm-foldGutter .cm-gutterElement');
+    expect(css).toContain('min-width: 1.1rem');
+  });
+
   test('writing the theme variables on the host repaints without a transaction', () => {
     const view = new EditorView({ parent: host, state: EditorState.create({ doc: 'const a = 1;', extensions: [surfaceTheme()] }) });
     try {

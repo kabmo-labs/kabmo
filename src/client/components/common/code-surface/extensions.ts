@@ -42,10 +42,11 @@ import {
   rectangularSelection,
 } from '@codemirror/view';
 import { history } from '@codemirror/commands';
-import { indentUnit } from '@codemirror/language';
+import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
 
 import { commentSyntaxFor } from '@/shared/lib/code/editor/comment-syntax';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
+import { indentFoldService } from '@/client/components/common/code-surface/fold';
 import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
@@ -126,6 +127,21 @@ export function surfaceExtensions({
     // bare yields an empty list and the command silently does nothing.
     EditorState.languageData.of(() => [{ commentTokens: commentTokens(language) }]),
     findMarksField,
+    // Bracket matching is TEXTUAL here (there is no lezer tree), so it pairs the
+    // brackets around the caret by scanning — which is right for code and wrong
+    // inside a string: `const a = "{";` … `const c = "}"` pairs the two, 28
+    // characters apart. Accepted deliberately: a token-aware answer needs a
+    // grammar per language (19 of the 59 this app names) and `matchBrackets`
+    // costs 0.008–0.04 ms per move, so the wrong answer is cheap and rare while
+    // the alternative is 115 KB gzip per grammar family.
+    bracketMatching(),
+    // Folding, on the same reasoning: `foldGutter` supplies the gutter markers
+    // and their click, `indentFoldService` answers "is this line foldable" from
+    // indentation because `foldNodeProp` needs a tree. `foldGutter` already
+    // includes `codeFolding()`, so a `foldEffect` dispatched without it would be
+    // dropped silently — verified: no placeholder, no error.
+    indentFoldService,
+    foldGutter(),
     themeCompartment.of(shikiHighlight(language, themes)),
     surfaceTheme(),
     wordWrapCompartment.of(wrapExtension(wordWrap)),

@@ -78,6 +78,70 @@ export function surfaceTheme(): Extension {
       minWidth: '1.5rem',
       textAlign: 'right',
     },
+    // The fold gutter, beside the line numbers. Its marker is a text glyph
+    // (`⌄` / `›`) inside a span, so the box needs a fixed width or the gutter
+    // shifts sideways as a block opens and closes.
+    '.cm-foldGutter .cm-gutterElement': {
+      padding: '0 4px 0 2px',
+      minWidth: '1.1rem',
+      textAlign: 'center',
+    },
+    '.cm-foldGutter .cm-gutterElement span': {
+      display: 'inline-block',
+      width: '100%',
+      cursor: 'pointer',
+      color: 'color-mix(in srgb, var(--theme-ink) 45%, transparent)',
+    },
+    '.cm-foldGutter .cm-gutterElement span:hover': { color: 'var(--theme-ink)' },
+    // A folded range's own `…`. Two facts about this rule are load-bearing.
+    //
+    // 1. The declarations are LONGHAND. `border: 1px solid var(--x)` is a
+    //    shorthand style-mod tries to EXPAND, and it cannot parse a `var()` —
+    //    measured: it emits `border-width: var(--theme-ink)` and
+    //    `border-style: var(--theme-ink)`, i.e. garbage that paints nothing.
+    //    `borderWidth` / `borderStyle` / `borderColor` sidestep the expansion.
+    // 2. The package's own rule is `.ͼ1 .cm-foldPlaceholder` (0,1,0) and ours is
+    //    `.ͼN .cm-foldPlaceholder` (0,1,0) too — a tie, so ORDER decides, and
+    //    CM6 mounts our theme after the base one. Verified: our rule is emitted
+    //    last and wins.
+    '.cm-foldPlaceholder': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-ink) 7%, var(--theme-canvas))',
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: 'color-mix(in srgb, var(--theme-ink) 18%, transparent)',
+      color: 'color-mix(in srgb, var(--theme-ink) 55%, transparent)',
+      borderRadius: '0.2em',
+      margin: '0 1px',
+      padding: '0 4px',
+      cursor: 'pointer',
+    },
+    // Bracket matching. The pair is painted by `bracketMatching()`, which is
+    // TEXTUAL here — see the note in `extensions.ts` — and the package's own
+    // colours are hardcoded hex (`#328c8252`), so they are restated from the
+    // palette or this is the one surface that ignores the theme.
+    //
+    // The FOCUSED rule is spelled with `&.cm-focused` because the package's is
+    // `.ͼ1.cm-focused .cm-matchingBracket` — specificity (0,2,0). A bare
+    // `.cm-matchingBracket` here is (0,1,1) and LOSES, which is why the editor
+    // showed the package's green in a themed app.
+    '.cm-matchingBracket': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-info) 22%, transparent)',
+      outlineWidth: '1px',
+      outlineStyle: 'solid',
+      outlineColor: 'color-mix(in srgb, var(--theme-info) 55%, transparent)',
+    },
+    '&.cm-focused .cm-matchingBracket': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-info) 30%, transparent)',
+    },
+    '.cm-nonmatchingBracket': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-error) 22%, transparent)',
+      outlineWidth: '1px',
+      outlineStyle: 'solid',
+      outlineColor: 'color-mix(in srgb, var(--theme-error) 60%, transparent)',
+    },
+    '&.cm-focused .cm-nonmatchingBracket': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-error) 30%, transparent)',
+    },
     // The selection is drawn by `drawSelection()`; the native one is left to
     // the browser when the editor is not focused.
     '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {

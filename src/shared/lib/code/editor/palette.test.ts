@@ -52,6 +52,19 @@ describe('buildPaletteEntries', () => {
     expect(commands).not.toContain('selectWord');
     expect(commands).not.toContain('escape');
   });
+
+  test('folding is listed, with the chord that actually fires', () => {
+    const entries = buildPaletteEntries(true);
+    const fold = entries.find((entry) => entry.command === 'fold');
+    const unfold = entries.find((entry) => entry.command === 'unfold');
+
+    expect(fold?.label).toBe('Fold block');
+    expect(fold?.chord).toBe('⌥⌘[');
+    expect(unfold?.chord).toBe('⌥⌘]');
+    // And the other platform's own spelling, from the same stroke.
+    const other = buildPaletteEntries(false).find((entry) => entry.command === 'fold');
+    expect(other?.chord).toBe('Ctrl+Shift+[');
+  });
 });
 
 describe('filterPaletteEntries', () => {
