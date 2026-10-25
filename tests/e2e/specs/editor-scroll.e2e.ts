@@ -59,6 +59,33 @@ async function openTab(page: Parameters<typeof openApp>[0], path: string): Promi
 }
 
 /**
+ * The offset the APP recorded for the file on screen, read from the session
+ * state row it persists.
+ *
+ * The spec cannot compare against the number it just assigned: CodeMirror does
+ * its own scroll anchoring, so when the panel's width animation settles and the
+ * lines re-wrap, it adjusts `scrollTop` to keep the visible content stable.
+ * Measured on CI: the assignment read back 1255 and the restore landed on 1777 —
+ * both numbers the app produced, and 1777 is the one it stored, because that is
+ * where the reader actually was when they left. The contract is "returning lands
+ * where the session recorded", so that is what is asserted.
+ *
+ * The session id is `1`: the page was opened with `?folderId=` only, and the
+ * provider falls back to `1` for a workspace view.
+ */
+async function storedOffset(page: Parameters<typeof openApp>[0]): Promise<number> {
+  const state = await page.evaluate(async () => {
+    const response = await fetch('/api/sessions/1/state');
+    return response.json() as Promise<{ state?: Record<string, unknown> }>;
+  });
+  const positions = (state.state?.['editor.scrollPositions'] ?? {}) as Record<string, { code?: number }>;
+  for (const surfaces of Object.values(positions)) {
+    if (typeof surfaces?.code === 'number') return surfaces.code;
+  }
+  return 0;
+}
+
+/**
  * Open a file from the Files tree (the default right panel).
  *
  * The `src` row is a TOGGLE, so it is only clicked when the file row is not
@@ -127,13 +154,19 @@ test.describe('editor scroll memory', () => {
         { timeout: 15_000 },
       )
       .toBeGreaterThan(1000);
-    const leftAt = await scroller.evaluate((el) => el.scrollTop);
 
     // Switch to another file and back. The second file is opened from the tree
     // (which is how it gets a tab), then both switches are TAB clicks — the
     // offset is recorded on the way out and restored on the way in.
+    const recorded = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/state'),
+    );
     await openFromTree(page, 'short.txt');
     await expect(panel).toContainText('short file');
+
+    await recorded;
+    const leftAt = await storedOffset(page);
+    expect(leftAt).toBeGreaterThan(1000);
 
     await openTab(page, 'src/long.txt');
     // Polled: the restore is re-applied while the document's height settles.
@@ -171,7 +204,6 @@ test.describe('editor scroll memory', () => {
         { timeout: 15_000 },
       )
       .toBeGreaterThan(500);
-    const leftAt = await scroller.evaluate((el) => el.scrollTop);
 
     // The write is debounced, so wait for the state POST the debounce schedules
     // rather than guessing a duration — and then wait for the RESPONSE, so the
@@ -179,6 +211,8 @@ test.describe('editor scroll memory', () => {
     await page.waitForResponse(
       (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/state'),
     );
+    // The STORED offset, not the one just assigned — see `storedOffset`.
+    const leftAt = await storedOffset(page);
 
     // The session blob must land BEFORE the tree is clicked: this spec asserts
     // on the offset the blob restores, so a click that beat the read would be
