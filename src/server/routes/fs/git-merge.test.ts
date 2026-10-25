@@ -19,7 +19,7 @@
  *    answers "no <op> in progress" and only `reset --merge HEAD` clears it.
  */
 
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { action } from '@/server/routes/fs/git';
@@ -36,6 +36,16 @@ import { removeDir } from '@/test-support/remove-dir';
  * action ran against THE Kabmo REPOSITORY.
  */
 const FIXTURE_ROOT = path.join(process.cwd(), 'tmp-test-git-merge');
+
+/**
+ * Every case here builds a real repository and drives several `git` processes
+ * through it, so Bun's 5s per-test default is a budget for the RUNNER rather
+ * than for the code. Measured on a loaded CI runner: the cherry-pick case alone
+ * spent 5.0s and timed out, while the same commit passed the `Checks` job and
+ * failed the `Release` one minutes later — the same suite, two machines, one
+ * answer each. `git-actions-sync.test.ts` sets the same 30s for the same reason.
+ */
+setDefaultTimeout(30_000);
 const repos: string[] = [];
 
 function git(cwd: string, ...args: string[]): string {
