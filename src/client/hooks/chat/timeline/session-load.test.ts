@@ -4,7 +4,7 @@
  */
 
 /**
- * The committed-history fetch vs a run this page started.
+ * The committed-history fetch vs a run this page started, and a spawn's arrival.
  *
  * While a run is live the timeline's rows are the STREAM's, and a committed
  * fetch is a lagging snapshot: for a fresh spawn there may be no transcript on
@@ -23,176 +23,25 @@
  * which the stream RELEASES at the first assistant `message_end` while the run
  * continues. These cases pin the run as the ownership signal, and pin the two
  * directions the guard must still let through when no run is live.
+ *
+ * The harness is `session-load.test-util.ts`.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
-import { h, render } from 'preact';
+import { describe, expect, test } from 'bun:test';
 import { act } from 'preact/test-utils';
-import { useCallback, useRef, useState } from 'preact/hooks';
-import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
-import { useSessionLoad } from '@/client/hooks/chat/timeline/session-load';
-import type { ChatMessageData } from '@/shared/types';
-
-/** The runner's own fetch, reached through `Bun` so a leak is not mistaken for it. */
-const originalFetch = Bun.fetch;
-
-/** The optimistic bubble `executeSend` mounts for a locally sent turn. */
-const OPTIMISTIC_USER: ChatMessageData = { id: 'msg-1-user', role: 'user', content: 'halo', date: 'Today, 12:22 PM' };
-/** The empty assistant row the stream fills. */
-const AI_PLACEHOLDER: ChatMessageData = { id: 'msg-2-ai', role: 'ai', content: '' };
-/** The same turn as the transcript records it, under its own id. */
-const ECHOED_TURN: ChatMessageData = { id: 'omp-echo', role: 'user', content: 'halo' };
-
-interface LoadGate {
-  url: string;
-  resolve: (body: unknown) => void;
-}
-
-const gates: LoadGate[] = [];
-
-/** One mount's observable state: what the timeline holds and what drives it. */
-interface ProbeApi {
-  messages: ChatMessageData[];
-  setMessages: (next: ChatMessageData[]) => void;
-  isGeneratingRef: { current: boolean };
-  ownRunRef: { current: boolean };
-  aiPlaceholderIdRef: { current: string | null };
-  optimisticUserIdRef: { current: string | null };
-  generatingCalls: boolean[];
-}
-
-function makeApi(): ProbeApi {
-  return {
-    messages: [],
-    setMessages: () => {},
-    isGeneratingRef: { current: false },
-    ownRunRef: { current: false },
-    aiPlaceholderIdRef: { current: null },
-    optimisticUserIdRef: { current: null },
-    generatingCalls: [],
-  };
-}
-
-function Probe({ sessionId, api }: { sessionId: string | null; api: ProbeApi }) {
-  const [messages, setMessages] = useState<ChatMessageData[]>([]);
-  const isGeneratingRef = useRef(false);
-  const ownRunRef = useRef(false);
-  const streamRunRef = useRef(false);
-  const serverRunRef = useRef(false);
-  const aiPlaceholderIdRef = useRef<string | null>(null);
-  const optimisticUserIdRef = useRef<string | null>(null);
-  const pendingUserDisplaysRef = useRef<{ sent: string; display: string }[]>([]);
-  const metaRefreshedRef = useRef<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const jumpActiveRef = useRef(false);
-  const jumpCountRef = useRef(0);
-  // Stable across renders, like the timeline's own `setGenerating` throat: a
-  // fresh identity would re-run the load effect on every render.
-  const setGenerating = useCallback((v: boolean) => {
-    isGeneratingRef.current = v;
-    api.generatingCalls.push(v);
-  }, [api]);
-
-  api.messages = messages;
-  api.setMessages = setMessages;
-  api.isGeneratingRef = isGeneratingRef;
-  api.ownRunRef = ownRunRef;
-  api.aiPlaceholderIdRef = aiPlaceholderIdRef;
-  api.optimisticUserIdRef = optimisticUserIdRef;
-
-  useSessionLoad({
-    sessionId,
-    setLocalMessages: setMessages,
-    setGenerating,
-    isGeneratingRef,
-    ownRunRef,
-    streamRunRef,
-    serverRunRef,
-    aiPlaceholderIdRef,
-    optimisticUserIdRef,
-    pendingUserDisplaysRef,
-    cancelStreamingCoalescer: () => {},
-    metaRefreshedRef,
-    scrollRef,
-    jumpActiveRef,
-    jumpCountRef,
-  });
-  return null;
-}
-
-let container: HTMLElement | undefined;
-
-beforeAll(() => {
-  installDomGlobals(new Window({ url: 'http://localhost' }));
-});
-
-afterAll(() => {
-  restoreDomGlobals();
-  globalThis.fetch = originalFetch;
-});
-
-afterEach(() => {
-  if (container) render(null, container);
-  container?.remove();
-  container = undefined;
-  gates.length = 0;
-});
-
-/** Stub the loader so the test decides when (and with what) the fetch lands. */
-function stubChatFetch(): void {
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    const { promise, resolve } = Promise.withResolvers<Response>();
-    gates.push({ url, resolve: (body) => resolve(new Response(JSON.stringify(body))) });
-    return promise;
-  }) as typeof fetch;
-}
-
-/** Mount the real hook and let its session-load effect register its fetch. */
-async function mount(sessionId: string, api: ProbeApi): Promise<void> {
-  container ??= document.body.appendChild(document.createElement('div'));
-  await act(async () => {
-    render(h(Probe, { sessionId, api }), container as HTMLElement);
-  });
-  await act(async () => {});
-}
-
-/** Land the registered fetch, as the server's response would. */
-async function resolveLoad(messages: unknown[], index = 0): Promise<void> {
-  const gate = gates[index];
-  if (!gate) throw new Error('no session fetch was registered');
-  await act(async () => {
-    gate.resolve({ session: { id: 'sess-1', messages }, hasMore: false, oldestIndex: 0 });
-  });
-  for (let i = 0; i < 3; i += 1) await act(async () => {});
-}
-
-/**
- * Re-render the mounted Probe with a new session id, which is what the spawn
- * adoption (`new-…` → UUID) does when the URL flips while the child streams:
- * the session-load effect re-runs and ISSUES its history fetch at that moment,
- * mid-run. The fetch registered before this call is `gates[0]`; the one this
- * issues is `gates[1]`.
- */
-async function switchSession(sessionId: string, api: ProbeApi): Promise<void> {
-  await act(async () => {
-    render(h(Probe, { sessionId, api }), container as HTMLElement);
-  });
-  await act(async () => {});
-}
-
-/** A run this page started, with its optimistic rows already on screen. */
-async function startLiveRun(api: ProbeApi): Promise<void> {
-  await act(async () => {
-    api.isGeneratingRef.current = true;
-    api.ownRunRef.current = true;
-    api.optimisticUserIdRef.current = OPTIMISTIC_USER.id;
-    api.setMessages([OPTIMISTIC_USER, AI_PLACEHOLDER]);
-  });
-}
-
-const ids = (api: ProbeApi) => api.messages.map((m) => m.id);
+import {
+  AI_PLACEHOLDER,
+  ECHOED_TURN,
+  OPTIMISTIC_USER,
+  ids,
+  makeApi,
+  mount,
+  resolveLoad,
+  gates,
+  startLiveRun,
+  stubChatFetch,
+  switchSession,
+} from '@/client/hooks/chat/timeline/session-load.test-util';
 
 describe('a committed fetch while a run this page started is live', () => {
   test('keeps the live timeline when the payload carries the turn under its own id', async () => {
@@ -272,6 +121,50 @@ describe('a committed fetch while a run this page started is live', () => {
 
     // The lagging snapshot: omp has not written the transcript yet.
     await resolveLoad([], 1);
+
+    expect(ids(api)).toEqual([OPTIMISTIC_USER.id, AI_PLACEHOLDER.id]);
+  });
+});
+
+describe('a spawn that adopted its id after the run ended', () => {
+  /**
+   * The chat opened from a WORKSPACE (`?folderId=` and no `?sessionId=`), so the
+   * first send starts from a null session id and the URL flips to the child's
+   * UUID when the spawn answers. `isSpawnAdopt` only recognises a `new-…` →
+   * UUID move, and `isAdoptingInFlight` also required the run to still be
+   * generating — so a FAST child (the scripted one answers in milliseconds)
+   * finished before the URL flip, the reset branch ran, and the turn that had
+   * just rendered was cleared. Measured in CI on three specs at once
+   * (`rename.e2e.ts`, `editor.e2e.ts`'s drop case, `chat.e2e.ts`'s settle
+   * case): the answer was on screen and then the timeline was empty.
+   */
+  test('keeps the optimistic rows when the adopted id arrives after the run settled', async () => {
+    stubChatFetch();
+    const api = makeApi();
+    await mount('', api);
+    // The send: optimistic rows mounted, the run owned by this page…
+    await act(async () => {
+      api.isGeneratingRef.current = true;
+      api.ownRunRef.current = true;
+      api.optimisticUserIdRef.current = OPTIMISTIC_USER.id;
+      api.setMessages([OPTIMISTIC_USER, AI_PLACEHOLDER]);
+    });
+    // …and it ENDED before the spawn's id reached the URL.
+    await act(async () => {
+      api.isGeneratingRef.current = false;
+      api.ownRunRef.current = false;
+    });
+    // The spawn answered: the send path records the id it adopted, and the URL
+    // moves to it.
+    api.adoptedSessionIdRef.current = 'sess-1';
+
+    await switchSession('sess-1', api);
+    // The fetch the URL flip issued answers with the transcript omp has not
+    // written yet — the second half of the same bug, and the one that emptied
+    // the timeline even once the reset was skipped.
+    // `gates[0]`: the mount was a null session, so this flip issued the FIRST
+    // read.
+    await resolveLoad([], 0);
 
     expect(ids(api)).toEqual([OPTIMISTIC_USER.id, AI_PLACEHOLDER.id]);
   });

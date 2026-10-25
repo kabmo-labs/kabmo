@@ -108,12 +108,26 @@ test.describe('editor scroll memory', () => {
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
       .toBeGreaterThan(1000);
-    await scroller.evaluate((el) => {
-      el.scrollTop = 1200;
-      el.dispatchEvent(new Event('scroll'));
-    });
+    // Polled, because the restore REPLAYS for ~600 ms after the document opens:
+    // the height is still settling, so the hook re-applies the remembered offset
+    // (0 here) and a single assignment inside that window is undone by the next
+    // replay. Measured on the Windows CI leg: `scrollTop` read back as a
+    // different value than the one stored, and the restore check then compared
+    // against a number the app had already replaced (`Expected: 1255,
+    // Received: 1777`). Polling makes the gate the condition — the replay has
+    // stopped and the write stuck — not a duration.
+    await expect
+      .poll(
+        async () =>
+          scroller.evaluate((el) => {
+            el.scrollTop = 1200;
+            el.dispatchEvent(new Event('scroll'));
+            return el.scrollTop;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(1000);
     const leftAt = await scroller.evaluate((el) => el.scrollTop);
-    expect(leftAt).toBeGreaterThan(1000);
 
     // Switch to another file and back. The second file is opened from the tree
     // (which is how it gets a tab), then both switches are TAB clicks — the
@@ -145,10 +159,18 @@ test.describe('editor scroll memory', () => {
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
       .toBeGreaterThan(1000);
-    await scroller.evaluate((el) => {
-      el.scrollTop = 900;
-      el.dispatchEvent(new Event('scroll'));
-    });
+    // Same replay window as the tab-switch case above.
+    await expect
+      .poll(
+        async () =>
+          scroller.evaluate((el) => {
+            el.scrollTop = 900;
+            el.dispatchEvent(new Event('scroll'));
+            return el.scrollTop;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(500);
     const leftAt = await scroller.evaluate((el) => el.scrollTop);
 
     // The write is debounced, so wait for the state POST the debounce schedules

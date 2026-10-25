@@ -24,6 +24,7 @@ import type { ChatMessageData } from '@/shared/types';
 import { SESSION_META_RETRY_SCHEDULE_MS } from '@/shared/lib/workspace/refresh-cadence';
 import { useSessionPagination } from '@/client/hooks/chat/timeline/session-pagination';
 import { useLostRunRecovery } from '@/client/hooks/chat/timeline/lost-run';
+import { isOwnSpawn, isSpawnArrival } from '@/client/hooks/chat/timeline/session-switch';
 
 export interface SessionDataShape {
   id?: string;
@@ -226,36 +227,32 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
   useEffect(() => {
     let active = true;
     setSessionLoading(true);
-    // Track the previous session id so a session switch (including "New
-    // Session" → new-…) clears the timeline, while the optimistic spawn
-    // transition (new-… → real UUID) keeps its bubbles.
+    // Track the previous id so a real switch clears the timeline while a
+    // spawn's arrival keeps its bubbles (see `session-switch.ts`).
     if (sessionId !== prevSessionIdRef.current) {
-      const isSpawnAdopt = sessionId && !sessionId.startsWith('new-') && prevSessionIdRef.current?.startsWith('new-');
-      // Keep the optimistic bubbles while a local send is in flight and this
-      // session is the one it spawned (a fresh spawn may not have passed
-      // through "new-…"). A reload mid-run has no adopted id, so history loads.
-      const isAdoptingInFlight = isGeneratingRef.current && adoptedSessionIdRef.current === sessionId;
-      if (!isSpawnAdopt && !isAdoptingInFlight) {
+      // A spawn's arrival keeps the optimistic rows; anything else is a switch
+      // to another session. The two shapes — `new-…` → UUID and a chat opened
+      // from a workspace whose URL moves straight to the child's UUID — and why
+      // the second one used to clear a finished turn are in `session-switch.ts`.
+      const spawnArrival = isSpawnArrival({
+        sessionId,
+        previousSessionId: prevSessionIdRef.current,
+        adoptedSessionId: adoptedSessionIdRef.current,
+      });
+      if (!spawnArrival) {
         setLocalMessages([]);
         setGenerating(false);
         adoptedSessionIdRef.current = null;
         seededModelRef.current = null;
-        // Metadata (model / thinking level) belongs to ONE session: leaving it
-        // in place let a pending "new-…" composer — and any other session's
-        // composer — display a level that session never ran with, until the
-        // fetch replaced it.
+        // Metadata and the thinking seed belong to ONE session: leaving either
+        // in place let a composer display a level its session never ran with.
         setSessionData(null);
-        // The thinking seed belongs to the previous session's spawn; keeping it
-        // would report that level for the newly opened session.
         seededThinkingLevelRef.current = null;
         // The placeholder/optimistic ids belong to the PREVIOUS session's
-        // in-flight send; message_end never arrives after a switch away (the
-        // stream is disconnected), so they must be dropped here. A stale
-        // placeholder would let the next session's stream reconcile into a row
-        // that is no longer on screen. (`setGenerating(false)` above releases
-        // the run ownership this page held — the guard reads `ownRunRef`, so a
-        // stale value there is what used to discard a mid-run session's
-        // committed history on return.)
+        // in-flight send, and `message_end` never arrives after a switch away.
+        // (`setGenerating(false)` above releases the run ownership this page
+        // held — the guard reads `ownRunRef`, so a stale value there is what
+        // discarded a mid-run session's committed history on return.)
         aiPlaceholderIdRef.current = null;
         optimisticUserIdRef.current = null;
         // Drop coalesced message_update frames queued by the previous
@@ -288,6 +285,10 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
       // means this payload is a lagging snapshot of a timeline the stream owns.
       const ownedAtIssue = timelineOwnedByLiveRun();
       const ownedByLiveRun = () => ownedAtIssue || timelineOwnedByLiveRun();
+      /** Its transcript may legitimately be missing — omp buffers its writes
+       *  until the first assistant message settles — so an empty payload is
+       *  "not written yet", never "nothing happened". */
+      const ownSpawn = () => isOwnSpawn(sessionId, adoptedSessionIdRef.current);
       fetch(`/api/chat/${sessionId}`)
         .then(res => res.json())
         .then(data => {
@@ -302,13 +303,13 @@ export function useSessionLoad(deps: UseSessionLoadDeps) {
             // operator's turn (see `timelineOwnedByLiveRun`).
             if (!ownedByLiveRun()) {
               if (fetched.length > 0) setLocalMessages(fetched);
-              // A pending "new-…" session has nothing committed by definition.
-              else if (!sessionId.startsWith('new-')) setLocalMessages([]);
+              // An own spawn has nothing committed YET (see `isOwnSpawn`).
+              else if (!ownSpawn()) setLocalMessages([]);
             }
             applyWindow(data.hasMore, data.oldestIndex);
           } else {
             setSessionData(seededSessionData());
-            if (!ownedByLiveRun()) setLocalMessages([]);
+            if (!ownedByLiveRun() && !ownSpawn()) setLocalMessages([]);
           }
         })
         .catch(err => {

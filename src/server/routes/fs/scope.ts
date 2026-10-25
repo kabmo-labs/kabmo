@@ -26,25 +26,14 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { resolveScopeForAbsolutePath } from '@/server/lib/fs/root';
 import { BINARY_SNIFF_BYTES, classifyEditorFile, unsupportedEditorMessage } from '@/shared/lib/fs/file-kind';
+import { pathFromFileUrl } from '@/shared/lib/fs/file-url';
 import fs from 'fs';
 import path from 'path';
 
-/**
- * A `file://` URL to the path it names.
- *
- * The pathname is percent-encoded (a space is `%20`, and a Finder drop of
- * `My Notes.md` is exactly that), so decoding is not optional. `decodeURIComponent`
- * can throw on a malformed escape, which is answered as "not a path" rather
- * than surfacing as a 500.
- */
+/** A `file://` URL to the path it names; see `pathFromFileUrl` for the rules. */
 function pathFromReference(reference: string): string | null {
   if (!/^file:\/\//i.test(reference)) return reference;
-  try {
-    const url = new URL(reference);
-    return decodeURIComponent(url.pathname);
-  } catch {
-    return null;
-  }
+  return pathFromFileUrl(reference);
 }
 
 export async function resolveFileScope({ request }: LoaderFunctionArgs) {
