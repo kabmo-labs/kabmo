@@ -30,9 +30,10 @@
  * awaits.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import { collectDroppedFileUris, hasDraggedFiles } from '@/client/hooks/chat/composer/drop-payload';
+import { useDragPresence } from '@/client/hooks/ui/drag-presence';
 import { primeFileReads, primedPrefix } from '@/client/hooks/chat/composer/file-reads';
 import type { PrimedReads } from '@/client/hooks/chat/composer/file-reads';
 import {
@@ -73,35 +74,18 @@ export interface UseFileDropResult {
 }
 
 export function useFileDrop({ onFiles, disabled = false }: UseFileDropOptions): UseFileDropResult {
-  const [isDragging, setIsDragging] = useState(false);
-  // dragenter/dragleave fire for every nested child the pointer crosses, so a
-  // boolean flag drops to false the instant the cursor moves from the card onto
-  // the textarea. Counting them keeps the overlay steady.
-  const depthRef = useRef(0);
+  // `relatedTarget`-based, not a counter: `dragenter` fires for every nested
+  // child the pointer crosses (the card's toolbar, the textarea, the attachment
+  // chips), so a counter rose with each crossing while a matching `dragleave` to
+  // a node still inside was ignored — and the overlay stayed on after the
+  // pointer left. See `useDragPresence`.
+  const presence = useDragPresence();
   // Latest callback and flag behind refs, so the handlers stay referentially
   // stable and the window guard sees the current `disabled`.
   const onFilesRef = useRef(onFiles);
   onFilesRef.current = onFiles;
   const disabledRef = useRef(disabled);
   disabledRef.current = disabled;
-
-  const reset = useCallback(() => {
-    depthRef.current = 0;
-    setIsDragging(false);
-  }, []);
-
-  // A drag can end without reaching this element again — released over the
-  // page, cancelled with Escape, or its source node unmounted mid-drag. The
-  // composer's own handlers have already run by the time these fire, so this
-  // only clears state the drop handler did not.
-  useEffect(() => {
-    window.addEventListener('dragend', reset);
-    window.addEventListener('drop', reset);
-    return () => {
-      window.removeEventListener('dragend', reset);
-      window.removeEventListener('drop', reset);
-    };
-  }, [reset]);
 
   // Files dropped anywhere else would navigate the tab to `file://` and discard
   // Kabmo, so the default is cancelled app-wide. This runs after the
@@ -123,27 +107,28 @@ export function useFileDrop({ onFiles, disabled = false }: UseFileDropOptions): 
     if (!hasDraggedFiles(e.dataTransfer)) return;
     e.preventDefault();
     if (disabledRef.current) return;
-    depthRef.current += 1;
-    setIsDragging(true);
-  }, []);
+    presence.enter();
+  }, [presence]);
 
   const onDragOver = useCallback((e: TargetedDragEvent<HTMLElement>) => {
     if (!hasDraggedFiles(e.dataTransfer)) return;
     // Required: without it the browser refuses the drop and navigates to the
     // file instead of handing it to the app.
     e.preventDefault();
+    // Every `dragover` here is proof the pointer is over the card; a child
+    // crossing fires the enter/leave pair in between, and this re-asserts the
+    // overlay without counting anything.
+    if (!disabledRef.current) presence.enter();
     if (!e.dataTransfer) return;
     // `none` is the only cursor that tells the truth about a closed composer.
     e.dataTransfer.dropEffect = disabledRef.current ? 'none' : 'copy';
-  }, []);
+  }, [presence]);
 
   // Not gated on the payload: `dataTransfer.types` can already be empty on
-  // dragleave. The counter is the gate — a text drag never raised it.
-  const onDragLeave = useCallback(() => {
-    if (depthRef.current === 0) return;
-    depthRef.current -= 1;
-    if (depthRef.current === 0) setIsDragging(false);
-  }, []);
+  // dragleave. `useDragPresence.leave` is the gate.
+  const onDragLeave = useCallback((e: TargetedDragEvent<HTMLElement>) => {
+    presence.leave(e);
+  }, [presence]);
 
   const onDrop = useCallback((e: TargetedDragEvent<HTMLElement>) => {
     const dt = e.dataTransfer;
@@ -155,7 +140,7 @@ export function useFileDrop({ onFiles, disabled = false }: UseFileDropOptions): 
 
     if (!dt || !hasDraggedFiles(dt)) return;
     e.preventDefault();
-    reset();
+    presence.clear();
     if (disabledRef.current) return;
 
     // START THE READS NOW, in the drop handler's own tick. A dropped File's
@@ -192,9 +177,9 @@ export function useFileDrop({ onFiles, disabled = false }: UseFileDropOptions): 
       // reports the ones that never produced content.
       if (resolved.length > 0) onFilesRef.current(resolved, incomplete, [], primed);
     });
-  }, [reset]);
+  }, [presence]);
 
-  return { isDragging, dropProps: { onDragEnter, onDragOver, onDragLeave, onDrop } };
+  return { isDragging: presence.active, dropProps: { onDragEnter, onDragOver, onDragLeave, onDrop } };
 }
 
 /**

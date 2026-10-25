@@ -30,15 +30,17 @@
  * should keep it. The shell's paths come next — they resolve to a real path,
  * which is what the editor saves through.
  *
- * The overlay's state is a depth COUNTER, and it is reset by a window-level
- * `dragend`/`drop` too — a drag that ends outside the element (Escape, released
- * over another window) fires no matching `dragleave`, and a counter left above
- * zero made the NEXT drag's overlay look stuck.
+ * The overlay's state is `useDragPresence`, NOT a depth counter: `dragenter`
+ * fires for every nested child the pointer crosses, so a counter rose with each
+ * crossing and only a full exit lowered it — measured in Chromium, five child
+ * crossings inside the chat left the counter at 5 after the pointer had left, and
+ * the overlay stayed on. `relatedTarget` answers the same question symmetrically.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useRef } from 'preact/hooks';
 import type { TargetedDragEvent } from 'preact';
 import { collectDroppedFileUris, hasDraggedFiles } from '@/client/hooks/chat/composer/drop-payload';
+import { useDragPresence } from '@/client/hooks/ui/drag-presence';
 import { openHandleAsTab } from '@/client/lib/launch/file-handlers';
 import { readShellDroppedPaths } from '@/client/lib/desktop/dropped-paths';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
@@ -187,47 +189,24 @@ async function openDroppedHandle(
 }
 
 export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions = {}): UseEditorDropResult {
-  const [isDragging, setIsDragging] = useState(false);
-  // dragenter/dragleave fire per nested child the pointer crosses, so a boolean
-  // drops to false the moment the cursor moves from the pane onto a child.
-  const depthRef = useRef(0);
+  // `relatedTarget`-based, not a counter: see `useDragPresence`. The counter that
+  // used to live here is what left the overlay stuck after a gesture the element
+  // never saw the end of.
+  const presence = useDragPresence();
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
-  const reset = useCallback(() => {
-    depthRef.current = 0;
-    setIsDragging(false);
-  }, []);
-
-  // A drag can end without reaching this element again — released over another
-  // window, cancelled with Escape, or its source node unmounted mid-drag. The
-  // element's own handlers have already run by the time these fire, so this only
-  // clears state the drop handler did not. Without it a counter left above zero
-  // made the next drag's overlay look stuck on, and a counter left BELOW zero
-  // (see `onDragLeave`) made the next one never appear.
-  useEffect(() => {
-    window.addEventListener('dragend', reset);
-    window.addEventListener('drop', reset);
-    return () => {
-      window.removeEventListener('dragend', reset);
-      window.removeEventListener('drop', reset);
-    };
-  }, [reset]);
-
   const onDragEnter = useCallback((e: TargetedDragEvent<HTMLElement>) => {
     // A descendant already claimed this drag — the composer, whose own handler
-    // runs first because it is deeper in the tree. Skipping the increment here
-    // is safe ONLY because `onDragLeave` counts symmetrically; the two must
-    // agree or the counter drifts negative and the overlay stops appearing.
+    // runs first because it is deeper in the tree.
     if (e.defaultPrevented) return;
     if (!isOpenableDrag(e.dataTransfer)) return;
     e.preventDefault();
     if (!enabledRef.current) return;
-    depthRef.current += 1;
-    setIsDragging(true);
-  }, []);
+    presence.enter();
+  }, [presence]);
 
   const onDragOver = useCallback((e: TargetedDragEvent<HTMLElement>) => {
     // A descendant claimed the drag — the composer, whose own handler runs first
@@ -237,7 +216,7 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
     // of them. The counter is left alone, so moving back off the composer
     // restores this overlay.
     if (e.defaultPrevented) {
-      setIsDragging(false);
+      presence.clear();
       return;
     }
     if (!isOpenableDrag(e.dataTransfer)) return;
@@ -246,34 +225,25 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
     // window-level guard, which runs later in the bubble.
     e.preventDefault();
     e.stopPropagation();
-    if (depthRef.current > 0) setIsDragging(true);
+    // Every `dragover` on this element is proof the pointer is inside it — a
+    // child crossing fires the pair in between, and this is what re-asserts the
+    // overlay without counting anything. Gated on `enabled` for the same reason
+    // `onDragEnter` is: a target with no workspace behind it must stay dark
+    // rather than light up to refuse.
+    if (enabledRef.current) presence.enter();
     if (!e.dataTransfer) return;
     e.dataTransfer.dropEffect = enabledRef.current ? 'copy' : 'none';
-  }, []);
+  }, [presence]);
 
   /**
    * A `dragleave` that stays INSIDE the element is a move between children, not
-   * an exit — and counting it is what made the overlay disappear while the
-   * pointer was still over the workspace.
-   *
-   * The failure, measured: entering the workspace increments the counter, moving
-   * onto the composer is claimed by the composer (`defaultPrevented`, so the
-   * workspace does NOT increment), and moving back off the composer fires a
-   * `dragleave` that bubbles up and DECREMENTS — the counter returns to zero and
-   * the overlay turns off even though the pointer never left the workspace.
-   *
-   * `relatedTarget` is the element being entered, so `contains` is the exact
-   * test. It can be null (a drag leaving the window), which the counter still
-   * handles; the clamp at zero keeps a stray leave from going negative, because
-   * a negative counter makes every later drag's `=== 0` test miss and the
-   * overlay never appears again.
+   * an exit — `useDragPresence.leave` is the only rule here, because the counter
+   * this replaced is what made the overlay stay lit (or vanish) for the wrong
+   * reason.
    */
   const onDragLeave = useCallback((e: TargetedDragEvent<HTMLElement>) => {
-    if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
-    if (depthRef.current === 0) return;
-    depthRef.current -= 1;
-    if (depthRef.current === 0) setIsDragging(false);
-  }, []);
+    presence.leave(e);
+  }, [presence]);
 
   /** Open what a drop carries — shared by the bubble and the capture paths. */
   const openDropped = useCallback((dt: DataTransfer | null) => {
@@ -315,10 +285,10 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
     if (!isOpenableDrag(e.dataTransfer)) return;
     e.preventDefault();
     e.stopPropagation();
-    reset();
+    presence.clear();
     if (!enabledRef.current || !e.dataTransfer) return;
     openDropped(e.dataTransfer);
-  }, [openDropped, reset]);
+  }, [openDropped, presence]);
 
   /**
    * Claim a file drop that is about to land on a code surface.
@@ -335,13 +305,13 @@ export function useEditorDrop({ enabled = true, onResult }: UseEditorDropOptions
     if (!(target instanceof Element) || !target.closest(`[${CODE_SURFACE_ATTRIBUTE}]`)) return;
     e.preventDefault();
     e.stopPropagation();
-    reset();
+    presence.clear();
     if (!enabledRef.current || !e.dataTransfer) return;
     openDropped(e.dataTransfer);
-  }, [openDropped, reset]);
+  }, [openDropped, presence]);
 
   return {
-    isDragging,
+    isDragging: presence.active,
     dropProps: { onDragEnter, onDragOver, onDragLeave, onDrop },
     captureDropProps: { onDropCapture },
   };

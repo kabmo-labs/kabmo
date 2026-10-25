@@ -121,6 +121,15 @@ async function mountPipeline() {
   await act(async () => { render(h(PipelineProbe, {}), container); });
 }
 
+/** A `DataTransfer` carrying a `text/uri-list` reference, as a Finder drag does. */
+function fileTransfer(reference: string): DataTransfer {
+  return {
+    types: ['text/uri-list'],
+    files: [],
+    getData: (type: string) => (type.toLowerCase() === 'text/uri-list' ? reference : ''),
+  } as unknown as DataTransfer;
+}
+
 function textFile(name: string, body: string): File {
   return new File([body], name, { type: 'text/markdown' });
 }
@@ -256,5 +265,36 @@ describe('useComposerPipeline', () => {
     await mountPipeline();
     expect(api.isDragging).toBe(false);
     expect(typeof api.dropProps.onDrop).toBe('function');
+  });
+
+  /**
+   * The overlay's state. The counter this replaced drifted upward on every child
+   * crossing, so the card stayed lit after the pointer had left it.
+   */
+  test('child crossings keep the drop overlay lit, and one real exit clears it', async () => {
+    await mountPipeline();
+    const card = document.body.appendChild(document.createElement('div'));
+    const child = card.appendChild(document.createElement('div'));
+    const transfer = fileTransfer('file:///tmp/note.txt');
+    const event = (related?: Node | null) => {
+      const ev = new window.Event('dragover', { bubbles: true, cancelable: true });
+      Object.defineProperty(ev, 'dataTransfer', { value: transfer });
+      Object.defineProperty(ev, 'currentTarget', { value: card });
+      Object.defineProperty(ev, 'relatedTarget', { value: related ?? null });
+      return ev as never;
+    };
+
+    await act(async () => { api.dropProps.onDragEnter(event()); });
+    expect(api.isDragging).toBe(true);
+
+    for (let pass = 0; pass < 5; pass += 1) {
+      await act(async () => { api.dropProps.onDragOver(event()); });
+      await act(async () => { api.dropProps.onDragLeave(event(child)); });
+    }
+    expect(api.isDragging).toBe(true);
+
+    await act(async () => { api.dropProps.onDragLeave(event(null)); });
+    expect(api.isDragging).toBe(false);
+    card.remove();
   });
 });
