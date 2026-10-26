@@ -4,6 +4,31 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.10.0](https://github.com/kabmo-labs/kabmo/compare/v0.9.0...v0.10.0) — 2026-10-26
+
+### Added
+
+* **editor:** add Save As and the split editor ([d61c7ec](https://github.com/kabmo-labs/kabmo/commit/d61c7ec0602bfdaef8fd3eff0e72c6fee8d0d3cb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** close the editor panel's gaps — indent, data loss, tabs, typing ([f9739f2](https://github.com/kabmo-labs/kabmo/commit/f9739f263c7174c14db2db0078d82ac7f6ecf410)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** draw the bracket pair guide and parse with stream languages ([ae31841](https://github.com/kabmo-labs/kabmo/commit/ae31841113a274b6dab0d0708898ee312cc3b570)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** fold blocks and match brackets without a grammar ([07c3843](https://github.com/kabmo-labs/kabmo/commit/07c384398a08d59d6c4c1d0a034721059b0bbac1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **files:** collapse single-child folder chains into one row ([46d9787](https://github.com/kabmo-labs/kabmo/commit/46d9787e24bef73a7c49fd6262c9e5002efa7a1a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **release:** publish the packages to GitHub Packages as a second, manual destination ([391352d](https://github.com/kabmo-labs/kabmo/commit/391352d302d75bfb0b78830abce25c3ba32f52ba)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** clear the drop overlay instead of counting nested drags ([f7fc85f](https://github.com/kabmo-labs/kabmo/commit/f7fc85f830020f7da70205504cf74723e4cfd4c0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** let a tool diff scroll inside its card ([744543b](https://github.com/kabmo-labs/kabmo/commit/744543b74b10612a9ca4bab527f13fcfc7dd892d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** return the stretched composer to its dock on send, on both layouts ([45e1f9b](https://github.com/kabmo-labs/kabmo/commit/45e1f9b3f4b971c62f3ce66eb4019a6eeef2c666)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ci:** read the packument on stdin so Windows can skip published versions ([c4e4cd6](https://github.com/kabmo-labs/kabmo/commit/c4e4cd647c1bf2cbb442ba4c5516057ac6f52d10)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** give the web view its clipboard chords via an Edit menu ([9c72514](https://github.com/kabmo-labs/kabmo/commit/9c72514dc085afe1dec71efd2e94a5aea053c078)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** let the frame's resize band win over the page's drag region ([1de95f5](https://github.com/kabmo-labs/kabmo/commit/1de95f5d26391966f4257ecca2c1099fe67953c5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** open a dropped file by reading the shell's pasteboard ([2d88622](https://github.com/kabmo-labs/kabmo/commit/2d88622a6820e26ddf3ca25a1559795dae01f25e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** open the console settings modal from the menu bar ([e432bdb](https://github.com/kabmo-labs/kabmo/commit/e432bdb3572b87c2f91c845adcf5171f7b2a787e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **realtime:** repair a socket the browser never reported dead ([ee94bfb](https://github.com/kabmo-labs/kabmo/commit/ee94bfbf95830fbb608b0f57090e2e05af9b5e72)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** make the launch splash fill the window on macOS and Linux ([96c5bf3](https://github.com/kabmo-labs/kabmo/commit/96c5bf3d4372c5706d09403039efd46cd197996b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **toolbar:** make the overflow menu reachable and let the row fill its bar ([ab3cae5](https://github.com/kabmo-labs/kabmo/commit/ab3cae5599190652a9ec1e72aea29270b917057e)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.9.0](https://github.com/kabmo-labs/kabmo/compare/v0.8.0...v0.9.0) — 2026-10-25
 
 ### Added
