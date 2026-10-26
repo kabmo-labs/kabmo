@@ -25,6 +25,11 @@
  *
  *   `delay:<ms>`     hold the turn open before the answer streams
  *   `tool:<name>`    emit a `tool_execution_start/update/end` triple first
+ *   `edit:<pairs>`   emit an `edit` call whose result carries a real excerpt
+ *                    patch of that many removed/added PAIRS (every row a
+ *                    change, so the card's collapsed view still overflows) —
+ *                    the only way a spec can observe the diff card's own
+ *                    scroller, since its ceiling is 288px
  *   `wait:<seconds>` block on a background job for that long, re-emitting its
  *                    `CoordinationDetails` snapshot every 500 ms (the real
  *                    `wait` tool's progress frames)
@@ -149,7 +154,7 @@ function persistTurn(role: 'user' | 'assistant', text: string): void {
  *  this keeps the in-flight window wide enough for a spec to observe. */
 const RENAME_DELAY_MS = 600;
 
-const { streamAnswer, streamToolCall, streamWait, streamWaitLimit } = createFrameWriters({ write });
+const { streamAnswer, streamToolCall, streamWait, streamWaitLimit, streamEditCall } = createFrameWriters({ write });
 
 const MODEL = {
   id: 'fake-model',
@@ -211,6 +216,10 @@ async function runTurn(prompt: string, requestId: string) {
   const error = /error:(.+)/.exec(prompt);
   const retry = /retry:(\d+)/.exec(prompt);
   const slow = prompt.includes('slow');
+  // `edit:<rows>` draws a real `edit` card with a patch that overflows the
+  // card's 288px ceiling — the only shape in which the diff's own scroller can
+  // be observed at all.
+  const editRows = /edit:(\d+)/.exec(prompt);
 
   write({ type: 'agent_start' });
 
@@ -227,6 +236,7 @@ async function runTurn(prompt: string, requestId: string) {
   if (waitLimit) await streamWaitLimit();
   else if (wait) await streamWait(Number(wait[1]));
   if (tool) await streamToolCall(tool[1], cmd?.[1].trim());
+  if (editRows) await streamEditCall(Number(editRows[1]));
   // `orphan-ask:` contains `ask:`, so the cardless form is tested FIRST.
   if (orphanAsk) await runAsk(orphanAsk[1].trim(), false);
   else if (ask) await runAsk(ask[1].trim());

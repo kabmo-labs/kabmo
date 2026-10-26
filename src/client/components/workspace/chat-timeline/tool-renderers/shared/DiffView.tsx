@@ -143,12 +143,16 @@ export function DiffView({ text, path = '', maxHeightClass = 'max-h-72' }: DiffV
       {/* The panel views are `w-full h-full overflow-auto`, but their parent in
           the diff panel has a DEFINITE height while this one only has a
           `max-height` — and `height: 100%` against an auto-height box resolves
-          to `auto`, so the view grew to its content (measured 1521px inside a
-          288px parent) and `overflow-hidden` clipped it: `scrollHeight ===
-          clientHeight` and nothing could scroll.
-          A flex column with `min-h-0` gives the view the definite height it
-          needs to resolve `h-full` (measured 288px), so the view scrolls its
-          own content and this wrapper only bounds it. */}
+          to `auto`. `min-h-0` on this flex column is necessary but NOT
+          sufficient: it lets the item shrink, while what the view needs is a
+          height to shrink TO, and a `max-height` ancestor does not give a
+          percentage one. Measured with only this wrapper in place: the editor
+          root resolved to 1847px inside the 288px box and `overflow-hidden`
+          clipped it, so `scrollHeight === clientHeight` and a 30-line edit card
+          showed 9 rows with no way to reach the rest — in both shapes.
+          `[data-code-surface]` in `tailwind.css` is the other half: the host is
+          a column flex container and the editor root a shrinking item, which
+          gives it the height through layout instead of through a percentage. */}
       <div className={`flex ${maxHeightClass} min-h-0 flex-col overflow-hidden`}>
         {/* No tab key: this diff lives inside a chat card, and the timeline —
             not the card — is what the reader scrolls. No counts either: the

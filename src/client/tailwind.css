@@ -421,6 +421,44 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
   background: none;
 }
 
+/* The CodeMirror root FILLS its host, so a bounded host scrolls instead of
+ * clipping.
+ *
+ * `.cm-editor` (and a merge view's `.cm-mergeView`) carries `height: 100%` in
+ * the surface theme, and a percentage height resolves against a DEFINITE
+ * containing block. The diff panel's host has one — its parent is a sized flex
+ * column — but a chat card's diff only has a CEILING (`max-h-72` on the
+ * wrapper), and a box whose height comes from `max-height` is indefinite for
+ * percentage resolution. The root therefore computed to `auto`, grew to its
+ * content and the host's `overflow: hidden` clipped it: measured in the
+ * timeline, a 1847px editor inside a 288px host with `scrollHeight ===
+ * clientHeight` — a 30-line edit card that showed 9 rows with no way to reach
+ * the rest, in BOTH shapes (unified 1847px, split 1928px).
+ *
+ * Making the host a column flex container and the root a shrinking flex item
+ * gives the root the host's height through LAYOUT rather than through a
+ * percentage, so it works whether the host's height is definite, capped or
+ * automatic: `min-height: 0` is what allows the item to go below its content
+ * height, and the editor's own `.cm-scroller` then owns the overflow (it is
+ * the element with `overflow: auto`). Verified on both shapes: 288px host,
+ * scroller `clientHeight 288 / scrollHeight 1847`, scrolled to 400. An
+ * unconstrained host (`max-h-none`, the full-output reader) still sizes to its
+ * content, because an auto-height flex column does.
+ *
+ * This is stated on the shared marker rather than per call site: every host
+ * that claims to BE a code surface wants the same thing, and the two surfaces
+ * that draw one (the editor pane and a diff) each restated it wrong once. */
+[data-code-surface] {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-code-surface] > .cm-editor,
+[data-code-surface] > .cm-mergeView {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* Find matches, painted inside the token spans the highlighter emits. An
  * inline <mark> colours a background without moving a glyph, which is what
  * keeps the transparent <textarea> above aligned with this layer — a block or

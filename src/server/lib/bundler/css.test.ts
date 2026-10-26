@@ -214,6 +214,37 @@ describe('css plugin — the scrollbar system reaches the browser', () => {
 });
 
 /**
+ * The CodeMirror root filling its host, which is what makes a bounded diff
+ * scroll at all.
+ *
+ * `.cm-editor` carries `height: 100%`, and a percentage resolves against a
+ * DEFINITE containing block. A chat card's diff host is bounded only by a
+ * `max-height`, which is indefinite for that purpose, so the root computed to
+ * `auto` and grew to its content — measured in the timeline: a 1847px editor
+ * inside a 288px host, `scrollHeight === clientHeight`, a 30-line edit card
+ * showing 9 rows with no way to reach the rest. The fix is layout rather than
+ * a percentage: the host is a column flex container and the root a shrinking
+ * flex item.
+ *
+ * Both halves are asserted because either alone is inert: `min-height: 0` on
+ * the item is what lets it go below its content height, and the host's
+ * `flex-direction` is what makes that height the one the item is measured
+ * against. The minifier also rewrites `flex: 1 1 auto` to `flex: auto`, which
+ * is why the gate reads the built sheet.
+ */
+describe('css plugin — a code surface fills its host', () => {
+  test('the host is a column flex container and the root shrinks inside it', async () => {
+    const out = await buildProjectStylesheet();
+
+    expect(out).toContain('[data-code-surface]{display:flex;flex-direction:column}');
+    expect(out).toContain('[data-code-surface]>.cm-editor');
+    expect(out).toContain('[data-code-surface]>.cm-mergeView');
+    expect(out).toContain('min-height:0');
+    expect(out).toMatch(/\[data-code-surface\]>\.cm-(editor|mergeView)[^{]*\{[^}]*flex:auto/);
+  });
+});
+
+/**
  * The collapsible-section reveal (Source Control's stash section).
  *
  * Its contract is spread over three rules that only work together: the wrapper

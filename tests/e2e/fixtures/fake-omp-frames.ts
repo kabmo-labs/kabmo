@@ -257,7 +257,56 @@ export function createFrameWriters({ write }: FrameWriterDeps) {
     });
   }
 
-  return { streamAnswer, streamToolCall, streamWait, streamWaitLimit };
+  /**
+   * An `edit` call whose result carries a real patch, so the card draws the
+   * diff surface the timeline uses for a file change.
+   *
+   * The patch is omp's EXCERPT dialect (` 41|text`, `-43|text`, `+43|text`) —
+   * the shape `details.diff` actually holds — because that is what the card
+   * converts before handing the pair to the merge view. A spec that sent a
+   * hand-built unified diff would exercise a dialect omp never produces.
+   *
+   * Every row is a CHANGE, and that is not cosmetic: the card renders with
+   * `contentMode: 'diff'`, which collapses unchanged stretches into one marker.
+   * A patch of mostly context therefore collapses to a few rows and fits the
+   * card's 288px ceiling, so a spec built on one measures a range of ZERO and
+   * proves nothing about the scroller (measured: `scrollHeight - clientHeight`
+   * was 0 for an 80-row patch of context lines).
+   */
+  async function streamEditCall(pairs: number) {
+    const callId = `call-${crypto.randomUUID().slice(0, 8)}`;
+    const messageId = `msg-${crypto.randomUUID().slice(0, 8)}`;
+    const path = 'src/probe.ts';
+    const args = { path, old_string: 'const before = 1;', new_string: 'const after = 2;' };
+    const block = { type: 'toolCall', id: callId, name: 'edit', arguments: args, partialArgs: JSON.stringify(args), streamIndex: 0 };
+    const message = { ...assistantMessage('', 'toolUse', messageId), content: [block] };
+
+    write({ type: 'message_start', messageId, message });
+    write({ type: 'message_update', messageId, message, assistantMessageEvent: { type: 'toolcall_end', contentIndex: 0, toolCall: block, partial: message } });
+    write({ type: 'message_end', messageId, message });
+    write({ type: 'turn_end', message, toolResults: [] });
+
+    const rows: string[] = [];
+    for (let line = 1; line <= pairs; line += 1) {
+      rows.push(`-${line}|const before${line} = ${line};`);
+      rows.push(`+${line}|const after${line} = ${line};`);
+    }
+
+    write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'edit', args });
+    await sleep(20);
+    write({
+      type: 'tool_execution_end',
+      toolCallId: callId,
+      toolName: 'edit',
+      result: {
+        content: [{ type: 'text', text: `[${path}]\n1:const after1 = 1;` }],
+        details: { path, diff: rows.join('\n') },
+      },
+      isError: false,
+    });
+  }
+
+  return { streamAnswer, streamToolCall, streamWait, streamWaitLimit, streamEditCall };
 }
 
 export { sleep };
