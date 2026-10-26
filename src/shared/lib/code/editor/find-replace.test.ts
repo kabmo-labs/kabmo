@@ -22,7 +22,7 @@ import {
 import type { FindOptions } from '@/shared/lib/code/editor/find-scan';
 import { findMatches } from '@/shared/lib/code/editor/find-scan';
 
-const PLAIN: FindOptions = { matchCase: false, wholeWord: false, isRegex: false };
+const PLAIN: FindOptions = { matchCase: false, wholeWord: false, isRegex: false, inSelection: false };
 
 describe('replaceMatch', () => {
   test('literal replacement inserts the field verbatim, dollar signs included', () => {

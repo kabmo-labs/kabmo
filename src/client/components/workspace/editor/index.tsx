@@ -1,49 +1,32 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { TargetedKeyboardEvent } from 'preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { EditorTabs } from '@/client/components/workspace/editor/Tabs';
-import { EDITOR_KEY_BINDINGS, isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
+import { isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
 import { useEditorTheme } from '@/client/hooks/editor/theme';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
-import { resolveBinding } from '@/shared/lib/ui/key-binding';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
 import { EditorBody } from '@/client/components/workspace/editor/Body';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
-import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
+
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
-import { RENDERED_VIEWERS, viewerKindFor } from '@/shared/lib/fs/document-kind';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
-import { getSessionValue } from '@/shared/lib/workspace/session-state/store';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useEditorFind } from '@/client/hooks/editor/use-editor-find';
 import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
+import { useSearchRevealJump } from '@/client/hooks/editor/use-search-reveal-jump';
+import { useEditorTabState } from '@/client/hooks/editor/use-editor-tab-state';
 import { useEditorOutlineBridge } from '@/client/hooks/editor/use-editor-outline-bridge';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
-import type { OpenedFile } from '@/shared/types/fs';
-
-interface EditorProps {
-  className?: string;
-  openedFiles: OpenedFile[];
-  activeFileId: number | string | null;
-  onSelectFile: (id: number | string) => void;
-  onCloseFile: (id: number | string) => void;
-  /** Replace a diff tab with the plain editor tab for the same file. */
-  onConvertDiffToEditor: (id: number | string) => void;
-  refreshKey?: number;
-  onFileSaved?: () => void;
-  /**
-   * A `plugin:<id>` key while a plugin owns the column, or null.
-   *
-   * There is no tab for it: the plugin takes the WHOLE surface, so the host has
-   * no tab strip to draw and no file to show beside it. That is the difference
-   * between a `panel` and an editor tab — the column is a place a view can live,
-   * not a container the host fills with chrome.
-   */
-  activeEditorPanelKey?: string | null;
-}
+import { retainDirtyTabs } from '@/client/lib/editor-dirty-tabs';
+import { EditorDialogs } from '@/client/components/workspace/editor/Dialogs';
+import { useExternalChange } from '@/client/hooks/editor/use-external-change';
+import { EditorNotices } from '@/client/components/workspace/editor/Notices';
+import { useEditorPanelKeys } from '@/client/hooks/editor/use-editor-panel-keys';
+import { useCloseGuard } from '@/client/hooks/editor/use-close-guard';
+import type { EditorProps } from '@/client/components/workspace/editor/props';
 
 export function Editor({ 
   className = '', 
@@ -54,6 +37,13 @@ export function Editor({
   onConvertDiffToEditor,
   refreshKey = 0,
   onFileSaved,
+  onOpenPath,
+  onReopenClosed,
+  reopenableCount,
+  onCopyPath,
+  onRevealInFiles,
+  rootPath = null,
+  repoPath = null,
   activeEditorPanelKey = null,
 }: EditorProps) {
   const activeFile = openedFiles.find(f => f.id === activeFileId);
@@ -63,6 +53,10 @@ export function Editor({
   const [isMaximized, setIsMaximized] = useState(false);
   const [wordWrap, setWordWrap] = useSessionState<boolean>('editor.wordWrap', true);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // A counter, not a boolean: the dialog lives in the document (where the caret and
+  // the handle are), so a boolean would need a matching "closed" write from there.
+  const [goToLineRequest, setGoToLineRequest] = useState(0);
+  const [quickOpen, setQuickOpen] = useState(false);
   const { sessionId } = useSessionStateContext();
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
   const editorFontFamily = useEditorFontStack();
@@ -94,6 +88,47 @@ export function Editor({
   // view, and the resolver is cheap when no plugin contributed one.
   const pluginFileView = usePluginFileView({ path: activeFile?.path ?? '', content: editor.content, language: editor.language });
 
+  /**
+   * "This file changed on disk while you were editing it."
+   *
+   * Only a DIRTY buffer asks — a clean one has nothing to lose, and the read effect
+   * already re-reads on a refresh. `refreshKey` is the panel's own "something was
+   * written" counter, so an agent's tool call, a Files-panel delete and a manual
+   * Refresh all reach here without a poll.
+   */
+  const externalChange = useExternalChange({
+    path: activeFile && !activeFile.isDiff ? activeFile.path : null,
+    root: activeFile?.root,
+    repo: activeFile?.repo,
+    baseMtimeMs: editor.baseMtimeMs,
+    dirty: editor.isDirty,
+    revision: refreshKey,
+  });
+
+  /**
+   * Closing a tab, guarded when it holds edits that are not on disk.
+   *
+   * Built after the editor because the guard writes through `editor.saveNow` — a
+   * background tab is activated first, since `saveNow` writes the ACTIVE file.
+   */
+  /**
+   * "Keep mine" on the external-change strip: adopt the disk mtime as this buffer's
+   * base, so the next save is not refused over a change the user has now seen and
+   * accepted. Nothing is written — the buffer stays dirty and the autosave owns the write.
+   */
+  const keepMineAgainstDisk = () => {
+    const mtime = externalChange?.mtimeMs;
+    if (mtime != null) editor.adoptDiskMtime(mtime);
+  };
+
+  const closeGuard = useCloseGuard({
+    openedFiles,
+    activeFileId,
+    onSelectFile,
+    onCloseFile,
+    saveNow: editor.saveNow,
+  });
+
   const find = useEditorFind({
     text: editor.content,
     documentKey: `${activeFile?.id ?? ''}\u0000${editor.language}`,
@@ -104,34 +139,14 @@ export function Editor({
     toggleWordWrap: () => setWordWrap((previous) => !previous),
   });
 
-  // A search row's hand-off: the request names a line in THIS file, and the
-  // find bar is opened on the same query so every occurrence is highlighted and
-  // the caret lands on the hit. Served once the buffer is trustworthy — a file
-  // still loading, or one whose read failed, has no text to match against.
+  // A search row's hand-off: open the bar on the same query and land the caret on
+  // the hit. Owned by a hook because the "fire once per request" rule is subtle.
   const searchReveal = useSearchRevealTarget(
     activeFile?.path ?? null,
     editor.content,
     editor.loaded && !editor.loadError,
   );
-  // The resolved target is recomputed on every edit (the marks track the live
-  // buffer), but the JUMP must fire once per request: keying the effect on the
-  // target would drag the view back to the match after every keystroke.
-  const firedRequestRef = useRef<unknown>(null);
-  const revealMatchRef = useRef(find.revealMatch);
-  revealMatchRef.current = find.revealMatch;
-  useEffect(() => {
-    if (!searchReveal || firedRequestRef.current === searchReveal.request) return;
-    firedRequestRef.current = searchReveal.request;
-    revealMatchRef.current({
-      query: searchReveal.request.query,
-      options: searchReveal.request.options,
-      line: searchReveal.request.line,
-    });
-  }, [searchReveal]);
-  // The capture handler below is rebuilt on every render anyway (it reads the
-  // find state), so it is kept in a ref and the listener attached once.
-  const findRef = useRef(find);
-  findRef.current = find;
+  useSearchRevealJump({ searchReveal, revealMatch: find.revealMatch });
 
   /**
    * Publish what this editor is drawing (for the Files panel's outline), and
@@ -157,35 +172,22 @@ export function Editor({
 
   useEffect(() => {
     editor.retain(openedFiles.map(f => f.id));
+    // The dirty store follows the same lifecycle as the content cache: a tab that
+    // left the strip must not keep an entry a later tab could inherit.
+    retainDirtyTabs(openedFiles.map((file) => file.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openedFiles]);
 
-  useEffect(() => {
-    if (!previewReady) return;
-    const id = activeFile?.id;
-    if (!activeFile || id === undefined || id === null) return;
-    // Only a file with a RENDERED view has a default worth setting; a code file
-    // has no preview to open. The default is ON (the picture/grid/prose is what
-    // the user opened the file to read), which is why this seeds `true` — and
-    // only when nothing was stored, so a user who switched to source keeps it.
-    if (!RENDERED_VIEWERS[viewerKindFor(activeFile.name)] ) return;
-    const stored = getSessionValue<Record<string | number, boolean>>(sessionId, 'editor.previewMode');
-    if (stored && stored[id] !== undefined) return;
-    setPreviewMode(prev => (prev[id] === undefined ? { ...prev, [id]: true } : prev));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewReady, activeFile]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        editor.saveNow();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor.saveNow]);
+  // Publish which tabs hold unsaved edits (the strip's dot, the close guard, the
+  // unload prompt) and seed the default preview mode for a rendered file.
+  useEditorTabState({
+    openedFiles,
+    dirtyKeys: editor.dirtyKeys,
+    activeFile,
+    previewReady,
+    setPreviewMode,
+    sessionId,
+  });
 
   const togglePreview = () => {
     if (!activeFile) return;
@@ -199,11 +201,15 @@ export function Editor({
    */
   const runCommand = (command: EditorCommand) => {
     if (isFindBarCommand(command)) {
-      findRef.current.runCommand(command);
+      find.runCommand(command);
       return;
     }
     if (command === 'toggleWordWrap') {
       setWordWrap((previous) => !previous);
+      return;
+    }
+    if (command === 'goToLine') {
+      setGoToLineRequest((previous) => previous + 1);
       return;
     }
     // Everything else is the editor's, and it runs through the editor's own
@@ -211,49 +217,15 @@ export function Editor({
     surfaceRef.current?.runCommand(command);
   };
 
-  /**
-   * Editor shortcuts, on the CAPTURE phase of the panel.
-   *
-   * Capture is what makes them work while focus is inside the document: the
-   * contenteditable has CodeMirror's own handlers (the generated keymap, and
-   * `defaultKeymap` behind it) and would otherwise see these first. Only the
-   * commands the PANEL owns are consumed here — the editor's own keymap runs in
-   * the document, where it has the buffer and the caret in hand.
-   *
-   * The panel is the scope, not the window: another panel's text field keeps
-   * its own ⌘F, and the composer is untouched.
-   */
-  const handlePanelKeyDown = (event: TargetedKeyboardEvent<HTMLDivElement>) => {
-    const current = findRef.current;
-    if (event.key === 'Escape') {
-      if (paletteOpen) {
-        event.preventDefault();
-        event.stopPropagation();
-        setPaletteOpen(false);
-        return;
-      }
-      if (!current.open) return;
-      event.preventDefault();
-      event.stopPropagation();
-      current.close();
-      return;
-    }
-    // ⌘⇧P opens the palette — the one chord that is not an editor command.
-    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.code === 'KeyP') {
-      event.preventDefault();
-      event.stopPropagation();
-      setPaletteOpen(true);
-      return;
-    }
-    // While the bar is open, an unmodified key in one of ITS fields belongs to
-    // the field — but F3 and the ⌘-chords below still dispatch, so stepping to
-    // the next match from inside the find field works.
-    const command = resolveBinding(EDITOR_KEY_BINDINGS, event);
-    if (!command || !isFindBarCommand(command)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    runCommand(command);
-  };
+  const panelKeys = useEditorPanelKeys({
+    find,
+    paletteOpen,
+    setPaletteOpen,
+    runCommand,
+    saveNow: editor.saveNow,
+    openQuickOpen: () => setQuickOpen(true),
+    reopenClosed: onReopenClosed,
+  });
 
   // The column belongs to a plugin while the layout says so. There is no tab
   // strip in that mode: the plugin owns the whole surface, the way a right-panel
@@ -288,13 +260,25 @@ export function Editor({
     : `flex flex-col h-full bg-canvas ${className}`;
 
   return (
-    <div className={editorContainerClass} onKeyDownCapture={handlePanelKeyDown}>
+    <div className={editorContainerClass} onKeyDownCapture={panelKeys.onKeyDownCapture}>
       <EditorTabs
         openedFiles={openedFiles}
         activeFileId={activeFileId}
         onSelectFile={onSelectFile}
-        onCloseFile={onCloseFile}
+        onCloseFile={closeGuard.requestClose}
         missingIds={missingIds}
+        onCopyPath={onCopyPath}
+        onRevealInFiles={onRevealInFiles}
+        onReopenClosed={onReopenClosed}
+        reopenableCount={reopenableCount}
+      />
+
+      <EditorNotices
+        activeFile={activeFile}
+        externalChange={externalChange}
+        conflict={editor.conflict}
+        onReload={editor.resolveConflictByReload}
+        onKeepMine={keepMineAgainstDisk}
       />
 
       <EditorBody
@@ -313,6 +297,12 @@ export function Editor({
         setZoomLevel={setZoomLevel}
         paletteOpen={paletteOpen}
         setPaletteOpen={setPaletteOpen}
+        goToLineRequest={goToLineRequest}
+        quickOpen={quickOpen}
+        onCloseQuickOpen={() => setQuickOpen(false)}
+        onOpenPath={onOpenPath}
+        rootPath={rootPath}
+        repoPath={repoPath}
         runCommand={runCommand}
         editorFontFamily={editorFontFamily}
         editorTheme={editorTheme}
@@ -323,16 +313,13 @@ export function Editor({
         onFileSaved={onFileSaved}
       />
 
-      {/* Owned here, not by the pane: switching tabs must not close a question
-          the user has not answered. The modal names the file it will recreate. */}
-      {editor.saveMissingConfirm && activeFile && (
-        <SaveDeletedFileModal
-          fileName={activeFile.name}
-          filePath={activeFile.path}
-          onClose={editor.cancelSaveMissing}
-          onConfirm={editor.confirmSaveMissing}
-        />
-      )}
+      <EditorDialogs
+        closeGuard={closeGuard}
+        activeFile={activeFile}
+        saveMissingConfirm={editor.saveMissingConfirm}
+        onCancelSaveMissing={editor.cancelSaveMissing}
+        onConfirmSaveMissing={editor.confirmSaveMissing}
+      />
     </div>
   );
 }

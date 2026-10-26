@@ -22,6 +22,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { useSessionState } from '@/client/hooks/workspace/session-state';
+import { useFindHistory } from '@/client/hooks/editor/find-history';
+import { useSelectionRange } from '@/client/hooks/editor/find-selection-range';
 import {
   DEFAULT_FIND_OPTIONS,
   findMatches,
@@ -59,6 +61,10 @@ export function useEditorFind({
   // A blob written before an option existed carries only the keys it had, so
   // the read is merged over the defaults rather than trusted wholesale.
   const options = useMemo<FindOptions>(() => ({ ...DEFAULT_FIND_OPTIONS, ...storedOptions }), [storedOptions]);
+  // The range an "in selection" search is restricted to, captured when it is armed.
+  const selection = useSelectionRange();
+  // Recent queries, remembered when a search was actually USED — see `find-history.ts`.
+  const findHistory = useFindHistory();
   const [open, setOpen] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -76,7 +82,12 @@ export function useEditorFind({
   const openRef = useRef(false);
   openRef.current = open;
 
-  const result = useMemo(() => findMatches(text, query, options), [text, query, options]);
+  const result = useMemo(
+    // The range travels beside the options: the flag says WHETHER to restrict, the range
+    // says to what, and the two are captured at different moments.
+    () => findMatches(text, query, options, options.inSelection ? selection.range : null),
+    [text, query, options, selection.range],
+  );
 
   /**
    * Where the current match is resolved FROM: the caret/anchor a reseed uses.
@@ -166,6 +177,9 @@ export function useEditorFind({
   const toggleReplace = useCallback(() => setReplaceOpen((prev) => !prev), []);
 
   const close = useCallback(() => {
+    // A query that was actually searched is worth remembering; one typed and abandoned
+    // is not, which is why this is here rather than in `setQuery`.
+    findHistory.remember(query);
     setOpen(false);
     setReplaceOpen(false);
     // Focus returns to the match, which is where the user was looking.
@@ -190,10 +204,28 @@ export function useEditorFind({
 
   const toggleOption = useCallback(
     (key: keyof FindOptions) => {
-      setOptions({ ...options, [key]: !options[key] });
+      const next = { ...options, [key]: !options[key] };
+      if (key === 'inSelection' && !selection.arm(readSelection)) {
+        // Nothing selected: the toggle cannot mean anything, so it does not arm.
+        setOptions({ ...options, inSelection: false });
+        return;
+      }
+      if (key === 'inSelection' && !next.inSelection) selection.disarm();
+      setOptions(next);
       reseed(anchorRef.current);
     },
-    [options, setOptions, reseed],
+    [options, setOptions, reseed, readSelection, selection],
+  );
+
+  /** Re-run a query from the history, and remember it as the most recent again. */
+  const useHistoryEntry = useCallback(
+    (value: string) => {
+      setQueryState(value);
+      findHistory.remember(value);
+      reseed(anchorRef.current);
+      setResolveRequest((previous) => previous + 1);
+    },
+    [findHistory, reseed],
   );
 
   /**
@@ -300,6 +332,9 @@ export function useEditorFind({
     runCommand,
     revealMatch,
     toggleOption,
+    selectionRange: options.inSelection ? selection.range : null,
+    history: findHistory.entries,
+    useHistoryEntry,
     step,
     replaceCurrent,
     replaceAll,

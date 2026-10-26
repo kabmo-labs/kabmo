@@ -58,6 +58,14 @@ export interface FileWriteDeps {
   contentsRef: LiveRef<Record<string, string>>;
   /** The live line endings, so the write restores the file's own style. */
   lineEndingsRef: LiveRef<Record<string, LineEnding>>;
+  /**
+   * The mtime each buffer was READ at — the save path's conflict base.
+   *
+   * Read at FIRE time like every other mirror here: a debounced write captured an
+   * older render, and a base that moved since would refuse a write the user had
+   * already seen succeed elsewhere.
+   */
+  mtimesRef: LiveRef<Record<string, number | null>>;
   /** Owned by the caller: the read effect consults it to yield to a queued write. */
   pendingRef: LiveRef<PendingWrite | null>;
   /** Flush a pending debounced write on unmount so closing cannot drop an edit. */
@@ -74,6 +82,13 @@ export interface FileWriteDeps {
    * intact and one Save fixes it.
    */
   onNeedsPermission: () => void;
+  /**
+   * The disk copy moved since this buffer was read, so the write was refused.
+   *
+   * Reported apart from a failure because it is not one: the buffer is intact and
+   * the user has a real choice (reload the disk copy, or write over it).
+   */
+  onConflict: (fileKey: string, diskMtimeMs: number | null) => void;
 }
 
 export interface FileWrites {
@@ -99,12 +114,14 @@ export function useFileWrites({
   missing,
   contentsRef,
   lineEndingsRef,
+  mtimesRef,
   pendingRef,
   flushOnUnmount,
   onSaveStart,
   onSaved,
   onSaveFailed,
   onNeedsPermission,
+  onConflict,
 }: FileWriteDeps): FileWrites {
   const [saveMissingConfirm, setSaveMissingConfirm] = useState(false);
 
@@ -134,14 +151,22 @@ export function useFileWrites({
       // `interactive` travels with the write because a handle-backed file needs
       // a USER GESTURE to grant write access: the explicit Save has one, the
       // autosave does not, and asking from a timer is refused by the browser.
+      //
+      // `baseMtimeMs` is the mtime the buffer was read at, so the server can refuse
+      // a write that would clobber another writer. `allowMissing` deliberately
+      // passes NO base: the file was deleted, so there is nothing to conflict with
+      // and recreating it is the decision the user just made.
+      const baseMtimeMs = options.allowMissing ? null : mtimesRef.current[fileKey] ?? null;
       const outcome = await saveEditorFile(file, text, lineEndingsRef.current[fileKey] ?? 'lf', {
         interactive: options.interactive === true,
+        baseMtimeMs,
       });
-      if (outcome === 'written') onSaved(fileKey, text);
-      else if (outcome === 'needs-permission') onNeedsPermission();
+      if (outcome.status === 'written') onSaved(fileKey, text);
+      else if (outcome.status === 'needs-permission') onNeedsPermission();
+      else if (outcome.status === 'conflict') onConflict(fileKey, outcome.diskMtimeMs);
       else onSaveFailed();
     },
-    [lineEndingsRef, onNeedsPermission, onSaveFailed, onSaveStart, onSaved],
+    [lineEndingsRef, mtimesRef, onConflict, onNeedsPermission, onSaveFailed, onSaveStart, onSaved],
   );
 
   const persistRef = useRef(persist);

@@ -1,5 +1,6 @@
 import type { RefObject } from 'preact';
 import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
+import { ConflictStrip } from '@/client/components/workspace/editor/ConflictStrip';
 import { EditorToolbar } from '@/client/components/workspace/editor/Toolbar';
 import { FileDocument } from '@/client/components/workspace/editor/FileDocument';
 import { PluginFileViewBody, type ResolvedPluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
@@ -32,6 +33,14 @@ interface FilePaneProps {
   setZoomLevel: (update: (current: number) => number) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
+  /** Bumped when the user asks for "go to line"; this pane owns the dialog. */
+  goToLineRequest: number;
+  /** The file picker is open. */
+  quickOpen: boolean;
+  onCloseQuickOpen: () => void;
+  onOpenPath?: (path: string) => void;
+  rootPath?: string | null;
+  repoPath?: string | null;
   runCommand: (command: EditorCommand) => void;
   editorFontFamily: string;
   editorTheme: EditorThemeState;
@@ -73,6 +82,12 @@ export function FilePane({
   setZoomLevel,
   paletteOpen,
   setPaletteOpen,
+  goToLineRequest,
+  quickOpen,
+  onCloseQuickOpen,
+  onOpenPath,
+  rootPath = null,
+  repoPath = null,
   runCommand,
   editorFontFamily,
   editorTheme,
@@ -109,6 +124,10 @@ export function FilePane({
         onZoomOut={() => setZoomLevel((z) => Math.max(EDITOR_MIN_FONT_SIZE, z - 1))}
         onCopy={editor.copy}
         onDownload={editor.download}
+        onRevert={editor.revertToDisk}
+        // Only a buffer with edits has anything to throw away; a clean one would
+        // re-read the same bytes and blank the screen for a moment.
+        canRevert={editor.isDirty && !editor.loadError && !editor.unsupported}
         onToggleMaximize={() => setIsMaximized(!isMaximized)}
       />
 
@@ -125,6 +144,19 @@ export function FilePane({
             </div>
           </div>
         </div>
+      )}
+
+      {/* A save refused because the disk copy moved. Not a failure: the buffer is
+          intact, and the two answers are the only ones that exist. Above the
+          document rather than in a modal, because the user has to see what they
+          are choosing between. */}
+      {editor.conflict && (
+        <ConflictStrip
+          diskMtimeMs={editor.conflict.diskMtimeMs}
+          fileName={activeFile.name}
+          onReload={editor.resolveConflictByReload}
+          onKeepMine={editor.resolveConflictByKeepingMine}
+        />
       )}
 
       {/* A launched file's handle dies with the page, so after a reload the tab
@@ -210,9 +242,16 @@ export function FilePane({
           surfaceRef={surfaceRef}
           paletteOpen={paletteOpen}
           onClosePalette={() => setPaletteOpen(false)}
+          goToLineRequest={goToLineRequest}
+          quickOpen={quickOpen}
+          onCloseQuickOpen={onCloseQuickOpen}
+          onOpenPath={onOpenPath}
+          rootPath={rootPath}
+          repoPath={repoPath}
           onRunCommand={runCommand}
           wordWrap={wordWrap}
           zoomLevel={zoomLevel}
+          setZoomLevel={setZoomLevel}
           editorFontFamily={editorFontFamily}
           editorTheme={editorTheme}
           isPreview={isPreview}

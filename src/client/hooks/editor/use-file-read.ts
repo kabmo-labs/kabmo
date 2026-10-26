@@ -70,8 +70,14 @@ export interface UseFileReadOptions {
   baselinesRef: LiveRef<Record<string, string>>;
   /** The queued write, which owns the key if it is still pending. */
   pendingRef: LiveRef<PendingWrite | null>;
-  /** Store bytes (and the line ending they arrived with) for a key. */
-  remember: (fileKey: string, text: string) => void;
+  /**
+   * Store bytes, the line ending they arrived with, and the mtime they were read
+   * at.
+   *
+   * The mtime is the save path's conflict base: a write whose base no longer
+   * matches the disk is refused rather than clobbering another writer's change.
+   */
+  remember: (fileKey: string, text: string, mtimeMs: number | null) => void;
 }
 
 export interface FileReadState {
@@ -121,7 +127,9 @@ export function useFileRead({
     }
 
     if (target.content !== undefined) {
-      remember(fileKey, target.content);
+      // Inline content (an attachment chip) has no file behind it, so there is no
+      // mtime to check a later write against.
+      remember(fileKey, target.content, null);
       setLoadError(null);
       setUnsupported(null);
       return;
@@ -148,7 +156,7 @@ export function useFileRead({
     fetch(`/api/fs/read?${params.toString()}`)
       .then(async (res) => {
         const data = (await res.json().catch(() => null)) as
-          | { content?: unknown; error?: string; kind?: 'binary' | 'too-large' }
+          | { content?: unknown; error?: string; kind?: 'binary' | 'too-large'; mtimeMs?: unknown }
           | null;
         if (!res.ok || !data || typeof data.content !== 'string') {
           const error: FileReadError = new Error(data?.error || `HTTP ${res.status}`);
@@ -158,9 +166,9 @@ export function useFileRead({
           else if (res.status === 415) error.kind = 'binary';
           throw error;
         }
-        return data.content;
+        return { text: data.content, mtimeMs: typeof data.mtimeMs === 'number' ? data.mtimeMs : null };
       })
-      .then((text) => {
+      .then(({ text, mtimeMs }) => {
         if (cancelled) return;
         // These bytes were read before the response arrived, so anything typed
         // since is newer. Applying them would replace those keystrokes (and,
@@ -170,7 +178,7 @@ export function useFileRead({
         if (typed !== undefined && typed !== baselinesRef.current[fileKey]) return;
         const queued = pendingRef.current;
         if (queued && targetKey(queued.file) === fileKey) return;
-        remember(fileKey, text);
+        remember(fileKey, text, mtimeMs);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -178,7 +186,7 @@ export function useFileRead({
         if (!firstLoad) return;
         // An empty buffer, never a substitute: the next save would write the
         // substitute over the real file.
-        remember(fileKey, '');
+        remember(fileKey, '', null);
         const message = err instanceof Error ? err.message : 'Failed to read file';
         const kind = (err as FileReadError)?.kind;
         setUnsupported(kind ? message : null);

@@ -27,6 +27,14 @@ interface EditorBodyProps {
   setZoomLevel: (update: (current: number) => number) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
+  /** Bumped when the user asks for "go to line"; the document owns the dialog. */
+  goToLineRequest: number;
+  /** The file picker is open. */
+  quickOpen: boolean;
+  onCloseQuickOpen: () => void;
+  onOpenPath?: (path: string) => void;
+  rootPath?: string | null;
+  repoPath?: string | null;
   runCommand: (command: EditorCommand) => void;
   editorFontFamily: string;
   editorTheme: EditorThemeState;
@@ -61,6 +69,12 @@ export function EditorBody({
   setZoomLevel,
   paletteOpen,
   setPaletteOpen,
+  goToLineRequest,
+  quickOpen,
+  onCloseQuickOpen,
+  onOpenPath,
+  rootPath = null,
+  repoPath = null,
   runCommand,
   editorFontFamily,
   editorTheme,
@@ -113,6 +127,12 @@ export function EditorBody({
       setZoomLevel={setZoomLevel}
       paletteOpen={paletteOpen}
       setPaletteOpen={setPaletteOpen}
+      goToLineRequest={goToLineRequest}
+      quickOpen={quickOpen}
+      onCloseQuickOpen={onCloseQuickOpen}
+      onOpenPath={onOpenPath}
+      rootPath={rootPath}
+      repoPath={repoPath}
       runCommand={runCommand}
       editorFontFamily={editorFontFamily}
       editorTheme={editorTheme}

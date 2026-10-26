@@ -164,4 +164,44 @@ test.describe('editor commands', () => {
 
     workspace.dispose();
   });
+
+  test('Enter indents a block, and a typed closer dedents', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-cmd-indent');
+    mkdirSync(join(workspace.path, 'src'), { recursive: true });
+    // TypeScript has a stream mode that answers Enter, so the DEDENT is the half
+    // only `indentOnInput` can produce.
+    writeFileSync(join(workspace.path, 'src', 'a.ts'), 'if (x) {\n}\n');
+    // YAML has NO mode that answers indentation — the surface's own table does,
+    // and this is the case that was broken before it existed.
+    writeFileSync(join(workspace.path, 'src', 'b.yaml'), 'key:\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const panel = editorPanel(page);
+    await openFromTree(page, 'a.ts');
+    const content = panel.locator('.cm-content');
+    await expect(content).toContainText('if (x) {', { timeout: 15_000 });
+
+    // Put the caret after the `{` on line 1 and press Enter.
+    await content.click();
+    await page.keyboard.press('ControlOrMeta+Home');
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => lines(page)).toEqual(['if (x) {', '  ', '}']);
+
+    // Type a closer on the indented line: it must dedent to the block's own column.
+    await page.keyboard.type('}');
+    await expect.poll(() => lines(page)).toEqual(['if (x) {', '}', '}']);
+
+    // YAML: a `key:` opens a block even though no stream mode can answer.
+    await openFromTree(page, 'b.yaml');
+    await expect(content).toContainText('key:', { timeout: 15_000 });
+    await content.click();
+    await page.keyboard.press('ControlOrMeta+Home');
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => lines(page)).toEqual(['key:', '  ']);
+
+    workspace.dispose();
+  });
 });

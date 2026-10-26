@@ -116,7 +116,7 @@ describe('highlightCode', () => {
 
 describe('find marks', () => {
   const code = 'const alpha = 1;\nconst beta = alpha + 2;\n';
-  const PLAIN = { matchCase: false, wholeWord: false, isRegex: false };
+  const PLAIN = { matchCase: false, wholeWord: false, isRegex: false, inSelection: false };
   /** The text of every mark, in order. A match spanning tokens is several
    *  fragments, so the assertion is on the fragments JOINED. */
   const marked = (html: string): string[] =>

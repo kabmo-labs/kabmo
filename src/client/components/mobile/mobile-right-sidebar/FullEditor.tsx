@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
@@ -10,7 +10,9 @@ import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDr
 import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
 import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
-import { useSearchRevealTarget } from '@/client/hooks/editor/use-search-reveal';
+import { useMobileEditorFind } from '@/client/hooks/editor/use-mobile-editor-find';
+import { FindWidget } from '@/client/components/workspace/editor/FindWidget';
+
 import { useEditorOutlineBridge } from '@/client/hooks/editor/use-editor-outline-bridge';
 import { MobileOutlineButton } from '@/client/components/mobile/mobile-right-sidebar/OutlineButton';
 import { useOutlineView } from '@/client/hooks/editor/use-outline-view';
@@ -22,21 +24,12 @@ import {
 } from '@/shared/lib/code/editor/typography';
 import { useEditorFontStack } from '@/client/hooks/editor/font';
 import { useEditorTheme } from '@/client/hooks/editor/theme';
+import { indentUnitFor, useEditorIndent } from '@/client/hooks/editor/indent-settings';
+import { useEditorTyping } from '@/client/hooks/editor/typing-settings';
 import { MOBILE_SCROLL_POSITIONS_KEY } from '@/shared/lib/workspace/scroll-positions';
 import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
 import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
-import type { MobileEditorFile } from '@/client/components/mobile/open-file-payload';
-
-interface MobileFullEditorProps {
-  file: MobileEditorFile;
-  onClose: () => void;
-  /** The file this editor names is gone from disk. */
-  missing?: boolean;
-  /** Fired after a debounced write lands, so the workspace panels can refresh. */
-  onFileSaved?: () => void;
-  /** The outcome of a file dropped on this editor, for the host's toast stack. */
-  onDropResult?: (result: { ok: boolean; message: string }) => void;
-}
+import type { MobileFullEditorProps } from '@/client/components/mobile/mobile-right-sidebar/editor-props';
 
 export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, onDropResult }: MobileFullEditorProps) {
   const viewerKind = viewerKindFor(file.path ?? file.name);
@@ -48,9 +41,12 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   // per-tab memory the desktop pane keeps.
   const [previewOverrides, setPreviewOverrides] = useState<Record<string, boolean>>({});
   const [fontSize, setFontSize] = useState(EDITOR_DEFAULT_FONT_SIZE);
+
   const [wordWrap, setWordWrap] = useState(true);
   const editorFontFamily = useEditorFontStack();
   const editorTheme = useEditorTheme();
+  const editorIndent = useEditorIndent();
+  const editorTyping = useEditorTyping();
 
   const isMd = viewerKind === 'markdown';
   // A byte viewer (image, PDF, DOCX, workbook) owns the whole surface and has
@@ -101,26 +97,18 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
     element: isMd && isPreview ? undefined : codeScroller,
   });
 
-  // A search row on the phone opens this full-screen editor, so the hand-off
-  // has to be served here too: the matched ranges are painted, and the caret is
-  // placed on the hit once the buffer is on screen.
-  const reveal = useSearchRevealTarget(
-    file.path ?? null,
-    editor.content,
-    editor.loaded && !editor.loadError,
-  );
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
-  const revealMarks = reveal && reveal.matches.length > 0 ? reveal.matches : undefined;
-  const currentMark = reveal?.currentIndex ?? -1;
-  const firedRef = useRef<unknown>(null);
-  useEffect(() => {
-    if (!reveal || firedRef.current === reveal.request) return;
-    firedRef.current = reveal.request;
-    const match = reveal.matches[reveal.currentIndex];
-    if (!match) return;
-    surfaceRef.current?.select(match.start, match.end, false);
-    surfaceRef.current?.revealOffset(match.start);
-  }, [reveal]);
+  // Find, and the search row's hand-off. Both are the desktop's own hooks: a second
+  // implementation would be a second answer to "which occurrences count", and the phone
+  // was the one surface with no way to search a file at all.
+  const { find, revealMarks, currentMark } = useMobileEditorFind({
+    path: file.path ?? null,
+    content: editor.content,
+    documentKey: `${fileKey}\u0000${editor.language}`,
+    ready: editor.loaded && !editor.loadError,
+    surfaceRef,
+    toggleWordWrap: () => setWordWrap((previous) => !previous),
+  });
 
   const content = editor.content;
   const lang = editor.language;
@@ -180,6 +168,8 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         onSave={editor.saveNow}
         onClose={onClose}
         onTogglePreview={togglePreview}
+        onToggleFind={() => (find.open ? find.close() : find.openFind())}
+        findOpen={find.open}
         onToggleWrap={() => setWordWrap(!wordWrap)}
         onZoomOut={() => setFontSize(prev => Math.max(EDITOR_MIN_FONT_SIZE, prev - 1))}
         onZoomIn={() => setFontSize(prev => Math.min(EDITOR_MAX_FONT_SIZE, prev + 1))}
@@ -199,6 +189,16 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
               The buffer is still here. Saving recreates the file — autosave is off until then.
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Find/replace, as a ROW under the header rather than a floating card: the
+          desktop bar is 330px wide, and on a 390px screen a floating card would cover
+          the very lines it is searching. `FindWidget` is absolutely positioned in its
+          own stylesheet, so it is wrapped in a `relative` box that owns its own row. */}
+      {find.open && !byteViewer && (
+        <div className="relative shrink-0 h-9 border-b border-ink/10 bg-paper">
+          <FindWidget find={find} />
         </div>
       )}
 
@@ -292,6 +292,8 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           className="flex-1 min-h-0 text-ink select-text"
           themeVars={editorTheme.vars}
           themes={editorTheme.themes}
+          indentUnitText={indentUnitFor(editorIndent)}
+          typing={editorTyping}
           padding={12}
           style={{
             fontFamily: editorFontFamily,

@@ -47,10 +47,20 @@ describe('buildPaletteEntries', () => {
   });
 
   test('a command the keymap does not bind is not listed', () => {
-    // `selectWord` has no binding by design; listing it would promise a chord.
+    // `escape` is dispatched by the panel's capture handler, never by a chord, so
+    // listing it would promise a shortcut nothing listens for.
     const commands = buildPaletteEntries(true).map((entry) => entry.command);
-    expect(commands).not.toContain('selectWord');
     expect(commands).not.toContain('escape');
+  });
+
+  test('every palette command has a binding — the reason `selectWord` is gone', () => {
+    // It was implemented and unreachable for two releases: no chord, and a test that
+    // asserted its absence from the palette. Deleting it is what made that state
+    // impossible to return to.
+    const commands = buildPaletteEntries(true).map((entry) => entry.command);
+    expect(commands).toContain('selectLine');
+    expect(commands).toContain('insertCursorAbove');
+    expect(commands).toContain('goToLine');
   });
 
   test('folding is listed, with the chord that actually fires', () => {

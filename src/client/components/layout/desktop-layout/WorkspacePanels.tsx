@@ -68,6 +68,11 @@ interface WorkspacePanelsProps {
   onConvertDiffToEditor: (id: number | string) => void;
   onOpenFile: (file: any) => void;
   onRefreshWorkspace: () => void;
+  /** The tab strip's menu: reopen a closed tab, copy a path, reveal a file. */
+  onReopenClosed?: () => boolean;
+  reopenableCount?: () => number;
+  onCopyPath?: (tab: import('@/shared/types/fs').OpenedFile) => void;
+  onRevealInFiles?: (tab: import('@/shared/types/fs').OpenedFile) => void;
   /** The outcome of a file dropped on the chat or the editor, for the toasts. */
   onDropResult?: (result: EditorDropResult) => void;
   onChangeRightPanel: (panel: string) => void;
@@ -99,6 +104,10 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
     onConvertDiffToEditor,
     onOpenFile,
     onRefreshWorkspace,
+    onReopenClosed,
+    reopenableCount,
+    onCopyPath,
+    onRevealInFiles,
     onDropResult,
     onChangeRightPanel,
     onToggleRightPanel,
@@ -248,6 +257,14 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
               onConvertDiffToEditor={onConvertDiffToEditor}
               refreshKey={refreshKey}
               onFileSaved={onRefreshWorkspace}
+              // Quick open answers workspace-relative paths, so it goes through the
+              // same opener every other surface uses — one id scheme per path.
+              onOpenPath={(path) => onOpenFile({ path, name: path.split('/').pop() ?? path })}
+              rootPath={activeProjectPath ?? null}
+              onReopenClosed={onReopenClosed}
+              reopenableCount={reopenableCount}
+              onCopyPath={onCopyPath}
+              onRevealInFiles={onRevealInFiles}
             />
             </PanelSuspense>
             </div>

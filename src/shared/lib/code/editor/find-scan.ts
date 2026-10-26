@@ -36,6 +36,15 @@ export interface FindOptions {
   matchCase: boolean;
   wholeWord: boolean;
   isRegex: boolean;
+  /**
+   * Restrict the scan to `[inSelection.start, inSelection.end)`.
+   *
+   * `false` (the default) scans the whole document. The RANGE is carried beside the
+   * flag rather than folded into it, because the widget has to show "in selection" as a
+   * toggle whose meaning depends on where the selection was when it was armed — and
+   * because a range that the user then moves must not silently change what is searched.
+   */
+  inSelection: boolean;
 }
 
 /** Half-open `[start, end)` offset range in the document. */
@@ -60,6 +69,7 @@ export const DEFAULT_FIND_OPTIONS: FindOptions = {
   matchCase: false,
   wholeWord: false,
   isRegex: false,
+  inSelection: false,
 };
 
 /**
@@ -130,7 +140,12 @@ function asText(source: string): Text {
  * `\s`, `\W`, `\D`, `\b`-free character classes or `[^`. Both return document
  * offsets, so the caller never learns which one ran.
  */
-export function findMatches(text: string, query: string, options: FindOptions): FindResult {
+export function findMatches(
+  text: string,
+  query: string,
+  options: FindOptions,
+  range?: { start: number; end: number } | null,
+): FindResult {
   if (!query) return { matches: [], truncated: false, invalid: false };
   const pattern = buildFindRegex(query, options);
   if (!pattern) return { matches: [], truncated: false, invalid: true };
@@ -145,9 +160,15 @@ export function findMatches(text: string, query: string, options: FindOptions): 
     return { matches: [], truncated: false, invalid: true };
   }
 
+  // The range is applied HERE rather than by slicing the text: the match offsets must
+  // stay document offsets, or every caller that selects or replaces by them (the bar,
+  // the marks, the write path) would be working in a coordinate system of their own.
+  const bounds = options.inSelection && range ? range : null;
+
   while (matches.length < MAX_FIND_MATCHES && !cursor.next().done) {
     const { from, to } = cursor.value;
     if (from === to) continue;
+    if (bounds && (from < bounds.start || to > bounds.end)) continue;
     matches.push({ start: from, end: to });
   }
 

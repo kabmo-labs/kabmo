@@ -8,6 +8,7 @@ import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
+import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs/write-conflict';
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
 
@@ -101,9 +102,32 @@ export async function action({ request }: ActionFunctionArgs) {
       // CRLF and show up as a full-file diff. `eol` is the ending the client
       // read the file with; without it the payload is written untouched.
       const content = eol === 'crlf' || eol === 'lf' ? toDiskText(raw, eol) : raw;
+      // The buffer names the mtime it was read from. A file that moved since then
+      // is a CONFLICT, not a failure: the verdict carries the current value so the
+      // panel can offer Reload/Keep. A save with no base — a handle-backed file, an
+      // older client — writes unconditionally, which is the pre-existing contract.
+      const verdict = await checkWriteConflict(
+        fullPath,
+        parseBaseMtime(formData.get('baseMtime')),
+        async (target) => {
+          const stat = await Bun.file(target).stat().catch(() => null);
+          return stat && !stat.isDirectory() ? { mtimeMs: stat.mtimeMs } : null;
+        },
+      );
+      if (!verdict.write) {
+        return json(
+          {
+            error: 'This file changed on disk since it was opened.',
+            conflict: true,
+            mtimeMs: verdict.diskMtimeMs,
+          },
+          { status: 409 },
+        );
+      }
       await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
       await Bun.write(fullPath, content);
-      return json({ success: true });
+      const written = await Bun.file(fullPath).stat().catch(() => null);
+      return json({ success: true, mtimeMs: written ? stableMtime(written.mtimeMs) : null });
     } else if (actionType === 'create') {
       // The Files panel's "New file"/"New folder": an empty entry beside the
       // folder that was right-clicked. The NAME may carry segments

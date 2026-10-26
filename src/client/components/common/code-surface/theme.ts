@@ -195,5 +195,30 @@ export function surfaceTheme(): Extension {
     '.cm-content .shiki-tok': { color: 'var(--shiki-light)' },
     'html[data-theme-variant="dark"] & .cm-content .shiki-tok': { color: 'var(--shiki-dark)' },
     '.cm-placeholder': { color: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 35%, transparent)' },
+    // The active line. CM6's own colours are hardcoded hex, so they are restated
+    // from the palette — the same trap `matchingBracket` documents.
+    '.cm-activeLine': {
+      backgroundColor: 'var(--editor-active-line, color-mix(in srgb, var(--theme-ink) 4%, transparent))',
+    },
+    '.cm-activeLineGutter': {
+      backgroundColor: 'var(--editor-active-line, color-mix(in srgb, var(--theme-ink) 4%, transparent))',
+      color: 'var(--editor-fg, var(--theme-ink))',
+    },
+    // An indent guide: one rule per nesting level, at the level's column. It must be
+    // VISUALLY distinct from the bracket pair guide (which sits under the opening
+    // brace), so this is a dim border at the column boundary rather than a band.
+    '.cm-indent-guide': {
+      backgroundImage:
+        'linear-gradient(to right, var(--editor-indent-guide, color-mix(in srgb, var(--theme-ink) 12%, transparent)) 0 1px, transparent 1px)',
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '1px 100%',
+      backgroundPosition: 'calc(var(--indent-guide-col, 2ch) - 1px) 0',
+    },
+    // Other occurrences of the selection. Deliberately SUBTLER than a find match:
+    // this is a hint about the word under the caret, and on a common identifier it
+    // paints a lot of the viewport.
+    '.cm-selectionMatch': {
+      backgroundColor: 'var(--editor-selection-match, color-mix(in srgb, var(--theme-info) 14%, transparent))',
+    },
   });
 }

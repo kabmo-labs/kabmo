@@ -135,7 +135,7 @@ describe('useEditorFind revealMatch', () => {
   test('aims the caret at the first match on the given line and focuses it', async () => {
     // `alpha beta alpha` — line 1 holds the first match; the request names it.
     await harness.act(async () => {
-      harness.find?.revealMatch({ query: 'beta', options: { matchCase: false, wholeWord: false, isRegex: false }, line: 1 });
+      harness.find?.revealMatch({ query: 'beta', options: { matchCase: false, wholeWord: false, isRegex: false, inSelection: false }, line: 1 });
     });
 
     expect(harness.find?.query).toBe('beta');
@@ -148,7 +148,7 @@ describe('useEditorFind revealMatch', () => {
 
   test('does not open the bar — the jump must not cover the line it shows', async () => {
     await harness.act(async () => {
-      harness.find?.revealMatch({ query: 'alpha', options: { matchCase: false, wholeWord: false, isRegex: false }, line: 1 });
+      harness.find?.revealMatch({ query: 'alpha', options: { matchCase: false, wholeWord: false, isRegex: false, inSelection: false }, line: 1 });
     });
 
     expect(harness.find?.open).toBe(false);

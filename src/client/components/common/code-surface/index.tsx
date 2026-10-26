@@ -36,57 +36,16 @@ import { EditorView } from '@codemirror/view';
 
 import { createDocumentCache, type DocumentCache } from '@/client/components/common/code-surface/documents';
 import type { ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
+import type { CodeSurfaceProps } from '@/client/components/common/code-surface/props';
+import { DEFAULT_EDITOR_TYPING } from '@/client/components/common/code-surface/typing';
 import { SHIKI_THEMES } from '@/shared/lib/code/shiki-themes';
 import { createSurfaceHandle, type CodeSurfaceHandle } from '@/client/components/common/code-surface/handle';
 import { setFindMarks, type MarkRange } from '@/client/components/common/code-surface/marks';
 import { syncExternal } from '@/client/components/common/code-surface/sync';
 import { loadStreamMode, readyStreamMode } from '@/client/components/common/code-surface/stream-language';
-import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 
 export type { CodeSurfaceHandle } from '@/client/components/common/code-surface/handle';
-
-export interface CodeSurfaceProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  /** Shiki language id, already resolved from the file name. */
-  language: string;
-  wordWrap: boolean;
-  /** Which cached `EditorState` this document owns — a tab switch applies another. */
-  documentKey: string;
-  /** Find matches (document offsets) to paint; the current one is marked. */
-  marks?: readonly MarkRange[];
-  currentMark?: number;
-  /** Commands the editor does not own (find bar chords, word wrap, save). */
-  onCommand?: (command: EditorCommand) => void;
-  /** A viewer: both `readOnly` and `editable(false)`, so nothing can write. */
-  readOnly?: boolean;
-  /**
-   * The editor THEME, as CSS custom properties (`editorThemeVars`).
-   *
-   * Written on the host element, so the chrome repaints through CSS and a theme
-   * switch costs one attribute write. Empty/absent means `auto`: every
-   * declaration in `theme.ts` falls back to the app palette.
-   */
-  themeVars?: Record<string, string>;
-  /** The two Shiki theme names to tokenize with (the same theme twice when the
-   *  editor theme is explicit). Defaults to the app's dual pair. */
-  themes?: ShikiThemeNames;
-  /** Font family / size / line height (the zoom control and the font setting). */
-  style?: CSSProperties;
-  /** Padding around the document, in px. */
-  padding?: number;
-  /** `data-testid` for the scroller, so the e2e layer can address it. */
-  scrollTestId?: string;
-  /**
-   * The element that actually scrolls, reported on mount and cleared on unmount.
-   *
-   * It exists only once the view does, and it is CodeMirror's (`view.scrollDOM`)
-   * — a caller that needs to remember the reader's position (`useScrollRestore`)
-   * cannot reach it through a `ref`, so the surface hands it over.
-   */
-  onScroller?: (element: HTMLElement | null) => void;
-  className?: string;
-}
+export type { CodeSurfaceProps } from '@/client/components/common/code-surface/props';
 
 export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(function CodeSurface(
   {
@@ -101,8 +60,11 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     readOnly = false,
     themeVars,
     themes,
+    indentUnitText = '  ',
+    typing = DEFAULT_EDITOR_TYPING,
     style,
     padding = 16,
+    onCaret,
     scrollTestId,
     onScroller,
     className,
@@ -146,6 +108,8 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
   onCommandRef.current = onCommand;
   const onScrollerRef = useRef(onScroller);
   onScrollerRef.current = onScroller;
+  const onCaretRef = useRef(onCaret);
+  onCaretRef.current = onCaret;
   /** The marks as of the last render, for the re-apply a document switch owes. */
   const marksRef = useRef<readonly MarkRange[]>(marks ?? []);
   const currentMarkRef = useRef(currentMark ?? -1);
@@ -155,6 +119,11 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
   const activeThemes = themes ?? SHIKI_THEMES;
   const themesRef = useRef<ShikiThemeNames>(activeThemes);
   themesRef.current = activeThemes;
+  /** The indentation unit, mirrored for the cache's first build. */
+  const indentRef = useRef(indentUnitText);
+  indentRef.current = indentUnitText;
+  const typingRef = useRef(typing);
+  typingRef.current = typing;
 
   // One cache for the component's life: it owns the per-document states.
   const cacheRef = useRef<DocumentCache | null>(null);
@@ -163,6 +132,8 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
       wordWrap,
       readOnly,
       themes: themesRef.current,
+      indentUnitText: indentRef.current,
+      typing: typingRef.current,
       onDocChange: (next) => {
         // Recorded BEFORE the writing guard: this is what the document holds,
         // whether or not the change came from the user.
@@ -175,6 +146,7 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
         if (key) cacheRef.current?.remember(key, state);
       },
       onCommand: (command) => onCommandRef.current?.(command),
+      onCaret: (position) => onCaretRef.current?.(position),
     });
   }
 
@@ -194,6 +166,14 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     lastValueRef.current = value;
     if (scrollTestId) view.scrollDOM.dataset.testid = scrollTestId;
     onScrollerRef.current?.(view.scrollDOM);
+    // The caret is reported by the UPDATE listener, which only fires when something
+    // moves — so a freshly mounted document would report nothing and a status readout
+    // would print its empty state over a file that has a caret. Seeded here, once.
+    const start = view.state.doc.lineAt(view.state.selection.main.head);
+    onCaretRef.current?.({
+      line: start.number,
+      column: view.state.selection.main.head - start.from + 1,
+    });
 
     return () => {
       onScrollerRef.current?.(null);
@@ -220,6 +200,14 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     // was off comes back unwrapped and a theme chosen since comes back stale.
     view.dispatch({ effects: cache.currentEffects(documentKey) });
     syncExternal(view, value, writingRef, lastValueRef);
+    // The other document's caret, not the one this view was showing: a status
+    // readout that kept the previous tab's line number would be describing a file
+    // that is no longer on screen.
+    const restored = view.state.doc.lineAt(view.state.selection.main.head);
+    onCaretRef.current?.({
+      line: restored.number,
+      column: view.state.selection.main.head - restored.from + 1,
+    });
     // The marks belonged to the previous document's offsets, and the field lives
     // in that state. A fresh state starts empty, so this re-applies whatever the
     // new document's owner asked for rather than leaving a stale set behind.
@@ -246,9 +234,12 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     const view = viewRef.current;
     const cache = cacheRef.current;
     if (!view || !cache) return;
-    const effects = cache.optionsEffects({ wordWrap, readOnly, themes: activeThemes }, docKeyRef.current);
+    const effects = cache.optionsEffects(
+      { wordWrap, readOnly, themes: activeThemes, indentUnitText, typing },
+      docKeyRef.current,
+    );
     if (effects.length > 0) view.dispatch({ effects });
-  }, [wordWrap, readOnly, activeThemes.light, activeThemes.dark]);
+  }, [wordWrap, readOnly, activeThemes.light, activeThemes.dark, indentUnitText, typing]);
 
   /**
    * The stream language: fetched for this document's language, installed when it

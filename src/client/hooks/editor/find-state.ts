@@ -61,7 +61,20 @@ export interface EditorFindState {
    * lines it is showing.
    */
   revealMatch: (request: { query: string; options: FindOptions; line: number }) => void;
+  /**
+   * Flip one option.
+   *
+   * `inSelection` is armed from the CURRENT selection at the moment it is switched on,
+   * and the range is remembered: a range that the user then moves must not silently
+   * change what is being searched.
+   */
   toggleOption: (key: keyof FindOptions) => void;
+  /** The range an "in selection" search is restricted to, or null when it is off. */
+  selectionRange: { start: number; end: number } | null;
+  /** The last `FIND_HISTORY_LIMIT` queries, newest first. */
+  history: readonly string[];
+  /** Re-run a query from the history and step to its first match. */
+  useHistoryEntry: (query: string) => void;
   step: (direction: 1 | -1) => void;
   replaceCurrent: () => void;
   replaceAll: () => void;

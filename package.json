@@ -61,6 +61,7 @@
     "publish:plugins": "bash .github/scripts/publish-plugin-packages.sh packages/kabmo-sdk packages/kabmo-ui"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.4",
     "@codemirror/commands": "6.11.1",
     "@codemirror/language": "6.13.1",
     "@codemirror/legacy-modes": "^6.5.5",

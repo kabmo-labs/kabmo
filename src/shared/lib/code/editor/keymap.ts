@@ -36,12 +36,16 @@ export type EditorCommand =
   | 'selectNextOccurrence'
   | 'selectAllOccurrences'
   | 'insertCursorBelow'
+  | 'insertCursorAbove'
   | 'moveLineUp'
   | 'moveLineDown'
   | 'copyLineUp'
   | 'copyLineDown'
   | 'deleteLine'
   | 'toggleComment'
+  | 'toggleBlockComment'
+  | 'joinLines'
+  | 'trimTrailingWhitespace'
   | 'insertLineBelow'
   | 'insertLineAbove'
   | 'indent'
@@ -60,8 +64,8 @@ export type EditorCommand =
   | 'selectToLineEnd'
   | 'selectToDocumentStart'
   | 'selectToDocumentEnd'
-  | 'selectWord'
   | 'selectLine'
+  | 'goToLine'
   | 'escape';
 
 /**
@@ -74,6 +78,9 @@ export type EditorCommand =
  */
 export const EDITOR_KEY_BINDINGS: readonly KeyBinding<EditorCommand>[] = [
   { command: 'find', label: 'Find', mac: { code: 'KeyF', meta: true }, other: { code: 'KeyF', ctrl: true } },
+  // ⌘G is the convention (VS Code, Sublime, JetBrains); the browser's own "find
+  // next" is not a thing a document editor should defer to.
+  { command: 'goToLine', label: 'Go to line', mac: { code: 'KeyG', meta: true }, other: { code: 'KeyG', ctrl: true } },
   { command: 'replace', label: 'Replace', mac: { code: 'KeyF', meta: true, alt: true }, other: { code: 'KeyH', ctrl: true } },
   { command: 'nextMatch', label: 'Next match', mac: { code: 'F3' }, other: { code: 'F3' } },
   { command: 'previousMatch', label: 'Previous match', mac: { code: 'F3', shift: true }, other: { code: 'F3', shift: true } },
@@ -85,8 +92,15 @@ export const EDITOR_KEY_BINDINGS: readonly KeyBinding<EditorCommand>[] = [
   { command: 'toggleWordWrap', label: 'Toggle word wrap', mac: { code: 'KeyZ', alt: true }, other: { code: 'KeyZ', alt: true } },
 
   { command: 'selectNextOccurrence', label: 'Add selection to next find match', mac: { code: 'KeyD', meta: true }, other: { code: 'KeyD', ctrl: true } },
+  // `⌘L` expands the selection by LINE, which is the one line-selection gesture a
+  // browser does not already own (⌘L is the address bar in a browser tab, but this
+  // panel is not one — and the chord is what every editor uses for it).
+  { command: 'selectLine', label: 'Select line', mac: { code: 'KeyL', meta: true }, other: { code: 'KeyL', ctrl: true } },
   { command: 'selectAllOccurrences', label: 'Select all occurrences of current selection', mac: { code: 'KeyL', meta: true, shift: true }, other: { code: 'KeyL', ctrl: true, shift: true } },
   { command: 'insertCursorBelow', label: 'Insert cursor below', mac: { code: 'KeyD', meta: true, shift: true }, other: { code: 'KeyD', ctrl: true, shift: true } },
+  // The pair, so the palette lists both or neither: `addCursorBelow` had a row and
+  // this one was reachable only through CM6's own `defaultKeymap`.
+  { command: 'insertCursorAbove', label: 'Insert cursor above', mac: { code: 'KeyD', meta: true, alt: true }, other: { code: 'KeyD', ctrl: true, alt: true } },
 
   { command: 'moveLineUp', label: 'Move line up', mac: { code: 'ArrowUp', alt: true }, other: { code: 'ArrowUp', alt: true } },
   { command: 'moveLineDown', label: 'Move line down', mac: { code: 'ArrowDown', alt: true }, other: { code: 'ArrowDown', alt: true } },
@@ -98,6 +112,12 @@ export const EDITOR_KEY_BINDINGS: readonly KeyBinding<EditorCommand>[] = [
   // `Slash` is a physical key: on a US layout that is `/`, elsewhere it is
   // wherever the user's own layout puts it.
   { command: 'toggleComment', label: 'Toggle line comment', mac: { code: 'Slash', meta: true }, other: { code: 'Slash', ctrl: true } },
+  // The BLOCK form, which is a different command and not a variant of the line one:
+  // a language whose only syntax is a line comment (Python, YAML, shell) has nothing
+  // for it to do, and CM6 answers `false` there — an inert chord, which is honest.
+  { command: 'toggleBlockComment', label: 'Toggle block comment', mac: { code: 'Slash', meta: true, shift: true }, other: { code: 'Slash', ctrl: true, shift: true } },
+  { command: 'joinLines', label: 'Join lines', mac: { code: 'KeyJ', meta: true, alt: true }, other: { code: 'KeyJ', ctrl: true, alt: true } },
+  { command: 'trimTrailingWhitespace', label: 'Trim trailing whitespace', mac: { code: 'KeyX', meta: true, alt: true }, other: { code: 'KeyX', ctrl: true, alt: true } },
 
   { command: 'insertLineBelow', label: 'Insert line below', mac: { code: 'Enter', meta: true }, other: { code: 'Enter', ctrl: true } },
   { command: 'insertLineAbove', label: 'Insert line above', mac: { code: 'Enter', meta: true, shift: true }, other: { code: 'Enter', ctrl: true, shift: true } },
@@ -137,6 +157,9 @@ export const EDITOR_KEY_BINDINGS: readonly KeyBinding<EditorCommand>[] = [
  */
 export const FIND_BAR_COMMANDS: readonly EditorCommand[] = [
   'find',
+  // The dialog lives in the panel, not the find bar, but it is dispatched the same
+  // way — one place a chord becomes an action.
+  'goToLine',
   'replace',
   'nextMatch',
   'previousMatch',

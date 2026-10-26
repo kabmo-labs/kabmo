@@ -22,6 +22,7 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { isMockMode } from '@/server/mock.server';
 import { getDefaultFsRoot, resolveRoot, resolveWithinRoot } from '@/server/lib/fs/root';
+import { stableMtime } from '@/server/lib/fs/write-conflict';
 
 export async function fileExists({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -48,6 +49,15 @@ export async function fileExists({ request }: LoaderFunctionArgs) {
   // about a folder only by accident. The question here is whether the FILE the
   // tab names is still there, so a folder standing in its place is a "no" —
   // the file was deleted and something else took its path.
+  //
+  // The mtime travels beside the answer because the editor's change detection asks
+  // this exact question — "does the file the buffer came from still look like the
+  // one it read?" — and a second route for one `stat` would be a second scope
+  // check to keep in step. `null` when there is no file to report on.
   const stat = await Bun.file(fullPath).stat().catch(() => null);
-  return json({ exists: stat !== null && !stat.isDirectory() });
+  const exists = stat !== null && !stat.isDirectory();
+  // Rounded to a whole millisecond: `node:fs` and `Bun.file()` disagree on the
+  // fractional part, and the editor compares this value against the one the read
+  // route reported. See `stableMtime`.
+  return json({ exists, mtimeMs: exists ? stableMtime(stat.mtimeMs) : null });
 }

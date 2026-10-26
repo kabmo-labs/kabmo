@@ -29,11 +29,17 @@ export interface PaletteEntry {
  */
 export const PALETTE_ORDER: readonly EditorCommand[] = [
   'find',
+  'goToLine',
   'replace',
   'selectNextOccurrence',
   'selectAllOccurrences',
   'insertCursorBelow',
+  'insertCursorAbove',
+  'selectLine',
   'toggleComment',
+  'toggleBlockComment',
+  'joinLines',
+  'trimTrailingWhitespace',
   'moveLineUp',
   'moveLineDown',
   'copyLineUp',

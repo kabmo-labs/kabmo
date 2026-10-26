@@ -49,6 +49,9 @@ let container: HTMLElement;
 /** The provider component, kept so a case can re-render with a different root. */
 let SessionStateProvider: ComponentType<{ sessionId: string; children: ComponentChildren }>;
 let handleOpenFile: ((file: OpenFileInput) => void) | null = null;
+let handleCloseFile: ((id: number | string) => void) | null = null;
+let handleReopenClosed: (() => boolean) | null = null;
+let reopenableCount: (() => number) | null = null;
 /** The mounted probe, so a re-render can hand it another root. */
 let Probe: ComponentType<{ rootPath: string | null }>;
 let openedFiles: OpenedFile[] = [];
@@ -85,6 +88,9 @@ async function mount(stored: Record<string, unknown> = {}, root: string | null =
   Probe = ({ rootPath }: { rootPath: string | null }) => {
     const tabs = useFileTabs(rootPath, SESSION);
     handleOpenFile = tabs.handleOpenFile;
+    handleCloseFile = tabs.handleCloseFile;
+    handleReopenClosed = tabs.handleReopenClosed;
+    reopenableCount = tabs.reopenableCount;
     openedFiles = tabs.openedFiles;
     activeFileId = tabs.activeFileId;
     return null;
@@ -109,6 +115,9 @@ afterAll(() => {
 
 beforeEach(() => {
   handleOpenFile = null;
+  handleCloseFile = null;
+  handleReopenClosed = null;
+  reopenableCount = null;
   openedFiles = [];
   activeFileId = null;
   globalThis.fetch = (async () => ({
@@ -218,5 +227,86 @@ describe('useFileTabs open resolution', () => {
 
     expect(openedFiles).toHaveLength(1);
     expect(activeFileId).toBe(fileTabId('src/a.ts'));
+  });
+});
+
+describe('useFileTabs reopen', () => {
+  test('a closed tab comes back whole, and activated', async () => {
+    await mount();
+    await act(async () => handleOpenFile?.(explorerPayload('src/a.ts')));
+    await settle();
+    expect(openedFiles).toHaveLength(1);
+
+    await act(async () => handleCloseFile?.('src/a.ts'));
+    await settle();
+    expect(openedFiles).toHaveLength(0);
+
+    let restored = false;
+    await act(async () => { restored = handleReopenClosed?.() ?? false; });
+    await settle();
+    // Whole, not re-derived: the same id the explorer gave it, so the tab strip and the
+    // scroll-position map still address it.
+    expect(restored).toBe(true);
+    expect(openedFiles.map((file) => file.id)).toEqual(['src/a.ts']);
+    expect(activeFileId).toBe('src/a.ts');
+  });
+
+  test('an empty stack answers false, so the chord can stay inert', async () => {
+    await mount();
+    let restored = true;
+    await act(async () => { restored = handleReopenClosed?.() ?? true; });
+    expect(restored).toBe(false);
+  });
+
+  test('the stack is last-in-first-out', async () => {
+    await mount();
+    await act(async () => handleOpenFile?.(explorerPayload('src/a.ts')));
+    await act(async () => handleOpenFile?.(explorerPayload('src/b.ts')));
+    await settle();
+    await act(async () => handleCloseFile?.('src/a.ts'));
+    await act(async () => handleCloseFile?.('src/b.ts'));
+    await settle();
+
+    await act(async () => { handleReopenClosed?.(); });
+    await settle();
+    expect(openedFiles.map((file) => file.id)).toEqual(['src/b.ts']);
+
+    await act(async () => { handleReopenClosed?.(); });
+    await settle();
+    expect(openedFiles.map((file) => file.id)).toEqual(['src/b.ts', 'src/a.ts']);
+  });
+
+  test('the count follows the stack, so the menu row appears and disappears with it', async () => {
+    await mount();
+    await act(async () => handleOpenFile?.(explorerPayload('src/a.ts')));
+    await settle();
+    expect(reopenableCount?.()).toBe(0);
+    await act(async () => handleCloseFile?.('src/a.ts'));
+    await settle();
+    expect(reopenableCount?.()).toBe(1);
+    await act(async () => { handleReopenClosed?.(); });
+    await settle();
+    expect(reopenableCount?.()).toBe(0);
+  });
+
+  test('a diff tab is restored as a DIFF — a path cannot derive that', async () => {
+    await mount();
+    // Opened through `handleOpenFile` with the shape only a diff has: a display name the
+    // file system does not have, plus `isDiff`. The reopen path must preserve it, because
+    // re-deriving a tab from its path would come back as a plain file tab.
+    await act(async () => handleOpenFile?.({
+      id: 'a.ts-diff',
+      name: 'a.ts (diff)',
+      path: 'a.ts',
+      root: ROOT,
+      repo: '.',
+      isDiff: true,
+    } as OpenFileInput));
+    await settle();
+    await act(async () => handleCloseFile?.('a.ts-diff'));
+    await settle();
+    await act(async () => { handleReopenClosed?.(); });
+    await settle();
+    expect(openedFiles[0]?.isDiff).toBe(true);
   });
 });

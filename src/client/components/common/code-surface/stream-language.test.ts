@@ -33,6 +33,8 @@ function cache() {
     wordWrap: false,
     readOnly: false,
     themes: SHIKI_THEMES,
+    indentUnitText: '  ',
+    typing: { autoCloseBrackets: false, autocomplete: false },
     onDocChange: () => {},
     onState: () => {},
   });

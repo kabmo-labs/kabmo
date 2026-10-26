@@ -6,6 +6,7 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { listDirectoryEntries } from '@/server/lib/fs/listing';
 import { errorResponse } from '@/server/lib/route-adapter';
+import { stableMtime } from '@/server/lib/fs/write-conflict';
 import { homedir } from 'os';
 import { dirname, isAbsolute, join, resolve } from 'path';
 import fs from 'fs';
@@ -278,7 +279,11 @@ export async function readFile({ request }: LoaderFunctionArgs) {
     }
 
     const content = await file.text();
-    return json({ content });
+    // The mtime travels with the bytes: the save path sends it back as
+    // `baseMtime`, and the server refuses a write whose base is no longer what is
+    // on disk. A buffer with no base (a handle-backed file, an older client) still
+    // writes unconditionally — see `save-file.ts`.
+    return json({ content, mtimeMs: stableMtime(stat.mtimeMs) });
   } catch (error) {
     return errorResponse(error);
   }

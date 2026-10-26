@@ -26,9 +26,11 @@
  */
 
 import { Compartment, EditorState, type Extension, type StateEffect } from '@codemirror/state';
+import { indentExtension } from '@/client/components/common/code-surface/extensions';
 
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { readOnlyExtension, surfaceExtensions, wrapExtension } from '@/client/components/common/code-surface/extensions';
+import { typingExtensions, type EditorTypingOptions } from '@/client/components/common/code-surface/typing';
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 
 /** States kept alive; past this the least recently used one is dropped. */
@@ -37,6 +39,22 @@ const MAX_CACHED = 12;
 export interface SurfaceOptions {
   wordWrap: boolean;
   readOnly: boolean;
+  /**
+   * One indentation level, as a whitespace string.
+   *
+   * Part of the live options rather than the document key: an indentation setting is
+   * one choice for every tab, so a new key per width would throw away every open
+   * tab's undo history when the user picked 4 spaces.
+   */
+  indentUnitText: string;
+  /**
+   * Auto-close brackets and the completer.
+   *
+   * Part of the live options, and it needs a RECONFIGURE rather than a value baked into
+   * the state: a setting changed while a tab is open must reach it, and a re-mount would
+   * drop the undo history.
+   */
+  typing: EditorTypingOptions;
   /**
    * The tokenizer's two theme names.
    *
@@ -55,6 +73,8 @@ export interface DocumentCacheDeps extends SurfaceOptions {
   onDocChange: (value: string) => void;
   /** Every state worth remembering (an edit or a selection move). */
   onState: (state: EditorState) => void;
+  /** The caret's line and column, for a status readout. */
+  onCaret?: (position: { line: number; column: number }) => void;
 }
 
 export interface DocumentCache {
@@ -102,9 +122,13 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
     wordWrap: deps.wordWrap,
     readOnly: deps.readOnly,
     themes: deps.themes,
+    indentUnitText: deps.indentUnitText,
+    typing: deps.typing,
   };
   const wordWrapCompartment = new Compartment();
   const readOnlyCompartment = new Compartment();
+  const indentCompartment = new Compartment();
+  const typingCompartment = new Compartment();
   const themeCompartment = new Compartment();
   /**
    * The stream language, when its module has loaded.
@@ -127,6 +151,14 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
    * nothing — 2.1 ms on a 20 000-line file, every switch.
    */
   const themesByKey = new Map<string, ShikiThemeNames>();
+  /**
+   * The indentation unit each cached state currently holds.
+   *
+   * Tracked for the same reason as `themesByKey`: `currentEffects` runs on every tab
+   * switch, and reconfiguring a compartment with the value it already has is work
+   * for nothing on a file with a large gutter.
+   */
+  const indentByKey = new Map<string, string>();
 
   const extensionsFor = (language: string): Extension[] =>
     surfaceExtensions({
@@ -135,9 +167,12 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       readOnlyCompartment,
       themeCompartment,
       languageCompartment,
+      indentCompartment,
+      typingCompartment,
       onCommand: deps.onCommand,
       onDocChange: deps.onDocChange,
       onState: deps.onState,
+      onCaret: deps.onCaret,
       ...options,
     });
 
@@ -166,6 +201,7 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       states.set(key, state);
       languages.set(key, language);
       themesByKey.set(key, options.themes);
+      indentByKey.set(key, options.indentUnitText);
       evict();
       return state;
     },
@@ -178,18 +214,35 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       states.delete(key);
       languages.delete(key);
       themesByKey.delete(key);
+      indentByKey.delete(key);
     },
 
     optionsEffects(next, key) {
       const wrapChanged = next.wordWrap !== options.wordWrap;
       const readOnlyChanged = next.readOnly !== options.readOnly;
+      const indentChanged = next.indentUnitText !== options.indentUnitText;
+      const typingChanged =
+        next.typing.autoCloseBrackets !== options.typing.autoCloseBrackets ||
+        next.typing.autocomplete !== options.typing.autocomplete;
       const themeChanged = next.themes.light !== options.themes.light || next.themes.dark !== options.themes.dark;
       options.wordWrap = next.wordWrap;
       options.readOnly = next.readOnly;
       options.themes = next.themes;
+      options.indentUnitText = next.indentUnitText;
+      options.typing = next.typing;
       const effects: StateEffect<unknown>[] = [];
       if (wrapChanged) effects.push(wordWrapCompartment.reconfigure(wrapExtension(options.wordWrap)));
       if (readOnlyChanged) effects.push(readOnlyCompartment.reconfigure(readOnlyExtension(options.readOnly)));
+      // The indent unit AND the tab size move together: a tab-indented setting is
+      // one column wide as a unit, and `getIndentUnit` reads `tabSize` to measure
+      // it — so a reconfigure of one without the other would measure a level wrong.
+      if (indentChanged) {
+        effects.push(indentCompartment.reconfigure(indentExtension(options.indentUnitText)));
+        if (key) indentByKey.set(key, options.indentUnitText);
+      }
+      // A BEHAVIOUR toggle reconfigures rather than re-mounts, so an open tab keeps its
+      // undo history when the user flips auto-close or the completer.
+      if (typingChanged) effects.push(typingCompartment.reconfigure(typingExtensions(options.typing)));
       // The plugin carries the language, so the tokenizer is rebuilt from THIS
       // document's grammar. Other cached states are handled by `currentEffects`
       // when they are applied, which is the moment they need it.
@@ -205,8 +258,15 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       const effects: StateEffect<unknown>[] = [
         wordWrapCompartment.reconfigure(wrapExtension(options.wordWrap)),
         readOnlyCompartment.reconfigure(readOnlyExtension(options.readOnly)),
+
       ];
       const language = key ? languages.get(key) : undefined;
+      // A cached state carries the unit it was CREATED with, so a tab opened before
+      // the setting changed would indent by the old width for its whole life.
+      if (key && indentByKey.get(key) !== options.indentUnitText) {
+        effects.push(indentCompartment.reconfigure(indentExtension(options.indentUnitText)));
+        indentByKey.set(key, options.indentUnitText);
+      }
       // Only when this state's tokenizer still holds another theme: a switch
       // back to a tab that already has it must not re-tokenize.
       if (key && language && !sameThemes(themesByKey.get(key), options.themes)) {

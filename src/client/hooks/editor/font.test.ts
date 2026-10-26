@@ -32,7 +32,6 @@ import {
   useEditorFontStack,
 } from '@/client/hooks/editor/font';
 import { copyImageToClipboard, downloadUrl, saveBlob } from '@/client/hooks/editor/file-actions';
-import { retainKeys, saveEditorFile } from '@/client/hooks/editor/save-file';
 import { EDITOR_DEFAULT_FONT_FAMILY, EDITOR_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 
@@ -250,95 +249,3 @@ describe('copyImageToClipboard', () => {
     await expect(copyImageToClipboard('/api/fs/raw?path=a.png')).rejects.toThrow('Image clipboard unavailable');
   });
 });
-
-// ── save-file.ts ────────────────────────────────────────────────────────────
-
-interface Write {
-  url: string;
-  method: string;
-  form: FormData;
-}
-
-/** Captures the write request and answers it with `answer`. */
-function stubWrite(answer: { ok: boolean; body?: unknown; throwOnJson?: boolean }): Write[] {
-  const writes: Write[] = [];
-  globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-    writes.push({ url: String(input), method: init?.method ?? 'GET', form: init?.body as FormData });
-    return {
-      ok: answer.ok,
-      json: async () => {
-        if (answer.throwOnJson) throw new Error('not json');
-        return answer.body ?? null;
-      },
-    };
-  }) as unknown as typeof fetch;
-  return writes;
-}
-
-describe('saveEditorFile', () => {
-  test('posts the buffer with the path and the ending as its own field', async () => {
-    const writes = stubWrite({ ok: true, body: { success: true } });
-    const ok = await saveEditorFile({ path: 'src/a.ts', root: '/repo' }, 'const a = 1;\n', 'lf');
-
-    expect(ok).toBe('written');
-    expect(writes.length).toBe(1);
-    expect(writes[0].url).toBe('/api/fs/action');
-    expect(writes[0].method).toBe('POST');
-    // A multipart body normalizes bare LF, so the ending cannot travel in it.
-    expect(writes[0].form.get('actionType')).toBe('save');
-    expect(writes[0].form.get('path')).toBe('src/a.ts');
-    expect(writes[0].form.get('content')).toBe('const a = 1;\n');
-    expect(writes[0].form.get('eol')).toBe('lf');
-    expect(writes[0].form.get('root')).toBe('/repo');
-  });
-
-  test('omits the root when the file has none and the repo when it is the cwd marker', async () => {
-    const writes = stubWrite({ ok: true, body: { success: true } });
-    await saveEditorFile({ path: 'a.ts', repo: '.' }, 'x', 'crlf');
-    expect(writes[0].form.get('root')).toBeNull();
-    expect(writes[0].form.get('repo')).toBeNull();
-  });
-
-  test('a named repo travels with the write', async () => {
-    const writes = stubWrite({ ok: true, body: { success: true } });
-    await saveEditorFile({ path: 'a.ts', repo: 'other' }, 'x', 'crlf');
-    expect(writes[0].form.get('repo')).toBe('other');
-  });
-
-  test('a file with no path is refused without touching the network', async () => {
-    const writes = stubWrite({ ok: true, body: { success: true } });
-    expect(await saveEditorFile({}, 'x', 'lf')).toBe('failed');
-    expect(writes).toEqual([]);
-  });
-
-  test('every refusal reports failed: non-2xx, an error body, a non-JSON body, a dropped connection', async () => {
-    stubWrite({ ok: false, body: { success: true } });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
-
-    stubWrite({ ok: true, body: { success: false } });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
-
-    stubWrite({ ok: true, body: null });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
-
-    stubWrite({ ok: true, throwOnJson: true });
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
-
-    globalThis.fetch = (async () => { throw new Error('offline'); }) as unknown as typeof fetch;
-    expect(await saveEditorFile({ path: 'a.ts' }, 'x', 'lf')).toBe('failed');
-  });
-});
-
-describe('retainKeys', () => {
-  test('keeps the same object when nothing was dropped, so children keep their identity', () => {
-    const record = { a: 1, b: 2 };
-    expect(retainKeys(record, new Set(['a', 'b']))).toBe(record);
-  });
-
-  test('drops the keys that left the tab set and keeps the rest', () => {
-    const record = { a: 1, b: 2, c: 3 };
-    expect(retainKeys(record, new Set(['a', 'c']))).toEqual({ a: 1, c: 3 });
-    expect(retainKeys(record, new Set())).toEqual({});
-  });
-});
-

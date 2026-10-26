@@ -233,4 +233,153 @@ test.describe('editor', () => {
 
     workspace.dispose();
   });
+
+  test('the status bar reports the caret, the indent and the ending', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-status-bar');
+    mkdirSync(join(workspace.path, 'src'), { recursive: true });
+    writeFileSync(join(workspace.path, 'src', 'a.ts'), 'const one = 1;\nconst two = 2;\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    const files = page.locator('[data-panel-id="right-panel"]');
+    const row = files.getByText('a.ts', { exact: true }).first();
+    const appeared = await row.waitFor({ state: 'visible', timeout: 5_000 }).then(() => true).catch(() => false);
+    if (!appeared) {
+      await files.getByText('src', { exact: true }).first().click();
+      await expect(row).toBeVisible({ timeout: 15_000 });
+    }
+    await row.click();
+
+    const bar = panel.locator('[data-editor-status-bar]');
+    await expect(bar).toBeVisible({ timeout: 15_000 });
+    // The three facts the strip exists for: where the caret is, how a level is
+    // indented, and how the file ends. A readout that printed none of them would
+    // still be "visible", so each is asserted by its own words.
+    await expect(bar).toContainText('Ln 1, Col 1');
+    await expect(bar).toContainText('Spaces: 2');
+    await expect(bar).toContainText('lf');
+    await expect(bar).toContainText('typescript');
+
+    // Moving the caret moves the readout — the surface reports it, the strip does
+    // not count lines itself.
+    await panel.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+Home');
+    await page.keyboard.press('ArrowDown');
+    await expect(bar).toContainText('Ln 2, Col 1');
+
+    workspace.dispose();
+  });
+
+  test('a tab with unsaved edits shows a dot instead of the close glyph', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-dirty-dot');
+    mkdirSync(join(workspace.path, 'src'), { recursive: true });
+    writeFileSync(join(workspace.path, 'src', 'a.ts'), 'const alpha = 1;\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    const files = page.locator('[data-panel-id="right-panel"]');
+    const row = files.getByText('a.ts', { exact: true }).first();
+    const appeared = await row.waitFor({ state: 'visible', timeout: 5_000 }).then(() => true).catch(() => false);
+    if (!appeared) {
+      await files.getByText('src', { exact: true }).first().click();
+      await expect(row).toBeVisible({ timeout: 15_000 });
+    }
+    await row.click();
+
+    await expect(panel.locator('.cm-content')).toContainText('const alpha', { timeout: 15_000 });
+    // Clean: no dot anywhere.
+    await expect(panel.locator('[data-tab-dirty]')).toHaveCount(0);
+
+    await panel.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.type('x');
+    // Dirty: the dot appears, and the tab's close control says so.
+    await expect(panel.locator('[data-tab-dirty]')).toHaveCount(1, { timeout: 10_000 });
+    await expect(panel.getByTitle(/unsaved changes/).first()).toBeVisible();
+
+    workspace.dispose();
+  });
+
+  test('the tab menu closes others and reopens the one it closed', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-tab-menu');
+    mkdirSync(join(workspace.path, 'src'), { recursive: true });
+    for (const name of ['a.ts', 'b.ts', 'c.ts']) {
+      writeFileSync(join(workspace.path, 'src', name), `// ${name}\n`);
+    }
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    const files = page.locator('[data-panel-id="right-panel"]');
+    if (!(await files.getByText('a.ts', { exact: true }).first().isVisible().catch(() => false))) {
+      await files.getByText('src', { exact: true }).first().click();
+      await expect(files.getByText('a.ts', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+    }
+    for (const name of ['a.ts', 'b.ts', 'c.ts']) {
+      await files.getByText(name, { exact: true }).first().click();
+      await expect(panel.locator('.cm-content')).toContainText(`// ${name}`, { timeout: 15_000 });
+    }
+
+    // Only the ACTIVE tab is guaranteed to be on the strip: at the panel's width the rest
+    // fold into "More open files", which is the observable used below rather than a row
+    // that may not be rendered.
+    const overflow = panel.getByRole('button', { name: 'More open files' });
+    await expect(overflow).toBeVisible({ timeout: 10_000 });
+
+    // Right-click the visible (active) tab.
+    await panel.getByTitle(/^src\/c\.ts$/).first().click({ button: 'right' });
+    const menu = page.getByRole('menu', { name: 'Tab actions' });
+    await expect(menu).toBeVisible({ timeout: 10_000 });
+
+    // `Close others` leaves exactly the tab it was opened on, so nothing is left to fold
+    // into the overflow menu.
+    await menu.getByRole('menuitem', { name: 'Close others' }).click();
+    await expect(overflow).toHaveCount(0, { timeout: 10_000 });
+    await expect(panel.getByTitle(/^src\/c\.ts$/).first()).toBeVisible();
+
+    // And `Reopen closed tab` brings one back — the whole reason the stack exists.
+    await panel.getByTitle(/^src\/c\.ts$/).first().click({ button: 'right' });
+    await page.getByRole('menu', { name: 'Tab actions' })
+      .getByRole('menuitem', { name: 'Reopen closed tab' })
+      .click();
+    await expect(overflow).toBeVisible({ timeout: 10_000 });
+
+    workspace.dispose();
+  });
+
+  test('the status bar switches the line ending the next save writes', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-eol-switch');
+    mkdirSync(join(workspace.path, 'src'), { recursive: true });
+    writeFileSync(join(workspace.path, 'src', 'a.ts'), 'const alpha = 1;\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    const files = page.locator('[data-panel-id="right-panel"]');
+    const row = files.getByText('a.ts', { exact: true }).first();
+    if (!(await row.isVisible().catch(() => false))) {
+      await files.getByText('src', { exact: true }).first().click();
+      await expect(row).toBeVisible({ timeout: 15_000 });
+    }
+    await row.click();
+    await expect(panel.locator('.cm-content')).toContainText('const alpha', { timeout: 15_000 });
+
+    const eolButton = panel.locator('[data-editor-status-bar]').getByRole('button', { name: /Line endings/ });
+    await expect(eolButton).toContainText('lf');
+
+    // Switch it, edit, save: the file on disk must now carry CRLF.
+    await eolButton.click();
+    await expect(eolButton).toContainText('crlf');
+    await panel.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.type('// end');
+    await page.keyboard.press('ControlOrMeta+s');
+    await expect
+      .poll(() => readFileSync(join(workspace.path, 'src', 'a.ts'), 'utf8'), { timeout: 15_000 })
+      .toContain('\r\n');
+
+    workspace.dispose();
+  });
 });

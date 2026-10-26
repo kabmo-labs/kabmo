@@ -30,6 +30,8 @@ function cache(overrides: Partial<Parameters<typeof createDocumentCache>[0]> = {
     wordWrap: false,
     readOnly: false,
     themes: SHIKI_THEMES,
+    indentUnitText: '  ',
+    typing: { autoCloseBrackets: false, autocomplete: false },
     onDocChange: () => {},
     onState: () => {},
     ...overrides,
@@ -104,9 +106,9 @@ describe('document cache', () => {
     const documents = cache({ wordWrap: true, readOnly: false });
     documents.stateFor('a', 'typescript', 'x');
 
-    expect(documents.optionsEffects({ wordWrap: true, readOnly: false, themes: SHIKI_THEMES })).toEqual([]);
-    expect(documents.optionsEffects({ wordWrap: false, readOnly: false, themes: SHIKI_THEMES })).toHaveLength(1);
-    expect(documents.optionsEffects({ wordWrap: false, readOnly: true, themes: SHIKI_THEMES })).toHaveLength(1);
+    expect(documents.optionsEffects({ wordWrap: true, readOnly: false, themes: SHIKI_THEMES, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } })).toEqual([]);
+    expect(documents.optionsEffects({ wordWrap: false, readOnly: false, themes: SHIKI_THEMES, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } })).toHaveLength(1);
+    expect(documents.optionsEffects({ wordWrap: false, readOnly: true, themes: SHIKI_THEMES, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } })).toHaveLength(1);
   });
 
   test('a new document is created read-only when that is the current setting', () => {

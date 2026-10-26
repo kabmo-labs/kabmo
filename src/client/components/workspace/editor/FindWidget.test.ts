@@ -33,12 +33,14 @@ const calls: string[] = [];
 
 /** A find state whose every action records itself, so a click is provable. */
 function findState(overrides: Partial<EditorFindState> = {}): EditorFindState {
-  return {
+  // `Object.assign` rather than a spread: a spread of `Partial<T>` widens every
+  // required property to `| undefined`, which the contract rightly refuses.
+  return Object.assign<EditorFindState, Partial<EditorFindState>>({
     open: true,
     replaceOpen: false,
     query: '',
     replacement: '',
-    options: { matchCase: false, wholeWord: false, isRegex: false },
+    options: { matchCase: false, wholeWord: false, isRegex: false, inSelection: false },
     matches: [],
     truncated: false,
     invalid: false,
@@ -56,8 +58,10 @@ function findState(overrides: Partial<EditorFindState> = {}): EditorFindState {
     step: (direction) => calls.push(`step:${direction}`),
     replaceCurrent: () => calls.push('replaceCurrent'),
     replaceAll: () => calls.push('replaceAll'),
-    ...overrides,
-  };
+    selectionRange: null,
+    history: [],
+    useHistoryEntry: (value: string) => calls.push(`useHistoryEntry:${value}`),
+  }, overrides);
 }
 
 async function mount(find: EditorFindState) {
@@ -178,7 +182,7 @@ describe('FindWidget', () => {
   });
 
   test('each toggle reports its own state and its own shortcut', async () => {
-    await mount(findState({ options: { matchCase: true, wholeWord: false, isRegex: true } }));
+    await mount(findState({ options: { matchCase: true, wholeWord: false, isRegex: true, inSelection: false } }));
 
     const matchCase = byLabelPrefix('Match case');
     const wholeWord = byLabelPrefix('Match whole word');

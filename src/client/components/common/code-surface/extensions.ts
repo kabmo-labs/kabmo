@@ -38,23 +38,40 @@ import {
   drawSelection,
   dropCursor,
   EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
   lineNumbers,
   rectangularSelection,
+  scrollPastEnd,
 } from '@codemirror/view';
+import { highlightSelectionMatches } from '@codemirror/search';
 import { history } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
 
 import { commentSyntaxFor } from '@/shared/lib/code/editor/comment-syntax';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { bracketGuide } from '@/client/components/common/code-surface/bracket-guide';
+import { indentDataExtension, indentExtensions } from '@/client/components/common/code-surface/indent';
+import { typingExtensions, type EditorTypingOptions } from '@/client/components/common/code-surface/typing';
 import { indentFoldService } from '@/client/components/common/code-surface/fold';
+import { indentGuides } from '@/client/components/common/code-surface/indent-guide';
 import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
 
-/** Indentation the surface inserts, in spaces. */
-const INDENT = '  ';
+/**
+ * The indentation facets, in one extension.
+ *
+ * `indentUnit` is what a LEVEL is; `EditorState.tabSize` is what a literal TAB
+ * character counts as. They travel together because a tab-indented setting makes
+ * them the same number (one tab per level), and a reconfigure of one without the
+ * other would measure a level wrong.
+ */
+export function indentExtension(indentUnitText: string): Extension {
+  return [indentUnit.of(indentUnitText), EditorState.tabSize.of(indentUnitText === '\t' ? 1 : indentUnitText.length)];
+}
 
 /** Wrap on: CM6 wraps the content box; the panel no longer measures anything. */
 export function wrapExtension(wordWrap: boolean): Extension {
@@ -98,16 +115,55 @@ export interface SurfaceExtensionsOptions {
    * not a re-mount.
    */
   languageCompartment: Compartment;
+  /**
+   * Compartment holding the indentation unit.
+   *
+   * A compartment rather than a value baked into the state, because the setting can
+   * change while a document is open and a re-mount would drop the undo history. The
+   * indent service reads it through `ctx.unit`, so one reconfigure moves every rule
+   * that emits an indent — including the tab-size the gutter measures with.
+   */
+  indentCompartment: Compartment;
+  /**
+   * Compartment holding auto-close and the completer.
+   *
+   * A compartment because both are BEHAVIOUR settings that can change while a document is
+   * open; a re-mount would drop the undo history for a preference.
+   */
+  typingCompartment: Compartment;
   wordWrap: boolean;
   readOnly: boolean;
   /** The two Shiki theme names this surface tokenizes with. */
   themes: ShikiThemeNames;
+  /**
+   * Auto-close brackets and the document-words completer.
+   *
+   * BEHAVIOUR, not view: both change what typing does, so both are settings and both
+   * arrive as a value rather than being always-on.
+   */
+  typing: EditorTypingOptions;
+  /**
+   * One indentation level, as a whitespace string — `indentUnit.of`'s own shape.
+   *
+   * `'  '` by default; `'    '` or `'\t'` from the setting. The surface no longer
+   * carries its own constant: a 4-space repository was being indented by 2.
+   */
+  indentUnitText: string;
   /** Panel-owned commands the editor delegates instead of running. */
   onCommand?: (command: EditorCommand) => void;
   /** Fired for every user edit, with the whole new document. */
   onDocChange: (value: string) => void;
   /** Fired on every state that must be remembered (an edit or a selection move). */
   onState: (state: EditorState) => void;
+  /**
+   * Fired with the caret's line and column whenever either moves.
+   *
+   * A separate channel from `onState` because the two have different lifetimes:
+   * `onState` feeds a per-document cache (and is dropped when the tab closes), while
+   * a status readout wants two numbers and nothing else — keeping the state there
+   * would pin a whole document snapshot in a component that prints its line number.
+   */
+  onCaret?: (position: { line: number; column: number }) => void;
 }
 
 /** Everything the editor needs, built once per document state. */
@@ -117,22 +173,44 @@ export function surfaceExtensions({
   readOnlyCompartment,
   themeCompartment,
   languageCompartment,
+  indentCompartment,
+  typingCompartment,
   wordWrap,
   readOnly,
   themes,
+  typing,
+  indentUnitText,
   onCommand,
   onDocChange,
   onState,
+  onCaret,
 }: SurfaceExtensionsOptions): Extension[] {
   return [
     lineNumbers(),
+    // The active line, so a long file says where the caret is without counting.
+    // Both halves: the line band and the gutter row, or the number and the row it
+    // belongs to disagree about which line is current.
+    highlightActiveLine(),
+    highlightActiveLineGutter(),
+    // Other occurrences of the selection. Capped by the package, and the band is
+    // subtler than the find mark's — this is a hint, not a result.
+    highlightSelectionMatches(),
+    // Room to scroll past the last line, so the end of a file can be centred
+    // instead of pinned to the bottom edge.
+    scrollPastEnd(),
+    // Control characters drawn as their glyph instead of nothing: a stray NUL or a
+    // zero-width space is invisible, which makes a corrupted file look fine.
+    highlightSpecialChars(),
+    // A rule at every nesting level, from indentation (there is no tree). Deliberately
+    // dimmer than `bracketGuide`, which draws ONE line between a brace and its pair.
+    indentGuides,
     history(),
     drawSelection(),
     dropCursor(),
     rectangularSelection(),
     crosshairCursor(),
     EditorState.allowMultipleSelections.of(true),
-    indentUnit.of(INDENT),
+    indentCompartment.of(indentExtension(indentUnitText)),
     // The stream language, when one has loaded. It goes BEFORE the manual
     // `languageData` table below because `languageDataAt` returns every
     // provider's answer in order and the commands take the FIRST — measured: a
@@ -150,6 +228,18 @@ export function surfaceExtensions({
     // `languageDataAt` looks the name up in each result, so returning the tokens
     // bare yields an empty list and the command silently does nothing.
     EditorState.languageData.of(() => [{ commentTokens: commentTokens(language) }]),
+    // Auto-indent, in two parts. `indentOnInput()` reaches the MODE's own
+    // `indentOnInput` regexp where one exists (27 of the 48 modes ship one), and
+    // the service answers for the 26 languages whose parser answers nothing —
+    // it returns `undefined` for the rest, which is what lets the mode win.
+    // The data entry is appended AFTER the manual table for the same
+    // first-answer-wins reason the mode sits before it: a language with a rule
+    // of its own must not be shadowed by a generic one.
+    ...indentExtensions(language),
+    indentDataExtension(language),
+    // Auto-close brackets and the completer. Empty when both settings are off, which is
+    // why this is a spread rather than a condition at the call site.
+    typingCompartment.of(typingExtensions(typing)),
     findMarksField,
     // Bracket matching, plus the vertical guide from the caret's brace to its
     // pair. With a stream language loaded the pairing is token-aware; without
@@ -191,9 +281,13 @@ export function surfaceExtensions({
       // caret specs), and nothing in the app reads them.
       if (update.docChanged || update.selectionSet) {
         const range = update.state.selection.main;
+        const line = update.state.doc.lineAt(range.from);
         const attrs = update.view.contentDOM.dataset;
         attrs.selection = `${range.from},${range.to}`;
-        attrs.line = String(update.state.doc.lineAt(range.from).number);
+        attrs.line = String(line.number);
+        // 1-based on both axes, and the column counts CHARACTERS — which is what an
+        // editor's `Col` shows and what the user's own selection arithmetic gives.
+        onCaret?.({ line: line.number, column: range.from - line.from + 1 });
       }
     }),
     surfaceKeymap(onCommand, readOnly),

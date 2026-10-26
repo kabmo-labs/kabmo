@@ -5,6 +5,7 @@ import { LeftColumn } from '@/client/components/layout/desktop-layout/LeftColumn
 import { SettingsModal } from '@/client/components/settings/LazyModal';
 import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { useFileTabs } from '@/client/hooks/workspace/file-tabs';
+import type { OpenedFile } from '@/shared/types/fs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
 import { WorkspacePanels } from '@/client/components/layout/desktop-layout/WorkspacePanels';
@@ -89,8 +90,22 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     setActiveFileId,
     handleOpenFile,
     handleCloseFile,
+    handleReopenClosed,
+    reopenableCount,
     convertDiffToEditor,
   } = useFileTabs(activeProjectPath, sessionId || '', handleOpenTab);
+
+  /**
+   * The tab menu's two scope-dependent actions.
+   *
+   * Copy Path needs the tab's own path (which may be a diff's), and Reveal needs the
+   * Files panel to expand to it — both live here because the strip has no workspace
+   * scope of its own.
+   */
+  const handleCopyTabPath = useCallback((tab: OpenedFile) => {
+    if (!tab.path) return;
+    void navigator.clipboard?.writeText(tab.path);
+  }, []);
 
   // Three ways the column has content: a file, a chosen takeover, and a
   // takeover that merely exists. Only the first two OPEN it — installing a
@@ -290,6 +305,9 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 onSetActiveFileId={setActiveFileId}
                 onCloseFile={handleCloseFile}
                 onConvertDiffToEditor={convertDiffToEditor}
+                onReopenClosed={handleReopenClosed}
+                reopenableCount={reopenableCount}
+                onCopyPath={handleCopyTabPath}
                 onOpenFile={handleOpenFile}
                 onRefreshWorkspace={handleRefreshWorkspace}
                 onDropResult={handleDropResult}

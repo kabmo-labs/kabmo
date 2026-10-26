@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Save, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
+import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Save, Search, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
@@ -17,6 +17,10 @@ interface EditorHeaderProps {
   onSave?: () => void;
   onClose: () => void;
   onTogglePreview: () => void;
+  /** Find/replace in the file. The phone had no way to search a file at all. */
+  onToggleFind: () => void;
+  /** The bar is open — the control reflects it. */
+  findOpen: boolean;
   onToggleWrap: () => void;
   onZoomOut: () => void;
   onZoomIn: () => void;
@@ -36,6 +40,8 @@ export function EditorHeader({
   onSave,
   onClose,
   onTogglePreview,
+  onToggleFind,
+  findOpen,
   onToggleWrap,
   onZoomOut,
   onZoomIn,
@@ -84,6 +90,19 @@ export function EditorHeader({
             aria-label="Save and recreate the file"
           >
             <Save size={15} />
+          </button>
+        )}
+
+        {!byteViewer && (
+          <button
+            type="button"
+            onClick={onToggleFind}
+            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${findOpen ? 'bg-ink text-canvas' : ''}`}
+            title={findOpen ? 'Close find' : 'Find in file'}
+            aria-label={findOpen ? 'Close find' : 'Find in file'}
+            aria-pressed={findOpen}
+          >
+            <Search size={15} />
           </button>
         )}
 

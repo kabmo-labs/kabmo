@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { ChevronDown, GitCompare, X } from 'lucide-preact';
+import { useDirtyTabs } from '@/client/lib/editor-dirty-tabs';
+import { TabContextMenu } from '@/client/components/workspace/editor/TabContextMenu';
+import { buildTabMenuRows, type TabMenuAction } from '@/client/lib/editor/tab-menu';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import type { OpenedFile } from '@/shared/types/fs';
@@ -12,13 +15,41 @@ interface EditorTabsProps {
   onCloseFile: (id: number | string) => void;
   /** Tab ids whose file no longer exists on disk (see `useMissingFiles`). */
   missingIds?: ReadonlySet<number | string>;
+  /**
+   * The tab menu's non-close actions.
+   *
+   * Kept as callbacks rather than done here: copying a path and revealing a file both
+   * need the workspace scope, which the strip does not have.
+   */
+  onCopyPath?: (tab: OpenedFile) => void;
+  onRevealInFiles?: (tab: OpenedFile) => void;
+  /** Restore the most recently closed tab; returns false with an empty stack. */
+  onReopenClosed?: () => boolean;
+  /** How many tabs can still be reopened, so the menu row can be absent when none can. */
+  reopenableCount?: () => number;
 }
 
-export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFile, missingIds }: EditorTabsProps) {
+export function EditorTabs({
+  openedFiles,
+  activeFileId,
+  onSelectFile,
+  onCloseFile,
+  missingIds,
+  onCopyPath,
+  onRevealInFiles,
+  onReopenClosed,
+  reopenableCount,
+}: EditorTabsProps) {
+  // Which tabs hold edits that are not on disk. The dot replaces the close `×`
+  // while the tab is dirty — the VS Code convention, and the reason it costs no
+  // extra column: a second mark beside the × would narrow the name on every tab.
+  const dirtyIds = useDirtyTabs();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [maxVisibleTabs, setMaxVisibleTabs] = useState(5);
   const [showDropdown, setShowDropdown] = useState(false);
+  /** The tab the context menu was opened on, with its viewport position. */
+  const [menu, setMenu] = useState<{ tab: OpenedFile; x: number; y: number } | null>(null);
 
   useOnClickOutside(dropdownRef, () => setShowDropdown(false));
 
@@ -72,6 +103,10 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
             <div
               key={file.id}
               onClick={() => onSelectFile(file.id)}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setMenu({ tab: file, x: event.clientX, y: event.clientY });
+              }}
               className={`flex items-center space-x-1.5 px-3 py-1.5 cursor-pointer border-r border-ink/10 min-w-[120px] max-w-[210px] group ${
                 isActive ? 'bg-paper border-t-2 border-t-ink text-ink' : 'bg-transparent border-t-2 border-t-transparent text-ink/60 hover:bg-paper/50'
               }`}
@@ -91,19 +126,65 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
                   {statusInfo.charStatus}
                 </span>
               )}
-              <div
-                className={`p-0.5 rounded hover:bg-ink/10 touch-visible ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCloseFile(file.id);
-                }}
-              >
-                <X size={12} />
-              </div>
+              <TabCloseButton
+                dirty={dirtyIds.has(file.id)}
+                active={isActive}
+                label={`Close ${file.name}`}
+                onClose={() => onCloseFile(file.id)}
+              />
             </div>
           );
         })}
       </div>
+
+      {menu ? (
+        <TabContextMenu
+          x={menu.x}
+          y={menu.y}
+          rows={buildTabMenuRows({
+            tab: menu.tab,
+            openedFiles,
+            dirtyIds,
+            reopenable: reopenableCount?.() ?? 0,
+          })}
+          onAction={(action: TabMenuAction) => {
+            const tab = menu.tab;
+            switch (action) {
+              case 'close':
+                onCloseFile(tab.id);
+                return;
+              case 'close-others':
+                // Newest-first so the ACTIVE tab survives as the last one standing:
+                // closing others one by one leaves whichever id is not closed, and
+                // `onCloseFile` re-targets the active tab on every call.
+                for (const file of [...openedFiles].reverse()) {
+                  if (file.id !== tab.id) onCloseFile(file.id);
+                }
+                onSelectFile(tab.id);
+                return;
+              case 'close-all':
+                for (const file of [...openedFiles].reverse()) onCloseFile(file.id);
+                return;
+              case 'close-saved':
+                // The dirty ones stay — the only reading that cannot lose an edit.
+                for (const file of [...openedFiles].reverse()) {
+                  if (!dirtyIds.has(file.id)) onCloseFile(file.id);
+                }
+                return;
+              case 'copy-path':
+                onCopyPath?.(tab);
+                return;
+              case 'reveal-in-files':
+                onRevealInFiles?.(tab);
+                return;
+              case 'reopen-closed':
+                onReopenClosed?.();
+                return;
+            }
+          }}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
 
       {hiddenTabs.length > 0 && (
         <div className="relative flex items-center ml-auto bg-ink/10" ref={dropdownRef}>
@@ -137,22 +218,71 @@ export function EditorTabs({ openedFiles, activeFileId, onSelectFile, onCloseFil
                       <FileIcon name={file.name} size={14} className={isMissing ? 'text-error' : 'opacity-60'} />
                     )}
                     <span className={`text-xs font-mono truncate flex-1 ${isMissing ? 'text-error line-through' : 'text-ink/80'}`}>{file.name}</span>
-                    <div
-                      className="touch-visible p-0.5 rounded hover:bg-ink/10 opacity-0 group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                    <TabCloseButton
+                      dirty={dirtyIds.has(file.id)}
+                      active={false}
+                      label={`Close ${file.name}`}
+                      onClose={() => {
                         onCloseFile(file.id);
                         if (hiddenTabs.length === 1) setShowDropdown(false);
                       }}
-                    >
-                      <X size={12} className="text-ink/60" />
-                    </div>
+                    />
                   </div>
                 );
               })}
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A tab's trailing control: a dot while the tab is dirty, the `×` otherwise.
+ *
+ * One control, two meanings, because a dirty tab's primary action is still
+ * "close" — the dot says what closing would cost, and the pointer reveals the
+ * affordance. Two controls side by side would narrow the file name on every tab
+ * for a mark most tabs never show.
+ *
+ * The dot is a `<span>`, not an icon: it is drawn with `rounded-full bg-current`
+ * so it inherits the tab's own ink (active vs inactive) with no second colour.
+ */
+function TabCloseButton({
+  dirty,
+  active,
+  label,
+  onClose,
+}: {
+  dirty: boolean;
+  active: boolean;
+  label: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={-1}
+      aria-label={label}
+      title={dirty ? `${label} — unsaved changes` : label}
+      className={`p-0.5 rounded hover:bg-ink/10 touch-visible ${active || dirty ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+      onClick={(event) => {
+        // The row itself selects the tab; a close must not also open it.
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      {dirty ? (
+        <span
+          className="block w-2 h-2 rounded-full bg-current mx-0.5"
+          data-tab-dirty=""
+          // The dot is decoration over a control that already names the state in
+          // its title and aria-label.
+          aria-hidden="true"
+        />
+      ) : (
+        <X size={12} />
       )}
     </div>
   );

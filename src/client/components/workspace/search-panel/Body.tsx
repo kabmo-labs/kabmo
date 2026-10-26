@@ -107,7 +107,12 @@ export function SearchPanelBody({
 
   // The same flags the search ran with, so the editor's own matcher paints the
   // identical set of occurrences once the file opens.
-  const options: FindOptions = useMemo(() => ({ matchCase, wholeWord, isRegex: useRegex }), [matchCase, wholeWord, useRegex]);
+  const options: FindOptions = useMemo(
+    // The workspace search has no selection to restrict to, so `inSelection` is false —
+    // the flag exists for the EDITOR's bar, where the range is the user's own selection.
+    () => ({ matchCase, wholeWord, isRegex: useRegex, inSelection: false }),
+    [matchCase, wholeWord, useRegex],
+  );
 
   /**
    * A row click opens the file AND points the editor at the hit.

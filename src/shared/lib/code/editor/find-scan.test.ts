@@ -26,7 +26,7 @@ import {
   type FindOptions,
 } from '@/shared/lib/code/editor/find-scan';
 
-const PLAIN: FindOptions = { matchCase: false, wholeWord: false, isRegex: false };
+const PLAIN: FindOptions = { matchCase: false, wholeWord: false, isRegex: false, inSelection: false };
 
 describe('findMatches', () => {
   test('finds literal occurrences in document order, ignoring case by default', () => {

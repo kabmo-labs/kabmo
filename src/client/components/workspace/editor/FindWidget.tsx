@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Regex,
+  TextSelect,
   Replace,
   ReplaceAll,
   WholeWord,
@@ -146,6 +147,15 @@ export function FindWidget({ find }: FindWidgetProps) {
         {optionButton('matchCase', 'Match case', 'toggleCaseSensitive', <CaseSensitive size={13} />)}
         {optionButton('wholeWord', 'Match whole word', 'toggleWholeWord', <WholeWord size={13} />)}
         {optionButton('isRegex', 'Use regular expression', 'toggleRegex', <Regex size={13} />)}
+        {/* In selection: armed from the selection at the moment it is switched on, so
+            the toggle means "the text I had selected", not "whatever is selected now". */}
+        <ToggleButton
+          active={find.options.inSelection}
+          title={find.options.inSelection ? 'Searching the selection only' : 'Search the selection only'}
+          onToggle={() => find.toggleOption('inSelection')}
+        >
+          <TextSelect size={13} />
+        </ToggleButton>
 
         <span
           className={`font-mono text-[10px] whitespace-nowrap min-w-[52px] text-right ${find.invalid ? 'text-error' : 'text-ink/50'}`}
@@ -184,6 +194,25 @@ export function FindWidget({ find }: FindWidgetProps) {
           <X size={13} />
         </button>
       </div>
+
+      {/* Recent queries. Absent until there is one, so the bar does not grow a row
+          nobody has used. */}
+      {find.history.length > 0 && (
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          <span className="text-[9px] uppercase tracking-wide text-ink/40 flex-shrink-0">Recent</span>
+          {find.history.slice(0, 6).map((entry) => (
+            <button
+              key={entry}
+              type="button"
+              onClick={() => find.useHistoryEntry(entry)}
+              title={`Find ${entry}`}
+              className="px-1.5 py-0.5 rounded border border-ink/15 font-mono text-[10px] text-ink/70 hover:bg-ink/5 hover:text-ink transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
+            >
+              {entry}
+            </button>
+          ))}
+        </div>
+      )}
 
       {find.replaceOpen && (
         <div className="flex items-center gap-1">

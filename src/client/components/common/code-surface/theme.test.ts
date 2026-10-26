@@ -156,6 +156,8 @@ describe('document cache theme reconfigure', () => {
       wordWrap: false,
       readOnly: false,
       themes: SHIKI_THEMES,
+      indentUnitText: '  ',
+    typing: { autoCloseBrackets: false, autocomplete: false },
       onDocChange: () => {},
       onState: () => {},
     });
@@ -166,10 +168,10 @@ describe('document cache theme reconfigure', () => {
     documents.stateFor('a', 'typescript', 'const a = 1;');
 
     // Nothing moved: no effects, which is what keeps a re-render free.
-    expect(documents.optionsEffects({ wordWrap: false, readOnly: false, themes: SHIKI_THEMES }, 'a')).toEqual([]);
+    expect(documents.optionsEffects({ wordWrap: false, readOnly: false, themes: SHIKI_THEMES, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } }, 'a')).toEqual([]);
 
     const effects = documents.optionsEffects(
-      { wordWrap: false, readOnly: false, themes: { light: 'dracula', dark: 'dracula' } },
+      { wordWrap: false, readOnly: false, themes: { light: 'dracula', dark: 'dracula' }, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } },
       'a',
     );
     expect(effects).toHaveLength(1);
@@ -179,7 +181,7 @@ describe('document cache theme reconfigure', () => {
     const documents = cache();
     documents.stateFor('a', 'typescript', 'x');
     const effects = documents.optionsEffects(
-      { wordWrap: true, readOnly: false, themes: { light: 'nord', dark: 'nord' } },
+      { wordWrap: true, readOnly: false, themes: { light: 'nord', dark: 'nord' }, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } },
       'a',
     );
     // Two compartments: one for the wrap, one for the tokenizer.
@@ -208,7 +210,7 @@ describe('document cache theme reconfigure', () => {
     const documents = cache();
     documents.stateFor('a', 'typescript', 'a');
     documents.optionsEffects(
-      { wordWrap: false, readOnly: false, themes: { light: 'dracula', dark: 'dracula' } },
+      { wordWrap: false, readOnly: false, themes: { light: 'dracula', dark: 'dracula' }, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } },
       'a',
     );
     // `currentEffects` is the re-apply `view.setState` owes: a cached state
@@ -225,7 +227,7 @@ describe('document cache theme reconfigure', () => {
 
     // Pick the theme while `a` is the live document, then switch to `b` — the
     // apply path reconfigures BOTH, which is what makes them agree.
-    documents.optionsEffects({ wordWrap: false, readOnly: false, themes: dracula }, 'a');
+    documents.optionsEffects({ wordWrap: false, readOnly: false, themes: dracula, indentUnitText: '  ', typing: { autoCloseBrackets: false, autocomplete: false } }, 'a');
     documents.currentEffects('b');
     // ... and back: `a` already holds the theme, so there is nothing to rebuild.
     const effects = documents.currentEffects('a');

@@ -20,8 +20,8 @@
  */
 
 import type { Extension, StateCommand } from '@codemirror/state';
-import { EditorSelection } from '@codemirror/state';
 import {
+  addCursorAbove,
   addCursorBelow,
   defaultKeymap,
   copyLineDown,
@@ -43,6 +43,7 @@ import {
   selectLineEnd,
   selectLineStart,
   simplifySelection,
+  toggleBlockComment,
   toggleComment,
   undo,
 } from '@codemirror/commands';
@@ -51,6 +52,7 @@ import { foldAll, foldCode, unfoldAll, unfoldCode } from '@codemirror/language';
 import { keymap, type Command, type EditorView, type KeyBinding } from '@codemirror/view';
 
 import { EDITOR_KEY_BINDINGS, type EditorCommand } from '@/shared/lib/code/editor/keymap';
+import { joinLines, trimTrailingWhitespace } from '@/client/components/common/code-surface/line-commands';
 import type { KeyStroke } from '@/shared/lib/ui/key-binding';
 
 /** A command as this module invokes it: CM6's `Command` and `StateCommand` both fit. */
@@ -79,27 +81,6 @@ const insertLineAbove: SurfaceCommand = (view) => {
   return true;
 };
 
-/** Select the word under the caret, or nothing when the caret is between words. */
-const selectWord: SurfaceCommand = (view) => {
-  const { state } = view;
-  const range = state.selection.main;
-  if (range.from !== range.to) return false;
-  const line = state.doc.lineAt(range.from);
-  const offset = range.from - line.from;
-  const isWord = (char: string | undefined) => char !== undefined && /[\w$]/.test(char);
-  let start = offset;
-  let end = offset;
-  if (!isWord(line.text[start]) && isWord(line.text[start - 1])) start--;
-  if (!isWord(line.text[start])) return false;
-  end = start;
-  while (isWord(line.text[start - 1])) start--;
-  while (isWord(line.text[end])) end++;
-  view.dispatch({
-    selection: EditorSelection.range(line.from + start, line.from + end),
-  });
-  return true;
-};
-
 /**
  * Collapse extra selections, keeping the main one.
  *
@@ -123,12 +104,16 @@ const BUFFER_COMMANDS: Partial<Record<EditorCommand, SurfaceCommand>> = {
   selectNextOccurrence: selectNextOccurrence as SurfaceCommand,
   selectAllOccurrences: selectSelectionMatches as SurfaceCommand,
   insertCursorBelow: addCursorBelow as SurfaceCommand,
+  insertCursorAbove: addCursorAbove as SurfaceCommand,
   moveLineUp: moveLineUp as SurfaceCommand,
   moveLineDown: moveLineDown as SurfaceCommand,
   copyLineUp: copyLineUp as SurfaceCommand,
   copyLineDown: copyLineDown as SurfaceCommand,
   deleteLine: deleteLine as SurfaceCommand,
   toggleComment: toggleComment as SurfaceCommand,
+  toggleBlockComment: toggleBlockComment as SurfaceCommand,
+  joinLines,
+  trimTrailingWhitespace,
   insertLineBelow: insertBlankLine as SurfaceCommand,
   insertLineAbove,
   indent: indentMore as SurfaceCommand,
@@ -145,7 +130,6 @@ const BUFFER_COMMANDS: Partial<Record<EditorCommand, SurfaceCommand>> = {
   selectToLineEnd: selectLineEnd as SurfaceCommand,
   selectToDocumentStart: selectDocStart as SurfaceCommand,
   selectToDocumentEnd: selectDocEnd as SurfaceCommand,
-  selectWord,
   selectLine: selectLine as SurfaceCommand,
   escape: collapseSelections,
 };

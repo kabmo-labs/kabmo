@@ -22,6 +22,14 @@ export interface OpenFileInput {
   handleId?: string;
 }
 
+/**
+ * How many closed tabs `Reopen` can restore.
+ *
+ * Ten is what a reader can still remember closing; past that the stack is a log rather
+ * than an undo.
+ */
+const REOPEN_STACK_LIMIT = 10;
+
 export function useFileTabs(
   activeProjectPath: string | null,
   sessionId: string,
@@ -155,9 +163,24 @@ export function useFileTabs(
     onOpenTab?.();
   }, [activeProjectPath, onOpenTab, setOpenedFiles, setActiveFileId]);
 
+  /**
+   * The tabs closed recently, newest last, so `Reopen` is a stack.
+   *
+   * A REF, not state: nothing renders the stack, and a re-render per close would be a
+   * second thing every tab interaction pays for. Bounded, because a session that closes
+   * a hundred tabs should not hold a hundred `OpenedFile`s alive.
+   */
+  const closedRef = useRef<OpenedFile[]>([]);
+
   const handleCloseFile = useCallback((id: number | string) => {
     dropScrollFor([id]);
     setOpenedFiles(prev => {
+      const closed = prev.find(f => f.id === id);
+      // Only a tab that actually existed is remembered: a close on a stale id must not
+      // put a phantom entry on the reopen stack.
+      if (closed) {
+        closedRef.current = [...closedRef.current, closed].slice(-REOPEN_STACK_LIMIT);
+      }
       const next = prev.filter(f => f.id !== id);
       if (activeFileId === id) {
         setActiveFileId(next.length > 0 ? next[next.length - 1].id : null);
@@ -165,6 +188,27 @@ export function useFileTabs(
       return next;
     });
   }, [activeFileId, dropScrollFor, setOpenedFiles, setActiveFileId]);
+
+  /**
+   * Put the most recently closed tab back, activating it.
+   *
+   * The entry is restored WHOLE — name, path, scope, diff flags — because reopening
+   * reconstructs the tab rather than re-deriving it from a path (a diff tab has no file
+   * to derive from). Returns false with an empty stack so the caller can leave the chord
+   * inert rather than swallowing it.
+   */
+  const handleReopenClosed = useCallback(() => {
+    const entry = closedRef.current[closedRef.current.length - 1];
+    if (!entry) return false;
+    closedRef.current = closedRef.current.slice(0, -1);
+    setOpenedFiles(prev => (prev.some(f => f.id === entry.id) ? prev : [...prev, entry]));
+    setActiveFileId(entry.id);
+    onOpenTab?.();
+    return true;
+  }, [onOpenTab, setOpenedFiles, setActiveFileId]);
+
+  /** How many tabs `Reopen` can still restore, for the menu's enabled state. */
+  const reopenableCount = useCallback(() => closedRef.current.length, []);
 
   /**
    * Turn a diff tab into the plain editor tab for the same file.
@@ -254,6 +298,8 @@ export function useFileTabs(
     handleOpenFile,
     handleOpenDiff,
     handleCloseFile,
+    handleReopenClosed,
+    reopenableCount,
     convertDiffToEditor,
   };
 }

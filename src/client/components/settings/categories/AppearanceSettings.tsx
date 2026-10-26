@@ -4,6 +4,8 @@ import { resolveThemeId } from '@/shared/lib/theme/catalog';
 import { ThemeGrid } from '@/client/components/settings/categories/appearance-settings/ThemeGrid';
 import { EditorFontSection } from '@/client/components/settings/categories/appearance-settings/EditorFontSection';
 import { EditorThemeSection } from '@/client/components/settings/categories/appearance-settings/EditorThemeSection';
+import { EditorIndentSection } from '@/client/components/settings/categories/appearance-settings/EditorIndentSection';
+import { EditorTypingSection } from '@/client/components/settings/categories/appearance-settings/EditorTypingSection';
 
 interface AppearanceSettingsProps {
   settings: SettingsState;
@@ -28,6 +30,10 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
       <EditorFontSection settings={settings} onUpdate={onUpdate} />
 
       <EditorThemeSection settings={settings} onUpdate={onUpdate} />
+
+      <EditorIndentSection settings={settings} onUpdate={onUpdate} />
+
+      <EditorTypingSection settings={settings} onUpdate={onUpdate} />
     </div>
   );
 }
