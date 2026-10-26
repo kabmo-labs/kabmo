@@ -22,7 +22,7 @@ import { describe, expect, test } from 'bun:test';
 import type { FsNode } from '@/shared/types';
 import { COMMIT_PAGE_SIZE } from '@/shared/lib/fs/commit-page';
 import { normalizeCommits } from '@/shared/lib/fs/commit-row';
-import { rehydrateTree, setChildrenAt } from '@/shared/lib/fs/file-tree';
+import { rehydrateTree } from '@/shared/lib/fs/file-tree';
 import { buildFsRawUrl, toAbsolutePath } from '@/shared/lib/fs/paths';
 
 const file = (path: string): FsNode => ({ name: path.split('/').pop() ?? path, path, type: 'file' });
@@ -111,53 +111,6 @@ describe('toAbsolutePath', () => {
   });
 });
 
-describe('setChildrenAt', () => {
-  test('the matching node receives the new children', () => {
-    const tree = [folder('a', [file('a/x.ts')]), file('b.ts')];
-    const result = setChildrenAt(tree, 'a', [file('a/y.ts')]);
-    expect(result[0].children?.map(c => c.path)).toEqual(['a/y.ts']);
-  });
-
-  test('a nested folder is patched at any depth', () => {
-    const tree = [folder('a', [folder('a/b', [file('a/b/c.ts')])])];
-    const result = setChildrenAt(tree, 'a/b', [file('a/b/d.ts')]);
-    expect(result[0].children?.[0].children?.map(c => c.path)).toEqual(['a/b/d.ts']);
-  });
-
-  test('the original tree is never mutated', () => {
-    const tree = [folder('a', [file('a/x.ts')])];
-    setChildrenAt(tree, 'a', [file('a/y.ts')]);
-    expect(tree[0].children?.map(c => c.path)).toEqual(['a/x.ts']);
-  });
-
-  test('unrelated file nodes keep their identity', () => {
-    const tree = [folder('a', [file('a/x.ts')]), file('b.ts')];
-    const result = setChildrenAt(tree, 'a/x.ts', []);
-    expect(result[1]).toBe(tree[1]);
-  });
-
-  test('a path that does not exist leaves the shape unchanged', () => {
-    const tree = [folder('a', [file('a/x.ts')]), file('b.ts')];
-    const result = setChildrenAt(tree, 'missing', []);
-    expect(result[0].children?.[0]).toBe(tree[0].children?.[0]);
-    expect(result[1]).toBe(tree[1]);
-  });
-
-  test('a folder without a children array is left alone on a miss', () => {
-    const childless: FsNode = { name: 'a', path: 'a', type: 'folder' };
-    const result = setChildrenAt([childless], 'other', []);
-    expect(result[0]).toBe(childless);
-    expect(result[0].children).toBeUndefined();
-  });
-
-  test('a folder without a children array can still be given children', () => {
-    const childless: FsNode = { name: 'a', path: 'a', type: 'folder' };
-    const result = setChildrenAt([childless], 'a', [file('a/x.ts')]);
-    expect(result[0].children?.map(c => c.path)).toEqual(['a/x.ts']);
-    expect(childless.children).toBeUndefined();
-  });
-});
-
 describe('rehydrateTree', () => {
   test('a cached folder gets its children back', () => {
     const cache = { a: [file('a/x.ts')] };
@@ -166,9 +119,10 @@ describe('rehydrateTree', () => {
   });
 
   test('nested cached folders are rehydrated recursively', () => {
-    const cache = { a: [folder('a/b', [])], 'a/b': [file('a/b/c.ts')] };
+    const cache = { a: [folder('a/b', []), file('a/y.ts')], 'a/b': [file('a/b/c.ts')] };
     const result = rehydrateTree([folder('a', [])], cache);
-    expect(result[0].children?.[0].children?.map(c => c.path)).toEqual(['a/b/c.ts']);
+    const nested = result[0].children?.find((child) => child.path === 'a/b');
+    expect(nested?.children?.map(c => c.path)).toEqual(['a/b/c.ts']);
   });
 
   test('an uncached folder keeps its own children untouched', () => {

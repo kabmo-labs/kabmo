@@ -25,7 +25,7 @@
 
 import { useRef, useState } from 'preact/hooks';
 import type { FsNode } from '@/shared/types';
-import { placeEntry, rehydrateTree, setChildrenAt, takeEntry, rekeyCache } from '@/shared/lib/fs/file-tree';
+import { placeEntry, rehydrateTree, takeEntry, rekeyCache } from '@/shared/lib/fs/file-tree';
 import { isRecord } from '@/shared/lib/util/guards';
 
 /**
@@ -92,14 +92,21 @@ export interface FileListing {
    * A create answers with the entry's path, so the tree already knows the whole
    * result; re-reading the root plus every open folder to learn it back would
    * be one request per open folder for an answer the caller holds.
+   *
+   * Returns the tree as committed, because the caller's next step is to reveal
+   * the row — and a reveal has to expand the rows that are DRAWN, not the path's
+   * own segments: a single-child folder is one collapsed row
+   * (`foldSingleChildFolders`), so `lib` and `lib/deep` may be a single node.
+   * `null` means the entry could not be placed — a folder whose contents are
+   * not loaded — and the caller has to re-read.
    */
-  insertEntry: (entry: { path: string; kind: 'file' | 'folder' }) => void;
+  insertEntry: (entry: { path: string; kind: 'file' | 'folder' }) => FsNode[] | null;
   /**
-   * Move a row the panel just renamed, without a reload. Returns the folders
-   * whose path moved, so the caller can rekey its expansion set — a renamed
-   * folder's open branches are still open, under their new names.
+   * Move a row the panel just renamed, without a reload.
+   *
+   * Returns the tree as committed, or `null` when the moved entry is not in it.
    */
-  moveEntry: (fromPath: string, toPath: string) => void;
+  moveEntry: (fromPath: string, toPath: string) => FsNode[] | null;
   /** Forget the root listing and every cached child (a repo switch). */
   reset: () => void;
 }
@@ -145,15 +152,19 @@ export function useFileListing({
     return `/api/fs/dir?${params.toString()}`;
   };
 
-  /** Render the tree from the current root listing plus the children cache. */
-  const commit = (requested: string, root: string) => {
+  /**
+   * Render the tree from the current root listing plus the children cache.
+   *
+   * Returns what it rendered, so a caller that must act on the RESULT (a reveal
+   * after a create, an expansion rekey after a rename) reads the rows that are
+   * drawn instead of re-deriving them.
+   */
+  const commit = (requested: string, root: string): FsNode[] => {
     listedScopeRef.current = requested;
     listedRootRef.current = root;
-    setState({
-      scope: requested,
-      files: rehydrateTree(rootFilesRef.current, childrenCacheRef.current),
-      root,
-    });
+    const files = rehydrateTree(rootFilesRef.current, childrenCacheRef.current);
+    setState({ scope: requested, files, root });
+    return files;
   };
 
   /**
@@ -219,9 +230,10 @@ export function useFileListing({
     const read = await readDir(listUrl(path));
     if (scopeRef.current !== requested || read.status !== 'ok') return;
     childrenCacheRef.current[path] = read.files;
-    setState((prev) => (prev.scope === requested
-      ? { ...prev, files: setChildrenAt(prev.files, path, read.files) }
-      : prev));
+    // Committed through `rehydrateTree` rather than patched in place: a fresh
+    // listing can itself hold a single-child chain, and a branch set directly
+    // would draw the unfolded rows the next refresh folds away.
+    if (listedScopeRef.current === requested) commit(requested, listedRootRef.current);
   };
 
   const adoptRoot = (data: unknown): void => {
@@ -250,9 +262,9 @@ export function useFileListing({
    * the only thing that builds what is rendered. Editing the rendered tree
    * directly would be undone by the next commit, which rebuilds from these.
    */
-  const insertEntry = (entry: { path: string; kind: 'file' | 'folder' }): void => {
+  const insertEntry = (entry: { path: string; kind: 'file' | 'folder' }): FsNode[] | null => {
     const requested = scopeRef.current;
-    if (listedScopeRef.current !== requested) return;
+    if (listedScopeRef.current !== requested) return null;
     const node: FsNode = {
       name: entry.path.slice(entry.path.lastIndexOf('/') + 1),
       path: entry.path,
@@ -260,23 +272,23 @@ export function useFileListing({
       ignored: false,
     };
     const placed = placeEntry(rootFilesRef.current, childrenCacheRef.current, node);
-    if (placed.nodes === rootFilesRef.current) return;
+    if (placed.nodes === rootFilesRef.current) return null;
     rootFilesRef.current = placed.nodes;
     childrenCacheRef.current = placed.cache;
-    commit(requested, listedRootRef.current);
+    return commit(requested, listedRootRef.current);
   };
 
-  const moveEntry = (fromPath: string, toPath: string): void => {
+  const moveEntry = (fromPath: string, toPath: string): FsNode[] | null => {
     const requested = scopeRef.current;
-    if (listedScopeRef.current !== requested) return;
+    if (listedScopeRef.current !== requested) return null;
     const taken = takeEntry(rootFilesRef.current, childrenCacheRef.current, fromPath);
-    if (!taken.entry) return;
+    if (!taken.entry) return null;
     childrenCacheRef.current = rekeyCache(taken.cache, fromPath, toPath);
     const moved: FsNode = { ...taken.entry, path: toPath, name: toPath.slice(toPath.lastIndexOf('/') + 1) };
     const placed = placeEntry(taken.nodes, childrenCacheRef.current, moved);
     rootFilesRef.current = placed.nodes;
     childrenCacheRef.current = placed.cache;
-    commit(requested, listedRootRef.current);
+    return commit(requested, listedRootRef.current);
   };
 
   // A listing read for another scope is not this one's to render: the panel

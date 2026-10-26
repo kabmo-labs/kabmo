@@ -127,4 +127,65 @@ describe('Files panel listing', () => {
     expect(srcReads()).toBe(2);
     expect(panel.container.textContent).toContain('a.ts');
   });
+
+  test('a package tree is ONE row naming the whole chain, and it expands into the deepest folder', async () => {
+    panel.disk = {
+      '.': { com: null },
+      com: { java: null },
+      'com/java': { app: null },
+      'com/java/app': { package: null },
+      'com/java/app/package': { 'Main.java': 'file' },
+    };
+    panel.dirReads = [];
+    await panel.mount();
+
+    // One row instead of four: the chain's own levels are not rows at all.
+    expect(panel.visibleNames()).toContain('com/java/app/package');
+    expect(panel.visibleNames()).not.toContain('com');
+    // Reading the row's own path is the read that would have happened on the
+    // fourth expand; the three levels above it are never asked about.
+    expect(panel.dirReads).toEqual(['.']);
+
+    await panel.clickRow('com/java/app/package');
+
+    expect(panel.container.textContent).toContain('Main.java');
+    expect(panel.dirReads).toContain('com/java/app/package');
+    expect(panel.dirReads).not.toContain('com');
+    expect(panel.dirReads).not.toContain('com/java');
+  });
+
+  test('a folder holding a folder and a file is not collapsed', async () => {
+    panel.disk = {
+      '.': { src: null },
+      src: { deep: null, 'a.ts': 'file' },
+      'src/deep': { 'b.ts': 'file' },
+    };
+    await panel.mount();
+
+    expect(panel.visibleNames()).toContain('src');
+    expect(panel.visibleNames()).not.toContain('src/deep');
+  });
+
+  test('the delete dialog names the path it deletes, not just the chain label', async () => {
+    // A chain INSIDE a folder is labelled relative to that folder
+    // (`java/app/package`) while its path names the whole thing. Both are on
+    // screen, because the delete removes the deepest directory only — a dialog
+    // showing just the label would promise more than it performs.
+    panel.disk = {
+      '.': { com: null },
+      com: { java: null, 'README.md': 'file' },
+      'com/java': { app: null },
+      'com/java/app': { package: null },
+      'com/java/app/package': { 'Main.java': 'file' },
+    };
+    await panel.mount();
+    await panel.clickRow('com');
+
+    await panel.rightClickRow('java/app/package');
+    await panel.clickMenuRow('Delete');
+
+    const text = panel.documentText();
+    expect(text).toContain('com/java/app/package');
+    expect(text).toContain('this deletes');
+  });
 });

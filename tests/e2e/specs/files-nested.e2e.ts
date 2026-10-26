@@ -155,8 +155,10 @@ test.describe('files panel create and rename', () => {
     await page.getByRole('button', { name: 'Create', exact: true }).click();
 
     // The row is on screen — the chain was expanded — and the disk holds a
-    // DIRECTORY, not a file named `api`.
-    await expect(view.row('api')).toBeVisible();
+    // DIRECTORY, not a file named `api`. `src` now holds nothing but `nested`,
+    // which holds nothing but `api`, so all three are ONE row naming the whole
+    // chain from the listing root.
+    await expect(view.row('src/nested/api')).toBeVisible();
     expect(readdirSync(join(workspace.path, 'src/nested'))).toEqual(['api']);
     expect(statSync(join(workspace.path, 'src/nested/api')).isDirectory()).toBe(true);
 
@@ -187,6 +189,55 @@ test.describe('files panel create and rename', () => {
     expect(existsSync(join(workspace.path, 'old.ts'))).toBe(false);
     // The rename answered with both ends, so the tree moved the row itself.
     expect(dirReads()).toBeLessThanOrEqual(1);
+
+    workspace.dispose();
+  });
+
+  test('a single-child folder chain is ONE row, and it expands into the deepest folder', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-chain');
+    mkdirSync(join(workspace.path, 'com/java/app/package'), { recursive: true });
+    writeFileSync(join(workspace.path, 'com/java/app/package/Main.java'), 'class Main {}\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openFiles(page);
+    const view = filesPanel(page);
+
+    // One row for the whole chain: the reader does not scroll through `com`,
+    // `java`, `app` to reach the files inside `package`.
+    const row = view.row('com/java/app/package');
+    await expect(row).toBeVisible();
+    await expect(view.row('com')).toHaveCount(0);
+
+    await row.click();
+    await expect(view.row('Main.java')).toBeVisible();
+
+    workspace.dispose();
+  });
+
+  test('a rename beside a chain unfolds it instead of drawing the folder twice', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-chain-unfold');
+    mkdirSync(join(workspace.path, 'com/java/app/package'), { recursive: true });
+    writeFileSync(join(workspace.path, 'com/java/app/package/Main.java'), 'class Main {}\n');
+    writeFileSync(join(workspace.path, 'move.ts'), 'x\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openFiles(page);
+    const view = filesPanel(page);
+
+    await expect(view.row('com/java/app/package')).toBeVisible();
+    await view.row('move.ts').click({ button: 'right' });
+    await page.getByRole('button', { name: 'Rename', exact: true }).click();
+    await page.getByLabel('Rename file path').fill('com/java/other/move.ts');
+    await page.getByRole('button', { name: 'Rename', exact: true }).click();
+
+    // `com` now holds two branches, so the collapsed row is unfolded: one `com`
+    // row, one `java` row beneath it, and both branches inside that. Drawing
+    // the new `com` beside the old `com/java/...` row would list `java` twice.
+    await expect(view.row('com/java')).toBeVisible();
+    await expect(view.row('com')).toHaveCount(0);
+    expect(existsSync(join(workspace.path, 'com/java/other/move.ts'))).toBe(true);
 
     workspace.dispose();
   });

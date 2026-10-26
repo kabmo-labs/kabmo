@@ -10,7 +10,7 @@ import { useGitStatus } from '@/client/hooks/workspace/git-status';
 import { useFileListing } from '@/client/hooks/workspace/file-listing';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
 import { useFileClipboard, type ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
-import { rekeyExpansion } from '@/shared/lib/fs/file-tree';
+import { useFileTreeEdits } from '@/client/hooks/workspace/file-tree-edits';
 import { filterFileTree } from '@/client/components/workspace/file-explorer/filter';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
@@ -101,53 +101,6 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
   };
 
   /**
-   * Open every folder that leads to `path`.
-   *
-   * A nested create (`lib/parse.ts`) and a rename into a new folder both make
-   * directories the user has never opened, and a row placed inside a collapsed
-   * folder is a row nobody can see — the write would look like it failed. EVERY
-   * ancestor is opened, not only the direct parent: expanding just the last one
-   * still hides the entry behind a collapsed `lib`.
-   */
-  const revealPath = (path: string) => {
-    const segments = path.split('/').slice(0, -1);
-    if (segments.length === 0) return;
-    const chain = segments.map((_, index) => segments.slice(0, index + 1).join('/'));
-    setExpandedPaths(prev => {
-      if (chain.every((folder) => prev.has(folder))) return prev;
-      const next = new Set(prev);
-      for (const folder of chain) next.add(folder);
-      setStoredExpandedPaths(Array.from(next));
-      return next;
-    });
-  };
-
-  /** Place a row a create just produced, without re-reading the tree. */
-  const insertCreated = (entry: { path: string; kind: 'file' | 'folder' }) => {
-    listing.insertEntry(entry);
-    revealPath(entry.path);
-  };
-
-  /**
-   * Move a row a rename just relocated, without re-reading.
-   *
-   * A folder's descendants and every open branch beneath it carry its path as a
-   * prefix, so the expansion set is rekeyed in the same step — an open `src`
-   * renamed to `lib` must stay open as `lib`, not collapse.
-   */
-  const moveRenamed = (fromPath: string, toPath: string) => {
-    listing.moveEntry(fromPath, toPath);
-    setExpandedPaths(prev => {
-      const next = rekeyExpansion(prev, fromPath, toPath);
-      setStoredExpandedPaths(Array.from(next));
-      return next;
-    });
-    // A rename INTO a new folder (`a.ts` → `nested/a.ts`) has the same problem a
-    // nested create does: the destination folder is one nobody has opened.
-    revealPath(toPath);
-  };
-
-  /**
    * Re-read everything this panel shows. Defined ABOVE the `!enabled` return so
    * the create flow below can use it: a hook cannot be called after a branch.
    */
@@ -156,6 +109,15 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     if (onRefresh) onRefresh();
     else void listing.reload();
   };
+
+  // A create and a rename land locally, and the row they produce is revealed
+  // through the rows that are DRAWN — see `useFileTreeEdits`.
+  const { insertCreated, moveRenamed } = useFileTreeEdits({
+    listing,
+    setExpandedPaths,
+    setStoredExpandedPaths,
+    reload: refresh,
+  });
 
   // One clipboard for the whole tree, owned here and passed down: a
   // subscription per row would be hundreds of listeners for a value that

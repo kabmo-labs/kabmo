@@ -80,19 +80,32 @@ export function FileCreateModal({ folderPath, kind, value, error, isLoading, onC
 }
 
 interface DeleteModalProps {
+  /** The entry's real path — what is deleted, and what the dialog must name. */
   fileName: string;
+  /** The row's label, when it differs from the path (a collapsed chain). */
+  displayName?: string;
   isFolder: boolean;
   isLoading: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function FileDeleteModal({ fileName, isFolder, isLoading, onCancel, onConfirm }: DeleteModalProps) {
+export function FileDeleteModal({ fileName, displayName, isFolder, isLoading, onCancel, onConfirm }: DeleteModalProps) {
   return createPortal(
     <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-2 text-sm">Delete {isFolder ? 'Folder' : 'File'}</h3>
         <p className="text-xs text-ink/70 mb-4">Are you sure you want to delete <span className="font-mono bg-canvas px-1 rounded">{fileName}</span>? This action cannot be undone.</p>
+        {/* A collapsed chain row is LABELLED `com/java/app/package` but its path
+            is the deepest directory, and that is what gets deleted. Naming only
+            the label would promise a removal of four directories and perform
+            one, so the dialog says which it is. */}
+        {displayName && displayName !== fileName && (
+          <p className="text-[11px] text-ink/50 mb-4">
+            The row is <span className="font-mono">{displayName}</span>; this deletes{' '}
+            <span className="font-mono">{fileName}</span> only.
+          </p>
+        )}
         <div className="flex justify-end space-x-2">
           <button 
             onClick={onCancel}

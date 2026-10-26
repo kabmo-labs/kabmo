@@ -310,7 +310,8 @@ export function FileTreeItem({
 
       {mounted && actions.showDeleteModal && (
         <FileDeleteModal
-          fileName={file.name}
+          fileName={file.path}
+          displayName={file.name}
           isFolder={isFolder}
           isLoading={actions.busy}
           onCancel={actions.closeDelete}

@@ -132,7 +132,9 @@ describe('Files panel clipboard', () => {
   });
 
   test('the row menu hides Paste on a folder inside the copied folder’s own subtree', async () => {
-    panel.disk = { '.': { src: null }, src: { deep: null }, 'src/deep': {} };
+    // `src` holds a folder AND a file, so it is its own row — a folder holding
+    // only one folder would be collapsed into one row naming the chain.
+    panel.disk = { '.': { src: null }, src: { deep: null, 'a.ts': 'file' }, 'src/deep': {} };
     await panel.mount();
 
     await panel.rightClickRow('src');

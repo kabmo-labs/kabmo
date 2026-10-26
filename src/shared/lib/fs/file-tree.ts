@@ -1,16 +1,5 @@
 import type { FsNode } from '@/shared/types';
-
-/** Replace the children of the node at `path`, rebuilding only that branch. */
-export function setChildrenAt(nodes: FsNode[], path: string, children: FsNode[]): FsNode[] {
-  return nodes.map(node => {
-    if (node.path === path) return { ...node, children };
-    if (Array.isArray(node.children)) {
-      const nested = setChildrenAt(node.children, path, children);
-      if (nested !== node.children) return { ...node, children: nested };
-    }
-    return node;
-  });
-}
+import { foldSingleChildFolders } from '@/shared/lib/fs/folder-chain';
 
 /**
  * Re-attach the children already loaded for a folder, so a re-listing of the
@@ -20,14 +9,21 @@ export function setChildrenAt(nodes: FsNode[], path: string, children: FsNode[])
  * RELATIVE to the listed root — which is why the caller must drop both that set
  * and the cache when the listed root changes: `src/` under one workspace would
  * otherwise rehydrate into `src/` under the next.
+ *
+ * The fold runs HERE because this is the one function that builds a rendered
+ * tree — every server read, every realtime snapshot and every local edit goes
+ * through it. Folding at a call site instead would let a create draw a tree the
+ * next read undoes.
  */
 export function rehydrateTree(nodes: FsNode[], cache: Record<string, FsNode[]>): FsNode[] {
-  return nodes.map(node => {
-    if (node.type !== 'folder') return node;
-    const cached = cache[node.path];
-    if (!cached) return node;
-    return { ...node, children: rehydrateTree(cached, cache) };
-  });
+  return foldSingleChildFolders(nodes.map(node => rehydrateNode(node, cache)));
+}
+
+function rehydrateNode(node: FsNode, cache: Record<string, FsNode[]>): FsNode {
+  if (node.type !== 'folder') return node;
+  const cached = cache[node.path];
+  if (!cached) return node;
+  return { ...node, children: rehydrateTree(cached, cache) };
 }
 
 /** The folder a path lives in: `.` for a top-level entry. */
@@ -75,54 +71,150 @@ export interface TreeEdit {
  * reads the real directory, which by then holds the new entry. The chain nodes
  * that ARE inserted carry no `children` array, so the row's own expand effect
  * reads them from disk like any other unread folder.
+ *
+ * A row may already stand for a CHAIN of directories (`lib/deep`), because a
+ * single-child folder is collapsed — by the server when it lists, and by
+ * `rehydrateTree` for the chains this function creates. Descending into that
+ * row by its own path is what keeps a create from inserting a SECOND row for a
+ * directory the tree already draws; a chain row that covers the destination but
+ * is not the destination itself is skipped, so `lib/other/x.ts` never lands
+ * inside `lib/deep`.
  */
 export function placeEntry(nodes: FsNode[], cache: Record<string, FsNode[]>, entry: FsNode): TreeEdit {
   const segments = entry.path.split('/');
-  const nextNodes = [...nodes];
+  const parentPath = segments.slice(0, -1).join('/');
+  let nextNodes = [...nodes];
   const nextCache = { ...cache };
   let container = nextNodes;
   let containerKey: string | null = null;
 
-  for (let i = 0; i < segments.length - 1; i += 1) {
+  for (let i = 0; i < segments.length - 1;) {
     const folderPath = segments.slice(0, i + 1).join('/');
-    const existing = container.find((node) => node.path === folderPath);
-    const known = existing ? (nextCache[folderPath] ?? existing.children) : null;
-    if (existing && !Array.isArray(known)) return { nodes, cache };
+    const existing = container.find((node) => node.type === 'folder' && node.path === folderPath);
+    const chain = existing ? null : container.find((node) => node.type === 'folder'
+      && node.path.startsWith(`${folderPath}/`)
+      && (parentPath === node.path || parentPath.startsWith(`${node.path}/`)));
+    const node = existing ?? chain;
+    const known = node ? (nextCache[node.path] ?? node.children) : null;
+    if (node && !Array.isArray(known)) return { nodes, cache };
+    if (!node) {
+      // No row names `folderPath`, but a collapsed chain row may still STAND for
+      // it (`lib/deep` while the entry is `lib/other/x.ts`). Inserting a fresh
+      // `lib` beside it would draw `deep` twice — once inside the new row and
+      // once as its own — so the chain is unfolded back into the rows the
+      // server would list: `lib` holding `deep`, whose children stay in the
+      // cache under their unchanged paths.
+      const unfolded = unfoldRow(container, nextCache, folderPath);
+      if (unfolded) {
+        container = unfolded;
+        const top = container.find((node) => node.path === folderPath);
+        const children = Array.isArray(top?.children) ? [...top.children] : [];
+        nextCache[folderPath] = children;
+        container = children;
+        containerKey = folderPath;
+        i += 1;
+        continue;
+      }
+    }
     const children = Array.isArray(known) ? [...known] : [];
-    if (!existing) container.push({ name: segments[i], path: folderPath, type: 'folder', ignored: false });
+    if (node) {
+      nextCache[node.path] = children;
+      container = children;
+      containerKey = node.path;
+      // The row names every directory of its chain, so the walk resumes past
+      // all of them rather than re-deriving a folder that is already drawn.
+      i = node.path.split('/').length;
+      continue;
+    }
+    container.push({ name: segments[i], path: folderPath, type: 'folder', ignored: false });
     nextCache[folderPath] = children;
     container = children;
     containerKey = folderPath;
+    i += 1;
   }
 
   container.push(entry);
   if (containerKey !== null) nextCache[containerKey] = sortEntries(container);
-  return { nodes: sortEntries(nextNodes), cache: nextCache };
+  nextNodes = sortEntries(nextNodes);
+  return { nodes: nextNodes, cache: nextCache };
+}
+
+/**
+ * Replace a collapsed chain row with the rows the server would list for it.
+ *
+ * `folderPath` names the OUTERMOST directory of the chain, so the row is
+ * rebuilt as that directory holding the rest of the chain one level at a time.
+ * Mutates `container` in place (the caller owns a copy) and returns it, or
+ * `null` when no row in it stands for `folderPath`.
+ */
+function unfoldRow(container: FsNode[], cache: Record<string, FsNode[]>, folderPath: string): FsNode[] | null {
+  const index = container.findIndex((node) => node.type === 'folder' && node.path.startsWith(`${folderPath}/`));
+  if (index === -1) return null;
+  const row = container[index]!;
+  const rest = row.path.slice(folderPath.length + 1).split('/');
+  const deepestChildren = cache[row.path] ?? row.children;
+  if (Array.isArray(deepestChildren)) cache[row.path] = deepestChildren;
+  let built: FsNode = {
+    name: rest[rest.length - 1]!,
+    path: row.path,
+    type: 'folder',
+    ignored: row.ignored,
+    ...(Array.isArray(deepestChildren) ? { children: deepestChildren } : {}),
+  };
+  for (let i = rest.length - 2; i >= 0; i -= 1) {
+    built = {
+      name: rest[i]!,
+      path: `${folderPath}/${rest.slice(0, i + 1).join('/')}`,
+      type: 'folder',
+      ignored: false,
+      children: [built],
+    };
+  }
+  // The outermost row is the directory the entry needed, holding the chain
+  // beneath it — its own name and path, so a later step finds it by
+  // `folderPath`, and the chain's leaf keeps its own children.
+  container[index] = { name: baseNameOf(folderPath), path: folderPath, type: 'folder', ignored: false, children: [built] };
+  return container;
 }
 
 /**
  * Remove the entry at `path` from wherever it lives, leaving the rest of the
  * tree untouched. Returns `entry: null` when the path is not in this tree —
  * a collapsed folder's contents are not, and that is not an error.
+ *
+ * The search walks EVERY container rather than looking the parent up by path:
+ * a collapsed chain row's own path is the deepest directory, so its parent key
+ * is one the cache does not hold (`com/java/app/package` lives in `com/java`,
+ * and no `com/java/app` key exists). Deriving the container from the path would
+ * report a rename of that row as "not in this tree" and fall back to a reload.
  */
 export function takeEntry(
   nodes: FsNode[],
   cache: Record<string, FsNode[]>,
   path: string,
 ): TreeEdit & { entry: FsNode | null } {
+  const atRoot = nodes.find((node) => node.path === path);
+  if (atRoot) return { entry: atRoot, nodes: nodes.filter((node) => node.path !== path), cache };
+  // The container the server would have listed it in, when the tree holds it.
   const parent = parentPathOf(path);
-  if (parent === '.') {
-    const entry = nodes.find((node) => node.path === path) ?? null;
-    if (!entry) return { entry: null, nodes, cache };
-    return { entry, nodes: nodes.filter((node) => node.path !== path), cache };
+  const direct = cache[parent];
+  const directEntry = direct?.find((node) => node.path === path);
+  if (direct && directEntry) {
+    return { entry: directEntry, nodes, cache: { ...cache, [parent]: direct.filter((node) => node.path !== path) } };
   }
-  const siblings = cache[parent];
-  const entry = siblings?.find((node) => node.path === path) ?? null;
-  if (!entry || !siblings) return { entry: null, nodes, cache };
+  // Otherwise the DEEPEST drawn container above it: a chain row's key is its
+  // deepest directory, so its children live under a key the path's own parent
+  // does not name.
+  const candidates = Object.keys(cache)
+    .filter((key) => path.startsWith(`${key}/`) && cache[key]!.some((node) => node.path === path))
+    .sort((a, b) => b.length - a.length);
+  const key = candidates[0];
+  if (!key) return { entry: null, nodes, cache };
+  const siblings = cache[key]!;
   return {
-    entry,
+    entry: siblings.find((node) => node.path === path)!,
     nodes,
-    cache: { ...cache, [parent]: siblings.filter((node) => node.path !== path) },
+    cache: { ...cache, [key]: siblings.filter((node) => node.path !== path) },
   };
 }
 

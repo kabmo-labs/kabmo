@@ -90,10 +90,15 @@ describe('Files panel local edits', () => {
     await panel.submitNewFile('lib/deep/parse.ts');
 
     // Every folder on the way is expanded and reads its own directory: the
-    // entry is not somewhere the user has to go hunting for.
+    // entry is not somewhere the user has to go hunting for. `lib` and `deep`
+    // are ONE row here — a folder holding only one folder collapses into a row
+    // naming the chain — and that row is the one the create expands.
     expect(panel.visibleNames()).toContain('parse.ts');
-    expect(panel.visibleNames()).toContain('deep');
-    expect(panel.visibleNames()).toContain('lib');
+    expect(panel.visibleNames()).toContain('lib/deep');
+    // The reveal expands the row that is DRAWN, not the path's own segments:
+    // `lib` and `deep` are not rows, so nothing asks the server about them.
+    expect(panel.dirReads).not.toContain('lib');
+    expect(panel.dirReads).not.toContain('lib/deep');
   });
 
   test('a rename moves the row in place without re-reading the root', async () => {

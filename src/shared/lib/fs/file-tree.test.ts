@@ -31,6 +31,7 @@ import {
   baseNameOf,
   parentPathOf,
   placeEntry,
+  rehydrateTree,
   rekeyCache,
   rekeyExpansion,
   renameEntryAt,
@@ -86,6 +87,46 @@ describe('placeEntry', () => {
 
     expect(placed.nodes[0].type).toBe('folder');
     expect(placed.nodes[0].children).toBeUndefined();
+  });
+
+  test('an entry under a collapsed chain row descends into it', () => {
+    // The tree draws `lib/deep` as ONE row, whose children are `lib/deep`'s.
+    const tree = [folder('lib/deep', [])];
+    const placed = placeEntry(tree, { 'lib/deep': [] }, file('lib/deep/x.ts'));
+
+    expect(placed.nodes).toHaveLength(1);
+    expect(placed.cache['lib/deep']?.map((node) => node.path)).toEqual(['lib/deep/x.ts']);
+  });
+
+  test('an entry beside a chain row unfolds it rather than drawing the folder twice', () => {
+    // `lib` holds only `deep`, so the tree draws one row named `lib/deep`. An
+    // entry at `lib/other/x.ts` means `lib` now has two children — the row is
+    // unfolded into `lib` holding `deep`, and the new chain is inserted under it.
+    const tree = [folder('lib/deep', [file('lib/deep/a.ts')])];
+    const placed = placeEntry(tree, { 'lib/deep': [file('lib/deep/a.ts')] }, file('lib/other/x.ts'));
+
+    expect(placed.nodes.map((node) => node.path)).toEqual(['lib']);
+    expect(placed.cache.lib?.map((node) => node.path)).toEqual(['lib/deep', 'lib/other']);
+    expect(placed.cache['lib/other']?.map((node) => node.path)).toEqual(['lib/other/x.ts']);
+    // The chain's own children keep their cache entry, keyed by the path they
+    // already had, so an open `lib/deep` stays open.
+    expect(placed.cache['lib/deep']?.map((node) => node.path)).toEqual(['lib/deep/a.ts']);
+  });
+
+  test('an entry in a sibling branch unfolds the chain once and lands under it', () => {
+    // The tree draws `com/java/app/package` as ONE row. An entry at
+    // `com/java/other/deep/x.ts` shares `com/java`, so the row is unfolded and
+    // BOTH branches sit inside it — never `com` twice.
+    const tree = [folder('com/java/app/package', [file('com/java/app/package/Main.java')])];
+    const placed = placeEntry(tree, {}, file('com/java/other/deep/x.ts'));
+    const drawn = rehydrateTree(placed.nodes, placed.cache);
+
+    expect(drawn.map((node) => node.name)).toEqual(['com/java']);
+    expect(drawn[0]!.children?.map((node) => node.name)).toEqual(['app/package', 'other/deep']);
+    expect(drawn[0]!.children?.[0]!.children?.map((node) => node.path))
+      .toEqual(['com/java/app/package/Main.java']);
+    expect(drawn[0]!.children?.[1]!.children?.map((node) => node.path))
+      .toEqual(['com/java/other/deep/x.ts']);
   });
 });
 

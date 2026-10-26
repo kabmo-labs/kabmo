@@ -64,13 +64,40 @@ export function diskHas(disk: Disk, path: string): boolean {
   return (disk[dir] ?? {})[name] !== undefined;
 }
 
+/**
+ * The directories a single-child folder chain runs through, starting at `path`.
+ *
+ * Mirrors `folderChain` in `src/server/lib/fs/listing.ts`, including where it
+ * stops: a folder holding exactly one FOLDER continues the chain, and a file, a
+ * second entry or an empty folder ends it. The harness has to fold like the
+ * server does or a spec would assert a tree the real listing never produces.
+ */
+function chainFrom(disk: Disk, path: string): string[] {
+  const segments = [path.slice(path.lastIndexOf('/') + 1)];
+  let current = path;
+  for (let depth = 1; depth < 32; depth += 1) {
+    const dir = disk[current];
+    const entries = Object.keys(dir ?? {});
+    if (entries.length !== 1 || dir![entries[0]!] !== null) return segments;
+    current = `${current}/${entries[0]}`;
+    segments.push(entries[0]!);
+  }
+  return segments;
+}
+
 /** One directory's entries as the server emits them: folders with `children: null`. */
 export function entriesOf(disk: Disk, path: string): unknown[] {
   const dir = disk[path] ?? {};
   return Object.keys(dir).map((child) => {
     const rel = path === '.' ? child : `${path}/${child}`;
-    return dir[child] === null
-      ? { id: rel, name: child, type: 'folder', path: rel, children: null, ignored: false }
-      : { id: rel, name: child, type: 'file', path: rel, ignored: false };
+    if (dir[child] !== null) return { id: rel, name: child, type: 'file', path: rel, ignored: false };
+    // A folder holding exactly one folder is one collapsed row naming the chain,
+    // whose path is the DEEPEST directory — the one whose contents it shows.
+    const chain = chainFrom(disk, rel);
+    if (chain.length > 1) {
+      const deep = `${rel}/${chain.slice(1).join('/')}`;
+      return { id: deep, name: chain.join('/'), type: 'folder', path: deep, children: null, ignored: false };
+    }
+    return { id: rel, name: child, type: 'folder', path: rel, children: null, ignored: false };
   });
 }
