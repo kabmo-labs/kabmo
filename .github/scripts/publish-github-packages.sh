@@ -107,10 +107,18 @@ read_published_versions() {
     "$(packument_url "$name")")"
   case "$code" in
     200)
+      # The body travels on STDIN, never as a path interpolated into the JS
+      # source. `mktemp` on the Windows runner (Git Bash) answers an MSYS path
+      # like `/tmp/tmp.JcdBgI4ypN`, and MSYS only rewrites a path it sees as an
+      # ARGUMENT to a native binary — not one embedded in a string. Measured on
+      # `Gates / Checks (Windows)`: `Bun.file('/tmp/tmp.JcdBgI4ypN')` answered
+      # ENOENT, so the version list came back EMPTY, every package looked
+      # unpublished, and a re-run republished versions GitHub Packages refuses
+      # with 409 — the skip branch was unreachable there.
       bun -e "
-        const doc = await Bun.file('$body').json();
+        const doc = await Bun.stdin.json();
         for (const version of Object.keys(doc.versions ?? {})) console.log(version);
-      "
+      " < "$body"
       return 0
       ;;
     404) return 0 ;;

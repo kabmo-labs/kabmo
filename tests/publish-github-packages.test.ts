@@ -205,6 +205,24 @@ describe('the manifests and the release pipeline stay on npmjs.org', () => {
     expect(build, 'the app build step is missing').toBeDefined();
     expect(build.if, 'the app build must be conditional on the app being published').toContain(' . ');
   });
+
+  test('the packument body reaches bun on stdin, never as an interpolated path', async () => {
+    // The script reads the published version list by handing the downloaded
+    // packument to `bun -e`. A PATH inside that JS source is wrong on the
+    // Windows runner: `mktemp` (Git Bash) answers an MSYS path like
+    // `/tmp/tmp.JcdBgI4ypN`, and MSYS rewrites a path only when it is an
+    // ARGUMENT to a native binary — not when it is embedded in a string. So
+    // `Bun.file('/tmp/…')` answers ENOENT there, the version list comes back
+    // EMPTY, every package looks unpublished, and a re-run republishes
+    // versions GitHub Packages refuses with 409. Measured on
+    // `Gates / Checks (Windows)`: the skip branch was unreachable.
+    const script = await Bun.file(SCRIPT).text();
+    expect(script).toContain('Bun.stdin.json()');
+    expect(script, 'the body must be redirected in, not named in the JS').toMatch(/< "\$body"/);
+    expect(script, 'a packument path must never be interpolated into the JS').not.toMatch(
+      /Bun\.file\('\$body'\)/,
+    );
+  });
 });
 
 describe.skipIf(!hasBash)('the publish script answers the three states distinctly', () => {
