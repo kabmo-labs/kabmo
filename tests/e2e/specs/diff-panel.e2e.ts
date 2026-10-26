@@ -213,6 +213,111 @@ test.describe('diff panel views', () => {
     workspace.dispose();
   });
 
+  /**
+   * The row must take the width the BAR gives it, not the width of what it is
+   * currently showing.
+   *
+   * Measured before the fix: a 373px diff panel reported a **204px** row at every
+   * viewport, so Unified/Split/Full Code lived in `⋯` on a 1440px screen — the
+   * two view modes read as missing. The cause was a feedback loop: the row was
+   * content-sized, so hiding a cluster shrank the row, which shrank `available`,
+   * which hid another, and the row never grew back when the panel was widened.
+   *
+   * `clickToolbar` deliberately follows a control into the menu, so every other
+   * spec in this file passed with the modes buried. This one asserts where they
+   * are, because "one click away" is not the same as "on the row".
+   */
+  test('the toolbar row fills the panel, so the view modes stay on it', async ({ harness, page }) => {
+    const server = await harness('real');
+    const { workspace } = await seedRepo(page, server);
+    const panel = await openDiff(page);
+
+    const geometry = await panel.evaluate((el) => {
+      const bar = el.querySelector<HTMLElement>('div[class*="@container"]');
+      const row = bar?.querySelector<HTMLElement>('div.flex-nowrap') ?? null;
+      return {
+        bar: bar?.clientWidth ?? 0,
+        row: row?.clientWidth ?? 0,
+        rowScroll: row?.scrollWidth ?? 0,
+      };
+    });
+
+    expect(geometry.bar).toBeGreaterThan(300);
+    // The bar's horizontal padding (px-3, both sides) is the only thing the row
+    // may give up; a content-sized row gave up a third of it.
+    expect(geometry.row).toBeGreaterThanOrEqual(geometry.bar - 32);
+    // Nothing may be clipped out of the row either: a control past its right
+    // edge is a control the reader cannot see.
+    expect(geometry.rowScroll).toBeLessThanOrEqual(geometry.row + 1);
+
+    // Both shapes of the diff are on the ROW at the panel's default width.
+    await expect(panel.getByRole('button', { name: 'Unified diff', exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Split (side-by-side) diff', exact: true })).toBeVisible();
+
+    workspace.dispose();
+  });
+
+  /**
+   * The `⋯` menu must be reachable by a POINTER, not only by Playwright.
+   *
+   * `getByRole('menuitem').click()` cannot catch this. The row is
+   * `overflow-hidden`, which is still programmatically scrollable, so Playwright's
+   * own `scrollRectIntoViewIfNeeded` scrolls the row until the menu row is under
+   * the cursor and the click lands — measured: the menu reported
+   * `isVisible: true` and a real click succeeded while `elementFromPoint` at its
+   * own centre answered `.cm-content`, i.e. a `.cm-line` in the diff BEHIND it.
+   * A person has no such scroll: every row was invisible and unclickable while
+   * the trigger read `aria-expanded="true"`.
+   *
+   * So the assertion is the hit test itself — what the browser would dispatch a
+   * press to — which is the only thing a pointer actually obeys.
+   */
+  test('the overflow menu is hit-testable, not clipped behind the diff', async ({ harness, page }) => {
+    const server = await harness('real');
+    const { workspace } = await seedRepo(page, server);
+    const panel = await openDiff(page);
+
+    // Make the row overflow so the trigger exists at all.
+    await page.setViewportSize({ width: 900, height: 720 });
+    await panel.getByRole('button', { name: 'More actions' }).click();
+
+    const menu = page.locator('[role="menu"]');
+    await expect(menu).toBeVisible({ timeout: 10_000 });
+
+    const probe = await page.evaluate(() => {
+      const el = document.querySelector('[role="menu"]') as HTMLElement | null;
+      if (!el) return { found: false } as const;
+      const rect = el.getBoundingClientRect();
+      const points = [0.1, 0.5, 0.9].map((fraction) => {
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height * fraction);
+        return {
+          fraction,
+          inside: Boolean(hit && el.contains(hit)),
+          hit: hit ? `${hit.tagName}.${String(hit.className).slice(0, 40)}` : null,
+        };
+      });
+      // Nothing between the menu and the viewport may clip it.
+      const clippedBy: string[] = [];
+      for (let node = el.parentElement; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (style.overflow !== 'visible' || style.overflowY !== 'visible') {
+          clippedBy.push(`${node.tagName}.${String(node.className).slice(0, 40)} ${style.overflowY}`);
+        }
+      }
+      return { found: true, points, clippedBy, height: Math.round(rect.height) } as const;
+    });
+
+    expect(probe.found).toBe(true);
+    if (!probe.found) return;
+    // A menu is taller than one row, or the trigger had nothing to bury.
+    expect(probe.height).toBeGreaterThan(60);
+    // Every sampled point belongs to the menu — the whole point of the portal.
+    expect(probe.points.map((point) => point.inside)).toEqual([true, true, true]);
+    expect(probe.clippedBy).toEqual([]);
+
+    workspace.dispose();
+  });
+
   test('word wrap keeps the panel from scrolling sideways', async ({ harness, page }) => {
     const server = await harness('real');
     const { workspace } = await seedRepo(page, server);

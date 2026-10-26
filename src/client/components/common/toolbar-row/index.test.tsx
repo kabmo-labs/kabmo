@@ -123,6 +123,20 @@ async function openMenu(): Promise<void> {
   });
 }
 
+/**
+ * The menu lives in `document.body`, NOT inside the row.
+ *
+ * It is portalled out because the row is `overflow-hidden` and one line tall:
+ * an inline `absolute top-full` menu is clipped to nothing, so every row was
+ * invisible and unclickable while the trigger said `aria-expanded="true"`
+ * (measured: the menu laid out 208×206px and `elementFromPoint` at its centre
+ * answered a `.cm-line` in the diff behind it). Querying the menu inside the
+ * container would therefore find nothing — which is the bug, not the fixture.
+ */
+function menuItems(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+}
+
 describe('ToolbarRow overflow', () => {
   test('a wide row draws every cluster and no trigger', async () => {
     await mount(400, [60, 60, 60]);
@@ -144,23 +158,58 @@ describe('ToolbarRow overflow', () => {
   test('the menu offers the hidden controls, named in words', async () => {
     await mount(120, [60, 60, 60]);
     await openMenu();
-    const items = [...container.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim());
+    const items = menuItems().map((item) => item.textContent?.trim());
     expect(items).toContain('Word wrap on');
     // The pinned control is on the row, so it is NOT in the menu.
     expect(items).not.toContain('Save file');
+  });
+
+  test('the menu is portalled out of the clipping row', async () => {
+    await mount(120, [60, 60, 60]);
+    await openMenu();
+    const menu = document.querySelector('[role="menu"]');
+    if (!menu) throw new Error('no menu rendered');
+    // The row clips; the menu must not be its descendant.
+    expect((container.firstElementChild as HTMLElement).contains(menu)).toBe(false);
+    expect(menu.parentElement).toBe(document.body);
   });
 
   test('a menu row runs the same action the button would', async () => {
     const ran: string[] = [];
     await mount(120, [60, 60, 60], ran);
     await openMenu();
-    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
-      (row) => row.textContent?.trim() === 'Word wrap on',
-    );
+    const item = menuItems().find((row) => row.textContent?.trim() === 'Word wrap on');
     if (!item) throw new Error('the wrap row is missing from the menu');
     await act(async () => {
       item.dispatchEvent(new window.MouseEvent('click', { bubbles: true }) as never);
     });
     expect(ran).toEqual(['Word wrap on']);
+  });
+
+  /**
+   * A press on a menu row must not be read as "outside".
+   *
+   * `useOnClickOutside` watches ONE ref, and the menu is no longer inside the
+   * trigger's subtree — so a mousedown on a row closed the menu and the `click`
+   * never reached the button. That is the same dead menu in a new shape.
+   */
+  test('pressing inside the menu keeps it open', async () => {
+    const ran: string[] = [];
+    await mount(120, [60, 60, 60], ran);
+    await openMenu();
+    const item = menuItems().find((row) => row.textContent?.trim() === 'Word wrap on');
+    if (!item) throw new Error('the wrap row is missing from the menu');
+
+    await act(async () => {
+      item.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }) as never);
+    });
+    // Still open, so the following click can land.
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+
+    await act(async () => {
+      item.dispatchEvent(new window.MouseEvent('click', { bubbles: true }) as never);
+    });
+    expect(ran).toEqual(['Word wrap on']);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 });
