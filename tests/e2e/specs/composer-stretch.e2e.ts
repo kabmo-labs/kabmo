@@ -14,10 +14,12 @@
  * are written in. A `composerExpansion` unit test asserts the CLASS the module
  * returns; only a real browser resolves which class wins.
  *
- * The three facts asserted here are the ones a user would notice: a phone takes
- * the viewport, a desktop grows the box but keeps the chat beside it, and a
- * send on a phone returns to the docked composer (staying stretched would hide
- * the answer being streamed).
+ * The facts asserted here are the ones a user would notice: a phone takes the
+ * viewport, a desktop grows the box but keeps the chat beside it, and a SEND on
+ * EITHER layout returns to the docked composer. The desktop half was a real
+ * bug — the collapse was `if (isMobile) setExpanded(false)` in the click
+ * handler, so a desktop kept a 38vh box over the conversation the prompt was
+ * written against.
  */
 
 import type { Page } from '@playwright/test';
@@ -87,6 +89,31 @@ test.describe('composer stretch (desktop)', () => {
     await restore.click();
     const restored = await cardBox(page);
     expect(restored!.textareaHeight).toBe(docked!.textareaHeight);
+
+    // A SEND collapses it too, on this layout as well. Staying stretched keeps a
+    // 38vh box over the conversation the prompt was written against.
+    //
+    // The send is deliberately the SECOND one. A workspace opened with no
+    // `?sessionId=` sends into a pending `new-…` chat, and the spawn adopts it
+    // under omp's UUID — a remount that resets the composer's own state, so a
+    // first send collapses whether or not the rule exists. Measured: with the
+    // collapse deleted entirely, the first-send version of this spec still
+    // passed. The adopted session's composer is the one that has to do it.
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await input.fill('first prompt');
+    await page.getByRole('button', { name: /send message/i }).first().click();
+    await expect(page.getByText('Response to: first prompt').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page).toHaveURL(/sessionId=(?!new-)/);
+
+    await page.getByRole('button', { name: MAXIMIZE }).click();
+    await expect(page.getByRole('button', { name: RESTORE })).toHaveAttribute('aria-pressed', 'true');
+    await input.fill('stretch and send');
+    await page.getByRole('button', { name: /send message/i }).first().click();
+
+    await expect(page.getByText('Response to: stretch and send').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: MAXIMIZE })).toHaveAttribute('aria-pressed', 'false');
+    const afterSend = await cardBox(page);
+    expect(afterSend!.textareaHeight).toBe(docked!.textareaHeight);
 
     workspace.dispose();
   });

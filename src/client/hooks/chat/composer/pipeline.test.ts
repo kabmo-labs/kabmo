@@ -60,6 +60,7 @@ afterEach(() => {
   container?.remove();
   globalThis.fetch = nativeFetch;
   sent.length = 0;
+  sentHooks = 0;
   current = [];
   value = '';
   rootPath = null;
@@ -98,6 +99,8 @@ let current: Attachment[] = [];
 let seed: (next: Attachment[]) => void;
 /** Every dispatch, so a test can assert what was NOT sent. */
 const sent: Array<{ attachments: Attachment[] }> = [];
+/** Every `onSent`, so a test can assert the collapse followed a real dispatch. */
+let sentHooks = 0;
 let value = '';
 let rootPath: string | null = null;
 
@@ -112,6 +115,7 @@ function PipelineProbe() {
     disabled: false,
     rootPath,
     onSend: (attachmentsOut) => sent.push({ attachments: attachmentsOut }),
+    onSent: () => { sentHooks += 1; },
   });
   return null;
 }
@@ -196,6 +200,38 @@ describe('useComposerPipeline', () => {
     // picture that is perfectly readable.
     expect(sent.length).toBe(1);
     expect(sent[0].attachments.map((a) => a.id)).toEqual(['i']);
+  });
+
+  test('a dispatched send reports onSent, which is what collapses the stretch', async () => {
+    await mountPipeline();
+    value = 'collapse me';
+    await act(async () => { render(h(PipelineProbe, {}), container); });
+    await act(async () => { api.submit(); });
+    await waitFor(() => sent.length === 1);
+    // `onSent` runs immediately BEFORE the dispatch, so the composer is already
+    // docked when the optimistic row lands.
+    expect(sentHooks).toBe(1);
+  });
+
+  test('a refused send reports nothing, so a stretched composer stays stretched', async () => {
+    // The desktop bug this pins: the collapse used to happen in the click
+    // handler, so a press that dispatched NOTHING (here: an attachment whose
+    // read produced no body) shrank the box over content that was never sent.
+    await mountPipeline();
+    await act(async () => { api.acceptFiles([new File([], 'empty.md', { type: 'text/markdown' })]); });
+    await waitFor(() => api.notice !== null);
+    await act(async () => { api.submit(); });
+    await settle();
+
+    expect(sent).toEqual([]);
+    expect(sentHooks).toBe(0);
+  });
+
+  test('an empty composer reports nothing either', async () => {
+    await mountPipeline();
+    await act(async () => { api.submit(); });
+    await settle();
+    expect(sentHooks).toBe(0);
   });
 
   test('a second click during the send does not dispatch the batch twice', async () => {

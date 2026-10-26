@@ -38,10 +38,15 @@
  *    is the panel's own overlap with the visible area (`useKeyboardInset`),
  *    applied as padding; with no keyboard the padding is the home indicator's
  *    inset instead.
- *  - **A send collapses the mobile stretch.** The stretched composer covers the
- *    transcript, so staying stretched would hide the answer being streamed. On
- *    desktop it stays: the chat is visible either way, and a composer that
- *    snapped back on every send would move the box the user is typing in.
+ *  - **A send collapses the stretch, on BOTH layouts, and only a DISPATCHED
+ *    send does.** The stretched composer covers the transcript on a phone and
+ *    covers a third of the conversation on a desktop, so it returns to the dock
+ *    once the prompt is on its way — but the collapse is driven by the send
+ *    pipeline's own `onSent`, never by the click: a Send press that dispatched
+ *    nothing (an empty draft, an attachment whose read produced no body) must
+ *    leave the box exactly where the user put it, or a refused send would look
+ *    like a successful one. Escape collapses either layout too, from a document
+ *    listener, so the popup's own Escape handling cannot trap the user.
  */
 
 import type { CSSProperties } from 'preact';

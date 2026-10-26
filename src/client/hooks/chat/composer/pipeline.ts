@@ -49,6 +49,15 @@ export interface UseComposerPipelineOptions {
   /** Workspace root, used to resolve a dropped path reference. */
   rootPath?: string | null;
   onSend: (attachments: Attachment[], options?: { steering?: boolean }) => void;
+  /**
+   * Runs when a send is actually DISPATCHED — after every guard, immediately
+   * before `onSend`. The composer returns to its docked size from here rather
+   * than from its own click handler, so the collapse follows the SEND: a click
+   * that dispatched nothing (an empty draft, an unreadable attachment) leaves
+   * the stretched box alone, and a send that arrives any other way — Enter,
+   * Cmd+Enter, a queued follow-up, a plugin — collapses it too.
+   */
+  onSent?: () => void;
 }
 
 export interface ComposerPipeline {
@@ -74,6 +83,7 @@ export function useComposerPipeline({
   disabled,
   rootPath,
   onSend,
+  onSent,
 }: UseComposerPipelineOptions): ComposerPipeline {
   const { addFiles, removeAttachment, readyForSend, peek, clear } = useComposerAttachments({ attachments, setAttachments });
   // Guards a double click: the composer is cleared only after the reads land, so
@@ -165,11 +175,12 @@ export function useComposerPipeline({
         setNotice(describeUnreadable(outgoing.map((a) => attachmentName(a))));
         return;
       }
+      onSent?.();
       onSend(outgoing, options);
     }).finally(() => {
       sendingRef.current = false;
     });
-  }, [clear, onSend, peek, readyForSend, value]);
+  }, [clear, onSend, onSent, peek, readyForSend, value]);
 
   return {
     notice,

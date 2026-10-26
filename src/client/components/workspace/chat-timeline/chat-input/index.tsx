@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ClipboardEvent, SetStateAction } from 'preact/compat';
 import { AlertTriangle, X } from 'lucide-preact';
 import type { Attachment } from '@/shared/types';
@@ -106,6 +106,17 @@ export function ChatInput({
     }
   };
 
+  // A DISPATCHED send returns the composer to its docked size, on BOTH layouts.
+  // Hooked into the pipeline rather than the click handler so every way in —
+  // the Send button, Enter, Cmd+Enter steering, a queued follow-up — collapses
+  // it, while a click that dispatched nothing (an empty draft, an unreadable
+  // attachment) leaves the stretched box exactly where the user put it. Staying
+  // stretched hides the answer being streamed on a phone, and on a desktop it
+  // keeps a 38vh box over the conversation the prompt was written against.
+  // Stable identity: the pipeline's `submit` closes over it, and a fresh arrow
+  // per render would rebuild `submit` on every keystroke.
+  const collapseOnSend = useCallback(() => setExpanded(false), []);
+
   // Attach-and-send pipeline: drop handling, the inline notice, and the send
   // guard all live in the hook, because a drop registers files before this
   // component re-renders and the send decision cannot read a stale prop.
@@ -116,6 +127,7 @@ export function ChatInput({
     disabled,
     rootPath,
     onSend,
+    onSent: collapseOnSend,
   });
 
   // Publishes this composer's state to the plugin kit, and gives the kit a way
@@ -166,14 +178,6 @@ export function ChatInput({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [expanded]);
-
-  // A send on a phone collapses the stretch: it covers the transcript, so
-  // staying stretched would hide the answer being streamed. On a desktop the
-  // chat is visible either way and the box stays where the user put it.
-  const handleSubmit = (options?: { steering?: boolean }) => {
-    if (isMobile) setExpanded(false);
-    submit(options);
-  };
 
   // Browser dictation, delegated to omp's own local STT worker. The hook owns
   // capture + the socket; this component owns where the text lands and the
@@ -275,7 +279,7 @@ export function ChatInput({
         <ComposerTextarea
           value={value}
           onChange={onChange}
-          onSend={handleSubmit}
+          onSend={submit}
           disabled={disabled}
           appSettings={appSettings}
           rootPath={rootPath}
@@ -308,7 +312,7 @@ export function ChatInput({
         isGenerating={isGenerating}
         chatRunning={chatRunning}
         onStop={onStop}
-        onSend={() => handleSubmit()}
+        onSend={() => submit()}
         sendDisabled={disabled || (!value.trim() && attachments.length === 0)}
         accessMode={accessMode}
         onSelectAccess={onAccessModeChange}
