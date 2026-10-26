@@ -29,6 +29,21 @@ import WebKit
 
 import KabmoDesktop
 
+/// Records what the menu's Settings row sends, so the case can assert the event
+/// rather than trust the script's own source.
+///
+/// A page-level listener is exactly what the console has (`useKabmoEvent`), so a
+/// row that dispatched the wrong name — or reloaded instead of dispatching — is
+/// visible here as an empty recorder.
+let settingsRecorderScript = """
+<script>
+  window.__settingsEvents = [];
+  window.addEventListener('omp:open-settings', (e) => {
+    window.__settingsEvents.push(e.detail || {});
+  });
+</script>
+"""
+
 /// A page with the shape the shell's header has: a marked strip, a control
 /// inside it, and body content below.
 ///
@@ -45,7 +60,7 @@ let page = """
 </div>
 <div style="height:400px;background:#fafafa">body</div>
 <textarea id="composer" style="position:absolute;left:8px;bottom:8px;width:220px;height:40px"></textarea>
-""" + dropRecorderScript + """
+""" + dropRecorderScript + settingsRecorderScript + """
 </body></html>
 """
 
@@ -376,6 +391,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runShortcutCases()
     runDoubleClickCases()
     runMenuCases()
+    runSettingsMenuCases()
     runEditingCases()
     proveClickCloses()
     runSplashCases()
@@ -582,6 +598,43 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       check("the bar menu offers \(expected)", titles.contains(expected))
     }
     check("the bar menu offers Zoom/Restore", hasZoom)
+  }
+
+  /**
+   Settings › opens the console's modal by ASKING THE PAGE, and never reloads.
+
+   The row used to append `?settings=1` and load the URL again, which no client
+   code reads: the document was thrown away (a live turn, the composer draft, the
+   scroll position) and no settings screen appeared. The console listens for
+   `omp:open-settings` in both layouts, so the case asserts that event reached a
+   real page listener — through the SHIPPED script, not a copy of it.
+
+   The document identity is captured before and after: a reload would replace it,
+   and "the modal opened" on a fresh page would still be the bug.
+   */
+  func runSettingsMenuCases() {
+    print("\nthe menu's Settings row")
+    let before = eval("document.documentElement.dataset.probe = 'kept'; 'kept'") as? String
+    check("the page is loaded before the row is pressed", before == "kept")
+
+    // The shipped helper, dispatched the way the menu row calls it.
+    var answered: Bool?
+    openSettings(in: webView) { answered = $0 }
+    pump(0.4)
+    check("the shell reports a document to ask", answered == true)
+
+    let events = eval("window.__settingsEvents.length") as? Int ?? 0
+    check("the page received exactly one settings event", events == 1)
+    check("the event carries the detail both layouts read",
+          (eval("Object.keys(window.__settingsEvents[0] || {}).length") as? Int ?? -1) == 0)
+
+    // The event's NAME, from the listener that fired — a wrong name would leave
+    // the recorder empty while the script still "succeeded".
+    check("the event name is the console's own",
+          openSettingsEvent == "omp:open-settings")
+
+    let survived = eval("document.documentElement.dataset.probe") as? String
+    check("the document was not replaced by the row", survived == "kept")
   }
 
   func doubleClick(at point: NSPoint) {

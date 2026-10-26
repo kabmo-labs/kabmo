@@ -234,6 +234,46 @@ describe('the table matches the tree', () => {
     );
     expect(reader, 'the plist key macOS reads').toContain('CFBundleShortVersionString');
   });
+
+  /**
+   * Settings › asks the PAGE, and never reloads it.
+   *
+   * The row appended `?settings=1` and loaded the URL again, which no client code
+   * reads: the live document went away — a running turn, the composer draft, the
+   * timeline's scroll position — and no settings screen appeared. The console
+   * listens for `omp:open-settings` in both layouts, so the row must dispatch it.
+   *
+   * Asserted on the source because the wrong shape is invisible: a reload looks
+   * like a working menu item, and the modal simply never opens. The event itself
+   * is pinned by the window suite, which dispatches the shipped script into a
+   * real page.
+   */
+  test('the Settings row opens the console modal instead of reloading', () => {
+    const app = readFileSync(join(repoRoot, MACOS_SHELL.dir, 'Sources/kabmo-desktop/App.swift'), 'utf8');
+    expect(app, 'the row must go through the page-event helper').toContain('openSettings(in: webView)');
+    expect(app, 'a query parameter nothing reads is the bug this replaces').not.toContain(
+      'URLQueryItem(name: "settings"',
+    );
+
+    const events = readFileSync(
+      join(repoRoot, MACOS_SHELL.dir, 'Sources/KabmoDesktop/PageEvents.swift'),
+      'utf8',
+    );
+    // The name is stated once in Swift and once in the client, and a typo in
+    // either is silent: the shell dispatches into the void and the modal never
+    // opens. The literal is read out of BOTH sides rather than compared to a
+    // string this test wrote, which would pass with the two disagreeing.
+    const declared = events.match(/openSettingsEvent\s*=\s*"([^"]+)"/)?.[1];
+    expect(declared, 'the shell must declare the event name as one constant').toBeTruthy();
+
+    const client = readFileSync(
+      join(repoRoot, 'src/client/components/settings/Modal.tsx'),
+      'utf8',
+    );
+    expect(client, 'the console must listen for the name the shell sends').toContain(
+      `'${declared}'`,
+    );
+  });
 });
 
 describe('readVersionName', () => {

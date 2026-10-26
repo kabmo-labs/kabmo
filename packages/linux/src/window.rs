@@ -262,9 +262,10 @@ pub fn bar_menu(window: &gtk::Window, view: &WebView, trigger: Option<&gdk::Even
     devtools.connect_activate(move |_| toggle_inspector(&view_for_devtools));
     menu.append(&devtools);
 
-    // The console's own settings, opened through the event the client already
-    // listens for (`omp:open-settings`). The macOS shell appends `?settings=1`
-    // and reloads, which the client never reads; this is the real contract.
+    // The console's own settings, opened through the event the client listens
+    // for (`omp:open-settings`). The macOS shell sends the same event from its
+    // App menu; both shells ask the PAGE, because every settings screen is a
+    // client-rendered modal and neither shell has a native panel to show.
     let settings = gtk::MenuItem::with_label("Settings…");
     let view_for_settings = view.clone();
     settings.connect_activate(move |_| open_settings(&view_for_settings));

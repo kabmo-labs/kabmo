@@ -91,8 +91,28 @@ free is then done in `ShellWindow.swift`:
 | ⌘W ⌘M ⌃⌘F | close, minimise, full screen (`validateUserInterfaceItem` keeps them live) |
 | ⌘R / ⌘⇧I / ⌘0 ⌘+ ⌘- | reload, inspector, page zoom |
 | ⌘C ⌘V ⌘X ⌘Z ⌘⇧Z ⌘A | copy, paste, cut, undo, redo, select all — **only because of the Edit menu** |
+| ⌘, (Settings…) | opens the console's own Settings modal; the shell dispatches `omp:open-settings` and never reloads the page |
 | green button | full screen; the webview is inset by `safeAreaInsets` so the page does not sit under the menu bar |
 | a press on any control in the bar | reaches the control — the selector stops at interactive elements |
+
+### Settings › asks the page, because every settings screen is a modal
+
+There is no native panel to build: Appearance, Providers, Plugins, Skills and the
+rest are all rendered by the client. So the row's whole job is to dispatch the
+event both layouts already listen for — `omp:open-settings`, in
+`PageEvents.swift`. `useSettingsModal` handles it on the desktop and
+`LayoutWrapper` on the phone, so one event is enough for both.
+
+It used to append `?settings=1` and load the URL again, and **nothing on the
+client reads that parameter**: the modal never opened, while the live document
+went away — a running turn, the composer draft and the timeline's scroll
+position with it. The Linux shell had already sent the event; this shell simply
+was not using it.
+
+`runSettingsMenuCases` in `TestsWindow/main.swift` dispatches the shipped script
+into a real page and asserts the listener fired once and the document survived.
+Restoring the reload fails four cases, including the typing ones that follow,
+because the page was replaced.
 
 ### The Edit menu is what gives the page its clipboard chords
 

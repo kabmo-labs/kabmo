@@ -674,13 +674,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     NSApp.mainMenu = mainMenu
   }
 
+  /**
+   Settings › opens the console's OWN settings modal.
+
+   There is no native panel to build: every settings screen is a page the client
+   renders, so the menu row asks the page for it with the event both layouts
+   already listen for (`omp:open-settings`). See `PageEvents.swift`.
+
+   What this replaced appended `?settings=1` and loaded the URL again — a
+   parameter NO client code reads. The row therefore did nothing visible while
+   discarding the live document: a running turn, the composer draft and the
+   timeline's scroll position all went with it.
+   */
   @objc private func openConsoleSettings() {
-    // The console's own settings live in the page; there is no native panel.
-    let state = webView.url?.absoluteString ?? "http://127.0.0.1:3000"
-    if var components = URLComponents(string: state) {
-      components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "settings", value: "1")]
-      if let url = components.url { webView.load(URLRequest(url: url)) }
-    }
+    openSettings(in: webView)
   }
 
   @objc private func zoomActualSize() { webView.pageZoom = 1 }
