@@ -5,7 +5,7 @@
 
 // The launch overlay: when a progress number may move, and what finishes a load.
 
-use kabmo_desktop::splash::{sentence_for, Failure, Phase, Progress};
+use kabmo_desktop::splash::{sentence_for, Failure, Phase, Progress, SPLASH_CSS};
 
 use crate::support::Runner;
 
@@ -83,6 +83,31 @@ pub fn cases(r: &mut Runner) {
         .collect::<std::collections::HashSet<_>>()
         .len()
             == 5,
+    );
+
+    // The fill's two properties are the ones a toolkit fails at SILENTLY: the
+    // widget is allocated the whole window and still paints nothing, or GTK
+    // paints the bar in the theme accent. Neither throws, and neither is visible
+    // to any phase case above.
+    r.group("splash stylesheet");
+    r.check(
+        "the fill paints the paper, or the page shows through it",
+        SPLASH_CSS.contains(".kabmo-splash { background-color: #FAF8F3; }"),
+    );
+    r.check(
+        "the bar's trough is the palette's, not the theme accent",
+        SPLASH_CSS.contains("background-color: #D9D4C7"),
+    );
+    r.check(
+        "the bar's progress is the ink, not the theme accent",
+        SPLASH_CSS.contains("background-color: #141310"),
+    );
+    r.check(
+        "every rule is scoped to the splash, so no other widget inherits it",
+        SPLASH_CSS
+            .split('}')
+            .filter(|rule| rule.contains("background-color") || rule.contains("min-height"))
+            .all(|rule| rule.contains(".kabmo-splash")),
     );
 
     r.group("splash reload detection");

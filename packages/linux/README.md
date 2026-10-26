@@ -301,7 +301,7 @@ supported.
 | `src/store.rs` | the server list, its persisted shape, and the ownership rule |
 | `src/system.rs` | `XDG` paths, the health probe, local-server detection, and the supervisor that owns a spawned child's process group |
 | `src/bridge.rs` | the injected JS, the call parser, the reply script, and the `desktopInfo` payload |
-| `src/splash.rs` | the launch overlay's RULES: four phases, the progress arithmetic, the reload test, the sentences |
+| `src/splash.rs` | the launch overlay's RULES: four phases, the progress arithmetic, the reload test, the sentences, and the stylesheet the fill needs |
 | `src/splash_view.rs` | the overlay's widget: the wordmark, the bar and its sweep timer, the sentence, Retry |
 | `src/wordmark.rs` | the SVG path parser and the cairo painter for the README's lockup |
 | `src/wordmark_data.rs` | GENERATED from `public/kabmo-wordmark.svg` by `scripts/shell-wordmark.mjs` |
@@ -321,10 +321,25 @@ supported.
   binary.
 - **The window itself is not driven by a pointer in CI.** What can be wrong
   without one — the server list's rules, the probe, the record reader, the bridge's
-  wire shapes, the edge arithmetic, the splash's progress and reload rules, and the
-  wordmark's parser against the SVG — is unit-tested. The splash itself was verified
-  under Xvfb: against a dead port it renders the mark, the sentence and Retry in the
-  error tone; against a server that stalls, the mark and the sweeping bar.
+  wire shapes, the edge arithmetic, the splash's progress and reload rules, the
+  splash's stylesheet, and the wordmark's parser against the SVG — is unit-tested.
+  The splash itself was verified under Xvfb: against a dead port it renders the mark,
+  the sentence and Retry in the error tone; against a server that stalls, the mark
+  and the sweeping bar.
+  **The splash's SIZE is a GTK rule, not a style choice, and it was wrong.** A
+  `GtkOverlay` allocates its overlay child at that child's own requested size and
+  honours its alignment, so a single `GtkBox` carrying `halign/valign = Center` was
+  allocated **180x105 inside a 2200x1300 window** — measured under Xvfb, which is
+  the same "small box instead of a full-screen overlay" the macOS shell had for a
+  different reason. A splash that small covers nothing: the page shows around it,
+  and a press outside it reaches a console the user cannot see, defeating
+  `set_overlay_pass_through(false)`. The widget is therefore two boxes — an outer
+  fill that carries `.kabmo-splash` and paints the paper, and an inner column that
+  centres the content — and `rules/splash.rs` pins the stylesheet's background
+  because a `GtkBox` draws none of its own, so the fill would otherwise be
+  allocated the whole window and still show the page through it. Verified by
+  pixel census against a deliberately blue page: the fill covered the window
+  (2,761,319 paper pixels of 2,860,000) with **zero** page pixels visible.
   The window was verified by hand under Xvfb + openbox: a press on the header and a
   drag moved it (`X 60→120, Y 20→60`), a press on the east edge and a drag widened
   it (1280→1328), the page's square control maximized and restored it

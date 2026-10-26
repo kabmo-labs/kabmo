@@ -155,15 +155,29 @@ Three details are load-bearing, and each fails silently:
   what both the app and the window suite install, so the suite exercises the
   shipped rows; a suite that declared its own chords would pass while the app's
   menu was missing one, which is how the whole Edit menu came to be missing.
-- **The chords need a KEY window.** `NSApp.activate` is what the suite calls
-  before driving them; without it the key-equivalent pass does not run even with
-  the menu installed, which looks exactly like the bug.
+- **The suite does NOT drive the chords as key equivalents, because it cannot
+  reliably.** A key equivalent reaches the responder chain only through the KEY
+  WINDOW, and a non-bundled test executable cannot make itself the active app:
+  measured over eight runs, `NSApp.activate(ignoringOtherApps: true)` left
+  `isActive == false` in most of them (and `true` in others), so the eight
+  chord-driven cases flapped while asserting nothing about the shell. What the
+  shell owns is asserted directly instead, and it is deterministic: the app's own
+  menu bar carries the Edit rows in order, each declares its chord and modifier
+  mask, each routes to the shipped selector, `validateUserInterfaceItem` enables
+  every row, and each selector performs its verb on the responder the platform
+  routes it to. Removing the menu fails **24** of those checks.
+- **The TARGET of each verb is named, not looked up.** `undo:`/`redo:` reach the
+  WINDOW and the other five reach the WEB VIEW — `NSApp.target(forAction:)` says
+  so (it answers `NSWindow` for those two and `WKWebView` for the rest), and a
+  `WKWebView` does not implement `undo:` at all: sending it directly raises
+  `unrecognized selector` (measured). Resolving through `target(forAction:)`
+  instead walks the key window's chain and is nil in exactly the runs where the
+  app failed to activate, which is the same flake in a different place.
 
 `TestsWindow/main.swift` drives every one of these into a real `WKWebView`, and
 the undo case runs FIRST: WebKit keeps one undo stack per document, so an earlier
-chord-driven edit (a cut) would be the thing ⌘Z undoes — measured, the field came
-back as `cut-me` instead of the typing. With the menu removed, 8 of those checks
-fail.
+edit (a cut) would be the thing undo reaches — measured, the field came back as
+`cut-me` instead of the typing.
 
 - The header carries **`data-drag-region`**; `ShellWindow.sendEvent` evaluates
   `dragRegionSelector` at the press point. The walk stops at any interactive
@@ -237,6 +251,22 @@ vanish exactly when the page fails to load.
 the mark present and in the artwork's aspect, the bar determinate only once a real
 percentage arrives, the sentence the state's, Retry only on a failure — because a
 splash that drew the wrong phase would pass every state-machine case.
+
+**It is installed through `installSplash(in:state:onRetry:)`, and that function
+exists because sizing it by hand was a bug that reached users.** AppKit resizes a
+view's subviews when its own frame changes, so only the subviews present at that
+moment are carried along. `buildWindow` restores the window's frame from
+`setFrameAutosaveName` before it assigns `contentView`, so the container was
+already its full size when the web view was added (before the assignment — carried
+along) and when the splash was added (after it — NOT carried along, and left at the
+hard-coded 1280x860 it was built with). The reported symptom was the launch overlay
+drawn as a small box in the window's bottom-left corner, in full screen as much as
+in a window, because nothing resizes the parent again for `autoresizingMask` to
+fire. Measured on a bare window: a subview added before `contentView =` follows the
+container to 2200x1200, the identical subview added after it stays 1280x860; and on
+the shipped app, `container` and the web view were 2560x1335 while `SplashView`
+reported `{{0, 0}, {1280, 859}}`. `runSplashFillCases` pins it: the splash covers a
+container larger than the build rect, and follows a container resize.
 
 ## Quitting
 

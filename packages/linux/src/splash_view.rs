@@ -18,7 +18,7 @@ use std::rc::Rc;
 use gtk::glib;
 use gtk::prelude::*;
 
-use crate::splash::{sentence_for, Failure, Phase, Progress};
+use crate::splash::{self, sentence_for, Failure, Phase, Progress};
 use crate::wordmark;
 
 /// The splash widget: a wordmark, a line of status, a bar and a Retry.
@@ -40,12 +40,28 @@ pub struct Splash {
 
 impl Splash {
     pub fn new() -> Self {
+        // TWO widgets, and the split is the whole point: `GtkOverlay` allocates
+        // its overlay child at the child's OWN requested size and honours that
+        // child's alignment, so a single box carrying `halign/valign = Center`
+        // was allocated 180x105 inside a 2200x1300 window (measured under Xvfb).
+        // A splash that small covers nothing — the page shows around it, and a
+        // press outside it reaches a console the user cannot see, which is
+        // exactly what `set_overlay_pass_through(false)` is meant to prevent.
+        //
+        // So the OUTER box FILLS and paints the paper, and the column inside it
+        // centres the content.
         let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        widget.set_valign(gtk::Align::Center);
-        widget.set_halign(gtk::Align::Center);
+        widget.set_halign(gtk::Align::Fill);
+        widget.set_valign(gtk::Align::Fill);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
         widget.style_context().add_class("kabmo-splash");
+
+        let column = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        column.set_valign(gtk::Align::Center);
+        column.set_halign(gtk::Align::Center);
+        column.set_hexpand(true);
+        column.set_vexpand(true);
 
         // The wordmark is the ARTWORK, not the app's name in a label: it is the
         // same lockup README.md embeds (`public/kabmo-wordmark.svg`), painted from
@@ -75,47 +91,40 @@ impl Splash {
             context.restore().ok();
             glib::Propagation::Proceed
         });
-        widget.pack_start(&wordmark_area, false, false, 0);
+        column.pack_start(&wordmark_area, false, false, 0);
 
         let bar = gtk::ProgressBar::new();
         bar.set_size_request(180, 4);
         bar.set_margin_top(0);
         bar.set_pulse_step(0.08);
-        // GTK paints a progress bar in the theme's ACCENT colour, which on most
-        // desktops is blue — a second chroma in a monochrome product, and a bar
-        // that looked like a different app from the other four shells. The
-        // stylesheet is the only way to say otherwise (`set_fraction` carries no
-        // colour), and it is scoped to the splash so no other widget inherits it.
+        // The stylesheet is `splash::SPLASH_CSS` — the fill's paper and the bar's
+        // two colours, both of which fail silently if wrong, so both are stated
+        // where the rules suite can read them.
         if let Some(screen) = gtk::gdk::Screen::default() {
             let style = gtk::CssProvider::new();
-            style
-                .load_from_data(
-                    b".kabmo-splash progressbar trough { min-height: 4px; border-radius: 2px; background-color: #D9D4C7; border: none; }\
-                      .kabmo-splash progressbar trough progress { min-height: 4px; border-radius: 2px; background-color: #141310; border: none; }\
-                      .kabmo-splash progressbar text { color: transparent; }",
-                )
-                .ok();
+            style.load_from_data(splash::SPLASH_CSS.as_bytes()).ok();
             gtk::StyleContext::add_provider_for_screen(
                 &screen,
                 &style,
                 gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
         }
-        widget.pack_start(&bar, false, false, 0);
+        column.pack_start(&bar, false, false, 0);
 
         let label = gtk::Label::new(Some(&Progress::connecting().label()));
         label.set_line_wrap(true);
         label.set_justify(gtk::Justification::Center);
         label.set_max_width_chars(60);
         label.set_margin_top(10);
-        widget.pack_start(&label, false, false, 0);
+        column.pack_start(&label, false, false, 0);
 
         let retry = gtk::Button::with_label("Retry");
         retry.set_halign(gtk::Align::Center);
         retry.set_margin_top(18);
         retry.set_no_show_all(true);
-        widget.pack_start(&retry, false, false, 0);
+        column.pack_start(&retry, false, false, 0);
 
+        widget.pack_start(&column, true, true, 0);
         widget.show_all();
         retry.hide();
 

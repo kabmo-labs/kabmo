@@ -189,6 +189,26 @@ impl Progress {
     }
 }
 
+/// The splash's own stylesheet, as GTK CSS.
+///
+/// Here rather than inline in `splash_view.rs` because TWO of its rules are the
+/// kind that fail silently, and a rule that cannot be read from a test is a rule
+/// nothing checks:
+///
+/// - **The fill's paper background.** The splash is an overlay child, so a widget
+///   with no background lets the page show through it. Measured: the widget was
+///   allocated the whole window and still painted nothing, because a `GtkBox`
+///   draws no background of its own.
+/// - **The bar's two colours.** GTK paints a progress bar in the theme's ACCENT
+///   colour, which on most desktops is blue — a second chroma in a monochrome
+///   product. `set_fraction` carries no colour, so the stylesheet is the only
+///   way to say otherwise.
+pub const SPLASH_CSS: &str = "\
+.kabmo-splash { background-color: #FAF8F3; }\
+.kabmo-splash progressbar trough { min-height: 4px; border-radius: 2px; background-color: #D9D4C7; border: none; }\
+.kabmo-splash progressbar trough progress { min-height: 4px; border-radius: 2px; background-color: #141310; border: none; }\
+.kabmo-splash progressbar text { color: transparent; }";
+
 /// One sentence per reason, stated here so the wording is testable and cannot
 /// drift between the phases.
 pub fn sentence_for(failure: Failure) -> &'static str {

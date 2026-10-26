@@ -259,11 +259,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
       self?.pointIsDragRegion(point) ?? false
     }
 
-    let splash = SplashView(frame: rect)
-    splash.onRetry = { [weak self] in self?.retryLoad() }
-    splash.render(loading)
-    container.addSubview(splash)
-    self.splash = splash
+    // Sized to the CONTAINER, not to `rect`: the window's frame is restored by
+    // its autosave name before this runs, and `autoresizingMask` only follows a
+    // parent whose bounds CHANGE — a splash added at the default rect stayed a
+    // 1280x860 box in the bottom-left corner of a 2560x1335 window, in full
+    // screen as much as in a window.
+    splash = installSplash(in: container, state: loading) { [weak self] in self?.retryLoad() }
 
     window.delegate = self
     window.makeKeyAndOrderFront(nil)

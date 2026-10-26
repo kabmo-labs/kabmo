@@ -140,6 +140,39 @@ public final class SplashView: NSView {
   }
 }
 
+/**
+ Install a splash over `container`, sized to it.
+
+ **The size comes from the container, and that is why this is a function rather
+ than one line at the call site.** AppKit resizes a view's subviews when its own
+ frame changes, so only the subviews that exist at that moment are carried along.
+ The window's frame is restored by `setFrameAutosaveName` while `buildWindow`
+ runs, so the container was already 2560x1335 by the time it became the content
+ view — which is what carried the web view (added before it) to the full size —
+ and the splash, added AFTER that assignment, kept the hard-coded 1280x860 rect
+ it was built with. Measured on a bare window: a subview added before
+ `contentView =` follows the container to 2200x1200, the identical subview added
+ after it stays 1280x860.
+
+ The result was a small box in the BOTTOM-LEFT corner of the window, and full
+ screen did not change it: nothing resizes the parent again, so
+ `autoresizingMask` never fires. Measured through the running app (lldb;
+ `NSWindow` frame autosaved at 2560x1335): `container` and the web view were both
+ 2560x1335 while `SplashView` reported `{{0, 0}, {1280, 859}}`.
+ */
+@discardableResult
+public func installSplash(
+  in container: NSView,
+  state: SplashState,
+  onRetry: (() -> Void)? = nil
+) -> SplashView {
+  let splash = SplashView(frame: container.bounds)
+  splash.onRetry = onRetry
+  splash.render(state)
+  container.addSubview(splash)
+  return splash
+}
+
 /// The wordmark as an `NSImage`, drawn from the artwork's own geometry.
 ///
 /// Public so `TestsWindow` can assert the splash actually paints the mark: a

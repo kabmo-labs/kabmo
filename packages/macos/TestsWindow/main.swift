@@ -259,75 +259,144 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   func runEditingCases() {
     let field = "document.getElementById('composer')"
     func value() -> String { (eval("\(field).value") as? String) ?? "<nil>" }
-    func reset(_ text: String = "") {
-      _ = eval("var el = \(field); el.value = \(text.debugDescription); el.focus(); true")
+    func selection() -> String {
+      (eval("\(field).selectionStart + '-' + \(field).selectionEnd") as? String) ?? "<nil>"
+    }
+    func reset(_ text: String = "", _ caret: Int? = nil) {
+      let target = caret.map { "\($0)" } ?? "el.value.length"
+      _ = eval("var el = \(field); el.value = \(text.debugDescription); el.focus(); el.setSelectionRange(\(target), \(target)); true")
       pump(0.2)
     }
 
-    // ⌘Z / ⌘⇧Z — the page's OWN undo stack, which is the reason Undo/Redo are
-    // allowed through the window's validation gate rather than left disabled.
+    // TWO facts, asserted separately, because the flaky way to prove them was one
+    // fact that depended on the app being ACTIVE.
+    //
+    // `NSApp.sendEvent` routes a key equivalent through the KEY WINDOW, and a
+    // non-bundled test executable cannot reliably become the active app: measured
+    // over eight runs, `NSApp.activate(ignoringOtherApps: true)` left
+    // `isActive == false` in most of them (and in some runs `false` still passed,
+    // which is worse than a plain failure). That made eight cases flap without
+    // saying anything about the shell.
+    //
+    // What the shell actually owns is (1) the menu bar carrying an Edit menu whose
+    // rows declare these chords and (2) each declared selector performing its verb
+    // on the web view. Both are deterministic, and together they cover the
+    // regression this suite exists for: the shell built App, File, View and Window
+    // and NO Edit menu, so a `WKWebView` was handed none of the chords.
+
+    // (1) The app's own menu bar carries the Edit rows.
+    //
+    // `NSApp.mainMenu` — not a freshly built menu — because the bug this guards
+    // is the menu being ABSENT from the app, not the builder being wrong. A check
+    // on `buildEditMenu()` alone passes with the menu never installed, which is
+    // exactly how the shell shipped without one.
+    let installed = NSApp.mainMenu?.items.first?.submenu
+    let shipped = installed?.items ?? []
+    check("the app's menu bar is installed", NSApp.mainMenu != nil)
+    check("the app's first menu carries the Edit rows",
+          shipped.contains { $0.title == "Paste" })
+    // `>=`, not `==`: AppKit appends its own rows to any menu titled Edit
+    // (AutoFill, Start Dictation, Emoji & Symbols — measured: 17 rows for our 7).
+    // The contract is that OURS are all there, in order, not that nothing else is.
+    let ours = shipped.prefix(editMenuItems.count).map(\.title)
+    check("the app's Edit menu starts with the shipped rows",
+          ours == editMenuItems.map(\.title))
+    for row in editMenuItems {
+      let item = shipped.first { $0.title == row.title }
+      check("Edit › \(row.title) is installed", item != nil)
+      check("Edit › \(row.title) declares \(row.key) with the shipped modifiers",
+            item?.keyEquivalent == row.key && item?.keyEquivalentModifierMask == row.modifiers)
+      check("Edit › \(row.title) routes to \(row.action)",
+            item?.action != nil && item?.action == row.action)
+      // The gate the menu system asks before enabling a row. The window used to
+      // answer `false` for every action it did not name itself, which made the
+      // chords dead with the menu built and the rows declared.
+      let probe = NSMenuItem(title: row.title, action: row.action, keyEquivalent: row.key)
+      check("the window enables Edit › \(row.title)", window.validateUserInterfaceItem(probe))
+    }
+
+    // (2) Each declared selector performs its verb.
+    //
+    // The TARGET is the responder chain, not the web view, and that is a fact
+    // about the platform rather than a shortcut: `undo:`/`redo:` are
+    // `NSResponder`'s informal protocol and a `WKWebView` does NOT implement them
+    // — sending one directly raises `unrecognized selector` (measured). They
+    // resolve against the WINDOW, which is why `editMenuHandles` has to allow
+    // them; the other five resolve against the web view.
+    //
+    // The target is named rather than resolved through `NSApp.target(forAction:)`,
+    // because that lookup walks the KEY window's responder chain and a non-bundled
+    // test executable cannot reliably become the active app — measured: the same
+    // call answered a target in 6 runs of 8 and nil in the other 2. Naming the
+    // responder each verb is documented to reach is both deterministic and the
+    // exact rule `editMenuHandles` encodes.
+    func perform(_ selector: Selector) -> Bool {
+      let target: AnyObject = (selector == undoAction || selector == redoAction) ? window : webView
+      return NSApp.sendAction(selector, to: target, from: nil)
+    }
+
+    // ⌘Z / ⌘⇧Z — the page's OWN undo stack, driven the way the menu does it.
+    //
+    // A `WKWebView` has no `undo:`/`redo:` (measured: sending either directly
+    // raises `unrecognized selector`), so the chord reaches the window and the
+    // window forwards it to the web view's own history. That forwarding is what
+    // these two assert: type through the real key path, then undo and redo
+    // through the window's own `undo:`.
     reset()
     chord("h", [], 4)
     chord("i", [], 34)
     pump(0.3)
     check("typing reaches the field", value() == "hi")
-    chord("z", [.command], 6)
+    let undone = NSApp.sendAction(undoAction, to: window, from: nil) && value() == ""
     pump(0.4)
-    // Recorded, not just checked: a redo cannot be proven on top of an undo that
-    // never happened, and asserting `hi` alone would PASS with both chords dead
-    // (the field still holds what was typed).
-    let undone = value() == ""
-    check("⌘Z undoes the typing", undone)
-    chord("z", [.command, .shift], 6)
+    check("⌘Z undoes the typing", undone && value() == "")
+    let redone = NSApp.sendAction(redoAction, to: window, from: nil) && value() == "hi"
     pump(0.4)
-    check("⌘⇧Z redoes it", undone && value() == "hi")
+    check("⌘⇧Z redoes it", redone && value() == "hi")
 
     // ⌘V — the reported failure. It REPLACES the selection, which is the harder
-    // proof: the field already holds `hi`, so a dead chord leaves it untouched
-    // rather than looking like a paste that happened to match.
+    // proof: a dead verb leaves the field untouched rather than looking like a
+    // paste that happened to match.
+    reset("hi", 0)
+    _ = eval("document.getElementById('composer').setSelectionRange(0, 2); true")
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString("paste-proof", forType: .string)
-    chord("a", [.command], 0)
-    pump(0.3)
-    check("⌘A selects the field's whole value",
-          (eval("\(field).selectionStart + '-' + \(field).selectionEnd") as? String) == "0-2")
-    chord("v", [.command], 9)
-    pump(0.4)
-    check("⌘V pastes into the page's field", value() == "paste-proof")
+    check("⌘A selects the field's whole value", perform(#selector(NSText.selectAll(_:))) && selection() == "0-2")
+    check("⌘V pastes into the page's field", perform(#selector(NSText.paste(_:))) && value() == "paste-proof")
 
-    // ⌘C — with the pasteboard EMPTIED first, so a clipboard that already held
-    // the right text cannot make this pass with the chord dead.
-    chord("a", [.command], 0)
-    pump(0.3)
-    check("⌘A selects the pasted value",
-          (eval("\(field).selectionStart + '-' + \(field).selectionEnd") as? String) == "0-11")
+    // ⌘C — with the pasteboard EMPTIED first, so a clipboard that already held the
+    // right text cannot make this pass with the verb dead.
+    check("⌘A selects the pasted value", perform(#selector(NSText.selectAll(_:))) && selection() == "0-11")
     NSPasteboard.general.clearContents()
-    chord("c", [.command], 8)
-    pump(0.3)
+    let copied = perform(#selector(NSText.copy(_:)))
+    // The write to the pasteboard is ASYNCHRONOUS — the web process answers a
+    // turn later — so reading it on the same turn always sees an empty board.
+    pump(0.4)
     check("⌘C copies the selection",
-          NSPasteboard.general.string(forType: .string) == "paste-proof")
+          copied && NSPasteboard.general.string(forType: .string) == "paste-proof")
 
     // ⌘X — a fresh value, so "the field is empty" cannot be the starting state
     // rather than the cut's doing.
     reset("cut-me")
-    chord("a", [.command], 0)
-    pump(0.3)
-    chord("x", [.command], 7)
-    pump(0.3)
-    check("⌘X cuts the selection out", value() == "")
+    check("⌘A selects the fresh value", perform(#selector(NSText.selectAll(_:))))
+    check("⌘X cuts the selection out", perform(#selector(NSText.cut(_:))) && value() == "")
+    pump(0.4)
     check("⌘X leaves the cut text on the pasteboard",
           NSPasteboard.general.string(forType: .string) == "cut-me")
-
-    // The menu's own rows, through the gate the menu system asks.
-    for row in editMenuItems {
-      let item = NSMenuItem(title: row.title, action: row.action, keyEquivalent: row.key)
-      check("the window enables Edit › \(row.title)", window.validateUserInterfaceItem(item))
-    }
 
     reset()
   }
 
   /// A chord, dispatched the way a keystroke is: through the application.
+  ///
+  /// Used ONLY for TYPING here. A key equivalent is deliberately not driven this
+  /// way: `NSApp.sendEvent` routes it through the KEY WINDOW, and a non-bundled
+  /// test executable cannot reliably become the active app — measured over eight
+  /// runs, `NSApp.activate(ignoringOtherApps: true)` left `isActive == false` in
+  /// most of them, which made the eight editing cases flap without saying
+  /// anything about the shell. The menu contract is asserted instead: the rows
+  /// are installed, each declares its chord, and each selector performs its verb
+  /// on the responder the platform routes it to.
   func chord(_ characters: String, _ modifiers: NSEvent.ModifierFlags, _ keyCode: UInt16) {
     guard let event = NSEvent.keyEvent(
       with: .keyDown, location: .zero, modifierFlags: modifiers,
@@ -395,6 +464,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runEditingCases()
     proveClickCloses()
     runSplashCases()
+    runSplashFillCases()
     dropPathCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
     finish()
   }
@@ -792,6 +862,41 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     splash.render(.done)
     check("the finished splash draws nothing", splash.isHidden)
     splash.removeFromSuperview()
+  }
+
+  /**
+   The splash FILLS the window, in a window and in full screen.
+
+   A splash sized from a hard-coded rect rather than from its container is
+   invisible to every state-machine case — it drew the right phase, in the right
+   corner, at 1280x860 inside a 2560x1335 window. Measured on the shipped app:
+   `container` and the web view were both the window's size while `SplashView`
+   reported `{{0, 0}, {1280, 859}}`, which is the reported "the overlay is only a
+   small box at the bottom".
+
+   The container here starts LARGER than the rect the splash would have been
+   built with, which is the window's own situation (its frame is restored by the
+   autosave name before the views are built), and it is then resized again so
+   `autoresizingMask` is exercised rather than assumed.
+   */
+  func runSplashFillCases() {
+    print("\nthe splash fills its container")
+    let big = NSRect(x: 0, y: 0, width: 1900, height: 1100)
+    let host = NSView(frame: big)
+    host.autoresizingMask = [.width, .height]
+    window.contentView?.addSubview(host)
+
+    let installed = installSplash(in: host, state: .connecting)
+    check("the splash covers a container larger than the build rect",
+          installed.frame == host.bounds)
+
+    // A resize must carry it, which is what `autoresizingMask` is for.
+    host.frame = NSRect(x: 0, y: 0, width: 1500, height: 900)
+    host.layoutSubtreeIfNeeded()
+    check("the splash follows a container resize", installed.frame == host.bounds)
+
+    installed.render(.done)
+    host.removeFromSuperview()
   }
 
   func finish() {
