@@ -221,9 +221,40 @@ describe('the phone footer’s variant', () => {
     const control = byName('Update Kabmo 0.3.2 for macOS');
     expect(control?.tagName).toBe('BUTTON');
     expect(control?.textContent?.trim()).toBe('Update macOS');
+    // The word sits BESIDE the glyph, never instead of it.
+    expect(control?.querySelector('svg')).not.toBeNull();
 
     await click(control);
     expect(dialog()?.textContent).toContain('Version 0.3.2');
+  });
+
+  test('a LINK keeps the glyph too, because the mobile pair never self-updates', async () => {
+    // The case this pins, and the bug it shipped: `canSelfUpdate` refuses Android
+    // and iOS, so BOTH mobile offers take the link branch — and that branch drew the
+    // word alone. Measured in the browser before the fix: the phone footer's APK
+    // control was the only row without a mark beside its word.
+    bridge(null);
+    const install: ShellDownload = {
+      url: 'https://github.com/kabmo-labs/kabmo/releases/download/v0.10.0/Kabmo-0.10.0-android.apk',
+      latest: '0.10.0',
+      releaseUrl: null,
+      kind: 'install',
+      platform: 'android',
+      direct: true,
+    };
+    await act(async () => {
+      render(h(ShellUpdateButton, { download: install, variant: 'label' }), container);
+    });
+    for (let i = 0; i < 5; i += 1) await act(async () => {});
+
+    const control = byName('Install Kabmo 0.10.0 for Android');
+    expect(control?.tagName).toBe('A');
+    expect(control?.querySelector('svg')).not.toBeNull();
+    expect(control?.textContent?.trim()).toBe('Get APK');
+    // The row style is the phone's own, not the desktop glyph plate: no padding and
+    // no hover background, so it lines up with Settings / About / Desktop.
+    expect(control?.getAttribute('class')).not.toContain('p-1');
+    expect(control?.getAttribute('class')).toContain('flex');
   });
 });
 

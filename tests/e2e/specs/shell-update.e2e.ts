@@ -29,7 +29,7 @@
  */
 
 import { test, expect, installOverlayHandler, collectConsoleErrors } from '../fixtures/app';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * The page globals this spec installs, declared once.
@@ -135,6 +135,32 @@ function updateCalls(page: Page): Promise<{ method: string; params?: Record<stri
   });
 }
 
+/**
+ * The glyph inside the footer control, and the row it has to line up with.
+ *
+ * Both branches of the shared control draw a mark — the self-updating BUTTON and
+ * the release-page LINK — and the phone's variant once shipped without one
+ * because only the button branch rendered it. A role/name assertion cannot see
+ * that: an `<a>` with a label and no `<svg>` passes every check above, which is
+ * exactly how it shipped. So this reads the RENDERED box of the mark and of the
+ * neighbouring Settings / About glyphs, which are the row's reference.
+ */
+async function footerGlyph(control: Locator) {
+  return control.evaluate((element) => {
+    const box = (node: Element | null | undefined) => {
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return { width: Math.round(rect.width), height: Math.round(rect.height), top: Math.round(rect.top) };
+    };
+    const mark = element.querySelector('svg');
+    const row = element.parentElement;
+    const neighbours = ['Settings', 'About Kabmo']
+      .map((name) => row?.querySelector(`[aria-label="${name}"] svg`) ?? null)
+      .map(box);
+    return { mark: box(mark), neighbours, rowText: row?.textContent?.trim() ?? '' };
+  });
+}
+
 test('the footer draws a control, and the confirmation is what asks the shell', async ({ harness, page }) => {
   const server = await harness('mock');
   const errors = collectConsoleErrors(page);
@@ -145,6 +171,18 @@ test('the footer draws a control, and the confirmation is what asks the shell', 
   // A BUTTON, not a link: this shell reported its architecture, so the console can
   // name the exact artifact and the shell can install it.
   await expect(page.getByRole('link', { name: 'Update Kabmo 9.9.9 for macOS' })).toHaveCount(0);
+
+  // The mark, measured against the row's own reference glyphs. An `<a>`/`<button>`
+  // with the right label and no `<svg>` satisfies every assertion above — which is
+  // how the phone's variant shipped without one.
+  const glyph = await footerGlyph(button);
+  expect(glyph.mark).not.toBeNull();
+  expect(glyph.mark!.width).toBeGreaterThan(0);
+  for (const neighbour of glyph.neighbours) {
+    expect(neighbour, 'Settings / About draw the row reference').not.toBeNull();
+    expect(glyph.mark!.width).toBe(neighbour!.width);
+    expect(glyph.mark!.top).toBe(neighbour!.top);
+  }
 
   // The press opens the confirmation and asks the shell NOTHING.
   await button.click();
@@ -188,6 +226,14 @@ test('a shell that cannot say its architecture is offered the release page inste
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute('href', RELEASE.releaseUrl);
   await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // The LINK branch draws the mark too. That branch is the mobile pair's only
+  // branch, so a glyph that lives only on the button is a phone footer with a
+  // word and no icon — the bug this pins.
+  const glyph = await footerGlyph(link);
+  expect(glyph.mark).not.toBeNull();
+  expect(glyph.mark!.width).toBeGreaterThan(0);
+  expect(glyph.rowText).toBe('');
 
   expect(errors, `console/page errors:\n${errors.join('\n')}`).toEqual([]);
 });

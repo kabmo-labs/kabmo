@@ -52,6 +52,23 @@ interface ShellUpdateButtonProps {
 
 const ICON_CLASS = 'p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors';
 
+/**
+ * The phone footer's row style: no padding and no hover plate, because it sits
+ * beside Settings / About / Desktop and those are bare glyph-and-word rows. A
+ * padded, plate-highlighted control in that row reads as a different kind of
+ * control from its neighbours.
+ */
+const LABEL_CLASS = 'flex items-center space-x-1 hover:text-ink transition-colors';
+
+/**
+ * The `label` variant's glyph size.
+ *
+ * `14` is the phone footer's own size — Settings, About and Desktop all draw at
+ * `14` — so the APK control is not the one row that is a pixel off. The icon-only
+ * variant stays at 16, which is the desktop footer's size.
+ */
+const LABEL_ICON_SIZE = 14;
+
 export function ShellUpdateButton({ download, variant }: ShellUpdateButtonProps) {
   const { phase, message, apply, reset, working } = useShellUpdate();
   // The dialog is open from the CLICK until it is dismissed, and the run's phases
@@ -63,6 +80,12 @@ export function ShellUpdateButton({ download, variant }: ShellUpdateButtonProps)
   if (!canSelfUpdate(download)) {
     // A link, and `target="_blank"` hands it to the system browser so the console
     // is not replaced by a file download.
+    //
+    // The `label` variant draws its glyph TOO. It used to render the word alone,
+    // and that is exactly the case this branch covers for the mobile pair: neither
+    // an Android nor an iOS shell can install its own artifact (`canSelfUpdate`
+    // refuses both), so the phone's footer drew `Get APK` with no mark beside it —
+    // the only control in that row without one.
     return (
       <a
         href={download.url}
@@ -70,9 +93,10 @@ export function ShellUpdateButton({ download, variant }: ShellUpdateButtonProps)
         rel="noopener noreferrer"
         title={label}
         aria-label={label}
-        className={ICON_CLASS}
+        className={variant === 'icon' ? ICON_CLASS : LABEL_CLASS}
       >
-        {variant === 'icon' ? <Download size={16} /> : <span>{shellDownloadShortLabel(download)}</span>}
+        <Download size={variant === 'icon' ? 16 : LABEL_ICON_SIZE} />
+        {variant === 'label' && <span>{shellDownloadShortLabel(download)}</span>}
       </a>
     );
   }
@@ -90,12 +114,15 @@ export function ShellUpdateButton({ download, variant }: ShellUpdateButtonProps)
         disabled={working}
         title={label}
         aria-label={label}
-        className={`${ICON_CLASS} disabled:cursor-not-allowed disabled:opacity-60 inline-flex items-center gap-1`}
+        className={`${variant === 'icon' ? ICON_CLASS : LABEL_CLASS} disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {working ? (
-          <Loader2 size={variant === 'icon' ? 16 : 13} className="animate-spin motion-reduce:animate-none" />
+          <Loader2
+            size={variant === 'icon' ? 16 : LABEL_ICON_SIZE}
+            className="animate-spin motion-reduce:animate-none"
+          />
         ) : (
-          <Download size={variant === 'icon' ? 16 : 13} />
+          <Download size={variant === 'icon' ? 16 : LABEL_ICON_SIZE} />
         )}
         {variant === 'label' && <span>{shellDownloadShortLabel(download)}</span>}
       </button>

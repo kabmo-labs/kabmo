@@ -660,4 +660,57 @@ test.describe('mobile layout', () => {
 
     workspace.dispose();
   });
+
+  /**
+   * The APK control in the drawer footer carries a glyph, like its neighbours.
+   *
+   * Measured in the browser before the fix: the phone's footer drew `Get APK` with
+   * no mark beside it while Settings / About / Desktop all had one — the link
+   * branch of the shared control rendered the word alone, and the mobile pair
+   * ALWAYS takes that branch (`canSelfUpdate` refuses Android and iOS, which
+   * install through their own paths). A unit test on the component can assert the
+   * `<svg>` exists; only this layer proves it is on the phone's screen, in the row,
+   * at the size the other glyphs use.
+   */
+  test('the APK offer in the drawer footer draws its glyph beside the word', async ({ harness, page }) => {
+    const server = await harness('mock');
+    // The real route reads GitHub, which would make this spec depend on the network
+    // and on a release that happens to carry an APK. The stub is the seam; the
+    // control, the footer and the drawer are real.
+    await page.route('**/api/updates/android', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'https://github.com/kabmo-labs/kabmo/releases/download/v9.9.9/Kabmo-9.9.9-android.apk',
+          latest: '9.9.9',
+          releaseUrl: 'https://github.com/kabmo-labs/kabmo/releases/tag/v9.9.9',
+          direct: true,
+        }),
+      });
+    });
+    await openApp(page, server.baseURL);
+
+    await page.getByRole('button', { name: 'Open Sessions' }).click();
+    const control = page.getByRole('link', { name: 'Install Kabmo 9.9.9 for Android' });
+    await expect(control).toBeVisible();
+    await expect(control).toContainText('Get APK');
+
+    // The glyph, measured rather than assumed: an `<svg>` with no box would satisfy
+    // a DOM query and still be invisible on screen.
+    const glyph = await control.locator('svg').evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { width: Math.round(box.width), height: Math.round(box.height) };
+    });
+    expect(glyph.width).toBeGreaterThan(0);
+    expect(glyph.height).toBeGreaterThan(0);
+
+    // And it is the row's own size — Settings / About / Desktop draw at 14 — so the
+    // APK control is not the one entry a pixel off from its neighbours.
+    const neighbour = await page
+      .getByRole('button', { name: 'About' })
+      .locator('svg')
+      .evaluate((element) => Math.round(element.getBoundingClientRect().width));
+    expect(glyph.width).toBe(neighbour);
+  });
 });
