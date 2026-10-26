@@ -8,5 +8,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts"],
+  "// exclude": "The unit tests under fixtures/ run under `bun test`, not Playwright, so they import `bun:test` — which this program deliberately does not have in `types`. Adding `bun-types` here would also let a SPEC reach `Bun.*`, and that is a ReferenceError in a Playwright worker: the node-only restriction is the guard that catches it. Those files are transpiled by `bun test` itself, the same as `tests/ci-gates.test.ts`.",
+  "exclude": ["./**/*.test.ts"]
 }

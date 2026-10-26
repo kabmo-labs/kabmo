@@ -13,10 +13,8 @@
  * arrives at the state the same way a user's click would.
  */
 
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { HarnessServer } from './server';
+import { makeTempDir } from './temp-root';
 
 export interface SeededWorkspace {
   /** The folder's id, for `?folderId=`. */
@@ -39,7 +37,7 @@ export interface SeededWorkspace {
 
 /** Create a workspace folder bound to a fresh temp directory. */
 export async function seedWorkspace(server: HarnessServer, name = 'e2e-workspace'): Promise<SeededWorkspace> {
-  const dir = mkdtempSync(join(tmpdir(), 'omc-e2e-ws-'));
+  const dir = makeTempDir('ws-');
   const response = await fetch(`${server.baseURL}/api/folders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

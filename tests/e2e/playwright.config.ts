@@ -42,6 +42,10 @@ const MOBILE_SPECS = /\/mobile(-dock|-files|-editor)?\.e2e\.ts$/;
 export default defineConfig({
   // Relative to THIS file (`tests/e2e/`), which is how Playwright resolves it.
   testDir: './specs',
+  // Sweeps what a SIGKILLed run left in `$TMPDIR` — the one teardown path no
+  // in-worker hook can reach. Runs before the first worker, so it can never race
+  // a directory a live run owns.
+  globalSetup: './global-setup.ts',
   // `.e2e.ts`, not `.spec.ts`: `bun test` also globs `*.spec.ts` and would
   // import these files into its own process, where `test.describe` throws
   // ("Playwright Test did not expect test.describe() to be called here"). The

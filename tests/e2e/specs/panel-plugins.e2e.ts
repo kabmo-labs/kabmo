@@ -29,10 +29,10 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
+import { makeTempDir } from '../fixtures/temp-root';
 
 /** A git repository holding one panel plugin, committed and cloneable. */
 interface PluginRepo {
@@ -96,7 +96,7 @@ test.describe('panel plugins', () => {
   test('installs a git plugin and shows its freshness row', async ({ harness, page }) => {
     skipOnWindows('installs a plugin from a local git clone');
     const server = await harness('real');
-    const root = mkdtempSync(join(tmpdir(), 'omc-e2e-plugin-'));
+    const root = makeTempDir('plugin-');
     const repo = makePluginRepo(root);
     try {
       await openApp(page, server.baseURL);
@@ -120,7 +120,7 @@ test.describe('panel plugins', () => {
   test('detects a newer commit and updates to it', async ({ harness, page }) => {
     skipOnWindows('installs a plugin from a local git clone');
     const server = await harness('real');
-    const root = mkdtempSync(join(tmpdir(), 'omc-e2e-plugin-'));
+    const root = makeTempDir('plugin-');
     const repo = makePluginRepo(root);
     try {
       await openApp(page, server.baseURL);

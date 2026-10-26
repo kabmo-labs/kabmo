@@ -30,11 +30,10 @@
  */
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { removeDirWhenFree } from './remove-dir';
+import { makeProcessTempDir, makeTempDir, untrackTempDir } from './temp-root';
 import { fileURLToPath } from 'node:url';
 
 /** This file's directory, so the fake `omp` is found relative to it. */
@@ -89,16 +88,12 @@ let fakeOmpBinary: Promise<string> | undefined;
 
 function compiledFakeOmp(): Promise<string> {
   fakeOmpBinary ??= (() => {
-    const dir = mkdtempSync(join(tmpdir(), 'omc-e2e-omp-'));
+    // PROCESS scope, not test scope: every later spec uses this binary, so a
+    // per-test sweep would delete it out from under them. The registry's own
+    // exit sweep is what removes it.
+    const dir = makeProcessTempDir('omp-');
     // `.exe` on Windows: the extension is what makes it startable there.
     const outfile = join(dir, process.platform === 'win32' ? 'fake-omp.exe' : 'fake-omp');
-    process.once('exit', () => {
-      try {
-        removeDirWhenFree(dir);
-      } catch {
-        // Best effort: the OS reclaims the temp dir regardless.
-      }
-    });
     const result = spawnSync('bun', ['build', FAKE_OMP, '--compile', '--outfile', outfile], { stdio: 'pipe' });
     if (result.status !== 0) {
       throw new Error(`could not compile the fake omp:\n${result.stderr?.toString() ?? ''}`);
@@ -199,7 +194,7 @@ export async function startHarnessServer(options: {
   /** Extra env, for a spec that needs to point the fake `omp` somewhere. */
   env?: Record<string, string>;
 }): Promise<HarnessServer> {
-  const runRoot = mkdtempSync(join(tmpdir(), 'omc-e2e-'));
+  const runRoot = makeTempDir();
   const dataDir = join(runRoot, 'data');
   const agentDir = join(runRoot, 'agent');
   // The panel-plugin marketplace is a SECOND root the server writes, and it
@@ -288,8 +283,27 @@ export async function startHarnessServer(options: {
       }
       // After the process is gone: a workspace the server scanned is only
       // deletable once IT has released the handles.
-      for (const dir of pendingRemovals.splice(0)) removeDirWhenFree(dir);
-      removeDirWhenFree(runRoot);
+      //
+      // Each removal is isolated, because this runs in a FIXTURE teardown: one
+      // directory the OS still holds would otherwise throw out of `stop()`,
+      // abort the loop over the remaining servers, and be reported as the
+      // spec's own failure. `removeDirWhenFree` gives up after its own budget,
+      // and the temp-scope sweep plus the next run's age sweep cover whatever it
+      // could not reach.
+      for (const dir of pendingRemovals.splice(0)) {
+        try {
+          removeDirWhenFree(dir);
+        } catch {
+          // Left to the sweep.
+        }
+      }
+      try {
+        removeDirWhenFree(runRoot);
+      } catch {
+        // Left to the sweep.
+      }
+      // The root is gone; stop tracking it so the sweep does not re-visit it.
+      untrackTempDir(runRoot);
     },
   };
 

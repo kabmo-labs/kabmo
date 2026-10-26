@@ -15,11 +15,11 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HarnessServer } from './server';
 import { removeDirWhenFree } from './remove-dir';
+import { makeTempDir } from './temp-root';
 
 export interface SeededRepoWorkspace {
   id: number;
@@ -36,7 +36,7 @@ export async function seedRepoWorkspace(
   server: HarnessServer,
   name = 'e2e-worktree',
 ): Promise<SeededRepoWorkspace> {
-  const dir = mkdtempSync(join(tmpdir(), 'omc-e2e-repo-'));
+  const dir = makeTempDir('repo-');
   git(dir, 'init', '-q', '-b', 'main');
   writeFileSync(join(dir, 'README.md'), `# ${name}\n`);
   // An ignored build folder, so the carry-over has something real to copy —

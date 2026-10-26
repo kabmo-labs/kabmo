@@ -25,6 +25,7 @@ import { test as base, expect, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { startHarnessServer, type HarnessMode, type HarnessServer } from './server';
+import { beginTempScope, sweepTempScope } from './temp-root';
 import * as selectors from './selectors';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -39,6 +40,12 @@ export interface HarnessFixtures {
 export interface AppFixtures {
   /** A page pointed at a `mock`-mode server, the default for UI specs. */
   app: Page;
+}
+
+/** Infrastructure fixtures no spec names directly. */
+export interface InternalFixtures {
+  /** Opens the per-test temp scope; its sweep runs even when the body throws. */
+  _tempRoots: void;
 }
 
 /**
@@ -61,8 +68,33 @@ function isIgnorable(text: string): boolean {
   return IGNORED_CONSOLE.some((pattern) => pattern.test(text));
 }
 
-export const test = base.extend<HarnessFixtures & AppFixtures>({
+export const test = base.extend<HarnessFixtures & AppFixtures & InternalFixtures>({
   serverEnv: [{}, { option: true }],
+
+  /**
+   * The failure path a `dispose()` cannot reach.
+   *
+   * A spec that throws mid-body never runs its own cleanup, so the workspace it
+   * seeded and the repository it cloned stay in `$TMPDIR` — measured: a probe
+   * spec that seeded both and failed left 2 + 2 directories behind on each
+   * attempt. This fixture opens a scope before the body and sweeps it after,
+   * which Playwright runs on failure and on retry alike; `dispose()` calls stay
+   * as they are, because a passing spec that cleans up early frees the disk
+   * sooner and the sweep is idempotent.
+   *
+   * `auto: true` is what makes the ORDER right: an automatic fixture is set up
+   * before the spec's own ones and torn down after them, so `server.stop()` has
+   * already released the directory handles when the sweep runs. A workspace the
+   * server still had open would fail to delete on Windows.
+   */
+  _tempRoots: [
+    async ({}, use) => {
+      beginTempScope();
+      await use();
+      sweepTempScope();
+    },
+    { auto: true },
+  ],
 
   harness: async ({ serverEnv }, use, testInfo) => {
     const started: HarnessServer[] = [];

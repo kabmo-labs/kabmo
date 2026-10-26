@@ -18,10 +18,10 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { removeDirWhenFree } from './remove-dir';
+import { makeTempDir } from './temp-root';
 
 export interface SeedRepo {
   /** The directory to hand `git clone` — a local path, not a `file://` URL. */
@@ -37,7 +37,7 @@ function git(args: string[], cwd: string): void {
 
 /** Create a fresh repository with one commit and return its path as a URL. */
 export function seedRepo(name: string): SeedRepo {
-  const dir = mkdtempSync(join(tmpdir(), `omc-e2e-${name}-`));
+  const dir = makeTempDir(`${name}-`);
   git(['init', '-q', '-b', 'main'], dir);
   writeFileSync(join(dir, 'README.md'), `# ${name}\n`);
   git(['add', '-A'], dir);
@@ -56,7 +56,7 @@ export function seedRepo(name: string): SeedRepo {
 
 /** A directory to clone INTO, removed on dispose. */
 export function seedCloneParent(name: string): { path: string; dispose(): void } {
-  const dir = mkdtempSync(join(tmpdir(), `omc-e2e-${name}-`));
+  const dir = makeTempDir(`${name}-`);
   return {
     path: dir,
     dispose() {
@@ -84,7 +84,7 @@ export interface SeedWorkingRepo {
 
 /** A scratch working repository, with an identity that cannot leak. */
 export function seedWorkingRepo(name: string): SeedWorkingRepo {
-  const dir = mkdtempSync(join(tmpdir(), `omc-e2e-${name}-`));
+  const dir = makeTempDir(`${name}-`);
   const env = { ...process.env, GIT_EDITOR: 'true' };
   const identity = ['-c', 'user.email=e2e@example.invalid', '-c', 'user.name=E2E'];
   const repo: SeedWorkingRepo = {
