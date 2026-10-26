@@ -9,12 +9,9 @@
  * live in `stream-heal.server.test.ts`, beside the module that owns them.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { removeDir } from '@/test-support/remove-dir';
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 
+import { isolateDb, releaseDb } from '@/test-support/isolated-db';
 import {
   loadStreamStates,
   loadStreamStatuses,
@@ -22,30 +19,40 @@ import {
   markStreamStatus,
 } from '@/shared/lib/omp/session/stream-state.server';
 
-describe('run model on the stream row', () => {
-  let root: string;
-  let savedDbPath: string | undefined;
+/**
+ * A budget, and the SHARED isolation helpers — not a hand-rolled teardown.
+ *
+ * This file used to mkdtemp, point `KABMO_DB_PATH` at it, and close the handle
+ * itself. That is the pattern `test-support/isolated-db.ts` exists to replace,
+ * and it lost on `windows-latest`: with the runner starved, the two cases before
+ * the failure took 1512ms and 4446ms (the same file is a few hundred ms
+ * locally), then an `afterEach` burned `removeDir`'s whole 5s retry window on
+ * `EBUSY: resource busy or locked` and Bun reported it as "a beforeEach/afterEach
+ * hook timed out" and an assertion in the NEXT case reading `undefined`. Two
+ * things are wrong with the hand-rolled form and neither is a tuning problem:
+ *
+ *   - it never AWAITS an open that is still in flight (`getDb()`'s promise), so
+ *     the continuation can reach `createDb` after the delete began — while
+ *     `removeDir` spins with `Bun.sleepSync`, which blocks the very continuation
+ *     that would close the handle;
+ *   - it clears `globalThis.__kabmoDb` without marking the slot `disposed`, so a
+ *     retired open caches a handle nothing will ever close.
+ *
+ * `releaseDb` does both (see `closeDb`), and the 30s budget is the same one the
+ * canonical-path and git suites state: a retry deadline that equals Bun's 5s
+ * hook budget can only ever report the timeout, never the lock.
+ */
+setDefaultTimeout(30_000);
 
-  beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'kabmo-ss-'));
-    savedDbPath = Bun.env.KABMO_DB_PATH;
-    // The writes resolve the database; point them at a temp tree so the real
-    // `~/.kabmo` is never opened.
-    Bun.env.KABMO_DB_PATH = join(root, 'db.sqlite');
-    delete globalThis.__kabmoDb;
+describe('run model on the stream row', () => {
+  beforeEach(async () => {
+    // The writes resolve the database; isolated so the real `~/.kabmo` is never
+    // opened, and closed before the temp tree is dropped.
+    await isolateDb();
   });
 
-  afterEach(() => {
-    // CLOSE the handle before dropping the reference and deleting the tree. A
-    // bare `delete globalThis.__kabmoDb` abandons the connection without
-    // closing it, so the file stays locked; on Windows the delete then fails
-    // with EBUSY and reports the PREVIOUS test as failed (measured on the first
-    // Windows run: every case in this file).
-    globalThis.__kabmoDb?.resolved?.raw.close();
-    delete globalThis.__kabmoDb;
-    if (savedDbPath === undefined) delete Bun.env.KABMO_DB_PATH;
-    else Bun.env.KABMO_DB_PATH = savedDbPath;
-    removeDir(root);
+  afterEach(async () => {
+    await releaseDb();
   });
 
   test('a dispatch write stores the pair, and a status-only re-mark keeps it', async () => {
