@@ -6,16 +6,15 @@
 /**
  * The `eval` card body.
  *
- * The alignment defect is pinned here, and it was reported from a live
- * transcript rather than found by reading the code: **the gutter numbers
- * drifted off the code.** The gutter row was `text-[10px]` while the code was
- * `text-[11px]`, and both inherited `leading-relaxed` — a ratio, so the row box
- * was 16.25px against the code's 17.875px and every number sat higher than its
- * line by a growing amount (measured after a reload: line 12's number was a
- * full line above its code). The two sides now share one explicit line box,
- * which is what the alignment case asserts — by comparing the two elements' own
- * leading class, so a future edit that changes one side is caught instead of
- * copied.
+ * The alignment defect is pinned here as it was reported from a live
+ * transcript — **the gutter numbers drifted off the code** — and the fix moved
+ * the line box out of this file entirely: both numbered blocks draw through
+ * `NumberedCode`, which states one px box and one font size for both columns.
+ * The earlier version of this file asserted the two sides carried the same
+ * `leading-[…]` class, which passed while `JsonCodeBlock` — the surface behind
+ * the Bash console, the eval RESULT and the card's input JSON — kept the same
+ * bug at 30.9px of drift by line 20. So the assertions here are about the
+ * rendered box, and the general invariants live in `shared/numbered-code.test.tsx`.
  *
  * The result cases cover the OTHER half of the same report ("output does not
  * render while streaming"): the panel does read `tool.output` as it arrives, so
@@ -80,17 +79,18 @@ function evalTool(overrides: Partial<ToolCallData> = {}): ToolCallData {
   } as ToolCallData;
 }
 
-/** The `leading-[…]` token a node carries, or null. */
-function leadingOf(el: Element): string | null {
-  return /(?:^|\s)(leading-\[\d+px\])/.exec(el.className)?.[1] ?? null;
+/** The inline line box a column's rows carry. */
+function boxOf(column: Element): { height: string; lineHeight: string; fontSize: string } {
+  const row = column.firstElementChild as HTMLElement;
+  return { height: row.style.height, lineHeight: row.style.lineHeight, fontSize: row.style.fontSize };
 }
 
-/** The code card: the gutter/pre pair whose pre holds the SCRIPT. */
-function codeCard(root: HTMLElement): { gutter: Element; pre: Element } {
-  const gutter = root.querySelectorAll('.sticky')[0];
-  const pre = gutter?.parentElement?.querySelector('pre');
-  if (!gutter || !pre) throw new Error('code card not rendered');
-  return { gutter, pre };
+/** The code card: the gutter/pre pair whose code column holds the SCRIPT. */
+function codeCard(root: HTMLElement): { gutter: Element; code: Element } {
+  const gutter = root.querySelectorAll('div[aria-hidden="true"]')[0];
+  const code = gutter?.nextElementSibling;
+  if (!gutter || !code) throw new Error('code card not rendered');
+  return { gutter, code };
 }
 
 describe('Eval — result rendering', () => {
@@ -107,40 +107,40 @@ describe('Eval — result rendering', () => {
 
   test('renders only the script while a running call has produced nothing yet', () => {
     const root = mount(evalTool({ output: '' }));
-    expect(root.querySelectorAll('pre')).toHaveLength(1);
+    expect(root.querySelectorAll('div[aria-hidden="true"]')).toHaveLength(1);
     expect(root.textContent).toContain('Script Evaluation');
   });
 });
 
 describe('Eval — gutter aligns with the code', () => {
   test('the gutter and the code share one line box', () => {
-    const { gutter, pre } = codeCard(mount(evalTool()));
-    const gutterLeading = leadingOf(gutter);
-    expect(gutterLeading).not.toBeNull();
+    const { gutter, code } = codeCard(mount(evalTool()));
     // The bug: an inherited RATIO (`leading-relaxed`) resolved against two
-    // different font sizes, so the boxes differed by 1.625px per line.
-    expect(leadingOf(pre)).toBe(gutterLeading);
+    // different font sizes, so the boxes differed by 1.625px per line. An
+    // explicit box on both sides is the fix, and it has to be EXPLICIT: two
+    // inherited ratios agree while two font sizes do not.
+    expect(boxOf(gutter).height).not.toBe('');
+    expect(boxOf(gutter)).toEqual(boxOf(code));
   });
 
   test('one gutter row per code line', () => {
-    const { gutter } = codeCard(mount(evalTool()));
+    const { gutter, code } = codeCard(mount(evalTool()));
     expect(gutter.children).toHaveLength(CODE.split('\n').length);
+    expect(code.children).toHaveLength(CODE.split('\n').length);
   });
 
   test('the JSON result block aligns the same way', () => {
     // The pretty-printed result draws its own gutter, and it had the same
     // mismatch (plus a `py-2` against the code's `p-2.5`).
     const root = mount(evalTool({ output: '{"a": 1, "b": [2, 3]}', status: 'success' }));
-    const gutters = root.querySelectorAll('.sticky');
+    const gutters = root.querySelectorAll('div[aria-hidden="true"]');
     const jsonGutter = gutters[1];
     expect(jsonGutter).toBeDefined();
-    const pre = jsonGutter.parentElement?.querySelector('pre');
-    expect(pre).not.toBeNull();
-    // Explicit on BOTH, not merely equal: `null === null` would pass while both
-    // sides inherit a ratio against different font sizes, which is the bug.
-    expect(leadingOf(jsonGutter)).not.toBeNull();
-    expect(leadingOf(pre as Element)).toBe(leadingOf(jsonGutter));
+    const code = jsonGutter.nextElementSibling as Element;
+    expect(code).not.toBeNull();
+    expect(boxOf(jsonGutter)).toEqual(boxOf(code));
     // `{"a": 1, "b": [2, 3]}` pretty-prints to 7 lines.
     expect(jsonGutter.children).toHaveLength(7);
+    expect(code.children).toHaveLength(7);
   });
 });

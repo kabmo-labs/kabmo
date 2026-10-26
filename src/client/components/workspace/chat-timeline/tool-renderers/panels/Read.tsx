@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { FileCode, FileImage, FileText, Folder, FolderOpen, Info, Loader2 } from 'lucide-preact';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
+import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { parseDirListing, parseNumberedCode } from '@/shared/lib/code/parser';
 import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 import { buildFsRawUrl, isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
@@ -11,6 +11,7 @@ import type { ToolCallData } from '@/shared/types/chat';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { extractLineMeta } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/read-line-meta';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
+import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
 import { getToolInputPath } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/tool-input';
 import { isXdDocRead } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 
@@ -196,7 +197,15 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
   // a throttled phone, all of it before the card could paint. The plain-text
   // frame it draws first carries the same characters, and a block already in
   // the memo renders highlighted on that first paint.
-  const highlightedCode = useDeferredHighlight(truncatedCode.text, lang);
+  //
+  // Per LINE, not one block: the gutter is one element per line, so the code
+  // has to be too. A single `<pre>` with `<br>` separators cannot be counted
+  // against the numbers — a trailing separator or an empty last line moves the
+  // text and leaves the numbers behind.
+  const highlightedLines = useDeferredHighlightLines(
+    visibleLines.map((line) => line.code).join('\n'),
+    lang,
+  );
 
   return (
     <div className="space-y-2">
@@ -301,25 +310,18 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
               <span>… {truncatedCode.skipped} earlier lines hidden</span>
             </div>
           )}
-          <div className="relative flex max-h-80 items-start overflow-auto rounded-lg border border-ink/8 bg-paper font-mono text-[11px] leading-[20px] select-text overscroll-contain">
-            {/* Gutter: Line numbers */}
-            <div
-              className="sticky left-0 z-10 flex-shrink-0 select-none border-r border-ink/8 bg-canvas/90 py-2.5 pl-3 pr-2.5 text-right font-mono text-[11px] leading-[20px] tabular-nums text-ink/35 backdrop-blur-xs"
-              aria-hidden="true"
-            >
-              {visibleLines.map((line, idx) => (
-                <div key={idx} className="h-[20px] leading-[20px]">
-                  {line.lineNum}
-                </div>
-              ))}
-            </div>
-
-            {/* Code Body */}
-            <pre
-              className="m-0 flex-1 min-w-max overflow-visible py-2.5 pl-3 pr-4 font-mono text-[11px] leading-[20px] whitespace-pre text-ink/85 focus:outline-none"
-              dangerouslySetInnerHTML={{ __html: highlightedCode }}
-            />
-          </div>
+          {/* The gutter and the code are ONE component (`NumberedCode`) because
+              they were two columns that had to agree about a line box, and
+              every panel that stated that box itself drifted: the code was a
+              single `<pre>` with `<br>` separators, so a trailing separator or
+              an empty last line moved the text and left the numbers behind. */}
+          <NumberedCode
+            numbers={visibleLines.map((line) => line.lineNum)}
+            lines={highlightedLines}
+            className="relative max-h-80 overflow-auto rounded-lg border border-ink/8 bg-paper select-text overscroll-contain"
+            gutterClassName="border-r border-ink/8 bg-canvas/90 py-2.5 pl-3 pr-2.5 text-ink/35 backdrop-blur-xs"
+            codeClassName="py-2.5 pl-3 pr-4 text-ink/85"
+          />
 
           {/* Elision information banner */}
           {elisionNotices.map((notice, i) => (

@@ -33,6 +33,7 @@ import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { DiffView } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/DiffView';
 import { JsonCodeBlock } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/JsonCodeBlock';
 import { OutputWindow } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/OutputWindow';
+import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { artifactViewKind } from '@/shared/lib/chat/tool/artifact-view';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
@@ -105,23 +106,18 @@ function ArtifactCode({ lines, path }: { lines: string[]; path: string }) {
   const parsed = useMemo(() => parseNumberedCode(lines.join('\n')), [lines]);
   const lang = getLanguageFromPath(path);
   const html = useDeferredHighlightLines(parsed.cleanCode, lang);
+  const rendered = useMemo(
+    () => parsed.lines.map((_line, index) => html[index] ?? ''),
+    [parsed.lines, html],
+  );
 
   return (
-    <div className="flex items-start font-mono text-[11px] leading-[20px] select-text">
-      <div
-        className="sticky left-0 z-10 flex-shrink-0 select-none border-r border-ink/8 bg-canvas/90 py-2.5 pl-3 pr-2.5 text-right text-ink/35 tabular-nums"
-        aria-hidden="true"
-      >
-        {parsed.lines.map((line, index) => (
-          <div key={index} className="h-[20px] leading-[20px]">
-            {line.lineNum}
-          </div>
-        ))}
-      </div>
-      <pre
-        className="shiki m-0 flex-1 min-w-max py-2.5 pl-3 pr-4 whitespace-pre text-ink/85"
-        dangerouslySetInnerHTML={{ __html: html.join('\n') }}
-      />
-    </div>
+    <NumberedCode
+      numbers={parsed.lines.map((line) => line.lineNum)}
+      lines={rendered}
+      className="select-text"
+      gutterClassName="border-r border-ink/8 bg-canvas/90 py-2.5 pl-3 pr-2.5 text-ink/35"
+      codeClassName="py-2.5 pl-3 pr-4 text-ink/85"
+    />
   );
 }

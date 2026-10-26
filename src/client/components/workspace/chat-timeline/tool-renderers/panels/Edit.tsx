@@ -6,14 +6,18 @@ import { HashlinePatch } from '@/client/components/workspace/chat-timeline/tool-
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { EnvelopeHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/EnvelopeHeader';
 import { ExcerptCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ExcerptCode';
+import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
 import { parseEditOutput } from '@/shared/lib/chat/excerpt';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
-import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
+import { useDeferredHighlight, useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { outputMarkdown, readToolOutput } from '@/shared/lib/chat/tool-output';
 import { hashlinePatchFromArgs } from '@/shared/lib/omp/session/hashline-patch';
 import { formatBytes } from '@/shared/lib/format/number';
+
+/** Rows of a written file the preview draws before it reports a truncation. */
+const PREVIEW_MAX_LINES = 80;
 
 /** Synthesize a standard unified diff from old_string and new_string */
 function createUnifiedDiff(oldStr: string, newStr: string, filePath = 'diff'): string {
@@ -167,10 +171,34 @@ export function Edit({ tool }: { tool: ToolCallData }) {
     showsReplacement && truncatedNew ? truncatedNew.text : '',
     lang,
   );
-  const highlightedPreview = useDeferredHighlight(
-    showsPreview && newContent ? newContent.split('\n').slice(0, 80).join('\n') : '',
-    lang,
+  /**
+   * The write preview is drawn through `NumberedCode`, which puts ONE element
+   * per line on each side — so its code column needs one highlighted fragment
+   * per line. A single block split on `\n` is not the same thing: the highlighter
+   * returns a fragment per token line, and an empty line yields none, which
+   * shortened the code column and slid the numbers off their lines.
+   */
+  const previewLines = useMemo(
+    () => (showsPreview && newContent ? newContent.split('\n').slice(0, PREVIEW_MAX_LINES) : []),
+    [showsPreview, newContent],
   );
+  const previewHighlight = useDeferredHighlightLines(previewLines.join('\n'), lang);
+  /**
+   * Both columns come from ONE list, and the truncation marker is a row on BOTH
+   * sides. It used to be a gutter-only row, which is exactly the shape this
+   * component exists to make impossible: 81 numbers beside 80 lines, so every
+   * number past the marker sat one line above its code.
+   */
+  const previewRows = useMemo(() => {
+    const truncated = previewLineCount > previewLines.length;
+    const numbers: Array<string | number> = previewLines.map((_, index) => index + 1);
+    const lines = previewLines.map((_line, index) => previewHighlight[index] ?? '');
+    if (truncated) {
+      numbers.push('…');
+      lines.push('');
+    }
+    return { numbers, lines };
+  }, [previewLines, previewHighlight, previewLineCount]);
 
   // omp answers an edit with the excerpt it touched, not with prose: numbered
   // rows under a `[path#TAG]` header. Rendered as markdown that is one plain
@@ -258,23 +286,13 @@ export function Edit({ tool }: { tool: ToolCallData }) {
               {previewLineCount} lines · {formatBytes(newContent.length)}
             </span>
           </div>
-          <div className="flex max-h-64 items-start overflow-x-auto rounded-lg border border-ink/8 bg-paper font-mono text-[11px] leading-[20px] select-text overscroll-contain">
-            <div
-              className="sticky left-0 z-10 flex-shrink-0 select-none border-r border-ink/8 bg-canvas/60 py-2.5 pl-2.5 pr-2 text-right font-mono text-[11px] leading-[20px] tabular-nums text-ink/25"
-              aria-hidden="true"
-            >
-              {Array.from({ length: Math.min(previewLineCount, 80) }, (_, idx) => (
-                <div key={idx} className="h-[20px] leading-[20px]">
-                  {idx + 1}
-                </div>
-              ))}
-              {previewLineCount > 80 && <div className="h-[20px] leading-[20px]">…</div>}
-            </div>
-            <div
-              className="m-0 flex-1 min-w-max overflow-visible py-2.5 pl-3 pr-4 leading-[20px] whitespace-pre text-ink/85"
-              dangerouslySetInnerHTML={{ __html: highlightedPreview }}
-            />
-          </div>
+          <NumberedCode
+            numbers={previewRows.numbers}
+            lines={previewRows.lines}
+            className="max-h-64 overflow-x-auto rounded-lg border border-ink/8 bg-paper select-text overscroll-contain"
+            gutterClassName="border-r border-ink/8 bg-canvas/60 py-2.5 pl-2.5 pr-2 text-ink/25"
+            codeClassName="py-2.5 pl-3 pr-4 text-ink/85"
+          />
         </div>
       )}
 

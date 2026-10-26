@@ -2,6 +2,7 @@ import { useMemo } from 'preact/hooks';
 import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
 import { CopyButton } from '@/client/components/common/CopyButton';
+import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 
 /** One `121:code` row of an omp excerpt. */
@@ -57,6 +58,14 @@ export function ExcerptCode({ lines, path = '', tag }: ExcerptCodeProps) {
   const html = useDeferredHighlightLines(visibleCode, lang);
 
   const visibleRows = hidden > 0 ? rows.slice(hidden) : rows;
+  // One highlighted fragment per rendered row, from the SAME slice the gutter
+  // draws its numbers from. `NumberedCode` puts one element on each side, so a
+  // highlight that returned fewer fragments than rows still cannot shift the
+  // numbers — the missing rows render empty rather than shortening the column.
+  const renderedLines = useMemo(
+    () => visibleRows.map((_row, index) => html[index] ?? ''),
+    [visibleRows, html],
+  );
 
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
@@ -81,27 +90,16 @@ export function ExcerptCode({ lines, path = '', tag }: ExcerptCodeProps) {
           … {hidden} earlier lines hidden
         </div>
       )}
-      <div className="flex max-h-80 items-start overflow-x-auto select-text">
-        <div
-          className="sticky left-0 z-10 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/60 py-2 pl-2.5 pr-2 text-right font-mono text-[10.5px] leading-[20px] tabular-nums text-ink/25"
-          aria-hidden="true"
-        >
-          {visibleRows.map((row, index) => (
-            <div key={index} className="h-[20px] leading-[20px]">
-              {row.num}
-            </div>
-          ))}
-        </div>
-        <div className="shiki m-0 flex-1 min-w-max py-2 pl-3 pr-4 font-mono text-[11px] leading-[20px] whitespace-pre text-ink/85">
-          {visibleRows.map((_row, index) => (
-            <div
-              key={index}
-              className="h-[20px] leading-[20px]"
-              dangerouslySetInnerHTML={{ __html: html[index] || '' }}
-            />
-          ))}
-        </div>
-      </div>
+      {/* The gutter was `text-[10.5px]` under the code's `text-[11px]`: half-leading
+          is `(box − font) / 2`, so the smaller face sat 1px higher on every row
+          (measured in the browser). Both columns now share one size and one box. */}
+      <NumberedCode
+        numbers={visibleRows.map((row) => row.num)}
+        lines={renderedLines}
+        className="max-h-80 overflow-x-auto select-text"
+        gutterClassName="border-r border-ink/6 bg-canvas/60 py-2 pl-2.5 pr-2 text-ink/25"
+        codeClassName="py-2 pl-3 pr-4 text-ink/85"
+      />
     </div>
   );
 }

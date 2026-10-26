@@ -4,25 +4,17 @@ import type { ToolCallData } from '@/shared/types';
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { tryParseJson } from '@/shared/lib/code/syntax-highlight';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
-import { useDeferredHighlight } from '@/client/hooks/code/deferred-highlight';
+import { useDeferredHighlightLines } from '@/client/hooks/code/deferred-highlight';
+import { NumberedCode } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/numbered-code';
 
 /**
- * The line box both sides of a code card share — gutter row and code line.
- *
- * A gutter row and the code line beside it are separate elements, so they agree
- * only when their line boxes do. They did not: the gutter was `text-[10px]`
- * while the code was `text-[11px]`, and both inherited `leading-relaxed` — a
- * RATIO, so 10 × 1.625 = 16.25px against 11 × 1.625 = 17.875px. Each number
- * then sat 1.6px higher than its line, and by the tenth line the number was a
- * whole line above the code it labels (measured in the browser after a reload:
- * `gutterRowH 16.25`, `preLineHeight 17.875`, `firstRowOffset 10`).
- *
- * The box is stated ONCE and applied to both containers, because a `<div>`
- * holding one line takes its height from `line-height` — no per-row `h-[…]`
- * that could drift from the constant. This is the same shape `Read.tsx` and
- * `ExcerptCode` use.
+ * The `eval` card's two numbered blocks (the script and its pretty-printed
+ * result) draw through `NumberedCode`, which states the line box and the font
+ * size ONCE for both columns. They used to state it themselves — the gutter was
+ * `text-[10px]` under the code's `text-[11px]`, so every number sat higher than
+ * its line by a growing amount. The component's header holds the measurement;
+ * this file no longer has a constant to drift from it.
  */
-const LINE_BOX = 'leading-[18px]';
 
 /** Panel khusus untuk tool `eval` — eksekusi kode script, browser eval, dsb. */
 export function Eval({ tool }: { tool: ToolCallData }) {
@@ -50,11 +42,12 @@ export function Eval({ tool }: { tool: ToolCallData }) {
 
   const truncatedCode = useMemo(() => truncateTailLines(code, MAX_OUTPUT_LINES), [code]);
   // A cell's script is short but the grammar compile is not, and an eval card
-  // opens while its own output streams.
-  const highlightedCode = useDeferredHighlight(truncatedCode.text, 'javascript');
+  // opens while its own output streams. Per LINE, because `NumberedCode` draws
+  // one element per line on each side of the gutter.
+  const highlightedCodeLines = useDeferredHighlightLines(truncatedCode.text, 'javascript');
   // The result is shown whole: an eval's output IS the answer, so hiding its
   // head behind a "… earlier lines hidden" line misreports what the cell returned.
-  const highlightedJson = useDeferredHighlight(
+  const highlightedJsonLines = useDeferredHighlightLines(
     jsonResult.isValid && jsonResult.pretty ? jsonResult.pretty : '',
     'json',
   );
@@ -93,17 +86,15 @@ export function Eval({ tool }: { tool: ToolCallData }) {
               … {truncatedCode.skipped} earlier lines hidden
             </div>
           )}
-          <div className={`flex max-h-56 items-start overflow-x-auto font-mono text-[11px] ${LINE_BOX} select-text`}>
-            <div className={`sticky left-0 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-right text-[10px] ${LINE_BOX} tabular-nums text-ink/25`}>
-              {truncatedCode.text.split('\n').map((_, idx) => (
-                <div key={idx}>{idx + 1}</div>
-              ))}
-            </div>
-            <pre
-              className={`flex-1 overflow-x-auto p-2.5 whitespace-pre ${LINE_BOX} text-ink/85 font-mono`}
-              dangerouslySetInnerHTML={{ __html: highlightedCode }}
-            />
-          </div>
+          <NumberedCode
+            numbers={truncatedCode.text.split('\n').map((_, idx) => idx + 1)}
+            lines={highlightedCodeLines}
+            className="max-h-56 overflow-x-auto select-text"
+            gutterClassName="border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-ink/25"
+            codeClassName="p-2.5 text-ink/85"
+            lineHeight={18}
+            fontSize={11}
+          />
         </div>
       )}
 
@@ -172,17 +163,15 @@ export function Eval({ tool }: { tool: ToolCallData }) {
           </div>
 
           {jsonResult.isValid && jsonResult.pretty ? (
-            <div className={`flex max-h-56 items-start overflow-x-auto font-mono text-[11px] ${LINE_BOX} select-text`}>
-              <div className={`sticky left-0 flex-shrink-0 select-none border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-right text-[10px] ${LINE_BOX} tabular-nums text-ink/25`}>
-                {jsonResult.pretty.split('\n').map((_, idx) => (
-                  <div key={idx}>{idx + 1}</div>
-                ))}
-              </div>
-              <pre
-                className={`flex-1 overflow-x-auto p-2.5 whitespace-pre ${LINE_BOX} text-ink/85 font-mono`}
-                dangerouslySetInnerHTML={{ __html: highlightedJson }}
-              />
-            </div>
+            <NumberedCode
+              numbers={jsonResult.pretty.split('\n').map((_, idx) => idx + 1)}
+              lines={highlightedJsonLines}
+              className="max-h-56 overflow-x-auto select-text"
+              gutterClassName="border-r border-ink/6 bg-canvas/50 py-2.5 pl-2.5 pr-2 text-ink/25"
+              codeClassName="p-2.5 text-ink/85"
+              lineHeight={18}
+              fontSize={11}
+            />
           ) : (
             <pre
               className={`max-h-48 overflow-y-auto p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words select-text ${
