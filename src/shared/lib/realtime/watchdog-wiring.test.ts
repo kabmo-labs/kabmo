@@ -78,6 +78,12 @@ let unsubscribe: (() => void) | null = null;
 
 beforeEach(() => {
   FakeSocket.instances = [];
+  // Start from NO connection. A suite that dialed a real socket and did not
+  // release it leaves `state().socket` set, and `dial()` then early-returns on
+  // it — no FakeSocket is ever constructed, so every case here fails on a
+  // missing instance rather than on the watchdog. File order is the runner's,
+  // so this file must not depend on another suite's teardown.
+  resetRealtimeClient();
   win = new Window({ url: 'http://localhost' });
   // `vi.useFakeTimers` patches the RUNNER's globals, while happy-dom captured
   // its own bound copies when it was imported. Delegating at call time is what

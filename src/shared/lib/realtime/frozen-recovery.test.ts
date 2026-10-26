@@ -28,7 +28,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
-import { realtimeClient } from '@/shared/lib/realtime/client';
+import { realtimeClient, resetRealtimeClient } from '@/shared/lib/realtime/client';
 import { state } from '@/shared/lib/realtime/state';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import { startRealtimeTestServer, type RealtimeTestServer } from '@/test-support/realtime-server';
@@ -38,6 +38,15 @@ let server: RealtimeTestServer | undefined;
 afterEach(() => {
   server?.stop();
   server = undefined;
+  // The channel is PROCESS state, and this file is the one that dials a REAL
+  // socket. `restoreDomGlobals` only puts the runner's globals back; the live
+  // socket, its retry timer and the wanted flag survive into the next file,
+  // where `dial()` then early-returns on the socket it still holds and the next
+  // suite's constructor override never produces an instance. Measured on
+  // `Gates / Checks (Windows)`: `watchdog-wiring.test.ts` failed with
+  // `undefined is not an object (evaluating 'socket.open')` while passing when
+  // run alone.
+  resetRealtimeClient();
   restoreDomGlobals();
 });
 
