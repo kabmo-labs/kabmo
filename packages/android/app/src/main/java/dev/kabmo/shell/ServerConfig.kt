@@ -15,6 +15,7 @@ object ServerConfig {
     private const val PREFS = "kabmo-shell"
     private const val KEY_URL = "server_url"
     private const val KEY_ZOOM = "zoom_percent"
+    private const val KEY_PALETTE = "shell_palette"
 
     /**
      * Page zoom bounds, in percent.
@@ -76,6 +77,34 @@ object ServerConfig {
 
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
+
+    /**
+     * The palette the console last reported, or the shipped default.
+     *
+     * Stored rather than derived: the launch overlay is drawn BEFORE any page
+     * exists, so this is the only colour the shell has on a cold start. Written
+     * on every successful load (see `MainActivity`), which is what makes a theme
+     * picked in Settings the palette the NEXT launch paints.
+     */
+    fun palette(context: Context): ShellPalette {
+        val wire = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_PALETTE, null)
+        return ShellPalette.parse(wire) ?: ShellPalette.DEFAULT
+    }
+
+    /**
+     * Remember the console's palette.
+     *
+     * A wire that does not parse is NOT written: keeping the previous palette is
+     * the only answer that cannot repaint the shell with a colour no theme ever
+     * chose.
+     */
+    fun writePalette(context: Context, palette: ShellPalette) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PALETTE, palette.wire())
+            .apply()
     }
 
     /** Snap a percent onto the slider's grid, inside the allowed range. */

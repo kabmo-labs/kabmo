@@ -196,6 +196,10 @@ public sealed class ShellHost
             PersistedStore.Read,
             PersistedStore.Write);
 
+        // The palette the console reported on a PREVIOUS launch, so the splash is
+        // already the right colour before anything loads.
+        _splash.ApplyPalette(_store.Palette());
+
         await BootAsync();
     }
 
@@ -310,6 +314,42 @@ public sealed class ShellHost
         // the navigation completing is the first moment the document is real.
         _shownUrl = _window.WebView.CoreWebView2?.Source;
         RenderSplash(_splashState.Finished());
+        // The console has painted, so `window.__kabmoPalette()` answers the ACTIVE
+        // theme. Stored for the next cold start — the only launch where the splash
+        // has no page to ask — and applied to the live splash too, because a theme
+        // changed in Settings is exactly the case where the stored palette is
+        // stale and the splash it describes is on screen.
+        _ = ReadPaletteAsync();
+    }
+
+    /// <summary>
+    /// Ask the page which palette it is painting, and keep the answer.
+    ///
+    /// The property is installed by `src/client/lib/native/palette.ts` before the
+    /// first render, so it exists by the time a navigation completes. An older
+    /// build answers `null`, the parse returns null, and the stored palette is
+    /// left exactly as it was rather than replaced with a colour no theme chose.
+    /// </summary>
+    private async Task ReadPaletteAsync()
+    {
+        var core = _window.WebView.CoreWebView2;
+        if (core is null || _store is null) return;
+        try
+        {
+            var result = await core.ExecuteScriptAsync("window.__kabmoPalette ? window.__kabmoPalette() : null");
+            // WebView2 answers a JS string as JSON — a quoted string — so it is
+            // unwrapped here rather than in the parser.
+            var wire = System.Text.Json.JsonSerializer.Deserialize<string?>(result);
+            var next = ShellPalette.Parse(wire);
+            if (next is null) return;
+            await _store.SetPaletteAsync(wire);
+            _splash.ApplyPalette(next);
+        }
+        catch (Exception)
+        {
+            // A page that navigated away mid-script, or a webview that went away:
+            // the stored palette is still the previous one, which is correct.
+        }
     }
 
     /// <summary>

@@ -103,10 +103,26 @@ public struct PersistedState: Codable, Sendable, Equatable {
    */
   public var spawned: [String: Int32]
 
-  public init(entries: [StoredServer] = [], activeId: String? = nil, spawned: [String: Int32] = [:]) {
+  /**
+   The palette the console last reported, as a wire.
+
+   Stored beside the server list because it belongs to this shell's own state, and
+   read on the FIRST frame: the splash is drawn before any page exists, so this is
+   the only colour available at launch. Optional and defaulted, so a
+   `servers.json` written by an older build still decodes.
+   */
+  public var palette: String?
+
+  public init(
+    entries: [StoredServer] = [],
+    activeId: String? = nil,
+    spawned: [String: Int32] = [:],
+    palette: String? = nil
+  ) {
     self.entries = entries
     self.activeId = activeId
     self.spawned = spawned
+    self.palette = palette
   }
 }
 
@@ -204,6 +220,25 @@ public actor ServerStore {
 
   /// The ids this shell spawned, for the boot-time adoption pass.
   public func spawnedPids() -> [String: Int32] { state.spawned }
+
+  /// The palette the console last reported, or the shipped one.
+  ///
+  /// Read at launch, before any page exists — which is why it is persisted rather
+  /// than asked for. A wire this build cannot parse is the shipped palette, never
+  /// a partial one.
+  public func palette() -> ShellPalette {
+    ShellPalette.parse(state.palette) ?? .shipped
+  }
+
+  /// Remember the console's palette for the next launch.
+  ///
+  /// An unreadable wire is not written: keeping the previous palette is the only
+  /// answer that cannot repaint the shell with a colour no theme chose.
+  public func setPalette(_ wire: String?) {
+    guard let next = ShellPalette.parse(wire), next.wire != state.palette else { return }
+    state.palette = next.wire
+    persist()
+  }
 
   /// Every answering server, the detected ones, and the selection.
   public func snapshot() async -> ServersState {

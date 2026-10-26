@@ -283,6 +283,7 @@ pub fn cases(r: &mut Runner) {
             }],
             active_id: Some("local:3001".into()),
             spawned,
+            ..Default::default()
         },
     );
     let _ = store.remove("local:3001");

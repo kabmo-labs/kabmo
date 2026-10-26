@@ -388,6 +388,44 @@ Check("each reason has its own sentence",
         SplashState.SentenceFor(SplashState.SplashFailure.Other),
     }.Distinct().Count() == 5);
 
+Group("ShellPalette");
+
+// The splash's colours: every case is a colour a user sees for the seconds before
+// the console paints. The splash shipped a literal #FAF8F3 — the default LIGHT
+// palette's paper — so a dark console opened on a paper-white rectangle.
+const string defaultWire = "light|#f4f1ea|#faf8f3|#141310|#696763|#d5d2cb|#c8321e";
+const string darkWire = "dark|#21252b|#282c34|#abb2bf|#777c87|#343940|#e06c75";
+
+// A hand-typed copy is what this pins: the five shells' first-launch colours have
+// to be the shared projection's, or a fresh install paints a palette that exists
+// in no theme.
+Check("the shipped palette is the shared default", ShellPalette.Shipped.Wire == defaultWire);
+Check("the shipped palette is light", !ShellPalette.Shipped.IsDark);
+
+var darkPalette = ShellPalette.Parse(darkWire);
+Check("a wire round-trips", darkPalette?.Wire == darkWire);
+Check("the ground is the page's canvas", darkPalette?.Canvas == "#21252b");
+Check("the failure colour survives", darkPalette?.Error == "#e06c75");
+Check("a dark wire is dark", darkPalette?.IsDark == true);
+
+// A partial palette would paint some fields and leave the rest at zero, which
+// reads as a different theme rather than as no answer.
+var rejectedWires = new[]
+{
+    null,
+    "",
+    "light",
+    "light|#f4f1ea|#faf8f3|#141310|#696763|#d5d2cb",
+    defaultWire + "|extra",
+    defaultWire.Replace("light", "sepia"),
+    defaultWire.Replace("#f4f1ea", "#f4f1e"),
+    defaultWire.Replace("#f4f1ea", "rgb(244,241,234)"),
+};
+foreach (var bad in rejectedWires)
+{
+    Check($"rejects {bad ?? "null"}", ShellPalette.Parse(bad) is null);
+}
+
 Group("SplashState.IsDocumentReload");
 Check("a reload is the same address on a finished page",
     SplashState.IsDocumentReload("http://127.0.0.1:3000/", "http://127.0.0.1:3000/",

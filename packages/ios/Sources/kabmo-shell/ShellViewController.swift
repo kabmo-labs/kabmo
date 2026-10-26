@@ -59,6 +59,9 @@ final class ShellViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    // The palette the console reported on a PREVIOUS launch, so the overlay is
+    // already the right colour before anything loads.
+    Palette.active = settings.palette
     view.backgroundColor = Palette.paper
 
     webView = makeWebView()
@@ -171,6 +174,12 @@ final class ShellViewController: UIViewController {
     navigation.onLoadFinished = { [weak self] in
       guard let self else { return }
       self.applyLoading(self.loading.finished())
+      // The console has painted, so `window.__kabmoPalette()` answers the
+      // ACTIVE theme. Stored for the next cold start — the only launch where
+      // the overlay has no page to ask — and applied to the live overlay too,
+      // because a theme changed in Settings is exactly the case where the
+      // stored palette is stale and the overlay it describes is on screen.
+      self.readPalette()
       // A successful login is a NAVIGATION, so this is the first moment the new
       // session cookie exists. WebKit writes its store on a timer; a user who
       // closes the app right after signing in never reaches it, which is the
@@ -228,6 +237,24 @@ final class ShellViewController: UIViewController {
   private func applyLoading(_ next: LoadingState) {
     loading = next
     overlay.render(next)
+  }
+
+  /// Ask the page which palette it is painting, and keep the answer.
+  ///
+  /// The property is installed by `src/client/lib/native/palette.ts` before the
+  /// first render, so it exists by the time a load finishes. An older build
+  /// answers `undefined`, the parse returns nil, and the stored palette is left
+  /// exactly as it was rather than replaced with a colour no theme chose.
+  private func readPalette() {
+    webView.evaluateJavaScript("window.__kabmoPalette ? window.__kabmoPalette() : null") { [weak self] result, _ in
+      guard let self, let wire = result as? String, let next = ShellPalette.parse(wire) else { return }
+      self.settings.write(palette: next)
+      Palette.active = next
+      self.overlay.applyPalette()
+      self.view.backgroundColor = Palette.paper
+      self.webView.backgroundColor = Palette.paper
+      self.webView.scrollView.backgroundColor = Palette.paper
+    }
   }
 
   /// Apply the saved page zoom — the page's STARTING scale, and the live one.

@@ -17,11 +17,22 @@ import android.widget.TextView
 /**
  * The launch overlay: what the shell draws from the tap until the console paints.
  *
- * Without it the app showed a flat paper rectangle for the whole cold start —
- * the WebView's background colour, with nothing to say whether it was loading,
+ * Without it the app showed a flat rectangle for the whole cold start — the
+ * WebView's background colour, with nothing to say whether it was loading,
  * waiting on a server that is down, or already dead. That is the same blank
  * frame the theme's `windowBackground` exists to make seamless, and on a slow
  * LAN or a cold server it is several seconds of it.
+ *
+ * ## The colours come from the ACTIVE theme
+ *
+ * Every surface here is painted from a [ShellPalette] — the console's own, read
+ * back from the page and stored for the next launch. The overlay shipped with
+ * `#FAF8F3`/`#141310` hardcoded, which is the default LIGHT palette's paper:
+ * on a dark install that is a paper-white rectangle for the whole cold start,
+ * then a jump to a near-black console. [applyPalette] is therefore the entry
+ * point that matters, and it can run on a live overlay — the first launch after
+ * a theme change has no stored palette, so the console's answer arrives while
+ * the overlay it describes is still on screen.
  *
  * Built from platform views, like the settings screen: the whole app is one
  * WebView, and a toolkit for three widgets would dwarf the shell.
@@ -40,6 +51,12 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
     private val retryButton: Button
     private val settingsButton: Button
 
+    /** The colours in force. Replaced by [applyPalette]. */
+    private var palette: ShellPalette = ShellPalette.DEFAULT
+
+    /** The state last drawn, so a palette change can repaint the same one. */
+    private var state: LoadingState = LoadingState.done()
+
     /** Called when the user asks to try the address again. */
     var onRetry: (() -> Unit)? = null
 
@@ -47,7 +64,6 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
     var onOpenSettings: (() -> Unit)? = null
 
     init {
-        setBackgroundColor(Color.parseColor("#FAF8F3"))
         isClickable = true // swallows taps meant for the half-painted page
 
         val column = LinearLayout(context).apply {
@@ -71,13 +87,10 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
         bar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             isIndeterminate = true
-            progressTintList = ColorStateList.valueOf(Color.parseColor("#141310"))
-            indeterminateTintList = ColorStateList.valueOf(Color.parseColor("#141310"))
         }
 
         status = TextView(context).apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setTextColor(Color.parseColor("#5A554A"))
             gravity = Gravity.CENTER
             setPadding(0, dp(10), 0, 0)
         }
@@ -118,7 +131,33 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
             LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER),
         )
 
+        applyPalette(ShellPalette.DEFAULT)
         render(LoadingState.done())
+    }
+
+    /**
+     * Repaint in `next`, keeping whatever state is on screen.
+     *
+     * The one entry point for colour, and it re-renders rather than only setting
+     * fields: the failure sentence's colour depends on the state AND the
+     * palette, so a palette applied between two renders has to redo both.
+     */
+    fun applyPalette(next: ShellPalette) {
+        palette = next
+        setBackgroundColor(Color.parseColor(next.canvas))
+        val ink = ColorStateList.valueOf(Color.parseColor(next.ink))
+        bar.progressTintList = ink
+        bar.indeterminateTintList = ink
+        for (button in listOf(retryButton, settingsButton)) {
+            val filled = button === retryButton
+            button.setTextColor(Color.parseColor(if (filled) next.canvas else next.ink))
+            button.background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(Color.parseColor(if (filled) next.ink else next.paper))
+                setStroke(dp(1), Color.parseColor(next.hairline))
+            }
+        }
+        render(state)
     }
 
     /**
@@ -127,6 +166,7 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
      * `LoadingState`.
      */
     fun render(state: LoadingState) {
+        this.state = state
         visibility = if (state.visible) View.VISIBLE else View.GONE
         if (!state.visible) return
 
@@ -151,7 +191,7 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
             LoadingState.Phase.DONE -> ""
         }
         status.setTextColor(
-            Color.parseColor(if (failed) "#B3261E" else "#5A554A"),
+            Color.parseColor(if (failed) palette.error else palette.muted),
         )
     }
 
@@ -163,16 +203,11 @@ class LoadingOverlay(context: Context) : FrameLayout(context) {
         LoadingState.Failure.OTHER -> R.string.load_err_other
     }
 
+    /** An outlined button; [applyPalette] supplies both its colours. */
     private fun button(text: String, filled: Boolean): Button = Button(context).apply {
         this.text = text
         isAllCaps = false
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-        setTextColor(Color.parseColor(if (filled) "#FAF8F3" else "#141310"))
-        background = android.graphics.drawable.GradientDrawable().apply {
-            cornerRadius = dp(8).toFloat()
-            setColor(Color.parseColor(if (filled) "#141310" else "#FFFFFF"))
-            setStroke(dp(1), Color.parseColor("#D9D4C7"))
-        }
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,

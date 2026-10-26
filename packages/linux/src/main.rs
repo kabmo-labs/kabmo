@@ -35,6 +35,7 @@ use webkit2gtk::{
 
 use kabmo_desktop::bridge::{bootstrap_script, parse_call, reply_script, DesktopInfo};
 use kabmo_desktop::APP_NAME;
+use kabmo_desktop::palette::ShellPalette;
 use kabmo_desktop::persisted::{read_state, write_state};
 use kabmo_desktop::splash::Progress;
 use kabmo_desktop::splash_view::Splash;
@@ -131,6 +132,12 @@ impl Shell {
             read_state,
             |state| write_state(state),
         )));
+
+        // The palette the console reported on a PREVIOUS launch, so the splash is
+        // already the right colour before anything loads. Read from the same
+        // state file the store loads, so the two cannot disagree about what was
+        // written.
+        splash.apply_palette(store.borrow().palette());
 
         let shell = Self {
             window,
@@ -257,6 +264,10 @@ impl Shell {
         let progress = self.progress.clone();
         let splash = self.splash.clone();
         let shown_uri = self.shown_uri.clone();
+        // Handed to the `Finished` branch: the palette read needs the store (to
+        // persist) and the splash (to repaint), and both outlive the callback.
+        let store_for_palette = self.store.clone();
+        let splash_for_palette = self.splash.clone();
         self.view.connect_load_changed(move |view, event| {
             match event {
                 webkit2gtk::LoadEvent::Started => {
@@ -300,6 +311,13 @@ impl Shell {
                     let finished = progress.borrow().finish();
                     *progress.borrow_mut() = finished;
                     splash.show_progress(finished);
+                    // The console has painted, so `window.__kabmoPalette()`
+                    // answers the ACTIVE theme. Stored for the next cold start —
+                    // the only launch where the splash has no page to ask — and
+                    // applied to the live splash too, because a theme changed in
+                    // Settings is exactly the case where the stored palette is
+                    // stale and the splash it describes is on screen.
+                    read_palette(view, &store_for_palette, &splash_for_palette);
                 }
                 _ => {}
             }
@@ -422,6 +440,8 @@ impl Shell {
         });
     }
 
+    // ---------------------------------------------------------------- palette
+
     // ---------------------------------------------------------------- boot
 
     fn boot(&self) {
@@ -453,6 +473,44 @@ impl Shell {
         self.splash.show_progress(*self.progress.borrow());
         self.view.load_uri(url);
     }
+}
+
+/// Ask the page which palette it is painting, and keep the answer.
+///
+/// The property is installed by `src/client/lib/native/palette.ts` before the
+/// first render, so it exists by the time a load finishes. An older build answers
+/// `undefined`, the parse returns `None`, and the stored palette is left exactly
+/// as it was rather than replaced with a colour no theme chose.
+///
+/// `run_javascript` is asynchronous and its answer arrives as a `JSCValue` — a
+/// JSON string for a JS string — so it is unwrapped here rather than in the
+/// parser.
+fn read_palette(
+    view: &WebView,
+    store: &Rc<RefCell<ServerStore<SystemDeps>>>,
+    splash: &Rc<Splash>,
+) {
+    let store = store.clone();
+    let splash = splash.clone();
+    view.run_javascript(
+        "window.__kabmoPalette ? window.__kabmoPalette() : null",
+        None::<&gtk::gio::Cancellable>,
+        move |_view, result| {
+            let Some(value) = result.js_value() else { return };
+            // `is_string` first: `to_str` answers `undefined` for a null, and a
+            // page with no publisher must leave the stored palette alone rather
+            // than parse the word "undefined".
+            if !value.is_string() {
+                return;
+            }
+            let wire = value.to_str().to_string();
+            let Some(next) = ShellPalette::parse(&wire) else {
+                return;
+            };
+            store.borrow_mut().set_palette(&wire);
+            splash.apply_palette(next);
+        },
+    );
 }
 
 /// Why a load failed, in the shell's own vocabulary.

@@ -12,6 +12,7 @@ import Foundation
 /// on their own.
 URLNormalizerTests.run()
 ShellSettingsTests.run()
+ShellPaletteTests.run()
 LoadingStateTests.run()
 ShellUpdateTests.run()
 AppReleaseTests.run()

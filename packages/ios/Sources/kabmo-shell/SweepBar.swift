@@ -26,11 +26,21 @@ final class SweepBar: UIView {
     isUserInteractionEnabled = false
     layer.addSublayer(track)
     layer.addSublayer(segment)
+    segment.startPoint = CGPoint(x: 0, y: 0.5)
+    segment.endPoint = CGPoint(x: 1, y: 0.5)
+    applyPalette()
+  }
+
+  /// Repaint the track and the sweeping segment from the active palette.
+  ///
+  /// Called again when the console reports a new palette: the layers hold
+  /// `CGColor`s, which do not follow `Palette` on their own — a `CALayer` copies
+  /// the value at assignment, so the overlay would keep the colour it was built
+  /// with for the life of the process.
+  func applyPalette() {
     track.backgroundColor = Palette.hairline.cgColor
     segment.colors = [Palette.ink.withAlphaComponent(0.15).cgColor, Palette.ink.cgColor,
                       Palette.ink.withAlphaComponent(0.15).cgColor]
-    segment.startPoint = CGPoint(x: 0, y: 0.5)
-    segment.endPoint = CGPoint(x: 1, y: 0.5)
   }
 
   required init?(coder: NSCoder) {

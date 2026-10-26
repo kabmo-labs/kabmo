@@ -33,6 +33,7 @@ public struct ShellSettings {
 
   private static let urlKey = "server_url"
   private static let zoomKey = "zoom_percent"
+  private static let paletteKey = "shell_palette"
 
   private let defaults: UserDefaults
 
@@ -70,6 +71,24 @@ public struct ShellSettings {
   public func clear() {
     defaults.removeObject(forKey: Self.urlKey)
     defaults.removeObject(forKey: Self.zoomKey)
+    defaults.removeObject(forKey: Self.paletteKey)
+  }
+
+  /// The palette the console last reported, or the shipped one.
+  ///
+  /// Stored rather than derived: the launch overlay is drawn BEFORE any page
+  /// exists, so this is the only colour the shell has on a cold start. Written
+  /// on every finished load, which is what makes a theme picked in Settings the
+  /// palette the NEXT launch paints.
+  public var palette: ShellPalette {
+    ShellPalette.parse(defaults.string(forKey: Self.paletteKey)) ?? .shipped
+  }
+
+  /// Remember the console's palette. An unreadable wire is not written: keeping
+  /// the previous palette is the only answer that cannot repaint the shell with
+  /// a colour no theme chose.
+  public func write(palette: ShellPalette) {
+    defaults.set(palette.wire, forKey: Self.paletteKey)
   }
 
   /// Snap a percent onto the slider's grid, inside the allowed range.

@@ -76,6 +76,16 @@ public sealed record PersistedState
      */
     public IReadOnlyDictionary<string, int> Spawned { get; init; } =
         new Dictionary<string, int>();
+
+    /**
+     * The palette the console last reported, as a wire.
+     *
+     * Stored beside the server list because it belongs to this shell's own state,
+     * and read on the FIRST frame: the splash is drawn before any page exists, so
+     * this is the only colour available at launch. Optional, so a `servers.json`
+     * written by an older build still decodes.
+     */
+    public string? Palette { get; init; }
 }
 
 public sealed record Health

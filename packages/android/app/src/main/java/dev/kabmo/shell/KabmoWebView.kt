@@ -104,9 +104,10 @@ object KabmoWebView {
         webView.isLongClickable = true
 
         // A WebView left with the default background flashes white between the
-        // launch frame and the first paint; the theme's paper colour is what the
-        // page paints anyway.
-        webView.setBackgroundColor(android.graphics.Color.parseColor("#FAF8F3"))
+        // launch frame and the first paint. The caller sets the ACTIVE theme's
+        // canvas (`MainActivity`, from the palette the console last reported),
+        // so this is only the value for a caller that has not yet.
+        webView.setBackgroundColor(android.graphics.Color.parseColor(ShellPalette.DEFAULT.canvas))
     }
 
     /** Origin of a URL, or null when it cannot be parsed. */

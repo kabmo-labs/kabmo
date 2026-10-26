@@ -35,6 +35,8 @@ final class LoadingOverlay: UIView {
   private let actions = UIStackView()
   private let retryButton = UIButton(type: .system)
   private let settingsButton = UIButton(type: .system)
+  /// The state last drawn, so a palette change can repaint the same one.
+  private var state: LoadingState = .done
 
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -117,10 +119,30 @@ final class LoadingOverlay: UIView {
     fatalError("LoadingOverlay is created in code")
   }
 
+  /// Repaint every surface from the active palette.
+  ///
+  /// The single entry point for COLOUR, and it can run on a live overlay: a
+  /// theme changed in Settings is exactly the case where the stored palette is
+  /// stale and the overlay it describes is still on screen. `UIButton`
+  /// configurations and `CALayer` colours are values copied at assignment, so
+  /// nothing here follows `Palette` on its own.
+  func applyPalette() {
+    backgroundColor = Palette.paper
+    bar.progressTintColor = Palette.ink
+    bar.trackTintColor = Palette.hairline
+    sweep.applyPalette()
+    configure(retryButton, title: retryButton.configuration?.title ?? "Retry", filled: true)
+    configure(settingsButton, title: settingsButton.configuration?.title ?? "Server settings", filled: false)
+    // The sentence's tone is a property of the STATE, so re-derive it rather
+    // than guess from the colour that happened to be set.
+    status.textColor = state.phase == .failed ? Palette.error : Palette.inkMuted
+  }
+
   /// Draw a state. The single entry point, so no caller can leave the overlay
   /// half-updated — the bar, the sentence and the actions always describe one
   /// `LoadingState`.
   func render(_ state: LoadingState) {
+    self.state = state
     isHidden = !state.visible
     guard state.visible else {
       // The sweep is a layer animation, and a hidden view keeps animating

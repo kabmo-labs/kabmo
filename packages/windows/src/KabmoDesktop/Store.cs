@@ -44,6 +44,38 @@ public sealed class ServerStore
     /// <summary>The ids this shell spawned, for the boot-time adoption pass.</summary>
     public IReadOnlyDictionary<string, int> SpawnedPids() => _state.Spawned;
 
+    /// <summary>
+    /// The palette the console last reported, or the shipped one.
+    ///
+    /// Read at launch, before any page exists — which is why it is persisted
+    /// rather than asked for. A wire this build cannot parse is the shipped
+    /// palette, never a partial one.
+    /// </summary>
+    public ShellPalette Palette() => ShellPalette.Parse(_state.Palette) ?? ShellPalette.Shipped;
+
+    /// <summary>
+    /// Remember the console's palette for the next launch.
+    ///
+    /// An unreadable wire is not written: keeping the previous palette is the only
+    /// answer that cannot repaint the shell with a colour no theme chose.
+    /// </summary>
+    public async Task SetPaletteAsync(string? wire)
+    {
+        var next = ShellPalette.Parse(wire);
+        if (next is null) return;
+        await _gate.WaitAsync();
+        try
+        {
+            if (_state.Palette == next.Wire) return;
+            _state = _state with { Palette = next.Wire };
+            Persist();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     /**
      * Every answering server, the detected ones, and the selection.
      *

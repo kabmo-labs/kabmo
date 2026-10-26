@@ -5,7 +5,8 @@
 
 // The launch overlay: when a progress number may move, and what finishes a load.
 
-use kabmo_desktop::splash::{sentence_for, Failure, Phase, Progress, SPLASH_CSS};
+use kabmo_desktop::palette::{splash_css, ShellPalette};
+use kabmo_desktop::splash::{sentence_for, Failure, Phase, Progress};
 
 use crate::support::Runner;
 
@@ -89,25 +90,55 @@ pub fn cases(r: &mut Runner) {
     // widget is allocated the whole window and still paints nothing, or GTK
     // paints the bar in the theme accent. Neither throws, and neither is visible
     // to any phase case above.
+    //
+    // The colours are the ACTIVE palette's, which is the second half of the same
+    // problem: a hardcoded `#FAF8F3` is the default LIGHT palette's paper, so a
+    // dark console opened on a paper-white rectangle.
     r.group("splash stylesheet");
+    let shipped = ShellPalette::default();
+    let shipped_css = splash_css(&shipped);
     r.check(
-        "the fill paints the paper, or the page shows through it",
-        SPLASH_CSS.contains(".kabmo-splash { background-color: #FAF8F3; }"),
+        "the fill paints the palette's ground, or the page shows through it",
+        shipped_css.contains(&format!(
+            ".kabmo-splash {{ background-color: {}; }}",
+            shipped.canvas
+        )),
     );
     r.check(
         "the bar's trough is the palette's, not the theme accent",
-        SPLASH_CSS.contains("background-color: #D9D4C7"),
+        shipped_css.contains(&format!("background-color: {};", shipped.hairline)),
     );
     r.check(
         "the bar's progress is the ink, not the theme accent",
-        SPLASH_CSS.contains("background-color: #141310"),
+        shipped_css.contains(&format!(
+            "progress {{ min-height: 4px; border-radius: 2px; background-color: {};",
+            shipped.ink
+        )),
+    );
+    r.check(
+        "the sentence is the muted ink, not the platform's label colour",
+        shipped_css.contains(&format!(".kabmo-splash label {{ color: {}; }}", shipped.muted)),
     );
     r.check(
         "every rule is scoped to the splash, so no other widget inherits it",
-        SPLASH_CSS
+        shipped_css
             .split('}')
             .filter(|rule| rule.contains("background-color") || rule.contains("min-height"))
             .all(|rule| rule.contains(".kabmo-splash")),
+    );
+
+    // A dark palette must produce a dark fill. This is the reported bug: the
+    // splash was #FAF8F3 on every install, whatever theme the console used.
+    let dark = ShellPalette::parse("dark|#21252b|#282c34|#abb2bf|#777c87|#343940|#e06c75")
+        .expect("a dark wire parses");
+    let dark_css = splash_css(&dark);
+    r.check(
+        "a dark palette paints a dark fill",
+        dark_css.contains(".kabmo-splash { background-color: #21252b; }"),
+    );
+    r.check(
+        "and does not leave the light paper anywhere",
+        !dark_css.contains("#f4f1ea") && !dark_css.contains("#faf8f3"),
     );
 
     r.group("splash reload detection");

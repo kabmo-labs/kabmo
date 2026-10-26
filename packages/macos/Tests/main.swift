@@ -600,6 +600,7 @@ await storeCases()
 await systemCases()
 // The launch splash: its state machine, and the wordmark it draws.
 splashCases()
+shellPaletteCases()
 // The version the shell reports to the console.
 shellVersionCases()
 // Where a link goes: inside this window, or out to the browser.

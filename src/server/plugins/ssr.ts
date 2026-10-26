@@ -12,6 +12,13 @@ import {
 } from '@/server/lib/assets/dev-assets.server';
 import { listenerFetchOptions, listenerUrl } from '@/server/lib/lifecycle/listener';
 import { FONT_STYLESHEET_ROUTE } from '@/server/lib/assets/font-css.server';
+import {
+  THEMED_MANIFEST_ROUTE,
+  firstFrameStyle,
+  manifestSource,
+  rewriteManifestLink,
+  themedManifest,
+} from '@/server/lib/assets/theme-shell.server';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
@@ -71,6 +78,19 @@ async function readSettings(): Promise<Record<string, unknown>> {
 }
 
 const MOBILE_UA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+
+/**
+ * The stored theme id from an `app_settings` map.
+ *
+ * The manifest route and the shell both need it, and `readSettingsBlob` returns
+ * a plain record whose values are `unknown` — a boundary read, so it narrows
+ * rather than asserts: a row that is not a string is "no stored theme", which
+ * resolves to the shipped default.
+ */
+function storedThemeId(settings: Record<string, unknown>): string | undefined {
+  const theme = readSettingsBlob(settings).theme;
+  return typeof theme === 'string' && theme.length > 0 ? theme : undefined;
+}
 
 /**
  * The HTML shell is generated per request, so its cacheability is declared
@@ -137,9 +157,20 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
     }
   }
 
+  // The manifest, with THIS request's palette baked in. It is read by the
+  // browser before any of this app's code runs — that is what its colours are
+  // for — so it cannot be the bundled copy whose body no route can vary.
+  if (pathname === THEMED_MANIFEST_ROUTE) {
+    const source = await manifestSource();
+    if (!source) return new Response('Not found', { status: 404 });
+    const manifestSettings = isAuthenticatedRequest(request) ? await readSettings() : {};
+    return new Response(themedManifest(source, resolveTheme(storedThemeId(manifestSettings))), {
+      headers: { 'content-type': 'application/manifest+json; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+
   const asset = await tryServeStatic(pathname, request);
   if (asset) return asset;
-
   // An unauthenticated visitor still gets the shell — it IS the login screen —
   // but not the settings map. `appSettings` carries the provider registry, the
   // theme and every stored preference, and publishing it to whoever can reach
@@ -150,11 +181,10 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   const settings = authenticated ? await readSettings() : {};
   // Both blobs, legacy beneath: an install that predates the rename still has
   // its theme in the old row, and the SSR shell is what paints the first frame.
-  const settingsBlob = readSettingsBlob(settings) as { theme?: string };
   // Resolved through the catalog: an id this build no longer ships (a
   // downgrade, the retired `noir` alias) renders the default palette instead of
   // an unstyled page.
-  const theme = resolveTheme(settingsBlob.theme);
+  const theme = resolveTheme(storedThemeId(settings));
   const userAgent = request.headers.get('user-agent') ?? '';
   const initialIsMobile = MOBILE_UA.test(userAgent);
   // Which shell is asking, and which build of it. Read HERE because the shell
@@ -186,6 +216,11 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
   const themeStyle = `<style id="${THEME_STYLE_ELEMENT_ID}">${themeStyleSheet()}</style>`;
+  // The frame the browser paints BEFORE the bundle's stylesheet lands: the UA's
+  // own canvas is white, and on a dark install that is a measured white flash
+  // for the length of the CSS request. The palette's ground is the only correct
+  // answer, and it has to be inline because nothing else has loaded.
+  const firstFrame = `<style>${firstFrameStyle(theme)}</style>`;
   // The chrome color has to match the surface at the TOP of the window, which
   // is per-layout (`shared/lib/theme/chrome.ts`); this request already knows the
   // two facts behind it. The login screen is the shell too, and paints canvas.
@@ -201,7 +236,10 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // Bun's dev asset URLs move to this server's prefix so the proxy above can add
   // the caching headers Bun omits. Rewritten BEFORE the bootstrap is injected,
   // so a `/_bun/` string inside the settings payload is left alone.
-  const shellHtml = DEV_ASSETS_ENABLED ? rewriteDevAssetUrls(rendered.html) : rendered.html;
+  const served = DEV_ASSETS_ENABLED ? rewriteDevAssetUrls(rendered.html) : rendered.html;
+  // The manifest's own colours are read before this app's code runs, so the
+  // bundled copy (which no route can vary) is replaced by the themed route.
+  const shellHtml = rewriteManifestLink(served);
 
   return maybeCompress(
     new Response(
@@ -209,7 +247,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
         .replace('data-theme="paper"', `data-theme="${theme.id}"`)
         .replace('data-theme-variant="light"', `data-theme-variant="${theme.variant}"`)
         .replace('<meta name="theme-color" content="#faf8f3" />', `<meta name="theme-color" content="${chrome}" />`)
-        .replace('<!--app-head-->', themeStyle + fontLink)
+        .replace('<!--app-head-->', firstFrame + themeStyle + fontLink)
         .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
       { headers: HTML_HEADERS },
     ),

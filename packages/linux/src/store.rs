@@ -95,6 +95,16 @@ pub struct PersistedState {
      */
     #[serde(default)]
     pub spawned: std::collections::BTreeMap<String, i32>,
+    /**
+     * The palette the console last reported, as a wire.
+     *
+     * Stored beside the server list because it belongs to this shell's own state,
+     * and read on the FIRST frame: the splash is drawn before any page exists, so
+     * this is the only colour available at launch. Optional and defaulted, so a
+     * `servers.json` written by an older build still decodes.
+     */
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub palette: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -234,6 +244,34 @@ impl<D: Deps> ServerStore<D> {
     /// The ids this shell spawned, for the boot-time adoption pass.
     pub fn spawned_pids(&self) -> std::collections::BTreeMap<String, i32> {
         self.state.spawned.clone()
+    }
+
+    /// The palette the console last reported, or the shipped one.
+    ///
+    /// Read at launch, before any page exists — which is why it is persisted
+    /// rather than asked for. A wire this build cannot parse is the shipped
+    /// palette, never a partial one.
+    pub fn palette(&self) -> crate::palette::ShellPalette {
+        self.state
+            .palette
+            .as_deref()
+            .and_then(crate::palette::ShellPalette::parse)
+            .unwrap_or_default()
+    }
+
+    /// Remember the console's palette for the next launch.
+    ///
+    /// An unreadable wire is not written: keeping the previous palette is the
+    /// only answer that cannot repaint the shell with a colour no theme chose.
+    pub fn set_palette(&mut self, wire: &str) {
+        let Some(next) = crate::palette::ShellPalette::parse(wire) else {
+            return;
+        };
+        if self.state.palette.as_deref() == Some(next.wire().as_str()) {
+            return;
+        }
+        self.state.palette = Some(next.wire());
+        self.persist();
     }
 
     /// Every answering server, the detected ones, and the selection.

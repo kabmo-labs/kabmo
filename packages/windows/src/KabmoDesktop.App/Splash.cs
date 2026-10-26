@@ -38,9 +38,14 @@ public sealed class SplashView : Grid
     private readonly ProgressBar _bar;
     private readonly Viewbox _wordmark;
 
+    /// <summary>The state last drawn, so a palette change can repaint the same one.</summary>
+    private SplashState _state = SplashState.Done;
+
+    /// <summary>The colours in force. Replaced by <see cref="ApplyPalette"/>.</summary>
+    public ShellPalette Palette { get; private set; } = ShellPalette.Shipped;
+
     public SplashView()
     {
-        Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xF8, 0xF3));
 
         // The wordmark is the ARTWORK, not the app's name in a TextBlock: it is the
         // same lockup README.md embeds (`public/kabmo-wordmark.svg`), rebuilt from
@@ -63,8 +68,6 @@ public sealed class SplashView : Grid
             Height = 4,
             Margin = new Thickness(0, 16, 0, 0),
             IsIndeterminate = true,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x14, 0x13, 0x10)),
-            Background = new SolidColorBrush(Color.FromRgb(0xD9, 0xD4, 0xC7)),
             BorderThickness = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
@@ -78,7 +81,6 @@ public sealed class SplashView : Grid
             TextWrapping = TextWrapping.Wrap,
             TextAlignment = TextAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x55, 0x4A)),
         };
 
         _retry = new Button
@@ -98,7 +100,38 @@ public sealed class SplashView : Grid
         stack.Children.Add(_retry);
         Children.Add(stack);
 
+        ApplyPalette(ShellPalette.Shipped);
         Render(SplashState.Done);
+    }
+
+    /// <summary>
+    /// Repaint every surface from <paramref name="palette"/>, keeping the state on
+    /// screen.
+    ///
+    /// The single entry point for COLOUR, and it can run on a live splash: a theme
+    /// changed in Settings is exactly the case where the stored palette is stale
+    /// and the splash it describes is still on screen. The background used to be a
+    /// literal `#FAF8F3` — the default LIGHT palette's paper — so a dark console
+    /// opened on a paper-white rectangle.
+    /// </summary>
+    public void ApplyPalette(ShellPalette palette)
+    {
+        Palette = palette;
+        Background = new SolidColorBrush(ColorOf(palette.Canvas));
+        _bar.Foreground = new SolidColorBrush(ColorOf(palette.Ink));
+        _bar.Background = new SolidColorBrush(ColorOf(palette.Hairline));
+        Render(_state);
+    }
+
+    /// <summary>`#rrggbb` as a WPF colour.</summary>
+    private static Color ColorOf(string hex)
+    {
+        var cleaned = hex.TrimStart('#');
+        var value = uint.Parse(cleaned, System.Globalization.NumberStyles.HexNumber);
+        return Color.FromRgb(
+            (byte)((value >> 16) & 0xFF),
+            (byte)((value >> 8) & 0xFF),
+            (byte)(value & 0xFF));
     }
 
     /// <summary>The window owns the reload; a callback keeps this view free of it.</summary>
@@ -111,6 +144,7 @@ public sealed class SplashView : Grid
     /// </summary>
     public void Render(SplashState state)
     {
+        _state = state;
         Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
         Opacity = 1;
         if (!state.Visible) return;
@@ -125,8 +159,7 @@ public sealed class SplashView : Grid
         if (!state.Indeterminate) _bar.Value = state.Percent;
 
         _status.Text = state.Sentence();
-        _status.Foreground = new SolidColorBrush(
-            failed ? Color.FromRgb(0xB3, 0x26, 0x1E) : Color.FromRgb(0x5A, 0x55, 0x4A));
+        _status.Foreground = new SolidColorBrush(ColorOf(failed ? Palette.Error : Palette.Muted));
     }
 
     /// <summary>

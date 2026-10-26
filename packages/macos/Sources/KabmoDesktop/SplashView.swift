@@ -37,10 +37,15 @@ public final class SplashView: NSView {
   private let status = NSTextField(labelWithString: "")
   private let retry = NSButton(title: "Retry", target: nil, action: nil)
 
+  /// The state last drawn, so a palette change can repaint the same one.
+  private var state: SplashState = .done
+
+  /// The colours in force. Replaced by `applyPalette`.
+  public private(set) var palette: ShellPalette = .shipped
+
   public override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
     wantsLayer = true
-    layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     autoresizingMask = [.width, .height]
 
     // The wordmark is the ARTWORK, not the app's name in a text field: it is the
@@ -91,15 +96,35 @@ public final class SplashView: NSView {
       retry.topAnchor.constraint(equalTo: status.bottomAnchor, constant: 16),
     ])
 
+    applyPalette(.shipped)
     render(.done)
   }
 
   public required init?(coder: NSCoder) { nil }
 
+  /// Repaint every surface from `next`, keeping the state on screen.
+  ///
+  /// The single entry point for COLOUR, and it can run on a live splash: a theme
+  /// changed in Settings is exactly the case where the stored palette is stale
+  /// and the splash it describes is still on screen. The background was
+  /// `NSColor.windowBackgroundColor` — the SYSTEM's window colour, which follows
+  /// the OS appearance and not the console's theme, so a dark console on a light
+  /// macOS opened on a white rectangle.
+  public func applyPalette(_ next: ShellPalette) {
+    palette = next
+    layer?.backgroundColor = next.canvasColor.cgColor
+    // `NSProgressIndicator` has no tint: its bar is drawn by the system in the
+    // accent colour, and the only lever is the app's own `appearance` — so the
+    // bar is left alone rather than pretending to be themed. The sentence and
+    // the background are what a user reads at a glance.
+    render(state)
+  }
+
   /// Draw a state. The single entry point, so no caller can leave the splash
   /// half-updated — the bar, the sentence and the actions always describe one
   /// `SplashState`.
   public func render(_ state: SplashState) {
+    self.state = state
     isHidden = !state.visible
     guard state.visible else { return }
     alphaValue = 1
@@ -121,7 +146,7 @@ public final class SplashView: NSView {
     }
 
     status.stringValue = state.sentence()
-    status.textColor = failed ? .systemRed : .secondaryLabelColor
+    status.textColor = failed ? palette.errorColor : palette.mutedColor
   }
 
   /// The platform's own sentence, appended under ours on a failure.

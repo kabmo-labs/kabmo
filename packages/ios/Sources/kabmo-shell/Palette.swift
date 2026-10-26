@@ -1,29 +1,59 @@
 #if canImport(UIKit)
 import UIKit
 
-/// Kabmo's paper palette, for the two surfaces the shell draws natively.
+import KabmoShell
+
+/// The shell's own palette, for the surfaces it draws natively.
 ///
 /// The console paints its own theme as soon as it loads, so this exists only for
 /// the frame between launch and first paint — the launch overlay, the settings
-/// screen and the window background. The values are the light theme's own, taken
-/// from `src/client/tailwind.css`; hardcoding a different paper here would flash a
-/// different product for the first second.
+/// screen and the window background.
 ///
-/// Not a theme engine: the shell has two screens and no dark mode of its own. The
-/// console's theme is a setting inside the page, and the overlay is gone by the
-/// time the page can paint anything.
+/// ## It is the CONSOLE's palette, not a second one
+///
+/// These values used to be literals taken from `src/client/tailwind.css`'s light
+/// theme, which is the same thing as saying the shell had a palette of its own:
+/// on a dark install the overlay was a paper-white rectangle for the whole cold
+/// start, then a jump to a near-black console. `active` is now the palette the
+/// page last reported (`ShellPalette`), read through `ShellSettings`, and the
+/// constants below are only the FIRST launch's answer — the one time no page has
+/// ever run.
+///
+/// The settings screen is deliberately not themed yet: it is a form of platform
+/// controls, and repainting it half-way is a worse result than leaving it on the
+/// light palette. The overlay is the surface a user sees for seconds at every
+/// launch, which is why it goes first.
 enum Palette {
-  static let paper = UIColor(red: 0xFA / 255, green: 0xF8 / 255, blue: 0xF3 / 255, alpha: 1)
-  static let ink = UIColor(red: 0x14 / 255, green: 0x13 / 255, blue: 0x10 / 255, alpha: 1)
-  static let inkMuted = UIColor(red: 0x5A / 255, green: 0x55 / 255, blue: 0x4A / 255, alpha: 1)
-  static let inkFaint = UIColor(red: 0x7A / 255, green: 0x74 / 255, blue: 0x68 / 255, alpha: 1)
-  static let hairline = UIColor(red: 0xD9 / 255, green: 0xD4 / 255, blue: 0xC7 / 255, alpha: 1)
-  static let error = UIColor(red: 0xB3 / 255, green: 0x26 / 255, blue: 0x1E / 255, alpha: 1)
+
+  /// The palette in force. Replaced once the console answers.
+  static var active: ShellPalette = .shipped
+
+  static var paper: UIColor { color(active.canvas) }
+  static var ink: UIColor { color(active.ink) }
+  static var inkMuted: UIColor { color(active.muted) }
+  static var hairline: UIColor { color(active.hairline) }
+  static var error: UIColor { color(active.error) }
+  static var field: UIColor { color(active.paper) }
+  static var inkFaint: UIColor { color(active.muted) }
+
   static let success = UIColor(red: 0x0B / 255, green: 0x5D / 255, blue: 0x3B / 255, alpha: 1)
   static let warningInk = UIColor(red: 0x8A / 255, green: 0x5A / 255, blue: 0x00 / 255, alpha: 1)
   static let warningFill = UIColor(red: 0xFF / 255, green: 0xF4 / 255, blue: 0xDC / 255, alpha: 1)
   static let warningHairline = UIColor(red: 0xE8 / 255, green: 0xD4 / 255, blue: 0xA8 / 255, alpha: 1)
-  static let field = UIColor.white
+
+  /// `#rrggbb` as a colour. A value that will not parse is the shipped canvas,
+  /// because an unpainted view is worse than a wrong shade.
+  static func color(_ hex: String) -> UIColor {
+    guard hex.count == 7, hex.hasPrefix("#"), let value = UInt32(hex.dropFirst(), radix: 16) else {
+      return UIColor(red: 0xF4 / 255, green: 0xF1 / 255, blue: 0xEA / 255, alpha: 1)
+    }
+    return UIColor(
+      red: CGFloat((value >> 16) & 0xFF) / 255,
+      green: CGFloat((value >> 8) & 0xFF) / 255,
+      blue: CGFloat(value & 0xFF) / 255,
+      alpha: 1
+    )
+  }
 }
 
 /// A filled or outlined button in the shell's own style.

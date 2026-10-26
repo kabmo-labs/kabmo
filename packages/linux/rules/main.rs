@@ -22,6 +22,7 @@
 
 mod bridge;
 mod navigation;
+mod palette;
 mod splash;
 mod store;
 mod support;
@@ -39,6 +40,7 @@ fn main() {
     store::cases(&mut r);
     bridge::cases(&mut r);
     splash::cases(&mut r);
+    palette::cases(&mut r);
     wordmark::cases(&mut r);
     window::cases(&mut r);
     system::cases(&mut r);

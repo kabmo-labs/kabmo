@@ -18,7 +18,8 @@ use std::rc::Rc;
 use gtk::glib;
 use gtk::prelude::*;
 
-use crate::splash::{self, sentence_for, Failure, Phase, Progress};
+use crate::palette::{splash_css, ShellPalette};
+use crate::splash::{sentence_for, Failure, Phase, Progress};
 use crate::wordmark;
 
 /// The splash widget: a wordmark, a line of status, a bar and a Retry.
@@ -28,6 +29,17 @@ pub struct Splash {
     bar: gtk::ProgressBar,
     retry: gtk::Button,
     wordmark: gtk::DrawingArea,
+    /// The stylesheet provider, held so a palette change can reload it.
+    ///
+    /// A `CssProvider` is loaded once and applied for the screen; replacing its
+    /// contents is what repaints every rule at once, and holding the handle is
+    /// what makes that possible without a second provider per launch.
+    style: gtk::CssProvider,
+    /// The colours in force. Replaced by `apply_palette`.
+    ///
+    /// A `RefCell` because the splash is held in an `Rc` and every caller has a
+    /// shared reference to it — the same reason `pulse` is one.
+    palette: RefCell<ShellPalette>,
     /// The sweep timer, while the bar is indeterminate.
     ///
     /// `GtkProgressBar::pulse` advances the block by ONE step per call — a single
@@ -97,12 +109,15 @@ impl Splash {
         bar.set_size_request(180, 4);
         bar.set_margin_top(0);
         bar.set_pulse_step(0.08);
-        // The stylesheet is `splash::SPLASH_CSS` — the fill's paper and the bar's
-        // two colours, both of which fail silently if wrong, so both are stated
-        // where the rules suite can read them.
+        // The stylesheet is `palette::splash_css` — the fill's ground and the
+        // bar's two colours, all of which fail silently if wrong, so all are
+        // stated where the rules suite can read them. It is loaded from the
+        // SHIPPED palette here and replaced by `apply_palette` once the console's
+        // own is known.
+        let style = gtk::CssProvider::new();
+        let palette = ShellPalette::default();
+        style.load_from_data(splash_css(&palette).as_bytes()).ok();
         if let Some(screen) = gtk::gdk::Screen::default() {
-            let style = gtk::CssProvider::new();
-            style.load_from_data(splash::SPLASH_CSS.as_bytes()).ok();
             gtk::StyleContext::add_provider_for_screen(
                 &screen,
                 &style,
@@ -134,8 +149,26 @@ impl Splash {
             bar,
             retry,
             wordmark: wordmark_area,
+            style,
+            palette: RefCell::new(palette),
             pulse: Rc::new(RefCell::new(None)),
         }
+    }
+
+    /// Repaint in `next`, keeping whatever state is on screen.
+    ///
+    /// The single entry point for COLOUR, and it can run on a live splash: a
+    /// theme changed in Settings is exactly the case where the stored palette is
+    /// stale and the splash it describes is still on screen. Everything the
+    /// splash draws is CSS, so one reloaded provider repaints it all — the
+    /// wordmark's own inks are the artwork's and deliberately do not move.
+    pub fn apply_palette(&self, next: ShellPalette) {
+        if next == *self.palette.borrow() {
+            return;
+        }
+        self.style.load_from_data(splash_css(&next).as_bytes()).ok();
+        *self.palette.borrow_mut() = next;
+        self.wordmark.queue_draw();
     }
 
     /// `on_retry` runs when the button is pressed; the window owns the reload.
@@ -172,7 +205,8 @@ impl Splash {
         self.label.set_text(&progress.label());
         if failed {
             self.label.set_markup(&format!(
-                "<span foreground='#B3261E'>{}</span>",
+                "<span foreground='{}'>{}</span>",
+                self.palette.borrow().error,
                 escape(&progress.label())
             ));
         }
@@ -189,7 +223,8 @@ impl Splash {
     pub fn show_failure(&self, reason: &str) {
         self.show_progress(Progress::connecting().fail());
         self.label.set_markup(&format!(
-            "<span foreground='#B3261E'>{}\n{}</span>",
+            "<span foreground='{}'>{}\n{}</span>",
+            self.palette.borrow().error,
             escape(sentence_for(Failure::Other)),
             escape(reason)
         ));

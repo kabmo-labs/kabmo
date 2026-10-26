@@ -10,6 +10,7 @@ import { installPluginRuntime } from '@/client/lib/plugins/runtime';
 import { installUiKit } from '@/client/lib/plugins/kit';
 import { installScrollbarActivity } from '@/client/lib/scrollbar-activity';
 import { installBackDispatcher } from '@/client/lib/native/back';
+import { installPalettePublisher } from '@/client/lib/native/palette';
 import { installResumeDispatcher } from '@/client/lib/native/resume';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 
@@ -60,6 +61,13 @@ installScrollbarActivity();
 // Installed before the first render for the same reason the listener above is:
 // a back press during hydration must find the dispatcher, not `undefined`.
 installBackDispatcher();
+
+// A native shell's launch overlay is drawn before this page exists, so the
+// palette has to cross to it as VALUES. It asks here (`__kabmoPalette()`), and
+// each shell keeps the answer for its next cold start — the launch where
+// nothing is running to ask. Installed before the first render because a shell
+// asks on the load it is hiding, not on a later interaction.
+installPalettePublisher();
 
 // The native shell calls `window.__kabmoResume()` when its app returns to the
 // foreground. A backgrounded Android WebView fires no `visibilitychange` and

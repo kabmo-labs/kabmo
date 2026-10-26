@@ -265,6 +265,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // 1280x860 box in the bottom-left corner of a 2560x1335 window, in full
     // screen as much as in a window.
     splash = installSplash(in: container, state: loading) { [weak self] in self?.retryLoad() }
+    // The palette the console reported on a PREVIOUS launch, so the splash is
+    // already the right colour before anything loads. The web view is transparent
+    // (`drawsBackground` is off), so this colour is also what shows through it.
+    splash?.applyPalette(ShellPalette.parse(storePaletteWire()) ?? .shipped)
 
     window.delegate = self
     window.makeKeyAndOrderFront(nil)
@@ -297,6 +301,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   }
 
   // ---------------------------------------------------------------- boot
+
+  /**
+   The palette wire from the persisted state.
+
+   Read synchronously and without the store's actor, because it is needed in
+   `buildWindow` — before the first frame — and a store round trip is an `await`
+   that would paint one white frame first. `readState()` is the same file the
+   actor loads, so the two cannot disagree about what was written.
+   */
+  private func storePaletteWire() -> String? {
+    readState()?.palette
+  }
 
   private func boot() async {
     // Adopt what a previous run of THIS shell left behind before anything reads
@@ -408,6 +424,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // The view stays MOUNTED and hidden — `render(.done)` is what hides it — so a
     // later Reload shows it again with no second instance.
     applyLoading(loading.finished())
+    // The console has painted, so `window.__kabmoPalette()` answers the ACTIVE
+    // theme. Stored for the next cold start — the only launch where the splash
+    // has no page to ask — and applied to the live splash too, because a theme
+    // changed in Settings is exactly the case where the stored palette is stale
+    // and the splash it describes is on screen.
+    readPalette()
+  }
+
+  /**
+   Ask the page which palette it is painting, and keep the answer.
+
+   The property is installed by `src/client/lib/native/palette.ts` before the
+   first render, so it exists by the time a load finishes. An older build answers
+   `undefined`, the parse returns nil, and the stored palette is left exactly as
+   it was rather than replaced with a colour no theme chose.
+   */
+  private func readPalette() {
+    webView.evaluateJavaScript("window.__kabmoPalette ? window.__kabmoPalette() : null") { [weak self] value, _ in
+      guard let self, let wire = value as? String, let next = ShellPalette.parse(wire) else { return }
+      Task { await self.store?.setPalette(wire) }
+      self.splash?.applyPalette(next)
+    }
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.webkit.CookieManager
@@ -43,9 +44,15 @@ class MainActivity : Activity() {
 
         webView = WebView(this)
         overlay = LoadingOverlay(this).apply {
+            // The palette the console reported on a PREVIOUS launch, so the
+            // overlay is already the right colour before anything loads.
+            applyPalette(ServerConfig.palette(this@MainActivity))
             onRetry = { retryLoad() }
             onOpenSettings = { openSettings() }
         }
+        // The frame BEHIND the page, for the instant between the overlay
+        // disappearing and the console's first paint.
+        webView.setBackgroundColor(Color.parseColor(ServerConfig.palette(this).canvas))
 
         // The overlay is a SIBLING of the WebView, never a view inside the page:
         // the page cannot report its own readiness (its bundle is what renders
@@ -198,6 +205,30 @@ class MainActivity : Activity() {
     }
 
     /**
+     * Ask the page which palette it is painting, and keep the answer.
+     *
+     * The property is installed by `src/client/lib/native/palette.ts` before the
+     * first render, so it exists by the time a load finishes. An older build
+     * answers `undefined` — the callback then hands back `null`, the parse
+     * returns null, and the stored palette is left exactly as it was rather than
+     * being replaced with a colour no theme chose.
+     *
+     * `evaluateJavascript`, not `evaluateJavascript(…, null)` with a side effect
+     * inside a string: the answer is a value we need back, and it is returned as
+     * JSON — a quoted string — which is what `fromJavascript` unwraps.
+     */
+    private fun readPalette() {
+        webView.evaluateJavascript("window.__kabmoPalette ? window.__kabmoPalette() : null") { result ->
+            val next = ShellPalette.fromJavascript(result) ?: return@evaluateJavascript
+            ServerConfig.writePalette(this, next)
+            overlay.applyPalette(next)
+            // The frame between the overlay going away and the console's own
+            // paint is this colour, so it has to move with the theme too.
+            webView.setBackgroundColor(Color.parseColor(next.canvas))
+        }
+    }
+
+    /**
      * Apply the saved page zoom — the page's STARTING scale.
      *
      * `WebSettings.textZoom` is not usable here: it scales text only and leaves
@@ -282,6 +313,13 @@ class MainActivity : Activity() {
             },
             onLoadFinished = {
                 applyLoading(loading.finished())
+                // The console has painted, so `window.__kabmoPalette()` answers
+                // the ACTIVE theme. Stored for the next cold start — which is
+                // the only launch where the overlay has no page to ask — and
+                // applied to the live overlay too, because a theme changed in
+                // Settings is exactly the case where the stored palette is
+                // stale and the overlay it describes is still on screen.
+                readPalette()
                 // A successful login is a NAVIGATION, so this is the first
                 // moment the new session cookie exists. Chromium would write it
                 // out on its own schedule (~30 s measured), which a user who
