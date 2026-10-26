@@ -32,6 +32,8 @@ export interface EditorDocumentInput {
   loadError: string | null;
   viewerKind: ViewerKind;
   isBinaryViewer: boolean;
+  /** The tab is drawing its rendered view rather than its source. */
+  preview: boolean;
 }
 
 /**
@@ -56,15 +58,27 @@ export function useEditorDocument(input: EditorDocumentInput | null): void {
 /** The slot's value for one render of the editor. */
 function describeDocument(input: EditorDocumentInput): EditorDocument {
   const { file } = input;
-  if (!file) return { path: null, name: null, content: '', language: 'text', state: 'idle', note: null };
+  if (!file) return { path: null, name: null, content: '', language: 'text', state: 'idle', note: null, preview: false };
 
-  const base = { path: file.path, name: file.name, content: input.content, language: input.language };
+  const base = {
+    path: file.path,
+    name: file.name,
+    content: input.content,
+    language: input.language,
+    /**
+     * Only MARKDOWN has a rendered view whose headings are its outline. A CSV
+     * grid and an SVG picture are rendered too, but their rows are not headings
+     * — a contents entry there could only be served by leaving the preview, so
+     * calling them a table of contents would promise the wrong thing.
+     */
+    preview: input.preview && input.viewerKind === 'markdown',
+  };
 
   if (file.isDiff) {
-    return { ...base, content: '', state: 'diff', note: null };
+    return { ...base, content: '', state: 'diff', note: null, preview: false };
   }
   if (input.loadError) {
-    return { ...base, state: 'error', note: input.loadError };
+    return { ...base, state: 'error', note: input.loadError, preview: false };
   }
   if (input.isBinaryViewer) {
     return {
@@ -72,10 +86,11 @@ function describeDocument(input: EditorDocumentInput): EditorDocument {
       content: '',
       state: 'not-a-document',
       note: `${VIEWER_LABELS[input.viewerKind]} files have no text outline.`,
+      preview: false,
     };
   }
   if (input.isLoading || !input.loaded) {
-    return { ...base, state: 'loading', note: null };
+    return { ...base, state: 'loading', note: null, preview: false };
   }
   return { ...base, state: 'ready', note: null };
 }

@@ -15,7 +15,10 @@
  * What is asserted is what a phone user would notice: the file's text is on
  * screen, typing into it reaches the buffer, the write lands on disk (the phone
  * autosaves — it has no Save button except the one that recreates a deleted
- * file), and closing then reopening the same file comes back to the same place.
+ * file), closing then reopening the same file comes back to the same place, and
+ * the outline sheet is a TABLE OF CONTENTS while a markdown page is rendered —
+ * a tap scrolls the page and the reader stays in the preview instead of being
+ * thrown back to the source.
  *
  * A real device run (soft keyboard, IME composition, selection handles) is the
  * one thing this cannot cover: a desktop browser has no soft keyboard, and
@@ -132,6 +135,60 @@ test.describe('mobile editor', () => {
         timeout: 15_000,
       })
       .toBe(leftAt);
+
+    workspace.dispose();
+  });
+
+  test('the outline sheet is a table of contents on a rendered markdown page', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-outline');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, 'notes.md'),
+      [
+        '# Title',
+        '',
+        ...Array.from({ length: 40 }, (_, i) => `Intro paragraph ${i}.`),
+        '',
+        '## First Section',
+        '',
+        ...Array.from({ length: 40 }, (_, i) => `First body ${i}.`),
+        '',
+        '## Second Section',
+        '',
+        'More.',
+      ].join('\n'),
+    );
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByRole('button', { name: /panel|files/i }).first().click();
+    const row = page.getByText('notes.md', { exact: true }).first();
+    if (!(await row.isVisible().catch(() => false))) {
+      await page.getByText('src', { exact: true }).first().click();
+    }
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click();
+
+    // A markdown file opens RENDERED on this layout too, which is what makes the
+    // sheet a contents list rather than a symbol list.
+    const preview = page.locator('.prose-content').first();
+    await expect(preview).toBeVisible({ timeout: 15_000 });
+    const scroller = page.locator('[data-testid="editor-scroller"]').first();
+    await expect
+      .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
+      .toBeGreaterThan(200);
+    expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0);
+
+    await page.getByRole('button', { name: /^Outline \(/ }).click();
+    // No line numbers: a rendered document has none to name.
+    const tocRow = page.getByRole('button', { name: 'Heading Second Section', exact: true });
+    await expect(tocRow).toBeVisible();
+    await tocRow.click();
+
+    // The page scrolled and the reader is STILL in the preview.
+    await expect.poll(async () => scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+    await expect(page.locator('.prose-content').first()).toBeVisible();
 
     workspace.dispose();
   });

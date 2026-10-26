@@ -34,6 +34,17 @@ export interface EditorDocument {
   state: EditorDocumentState;
   /** Why the tab has no outline to draw, when `state` is `not-a-document` or `error`. */
   note: string | null;
+  /**
+   * The tab is drawing its RENDERED view (a markdown preview), not its source.
+   *
+   * It changes what the outline IS, not merely how it looks. A preview has no
+   * lines and no code surface, so a row cannot move a caret: the list becomes a
+   * table of contents, and a row scrolls the rendered document to its heading
+   * while staying in the preview. A row that published a line request there
+   * would either do nothing or throw the reader out of the document they are
+   * reading.
+   */
+  preview: boolean;
 }
 
 const NOTICES: Record<EditorDocumentState, string> = {

@@ -15,7 +15,9 @@
  *   are three different sentences, and an empty list for all three reads as a
  *   broken scan.
  * - A row click publishes a line request — it does NOT jump itself; the editor
- *   that holds the buffer serves it.
+ *   that holds the buffer serves it. In a PREVIEW it publishes a HEADING request
+ *   instead, because a rendered document has no lines and the reader must stay
+ *   in the page they are reading.
  * - Every kind draws its OWN mark, which is what makes a class row and a
  *   function row tell the reader apart at a glance.
  *
@@ -34,6 +36,7 @@ import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-gl
 import { publishEditorDocument, resetEditorDocument, type EditorDocument } from '@/client/lib/editor-document';
 import { MAX_OUTLINE_ROWS } from '@/shared/lib/code/outline/rows';
 import { getLineReveal, setLineReveal } from '@/client/lib/line-reveal';
+import { getHeadingReveal, setHeadingReveal } from '@/client/lib/heading-reveal';
 
 const SESSION = 'new-outline-section';
 const nativeFetch = Bun.fetch;
@@ -60,6 +63,7 @@ const READY: EditorDocument = {
   language: 'typescript',
   state: 'ready',
   note: null,
+  preview: false,
 };
 
 beforeAll(() => {
@@ -74,6 +78,7 @@ afterEach(() => {
   forgetSession(SESSION);
   resetEditorDocument();
   setLineReveal(null);
+  setHeadingReveal(null);
   (globalThis as unknown as Record<string, unknown>).fetch = nativeFetch;
 });
 
@@ -125,6 +130,19 @@ function rowLabels(): string[] {
   return [...container.querySelectorAll('button[aria-label]')]
     .map((el) => el.getAttribute('aria-label') ?? '')
     .filter((label) => label.includes(', line '));
+}
+
+/**
+ * The same list for a PREVIEW, whose rows name no line.
+ *
+ * A separate reader rather than a looser filter: the source rows' ", line N"
+ * suffix is itself an assertion, and a filter that accepted both would stop
+ * noticing if a preview row started naming a line.
+ */
+function contentsLabels(): string[] {
+  return [...container.querySelectorAll('button[aria-label]')]
+    .map((el) => el.getAttribute('aria-label') ?? '')
+    .filter((label) => label.startsWith('Heading '));
 }
 
 async function expand(): Promise<void> {
@@ -215,6 +233,69 @@ describe('OutlineSection', () => {
     await mount({ 'files.outlineExpanded': true });
     expect(reveal().getAttribute('data-expanded')).toBe('true');
     expect(toggle().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  // The preview is a DIFFERENT list, not a differently-drawn one: its rows are
+  // a table of contents, so they name no lines and a click asks for a heading
+  // rather than a line. A row that published a line request there would throw
+  // the reader out of the document they are reading.
+  test('a preview makes the rows a table of contents', async () => {
+    owner = {};
+    const markdown = ['# Title', '', 'Intro.', '', '## First Section', '', 'Body.', '', '## Second Section', ''].join('\n');
+    publishEditorDocument(owner, {
+      ...READY,
+      path: 'docs/notes.md',
+      name: 'notes.md',
+      content: markdown,
+      language: 'markdown',
+      preview: true,
+    });
+    await mount();
+    await expand();
+
+    // No line numbers: a rendered document has none to name.
+    expect(contentsLabels()).toEqual(['Heading Title', 'Heading First Section', 'Heading Second Section']);
+    expect(container.textContent).not.toContain('line 5');
+
+    const row = [...reveal().querySelectorAll('button[aria-label]')]
+      .find((el) => el.getAttribute('aria-label') === 'Heading Second Section') as HTMLButtonElement;
+    await act(async () => {
+      row.click();
+    });
+
+    expect(getHeadingReveal()).toEqual({
+      path: 'docs/notes.md',
+      text: 'second section',
+      occurrence: 0,
+      index: 2,
+    });
+    // And NOT a line request: that would leave the preview.
+    expect(getLineReveal()).toBeNull();
+  });
+
+  test('the SOURCE view of the same file asks for a line again', async () => {
+    owner = {};
+    const markdown = ['# Title', '', '## First Section', ''].join('\n');
+    publishEditorDocument(owner, {
+      ...READY,
+      path: 'docs/notes.md',
+      name: 'notes.md',
+      content: markdown,
+      language: 'markdown',
+      preview: false,
+    });
+    await mount();
+    await expand();
+
+    expect(rowLabels()).toEqual(['Heading Title, line 1', 'Heading First Section, line 3']);
+    const row = [...reveal().querySelectorAll('button[aria-label]')]
+      .find((el) => el.getAttribute('aria-label')?.startsWith('Heading First Section')) as HTMLButtonElement;
+    await act(async () => {
+      row.click();
+    });
+
+    expect(getLineReveal()).toEqual({ path: 'docs/notes.md', line: 3, column: 4, length: 13 });
+    expect(getHeadingReveal()).toBeNull();
   });
 
   // The cap is what keeps a large file's outline from becoming a DOM: 63 618

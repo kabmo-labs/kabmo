@@ -36,6 +36,7 @@ const DOC: EditorDocument = {
   language: 'typescript',
   state: 'ready',
   note: null,
+  preview: false,
 };
 
 afterEach(() => {

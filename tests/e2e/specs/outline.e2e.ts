@@ -23,8 +23,12 @@
  *    a symbol click that only placed a caret leaves the reader at the top of a
  *    2,800-line file.
  * 3. **A preview that swallows the jump.** A rendered markdown document draws no
- *    code surface, so the click has to switch back to source BEFORE applying the
- *    offset — otherwise it silently does nothing.
+ *    code surface and has no lines, so in a preview the list is a TABLE OF
+ *    CONTENTS: a row scrolls the page to its heading and the reader stays where
+ *    they are. Switching to source to satisfy a line request would throw them
+ *    out of the document they were reading — the reported "kenapa pindah ke
+ *    edit". In source mode the same file is a symbol outline again, and a row
+ *    moves the caret.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -258,9 +262,61 @@ test.describe('file outline', () => {
     workspace.dispose();
   });
 
-  test('a rendered preview switches to source before the jump lands', async ({ harness, page }) => {
+  test('in a rendered preview the outline is a table of contents', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-outline-preview');
+    mkdirSync(join(workspace.path, 'src'), { recursive: true });
+    writeFileSync(
+      join(workspace.path, 'src', 'notes.md'),
+      [
+        '# Title',
+        '',
+        ...Array.from({ length: 40 }, (_, i) => `Intro paragraph ${i}.`),
+        '',
+        '## First Section',
+        '',
+        ...Array.from({ length: 40 }, (_, i) => `First body ${i}.`),
+        '',
+        '## Second Section',
+        '',
+        'More.',
+      ].join('\n'),
+    );
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openFromTree(page, 'notes.md');
+
+    // Markdown opens RENDERED by default, and a rendered document has no code
+    // surface and no lines — so its rows are a table of contents, not a symbol
+    // list.
+    await expect(editorPanel(page).locator('.prose-content')).toBeVisible();
+    await expandOutline(page);
+
+    // The rows name no line: the reader cannot see one.
+    const tocRow = filesPanel(page).getByRole('button', { name: 'Heading Second Section', exact: true });
+    await expect(tocRow).toBeVisible();
+    await expect(filesPanel(page).getByRole('button', { name: /^Heading .*, line \d+$/ })).toHaveCount(0);
+
+    const scroller = editorPanel(page).getByTestId(selectors.TESTID.editorScroller);
+    await expect
+      .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
+      .toBeGreaterThan(200);
+    expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0);
+
+    await tocRow.click();
+
+    // The page SCROLLED and the reader is still in the preview: this is the
+    // whole point of the mode — a click must not throw them out of the document
+    // they are reading.
+    await expect.poll(async () => scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+    await expect(editorPanel(page).locator('.prose-content')).toBeVisible();
+
+    workspace.dispose();
+  });
+
+  test('in SOURCE mode the same file outlines symbols, and a row moves the caret', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-outline-source');
     mkdirSync(join(workspace.path, 'src'), { recursive: true });
     writeFileSync(
       join(workspace.path, 'src', 'notes.md'),
@@ -269,17 +325,19 @@ test.describe('file outline', () => {
 
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
     await openFromTree(page, 'notes.md');
-
-    // Markdown opens RENDERED by default, and a rendered document has no code
-    // surface for the jump to move — this is the case a click used to lose.
     await expect(editorPanel(page).locator('.prose-content')).toBeVisible();
+    // The eye toggle: the source is what a symbol outline describes.
+    await editorPanel(page).getByRole('button', { name: 'Show source' }).click();
+    await expect(editorPanel(page).locator('.cm-content')).toBeVisible();
     await expandOutline(page);
 
-    await filesPanel(page).getByRole('button', { name: 'Heading Second Section, line 9' }).click();
+    const row = filesPanel(page).getByRole('button', { name: 'Heading Second Section, line 9' });
+    await expect(row).toBeVisible();
+    await row.click();
 
-    await expect(editorPanel(page).locator('.prose-content')).toHaveCount(0);
+    // The caret moves in the source and the NAME is selected — not the `## `
+    // that precedes it.
     await expect.poll(() => caretLine(page)).toBe(9);
-    // The heading's TEXT is selected — not the `## ` that precedes it.
     await expect.poll(() => selectedText(page)).toBe('Second Section');
 
     workspace.dispose();

@@ -26,8 +26,10 @@ import { ListTree } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
 import { OutlineKindIcon, outlineKindLabel } from '@/client/components/common/outline-kind-icon';
 import { setLineReveal } from '@/client/lib/line-reveal';
+import { setHeadingReveal } from '@/client/lib/heading-reveal';
 import type { OutlineSymbol } from '@/shared/lib/code/outline/types';
 import { outlineTruncatedNotice } from '@/shared/lib/code/outline/rows';
+import { headingPreviewTarget } from '@/shared/lib/markdown/headings';
 
 interface MobileOutlineButtonProps {
   path: string | null;
@@ -39,16 +41,33 @@ interface MobileOutlineButtonProps {
   truncated: boolean;
   /** Why there is nothing to list, when `symbols` is empty. */
   emptyNotice: string;
+  /**
+   * The editor is showing its RENDERED view, so the list is a table of contents:
+   * a row scrolls the page to its heading and the reader stays in the preview.
+   * See `OutlineSection` for the desktop half of the same rule.
+   */
+  preview?: boolean;
 }
 
-export function MobileOutlineButton({ path, symbols, total, truncated, emptyNotice }: MobileOutlineButtonProps) {
+export function MobileOutlineButton({ path, symbols, total, truncated, emptyNotice, preview = false }: MobileOutlineButtonProps) {
   const [open, setOpen] = useState(false);
   if (!path) return null;
 
   // The name's own span, so the phone selects the identifier the row named
-  // rather than parking a caret at the start of its line.
-  const pick = (symbol: OutlineSymbol) => {
+  // rather than parking a caret at the start of its line — and in a preview, the
+  // HEADING, because a rendered document has no lines to select. A line request
+  // in a preview would leave the page the reader is looking at, which is the bug
+  // this mode exists to remove.
+  const pick = (symbol: OutlineSymbol, index: number) => {
     setOpen(false);
+    if (preview) {
+      // Markdown's outline is headings and nothing else (`markdownOutline`), so
+      // this always resolves; the guard is the invariant, not a branch a reader
+      // can reach.
+      const heading = headingPreviewTarget(symbols, index);
+      if (heading) setHeadingReveal({ path, ...heading });
+      return;
+    }
     setLineReveal({ path, line: symbol.line, column: symbol.column, length: symbol.name.length });
   };
 
@@ -85,18 +104,27 @@ export function MobileOutlineButton({ path, symbols, total, truncated, emptyNoti
             {symbols.length === 0 ? (
               <div className="px-4 py-3 text-[11px] italic text-ink/40">{emptyNotice}</div>
             ) : (
-              symbols.map((symbol) => (
+              symbols.map((symbol, index) => (
                 <button
                   key={`${symbol.line}:${symbol.kind}:${symbol.name}`}
                   type="button"
-                  onClick={() => pick(symbol)}
-                  aria-label={`${outlineKindLabel(symbol.kind)} ${symbol.name}, line ${symbol.line}`}
+                  onClick={() => pick(symbol, index)}
+                  // A preview has no line numbers to name: the row is a table of
+                  // contents entry, and saying "line 9" would describe a document
+                  // the reader cannot see.
+                  aria-label={
+                    preview
+                      ? `${outlineKindLabel(symbol.kind)} ${symbol.name}`
+                      : `${outlineKindLabel(symbol.kind)} ${symbol.name}, line ${symbol.line}`
+                  }
                   className="flex w-full min-w-0 items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-ink/5 active:bg-ink/10"
                   style={{ paddingLeft: `${16 + symbol.depth * 12}px` }}
                 >
                   <OutlineKindIcon kind={symbol.kind} size={13} />
                   <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink">{symbol.name}</span>
-                  <span className="flex-shrink-0 font-mono text-[10px] text-ink/40">{symbol.line}</span>
+                  {!preview && (
+                    <span className="flex-shrink-0 font-mono text-[10px] text-ink/40">{symbol.line}</span>
+                  )}
                 </button>
               ))
             )}

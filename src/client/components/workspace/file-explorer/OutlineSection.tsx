@@ -32,10 +32,12 @@ import { ListTree } from 'lucide-preact';
 import { OutlineKindIcon, outlineKindLabel } from '@/client/components/common/outline-kind-icon';
 import { getEditorDocument, subscribeEditorDocument } from '@/client/lib/editor-document';
 import { setLineReveal } from '@/client/lib/line-reveal';
+import { setHeadingReveal } from '@/client/lib/heading-reveal';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useOutlineView } from '@/client/hooks/editor/use-outline-view';
 import type { OutlineSymbol } from '@/shared/lib/code/outline/types';
 import { outlineTruncatedNotice } from '@/shared/lib/code/outline/rows';
+import { headingPreviewTarget } from '@/shared/lib/markdown/headings';
 
 export function OutlineSection() {
   const [expanded, setExpanded] = useSessionState<boolean>('files.outlineExpanded', false);
@@ -60,8 +62,26 @@ export function OutlineSection() {
   // because each of those is about a file that IS open.
   if (current.state === 'diff') return null;
 
-  const jump = (symbol: OutlineSymbol) => {
+  /**
+   * What a row DOES depends on which of the two views is on screen, and that is
+   * the whole point of the preview flag: a preview has no lines and no code
+   * surface, so a row there is a TABLE OF CONTENTS entry — it scrolls the
+   * rendered document to its heading and the reader stays in the document. The
+   * line request would either do nothing (no surface) or throw them out of the
+   * page they are reading.
+   */
+  const preview = current.preview;
+
+  const jump = (symbol: OutlineSymbol, index: number) => {
     if (!current.path) return;
+    if (preview) {
+      // Markdown's outline is headings and nothing else (`markdownOutline`), so
+      // this always resolves; the guard is the invariant, not a branch a reader
+      // can reach.
+      const heading = headingPreviewTarget(symbols, index);
+      if (heading) setHeadingReveal({ path: current.path, ...heading });
+      return;
+    }
     // The row publishes the request; the editor that holds this file serves it
     // — selecting the NAME and scrolling the line into view — and clears the
     // store. The file is already the editor's active tab: the outline is its
@@ -112,19 +132,32 @@ export function OutlineSection() {
               <div className="px-1 text-[10px] text-ink/40 italic py-1">{notice}</div>
             ) : (
               <div className="max-h-48 overflow-y-auto scrollbar-overlay-container flex flex-col">
-                {symbols.map((symbol) => (
+                {symbols.map((symbol, index) => (
                   <button
                     key={`${symbol.line}:${symbol.kind}:${symbol.name}`}
                     type="button"
-                    onClick={() => jump(symbol)}
-                    aria-label={`${outlineKindLabel(symbol.kind)} ${symbol.name}, line ${symbol.line}`}
-                    title={`${outlineKindLabel(symbol.kind)} · line ${symbol.line}`}
+                    onClick={() => jump(symbol, index)}
+                    // A preview has no line numbers to name, and a TOC entry
+                    // that read "line 9" would describe a document the reader
+                    // cannot see. The label says what the click does instead.
+                    aria-label={
+                      preview
+                        ? `${outlineKindLabel(symbol.kind)} ${symbol.name}`
+                        : `${outlineKindLabel(symbol.kind)} ${symbol.name}, line ${symbol.line}`
+                    }
+                    title={
+                      preview
+                        ? `Jump to ${outlineKindLabel(symbol.kind).toLowerCase()}`
+                        : `${outlineKindLabel(symbol.kind)} · line ${symbol.line}`
+                    }
                     className="flex w-full min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-ink/5 active:bg-ink/10"
                     style={{ paddingLeft: `${4 + symbol.depth * 12}px` }}
                   >
                     <OutlineKindIcon kind={symbol.kind} />
                     <span className="min-w-0 flex-1 truncate text-[11px] font-mono text-ink/80">{symbol.name}</span>
-                    <span className="flex-shrink-0 font-mono text-[9px] text-ink/35">{symbol.line}</span>
+                    {!preview && (
+                      <span className="flex-shrink-0 font-mono text-[9px] text-ink/35">{symbol.line}</span>
+                    )}
                   </button>
                 ))}
                 {truncated && (

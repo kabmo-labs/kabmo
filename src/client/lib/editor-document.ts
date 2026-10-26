@@ -43,6 +43,7 @@ export const EMPTY_EDITOR_DOCUMENT: EditorDocument = {
   language: 'text',
   state: 'idle',
   note: null,
+  preview: false,
 };
 
 let current: EditorDocument = EMPTY_EDITOR_DOCUMENT;
@@ -60,7 +61,8 @@ function sameDocument(a: EditorDocument, b: EditorDocument): boolean {
     a.content === b.content &&
     a.language === b.language &&
     a.state === b.state &&
-    a.note === b.note
+    a.note === b.note &&
+    a.preview === b.preview
   );
 }
 

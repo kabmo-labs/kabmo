@@ -28,6 +28,8 @@ import { act } from 'preact/test-utils';
 import { MobileOutlineButton } from '@/client/components/mobile/mobile-right-sidebar/OutlineButton';
 import { MAX_OUTLINE_ROWS, outlineTruncatedNotice } from '@/shared/lib/code/outline/rows';
 import type { OutlineSymbol } from '@/shared/lib/code/outline/types';
+import { getHeadingReveal, setHeadingReveal } from '@/client/lib/heading-reveal';
+import { getLineReveal, setLineReveal } from '@/client/lib/line-reveal';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;
@@ -41,6 +43,8 @@ afterEach(() => {
     render(null, container);
     container.remove();
   }
+  setLineReveal(null);
+  setHeadingReveal(null);
 });
 
 afterAll(() => {
@@ -63,6 +67,7 @@ async function mount(props: {
   truncated?: boolean;
   path?: string | null;
   emptyNotice?: string;
+  preview?: boolean;
 }): Promise<void> {
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -74,6 +79,7 @@ async function mount(props: {
         total: props.total ?? props.symbols.length,
         truncated: props.truncated ?? false,
         emptyNotice: props.emptyNotice ?? 'No symbols found.',
+        preview: props.preview ?? false,
       }),
       container,
     );
@@ -133,5 +139,52 @@ describe('MobileOutlineButton', () => {
     await open();
 
     expect(container.textContent).toContain('This tab has no outline.');
+  });
+
+  // The sheet is the phone's half of the same rule the desktop panel follows: in
+  // a PREVIEW the rows are a table of contents, so a row asks for a heading and
+  // the reader stays in the page. A line request there would leave the preview.
+  test('a preview makes the sheet a table of contents', async () => {
+    const headings: OutlineSymbol[] = [
+      { name: 'Title', kind: 'heading', line: 1, column: 3, depth: 0 },
+      { name: 'First Section', kind: 'heading', line: 5, column: 4, depth: 1 },
+    ];
+    await mount({ symbols: headings, preview: true });
+    await open();
+
+    // No line numbers: a rendered document has none to name.
+    const labels = [...container.querySelectorAll('button[aria-label]')]
+      .map((el) => el.getAttribute('aria-label') ?? '')
+      .filter((label) => label.startsWith('Heading '));
+    expect(labels).toEqual(['Heading Title', 'Heading First Section']);
+
+    const row = [...container.querySelectorAll('button[aria-label]')]
+      .find((el) => el.getAttribute('aria-label') === 'Heading First Section') as HTMLButtonElement;
+    await act(async () => {
+      row.click();
+    });
+
+    expect(getHeadingReveal()).toEqual({
+      path: 'src/a.ts',
+      text: 'first section',
+      occurrence: 0,
+      index: 1,
+    });
+    expect(getLineReveal()).toBeNull();
+  });
+
+  test('in SOURCE mode the sheet asks for a line', async () => {
+    const rows: OutlineSymbol[] = [{ name: 'start', kind: 'method', line: 6, column: 3, depth: 1 }];
+    await mount({ symbols: rows });
+    await open();
+
+    const row = [...container.querySelectorAll('button[aria-label]')]
+      .find((el) => el.getAttribute('aria-label')?.startsWith('Method start')) as HTMLButtonElement;
+    await act(async () => {
+      row.click();
+    });
+
+    expect(getLineReveal()).toEqual({ path: 'src/a.ts', line: 6, column: 3, length: 5 });
+    expect(getHeadingReveal()).toBeNull();
   });
 });

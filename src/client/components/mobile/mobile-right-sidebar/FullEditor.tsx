@@ -1,14 +1,15 @@
-import { useRef, useState } from 'preact/hooks';
-import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
-import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
+import { useCallback, useRef, useState } from 'preact/hooks';
+import { AlertTriangle } from 'lucide-preact';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
+import { PreviewScroller } from '@/client/components/mobile/mobile-right-sidebar/PreviewScroller';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
 import { EditorStatusBar } from '@/client/components/mobile/mobile-right-sidebar/StatusBar';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
 import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
+import { useHeadingJump } from '@/client/hooks/editor/use-heading-jump';
 import { useFileEditor } from '@/client/hooks/editor/use-file-editor';
 import { useMobileEditorFind } from '@/client/hooks/editor/use-mobile-editor-find';
 import { FindWidget } from '@/client/components/workspace/editor/FindWidget';
@@ -96,6 +97,24 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
     // its view mounts; the markdown preview owns its own container.
     element: isMd && isPreview ? undefined : codeScroller,
   });
+
+  /**
+   * The preview's own scroller, for the phone's outline sheet.
+   *
+   * One ref for two owners: the restore hook needs the element, and a CONTENTS
+   * row needs to find headings inside it. A rendered document has no code
+   * surface and no lines, so a row there scrolls the page rather than moving a
+   * caret — and stays in the preview the reader is looking at.
+   */
+  const [previewScroller, setPreviewScroller] = useState<HTMLElement | null>(null);
+  const previewRef = useCallback(
+    (element: HTMLElement | null) => {
+      scroll.ref(element);
+      setPreviewScroller(element);
+    },
+    [scroll.ref],
+  );
+  useHeadingJump({ path: file.path ?? null, scroller: previewScroller, preview: isMd && isPreview });
 
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
   // Find, and the search row's hand-off. Both are the desktop's own hooks: a second
@@ -228,44 +247,22 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         />
       ) : editor.isLoading || editor.unsupported || editor.loadError || (isMd && isPreview) ? (
         // The states that draw their own scrolling content — and the markdown
-        // preview, which is a document, not an editor — share one scroller.
-        <div
-          ref={scroll.ref}
+        // preview, which is a document, not an editor — share one scroller. The
+        // outline's table of contents finds its headings inside it, which is why
+        // the ref is the same one the scroll restore uses.
+        <PreviewScroller
+          fileName={file.name}
+          content={content}
+          path={file.path ?? file.name}
+          root={file.root}
+          repo={file.repo}
+          fontSize={fontSize}
+          scrollRef={previewRef}
           onScroll={scroll.onScroll}
-          className="flex-1 min-h-0 overflow-auto relative bg-paper text-ink select-text"
-        >
-          {editor.isLoading ? (
-            <div className="flex items-center justify-center h-full text-ink/40 text-xs gap-2">
-              <Loader2 size={14} className="animate-spin" />
-              <span>Loading file content...</span>
-            </div>
-          ) : editor.unsupported ? (
-            // Same distinction the desktop pane draws: a file refused for its
-            // KIND was not a failed read, and saying so is the whole point.
-            <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
-              <FileX size={20} className="text-ink/40" />
-              <span className="text-xs text-ink/70 font-sans">{file.name} cannot be opened here</span>
-              <span className="text-[11px] text-ink/50 font-sans max-w-[42ch]">{editor.unsupported}</span>
-            </div>
-          ) : editor.loadError ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
-              <AlertTriangle size={20} className="text-error" />
-              <span className="text-xs text-error font-sans">Could not read {file.name}</span>
-              <span className="text-[11px] text-ink/50 font-mono break-all">{editor.loadError}</span>
-            </div>
-          ) : (
-            /* Markdown Preview Mode — styled by `.prose-content` (the chat
-               timeline's system), see the desktop editor for why there is no
-               `prose` wrapper. */
-            <div className="p-4 bg-paper text-ink min-h-full font-sans" style={{ fontSize: `${fontSize}px` }}>
-              <MarkdownRenderer
-                content={content}
-                document
-                scope={{ path: file.path ?? file.name, root: file.root, repo: file.repo }}
-              />
-            </div>
-          )}
-        </div>
+          isLoading={editor.isLoading}
+          unsupported={editor.unsupported}
+          loadError={editor.loadError}
+        />
       ) : (
         /* The code surface owns its own scroller (CodeMirror's), so it is NOT
            wrapped in one: an outer `overflow-auto` resolves the editor's
@@ -316,6 +313,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           total={outlineTotal}
           truncated={outlineTruncated}
           emptyNotice={outlineNotice}
+          preview={isMd && isPreview}
         />
       )}
 

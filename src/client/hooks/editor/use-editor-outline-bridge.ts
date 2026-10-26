@@ -58,6 +58,7 @@ export function useEditorOutlineBridge({
           loadError: editor.loadError,
           viewerKind: editor.viewerKind,
           isBinaryViewer: editor.isBinaryViewer,
+          preview: isPreview,
         }
       : null,
   );

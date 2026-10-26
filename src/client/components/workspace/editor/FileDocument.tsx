@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { FindWidget } from '@/client/components/workspace/editor/FindWidget';
 import { CommandPalette } from '@/client/components/workspace/editor/CommandPalette';
 import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
+import { useHeadingJump } from '@/client/hooks/editor/use-heading-jump';
 import { indentUnitFor, useEditorIndent } from '@/client/hooks/editor/indent-settings';
 import { useEditorTyping } from '@/client/hooks/editor/typing-settings';
 import { EditorStatusBar } from '@/client/components/workspace/editor/StatusBar';
@@ -109,6 +110,12 @@ export function FileDocument({
    * reach a node the component does not render.
    */
   const [codeScroller, setCodeScroller] = useState<HTMLElement | null>(null);
+  /**
+   * The PREVIEW's own scroller, for the table of contents. A rendered document
+   * has no code surface, so an outline row there asks for a heading rather than
+   * a line — and the heading is found inside this element.
+   */
+  const [previewScroller, setPreviewScroller] = useState<HTMLElement | null>(null);
   // ⌘/Ctrl + wheel, and a trackpad pinch, clamped to the toolbar's own bounds. Armed on
   // the render the scroller arrives in: it exists only once the view mounts.
   useWheelZoom(codeScroller, setZoomLevel);
@@ -123,6 +130,18 @@ export function FileDocument({
     // the binding's `ref` instead.
     element: isMd && isPreview ? undefined : codeScroller,
   });
+  // One ref for two owners: the restore hook needs the element, and the table of
+  // contents needs to find headings inside it.
+  const previewRef = useCallback(
+    (element: HTMLElement | null) => {
+      scroll.ref(element);
+      setPreviewScroller(element);
+    },
+    [scroll.ref],
+  );
+  // The preview is the only view a CONTENTS row can serve without leaving the
+  // document, so the jump is armed only while it is on screen.
+  useHeadingJump({ path: activeFile.path, scroller: previewScroller, preview: isMd && isPreview });
 
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
@@ -158,7 +177,7 @@ export function FileDocument({
       ) : null}
       {isMd && isPreview ? (
         <div
-          ref={scroll.ref}
+          ref={previewRef}
           onScroll={scroll.onScroll}
           // No accessible name exists for a scroll container, so the E2E layer
           // addresses it by testid (see `tests/e2e/fixtures/selectors.ts`).
