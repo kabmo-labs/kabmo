@@ -51,4 +51,14 @@ export interface EditorProps {
    * not a container the host fills with chrome.
    */
   activeEditorPanelKey?: string | null;
+  /**
+   * Render as a SPLIT PANE: draw the given tab, and draw no tab strip.
+   *
+   * The right pane is this same panel, so a split cannot have a feature the unsplit editor
+   * lacks. It is told which tab to show rather than keeping its own `activeFileId`, because
+   * the strip stays in the left pane and stays the single owner of the tab order.
+   */
+  forcedActiveFileId?: number | string | null;
+  /** A split pane never splits again: the column has two panes, not a tree. */
+  asSplitPane?: boolean;
 }

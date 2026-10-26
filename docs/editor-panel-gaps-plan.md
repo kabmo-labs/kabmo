@@ -289,8 +289,8 @@ Drag-reorder is HTML5 drag on the strip; the array IS the order, so reordering i
 move with no new field — but it must cooperate with the existing `maxVisibleTabs` +
 `Older Tabs` overflow computation, so ship the menu first and treat drag as optional.
 
-**P3.2 Save As** — deferred (§5). Needs a destination picker, a collision guard, and a
-decision about the original tab, for an operation a repository-backed console rarely needs.
+**P3.2 Save As** — SHIPPED (Appendix D). A destination folder plus a name, a collision guard
+that REFUSES rather than overwrites, and the original tab left open beside the new file's.
 
 ### P4 — View aids (G12, G18-partial, G22)
 
@@ -435,8 +435,8 @@ bounded viewport window. Anything more is LSP.
 | Minimap | rejected | a canvas redrawing on every edit for a 320px panel; the outline answers "where am I" |
 | Sticky scroll | deferred | needs scope headers, i.e. a grammar, or a heuristic over the indent fold |
 | Breadcrumbs | deferred | duplicates the outline panel that is already open |
-| Save As | deferred | destination picker + collision guard for a rare operation |
-| Split editor | not planned | conflicts with the coupled editor/right-panel width model (`panel-widths.ts`) |
+| Save As | **shipped** | Appendix D — `saveAs` action, collision refused with 409, new file gets its own tab |
+| Split editor | **shipped** | Appendix D — divides the editor panel's own width, so `panel-widths.ts` is untouched |
 
 ---
 
@@ -648,9 +648,9 @@ switch (or a tab switch would keep the previous file's line number).
 
 ### Not done
 
-P3 (tab management, Save As), P4 (whitespace/indent guides, EOL switch, Ctrl+wheel zoom)
-and P5 (block comment, line transforms, auto-close brackets, autocomplete, find-in-
-selection, phone find) are unchanged from the plan. The two that are worth doing next are
+P4 (whitespace/indent guides, EOL switch, Ctrl+wheel zoom) and P5 (block comment, line
+transforms, auto-close brackets, autocomplete, find-in-selection, phone find) are unchanged
+from the plan. The two that are worth doing next are
 `toggleBlockComment` (free — the command is installed and `commentTokens` already returns
 block tokens) and the phone's find bar, which is the only surface with no way to search a
 file at all.
@@ -727,3 +727,68 @@ no way to search a file at all.
 **`selectWord` was DELETED.** It was implemented and unreachable for two releases: no
 chord, and a test that asserted its absence from the palette. `selectLine` and
 `insertCursorAbove` got the rows they were missing instead.
+
+---
+
+## Appendix D — Save As and the split editor
+
+The two items §5 carried as deferred and not-planned, both now shipped. They are recorded
+together because the same decision made them cheap: **neither touches the panel-width model.**
+
+### Save As
+
+`actionType: 'saveAs'` on `POST /api/fs/action` (`src/server/routes/fs/action.ts`), the
+client in `src/client/hooks/editor/save-as.ts`, the dialog in
+`editor/SaveAsModal.tsx`, and the `save-as` toolbar cluster.
+
+Three decisions, each of which is what makes the operation safe:
+
+- **A collision is REFUSED, never overwritten.** Overwriting is what `save` is for; a dialog
+  that silently replaced a file the user did not name is the worst outcome of a mis-click.
+  The server answers `409` and the dialog stays open with the name intact.
+- **No `baseMtime` is sent.** A file that did not exist a moment ago has nothing to compare
+  against, and sending the ORIGINAL's mtime would refuse every Save As.
+- **The original tab stays open and the new file gets its own.** That is what makes the
+  operation reversible by closing one tab, rather than by remembering where a file used to
+  live. The suggested name keeps the extension (`notes.ts` → `notes copy.ts`) because losing
+  it would change the language the surface resolves.
+
+The name is validated with `isSinglePathSegment` — the same predicate the folder routes use —
+so `join(directory, name)` cannot resolve outside the destination.
+
+### Split editor
+
+`shared/lib/workspace/split-editor.ts` holds the rules (pure, 14 tests);
+`use-split-editor.ts` is the session-backed wrapper (8 tests through the real provider);
+`SplitColumn.tsx` draws the two panes and the divider; `SplitPane.tsx` is the right pane's
+header.
+
+**It does not touch `panel-widths.ts`.** The plan's reason for rejecting it — "conflicts with
+the coupled editor/right-panel width model" — was wrong: the split divides the width the
+editor panel ALREADY has, so there is no new slot, no second pair and no re-derivation of the
+0.7 cap. Splitting a column is a different decision from how wide the column is.
+
+- **The right pane is a second `<Editor>` with a forced active tab**, not a second tab list.
+  One list stays authoritative; the pane is told which id to render. A split therefore cannot
+  lack a feature the unsplit editor has, and `EditorPane` is shared so the two panes cannot
+  drift in what a pane contains.
+- **`canSplitTo` refuses the left pane's own tab** — one file twice is a wide pane with a
+  divider through it — and refuses an id that names no open tab, which is how a persisted
+  value survives a reload in which that tab was closed elsewhere.
+- **Activating the tab the right pane shows COLLAPSES the split** (`splitAfterActivate`): the
+  user asked to look at that file, and the whole column showing it is the honest answer.
+- **Closing the pane closes the VIEW, not the tab.** Splitting is a layout decision.
+- **The divider persists a FRACTION, clamped to 0.2–0.8**, for the same reason the panel
+  widths do: a pixel value is only right on the display it was dragged on.
+- **The entry point is a strip BUTTON, not only a menu row.** The strip folds every
+  non-active tab into the overflow at panel width, so a split reachable only by right-clicking
+  another tab is unreachable in the common case. The button splits to the newest other tab
+  (`splitCandidate`); the context menu keeps `Split right` for naming a specific one.
+
+### Verified
+
+`bun test` 7933 pass / 0 fail (766 files); `bun run lint`, the unused pass, the 350-line
+check and the relative-import check all clean; `bun run build` clean; `bun run
+typecheck:e2e` clean. `tests/e2e/specs/editor.e2e.ts` is **10/10** in chromium, including the
+two added here: Save As writing a second file while the original's bytes do not move, and a
+split showing two documents with both tabs still open after the pane closes.

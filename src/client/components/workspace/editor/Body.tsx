@@ -29,6 +29,8 @@ interface EditorBodyProps {
   setPaletteOpen: (open: boolean) => void;
   /** Bumped when the user asks for "go to line"; the document owns the dialog. */
   goToLineRequest: number;
+  /** Open the Save As dialog. */
+  onSaveAs: () => void;
   /** The file picker is open. */
   quickOpen: boolean;
   onCloseQuickOpen: () => void;
@@ -70,6 +72,7 @@ export function EditorBody({
   paletteOpen,
   setPaletteOpen,
   goToLineRequest,
+  onSaveAs,
   quickOpen,
   onCloseQuickOpen,
   onOpenPath,
@@ -128,6 +131,7 @@ export function EditorBody({
       paletteOpen={paletteOpen}
       setPaletteOpen={setPaletteOpen}
       goToLineRequest={goToLineRequest}
+      onSaveAs={onSaveAs}
       quickOpen={quickOpen}
       onCloseQuickOpen={onCloseQuickOpen}
       onOpenPath={onOpenPath}

@@ -33,6 +33,7 @@ import {
   Minimize,
   RotateCcw,
   Save,
+  SaveAll,
   Search,
   WrapText,
   ZoomIn,
@@ -70,6 +71,7 @@ export interface ToolbarState {
   onCopy: () => void;
   onDownload: () => void;
   onRevert: () => void;
+  onSaveAs: () => void;
   onToggleMaximize: () => void;
   onSave: () => void;
   viewModeActions: ToolbarCluster['actions'];
@@ -200,6 +202,22 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
             <ZoomIn size={14} />
           </button>
         </>
+      ),
+    });
+    clusters.push({
+      id: 'save-as',
+      // Never pinned: it is a rare operation, and the row's space belongs to Save.
+      actions: [{ label: 'Save as…', icon: SaveAll, onSelect: state.onSaveAs }],
+      children: (
+        <button
+          type="button"
+          onClick={state.onSaveAs}
+          className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
+          title="Save the buffer to a new file"
+          aria-label="Save as"
+        >
+          <SaveAll size={14} />
+        </button>
       ),
     });
     clusters.push({

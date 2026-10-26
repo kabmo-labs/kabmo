@@ -4,6 +4,8 @@ import { ChevronDown, GitCompare, X } from 'lucide-preact';
 import { useDirtyTabs } from '@/client/lib/editor-dirty-tabs';
 import { TabContextMenu } from '@/client/components/workspace/editor/TabContextMenu';
 import { buildTabMenuRows, type TabMenuAction } from '@/client/lib/editor/tab-menu';
+import { splitCandidate } from '@/shared/lib/workspace/split-editor';
+import { PanelRight } from 'lucide-preact';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import type { OpenedFile } from '@/shared/types/fs';
@@ -27,6 +29,12 @@ interface EditorTabsProps {
   onReopenClosed?: () => boolean;
   /** How many tabs can still be reopened, so the menu row can be absent when none can. */
   reopenableCount?: () => number;
+  /** Split the column to this tab, or change which tab the right pane shows. */
+  onSplitTo?: (id: number | string) => void;
+  /** Collapse the split. The tabs stay open — a split is a view. */
+  onUnsplit?: () => void;
+  /** The tab the right pane shows, so `Split right` can be absent for it. */
+  splitRightFileId?: number | string | null;
 }
 
 export function EditorTabs({
@@ -39,6 +47,9 @@ export function EditorTabs({
   onRevealInFiles,
   onReopenClosed,
   reopenableCount,
+  onSplitTo,
+  onUnsplit,
+  splitRightFileId = null,
 }: EditorTabsProps) {
   // Which tabs hold edits that are not on disk. The dot replaces the close `×`
   // while the tab is dirty — the VS Code convention, and the reason it costs no
@@ -67,6 +78,8 @@ export function EditorTabs({
     }
     return () => observer.disconnect();
   }, []);
+
+  const candidate = splitCandidate(activeFileId, openedFiles.map((file) => file.id));
 
   let visibleTabs: OpenedFile[] = [];
   let hiddenTabs: OpenedFile[] = [];
@@ -146,6 +159,8 @@ export function EditorTabs({
             openedFiles,
             dirtyIds,
             reopenable: reopenableCount?.() ?? 0,
+            activeFileId,
+            splitRightFileId,
           })}
           onAction={(action: TabMenuAction) => {
             const tab = menu.tab;
@@ -180,14 +195,46 @@ export function EditorTabs({
               case 'reopen-closed':
                 onReopenClosed?.();
                 return;
+              case 'split-right':
+                onSplitTo?.(tab.id);
+                return;
+              case 'unsplit':
+                onUnsplit?.();
+                return;
             }
           }}
           onClose={() => setMenu(null)}
         />
       ) : null}
 
+      {/* The split control. It is NOT inside the overflow conditional: the strip folds every
+          non-active tab at panel width, so a split reachable only by right-clicking ANOTHER
+          tab would be unreachable exactly when the panel is narrow. It splits to the newest
+          other tab, which is the one the user just opened. */}
+      <div className="ml-auto flex items-center">
+        <button
+          type="button"
+          onClick={() => (splitRightFileId !== null ? onUnsplit?.() : onSplitTo?.(candidate as number | string))}
+          disabled={splitRightFileId === null && candidate === null}
+          aria-pressed={splitRightFileId !== null}
+          aria-label="Split editor"
+          title={
+            splitRightFileId !== null
+              ? 'Close the split pane (the tab stays open)'
+              : candidate === null
+                ? 'Open another file to split the editor'
+                : 'Split the editor and show the newest other file'
+          }
+          className={`p-1.5 mx-1 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default ${
+            splitRightFileId !== null ? 'bg-ink/10 text-ink' : 'text-ink/60 hover:bg-ink/10'
+          }`}
+        >
+          <PanelRight size={14} />
+        </button>
+      </div>
+
       {hiddenTabs.length > 0 && (
-        <div className="relative flex items-center ml-auto bg-ink/10" ref={dropdownRef}>
+        <div className="relative flex items-center bg-ink/10" ref={dropdownRef}>
           <button
             className={`p-1.5 mx-1 rounded hover:bg-ink/10 text-ink/60 ${showDropdown ? 'bg-ink/10 text-ink' : ''}`}
             onClick={() => setShowDropdown(!showDropdown)}

@@ -382,4 +382,124 @@ test.describe('editor', () => {
 
     workspace.dispose();
   });
+
+  /**
+   * Save As writes a SECOND file and leaves the original alone.
+   *
+   * Three claims, and each is a decision the dialog exists to make: the bytes land on disk
+   * under the name the user typed, the original still reads what it read before, and the new
+   * file gets its OWN tab — which is what makes the operation reversible by closing one tab
+   * rather than by remembering where the file used to be.
+   */
+  test('Save as writes a new file and leaves the original untouched', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-save-as');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    const originalPath = join(dir, 'notes.ts');
+    const copyPath = join(dir, 'notes copy.ts');
+    writeFileSync(originalPath, 'const alpha = 1;\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByText('src', { exact: true }).first().click();
+    await page.getByText('notes.ts', { exact: true }).first().click();
+
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    await expect(panel.locator('.cm-content')).toContainText('const alpha', { timeout: 15_000 });
+
+    await panel.getByRole('button', { name: 'Save as', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // The suggested name keeps the extension: losing it would change the language the
+    // surface resolves for the new file.
+    const nameField = dialog.getByLabel('File name');
+    await expect(nameField).toHaveValue('notes copy.ts');
+
+    const written = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/fs/action',
+    );
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await written;
+
+    await expect.poll(() => readFileSync(copyPath, 'utf8'), { timeout: 15_000 }).toContain('const alpha = 1;');
+    // The original is the file the user did NOT name, so it must not move.
+    expect(readFileSync(originalPath, 'utf8')).toBe('const alpha = 1;\n');
+
+    // The new file has its own tab; the original's is still in the strip.
+    await panel.getByTitle('More open files').click();
+    await expect(page.getByText('notes.ts', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+
+    workspace.dispose();
+  });
+
+  /**
+   * The split draws TWO documents, and closing the pane leaves both tabs open.
+   *
+   * The second half is the decision worth pinning: a split is a VIEW, so closing it must not
+   * close a document. The observable is the number of code surfaces — one before, two after —
+   * because the right pane is the same panel and no other mark distinguishes them.
+   */
+  test('splitting shows two documents, and closing the pane keeps both tabs', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-split');
+    const dir = join(workspace.path, 'src');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'left.ts'), 'const LEFT_MARKER = 1;\n');
+    writeFileSync(join(dir, 'right.ts'), 'const RIGHT_MARKER = 2;\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const files = page.locator('[data-panel-id="right-panel"]');
+    await page.getByText('src', { exact: true }).first().click();
+    await page.getByText('left.ts', { exact: true }).first().click();
+
+    const panel = page.locator('[data-panel-id="editor-panel"]');
+    await expect(panel.locator('.cm-content')).toContainText('LEFT_MARKER', { timeout: 15_000 });
+
+    // The second tab, opened from the tree so it lands in the strip.
+    const rightRow = files.getByText('right.ts', { exact: true }).first();
+    await rightRow.click();
+    await expect(panel.locator('.cm-content')).toContainText('RIGHT_MARKER', { timeout: 15_000 });
+    expect(await panel.locator('.cm-content').count()).toBe(1);
+
+    // Split from the strip's own control. The strip FOLDS every non-active tab at panel
+    // width, so the menu on another tab is not reachable here — which is exactly why the
+    // control exists and why it splits to the newest other tab.
+    await panel.getByRole('button', { name: 'Split editor' }).click();
+
+    // Two surfaces, and each holds its own document.
+    await expect(panel.locator('.cm-content')).toHaveCount(2, { timeout: 15_000 });
+    await expect(panel.locator('[data-split-column]')).toBeVisible();
+    // Each pane holds a DIFFERENT document. Which one is where is the strip's business — the
+    // left pane follows the active tab and the control splits to the newest other one — so
+    // the claim is that both documents are on screen at once, not an ordering.
+    const texts = await panel.locator('.cm-content').allInnerTexts();
+    expect(texts.join('\n')).toContain('LEFT_MARKER');
+    expect(texts.join('\n')).toContain('RIGHT_MARKER');
+
+    // Closing the pane is a VIEW decision: both tabs are still in the strip.
+    await panel.getByRole('button', { name: 'Close split pane' }).click();
+    await expect(panel.locator('[data-split-column]')).toHaveCount(0, { timeout: 10_000 });
+    expect(await panel.locator('.cm-content').count()).toBe(1);
+
+    await panel.getByTitle('More open files').click();
+    await expect(page.getByText('left.ts', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('right.ts', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+
+    // Split again, then reload: the split is session state, so it must come back. The gate
+    // is the debounced persist — reloading before it lands reads the PREVIOUS blob back,
+    // which is a race this spec does not own.
+    await panel.getByTitle('More open files').click();
+    await panel.getByRole('button', { name: 'Split editor' }).click();
+    await expect(panel.locator('[data-split-column]')).toBeVisible({ timeout: 10_000 });
+    const persisted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' && new URL(response.url()).pathname.startsWith('/api/sessions/'),
+    );
+    await persisted;
+    await page.reload();
+    await expect(panel.locator('[data-split-column]')).toBeVisible({ timeout: 20_000 });
+
+    workspace.dispose();
+  });
 });

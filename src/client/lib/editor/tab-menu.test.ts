@@ -25,9 +25,32 @@ const B = tab('b');
 const C = tab('c');
 const ALL = [A, B, C];
 
+/**
+ * Rows with the split columns defaulted.
+ *
+ * `activeFileId` is the tab the menu was opened on and `splitRightFileId` is null — the
+ * ordinary unsplit column, where `Split right` applies and `Unsplit` does not.
+ */
+function menuRows(options: {
+  tab: OpenedFile;
+  openedFiles: OpenedFile[];
+  dirtyIds?: Set<string | number>;
+  reopenable?: number;
+  activeFileId?: string | number | null;
+  splitRightFileId?: string | number | null;
+}) {
+  return buildTabMenuRows({
+    dirtyIds: new Set(),
+    reopenable: 0,
+    activeFileId: options.tab.id,
+    splitRightFileId: null,
+    ...options,
+  });
+}
+
 describe('buildTabMenuRows', () => {
   test('every row that applies is offered', () => {
-    const rows = buildTabMenuRows({ tab: B, openedFiles: ALL, dirtyIds: new Set(), reopenable: 2 });
+    const rows = menuRows({ tab: B, openedFiles: ALL, dirtyIds: new Set(), reopenable: 2 });
     expect(rows.map((row) => row.action)).toEqual([
       'close',
       'close-others',
@@ -40,23 +63,23 @@ describe('buildTabMenuRows', () => {
   });
 
   test('the only open tab offers no "close others"', () => {
-    const rows = buildTabMenuRows({ tab: A, openedFiles: [A], dirtyIds: new Set(), reopenable: 0 });
+    const rows = menuRows({ tab: A, openedFiles: [A], dirtyIds: new Set(), reopenable: 0 });
     expect(rows.map((row) => row.action)).toEqual(['close', 'close-all', 'copy-path', 'reveal-in-files']);
   });
 
   test('an empty reopen stack offers no "reopen closed"', () => {
-    const rows = buildTabMenuRows({ tab: A, openedFiles: ALL, dirtyIds: new Set(), reopenable: 0 });
+    const rows = menuRows({ tab: A, openedFiles: ALL, dirtyIds: new Set(), reopenable: 0 });
     expect(rows.map((row) => row.action)).not.toContain('reopen-closed');
   });
 
   test('with every OTHER tab dirty, "close saved" would do nothing and is absent', () => {
-    const rows = buildTabMenuRows({ tab: A, openedFiles: ALL, dirtyIds: new Set(['b', 'c']), reopenable: 0 });
+    const rows = menuRows({ tab: A, openedFiles: ALL, dirtyIds: new Set(['b', 'c']), reopenable: 0 });
     expect(rows.map((row) => row.action)).not.toContain('close-saved');
   });
 
   test('"close saved" IS offered when this tab is the only saved one, since it closes it', () => {
     // The row is about the SAVED tabs, and the one it was opened on counts.
-    const rows = buildTabMenuRows({ tab: A, openedFiles: ALL, dirtyIds: new Set(['b', 'c']), reopenable: 0 });
+    const rows = menuRows({ tab: A, openedFiles: ALL, dirtyIds: new Set(['b', 'c']), reopenable: 0 });
     expect(rows.map((row) => row.action)).not.toContain('close-saved');
   });
 
@@ -65,13 +88,13 @@ describe('buildTabMenuRows', () => {
     // it in the Files panel is not, because the panel lists files and the diff tab is a
     // change against one.
     const diff: OpenedFile = { id: 'd', name: 'a.ts (diff)', path: 'a.ts', isDiff: true };
-    const rows = buildTabMenuRows({ tab: diff, openedFiles: [diff], dirtyIds: new Set(), reopenable: 0 });
+    const rows = menuRows({ tab: diff, openedFiles: [diff], dirtyIds: new Set(), reopenable: 0 });
     expect(rows.map((row) => row.action)).toEqual(['close', 'close-all', 'copy-path']);
   });
 
   test('a path-less tab (an attachment chip) offers no path actions', () => {
     const chip: OpenedFile = { id: 'chip', name: 'notes.txt', path: '' };
-    const rows = buildTabMenuRows({ tab: chip, openedFiles: [chip], dirtyIds: new Set(), reopenable: 0 });
+    const rows = menuRows({ tab: chip, openedFiles: [chip], dirtyIds: new Set(), reopenable: 0 });
     expect(rows.map((row) => row.action)).not.toContain('copy-path');
   });
 });

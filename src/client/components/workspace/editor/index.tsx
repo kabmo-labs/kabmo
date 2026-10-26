@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { FileIcon } from '@/client/components/common/file-icon';
 import { EditorTabs } from '@/client/components/workspace/editor/Tabs';
 import { isFindBarCommand, type EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { EDITOR_DEFAULT_FONT_SIZE } from '@/shared/lib/code/editor/typography';
@@ -8,7 +7,8 @@ import { useEditorTheme } from '@/client/hooks/editor/theme';
 import type { CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { useActiveEditorPanel } from '@/client/components/workspace/plugin-panel/resolve';
 import { EditorBody } from '@/client/components/workspace/editor/Body';
-import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
+import { PluginColumn } from '@/client/components/workspace/editor/PluginColumn';
+import { EmptyEditor } from '@/client/components/workspace/editor/EmptyEditor';
 
 import { usePluginFileView } from '@/client/components/workspace/editor/plugin-file-view';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -21,9 +21,10 @@ import { useEditorTabState } from '@/client/hooks/editor/use-editor-tab-state';
 import { useEditorOutlineBridge } from '@/client/hooks/editor/use-editor-outline-bridge';
 import { useMissingFiles } from '@/client/hooks/workspace/missing-files';
 import { retainDirtyTabs } from '@/client/lib/editor-dirty-tabs';
-import { EditorDialogs } from '@/client/components/workspace/editor/Dialogs';
-import { useExternalChange } from '@/client/hooks/editor/use-external-change';
-import { EditorNotices } from '@/client/components/workspace/editor/Notices';
+import { EditorPane } from '@/client/components/workspace/editor/Pane';
+import { SplitColumn } from '@/client/components/workspace/editor/SplitColumn';
+import { useSplitEditor } from '@/client/hooks/editor/use-split-editor';
+import { useExternalChangeNotice } from '@/client/hooks/editor/use-external-change-notice';
 import { useEditorPanelKeys } from '@/client/hooks/editor/use-editor-panel-keys';
 import { useCloseGuard } from '@/client/hooks/editor/use-close-guard';
 import type { EditorProps } from '@/client/components/workspace/editor/props';
@@ -45,19 +46,34 @@ export function Editor({
   rootPath = null,
   repoPath = null,
   activeEditorPanelKey = null,
+  forcedActiveFileId = null,
+  asSplitPane = false,
 }: EditorProps) {
-  const activeFile = openedFiles.find(f => f.id === activeFileId);
-  
+  // A split pane renders the tab it was given; the left pane follows the strip's active id.
+  const resolvedActiveFileId = asSplitPane ? forcedActiveFileId : activeFileId;
+  const activeFile = openedFiles.find(f => f.id === resolvedActiveFileId);
+
   const [previewMode, setPreviewMode, previewReady] = useSessionState<Record<string | number, boolean>>('editor.previewMode', {});
   const [zoomLevel, setZoomLevel] = useSessionState<number>('editor.zoomLevel', EDITOR_DEFAULT_FONT_SIZE);
   const [isMaximized, setIsMaximized] = useState(false);
   const [wordWrap, setWordWrap] = useSessionState<boolean>('editor.wordWrap', true);
+  // The panel's own transient UI: the palette, the go-to-line request, quick open and Save
+  // As. All four are component state (never persisted) because each is a thing the user is
+  // doing right now.
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // A counter, not a boolean: the dialog lives in the document (where the caret and
-  // the handle are), so a boolean would need a matching "closed" write from there.
+  // A counter, not a boolean: the dialog lives in the document (where the caret and the
+  // handle are), so a boolean would need a matching "closed" write from there.
   const [goToLineRequest, setGoToLineRequest] = useState(0);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [saveAsOpen, setSaveAsOpen] = useState(false);
   const { sessionId } = useSessionStateContext();
+  // The split's state and its derived values. `enabled: false` in a split pane, which never
+  // splits again — the column has two panes, not a tree.
+  const splitState = useSplitEditor({
+    openedFiles,
+    activeFileId: resolvedActiveFileId,
+    enabled: !asSplitPane,
+  });
   const surfaceRef = useRef<CodeSurfaceHandle | null>(null);
   const editorFontFamily = useEditorFontStack();
   const editorTheme = useEditorTheme();
@@ -88,42 +104,19 @@ export function Editor({
   // view, and the resolver is cheap when no plugin contributed one.
   const pluginFileView = usePluginFileView({ path: activeFile?.path ?? '', content: editor.content, language: editor.language });
 
-  /**
-   * "This file changed on disk while you were editing it."
-   *
-   * Only a DIRTY buffer asks — a clean one has nothing to lose, and the read effect
-   * already re-reads on a refresh. `refreshKey` is the panel's own "something was
-   * written" counter, so an agent's tool call, a Files-panel delete and a manual
-   * Refresh all reach here without a poll.
-   */
-  const externalChange = useExternalChange({
-    path: activeFile && !activeFile.isDiff ? activeFile.path : null,
-    root: activeFile?.root,
-    repo: activeFile?.repo,
+  // The disk-change strip and its answer; the rules live in the hook.
+  const { externalChange, keepMine: keepMineAgainstDisk } = useExternalChangeNotice({
+    file: activeFile,
     baseMtimeMs: editor.baseMtimeMs,
     dirty: editor.isDirty,
     revision: refreshKey,
+    adoptDiskMtime: editor.adoptDiskMtime,
   });
 
-  /**
-   * Closing a tab, guarded when it holds edits that are not on disk.
-   *
-   * Built after the editor because the guard writes through `editor.saveNow` — a
-   * background tab is activated first, since `saveNow` writes the ACTIVE file.
-   */
-  /**
-   * "Keep mine" on the external-change strip: adopt the disk mtime as this buffer's
-   * base, so the next save is not refused over a change the user has now seen and
-   * accepted. Nothing is written — the buffer stays dirty and the autosave owns the write.
-   */
-  const keepMineAgainstDisk = () => {
-    const mtime = externalChange?.mtimeMs;
-    if (mtime != null) editor.adoptDiskMtime(mtime);
-  };
-
+  // Built after the editor: the guard writes through `editor.saveNow`.
   const closeGuard = useCloseGuard({
     openedFiles,
-    activeFileId,
+    activeFileId: resolvedActiveFileId,
     onSelectFile,
     onCloseFile,
     saveNow: editor.saveNow,
@@ -233,93 +226,123 @@ export function Editor({
   const pluginColumn = useActiveEditorPanel(activeEditorPanelKey);
 
   if (pluginColumn) {
-    return (
-      <div className={`flex flex-col h-full bg-canvas ${className}`}>
-        <PluginIdProvider pluginId={pluginColumn.pluginId}>
-          <pluginColumn.Component sessionId={sessionId ?? null} workspacePath={null} />
-        </PluginIdProvider>
-      </div>
-    );
+    return <PluginColumn pluginId={pluginColumn.pluginId} Component={pluginColumn.Component} sessionId={sessionId} className={className} />;
   }
 
-
-  if (openedFiles.length === 0) {
-    return (
-      <div className={`flex flex-col h-full bg-canvas items-center justify-center text-ink/40 ${className}`}>
-        <FileIcon name="placeholder.txt" size={48} className="mb-4 opacity-20" />
-        <p className="font-mono text-sm">Select a file to open</p>
-      </div>
-    );
-  }
+  if (openedFiles.length === 0) return <EmptyEditor className={className} />;
 
   const viewerKind = editor.viewerKind;
   const isPreview = activeFile ? previewMode[activeFile.id] : false;
 
-  const editorContainerClass = isMaximized 
-    ? 'fixed inset-0 z-50 flex flex-col bg-canvas' 
-    : `flex flex-col h-full bg-canvas ${className}`;
+  // A spread rather than twenty inline props: the split renders this same panel twice, and
+  // two hand-written lists are how one pane gains a prop the other lacks.
+  const bodyProps = {
+    activeFile,
+    editor,
+    find,
+    surfaceRef,
+    pluginFileView,
+    wordWrap,
+    setWordWrap,
+    viewerKind,
+    isPreview: Boolean(isPreview),
+    isMaximized,
+    setIsMaximized,
+    zoomLevel,
+    setZoomLevel,
+    paletteOpen,
+    setPaletteOpen,
+    goToLineRequest,
+    onSaveAs: () => setSaveAsOpen(true),
+    quickOpen,
+    onCloseQuickOpen: () => setQuickOpen(false),
+    onOpenPath,
+    rootPath,
+    repoPath,
+    runCommand,
+    editorFontFamily,
+    editorTheme,
+    togglePreview,
+    revealActive: Boolean(searchReveal),
+    missing: activeFileMissing,
+    onConvertDiffToEditor,
+    onFileSaved,
+  };
+
+
+  // The right pane IS this panel, so its props are this component's own. A record rather
+  // than a literal: a hand-written list is where a second pane silently loses a feature.
+  const panePropsForRightPane = (forcedActiveFileId: number | string) => ({
+    openedFiles,
+    activeFileId,
+    onSelectFile,
+    onCloseFile,
+    onConvertDiffToEditor,
+    refreshKey,
+    onFileSaved,
+    onOpenPath,
+    rootPath,
+    repoPath,
+    forcedActiveFileId,
+    asSplitPane: true,
+  });
+
+  // The strip, as one value: it is the LEFT pane's alone, and `EditorPane` drops it in a
+  // split pane (the tab order belongs to one owner).
+  const tabs = (
+    <EditorTabs
+      openedFiles={openedFiles}
+      activeFileId={activeFileId}
+      onSelectFile={onSelectFile}
+      onCloseFile={closeGuard.requestClose}
+      missingIds={missingIds}
+      onCopyPath={onCopyPath}
+      onRevealInFiles={onRevealInFiles}
+      onReopenClosed={onReopenClosed}
+      reopenableCount={reopenableCount}
+      onSplitTo={splitState.splitTo}
+      onUnsplit={splitState.close}
+      splitRightFileId={splitState.rightFile?.id ?? null}
+    />
+  );
+
+  const paneBody = (
+    <EditorPane
+      className={className}
+      isMaximized={isMaximized}
+      onKeyDownCapture={panelKeys.onKeyDownCapture}
+      asSplitPane={asSplitPane}
+      tabs={tabs}
+      activeFile={activeFile}
+      editor={editor}
+      externalChange={externalChange}
+      conflict={editor.conflict}
+      onReload={editor.resolveConflictByReload}
+      onKeepMine={keepMineAgainstDisk}
+      body={<EditorBody {...bodyProps} />}
+      saveAsOpen={saveAsOpen}
+      onSaveAsClose={() => setSaveAsOpen(false)}
+      onSavedAs={(path) => {
+        setSaveAsOpen(false);
+        // The new file gets its OWN tab and the original stays open, which is what makes
+        // Save As reversible by closing one tab.
+        onOpenPath?.(path);
+      }}
+      closeGuard={closeGuard}
+    />
+  );
+
+  if (!splitState.rightFile) return paneBody;
 
   return (
-    <div className={editorContainerClass} onKeyDownCapture={panelKeys.onKeyDownCapture}>
-      <EditorTabs
-        openedFiles={openedFiles}
-        activeFileId={activeFileId}
-        onSelectFile={onSelectFile}
-        onCloseFile={closeGuard.requestClose}
-        missingIds={missingIds}
-        onCopyPath={onCopyPath}
-        onRevealInFiles={onRevealInFiles}
-        onReopenClosed={onReopenClosed}
-        reopenableCount={reopenableCount}
-      />
-
-      <EditorNotices
-        activeFile={activeFile}
-        externalChange={externalChange}
-        conflict={editor.conflict}
-        onReload={editor.resolveConflictByReload}
-        onKeepMine={keepMineAgainstDisk}
-      />
-
-      <EditorBody
-        activeFile={activeFile}
-        editor={editor}
-        find={find}
-        surfaceRef={surfaceRef}
-        pluginFileView={pluginFileView}
-        wordWrap={wordWrap}
-        setWordWrap={setWordWrap}
-        viewerKind={viewerKind}
-        isPreview={Boolean(isPreview)}
-        isMaximized={isMaximized}
-        setIsMaximized={setIsMaximized}
-        zoomLevel={zoomLevel}
-        setZoomLevel={setZoomLevel}
-        paletteOpen={paletteOpen}
-        setPaletteOpen={setPaletteOpen}
-        goToLineRequest={goToLineRequest}
-        quickOpen={quickOpen}
-        onCloseQuickOpen={() => setQuickOpen(false)}
-        onOpenPath={onOpenPath}
-        rootPath={rootPath}
-        repoPath={repoPath}
-        runCommand={runCommand}
-        editorFontFamily={editorFontFamily}
-        editorTheme={editorTheme}
-        togglePreview={togglePreview}
-        revealActive={Boolean(searchReveal)}
-        missing={activeFileMissing}
-        onConvertDiffToEditor={onConvertDiffToEditor}
-        onFileSaved={onFileSaved}
-      />
-
-      <EditorDialogs
-        closeGuard={closeGuard}
-        activeFile={activeFile}
-        saveMissingConfirm={editor.saveMissingConfirm}
-        onCancelSaveMissing={editor.cancelSaveMissing}
-        onConfirmSaveMissing={editor.confirmSaveMissing}
-      />
-    </div>
+    <SplitColumn
+      fraction={splitState.fraction}
+      onFraction={splitState.setFraction}
+      rightPaneName={splitState.rightFile.name}
+      onClosePane={splitState.close}
+      rightPane={<Editor {...panePropsForRightPane(splitState.rightFile.id)} />}
+    >
+      {paneBody}
+    </SplitColumn>
   );
 }

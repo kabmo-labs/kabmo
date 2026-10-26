@@ -27,9 +27,12 @@
  */
 
 import type { OpenedFile } from '@/shared/types/fs';
+import { canSplitTo } from '@/shared/lib/workspace/split-editor';
 
 /** What a tab menu row asks for. */
 export type TabMenuAction =
+  | 'split-right'
+  | 'unsplit'
   | 'close'
   | 'close-others'
   | 'close-all'
@@ -54,6 +57,10 @@ interface BuildTabMenuRowsOptions {
   dirtyIds: ReadonlySet<string | number>;
   /** How many closed tabs can still be reopened. */
   reopenable: number;
+  /** The LEFT pane's tab: the tab the split would be divided FROM. */
+  activeFileId: string | number | null;
+  /** The tab the right pane currently shows, or null when the column is unsplit. */
+  splitRightFileId: string | number | null;
 }
 
 /**
@@ -68,10 +75,17 @@ export function buildTabMenuRows({
   openedFiles,
   dirtyIds,
   reopenable,
+  activeFileId,
+  splitRightFileId,
 }: BuildTabMenuRowsOptions): TabMenuRow[] {
   const others = openedFiles.filter((file) => file.id !== tab.id);
   const saved = openedFiles.filter((file) => !dirtyIds.has(file.id));
+  const openIds = openedFiles.map((file) => file.id);
   const rows: TabMenuRow[] = [
+    // Split rows sit FIRST, above the closes: they are the only rows here that ADD
+    // something, and a menu whose first four rows all destroy is a menu you read slowly.
+    { action: 'split-right', label: 'Split right', enabled: canSplitTo(tab.id, activeFileId, openIds) },
+    { action: 'unsplit', label: 'Unsplit', enabled: splitRightFileId !== null },
     { action: 'close', label: 'Close', enabled: true },
     { action: 'close-others', label: 'Close others', enabled: others.length > 0 },
     { action: 'close-all', label: 'Close all', enabled: openedFiles.length > 0 },

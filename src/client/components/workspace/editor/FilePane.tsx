@@ -35,6 +35,8 @@ interface FilePaneProps {
   setPaletteOpen: (open: boolean) => void;
   /** Bumped when the user asks for "go to line"; this pane owns the dialog. */
   goToLineRequest: number;
+  /** Open the Save As dialog. */
+  onSaveAs: () => void;
   /** The file picker is open. */
   quickOpen: boolean;
   onCloseQuickOpen: () => void;
@@ -83,6 +85,7 @@ export function FilePane({
   paletteOpen,
   setPaletteOpen,
   goToLineRequest,
+  onSaveAs,
   quickOpen,
   onCloseQuickOpen,
   onOpenPath,
@@ -125,6 +128,7 @@ export function FilePane({
         onCopy={editor.copy}
         onDownload={editor.download}
         onRevert={editor.revertToDisk}
+        onSaveAs={onSaveAs}
         // Only a buffer with edits has anything to throw away; a clean one would
         // re-read the same bytes and blank the screen for a moment.
         canRevert={editor.isDirty && !editor.loadError && !editor.unsupported}

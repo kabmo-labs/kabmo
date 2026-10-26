@@ -30,6 +30,13 @@ export const pristineWebSocket = globalThis.WebSocket;
 export const DOM_TEST_GLOBALS = [
   'window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement',
   'Event', 'CustomEvent', 'WebSocket', 'EventSource',
+  // The three DOM data classes, because a suite that swaps `window` usually needs them and
+  // a LOCAL save-and-restore loop is how they leaked: `editor/save-as.test.ts` installed
+  // happy-dom's `File`/`Blob` and never put them back, so a later file's `carriesBytes` read
+  // a happy-dom `File` whose `slice().arrayBuffer()` answered empty and reported that a real
+  // file held no bytes — a failure in a suite that file does not name. Listed here, they are
+  // captured on the first install and restored with the rest.
+  'FormData', 'File', 'Blob',
 ] as const;
 
 /**

@@ -8,6 +8,7 @@ import { runShell } from '@/server/lib/fs/shell';
 import { revealInFileManager } from '@/server/lib/fs/reveal';
 import { duplicateEntry, nextDuplicateName, pasteEntry, toRelPath } from '@/server/lib/fs/transfer';
 import { normalizeRelativePath } from '@/server/lib/fs/relative-path';
+import { isSinglePathSegment } from '@/server/lib/fs/path-segment';
 import { checkWriteConflict, parseBaseMtime, stableMtime } from '@/server/lib/fs/write-conflict';
 import { transferRefusal } from '@/shared/lib/fs/clipboard';
 import { toDiskText } from '@/shared/lib/code/line-endings';
@@ -128,6 +129,34 @@ export async function action({ request }: ActionFunctionArgs) {
       await Bun.write(fullPath, content);
       const written = await Bun.file(fullPath).stat().catch(() => null);
       return json({ success: true, mtimeMs: written ? stableMtime(written.mtimeMs) : null });
+    } else if (actionType === 'saveAs') {
+      // Write the buffer to a NEW path. The destination is `path` (a directory) plus
+      // `name` (ONE segment), both resolved against this route's own scope — a
+      // client-supplied absolute path is exactly the shape that would write outside the
+      // workspace, so it is never trusted.
+      //
+      // No `baseMtime`: a file that did not exist a moment ago has nothing to compare
+      // against, and sending the ORIGINAL's mtime would refuse every Save As.
+      const directory = (formData.get('path') as string) ?? '';
+      const name = ((formData.get('name') as string) ?? '').trim();
+      if (!isSinglePathSegment(name)) {
+        return json({ error: 'Enter a file name without a path separator' }, { status: 400 });
+      }
+      const destination = resolveWithinRoot(scopedRoot, path.join(directory || '.', name));
+      if (!destination) return json({ error: 'Invalid path' }, { status: 403 });
+      // An existing destination is REFUSED, not overwritten: overwriting is what `save`
+      // is for, and a dialog that silently replaced a file the user did not name is the
+      // worst outcome of a mis-click. The same rule `create` applies.
+      if ((await Bun.file(destination).stat().catch(() => null)) !== null) {
+        return json({ error: `${name} already exists` }, { status: 409 });
+      }
+      const raw = (formData.get('content') as string) ?? '';
+      const eol = formData.get('eol');
+      const content = eol === 'crlf' || eol === 'lf' ? toDiskText(raw, eol) : raw;
+      await fs.promises.mkdir(path.dirname(destination), { recursive: true });
+      await Bun.write(destination, content);
+      // Relative to the LISTED root, which is the identity a tab needs.
+      return json({ success: true, path: toRelPath(scopedRoot, destination) });
     } else if (actionType === 'create') {
       // The Files panel's "New file"/"New folder": an empty entry beside the
       // folder that was right-clicked. The NAME may carry segments

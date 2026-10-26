@@ -62,6 +62,8 @@ interface EditorToolbarProps {
   onRevert: () => void;
   /** Enabled only for a buffer with edits — reverting a clean one does nothing. */
   canRevert: boolean;
+  /** Write the buffer to a NEW path; the original tab stays open. */
+  onSaveAs: () => void;
   onToggleMaximize: () => void;
 }
 
@@ -98,6 +100,7 @@ export function EditorToolbar({
   onDownload,
   onRevert,
   canRevert,
+  onSaveAs,
   onToggleMaximize,
 }: EditorToolbarProps) {
   const saveTitle =
@@ -181,6 +184,7 @@ export function EditorToolbar({
     onCopy,
     onDownload,
     onRevert,
+    onSaveAs,
     onToggleMaximize,
     onSave,
   });
