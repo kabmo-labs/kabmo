@@ -20,7 +20,7 @@
  * platform-shaped fixture would pass with the fix removed.
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -38,6 +38,24 @@ const saved = {
   mock: Bun.env.MOCK,
   sync: Bun.env.SYNC_WORKSPACE,
 };
+
+/**
+ * A budget, not a skip — the same one the git suites state for the same reason
+ * (`git-actions-sync.test.ts`, `git-update.server.test.ts`).
+ *
+ * `loadSidebarStructure` is not a pure read here: a folder that HAS a session
+ * reaches `sessionWorktreeMap`, which spawns `git worktree list` through
+ * `listWorktrees`. Measured on `windows-latest` for commit `5bcd8870`, one run
+ * of this file paid ~8.1s for the two cases whose folder has a session while the
+ * SAME file on the SAME commit, in that commit's `CI` run, took 244ms and 270ms
+ * — a runner outlier of ~30x, not a regression. The third case, whose folder has
+ * no session and so spawns no git, passed at 1.2s inside the slow run.
+ *
+ * Without the budget the timeout is reported on one line and the late assertion
+ * on the next as `received: []`, which reads as "the canonical bucket fix
+ * regressed" — the opposite of what happened.
+ */
+setDefaultTimeout(30_000);
 
 let root = '';
 let sessionsRoot = '';
