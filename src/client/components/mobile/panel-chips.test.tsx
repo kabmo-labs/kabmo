@@ -133,6 +133,84 @@ describe('PanelChips', () => {
   });
 });
 
+describe('PanelChips reveal', () => {
+  // happy-dom computes no layout, so the strip's geometry is stubbed: a 300px
+  // window over six 80px chips, which is a phone-width strip with a panel past
+  // its right edge. The defect this pins is a DECISION about that geometry, so
+  // the arithmetic is asserted here rather than in a browser.
+  const STRIP_W = 300;
+  const CHIP_W = 80;
+  let rect: typeof Element.prototype.getBoundingClientRect;
+  let clientWidth: PropertyDescriptor | undefined;
+  let scrollWidth: PropertyDescriptor | undefined;
+
+  const isStrip = (el: Element) => el instanceof HTMLElement && el.className.includes('overflow-x-auto');
+
+  function box(width: number, left: number): DOMRect {
+    return { width, height: 24, top: 0, left, right: left + width, bottom: 24, x: left, y: 0, toJSON: () => ({}) } as DOMRect;
+  }
+
+  beforeEach(() => {
+    rect = Element.prototype.getBoundingClientRect;
+    clientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+    scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (isStrip(this)) return box(STRIP_W, 0);
+      const siblings = [...(this.parentElement?.querySelectorAll('button') ?? [])];
+      const index = siblings.indexOf(this as HTMLButtonElement);
+      return index === -1 ? box(0, 0) : box(CHIP_W, index * CHIP_W);
+    };
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isStrip(this) ? STRIP_W : (clientWidth?.get?.call(this) ?? 0);
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isStrip(this) ? CHIP_W * 6 : (scrollWidth?.get?.call(this) ?? 0);
+      },
+    });
+  });
+
+  afterEach(() => {
+    Element.prototype.getBoundingClientRect = rect;
+    if (clientWidth) Object.defineProperty(HTMLElement.prototype, 'clientWidth', clientWidth);
+    if (scrollWidth) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
+  });
+
+  const six = () => Array.from({ length: 6 }, (_, index) => panel(`p${index}`));
+
+  test('a chip selected from outside the strip is scrolled into view', async () => {
+    // The navbar readout's shape: the drawer mounts with the panel already
+    // stored, so the strip has to move on the very first render.
+    await mountStrip(six(), 'p5');
+    const strip = container.querySelector('div') as HTMLDivElement;
+    // 5 × 80 = 400 leading; 480 + 8 pad − 300 window = 188, under the 180 range
+    // … so the offset is clamped to the range's end.
+    expect(strip.scrollLeft).toBe(CHIP_W * 6 - STRIP_W);
+  });
+
+  test('a chip already in view leaves the strip where it is', async () => {
+    await mountStrip(six(), 'p0');
+    const strip = container.querySelector('div') as HTMLDivElement;
+    expect(strip.scrollLeft).toBe(0);
+  });
+
+  test('moving the selection from outside scrolls to the new chip', async () => {
+    await act(async () => {
+      render(h(PanelChips, { panels: six(), activeId: 'p0', onSelect: () => {} }), container);
+    });
+    const strip = container.querySelector('div') as HTMLDivElement;
+    expect(strip.scrollLeft).toBe(0);
+    await act(async () => {
+      render(h(PanelChips, { panels: six(), activeId: 'p4', onSelect: () => {} }), container);
+    });
+    expect(strip.scrollLeft).toBeGreaterThan(0);
+  });
+});
+
 describe('MobileDockBody', () => {
   test('renders the panel it is handed', async () => {
     await act(async () => {
