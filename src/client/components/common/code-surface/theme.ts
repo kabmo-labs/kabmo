@@ -144,15 +144,19 @@ export function surfaceTheme(): Extension {
     },
     // The bracket pair GUIDE: a vertical rule from the caret's brace to its pair.
     //
-    // `--bracket-guide-col` is written per LINE by the decoration, because the
-    // column is the opening brace's own — `function f() {` puts the rule at
-    // column 13, not at the line's left edge. `ch` is the unit because the
-    // surface is monospace on every row.
+    // `--bracket-guide-col` is written per LINE by the decoration, and it is the
+    // column of the pair's LEFTMOST brace — `const v = merge(base, {` opens at
+    // column 20 and its closing brace sits at column 0, so the rule follows the
+    // one a reader can see. `ch` is the unit because the surface is monospace on
+    // every row.
     //
     // The rule is an absolutely-positioned `::before` on the line rather than a
     // `border-left`, because a border would push the text and a guide must not
     // change the layout. `.cm-line` is `display: block`, so it is the
-    // containing block.
+    // containing block — and an absolute offset resolves against its PADDING
+    // box, so `--surface-pad` has to be added back or the rule lands one gutter
+    // to the left of the glyph it points at (measured: 750.6 against a brace
+    // whose centre is 766.6, exactly the line's 16px padding).
     '.cm-line.cm-bracket-guide': { position: 'relative' },
     '.cm-line.cm-bracket-guide::before': {
       content: '""',
@@ -161,7 +165,7 @@ export function surfaceTheme(): Extension {
       bottom: '0',
       // `+ 0.5ch` centres the 1px rule under the brace glyph instead of at its
       // leading edge.
-      left: 'calc(var(--bracket-guide-col, 0) * 1ch + 0.5ch)',
+      left: 'calc(var(--surface-pad, 16px) + var(--bracket-guide-col, 0) * 1ch + 0.5ch)',
       width: '1px',
       backgroundColor: 'color-mix(in srgb, var(--theme-info) 45%, transparent)',
       pointerEvents: 'none',

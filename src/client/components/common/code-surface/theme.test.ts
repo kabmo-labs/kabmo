@@ -113,6 +113,17 @@ describe('surface theme', () => {
     expect(focused).toBe(true);
   });
 
+  test('the guide rule carries the line padding, or it lands a gutter left of the brace', () => {
+    const css = themeCss();
+    // `position: absolute` resolves against the line's PADDING box, while the
+    // glyph it points at starts INSIDE that padding. Measured in the browser
+    // before this: the rule sat at 750.6 against a brace whose centre was
+    // 766.6 — exactly `.cm-line`'s 16px `--surface-pad`. So the offset must be
+    // the pad plus the column, never the column alone.
+    const rule = /\.cm-line\.cm-bracket-guide::before \{[^}]*left: calc\(var\(--surface-pad, 16px\) \+ var\(--bracket-guide-col, 0\) \* 1ch \+ 0\.5ch\)/.test(css);
+    expect(rule).toBe(true);
+  });
+
   test('the fold placeholder is declared LONGHAND, because style-mod cannot parse a var() shorthand', () => {
     const css = themeCss();
     // Measured: `border: 1px solid var(--x)` is expanded by style-mod into

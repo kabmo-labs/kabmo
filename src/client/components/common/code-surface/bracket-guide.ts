@@ -25,13 +25,21 @@
  * **Blank lines get no guide.** A rule through the blank line between two
  * functions reads as if the block continued through it; the gap is the signal.
  *
+ * **The rule hangs from the LEFTMOST brace of the pair.** One straight line
+ * cannot meet two braces in different columns, and the common shapes put them
+ * far apart: `const config = merge(base, {` opens at column 30 and closes at
+ * column 0, so a rule at the opener's column points at nothing on every row in
+ * between while the brace it is meant to reach sits at the left edge. Taking
+ * the smaller of the two is what makes the line land on a brace a reader can
+ * see, whichever of the pair that is.
+ *
  * The cost is one decoration per line of the block, rebuilt on selection and
  * document changes — 4 decorations for a typical block, and the span is capped
  * by `MAX_GUIDE_LINES` so a 5 000-line block cannot turn a caret move into
  * thousands of ranges.
  */
 
-import { RangeSetBuilder, type EditorState } from '@codemirror/state';
+import { countColumn, RangeSetBuilder, type EditorState } from '@codemirror/state';
 import { Decoration, ViewPlugin, type DecorationSet, type EditorView } from '@codemirror/view';
 import { matchBrackets } from '@codemirror/language';
 
@@ -44,18 +52,28 @@ import { matchBrackets } from '@codemirror/language';
  */
 export const MAX_GUIDE_LINES = 400;
 
+/** The column a position occupies on its line, in character cells. */
+function columnOf(state: EditorState, pos: number): number {
+  const line = state.doc.lineAt(pos);
+  // `countColumn`, not `pos - line.from`: a literal tab advances to the next tab
+  // stop, and CM6 writes `tab-size: state.tabSize` on `.cm-content`, so cells —
+  // not code units — are what `ch` measures.
+  return countColumn(line.text, state.tabSize, pos - line.from);
+}
+
 /**
- * The column the guide is drawn in: the opening brace's own, in CH.
+ * The column the guide is drawn in: the LEFTMOST of the pair's two braces.
  *
- * The line's text is indented, and the brace sits after whatever precedes it
- * (`function f() {`), so a rule at the line's left edge would point at nothing.
- * `ch` is right because the editor is monospace — measured: the surface sets
- * `font-family: inherit` from a host that carries Fira Code, so one character is
- * one `ch` on every row.
+ * One vertical rule cannot meet two braces that sit in different columns, so it
+ * hangs from whichever is further left. `const config = merge(base, {` opens at
+ * column 30 and closes at column 0; a rule at 30 points at nothing on every row
+ * between, while the brace it is meant to reach sits at the left edge. Taking
+ * the minimum is what makes the rule land on the brace a reader can see.
  */
-function guideColumn(state: EditorState, openPos: number): number {
-  const line = state.doc.lineAt(openPos);
-  return openPos - line.from;
+function guideColumn(state: EditorState, pair: { open: number; close: number }): number {
+  // `pair.close` is the offset just PAST the closing brace, so the brace itself
+  // is one code unit back.
+  return Math.min(columnOf(state, pair.open), columnOf(state, pair.close - 1));
 }
 
 /**
@@ -101,7 +119,7 @@ export function bracketGuideDecorations(state: EditorState): DecorationSet {
   if (closeLine.number - openLine.number <= 1) return Decoration.none;
   if (closeLine.number - openLine.number > MAX_GUIDE_LINES) return Decoration.none;
 
-  const column = guideColumn(state, pair.open);
+  const column = guideColumn(state, pair);
   const decoration = guideLine(column);
   const builder = new RangeSetBuilder<Decoration>();
   for (let number = openLine.number + 1; number < closeLine.number; number++) {

@@ -123,15 +123,41 @@ describe('bracketGuideDecorations', () => {
     expect(guidedLines(stateOf(DOC, DOC.indexOf('inner')))).toEqual([]);
   });
 
-  test('the column is the OPENING BRACE’s, not the line’s left edge', () => {
-    // `function outer() {` is 18 characters and the brace is the 18th, so its
-    // zero-based offset is 17. A guide at the line's left edge would be 0 —
-    // which is an INDENT guide, a different feature.
-    const columns = guideColumns(stateOf(DOC, DOC.indexOf('{') + 1));
-    expect(columns.length).toBeGreaterThan(0);
-    expect(columns[0]).toBe('--bracket-guide-col: 17');
+  test('the column is the LEFTMOST brace of the pair, so the rule lands on a brace', () => {
+    // The outer pair opens at column 17 (`function outer() {`) and closes at
+    // column 0. A rule at 17 would float in empty space above nothing; at 0 it
+    // runs down to the `}` that ends the block.
+    const outer = guideColumns(stateOf(DOC, DOC.indexOf('{') + 1));
+    expect(outer.length).toBeGreaterThan(0);
+    expect(outer[0]).toBe('--bracket-guide-col: 0');
     // Every row of one pair shares one column, or the rule would not be straight.
-    expect(new Set(columns).size).toBe(1);
+    expect(new Set(outer).size).toBe(1);
+    // The inner pair closes at column 2 (`  }`), which is the leftmost of ITS two.
+    const inner = guideColumns(stateOf(DOC, DOC.indexOf('{', DOC.indexOf('if')) + 1));
+    expect(inner[0]).toBe('--bracket-guide-col: 2');
+  });
+
+  test('when the OPENING brace is the leftmost, the rule follows it', () => {
+    // An aligned continuation puts the closer further right than the opener:
+    // `{` at 10, `}` at 15. The leftmost is the opener, so the rule hangs there
+    // — the case a rule that always took the closing brace would get wrong.
+    const doc = ['const x = {a: 1,', '           b: 2,', '           c: 3}', ''].join('\n');
+    const columns = guideColumns(stateOf(doc, doc.indexOf('{') + 1));
+    expect(columns).toEqual(['--bracket-guide-col: 10']);
+  });
+
+  test('a tab-indented pair measures cells, not code units', () => {
+    // `countColumn` is what makes this right: CM6 writes `tab-size: state.tabSize`
+    // on `.cm-content`, so a leading tab occupies `tabSize` cells, and `ch` is
+    // what the theme multiplies by. `pos - line.from` would answer 2.
+    const doc = ['function f() {', '\tif (a) {', '\t\tx();', '\t}', '}'].join('\n');
+    const state = EditorState.create({
+      doc,
+      selection: { anchor: doc.indexOf('{', doc.indexOf('if')) + 1 },
+      extensions: EditorState.tabSize.of(4),
+    });
+    // The inner pair closes at column 4 (one tab), and that is the leftmost.
+    expect(guideColumns(state)[0]).toBe('--bracket-guide-col: 4');
   });
 
   test('a pair spanning more than MAX_GUIDE_LINES is refused rather than drawn', () => {
