@@ -473,14 +473,19 @@ test.describe('editor', () => {
     // Each pane holds a DIFFERENT document. Which one is where is the strip's business — the
     // left pane follows the active tab and the control splits to the newest other one — so
     // the claim is that both documents are on screen at once, not an ordering.
-    const texts = await panel.locator('.cm-content').allInnerTexts();
-    expect(texts.join('\n')).toContain('LEFT_MARKER');
-    expect(texts.join('\n')).toContain('RIGHT_MARKER');
+    //
+    // Each marker is asserted through its OWN retrying locator, and that is the whole point:
+    // the split pane's CodeMirror mounts EMPTY and fills once its own file read lands, so the
+    // `toHaveCount(2)` above is satisfied by a surface with no text in it yet. A one-shot
+    // `allInnerTexts()` read then reports whichever pane had already painted (measured: 3 of
+    // 6 runs on an idle machine, and it passed on retry because the second read was later).
+    await expect(panel.locator('.cm-content').filter({ hasText: 'LEFT_MARKER' })).toHaveCount(1);
+    await expect(panel.locator('.cm-content').filter({ hasText: 'RIGHT_MARKER' })).toHaveCount(1);
 
     // Closing the pane is a VIEW decision: both tabs are still in the strip.
     await panel.getByRole('button', { name: 'Close split pane' }).click();
     await expect(panel.locator('[data-split-column]')).toHaveCount(0, { timeout: 10_000 });
-    expect(await panel.locator('.cm-content').count()).toBe(1);
+    await expect(panel.locator('.cm-content')).toHaveCount(1);
 
     await panel.getByTitle('More open files').click();
     await expect(page.getByText('left.ts', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
