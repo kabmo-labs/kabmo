@@ -1,0 +1,195 @@
+name: Publish to GitHub Packages
+
+# Publishes `@kabmo-labs/kabmo-sdk`, `@kabmo-labs/kabmo-ui` and (optionally) the
+# app itself to GitHub Packages — `https://npm.pkg.github.com/`.
+#
+# THIS IS A SECOND DESTINATION, NOT A REPLACEMENT. npmjs.org stays the registry
+# every install path reads: `kabmo update` asks
+# `registry.npmjs.org/@kabmo-labs%2fkabmo/latest` (`src/server/lib/updates/npm.ts`),
+# `bun add -g @kabmo-labs/kabmo` resolves there, and the plugin installer runs
+# `bun install` with no credentials at all. GitHub Packages refuses anonymous
+# reads for EVERY package, public ones included — "You need an access token to
+# publish, install, and delete private, internal, and public packages" — so
+# moving the app's own release here would turn the update check into a 401 for
+# every user. Nothing in `release.yml` calls this file, and no manifest carries
+# `publishConfig.registry`: that one field would silently redirect the whole
+# existing pipeline, which is the only way this file could break a release.
+#
+# So this is a MANUAL dispatch only. It exists for the case the public registry
+# cannot serve: a private fork, an air-gapped mirror, an internal plugin author
+# who already has a GitHub credential. A tag push does not trigger it, because
+# nothing about a release should be able to put a second copy of the packages
+# somewhere by accident.
+#
+# Auth is `GITHUB_TOKEN` with `packages: write`, which GitHub Packages accepts
+# for a package associated with the repository that publishes it — the
+# `repository` field in each `package.json` is what makes the association, and
+# all three manifests already carry it.
+#
+# **The one case that token cannot cover, and the escape hatch for it.** A
+# `GITHUB_TOKEN` may only publish to a package associated with THIS repository,
+# so a first publish whose association is missing (or whose org forbids it)
+# answers `403 … The requested installation does not exist` /
+# `permission_denied: create_package` — a message that names neither the cause
+# nor the fix. Setting a `GH_PACKAGES_TOKEN` secret (a PAT **classic** with
+# `write:packages`; GitHub Packages does not accept granular tokens) takes
+# precedence over the job token and has no such restriction. It is optional:
+# with no secret the job token is used, which is the documented path. Either
+# way a 403 is reported with both possible causes rather than echoed raw.
+#
+# The registry and the token reach `bun publish` as `--registry` and
+# `NPM_CONFIG_TOKEN`, and BOTH are load-bearing (each measured on bun 1.4.3 —
+# see the header of `.github/scripts/publish-github-packages.sh`):
+#
+#   - `.npmrc` `_authToken=${VAR}`  → bun does not expand the environment, so
+#     the literal `${VAR}` is sent and every publish is refused.
+#   - `.npmrc` `@kabmo-labs:registry=…` alone → `bun publish` ignores the scope
+#     mapping and publishes to npmjs.org, i.e. it would duplicate this
+#     repository's packages onto the public registry.
+#   - `--registry` alone → the right host answers `missing authentication`.
+#
+# A version already on the registry is skipped, never overwritten: GitHub
+# Packages refuses a republish with `409`, and `--tolerate-republish` does NOT
+# suppress it (measured — bun 1.4.3 still exits 1). A re-run therefore finishes
+# a half-published run instead of failing on the package that already went out.
+#
+# A first publish is PRIVATE. Visibility is per package in the repository
+# settings (Package settings → Danger Zone), not something a manifest or this
+# workflow can set; `--access public` is passed and ignored on this registry.
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Space-separated package directories. `.` is the app itself and must come last.'
+        required: false
+        type: string
+        default: 'packages/kabmo-sdk packages/kabmo-ui'
+      ref:
+        description: 'Git ref to publish from (default: the branch this was dispatched on).'
+        required: false
+        type: string
+
+concurrency:
+  # One publish at a time. Grouped without the ref so two dispatches cannot
+  # interleave and publish `kabmo-ui` before the `kabmo-sdk` version it pins.
+  group: publish-github-packages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # The four gates plus the generated settings schema. This workflow can put a
+  # package on a registry, so it is a releasing workflow and it is gated like
+  # one — `tests/ci-gates.test.ts` enforces that by reading this graph.
+  gates:
+    name: Gates
+    uses: ./.github/workflows/gates.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+
+  # The browser layer, on the same commit.
+  e2e:
+    name: E2E specs
+    uses: ./.github/workflows/e2e-specs.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+
+  publish:
+    name: Publish to GitHub Packages
+    needs: [gates, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # `packages: write` is the whole credential: GitHub Packages authorizes a
+    # publish against the repository's package permissions, and `GITHUB_TOKEN`
+    # carries them only when the workflow asks for the scope.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Resolved and VALIDATED before anything is published. A directory that
+      # does not exist is a typo, and the failure would otherwise surface as an
+      # error halfway through the list — after the earlier packages had already
+      # gone out.
+      - name: Resolve the target packages
+        id: target
+        env:
+          # Read through env rather than interpolated into the script: this is a
+          # caller-supplied string, and a `run:` block is shell text.
+          IN_PACKAGES: ${{ inputs.packages }}
+        run: |
+          dirs=""
+          for dir in $IN_PACKAGES; do
+            test -d "$dir" || { echo "::error::$dir is not a directory"; exit 1; }
+            test -f "$dir/package.json" || { echo "::error::$dir has no package.json"; exit 1; }
+            dirs="$dirs $dir"
+          done
+          dirs="${dirs# }"
+          test -n "$dirs" || { echo "::error::No package resolved from the input"; exit 1; }
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+      # The app's tarball carries `dist/client`, which `serve --prod` executes
+      # and which is gitignored — so publishing `.` without this step would ship
+      # a package that starts and then has no bundle to serve. Skipped when the
+      # app is not in the list, because it is the slowest step here.
+      - name: Build the client bundle
+        if: contains(format(' {0} ', inputs.packages), ' . ')
+        env:
+          NODE_ENV: production
+        run: bun run build
+
+      - name: Publish
+        env:
+          # A PAT, when one is configured, WINS over the job token. The reason is
+          # a real limitation rather than a preference: `GITHUB_TOKEN` can only
+          # publish a package associated with THIS repository, so it answers
+          # `403 … The requested installation does not exist` on a first publish
+          # whenever the association is missing or the org forbids it. A PAT
+          # (classic, `write:packages`) has no such restriction.
+          #
+          # Optional on purpose: with no secret set this is an empty string and
+          # the job token is used, which is the documented path and works once
+          # each package is linked. The script explains the 403 either way.
+          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+          DIRS: ${{ steps.target.outputs.dirs }}
+        # `$DIRS` is a SPACE-SEPARATED LIST of directories, so the splitting is
+        # the point: quoting it would pass one argument named
+        # `packages/kabmo-sdk packages/kabmo-ui`. Same shape as
+        # `publish-packages.yml`.
+        run: |
+          # shellcheck disable=SC2086
+          bash .github/scripts/publish-github-packages.sh $DIRS
+
+      - name: Summary
+        env:
+          DIRS: ${{ steps.target.outputs.dirs }}
+        run: |
+          {
+            echo "### Published to GitHub Packages"
+            echo
+            echo "| package | version |"
+            echo "|---|---|"
+            for dir in $DIRS; do
+              v="$(bun -e "console.log((await Bun.file('$dir/package.json').json()).version)")"
+              n="$(bun -e "console.log((await Bun.file('$dir/package.json').json()).name)")"
+              echo "| \`$n\` | \`$v\` |"
+            done
+            echo
+            echo "Consumers need \`@kabmo-labs:registry=https://npm.pkg.github.com\` and a"
+            echo "token with \`read:packages\`. A first publish is private; visibility is"
+            echo "set per package in the repository settings."
+          } >> "$GITHUB_STEP_SUMMARY"

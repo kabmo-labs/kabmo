@@ -494,6 +494,51 @@ Two things to set up once and one to never do:
   `main` — it scans the whole message and silently skips the release run. Only the bot's release
   commit carries one, so that it does not re-trigger the workflow.
 
+### GitHub Packages (optional, second destination)
+
+npmjs.org is the registry every install path reads, and nothing about it changes. A separate
+**manual** workflow can additionally publish the same packages to GitHub Packages
+([`publish-github-packages.yml`](.github/workflows/publish-github-packages.yml)):
+
+```bash
+gh workflow run publish-github-packages.yml -f packages="packages/kabmo-sdk packages/kabmo-ui"
+```
+
+It is not part of a release, and no manifest carries `publishConfig.registry` — that one field
+would redirect the whole pipeline, and GitHub Packages refuses **anonymous** reads for every
+package, public ones included. Moving the app's release there would turn
+`registry.npmjs.org/@kabmo-labs%2fkabmo/latest` (what `kabmo update` asks) into a 401 for every
+user. Use it only for the case the public registry cannot serve: a private fork, an internal
+mirror, a plugin author who already has a GitHub credential.
+
+A consumer then needs two lines in `.npmrc` and a token with `read:packages`:
+
+```ini
+@kabmo-labs:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Three facts about that registry, each measured rather than assumed:
+
+- **A first publish is private.** Visibility is per package in the repository settings; no
+  manifest field or workflow input can set it.
+- **A version is never overwritten.** A republish is refused with `409`, and
+  `bun publish --tolerate-republish` does **not** suppress it — so the script skips a version that
+  is already there, which is also what makes a re-run finish a half-published run.
+- **`bun publish` needs `--registry` AND `NPM_CONFIG_TOKEN` together.** A `.npmrc`
+  `_authToken=${VAR}` is sent literally (bun does not expand the environment), and a bare
+  `@kabmo-labs:registry` line is ignored by `bun publish` — which would silently publish to
+  npmjs.org instead. `tests/publish-github-packages.test.ts` pins all of it.
+
+**Token.** The workflow's own `GITHUB_TOKEN` (`packages: write`) is enough **once each package is
+associated with this repository**, which the `repository` field in every `package.json` already
+does. The one case it cannot cover is a first publish that answers
+`403 … The requested installation does not exist` / `permission_denied: create_package` — a
+`GITHUB_TOKEN` may only write to a package associated with its own repository. Add a repository
+secret **`GH_PACKAGES_TOKEN`** for that: a PAT **classic** with `write:packages` (GitHub Packages
+does not accept granular tokens). It takes precedence over the job token when present, and the
+script prints both possible causes on a 403 rather than echoing the registry's text.
+
 ## Contributing
 
 Issues and pull requests both get an automated first pass: a GitHub App runs the `omp` agent headlessly

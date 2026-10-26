@@ -80,8 +80,14 @@ const WINDOWS_BODY = 'publish-windows.yml';
  */
 const LINUX_BODY = 'publish-linux.yml';
 
-/** Every workflow that can tag or publish, and therefore must be gated. */
-const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml'];
+/**
+ * Every workflow that can tag or publish, and therefore must be gated.
+ *
+ * `publish-github-packages.yml` is here even though it is a MANUAL dispatch and
+ * never a release step: it can put a package on a registry, and "gated" is a
+ * property of what a workflow can do rather than of what triggers it.
+ */
+const RELEASING = ['release.yml', 'publish.yml', 'publish-plugins.yml', 'publish-github-packages.yml'];
 
 /** The trigger files, which call the reusable workflows they replace. */
 const TRIGGERS: Record<string, string> = {
