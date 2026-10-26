@@ -268,6 +268,44 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       pump(0.2)
     }
 
+    /**
+     Wait until the PAGE shows `expected`, or the deadline passes.
+
+     `sendAction` answers only that a responder ACCEPTED the command; WebKit runs
+     it in the web process, several run-loop turns later. Reading `value()` on
+     the same turn therefore compares against the document BEFORE the edit — the
+     assertion races the web process rather than testing it. Measured on the
+     x64 release runner: `⌘⇧Z redoes it` failed there while passing on arm64 and
+     in five consecutive local runs, and `sendAction` had returned true in every
+     one of them.
+     */
+    func awaitValue(_ expected: String, timeout: TimeInterval = 2) -> Bool {
+      let deadline = Date().addingTimeInterval(timeout)
+      while Date() < deadline {
+        if value() == expected { return true }
+        pump(0.05)
+      }
+      return value() == expected
+    }
+
+    func awaitSelection(_ expected: String, timeout: TimeInterval = 2) -> Bool {
+      let deadline = Date().addingTimeInterval(timeout)
+      while Date() < deadline {
+        if selection() == expected { return true }
+        pump(0.05)
+      }
+      return selection() == expected
+    }
+
+    func awaitPasteboard(_ expected: String, timeout: TimeInterval = 2) -> Bool {
+      let deadline = Date().addingTimeInterval(timeout)
+      while Date() < deadline {
+        if NSPasteboard.general.string(forType: .string) == expected { return true }
+        pump(0.05)
+      }
+      return NSPasteboard.general.string(forType: .string) == expected
+    }
+
     // TWO facts, asserted separately, because the flaky way to prove them was one
     // fact that depended on the app being ACTIVE.
     //
@@ -345,14 +383,11 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     reset()
     chord("h", [], 4)
     chord("i", [], 34)
-    pump(0.3)
-    check("typing reaches the field", value() == "hi")
-    let undone = NSApp.sendAction(undoAction, to: window, from: nil) && value() == ""
-    pump(0.4)
-    check("⌘Z undoes the typing", undone && value() == "")
-    let redone = NSApp.sendAction(redoAction, to: window, from: nil) && value() == "hi"
-    pump(0.4)
-    check("⌘⇧Z redoes it", redone && value() == "hi")
+    check("typing reaches the field", awaitValue("hi"))
+    let undone = NSApp.sendAction(undoAction, to: window, from: nil)
+    check("⌘Z undoes the typing", undone && awaitValue(""))
+    let redone = NSApp.sendAction(redoAction, to: window, from: nil)
+    check("⌘⇧Z redoes it", redone && awaitValue("hi"))
 
     // ⌘V — the reported failure. It REPLACES the selection, which is the harder
     // proof: a dead verb leaves the field untouched rather than looking like a
@@ -361,28 +396,24 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     _ = eval("document.getElementById('composer').setSelectionRange(0, 2); true")
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString("paste-proof", forType: .string)
-    check("⌘A selects the field's whole value", perform(#selector(NSText.selectAll(_:))) && selection() == "0-2")
-    check("⌘V pastes into the page's field", perform(#selector(NSText.paste(_:))) && value() == "paste-proof")
+    check("⌘A selects the field's whole value", perform(#selector(NSText.selectAll(_:))) && awaitSelection("0-2"))
+    check("⌘V pastes into the page's field", perform(#selector(NSText.paste(_:))) && awaitValue("paste-proof"))
 
     // ⌘C — with the pasteboard EMPTIED first, so a clipboard that already held the
     // right text cannot make this pass with the verb dead.
-    check("⌘A selects the pasted value", perform(#selector(NSText.selectAll(_:))) && selection() == "0-11")
+    check("⌘A selects the pasted value", perform(#selector(NSText.selectAll(_:))) && awaitSelection("0-11"))
     NSPasteboard.general.clearContents()
     let copied = perform(#selector(NSText.copy(_:)))
     // The write to the pasteboard is ASYNCHRONOUS — the web process answers a
     // turn later — so reading it on the same turn always sees an empty board.
-    pump(0.4)
-    check("⌘C copies the selection",
-          copied && NSPasteboard.general.string(forType: .string) == "paste-proof")
+    check("⌘C copies the selection", copied && awaitPasteboard("paste-proof"))
 
     // ⌘X — a fresh value, so "the field is empty" cannot be the starting state
     // rather than the cut's doing.
     reset("cut-me")
     check("⌘A selects the fresh value", perform(#selector(NSText.selectAll(_:))))
-    check("⌘X cuts the selection out", perform(#selector(NSText.cut(_:))) && value() == "")
-    pump(0.4)
-    check("⌘X leaves the cut text on the pasteboard",
-          NSPasteboard.general.string(forType: .string) == "cut-me")
+    check("⌘X cuts the selection out", perform(#selector(NSText.cut(_:))) && awaitValue(""))
+    check("⌘X leaves the cut text on the pasteboard", awaitPasteboard("cut-me"))
 
     reset()
   }
