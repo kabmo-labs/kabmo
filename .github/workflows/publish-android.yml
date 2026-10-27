@@ -249,7 +249,7 @@ jobs:
       - name: Build the release APK
         env:
           # The version is NOT the tag. It is `version.properties`, bumped by the
-          # `android` job of `release.yml` when the shell changed — which is what
+          # \`shells\` job of \`release.yml\` when the shell changed — which is what
           # makes the number the console compares against the one the running app
           # reports on its User-Agent (`KabmoAndroid/<versionName>`).
           VERSION_CODE: ${{ inputs.version-code }}

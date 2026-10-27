@@ -180,7 +180,7 @@ jobs:
         run: cargo run --release --bin kabmo-desktop-tests
 
       # The version is NOT the tag. It is `packages/linux/version.properties`,
-      # bumped by the `linux` job of `release.yml` when the shell changed — which is
+      # bumped by the `shells` job of `release.yml` when the shell changed — which is
       # what makes the number the archive carries the number the running shell
       # reports over the bridge.
       #

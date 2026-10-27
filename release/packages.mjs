@@ -30,6 +30,7 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { prepare as prepareChangelog } from '@semantic-release/changelog';
 import { analyzeCommits as analyzeCommitsStep } from '@semantic-release/commit-analyzer';
 import { generateNotes as generateNotesStep } from '@semantic-release/release-notes-generator';
 import appConfig from '../release.config.mjs';
@@ -162,13 +163,30 @@ export function packageVersion(dir) {
 }
 
 /**
- * Everything semantic-release needs to cut one package's release.
+ * Everything semantic-release needs to DECIDE one package's release.
+ *
+ * **Analysis only, on purpose.** This config runs with `dryRun: true`, and in
+ * semantic-release 25 a dry run executes `verifyConditions`, `analyzeCommits`,
+ * `verifyRelease` and `generateNotes` and SKIPS `prepare`, `publish`,
+ * `addChannel` and `success` (`lib/definitions/plugins.js` carries a `dryRun`
+ * flag per step; `prepare` and `publish` are `dryRun: false`). That split is
+ * exactly the one this pipeline wants: semantic-release owns the decision — the
+ * version, the tag name and the release notes — and `writePackageRelease` below
+ * does the writing, because the git side effects are grouped.
+ *
+ * What the config deliberately does NOT carry is `@semantic-release/git` and
+ * `@semantic-release/github`. Those were the per-package side effects: the git
+ * plugin committed AND pushed its own package, core tagged that commit, and the
+ * github plugin created a release page for it — so one decision to release both
+ * packages produced two commits, two pushes and two tags at two commits.
+ * `release/release-packages.mjs` now performs the git work once for the whole
+ * set: one commit, one atomic push, both tags on that commit.
  *
  * @param {{dir: string, name: string}} entry A `release/packages.js` row.
  * @returns {object}
  */
 export function packageReleaseConfig(entry) {
-  const { dir, name } = entry;
+  const { dir } = entry;
   const prefix = tagPrefix(entry);
 
   return {
@@ -191,22 +209,51 @@ export function packageReleaseConfig(entry) {
       ],
     ],
     generateNotes: [[scopedGenerateNotes(dir), { ...notesOptions }]],
-    plugins: [
-      versionPackagePlugin(dir),
-      ['@semantic-release/changelog', { changelogFile: `${dir}/CHANGELOG.md`, changelogTitle: changelogTitle(name) }],
-      [
-        '@semantic-release/git',
-        {
-          // `bun.lock` is here because the version plugin rewrites it: it
-          // records a version per workspace package, and `bun publish`
-          // substitutes a `workspace:` spec from THAT record. Leaving the
-          // refreshed lock uncommitted would re-publish the stale pin on the
-          // next release (see version-package.mjs for the measurement).
-          assets: [`${dir}/CHANGELOG.md`, `${dir}/package.json`, 'bun.lock'],
-          message: `chore(release): ${prefix}/v\${nextRelease.version} [skip ci]`,
-        },
-      ],
-      '@semantic-release/github',
-    ],
+    // EXPLICIT and empty. semantic-release merges its options over the
+    // repository's `release.config.mjs` and then, for any key still nil, falls
+    // back to its DEFAULT list — `commit-analyzer`, `release-notes-generator`,
+    // `@semantic-release/npm`, `@semantic-release/github`. Omitting the key
+    // therefore ran the APP's release plugins (or the defaults) for a PACKAGE:
+    // measured in a scratch clone, `@semantic-release/github`'s
+    // `verifyConditions` ran and refused the run. `[]` says "this release has no
+    // plugins of its own", which is the whole design — the writers are
+    // `writePackageRelease`'s and the git work is the runner's.
+    plugins: [],
   };
+}
+
+/**
+ * Write one package's release into the working tree: its version (and the
+ * refreshed lockfile) and its changelog.
+ *
+ * The two writers are the plugins the pipeline already used — the local version
+ * plugin and `@semantic-release/changelog`'s own `prepare` — called directly
+ * because semantic-release's `prepare` step does not run in a dry run. Calling
+ * the changelog plugin rather than re-implementing its format is what keeps the
+ * file byte-identical to the one the per-package runs used to produce.
+ *
+ * Order matters twice: the version write refreshes `bun.lock` (a dependent
+ * package pins from the lock, not the manifest), and a package released LATER
+ * in the catalog must see the earlier package's new version. `write: false` is
+ * the local rehearsal — nothing on disk changes.
+ *
+ * @param {object} deps
+ * @param {{dir: string, name: string}} deps.entry
+ * @param {{version: string, notes?: string}} deps.nextRelease
+ * @param {string} deps.cwd Repository root.
+ * @param {boolean} [deps.write] `false` for a rehearsal.
+ * @returns {Promise<boolean>} Whether anything was written.
+ */
+export async function writePackageRelease({ entry, nextRelease, cwd, write = true }) {
+  if (!write) return false;
+
+  const logger = { log() {} };
+
+  await versionPackagePlugin(entry.dir).prepare({}, { cwd, nextRelease, logger });
+  await prepareChangelog(
+    { changelogFile: `${entry.dir}/CHANGELOG.md`, changelogTitle: changelogTitle(entry.name) },
+    { cwd, nextRelease, logger },
+  );
+
+  return true;
 }

@@ -45,7 +45,7 @@ android {
      * The shell's own version, from `version.properties`.
      *
      * ONE source, and it is a file rather than a `-P` flag: the release pipeline
-     * bumps that file (`release/release-android.mjs`) and the console compares
+     * bumps that file (`release/release-shells.mjs`) and the console compares
      * the published asset's version against the one the running app reports on
      * its User-Agent. A version handed in at build time would make the number
      * the pipeline published and the number the app reports two separate

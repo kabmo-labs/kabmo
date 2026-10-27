@@ -100,9 +100,10 @@ name: Release
 # pushed two release commits and two tags to the real repository and the branch
 # had to be reverted by hand.
 #
-#   - packages: `node release/release-packages.mjs --dry-run` cuts nothing and
-#     pushes nothing (it skips every `prepare` step), and refuses to run without
-#     `--dry-run` outside CI unless `KABMO_RELEASE_ALLOW_NON_CI=1`.
+#   - packages: `node release/release-packages.mjs --dry-run` cuts nothing,
+#     writes nothing and pushes nothing (the writers are not called, and
+#     semantic-release's `prepare` step does not run in a dry run), and refuses
+#     to run without `--dry-run` outside CI unless `KABMO_RELEASE_ALLOW_NON_CI=1`.
 #   - app: drop the `@semantic-release/github` entry from release.config.mjs
 #     first (that plugin publishes a real release even in dry-run mode), then
 #     point the run at a throwaway repository whose URL parses — a bare
@@ -164,8 +165,9 @@ jobs:
           # Both releases derive their version from commits since a tag, so a
           # shallow clone would see no history and cut nothing.
           fetch-depth: 0
-          # Keep the token in the checkout's git config: @semantic-release/git
-          # pushes the release commits with it.
+          # Keep the token in the checkout's git config: the release runner pushes
+          # the one bump commit and its tags with it (`git push --atomic origin
+          # HEAD:main <tags>`).
           persist-credentials: true
 
       - name: Setup Bun
@@ -209,22 +211,21 @@ jobs:
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # The release commits are attributed to the App, not to
-          # semantic-release's own default (`semantic-release-bot
-          # <semantic-release-bot@martynus.net>`, see COMMIT_NAME/COMMIT_EMAIL in
-          # semantic-release's constants). The library writes those into the
-          # child env and then spreads the caller's env OVER them, and
-          # @semantic-release/git has no author option — these four variables are
-          # the only way to change it. The id is the App's USER id (NOT its app
-          # id): `gh api /users/kabmo-bot[bot] --jq .id`.
+          # The release commit is attributed to the App. These four variables are
+          # the only lever: this script's `git commit` runs in a child process,
+          # and the workflow's own git config names whoever the checkout set up.
+          # The id is the App's USER id (NOT its app id):
+          # `gh api /users/kabmo-bot[bot] --jq .id`.
           GIT_AUTHOR_NAME: kabmo-bot[bot]
           GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: kabmo-bot[bot]
           GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-        # Per-package version rules, path scoping and the lockfile refresh live
-        # in release/packages.mjs, release/version-package.mjs and
-        # release/packages.js. This script reports what it released in
-        # GITHUB_OUTPUT, because a package that released nothing must not be
+        # Per-package version rules and path scoping live in release/packages.mjs;
+        # the version/lockfile write in release/version-package.mjs; the catalog
+        # in release/packages.js. ONE commit carries every package that released
+        # (release/packages-commit.js): the tags, the atomic push and the release
+        # pages are that module's, and the script reports what it released in
+        # GITHUB_OUTPUT because a package that released nothing must not be
         # dispatched to publish.
         run: node release/release-packages.mjs
 
@@ -364,25 +365,35 @@ jobs:
           git log --oneline -1
 
   # ---------------------------------------------------------------------------
-  # 1c. The Android shell's version. Between `marketplace` and `app`, for the
-  # same reason the plugins sit there: the app job fast-forwards to the commit
-  # this job makes, and the APK is built from the tag `app` cuts — so a bump
-  # landing after it would reach installs one release late.
+  # 1c. Every shell's version, in ONE job and ONE commit.
   #
-  # The APK's `versionName` used to be the app's release tag, which tied two
-  # independent cadences together: a shell-only fix shipped under a server
-  # version, and the number the console compares (`KabmoAndroid/<versionName>`
-  # against the published asset's name) said nothing about whether the shell had
-  # changed. `packages/android/version.properties` now holds it, and this job is
-  # the only writer.
+  # It was five chained jobs (`android` -> `ios` -> `windows` -> `macos` ->
+  # `linux`), each with its own checkout, install, bump, commit and push. The
+  # chain was never a requirement: every bump reads its own watermark, its own
+  # version file and its own commit range, and the five builds below only need
+  # every version to be on `main`. Measured on this repository's history before
+  # the change: 29 shell bump commits across six releases.
   #
-  # Nothing is tagged and nothing is published: the APK is attached to the
+  # The POSITION is unchanged and is the whole design: after `marketplace` and
+  # before every shell build. `app` fast-forwards onto the commit this job makes
+  # (the same `Sync to the current remote` the other bump jobs rely on), so the
+  # bumped files are inside the tarball and inside every artifact built from
+  # `main`. A bump landing after the app packed would reach installs one release
+  # late.
+  #
+  # Nothing is tagged and nothing is published: every artifact is attached to the
   # app's release, so a shell bump reaches an installed app on the NEXT app
   # release — the same lag a bundled plugin bump has, and for the same reason
   # (the artifact rides the app's release rather than having one of its own).
+  #
+  # The runner decides EVERY shell before it writes ANY of them (see
+  # `release/release-shells.mjs`), so a broken descriptor stops the run with no
+  # version file touched. Where a write did land, the failing step exits 1 and
+  # this job never commits — `main` gets all five files or none, which the five
+  # sequential jobs could not promise.
   # ---------------------------------------------------------------------------
-  android:
-    name: Bump the Android shell
+  shells:
+    name: Bump the shell versions
     needs: marketplace
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -395,6 +406,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          # Every watermark is read from history, so a shallow clone would see no
+          # commits at all.
           fetch-depth: 0
           persist-credentials: true
 
@@ -408,7 +421,7 @@ jobs:
         with:
           node-version: 24
 
-      # After the sync, so the range starts at the commit `marketplace` made.
+      # After the sync, so every range starts at the commit `marketplace` made.
       - name: Sync to the current remote
         run: |
           git fetch origin main
@@ -418,18 +431,23 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Bump the shell version
+      - name: Bump the shell versions
         id: bump
-        # `release/android.js` holds the file and the watermark pattern, and
-        # `release/android.test.js` asserts them against the tree. The bump LEVEL
-        # is the app's own rule set, so a `fix` is a patch and a `feat` a minor.
-        run: node release/release-android.mjs
+        # `release/shells.js` holds the catalog, and `release/android.js` …
+        # `release/linux.js` each hold one shell's file, key and line rewriting;
+        # `release/shells.test.js` asserts the catalog against the tree. The bump
+        # LEVEL is the app's own rule set, so a `fix` is a patch and a `feat` a
+        # minor.
+        run: node release/release-shells.mjs
 
       # Committed HERE, not by the app job: semantic-release's release commit
       # carries only its own `assets`, so an uncommitted bump would be discarded
-      # when that job resets to its checkout — and the tag would build the OLD
-      # shell version.
-      - name: Commit the bump
+      # when that job resets to its checkout — and every artifact would declare
+      # the OLD shell version.
+      #
+      # The five files are NAMED rather than staged with `-A`: a `chore` that
+      # claims to be a version bump must not sweep a lockfile change into itself.
+      - name: Commit the bumps
         if: steps.bump.outputs.any == 'true'
         env:
           GIT_AUTHOR_NAME: kabmo-bot[bot]
@@ -440,177 +458,16 @@ jobs:
         # so this commit cannot cut a version by itself. `[skip ci]` because the
         # gates already ran on the push that produced it.
         run: |
-          git add packages/android/version.properties
+          git add packages/android/version.properties \
+                  packages/ios/version.properties \
+                  packages/windows/version.properties \
+                  packages/macos/version.properties \
+                  packages/linux/version.properties
           if git diff --cached --quiet; then
             echo "Nothing staged; the bump produced no change."
             exit 0
           fi
-          git commit -q -m "chore(release): bump the android shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
-          git push origin HEAD:main
-          git log --oneline -1
-
-  # 1d. The iOS shell's version. Beside the Android bump and for the same reason:
-  # the app job fast-forwards to the commit this job makes, so a bump landing after
-  # it would reach installs one release late.
-  #
-  # Nothing is tagged and nothing is published: the IPA is attached to the app's
-  # release, so a shell bump reaches an installed app on the NEXT app release. That
-  # is the same lag a bundled plugin bump has, and for the same reason (the artifact
-  # rides the app's release rather than having one of its own).
-  #
-  # `needs: android` rather than `packages`: the two shell bumps are independent of
-  # each other, but both must land before `app` packs the tarball, and chaining them
-  # keeps ONE ordering in the graph rather than a fan-out whose branches `app` would
-  # have to name individually.
-  # ---------------------------------------------------------------------------
-  ios:
-    name: Bump the iOS shell
-    needs: android
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      bumped: ${{ steps.bump.outputs.bumped }}
-      any: ${{ steps.bump.outputs.any }}
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      # After the sync, so the range starts at the commit `android` made.
-      - name: Sync to the current remote
-        run: |
-          git fetch origin main
-          git merge --ff-only FETCH_HEAD
-          git log --oneline -1
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Bump the shell version
-        id: bump
-        # `release/ios.js` holds the file and the watermark pattern, and
-        # `release/ios.test.js` asserts them against the tree. The bump LEVEL is the
-        # app's own rule set, so a `fix` is a patch and a `feat` a minor.
-        run: node release/release-ios.mjs
-
-      # Committed HERE, not by the app job: semantic-release's release commit carries
-      # only its own `assets`, so an uncommitted bump would be discarded when that job
-      # resets to its checkout — and the artifact would declare the OLD shell version.
-      - name: Commit the bump
-        if: steps.bump.outputs.any == 'true'
-        env:
-          GIT_AUTHOR_NAME: kabmo-bot[bot]
-          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: kabmo-bot[bot]
-          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-        # A `chore`, which releases nothing on its own (`release/release-rules.js`), so
-        # this commit cannot cut a version by itself. `[skip ci]` because the gates
-        # already ran on the push that produced it.
-        run: |
-          git add packages/ios/version.properties
-          if git diff --cached --quiet; then
-            echo "Nothing staged; the bump produced no change."
-            exit 0
-          fi
-          git commit -q -m "chore(release): bump the ios shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
-          git push origin HEAD:main
-          git log --oneline -1
-
-  # 1e. The Windows shell's version. Beside the other shell bumps and for the same
-  # reason: the app job fast-forwards to the commit this job makes, and the Windows
-  # artifact is packaged from `main` — so a bump landing after it would reach
-  # installs one release late.
-  #
-  # Nothing is tagged and nothing is published to a registry: the ZIP is attached
-  # to the app's release, so a shell bump reaches an installed app on the NEXT app
-  # release. That is the same lag a bundled plugin bump has, and for the same
-  # reason (the artifact rides the app's release rather than having one of its
-  # own).
-  #
-  # `needs: ios` rather than `packages`: the shell bumps are independent of each
-  # other, but all must land before `app` packs the tarball, and chaining them
-  # keeps ONE ordering in the graph rather than a fan-out whose branches `app`
-  # would have to name individually.
-  # ---------------------------------------------------------------------------
-  windows:
-    name: Bump the Windows shell
-    needs: ios
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      bumped: ${{ steps.bump.outputs.bumped }}
-      any: ${{ steps.bump.outputs.any }}
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      # After the sync, so the range starts at the commit `ios` made.
-      - name: Sync to the current remote
-        run: |
-          git fetch origin main
-          git merge --ff-only FETCH_HEAD
-          git log --oneline -1
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Bump the shell version
-        id: bump
-        # `release/windows.js` holds the file and the watermark pattern, and
-        # `release/windows.test.js` asserts them against the tree. The bump LEVEL
-        # is the app's own rule set, so a `fix` is a patch and a `feat` a minor.
-        run: node release/release-windows.mjs
-
-      # Committed HERE, not by the app job: semantic-release's release commit
-      # carries only its own `assets`, so an uncommitted bump would be discarded
-      # when that job resets to its checkout — and the artifact would declare the
-      # OLD shell version.
-      - name: Commit the bump
-        if: steps.bump.outputs.any == 'true'
-        env:
-          GIT_AUTHOR_NAME: kabmo-bot[bot]
-          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: kabmo-bot[bot]
-          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-        # A `chore`, which releases nothing on its own (`release/release-rules.js`),
-        # so this commit cannot cut a version by itself. `[skip ci]` because the
-        # gates already ran on the push that produced it.
-        run: |
-          git add packages/windows/version.properties
-          if git diff --cached --quiet; then
-            echo "Nothing staged; the bump produced no change."
-            exit 0
-          fi
-          git commit -q -m "chore(release): bump the windows shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
+          git commit -q -m "chore(release): bump the shells (${{ steps.bump.outputs.bumped }}) [skip ci]"
           git push origin HEAD:main
           git log --oneline -1
 
@@ -622,10 +479,10 @@ jobs:
   # tagged and nothing is published — instead of a release that goes out with no
   # shell in it, repaired only by a hand-run dispatch.
   #
-  # `ref: main`, not the trigger commit: the `ios` job just pushed the shell version,
-  # and the bundle must declare THAT number — building the starting commit would
-  # produce an IPA declaring the previous one, which is an update no installed app is
-  # ever offered.
+  # `ref: main`, not the trigger commit: the `shells` job just pushed every shell
+  # version, and the bundle must declare THAT number — building the starting
+  # commit would produce an IPA declaring the previous one, which is an update no
+  # installed app is ever offered.
   #
   # It does NOT gate on the shell having changed: whether `app` will tag is not
   # knowable before `app` runs, and a build that might be wasted is the price of the
@@ -633,10 +490,10 @@ jobs:
   # ---------------------------------------------------------------------------
   ipa-build:
     name: Build the iOS IPA
-    # `macos`, not `ios`: `macos` needs `windows`, which needs `ios` — so this waits
-    # for every shell bump while the graph keeps one chain, and the IPA compiles from
-    # a tree that carries all of the versions.
-    needs: macos
+    # `shells`, because every artifact compiles from a tree that carries all of
+    # the shell versions — one job bumps them together, so one edge replaces the
+    # old chain through `macos`.
+    needs: shells
     permissions:
       # `contents: write`, and the reason is a parse-time check rather than anything
       # this job does: GitHub validates a reusable workflow's permission CEILING
@@ -670,11 +527,11 @@ jobs:
   # release; the two calls are one pipeline because artifacts are scoped to the
   # run, so no rebuild happens between the check and the upload.
   #
-  # `ref: main`, not the trigger commit: the `android` job just pushed the
-  # shell version bump, and the APK must declare THAT version — building the
+  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
+  # version bumps, and the APK must declare THAT version — building the
   # starting commit would produce an APK declaring the previous one, which is
   # an update no installed app is ever offered. `main` resolves against the
-  # remote, so it lands on the bump (the same reason `packages-publish` names
+  # remote, so it lands on the bumps (the same reason `packages-publish` names
   # it).
   #
   # A run whose commits ask for no version bump still builds here; there is no
@@ -683,11 +540,10 @@ jobs:
   # ---------------------------------------------------------------------------
   apk-build:
     name: Build the Android APK
-    # `macos`, not `android`: `macos` needs `windows`, which needs `ios`, which needs
-    # `android` — so this waits for EVERY shell bump while the graph keeps one chain.
-    # Each artifact must be built from a tree that carries all of the versions, and
-    # each is a gate on `app`.
-    needs: macos
+    # `shells`, not `android`: the bump job is one, and it pushes every shell
+    # version at once. Each artifact must be built from a tree that carries all
+    # of the versions, and each is a gate on `app`.
+    needs: shells
     permissions:
       # `contents: write`, NOT `read`, and the reason is a parse-time check
       # rather than anything this job does. GitHub validates a reusable
@@ -717,7 +573,7 @@ jobs:
     secrets: inherit
 
   # ---------------------------------------------------------------------------
-  # 1g. The Windows app, PACKAGED — a GATE on the app release, for the APK's and
+  # 1h. The Windows app, PACKAGED — a GATE on the app release, for the APK's and
   # the IPA's reason.
   #
   # Packaging BEFORE the tag means a .NET toolchain that moved, a compile error or
@@ -725,104 +581,19 @@ jobs:
   # and nothing is published — instead of a release that goes out with no Windows
   # artifact in it.
   #
-  # `ref: main`, not the trigger commit: the `windows` job just pushed the shell
-  # version, and the artifact must declare THAT number — building the starting
+  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
+  # versions, and the artifact must declare THAT number — building the starting
   # commit would produce an app reporting the previous one.
   #
   # It does NOT gate on the shell having changed: whether `app` will tag is not
   # knowable before `app` runs, and a build that might be wasted is the price of
   # the gate. The same is true of `apk-build` and `ipa-build`.
   # ---------------------------------------------------------------------------
-  # ---------------------------------------------------------------------------
-  # 1h. The macOS shell's version. Beside the Windows bump and for the same
-  # reason: the app job fast-forwards to the commit this job makes, so a bump
-  # landing after it would reach installs one release late.
-  #
-  # Nothing is tagged and nothing is published: the `.app` is attached to the
-  # app's release, so a shell bump reaches a user on the NEXT app release — the
-  # same lag a bundled plugin bump has, and for the same reason (the artifact
-  # rides the app's release rather than having one of its own).
-  #
-  # `needs: windows` rather than `ios`: the shell bumps are independent of each
-  # other, but all must land before `app` packs the tarball, and chaining them
-  # keeps ONE ordering in the graph rather than a fan-out whose branches `app`
-  # would have to name individually.
-  # ---------------------------------------------------------------------------
-  macos:
-    name: Bump the macOS shell
-    needs: windows
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      bumped: ${{ steps.bump.outputs.bumped }}
-      any: ${{ steps.bump.outputs.any }}
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      # After the sync, so the range starts at the commit `windows` made.
-      - name: Sync to the current remote
-        run: |
-          git fetch origin main
-          git merge --ff-only FETCH_HEAD
-          git log --oneline -1
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Bump the shell version
-        id: bump
-        # `release/macos.js` holds the file and the watermark pattern, and
-        # `release/macos.test.js` asserts them against the tree. The bump LEVEL is
-        # the app's own rule set, so a `fix` is a patch and a `feat` a minor.
-        run: node release/release-macos.mjs
-
-      # Committed HERE, not by the app job: semantic-release's release commit
-      # carries only its own `assets`, so an uncommitted bump would be discarded
-      # when that job resets to its checkout — and the bundle would declare the
-      # OLD shell version.
-      - name: Commit the bump
-        if: steps.bump.outputs.any == 'true'
-        env:
-          GIT_AUTHOR_NAME: kabmo-bot[bot]
-          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: kabmo-bot[bot]
-          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-        # A `chore`, which releases nothing on its own (`release/release-rules.js`),
-        # so this commit cannot cut a version by itself. `[skip ci]` because the
-        # gates already ran on the push that produced it.
-        run: |
-          git add packages/macos/version.properties
-          if git diff --cached --quiet; then
-            echo "Nothing staged; the bump produced no change."
-            exit 0
-          fi
-          git commit -q -m "chore(release): bump the macos shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
-          git push origin HEAD:main
-          git log --oneline -1
-
   win-build:
     name: Build the Windows app
-    # Both other shell builds, because both must have compiled before anything is
-    # tagged — and `needs` here is what puts them in `app`'s transitive closure.
-    # `macos-build` hangs off `macos`, which reaches this chain through `windows`,
-    # so it is already in that closure.
-    needs: [apk-build, ipa-build]
+    # `shells` alone: every shell build reads `main` after the one bump commit, and
+    # `app` names all five builds, so nothing else needs a chain here.
+    needs: shells
     permissions:
       # `contents: write`, for the parse-time reason `apk-build` documents: GitHub
       # validates a reusable workflow's permission CEILING against the whole CALLEE
@@ -837,11 +608,11 @@ jobs:
       ref: main
 
   # ---------------------------------------------------------------------------
-  # 2. The app. Waits for the packages, the marketplace bumps, the shell bump
-  # AND the APK build, so its dependency pins are current, its tarball carries
-  # the plugin versions a user needs, the tag it cuts carries the shell version
-  # the APK declares — and a release is never tagged when the shell cannot be
-  # built.
+  # 2. The app. Waits for the packages, the marketplace bumps, the shell bumps
+  # AND every shell build, so its dependency pins are current, its tarball
+  # carries the plugin versions a user needs, the tag it cuts carries the shell
+  # versions its artifacts declare — and a release is never tagged when a shell
+  # cannot be built.
   # ---------------------------------------------------------------------------
   # ---------------------------------------------------------------------------
   # 1i. The macOS app, BUILT — a GATE on the app release, for the APK's reason.
@@ -852,8 +623,8 @@ jobs:
   # stops `app`, so nothing is tagged and nothing is published — instead of a release
   # that goes out with no app in it, repaired only by a hand-run dispatch.
   #
-  # `ref: main`, not the trigger commit: the `macos` job just pushed the shell
-  # version, and the bundle must declare THAT number.
+  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
+  # versions, and the bundle must declare THAT number.
   #
   # It does NOT gate on the shell having changed: whether `app` will tag is not
   # knowable before `app` runs, and a build that might be wasted is the price of the
@@ -861,7 +632,7 @@ jobs:
   # ---------------------------------------------------------------------------
   macos-build:
     name: Build the macOS app
-    needs: macos
+    needs: shells
     permissions:
       # `contents: write`, for the parse-time reason `apk-build` documents: GitHub
       # validates a reusable workflow's permission CEILING against the whole CALLEE
@@ -875,95 +646,16 @@ jobs:
       mode: build
       ref: main
 
-  # ---------------------------------------------------------------------------
-  # 1k. The Linux shell's version, and its build.
-  #
-  # The bump is chained after `macos` for the same reason every other shell bump
-  # is: the app job fast-forwards to the commits these jobs make, so a bump
-  # landing after it would reach installs one release late. `linux-build` hangs off
-  # `linux` so it waits for every shell version while the graph stays linear.
-  #
-  # Nothing is tagged and nothing is published separately: the archive rides the
-  # app's release, exactly like the APK, the IPA and the two desktop apps.
-  # ---------------------------------------------------------------------------
-  linux:
-    name: Bump the Linux shell
-    needs: macos
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      bumped: ${{ steps.bump.outputs.bumped }}
-      any: ${{ steps.bump.outputs.any }}
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.x
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      # After the sync, so the range starts at the commit `macos` made.
-      - name: Sync to the current remote
-        run: |
-          git fetch origin main
-          git merge --ff-only FETCH_HEAD
-          git log --oneline -1
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Bump the shell version
-        id: bump
-        # `release/linux.js` holds the file and the watermark pattern, and
-        # `release/linux.test.js` asserts them against the tree. The bump LEVEL is
-        # the app's own rule set, so a `fix` is a patch and a `feat` a minor.
-        run: node release/release-linux.mjs
-
-      # Committed HERE, not by the app job: semantic-release's release commit
-      # carries only its own `assets`, so an uncommitted bump would be discarded
-      # when that job resets to its checkout — and the archive would carry the
-      # OLD shell version.
-      - name: Commit the bump
-        if: steps.bump.outputs.any == 'true'
-        env:
-          GIT_AUTHOR_NAME: kabmo-bot[bot]
-          GIT_AUTHOR_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: kabmo-bot[bot]
-          GIT_COMMITTER_EMAIL: 344710581+kabmo-bot[bot]@users.noreply.github.com
-        # A `chore`, which releases nothing on its own (`release/release-rules.js`),
-        # so this commit cannot cut a version by itself. `[skip ci]` because the
-        # gates already ran on the push that produced it.
-        run: |
-          git add packages/linux/version.properties
-          if git diff --cached --quiet; then
-            echo "Nothing staged; the bump produced no change."
-            exit 0
-          fi
-          git commit -q -m "chore(release): bump the linux shell (${{ steps.bump.outputs.bumped }}) [skip ci]"
-          git push origin HEAD:main
-          git log --oneline -1
-
   # The Linux app, BUILT — a gate on the app release, for the macOS/Windows reason:
   # a Rust error, a missing GTK/WebKitGTK development package or a rules-suite
   # failure must stop `app` before it tags.
   #
-  # `ref: main`, not the trigger commit: the `linux` job just pushed the shell
-  # version, and `build.rs` bakes that number into the binary — building the
+  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
+  # versions, and `build.rs` bakes that number into the binary — building the
   # starting commit would declare the previous one.
   linux-build:
     name: Build the Linux app
-    needs: linux
+    needs: shells
     permissions:
       # `contents: write` for the parse-time reason `apk-build` documents: GitHub
       # validates a reusable workflow's permission CEILING against the whole CALLEE
@@ -978,14 +670,11 @@ jobs:
 
   app:
     name: Release the app
-    # `apk-build` and `ipa-build` each already reach both gate jobs through
-    # `android`/`ios` -> `marketplace` -> `packages` -> the gates, so naming them is
-    # what makes the app wait for everything — and EVERY shell build sits in the chain
-    # rather than after it. Naming `ipa-build` as well as `apk-build` is not
-    # redundant: `ipa-build` hangs off `ios`, which hangs off `android`, and a release
-    # is never tagged from a tree whose IPA could not be built either. `macos-build`
-    # hangs off `macos` and `linux-build` off `linux`, so it waits for every shell
-    # version while the graph stays linear.
+    # The five shell builds are the gate: `app` must not tag from a tree whose
+    # APK, IPA, Windows app, macOS app or Linux app could not be built, and each
+    # of them reads `main` after the one `shells` commit. Every build (and so
+    # this job) reaches both gate workflows transitively through `shells` ->
+    # `marketplace` -> `packages`.
     needs: [apk-build, ipa-build, win-build, macos-build, linux-build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -1096,7 +785,7 @@ jobs:
   # skipped with it.
   #
   # The `versionName` the bundle declares is NOT the tag: it is
-  # `packages/ios/version.properties`, which the `ios` job bumped before `ipa-build`
+  # `packages/ios/version.properties`, which the `shells` job bumped before `ipa-build`
   # compiled it. That number is what the running shell reports on its User-Agent, and
   # the asset name carries it so `fetchShellRelease('ios')` reads the same number.
   #
@@ -1141,7 +830,7 @@ jobs:
   # graph.
   #
   # The `versionName` the APK declares is NOT the tag: it is
-  # `packages/android/version.properties`, which the `android` job bumped before
+  # `packages/android/version.properties`, which the `shells` job bumped before
   # `apk-build` compiled it. That number is what the running shell reports on its
   # User-Agent, and `publish-android.yml` names the asset from the same file.
   #
@@ -1180,7 +869,7 @@ jobs:
   # packaging step cannot be the step that discovers a broken app.
   #
   # The version the app declares is NOT the tag: it is
-  # `packages/windows/version.properties`, which the `windows` job bumped before
+  # `packages/windows/version.properties`, which the `shells` job bumped before
   # `win-build` compiled it. `publish-windows.yml` names the asset from the same
   # file, so the number a user downloads and the number the running app reports
   # are one fact.
@@ -1211,7 +900,7 @@ jobs:
   # it — so a packaging step cannot be the step that discovers a broken app.
   #
   # The `versionName` the bundle declares is NOT the tag: it is
-  # `packages/macos/version.properties`, which the `macos` job bumped before
+  # `packages/macos/version.properties`, which the `shells` job bumped before
   # `macos-build` compiled it. `publish-macos.yml` names the asset from the same
   # file, so the number a user downloads and the number the app reports are one
   # fact.

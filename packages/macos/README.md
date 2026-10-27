@@ -270,8 +270,8 @@ container larger than the build rect, and follows a container resize.
 
 ## Quitting
 
-Two bugs made Quit feel like a hang, and both are stated here because neither is
-visible from the code alone:
+Four bugs made Quit fail, and each is stated here because none is visible from
+the code alone:
 
 - **The quit was a main-actor deadlock.** `applicationWillTerminate` ran a
   `Task` and then `DispatchSemaphore.wait`ed on the MAIN thread. `NSApplicationDelegate`
@@ -280,6 +280,17 @@ visible from the code alone:
   timeout on every quit. `applicationShouldTerminate` + `.terminateLater` is
   AppKit's own deferral: the work runs detached, and `reply(toApplicationShouldTerminate:)`
   ends the quit when it finishes.
+- **The deferred reply went to the wrong executor, and Quit became impossible.**
+  `.terminateLater` puts `-[NSApplication _shouldTerminate]` into a NESTED event
+  loop that services `CFRunLoopPerformBlock` but NOT the main dispatch queue —
+  where Swift's main-actor executor lives. `await MainActor.run { sender.reply(…) }`
+  therefore never ran: the window could not be closed, every later Quit was
+  answered `cancel` against a latch nothing could clear, and only `kill -9`
+  ended the process (the reported "after updating the macOS DMG the app does not
+  quit"). `TerminateCoordinator` hands the reply to the main run loop instead,
+  and sends `replyToApplicationShouldTerminate:` through the ObjC runtime —
+  `perform(_:with:)` passes an object where the method reads a `BOOL`, which
+  arrives as `false` and cancels the quit. Quit now completes in 20–40 ms.
 - **The spawned child inherited a blocked SIGTERM.** `posix_spawn` copies the
   caller's signal MASK, and `POSIX_SPAWN_SETSIGDEF` resets only the DISPOSITION.
   The app blocks SIGTERM (Swift concurrency), so the server was spawned with it
@@ -292,9 +303,13 @@ visible from the code alone:
   It now uses `waitpid(WNOHANG)`, which also reaps — and falls back to the
   signal probe for an adopted pid that is not our child (`ECHILD`).
 
-`swift run kabmo-desktop-tests` measures all of it: an exited child is not
+`swift run kabmo-desktop-tests` measures the child half: an exited child is not
 "alive", a well-behaved child is released in under 0.5 s, and a child that
-IGNORES SIGTERM is still killed after the escalation.
+IGNORES SIGTERM is still killed after the escalation. The reply half is
+`runQuitCases` in `swift run kabmo-desktop-window-tests`: it calls the real
+`NSApp.terminate` with the shipped coordinator answering `.terminateLater`, and
+fails through a watchdog if the reply never lands — the shape that used to hang
+the app forever.
 
 ## The bridge
 
@@ -378,15 +393,16 @@ failure.
 ### The version
 
 `version.properties` is the ONLY place the shell's version is declared, and it is
-read by `release/macos-version.mjs` — the same parser `release/release-macos.mjs`
-bumps through, so the number the pipeline publishes and the number the bundle
+read by `release/macos-version.mjs` — the same parser the shared
+`release/release-shells.mjs` bumps through, so the number the pipeline publishes and the number the bundle
 declares cannot disagree. `build-app.sh` fills `CFBundleShortVersionString` and
 `CFBundleVersion` from it.
 
-**Never bump it by hand.** `.github/workflows/release.yml`'s `macos` job runs
-`release/release-macos.mjs`, which ranges from the commit that last wrote the
+**Never bump it by hand.** `.github/workflows/release.yml`'s `shells` job runs
+`release/release-shells.mjs`, which ranges from the commit that last wrote the
 version LINE (`git log -L`) over `packages/macos`, derives the bump level from the
-same Conventional Commits rules the app uses, and commits the result. The `chore`
+same Conventional Commits rules the app uses, and commits the result — all five
+shells in ONE commit. The `chore`
 it commits releases nothing on its own.
 
 There is deliberately **no User-Agent token**, unlike the Android and iOS shells.

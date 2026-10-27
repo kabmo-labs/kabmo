@@ -35,7 +35,7 @@
       The version is NOT written here — see the `ReadShellVersion` target below.
 
       It lives in `packages/windows/version.properties`, the one file
-      `release/release-windows.mjs` bumps and `publish-windows.yml` names the
+      `release/release-shells.mjs` bumps and `publish-windows.yml` names the
       release asset from. A number stated in this file as well would be a second
       copy that drifts the first time either is bumped, and the failure is silent:
       the app would report a version the pipeline never published, and the

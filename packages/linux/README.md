@@ -183,10 +183,11 @@ as `shellVersion` — never `CARGO_PKG_VERSION`, because the crate is never publ
 and two numbers for one build is the drift the file exists to prevent. A missing or
 unparsable line FAILS the build.
 
-**Never bump it by hand.** `.github/workflows/release.yml`'s `linux` job runs
-`release/release-linux.mjs`, which ranges from the commit that last wrote the
+**Never bump it by hand.** `.github/workflows/release.yml`'s `shells` job runs
+`release/release-shells.mjs`, which ranges from the commit that last wrote the
 version LINE (`git log -L`) over `packages/linux`, derives the bump level from the
-same Conventional Commits rules the app uses, and commits the result. The `chore` it
+same Conventional Commits rules the app uses, and commits the result — all five
+shells in ONE commit. The `chore` it
 commits releases nothing on its own.
 
 There is deliberately **no User-Agent token**, unlike the Android and iOS shells.

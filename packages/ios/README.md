@@ -298,7 +298,7 @@ release.yml
   `app` created. Artifacts are scoped to the run, so the uploaded bytes are exactly the
   ones the checks passed.
 - **The shell has its OWN version, in `packages/ios/version.properties`, and the
-  pipeline bumps it.** The `ios` job runs `release/release-ios.mjs` before
+  pipeline bumps it.** The `shells` job runs `release/release-shells.mjs` before
   `ipa-build` compiles: it reads the commits since the version line was last written,
   asks the same `release-rules.js` analyzer the app uses for the level (`fix` → patch,
   `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and commits it.

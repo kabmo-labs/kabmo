@@ -395,9 +395,14 @@ describe('the shell version is one declared fact', () => {
     // fast-forwards onto both before it tags. A bump landing after the pack would
     // ship the previous version — an artifact nobody can tell from the last one.
     const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
-    expect(release, 'release.yml must run the linux bump').toContain('node release/release-linux.mjs');
+    // The shells share ONE bump job and ONE commit — `release/release-shells.mjs`
+    // walks the catalog — so the file names the runner once and stages this
+    // shell's version file in that commit.
+    expect(release, 'release.yml must run the shell bump runner').toContain(
+      'node release/release-shells.mjs',
+    );
     expect(release, 'release.yml must commit the linux bump').toContain(
-      'git add packages/linux/version.properties',
+      'packages/linux/version.properties',
     );
     expect(release, 'release.yml must call the linux body').toContain(
       './.github/workflows/publish-linux.yml',

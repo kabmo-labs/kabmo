@@ -292,21 +292,20 @@ describe('the gate contract', () => {
     }
   });
 
-  test('the app release waits for the packages, the plugin bumps and the shell bump', async () => {
+  test('the app release waits for the packages, the plugin bumps and the shell bumps', async () => {
     // The ordering is load-bearing and it is the one thing the transitive check
     // above cannot see: `app` could depend on the gates directly and still race
     // the lockfile refresh.
     //
-    // The chain is `packages -> marketplace -> android -> ios -> windows -> macos ->
-    // linux -> {ipa-build, apk-build} -> win-build -> macos-build -> linux-build ->
-    // app`, and
-    // every hop matters. `packages` commits the refreshed `bun.lock`, and a
-    // `workspace:` spec is substituted from that record, so the app must not
-    // pack before it. `marketplace` bumps the bundled plugins' versions into the
-    // same branch, and the app's tarball is what carries them. `android` bumps
-    // the shell version into the same branch, `apk-build` compiles it from that
-    // commit — and it is a GATE, because a release tagged while the shell cannot
-    // be built is a release that ships without an APK.
+    // The graph is `packages -> marketplace -> shells -> {apk-build, ipa-build,
+    // win-build, macos-build, linux-build} -> app`, and every hop matters.
+    // `packages` commits the refreshed `bun.lock`, and a `workspace:` spec is
+    // substituted from that record, so the app must not pack before it.
+    // `marketplace` bumps the bundled plugins' versions into the same branch, and
+    // the app's tarball is what carries them. `shells` bumps every shell version
+    // into ONE commit, the five builds compile it — and each is a GATE, because a
+    // release tagged while a shell cannot be built is a release that ships
+    // without it.
     const doc = await load('release.yml');
     const needsOf = (id: string): string[] => {
       const value = doc.jobs[id]?.needs;
@@ -315,17 +314,18 @@ describe('the gate contract', () => {
     };
 
     expect(needsOf('marketplace')).toContain('packages');
-    expect(needsOf('android')).toContain('marketplace');
-    expect(needsOf('ios')).toContain('android');
-    expect(needsOf('windows')).toContain('ios');
-    expect(needsOf('macos')).toContain('windows');
-    expect(needsOf('linux')).toContain('macos');
-    expect(needsOf('apk-build')).toContain('macos');
-    expect(needsOf('ipa-build')).toContain('macos');
-    expect(needsOf('win-build')).toContain('apk-build');
-    expect(needsOf('win-build')).toContain('ipa-build');
-    expect(needsOf('macos-build')).toContain('macos');
-    expect(needsOf('linux-build')).toContain('linux');
+    expect(needsOf('shells')).toContain('marketplace');
+    for (const build of ['apk-build', 'ipa-build', 'win-build', 'macos-build', 'linux-build']) {
+      expect(needsOf(build), `${build} must wait for the shell bumps`).toContain('shells');
+    }
+
+    // ONE bump job, not five. A shell that kept its own job would bring back a
+    // checkout, an install, a push and a commit per shell — the history this
+    // grouping exists to shorten.
+    for (const gone of ['android', 'ios', 'windows', 'macos', 'linux']) {
+      expect(doc.jobs[gone], `release.yml must not keep a separate ${gone} bump job`).toBeUndefined();
+    }
+
     expect(needsOf('app')).toContain('apk-build');
     expect(needsOf('app')).toContain('ipa-build');
     expect(needsOf('app')).toContain('win-build');
@@ -342,47 +342,38 @@ describe('the gate contract', () => {
     expect(needsOf('linux-app')).toEqual(['app']);
   });
 
-  test('the shell bump runs before the app tags, and only writes its own version file', async () => {
+  test('the shell bumps are ONE job and ONE commit, before the app tags', async () => {
     // A bump that ran after the app would be discarded (the release commit
-    // carries only semantic-release's own assets) and the APK would be built
-    // from a tag holding the OLD shell version — a fix no installed app is ever
-    // offered. The commit step's file list is asserted because staging `-A` would
-    // sweep a lockfile change into a `chore` that claims to be a version bump.
+    // carries only semantic-release's own assets) and every artifact would be
+    // built from a tree holding the OLD shell versions — a fix no installed app
+    // is ever offered. The staged file list is asserted because staging `-A`
+    // would sweep a lockfile change into a `chore` that claims to be a version
+    // bump, and because naming all five files in ONE commit is the point of
+    // grouping the shells.
     const doc = await load('release.yml');
-    const job = doc.jobs.android;
-    expect(job, 'release.yml has no android bump job').toBeDefined();
+    const job = doc.jobs.shells;
+    expect(job, 'release.yml has no shells bump job').toBeDefined();
 
     const steps = (job.steps as Array<{ run?: string; name?: string }>) ?? [];
-    const bump = steps.findIndex((step) => String(step.run ?? '').includes('release-android.mjs'));
+    const bump = steps.findIndex((step) => String(step.run ?? '').includes('release-shells.mjs'));
     const commit = steps.findIndex((step) => String(step.run ?? '').includes('git commit'));
-    expect(bump, 'the shell bump must run its own script').toBeGreaterThanOrEqual(0);
-    expect(commit, 'the bump must be committed, or the tag builds the old version').toBeGreaterThan(bump);
+    expect(bump, 'the shell bumps must run through the one catalog runner').toBeGreaterThanOrEqual(0);
+    expect(commit, 'the bumps must be committed, or the tag builds the old versions').toBeGreaterThan(bump);
 
     const text = JSON.stringify(steps);
-    expect(text, 'the bump commit must stage only version.properties').toContain(
-      'git add packages/android/version.properties',
-    );
-
-    // The same contract for every other shell: its own bump job, its own script,
-    // its own single staged file. A shell whose bump staged `-A` would sweep a
-    // lockfile change into a `chore` that claims to be a version bump, and one
-    // whose bump was never committed is discarded when `app` resets to its
-    // checkout — the artifact would declare the OLD version.
-    for (const [id, script, file] of [
-      ['ios', 'release-ios.mjs', 'git add packages/ios/version.properties'],
-      ['windows', 'release-windows.mjs', 'git add packages/windows/version.properties'],
-      ['macos', 'release-macos.mjs', 'git add packages/macos/version.properties'],
-      ['linux', 'release-linux.mjs', 'git add packages/linux/version.properties'],
-    ] as const) {
-      const shell = doc.jobs[id];
-      expect(shell, `release.yml has no ${id} bump job`).toBeDefined();
-      const shellSteps = (shell.steps as Array<{ run?: string }>) ?? [];
-      const bumpAt = shellSteps.findIndex((step) => String(step.run ?? '').includes(script));
-      const commitAt = shellSteps.findIndex((step) => String(step.run ?? '').includes('git commit'));
-      expect(bumpAt, `${id} must run ${script}`).toBeGreaterThanOrEqual(0);
-      expect(commitAt, `${id} must commit its bump`).toBeGreaterThan(bumpAt);
-      expect(JSON.stringify(shellSteps), `${id} must stage only its own version file`).toContain(file);
+    for (const shell of ['android', 'ios', 'windows', 'macos', 'linux']) {
+      expect(text, `the one bump commit must stage ${shell}'s version file`).toContain(
+        `packages/${shell}/version.properties`,
+      );
     }
+
+    // Exactly one commit: a second one is the per-shell commits coming back.
+    expect(String(steps[commit].run).match(/git commit/g), 'the shells must share ONE commit').toHaveLength(
+      1,
+    );
+    expect(String(steps[commit].run), 'the commit must name every bumped shell').toContain(
+      'chore(release): bump the shells (',
+    );
   });
 
   test('the macOS app is BUILT before the app tags, and only attached after', async () => {
@@ -401,8 +392,7 @@ describe('the gate contract', () => {
       `./.github/workflows/${MACOS_BODY}`,
     );
     expect(build.with?.mode, 'macos-build must build').toBe('build');
-    expect(build.needs, 'the macOS build must come after the macOS bump').toContain('macos');
-    expect(doc.jobs.macos.needs, 'the macOS bump must come after the Windows bump').toContain('windows');
+    expect(build.needs, 'the macOS build must come after the shell bumps').toContain('shells');
     expect(doc.jobs.app.needs, 'the app must not tag unless the macOS app built').toContain('macos-build');
 
     // The build compiles from `main`, not the trigger commit: the bump just landed
@@ -459,8 +449,7 @@ describe('the gate contract', () => {
       `./.github/workflows/${LINUX_BODY}`,
     );
     expect(build.with?.mode, 'linux-build must build').toBe('build');
-    expect(build.needs, 'the Linux build must come after the Linux bump').toContain('linux');
-    expect(doc.jobs.linux.needs, 'the Linux bump must come after the macOS bump').toContain('macos');
+    expect(build.needs, 'the Linux build must come after the shell bumps').toContain('shells');
     expect(doc.jobs.app.needs, 'the app must not tag unless the Linux app built').toContain(
       'linux-build',
     );
@@ -533,10 +522,9 @@ describe('the gate contract', () => {
       `./.github/workflows/${IOS_BODY}`,
     );
     expect(build.with?.mode, 'ipa-build must build').toBe('build');
-    // `macos` rather than `ios`: `macos` needs `ios`, which needs `android`, so the
-    // IPA waits for every shell bump through the one chain. Reachability, not a
-    // direct edge.
-    expect(build.needs, 'the IPA build must wait for the shell bumps').toContain('macos');
+    // One grouped bump job, so the IPA waits on that single edge instead of a
+    // chain of per-shell jobs — reachability, not a direct edge.
+    expect(build.needs, 'the IPA build must wait for the shell bumps').toContain('shells');
     expect(doc.jobs.app.needs, 'the app must not tag unless the IPA built').toContain('ipa-build');
 
     expect(attach?.uses, 'release.yml:ipa must call the IPA body').toBe(`./.github/workflows/${IOS_BODY}`);
@@ -685,11 +673,9 @@ describe('the gate contract', () => {
       `./.github/workflows/${ANDROID_BODY}`,
     );
     expect(build.with?.mode, 'apk-build must build').toBe('build');
-    // `ios` rather than `android`: `ios` needs `android`, so the APK build waits for
-    // BOTH shell bumps through one chain. What matters is that the Android bump is
-    // behind it, which is reachability rather than a direct edge.
-    expect(build.needs, 'the APK build must come after the Android bump').toContain('macos');
-    expect(doc.jobs.ios.needs, 'the iOS bump must come after the Android bump').toContain('android');
+    // One grouped bump job: the APK build waits on that single edge, which is
+    // what carries the bumped Android version into the tree it compiles.
+    expect(build.needs, 'the APK build must come after the shell bumps').toContain('shells');
     expect(doc.jobs.app.needs, 'the app must not tag unless the APK built').toContain('apk-build');
 
     //   2. the attach runs AFTER `app`, because `gh release upload` needs the

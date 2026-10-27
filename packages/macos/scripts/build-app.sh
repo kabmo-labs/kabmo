@@ -18,7 +18,7 @@ swift build --package-path "$HERE" -c "$CONFIG"
 # folder it lives in.
 BIN="$(swift build --package-path "$HERE" -c "$CONFIG" --show-bin-path)/Kabmo"
 
-# The version comes from `version.properties`, the same file `release/release-macos.mjs`
+# The version comes from `version.properties`, the same file `release/release-shells.mjs`
 # bumps — read through the same parser, so the number the pipeline publishes and
 # the number the bundle declares cannot disagree.
 VERSION="$(node "$REPO/release/macos-version.mjs")"

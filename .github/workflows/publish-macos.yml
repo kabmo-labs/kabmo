@@ -55,7 +55,7 @@ on:
         default: build
       # The commit to build, in this order: `ref`, then `tag`, then the caller's own
       # commit. `release.yml` passes `main`, never the run's starting sha: the
-      # `macos` job just pushed the version bump, and building the starting commit
+      # `shells` job just pushed the version bumps, and building the starting commit
       # would produce an app declaring the previous version.
       ref:
         description: Commit to build from; empty falls back to the tag, then the caller's commit.
@@ -164,7 +164,7 @@ jobs:
       - name: Assemble the app bundle
         run: packages/macos/scripts/build-app.sh
 
-      # The version the bundle declares is the one `release/release-macos.mjs`
+      # The version the bundle declares is the one the shared `release/release-shells.mjs`
       # bumped, and the one the asset name will carry. Checked here rather than
       # trusted: a plist that disagrees with `version.properties` would publish an
       # app whose own About panel names a different build than its download.

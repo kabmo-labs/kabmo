@@ -41,17 +41,20 @@ export function tagPrefix(entry) {
 /**
  * Refuse to cut a release outside CI unless the caller insists.
  *
- * `@semantic-release/git` pushes to `repositoryUrl`, which semantic-release
- * reads from package.json's `repository` field — NOT from the clone's `origin`.
- * A rehearsal in a scratch clone therefore still writes to the REAL remote.
- * Measured: a scratch-clone run pushed two release commits and two tags to
- * `github.com/kabmo-labs/kabmo`, because the scratch remote was never
- * consulted. Nothing was published (the tag push raises no workflow run, and
- * this pipeline does not publish), but the remote branch moved and had to be
- * reverted by hand.
+ * The runner COMMITS and PUSHES: `release/packages-commit.js` moves `main` and
+ * pushes the package tags to `origin`, and creates the GitHub release pages. A
+ * local run in a real checkout therefore releases for real.
  *
- * A rehearsal belongs on `--dry-run`, which skips every `prepare` step. This
- * guard is what makes forgetting it a refusal instead of a push.
+ * The per-package semantic-release runs this replaced were worse: the git plugin
+ * pushed to `repositoryUrl`, read from package.json's `repository` field rather
+ * than from the clone's `origin`, so a rehearsal in a scratch clone wrote to the
+ * REAL remote — measured, a "scratch" run pushed two release commits and two
+ * tags to `github.com/kabmo-labs/kabmo` and the branch had to be reverted by
+ * hand.
+ *
+ * A rehearsal belongs on `--dry-run`, which writes nothing at all: no version, no
+ * changelog, no lockfile, no commit. This guard is what makes forgetting it a
+ * refusal instead of a push.
  *
  * @param {Record<string, string|undefined>} env
  */
@@ -64,11 +67,10 @@ export function assertReleaseEnvironment(env) {
     [
       'Refusing to cut a release outside CI.',
       '',
-      'This runner PUSHES: @semantic-release/git pushes to the repository URL in',
-      "package.json, which is the real remote — a scratch clone's origin is never",
-      'consulted, so a "rehearsal" here would move the real branch and create tags.',
+      'This runner PUSHES: it commits the version bump, moves `origin/main`,',
+      'pushes the package tags and creates their GitHub releases.',
       '',
-      'To rehearse, use --dry-run (it skips every prepare step and pushes nothing).',
+      'To rehearse, use --dry-run (it writes nothing and pushes nothing).',
       'To cut a release from this machine on purpose, set',
       'KABMO_RELEASE_ALLOW_NON_CI=1.',
     ].join('\n'),

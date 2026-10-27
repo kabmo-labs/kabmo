@@ -8,7 +8,7 @@
  *
  * The number has ONE source: `CFBundleShortVersionString`, which
  * `scripts/build-app.sh` fills from `packages/macos/version.properties` — the
- * same file `release/release-macos.mjs` bumps. The app used to declare it as a
+ * same file `release/release-shells.mjs` bumps. The app used to declare it as a
  * literal in `App.swift` (`shellVersion: "0.1.0"`), and that is a second number
  * for one build: the properties file was bumped to `0.2.0` by the release
  * pipeline while the running app went on reporting `0.1.0` to the console. The

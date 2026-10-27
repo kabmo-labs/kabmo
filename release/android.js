@@ -18,7 +18,7 @@
  * unless the SERVER also cut a version, and a release that did cut one produced
  * an APK whose version said nothing about whether the shell had changed.
  *
- * `release/release-android.mjs` reads this table and `release/android.test.js`
+ * `release/release-shells.mjs` reads this table (through `release/shells.js`) and `release/android.test.js`
  * asserts it against the tree.
  */
 

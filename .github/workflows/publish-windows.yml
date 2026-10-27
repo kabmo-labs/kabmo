@@ -174,7 +174,7 @@ jobs:
         run: dotnet run --project packages/windows/tests/KabmoDesktop.Tests.csproj -c Release
 
       # The version is NOT the tag. It is `packages/windows/version.properties`,
-      # bumped by the `windows` job of `release.yml` when the shell changed — which
+      # bumped by the `shells` job of `release.yml` when the shell changed — which
       # is what makes the number the asset carries the number the running app
       # reports over the bridge.
       #

@@ -164,8 +164,8 @@ release.yml
 - **The shell has its OWN version, in `packages/android/version.properties`, and
   the pipeline bumps it.** `versionName` is that number; `versionCode` is still
   the workflow run number, because Android refuses an install whose code does not
-  increase and a counter is not a version. The `android` job runs
-  `release/release-android.mjs` **before** `apk-build` compiles: it reads the
+  increase and a counter is not a version. The `shells` job runs
+  `release/release-shells.mjs` **before** `apk-build` compiles: it reads the
   commits since the version line was last written, asks the same
   `release-rules.js` analyzer the app uses for the level (`fix` → patch,
   `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and

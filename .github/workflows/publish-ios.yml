@@ -47,7 +47,7 @@ on:
         default: build
       # The commit to build: `ref`, then `tag`, then the caller's own commit.
       #
-      # `release.yml` passes `main`, never the run's starting sha: the `ios` bump job
+      # `release.yml` passes `main`, never the run's starting sha: the `shells` bump job
       # has just pushed the shell version, and the bump is what the IPA's
       # `CFBundleShortVersionString` comes from.
       ref:

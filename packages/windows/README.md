@@ -200,13 +200,13 @@ library and its executable.
 ## Release
 
 The version lives in `version.properties` — the ONE place it is declared. The
-`windows` job of `.github/workflows/release.yml` bumps it from the Conventional
+`shells` job of `.github/workflows/release.yml` bumps it from the Conventional
 Commits touching `packages/windows` (a `fix` is a patch, a `feat` a minor), and
 `publish-windows.yml` builds the ZIP and attaches it to the app's release.
 
 ```bash
 node release/windows-version.mjs      # the declared version
-node release/release-windows.mjs      # bump it, when the shell changed (CI does this)
+node release/release-shells.mjs --only windows   # bump it, when the shell changed (CI does all five)
 ```
 
 The csproj reads that file itself (`ReadShellVersion`), so the assembly's
