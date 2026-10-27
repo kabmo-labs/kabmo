@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.11.1](https://github.com/kabmo-labs/kabmo/compare/v0.11.0...v0.11.1) — 2026-10-27
+
+### Fixed
+
+* **omp:** resume a session whose recorded model is gone, and report a refused send ([27bf161](https://github.com/kabmo-labs/kabmo/commit/27bf16181e9d7a1ef50aa1efb4977aff7e818f37)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.11.0](https://github.com/kabmo-labs/kabmo/compare/v0.10.1...v0.11.0) — 2026-10-27
 
 ### Added
