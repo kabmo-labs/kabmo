@@ -82,8 +82,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// Strong reference to the message handler (the content controller's is weak).
   private var bridgeHandler: BridgeHandler?
   private var splash: SplashView?
-  /// Guards a double Quit while the shutdown pass is running.
-  private var terminating = false
+  /// The deferred quit: stop every child server, then answer AppKit.
+  ///
+  /// Built in `applicationDidFinishLaunching`, when the supervisor exists. The
+  /// delivery route is the whole reason it is a type rather than three lines
+  /// here — see `TerminateCoordinator` for the measured failure it replaces
+  /// (Quit never completing because the reply was handed to the main actor).
+  private var terminator: TerminateCoordinator?
   /// What the launch splash is showing. Owned here because the window outlives
   /// every navigation; `SplashView` only draws it.
   ///
@@ -149,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     )
     buildMenu()
     buildWindow()
+    terminator = TerminateCoordinator(supervisor: supervisor)
     // The window is up on a splash until the first probe answers; this is what
     // moves it to the server the user was last on.
     Task { await boot() }
@@ -174,35 +180,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
    milliseconds (a server measured at 57 ms), the UI thread keeps running, and
    the timeout is a real ceiling on a hung child rather than on ourselves.
 
-   A quit that arrives while this is already running gets `cancel` — pressing
-   Quit twice must not run `stopAll` twice, and the second press has no work of
-   its own to do.
+   **The reply cannot go through the main actor, and that is what
+   `TerminateCoordinator` fixes**: `_shouldTerminate` waits inside a nested event
+   loop that does not drain the main dispatch queue, so `MainActor.run { reply }`
+   never ran and the app became impossible to quit (see that type for the
+   measurement). A quit that arrives while this is already running means "now".
    */
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-    if terminating { return .terminateCancel }
-    terminating = true
-    // Detached, so the work cannot be scheduled onto the main actor it is
-    // meant to keep free.
-    Task.detached { [supervisor] in
-      let finished = await withTaskGroup(of: Bool.self) { group -> Bool in
-        group.addTask {
-          await supervisor.stopAll()
-          return true
-        }
-        // The ceiling. A child that ignores SIGTERM is already SIGKILLed inside
-        // `killGroup`, so this is the outer bound on a genuinely wedged server.
-        group.addTask {
-          try? await Task.sleep(nanoseconds: 6_000_000_000)
-          return false
-        }
-        let first = await group.next() ?? false
-        group.cancelAll()
-        return first
-      }
-      _ = finished
-      await MainActor.run { sender.reply(toApplicationShouldTerminate: true) }
-    }
-    return .terminateLater
+    // A quit that lands during launch has no servers to stop yet.
+    guard let terminator else { return .terminateNow }
+    return terminator.request(sender)
   }
 
   func applicationWillTerminate(_ notification: Notification) {

@@ -96,6 +96,21 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   /// Where the suite is, for the watchdog's message. "The suite stopped" is
   /// useless without it.
   var phase = "the page was still loading"
+  /// Set only by the quit case, which needs the app's OWN terminate reply path.
+  var quitProbe: TerminateCoordinator?
+
+  /**
+   The app's quit path, installed for the one case that drives it.
+
+   `reply: false` is what keeps the suite alive: the case asserts that the reply
+   REACHED AppKit — the half that broke — not that the process dies. Every other
+   case runs with no probe, and then this answers `now` so the suite can never be
+   left refusing a quit of its own.
+   */
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    guard let quitProbe else { return .terminateNow }
+    return quitProbe.request(sender, reply: false)
+  }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     // The menu the app installs, built from the same table — a suite that
@@ -497,7 +512,49 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     runSplashCases()
     runSplashFillCases()
     dropPathCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
+    runQuitCases()
     finish()
+  }
+
+  /**
+   Quit actually completes.
+
+   **The regression net for the reported bug.** `applicationShouldTerminate`
+   returns `.terminateLater` while the child servers stop, and the reply that ends
+   that wait was sent with `await MainActor.run { … }` — which NEVER runs, because
+   `-[NSApplication _shouldTerminate]` waits inside a nested event loop that
+   services the run loop's own blocks but not the main dispatch queue, and the
+   main-actor executor IS the main dispatch queue. Measured on macOS 27 against a
+   real quit: the app kept its window, ignored every later Quit and had to be
+   killed from Activity Monitor.
+
+   This case drives the real thing: `NSApp.terminate` with the app's own
+   coordinator answering `.terminateLater`, so the reply is delivered by the code
+   the app ships. The watchdog is the assertion for the broken shape — a reply
+   that never lands leaves `NSApp.terminate` inside that nested loop forever, so
+   the case would hang the suite instead of reporting.
+
+   `reply: false` cancels the quit, which is what keeps the suite running; the
+   second request then asserts the anti-wedge rule, because the old answer
+   (`.terminateCancel`) could not clear the pending flag and made one impatient
+   double press permanent.
+   */
+  func runQuitCases() {
+    print("\nthe terminate reply reaches AppKit")
+    let coordinator = TerminateCoordinator(supervisor: Supervisor())
+    quitProbe = coordinator
+
+    DispatchQueue.global().asyncAfter(deadline: .now() + 8) {
+      print("  FAIL the terminate reply never reached AppKit — Quit would hang (this is the shipped bug)")
+      exit(3)
+    }
+
+    // Blocks inside AppKit's own `_shouldTerminate` loop until the reply lands.
+    NSApp.terminate(nil)
+    check("a deferred quit is answered, so the app can close", coordinator.isPending)
+    check("a second Quit is answered with 'now' instead of a cancel that wedges the app",
+          coordinator.request(NSApp, reply: false) == .terminateNow)
+    quitProbe = nil
   }
 
   /**
