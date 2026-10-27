@@ -33,6 +33,7 @@ import { Chunk, MergeView, diff, unifiedMergeView } from '@codemirror/merge';
 
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
+import { diffFoldingExtensions } from '@/client/components/workspace/diff-panel/folding';
 
 /** What the toolbar shows; `diff` collapses the unchanged stretches. */
 export type CollapseMode = 'diff' | 'full';
@@ -140,6 +141,10 @@ function baseExtensions(options: DiffViewOptions, wrap: Compartment): Extension[
   return [
     ...READ_ONLY,
     lineNumbers(),
+    // Folding (a brace rule then the editor's indentation rule), the fold
+    // gutter that supplies the fold STATE field, and bracket pairing + guide.
+    // A read-only viewer still folds — that is the whole point of it here.
+    ...diffFoldingExtensions,
     shikiHighlight(options.language, options.themes),
     surfaceTheme(),
     diffTheme(),

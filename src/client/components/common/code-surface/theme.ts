@@ -81,6 +81,12 @@ export function surfaceTheme(): Extension {
     // The fold gutter, beside the line numbers. Its marker is a text glyph
     // (`⌄` / `›`) inside a span, so the box needs a fixed width or the gutter
     // shifts sideways as a block opens and closes.
+    //
+    // The colour reads `--editor-fg` FIRST: an explicit editor theme paints a
+    // surface of its own (`Dracula` over a light app palette), and the app's ink
+    // at 45% over that background is a glyph the reader cannot see — measured on
+    // the diff panel, which is the one Reader that can wear a dark editor theme
+    // inside a light console.
     '.cm-foldGutter .cm-gutterElement': {
       padding: '0 4px 0 2px',
       minWidth: '1.1rem',
@@ -90,9 +96,9 @@ export function surfaceTheme(): Extension {
       display: 'inline-block',
       width: '100%',
       cursor: 'pointer',
-      color: 'color-mix(in srgb, var(--theme-ink) 45%, transparent)',
+      color: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 45%, transparent)',
     },
-    '.cm-foldGutter .cm-gutterElement span:hover': { color: 'var(--theme-ink)' },
+    '.cm-foldGutter .cm-gutterElement span:hover': { color: 'var(--editor-fg, var(--theme-ink))' },
     // A folded range's own `…`. Two facts about this rule are load-bearing.
     //
     // 1. The declarations are LONGHAND. `border: 1px solid var(--x)` is a
@@ -105,11 +111,11 @@ export function surfaceTheme(): Extension {
     //    CM6 mounts our theme after the base one. Verified: our rule is emitted
     //    last and wins.
     '.cm-foldPlaceholder': {
-      backgroundColor: 'color-mix(in srgb, var(--theme-ink) 7%, var(--theme-canvas))',
+      backgroundColor: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 7%, var(--editor-bg, var(--theme-canvas)))',
       borderWidth: '1px',
       borderStyle: 'solid',
-      borderColor: 'color-mix(in srgb, var(--theme-ink) 18%, transparent)',
-      color: 'color-mix(in srgb, var(--theme-ink) 55%, transparent)',
+      borderColor: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 18%, transparent)',
+      color: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 55%, transparent)',
       borderRadius: '0.2em',
       margin: '0 1px',
       padding: '0 4px',

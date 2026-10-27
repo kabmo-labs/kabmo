@@ -38,7 +38,11 @@ function longFile(): string {
   return lines.join('\n');
 }
 
-async function seedRepo(page: Parameters<typeof openApp>[0], server: Parameters<typeof seedWorkspace>[0]) {
+async function seedRepo(
+  page: Parameters<typeof openApp>[0],
+  server: Parameters<typeof seedWorkspace>[0],
+  extraFiles: Record<string, string> = {},
+) {
   const workspace = await seedWorkspace(server, 'e2e-diff-view');
   const repo = seedWorkingRepo('diff-view');
   repo.git('init', '-q', '-b', 'main');
@@ -46,6 +50,9 @@ async function seedRepo(page: Parameters<typeof openApp>[0], server: Parameters<
   repo.git('add', '.');
   repo.git('commit', '-qm', 'init');
   writeFileSync(join(repo.path, 'a.txt'), longFile());
+  // Written BEFORE the app opens, because the Source Control list is read on
+  // mount: a file created afterwards would need a refresh the spec does not own.
+  for (const [name, content] of Object.entries(extraFiles)) writeFileSync(join(repo.path, name), content);
 
   const folder = (await fetch(`${server.baseURL}/api/folders`, {
     method: 'POST',
@@ -77,10 +84,10 @@ async function clickToolbar(page: Parameters<typeof openApp>[0], name: string): 
   await page.getByRole('menuitem', { name, exact: true }).click();
 }
 
-async function openDiff(page: Parameters<typeof openApp>[0]) {
+async function openDiff(page: Parameters<typeof openApp>[0], file = 'a.txt') {
   await page.getByRole('button', { name: 'Source Control', exact: true }).click();
   const right = page.locator('[data-panel-id="right-panel"]');
-  const row = right.getByText('a.txt', { exact: true }).first();
+  const row = right.getByText(file, { exact: true }).first();
   await expect(row).toBeVisible({ timeout: 15_000 });
   await row.click();
   const panel = diffPanel(page);
@@ -329,6 +336,73 @@ test.describe('diff panel views', () => {
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), { timeout: 10_000 })
       .toBe(true);
+
+    workspace.dispose();
+  });
+
+  /**
+   * Folding and brace detection, on a real layout.
+   *
+   * Both halves depend on geometry the unit layer cannot produce: the gutter
+   * marker has to have a box a press can land in, and the pair guide is drawn
+   * from a measured column. happy-dom computes no layout, so `folding.test.ts`
+   * pins the rule and the fold STATE while this spec proves the feature a
+   * reader actually operates.
+   */
+  test('a brace block folds from the gutter, and the pair is detected', async ({ harness, page }) => {
+    const server = await harness('real');
+    const { workspace } = await seedRepo(page, server, {
+      // A new file with a brace block: the diff shows it as additions, so every
+      // row is on screen under the default "Diff only".
+      'code.ts': [
+        'function outer(a: number) {',
+        '  const b = a + 1;',
+        '  const c = b * 2;',
+        '  return c;',
+        '}',
+        '',
+      ].join('\n'),
+    });
+    const panel = await openDiff(page, 'code.ts');
+
+    const marker = panel.locator('.cm-foldGutter .cm-gutterElement span[title="Fold line"]').first();
+    await expect(marker).toBeVisible({ timeout: 10_000 });
+    await marker.click();
+
+    const placeholder = panel.locator('.cm-foldPlaceholder');
+    await expect(placeholder).toBeVisible({ timeout: 10_000 });
+    // The body is inside the fold, so its rows are not rendered at all.
+    await expect(panel.locator('.cm-line', { hasText: 'const b = a + 1;' })).toHaveCount(0);
+
+    await placeholder.click();
+    await expect(panel.locator('.cm-line', { hasText: 'const b = a + 1;' })).toHaveCount(1);
+
+    // Open/close detection: a caret beside the `{` paints both ends of the pair
+    // and the guide down the rows between them.
+    const brace = await panel.locator('.cm-line').first().evaluate((line) => {
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent ?? '';
+        const index = text.indexOf('{');
+        if (index < 0) continue;
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        const rect = range.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }
+      return null;
+    });
+    expect(brace).not.toBeNull();
+    if (!brace) return;
+    await page.mouse.click(brace.x, brace.y);
+
+    await expect
+      .poll(async () => panel.locator('.cm-matchingBracket').count(), { timeout: 10_000 })
+      .toBe(2);
+    await expect
+      .poll(async () => panel.locator('.cm-line.cm-bracket-guide').count(), { timeout: 10_000 })
+      .toBe(3);
 
     workspace.dispose();
   });
