@@ -10,7 +10,14 @@
  * the catalog declares — so the spec addresses a view by its name, which is
  * what a reader sees. The panel body is located through the resizer's own
  * `data-panel-id` (the layout's real identity), and the switch is proven by the
- * VIEW's own content appearing (a placeholder unique to it), never by a class.
+ * VIEW's own content appearing, never by a class.
+ *
+ * Source Control's content here is its "not a repository" state, because that
+ * is what the fixture's workspace IS: `seedWorkspace` binds a fresh temp
+ * directory, and a directory outside every repository is exactly the state the
+ * panel answers with an offer to initialize one. It used to draw its commit
+ * box over that folder, which is the shape the panel stopped drawing — every
+ * control it showed there failed with "not a git repository".
  *
  * The persistence half is the one a unit test cannot reach: the panel choice
  * lives in `session_ui_state`, is posted on change and read back on load, and
@@ -21,6 +28,19 @@
 import { test, expect, openApp } from '../fixtures/app';
 import { seedWorkspace } from '../fixtures/seed';
 import { TESTID } from '../fixtures/selectors';
+import type { Page } from '@playwright/test';
+
+/**
+ * Source Control's own content, in the state the fixture's folder is in.
+ *
+ * The button is unique to this view, which is what a switch assertion needs:
+ * every view stays MOUNTED while another is on screen (hidden with CSS), so a
+ * marker that another view also renders would answer "the panel is open"
+ * rather than "THIS view is the active one".
+ */
+function sourceControlContent(page: Page) {
+  return page.getByRole('button', { name: 'Initialize Git repository' });
+}
 
 test.describe('right panel', () => {
   test('switches the active view from the activity bar', async ({ harness, page }) => {
@@ -31,14 +51,15 @@ test.describe('right panel', () => {
     const rightPanel = page.locator('[data-panel-id="right-panel"]');
     await expect(rightPanel).toBeVisible();
 
-    // Source Control's own content: the commit message box.
+    // Source Control's own content: the state it draws for a folder that is
+    // not a repository.
     await page.getByRole('button', { name: 'Source Control' }).click();
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
 
     // Search's own content: its query field.
     await page.getByRole('button', { name: 'Search' }).click();
     await expect(rightPanel.getByPlaceholder('Search', { exact: true })).toBeVisible();
-    await expect(page.getByPlaceholder(/commit message/i)).toBeHidden();
+    await expect(sourceControlContent(page)).toBeHidden();
 
     workspace.dispose();
   });
@@ -58,11 +79,11 @@ test.describe('right panel', () => {
       (response) => response.request().method() === 'POST' && /\/api\/sessions\/.+\/state$/.test(new URL(response.url()).pathname),
     );
     await page.getByRole('button', { name: 'Source Control' }).click();
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
     await persisted;
 
     await openApp(page, url);
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
 
     workspace.dispose();
   });
@@ -98,7 +119,7 @@ test.describe('right panel', () => {
     await pendingStateLoaded;
 
     await page.getByRole('button', { name: 'Source Control' }).click();
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
 
     const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
     await expect(input).toBeEnabled();
@@ -108,7 +129,7 @@ test.describe('right panel', () => {
     // The spawn answers with the real id; the panel must still be on the view
     // the user picked, with nothing re-clicked.
     await expect(page).toHaveURL(/sessionId=(?!new-)/, { timeout: 30_000 });
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
 
     workspace.dispose();
   });
@@ -119,7 +140,7 @@ test.describe('right panel', () => {
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
 
     await page.getByRole('button', { name: 'Source Control' }).click();
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
 
     // The navbar's toggle collapses the panel; toggling back must return to the
     // SAME view, not the default.
@@ -127,7 +148,7 @@ test.describe('right panel', () => {
     await toggle.click();
     await expect(page.locator('[data-panel-id="right-panel"]')).toBeHidden();
     await toggle.click();
-    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible();
+    await expect(sourceControlContent(page)).toBeVisible();
 
     workspace.dispose();
   });
