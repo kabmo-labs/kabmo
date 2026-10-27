@@ -34,7 +34,7 @@
  * see `standby.server.test.ts`.
  */
 
-import { restartPrewarmedSessions } from '@/server/lib/omp/rpc/session-registry';
+import { restartPrewarmedSessions } from '@/server/lib/omp/rpc/prewarm-pool';
 import { restartUtilityProcesses } from '@/server/lib/omp/rpc/utility';
 import { invalidateSkillCache } from '@/server/lib/omp/config/skills';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';

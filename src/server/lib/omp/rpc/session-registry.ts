@@ -20,7 +20,10 @@ import { localRuns } from '@/server/lib/omp/session/local-runs.server';
 import { recordSpawnProvenance } from '@/server/lib/omp/rpc/spawn-provenance';
 import { registerSpawnedSession } from '@/server/lib/omp/rpc/session-registration';
 import { resolveSessionOwnership, SessionOwnedElsewhereError } from '@/server/lib/omp/session/ownership.server';
+import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
+import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { SelectedModel } from '@/shared/types/models';
 
 export { getSpawnApprovalMode, getSpawnModeEnv, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/spawn-provenance';
 
@@ -111,6 +114,7 @@ export async function startRpcSession(
   recordedCwd?: string | null,
   approvalMode?: ApprovalMode,
   modeEnv?: Record<string, string>,
+  resumeModel?: SelectedModel,
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const locks = getLocks();
@@ -137,155 +141,94 @@ export async function startRpcSession(
   const inflight = locks.get(sessionId);
   if (inflight) return inflight;
 
-  const starting = (async () => {
-    const holder: { wrapper?: AgentSessionWrapper } = {};
-    const proc = new RpcProcess({
-      cwd,
-      extraArgs: buildSessionSpawnArgs(sessionFile, approvalMode),
-      env: modeEnv,
-      onExit: ({ stderrTail }) => holder.wrapper?.handleProcessExit(stderrTail),
-    });
-    const created = new AgentSessionWrapper(proc, cwd, recordedCwd);
-    recordSpawnProvenance(created, approvalMode, modeEnv);
-    holder.wrapper = created;
-    created.start();
-    try {
-      await created.waitUntilReady();
-    } catch (error) {
-      await created.destroyAndWait();
-      throw error;
-    }
-
-    const realSessionId = created.sessionId;
-    registerSpawnedSession(registry, created, sessionId, realSessionId);
-    // A session's cwd may sit outside every registered workspace, and omp
-    // resolves project skills from it all the same — so the discovery watcher
-    // has to learn this directory. AWAITED, not fired and forgotten: the
-    // reconcile attaches its watchers asynchronously, and a caller that wrote a
-    // skill the moment the spawn returned would land it in the gap before the
-    // watch existed (measured: the write was missed on a fast follow-up and
-    // picked up once the attach had settled).
-    await syncDiscoveryRootsWatch();
-    // A `session:<id>` topic subscribed before this spawn had no child to bind
-    // to, so it published nothing and its subscribers hold a `running:false`
-    // snapshot. The child exists now: tell the realtime layer to re-snapshot
-    // that topic for whoever is watching.
-    emitRealtimeSignal('session-attached', realSessionId);
-    // A forked resume answers a NEW id, and the client is still subscribed (and
-    // still posting) under the id it asked for. Publishing only the real id
-    // leaves that subscriber attached to a topic whose `getRpcSession` now
-    // resolves — through the alias `registerSpawnedSession` installs — while
-    // nothing ever told it to re-snapshot, so a reload-less tab would keep the
-    // pre-spawn snapshot.
-    if (sessionId !== realSessionId) emitRealtimeSignal('session-attached', sessionId);
-    return { session: created, realSessionId };
-  })().finally(() => locks.delete(sessionId));
+  const starting = spawnOnce(sessionId, sessionFile, cwd, recordedCwd, approvalMode, modeEnv)
+    .catch(async (error) => {
+      // omp restores the model the session's transcript records, and it does
+      // NOT fall back when that model is gone: the child exits(1) with
+      // "Could not restore model <provider>/<id>" and EVERY command to the
+      // session fails with it. Measured on omp 18.13.1 — a session whose last
+      // model_change named a provider that is no longer in the registry could
+      // not receive a prompt at all.
+      //
+      // The recovery respawns it with a model omp CAN resolve. The command
+      // that triggered this spawn then runs against the new child, so the
+      // user's own `set_model` still lands on it.
+      //
+      // The first attempt is deliberately left UNCHANGED (no `--model`): a
+      // caller's pick can itself be stale — the picker's list is a 60 s
+      // snapshot — and naming it up front made a healthy session unopenable
+      // ("Model <x> not found"). It is only a CANDIDATE here, and one that has
+      // to survive the resolvability check.
+      if (!isUnrestorableModelFailure(error)) throw error;
+      const replacement = await resolveResumableModel(resumeModel);
+      if (!replacement) throw error;
+      return spawnOnce(sessionId, sessionFile, cwd, recordedCwd, approvalMode, modeEnv, replacement);
+    })
+    .finally(() => locks.delete(sessionId));
 
   locks.set(sessionId, starting);
   return starting;
 }
 
-// ============================================================================
-// Prewarm pool: one idle "new session" spawned ahead of the first prompt so
-// adopting it on send skips the multi-second omp boot. Keyed per cwd (the
-// spawn's project directory) with its approval mode; consumed exactly once by
-// startNewRpcSession.
-// ============================================================================
-
-interface PrewarmedEntry {
-  cwd: string;
-  approvalMode: ApprovalMode;
-  /** Mode selection the entry was spawned with; a mismatch makes it unusable. */
-  modeEnv?: Record<string, string>;
-  /** Resolves when the wrapper is ready, or rejects when the spawn failed or
-   *  the entry was torn down before being claimed. */
-  ready: Promise<AgentSessionWrapper>;
-  claimed: boolean;
-}
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __ompPrewarmed: Map<string, PrewarmedEntry> | undefined;
-}
-
-function getPrewarmed(): Map<string, PrewarmedEntry> {
-  if (!globalThis.__ompPrewarmed) globalThis.__ompPrewarmed = new Map();
-  return globalThis.__ompPrewarmed;
-}
-
-/** Spawn (at most one) idle omp process for `cwd` so the next new-session
- *  send starts instantly. Fire-and-forget; a failed spawn just clears itself.
- *  Safe to call repeatedly — an existing live or in-flight entry wins. */
-export function prewarmRpcSession(cwd: string, approvalMode?: ApprovalMode, modeEnv?: Record<string, string>): void {
-  const pool = getPrewarmed();
-  const existing = pool.get(cwd);
-  if (existing) return;
-  const mode = approvalMode ?? DEFAULT_APPROVAL_MODE;
-  // A pending chat has no mode selection yet, so its prewarmed process is
-  // spawned with none — the first send races it and any real selection kills
-  // the entry (see `startNewRpcSession`).
+/** One spawn attempt: build the child, wait for it to be ready, register it. */
+async function spawnOnce(
+  sessionId: string,
+  sessionFile: string,
+  cwd: string,
+  recordedCwd: string | null | undefined,
+  approvalMode: ApprovalMode | undefined,
+  modeEnv: Record<string, string> | undefined,
+  resumeModel?: SelectedModel | undefined,
+): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
+  const registry = getRegistry();
   const holder: { wrapper?: AgentSessionWrapper } = {};
   const proc = new RpcProcess({
     cwd,
-    extraArgs: buildSessionSpawnArgs('', mode),
+    extraArgs: buildSessionSpawnArgs(sessionFile, approvalMode, resumeModel),
     env: modeEnv,
     onExit: ({ stderrTail }) => holder.wrapper?.handleProcessExit(stderrTail),
   });
-  const wrapper = new AgentSessionWrapper(proc, cwd);
-  recordSpawnProvenance(wrapper, mode, modeEnv);
-  holder.wrapper = wrapper;
-  wrapper.start();
-  const ready = wrapper
-    .waitUntilReady()
-    .then(() => {
-      // A dead wrapper (idle-kill, crash, exit) must not be handed out.
-      if (!wrapper.isAlive()) throw new Error('prewarmed process exited');
-      return wrapper;
-    })
-    .catch((error) => {
-      void wrapper.destroyAndWait();
-      const entry = pool.get(cwd);
-      if (entry?.ready === ready) pool.delete(cwd);
-      throw error;
-    });
-  pool.set(cwd, { cwd, approvalMode: mode, modeEnv, ready, claimed: false });
+  const created = new AgentSessionWrapper(proc, cwd, recordedCwd);
+  recordSpawnProvenance(created, approvalMode, modeEnv);
+  holder.wrapper = created;
+  created.start();
+  try {
+    await created.waitUntilReady();
+  } catch (error) {
+    await created.destroyAndWait();
+    throw error;
+  }
+
+  const realSessionId = created.sessionId;
+  registerSpawnedSession(registry, created, sessionId, realSessionId);
+  // A session's cwd may sit outside every registered workspace, and omp
+  // resolves project skills from it all the same — so the discovery watcher
+  // has to learn this directory. AWAITED, not fired and forgotten: the
+  // reconcile attaches its watchers asynchronously, and a caller that wrote a
+  // skill the moment the spawn returned would land it in the gap before the
+  // watch existed (measured: the write was missed on a fast follow-up and
+  // picked up once the attach had settled).
+  await syncDiscoveryRootsWatch();
+  // A `session:<id>` topic subscribed before this spawn had no child to bind
+  // to, so it published nothing and its subscribers hold a `running:false`
+  // snapshot. The child exists now: tell the realtime layer to re-snapshot
+  // that topic for whoever is watching.
+  emitRealtimeSignal('session-attached', realSessionId);
+  // A forked resume answers a NEW id, and the client is still subscribed (and
+  // still posting) under the id it asked for. Publishing only the real id
+  // leaves that subscriber attached to a topic whose `getRpcSession` now
+  // resolves — through the alias `registerSpawnedSession` installs — while
+  // nothing ever told it to re-snapshot, so a reload-less tab would keep the
+  // pre-spawn snapshot.
+  if (sessionId !== realSessionId) emitRealtimeSignal('session-attached', sessionId);
+  return { session: created, realSessionId };
 }
 
-/**
- * Recycle every UNCLAIMED prewarmed process.
- *
- * A prewarmed child is a full session host that has no session yet, spawned
- * from whatever binary was current when the user opened a pending chat. After
- * `omp update` it is a stale build waiting to be adopted by the next send, so
- * the recycle happens here rather than being left to the idle timer.
- *
- * Safe because there is nothing to lose: an unclaimed entry owns no session and
- * no turn. An entry a send is already adopting is left alone — the claim is a
- * synchronous check-and-set (`startNewRpcSession`), so an entry is either taken
- * before this pass reads it or taken after this pass removed it, never both.
- * A wrapper still booting is destroyed through `destroyAndWait`, which is also
- * the error path the prewarm itself would have taken.
- */
-export async function restartPrewarmedSessions(): Promise<number> {
-  const pool = getPrewarmed();
-  if (pool.size === 0) return 0;
-  const doomed: PrewarmedEntry[] = [];
-  for (const [cwd, entry] of pool) {
-    if (entry.claimed) continue;
-    entry.claimed = true;
-    pool.delete(cwd);
-    doomed.push(entry);
-  }
-  await Promise.all(doomed.map(async (entry) => {
-    try {
-      const wrapper = await entry.ready;
-      await wrapper.destroyAndWait();
-    } catch {
-      // A spawn that failed already tore its own wrapper down; nothing to do.
-    }
-  }));
-  return doomed.length;
-}
+// ============================================================================
+// The prewarm pool (one idle "new session" spawned ahead of the first prompt)
+// lives in `prewarm-pool.ts`: it is a cache with its own lifecycle, not part
+// of the live-session map below.
+// ============================================================================
 
 /** Consume the prewarmed process for `cwd` when its approval mode matches, or
  *  spawn a fresh session. The returned wrapper is already registered under its
@@ -295,35 +238,8 @@ export async function startNewRpcSession(
   approvalMode?: ApprovalMode,
   modeEnv?: Record<string, string>,
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
-  const pool = getPrewarmed();
-  const entry = pool.get(cwd);
   const mode = approvalMode ?? DEFAULT_APPROVAL_MODE;
-  let wrapper: AgentSessionWrapper | undefined;
-  // A prewarmed entry was spawned with the environment current at prewarm
-  // time, so a MODE selection that differs from its own can no longer be served
-  // by it — the extension reads the mode env once, at session start. Treated
-  // exactly like a mode mismatch: claim and kill, then spawn cold.
-  const entryModes = entry?.modeEnv?.KABMO_MODES ?? entry?.modeEnv?.CHAMBER_MODES ?? '';
-  const wantedModes = modeEnv?.KABMO_MODES ?? modeEnv?.CHAMBER_MODES ?? '';
-  if (entry && !entry.claimed && entry.approvalMode === mode && entryModes === wantedModes) {
-    entry.claimed = true;
-    pool.delete(cwd);
-    try {
-      const candidate = await entry.ready;
-      // Died between readiness and claim (idle kill, crash) → cold spawn.
-      if (candidate.isAlive()) wrapper = candidate;
-      else await candidate.destroyAndWait();
-    } catch {
-      wrapper = undefined; // fall through to a cold spawn
-    }
-  } else if (entry && !entry.claimed) {
-    // Wrong approval mode, or a different session-mode selection: the prewarmed
-    // process cannot serve this request. Kill it and spawn cold —
-    // reconcileSpawnApprovalMode would refuse (no session file).
-    entry.claimed = true;
-    pool.delete(cwd);
-    void entry.ready.then((w) => w.destroyAndWait()).catch(() => {});
-  }
+  const wrapper = await claimPrewarmedSession(cwd, mode, modeEnv);
 
   if (!wrapper) {
     return startRpcSession(`__new__${Bun.randomUUIDv7()}`, '', cwd, undefined, mode, modeEnv);

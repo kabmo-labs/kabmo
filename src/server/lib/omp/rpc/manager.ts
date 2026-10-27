@@ -346,5 +346,5 @@ export class AgentSessionWrapper {
   }
 }
 
-export { getRpcSession, startRpcSession, prewarmRpcSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
+export { getRpcSession, startRpcSession, startNewRpcSession } from '@/server/lib/omp/rpc/session-registry';
 export { getSpawnApprovalMode, getSpawnModeEnv, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/spawn-provenance';

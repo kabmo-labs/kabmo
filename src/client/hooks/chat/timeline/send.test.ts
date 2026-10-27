@@ -187,6 +187,7 @@ function makeSendHarness(options: {
     setInputValue: (v) => {
       drafts.push(v);
     },
+    reportActionError: () => {},
     setSearchParams: (fn) => {
       params.push(fn(new URLSearchParams('sessionId=new-1')).toString());
     },

@@ -1,6 +1,6 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs } from '@/server/lib/remix-compat';
-import { prewarmRpcSession } from '@/server/lib/omp/rpc/manager';
+import { prewarmRpcSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';

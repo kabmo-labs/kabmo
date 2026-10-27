@@ -127,7 +127,13 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // Kabmo restart, a second instance, or a CLI-driven session all agree.
     const persisted = body.modes !== undefined ? parseModeSelection(body as Record<string, unknown>) : await loadPersistedModes(filePath);
     const modeEnv = kabmoModeEnv({ plan: persisted.plan, goal: persisted.goal });
-    const { session } = await startRpcSession(sessionId, filePath, cwd, recordedCwd, spawnMode, modeEnv);
+    // The model this command ASKS for is the best candidate to RESUME with: a
+    // `set_model` carries the operator's own pick, and a session whose
+    // recorded model no longer exists needs a replacement that resolves.
+    const asked = body.type === 'set_model' && typeof body.provider === 'string' && typeof body.modelId === 'string'
+      ? { provider: body.provider, modelId: body.modelId }
+      : undefined;
+    const { session } = await startRpcSession(sessionId, filePath, cwd, recordedCwd, spawnMode, modeEnv, asked);
     const result = await session.send(forwarded);
     // Same Resume nudge as the live path: a resumed goal must not sit idle
     // waiting for the operator's next message.

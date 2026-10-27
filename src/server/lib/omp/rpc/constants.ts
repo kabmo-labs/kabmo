@@ -14,6 +14,7 @@ import { pathExists } from '@/server/lib/omp/core/paths';
 import { kabmoExtensionArgs } from '@/server/lib/omp/extensions/locator';
 import { ensureTitleModelOverlay, titleModelOverlayPath } from '@/server/lib/omp/session/title-model-overlay.server';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import type { SelectedModel } from '@/shared/types/models';
 
 export interface AgentEvent {
   type: string;
@@ -279,7 +280,11 @@ export async function resolveSpawnCwd(recordedCwd?: string | null): Promise<stri
  *  reaches omp's title generation: the child watches that path, so
  *  `rename-with-ai` rewrites the `tiny` role for the duration of one request.
  *  See `session/title-model-overlay.server.ts`. */
-export function buildSessionSpawnArgs(sessionFile: string, approvalMode?: ApprovalMode): string[] {
+export function buildSessionSpawnArgs(
+  sessionFile: string,
+  approvalMode?: ApprovalMode,
+  resumeModel?: SelectedModel,
+): string[] {
   const args: string[] = [];
   ensureTitleModelOverlay();
   args.push('--config', titleModelOverlayPath());
@@ -288,6 +293,15 @@ export function buildSessionSpawnArgs(sessionFile: string, approvalMode?: Approv
     // opens it directly via SessionManager.open without any interactive
     // resume/fork prompts.
     args.push('--resume', sessionFile);
+  }
+  // The model the session is RESTORED with. omp restores the model its
+  // transcript's last `model_change` names, and it does NOT fall back when
+  // that model is no longer in the registry: the child exits(1) with
+  // "Could not restore model <provider>/<id>" and every command to the
+  // session fails with it. `--model` names a model that DOES resolve, so a
+  // session whose recorded model is gone still starts.
+  if (resumeModel?.provider && resumeModel.modelId) {
+    args.push('--model', `${resumeModel.provider}/${resumeModel.modelId}`);
   }
   if (approvalMode) {
     // Spawn-time only: omp exposes no RPC command to change the tool-approval

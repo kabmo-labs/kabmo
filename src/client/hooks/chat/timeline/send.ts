@@ -70,6 +70,10 @@ export interface ChatTimelineSendDeps {
   deferredComposerPickRef: DeferredModelStore;
   abortControllerRef: { current: AbortController | null };
   setInputValue: (v: string) => void;
+  /** Surface a refused send. The optimistic bubbles are rolled back either
+   *  way; without this the operator's turn simply VANISHES, which is the
+   *  "prompt failed to send" report this exists to answer. */
+  reportActionError: (message: string) => void;
   setSearchParams: (fn: (prev: URLSearchParams) => URLSearchParams, opts?: { replace?: boolean }) => void;
 }
 
@@ -114,6 +118,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     spawnWorktreeRef,
     abortControllerRef,
     setInputValue,
+    reportActionError,
     setSearchParams,
   } = deps;
 
@@ -233,6 +238,11 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
         aiPlaceholderIdRef.current = null;
         optimisticUserIdRef.current = null;
         setGenerating(false);
+        // And SAY so. The rollback alone left the operator's turn vanishing
+        // with no explanation, which is the reported "gagal kirim prompt": the
+        // server's reason (a dead child, a session another process owns) was
+        // computed and then dropped on the floor.
+        reportActionError(`Prompt not sent: ${result.error ?? 'the session refused it'}`);
       }
       return result;
     }

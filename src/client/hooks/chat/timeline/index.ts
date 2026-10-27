@@ -243,6 +243,7 @@ export function useChatTimeline({
     spawnWorktreeRef: spawn.worktreePathRef,
     abortControllerRef,
     setInputValue,
+    reportActionError,
     setSearchParams,
   });
 
