@@ -53,6 +53,28 @@ describe('waitViewOf', () => {
     expect(view?.jobs[1]).toMatchObject({ completionPercent: 40, resolvedModel: 'deepseek-v4-1-flash' });
   });
 
+  test('reads the running-task telemetry omp 18.13.0 adds', () => {
+    // omp copies these out of a task's progress record into the job snapshot;
+    // they are the numbers behind `90 req · $18.40 · ctx 160K/1M · stage: …`.
+    const view = waitViewOf({
+      details: {
+        op: 'wait',
+        jobs: [{
+          id: 'bg_3', type: 'task', status: 'running', label: 'refactor', durationMs: 18_446_000,
+          completionPercent: 55, requests: 90, cost: 18.4,
+          contextTokens: 163_840, contextWindow: 1_048_576, stage: 'implementing',
+        }],
+      },
+    });
+    expect(view?.jobs[0]).toMatchObject({
+      requests: 90,
+      cost: 18.4,
+      contextTokens: 163_840,
+      contextWindow: 1_048_576,
+      stage: 'implementing',
+    });
+  });
+
   test('an empty job list is an answer, not an absence', () => {
     // `{op:'wait', jobs:[]}` is what omp returns when the 30-minute cap elapses
     // and when a SERVICE rather than a job woke the call.

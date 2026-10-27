@@ -140,6 +140,57 @@ describe('Wait panel — a blocking call', () => {
   });
 });
 
+describe('Wait panel — running-task telemetry', () => {
+  // omp 18.13.0 lifts a task's `requests`, `cost`, context fill and `stage`
+  // into the job snapshot, which is what makes omp's own row read
+  // `90 req · $18.40 · ctx 160K/1M · stage: implementing`. The card has to draw
+  // them, or the telemetry reaches the wire and goes nowhere.
+  const TELEMETRY: Partial<ToolCallData> & Pick<ToolCallData, 'type'> = {
+    type: 'wait',
+    name: 'wait',
+    status: 'running',
+    output: '',
+    details: {
+      op: 'wait',
+      jobs: [{
+        id: 'bg_3', type: 'task', status: 'running', label: 'refactor', durationMs: 18_446_000,
+        completionPercent: 55, requests: 90, cost: 18.4,
+        contextTokens: 163_840, contextWindow: 1_048_576, stage: 'implementing',
+      }],
+    },
+  };
+
+  test('draws the telemetry line under the row', async () => {
+    const el = await mount(TELEMETRY);
+    const text = el.textContent ?? '';
+    expect(text).toContain('90 req');
+    expect(text).toContain('$18.40');
+    expect(text).toContain('ctx 163.8K/1.0M');
+    expect(text).toContain('stage: implementing');
+  });
+
+  test('the percent stays on the row and out of the telemetry line', async () => {
+    // The row already shows `55%` as its own chip, so the line must not repeat
+    // it — twice would read as a second estimate.
+    const el = await mount(TELEMETRY);
+    const line = [...el.querySelectorAll('.font-mono')].map((node) => node.textContent ?? '').find((t) => t.includes('req'));
+    expect(line?.includes('~55%')).toBe(false);
+  });
+
+  test('a settled job draws no telemetry, so a stored snapshot never looks live', async () => {
+    const el = await mount({
+      ...TELEMETRY,
+      status: 'success',
+      durationMs: 18_446_000,
+      details: {
+        op: 'wait',
+        jobs: [{ ...TELEMETRY.details!.jobs[0], status: 'completed', exitCode: 0 }],
+      },
+    });
+    expect(el.textContent ?? '').not.toContain('req');
+  });
+});
+
 describe('Wait panel — the 30-minute cap', () => {
   test('states the ceiling and the remaining budget while blocking', async () => {
     // omp caps one `wait` at 30 minutes and takes no argument to raise it, so

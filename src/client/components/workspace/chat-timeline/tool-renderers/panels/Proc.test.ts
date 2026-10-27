@@ -224,6 +224,36 @@ describe('Proc panel — a cancelled job', () => {
   });
 });
 
+describe('Proc panel — running-task telemetry', () => {
+  // The same snapshot fields the wait card draws (omp 18.13.0). This row has no
+  // percent chip of its own, so the line carries the estimate too.
+  test('draws requests, spend, context fill and stage for a running task', async () => {
+    const el = await mount({
+      type: 'read',
+      name: 'read',
+      target: 'proc://bg_11',
+      input: { path: 'proc://bg_11' },
+      output: 'bg_11 [task] — running',
+      status: 'running',
+      details: {
+        proc: {
+          job: {
+            id: 'bg_11', type: 'task', status: 'running', label: 'refactor', durationMs: 90_000,
+            completionPercent: 55, requests: 90, cost: 18.4,
+            contextTokens: 163_840, contextWindow: 1_048_576, stage: 'implementing',
+          },
+        },
+      },
+    });
+    const text = el.textContent ?? '';
+    expect(text).toContain('90 req');
+    expect(text).toContain('$18.40');
+    expect(text).toContain('ctx 163.8K/1.0M');
+    expect(text).toContain('~55%');
+    expect(text).toContain('stage: implementing');
+  });
+});
+
 describe('Proc panel — legacy hub tool', () => {
   test('renders a hub daemon from the top level of details', async () => {
     const el = await mount({

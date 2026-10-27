@@ -49,6 +49,7 @@ import {
 } from '@/shared/lib/omp/session/wait';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
+import { jobProgressLine } from '@/shared/lib/omp/session/job-progress';
 
 const TONE_CLASSES = {
   ok: 'text-success',
@@ -132,6 +133,8 @@ function JobRow({ job }: { job: WaitJob }) {
   const running = job.status === 'running';
   const label = job.label ?? job.resultText ?? job.errorText ?? job.id ?? '';
   const percent = running ? job.completionPercent : undefined;
+  // The percent is already a chip in this row, so the progress line leaves it out.
+  const progress = jobProgressLine(job);
   return (
     <div className="space-y-1 px-3 py-2">
       <div className="flex items-center gap-2 text-[11.5px]">
@@ -172,6 +175,9 @@ function JobRow({ job }: { job: WaitJob }) {
       </div>
       {running && percent !== undefined && (
         <ProgressTrack percent={percent} active />
+      )}
+      {progress && (
+        <div className="truncate font-mono text-[9px] text-ink/40">{progress}</div>
       )}
       {job.resolvedModel && (
         <div className="truncate font-mono text-[9px] text-ink/40">{job.resolvedModel}</div>

@@ -37,6 +37,7 @@ import {
 } from '@/shared/lib/omp/session/proc';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
+import { jobProgressLine } from '@/shared/lib/omp/session/job-progress';
 
 /** Tone → class list. A toned chip is text-only; the ink palette has no room
  *  for a filled pill in a dense row. */
@@ -92,35 +93,40 @@ function JobRow({ job }: { job: ProcJob }) {
   const tone = jobTone(job.status);
   const running = job.status === 'running';
   const duration = typeof job.durationMs === 'number' ? formatProcDuration(job.durationMs) : undefined;
+  // This row has no percent chip, so the line carries the estimate itself.
+  const progress = jobProgressLine(job, { includePercent: true });
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-[11.5px]">
-      {running ? (
-        <Loader2 size={11} className="shrink-0 animate-spin text-ink/50" />
-      ) : job.status === 'failed' ? (
-        <CircleSlash size={11} className="shrink-0 text-error" />
-      ) : job.status === 'cancelled' ? (
-        <CircleSlash size={11} className="shrink-0 text-warning" />
-      ) : (
-        <CheckCircle2 size={11} className="shrink-0 text-success" />
-      )}
-      {job.id && <span className="shrink-0 font-mono text-[10px] font-semibold text-ink/80">{job.id}</span>}
-      {job.type && (
-        <span className="shrink-0 rounded bg-ink/5 px-1 py-0.2 font-mono text-[8.5px] uppercase tracking-wider text-ink/45">
-          {job.type}
+    <div className="space-y-0.5 px-3 py-1.5">
+      <div className="flex items-center gap-2 text-[11.5px]">
+        {running ? (
+          <Loader2 size={11} className="shrink-0 animate-spin text-ink/50" />
+        ) : job.status === 'failed' ? (
+          <CircleSlash size={11} className="shrink-0 text-error" />
+        ) : job.status === 'cancelled' ? (
+          <CircleSlash size={11} className="shrink-0 text-warning" />
+        ) : (
+          <CheckCircle2 size={11} className="shrink-0 text-success" />
+        )}
+        {job.id && <span className="shrink-0 font-mono text-[10px] font-semibold text-ink/80">{job.id}</span>}
+        {job.type && (
+          <span className="shrink-0 rounded bg-ink/5 px-1 py-0.2 font-mono text-[8.5px] uppercase tracking-wider text-ink/45">
+            {job.type}
+          </span>
+        )}
+        <span className="min-w-0 flex-1 truncate text-ink/85" title={job.label}>
+          {job.label ?? job.resultText ?? job.errorText ?? ''}
         </span>
-      )}
-      <span className="min-w-0 flex-1 truncate text-ink/85" title={job.label}>
-        {job.label ?? job.resultText ?? job.errorText ?? ''}
-      </span>
-      {job.resolvedModel && (
-        <span className="hidden max-w-[120px] truncate font-mono text-[9px] text-ink/40 sm:inline-block">
-          {job.resolvedModel}
-        </span>
-      )}
-      {duration && <span className="shrink-0 font-mono text-[9px] text-ink/40">{duration}</span>}
-      {job.status && (
-        <span className={`shrink-0 font-mono text-[9px] font-semibold ${TONE_CLASSES[tone]}`}>{job.status}</span>
-      )}
+        {job.resolvedModel && (
+          <span className="hidden max-w-[120px] truncate font-mono text-[9px] text-ink/40 sm:inline-block">
+            {job.resolvedModel}
+          </span>
+        )}
+        {duration && <span className="shrink-0 font-mono text-[9px] text-ink/40">{duration}</span>}
+        {job.status && (
+          <span className={`shrink-0 font-mono text-[9px] font-semibold ${TONE_CLASSES[tone]}`}>{job.status}</span>
+        )}
+      </div>
+      {progress && <div className="truncate font-mono text-[9px] text-ink/40">{progress}</div>}
     </div>
   );
 }

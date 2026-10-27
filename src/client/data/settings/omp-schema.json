@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 559 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 562 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -1524,7 +1524,7 @@
         "tab": "interaction",
         "group": "Power",
         "label": "Sleep Prevention",
-        "description": "Prevent the system sleeping during active sessions. Each level is cumulative — it adds the flags of all lower levels.",
+        "description": "Prevent the system sleeping while the agent is running a turn; an idle session, including one waiting on background jobs, does not hold it. Each level is cumulative — it adds the flags of all lower levels.",
         "options": [
           {
             "value": "off",
@@ -1534,7 +1534,7 @@
           {
             "value": "idle",
             "label": "Prevent Idle Sleep",
-            "description": "Keep the system awake while a session is open (macOS `caffeinate -i`)"
+            "description": "Keep the system awake while the agent is running a turn (macOS `caffeinate -i`)"
           },
           {
             "value": "display",
@@ -6508,6 +6508,16 @@
         "group": "Execution",
         "label": "Async Execution",
         "description": "Enable async bash commands and background task execution"
+      }
+    },
+    "async.printWake": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "tools",
+        "group": "Execution",
+        "label": "Wake Print Mode on Job Results",
+        "description": "In print mode (-p, --mode json), keep running after the last prompt while this run's background jobs are active, and start another turn in the same session with each job's result; exits once no job or result is pending. Off: print mode exits after its prompts and cancels running jobs"
       }
     },
     "async.widgets": {

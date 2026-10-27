@@ -44,6 +44,15 @@ export interface WaitJob {
   exitCode?: number;
   /** Self-estimated completion of a subagent task (0–100). */
   completionPercent?: number;
+  /** Model requests a RUNNING task has made (omp 18.13.0). */
+  requests?: number;
+  /** Spend of a running task, in USD (omp 18.13.0). */
+  cost?: number;
+  /** Context fill of a running task, and the window it fills (omp 18.13.0). */
+  contextTokens?: number;
+  contextWindow?: number;
+  /** The stage a running task reports (`implementing`, …). */
+  stage?: string;
   resolvedModel?: string;
   resolvedThinkingLevel?: string;
   advisor?: boolean;
@@ -108,6 +117,11 @@ function jobOf(value: unknown): WaitJob | undefined {
     durationMs: asNumber(value.durationMs),
     exitCode: asNumber(value.exitCode),
     completionPercent: asNumber(value.completionPercent),
+    requests: asNumber(value.requests),
+    cost: asNumber(value.cost),
+    contextTokens: asNumber(value.contextTokens),
+    contextWindow: asNumber(value.contextWindow),
+    stage: asString(value.stage),
     resolvedModel: asString(value.resolvedModel),
     resolvedThinkingLevel: asString(value.resolvedThinkingLevel),
     advisor: asBoolean(value.advisor),

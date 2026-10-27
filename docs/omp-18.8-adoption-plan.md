@@ -769,3 +769,147 @@ hang.
 | R18 | `--restore` unreachable | none possible — interactive-only | `omp --mode rpc-ui --restore` exits 1 |
 | R19 | approval flow diverges | documented, not changed | 18.11.0 `denyingSteering`; Kabmo 409 by design |
 | R20 | wire/tools/guard unchanged | none needed | wire diff 67/67, role diff 0, tool diff 0 |
+
+# omp 18.13.0 adoption (2026-10-27)
+
+The installed pin moved **18.12.6 → 18.13.0** (`omp/18.13.0`). Nothing in this
+repository declares an omp version — a session child is the globally installed
+binary and the committed settings schema is GENERATED from it — so a bump is
+three things: regenerate the schema, re-read what the release changed, and adopt
+whatever of it reaches a Kabmo surface.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.12.6` into a temp tree, then a
+  file-by-file diff against the installed 18.13.0 (`src/modes/rpc`,
+  `src/session`, `src/tools`, `src/async`, `src/config`, `src/cli`).
+- `rpc-wire.schema.json` from both versions, compared for command names, event
+  names and per-definition payloads (283 defs each).
+- `bun run omp:schema` + `omp:schema:check`, then every merged row probed
+  against `omp config list --json` (562 live keys).
+- `.github/scripts/install-omp.sh` — the PIN the schema gate installs — bumped
+  and re-run (`omp 18.13.0 already installed`, exit 0).
+- `MODEL_ROLES`, `BUILTIN_TOOL_NAMES`, `models-config-schema-bundle.ts` read from
+  both trees.
+- Live: a MOCK console on a temp data dir, the demo session rendered in
+  Chromium.
+
+## Findings
+
+### R21 — The committed schema AND the CI pin were a release behind (fixed)
+
+18.13.0 adds one setting row — `async.printWake` (tools / Execution, "Wake Print
+Mode on Job Results") — and rewrites the `power.sleepPrevention` copy to say the
+machine is kept awake only while a turn runs. `bun run omp:schema` moved the file
+**419 → 420 entries** (`10 tabs / 562 settings`) and the gate passes;
+**0 of the 436 merged keys** (420 rows + 16 Kabmo extras) are rejected by
+`omp config list --json`.
+
+A stale schema is not cosmetic here: the panel offers what the JSON lists, so the
+new row would simply not exist until the file was regenerated.
+
+**The pin moved with it** (`.github/scripts/install-omp.sh`, `OMP_VERSION`
+`18.12.6` → `18.13.0`), because the `Settings schema` job installs that pin and
+regenerates from it. Bumping one without the other is the drift this repo has
+already paid for twice: a schema from a newer omp than the pin is reported stale
+by CI, and a pin left ahead of the schema hides rows `omp config set` then
+refuses. The script's own comment block records this release's delta, next to the
+18.12.6 paragraph.
+
+### R22 — `session.warnCost` / `session.maxCost` are new and correctly have NO row (no action)
+
+18.13.0 adds `--warn-cost` / `--max-cost` (and `session.warnCost` /
+`session.maxCost`). They are registered **without a `ui` block**, so omp's own
+panel does not offer them either, and the generator deliberately carries only
+rows upstream renders. A run that reaches the cap answers `prompt_error` with
+`code: "cost_cap"` and a self-explaining message ("Cost cap reached: this
+session spent $X of its $Y cap (--max-cost / session.maxCost), so the next model
+request was not sent."), and Kabmo's `prompt_error` branch already renders
+`errorMessage` — so the code needs no mapping. Recorded so a later reader does
+not add two rows upstream hides, or invent a `cost_cap` branch that says the same
+sentence twice.
+
+### R23 — `wait` / `proc://` gained running-task telemetry (adopted)
+
+`snapshotJobs` now copies `requests`, `cost`, `contextTokens`, `contextWindow`
+and (already present, never read here) `stage` out of a task's progress record
+into the job snapshot — the numbers behind omp's own row
+`… · 90 req · $18.40 · ctx 160K/1M · stage: implementing`. Kabmo's `WaitJob` and
+`ProcJob` parsers dropped all of them (they were not on the wire when the panels
+were written), so a `wait` or `read proc://` card showed the model and the clock
+and **nothing about what a running subagent was spending**.
+
+`src/shared/lib/omp/session/job-progress.ts` is the one formatter both cards
+read. Two rules are load-bearing:
+
+- **The fields and their order are omp's; the token rounding is Kabmo's own**
+  (`formatCompactTokens` → `163.8K`/`1.0M`, not omp's `164K`/`1M`). Every other
+  token label in this console — the context ring, the usage bars — reads that
+  way, and a job row that disagreed with the ring beside it would look like a
+  second measurement. The cost cutoff IS omp's (`<$0.01` below half a cent).
+- **Gated on `status === 'running'`**, for the same reason omp gates its own
+  suffix: a stored snapshot must never paint a live counter over a row that has
+  already finished.
+
+The wait row keeps its own percent chip, so its line omits the estimate; the
+proc row has no chip and carries `~55%`. Verified in Chromium against the demo
+session: expanding the card renders
+`90 req · $18.40 · ctx 163.8K/1.0M · ~55% · stage: implementing`.
+
+### R24 — The RPC wire is unchanged except three additive definitions (no action)
+
+**67 commands, `ADDED: []`, `REMOVED: []`, 0 command signatures changed**; no
+session event was added or removed, and `ExtensionUiRequest` keeps its variants.
+Three `$defs` moved, and none of them needs code here:
+
+- `SessionStats.editRejections` — failed edits by `errorKind`. Kabmo never reads
+  session stats; the edit card already renders the refusal the tool returned.
+- `PromptError.code` — the `cost_cap` code above.
+- `BtwHistoryTurn` / `BtwHistoryRecord` — the records gain `images` and lose
+  `title` **on the wire** (`RpcBtwHistoryRecord` is `Omit<…, 'title'>`). Kabmo
+  implements `/btw` itself over its own tables with a `--resume --no-tools`
+  child, never omp's RPC BTW commands, so neither half reaches it.
+
+### R25 — Verified still correct at 18.13.0 (do not "fix")
+
+- **`MODEL_ROLES`: identical.** 16 roles, same labels, same sections, same
+  `accepts` predicates. The role table's `18.12.6` references stay as the date
+  they were measured.
+- **`BUILTIN_TOOL_NAMES`: identical.** Same set, byte-for-byte. The only new file
+  under `src/tools` is `browser/relay/extension-files.ts`, a relay helper.
+- **The result shapes Kabmo parses are unchanged or additive.** `bash.details.
+  service` keeps its shape — service mode now IGNORES `async`/`timeout` with a
+  notice instead of throwing, which only turns a refusal into a started service;
+  `proc.details` and `wait.details` are unchanged apart from R23.
+- **`omp plugin upgrade <id>` still accepts a qualified marketplace id**, and now
+  also resolves a bare package-plugin name. That is a fix for this panel, which
+  already passes the qualified id.
+- **A user's `compat` block survives Kabmo's models.yml writes.** Update/backfill
+  touch only `name`/`reasoning`/`input`/`contextWindow`/`maxTokens`/`cost`, so the
+  new `compat.requiresThinkingPresence` is neither dropped nor fabricated.
+
+### R26 — Read paths and TUI-only additions (no action)
+
+- **`read` of HEIC/HEIF/AVIF now returns an image**, decoded through ffmpeg 8.1+
+  into `image/jpeg`. Kabmo already serves and renders `image/jpeg` (blob magic
+  bytes and the extension table both know it), so nothing is needed; on a machine
+  without that ffmpeg omp answers "convert it to PNG or JPEG…", which the card
+  renders as text.
+- **`--no-context-files`, `omp -p --wait-async`, `/local` (`app.local.open`),
+  `grep` path exclusions (`!vendor`), and `compat.requiresThinkingPresence`** are
+  CLI/TUI/model-file surfaces. Kabmo spawns `--mode rpc-ui` without those flags,
+  does not pass grep paths, and owns only the models.yml keys R25 lists.
+- **A turn that ends with background jobs still running** now says so in omp's
+  TUI working row. That is a TUI rendering change; the RPC frames Kabmo folds
+  (`agent_end` / `session_settled`) are the same pair as before.
+
+## 18.13.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R21 | schema + CI pin a release behind | regenerated (419 → 420 rows) and `OMP_VERSION` 18.12.6 → 18.13.0 | `omp:schema:check` passes; 0/436 merged keys rejected; script exits 0 reporting 18.13.0 |
+| R22 | cost settings have no `ui` upstream | none — documented | `omp config list --json` carries both; panel mirrors upstream |
+| R23 | job telemetry dropped by the panels | `job-progress.ts` + both parsers + both rows | `job-progress.test.ts` (9), parser tests, both panel tests, Chromium |
+| R24 | wire unchanged, 3 additive defs | none needed | 67/67 commands, 0 event changes |
+| R25 | roles/tools/models writing unaffected | none needed | role diff 0, tool-name diff 0 |
+| R26 | read paths / TUI-only surfaces | none needed | HEIC decodes to `image/jpeg`; flags unused here |

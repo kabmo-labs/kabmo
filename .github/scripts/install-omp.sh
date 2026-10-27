@@ -69,7 +69,23 @@ fi
 # 18.12.4 — and `builtin-names.ts` is byte-identical, so nothing Kabmo reads
 # moved; the release is ACP-side (steering extension, `/mcp reauth`) and
 # TUI-side (deferred extension loading), neither of which this bridge speaks.
-OMP_VERSION="${OMP_VERSION:-18.12.6}"
+#
+# 18.13.0 (2026-10-27): the schema's `source` line moves to 562 settings and the
+# panel gains ONE row, `async.printWake` (tools / Execution), plus the
+# `power.sleepPrevention` description. `session.warnCost` / `session.maxCost`
+# are new and carry NO `ui` block, so neither omp's own panel nor this schema
+# offers them — and that is deliberate; a run that reaches the cap answers
+# `prompt_error` with `code: "cost_cap"` and a self-explaining message, which
+# Kabmo renders as-is. The RPC wire is unchanged for the fourth release running
+# (67 commands, 283 definitions, 0 added, 0 removed) apart from three ADDITIVE
+# definitions: `SessionStats.editRejections` (never read here), `PromptError.code`
+# (above) and the BTW records' `images` — whose `title` also leaves the wire,
+# which does not reach Kabmo because `/btw` is implemented on Kabmo's own tables.
+# `builtin-names.ts` is byte-identical again. What this release DOES add is
+# `wait` / `proc://` telemetry (`requests`, `cost`, `contextTokens`,
+# `contextWindow`, `stage`), which Kabmo's job rows now draw — see R23 in
+# docs/omp-18.8-adoption-plan.md.
+OMP_VERSION="${OMP_VERSION:-18.13.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

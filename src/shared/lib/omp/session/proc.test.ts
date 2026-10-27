@@ -157,6 +157,29 @@ describe('procViewOf — read', () => {
     expect(view?.daemon).toBeUndefined();
   });
 
+  test('reads the running-task telemetry omp 18.13.0 adds', () => {
+    const view = procViewOf({
+      target: 'proc://bg_11',
+      details: {
+        proc: {
+          job: {
+            id: 'bg_11', type: 'task', status: 'running', label: 'refactor', durationMs: 90_000,
+            completionPercent: 55, requests: 90, cost: 18.4,
+            contextTokens: 163_840, contextWindow: 1_048_576, stage: 'implementing',
+          },
+        },
+      },
+    });
+    expect(view?.job).toMatchObject({
+      completionPercent: 55,
+      requests: 90,
+      cost: 18.4,
+      contextTokens: 163_840,
+      contextWindow: 1_048_576,
+      stage: 'implementing',
+    });
+  });
+
   test('reads a job cancellation', () => {
     const view = procViewOf({
       target: 'proc://bg_2/kill',
