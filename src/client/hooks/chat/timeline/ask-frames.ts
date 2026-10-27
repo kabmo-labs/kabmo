@@ -43,6 +43,7 @@ import { createContext, useContext } from 'preact/compat';
 import type { ChatMessageData } from '@/shared/types';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { groupAskFrames, isAskSettled, isAskToolCall, normalizeAskText, parseAskQuestions, parseAskResult, type AskQuestion } from '@/shared/lib/chat/ask-questions';
+import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 
 export interface AskFramesSplit {
@@ -181,7 +182,14 @@ export function splitAskFrames(
     // The dialog omp opens after "Other (type your own)" names the question in
     // its title only loosely; it continues whichever ask spoke last. An
     // approval gate is never part of an ask, so it keeps its own modal.
-    if (!owner && request.method !== 'confirm') owner = lastOwner;
+    //
+    // The gate arrives as a `select` over RPC (see `isApprovalGateFrame`), and
+    // its title names no question — so the walk above cannot place it, and the
+    // "last ask spoke" fallback used to hand it to that ask's card, where
+    // "Approve"/"Deny" rendered as the ANSWERS to an unrelated question and
+    // the answer went to the wrong tool call. A gate is excluded from the
+    // fallback exactly like a `confirm`, and reaches the modal instead.
+    if (!owner && request.method !== 'confirm' && !isApprovalGateFrame(request)) owner = lastOwner;
     if (!owner) continue;
     claimed.add(request);
     lastOwner = owner;

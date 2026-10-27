@@ -1,10 +1,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { AlertCircle, CheckCircle2, FileText, HelpCircle, ListFilter, Terminal } from 'lucide-preact';
+import { CheckCircle2 } from 'lucide-preact';
 import type { ExtensionUiDialogRequest } from '@/client/hooks/chat/omp';
 import { ExtensionDialogHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Header';
 import { ExtensionDialogSelectBody } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/SelectBody';
 import { ExtensionDialogFooter } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Footer';
+import { ApprovalBody } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/ApprovalBody';
+import { dialogMethodMeta, useDialogShortcuts } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/shortcuts';
+import { isApprovalGateFrame } from '@/shared/lib/chat/omp/approval-gate';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 
 export type ExtensionDialogResponse =
@@ -36,6 +39,11 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
 
   const options = request.options ?? [];
   const optionDetails = request.optionDetails ?? [];
+  // An approval gate is a `select` frame whose title is omp's approval prompt
+  // (see `isApprovalGateFrame`). It has no "Other" option, and omp's own
+  // answer parser treats any free-text answer as a DENY — so the free-text
+  // field is hidden for it rather than offered as a way to deny by typo.
+  const isApprovalGate = isApprovalGateFrame(request);
 
   // Reset for a NEW dialog only. `request` is the identity to depend on —
   // `options`/`optionDetails` above are derived arrays, re-created on every
@@ -78,7 +86,12 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
     } else if (request.method === 'select') {
       // A typed custom answer is the actual response — the "Other" option
       // label itself is not. It wins over the highlighted option.
-      if (customValue.trim()) {
+      //
+      // An APPROVAL gate is the exception: omp's answer parser reads any
+      // string that is not one of its choice labels as a DENY (measured:
+      // "Approve" allows, "yes please" denies), so a custom answer there can
+      // only ever refuse. The gate answers with its chosen label.
+      if (customValue.trim() && !isApprovalGate) {
         onRespond(request, { value: customValue.trim() });
       } else if (selectedOption) {
         onRespond(request, { value: selectedOption });
@@ -86,7 +99,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
     } else {
       onRespond(request, { value });
     }
-  }, [onRespond, request, selectedOption, value, customValue]);
+  }, [onRespond, request, selectedOption, value, customValue, isApprovalGate]);
 
   const handleConfirmOption = useCallback(
     (option: string) => {
@@ -114,108 +127,18 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
     []
   );
 
-  // Keyboard navigation & shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        cancel();
-        return;
-      }
+  // Keyboard navigation & shortcuts.
+  useDialogShortcuts({
+    method: request.method,
+    options,
+    selectedOption,
+    onSelectOption: setSelectedOption,
+    customInputRef,
+    onSubmit: submitValue,
+    onCancel: cancel,
+  });
 
-      if (request.method === 'select' && options.length > 0) {
-        // Typing in the custom "Other" input must not trigger number/arrow/Enter
-        // shortcuts — those keys belong to the text field while focused.
-        const typingCustom = e.target instanceof HTMLInputElement && e.target === customInputRef.current;
-        if (typingCustom) {
-          return;
-        }
-
-        const num = parseInt(e.key, 10);
-        if (!isNaN(num) && num >= 1 && num <= options.length) {
-          e.preventDefault();
-          setSelectedOption(options[num - 1]);
-          return;
-        }
-
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          const currentIdx = options.findIndex((o) => o === selectedOption);
-          const nextIdx = currentIdx < options.length - 1 ? currentIdx + 1 : 0;
-          setSelectedOption(options[nextIdx]);
-          return;
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          const currentIdx = options.findIndex((o) => o === selectedOption);
-          const prevIdx = currentIdx > 0 ? currentIdx - 1 : options.length - 1;
-          setSelectedOption(options[prevIdx]);
-          return;
-        }
-
-        if (e.key === 'Enter' && selectedOption) {
-          e.preventDefault();
-          submitValue();
-          return;
-        }
-      }
-
-      if (request.method === 'confirm') {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          submitValue();
-          return;
-        }
-      }
-
-      if (request.method === 'editor') {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-          e.preventDefault();
-          submitValue();
-          return;
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cancel, submitValue, request.method, options, selectedOption]);
-
-  const methodMeta = (() => {
-    switch (request.method) {
-      case 'select':
-        return {
-          icon: <ListFilter size={16} className="text-ink" />,
-          label: 'Decision Required',
-          badge: `${options.length} Choices`,
-        };
-      case 'confirm':
-        return {
-          icon: <AlertCircle size={16} className="text-ink" />,
-          label: 'Confirmation Required',
-          badge: 'Confirm Action',
-        };
-      case 'input':
-        return {
-          icon: <Terminal size={16} className="text-ink" />,
-          label: 'Prompt Input',
-          badge: 'Text Input',
-        };
-      case 'editor':
-        return {
-          icon: <FileText size={16} className="text-ink" />,
-          label: 'Buffer Editor',
-          badge: 'Multiline Buffer',
-        };
-      default:
-        return {
-          icon: <HelpCircle size={16} className="text-ink" />,
-          label: 'Agent Request',
-          badge: 'Input',
-        };
-    }
-  })();
+  const methodMeta = dialogMethodMeta(request.method, options.length);
 
   return (
     <div
@@ -241,6 +164,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
       >
           <ExtensionDialogHeader
             title={request.title}
+            options={options}
             methodLabel={methodMeta.label}
             badge={methodMeta.badge}
             icon={methodMeta.icon}
@@ -248,6 +172,9 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
           />
 
           <div className="max-h-[65vh] overflow-y-auto px-6 py-5 space-y-4">
+            {/* The approval gate: what is being approved, and why. */}
+            <ApprovalBody title={request.title} options={options} />
+
             {/* Prompt / Context Message with Markdown */}
             {request.message && (
               <div className="rounded-xl border border-ink/8 bg-canvas/40 p-4 text-[13px] leading-relaxed text-ink/85 select-text">
@@ -266,6 +193,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
                 customInputRef={customInputRef}
                 onSelect={handleSelectOption}
                 onConfirmOption={handleConfirmOption}
+                hideCustomAnswer={isApprovalGate}
               />
             )}
 

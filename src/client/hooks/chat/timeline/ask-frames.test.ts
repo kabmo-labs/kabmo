@@ -47,6 +47,15 @@ function selectFrame(id: string, title: string): ExtensionUiDialogRequest {
   return { type: 'extension_ui_request', id, method: 'select', title, options: ['A (Recommended)', 'B', 'Other (type your own)'] };
 }
 
+/**
+ * omp's TOOL-APPROVAL gate, exactly as it arrives over RPC: a `select` whose
+ * title is omp's whole prompt and whose choices are "Approve" / "Deny"
+ * (measured against 18.13.1).
+ */
+function approvalGateFrame(id: string, title: string): ExtensionUiDialogRequest {
+  return { type: 'extension_ui_request', id, method: 'select', title, options: ['Approve', 'Deny'] };
+}
+
 function confirmFrame(id: string, title: string): ExtensionUiDialogRequest {
   return { type: 'extension_ui_request', id, method: 'confirm', title };
 }
@@ -147,5 +156,29 @@ describe('splitAskFrames', () => {
 
     expect(split.framesByTool.size).toBe(0);
     expect(split.modalRequest).toBe(frame);
+  });
+
+  test('an approval gate is not claimed by an open question\'s card', () => {
+    // The gate arrives over RPC as a `select` whose title is omp's approval
+    // prompt (measured against 18.13.1) — the same method as a question's own
+    // dialog, and its title names no question, so the "last ask spoke"
+    // fallback used to hand it to that ask's card. There it rendered as
+    // "Approve"/"Deny" offered as the ANSWERS to "Which language?", and the
+    // answer was posted to the ask instead of the call being approved.
+    const question = selectFrame('f1', 'Which language?');
+    const gate = approvalGateFrame('g1', 'Allow tool: read\nReason: Restricted folder: /tmp/secret\nPath: /tmp/secret/creds.txt');
+    const split = splitAskFrames(askHistory(['Which language?']), [question, gate], true);
+
+    const held = split.framesByTool.get('call_ask')?.[0]?.map((frame) => frame.id) ?? [];
+    expect(held).toEqual(['f1']);
+    expect(split.modalRequest).toBe(gate);
+  });
+
+  test('an approval gate beside no question at all keeps the modal', () => {
+    const gate = approvalGateFrame('g1', 'Allow tool: bash\nCommand: ls -la /tmp');
+    const split = splitAskFrames([], [gate], true);
+
+    expect(split.framesByTool.size).toBe(0);
+    expect(split.modalRequest).toBe(gate);
   });
 });

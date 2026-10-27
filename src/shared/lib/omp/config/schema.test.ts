@@ -74,6 +74,18 @@ describe('OMP_SCHEMA', () => {
     // binary rejects.
     expect(OMP_SCHEMA.entries['task.completionProbeMs']).toBeUndefined();
   });
+
+  test('the folders that always ask are offered (omp 18.13.1)', () => {
+    // `tools.restrictedFolders` is where every read, write, edit, search or
+    // command asks in EVERY approval mode. The panel is the only place a user
+    // can set it, so a schema regenerated without the row makes the feature
+    // unreachable from the console.
+    const entry = OMP_SCHEMA.entries['tools.restrictedFolders'];
+    expect(entry).toBeDefined();
+    expect(entry?.type).toBe('array');
+    expect(entry?.ui.tab).toBe('interaction');
+    expect(entry?.ui.group).toBe('Approvals');
+  });
 });
 
 describe('ALL_SCHEMA_ENTRIES', () => {

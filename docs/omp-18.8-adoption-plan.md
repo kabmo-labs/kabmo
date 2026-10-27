@@ -913,3 +913,119 @@ Three `$defs` moved, and none of them needs code here:
 | R24 | wire unchanged, 3 additive defs | none needed | 67/67 commands, 0 event changes |
 | R25 | roles/tools/models writing unaffected | none needed | role diff 0, tool-name diff 0 |
 | R26 | read paths / TUI-only surfaces | none needed | HEIC decodes to `image/jpeg`; flags unused here |
+
+# omp 18.13.1 adoption (2026-10-27)
+
+The installed pin moved **18.13.0 → 18.13.1** (`omp/18.13.1`). The same three
+things a bump is: regenerate the schema, re-read what the release changed, and
+adopt whatever of it reaches a Kabmo surface.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.13.0` and `@18.13.1` into a temp tree,
+  then a file-by-file diff of both `src/` trees (36 differing paths) and of the
+  shipped `dist/` artifacts.
+- `rpc-wire.schema.json` from both versions, compared whole: **67 commands, 283
+  definitions, byte-identical**.
+- `bun run omp:schema` + `omp:schema:check`, then every merged row probed
+  against `omp config list --json` (563 live keys).
+- `.github/scripts/install-omp.sh` — the PIN the schema gate installs — bumped
+  and re-run (`omp 18.13.1 already installed`, exit 0).
+- `MODEL_ROLES`, `BUILTIN_TOOL_NAMES`, `models-config-schema-bundle.ts` read from
+  both trees.
+- omp's OWN approval resolver, driven directly from the installed package
+  (`src/tools/approval.ts`) to measure what a restricted folder does in each
+  approval mode, and what frame it produces over RPC.
+
+## Findings
+
+### R27 — The committed schema AND the CI pin were a release behind (fixed)
+
+18.13.1 adds one setting row — `tools.restrictedFolders` (interaction /
+Approvals, "Restricted Folders") — and nothing else. `bun run omp:schema` moved
+the file **420 → 421 entries** (`10 tabs / 563 settings`) and the gate passes;
+**0 of the 437 merged keys** (421 rows + 16 Kabmo extras) are rejected by
+`omp config list --json`.
+
+**The pin moved with it** (`.github/scripts/install-omp.sh`, `OMP_VERSION`
+`18.13.0` → `18.13.1`), because the `Settings schema` job installs that pin and
+regenerates from it.
+
+The row's upstream condition is `restrictedFoldersNotProject` — the editor
+writes the global layer, so a project-supplied list hides the row. This panel
+has no provenance to test that with (`omp config list --json` carries the
+effective value and no layer), so the condition degrades to VISIBLE, exactly as
+`contextFiles.extra`'s already does. The row is therefore always offered, and
+writing it always writes the global layer.
+
+### R28 — `tools.restrictedFolders` asks in EVERY approval mode (adopted)
+
+The folders on that list ask for an explicit approval whatever the mode —
+`yolo` included — and no remembered grant, session approval, or ACP "Always
+allow" covers it. Measured against omp's own resolver:
+
+| mode | a call inside a restricted folder | a call outside it |
+|---|---|---|
+| `always-ask` | `prompt` (source `restriction`) | — |
+| `write` | `prompt` (source `restriction`) | — |
+| `yolo` | `prompt` (source `restriction`) | `allow` (source `mode`) |
+
+A restricted call carries `override: true` and source `restriction`, so
+`sessionApprovalScope` returns `undefined` for it: there is NO session-grant
+option, and the choices are exactly `["Approve", "Deny"]`.
+
+Three consequences reach a Kabmo surface, and each is fixed here:
+
+- **The gate was routed to an `ask` question's card.** Over RPC the gate is a
+  `select` frame — omp's RPC UI context has no `approve` member, so
+  `requestApproval` falls back to its `select` branch — and its title names no
+  question. The routing that claims a `select` by title therefore fell through
+  to the "last ask spoke" walk and landed the gate on an unrelated QUESTION's
+  card, where "Approve"/"Deny" rendered as that question's answer options and
+  the answer was posted to the wrong tool call. Reproduced against the real
+  frame shape: the card claimed `["f1", "g1"]` — the question AND the gate.
+- **The thing being approved was invisible.** omp sends the whole prompt as
+  the frame's TITLE, newline-separated (`Allow tool: read` / `Reason: …` /
+  `Path: …`), and the dialog's header renders a title with `truncate` — one
+  line. The reason and the path were clipped out of the only element that
+  could show them, so the gate read "Allow tool: read" over a path the user
+  never saw.
+- **The free-text field could only deny.** The dialog's "Other — type your own
+  answer" field is an `ask` question's escape hatch; on a gate omp's answer
+  parser reads any string that is not one of its labels as a DENY. Measured:
+  `"Approve"` → allow, `"yes please"` → deny. So the field was a way to refuse
+  the call by typing near-miss text, and never a way to approve it.
+
+### R29 — The RPC wire, the roles and the tool set are unchanged (no action)
+
+**67 commands, 283 definitions, the whole `rpc-wire.schema.json` byte-identical
+** to 18.13.0. `MODEL_ROLES`, `BUILTIN_TOOL_NAMES` and
+`models-config-schema-bundle.ts` are identical too, and `omp usage --json`'s
+payload is untouched (the release's usage change is in the CLI's own text
+formatting, which this console does not read).
+
+### R30 — TUI-side and in-omp changes that do not reach Kabmo (no action)
+
+- **`/pause` now reports draining turns and running jobs** across the
+  subagent tree, and fewer redraws happen during background subagent progress.
+  Both are the TUI's own rendering; `/pause` is in Kabmo's TUI-only command
+  list, so it is refused rather than forwarded.
+- **A task subagent no longer receives `AGENTS.md`** — including from
+  additional workspace roots it rediscovers. A subagent's own context file
+  list is omp's, not Kabmo's.
+- **An `ask` note now names the option it belongs to** (`(note on Y: …)`), and
+  a note added right after picking an answer lands on that answer rather than
+  the next question's. Both change omp's own rendering of an answer, not the
+  answer payload Kabmo reads (`details.results[].selectedOptions`).
+- **A hashline `PUT` that restates a line next to the range** is applied
+  instead of refused, and an advisor now waits out a timed 429 rather than
+  dropping its review. Both are fixes inside omp.
+
+## 18.13.1 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R27 | schema + CI pin a release behind | regenerated (420 → 421 rows) and `OMP_VERSION` 18.13.0 → 18.13.1 | `omp:schema:check` passes; 0/437 merged keys rejected; script exits 0 reporting 18.13.1 |
+| R28 | restricted folders ask in every mode | `approval-gate.ts` + the routing, the prompt split, and the free-text guard | `approval-gate.test.ts` (8), `ask-frames.test.ts` (10), `approval-gate.test.tsx` (5); resolver measured per mode |
+| R29 | wire / roles / tool set unchanged | none needed | wire schema byte-identical; role, tool-name and model-schema diffs 0 |
+| R30 | TUI-side and in-omp changes | none needed | `/pause` is TUI-only here; subagent context and answer payloads are omp's |

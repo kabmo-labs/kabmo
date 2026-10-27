@@ -85,7 +85,21 @@ fi
 # `wait` / `proc://` telemetry (`requests`, `cost`, `contextTokens`,
 # `contextWindow`, `stage`), which Kabmo's job rows now draw — see R23 in
 # docs/omp-18.8-adoption-plan.md.
-OMP_VERSION="${OMP_VERSION:-18.13.0}"
+# 18.13.1 (2026-10-27): the schema's `source` line moves to 563 settings and the
+# panel gains ONE row, `tools.restrictedFolders` (interaction / Approvals) — the
+# folders where every read, write, edit, search or command asks in EVERY
+# approval mode, `yolo` included, with no remembered grant and no session
+# approval covering it. Its upstream condition (`restrictedFoldersNotProject`)
+# hides the row when a PROJECT layer supplies the list, and `omp config list
+# --json` carries no provenance — so this panel degrades to visible, exactly
+# like `contextFiles.extra`'s row already does. The RPC wire is unchanged for
+# the fifth release running (67 commands, 283 definitions, 0 added, 0 removed)
+# and `builtin-names.ts` and `MODEL_ROLES` are byte-identical again. The
+# release's other changes are TUI-side (`/pause` now reports draining turns and
+# running jobs, fewer redraws during background subagent progress) or inside
+# omp's own tools (a task subagent no longer receives AGENTS.md; an `ask` note
+# names the option it belongs to) — none of which reaches a Kabmo surface.
+OMP_VERSION="${OMP_VERSION:-18.13.1}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

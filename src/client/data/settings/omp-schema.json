@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 562 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 563 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -5885,6 +5885,18 @@
             "description": "Auto-approve read, write, and exec tools. User policy can still require confirmation or block calls."
           }
         ]
+      }
+    },
+    "tools.restrictedFolders": {
+      "type": "array",
+      "default": [],
+      "ui": {
+        "tab": "interaction",
+        "group": "Approvals",
+        "label": "Restricted Folders",
+        "editor": "json",
+        "description": "Folders where every read, write, edit, search, or command needs an explicit approval, whatever the approval mode or a remembered grant. The folder and everything under it is restricted; commands are matched by the directory they run in. A JSON list of paths, e.g. [\"~/secrets\"].",
+        "condition": "restrictedFoldersNotProject"
       }
     },
     "todo.enabled": {
