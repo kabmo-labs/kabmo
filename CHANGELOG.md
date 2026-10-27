@@ -4,6 +4,27 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.11.0](https://github.com/kabmo-labs/kabmo/compare/v0.10.1...v0.11.0) — 2026-10-27
+
+### Added
+
+* **diff-panel:** fold brace blocks and highlight the matched pair ([ab9cf96](https://github.com/kabmo-labs/kabmo/commit/ab9cf96bfdbd52efd5f7eaf3556016fd932c5262)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git-panel:** offer repository init when the folder is not a repo ([be5af8b](https://github.com/kabmo-labs/kabmo/commit/be5af8bdc72a84b464ee2d8741fc35f2fcda4c87)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** adopt 18.13.0 running-task telemetry and bump the pin ([dd75856](https://github.com/kabmo-labs/kabmo/commit/dd758562b33dcc5ed93be847d693b3907d360dcd)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.13.1 and fix the approval gate it exposed ([c415464](https://github.com/kabmo-labs/kabmo/commit/c4154647a5452bf371c92597aee018a556d05161)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **release:** bump each artifact group in one commit ([52ce0ba](https://github.com/kabmo-labs/kabmo/commit/52ce0ba672b5540d4dff9c6fd3cf737dd8f92ee3)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **shells:** record the quit reply route and the GTK loop rule ([5ad90aa](https://github.com/kabmo-labs/kabmo/commit/5ad90aa830c07a211dab0209cd055695ff481979)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** render omp developer turns as a system notice on reload ([79ac3ff](https://github.com/kabmo-labs/kabmo/commit/79ac3ff9c05facb4a7fc1844e57341add00a2233)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux:** keep the GTK loop free while a server starts or updates ([b38e7b8](https://github.com/kabmo-labs/kabmo/commit/b38e7b86409c0992f48bd63b92efc75f1d4f3ecf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** deliver the quit reply on the main run loop ([323fb27](https://github.com/kabmo-labs/kabmo/commit/323fb2728b8151dab7ff9e43e54a9c182aea09e8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **windows:** bound the taskkill wait on the quit path ([7c369a1](https://github.com/kabmo-labs/kabmo/commit/7c369a12272c7c2fe4330a823c1a1fcbdad18bc9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.10.1](https://github.com/kabmo-labs/kabmo/compare/v0.10.0...v0.10.1) — 2026-10-27
 
 ### Fixed
