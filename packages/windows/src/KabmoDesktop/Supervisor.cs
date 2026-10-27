@@ -162,7 +162,23 @@ public sealed class Supervisor
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             });
-            if (killer is not null) await killer.WaitForExitAsync().ConfigureAwait(false);
+            if (killer is not null)
+            {
+                // BOUNDED, because this runs on the QUIT path (`Closing` →
+                // `StopAllAsync`) and an unbounded wait there is an app that cannot
+                // be closed — the "must be killed from Task Manager" shape.
+                // `taskkill` is a separate process, so its own hang is not ours to
+                // inherit: the pids this stop could not reach stay recorded, and the
+                // next launch adopts them.
+                var wait = killer.WaitForExitAsync();
+                var finished = await Task.WhenAny(wait, Task.Delay(5000)).ConfigureAwait(false);
+                if (finished == wait)
+                {
+                    // Observed here so a failed wait cannot surface later as an
+                    // unobserved task exception.
+                    try { await wait.ConfigureAwait(false); } catch { }
+                }
+            }
         }
         catch
         {
