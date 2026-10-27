@@ -8,6 +8,7 @@ import { GitRepoHeader } from '@/client/components/workspace/git-panel/RepoHeade
 import { GitChangesList } from '@/client/components/workspace/git-panel/ChangesList';
 import { GitPanelModals } from '@/client/components/workspace/git-panel/PanelModals';
 import { GitStashSection } from '@/client/components/workspace/git-panel/StashSection';
+import { GitInitRepository } from '@/client/components/workspace/git-panel/InitRepository';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
@@ -264,7 +265,11 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         }}
         onRefreshRepos={refreshRepos}
       />
-      
+      {/* A folder with no repository has no working tree to show, and the picker
+          above can still point at a nested one: everything below acts on a repo. */}
+      {data?.isRepo === false ? (
+        <GitInitRepository repo={activeRepo} isBusy={isBusy} onInit={() => executeAction('init')} />
+      ) : (<>
       {/* Branch & View Mode Toolbar */}
       <GitBranchToolbar 
         branchRef={branchRef}
@@ -337,6 +342,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         isBusy={isBusy}
         onAction={(actionType, extra) => handleAction(actionType, undefined, extra)}
       />
+      </>)}
     </div>
   );
 }

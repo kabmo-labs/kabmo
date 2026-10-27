@@ -103,6 +103,26 @@ describe('readGitStatus', () => {
     expect(files).toContain('plain.sh');
     expect(files).toContain('with space.sh');
     expect(files).toContain('untracked.sh');
+    expect(status.isRepo).toBe(true);
+  });
+
+  /**
+   * The panel decides between its normal chrome and the init state from this
+   * flag, so the not-a-repository answer must be POSITIVE: it used to be an empty
+   * change list on branch `main`, which reads exactly like a clean tree (the
+   * Source Control panel said "No changes found." and every control it drew
+   * failed with git's own refusal).
+   */
+  test('a folder outside every repository answers isRepo false, with git’s reason', async () => {
+    const plain = fs.mkdtempSync(path.join(os.tmpdir(), 'kabmo-no-repo-'));
+    try {
+      const status = await readGitStatus(plain);
+      expect(status.isRepo).toBe(false);
+      expect(status.error ?? '').toMatch(/not a git repository/i);
+      expect(status.changes).toEqual([]);
+    } finally {
+      removeDir(plain);
+    }
   });
 
   // The bug this dialect exists to prevent: porcelain's default form escapes

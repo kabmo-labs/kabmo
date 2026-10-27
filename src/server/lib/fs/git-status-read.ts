@@ -28,6 +28,18 @@ export interface GitStatusPayload {
   branch: string;
   branches: string[];
   remoteBranches: string[];
+  /**
+   * Whether `targetDir` is a working tree at all.
+   *
+   * A directory outside every repository makes each `git` read below exit 128
+   * with "fatal: not a git repository", and folding that into the empty-change
+   * answer made it indistinguishable from a clean tree: the Source Control panel
+   * drew its branch toolbar, commit box and "No changes found." over a folder
+   * with no repository to act on. The panel now renders an init state from this
+   * flag, so the two answers cannot be confused — a repository with nothing to
+   * commit is `isRepo: true` and an empty change list.
+   */
+  isRepo: boolean;
   syncCount?: { ahead: number; behind: number };
   /**
    * Whether an operation is in progress (merge/rebase/cherry-pick/revert/stash
@@ -86,7 +98,28 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
     // listed, and so a path holding a space, a quote or a non-ASCII byte
     // arrives VERBATIM. The non-`-z` form quotes those and octal-escapes the
     // non-ASCII ones, which no decode reverses — see `parsePorcelainZ`.
-    const statusOut = (await runShell('git status --porcelain=v1 -z -uall', { cwd: targetDir, maxBuffer: 4 * 1024 * 1024, env: GIT_ENV })).stdout;
+    const statusResult = await runShell('git status --porcelain=v1 -z -uall', { cwd: targetDir, maxBuffer: 4 * 1024 * 1024, env: GIT_ENV });
+    const statusOut = statusResult.stdout;
+    // "Is this a working tree at all" is answered by the read everything below
+    // already depends on: `git status` is what fails, and it carries git's own
+    // reason. A DIFFERENT failure (git missing, a locked index, a permission
+    // problem) is deliberately NOT read as "not a repository" — the panel offers
+    // `init` on that answer, and offering it for a repository git merely could
+    // not read would create a second one nested inside it.
+    if (statusResult.exitCode !== 0 && /not a git repository/i.test(statusResult.stderr)) {
+      // Both probes started above are already in flight; settling them keeps a
+      // rejection from escaping as an unhandled one on the way out.
+      await Promise.allSettled([remoteRefresh, stateRead]);
+      return {
+        changes: [],
+        branch: 'main',
+        branches: [],
+        remoteBranches: [],
+        isRepo: false,
+        state: { operation: null, conflicts: [], detached: false },
+        error: statusResult.stderr.trim() || 'Not a git repository',
+      };
+    }
 
     let branch = 'main';
     // Seeded empty, not `['main']`: the seed used to be pushed as a real local
@@ -157,10 +190,13 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
       branch: branch || 'main',
       branches: localBranches,
       remoteBranches,
+      // The `git status` probe above exited 0, which is what a working tree is.
+      isRepo: true,
       syncCount,
       state,
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Git error';
     return {
       changes: [],
       branch: 'main',
@@ -168,7 +204,12 @@ export async function readGitStatus(targetDir: string, options: GitStatusOptions
       remoteBranches: [],
       syncCount: { ahead: 0, behind: 0 },
       state: { operation: null, conflicts: [], detached: false },
-      error: error instanceof Error ? error.message : 'Git error',
+      // A thrown read is not evidence of a MISSING repository — git may simply
+      // be unreadable here — and the panel would answer a missing one with an
+      // `init` button that recreates it nested inside the real one. Only git's
+      // own "not a git repository" earns that answer.
+      isRepo: !/not a git repository/i.test(message),
+      error: message,
     };
   }
 }

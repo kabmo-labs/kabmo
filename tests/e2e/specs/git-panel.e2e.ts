@@ -29,7 +29,7 @@
 
 import { test, expect, openApp, skipOnWindows } from '../fixtures/app';
 import type { Locator, Page } from '@playwright/test';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { seedWorkspace, waitUntil } from '../fixtures/seed';
 import { seedWorkingRepo, seedWorkingRepoIn, seedConflictingBranches, seedCloneParent, type SeedWorkingRepo } from '../fixtures/git-repo';
@@ -906,6 +906,44 @@ test.describe('Source Control — repository management', () => {
     // generous on purpose: `alpha` measures 31px in the 12px face, so anything
     // above zero would pass — but a broken track measures exactly 0.
     expect(measured.nameWidth).toBeGreaterThan(20);
+  });
+});
+
+/**
+ * A folder that is not a repository.
+ *
+ * The panel used to draw its whole chrome here — branch toolbar, commit box,
+ * "No changes found." — over a directory where every one of those controls
+ * answered `fatal: not a git repository`; only the repo dropdown did anything,
+ * which is the reported "the git panel has no function, only the dropdown
+ * works". It now reports the folder and offers the one action that changes that.
+ *
+ * The click is proved by GIT, not by the panel's own state: `.git` exists on
+ * disk, and the chrome the panel stopped drawing is back — which can only happen
+ * if the status read now reports a working tree.
+ */
+test.describe('Source Control — a folder that is not a repository', () => {
+  test('offers Initialize, and the click creates the repository', async ({ harness, page }) => {
+    const server = await harness('real');
+    // `seedWorkspace` binds a fresh temp directory, which is outside every
+    // repository — exactly the state the panel answers with `isRepo: false`.
+    const workspace = await seedWorkspace(server, `e2e-git-plain-${Date.now()}`);
+    scratch.push(workspace);
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await showSourceControl(page);
+
+    await expect(page.getByRole('button', { name: 'Initialize Git repository' })).toBeVisible();
+    // The dead panel is GONE, not merely empty.
+    await expect(page.getByPlaceholder(/commit message/i)).toHaveCount(0);
+    await expect(page.getByText('No changes found.')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Initialize Git repository' }).click();
+
+    // The commit box returns once the status read reports a repository...
+    await expect(page.getByPlaceholder(/commit message/i)).toBeVisible({ timeout: 20_000 });
+    // ...and that answer is git's, not the panel's: the repository is on disk.
+    await waitUntil(async () => existsSync(join(workspace.path, '.git')));
   });
 });
 

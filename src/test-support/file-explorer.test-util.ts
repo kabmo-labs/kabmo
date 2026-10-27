@@ -33,7 +33,7 @@ export type { Disk } from '@/test-support/file-explorer-disk.test-util';
 export const ROOT = '/ws';
 export const SESSION = 'new-files-panel';
 const TOPIC = fsTopic(`${ROOT}\u0000.`);
-const GIT_STATUS: GitStatusPayload = { changes: [], branch: 'main', branches: [], remoteBranches: [] };
+const GIT_STATUS: GitStatusPayload = { changes: [], branch: 'main', branches: [], remoteBranches: [], isRepo: true };
 
 export interface FileExplorerHarness {
   /** The fake directory model the spec mutates between reads. */

@@ -13,9 +13,9 @@
  * shape — root/repo resolution, the 400 envelope, the realtime signal — and
  * adding an action is a row rather than another `else if`.
  *
- *   - `git-actions-worktree.ts` — the index, the commit, checkout, branch
- *     creation, history/graph, and the commit-row actions (cherry-pick, revert,
- *     reset, rebase).
+ *   - `git-actions-worktree.ts` — repository init, the index, the commit,
+ *     checkout, branch creation, history/graph, and the commit-row actions
+ *     (cherry-pick, revert, reset, rebase).
  *   - `git-actions-branch.ts` — merge, the conflict trio, fetch/push/pull/sync,
  *     branch rename/delete, the stash.
  */

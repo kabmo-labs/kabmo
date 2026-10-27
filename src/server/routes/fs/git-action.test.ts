@@ -332,3 +332,7 @@ describe('create_branch_at (the commit row\'s "create branch here")', () => {
     expect(git(repo, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('main');
   });
 });
+
+/* `init` has its own file (`git-init-action.test.ts`): its fixtures are a
+   directory that is NOT a repository, and the two files together exceeded the
+   repo's line ceiling. */

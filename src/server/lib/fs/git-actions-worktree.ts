@@ -5,8 +5,9 @@
 
 /**
  * The working-tree and history half of the Source Control panel's actions: the
- * index, the commit, checkout, branch creation, and the two read actions that
- * travel through the POST path (a page of commits, one file's patch).
+ * repository init, the index, the commit, checkout, branch creation, and the two
+ * read actions that travel through the POST path (a page of commits, one file's
+ * patch).
  *
  * The branch/remote/conflict/stash half is `git-actions-branch.ts`; both are
  * merged into one dispatch table by `git-actions.ts`. Split for the repo's
@@ -24,6 +25,7 @@
 
 import { invalidateRemoteRefs } from '@/server/lib/fs/git-sync';
 import { readGitState } from '@/server/lib/fs/git-state';
+import { runGit } from '@/server/lib/fs/git-run';
 import { revertAll, revertPath } from '@/server/lib/fs/git-revert';
 import {
   cherryPick,
@@ -76,6 +78,27 @@ async function checkoutRef(targetDir: string, ref: string): Promise<void> {
 
 /** The working-tree and history actions. */
 export const GIT_WORKTREE_ACTIONS: Record<string, GitActionHandler> = {
+  /**
+   * Create the repository, for a folder that has none.
+   *
+   * The Source Control panel offers this INSTEAD of its toolbar, commit box and
+   * change list when the status read answers `isRepo: false` (see
+   * `git-status-read.ts`), so it is the one action reachable on a tree where
+   * every other action would fail with "not a git repository".
+   *
+   * The guard is the probe, not the panel's render state: `git init` on an
+   * existing repository is a silent "Reinitialized existing Git repository", so a
+   * stale client would be told it created something it did not. `rev-parse
+   * --git-dir` is also what catches the folder-inside-another-repo case, where
+   * git answers with the ENCLOSING repository and `init` would nest a second one
+   * inside it.
+   */
+  async init({ targetDir }) {
+    const existing = await runGit(['rev-parse', '--git-dir'], { cwd: targetDir });
+    if (existing.exitCode === 0) throw new Error('Already a Git repository.');
+    await expectOk(['init'], targetDir);
+  },
+
   async commit({ formData, targetDir }) {
     const message = (formData.get('message') as string) ?? '';
     const amend = formData.get('amend') === '1';
