@@ -4,6 +4,19 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.10.1](https://github.com/kabmo-labs/kabmo/compare/v0.10.0...v0.10.1) — 2026-10-27
+
+### Fixed
+
+* **editor:** hang the bracket guide from the pair's leftmost brace ([f5d1e85](https://github.com/kabmo-labs/kabmo/commit/f5d1e859959cadb5b9ae4d24922ce4b4e42c8b20)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** keep a markdown preview open when an outline row is clicked ([808bd1b](https://github.com/kabmo-labs/kabmo/commit/808bd1b74fb77e2a2ae1d54ff1f0d3b384064083)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux:** call run_javascript with its one callback argument ([b74a96f](https://github.com/kabmo-labs/kabmo/commit/b74a96fabeedd05161bc8cfb90e3226d778dea51)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mobile:** scroll the active panel chip into view ([5bcd887](https://github.com/kabmo-labs/kabmo/commit/5bcd887077402d4d27dcf002e25fbe94e130fe6a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **scrollbars:** stop the reveal from re-arming on programmatic scrolls ([a98d848](https://github.com/kabmo-labs/kabmo/commit/a98d848c52a936cdb5be6da03acbdafd3cd6570b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** paint every loading overlay from the active theme ([2e44585](https://github.com/kabmo-labs/kabmo/commit/2e44585ca6f147cfc25c6f7b12b432fd3df76118)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** draw the APK control's glyph on the phone footer ([91508ea](https://github.com/kabmo-labs/kabmo/commit/91508ea813bdffb21488735032199479968d7f3c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tool-renderers:** align every code gutter with its code ([39b7442](https://github.com/kabmo-labs/kabmo/commit/39b7442019053c972845a8ea8ef8e2777789bc50)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.10.0](https://github.com/kabmo-labs/kabmo/compare/v0.9.0...v0.10.0) — 2026-10-26
 
 ### Added
