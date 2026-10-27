@@ -123,6 +123,37 @@ page in the running shell: `servers_state` answered, and the `servers_add` that
 followed it landed in `servers.json` with the label the page built from the
 answer.
 
+### A command runs ON the GTK loop
+
+`connect_script_message_received` is delivered on the main thread, so a command
+that blocks there freezes the whole shell — and a busy loop cannot run
+`delete_event` either, which is why a long command also reads as "the app will not
+quit". That is not hypothetical: the shutdown itself used to run `stop_all` on
+the loop and the window went "not responding" for the whole wait (see
+`wire_shutdown`).
+
+`update_apply` was the worst case: a `ureq` download whose own read timeout is
+120 s, parsed, verified and renamed inline. It is now answered by `start_update`
+in `main.rs` — everything cheap (the AppImage check, the one-job guard, the
+refusals) is decided in the same tick so the page is never left waiting on a job
+that never started, the blocking half runs on a thread, and the answer is
+delivered by `timeout_add_local`, because the reply script and the window are GTK
+objects and `reply_now` is the only place that evaluates one. A worker that dies
+without answering still answers the page, and the restart is scheduled from the
+loop through `schedule_relaunch`, only when the install actually succeeded
+(`update::outcome`), so a refused update cannot come back as the image it already
+runs.
+
+`servers_start` and the start half of `servers_activate` are deferred the same
+way, because they carry the same budget: `Deps::start` only spawns
+(`Supervisor::spawn`), and `system::wait_until_ready` — address and pid only, so
+it is safe on a worker thread — does the waiting. `ServerStore::start` therefore
+answers a `StartResult` (id, address, pid) and `activate` answers
+`(url, Option<pid>)`, which is how the shell knows whether anything was started
+to wait for. The reply is held until the wait lands, and a start that never
+answers is stopped before the page is told — otherwise the next Start would
+refuse with "already starting on that port" for a process nothing can see.
+
 A link to another origin — every `target="_blank"` in the console, an OAuth
 launch — leaves the console and opens in the user's browser via `xdg-open`. The
 same-origin check is what keeps a login flow from replacing the app with a
