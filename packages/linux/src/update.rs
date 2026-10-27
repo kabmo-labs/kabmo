@@ -151,6 +151,78 @@ pub fn appimage_of(env: Option<&str>) -> Option<PathBuf> {
     Some(PathBuf::from(value))
 }
 
+/**
+ What an `update_apply` call asked for, resolved before anything is downloaded.
+
+ Pure on purpose — the AppImage path arrives as an argument — so the rules suite
+ pins it with no environment and no release asset.
+
+ The reason it is a step of its own is the SHELL's: `update_run::apply` blocks on
+ the network for as long as the download takes (120 s is its own read timeout),
+ and the bridge runs on the GTK main loop (`main.rs`). Everything cheap enough to
+ refuse is therefore refused BEFORE the work is handed to a thread, so a refusal
+ is answered in the same tick and can never leave the page waiting on a job that
+ never started.
+*/
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstallPlan {
+    pub url: String,
+    pub version: String,
+    pub image: PathBuf,
+}
+
+pub fn plan(params: &serde_json::Value, appimage: Option<&str>) -> Result<InstallPlan, String> {
+    let image = appimage_of(appimage).ok_or_else(|| {
+        "This build is not an AppImage, so it cannot replace itself. Download the release instead."
+            .to_string()
+    })?;
+    Ok(InstallPlan {
+        url: crate::bridge::text_param(params, "url"),
+        version: crate::bridge::text_param(params, "version"),
+        image,
+    })
+}
+
+/**
+ What a finished install hands the page, and whether it restarts.
+
+ The two halves travel together because they are ONE decision. A refused or
+ failed install must never schedule a restart: the replacement would come back as
+ the image this process already runs, while the page reports the failure. A
+ successful one must schedule exactly one, because that is the only thing that
+ ends the process the installer needs gone.
+*/
+#[derive(Debug)]
+pub struct InstallOutcome {
+    /// What `reply_script` is told: `false` means `payload` is the sentence the
+    /// page shows, exactly as a refused command answers.
+    pub ok: bool,
+    pub payload: serde_json::Value,
+    /// The image the replacement runs, or `None` when there is no reason to
+    /// restart.
+    pub relaunch: Option<PathBuf>,
+}
+
+pub fn outcome(result: Result<String, String>, plan: &InstallPlan) -> InstallOutcome {
+    match result {
+        Ok(message) => InstallOutcome {
+            ok: true,
+            payload: serde_json::json!({
+                "success": true,
+                "version": plan.version,
+                "message": message,
+                "relaunching": true,
+            }),
+            relaunch: Some(plan.image.clone()),
+        },
+        Err(reason) => InstallOutcome {
+            ok: false,
+            payload: serde_json::Value::String(reason),
+            relaunch: None,
+        },
+    }
+}
+
 /// The staged download's path, beside nothing that already exists.
 ///
 /// The SAME directory as the image being replaced, because `rename` is only

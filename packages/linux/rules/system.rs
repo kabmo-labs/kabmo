@@ -36,13 +36,17 @@ pub fn cases(r: &mut Runner) {
         Some(cli) => {
             let port = kabmo_desktop::system::free_port();
             let supervisor = Supervisor::new();
-            let started = supervisor.start(port);
+            let started = supervisor.spawn(port);
             match started {
                 Ok(managed) => {
-                    r.check("a real local server starts", managed.pid > 0);
+                    r.check("a real local server spawns", managed.pid > 0);
+                    // The wait is a separate step now — it is what the shell runs
+                    // on a worker thread while the window stays responsive.
                     r.check(
-                        "the started server answers",
-                        probe_health(&managed.url).is_some(),
+                        "the wait reports the spawned server ready, and it answers",
+                        kabmo_desktop::system::wait_until_ready(&managed.url, managed.pid, port)
+                            .is_ok()
+                            && probe_health(&managed.url).is_some(),
                     );
                     r.check("the supervisor owns it", supervisor.owns(&managed.id));
                     supervisor.stop(&managed.id);
@@ -62,7 +66,7 @@ pub fn cases(r: &mut Runner) {
                 }
                 Err(failure) => {
                     println!("  note: start failed: {}", failure.message());
-                    r.check("a real local server starts", false);
+                    r.check("a real local server spawns", false);
                 }
             }
             let _ = cli;

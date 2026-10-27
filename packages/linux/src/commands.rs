@@ -19,7 +19,7 @@ use gtk::prelude::*;
 use serde_json::Value;
 
 use kabmo_desktop::bridge::{desktop_info_value, int_param, text_param};
-use kabmo_desktop::store::{ServerStore, ShellError};
+use kabmo_desktop::store::{port_of, ServerStore, ShellError, StartResult};
 use kabmo_desktop::system::{free_port, SystemDeps};
 
 /// The commands the page may issue, and their answers.
@@ -33,7 +33,6 @@ pub fn handle_command(
     params: &Value,
     window: &gtk::Window,
     store: &Rc<RefCell<ServerStore<SystemDeps>>>,
-    current_url: &Rc<RefCell<String>>,
 ) -> Result<Value, ShellError> {
     let state = |store: &Rc<RefCell<ServerStore<SystemDeps>>>| {
         serde_json::to_value(store.borrow().snapshot()).unwrap_or(Value::Null)
@@ -44,17 +43,27 @@ pub fn handle_command(
         }
         value
     };
-    // Ask the caller to restart into the image it just installed.
+    // A start that must be WAITED for before the page is answered.
     //
-    // The path travels with the answer because the caller is what spawns the
-    // replacement — and it must do that AFTER this process exits, or two
-    // instances fight over the managed server's port.
-    let with_relaunch = |mut value: Value, image: &std::path::Path| {
+    // The wait is `system::wait_until_ready` — up to `START_TIMEOUT` — and this
+    // handler runs on the GTK main loop, so the shell runs it on a worker thread
+    // (`main.rs`, `start_server`) and answers when it lands. The marker therefore
+    // carries what that worker needs (address, pid, port for the log line, and the
+    // record to stop if it never answers), and `__navigate` travels WITH it: the
+    // window moves only once the server actually answers, so a failed start never
+    // shows an error page for a port nothing is listening on.
+    let with_await = |mut value: Value, started: &StartResult, port: u16| {
         if let Value::Object(map) = &mut value {
             map.insert(
-                "__relaunch".into(),
-                Value::String(image.to_string_lossy().into_owned()),
+                "__await".into(),
+                serde_json::json!({
+                    "id": started.id,
+                    "url": started.url,
+                    "pid": started.pid,
+                    "port": port,
+                }),
             );
+            map.insert("__navigate".into(), Value::String(started.url.clone()));
         }
         value
     };
@@ -111,9 +120,22 @@ pub fn handle_command(
 
         "servers_activate" => {
             let id = text_param(params, "id");
-            let url = store.borrow_mut().activate(&id)?;
-            *current_url.borrow_mut() = url.clone();
-            Ok(with_navigate(state(store), &url))
+            let (url, started) = store.borrow_mut().activate(&id)?;
+            Ok(match started {
+                // Switching to a server that ANSWERED needs no wait.
+                None => with_navigate(state(store), &url),
+                // It was down and this call started it, so the window must not
+                // move until it answers.
+                Some(pid) => with_await(
+                    state(store),
+                    &StartResult {
+                        id: id.clone(),
+                        url,
+                        pid: Some(pid),
+                    },
+                    port_of(&id).unwrap_or(0),
+                ),
+            })
         }
 
         "servers_start" => {
@@ -122,9 +144,8 @@ pub fn handle_command(
                 .get("label")
                 .and_then(|value| value.as_str())
                 .map(str::to_string);
-            let (_, url) = store.borrow_mut().start(port, label.as_deref())?;
-            *current_url.borrow_mut() = url.clone();
-            Ok(with_navigate(state(store), &url))
+            let started = store.borrow_mut().start(port, label.as_deref())?;
+            Ok(with_await(state(store), &started, port))
         }
 
         "servers_stop" => {
@@ -133,34 +154,11 @@ pub fn handle_command(
             Ok(state(store))
         }
 
-        // Install a newer build of this app over the image this process runs
-        // from, and ask the caller to restart into it.
-        //
-        // `__relaunch` rather than doing it here for the same reason
-        // `__navigate` exists: the page that asked is about to be replaced, and
-        // the answer has to reach it FIRST. The caller sends the reply, then runs
-        // the relaunch — see `main.rs`.
-        "update_apply" => {
-            let url = text_param(params, "url");
-            let version = text_param(params, "version");
-            let image = std::env::var("APPIMAGE").ok();
-            let Some(image) = kabmo_desktop::update::appimage_of(image.as_deref()) else {
-                return Err(ShellError::new(
-                    "This build is not an AppImage, so it cannot replace itself. Download the release instead.",
-                ));
-            };
-            let installed = env!("KABMO_SHELL_VERSION");
-            let message = kabmo_desktop::update_run::apply(&url, &version, installed, &image)?;
-            Ok(with_relaunch(
-                serde_json::json!({
-                    "success": true,
-                    "version": version,
-                    "message": message,
-                    "relaunching": true,
-                }),
-                &image,
-            ))
-        }
+        // `update_apply` is NOT here: it downloads, and this handler runs on the
+        // GTK main loop. It is answered by `main.rs`'s `start_update`, which puts
+        // the blocking half on a thread and delivers the reply through the loop —
+        // see the comment there for the window that could not be closed while an
+        // update ran.
 
         other => Err(ShellError::new(format!("Unknown shell command: {other}"))),
     }

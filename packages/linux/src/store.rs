@@ -120,6 +120,10 @@ pub trait Deps {
     fn probe(&self, url: &str) -> Option<Health>;
     fn detect(&self) -> Vec<ServerEntry>;
     /// Start a local server; `pid` is `None` when the port was already served.
+    ///
+    /// It SPAWNS and returns: the health wait is `system::wait_until_ready`, run
+    /// by the shell on a worker thread, because this call is made from the GTK
+    /// loop and a 45 s wait there froze the window (`main.rs`).
     fn start(&self, port: u16) -> Result<StartResult, String>;
     fn stop(&self, id: &str);
 }
@@ -358,7 +362,7 @@ impl<D: Deps> ServerStore<D> {
      * found on this machine and ADOPTED into the list: it was never the shell's
      * to remember, but connecting to it is an explicit choice worth keeping.
      */
-    pub fn activate(&mut self, id: &str) -> Result<String, ShellError> {
+    pub fn activate(&mut self, id: &str) -> Result<(String, Option<i32>), ShellError> {
         if !self.state.entries.iter().any(|entry| entry.id == id) {
             let found = self
                 .deps
@@ -390,25 +394,34 @@ impl<D: Deps> ServerStore<D> {
         if self.deps.probe(&url).is_some() {
             self.state.active_id = Some(id.to_string());
             self.persist();
-            return Ok(url);
+            return Ok((url, None));
         }
         // "Switch to my local server" when it is down means start it. A REMOTE
         // server that is down is refused: there is nothing this shell could
         // start.
         if kind == ServerKind::Managed {
             if let Some(port) = port {
-                return self.start(port, Some(&label)).map(|(_, url)| url);
+                // The pid travels with the address so the caller can WAIT for it
+                // off the GUI loop; a server that was already answering has none
+                // to wait for.
+                let started = self.start(port, Some(&label))?;
+                return Ok((started.url, started.pid));
             }
         }
         Err(ShellError::new(format!("{label} is not answering. Start it first.")))
     }
 
     /// Start a local server as this shell's child and select it.
+    ///
+    /// Answers the `StartResult` — the id, the address and the pid — because the
+    /// caller is what WAITS for the server: `system::wait_until_ready` runs on a
+    /// thread, off the GTK loop, and needs both the address and the pid to tell a
+    /// slow boot from a child that died.
     pub fn start(
         &mut self,
         port: u16,
         label: Option<&str>,
-    ) -> Result<(String, String), ShellError> {
+    ) -> Result<StartResult, ShellError> {
         let started = self.deps.start(port).map_err(ShellError::new)?;
         if let Some(index) = self
             .state
@@ -438,7 +451,7 @@ impl<D: Deps> ServerStore<D> {
         }
         self.state.active_id = Some(started.id.clone());
         self.persist();
-        Ok((started.id, started.url))
+        Ok(started)
     }
 
     pub fn stop(&mut self, id: &str) {

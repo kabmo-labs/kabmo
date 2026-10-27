@@ -150,8 +150,12 @@ pub fn cases(r: &mut Runner) {
             ..Default::default()
         },
     );
-    let url = store.activate("local:3002").unwrap_or_default();
+    let (url, started_pid) = store.activate("local:3002").unwrap_or_default();
     r.check("a successful switch returns the url", url == "http://127.0.0.1:3002");
+    r.check(
+        "…and says no server was started, so there is nothing to wait for",
+        started_pid.is_none(),
+    );
     r.check(
         "a successful switch is persisted",
         saved.borrow().last().and_then(|state| state.active_id.clone()).as_deref()
@@ -181,10 +185,14 @@ pub fn cases(r: &mut Runner) {
             ..Default::default()
         },
     );
-    let started = store.activate("local:3001").unwrap_or_default();
+    let (started_url, started_pid) = store.activate("local:3001").unwrap_or_default();
     r.check(
         "activating a stopped local server starts it",
-        started == "http://127.0.0.1:3001",
+        started_url == "http://127.0.0.1:3001",
+    );
+    r.check(
+        "…and hands back the pid, which is what the shell waits on off the GUI loop",
+        started_pid == Some(42),
     );
     r.check(
         "a stopped remote server is refused",
@@ -198,7 +206,7 @@ pub fn cases(r: &mut Runner) {
             .with_detected(vec![entry("local:7920", "http://127.0.0.1:7920", Some(7920))]),
         PersistedState::default(),
     );
-    let url = store.activate("local:7920").unwrap_or_default();
+    let (url, _) = store.activate("local:7920").unwrap_or_default();
     r.check("a detected server is connectable", url == "http://127.0.0.1:7920");
     r.check(
         "...and is adopted into the list",
@@ -217,7 +225,7 @@ pub fn cases(r: &mut Runner) {
     let started = store.start(3007, None).ok();
     r.check(
         "starting selects the new server",
-        started.as_ref().map(|(id, _)| id.as_str()) == Some("local:3007"),
+        started.as_ref().map(|started| started.id.as_str()) == Some("local:3007"),
     );
     r.check(
         "starting records the pid for a later launch",

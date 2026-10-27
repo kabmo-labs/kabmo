@@ -46,8 +46,8 @@ pub use store::{
     ServerEntry, ServerKind, ServerStore, ServersState, ShellError, StartResult, StoredServer,
 };
 pub use system::{
-    data_directory, detect_local_servers, free_port, probe_health, which, AlreadyServed, Launch,
-    ManagedServer, StartFailure, Supervisor, SystemDeps,
+    data_directory, detect_local_servers, free_port, probe_health, wait_until_ready, which,
+    AlreadyServed, Launch, ManagedServer, StartFailure, Supervisor, SystemDeps,
 };
 pub use update::{
     appimage_of, arch, asset_arch, elf_matches_arch, is_newer, is_trusted_download, refusal,

@@ -258,7 +258,13 @@ impl Supervisor {
         }
     }
 
-    pub fn start(&self, port: u16) -> Result<ManagedServer, StartFailure> {
+    /// Start a local server in its own process group, WITHOUT waiting for it.
+    ///
+    /// The wait is `wait_until_ready`, and it belongs to the CALLER: the shell
+    /// runs this from the GTK main loop, so the health budget below has to happen
+    /// on a worker thread or the window freezes for the whole of it — measured on
+    /// Start, before the split, where the 45 s budget was charged to the UI.
+    pub fn spawn(&self, port: u16) -> Result<ManagedServer, StartFailure> {
         let id = format!("local:{port}");
         let url = format!("http://127.0.0.1:{port}");
         if probe_health(&url).is_some() {
@@ -326,25 +332,7 @@ impl Supervisor {
             .children
             .insert(id.clone(), (managed.clone(), child));
 
-        let deadline = Instant::now() + START_TIMEOUT;
-        while Instant::now() < deadline {
-            if probe_health(&url).is_some() {
-                return Ok(managed);
-            }
-            if !is_alive(pid) {
-                self.stop(&id);
-                return Err(StartFailure::Refused(format!(
-                    "The local server exited during startup. See {}.",
-                    log_path.display()
-                )));
-            }
-            std::thread::sleep(Duration::from_millis(150));
-        }
-        self.stop(&id);
-        Err(StartFailure::Refused(format!(
-            "The local server did not answer on port {port} within {}s.",
-            START_TIMEOUT.as_secs()
-        )))
+        Ok(managed)
     }
 
     /// Stop one managed server, and everything in its process group.
@@ -444,6 +432,39 @@ pub fn kill_group(pid: i32) {
     unsafe { libc::kill(target, libc::SIGKILL) };
 }
 
+/**
+ Wait for a server `Supervisor::spawn` started to answer `/api/health`.
+
+ Blocking and bounded by `START_TIMEOUT`, and safe on a WORKER thread: it touches
+ nothing but the address and the pid, which is what lets the shell keep its GTK
+ loop free while a slow server boots — and while a dead one is reported.
+
+ The two refusals are the ones the panel prints, and each names what the reader
+ would otherwise have to guess: the log file for a child that died, the port and
+ the budget for one that never answered.
+ */
+pub fn wait_until_ready(url: &str, pid: i32, port: u16) -> Result<(), String> {
+    let deadline = Instant::now() + START_TIMEOUT;
+    while Instant::now() < deadline {
+        if probe_health(url).is_some() {
+            return Ok(());
+        }
+        if !is_alive(pid) {
+            return Err(format!(
+                "The local server exited during startup. See {}.",
+                data_directory()
+                    .join(format!("desktop-{port}.log"))
+                    .display()
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(150));
+    }
+    Err(format!(
+        "The local server did not answer on port {port} within {}s.",
+        START_TIMEOUT.as_secs()
+    ))
+}
+
 pub struct Launch {
     pub program: String,
     pub args: Vec<String>,
@@ -451,7 +472,6 @@ pub struct Launch {
     /// True when `program` is the `kabmo` CLI rather than the server entry.
     pub is_cli: bool,
 }
-
 /**
  * How to start a local server on this machine.
  *
@@ -552,7 +572,7 @@ impl Deps for SystemDeps {
     }
 
     fn start(&self, port: u16) -> Result<StartResult, String> {
-        match self.supervisor.start(port) {
+        match self.supervisor.spawn(port) {
             Ok(managed) => Ok(StartResult {
                 id: managed.id,
                 url: managed.url,

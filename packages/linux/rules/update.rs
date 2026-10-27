@@ -16,8 +16,8 @@
 use std::path::{Path, PathBuf};
 
 use kabmo_desktop::update::{
-    appimage_of, arch, asset_arch, elf_matches_arch, is_newer, is_trusted_download, refusal,
-    relaunch_script, staged_path, EM_AARCH64, EM_X86_64,
+    appimage_of, arch, asset_arch, elf_matches_arch, is_newer, is_trusted_download, outcome, plan,
+    refusal, relaunch_script, staged_path, EM_AARCH64, EM_X86_64,
 };
 
 use crate::support::Runner;
@@ -163,5 +163,58 @@ pub fn cases(r: &mut Runner) {
     r.check(
         "a path with a quote in it is escaped for the shell",
         relaunch_script(Path::new("/home/x/It's/Kabmo.AppImage"), 1).contains("It'\\''s"),
+    );
+
+    // The shell threads `update_apply` because it runs on the GTK loop (see
+    // `main.rs`), which puts the two decisions that used to be inline in a place
+    // a test can reach. Both are silent failures when wrong: a refusal that
+    // scheduled a restart brings the process back as the image it already runs
+    // while the page reports the failure, and a plan accepted without an
+    // AppImage hands the thread a path it cannot replace.
+    r.group("update — what the shell decides before and after the download");
+    let request = serde_json::json!({
+        "url": "https://github.com/kabmo-labs/kabmo/releases/download/v0.5.0/Kabmo-0.5.0-linux-x86_64.AppImage",
+        "version": "0.5.0",
+    });
+    let installable = plan(&request, Some("/home/x/Apps/Kabmo.AppImage"))
+        .expect("an AppImage install is a plan");
+    r.check(
+        "the plan carries the address, the published version and the image",
+        installable.url == request["url"].as_str().unwrap()
+            && installable.version == "0.5.0"
+            && installable.image == PathBuf::from("/home/x/Apps/Kabmo.AppImage"),
+    );
+    r.check(
+        "a build that is not an AppImage is refused BEFORE anything is downloaded",
+        plan(&request, None).is_err(),
+    );
+    r.check(
+        "the refusal names the release page instead of a path it would guess",
+        plan(&request, None)
+            .err()
+            .map(|reason| reason.contains("Download the release"))
+            .unwrap_or(false),
+    );
+
+    let installed = outcome(Ok("Kabmo 0.5.0 is being installed".to_string()), &installable);
+    r.check(
+        "a successful install restarts into the image it installed",
+        installed.relaunch.as_deref() == Some(Path::new("/home/x/Apps/Kabmo.AppImage")),
+    );
+    r.check(
+        "…and tells the page it is restarting, with the published version",
+        installed.ok
+            && installed.payload["relaunching"] == serde_json::json!(true)
+            && installed.payload["version"] == serde_json::json!("0.5.0"),
+    );
+
+    let failed = outcome(Err("The update was refused.".to_string()), &installable);
+    r.check(
+        "a FAILED install schedules no restart — the old image would come back",
+        failed.relaunch.is_none(),
+    );
+    r.check(
+        "…and answers with the sentence the page shows",
+        !failed.ok && failed.payload == serde_json::json!("The update was refused."),
     );
 }

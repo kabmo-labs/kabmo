@@ -19,7 +19,7 @@
  *   webview loads the real `http://host:port` URL.
  */
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -41,6 +41,7 @@ use kabmo_desktop::splash::Progress;
 use kabmo_desktop::splash_view::Splash;
 use kabmo_desktop::store::ServerStore;
 use kabmo_desktop::system::{Supervisor, SystemDeps};
+use kabmo_desktop::update;
 use kabmo_desktop::update_run;
 use kabmo_desktop::window::{make_window, remember_press, wire_edge_resize};
 
@@ -202,9 +203,15 @@ impl Shell {
         let view = self.view.clone();
         let store = self.store.clone();
         let current_url = self.current_url.clone();
+        let shown_uri = self.shown_uri.clone();
         let progress = self.progress.clone();
         let splash = self.splash.clone();
         let last_press = self.last_press.clone();
+        // One update at a time, for as long as a download is in flight. The
+        // window stays usable while it runs — that is the point of threading it —
+        // so a second press is reachable, and two downloads would race the same
+        // staged file while two relaunches fought over the managed server's port.
+        let update_busy: Rc<Cell<bool>> = Rc::new(Cell::new(false));
 
         manager.connect_script_message_received(Some("kabmo"), move |_manager, result| {
             let Some(value) = result.js_value() else { return };
@@ -220,39 +227,46 @@ impl Shell {
                 return;
             }
 
-            let answer = handle_command(
-                &call.method,
-                &call.params,
-                &window,
-                &store,
-                &current_url,
-            );
+            // An update downloads for as long as the release asset takes — its
+            // own read timeout is 120 s — and this callback runs on the GTK main
+            // loop. Handled inline it froze the window for the whole download,
+            // and a busy loop cannot run `delete_event` either: the shell was
+            // uncloseable for as long as an update ran. See `start_update`.
+            if call.method == "update_apply" {
+                start_update(call.id, &call.params, &view, &window, &update_busy);
+                return;
+            }
+
+            let answer = handle_command(&call.method, &call.params, &window, &store);
             let script = match answer {
                 Ok(payload) => {
+                    // A command that STARTED a server is not answered — and the
+                    // window does not move — until that server answers
+                    // `/api/health`: the wait is up to `START_TIMEOUT` and this
+                    // callback is the GTK loop. The reply is held here and handed
+                    // over from the loop when the worker lands (`start_server`).
+                    if payload.get("__await").is_some() {
+                        let awaiting = payload.get("__await").cloned().unwrap_or(Value::Null);
+                        start_server(
+                            call.id,
+                            &awaiting,
+                            without_markers(payload),
+                            &view,
+                            &store,
+                            &current_url,
+                            &shown_uri,
+                            &progress,
+                            &splash,
+                        );
+                        return;
+                    }
                     // A command that moved the window to another server also
                     // reloads it: the page that asked is about to be replaced,
                     // so its own state would be the previous server's.
                     if let Some(url) = payload.get("__navigate").and_then(|value| value.as_str()) {
-                        *progress.borrow_mut() = Progress::connecting();
-                        splash.show_progress(*progress.borrow());
-                        view.load_uri(url);
+                        begin_load(&view, &current_url, &shown_uri, &progress, &splash, url);
                     }
-                    // An update asks for a RESTART, and the reply must reach the
-                    // page before this process goes away: the answer is evaluated
-                    // below, so the relaunch is scheduled on the main loop rather
-                    // than performed here.
-                    if let Some(image) = payload.get("__relaunch").and_then(|value| value.as_str()) {
-                        schedule_relaunch(image.to_string(), window.clone());
-                    }
-                    let clean = match payload {
-                        Value::Object(mut map) => {
-                            map.remove("__navigate");
-                            map.remove("__relaunch");
-                            Value::Object(map)
-                        }
-                        other => other,
-                    };
-                    reply_script(call.id, true, &clean)
+                    reply_script(call.id, true, &without_markers(payload))
                 }
                 Err(error) => reply_script(call.id, false, &Value::String(error.0)),
             };
@@ -467,12 +481,119 @@ impl Shell {
     /// `Started` on the same tick: arming afterwards would let the first estimate
     /// of a real load be ignored as "already finished".
     fn load(&self, url: &str) {
-        *self.current_url.borrow_mut() = url.to_string();
-        *self.shown_uri.borrow_mut() = None;
-        *self.progress.borrow_mut() = Progress::connecting();
-        self.splash.show_progress(*self.progress.borrow());
-        self.view.load_uri(url);
+        begin_load(
+            &self.view,
+            &self.current_url,
+            &self.shown_uri,
+            &self.progress,
+            &self.splash,
+            url,
+        );
     }
+}
+
+/// Begin a load on the objects that outlive the window's owner.
+///
+/// A free function because the deferred paths — a server that just started, a
+/// navigation the bridge asked for — run from a run-loop callback that owns the
+/// Rcs rather than the `Shell`. One body means the retry address
+/// (`current_url`), the reload latch (`shown_uri`) and the splash cannot be
+/// updated in one path and forgotten in another.
+fn begin_load(
+    view: &WebView,
+    current_url: &Rc<RefCell<String>>,
+    shown_uri: &Rc<RefCell<Option<String>>>,
+    progress: &Rc<RefCell<Progress>>,
+    splash: &Rc<Splash>,
+    url: &str,
+) {
+    *current_url.borrow_mut() = url.to_string();
+    *shown_uri.borrow_mut() = None;
+    *progress.borrow_mut() = Progress::connecting();
+    splash.show_progress(*progress.borrow());
+    view.load_uri(url);
+}
+
+/// Strip the shell's own markers from a payload before it reaches the page.
+fn without_markers(mut value: Value) -> Value {
+    if let Value::Object(map) = &mut value {
+        map.remove("__navigate");
+        map.remove("__await");
+    }
+    value
+}
+
+/**
+ Answer a `servers_start`/`servers_activate` once the server really answers.
+
+ The wait is `wait_until_ready`, which probes `/api/health` for up to
+ `START_TIMEOUT` (45 s). It used to run inside the bridge callback — the GTK main
+ loop — so pressing Start froze the window for as long as the server took to boot,
+ and a server that never booted held it for the whole budget with no close, no
+ quit, and no repaint. It is a worker thread now, and the reply, the navigation
+ and the splash are applied from the loop when it lands.
+
+ A server that never answered is STOPPED before the page is told: it is still a
+ child of this process, and leaving it would make the next Start answer "already
+ starting on that port" for a server nothing can see.
+ */
+fn start_server(
+    id: u64,
+    awaiting: &Value,
+    reply: Value,
+    view: &WebView,
+    store: &Rc<RefCell<ServerStore<SystemDeps>>>,
+    current_url: &Rc<RefCell<String>>,
+    shown_uri: &Rc<RefCell<Option<String>>>,
+    progress: &Rc<RefCell<Progress>>,
+    splash: &Rc<Splash>,
+) {
+    let url = awaiting["url"].as_str().unwrap_or_default().to_string();
+    let record = awaiting["id"].as_str().unwrap_or_default().to_string();
+    let pid = awaiting["pid"].as_i64().unwrap_or(0) as i32;
+    let port = awaiting["port"].as_u64().unwrap_or(0) as u16;
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let wait_url = url.clone();
+    std::thread::spawn(move || {
+        let _ = sender.send(kabmo_desktop::system::wait_until_ready(&wait_url, pid, port));
+    });
+
+    let view = view.clone();
+    let store = store.clone();
+    let current_url = current_url.clone();
+    let shown_uri = shown_uri.clone();
+    let progress = progress.clone();
+    let splash = splash.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        let outcome = match receiver.try_recv() {
+            Ok(outcome) => outcome,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return gtk::glib::ControlFlow::Continue,
+            // The worker vanished without answering (a panic). The page still
+            // gets an answer, or it keeps a spinner for the life of the tab.
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                Err("The local server stopped without an answer.".to_string())
+            }
+        };
+        match outcome {
+            Ok(()) => {
+                begin_load(
+                    &view,
+                    &current_url,
+                    &shown_uri,
+                    &progress,
+                    &splash,
+                    &url,
+                );
+                reply_now(&view, id, true, &reply);
+            }
+            Err(reason) => {
+                store.borrow_mut().stop(&record);
+                reply_now(&view, id, false, &Value::String(reason));
+            }
+        }
+        gtk::glib::ControlFlow::Break
+    });
 }
 
 /// Ask the page which palette it is painting, and keep the answer.
@@ -553,6 +674,97 @@ fn schedule_relaunch(image: String, window: gtk::Window) {
         let path = std::path::PathBuf::from(&image);
         update_run::relaunch(&path);
         window.close();
+        gtk::glib::ControlFlow::Break
+    });
+}
+
+/// Answer the page from a callback that is already on the GTK loop.
+fn reply_now(view: &WebView, id: u64, ok: bool, payload: &Value) {
+    view.run_javascript(
+        &reply_script(id, ok, payload),
+        None::<&gtk::gio::Cancellable>,
+        |_| {},
+    );
+}
+
+/**
+ Answer an update without freezing the window.
+
+ `connect_script_message_received` runs on the GTK main loop, so a command that
+ waits on the network holds the whole shell: the download's own read timeout is
+ 120 s (`update_run`), the window stops responding for that long, and a busy loop
+ never runs `delete_event` either — the app could not be closed at all while an
+ update was in flight, which is the same "must be killed from a process monitor"
+ shape macOS had for a different reason.
+
+ Everything cheap is decided HERE — the AppImage check and the one-job guard are
+ answered in the same tick, so a refusal never leaves the page waiting — and only
+ the blocking half goes to a thread. The answer comes back over a channel and is
+ delivered by `timeout_add_local`, because the reply script and the window are GTK
+ objects and belong to the loop.
+
+ A worker that dies without answering (a panic) still answers the page: a tab
+ waiting on a reply keeps a spinner for its whole life.
+ */
+fn start_update(
+    id: u64,
+    params: &Value,
+    view: &WebView,
+    window: &gtk::Window,
+    busy: &Rc<Cell<bool>>,
+) {
+    let plan = match update::plan(params, std::env::var("APPIMAGE").ok().as_deref()) {
+        Ok(plan) => plan,
+        Err(reason) => {
+            reply_now(view, id, false, &Value::String(reason));
+            return;
+        }
+    };
+    if busy.replace(true) {
+        reply_now(
+            view,
+            id,
+            false,
+            &Value::String("An update is already downloading.".to_string()),
+        );
+        return;
+    }
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let installed = env!("KABMO_SHELL_VERSION");
+        let answer = update_run::apply(&plan.url, &plan.version, installed, &plan.image)
+            .map_err(|error| error.0);
+        // The plan travels back with the answer: it carries the image the restart
+        // needs, and re-reading `APPIMAGE` on the loop would resolve the same path
+        // a second time.
+        let _ = sender.send((answer, plan));
+    });
+
+    let view = view.clone();
+    let window = window.clone();
+    let busy = busy.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        let (answer, plan) = match receiver.try_recv() {
+            Ok(answer) => answer,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return gtk::glib::ControlFlow::Continue,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                busy.set(false);
+                reply_now(
+                    &view,
+                    id,
+                    false,
+                    &Value::String("The update stopped without an answer.".to_string()),
+                );
+                return gtk::glib::ControlFlow::Break;
+            }
+        };
+        busy.set(false);
+        let outcome = update::outcome(answer, &plan);
+        if let Some(image) = outcome.relaunch {
+            schedule_relaunch(image.to_string_lossy().into_owned(), window.clone());
+        }
+        reply_now(&view, id, outcome.ok, &outcome.payload);
         gtk::glib::ControlFlow::Break
     });
 }
