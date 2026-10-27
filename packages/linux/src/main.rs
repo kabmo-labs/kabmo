@@ -495,7 +495,14 @@ fn read_palette(
     view.run_javascript(
         "window.__kabmoPalette ? window.__kabmoPalette() : null",
         None::<&gtk::gio::Cancellable>,
-        move |_view, result| {
+        move |result| {
+            // `run_javascript` answers ONE argument — `Result<JavascriptResult,
+            // glib::Error>` — not `(view, result)`. Measured against
+            // `webkit2gtk 2.0.2`: the two-argument form is a compile error
+            // (`E0593: closure is expected to take 1 argument`), which only the
+            // RELEASE workflow sees because the Linux shell is compiled nowhere
+            // else.
+            let Ok(result) = result else { return };
             let Some(value) = result.js_value() else { return };
             // `is_string` first: `to_str` answers `undefined` for a null, and a
             // page with no publisher must leave the stored palette alone rather
