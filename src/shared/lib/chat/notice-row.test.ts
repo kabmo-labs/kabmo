@@ -6,6 +6,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  developerTurnNotice,
   isNoticeRow,
   messageAnswerText,
   noticeIsAssistantText,
@@ -69,6 +70,30 @@ describe('reminderPartIndex', () => {
     const row = { id: 'n2', role: 'ai' as const, content: '', notice: interrupt, model: 'deepseek-v4' };
     expect(noticeIsAssistantText(row)).toBe(false);
     expect(isNoticeRow(row)).toBe(true);
+  });
+});
+
+describe('developerTurnNotice', () => {
+  test('is undefined for a non-harness role', () => {
+    expect(developerTurnNotice('assistant', ['answer text'])).toBeUndefined();
+    expect(developerTurnNotice('user', ['prompt'])).toBeUndefined();
+    expect(developerTurnNotice(undefined, ['x'])).toBeUndefined();
+  });
+
+  test('keeps the plain text of a developer nudge, tags stripped', () => {
+    const nudge = 'Tool call failed: your previous response tried to invoke a tool.\n\n```\n<｜DSML｜tool_calls>\n```';
+    expect(developerTurnNotice('developer', [nudge])).toBe(nudge);
+  });
+
+  test('keeps the envelope of a wrapped developer turn (the tag is identity)', () => {
+    const wrapped = '<system-reminder rule="ts-no-any">\nNo any.\n</system-reminder>';
+    expect(developerTurnNotice('developer', [wrapped])).toBe(wrapped);
+  });
+
+  test('applies to the system role too and returns undefined for empty text', () => {
+    expect(developerTurnNotice('system', ['sys rule'])).toBe('sys rule');
+    expect(developerTurnNotice('developer', ['   '])).toBeUndefined();
+    expect(developerTurnNotice('system', [])).toBeUndefined();
   });
 });
 

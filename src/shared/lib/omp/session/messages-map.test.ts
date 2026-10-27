@@ -35,6 +35,7 @@ import {
 } from '@/shared/lib/omp/session/messages-map';
 import { parseAssistantContent, resultOutput, roleFor } from '@/shared/lib/omp/session/messages-parse';
 import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
+import { isNoticeRow } from '@/shared/lib/chat/notice-row';
 import { loadSessionMessages } from '@/server/lib/omp/session/messages';
 
 const entry = (message: Record<string, unknown>, extra: Record<string, unknown> = {}): OmpMessageEntry =>
@@ -47,8 +48,9 @@ describe('roleFor', () => {
   });
 
   test('folds developer, custom, toolResult and system onto assistant', () => {
-    // omp spells these roles differently; Kabmo has no such rows, and
-    // the fold is what lets a developer turn render as an assistant notice.
+    // omp spells these roles differently; the fold is the base-role fallback
+    // for a JSONL row. A developer/system turn then becomes a notice row by
+    // role (the notice branch overrides), never assistant content.
     expect(roleFor('developer')).toBe('assistant');
     expect(roleFor('custom')).toBe('assistant');
     expect(roleFor('toolResult')).toBe('assistant');
@@ -165,10 +167,17 @@ describe('toChatMessage — reload entry shape', () => {
     expect(msg?.content).toBe('body');
   });
 
-  test('a developer turn keeps its parsed text as assistant content', () => {
-    const msg = toChatMessage(entry({ role: 'developer', content: [{ type: 'text', text: 'rule' }] }));
-    expect(msg?.role).toBe('assistant');
-    expect(msg?.content).toBe('rule');
+  test('a developer turn is a notice row, never assistant prose', () => {
+    // omp writes harness nudges (a malformed tool call, a rule reminder) as
+    // role `developer`; the live mapper renders them as a notice card, and
+    // the reload path must agree — as assistant content the raw prompt (and
+    // its DSML markup) showed up as if the model had said it.
+    const nudge = 'Tool call failed: your previous response tried to invoke a tool, but the tool-call markup was malformed, so it arrived as plain text, no tool was executed.\n\n```\n<｜DSML｜tool_calls>\n```';
+    const msg = toChatMessage(entry({ role: 'developer', content: [{ type: 'text', text: nudge }] }));
+    expect(msg?.role).toBe('ai');
+    expect(msg?.content).toBe('');
+    expect(msg?.notice).toBe(nudge);
+    expect(isNoticeRow(msg)).toBe(true);
   });
 
   test('an errored turn with no text is kept so the failure stays visible', () => {

@@ -180,3 +180,24 @@ describe('loadSessionMessages reminder classification', () => {
     expect(message.notice).toBe('<system-reminder>2 items open</system-reminder>');
   });
 });
+
+describe('loadSessionMessages developer turns', () => {
+  test('a developer-role nudge renders as a notice card, never assistant prose', async () => {
+    const nudge = 'Tool call failed: your previous response tried to invoke a tool, but the tool-call markup was malformed, so it arrived as plain text, no tool was executed, and the broken markup was removed from your response.\n\nA tool call must be one complete envelope:\n\n```\n<｜DSML｜tool_calls>\n<｜DSML｜invoke name="TOOL_NAME">\n```';
+    const file = await writeSession([
+      {
+        type: 'message',
+        id: 'd1',
+        timestamp: at(1),
+        message: { role: 'developer', attribution: 'agent', content: [{ type: 'text', text: nudge }] },
+      },
+    ]);
+
+    const [message] = await loadSessionMessages(file);
+
+    expect(message.role).toBe('ai');
+    expect(message.content).toBe('');
+    expect(message.notice).toBe(nudge);
+    expect(isNoticeRow(message)).toBe(true);
+  });
+});

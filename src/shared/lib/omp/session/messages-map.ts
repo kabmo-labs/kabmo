@@ -8,7 +8,7 @@ import { extractInlinedTextAttachments, extractText, extractUserImageAttachments
 import { extractToolImages, type ToolImageRef } from '@/shared/lib/omp/session/tool-images';
 import { isRecord } from '@/shared/lib/util/guards';
 import { normalizeNoticeText } from '@/shared/lib/chat/notice-text';
-import { reminderPartIndex } from '@/shared/lib/chat/notice-row';
+import { developerTurnNotice, reminderPartIndex } from '@/shared/lib/chat/notice-row';
 import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
 import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
 import { CHAMBER_GOAL_STATE_ENTRY, CHAMBER_PLAN_STATE_ENTRY, KABMO_GOAL_STATE_ENTRY, KABMO_PLAN_STATE_ENTRY } from '@/shared/lib/omp/mode/types';
@@ -75,6 +75,24 @@ export function toChatMessage(entry: OmpMessageEntry): ChatMessageData | null {
     if (toolCallId) return null; // consumed by the paired tool call in pass 2
     if (!text.trim() && !toolName) return null;
     return { ...base, role: 'assistant', systemNote: toolName ? `[${toolName}] ${text}` : text };
+  }
+
+  // A developer/system turn is the HARNESS talking, never the model's answer:
+  // omp injects these (a malformed tool call, a rule-violation reminder, a
+  // compaction resume prompt) as agent-attributed context. The live mapper
+  // (mapper.ts) renders them as a notice row; the reload path must agree or
+  // the raw harness prompt — DSML markup included — shows up as if the model
+  // had said it (measured: 5 DSML-leak nudges across this install's store).
+  if (role === 'developer' || role === 'system') {
+    const notice = developerTurnNotice(role, parseAssistantContent(content).textParts);
+    if (!notice) return null;
+    return {
+      id: base.id,
+      role: 'ai',
+      date: base.date,
+      content: '',
+      notice,
+    };
   }
 
   // Assistant / developer / custom: parse the rich block structure.

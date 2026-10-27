@@ -14,8 +14,7 @@
 
 import type { ChatMessageData, ToolCallData } from '@/shared/types';
 import { extractInlinedTextAttachments, extractText, extractUserImageAttachments, parseMessageBlocks, stripInlinedTextAttachments, toToolCallData } from '@/shared/lib/omp/session/parse-message-blocks';
-import { reminderPartIndex } from '@/shared/lib/chat/notice-row';
-import { stripNoticeTags } from '@/shared/lib/chat/xml-envelope';
+import { developerTurnNotice, reminderPartIndex } from '@/shared/lib/chat/notice-row';
 import { deriveTurnError } from '@/shared/lib/omp/session/turn-error';
 import { formatClock } from '@/shared/lib/format/time';
 import { toEpochMs } from '@/shared/lib/omp/session/timestamps';
@@ -81,10 +80,8 @@ export function toChatMessage(raw: Record<string, unknown>, streaming = true): C
     // label the card and strips it before markdown, and the JSONL path stores
     // it the same way so a live row and its reloaded twin are identical.
     // Developer/system turns are notices by role and have no wrapper to keep.
-    const source = reminderIdx !== undefined ? parsed.textParts[reminderIdx] : parsed.textParts.join('\n');
-    const notice = reminderIdx !== undefined
-      ? source.trim()
-      : stripNoticeTags(source).trim();
+    const notice = developerTurnNotice(typeof raw.role === 'string' ? raw.role : undefined, parsed.textParts)
+      ?? (reminderIdx !== undefined ? parsed.textParts[reminderIdx].trim() : undefined);
     if (!notice) return null;
     return {
       id,

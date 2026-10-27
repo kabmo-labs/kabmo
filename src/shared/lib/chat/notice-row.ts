@@ -19,7 +19,7 @@
  */
 
 import type { ChatMessageData } from '@/shared/types';
-import { isReminderTag, unwrapXmlEnvelope } from '@/shared/lib/chat/xml-envelope';
+import { isReminderTag, stripNoticeTags, unwrapXmlEnvelope } from '@/shared/lib/chat/xml-envelope';
 
 /** Tag that identifies a notice payload rather than prose. A notice keeps its
  *  wrapper — that tag is the field's identity, and `SystemNotice` reads it to
@@ -54,6 +54,27 @@ export function reminderPartIndex(parts: string[]): number | undefined {
     return envelope !== undefined && isReminderTag(envelope.tag);
   });
   return index === -1 ? undefined : index;
+}
+
+/**
+ * The notice text of an omp `developer`/`system` turn — harness context omp
+ * injected (a rule violation, the DSML tool-call failure nudge, a resume
+ * prompt), never the model's own answer. Returns `undefined` for any other
+ * role.
+ *
+ * A wrapper-bearing turn keeps its envelope (the tag is the card's identity;
+ * `SystemNotice` reads it for the label); plain text has its notice tags
+ * stripped. Empty text is not a notice. Both mappers ask this — the live
+ * `mapper.ts` and the JSONL reload `messages-map.ts` — so the same row cannot
+ * render as a card while streaming and as the assistant's prose after a
+ * reload.
+ */
+export function developerTurnNotice(role: string | undefined, textParts: string[]): string | undefined {
+  if (role !== 'developer' && role !== 'system') return undefined;
+  const envelopeIdx = reminderPartIndex(textParts);
+  const source = envelopeIdx !== undefined ? textParts[envelopeIdx] : textParts.join('\n');
+  const notice = (envelopeIdx !== undefined ? source : stripNoticeTags(source)).trim();
+  return notice || undefined;
 }
 
 /** True when the row's `notice` is the assistant answer omp diverted there. */
