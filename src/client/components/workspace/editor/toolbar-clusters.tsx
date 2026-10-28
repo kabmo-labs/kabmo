@@ -132,6 +132,27 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
       actions: [{ label: 'Save file', icon: Save, onSelect: state.onSave, disabled: state.saveDisabled }],
       children: state.saveButton,
     });
+
+    clusters.push({
+      id: 'save-as',
+      // Never pinned: it is a rare operation, and the row's space belongs to Save.
+      // It IS placed directly after Save, because unpinned clusters take the row in
+      // ROW ORDER: measured at the 320px floor, the 26px blame cluster added after
+      // it claimed the last 30px and pushed `Save as` into `⋯` — a reading aid
+      // evicting a write. Sibling writes outrank reading aids here.
+      actions: [{ label: 'Save as…', icon: SaveAll, onSelect: state.onSaveAs }],
+      children: (
+        <button
+          type="button"
+          onClick={state.onSaveAs}
+          className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
+          title="Save the buffer to a new file"
+          aria-label="Save as"
+        >
+          <SaveAll size={14} />
+        </button>
+      ),
+    });
   }
 
   if (state.hasPreview) {
@@ -229,22 +250,6 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
             <ZoomIn size={14} />
           </button>
         </>
-      ),
-    });
-    clusters.push({
-      id: 'save-as',
-      // Never pinned: it is a rare operation, and the row's space belongs to Save.
-      actions: [{ label: 'Save as…', icon: SaveAll, onSelect: state.onSaveAs }],
-      children: (
-        <button
-          type="button"
-          onClick={state.onSaveAs}
-          className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
-          title="Save the buffer to a new file"
-          aria-label="Save as"
-        >
-          <SaveAll size={14} />
-        </button>
       ),
     });
     clusters.push({
