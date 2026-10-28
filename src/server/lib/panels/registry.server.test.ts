@@ -22,7 +22,7 @@
  *   BY NAME, with both sides of the comparison in the reason.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -37,6 +37,20 @@ import {
 } from '@/server/lib/panels/registry.server';
 import { setPluginEnabled } from '@/server/lib/panels/state.server';
 import { isolateDb, releaseDb } from '@/test-support/isolated-db';
+
+/**
+ * Every case here opens a FRESH database (`isolateDb`) and then scans, because
+ * the scan reads the disabled set — so each test pays a `bun:sqlite` open plus
+ * the whole schema bootstrap. On `windows-latest` that pair is several times a
+ * POSIX runner's, and Bun's default 5s budget is not enough: measured on the
+ * Release gate, `a plugin loads with no catalog at all` timed out at 5042ms
+ * (the run reported 1 fail plus "Unhandled error between tests" from the
+ * retired open's own rejection), while the same suite finishes in ~200ms here.
+ *
+ * A budget, not a skip: the rules under test are identical on both platforms.
+ */
+const PANEL_SCAN_TIMEOUT_MS = 30_000;
+setDefaultTimeout(PANEL_SCAN_TIMEOUT_MS);
 
 let root = '';
 
