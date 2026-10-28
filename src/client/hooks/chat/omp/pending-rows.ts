@@ -79,6 +79,27 @@ export function withPendingRows(
 }
 
 /**
+ * The folder ids the given pending entries' rows land in.
+ *
+ * The same resolution `withPendingRows` uses — one function, so the auto-expand
+ * rule in the sidebar controller cannot point at a different folder than the
+ * one the row is actually drawn in.
+ */
+export function pendingHostFolderIds(
+  folders: WorkspaceFolderData[],
+  entries: PendingSessionEntry[],
+  options: PendingRowOptions,
+): string[] {
+  if (entries.length === 0 || folders.length === 0) return [];
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    const target = resolvePendingFolder(folders, entry, options);
+    if (target) ids.add(String(target.id));
+  }
+  return [...ids];
+}
+
+/**
  * Which folder a pending row belongs to: the one it was started in, else the
  * one owning the session on screen, else the URL's pick, else the first folder.
  * An entry whose folder no longer exists falls through the same chain rather

@@ -31,7 +31,7 @@ import {
   releasePendingSession,
   startPendingSession,
 } from '@/client/hooks/chat/omp/pending-sessions';
-import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
+import { pendingHostFolderIds, withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
 import { forgetSession, getSessionValue, setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
@@ -296,6 +296,21 @@ describe('withPendingRows', () => {
     expect(withPendingRows(base, [{ id: 'real-1', folderId: 1, createdAt: Date.now(), sentAt: null }], {
       activeId: id,
     })).toBe(base);
+  });
+
+  test('the auto-expand host is the folder the row is DRAWN in', () => {
+    // The sidebar opens the folder it is about to hide a row in, so the id it
+    // opens must come from the same resolution the row is placed by — never a
+    // second guess.
+    const id = start(2);
+    const entries = listPendingSessions();
+    const placed = withPendingRows(twoFolders(), entries, { activeId: id });
+    const hosted = pendingHostFolderIds(twoFolders(), entries, { activeId: id });
+
+    expect(placed[1]?.sessions?.[0]?.id).toBe(id);
+    expect(hosted).toEqual(['2']);
+    // No entries: nothing to open, and the list is not touched.
+    expect(pendingHostFolderIds(twoFolders(), [], { activeId: id })).toEqual([]);
   });
 
   test('the row is named by the sent text, else by the id clock', () => {

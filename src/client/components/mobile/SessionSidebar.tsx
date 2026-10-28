@@ -16,6 +16,7 @@ import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks'
 import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
 import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
 import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import { setFolderExpanded } from '@/client/hooks/workspace/folder-expansion';
 import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
 import { dockBodyProps, useMobileDock } from '@/client/components/mobile/mobile-session-sidebar/use-dock';
 import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
@@ -116,16 +117,7 @@ export function MobileSessionSidebar({
     }));
     const folder = folders.find(item => item.id === folderId);
     const nextExpanded = !(expandedFolders[folderId] ?? folder?.isExpanded ?? true);
-    fetch(`/api/folders/${folderId}/toggle`, {
-      method: 'POST',
-      body: new URLSearchParams({ isExpanded: String(nextExpanded) }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      })
-      .catch((error: unknown) => {
-        console.error('Failed to save mobile workspace state:', error);
-      });
+    void setFolderExpanded(folderId, nextExpanded);
   };
 
   // Seeded from the list the drawer RENDERS, not from the raw server payload:

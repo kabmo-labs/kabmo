@@ -33,6 +33,7 @@ import {
 import { markPendingSessionWaiting } from '@/client/hooks/chat/omp/pending-waiting';
 import { useWaitingPrompts } from '@/client/hooks/chat/waiting/store';
 import { withPendingRows } from '@/client/hooks/chat/omp/pending-rows';
+import { useFolderAutoExpand } from '@/client/hooks/chat/omp/folder-auto-expand';
 import { writeSetting } from '@/shared/lib/settings/client';
 import { subscribeSessionKey } from '@/shared/lib/workspace/session-state/listeners';
 import { CHAT_DRAFT_ATTACHMENTS_KEY, CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
@@ -161,6 +162,16 @@ export function useSessionSidebarController(
     () => new Set(Object.entries(sessionStatus).filter(([, status]) => status === 'stream').map(([id]) => id)),
     [sessionStatus],
   );
+  // A folder hosting a run in flight, or a brand-new chat's row, opens itself
+  // and stays open — see `folder-auto-expand.ts` for the edge rules.
+  const runningFolderIds = useFolderAutoExpand({
+    folders,
+    initializing,
+    runningIds,
+    pendingEntries,
+    activeId: sessionParam,
+    urlFolderId: folderIdParam,
+  });
 
   // The URL is the other way a pending chat exists: a reload (or a second tab)
   // re-enters `?sessionId=new-…` with an empty store. An id the structure does
@@ -284,11 +295,20 @@ export function useSessionSidebarController(
       }
     }
 
+    // A run in flight opens its folder in the SAME frame the spinner appears,
+    // and keeps it open if the toggle write is refused. The write below makes
+    // the flag durable; this makes it immediate.
+    if (runningFolderIds.size > 0) {
+      result = result.map((folder) => (
+        runningFolderIds.has(String(folder.id)) ? { ...folder, isExpanded: true } : folder
+      ));
+    }
+
     // Ordering is shared with the other sidebar so the two cannot drift.
     result = sortFolders(result, sortOption);
 
     return result;
-  }, [folders, pendingEntries, searchQuery, sortOption, sessionParam, folderIdParam, expandSearchMatches, titleHint]);
+  }, [folders, pendingEntries, searchQuery, sortOption, sessionParam, folderIdParam, expandSearchMatches, titleHint, runningFolderIds]);
 
   return {
     folders,
