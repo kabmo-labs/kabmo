@@ -34,6 +34,8 @@ export function ProviderSettings({
     selectedProvider,
     catalogError,
     isLoading,
+    isRefreshingList,
+    handleRefreshList,
     isFetchingModels,
     isRefreshingIcon,
     handleRefreshIcon,
@@ -93,6 +95,9 @@ export function ProviderSettings({
               masterDetail.openDetail();
             }}
             onOpenAddModal={() => setIsAddModalOpen(true)}
+            onRefresh={() => void handleRefreshList()}
+            isRefreshing={isRefreshingList}
+            isLoading={isLoading}
             {...(catalogError ? { catalogError } : {})}
           />
         }

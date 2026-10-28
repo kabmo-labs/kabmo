@@ -1,5 +1,5 @@
 import { useRef, useState } from 'preact/hooks';
-import { Plus, Search, X } from 'lucide-preact';
+import { Loader2, Plus, RefreshCw, Search, X } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
 import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
 import {
@@ -12,6 +12,12 @@ interface ProviderSidebarListProps {
   selectedProviderId: string;
   onSelectProvider: (id: string) => void;
   onOpenAddModal: () => void;
+  /** Re-read the merged provider list from the server. */
+  onRefresh: () => void;
+  /** True while that re-read is in flight (the button spins). */
+  isRefreshing: boolean;
+  /** True while the list has never been read — the panel draws a spinner. */
+  isLoading: boolean;
   /** Why the list could not be read in full, when it could not. */
   catalogError?: string;
 }
@@ -42,6 +48,9 @@ export function ProviderSidebarList({
   selectedProviderId,
   onSelectProvider,
   onOpenAddModal,
+  onRefresh,
+  isRefreshing,
+  isLoading,
   catalogError,
 }: ProviderSidebarListProps) {
   const [query, setQuery] = useState('');
@@ -52,17 +61,33 @@ export function ProviderSidebarList({
     <div className="w-full md:w-64 md:border-r border-ink/10 h-full flex flex-col bg-paper/50 flex-shrink-0">
       <div className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
         <span className="text-[10px] font-semibold tracking-wider text-ink/50 uppercase">
-          {providers.length} provider{providers.length === 1 ? '' : 's'}
+          {isLoading ? 'Loading…' : `${providers.length} provider${providers.length === 1 ? '' : 's'}`}
         </span>
-        <button
-          type="button"
-          onClick={onOpenAddModal}
-          title="Add provider"
-          aria-label="Add provider"
-          className="p-1 rounded text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-        >
-          <Plus size={15} strokeWidth={2.2} />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {/* Re-reads the merged list. The panel also re-reads on the `models`
+              signal, but that one only covers what a provider WRITE produces —
+              a second instance, a hand edit of models.yml or a login finished in
+              another tab move the list with no signal here. */}
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing || isLoading}
+            title="Refresh the provider list"
+            aria-label="Refresh the provider list"
+            className="p-1 rounded text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={14} strokeWidth={2.2} className={isRefreshing ? 'animate-spin' : ''} />
+          </button>
+          <button
+            type="button"
+            onClick={onOpenAddModal}
+            title="Add provider"
+            aria-label="Add provider"
+            className="p-1 rounded text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
+          >
+            <Plus size={15} strokeWidth={2.2} />
+          </button>
+        </div>
       </div>
 
       <div className="px-3 pb-2">
@@ -98,7 +123,19 @@ export function ProviderSidebarList({
       )}
 
       <div className="flex-1 scrollbar-overlay-container px-1.5 pb-3">
-        {groups.length === 0 ? (
+        {isLoading ? (
+          // The FIRST read only. A refresh keeps the rows on screen and spins
+          // the button instead: blanking a list the user is reading to show a
+          // spinner is worse than showing a slightly stale one for 200ms.
+          <div
+            className="flex flex-col items-center justify-center gap-2 py-10 text-[11px] text-ink/45"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 size={16} className="animate-spin" />
+            <span>Reading providers…</span>
+          </div>
+        ) : groups.length === 0 ? (
           <div className="px-2.5 py-4 text-[11px] leading-relaxed text-ink/50">
             {query
               ? `No provider or model matches “${query}”.`

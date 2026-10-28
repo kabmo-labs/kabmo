@@ -42,6 +42,7 @@ export function useProviderSettings({
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshingList, setIsRefreshingList] = useState(false);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [isRefreshingIcon, setIsRefreshingIcon] = useState(false);
   const { toasts, pushToast, dismissToast } = useToasts();
@@ -179,6 +180,46 @@ export function useProviderSettings({
     }
   };
 
+  /**
+   * Re-read the merged provider list.
+   *
+   * The list is a snapshot of four sources (omp's login providers, models.yml,
+   * config.yml's disabled set and the model catalog), and any of them can move
+   * without this tab doing anything — a second instance, a hand edit of
+   * models.yml, a login finished in another tab. The panel already re-reads on
+   * the `models` signal; this is the explicit "now" for everything that signal
+   * does not cover, and it is the only control that says what it did.
+   *
+   * The current selection SURVIVES when it still exists: a refresh that jumped
+   * back to the first provider would throw away the row the user was reading.
+   */
+  const handleRefreshList = async () => {
+    if (isRefreshingList) return;
+    setIsRefreshingList(true);
+    try {
+      const data = await loadProvidersFromApi();
+      if (!data) {
+        pushToast('Could not read the provider list — omp may still be starting.', 'error');
+        return;
+      }
+      setProviders(data.providers);
+      setPresetProviders(data.presetProviders ?? []);
+      setCatalogError(data.catalogError ?? null);
+      setSelectedProviderId((current) => (
+        data.providers.some((provider) => provider.id === current)
+          ? current
+          : (data.providers.find((provider) => provider.status === 'connected')?.id ?? data.providers[0]?.id ?? '')
+      ));
+      const count = data.providers.length;
+      pushToast(
+        `Provider list refreshed — ${count} provider${count === 1 ? '' : 's'}.`,
+        'success',
+      );
+    } finally {
+      setIsRefreshingList(false);
+    }
+  };
+
   const handleModelAdded = async (modelId: string) => {
     pushToast(`${modelId} registered in models.yml.`, 'success');
     await providerActions.reloadProviders();
@@ -191,6 +232,8 @@ export function useProviderSettings({
     selectedProvider,
     catalogError,
     isLoading,
+    isRefreshingList,
+    handleRefreshList,
     isFetchingModels,
     isRefreshingIcon,
     handleRefreshIcon,

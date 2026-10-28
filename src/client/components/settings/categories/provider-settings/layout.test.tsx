@@ -55,7 +55,13 @@ afterEach(() => {
   restoreDomGlobals();
 });
 
-function mountList(providers: ProviderItem[]): void {
+interface MountOptions {
+  isRefreshing?: boolean;
+  isLoading?: boolean;
+  onRefresh?: () => void;
+}
+
+function mountList(providers: ProviderItem[], options: MountOptions = {}): void {
   act(() => {
     render(
       h(ProviderSidebarList, {
@@ -63,7 +69,9 @@ function mountList(providers: ProviderItem[]): void {
         selectedProviderId: providers[0]?.id ?? '',
         onSelectProvider: () => {},
         onOpenAddModal: () => {},
-        onDeleteProvider: () => {},
+        onRefresh: options.onRefresh ?? (() => {}),
+        isRefreshing: options.isRefreshing ?? false,
+        isLoading: options.isLoading ?? false,
       }),
       container,
     );
@@ -258,5 +266,60 @@ describe('provider icon plate with a fetched web icon', () => {
     expect(refresh).not.toBeNull();
     act(() => refresh.click());
     expect(pressed).toBe(1);
+  });
+});
+
+describe('provider list refresh and loading', () => {
+  test('the refresh control sits beside add, and pressing it re-reads the list', () => {
+    let pressed = 0;
+    mountList([provider({ slug: 'a' })], { onRefresh: () => { pressed += 1; } });
+
+    const refresh = container.querySelector('button[aria-label="Refresh the provider list"]') as HTMLButtonElement;
+    const add = container.querySelector('button[aria-label="Add provider"]') as HTMLButtonElement;
+    expect(refresh).not.toBeNull();
+    expect(add).not.toBeNull();
+    // Same cluster, refresh first: the two controls act on the LIST, and the
+    // panel header has one row for them.
+    expect(refresh.parentElement).toBe(add.parentElement);
+
+    act(() => refresh.click());
+    expect(pressed).toBe(1);
+  });
+
+  test('the button spins and refuses a second press while the read is in flight', () => {
+    mountList([provider({ slug: 'a' })], { isRefreshing: true });
+
+    const refresh = container.querySelector('button[aria-label="Refresh the provider list"]') as HTMLButtonElement;
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.querySelector('svg')?.getAttribute('class')).toContain('animate-spin');
+    // The rows stay on screen: a refresh must not blank a list being read.
+    expect(rows().length).toBe(1);
+  });
+
+  test('the first read draws a spinner instead of an empty list', () => {
+    mountList([], { isLoading: true });
+
+    const status = container.querySelector('[role="status"]');
+    expect(status).not.toBeNull();
+    expect(status?.textContent).toContain('Reading providers');
+    expect(status?.querySelector('svg')?.getAttribute('class')).toContain('animate-spin');
+    // "0 providers" over a spinner reads as a result, not as a wait.
+    expect(container.textContent).toContain('Loading…');
+    expect(container.textContent).not.toContain('0 providers');
+    expect(rows().length).toBe(0);
+  });
+
+  test('an empty list that finished loading says so, with no spinner', () => {
+    mountList([], { isLoading: false });
+
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(container.textContent).toContain('No providers detected yet');
+    expect(container.textContent).toContain('0 providers');
+  });
+
+  test('the refresh control is disabled while the first read runs', () => {
+    mountList([], { isLoading: true });
+    const refresh = container.querySelector('button[aria-label="Refresh the provider list"]') as HTMLButtonElement;
+    expect(refresh.disabled).toBe(true);
   });
 });
