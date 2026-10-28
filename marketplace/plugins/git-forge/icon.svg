@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Forge">
+  <title>Forge</title>
+  <!-- Geometry follows the built-in views' convention (Lucide): the art is inset
+       2/24 of the box and strokes at 2/24, so a plugin's mark carries the same
+       ink weight as the icons it sits beside. Paint is `currentColor`: the host
+       draws a vector mark through a CSS mask, so the file supplies the shape and
+       the surrounding ink supplies the colour.
+
+       The shape is Lucide's `git-pull-request`, and the choice is deliberate:
+       Source Control already owns `git-branch`, and two buttons in one activity
+       bar carrying the same mark is the collision the command-runner's icon
+       note warns about. This panel is about the REVIEW side of a repository —
+       issues, requests and releases — which is exactly what this glyph means. -->
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="3" />
+    <circle cx="6" cy="6" r="3" />
+    <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+    <path d="M6 9v12" />
+  </g>
+</svg>

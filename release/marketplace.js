@@ -28,6 +28,7 @@ import { commitsSince as genericCommitsSince, versionWatermark as genericWaterma
  */
 export const BUNDLED_PLUGINS = [
   { dir: 'marketplace/plugins/command-runner', id: 'command-runner' },
+  { dir: 'marketplace/plugins/git-forge', id: 'git-forge' },
   { dir: 'marketplace/plugins/session-info', id: 'session-info' },
   { dir: 'marketplace/plugins/stats', id: 'stats' },
 ];

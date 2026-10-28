@@ -1,0 +1,54 @@
+{
+  "name": "git-forge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browses a repository's issues, pull/merge requests and releases from GitHub or GitLab.",
+  "type": "module",
+  "kabmo": {
+    "id": "git-forge",
+    "name": "Forge",
+    "version": "0.1.0",
+    "description": "Browses a repository's issues, pull/merge requests and releases from GitHub or GitLab.",
+    "app": "dist/app.js",
+    "server": "dist/server.js",
+    "icon": "icon.svg",
+    "capabilities": ["server", "storage", "rpc", "settings", "repo-scope"],
+    "settings": {
+      "token": {
+        "type": "string",
+        "label": "API token",
+        "description": "A GitHub or GitLab token. Optional: a public repository reads anonymously, and the server environment (GITHUB_TOKEN / GH_TOKEN / GITLAB_TOKEN) or a logged-in gh / glab is tried before this.",
+        "secret": true,
+        "default": ""
+      },
+      "provider": {
+        "type": "string",
+        "label": "Forge (auto, github, gitlab)",
+        "description": "Which API the remote speaks. `auto` reads github.com (and any host with github in its name) as GitHub and everything else as GitLab, which is what a self-hosted GitLab needs.",
+        "default": "auto"
+      },
+      "apiBase": {
+        "type": "string",
+        "label": "API base URL",
+        "description": "Overrides the derived API root, e.g. https://github.mycorp.com/api/v3. Leave empty unless the host serves its API somewhere unusual.",
+        "default": ""
+      },
+      "perPage": {
+        "type": "number",
+        "label": "Items per section",
+        "description": "How many issues, pull requests and releases one read asks for. A section that comes back full is reported as truncated.",
+        "default": 30
+      }
+    }
+  },
+  "peerDependencies": {
+    "@kabmo-labs/kabmo-sdk": "*",
+    "@kabmo-labs/kabmo-ui": "*",
+    "preact": "^10.29.8"
+  },
+  "peerDependenciesMeta": {
+    "@kabmo-labs/kabmo-sdk": { "optional": true },
+    "@kabmo-labs/kabmo-ui": { "optional": true },
+    "preact": { "optional": true }
+  }
+}
