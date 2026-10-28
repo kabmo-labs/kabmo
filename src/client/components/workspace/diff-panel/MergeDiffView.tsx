@@ -23,6 +23,8 @@ import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
 import {
   countChanges,
   foldWhitespaceOnly,
+} from '@/client/components/workspace/diff-panel/changes';
+import {
   mountSplitDiff,
   mountUnifiedDiff,
   type DiffViewHandle,
@@ -46,6 +48,22 @@ interface MergeDiffViewProps {
    * that draws its own badge from the patch (the chat's tool card).
    */
   onCounts?: (counts: { additions: number; deletions: number }) => void;
+  /**
+   * The changed chunks in the pair on screen, and which one holds the caret.
+   *
+   * Reported rather than owned: the toolbar that draws "2 of 5" and the two
+   * chevrons lives in the panel above, and it must read the same numbers the
+   * view is stepping through.
+   */
+  onChunkPosition?: (position: { index: number; count: number }) => void;
+  /**
+   * The step command, handed UP so the toolbar can call it.
+   *
+   * A callback rather than a ref because the handle is created in an effect
+   * that the toolbar's render cannot see; this runs after mount, once the view
+   * exists, and is a no-op before that.
+   */
+  onStepChunk?: (step: (direction: 1 | -1) => void) => void;
   /** Nothing to compare (both sides empty). */
   empty: boolean;
   fontFamily: string;
@@ -66,6 +84,8 @@ export function MergeDiffView({
   ignoreWhitespace,
   tabKey,
   onCounts,
+  onChunkPosition,
+  onStepChunk,
   empty,
   fontFamily,
   fontSize,
@@ -105,6 +125,7 @@ export function MergeDiffView({
       themes,
       scrollTestId: 'diff-scroller',
       onScroller: setScroller,
+      onChunkPosition,
     } as const;
     const handle =
       viewMode === 'split' ? mountSplitDiff(host, { ...options }) : mountUnifiedDiff(host, { ...options });
@@ -139,6 +160,14 @@ export function MergeDiffView({
   useEffect(() => {
     handleRef.current?.setWordWrap(wordWrap);
   }, [wordWrap]);
+
+  // The step command, published once the view exists. `stepChunk` reads the live
+  // handle, so a callback held across a re-mount still steps the current view.
+  useEffect(() => {
+    onStepChunk?.((direction) => {
+      handleRef.current?.stepChunk(direction);
+    });
+  }, [onStepChunk]);
 
   // Counts describe the pair ON SCREEN, so the badge cannot disagree with the
   // rows under it (git's own `+n/-n` still counts a hidden whitespace change).

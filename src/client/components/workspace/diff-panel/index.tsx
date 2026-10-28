@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useCallback, useRef, useState } from 'preact/hooks';
 import { useSessionUiState } from '@/client/hooks/workspace/session-state';
 import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import { useFileDiff } from '@/client/hooks/workspace/diff-file';
@@ -58,6 +58,21 @@ export function DiffPanel({
   const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
   /** Additions/deletions of the pair on screen, reported by the merge view. */
   const [counts, setCounts] = useState<{ additions: number; deletions: number }>({ additions: 0, deletions: 0 });
+  /**
+   * Which changed hunk the caret is in, reported by the merge view.
+   *
+   * The step command is held in a ref rather than state: it is a function the
+   * toolbar calls, and putting it in state would re-render the panel every time
+   * the view re-mounts (a shape switch) for a value nothing displays.
+   */
+  const [chunkPosition, setChunkPosition] = useState<{ index: number; count: number }>({ index: -1, count: 0 });
+  const stepChunkRef = useRef<((direction: 1 | -1) => void) | null>(null);
+  const handleStepChunk = useCallback((direction: 1 | -1) => {
+    stepChunkRef.current?.(direction);
+  }, []);
+  const handleChunkCommand = useCallback((step: (direction: 1 | -1) => void) => {
+    stepChunkRef.current = step;
+  }, []);
   const editorFontFamily = useEditorFontStack();
 
   const {
@@ -146,6 +161,9 @@ export function DiffPanel({
         ignoreWhitespace={ignoreWhitespace}
         additions={counts.additions}
         deletions={counts.deletions}
+        chunkIndex={chunkPosition.index}
+        chunkCount={chunkPosition.count}
+        onStepChunk={handleStepChunk}
         isLoading={isLoading}
         isCopied={isCopied}
         isBusy={isBusy}
@@ -230,6 +248,8 @@ export function DiffPanel({
             ignoreWhitespace={ignoreWhitespace}
             tabKey={tabKey}
             onCounts={setCounts}
+            onChunkPosition={setChunkPosition}
+            onStepChunk={handleChunkCommand}
             empty={!rawDiff || !rawDiff.trim()}
             fontFamily={editorFontFamily}
             fontSize={EDITOR_DEFAULT_FONT_SIZE}

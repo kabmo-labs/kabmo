@@ -1,9 +1,10 @@
-import { AlignJustify, Check, Code2, Columns, Copy, Diff, FileCode, Minus, Plus, RefreshCw, Space, Undo2, WrapText } from 'lucide-preact';
+import { AlignJustify, Check, ChevronDown, ChevronUp, Code2, Columns, Copy, Diff, FileCode, Minus, Plus, RefreshCw, Space, Undo2, WrapText } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { EditorViewButtons, useEditorViewActions } from '@/client/components/common/editor-view-buttons';
 import { getGitStatusInfo } from '@/shared/lib/fs/git-status';
 import { ToolbarRow, type ToolbarCluster } from '@/client/components/common/toolbar-row';
 import { DiffContentModeSegments, DiffViewModeSegments } from '@/client/components/workspace/diff-panel/ToolbarSegments';
+import { HunkStepper } from '@/client/components/workspace/diff-panel/HunkStepper';
 
 export type DiffViewMode = 'unified' | 'split';
 
@@ -25,6 +26,11 @@ interface DiffToolbarProps {
   ignoreWhitespace: boolean;
   additions: number;
   deletions: number;
+  /** The chunk the caret is in (0-based, -1 for none), and how many there are. */
+  chunkIndex?: number;
+  chunkCount?: number;
+  /** Step to the next (`1`) or previous (`-1`) changed chunk. */
+  onStepChunk?: (direction: 1 | -1) => void;
   isLoading: boolean;
   isCopied: boolean;
   /** A stage/unstage/discard write is in flight; the toolbar locks its actions. */
@@ -59,6 +65,9 @@ export function DiffToolbar({
   ignoreWhitespace,
   additions,
   deletions,
+  chunkIndex = -1,
+  chunkCount = 0,
+  onStepChunk,
   isLoading,
   isCopied,
   isBusy = false,
@@ -109,6 +118,22 @@ export function DiffToolbar({
           {deletions > 0 && <span className="text-error font-semibold">-{deletions}</span>}
         </div>
       ),
+    });
+  }
+
+  if (onStepChunk && chunkCount > 0) {
+    // The changed hunks, as a stepper, in the COUNTS cluster: both answer the
+    // same question ("how much changed" and "where is it"), and the counts
+    // cluster is pinned — a reader on a 320px panel sees `+12 -4 ‹ 2/5 ›`
+    // instead of losing the stepper to the `⋯` menu.
+    clusters.push({
+      id: 'hunks',
+      pinned: true,
+      actions: [
+        { label: 'Previous change', icon: ChevronUp, onSelect: () => onStepChunk(-1), disabled: locked },
+        { label: 'Next change', icon: ChevronDown, onSelect: () => onStepChunk(1), disabled: locked },
+      ],
+      children: <HunkStepper index={chunkIndex} count={chunkCount} locked={locked} onStep={onStepChunk} />,
     });
   }
 

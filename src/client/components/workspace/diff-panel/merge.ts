@@ -4,8 +4,7 @@
  */
 
 /**
- * The diff panel's CodeMirror side: the two view shapes, their theme, and the
- * counts the toolbar prints.
+ * The diff panel's CodeMirror side: the two view shapes and their theme.
  *
  * What this replaced: a unified-diff PARSER feeding two hand-built tables
  * (1 066 lines across `UnifiedView` / `SplitView` plus the diff half of
@@ -14,12 +13,13 @@
  * real editor range: the gutter markers, the deleted-chunk widgets and the
  * collapsed stretches are the extension's, not ours.
  *
- * Three facts about this API are load-bearing and none is guessable:
+ * Two neighbours own what used to live here, both split out at the per-file
+ * ceiling and both with a boundary of their own: `chunks.ts` (stepping through
+ * the changes) and `changes.ts` (what the toolbar's badge counts, and the
+ * whitespace fold).
  *
- * - `getChunks` is a FUNCTION, not a field: `state.field(getChunks)` throws
- *   "Field is not present in this state". The counts do not need it either —
- *   `Chunk.build(a, b)` is the same line-level chunking without a view, which
- *   is what lets a badge be computed before anything is mounted.
+ * Two facts about this API are load-bearing and none is guessable:
+ *
  * - `collapseUnchanged` is CONFIG, so switching *Diff Only* ↔ *Full Code* is a
  *   compartment reconfigure. Re-mounting would drop the reader's scroll.
  * - The merge package's own colours are hardcoded hex. They are overridden with
@@ -27,13 +27,19 @@
  *   the theme.
  */
 
-import { Compartment, EditorState, Text, type Extension } from '@codemirror/state';
+import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import { Chunk, MergeView, diff, unifiedMergeView } from '@codemirror/merge';
+import { MergeView, unifiedMergeView } from '@codemirror/merge';
 
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
 import { diffFoldingExtensions } from '@/client/components/workspace/diff-panel/folding';
+import {
+  chunkPositionOf,
+  chunkReporter,
+  stepChunkIn,
+  type ChunkPosition,
+} from '@/client/components/workspace/diff-panel/chunks';
 
 /** What the toolbar shows; `diff` collapses the unchanged stretches. */
 export type CollapseMode = 'diff' | 'full';
@@ -118,6 +124,14 @@ export interface DiffViewOptions {
   scrollTestId: string;
   /** The element that scrolls, reported on mount and cleared on unmount. */
   onScroller: (element: HTMLElement | null) => void;
+  /**
+   * The chunk the selection is in, reported whenever it moves.
+   *
+   * Pushed from the view rather than polled by the toolbar: the position is a
+   * property of the EDITOR's selection, and a caller that recomputed it on its
+   * own render would print a number the view had already moved past.
+   */
+  onChunkPosition?: (position: ChunkPosition) => void;
 }
 
 export interface DiffViewHandle {
@@ -126,6 +140,22 @@ export interface DiffViewHandle {
   /** Re-collapse or expand the unchanged stretches without re-mounting. */
   setCollapse(collapse: CollapseMode): void;
   setWordWrap(wordWrap: boolean): void;
+  /**
+   * The changed chunks in the pair on screen, and which one holds the selection.
+   *
+   * `index` is 0-based, or -1 when the selection is not inside a chunk — which
+   * is the normal state for a reader who has not stepped yet. The pair is
+   * returned together because they are read in the same render and a caller
+   * that fetched them separately could print "3 of 2".
+   */
+  chunkPosition(): ChunkPosition;
+  /**
+   * Move the selection to the next (`1`) or previous (`-1`) chunk, wrapping.
+   *
+   * False when there is nothing to step through, so the toolbar can leave its
+   * buttons inert rather than silently doing nothing.
+   */
+  stepChunk(direction: 1 | -1): boolean;
   /** The element that actually scrolls, for scroll restore. */
   scroller(): HTMLElement | null;
   destroy(): void;
@@ -185,11 +215,18 @@ export function mountUnifiedDiff(parent: HTMLElement, options: DiffViewOptions):
     parent,
     state: EditorState.create({
       doc: options.next,
-      extensions: [...baseExtensions(options, wrap), collapse.of(unified(original))],
+      extensions: [
+        ...baseExtensions(options, wrap),
+        collapse.of(unified(original)),
+        options.onChunkPosition ? chunkReporter(options.onChunkPosition) : [],
+      ],
     }),
   });
   if (options.scrollTestId) view.scrollDOM.dataset.testid = options.scrollTestId;
   options.onScroller(view.scrollDOM);
+  // Seeded like the caret: the reporter only fires on a CHANGE, so a freshly
+  // mounted diff would otherwise print "0 of 0" over a file with changes.
+  options.onChunkPosition?.(chunkPositionOf(view));
 
   return {
     setDocuments(nextOriginal, next) {
@@ -210,6 +247,8 @@ export function mountUnifiedDiff(parent: HTMLElement, options: DiffViewOptions):
       options.wordWrap = wordWrap;
       view.dispatch({ effects: wrap.reconfigure(wordWrap ? EditorView.lineWrapping : []) });
     },
+    chunkPosition: () => chunkPositionOf(view),
+    stepChunk: (direction) => stepChunkIn(view, direction),
     scroller: () => view.scrollDOM,
     destroy: () => {
       options.onScroller(null);
@@ -224,7 +263,13 @@ export function mountSplitDiff(parent: HTMLElement, options: DiffViewOptions): D
   const merge = new MergeView({
     parent,
     a: { doc: options.original, extensions: baseExtensions(options, wrap) },
-    b: { doc: options.next, extensions: baseExtensions(options, wrap) },
+    b: {
+      doc: options.next,
+      extensions: [
+        ...baseExtensions(options, wrap),
+        options.onChunkPosition ? chunkReporter(options.onChunkPosition) : [],
+      ],
+    },
     collapseUnchanged: collapseConfig(options.collapse),
     highlightChanges: true,
     gutter: true,
@@ -235,6 +280,7 @@ export function mountSplitDiff(parent: HTMLElement, options: DiffViewOptions): D
   const scroller = merge.dom;
   if (options.scrollTestId) scroller.dataset.testid = options.scrollTestId;
   options.onScroller(scroller);
+  options.onChunkPosition?.(chunkPositionOf(merge.b));
 
   return {
     setDocuments(original, next) {
@@ -254,67 +300,16 @@ export function mountSplitDiff(parent: HTMLElement, options: DiffViewOptions): D
       merge.a.dispatch({ effects });
       merge.b.dispatch({ effects });
     },
+    // The B side is the file as it is now, which is the one a reader steps
+    // through: `a` is the version being compared against and is read-only for a
+    // different reason. Both sides carry the chunk field, so the count is the
+    // same either way.
+    chunkPosition: () => chunkPositionOf(merge.b),
+    stepChunk: (direction) => stepChunkIn(merge.b, direction),
     scroller: () => scroller,
     destroy: () => {
       options.onScroller(null);
       merge.destroy();
     },
   };
-}
-
-/**
- * Additions and deletions, counted from the SAME line-level diff the view draws.
- *
- * `Chunk.build` is the merge view's own chunking — a line-level diff, which is
- * what its rows are. `diff()` would be the wrong source here: it is a
- * CHARACTER diff, so changing `line 5` into `line 5 changed` reports one
- * insertion of `" changed"` and no deletion at all, and the badge would claim
- * two additions for two edited lines.
- *
- * Counting from the view's own chunks is also what makes the whitespace toggle
- * honest: a change folded out of the comparison is not a changed row on screen,
- * and it is not counted.
- */
-export function countChanges(original: string, next: string): { additions: number; deletions: number } {
-  const a = Text.of(original.split('\n'));
-  const b = Text.of(next.split('\n'));
-  let additions = 0;
-  let deletions = 0;
-  for (const chunk of Chunk.build(a, b)) {
-    // `endA`/`endB` are the end of the chunk's last line, and equal the start
-    // when the chunk covers no lines on that side (a pure insertion/deletion).
-    if (chunk.endA > chunk.fromA) deletions += a.lineAt(chunk.endA).number - a.lineAt(chunk.fromA).number + 1;
-    if (chunk.endB > chunk.fromB) additions += b.lineAt(chunk.endB).number - b.lineAt(chunk.fromB).number + 1;
-  }
-  return { additions, deletions };
-}
-
-/**
- * `original` with every whitespace-only change replaced by the new text.
- *
- * The toolbar's whitespace toggle means "do not show me formatting noise", and
- * the merge view compares DOCUMENTS — so the way to honour it is to make the two
- * sides agree there. The old table parser folded a `-`/`+` pair whose trimmed
- * text matched back into a context row; this does the same at the source, which
- * is why the toggle changes the CHUNKS rather than only their colour.
- *
- * Only line-for-line changes are folded: an inserted or deleted line is a real
- * change even when it is blank, and hiding it would make the file's line count
- * disagree with what is on screen.
- */
-export function foldWhitespaceOnly(original: string, next: string): string {
-  const changes = diff(original, next);
-  let folded = original;
-  // Back to front: an earlier splice would move every later offset.
-  for (let index = changes.length - 1; index >= 0; index--) {
-    const change = changes[index];
-    const before = original.slice(change.fromA, change.toA);
-    const after = next.slice(change.fromB, change.toB);
-    const beforeLines = before.split('\n');
-    const afterLines = after.split('\n');
-    if (beforeLines.length !== afterLines.length) continue;
-    if (!beforeLines.every((line, lineIndex) => line.trim() === afterLines[lineIndex].trim())) continue;
-    folded = folded.slice(0, change.fromA) + after + folded.slice(change.toA);
-  }
-  return folded;
 }
