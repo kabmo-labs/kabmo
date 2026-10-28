@@ -13,8 +13,28 @@
  * and let the browser dev server apply it on the client.
  */
 
-import DOMPurify, { type Config } from 'dompurify';
+import DOMPurify, { type Config, type DOMPurify as Purifier } from 'dompurify';
 import { DIRECTIVE_ATTRS_ATTR, DIRECTIVE_BLOCK_CLASS, DIRECTIVE_NAME_ATTR } from '@/shared/lib/markdown/directives';
+
+/**
+ * A purifier bound to the window that exists NOW.
+ *
+ * DOMPurify binds itself to the window it was imported under, and with no
+ * window it degrades to `isSupported: false`, where `sanitize()` returns the
+ * input UNCHANGED. Measured: this module is imported once per process, and a
+ * test file that loads it before installing a DOM left every later call — in a
+ * file that HAD a DOM — passing markup straight through, so an SVG's `<script>`
+ * reached the container. Bind per live window and rebuild when it is replaced;
+ * no hooks or `setConfig` state is kept on the instance, so a fresh one is
+ * equivalent.
+ */
+let bound: { root: unknown; purifier: Purifier } | null = null;
+
+function purifierForCurrentWindow(): Purifier | null {
+  if (typeof window === 'undefined' || !window.document) return null;
+  if (bound?.root !== window) bound = { root: window, purifier: DOMPurify(window) };
+  return bound.purifier;
+}
 
 const KATEX_MATHML_TAGS = [
   'math',
@@ -101,7 +121,8 @@ function buildMermaidConfig(hasUri: boolean): Config {
  */
 export function sanitizeHtml(html: string): string {
   if (!html) return html;
-  if (typeof window === 'undefined' || !window.document) return html;
+  const purifier = purifierForCurrentWindow();
+  if (!purifier) return html;
 
   const hasSvgIcon = /<svg[^>]*>/.test(html);
   const hasMathPlaceholder = html.includes('math-pending');
@@ -131,7 +152,7 @@ export function sanitizeHtml(html: string): string {
     : { USE_PROFILES: { html: true } as const };
 
   try {
-    return DOMPurify.sanitize(html, config);
+    return purifier.sanitize(html, config);
   } catch {
     return html;
   }
@@ -146,11 +167,12 @@ export function sanitizeHtml(html: string): string {
  */
 export function sanitizeMermaidSvg(svg: string): string {
   if (!svg) return svg;
-  if (typeof window === 'undefined' || !window.document) return svg;
+  const purifier = purifierForCurrentWindow();
+  if (!purifier) return svg;
 
   const hasUri = /href/.test(svg);
   try {
-    return DOMPurify.sanitize(svg, buildMermaidConfig(hasUri));
+    return purifier.sanitize(svg, buildMermaidConfig(hasUri));
   } catch {
     return svg;
   }
@@ -170,7 +192,8 @@ export function sanitizeMermaidSvg(svg: string): string {
  */
 export function sanitizeKatexHtml(html: string): string {
   if (!html) return html;
-  if (typeof window === 'undefined' || !window.document) return html;
+  const purifier = purifierForCurrentWindow();
+  if (!purifier) return html;
 
   // DOMPurify drops a bare root-level <span>, which would strip KaTeX's outer
   // `.katex` wrapper — the element every layout rule in katex.css hangs off.
@@ -178,7 +201,7 @@ export function sanitizeKatexHtml(html: string): string {
   // removed again afterwards so only the KaTeX markup is injected.
   const wrapped = `<div data-katex-wrap>${html}</div>`;
   try {
-    const clean = DOMPurify.sanitize(wrapped, {
+    const clean = purifier.sanitize(wrapped, {
       USE_PROFILES: { html: true, mathMl: true },
       ADD_ATTR: ['class', 'aria-hidden', 'encoding', 'style', 'data-katex-wrap'],
     } as Config);
