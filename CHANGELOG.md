@@ -4,6 +4,46 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.12.0](https://github.com/kabmo-labs/kabmo/compare/v0.11.1...v0.12.0) — 2026-10-28
+
+### Added
+
+* **composer:** draw the picker with provider logos on an aligned grid ([f1c522e](https://github.com/kabmo-labs/kabmo/commit/f1c522e4b68d4d31a432b8c4539d59f38baf1987)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **diff:** step through changed hunks from the diff toolbar ([bf36f31](https://github.com/kabmo-labs/kabmo/commit/bf36f31e2b4f9781c002f5cb23663df545349384)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** show git line blame on hover, with the line's own history ([f86b9d0](https://github.com/kabmo-labs/kabmo/commit/f86b9d0ec9279a1c41e3643e67fa4f35a62ab31d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** validate config files, band conflict markers, and report plugin errors ([e607646](https://github.com/kabmo-labs/kabmo/commit/e607646fdedb837752eefeba71ae256bd76d403a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git-panel:** toast the outcome of a Source Control action ([e50d693](https://github.com/kabmo-labs/kabmo/commit/e50d6931cc4b0be2ffe7e6d816168848bc447c03)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **marketplace:** add the forge credential sheet and its write-scope probe ([41d5718](https://github.com/kabmo-labs/kabmo/commit/41d57182bc8c8e67e0a0e1ac8ae2bdbc5ae8b212)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **marketplace:** add the git-forge plugin for issues, requests and releases ([4848360](https://github.com/kabmo-labs/kabmo/commit/4848360881ba0dd5aa346e826f41d5dc56497033)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **marketplace:** give the forge plugin filters, CI, change review and writes ([0add3f5](https://github.com/kabmo-labs/kabmo/commit/0add3f5618b3dc8b643d37d2690b0236d8dd848f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **panel-plugins:** report source, author, versions and placement on cards ([582f824](https://github.com/kabmo-labs/kabmo/commit/582f8245f4d3c16b18d85a960b9d317e4f6b93aa)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** add a provider-list refresh control and a loading spinner ([2dafcbc](https://github.com/kabmo-labs/kabmo/commit/2dafcbc3005138bf2b6079c2d9f2e0d4ffb5b11c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** draw a models.yml provider with its own site's favicon ([31da1ed](https://github.com/kabmo-labs/kabmo/commit/31da1edd5af42c53845e07c2306d865874817e1a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** make the provider panel write what omp actually reads ([61acdb2](https://github.com/kabmo-labs/kabmo/commit/61acdb264b3ab632b0e307a947098f60e3b97d73)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** open documents from the OS in every shell ([15948bb](https://github.com/kabmo-labs/kabmo/commit/15948bb0c2499ae767709ace3cbb7986ef906c1a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** open the workspace that holds a streaming or brand-new chat ([0b7c47e](https://github.com/kabmo-labs/kabmo/commit/0b7c47e73ac841872a975d4acb969ec1b83aaae8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** draw both Usage surfaces with the provider's own web icon ([28d5822](https://github.com/kabmo-labs/kabmo/commit/28d5822860ec57e78c281f82717a938773a620d4)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* move the subsystem manual into the wiki ([ecde722](https://github.com/kabmo-labs/kabmo/commit/ecde722265071a0a22385c5a19f26c2e107cd59b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** drop the provider row's status dot and delete button ([9cacc39](https://github.com/kabmo-labs/kabmo/commit/9cacc393f0263b9e0f9e3f902ce9515fa1bc4169)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** keep the wait card when its result is not in the transcript ([fa20bff](https://github.com/kabmo-labs/kabmo/commit/fa20bfffa78d8132fc324786625254a1de8bc1a9)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** refresh the model picker on provider changes and persist collapsed sections ([2f47636](https://github.com/kabmo-labs/kabmo/commit/2f476361c44529d64c7276c15f77b09c9d1679e2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **db:** return the slot's own promise so a failed open is observed ([9de7154](https://github.com/kabmo-labs/kabmo/commit/9de7154eceeeb3282a5d0cdd9c91d1133c1fcd84)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **diff:** keep the shape control on the row at the panel floor ([0266983](https://github.com/kabmo-labs/kabmo/commit/0266983277103e4b61ccc577c61069673d6372b3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** keep Save as ahead of the reading aids on the row ([cffb220](https://github.com/kabmo-labs/kabmo/commit/cffb2204748e6e441b0af685df9e3362b7f8c9cd)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ios:** take no suggested name for a delivered document ([23f3b3a](https://github.com/kabmo-labs/kabmo/commit/23f3b3aee71a23a1cdc2d25a2096c02f97beadb4)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#if](https://github.com/kabmo-labs/kabmo/issues/if)
+* **linux:** match the Exec line the installer actually writes ([7ac9b45](https://github.com/kabmo-labs/kabmo/commit/7ac9b452ff982c698ad3640f23f78cac5c7a61f5)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#if](https://github.com/kabmo-labs/kabmo/issues/if)
+* **markdown:** bind the sanitizer to the live window, not the import ([7eca11b](https://github.com/kabmo-labs/kabmo/commit/7eca11bf292f42f66f16114184fd8a49fe6d022d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **marketplace:** list git-forge in the curated catalog, and bind the file to the tree ([bcd7174](https://github.com/kabmo-labs/kabmo/commit/bcd717467d834b9e56562528ece4df8a9fb64cd2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **marketplace:** read the forge sub-resources from where each host keeps them ([0514bdc](https://github.com/kabmo-labs/kabmo/commit/0514bdcda30200e63b70fbad52ebbddf479befa5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **prewarm:** carry the live access mode so the prewarmed child is claimed ([afd6ccc](https://github.com/kabmo-labs/kabmo/commit/afd6cccc1b6a19bb4dd3d75319495a094d5da690)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** drop an unused import that fails the no-unused gate ([17c20e0](https://github.com/kabmo-labs/kabmo/commit/17c20e0cdcf01295667f2b5b424291ed3cf68d5d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.11.1](https://github.com/kabmo-labs/kabmo/compare/v0.11.0...v0.11.1) — 2026-10-27
 
 ### Fixed
