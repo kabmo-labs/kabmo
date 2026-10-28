@@ -26,7 +26,7 @@
  * signal a provider write produces — not by calling the hook directly.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -151,6 +151,16 @@ async function mountPicker(withProvider = false): Promise<HTMLElement> {
 }
 
 describe('model picker live updates', () => {
+  // The catalog cache is MODULE state shared with every other suite in the
+  // process, and `afterEach` only protects the tests that follow. A file that
+  // read the catalog earlier — the real route, a stub, anything — leaves its
+  // payload here, and the FIRST case then mounts against that stale list
+  // instead of the stub this file installed: measured, `a reload carrying an
+  // EMPTY model list` waited 3s for `Alpha Model` and read an empty panel on
+  // both CI platforms while passing alone. Clear it before each case, not just
+  // after.
+  beforeEach(() => invalidateModelsCache());
+
   afterEach(async () => {
     await server?.stop();
     invalidateModelsCache();
