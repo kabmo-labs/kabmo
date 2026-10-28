@@ -121,22 +121,6 @@ export function DiffToolbar({
     });
   }
 
-  if (onStepChunk && chunkCount > 0) {
-    // The changed hunks, as a stepper, in the COUNTS cluster: both answer the
-    // same question ("how much changed" and "where is it"), and the counts
-    // cluster is pinned — a reader on a 320px panel sees `+12 -4 ‹ 2/5 ›`
-    // instead of losing the stepper to the `⋯` menu.
-    clusters.push({
-      id: 'hunks',
-      pinned: true,
-      actions: [
-        { label: 'Previous change', icon: ChevronUp, onSelect: () => onStepChunk(-1), disabled: locked },
-        { label: 'Next change', icon: ChevronDown, onSelect: () => onStepChunk(1), disabled: locked },
-      ],
-      children: <HunkStepper index={chunkIndex} count={chunkCount} locked={locked} onStep={onStepChunk} />,
-    });
-  }
-
   clusters.push({
     id: 'view-mode',
     actions: [
@@ -159,6 +143,28 @@ export function DiffToolbar({
     ],
     children: <DiffContentModeSegments contentMode={contentMode} onSetContentMode={onSetContentMode} />,
   });
+
+  if (onStepChunk && chunkCount > 0) {
+    // NOT pinned, and pushed AFTER the two mode segments — both facts are the
+    // measured answer to a row that cannot hold everything. Pinned clusters are
+    // placed in full before anything else, and at the panel's 320px floor the
+    // five pinned clusters (counts, view modes, stage, edit) already claim
+    // 260px of a 296px row; the 76px stepper left 2px for the 76px
+    // Unified/Split pair, which therefore never reached the row. Unpinned
+    // placement follows ROW ORDER, so sitting beside the counts cluster would
+    // still have won the budget ahead of the shape control. Here it takes the
+    // row as soon as the row can hold it — measured on the row at a 637px panel
+    // (457px of row), in `⋯` at the 320px floor — and stays one click away
+    // below that, as the same two actions it draws.
+    clusters.push({
+      id: 'hunks',
+      actions: [
+        { label: 'Previous change', icon: ChevronUp, onSelect: () => onStepChunk(-1), disabled: locked },
+        { label: 'Next change', icon: ChevronDown, onSelect: () => onStepChunk(1), disabled: locked },
+      ],
+      children: <HunkStepper index={chunkIndex} count={chunkCount} locked={locked} onStep={onStepChunk} />,
+    });
+  }
 
   clusters.push({
     id: 'wrap',
