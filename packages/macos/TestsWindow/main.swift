@@ -312,6 +312,25 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       return selection() == expected
     }
 
+    /**
+     Wait until the PAGE answers `script` with `true`.
+
+     A keystroke is delivered to whatever the page has focused, so focus is the
+     precondition of the typing case below — and `reset()` only ASKS for it. On
+     the x64 release runner `typing reaches the field` failed while every
+     `sendAction`-driven case passed, which is what a keystroke arriving before
+     WebKit took the focus looks like: the event is delivered and dropped, so the
+     field reads empty and the case blames the typing.
+     */
+    func awaitPage(_ script: String, timeout: TimeInterval = 2) -> Bool {
+      let deadline = Date().addingTimeInterval(timeout)
+      while Date() < deadline {
+        if (eval(script) as? Bool) == true { return true }
+        pump(0.05)
+      }
+      return (eval(script) as? Bool) == true
+    }
+
     func awaitPasteboard(_ expected: String, timeout: TimeInterval = 2) -> Bool {
       let deadline = Date().addingTimeInterval(timeout)
       while Date() < deadline {
@@ -396,9 +415,15 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     // these two assert: type through the real key path, then undo and redo
     // through the window's own `undo:`.
     reset()
+    check("the page's field holds focus",
+          awaitPage("document.activeElement && document.activeElement.id === 'composer'"))
     chord("h", [], 4)
+    check("typing reaches the field", awaitValue("h"))
+    // One keystroke per wait: two key events posted back to back compete for the
+    // same delivery into the web process, and a loser is simply gone — the same
+    // race `awaitValue` exists for, one level earlier.
     chord("i", [], 34)
-    check("typing reaches the field", awaitValue("hi"))
+    check("a second keystroke lands after the first", awaitValue("hi"))
     let undone = NSApp.sendAction(undoAction, to: window, from: nil)
     check("⌘Z undoes the typing", undone && awaitValue(""))
     let redone = NSApp.sendAction(redoAction, to: window, from: nil)
