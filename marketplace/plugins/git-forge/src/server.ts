@@ -4,15 +4,15 @@
  */
 
 /**
- * The Forge's server half: where a read actually happens.
+ * The Forge's server half: where a read happens, and where a write happens.
  *
  * A browser cannot read a repository's `origin`, and it must not hold an API
- * token, so the panel asks this half for everything it draws. Each call resolves
- * the same four things in the same order — the directory, the remote, the
- * credential, the cache — which is why they live in one `prepare` rather than in
- * each method.
+ * token, so the panel asks this half for everything it draws and everything it
+ * changes. Each call resolves the same four things in the same order — the
+ * directory, the remote, the credential, the cache — which is why they live in
+ * one `contextFor` rather than in each method.
  *
- * Three rules the panel depends on:
+ * Four rules the panel depends on:
  *
  * - **The scope comes from the client, and is validated here.** A path is read
  *   with the server's own rights, so `root` must be absolute and `repo` must
@@ -24,17 +24,35 @@
  * - **No token, no problem, until it is one.** A public repository reads
  *   anonymously; the note says so, and a 401 from a private one is the panel's
  *   prompt to set a credential.
+ * - **A write is checked against the capability table BEFORE the host is
+ *   asked.** `writeRefusal` names what is missing, so a reader never meets a 403
+ *   from an API they did not know was involved.
  */
 
 import type { KabmoPluginApi } from '@kabmo-labs/kabmo-sdk';
 
-import { RPC, isSection, isState, type ForgeDetail, type ForgeList, type ForgeSection } from './protocol';
+import {
+  RPC,
+  defaultFilter,
+  isSection,
+  isState,
+  type ForgeCounts,
+  type ForgeCredential,
+  type ForgeDetail,
+  type ForgeFilter,
+  type ForgeList,
+  type ForgeSection,
+  type ForgeWrite,
+  type ForgeWriteResult,
+} from './protocol';
+import { writeRefusal } from './server/capabilities';
+import { adapterFor } from './server/registry';
 import { kvCache, type JsonCache } from './server/http';
+import { invalidateWhere } from './server/write-http';
 import { parseRemote, type ProviderPreference } from './server/remote';
 import { readOrigin, resolveScope, type Scope } from './server/scope';
 import { resolveToken } from './server/token';
-import { detailGithub, listGithub } from './server/github';
-import { detailGitlab, listGitlab } from './server/gitlab';
+import { patchedItem, performWrite } from './server/writes';
 import type { ForgeContext } from './server/context';
 
 /** Sizing a read, from the plugin's own settings. */
@@ -54,7 +72,10 @@ async function readSettings(api: KabmoPluginApi): Promise<Settings> {
   const perPage = Number(values.perPage ?? DEFAULT_PER_PAGE);
   return {
     token: String(values.token ?? ''),
-    provider: provider === 'github' || provider === 'gitlab' ? provider : 'auto',
+    provider:
+      provider === 'github' || provider === 'gitlab' || provider === 'gitea' || provider === 'bitbucket'
+        ? provider
+        : 'auto',
     apiBase: String(values.apiBase ?? ''),
     perPage: Number.isFinite(perPage) ? Math.min(100, Math.max(1, perPage)) : DEFAULT_PER_PAGE,
   };
@@ -66,6 +87,19 @@ function readScope(input: unknown): Scope | null {
   const record = input as Record<string, unknown>;
   if (typeof record.root !== 'string' || typeof record.repo !== 'string') return null;
   return { root: record.root, repo: record.repo };
+}
+
+/** A filter off the wire, defaulted per field so a partial one is still usable. */
+function readFilter(input: unknown): ForgeFilter {
+  const fallback = defaultFilter();
+  if (typeof input !== 'object' || input === null) return fallback;
+  const record = input as Record<string, unknown>;
+  return {
+    state: isState(record.state) ? record.state : fallback.state,
+    mine: record.mine === true,
+    label: typeof record.label === 'string' ? record.label : '',
+    query: typeof record.query === 'string' ? record.query : '',
+  };
 }
 
 /**
@@ -101,6 +135,7 @@ async function contextFor(api: KabmoPluginApi, cache: JsonCache, input: unknown)
     host: remote.host,
     token: token.token,
     perPage: settings.perPage,
+    filter: readFilter((input as { filter?: unknown } | null)?.filter),
     cache,
   };
 }
@@ -109,11 +144,10 @@ async function contextFor(api: KabmoPluginApi, cache: JsonCache, input: unknown)
 export default function plugin(api: KabmoPluginApi) {
   const cache = kvCache(api.storage.kv);
 
-  api.rpc.register<{ root: string; repo: string; state: unknown }, ForgeList>(RPC.list, {
+  api.rpc.register<{ root: string; repo: string; filter: unknown }, ForgeList>(RPC.list, {
     handler: async (input) => {
       const context = await contextFor(api, cache, input);
-      const state = isState(input?.state) ? input.state : 'open';
-      return context.provider === 'github' ? listGithub(context, state) : listGitlab(context, state);
+      return adapterFor(context.provider).list(context);
     },
   });
 
@@ -124,12 +158,118 @@ export default function plugin(api: KabmoPluginApi) {
       const section: ForgeSection = input.section;
 
       const context = await contextFor(api, cache, input);
-      const detail =
-        context.provider === 'github'
-          ? await detailGithub(context, section, input.id)
-          : await detailGitlab(context, section, input.id);
+      const detail = await adapterFor(context.provider).detail(context, section, input.id);
       if ('error' in detail) throw new Error(detail.error);
       return detail;
     },
   });
+
+  api.rpc.register<{ root: string; repo: string; section: unknown; id: unknown; write: unknown }, ForgeWriteResult>(
+    RPC.write,
+    {
+      handler: async (input) => {
+        if (!isSection(input?.section)) throw new Error('That request did not name a section.');
+        if (typeof input.id !== 'string' || !input.id.trim()) throw new Error('That request did not name an item.');
+        const write = readWrite(input.write);
+        if (!write) throw new Error('That request did not name a write this panel performs.');
+        const section: ForgeSection = input.section;
+
+        const context = await contextFor(api, cache, input);
+        const refusal = writeRefusal(write, {
+          provider: context.provider,
+          section,
+          hasCredential: Boolean(context.token),
+        });
+        if (!refusal.ok) throw new Error(refusal.reason);
+
+        const performed = await performWrite(context, section, input.id, write);
+        if (!performed.ok) throw new Error(performed.message);
+
+        // The write changed the item AND the list it came from, which are two
+        // different cached URLs — so every entry for this repository goes.
+        await invalidateWhere(cache, (url) => url.includes(encodeURIComponent(context.slug)) || url.includes(context.slug));
+
+        const detail = await adapterFor(context.provider).detail(context, section, input.id);
+        if ('error' in detail) throw new Error(`${performed.message} But the item could not be re-read: ${detail.error}`);
+        return { item: patchedItem(detail.item, write), message: performed.message };
+      },
+    },
+  );
+
+  api.rpc.register<{ root: string; repo: string }, ForgeCounts>(RPC.counts, {
+    handler: async (input) => {
+      // The same list read, narrowed to the two sections a header can show. It
+      // is NOT a separate endpoint per host: the counts are the list's own
+      // totals, so the readout and the panel cannot disagree about how many
+      // issues are open.
+      const context = await contextFor(api, cache, { ...(input as object), filter: { ...defaultFilter(), mine: true } });
+      const list = await adapterFor(context.provider).list(context);
+      const counted = (section: 'issues' | 'pulls'): number | null => {
+        const data = list.sections[section];
+        if (data.total !== null) return data.total;
+        // A host that reports no total (GitLab) still answers a page; the count
+        // is then the page's own length, and the readout says `30+` from the
+        // truncation flag rather than pretending it is the whole number.
+        return data.items.length > 0 || data.truncated ? data.items.length : 0;
+      };
+      return {
+        issues: counted('issues'),
+        pulls: counted('pulls'),
+        host: context.host,
+        note: context.token ? null : 'Reading anonymously: only public repositories, and no items are assigned to you.',
+      };
+    },
+  });
+
+  api.rpc.register<{ root: string; repo: string }, ForgeCredential>(RPC.credential, {
+    handler: async (input) => {
+      const context = await contextFor(api, cache, input);
+      const source = await resolveCredentialSource(api, context);
+      return {
+        source: source.source,
+        present: Boolean(context.token),
+        // A credential's SCOPE cannot be read back from the host on every one of
+        // them (GitHub reports `x-oauth-scopes` on REST but not on search, GitLab
+        // reports nothing usable), so the panel is told the honest answer:
+        // unknown. What it does instead is offer the verbs and report a refusal.
+        writeScope: null,
+      };
+    },
+  });
+}
+
+/** Which source supplied the credential, for a panel that wants to say so. */
+async function resolveCredentialSource(
+  api: KabmoPluginApi,
+  context: ForgeContext,
+): Promise<{ source: ForgeCredential['source'] }> {
+  const settings = await readSettings(api);
+  const resolved = resolveToken(context.provider, { setting: settings.token, env: Bun.env });
+  return { source: resolved.source };
+}
+
+/** A write off the wire, or null when it is not one this panel performs. */
+function readWrite(input: unknown): ForgeWrite | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const record = input as Record<string, unknown>;
+  if (record.kind === 'comment' && typeof record.body === 'string') {
+    return { kind: 'comment', body: record.body };
+  }
+  if (record.kind === 'state' && (record.state === 'open' || record.state === 'closed')) {
+    return { kind: 'state', state: record.state };
+  }
+  if (
+    record.kind === 'review' &&
+    (record.verdict === 'approve' || record.verdict === 'request_changes') &&
+    typeof record.body === 'string'
+  ) {
+    return { kind: 'review', verdict: record.verdict, body: record.body };
+  }
+  if (
+    record.kind === 'merge' &&
+    (record.method === 'merge' || record.method === 'squash' || record.method === 'rebase')
+  ) {
+    return { kind: 'merge', method: record.method };
+  }
+  return null;
 }

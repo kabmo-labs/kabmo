@@ -15,7 +15,16 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { PluginJson } from '@kabmo-labs/kabmo-sdk';
-import { authHeaders, cacheKey, describeFailure, getJson, kvCache, type CachedResponse, type JsonCache } from './http';
+import {
+  authHeaders,
+  cacheKey,
+  describeFailure,
+  getJson,
+  isAuthenticated,
+  kvCache,
+  type CachedResponse,
+  type JsonCache,
+} from './http';
 
 /** An in-memory cache with the plugin's storage shape. */
 function memoryCache(): JsonCache & { entries: Map<string, CachedResponse> } {
@@ -172,7 +181,27 @@ describe('authHeaders', () => {
       'x-github-api-version': '2022-11-28',
     });
     expect(authHeaders('gitlab', 'glpat-x')).toEqual({ 'private-token': 'glpat-x' });
+    expect(authHeaders('gitea', 'abc')).toEqual({ authorization: 'token abc' });
     expect(authHeaders('github', null)).toEqual({});
+  });
+
+  test('Bitbucket tells an app password from an access token', () => {
+    expect(authHeaders('bitbucket', 'access-token')).toEqual({ authorization: 'Bearer access-token' });
+    // An app password is a user/password pair, and Basic is the only header the
+    // host accepts for it — sent as Bearer it answers 401 and reads as a bad
+    // token.
+    expect(authHeaders('bitbucket', 'user:app-pass')).toEqual({
+      authorization: `Basic ${Buffer.from('user:app-pass').toString('base64')}`,
+    });
+  });
+});
+
+describe('isAuthenticated', () => {
+  test('any of the two header spellings counts', () => {
+    expect(isAuthenticated({ authorization: 'Bearer x' })).toBe(true);
+    expect(isAuthenticated({ 'private-token': 'x' })).toBe(true);
+    expect(isAuthenticated({})).toBe(false);
+    expect(isAuthenticated(undefined)).toBe(false);
   });
 });
 

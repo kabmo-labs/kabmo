@@ -37,14 +37,28 @@ export interface TokenSources {
   run?: (argv: string[]) => { ok: boolean; stdout: string };
 }
 
-/** The environment variable each provider's tooling already uses. */
+/**
+ * The environment variable each provider's tooling already uses.
+ *
+ * Gitea and Bitbucket have no CLI of their own, so a token is the only source
+ * for them — stated rather than invented, because guessing a binary name would
+ * spawn a process that does not exist on every read.
+ */
 const ENV_KEYS: Record<ForgeProvider, readonly string[]> = {
   github: ['GITHUB_TOKEN', 'GH_TOKEN'],
   gitlab: ['GITLAB_TOKEN', 'GLAB_TOKEN'],
+  gitea: ['GITEA_TOKEN'],
+  bitbucket: ['BITBUCKET_TOKEN'],
 };
 
-/** The CLI that can answer a stored credential, per provider. */
-const CLI: Record<ForgeProvider, readonly string[]> = {
+/**
+ * The CLI that can answer a stored credential, per provider.
+ *
+ * Absent for Gitea and Bitbucket: neither ships a credential-reading CLI, and a
+ * table entry naming one that does not exist would spawn a missing binary on
+ * every panel open.
+ */
+const CLI: Partial<Record<ForgeProvider, readonly string[]>> = {
   github: ['gh', 'auth', 'token'],
   gitlab: ['glab', 'auth', 'status'],
 };
@@ -86,9 +100,11 @@ function defaultRun(argv: string[]): { ok: boolean; stdout: string } {
  * outcome, rather than a guessed token.
  */
 function fromCli(provider: ForgeProvider, run: (argv: string[]) => { ok: boolean; stdout: string }): string | null {
+  const argv = CLI[provider];
+  if (!argv) return null;
   if (cliCache.has(provider)) return cliCache.get(provider) ?? null;
 
-  const result = run([...CLI[provider]]);
+  const result = run([...argv]);
   let token: string | null = null;
   if (result.ok) {
     const line = result.stdout.trim();

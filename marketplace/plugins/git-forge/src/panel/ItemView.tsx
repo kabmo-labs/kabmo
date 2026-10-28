@@ -4,7 +4,7 @@
  */
 
 /**
- * One item: its title, its facts, its body and its conversation.
+ * One item: its title, its facts, its body, its change and its conversation.
  *
  * The body is rendered through the kit's `Markdown`, which is Kabmo's own
  * marked/Shiki/KaTeX/mermaid pipeline injected by the host — the same reason the
@@ -13,35 +13,79 @@
  * useful surface the least readable one.
  *
  * **The header carries the item's own identity, and the link out is explicit.**
- * A reader who wants to comment, review or merge does it on the host; the panel
- * reads, and pretending otherwise would need a write API, a scope and a
- * confirmation flow this panel deliberately does not have.
+ * A reader who wants to comment, review or merge can do it here — but the host's
+ * own page remains one click away, because that is where the diff view, the
+ * review threads and the checks' logs live in full.
  *
- * A failed DETAIL read leaves the list behind it intact and says why — the same
- * rule the list follows, one level down.
+ * **A system or bot comment is drawn differently.** GitLab's `system` notes are
+ * "changed the description", "approved this merge request"; GitHub's App accounts
+ * are `dependabot[bot]`. Both are worth showing — an approval recorded only as a
+ * system note is the one place a reader learns who approved — and neither is a
+ * reply, so both are drawn as a muted line rather than as a message with a body.
  */
 
 import { Markdown } from '@kabmo-labs/kabmo-ui/components';
 
-import type { ForgeDetail, ForgeItem } from '../protocol';
+import type { ForgeComment, ForgeCredential, ForgeDetail, ForgeItem } from '../protocol';
 import { LabelChips, StateBadge } from './Badge';
+import { ChangeCommits, ChangeFiles } from './Change';
+import { CiBadge } from './CiBadge';
 import { Glyph, ICON } from './Glyph';
+import { WriteBar } from './Write';
 import { itemIdLabel, relativeTime } from './format';
+import type { ForgeWriteState } from './use-forge';
 
 interface ItemViewProps {
   item: ForgeItem;
   detail: ForgeDetail | null;
   loading: boolean;
   error: string | null;
-  /**
-   * The narrow layout's way back to the list. Hidden above the container
-   * breakpoint, where the sections are still on screen — the same rule the wiki
-   * page view applies to its own back control.
-   */
+  /** Which credential the server resolved, for the one sentence worth saying. */
+  credential: ForgeCredential | null;
+  write: ForgeWriteState;
   onBack: () => void;
 }
 
-export function ItemView({ item, detail, loading, error, onBack }: ItemViewProps) {
+/** One comment: a message, or a muted line when the host wrote it itself. */
+function Comment({ comment }: { comment: ForgeComment }) {
+  if (comment.system) {
+    return (
+      <div className="flex items-baseline gap-1.5 border-t border-ink/8 px-2.5 py-1">
+        <span className="flex-shrink-0 text-[10px] font-medium text-ink/55">{comment.author}</span>
+        <span className="min-w-0 flex-1 text-[10px] italic text-ink/45">{comment.body}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="border-t border-ink/8 px-2.5 py-1.5">
+      <div className="flex items-center gap-1.5 text-[10px] text-ink/45">
+        <span className="font-medium text-ink/70">{comment.author}</span>
+        {comment.bot && (
+          <span className="rounded border border-ink/15 px-1 text-[9px] uppercase tracking-wider text-ink/45">bot</span>
+        )}
+        <span>{relativeTime(comment.createdAt)}</span>
+        {comment.url && (
+          <a
+            href={comment.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open this comment on the host"
+            aria-label="Open this comment on the host"
+            className="ml-auto text-ink/40 hover:text-ink"
+          >
+            <Glyph path={ICON.external} size={10} />
+          </a>
+        )}
+      </div>
+      <div className="mt-0.5">
+        <Markdown content={comment.body} className="prose-content text-xs" />
+      </div>
+    </div>
+  );
+}
+
+export function ItemView({ item, detail, loading, error, credential, write, onBack }: ItemViewProps) {
+  const capabilities = detail?.capabilities ?? null;
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-shrink-0 items-start gap-1.5 border-b border-ink/10 px-2.5 py-1.5">
@@ -61,6 +105,7 @@ export function ItemView({ item, detail, loading, error, onBack }: ItemViewProps
             <span className="min-w-0 truncate text-[10px] text-ink/45">
               {item.author} · {relativeTime(item.updatedAt)}
             </span>
+            {detail?.ci && <CiBadge ci={detail.ci} />}
           </div>
           <span className="text-xs font-medium leading-snug text-ink">{item.title}</span>
           <LabelChips labels={item.labels} max={6} />
@@ -112,21 +157,16 @@ export function ItemView({ item, detail, loading, error, onBack }: ItemViewProps
               )}
             </div>
 
+            <ChangeFiles files={detail.files} />
+            <ChangeCommits commits={detail.commits} />
+
             {detail.comments.length > 0 && (
               <div className="border-t border-ink/10">
                 <div className="px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
-                  {detail.comments.length} {detail.comments.length === 1 ? 'comment' : 'comments'}
+                  {detail.comments.length} {detail.comments.length === 1 ? 'entry' : 'entries'}
                 </div>
                 {detail.comments.map((comment) => (
-                  <div key={comment.id} className="border-t border-ink/8 px-2.5 py-1.5">
-                    <div className="flex items-center gap-1.5 text-[10px] text-ink/45">
-                      <span className="font-medium text-ink/70">{comment.author}</span>
-                      <span>{relativeTime(comment.createdAt)}</span>
-                    </div>
-                    <div className="mt-0.5">
-                      <Markdown content={comment.body} className="prose-content text-xs" />
-                    </div>
-                  </div>
+                  <Comment key={comment.id} comment={comment} />
                 ))}
               </div>
             )}
@@ -143,6 +183,16 @@ export function ItemView({ item, detail, loading, error, onBack }: ItemViewProps
           </>
         )}
       </div>
+
+      {detail && (
+        <WriteBar
+          item={item}
+          detail={detail}
+          capabilities={capabilities}
+          write={write}
+          {...(credential ? { credential } : {})}
+        />
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ import {
 } from '@kabmo-labs/kabmo-ui';
 
 import { ForgePanel } from './index';
-import type { ForgeDetail, ForgeList, ForgeSection } from '../protocol';
+import type { ForgeDetail, ForgeFilter, ForgeList, ForgeSection } from '../protocol';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
 const saved = new Map<string, unknown>();
@@ -83,11 +83,11 @@ function list(overrides: Partial<ForgeList> = {}): ForgeList {
     host: 'github.com',
     slug: 'kabmo-labs/kabmo',
     webUrl: 'https://github.com/kabmo-labs/kabmo',
-    state: 'open',
+    filter: { state: 'open', mine: false, label: '', query: '' },
     sections: {
-      issues: { items: [item()], truncated: false },
-      pulls: { items: [item({ id: '2', number: 2, title: 'A change' })], truncated: false },
-      releases: { items: [], truncated: false },
+      issues: { items: [item()], truncated: false, total: 1 },
+      pulls: { items: [item({ id: '2', number: 2, title: 'A change' })], truncated: false, total: 1 },
+      releases: { items: [], truncated: false, total: null },
     },
     notes: [],
     ...overrides,
@@ -99,9 +99,13 @@ function detail(): ForgeDetail {
     item: item(),
     body: 'The **body** text.',
     comments: [
-      { id: 'c1', author: 'bo', body: 'A reply', createdAt: new Date().toISOString(), url: null },
+      { id: 'c1', author: 'bo', body: 'A reply', createdAt: new Date().toISOString(), url: null, system: false, bot: false },
     ],
     facts: [{ label: 'comments', value: '1' }],
+    files: [],
+    commits: [],
+    ci: null,
+    capabilities: { comment: true, state: true, review: false, merge: false },
     notes: [],
   };
 }
@@ -177,7 +181,10 @@ function button(label: string): HTMLButtonElement | null {
 describe('ForgePanel', () => {
   test('reads the scope it is given, and shows the counts', async () => {
     await mount();
-    expect(calls[0]).toEqual({ method: 'list', input: { root: '/ws', repo: 'projects/alpha', state: 'open' } });
+    expect(calls[0]).toEqual({
+      method: 'list',
+      input: { root: '/ws', repo: 'projects/alpha', filter: { state: 'open', mine: false, label: '', query: '' } },
+    });
     const text = container.textContent ?? '';
     expect(text).toContain('Issues');
     expect(text).toContain('Pull requests');
@@ -240,7 +247,7 @@ describe('ForgePanel', () => {
   test('a truncated page says so rather than looking complete', async () => {
     listOutcome = {
       ok: true,
-      value: list({ sections: { ...list().sections, issues: { items: [item()], truncated: true } } }),
+      value: list({ sections: { ...list().sections, issues: { items: [item()], truncated: true, total: 90 } } }),
     };
     await mount();
     expect(container.textContent).toContain('full page');
@@ -255,7 +262,9 @@ describe('ForgePanel', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    const states = calls.filter((call) => call.method === 'list').map((call) => (call.input as { state: string }).state);
+    const states = calls
+      .filter((call) => call.method === 'list')
+      .map((call) => (call.input as { filter: ForgeFilter }).filter.state);
     expect(states).toContain('closed');
   });
 

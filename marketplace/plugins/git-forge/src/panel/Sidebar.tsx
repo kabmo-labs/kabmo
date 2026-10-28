@@ -19,6 +19,10 @@
  * a missing row would make the reader wonder whether the section exists at all.
  * A `+` says the host returned a full page.
  *
+ * There is no provider header here: the header's own badge already names the
+ * host, and a second `GITHUB` label six lines below it was the panel saying the
+ * same thing twice in a 40px column.
+ *
  * The state filter (open / closed / all) is deliberately NOT here. It belongs to
  * the list it filters, so it sits in the header beside the refresh — a control
  * that changes the list must not look like a fourth section.
@@ -47,9 +51,6 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-canvas/40">
       <div className="flex min-h-0 flex-1 flex-row overflow-x-auto scrollbar-overlay-container py-0.5 @[520px]:flex-col @[520px]:overflow-x-visible">
-        <div className="hidden px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40 @[520px]:block">
-          {provider === 'gitlab' ? 'GitLab' : 'GitHub'}
-        </div>
         {sections.map((section) => {
           const isActive = section === active;
           const data = list?.sections[section];

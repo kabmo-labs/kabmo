@@ -84,12 +84,33 @@ export function cacheKey(url: string): string {
   return `cache:${hash.toString(16).padStart(8, '0')}:${url.length.toString(16)}`;
 }
 
-/** The credential header each provider takes. */
+/**
+ * The credential header each host takes.
+ *
+ * Four spellings, and getting one wrong is a 401 that reads as a bad token:
+ * GitHub wants `Authorization: Bearer` (plus the API version pin, without which
+ * the response shape follows the account's default), GitLab wants its own
+ * `PRIVATE-TOKEN`, Gitea accepts `Authorization: token`, and Bitbucket's access
+ * tokens are Bearer while its APP PASSWORDS are Basic — which is why a token
+ * containing a colon is base64-encoded as a user/password pair rather than sent
+ * as a Bearer value the host will reject.
+ */
 export function authHeaders(provider: ForgeProvider, token: string | null): Record<string, string> {
   if (!token) return {};
-  return provider === 'github'
-    ? { authorization: `Bearer ${token}`, 'x-github-api-version': '2022-11-28' }
-    : { 'private-token': token };
+  if (provider === 'github') return { authorization: `Bearer ${token}`, 'x-github-api-version': '2022-11-28' };
+  if (provider === 'gitlab') return { 'private-token': token };
+  if (provider === 'gitea') return { authorization: `token ${token}` };
+  // Bitbucket: `user:app-password` is an app password, anything else is an
+  // access token.
+  return token.includes(':')
+    ? { authorization: `Basic ${Buffer.from(token, 'utf8').toString('base64')}` }
+    : { authorization: `Bearer ${token}` };
+}
+
+/** Whether a credential is present, from the headers it produced. */
+export function isAuthenticated(headers: Record<string, string> | undefined): boolean {
+  if (!headers) return false;
+  return Boolean(headers.authorization || headers['private-token']);
 }
 
 /**
@@ -174,7 +195,7 @@ export async function getJson(options: GetOptions): Promise<GetResult> {
   }
 
   if (!response.ok) {
-    return { ok: false, status: response.status, message: describeFailure(response, Boolean(options.headers?.authorization || options.headers?.['private-token'])) };
+    return { ok: false, status: response.status, message: describeFailure(response, isAuthenticated(options.headers)) };
   }
 
   let value: PluginJson;
@@ -194,6 +215,63 @@ export async function getJson(options: GetOptions): Promise<GetResult> {
   };
   await options.cache.write(key, fresh);
   await prune(options.cache, now());
+  return { ok: true, value, cached: false };
+}
+
+/**
+ * Read one URL as TEXT.
+ *
+ * Two hosts answer a diff as `text/plain` — Gitea's `.diff` route and
+ * Bitbucket's `/diff` — and `getJson` cannot read either: `response.json()`
+ * throws on `@@ -1 +1 @@`, so the whole file list came back empty with a note
+ * about a body that "is not JSON". The cache is shared, because a diff is a
+ * resource like any other and its validator works the same way.
+ */
+export async function getText(options: GetOptions): Promise<GetResult> {
+  const key = cacheKey(options.url);
+  const now = options.now ?? Date.now;
+  const entry = await options.cache.read(key);
+
+  const headers: Record<string, string> = {
+    accept: 'text/plain',
+    'user-agent': USER_AGENT,
+    ...options.headers,
+  };
+  if (entry?.etag) headers['if-none-match'] = entry.etag;
+  else if (entry?.lastModified) headers['if-modified-since'] = entry.lastModified;
+
+  const doFetch = options.fetchImpl ?? fetch;
+  let response: Response;
+  try {
+    response = await doFetch(options.url, {
+      headers,
+      signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+    });
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    return { ok: false, status: 0, message: `Could not reach the host: ${reason}` };
+  }
+
+  if (response.status === 304 && entry) return { ok: true, value: entry.value, cached: true };
+  if (!response.ok) {
+    return { ok: false, status: response.status, message: describeFailure(response, isAuthenticated(options.headers)) };
+  }
+
+  let value: string;
+  try {
+    value = await response.text();
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    return { ok: false, status: response.status, message: `The host's body could not be read: ${reason}` };
+  }
+
+  await options.cache.write(key, {
+    url: options.url,
+    etag: response.headers.get('etag'),
+    lastModified: response.headers.get('last-modified'),
+    value,
+    at: now(),
+  });
   return { ok: true, value, cached: false };
 }
 

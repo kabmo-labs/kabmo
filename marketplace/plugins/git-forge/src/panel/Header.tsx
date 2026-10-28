@@ -6,63 +6,86 @@
 /**
  * The panel's header: what it is, then the scope, then the filter.
  *
- * Three rows' worth of information in two rows, because the panel is 320px wide
- * on a 1440px screen:
+ * The panel is 320–560px wide, so the filter is two rows and each row is one
+ * idea:
  *
  * - the TITLE row names the panel and carries the refresh, which acts on the
  *   whole read;
- * - the SCOPE row is the shared repo picker plus the provider badge, and the
- *   state filter — the only control that changes what the list contains.
+ * - the SCOPE row is the shared repo picker, the provider badge and the state
+ *   segment;
+ * - the NARROW row is the two fields that take typing — "assigned to me" and the
+ *   label/text pair — and it collapses behind a single control, because a panel
+ *   that spends three rows on controls has no room for the list.
  *
  * The provider badge is not decoration: a self-hosted host is routinely GitLab
  * while the reader assumes GitHub, and the vocabulary in the sidebar (MRs vs
- * PRs) is derived from the same fact. Showing it is what makes the vocabulary
- * explainable.
+ * PRs) is derived from the same fact.
  *
  * `showHeader` is the host's own flag: the phone's drawer draws its own tab strip
  * above the view, so a title row here would name the same panel twice. The scope
  * row stays, because it holds controls rather than a name.
  */
 
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { RepoPicker, type RepoScopeHandle } from '@kabmo-labs/kabmo-ui';
 
-import type { ForgeList, ForgeState } from '../protocol';
+import { filterIsDefault, type ForgeFilter, type ForgeList, type ForgeState } from '../protocol';
 import { Glyph, ICON } from './Glyph';
 
 interface HeaderProps {
   scope: RepoScopeHandle;
   showHeader: boolean;
   list: ForgeList | null;
-  state: ForgeState;
+  filter: ForgeFilter;
   loading: boolean;
-  onState: (state: ForgeState) => void;
+  onFilter: (next: ForgeFilter) => void;
   onRefresh: () => void;
 }
 
-const STATE_CHOICES: Array<{ value: ForgeState; label: string }> = [
+/**
+ * How long a typed filter waits before it is read.
+ *
+ * A filter is applied by the HOST, so every keystroke would otherwise be one
+ * request — and on GitHub's search endpoint, one request against a 30/minute
+ * budget. The pause is the reader's own: nobody types a label and expects the
+ * list to move mid-word.
+ */
+const TYPE_DELAY_MS = 400;
+
+const STATES: Array<{ value: ForgeState; label: string }> = [
   { value: 'open', label: 'Open' },
   { value: 'closed', label: 'Closed' },
   { value: 'all', label: 'All' },
 ];
 
-export function Header({ scope, showHeader, list, state, loading, onState, onRefresh }: HeaderProps) {
-  const filter = (
-    <div className="flex flex-shrink-0 items-center rounded border border-ink/15 p-px" role="group" aria-label="State filter">
-      {STATE_CHOICES.map((choice) => (
-        <button
-          key={choice.value}
-          type="button"
-          onClick={() => onState(choice.value)}
-          aria-pressed={state === choice.value}
-          className={`px-1.5 py-0.5 text-[10px] transition-colors ${
-            state === choice.value ? 'bg-ink/10 font-medium text-ink' : 'text-ink/55 hover:text-ink'
-          }`}
-        >
-          {choice.label}
-        </button>
-      ))}
-    </div>
-  );
+export function Header({ scope, showHeader, list, filter, loading, onFilter, onRefresh }: HeaderProps) {
+  const [expanded, setExpanded] = useState(false);
+  const narrowed = !filterIsDefault(filter);
+
+  // The two typed fields keep their own draft, committed after a pause. A
+  // controlled input bound straight to the committed filter would move the
+  // caret on every re-render the read causes.
+  const [label, setLabel] = useState(filter.label);
+  const [query, setQuery] = useState(filter.query);
+  const onFilterRef = useRef(onFilter);
+  onFilterRef.current = onFilter;
+  const latest = useRef({ label, query });
+  latest.current = { label, query };
+
+  // Follow a filter changed from elsewhere (a repo switch resets it, a Clear
+  // empties it) — but not the reader's own typing, which is already the draft.
+  useEffect(() => {
+    setLabel(filter.label);
+    setQuery(filter.query);
+  }, [filter.label, filter.query]);
+
+  useEffect(() => {
+    if (label === filter.label && query === filter.query) return;
+    const timer = setTimeout(() => {
+      onFilterRef.current({ ...filter, label: latest.current.label, query: latest.current.query });
+    }, TYPE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [label, query, filter.state, filter.mine]);
 
   const refresh = (
     <button
@@ -111,9 +134,88 @@ export function Header({ scope, showHeader, list, state, loading, onState, onRef
             <Glyph path={ICON.external} size={13} />
           </a>
         )}
-        {filter}
         {!showHeader && refresh}
       </div>
+
+      <div className="flex items-center gap-1.5 px-2 pb-1.5">
+        <div className="flex flex-shrink-0 items-center rounded border border-ink/15 p-px" role="group" aria-label="State filter">
+          {STATES.map((state) => (
+            <button
+              key={state.value}
+              type="button"
+              onClick={() => onFilter({ ...filter, state: state.value })}
+              aria-pressed={filter.state === state.value}
+              className={`px-1.5 py-0.5 text-[10px] transition-colors ${
+                filter.state === state.value ? 'bg-ink/10 font-medium text-ink' : 'text-ink/55 hover:text-ink'
+              }`}
+            >
+              {state.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onFilter({ ...filter, mine: !filter.mine })}
+          aria-pressed={filter.mine}
+          title="Only items assigned to me"
+          className={`flex-shrink-0 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+            filter.mine
+              ? 'border-ink/30 bg-ink/10 font-medium text-ink'
+              : 'border-ink/15 text-ink/55 hover:text-ink'
+          }`}
+        >
+          Mine
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          title="Label and text filters"
+          aria-label="Label and text filters"
+          className={`ml-auto flex flex-shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+            narrowed ? 'text-ink' : 'text-ink/55 hover:text-ink'
+          }`}
+        >
+          <Glyph path={ICON.filter} size={11} />
+          {narrowed && <span className="font-medium">filtered</span>}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="flex flex-col gap-1 px-2 pb-1.5">
+          <input
+            type="text"
+            value={label}
+            onInput={(event) => setLabel(event.currentTarget.value)}
+            placeholder="Label, exactly"
+            aria-label="Label filter"
+            className="w-full rounded border border-ink/15 bg-canvas px-1.5 py-1 text-[11px] text-ink outline-none placeholder-ink/35 focus:border-ink/40"
+          />
+          <input
+            type="text"
+            value={query}
+            onInput={(event) => setQuery(event.currentTarget.value)}
+            placeholder="Text in the title or body"
+            aria-label="Text filter"
+            className="w-full rounded border border-ink/15 bg-canvas px-1.5 py-1 text-[11px] text-ink outline-none placeholder-ink/35 focus:border-ink/40"
+          />
+          {narrowed && (
+            <button
+              type="button"
+              onClick={() => {
+                setLabel('');
+                setQuery('');
+                onFilter({ state: 'open', mine: false, label: '', query: '' });
+              }}
+              className="self-start text-[10px] text-ink/55 underline underline-offset-2 hover:text-ink"
+            >
+              Clear every filter
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,10 @@
  * ## Issues and merge requests are two collections here
  *
  * Unlike GitHub, GitLab does not fold merge requests into the issue list, so the
- * two reads are genuinely independent — no filter, no double-counting.
+ * two reads are genuinely independent — no filter, no double-counting. What it
+ * does NOT have is a search endpoint that returns both, so the filters travel as
+ * real parameters (`scope=assigned_to_me`, `labels`, `search`), which
+ * `filters.ts` builds.
  *
  * ## The project is addressed by its URL-ENCODED path
  *
@@ -23,22 +26,24 @@
  * `opened` rather than `open`, and a merge request reports `merged` only through
  * `state: 'merged'` — not a `merged_at` field. Reading GitHub's words here is
  * silently wrong in one direction: every open MR would read as closed.
+ *
+ * ## The pipeline is on the DETAIL, not the list
+ *
+ * Measured: `head_pipeline` is `failed` on `/merge_requests/:iid` and `null` on
+ * every row of `/merge_requests`. A row badge would cost one request per row.
  */
 
-import type { ForgeDetail, ForgeItem, ForgeItemState, ForgeList, ForgeSection } from '../protocol';
-import { get, joinUrl, pageSize, type ForgeContext } from './context';
-import { asRecord, count, flag, listAt, labelsOf, numberish, text, textAt } from './map';
+import type { ForgeDetail, ForgeCommit, ForgeFile, ForgeItem, ForgeItemState, ForgeList, ForgeSection } from '../protocol';
+import { capabilitiesFor } from './capabilities';
+import { ciBadge } from './ci';
+import { get, joinUrl, pageSize, withParams, type ForgeContext } from './context';
+import { gitlabParams } from './filters';
+import { asRecord, count, flag, labelsOf, listAt, numberish, recordAt, text, textAt } from './map';
 import { gitlabProject } from './remote';
 
 /** The project path every URL is built on. */
-function projectPath(context: ForgeContext): string {
+export function projectPath(context: ForgeContext): string {
   return `projects/${gitlabProject(context.slug)}`;
-}
-
-/** GitLab's own word for a filter state. */
-function gitlabState(state: ForgeList['state']): string {
-  if (state === 'open') return 'opened';
-  return state;
 }
 
 function issueItem(raw: unknown): ForgeItem | null {
@@ -67,7 +72,7 @@ function issueItem(raw: unknown): ForgeItem | null {
  * rather than on a `merged_at` field — and a draft is still open, which is why
  * `draft`/`work_in_progress` are read after the state has been classified.
  */
-function mergeState(record: Record<string, unknown>): ForgeItemState {
+export function mergeState(record: Record<string, unknown>): ForgeItemState {
   const state = text(record.state);
   if (state === 'merged') return 'merged';
   if (state === 'closed') return 'closed';
@@ -118,34 +123,36 @@ function releaseItem(raw: unknown): ForgeItem | null {
 async function readSection(
   context: ForgeContext,
   section: ForgeSection,
-  state: ForgeList['state'],
   notes: string[],
-): Promise<{ items: ForgeItem[]; truncated: boolean }> {
-  const asked = pageSize(context);
+): Promise<{ items: ForgeItem[]; truncated: boolean; total: number | null }> {
+  const perPage = pageSize(context);
   const project = projectPath(context);
-  const url =
-    section === 'issues'
-      ? joinUrl(context.apiBase, `${project}/issues?state=${gitlabState(state)}&per_page=${asked}&order_by=updated_at`)
-      : section === 'pulls'
-        ? joinUrl(context.apiBase, `${project}/merge_requests?state=${gitlabState(state)}&per_page=${asked}&order_by=updated_at`)
-        : joinUrl(context.apiBase, `${project}/releases?per_page=${asked}`);
+  const collection = section === 'issues' ? 'issues' : section === 'pulls' ? 'merge_requests' : 'releases';
+  const params: Record<string, string> = {
+    per_page: String(perPage),
+    ...(section === 'releases' ? {} : { order_by: 'updated_at' }),
+    ...gitlabParams(section, context.filter),
+  };
+  const url = withParams(joinUrl(context.apiBase, `${project}/${collection}`), params);
 
   const result = await get(context, url);
   if (!result.ok) {
     // A project with no releases answers 404 on that endpoint while issues and
     // MRs read fine, so a missing releases collection is not an error.
-    if (section === 'releases' && result.status === 404) return { items: [], truncated: false };
+    if (section === 'releases' && result.status === 404) return { items: [], truncated: false, total: null };
     notes.push(`${section}: ${result.message}`);
-    return { items: [], truncated: false };
+    return { items: [], truncated: false, total: null };
   }
 
   const mapper = section === 'issues' ? issueItem : section === 'pulls' ? mergeItem : releaseItem;
   const rows = listAt(result.value);
   const items = rows.map(mapper).filter((item): item is ForgeItem => item !== null);
-  return { items, truncated: rows.length >= asked };
+  // GitLab reports the collection size on the response, and the cache stores the
+  // body rather than the headers, so the count a row shows is the page's own.
+  return { items, truncated: rows.length >= perPage, total: null };
 }
 
-export async function listGitlab(context: ForgeContext, state: ForgeList['state']): Promise<ForgeList> {
+export async function listGitlab(context: ForgeContext): Promise<ForgeList> {
   const notes: string[] = [];
   if (!context.token) {
     notes.push(
@@ -154,9 +161,9 @@ export async function listGitlab(context: ForgeContext, state: ForgeList['state'
   }
 
   const [issues, pulls, releases] = await Promise.all([
-    readSection(context, 'issues', state, notes),
-    readSection(context, 'pulls', state, notes),
-    readSection(context, 'releases', state, notes),
+    readSection(context, 'issues', notes),
+    readSection(context, 'pulls', notes),
+    readSection(context, 'releases', notes),
   ]);
 
   return {
@@ -164,13 +171,13 @@ export async function listGitlab(context: ForgeContext, state: ForgeList['state'
     host: context.host,
     slug: context.slug,
     webUrl: context.webUrl,
-    state,
+    filter: context.filter,
     sections: { issues, pulls, releases },
     notes,
   };
 }
 
-function detailUrl(context: ForgeContext, section: ForgeSection, id: string): string {
+export function itemUrl(context: ForgeContext, section: ForgeSection, id: string): string {
   const project = projectPath(context);
   const encoded = encodeURIComponent(id);
   if (section === 'issues') return joinUrl(context.apiBase, `${project}/issues/${encoded}`);
@@ -187,9 +194,110 @@ function mergeFacts(record: Record<string, unknown>): Array<{ label: string; val
   if (changes >= 0) facts.push({ label: 'files', value: String(changes) });
   if (record.has_conflicts === true) facts.push({ label: 'mergeable', value: 'conflicts' });
   else if (record.detailed_merge_status === 'mergeable') facts.push({ label: 'mergeable', value: 'yes' });
-  const pipeline = textAt(record.head_pipeline, 'status');
-  if (pipeline) facts.push({ label: 'pipeline', value: pipeline });
   return facts;
+}
+
+/**
+ * The notes thread, with GitLab's own audit entries marked rather than dropped.
+ *
+ * A `system` note is "changed the description", "added 1 commit", "approved this
+ * merge request" — not a reply, but also not nothing: an approval recorded only
+ * as a system note is the one place a reader learns who approved. So the row is
+ * kept and flagged, and the panel draws it as a line rather than as a message.
+ */
+async function readNotes(
+  context: ForgeContext,
+  section: ForgeSection,
+  id: string,
+  notes: string[],
+): Promise<ForgeDetail['comments']> {
+  if (section === 'releases') return [];
+  const kind = section === 'issues' ? 'issues' : 'merge_requests';
+  const url = withParams(
+    joinUrl(context.apiBase, `${projectPath(context)}/${kind}/${encodeURIComponent(id)}/notes`),
+    { per_page: '100', sort: 'asc' },
+  );
+  const result = await get(context, url);
+  if (!result.ok) {
+    notes.push(`comments: ${result.message}`);
+    return [];
+  }
+  return listAt(result.value).flatMap((raw) => {
+    const entry = asRecord(raw);
+    if (!entry) return [];
+    return [
+      {
+        id: String(count(entry.id, 0)),
+        author: textAt(entry.author, 'username', 'unknown'),
+        body: text(entry.body),
+        createdAt: text(entry.created_at),
+        url: null,
+        system: flag(entry.system),
+        bot: false,
+      },
+    ];
+  });
+}
+
+/** The pipeline's verdict for a merge request, from its own detail. */
+function pipelineOf(record: Record<string, unknown>): ForgeDetail['ci'] {
+  const pipeline = recordAt(record, 'head_pipeline');
+  if (!pipeline) return null;
+  return ciBadge([text(pipeline.status)], text(pipeline.web_url) || null);
+}
+
+/** A merge request's changed files, from its own `changes` array. */
+function filesOf(record: Record<string, unknown>): ForgeFile[] {
+  return listAt(record.changes).flatMap((raw) => {
+    const entry = asRecord(raw);
+    if (!entry) return [];
+    const path = text(entry.new_path) || text(entry.old_path);
+    if (!path) return [];
+    const renamed = flag(entry.renamed_file);
+    return [
+      {
+        path,
+        status: flag(entry.new_file) ? 'added' : flag(entry.deleted_file) ? 'removed' : renamed ? 'renamed' : 'modified',
+        additions: 0,
+        deletions: 0,
+        patch: text(entry.diff),
+      },
+    ];
+  });
+}
+
+/**
+ * A merge request's commits.
+ *
+ * GitLab reports neither a count nor an author per commit on the MR object, so
+ * this is a second read — and a failure is a note, because the diff and the
+ * conversation are already on screen.
+ */
+async function readCommits(
+  context: ForgeContext,
+  id: string,
+  notes: string[],
+): Promise<ForgeCommit[]> {
+  const url = joinUrl(context.apiBase, `${projectPath(context)}/merge_requests/${encodeURIComponent(id)}/commits`);
+  const result = await get(context, url);
+  if (!result.ok) {
+    notes.push(`commits: ${result.message}`);
+    return [];
+  }
+  return listAt(result.value).flatMap((raw) => {
+    const entry = asRecord(raw);
+    if (!entry) return [];
+    const sha = text(entry.id) || text(entry.short_id);
+    if (!sha) return [];
+    return [
+      {
+        sha,
+        message: text(entry.title) || text(entry.message).split('\n')[0],
+        author: text(entry.author_name, 'unknown'),
+        at: text(entry.authored_date) || text(entry.created_at),
+      },
+    ];
+  });
 }
 
 export async function detailGitlab(
@@ -198,7 +306,7 @@ export async function detailGitlab(
   id: string,
 ): Promise<ForgeDetail | { error: string }> {
   const notes: string[] = [];
-  const result = await get(context, detailUrl(context, section, id));
+  const result = await get(context, itemUrl(context, section, id));
   if (!result.ok) return { error: result.message };
 
   const record = asRecord(result.value) ?? {};
@@ -213,34 +321,20 @@ export async function detailGitlab(
     if (tag) facts.push({ label: 'tag', value: tag });
   }
 
-  // Issues and merge requests both carry a NOTES thread; a release carries its
-  // description and no conversation.
-  const comments: ForgeDetail['comments'] = [];
-  if (section !== 'releases') {
-    const kind = section === 'issues' ? 'issues' : 'merge_requests';
-    const thread = await get(
-      context,
-      joinUrl(context.apiBase, `${projectPath(context)}/${kind}/${encodeURIComponent(id)}/notes?per_page=100&sort=asc`),
-    );
-    if (thread.ok) {
-      for (const raw of listAt(thread.value)) {
-        const entry = asRecord(raw);
-        if (!entry) continue;
-        // System notes are GitLab's own audit trail ("changed the description",
-        // "added 1 commit"), and they are not part of the conversation.
-        if (flag(entry.system)) continue;
-        comments.push({
-          id: String(count(entry.id, comments.length)),
-          author: textAt(entry.author, 'username', 'unknown'),
-          body: text(entry.body),
-          createdAt: text(entry.created_at),
-          url: null,
-        });
-      }
-    } else {
-      notes.push(`comments: ${thread.message}`);
-    }
-  }
+  const [comments, commits] = await Promise.all([
+    readNotes(context, section, id, notes),
+    section === 'pulls' ? readCommits(context, id, notes) : Promise.resolve([]),
+  ]);
 
-  return { item, body: text(record.description), comments, facts, notes };
+  return {
+    item,
+    body: text(record.description),
+    comments,
+    facts,
+    files: section === 'pulls' ? filesOf(record) : [],
+    commits,
+    ci: section === 'pulls' ? pipelineOf(record) : null,
+    capabilities: capabilitiesFor({ provider: 'gitlab', section, hasCredential: Boolean(context.token) }),
+    notes,
+  };
 }

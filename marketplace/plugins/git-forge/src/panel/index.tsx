@@ -12,8 +12,8 @@
  * the scope it was made in — because the two panels answer the same question
  * ("what is in this repository, on its host?") and a reader who has used one
  * should not have to learn the other. The differences are the ones the subject
- * demands: three sections rather than a page tree, a state filter, and a third
- * level (list → item) inside the content column.
+ * demands: three sections rather than a page tree, a filter, and a third level
+ * (list → item) inside the content column.
  *
  * ## The repository is the SHARED pick
  *
@@ -27,7 +27,9 @@
  *
  * A section and an item id from another repository name nothing here — issue 12
  * of the previous project is a different issue — so the stored pick is used only
- * while its scope still matches, exactly as the wiki's page pick is.
+ * while its scope still matches, exactly as the wiki's page pick is. The FILTER
+ * is stored with the scope for the same reason and one more: `state: closed`
+ * carried into another repository is a filter the reader did not set there.
  *
  * ## Layout follows the wiki panel's, with one deliberate difference
  *
@@ -40,20 +42,19 @@
  *
  * The wiki hides its nav behind a drill; this panel keeps the switch visible,
  * because a forge reader moves between sections constantly — a pull request that
- * closes an issue is two sections apart — and burying the primary axis one click
- * deep is what a strip costs nothing to avoid. Only the ITEM is a drill: it
- * replaces the list with a back control, and the sections stay on screen.
+ * closes an issue is two sections apart. Only the ITEM is a drill: it replaces
+ * the list with a back control, and the sections stay on screen.
  */
 
 import { useEffect, useMemo } from 'preact/hooks';
 import { usePanelHost, useRepoScope, useSessionState } from '@kabmo-labs/kabmo-ui';
 
-import type { ForgeItem, ForgeSection, ForgeState } from '../protocol';
+import { DEFAULT_FILTER, type ForgeFilter, type ForgeItem, type ForgeSection } from '../protocol';
 import { Header } from './Header';
 import { ItemList } from './List';
 import { ItemView } from './ItemView';
 import { Sidebar } from './Sidebar';
-import { useForgeDetail, useForgeList } from './use-forge';
+import { useForgeCredential, useForgeDetail, useForgeList, useForgeWrite } from './use-forge';
 
 interface ForgePanelProps {
   sessionId: string | null;
@@ -83,12 +84,17 @@ export function ForgePanel(_props: ForgePanelProps) {
   const scopeKey = scopeKeyOf(repo.root, repo.repo);
 
   const [section, setSection] = useSessionState<ForgeSection>('forge.section', 'issues');
-  const [state, setState] = useSessionState<ForgeState>('forge.state', 'open');
+  // `DEFAULT_FILTER` is the same OBJECT every render: the hook's setters are
+  // memoized over their fallback, so a factory here would re-arm the reset effect
+  // below on every render and the panel would never settle.
+  const [filter, setFilter] = useSessionState<ForgeFilter>('forge.filter', DEFAULT_FILTER);
   const [pick, setPick] = useSessionState<ForgePick | null>('forge.selected', null);
 
-  const list = useForgeList(scope, state, active);
+  const list = useForgeList(scope, filter, active);
+  const credential = useForgeCredential(scope, active);
   const selected = pick && pick.scope === scopeKey && pick.section === section ? pick : null;
   const detail = useForgeDetail(scope, section, selected?.id ?? null, active);
+  const write = useForgeWrite(scope, section, selected?.id ?? null, detail.reload);
 
   const provider = list.list?.provider ?? 'github';
   const items = list.list?.sections[section]?.items ?? [];
@@ -97,12 +103,13 @@ export function ForgePanel(_props: ForgePanelProps) {
     [items, selected?.id],
   );
 
-  // A repo switch is a different repository: drop the open item and the narrow
-  // drill, so the panel lands on the list rather than on an id that now names
-  // something else.
+  // A repo switch is a different repository: drop the open item AND the filter,
+  // so the panel lands on the new repository's own open issues rather than on a
+  // filter that named the previous one.
   useEffect(() => {
     setPick((current) => (current && current.scope !== scopeKey ? null : current));
-  }, [scopeKey, setPick]);
+    setFilter(DEFAULT_FILTER);
+  }, [scopeKey, setPick, setFilter]);
 
   // An item that is no longer in the list it was opened from — the filter moved,
   // or the host closed it — cannot be shown, so the list is what remains.
@@ -138,9 +145,9 @@ export function ForgePanel(_props: ForgePanelProps) {
         scope={repo}
         showHeader={host.showHeader !== false}
         list={list.list}
-        state={state}
+        filter={filter}
         loading={list.loading}
-        onState={setState}
+        onFilter={setFilter}
         onRefresh={() => void list.reload()}
       />
 
@@ -162,6 +169,8 @@ export function ForgePanel(_props: ForgePanelProps) {
               detail={detail.detail}
               loading={detail.loading}
               error={detail.error}
+              credential={credential}
+              write={write}
               onBack={() => setPick(null)}
             />
           ) : (

@@ -80,6 +80,21 @@ export function textAt(value: Json, key: string, fallback = ''): string {
 }
 
 /**
+ * A URL from a host's own link envelope: `{links: {html: {href}}}`.
+ *
+ * Three vendors nest a URL two levels deep, and reading it with one `textAt` call
+ * returns the OBJECT's stringification rather than the address — which is how a
+ * row's "open on the host" link became the literal text `[object Object]`.
+ */
+export function hrefAt(value: Json, ...path: string[]): string {
+  let cursor: Json = value;
+  for (const key of path) {
+    cursor = asRecord(cursor)?.[key];
+  }
+  return text(cursor);
+}
+
+/**
  * A label list from either vendor's spelling.
  *
  * GitHub sends `[{name, color}]` with the colour as six hex digits and no `#`;

@@ -13,7 +13,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { apiBaseFor, gitlabProject, parseRemote } from './remote';
+import { apiBaseFor, bitbucketPath, gitlabProject, parseRemote, providerForHost } from './remote';
 
 function parsed(raw: string, options?: Parameters<typeof parseRemote>[1]) {
   const result = parseRemote(raw, options);
@@ -102,10 +102,45 @@ describe('parseRemote', () => {
   });
 });
 
+describe('providerForHost', () => {
+  test('the four hosts each resolve, and a name that contains another does not win', () => {
+    expect(providerForHost('github.com')).toBe('github');
+    expect(providerForHost('github.mycorp.com')).toBe('github');
+    expect(providerForHost('gitlab.com')).toBe('gitlab');
+    expect(providerForHost('git-rbi.jatismobile.com')).toBe('gitlab');
+    expect(providerForHost('gitea.example.com')).toBe('gitea');
+    expect(providerForHost('codeberg.org')).toBe('gitea');
+    expect(providerForHost('forgejo.internal')).toBe('gitea');
+    expect(providerForHost('bitbucket.org')).toBe('bitbucket');
+    // `gitbucket` contains `bucket` but is not Bitbucket, and its own name says
+    // nothing else either — so it falls to the default rather than matching a
+    // host it is not.
+    expect(providerForHost('gitbucket.example.com')).toBe('gitlab');
+  });
+});
+
+describe('bitbucketPath', () => {
+  test('two segments split; a subgroup is refused rather than guessed', () => {
+    expect(bitbucketPath('team/repo')).toEqual({ workspace: 'team', repo: 'repo' });
+    expect(bitbucketPath('group/sub/repo')).toBeNull();
+    expect(bitbucketPath('lonely')).toBeNull();
+  });
+});
+
 describe('apiBaseFor', () => {
   test('github.com is the one host with no path prefix', () => {
     expect(apiBaseFor('github', 'github.com', 'https')).toBe('https://api.github.com');
     expect(apiBaseFor('github', 'ghe.internal', 'https')).toBe('https://ghe.internal/api/v3');
     expect(apiBaseFor('gitlab', 'gitlab.com', 'https')).toBe('https://gitlab.com/api/v4');
+    expect(apiBaseFor('gitea', 'gitea.example.com', 'https')).toBe('https://gitea.example.com/api/v1');
+  });
+
+  test('Bitbucket Cloud is not on the repository hostname', () => {
+    expect(apiBaseFor('bitbucket', 'bitbucket.org', 'https')).toBe('https://api.bitbucket.org/2.0');
+    // A self-hosted Bitbucket SERVER is a different API (1.0, on its own host),
+    // so the override is the only way to reach one — documented, not guessed.
+    expect(apiBaseFor('bitbucket', 'bitbucket.internal', 'https', 'https://bitbucket.internal/rest/api/1.0/')).toBe(
+      'https://bitbucket.internal/rest/api/1.0',
+    );
   });
 });
