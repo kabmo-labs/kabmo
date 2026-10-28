@@ -28,6 +28,12 @@ export interface FileEditorTarget {
   repo?: string;
   /** The live handle a PWA launch opened this file through, when there is one. */
   handleId?: string;
+  /**
+   * True when the bytes came from the DEVICE (a document the phone handed over).
+   * The tab renders and is READ-ONLY: there is no path the server can reach and
+   * no writable handle, so a Save has nothing to write to.
+   */
+  deviceFile?: boolean;
 }
 
 export interface UseFileEditorOptions {
@@ -116,6 +122,23 @@ export interface UseFileEditorResult {
    * instead of showing a button that silently fails.
    */
   handleMissing: boolean;
+  /**
+   * A tab whose bytes the DEVICE supplied (a document a phone opened).
+   *
+   * Distinct from `handleMissing`, and the distinction is the message: a missing
+   * handle means the permission ENDED (reopening restores it), while a
+   * device-backed tab never had anywhere to write — telling a phone user to
+   * reopen the file for write access would promise what reopening cannot give.
+   */
+  deviceBacked: boolean;
+  /**
+   * A device-backed tab whose BYTES are gone — the page reloaded, and a phone's
+   * file cannot be re-read (the URI grant belonged to the native intent).
+   *
+   * Its own flag because the two states need different words: "read-only, copy
+   * it into a workspace" is wrong for a tab with nothing left to copy.
+   */
+  deviceMissing: boolean;
   /** True for raster images: the surface renders `imageUrl`, not `content`. */
   isImage: boolean;
   /** Raw-byte URL of the active image (cache-busted per revision), else null. */

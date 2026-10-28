@@ -17,6 +17,12 @@ export interface OpenFilePayload {
    * instead of `/api/fs/action`. See `client/lib/launch/file-handlers`.
    */
   handleId?: string;
+  /**
+   * True when the bytes came from the DEVICE rather than from the server (a
+   * document the phone handed over). The tab renders and cannot be written back,
+   * because there is no path to write to and no writable handle.
+   */
+  deviceFile?: boolean;
 }
 
 /**
@@ -42,6 +48,7 @@ export function openFileInEditor(payloadOrPath: string | OpenFilePayload) {
         root: payload.root,
         repo: payload.repo,
         handleId: payload.handleId,
+        deviceFile: payload.deviceFile,
       }
     })
   );

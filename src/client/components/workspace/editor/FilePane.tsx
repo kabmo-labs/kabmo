@@ -114,9 +114,10 @@ export function FilePane({
         isPreview={isPreview}
         copied={editor.copied}
         byteViewer={byteViewer}
-        saveDisabled={Boolean(editor.loadError) || editor.handleMissing}
+        saveDisabled={Boolean(editor.loadError) || editor.handleMissing || editor.deviceBacked}
         unsupported={Boolean(editor.unsupported)}
         handleMissing={editor.handleMissing}
+        readOnly={editor.deviceBacked}
         isMaximized={isMaximized}
         findOpen={find.open}
         onToggleFind={() => (find.open ? find.close() : find.openFind())}
@@ -174,6 +175,29 @@ export function FilePane({
             <div className="text-[11.5px] font-sans">This file was opened by the system, not from a workspace.</div>
             <div className="text-[11px] font-sans text-warning/80">
               Its write permission ended with the last page load. Reopen the file from the OS to edit it again.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* A document the PHONE handed over: the bytes were pushed into the page
+          and there is no path to write back to. Distinct from the banner below,
+          which is about a permission that ENDED — telling a phone user to reopen
+          the file for write access would promise something reopening cannot
+          give. */}
+      {editor.deviceBacked && (
+        <div className="flex items-start gap-2 px-3 py-2 border-b border-ink/20 bg-ink/5 text-ink/70">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <div className="text-[11.5px] font-sans">
+              {editor.deviceMissing
+                ? 'The bytes for this file did not survive the reload.'
+                : 'Opened from this device, so it is read-only here.'}
+            </div>
+            <div className="text-[11px] font-sans text-ink/50">
+              {editor.deviceMissing
+                ? 'A phone\'s file lives only on the phone, so it cannot be re-read. Open it again from the app that shared it.'
+                : 'The console cannot reach a file on your phone. Copy it into a workspace to edit it.'}
             </div>
           </div>
         </div>

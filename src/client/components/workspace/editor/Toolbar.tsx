@@ -42,6 +42,15 @@ interface EditorToolbarProps {
    * separately from the other two: the file is fine, the CAPABILITY is gone.
    */
   handleMissing?: boolean;
+  /**
+   * The tab's bytes came from the DEVICE (a document a phone handed over), so
+   * there is nowhere to write them back.
+   *
+   * Its own flag rather than reusing `handleMissing`: the two read as different
+   * sentences, and "could not be read" would be a lie about a file that is on
+   * screen.
+   */
+  readOnly?: boolean;
   isMaximized?: boolean;
   /** Find/replace is open — the button reflects it and toggles the bar. */
   findOpen?: boolean;
@@ -88,6 +97,7 @@ export function EditorToolbar({
   saveDisabled = false,
   unsupported = false,
   handleMissing = false,
+  readOnly = false,
   isMaximized = false,
   findOpen = false,
   onToggleFind,
@@ -105,11 +115,13 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const saveTitle =
     saveDisabled
-      ? handleMissing
-        ? 'Cannot save — reopen the file from the system to restore write access'
-        : unsupported
-          ? 'Nothing to save — this file cannot be opened as a document'
-          : 'Nothing to save — this file could not be read'
+      ? readOnly
+        ? 'Read-only — this file was opened from the phone, not from a workspace'
+        : handleMissing
+          ? 'Cannot save — reopen the file from the system to restore write access'
+          : unsupported
+            ? 'Nothing to save — this file cannot be opened as a document'
+            : 'Nothing to save — this file could not be read'
       : saveStatus === 'needs-permission'
         ? 'Click Save to allow writing this file'
         : saveStatus === 'saving'

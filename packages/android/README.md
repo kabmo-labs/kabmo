@@ -425,6 +425,59 @@ and enter the `https://` URL. `--tls` self-signed works only in debug builds, wh
 `debug-overrides` trusts user-installed CAs; a release APK fails closed on an
 unknown issuer and says so.
 
+## Opening a document from another app
+
+Kabmo appears in the chooser for the types its editor can render — a `.pdf` from
+Files, a `.docx` attachment in Gmail, a spreadsheet in Drive — for both
+**"Open with"** (`VIEW`) and **"Share to"** (`SEND`).
+
+The filters are GENERATED from `release/document-types.mjs` by
+`scripts/shell-document-types.mjs` (`bun run shell:docs`), into the marked region
+of `AndroidManifest.xml`. Three things about them:
+
+- **Two filters, not one per type.** Every `<data>` inside ONE filter is OR'd for
+  `mimeType`, so one `VIEW` and one `SEND` carry the whole list.
+- **`BROWSABLE` on `VIEW` only.** It is what lets a Downloads entry or a browser
+  link reach the app; a share carries no browsable URI, and the category there
+  would be a claim about the intent that is not true.
+- **No `android:priority`.** A priority makes Kabmo the PREFERRED handler for a
+  type, which is the same overreach as `CFBundleTypeRole: Owner` on macOS. Kabmo
+  offers itself; the user decides.
+
+The MIME list is the table's, which means a format Android's own `MimeTypeMap`
+does not know (`.md` on some devices) will not offer Kabmo. That is an honest
+gap: declaring `application/octet-stream` to catch it would put Kabmo in the
+chooser for every unknown file on the phone.
+
+### Why the bytes travel through the page
+
+The desktop shells hand over a PATH and the server opens it — they are on the
+same machine. A phone is not: the console may be across the room or across the
+world, so a file picked here exists only on the DEVICE and the server can never
+read it. `POST /api/fs/grant` would be granting a path on a machine that has
+never seen the file.
+
+So `MainActivity.deliverDocument` reads the content URI (off the UI thread — a
+20 MiB document over a slow provider is not main-thread work), base64-encodes it
+and pushes it into the page in chunks: `__kabmoOpenFiles([{id,name,mimeType,size}])`
+first, then `__kabmoOpenChunk(id, base64, last)` repeated. The page decodes only
+on the final chunk, so a transfer that dies halfway can never open as a
+truncated document. `DeviceFiles` holds the rules and `DeviceFilesTest` pins
+them on the JVM — the name (a provider that reports only `document` needs the
+type's extension, or a PDF opens in the code editor), the base64 chunk boundary
+(a cut inside a group decodes to different bytes) and the JSON quoting (a
+filename may contain a quote).
+
+A document that arrives before the console has loaded is QUEUED and flushed on
+the first `onPageFinished` — the cold start is the common case, because the app
+was launched by the file.
+
+**The tab is READ-ONLY**, and says so: there is no path to write back to and no
+writable handle, so a Save would have nowhere to go. Share a paragraph instead of
+a file and it opens as a `shared.txt` — the manifest lists `text/plain` for
+`SEND`, so a chooser entry that did nothing would be a promise the app cannot
+keep.
+
 ## What the WebView implements, and why each matters
 
 Every one of these is a Kabmo feature that dies silently without it:

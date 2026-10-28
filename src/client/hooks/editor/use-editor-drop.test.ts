@@ -9,212 +9,111 @@
  * Three claims, and each is a way the gesture can go wrong invisibly:
  *
  * - A drop that RESOLVES opens the file through the same `omp:open-file` event
- *   every other surface uses, so the editor has one entry point.
- * - A drop that is REFUSED (outside every workspace, binary, oversized) reports
+ *   every other surface uses, so the editor has one entry point — including a
+ *   file from OUTSIDE every workspace, which the drop itself grants.
+ * - A drop that is REFUSED (a binary, an oversized file, a directory) reports
  *   the server's own sentence instead of opening a tab that would only render
  *   it.
  * - The gesture is CLAIMED (`stopPropagation`) so the composer's window-level
  *   drop handler cannot also see it — otherwise one drop both opens the file
  *   and queues it as a chat attachment.
  *
- * Driven through happy-dom, following `panels/Read.test.ts`: the hook reads a
- * `DataTransfer` and calls `fetch`, and both are stubs here.
+ * The DOM, the `fetch` stub and the `DataTransfer` shapes live in
+ * `use-editor-drop.test-util.ts`: this file is the CASES.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useEditorDrop, type UseEditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { writeThroughHandle } from '@/client/lib/launch/file-handlers';
+import {
+  bytesTransfer,
+  fakeHandle,
+  fileTransfer,
+  finderTransfer,
+  installDropHarness,
+  mountEditorDrop,
+  openedFiles,
+  queueScopeResponses,
+  resetDropHarness,
+  restoreDropHarness,
+  scopeFetchCalls,
+  setScopeResponse,
+} from '@/client/hooks/editor/use-editor-drop.test-util';
 
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent', 'MouseEvent', 'KeyboardEvent', 'fetch'] as const;
-const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-
-let scopeResponse: { ok: boolean; status: number; body: unknown } = { ok: true, status: 200, body: {} };
-let fetchCalls: string[] = [];
-let opened: unknown[] = [];
-
-beforeAll(() => {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
-  globalThis.fetch = (async (url: string) => {
-    fetchCalls.push(String(url));
-    const { ok, status, body } = scopeResponse;
-    return { ok, status, json: async () => body };
-  }) as unknown as typeof globalThis.fetch;
-  // The open path is a window event; recording it here is what proves the file
-  // was handed to the editor rather than merely resolved.
-  win.addEventListener('omp:open-file', (event) => {
-    opened.push((event as unknown as CustomEvent).detail);
-  });
-});
-
-afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
-});
-
-/** A `DataTransfer` carrying one `text/uri-list` reference, as a Finder drop does. */
-function fileTransfer(reference: string): DataTransfer {
-  return {
-    types: ['text/uri-list'],
-    files: [],
-    getData: (type: string) => (type.toLowerCase() === 'text/uri-list' ? reference : ''),
-  } as unknown as DataTransfer;
-}
-
-/** A `DataTransfer` with real bytes and no path — the composer's territory. */
-function bytesTransfer(): DataTransfer {
-  return {
-    types: ['Files'],
-    files: [{ name: 'photo.png', size: 100 }],
-    getData: () => '',
-  } as unknown as DataTransfer;
-}
-
-/**
- * A `DataTransfer` shaped exactly as Chrome for macOS presents a Finder drag:
- * `types: ["Files"]`, one `file` item with a handle, and NO path anywhere.
- */
-function finderTransfer(handle: FileSystemFileHandle): DataTransfer {
-  return {
-    types: ['Files'],
-    files: [],
-    getData: () => '',
-    items: [
-      {
-        kind: 'file',
-        type: 'application/octet-stream',
-        getAsFileSystemHandle: async () => handle,
-      },
-    ],
-  } as unknown as DataTransfer;
-}
-
-/** A handle over `text`, recording writes so a save can be observed. */
-function fakeHandle(name: string, text: string) {
-  const writes: string[] = [];
-  const handle = {
-    name,
-    kind: 'file',
-    async getFile() {
-      return new File([new TextEncoder().encode(text)], name);
-    },
-    async createWritable() {
-      return {
-        async write(data: string) {
-          writes.push(data);
-        },
-        async close() {},
-      };
-    },
-  };
-  return { handle: handle as unknown as FileSystemFileHandle, writes };
-}
-
-interface Harness {
-  drop: (transfer: DataTransfer) => Promise<void>;
-  dragging: () => boolean;
-  results: { ok: boolean; message: string }[];
-}
-
-async function mount(enabled = true): Promise<Harness> {
-  const results: { ok: boolean; message: string }[] = [];
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-
-  let api: UseEditorDropResult | null = null;
-  const Probe = () => {
-    api = useEditorDrop({ enabled, onResult: (r) => results.push(r) });
-    return null;
-  };
-  await act(async () => {
-    render(h(Probe, {}), container);
-  });
-
-  return {
-    drop: async (transfer) => {
-      const event = new window.Event('drop', { bubbles: true, cancelable: true });
-      Object.defineProperty(event, 'dataTransfer', { value: transfer });
-      Object.defineProperty(event, 'stopPropagation', { value: () => {} });
-      Object.defineProperty(event, 'preventDefault', { value: () => {} });
-      await act(async () => {
-        api?.dropProps.onDrop(event as never);
-      });
-      // The handler resolves the reference over `fetch` and then `res.json()`,
-      // so the assertion needs that chain drained before it runs.
-      for (let pass = 0; pass < 4; pass += 1) {
-        await act(async () => {
-          await Promise.resolve();
-        });
-      }
-    },
-    dragging: () => api?.isDragging ?? false,
-    results,
-  };
-}
+beforeAll(installDropHarness);
+afterAll(restoreDropHarness);
 
 describe('useEditorDrop', () => {
-  beforeEach(() => {
-    scopeResponse = { ok: true, status: 200, body: {} };
-    fetchCalls = [];
-    opened = [];
-  });
+  beforeEach(resetDropHarness);
 
   test('a resolved reference opens the file through omp:open-file', async () => {
-    scopeResponse = {
+    setScopeResponse({
       ok: true,
       status: 200,
       body: { root: '/repo', path: 'src/app.ts', name: 'app.ts', kind: 'text' },
-    };
-    const harness = await mount();
+    });
+    const harness = await mountEditorDrop();
     await harness.drop(fileTransfer('file:///repo/src/app.ts'));
 
-    expect(fetchCalls[0]).toContain('/api/fs/scope?path=');
-    expect(opened).toHaveLength(1);
-    expect(opened[0]).toEqual({ path: 'src/app.ts', name: 'app.ts', root: '/repo' });
+    expect(scopeFetchCalls()[0]).toContain('/api/fs/scope?path=');
+    expect(openedFiles()).toHaveLength(1);
+    expect(openedFiles()[0]).toEqual({ path: 'src/app.ts', name: 'app.ts', root: '/repo' });
+  });
+
+  test('a file outside every workspace is granted by the drop, then opened', async () => {
+    // The reported case: a report dragged off the Desktop. The scope route
+    // refuses it by name, the drop registers the file's own directory, and the
+    // SAME reference then resolves — which is what makes a drop from anywhere
+    // open a tab instead of a sentence saying it cannot.
+    queueScopeResponses([
+      { ok: false, status: 403, body: { error: 'That file is outside every workspace this console can read.', code: 'outside_workspace' } },
+      { ok: true, status: 200, body: { root: '/Users/x/Desktop', path: 'report.pdf', name: 'report.pdf', kind: 'document' } },
+    ]);
+    const harness = await mountEditorDrop();
+    await harness.drop(fileTransfer('file:///Users/x/Desktop/report.pdf'));
+
+    expect(scopeFetchCalls()[0]).toContain('/api/fs/scope?path=');
+    expect(scopeFetchCalls()[1]).toContain('/api/fs/grant');
+    expect(openedFiles()).toHaveLength(1);
+    expect(openedFiles()[0]).toEqual({ path: 'report.pdf', name: 'report.pdf', root: '/Users/x/Desktop' });
+    expect(harness.results.at(-1)?.ok).toBe(true);
   });
 
   test('a binary file is refused with the server sentence, and opens nothing', async () => {
-    scopeResponse = {
+    setScopeResponse({
       ok: true,
       status: 200,
       body: { root: '/repo', path: 'blob.bin', name: 'blob.bin', kind: 'binary', error: 'This file is not text, so it cannot be shown in the editor.' },
-    };
-    const harness = await mount();
+    });
+    const harness = await mountEditorDrop();
     await harness.drop(fileTransfer('file:///repo/blob.bin'));
 
-    expect(opened).toHaveLength(0);
+    expect(openedFiles()).toHaveLength(0);
     expect(harness.results.at(-1)?.ok).toBe(false);
     expect(harness.results.at(-1)?.message).toContain('not text');
   });
 
   test('a path outside every workspace reports the refusal by name', async () => {
-    scopeResponse = { ok: false, status: 403, body: { error: 'That file is outside every workspace this console can read.' } };
-    const harness = await mount();
+    // A refusal with NO `outside_workspace` code: final, so no grant is tried.
+    setScopeResponse({ ok: false, status: 403, body: { error: 'That file is outside every workspace this console can read.' } });
+    const harness = await mountEditorDrop();
     await harness.drop(fileTransfer('file:///etc/hosts'));
 
-    expect(opened).toHaveLength(0);
+    expect(openedFiles()).toHaveLength(0);
     expect(harness.results.at(-1)?.message).toContain('outside every workspace');
   });
 
   test('a Finder drag with a handle opens the file and can be saved', async () => {
     const { handle, writes } = fakeHandle('from-finder.ts', 'const a = 1;\n');
-    const harness = await mount();
+    const harness = await mountEditorDrop();
     await harness.drop(finderTransfer(handle));
 
     // No server round trip: a Finder drag carries no path at all.
-    expect(fetchCalls).toHaveLength(0);
-    expect(opened).toHaveLength(1);
-    const detail = opened[0] as { path: string; content?: string; handleId?: string };
+    expect(scopeFetchCalls()).toHaveLength(0);
+    expect(openedFiles()).toHaveLength(1);
+    const detail = openedFiles()[0] as { path: string; content?: string; handleId?: string };
     expect(detail.path).toBe('from-finder.ts');
     expect(detail.content).toBe('const a = 1;\n');
     expect(detail.handleId).toBeTruthy();
@@ -226,20 +125,20 @@ describe('useEditorDrop', () => {
   });
 
   test('bytes with no path are reported, not silently dropped', async () => {
-    const harness = await mount();
+    const harness = await mountEditorDrop();
     await harness.drop(bytesTransfer());
 
     // No scope request is made — there is no path to resolve.
-    expect(fetchCalls).toHaveLength(0);
+    expect(scopeFetchCalls()).toHaveLength(0);
     expect(harness.results.at(-1)?.message).toContain('composer');
   });
 
   test('a disabled target makes no request and opens nothing', async () => {
-    const harness = await mount(false);
+    const harness = await mountEditorDrop(false);
     await harness.drop(fileTransfer('file:///repo/src/app.ts'));
 
-    expect(fetchCalls).toHaveLength(0);
-    expect(opened).toHaveLength(0);
+    expect(scopeFetchCalls()).toHaveLength(0);
+    expect(openedFiles()).toHaveLength(0);
     expect(harness.results).toHaveLength(0);
   });
 });
@@ -302,18 +201,14 @@ describe('useEditorDrop capture claim', () => {
     return { api: () => api, inner, composer, results };
   }
 
-  beforeEach(() => {
-    scopeResponse = { ok: true, status: 200, body: {} };
-    fetchCalls = [];
-    opened = [];
-  });
+  beforeEach(resetDropHarness);
 
   test('claims a file drop aimed at a code surface, and opens the file', async () => {
-    scopeResponse = {
+    setScopeResponse({
       ok: true,
       status: 200,
       body: { root: '/repo', path: 'src/b.ts', name: 'b.ts', kind: 'text' },
-    };
+    });
     const { api, inner } = await mountWithTargets();
     const { event, calls } = captureEvent(inner, fileTransfer('file:///repo/src/b.ts'));
 
@@ -321,7 +216,7 @@ describe('useEditorDrop capture claim', () => {
 
     // Claimed BEFORE the surface's own handler could insert the file's text.
     expect(calls).toEqual(['preventDefault', 'stopPropagation']);
-    expect(opened).toHaveLength(1);
+    expect(openedFiles()).toHaveLength(1);
   });
 
   test('leaves a drop aimed anywhere else to the bubble handler', async () => {
@@ -331,7 +226,7 @@ describe('useEditorDrop capture claim', () => {
     await capture(api(), event);
 
     expect(calls).toEqual([]);
-    expect(opened).toHaveLength(0);
+    expect(openedFiles()).toHaveLength(0);
   });
 
   test('ignores a text drag, which CodeMirror should still insert', async () => {

@@ -3,6 +3,7 @@ import { getLanguageFromPath } from '@/shared/lib/code/language';
 import { resolveViewer } from '@/client/hooks/editor/resolve-viewer';
 import { detectLineEnding, toDiskText, toLf, type LineEnding } from '@/shared/lib/code/line-endings';
 import { retainKeys } from '@/client/hooks/editor/save-file';
+import { deviceFileFor } from '@/client/lib/launch/device-files';
 import { fileHandleFor } from '@/client/lib/launch/file-handlers';
 import { useFileRead } from '@/client/hooks/editor/use-file-read';
 import { useFileTransfer } from '@/client/hooks/editor/use-file-transfer';
@@ -277,7 +278,12 @@ export function useFileEditor(
     byteSource,
     isBinaryViewer,
     revision,
-    handleMissing: Boolean(target?.handleId) && fileHandleFor(target?.handleId) === null,
+    // A device-backed tab has no handle by design, so it must not read as
+    // "the permission ended" — `deviceBacked` is the accurate answer, and the
+    // surface words the two differently.
+    handleMissing: Boolean(target?.handleId) && !target?.deviceFile && fileHandleFor(target?.handleId) === null,
+    deviceBacked: Boolean(target?.deviceFile),
+    deviceMissing: Boolean(target?.deviceFile) && deviceFileFor(target?.handleId) === null,
     saveNow: writes.saveNow,
     copy,
     download,

@@ -609,6 +609,7 @@ navigationPolicyCases()
 shellUpdateCases()
 // The paths a drop carries, which is the only route a WebKit page has to them.
 droppedPathsCases()
+openPathsCases()
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

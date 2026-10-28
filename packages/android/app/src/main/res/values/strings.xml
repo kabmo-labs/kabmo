@@ -90,4 +90,10 @@
     <string name="update_err_invalid">The downloaded file is damaged. Try the download again.</string>
     <string name="update_err_storage">There is not enough free space to install the update.</string>
     <string name="update_err_other">The update could not be installed.</string>
+
+    <!-- A document another app handed over that could not be read: a revoked
+         grant, a provider that went away, a file being rewritten. Naming the
+         file is the point — the user picked it and has no other way to learn
+         which one failed. -->
+    <string name="open_failed">Could not read %1$s.</string>
 </resources>

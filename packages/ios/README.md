@@ -216,6 +216,50 @@ history alone would reopen a previous session while leaving the drawer on screen
 button, so the shell does not intercept a gesture — the handler exists for a future
 edge-swipe policy and for the platform's own accessibility gestures.
 
+## Opening a document from another app
+
+Kabmo appears in the Files app's **Share → Open in** and in another app's
+"Open with" list for the types its editor can render. `CFBundleDocumentTypes` in
+`Resources/Info.plist` is the declaration, GENERATED from
+`release/document-types.mjs` by `scripts/shell-document-types.mjs`
+(`bun run shell:docs`) into a marked region — the same table the macOS bundle and
+the Windows installer are rendered from, so a format added for one cannot be
+missing on the other.
+
+Two keys decide the behaviour, and both are the macOS shell's:
+
+- `CFBundleTypeRole: Viewer` — Kabmo shows the document, it does not own it;
+- `LSHandlerRank: Alternate` — an option in the chooser, never the app a `.pdf`
+  opens in by itself.
+
+`LSSupportsOpeningDocumentsInPlace` is the iOS-only half: without it iOS copies
+the document into this app's Inbox, and a 20 MiB workbook is duplicated for
+nothing. With it the URL is handed over as-is and the shell brackets its read
+with `startAccessingSecurityScopedResource` — a security-scoped URL read without
+that bracket fails with a permission error that looks exactly like a missing
+file.
+
+### Why the bytes travel through the page
+
+The desktop shells hand over a PATH and the server opens it — they are on the
+same machine. A phone is not: the console may be across the world, so a file
+picked here exists only on the DEVICE. So `ShellViewController.deliver` reads the
+URL and pushes it into the page in chunks:
+`__kabmoOpenFiles([{id,name,mimeType,size}])` then `__kabmoOpenChunk(id, base64,
+last)` repeated, and the page decodes only on the final chunk. `DeviceFiles`
+holds the rules and `Tests/DeviceFilesTests.swift` pins them without a simulator.
+
+A document that arrives before the console has loaded is QUEUED and flushed on
+the first finished load — the cold start is the common case, because the app was
+launched by the file. `AppDelegate` forwards it: UIKit calls
+`application(_:open:options:)` AFTER `didFinishLaunching`, so the view controller
+exists by then and owns the queue.
+
+**The tab is READ-ONLY**, and says so: there is no path to write back to and no
+writable handle. A reload cannot recover the bytes either — the URI grant
+belonged to the native intent — so the tab switches to a second sentence telling
+the user to open it again from the app that shared it.
+
 ## The update control
 
 The console's sidebar footer carries one control directly after *About*:

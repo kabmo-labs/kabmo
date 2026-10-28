@@ -42,6 +42,7 @@ done
 [ -x "$STAGE/Kabmo" ] || { echo "package-deb: no binary at $STAGE/Kabmo" >&2; exit 1; }
 [ -f "$STAGE/kabmo.png" ] || { echo "package-deb: no icon at $STAGE/kabmo.png" >&2; exit 1; }
 [ -f "$STAGE/kabmo.desktop.in" ] || { echo "package-deb: no launcher template" >&2; exit 1; }
+[ -f "$STAGE/mime-types.txt" ] || { echo "package-deb: no MimeType list beside the template (run build-app.sh)" >&2; exit 1; }
 
 PKG=kabmo
 NAME="Kabmo-${VERSION}-linux-${DEB_ARCH}"
@@ -67,6 +68,7 @@ sed \
   -e 's|@EXEC@|"/usr/bin/Kabmo"|g' \
   -e 's|@TRY_EXEC@|/usr/bin/Kabmo|g' \
   -e "s|@ICON@|$PKG|g" \
+  -e "s|@MIMETYPES@|$(tr -d '\n' < "$STAGE/mime-types.txt")|g" \
   "$STAGE/kabmo.desktop.in" > "$ROOT/usr/share/applications/$PKG.desktop"
 chmod 644 "$ROOT/usr/share/applications/$PKG.desktop"
 

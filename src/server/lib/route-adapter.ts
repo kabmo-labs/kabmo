@@ -51,11 +51,22 @@ export function bindingsFor(module: RouteModule, path: string, options: MountOpt
  * exists, the verb does not. Keeping that shape means a mistyped client call
  * reports the real problem instead of looking like a missing endpoint.
  */
-export const methodNotAllowed: RouteHandler = () =>
-  new Response(JSON.stringify({ error: 'Method not allowed' }), {
+export const methodNotAllowed: RouteHandler = () => methodNotAllowedResponse();
+
+/**
+ * The same answer, typed as a `Response`.
+ *
+ * `RouteHandler` returns `unknown` because a handler may answer anything, and a
+ * route that declares `Promise<Response>` cannot return that: the widening is
+ * where a 405 would silently become "not a response". One function, so the two
+ * spellings cannot word the refusal differently.
+ */
+export function methodNotAllowedResponse(): Response {
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
     headers: { 'content-type': 'application/json; charset=utf-8' },
   });
+}
 
 /** Parse a JSON request body without throwing. Caller decides the status code. */
 export async function parseJsonBody<T = unknown>(

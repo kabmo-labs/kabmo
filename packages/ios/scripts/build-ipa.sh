@@ -90,6 +90,13 @@ chmod +x "$APP/Kabmo"
 # over the template would leave the file readable by a human and possibly invalid to
 # the installer.
 cp "$HERE/Resources/Info.plist" "$APP/Info.plist"
+# Linted BEFORE the version is written: the document types are a GENERATED region
+# spliced into this template, and a malformed one makes iOS refuse to install the
+# app with no message — the same reason the macOS build lints its plist.
+plutil -lint "$APP/Info.plist" >/dev/null || {
+  echo "build-ipa: Info.plist is not valid — the generated document types are malformed" >&2
+  exit 1
+}
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Info.plist"
 

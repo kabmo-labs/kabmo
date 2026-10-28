@@ -93,6 +93,179 @@
     <string>UIInterfaceOrientationLandscapeRight</string>
   </array>
 
+  <!--
+    The documents Kabmo can render. This is what puts it in the Files app's
+    "Share → Open in" and in another app's "Open with" list. GENERATED from
+    `release/document-types.mjs` by `scripts/shell-document-types.mjs`; never
+    hand-edited.
+  -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+<!-- BEGIN GENERATED document-types: run `bun run shell:docs` -->
+    <dict>
+      <key>CFBundleTypeName</key><string>PDF Document</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.adobe.pdf</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>pdf</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Word Document</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>org.openxmlformats.wordprocessingml.document</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>docx</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Excel Workbook</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>org.openxmlformats.spreadsheetml.sheet</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>xlsx</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Excel Macro-Enabled Workbook</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>org.openxmlformats.spreadsheetml.sheet.macroEnabled.12</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>xlsm</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Markdown Document</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>net.daringfireball.markdown</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>md</string>
+        <string>markdown</string>
+        <string>mdx</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>CSV Document</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.comma-separated-values-text</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>csv</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>TSV Document</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.tab-separated-values-text</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>tsv</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>SVG Image</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.svg-image</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>svg</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Image</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.image</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>png</string>
+        <string>jpg</string>
+        <string>jpeg</string>
+        <string>gif</string>
+        <string>webp</string>
+        <string>bmp</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>Plain Text</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.plain-text</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>txt</string>
+        <string>log</string>
+        <string>text</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>JSON Document</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.json</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>json</string>
+      </array>
+    </dict>
+<!-- END GENERATED document-types -->
+  </array>
+
+  <!--
+    A document opened from the Files app arrives as a security-scoped file URL
+    rather than a copy in this app's Inbox. That is what makes "Open in Kabmo"
+    work without duplicating a 20 MiB workbook, and the shell brackets its read
+    with `startAccessingSecurityScopedResource`/`stopAccessing…`.
+  -->
+  <key>LSSupportsOpeningDocumentsInPlace</key>
+  <true/>
+
   <key>UIRequiredDeviceCapabilities</key>
   <array>
     <string>arm64</string>

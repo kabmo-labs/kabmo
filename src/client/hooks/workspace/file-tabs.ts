@@ -20,6 +20,8 @@ export interface OpenFileInput {
   repo?: string;
   /** The live handle a PWA launch opened this file through, when there is one. */
   handleId?: string;
+  /** The bytes came from the device, not from a server path. */
+  deviceFile?: boolean;
 }
 
 /**
@@ -260,7 +262,7 @@ export function useFileTabs(
 
   // Global listeners for omp:open-file and omp:open-diff
   useKabmoEvent('omp:open-file', (e) => {
-    const customEvent = e as CustomEvent<{ path: string; name?: string; id?: number; content?: string; root?: string; repo?: string; handleId?: string }>;
+    const customEvent = e as CustomEvent<{ path: string; name?: string; id?: number; content?: string; root?: string; repo?: string; handleId?: string; deviceFile?: boolean }>;
     if (!customEvent.detail || !customEvent.detail.path) return;
 
     const rawPath = customEvent.detail.path.replace(/^\/+/, '');
@@ -276,6 +278,7 @@ export function useFileTabs(
       root: customEvent.detail.root,
       repo: customEvent.detail.repo,
       handleId: customEvent.detail.handleId,
+      deviceFile: customEvent.detail.deviceFile,
     });
   });
 

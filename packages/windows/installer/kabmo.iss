@@ -128,6 +128,13 @@ UninstallDisplayName={#AppName} {#AppVersion}
 CloseApplications=yes
 RestartApplications=no
 
+; The document associations below are `OpenWithProgids` entries, and Windows only
+; rebuilds its "Open with" menu when an installer says it changed associations.
+; Without this the entries land in the registry and Explorer keeps serving the
+; menu it cached until the next logon — measured behaviour, and the reason a
+; fresh install "did nothing".
+ChangesAssociations=yes
+
 [Tasks]
 ; A desktop shortcut is a choice, not a default: the Start-menu entry is enough
 ; for a console, and a shortcut nobody asked for is clutter on the desktop.
@@ -139,6 +146,11 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 ; `recursesubdirs` is what carries `server\` — the bundled Kabmo server the
 ; window starts on a machine with no `kabmo` on PATH.
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; The document types Kabmo can render — the files it appears in "Open with" for.
+; GENERATED from `release/document-types.mjs` by
+; `scripts/shell-document-types.mjs`; never hand-edited.
+#include "document-types.iss"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

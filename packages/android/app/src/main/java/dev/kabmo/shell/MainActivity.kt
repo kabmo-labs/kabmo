@@ -8,8 +8,11 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
+import android.util.Base64
 import android.webkit.CookieManager
 import android.webkit.WebView
+import java.util.concurrent.Executors
 
 /**
  * The shell: one full-screen WebView, and the back button.
@@ -86,6 +89,12 @@ class MainActivity : Activity() {
             // (that activity is not exported), so it arrives here instead.
             openSettings()
         }
+
+        // A document the user opened FROM another app ("Open with → Kabmo", or
+        // Share). Read here rather than in `onResume`, because the read is a
+        // one-shot grant on the intent: the URI permission belongs to THIS
+        // intent, and re-reading it later can fail.
+        deliverDocument(intent)
     }
 
     /**
@@ -96,7 +105,14 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent?.action == ACTION_OPEN_SETTINGS) openSettings()
+        if (intent?.action == ACTION_OPEN_SETTINGS) {
+            openSettings()
+            return
+        }
+        // A document opened while the console is already in front. `singleTask`
+        // delivers it here rather than creating a second Activity, so without
+        // this the tap would do nothing at all.
+        deliverDocument(intent)
     }
 
     override fun onResume() {
@@ -170,6 +186,10 @@ class MainActivity : Activity() {
      */
     override fun onDestroy() {
         UpdateFlow.dismissAll()
+        // The reader thread holds a content resolver and a reference to this
+        // Activity; leaving it alive past the instance is a leak, and its
+        // `webView.post` would land on a destroyed view.
+        io.shutdownNow()
         super.onDestroy()
     }
 
@@ -313,6 +333,11 @@ class MainActivity : Activity() {
             },
             onLoadFinished = {
                 applyLoading(loading.finished())
+                // A document that arrived before the console did — a cold start
+                // by "Open with" — has been waiting since `onCreate`, and this
+                // is the first moment a page can take it.
+                pageReady = true
+                flushPendingScripts()
                 // The console has painted, so `window.__kabmoPalette()` answers
                 // the ACTIVE theme. Stored for the next cold start — which is
                 // the only launch where the overlay has no page to ask — and
@@ -350,6 +375,172 @@ class MainActivity : Activity() {
     }
 
     private fun openSettings() = openSettingsScreen()
+
+    // ------------------------------------------------------- opened documents
+
+    /**
+     * A document another app handed over, read and pushed into the page.
+     *
+     * The bytes travel through the page because the console may be on ANOTHER
+     * machine: a phone's file exists only on the phone, so the server could
+     * never read it and `POST /api/fs/grant` would be granting a path nothing
+     * there has seen. The tab renders and is read-only, which is the honest
+     * model and what the editor's own banner says.
+     *
+     * The read runs off the UI thread — a 20 MiB document over a slow provider
+     * is not something to do on the main thread — and every chunk is posted back
+     * through `webView.post`, because `evaluateJavascript` must be called there.
+     */
+    private fun deliverDocument(intent: Intent?) {
+        // A shared TEXT ("Share → Kabmo" on a paragraph) carries no URI and no
+        // file, but the manifest lists `text/plain` for SEND — so a chooser entry
+        // that did nothing would be a promise the app cannot keep. It opens as a
+        // `shared.txt` tab instead, which is what the user was looking at.
+        val sharedText = sharedText(intent)
+        if (sharedText != null) {
+            deliverBytes(
+                DeviceFiles.displayName(null, null, "text/plain", fallback = "shared"),
+                "text/plain",
+                sharedText.toByteArray(Charsets.UTF_8),
+            )
+            return
+        }
+
+        val uri = documentUri(intent) ?: return
+        val counter = nextDelivery++
+        val id = DeviceFiles.deliveryId(counter)
+
+        io.execute {
+            val resolver = contentResolver
+            var name: String? = null
+            var size = 0L
+            val bytes: ByteArray? = try {
+                // `DISPLAY_NAME` is the only place the real filename exists: a
+                // content URI carries an opaque id, and the segment at its end
+                // is often `document/1234`.
+                resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex >= 0 && !cursor.isNull(nameIndex)) name = cursor.getString(nameIndex)
+                        val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                        if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
+                    }
+                }
+                resolver.openInputStream(uri)?.use { it.readBytes() }
+            } catch (error: Exception) {
+                // A revoked grant, a provider that went away, a file another app
+                // is rewriting: all of them are "could not read it", and the
+                // shell says so where the user is looking.
+                null
+            }
+
+            val mimeType = resolver.getType(uri)
+            val resolved = DeviceFiles.displayName(name, uri.lastPathSegment, mimeType)
+            if (bytes == null) {
+                // Announcing a file whose bytes could not be read would open an
+                // EMPTY tab named after it, which reads as "the file is empty"
+                // rather than "it could not be read".
+                runOnUiThread { showOpenFailure(resolved) }
+                return@execute
+            }
+            val announced = DeviceFiles.Meta(id, resolved, mimeType, if (size > 0) size else bytes.size.toLong())
+            runOnUiThread { sendBytes(id, announced, bytes) }
+        }
+    }
+
+    /** A shared paragraph or link, when the intent carries text and no file. */
+    private fun sharedText(intent: Intent?): String? {
+        if (intent?.action != DeviceFiles.ACTION_SEND) return null
+        @Suppress("DEPRECATION")
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
+        return text?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * A document that came as BYTES rather than a URI — a shared text.
+     *
+     * It skips the resolver entirely, so it lands on the UI thread already and
+     * only has to be announced and streamed.
+     */
+    private fun deliverBytes(name: String, mimeType: String, bytes: ByteArray) {
+        val id = DeviceFiles.deliveryId(nextDelivery++)
+        val meta = DeviceFiles.Meta(id, name, mimeType, bytes.size.toLong())
+        sendBytes(id, meta, bytes)
+    }
+
+    /** Announce one file and stream its base64, chunked, to the page. */
+    private fun sendBytes(id: String, meta: DeviceFiles.Meta, bytes: ByteArray) {
+        val scripts = ArrayList<String>(2)
+        scripts.add(DeviceFiles.announceScript(listOf(meta)))
+        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        val pieces = DeviceFiles.chunks(base64)
+        pieces.forEachIndexed { index, piece ->
+            scripts.add(DeviceFiles.chunkScript(id, piece, index == pieces.lastIndex))
+        }
+        sendToPage(scripts)
+    }
+
+    private fun showOpenFailure(name: String) {
+        if (isFinishing || isDestroyed) return
+        android.widget.Toast.makeText(this, getString(R.string.open_failed, name), android.widget.Toast.LENGTH_LONG).show()
+    }
+
+    /**
+     * The file one intent names, if it names one.
+     *
+     * Two actions, because a file reaches an app two ways: `VIEW` is "open this
+     * with…" from a file manager, and `SEND` is the share sheet. `SEND` puts its
+     * payload in `EXTRA_STREAM` (a content URI) — its `EXTRA_TEXT` form is
+     * handled separately, because it names no file at all.
+     */
+    private fun documentUri(intent: Intent?): Uri? {
+        if (intent == null) return null
+        return when (intent.action) {
+            DeviceFiles.ACTION_VIEW -> intent.data
+            DeviceFiles.ACTION_SEND -> @Suppress("DEPRECATION") (intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri)
+            else -> null
+        }
+    }
+
+    /**
+     * Hand scripts to the page, or hold them until it exists.
+     *
+     * A COLD START by document is the case that matters: the app was launched
+     * because of the file, so the console has not loaded yet and
+     * `evaluateJavascript` would drop every script into a blank document. The
+     * queue is drained on the first finished load — the same rule the desktop
+     * shells apply to a launch.
+     */
+    private fun sendToPage(scripts: List<String>) {
+        if (isFinishing || isDestroyed) return
+        if (!pageReady) {
+            pendingScripts.addAll(scripts)
+            return
+        }
+        for (script in scripts) webView.evaluateJavascript(script, null)
+    }
+
+    private fun flushPendingScripts() {
+        if (pendingScripts.isEmpty()) return
+        val scripts = ArrayList(pendingScripts)
+        pendingScripts.clear()
+        for (script in scripts) {
+            if (isFinishing || isDestroyed) return
+            webView.evaluateJavascript(script, null)
+        }
+    }
+
+    /** True once a page has finished a load, so a script has somewhere to land. */
+    private var pageReady = false
+
+    /** Scripts a document produced before the console existed. */
+    private val pendingScripts = ArrayList<String>()
+
+    /** One delivery per open, so sharing the same file twice opens two tabs. */
+    private var nextDelivery = 0
+
+    /** Reads a document off the main thread; the chunk post goes back to it. */
+    private val io = Executors.newSingleThreadExecutor()
 
     private fun showFileChooser(callback: android.webkit.ValueCallback<Array<Uri>>) {
         // The WebView's chooser is delegated to the system picker. `*/*` rather

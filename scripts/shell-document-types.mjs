@@ -1,0 +1,318 @@
+#!/usr/bin/env node
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Render the FIVE platform declarations of Kabmo's document types from the one
+ * table in `release/document-types.mjs`.
+ *
+ * One source, because each artifact is a file a person could edit and they
+ * drifted the moment one was — and the drift is silent: the app still installs,
+ * it simply stops appearing in "Open with" for a format added later.
+ *
+ *   --plist    the `CFBundleDocumentTypes` array CONTENTS for the macOS bundle
+ *              (injected by `packages/macos/scripts/build-app.sh`)
+ *   --mime     the `MimeType=` value for the Linux `.desktop` entry
+ *   --iss      the `[Registry]` block for the Windows installer
+ *   --android  the `intent-filter` blocks for `AndroidManifest.xml`
+ *   --ios      the `CFBundleDocumentTypes` array CONTENTS for the iOS bundle
+ *   --write    write every GENERATED file: the Windows `.iss`, the region of
+ *              `AndroidManifest.xml` between its markers, and the region of
+ *              `Resources/Info.plist` between its markers
+ *   --check    exit 1 when any of them is stale (the CI gate)
+ *
+ * The two mobile declarations are SPLICED between markers rather than written
+ * whole, because neither platform can include a fragment: Android has no
+ * manifest include, and an iOS `Info.plist` is one dictionary. A marked region
+ * is the smallest thing that is both generated and reviewable — the rest of
+ * each file stays hand-written, and the markers say which half is which.
+ *
+ * Usage:
+ *   node scripts/shell-document-types.mjs --plist
+ *   node scripts/shell-document-types.mjs --mime
+ *   node scripts/shell-document-types.mjs --android
+ *   node scripts/shell-document-types.mjs --ios
+ *   node scripts/shell-document-types.mjs --write
+ *   node scripts/shell-document-types.mjs --check
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { HANDLED_DOCUMENTS, documentExtensions, documentMimes } from '../release/document-types.mjs';
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ISS_PATH = path.join(REPO, 'packages/windows/installer/document-types.iss');
+const ANDROID_MANIFEST = path.join(REPO, 'packages/android/app/src/main/AndroidManifest.xml');
+const IOS_PLIST = path.join(REPO, 'packages/ios/Resources/Info.plist');
+
+/** The markers a generated region sits between, in a hand-written XML file. */
+export const BEGIN_MARKER = '<!-- BEGIN GENERATED document-types: run `bun run shell:docs` -->';
+export const END_MARKER = '<!-- END GENERATED document-types -->';
+
+/** XML-escape a value for the plist. */
+function xml(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * The `CFBundleDocumentTypes` array's contents.
+ *
+ * `CFBundleTypeRole: Viewer` and `LSHandlerRank: Alternate` are the pair that
+ * makes Kabmo an OPTION in the Open With menu rather than the thing that steals
+ * every `.pdf` on the machine. `LSHandlerRank: Alternate` is also what stops
+ * LaunchServices from ever selecting it by default when another app claims the
+ * type.
+ */
+export function plistFragment() {
+  return HANDLED_DOCUMENTS.map((entry) => {
+    const extensions = entry.extensions.map((extension) => `        <string>${xml(extension)}</string>`).join('\n');
+    return [
+      '    <dict>',
+      `      <key>CFBundleTypeName</key><string>${xml(entry.name)}</string>`,
+      '      <key>CFBundleTypeRole</key><string>Viewer</string>',
+      '      <key>LSHandlerRank</key><string>Alternate</string>',
+      '      <key>LSItemContentTypes</key>',
+      '      <array>',
+      `        <string>${xml(entry.uti)}</string>`,
+      '      </array>',
+      '      <key>CFBundleTypeExtensions</key>',
+      '      <array>',
+      extensions,
+      '      </array>',
+      '    </dict>',
+    ].join('\n');
+  }).join('\n');
+}
+
+/** The `MimeType=` value: a semicolon-separated list, trailing `;` per the spec. */
+export function mimeList() {
+  return `${documentMimes().join(';')};`;
+}
+
+/**
+ * The installer's `[Registry]` block.
+ *
+ * Two halves, and both are needed for "Open With" to list the app at all:
+ *
+ * - `Applications\Kabmo.exe` registers the executable as a program Windows will
+ *   offer (that key is what fills the "Choose another app" list);
+ * - `<ext>\OpenWithProgids` adds Kabmo as an OPTION for the extension WITHOUT
+ *   touching the extension's default value — `Progid` would take the type over,
+ *   which is the one thing this feature must never do.
+ *
+ * `ChangesAssociations=yes` in `[Setup]` is what makes Windows refresh its
+ * association cache after the install; without it Explorer keeps serving the
+ * old menu until the next logon.
+ */
+export function issBlock() {
+  const extensions = documentExtensions();
+  const lines = [
+    '; @license',
+    '; SPDX-License-Identifier: Apache-2.0',
+    ';',
+    '; GENERATED by scripts/shell-document-types.mjs from release/document-types.mjs.',
+    '; Never hand-edit: `bun run shell:docs:check` fails when this file is stale.',
+    '',
+    '[Registry]',
+    '; The program entry "Open with" lists. `Applications\\Kabmo.exe` is what',
+    '; Windows reads to build that menu; the FriendlyAppName is the label it shows.',
+    'Root: HKCU; Subkey: "Software\\Classes\\Applications\\{#AppExe}"; ValueType: string; ' +
+      'ValueName: "FriendlyAppName"; ValueData: "{#AppName}"; Flags: uninsdeletekey',
+    'Root: HKCU; Subkey: "Software\\Classes\\Applications\\{#AppExe}\\shell\\open\\command"; ' +
+      'ValueType: string; ValueName: ""; ValueData: """{app}\\{#AppExe}"" ""%1"""; Flags: uninsdeletekey',
+  ];
+  for (const extension of extensions) {
+    lines.push(
+      `Root: HKCU; Subkey: "Software\\Classes\\.${extension}\\OpenWithProgids"; ` +
+        `ValueType: string; ValueName: "{#AppExe}"; ValueData: ""; Flags: uninsdeletevalue`,
+    );
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * The Android `intent-filter` blocks.
+ *
+ * TWO filters, not one per type, and the reason is how Android matches: every
+ * `<data>` inside ONE filter is OR'd for `mimeType`, so a single filter can
+ * claim the whole list — and two of them are needed because `VIEW` ("open
+ * this with…" from a file manager) and `SEND` (the share sheet) are different
+ * actions. A third would be needed for `EDIT`, and Kabmo is not an editor of
+ * these documents: it renders them, and its tabs are read-only for a file the
+ * device supplied.
+ *
+ * `DEFAULT` + `BROWSABLE` are what make the app appear in a chooser at all;
+ * `BROWSABLE` is required because the URI arrives from another app. There is
+ * deliberately no `android:priority`: a higher one makes Kabmo the preferred
+ * handler, which is the same overreach as `CFBundleTypeRole: Owner`.
+ *
+ * The MIME list is the table's, which means a format Android's own
+ * `MimeTypeMap` does not know (`.md` on some devices) will not offer Kabmo —
+ * an honest gap, because declaring `application/octet-stream` to catch it would
+ * put Kabmo in the chooser for every unknown file on the phone.
+ */
+export function androidFilters() {
+  const data = documentMimes()
+    .map((mime) => `      <data android:mimeType="${xml(mime)}" />`)
+    .join('\n');
+  // `BROWSABLE` belongs to `VIEW` only: it is what lets a link from a browser or
+  // a Downloads entry reach the app. A share carries no browsable URI, and the
+  // category there would be a claim about the intent that is not true.
+  const filter = (action, categories) =>
+    [
+      '    <intent-filter>',
+      `      <action android:name="android.intent.action.${action}" />`,
+      ...categories.map((category) => `      <category android:name="android.intent.category.${category}" />`),
+      data,
+      '    </intent-filter>',
+    ].join('\n');
+  return `${filter('VIEW', ['DEFAULT', 'BROWSABLE'])}\n${filter('SEND', ['DEFAULT'])}`;
+}
+
+/**
+ * The iOS `CFBundleDocumentTypes` array CONTENTS.
+ *
+ * The same shape macOS uses, and the same two keys decide the behaviour:
+ * `CFBundleTypeRole: Viewer` (show it, do not own it) and
+ * `LSHandlerRank: Alternate` (an option in the Files app's "Share → Open in",
+ * never the app a `.pdf` opens in by itself).
+ */
+export function iosPlistFragment() {
+  return HANDLED_DOCUMENTS.map((entry) => {
+    const extensions = entry.extensions.map((extension) => `        <string>${xml(extension)}</string>`).join('\n');
+    return [
+      '    <dict>',
+      `      <key>CFBundleTypeName</key><string>${xml(entry.name)}</string>`,
+      '      <key>CFBundleTypeRole</key><string>Viewer</string>',
+      '      <key>LSHandlerRank</key><string>Alternate</string>',
+      '      <key>LSItemContentTypes</key>',
+      '      <array>',
+      `        <string>${xml(entry.uti)}</string>`,
+      '      </array>',
+      '      <key>CFBundleTypeExtensions</key>',
+      '      <array>',
+      extensions,
+      '      </array>',
+      '    </dict>',
+    ].join('\n');
+  }).join('\n');
+}
+
+/**
+ * Replace the region between the markers, or fail loudly.
+ *
+ * A file whose markers were removed by a hand edit must FAIL rather than be
+ * appended to: silently writing nothing leaves a manifest that never offers the
+ * app, which is indistinguishable from a working one until a user tries.
+ */
+export function splice(content, block, file) {
+  const begin = content.indexOf(BEGIN_MARKER);
+  const end = content.indexOf(END_MARKER);
+  if (begin < 0 || end < 0 || end < begin) {
+    throw new Error(`${file} has no generated region (markers ${begin < 0 ? 'BEGIN missing' : 'END missing'})`);
+  }
+  return `${content.slice(0, begin + BEGIN_MARKER.length)}\n${block}\n${content.slice(end)}`;
+}
+
+/**
+ * The generated region's current contents, or null when the markers are gone.
+ *
+ * Only the newline `splice` puts on either side is stripped — NOT `trim()`.
+ * Trimming eats the first line's indentation, so the region read back from a
+ * correct file disagreed with the block that produced it and the staleness gate
+ * reported a file it had just written (measured).
+ */
+export function regionOf(content) {
+  const begin = content.indexOf(BEGIN_MARKER);
+  const end = content.indexOf(END_MARKER);
+  if (begin < 0 || end < begin) return null;
+  return content
+    .slice(begin + BEGIN_MARKER.length, end)
+    .replace(/^\r?\n/, '')
+    .replace(/\r?\n$/, '');
+}
+
+/** Every file `--write` owns, as [path, expected content]. */
+export function generatedFiles() {
+  const android = fs.readFileSync(ANDROID_MANIFEST, 'utf8');
+  const ios = fs.readFileSync(IOS_PLIST, 'utf8');
+  return [
+    { path: ISS_PATH, expected: issBlock(), label: 'packages/windows/installer/document-types.iss' },
+    {
+      path: ANDROID_MANIFEST,
+      expected: splice(android, androidFilters(), 'AndroidManifest.xml'),
+      label: 'packages/android/app/src/main/AndroidManifest.xml',
+    },
+    {
+      path: IOS_PLIST,
+      expected: splice(ios, iosPlistFragment(), 'Info.plist'),
+      label: 'packages/ios/Resources/Info.plist',
+    },
+  ];
+}
+
+function main(argv) {
+  if (argv.includes('--plist')) {
+    process.stdout.write(plistFragment());
+    return 0;
+  }
+  if (argv.includes('--mime')) {
+    process.stdout.write(mimeList());
+    return 0;
+  }
+  if (argv.includes('--iss')) {
+    process.stdout.write(issBlock());
+    return 0;
+  }
+  if (argv.includes('--android')) {
+    process.stdout.write(androidFilters());
+    return 0;
+  }
+  if (argv.includes('--ios')) {
+    process.stdout.write(iosPlistFragment());
+    return 0;
+  }
+
+  const files = generatedFiles();
+
+  if (argv.includes('--write')) {
+    for (const file of files) {
+      fs.writeFileSync(file.path, file.expected);
+      process.stdout.write(`wrote ${file.label}\n`);
+    }
+    return 0;
+  }
+
+  if (argv.includes('--check')) {
+    const stale = files.filter((file) => {
+      const actual = fs.existsSync(file.path) ? fs.readFileSync(file.path, 'utf8') : '';
+      return actual !== file.expected;
+    });
+    if (stale.length > 0) {
+      for (const file of stale) {
+        process.stderr.write(`${file.label} is stale — run \`bun run shell:docs\`.\n`);
+      }
+      return 1;
+    }
+    process.stdout.write('document types are up to date\n');
+    return 0;
+  }
+
+  process.stderr.write(
+    'usage: shell-document-types.mjs --plist|--mime|--iss|--android|--ios|--write|--check\n',
+  );
+  return 2;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+  process.exit(main(process.argv.slice(2)));
+}

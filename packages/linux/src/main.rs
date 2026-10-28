@@ -34,6 +34,7 @@ use webkit2gtk::{
 };
 
 use kabmo_desktop::bridge::{bootstrap_script, parse_call, reply_script, DesktopInfo};
+use kabmo_desktop::open_paths::{launch_paths, open_paths_script, OpenPathQueue};
 use kabmo_desktop::APP_NAME;
 use kabmo_desktop::palette::ShellPalette;
 use kabmo_desktop::persisted::{read_state, write_state};
@@ -76,12 +77,83 @@ fn main() {
     gtk::glib::set_prgname(Some(APP_NAME));
     gtk::glib::set_application_name(APP_NAME);
 
+    // `HANDLES_OPEN` is what makes this app a DOCUMENT handler: without it a
+    // file manager's "Open With" starts a second process that ignores the file,
+    // and `GApplication` logs "This application can not open files". With it, a
+    // launch that carried files emits `open` INSTEAD of `activate`, so both
+    // signals have to build the shell — see `ensure_shell`.
     let app = gtk::Application::new(
         Some("dev.kabmo.desktop"),
-        gtk::gio::ApplicationFlags::FLAGS_NONE,
+        gtk::gio::ApplicationFlags::HANDLES_OPEN,
     );
-    app.connect_activate(|app| Shell::new(app).start());
+
+    // argv, captured BEFORE any GTK object exists: `Kabmo report.pdf` is what a
+    // desktop entry's `%F` produces, and `std::env::args` is only trustworthy
+    // this early.
+    let launch = launch_paths(&std::env::args().collect::<Vec<_>>());
+
+    // One shell for the process, built by whichever signal arrives first. A
+    // `RefCell` rather than a `OnceCell` because the open handler also needs to
+    // reach it, and `Rc` because GTK callbacks are single-threaded.
+    //
+    // The application handle is CLONED into a shared cell rather than taken from
+    // a signal's own parameter: `connect_open` hands the closure `&Self`, and
+    // depending on that type would make this file compile only for one spelling
+    // of the trait. A clone is the same object and needs no inference.
+    let shell: Rc<RefCell<Option<Rc<Shell>>>> = Rc::new(RefCell::new(None));
+    let application = Rc::new(app.clone());
+
+    {
+        let shell = shell.clone();
+        let application = application.clone();
+        let launch = launch.clone();
+        app.connect_activate(move |_app| {
+            ensure_shell(&application, &shell, &launch);
+        });
+    }
+    {
+        let shell = shell.clone();
+        let application = application.clone();
+        app.connect_open(move |_app, files, _hint| {
+            let paths: Vec<String> = files
+                .iter()
+                .filter_map(|file| file.path().map(|path| path.to_string_lossy().to_string()))
+                .collect();
+            // The argv batch is queued by `ensure_shell`, which runs once — so a
+            // later activation from the dock cannot re-queue the file the app was
+            // LAUNCHED with. What arrives here is always new.
+            ensure_shell(&application, &shell, &[]);
+            if let Some(built) = shell.borrow().as_ref() {
+                built.queue_launch_paths(&paths);
+            }
+        });
+    }
+
     app.run();
+}
+
+/// The shell for this process, building it on first use.
+///
+/// A launch that carried files arrives as `open` and never as `activate`, so a
+/// shell built only from `activate` would be missing exactly when the user
+/// double-clicked a document. `launch` is queued only when the shell is actually
+/// built, which is what keeps a later activation from reopening the file the app
+/// started with.
+fn ensure_shell(
+    app: &gtk::Application,
+    slot: &Rc<RefCell<Option<Rc<Shell>>>>,
+    launch: &[String],
+) -> Rc<Shell> {
+    if let Some(shell) = slot.borrow().as_ref() {
+        return shell.clone();
+    }
+    let shell = Rc::new(Shell::new(app));
+    *slot.borrow_mut() = Some(shell.clone());
+    shell.start();
+    if !launch.is_empty() {
+        shell.queue_launch_paths(launch);
+    }
+    shell
 }
 
 struct Shell {
@@ -102,6 +174,16 @@ struct Shell {
     /// The last press the webview saw, so the bar's menu opens where the user
     /// clicked rather than at the pointer's current position.
     last_press: Rc<RefCell<Option<gdk::Event>>>,
+    /// True once a page has finished a load, so a flush is worth attempting.
+    ///
+    /// A shared `Cell` because the navigation callback owns the only place it
+    /// changes, and the `open` signal reads it from outside.
+    page_ready: Rc<Cell<bool>>,
+    /// The files the OS handed over that the page has not taken yet.
+    ///
+    /// On the shell (and shared with `main`) rather than owned by `main`: a
+    /// flush needs the queue and the view together, and `Shell` owns the view.
+    opened: Rc<RefCell<OpenPathQueue>>,
     info: DesktopInfo,
 }
 
@@ -150,6 +232,8 @@ impl Shell {
             current_url: Rc::new(RefCell::new(String::new())),
             shown_uri: Rc::new(RefCell::new(None)),
             last_press: Rc::new(RefCell::new(None)),
+            page_ready: Rc::new(Cell::new(false)),
+            opened: Rc::new(RefCell::new(OpenPathQueue::new())),
             info: DesktopInfo::default(),
         };
         shell.wire();
@@ -161,6 +245,18 @@ impl Shell {
         // The splash covers the window until the first probe answers; this is
         // what moves it to the server the user was last on.
         self.boot();
+    }
+
+    /// Queue files the OS handed over and hand them to the page if it can take
+    /// them yet.
+    ///
+    /// Called from `activate` and `open` — whichever the launch produced — and
+    /// the queue is drained on a finished load, because that is the first moment
+    /// a page can answer. Before that the paths simply wait, which is what makes
+    /// a cold start work: the file exists before the console does.
+    fn queue_launch_paths(&self, paths: &[String]) {
+        self.opened.borrow_mut().add(paths);
+        flush_queued_paths(&self.view, &self.opened, &self.page_ready);
     }
 
     // ---------------------------------------------------------------- wiring
@@ -282,6 +378,11 @@ impl Shell {
         // persist) and the splash (to repaint), and both outlive the callback.
         let store_for_palette = self.store.clone();
         let splash_for_palette = self.splash.clone();
+        // The queue and the view, cloned for the callback: a flush needs both and
+        // the closure outlives this borrow.
+        let page_ready_for_open = self.page_ready.clone();
+        let opened_for_flush = self.opened.clone();
+        let view_for_flush = self.view.clone();
         self.view.connect_load_changed(move |view, event| {
             match event {
                 webkit2gtk::LoadEvent::Started => {
@@ -332,6 +433,12 @@ impl Shell {
                     // Settings is exactly the case where the stored palette is
                     // stale and the splash it describes is on screen.
                     read_palette(view, &store_for_palette, &splash_for_palette);
+                    // A page can take the files the OS handed over only once it
+                    // exists. The launch batch was queued before the window was
+                    // built, and a warm open can land before the current
+                    // navigation settles — both are drained here.
+                    page_ready_for_open.set(true);
+                    flush_queued_paths(&view_for_flush, &opened_for_flush, &page_ready_for_open);
                 }
                 _ => {}
             }
@@ -512,6 +619,27 @@ fn begin_load(
     *progress.borrow_mut() = Progress::connecting();
     splash.show_progress(*progress.borrow());
     view.load_uri(url);
+}
+
+/// Hand the queued files to the page, when there is a page.
+///
+/// `run_javascript` and not the bridge: the page's handler is a plain function
+/// (`window.__kabmoOpenPaths`), and the answer carries nothing this side needs —
+/// the console reports its own refusals, which is the only place a sentence
+/// about a file can be read.
+fn flush_queued_paths(
+    view: &WebView,
+    opened: &Rc<RefCell<OpenPathQueue>>,
+    page_ready: &Rc<Cell<bool>>,
+) {
+    if !page_ready.get() {
+        return;
+    }
+    let paths = opened.borrow_mut().take();
+    if paths.is_empty() {
+        return;
+    }
+    view.run_javascript(&open_paths_script(&paths), None::<&gtk::gio::Cancellable>, |_| {});
 }
 
 /// Strip the shell's own markers from a payload before it reaches the page.

@@ -5,6 +5,7 @@ import { fileExists } from '@/server/routes/fs/exists';
 import { serveRawFile } from '@/server/routes/fs/raw';
 import * as fsAction from '@/server/routes/fs/action';
 import * as fsGit from '@/server/routes/fs/git';
+import * as fsGrant from '@/server/routes/fs/grant';
 import * as fsReplace from '@/server/routes/fs/replace';
 import * as fsSearch from '@/server/routes/fs/search';
 import * as fsValidate from '@/server/routes/fs/validate';
@@ -12,6 +13,7 @@ import * as fsValidate from '@/server/routes/fs/validate';
 export const fsBindings: HandlerBinding[] = [
   ...bindingsFor(fsAction, '/api/fs/action'),
   ...bindingsFor(fsGit, '/api/fs/git'),
+  ...bindingsFor(fsGrant, '/api/fs/grant', { mutating: ['POST'] }),
   ...bindingsFor(fsReplace, '/api/fs/replace'),
   ...bindingsFor(fsSearch, '/api/fs/search'),
   ...bindingsFor(fsValidate, '/api/fs/validate'),

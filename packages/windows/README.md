@@ -255,6 +255,38 @@ The version is passed to the compiler as `/DAppVersion=<v>` from
 `version.properties`, never written into the `.iss`, and the workflow re-reads it
 off the built file's own `ProductVersion` before uploading.
 
+### Documents: "Open with" and a double-click
+
+Kabmo appears in Explorer's **Open with** menu for the types its editor can draw
+(PDF, DOCX, XLSX/XLSM, markdown, CSV/TSV, SVG, images, plain text, JSON), and a
+double-clicked document opens a tab in the console.
+
+`installer/document-types.iss` is GENERATED — from the one table in
+`release/document-types.mjs`, by `scripts/shell-document-types.mjs` — and
+`kabmo.iss` `#include`s it. Two halves, both needed:
+
+- `Software\Classes\Applications\Kabmo.exe` is the program entry Windows reads
+  to build that menu (`FriendlyAppName` is the label it shows);
+- `<ext>\OpenWithProgids` adds Kabmo as an OPTION per extension.
+
+**`OpenWithProgids`, never `Progid`.** The latter takes the extension OVER, and
+an installer that silently becomes the default handler for every `.pdf` on the
+machine is the one thing this feature must not do. `ChangesAssociations=yes` is
+what makes Windows rebuild its cached menu — without it the entries land in the
+registry and Explorer keeps serving the old list until the next logon, so a fresh
+install looks like it did nothing.
+
+The path arrives on the COMMAND LINE (`"%1"` in the association), which is why
+`ShellHost` reads `Environment.GetCommandLineArgs()` in its constructor and
+flushes on `NavigationCompleted` through `window.__kabmoOpenPaths`. The rules
+live in the LIBRARY (`src/KabmoDesktop/OpenPaths.cs`: `LaunchPaths.From`,
+`OpenPathQueue`, `OpenPathsScript.For`) so the suite drives them with no window —
+including the Windows-specific fact that a path always carries a backslash, so
+the script has to be built by the JSON serializer rather than by concatenation.
+
+The page then grants the file's own directory (`POST /api/fs/grant`) and opens a
+tab: a document on the Desktop is outside every workspace the fs routes may read.
+
 ## What is not done
 
 - **No signing.** The installer is unsigned: SmartScreen shows "Windows protected

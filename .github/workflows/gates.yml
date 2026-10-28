@@ -96,6 +96,15 @@ jobs:
       - name: Check the shells' wordmark copies
         run: bun run scripts/shell-wordmark.mjs --check
 
+      # The shells' document-type declarations are GENERATED from
+      # `release/document-types.mjs` — the macOS and iOS plist fragments, the
+      # Linux `MimeType=` list, the Windows installer's `[Registry]` block and
+      # the Android manifest's intent filters. Each drifts SILENTLY: the app
+      # still installs, it simply stops appearing in "Open with" for a format
+      # added later.
+      - name: Check the shell document types
+        run: bun run scripts/shell-document-types.mjs --check
+
       # The editor theme catalogue is GENERATED from the installed
       # `@shikijs/themes`. A stale copy still renders the picker — with colours
       # the installed package no longer ships — so a `@shikijs/themes` bump must

@@ -326,6 +326,58 @@ Commands: `desktop_info`, `servers_state`, `servers_add`, `servers_remove`,
 no capability file and no per-origin allowance: the shell owns the webview, so
 the page cannot be anything but one this window chose to load.
 
+## Documents opened from Finder
+
+Kabmo registers itself as a **viewer** for the types its editor can draw — PDF,
+DOCX, XLSX/XLSM, markdown, CSV/TSV, SVG, raster images, plain text and JSON — so
+a double-click, a drop on the Dock icon, or "Open With → Kabmo" opens a tab in
+the console.
+
+`CFBundleDocumentTypes` in `Info.plist` is the declaration, and it is GENERATED
+from `release/document-types.mjs` by `scripts/shell-document-types.mjs`
+(`build-app.sh` injects it with `sed`'s `r` command, because the fragment is
+multi-line and holds `&`, `\` and `/`). Two keys decide the behaviour:
+
+- `CFBundleTypeRole: Viewer` — Kabmo can show the file, it does not own it;
+- `LSHandlerRank: Alternate` — it is an OPTION in the menu and is never selected
+  as the default when another app claims the type.
+
+An `Owner` role here would make Kabmo the app every PDF on the machine opens in,
+which is not a decision an installer gets to make. `build-app.sh` then
+`plutil -lint`s the assembled plist: a malformed one makes macOS refuse to
+LAUNCH the app, with no message anywhere.
+
+Verified: after `lsregister -f build/Kabmo.app`,
+`NSWorkspace.URLsForApplicationsToOpenURL` for a `.pdf` lists the bundle beside
+Preview and Chrome.
+
+### How the paths reach the page
+
+No browser API can see a launch — a `WKWebView` gets no `File` for
+`openFiles:`, and `launchQueue` is Chromium-only — so the shell collects the
+paths and hands them over:
+
+- `applicationWillFinishLaunching` queues `launchPaths(from:)`, which is how
+  `open -a Kabmo report.pdf` arrives (the path is on argv, not in `openFiles:`);
+- `application(_:openFiles:)` queues a double-click, and answers `.success`
+  unconditionally: a file the editor refuses belongs on the console where the
+  sentence can be read, not in Finder's own error dialog;
+- both are flushed on `didFinish`, the first moment a page can answer, through
+  `window.__kabmoOpenPaths(paths)`.
+
+`OpenPathQueue` (`OpenPaths.swift`) **takes** and **de-duplicates**: a taken
+batch is gone, so a reload cannot reopen the file the user closed, and the same
+path arriving twice (a second activation, `open -a` delivering it on argv AND
+through `openFiles:`) opens one tab. The script is built by
+`JSONSerialization`, never by interpolation — a filename may contain a quote or
+a backslash, and `packages/macos/TestsWindow/OpenPathsWindowTests.swift` drives a
+batch carrying both into a real web view and asserts the page receives those
+exact strings.
+
+The page then grants the file's own directory (`POST /api/fs/grant`, see
+AGENTS.md) and opens a tab, because a file in `~/Desktop` is outside every
+workspace the fs routes are allowed to read.
+
 ## File drops carry no path, so the shell reads the pasteboard
 
 Dropping a file from Finder onto the editor did nothing: it was refused with
@@ -374,7 +426,7 @@ fails and the drop's own payload decides, which is the pre-existing behaviour.
 cd packages/macos
 swift build                              # library + app + test runners
 scripts/build-app.sh                     # → build/Kabmo.app
-swift run kabmo-desktop-tests            # the rules: 47 checks, no window needed
+swift run kabmo-desktop-tests            # the rules: 204 checks, no window needed
 swift run kabmo-desktop-window-tests     # the drag contract, on a real window
 ```
 
@@ -455,6 +507,11 @@ pins it.
 
 ## What is not done
 
+- **A document opened from Finder still needs the console to be running.** The
+  shell hands the path to the page, and the page opens a tab through
+  `POST /api/fs/grant` — but if no server is up, the shell's own server picker is
+  what the user sees, and the file waits in `OpenPathQueue` until a console
+  loads. It is not lost; it is simply deferred.
 - **Not signed or notarised.** `build-app.sh` ad-hoc signs (`codesign -s -`),
   which is enough to run locally, and the release asset carries that same ad-hoc
   signature. A person downloading it must allow it once in System Settings →

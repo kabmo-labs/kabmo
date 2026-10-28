@@ -4,9 +4,22 @@ Version=1.0
 Name=Kabmo
 GenericName=AI Agent Console
 Comment=Web console and diagnostic workbench for AI coding agents
-Exec=@EXEC@
+# `%F` takes the FILES a file manager hands over (a double-click, a multi-select
+# "Open With", a drop on the launcher) and passes them as arguments — which is
+# what makes Kabmo a document handler rather than only an app you start. `%f`
+# would take exactly one; `%F` is the plural form the spec defines for "any
+# number of files".
+#
+# A COMMENT LINE IN THIS FORMAT STARTS WITH `#`, never `;` — `;` is the list
+# separator inside a value, and a line starting with it is an unparseable key
+# that `desktop-file-validate` rejects, which fails the launcher SILENTLY.
+Exec=@EXEC@ %F
 TryExec=@TRY_EXEC@
 Icon=@ICON@
+# The types Kabmo can render, filled in from `release/document-types.mjs` by
+# `install.sh`. Without this line the entry never appears in "Open With" — the
+# MimeType key is what the desktop environment matches a file against.
+MimeType=@MIMETYPES@
 Terminal=false
 Categories=Development;
 Keywords=kabmo;ai;agent;console;terminal;

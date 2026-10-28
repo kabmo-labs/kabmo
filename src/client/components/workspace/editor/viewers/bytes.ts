@@ -29,6 +29,7 @@
  * breaking a second read.
  */
 
+import { deviceFileFor } from '@/client/lib/launch/device-files';
 import { fileHandleFor } from '@/client/lib/launch/file-handlers';
 import { getRawContentType } from '@/shared/lib/fs/file-kind';
 
@@ -99,6 +100,21 @@ export function byteSourceFor(target: {
         if (!res.ok) throw new Error(await readRefusalReason(res));
         return res.arrayBuffer();
       },
+    };
+  }
+  // The device registry comes first: a document a PHONE handed over has no
+  // handle and no server path — its bytes were pushed into the page by the
+  // shell (`client/lib/launch/device-files.ts`), and that map is the only copy.
+  const delivered = deviceFileFor(target.handleId);
+  if (delivered) {
+    const { bytes } = delivered;
+    return {
+      id: target.handleId as string,
+      url: null,
+      mimeType: delivered.mimeType ?? mimeType,
+      // A fresh `ArrayBuffer` per call, like every other source here: a parser
+      // may detach or transfer it, and the registry must survive a second read.
+      loadBytes: async () => bytes.slice().buffer as ArrayBuffer,
     };
   }
   const handle = fileHandleFor(target.handleId);

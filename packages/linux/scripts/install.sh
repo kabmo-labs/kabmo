@@ -101,6 +101,13 @@ install -m 644 "$HERE/kabmo.png" "$ICON_DEST"
 # the template forgot to use fails the check below instead of silently shipping an
 # entry that launches nothing.
 EXEC_ARG="$(exec_argument "$BIN_DEST")"
+# The MIME types Kabmo can render, from the file `build-app.sh` generated out of
+# `release/document-types.mjs` — the same table the macOS plist and the Windows
+# installer are rendered from. A list written here would be a fourth copy to keep
+# in step, and the drift is silent: the entry still installs, it simply never
+# appears in "Open With" for a format added later.
+[ -f "$HERE/mime-types.txt" ] || die "no mime-types.txt beside this script (run build-app.sh)"
+MIMETYPES="$(tr -d '\n' < "$HERE/mime-types.txt")"
 # `TryExec` is a PATH, never an argument list — quoting it would make the desktop
 # environment look for a file whose NAME starts with a quote.
 # `sed`'s replacement treats `&` and `\` specially, and a quoted path may contain
@@ -111,6 +118,7 @@ sed \
   -e "s|@EXEC@|$(sed_replacement "$EXEC_ARG")|g" \
   -e "s|@TRY_EXEC@|$(sed_replacement "$BIN_DEST")|g" \
   -e "s|@ICON@|$APP_ID|g" \
+  -e "s|@MIMETYPES@|$(sed_replacement "$MIMETYPES")|g" \
   "$HERE/kabmo.desktop.in" > "$ENTRY_DEST"
 
 # An unresolved token means the template and this script disagree, and the entry

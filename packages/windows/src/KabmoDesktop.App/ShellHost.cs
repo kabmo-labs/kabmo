@@ -35,6 +35,16 @@ public sealed class ShellHost
     /// <summary>The address the webview has FINISHED on, latched on completion.</summary>
     private string? _shownUrl;
     /// <summary>
+    /// The files the OS handed over that the page has not taken yet.
+    ///
+    /// Filled from the COMMAND LINE, which is how Windows delivers a document:
+    /// the installer registers the association against this executable and the
+    /// shell passes `"%1"`, so a double-click is a launch that carries a path.
+    /// </summary>
+    private readonly OpenPathQueue _opened = new();
+    /// <summary>True once a page has completed a navigation, so a flush is worth it.</summary>
+    private bool _pageReady;
+    /// <summary>
     /// The shell's own version, from the assembly — never a literal beside it.
     ///
     /// The page shows it and compares it against a published build, so a second
@@ -71,6 +81,11 @@ public sealed class ShellHost
         // render — a visible splash would sit BEHIND it. The splash is shown by
         // hiding the webview, which is the only way to cover an HWND host.
         RenderSplash(SplashState.Connecting);
+
+        // Captured before the window exists: a launch BY document has the path on
+        // argv and nothing else, and reading it here means the first navigation
+        // completion can hand it over instead of it arriving a reload late.
+        _opened.Add(LaunchPaths.From(Environment.GetCommandLineArgs()));
 
         _window.Loaded += (_, _) => _ = StartAsync();
         // Stop the children on the way out, without parking the UI thread.
@@ -314,12 +329,43 @@ public sealed class ShellHost
         // the navigation completing is the first moment the document is real.
         _shownUrl = _window.WebView.CoreWebView2?.Source;
         RenderSplash(_splashState.Finished());
+        // A page can take the files the OS handed over only once it exists. The
+        // launch batch was queued in the constructor, from the command line, and
+        // this is the first moment there is a document to hand it to.
+        _pageReady = true;
+        _ = FlushOpenPathsAsync();
         // The console has painted, so `window.__kabmoPalette()` answers the ACTIVE
         // theme. Stored for the next cold start — the only launch where the splash
         // has no page to ask — and applied to the live splash too, because a theme
         // changed in Settings is exactly the case where the stored palette is
         // stale and the splash it describes is on screen.
         _ = ReadPaletteAsync();
+    }
+
+    /// <summary>
+    /// Hand the queued files to the page.
+    ///
+    /// `ExecuteScriptAsync` and not the bridge: the page's handler is a plain
+    /// function (`window.__kabmoOpenPaths`), and the answer carries nothing this
+    /// side needs — the console reports its own refusals, which is the only place
+    /// a sentence about a file can be read.
+    /// </summary>
+    private async Task FlushOpenPathsAsync()
+    {
+        if (!_pageReady || _opened.IsEmpty) return;
+        var core = _window.WebView.CoreWebView2;
+        if (core is null) return;
+        var paths = _opened.Take();
+        if (paths.Count == 0) return;
+        try
+        {
+            await core.ExecuteScriptAsync(OpenPathsScript.For(paths));
+        }
+        catch (Exception)
+        {
+            // A webview that went away mid-script: the paths are lost, which is
+            // the same outcome as a page that never loaded.
+        }
     }
 
     /// <summary>

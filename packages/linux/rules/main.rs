@@ -22,6 +22,7 @@
 
 mod bridge;
 mod navigation;
+mod open_paths;
 mod palette;
 mod splash;
 mod store;
@@ -46,6 +47,7 @@ fn main() {
     system::cases(&mut r);
     navigation::cases(&mut r);
     update::cases(&mut r);
+    open_paths::cases(&mut r);
 
     println!("\n{}/{} checks passed", r.checks - r.failures, r.checks);
     std::process::exit(if r.failures == 0 { 0 } else { 1 });

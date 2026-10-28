@@ -15,8 +15,12 @@
  *    route to a writable file is `DataTransferItem.getAsFileSystemHandle()`,
  *    which is populated from the first `dragenter`.
  * 2. **A path or URL** handed over by a page (VS Code, a browser download) as
- *    `text/uri-list` / `text/plain`. That resolves through `/api/fs/scope`,
- *    because a path can be written back through the server.
+ *    `text/uri-list` / `text/plain`. That resolves through
+ *    `client/lib/fs/resolve-open`, because a path can be written back through the
+ *    server — and a file from `~/Desktop`, which no workspace contains, is
+ *    granted by the drop itself (`POST /api/fs/grant`) rather than refused. The
+ *    same resolver serves the OS-launch path, so a file dropped here and the same
+ *    file double-clicked in Finder behave identically.
  *
  * 3. **A Finder drag onto a DESKTOP SHELL's webview.** Neither of the above
  *    exists there: WebKit implements no `getAsFileSystemHandle` (WebKit bug
@@ -44,15 +48,7 @@ import { useDragPresence } from '@/client/hooks/ui/drag-presence';
 import { openHandleAsTab } from '@/client/lib/launch/file-handlers';
 import { readShellDroppedPaths } from '@/client/lib/desktop/dropped-paths';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
-
-/** What `/api/fs/scope` answers with. */
-interface FileScope {
-  root?: string;
-  path?: string;
-  name?: string;
-  kind?: 'image' | 'document' | 'text' | 'binary' | 'too-large';
-  error?: string;
-}
+import { resolveOpenableFile } from '@/client/lib/fs/resolve-open';
 
 export interface EditorDropResult {
   ok: boolean;
@@ -126,38 +122,25 @@ function isOpenableDrag(dataTransfer: DataTransfer | null | undefined): boolean 
 /**
  * Resolve one dropped reference and open it.
  *
- * Used for the path/URL shape. A Finder drag never reaches here — it has no
- * path — so this is the fallback rather than the primary.
+ * Used for the path/URL shape — a `text/uri-list` entry from a browser drag, and
+ * the paths a desktop shell read off its own pasteboard (a Finder drag gives a
+ * `WKWebView` no path at all, see `client/lib/desktop/dropped-paths.ts`).
+ *
+ * The scope resolution is shared with the OS-launch path (`resolve-open.ts`), so
+ * a file dropped from the Desktop and the same file opened from Finder both work
+ * — and both are refused with the same sentence when they cannot be.
  */
 async function openDroppedReference(
   reference: string,
   onResult: ((result: EditorDropResult) => void) | undefined,
 ): Promise<void> {
-  let res: Response;
-  try {
-    res = await fetch(`/api/fs/scope?path=${encodeURIComponent(reference)}`);
-  } catch {
-    onResult?.({ ok: false, message: 'Could not reach the console to open that file.' });
+  const resolved = await resolveOpenableFile(reference);
+  if (!resolved.ok) {
+    onResult?.({ ok: false, message: resolved.message });
     return;
   }
-
-  const body = (await res.json().catch(() => null)) as FileScope | null;
-  if (!res.ok || !body?.path || !body.root) {
-    onResult?.({ ok: false, message: body?.error ?? `Could not open that file (HTTP ${res.status}).` });
-    return;
-  }
-
-  // A file the editor cannot show is refused HERE, with the server's own
-  // sentence, rather than opened as a tab whose whole content is that sentence.
-  // A document (PDF/DOCX/XLSX) is NOT refused: its viewer fetches the bytes
-  // itself, so it opens like any other file.
-  if (body.kind === 'binary' || body.kind === 'too-large') {
-    onResult?.({ ok: false, message: body.error ?? `${body.name ?? 'That file'} cannot be opened here.` });
-    return;
-  }
-
-  openFileInEditor({ path: body.path, name: body.name, root: body.root });
-  onResult?.({ ok: true, message: `Opened ${body.name ?? body.path}` });
+  openFileInEditor({ path: resolved.file.path, name: resolved.file.name, root: resolved.file.root });
+  onResult?.({ ok: true, message: `Opened ${resolved.file.name}` });
 }
 
 /**

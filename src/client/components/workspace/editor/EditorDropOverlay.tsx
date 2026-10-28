@@ -18,7 +18,12 @@ export function EditorDropOverlay({ visible }: { visible: boolean }) {
     <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-ink/40 bg-canvas/90 text-ink">
       <UploadCloud size={18} className="text-ink/60" />
       <span className="text-[11px] font-semibold">Drop a file to open it</span>
-      <span className="text-[10px] text-ink/50">Inside a workspace the console can read</span>
+      {/* The old line promised "Inside a workspace the console can read", which
+          stopped being true when a drop started granting its own directory
+          (`client/lib/fs/resolve-open.ts`) — the file may live anywhere the user
+          can reach, and the sentence has to say so or it contradicts the gesture
+          that works. */}
+      <span className="text-[10px] text-ink/50">Any file this console can read</span>
     </div>
   );
 }

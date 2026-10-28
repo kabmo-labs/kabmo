@@ -40,6 +40,7 @@ VERSION="${4:?usage: package-appimage.sh <staged-dir> <output-dir> <arch> <versi
 [ -x "$STAGE/Kabmo" ] || { echo "package-appimage: no binary at $STAGE/Kabmo" >&2; exit 1; }
 [ -f "$STAGE/kabmo.png" ] || { echo "package-appimage: no icon at $STAGE/kabmo.png" >&2; exit 1; }
 [ -f "$STAGE/kabmo.desktop.in" ] || { echo "package-appimage: no launcher template" >&2; exit 1; }
+[ -f "$STAGE/mime-types.txt" ] || { echo "package-appimage: no MimeType list beside the template (run build-app.sh)" >&2; exit 1; }
 
 PKG=kabmo
 NAME="Kabmo-${VERSION}-linux-${AI_ARCH}"
@@ -112,6 +113,7 @@ sed \
   -e 's|@EXEC@|AppRun|g' \
   -e 's|@TRY_EXEC@|AppRun|g' \
   -e "s|@ICON@|$PKG|g" \
+  -e "s|@MIMETYPES@|$(tr -d '\n' < "$STAGE/mime-types.txt")|g" \
   "$STAGE/kabmo.desktop.in" > "$APPDIR/$PKG.desktop"
 chmod 644 "$APPDIR/$PKG.desktop"
 cp "$APPDIR/$PKG.desktop" "$APPDIR/usr/share/applications/$PKG.desktop"

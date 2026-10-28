@@ -24,6 +24,7 @@ pub const APP_NAME: &str = "Kabmo";
 
 pub mod bridge;
 pub mod navigation;
+pub mod open_paths;
 pub mod palette;
 pub mod persisted;
 pub mod splash;
@@ -37,6 +38,7 @@ pub mod wordmark;
 mod wordmark_data;
 
 pub use bridge::{bootstrap_script, parse_call, reply_script, DesktopInfo, ShellCall};
+pub use open_paths::{launch_paths, open_paths_script, OpenPathQueue};
 pub use palette::ShellPalette;
 pub use persisted::{read_state, state_file_path, write_state};
 pub use splash::{Failure, Phase, Progress};

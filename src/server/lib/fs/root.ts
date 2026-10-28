@@ -15,6 +15,7 @@ import path from 'path';
 import { getDb } from '@/server/db.server';
 import { pathExists } from '@/server/lib/omp/core/paths';
 import { canonicalPath } from '@/server/lib/fs/canonical';
+import { externalRoots, isExternalRoot } from '@/server/lib/fs/external-roots';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
 
 const APP_ROOT = process.cwd();
@@ -50,6 +51,9 @@ export async function resolveReferencedPath(rawPath: string): Promise<string | n
   if (resolved === APP_ROOT || resolved.startsWith(APP_ROOT + path.sep)) {
     return (await pathExists(resolved)) ? resolved : null;
   }
+
+  // A directory the user dropped a file from (see `external-roots.ts`).
+  if (isExternalRoot(path.dirname(resolved)) && (await pathExists(resolved))) return resolved;
 
   try {
     const db = await getDb();
@@ -89,6 +93,10 @@ export async function resolveScopeForAbsolutePath(rawPath: string): Promise<{ ro
   const roots: string[] = [];
 
   if (isWithinRoot(APP_ROOT, resolved)) roots.push(APP_ROOT);
+  // A dropped file's own directory, granted by the gesture that dropped it.
+  for (const granted of externalRoots()) {
+    if (isWithinRoot(granted, resolved)) roots.push(granted);
+  }
 
   try {
     const db = await getDb();
@@ -152,6 +160,12 @@ export async function resolveRoot(
   if (resolved === APP_ROOT || resolved.startsWith(APP_ROOT + path.sep)) {
     return resolved;
   }
+
+  // A directory the user DROPPED a file from. `external-roots.ts` holds the
+  // rules; the gesture is what created it, and it is checked before the
+  // database because a drop outside every workspace is the case this exists
+  // for — the DB read would be a round trip that always answers no.
+  if (isExternalRoot(resolved)) return resolved;
 
   // Registered workspaces are user-opted project roots — allow exact matches,
   // compared by canonical path so a `/tmp` vs `/private/tmp` spelling of one

@@ -511,6 +511,11 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     proveClickCloses()
     runSplashCases()
     runSplashFillCases()
+    // BEFORE the drop cases, and the order is load-bearing: those end by
+    // releasing the drag, after which the suite's view has no document and every
+    // `evaluateJavaScript` answers nil — measured, the first version of this case
+    // reported "the recorder installs" as a failure for that reason alone.
+    openPathsWindowCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
     dropPathCases(view: webView, check: check, pump: pump, evaluate: evaluateSync)
     runQuitCases()
     finish()

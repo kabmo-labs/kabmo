@@ -69,6 +69,26 @@ function stubWrite(answer: { ok: boolean; status?: number; body?: unknown; throw
   return writes;
 }
 
+describe('saveEditorFile — a tab with no writable handle', () => {
+  test('a handle whose registration is gone writes NOTHING to the server', async () => {
+    // The device path: a document a PHONE handed over carries a `handleId` that
+    // names an in-page byte registry, and its `path` is only a display name. If
+    // this fell through to `/api/fs/action`, the server would resolve that name
+    // against the default root and write an unrelated file — the same failure a
+    // reloaded PWA launch had.
+    const writes = stubWrite({ ok: true, body: { success: true } });
+    const outcome = await saveEditorFile(
+      { path: 'report.md', handleId: 'device-never-registered' },
+      'edited\n',
+      'lf',
+      { interactive: true },
+    );
+
+    expect(outcome).toEqual({ status: 'failed' });
+    expect(writes).toEqual([]);
+  });
+});
+
 describe('saveEditorFile — the request it builds', () => {
   test('posts the buffer with the path and the ending as its own field', async () => {
     const writes = stubWrite({ ok: true, body: { success: true } });

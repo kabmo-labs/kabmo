@@ -13,6 +13,8 @@ import { installBackDispatcher } from '@/client/lib/native/back';
 import { installPalettePublisher } from '@/client/lib/native/palette';
 import { installResumeDispatcher } from '@/client/lib/native/resume';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
+import { installOpenPaths } from '@/client/lib/native/open-paths';
+import { installDeviceFiles } from '@/client/lib/launch/device-files';
 
 import '@/client/tailwind.css';
 import '@/shared/lib/markdown/katex-fonts.css';
@@ -85,6 +87,24 @@ installResumeDispatcher();
 installFileLaunchHandler((result) => {
   if (!result.ok) console.warn(`[kabmo] ${result.message}`);
 });
+
+// A file the OS handed to a DESKTOP shell — a double-click in Finder, "Open
+// With → Kabmo", a drop on the Dock icon — arrives as a PATH, which no browser
+// API can see. The shell injects the launch batch before this script and calls
+// `window.__kabmoOpenPaths` for a file opened while the app runs; both end in
+// `POST /api/fs/grant` (the file is usually outside every workspace) and then a
+// tab. Installed before the first render so a launch that beat hydration is
+// drained by the same tick that registers the opener.
+installOpenPaths();
+
+// A document the PHONE handed over — picked in the Files app, or "Open with →
+// Kabmo" from Gmail — arrives as BYTES, not a path: the console may be on
+// another machine, so it could never read the file itself. The shell announces
+// each file and streams its base64 (`__kabmoOpenFiles` / `__kabmoOpenChunk`),
+// and the tab is device-backed: it renders and is read-only. Installed before
+// the first render for the same reason as the path receiver above — a launch
+// that beat hydration must still open its tab.
+installDeviceFiles();
 
 // Fire-and-forget: warms the Shiki highlighter in parallel with hydration.
 // Once the eager grammars land, each is tokenized once on a tiny sample during

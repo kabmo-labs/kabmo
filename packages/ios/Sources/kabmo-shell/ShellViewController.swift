@@ -141,8 +141,97 @@ final class ShellViewController: UIViewController {
     startLoad(url)
   }
 
+  // MARK: - Documents the OS handed over
+
+  /**
+   Take a document another app opened with Kabmo, and open it as a tab.
+
+   The bytes travel through the PAGE, not the server: a phone's file exists only
+   on the phone, so a console on another machine could never read it. The tab
+   renders and is read-only, which is what the editor's own banner says.
+
+   A document that arrives before the console has loaded is QUEUED — the cold
+   start is the common case, because the app was launched by the file.
+   */
+  func openDocument(at url: URL) {
+    guard DeviceFiles.isDocumentURL(url) else { return }
+    pendingDocuments.append(url)
+    flushDocuments()
+  }
+
+  /** Hand every queued document to the page, once there is one. */
+  private func flushDocuments() {
+    guard pageReady, !pendingDocuments.isEmpty else { return }
+    let documents = pendingDocuments
+    pendingDocuments.removeAll()
+    for url in documents { deliver(url) }
+  }
+
+  /**
+   Read one document and push it into the page in chunks.
+
+   The read is bracketed by `startAccessingSecurityScopedResource` /
+   `stopAccessing…`: a URL from the Files app or from another app's share sheet
+   is security-scoped, and reading it without that bracket fails with a
+   permission error that looks exactly like a missing file. `LSSupportsOpening
+   DocumentsInPlace` in `Info.plist` is the other half — without it iOS copies
+   the document into this app's Inbox instead.
+
+   Chunked rather than one call: a 20 MiB document is ~27 MiB of base64, and a
+   single `evaluateJavaScript` of that size is a multi-second main-thread stall.
+   The page only decodes on the final chunk, so a transfer that dies halfway can
+   never open as a truncated document.
+   */
+  private func deliver(_ url: URL) {
+    deliveryCounter += 1
+    let id = DeviceFiles.deliveryId(counter: deliveryCounter)
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+    let name = DeviceFiles.displayName(
+      resolved: url.lastPathComponent,
+      suggested: url.suggestedFilename,
+      mimeType: DeviceFiles.mimeType(forExtension: url.pathExtension)
+    )
+    let mimeType = DeviceFiles.mimeType(forExtension: url.pathExtension)
+
+    let bytes: Data
+    do {
+      bytes = try Data(contentsOf: url)
+    } catch {
+      // Announcing a file whose bytes could not be read would open an EMPTY tab
+      // named after it, which reads as "the file is empty" rather than "it could
+      // not be read". The overlay's own surface is the honest place for it.
+      showDownloadAlert("Could not read \(name). The app that shared it may have closed.")
+      return
+    }
+
+    let meta = DeviceFiles.Meta(id: id, name: name, mimeType: mimeType, size: bytes.count)
+    webView.evaluateJavaScript(DeviceFiles.announceScript([meta]), completionHandler: nil)
+    let base64 = bytes.base64EncodedString()
+    let pieces = DeviceFiles.chunks(base64)
+    for (index, piece) in pieces.enumerated() {
+      webView.evaluateJavaScript(
+        DeviceFiles.chunkScript(id: id, base64: piece, last: index == pieces.count - 1),
+        completionHandler: nil
+      )
+    }
+  }
+
   /// Set when a quick action arrives while the app is already running.
   var pendingShortcut = false
+
+  /// A document the OS handed over, held until the console can take it.
+  ///
+  /// A COLD START by "Open in Kabmo" is the case that matters: the app launched
+  /// BECAUSE of the file, so no page exists yet and `evaluateJavaScript` would
+  /// drop every chunk into a blank document. The queue is drained on the first
+  /// finished load — the same rule the macOS and Windows shells apply.
+  private var pendingDocuments: [URL] = []
+  /// True once a page has finished a load, so a script has somewhere to land.
+  private var pageReady = false
+  /// One id per delivery, so opening the same file twice opens two tabs.
+  private var deliveryCounter = 0
 
   // MARK: - Web view
 
@@ -174,6 +263,11 @@ final class ShellViewController: UIViewController {
     navigation.onLoadFinished = { [weak self] in
       guard let self else { return }
       self.applyLoading(self.loading.finished())
+      // A document that arrived before the console did — a cold start by "Open
+      // in Kabmo" — has been waiting since `viewDidLoad`, and this is the first
+      // moment a page can take it.
+      self.pageReady = true
+      self.flushDocuments()
       // The console has painted, so `window.__kabmoPalette()` answers the
       // ACTIVE theme. Stored for the next cold start — the only launch where
       // the overlay has no page to ask — and applied to the live overlay too,

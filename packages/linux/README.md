@@ -302,12 +302,52 @@ with a quote.
 and checks what it placed, so a template token the script stopped filling in fails
 the build rather than the user's menu.
 
+### Documents: "Open With" and a double-click
+
+The entry declares `MimeType=` for every type the editor can draw (PDF, DOCX,
+XLSX/XLSM, markdown, CSV/TSV, SVG, images, plain text, JSON) and
+`Exec=@EXEC@ %F` — the `%F` is what makes Kabmo a document handler: without it
+the launcher starts the app and DROPS the file the user double-clicked.
+
+Both come from the same one table the macOS plist and the Windows installer are
+rendered from (`release/document-types.mjs`, via
+`scripts/shell-document-types.mjs`). `build-app.sh` writes the MIME list to
+`mime-types.txt` in the archive, and `install.sh` plus all three packagers
+(`.deb`, `.rpm`, `.AppImage`) substitute it — a published tarball carries no
+`scripts/` directory, so a list hard-coded in the installer would be a fourth
+copy that drifts silently.
+
+A comment line in this format starts with `#`, never `;`: `;` is the LIST
+separator inside a value, so a `;` comment is an unparseable key that
+`desktop-file-validate` rejects and the launcher then does nothing at all. The
+first version of this template used `;`.
+
+The paths arrive two ways, and both are needed:
+
+- **argv**, which is what `%F` produces — read before any GTK object exists;
+- **`GApplication`'s `open` signal**, which is what a file manager sends to an
+  ALREADY-RUNNING instance.
+
+`Gio.ApplicationFlags::HANDLES_OPEN` is what enables the second one; without it
+a second launch ignores the file. With it, a launch that carried files emits
+`open` INSTEAD of `activate`, so `ensure_shell` builds the shell for whichever
+signal arrives first, and the argv batch is queued only when the shell is
+actually built — otherwise a later activation from the dock re-queued the file
+the app started with.
+
+`OpenPathQueue` (`src/open_paths.rs`) takes and de-duplicates, and the flush runs
+on a finished load through `window.__kabmoOpenPaths`; `rules/open_paths.rs` pins
+both rules plus the argv filter (executable, flags, relative paths, missing
+files, `file://` URLs). The page then grants the file's own directory
+(`POST /api/fs/grant`) and opens a tab, because a document in `~/Downloads` is
+outside every workspace the fs routes may read.
+
 ## Build
 
 ```bash
 cd packages/linux
 cargo build                            # library + app + rules suite
-cargo run --bin kabmo-desktop-tests    # the rules: 78 checks, no display needed
+cargo run --bin kabmo-desktop-tests    # the rules, no display needed
 scripts/build-app.sh                   # → build/Kabmo/ (binary, template, icon, install.sh)
 ```
 
@@ -333,6 +373,7 @@ supported.
 | `src/store.rs` | the server list, its persisted shape, and the ownership rule |
 | `src/system.rs` | `XDG` paths, the health probe, local-server detection, and the supervisor that owns a spawned child's process group |
 | `src/bridge.rs` | the injected JS, the call parser, the reply script, and the `desktopInfo` payload |
+| `src/open_paths.rs` | the files the OS handed over: the argv filter, the queue, and the `__kabmoOpenPaths` script |
 | `src/splash.rs` | the launch overlay's RULES: four phases, the progress arithmetic, the reload test, the sentences, and the stylesheet the fill needs |
 | `src/splash_view.rs` | the overlay's widget: the wordmark, the bar and its sweep timer, the sentence, Retry |
 | `src/wordmark.rs` | the SVG path parser and the cairo painter for the README's lockup |

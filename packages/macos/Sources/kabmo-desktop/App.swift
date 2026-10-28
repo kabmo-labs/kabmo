@@ -107,6 +107,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// between — a delegate-only shell draws a bar that jumps from indeterminate to
   /// gone, which is the "did it hang?" state the splash exists to remove.
   private var progressObservation: NSKeyValueObservation?
+  /// The files the OS handed over that the page has not taken yet.
+  ///
+  /// Filled by `application(_:openFiles:)` — which AppKit calls BEFORE
+  /// `applicationDidFinishLaunching` on a cold start — and drained on every
+  /// load finish, because that is the first moment a page can answer.
+  private let openedPaths = OpenPathQueue()
+  /// True once a page has finished a load, so a flush is worth attempting.
+  private var pageReady = false
 
   /// What the shell reports about itself, once, before the page asks anything.
   ///
@@ -141,6 +149,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     #else
     return "x64"
     #endif
+  }
+
+  /**
+   Take the files the LAUNCH carried, before the window exists.
+
+   `open -a Kabmo report.pdf` puts the path on argv, and AppKit delivers
+   `application(_:openFiles:)` for a double-click — both before
+   `applicationDidFinishLaunching` on a cold start. Queueing here (rather than in
+   `didFinishLaunching`) is what keeps a launch-by-document in order: the paths
+   exist before the web view is built, so the first load finish can hand them
+   over instead of the file arriving a navigation late.
+   */
+  func applicationWillFinishLaunching(_ notification: Notification) {
+    openedPaths.add(launchPaths(from: ProcessInfo.processInfo.arguments))
+  }
+
+  /**
+   A file the OS asked this app to open — a double-click in Finder, an
+   "Open With → Kabmo", a drop on the Dock icon.
+
+   Always answered `.success`: the tab may still fail (a binary, a file past the
+   editor's ceiling), but that refusal belongs on the console where it can be
+   read. Answering `.failure` here would make Finder show its own "cannot open"
+   dialog and the page would never explain what actually went wrong.
+   */
+  func application(_ sender: NSApplication, openFiles filenames: [String]) {
+    openedPaths.add(filenames)
+    flushOpenPaths()
+    sender.reply(toOpenOrPrint: .success)
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -411,12 +448,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // The view stays MOUNTED and hidden — `render(.done)` is what hides it — so a
     // later Reload shows it again with no second instance.
     applyLoading(loading.finished())
+    // A page can take the files the OS handed over only once it exists. The
+    // launch batch was queued before the window was built, and a warm open can
+    // land before the current navigation settles — both are drained here.
+    pageReady = true
+    flushOpenPaths()
     // The console has painted, so `window.__kabmoPalette()` answers the ACTIVE
     // theme. Stored for the next cold start — the only launch where the splash
     // has no page to ask — and applied to the live splash too, because a theme
     // changed in Settings is exactly the case where the stored palette is stale
     // and the splash it describes is on screen.
     readPalette()
+  }
+
+  /**
+   Hand the queued paths to the page.
+
+   Called from `didFinish` (the first moment a page can answer) and from
+   `openFiles` (a warm open while the console is already up). A no-op while the
+   page has not loaded: the queue keeps them, and the next finish drains it.
+
+   `evaluateJavaScript` and not the bridge: the page's handler is a plain
+   function (`window.__kabmoOpenPaths`), and the answer carries nothing this
+   side needs — the console reports its own refusals, which is the only place a
+   sentence about a file can be read.
+   */
+  private func flushOpenPaths() {
+    guard pageReady, !openedPaths.isEmpty else { return }
+    let paths = openedPaths.take()
+    guard !paths.isEmpty else { return }
+    webView?.evaluateJavaScript(openPathsScript(paths), completionHandler: nil)
   }
 
   /**

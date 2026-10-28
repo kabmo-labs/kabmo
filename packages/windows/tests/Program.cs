@@ -506,6 +506,10 @@ NavigationPolicyCases.Run(Check, Group);
 // What a self-update may download, install and run.
 ShellUpdateCases.Run(Check, Group);
 
+// The files a launch carried, and the two rules that keep one from being
+// opened twice.
+OpenPathCases.Run(Check, Group);
+
 Console.WriteLine($"\n{checks - failures}/{checks} checks passed");
 return failures == 0 ? 0 : 1;
 

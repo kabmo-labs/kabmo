@@ -19,6 +19,11 @@
  * it does not recognise, so answering with a scope the reader will reject is
  * worse than refusing now — the refusal can name the reason.
  *
+ * A refusal is tagged `code: 'outside_workspace'` rather than being a bare 403,
+ * because it is the one refusal the drop path can DO something about: the file
+ * exists and the user pointed at it, so `POST /api/fs/grant` may register its
+ * directory and the same reference then resolves. Every other 403 here is final.
+ *
  * The file's KIND travels with the answer so the drop target can decline a
  * binary or oversized file before opening a tab that would only report it.
  */
@@ -31,35 +36,32 @@ import fs from 'fs';
 import path from 'path';
 
 /** A `file://` URL to the path it names; see `pathFromFileUrl` for the rules. */
-function pathFromReference(reference: string): string | null {
+export function pathFromReference(reference: string): string | null {
   if (!/^file:\/\//i.test(reference)) return reference;
   return pathFromFileUrl(reference);
 }
 
-export async function resolveFileScope({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const raw = url.searchParams.get('path');
-  if (!raw) {
-    return json({ error: 'Missing path' }, { status: 400 });
-  }
+/** The sentence a drop shows when the file is real but outside every root. */
+export const OUTSIDE_WORKSPACE_MESSAGE = 'That file is outside every workspace this console can read.';
 
-  const reference = pathFromReference(raw);
-  if (!reference) {
-    return json({ error: 'Malformed file URL' }, { status: 400 });
-  }
-
+/**
+ * The scope payload for one absolute reference, or the refusal that names why.
+ *
+ * Shared by the GET above and by `POST /api/fs/grant`, which registers the
+ * directory and then asks this SAME question again — a second copy of the
+ * classification is how a granted file and a workspace file end up opening with
+ * different kinds.
+ */
+export async function describeFileReference(reference: string): Promise<Response> {
   const scope = await resolveScopeForAbsolutePath(reference);
   if (!scope) {
-    return json(
-      { error: 'That file is outside every workspace this console can read.' },
-      { status: 403 },
-    );
+    return json({ error: OUTSIDE_WORKSPACE_MESSAGE, code: 'outside_workspace' }, { status: 403 });
   }
 
   const fullPath = path.resolve(scope.root, scope.path);
   // `Bun.file().exists()` is false for a directory, so a folder dropped on the
   // editor would be answered "File not found" — true as far as the file is
-  // concerned, and useless to the user. `statSync` sees either shape, so the
+  // concerned, and useless to the user. `stat` sees either shape, so the
   // refusal can name the folder it actually is.
   const stat = await fs.promises.stat(fullPath).catch(() => null);
   if (!stat) {
@@ -92,4 +94,19 @@ export async function resolveFileScope({ request }: LoaderFunctionArgs) {
       ? { error: unsupportedEditorMessage(kind, stat.size, scope.path) }
       : {}),
   });
+}
+
+export async function resolveFileScope({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const raw = url.searchParams.get('path');
+  if (!raw) {
+    return json({ error: 'Missing path' }, { status: 400 });
+  }
+
+  const reference = pathFromReference(raw);
+  if (!reference) {
+    return json({ error: 'Malformed file URL' }, { status: 400 });
+  }
+
+  return describeFileReference(reference);
 }

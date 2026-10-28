@@ -34,6 +34,7 @@ done
 [ -x "$STAGE/Kabmo" ] || { echo "package-rpm: no binary at $STAGE/Kabmo" >&2; exit 1; }
 [ -f "$STAGE/kabmo.png" ] || { echo "package-rpm: no icon at $STAGE/kabmo.png" >&2; exit 1; }
 [ -f "$STAGE/kabmo.desktop.in" ] || { echo "package-rpm: no launcher template" >&2; exit 1; }
+[ -f "$STAGE/mime-types.txt" ] || { echo "package-rpm: no MimeType list beside the template (run build-app.sh)" >&2; exit 1; }
 
 PKG=kabmo
 NAME="Kabmo-${VERSION}-linux-${RPM_ARCH}"
@@ -63,6 +64,7 @@ sed \
   -e 's|@EXEC@|"/usr/bin/Kabmo"|g' \
   -e 's|@TRY_EXEC@|/usr/bin/Kabmo|g' \
   -e "s|@ICON@|$PKG|g" \
+  -e "s|@MIMETYPES@|$(tr -d '\n' < "$STAGE/mime-types.txt")|g" \
   "$STAGE/kabmo.desktop.in" > "$TOP/kabmo.desktop"
 if grep -q '@[A-Z_]*@' "$TOP/kabmo.desktop"; then
   grep -o '@[A-Z_]*@' "$TOP/kabmo.desktop" | sort -u \

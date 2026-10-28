@@ -31,6 +31,12 @@ export interface OpenedFile {
    * the tab says so after a reload.
    */
   handleId?: string;
+  /**
+   * True when the tab's bytes came from the DEVICE (a document the phone handed
+   * over) rather than from the server. It renders, and it cannot be written
+   * back: there is no path the server can reach and no writable handle.
+   */
+  deviceFile?: boolean;
 }
 
 export interface SearchResultItem {

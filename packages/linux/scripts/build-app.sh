@@ -66,6 +66,14 @@ cp "$HERE/scripts/kabmo.desktop.in" "$OUT/kabmo.desktop.in"
 cp "$HERE/scripts/install.sh" "$OUT/install.sh"
 chmod +x "$OUT/install.sh"
 
+# The MIME types the entry declares, GENERATED from the one table the macOS plist
+# and the Windows installer are also rendered from. It travels as a file because a
+# published tarball carries no `scripts/` directory for `install.sh` to call, and a
+# list copied into the installer would be a fourth source that drifts silently —
+# the entry still installs, it simply never appears in "Open With" for a format
+# added later.
+node "$REPO/scripts/shell-document-types.mjs" --mime > "$OUT/mime-types.txt"
+
 echo "built $OUT"
 echo "  $OUT/Kabmo"
 echo "  $OUT/kabmo.desktop.in"

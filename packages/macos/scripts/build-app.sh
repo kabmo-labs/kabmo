@@ -59,6 +59,18 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleIconFile</key><string>Kabmo</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- The documents this app can RENDER, which is what puts it in Finder's
+       "Open With" and lets a double-click open a tab. Generated from
+       `release/document-types.mjs` by `scripts/shell-document-types.mjs`, so the
+       list cannot drift from the one Linux and Windows declare.
+
+       `CFBundleTypeRole: Viewer` + `LSHandlerRank: Alternate` are deliberate:
+       Kabmo offers itself and never takes a type over. An `Owner` role here
+       would make a `.pdf` open in Kabmo for every user who installs it. -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+__DOCUMENT_TYPES__
+  </array>
   <!-- A plain HTTP server on loopback is the normal case; without this the
        webview refuses it under App Transport Security. -->
   <key>NSAppTransportSecurity</key>
@@ -75,6 +87,27 @@ PLIST
 # version is known and cannot be re-expanded by the shell.
 # BSD `sed`, which is what macOS ships — this script has no other platform.
 /usr/bin/sed -i '' "s/__VERSION__/$VERSION/g" "$APP/Contents/Info.plist"
+
+# The document types, from the ONE table the Linux entry and the Windows
+# installer are also rendered from. Injected with `sed`'s `r` command rather than
+# a shell substitution: the fragment is multi-line and contains `&`, `\` and `/`,
+# all of which a `s|…|…|` replacement would reinterpret.
+DOC_TYPES="$(mktemp)"
+node "$REPO/scripts/shell-document-types.mjs" --plist > "$DOC_TYPES"
+/usr/bin/sed -i '' -e "/__DOCUMENT_TYPES__/{
+  r $DOC_TYPES
+  d
+}" "$APP/Contents/Info.plist"
+rm -f "$DOC_TYPES"
+
+# The plist is now the only place a bad document-type entry could hide, and a
+# malformed one makes macOS refuse to LAUNCH the app with no message — so it is
+# linted here, on the machine that assembles the bundle, rather than by a test
+# that runs on a Linux runner without `plutil`.
+plutil -lint "$APP/Contents/Info.plist" >/dev/null || {
+  echo "build-app: Info.plist is not valid — the document types are malformed" >&2
+  exit 1
+}
 
 # Ad-hoc signature: enough for local use and for the webview's own process
 # launch. A distributed build needs a Developer ID and notarisation.
