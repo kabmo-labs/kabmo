@@ -59,7 +59,6 @@ function mount(providers: ProviderItem[]): void {
         selectedProviderId: providers[0]?.id ?? '',
         onSelectProvider: () => {},
         onOpenAddModal: () => {},
-        onDeleteProvider: () => {},
       }),
       container,
     );

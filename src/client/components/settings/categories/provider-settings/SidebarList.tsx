@@ -1,13 +1,10 @@
 import { useRef, useState } from 'preact/hooks';
-import { Plus, Search, Trash2, X } from 'lucide-preact';
+import { Plus, Search, X } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
 import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
 import {
   groupProviders,
-  providerDeletable,
   providerStatusLabel,
-  providerStatusTone,
-  type ProviderStatusTone,
 } from '@/client/components/settings/categories/provider-settings/groups';
 
 interface ProviderSidebarListProps {
@@ -15,37 +12,36 @@ interface ProviderSidebarListProps {
   selectedProviderId: string;
   onSelectProvider: (id: string) => void;
   onOpenAddModal: () => void;
-  /** Removes one provider — its models.yml entry and/or its Kabmo overlay row. */
-  onDeleteProvider: (provider: ProviderItem) => void;
   /** Why the list could not be read in full, when it could not. */
   catalogError?: string;
 }
 
-const DOT_CLASS: Record<ProviderStatusTone, string> = {
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  muted: 'bg-ink/25',
-};
-
 /**
  * The provider list: a search field, then omp's own three sections.
  *
- * Every provider omp knows is listed, including one with no credential —
- * that row is the way IN to signing it in. The status dot and the row's title
- * say which state it is in, because a list where "signed in" and "omp merely
- * knows this" look identical is a list where the user cannot tell what a click
- * will do.
+ * Every provider omp knows is listed, including one with no credential — that
+ * row is the way IN to signing it in. A row is a PLATE, a NAME and a COUNT, and
+ * nothing else:
  *
- * Delete lives on the row, not only in the detail pane: removing a provider is
- * a decision about the LIST, and requiring a select-first detour meant the
- * action was invisible until you had already committed to looking at it.
+ * - no status dot. The state is already the section the row sits in (Signed in
+ *   / Not signed in / Disabled), so a coloured circle beside the name repeated
+ *   it three times per screen — and a colour with no label is the one thing a
+ *   reader cannot look up. The row's `title` still spells the state out.
+ * - no delete button. Deleting is a decision about ONE provider, taken after
+ *   reading what disappears (a models.yml entry, or just Kabmo's own row), and
+ *   the confirmation dialog is where that belongs. A trash icon on every row
+ *   turned a dense list into a field of icons that were mostly invisible until
+ *   hovered, and it cost the count column its alignment on the rows where it
+ *   did not apply.
+ *
+ * The count is the one thing that stays right-aligned and monospaced, because it
+ * is a number: `109` and `0` have to line up down the column to be comparable.
  */
 export function ProviderSidebarList({
   providers,
   selectedProviderId,
   onSelectProvider,
   onOpenAddModal,
-  onDeleteProvider,
   catalogError,
 }: ProviderSidebarListProps) {
   const [query, setQuery] = useState('');
@@ -125,61 +121,26 @@ export function ProviderSidebarList({
               {group.providers.map((item) => {
                 const isSelected = item.id === selectedProviderId;
                 return (
-                  <div
+                  <button
                     key={item.id}
-                    className={`group/row flex items-center rounded-md transition-colors ${
-                      isSelected ? 'bg-ink/10 shadow-2xs' : 'hover:bg-ink/5'
+                    type="button"
+                    onClick={() => onSelectProvider(item.id)}
+                    aria-current={isSelected ? 'true' : undefined}
+                    title={providerStatusLabel(item)}
+                    className={`w-full flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-md text-left transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-ink/10 text-ink font-medium shadow-2xs'
+                        : 'text-ink/80 hover:bg-ink/5 hover:text-ink'
                     }`}
                   >
-                    {/* The trailing columns are FIXED WIDTHS and the name takes
-                        the slack (`flex-1`), so the status dot and the model
-                        count line up down the list instead of following
-                        whatever width each name happens to be. */}
-                    <button
-                      type="button"
-                      onClick={() => onSelectProvider(item.id)}
-                      aria-current={isSelected ? 'true' : undefined}
-                      title={providerStatusLabel(item)}
-                      className={`flex-1 min-w-0 flex items-center gap-2 pl-1.5 pr-1 py-1 rounded-md text-left cursor-pointer ${
-                        isSelected ? 'text-ink font-medium' : 'text-ink/80 hover:text-ink'
-                      }`}
-                    >
-                      <ProviderIconPlate provider={item} size={22} />
-                      <span className="flex-1 min-w-0 text-[12px] truncate">{item.name}</span>
-                      <span aria-hidden className="w-2 shrink-0 flex items-center justify-center">
-                        <span className={`h-1.5 w-1.5 rounded-full ${DOT_CLASS[providerStatusTone(item)]}`} />
-                      </span>
-                      <span className="w-8 shrink-0 text-right text-[10px] font-mono tabular-nums text-ink/45">
-                        {item.models.length}
-                      </span>
-                    </button>
-                    {/* One click: the confirmation DIALOG is the confirmation,
-                        and it is the only place that says what disappears (a
-                        models.yml entry, or just Kabmo's own row). A second
-                        inline "click again" step made deleting three clicks for
-                        a decision the dialog already asks for.
-
-                        Only where something can go: a provider omp discovered
-                        from an endpoint has no models.yml entry and no overlay
-                        row, so a delete button there is a control whose only
-                        outcome is a refusal. */}
-                    {/* The slot is reserved on EVERY row: a button that exists
-                        only on some rows shifted those rows' count column by
-                        its own width. */}
-                    <span className="w-6 shrink-0 flex items-center justify-center">
-                      {providerDeletable(item) && (
-                        <button
-                          type="button"
-                          onClick={() => onDeleteProvider(item)}
-                          title={`Delete ${item.name}`}
-                          aria-label={`Delete ${item.name}`}
-                          className="p-1 rounded transition-colors cursor-pointer text-ink/35 hover:text-error hover:bg-error/10 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      )}
+                    <ProviderIconPlate provider={item} size={22} />
+                    {/* The name takes the slack, so the count column is the same
+                        width on every row whatever the name's length is. */}
+                    <span className="flex-1 min-w-0 text-[12px] truncate">{item.name}</span>
+                    <span className="w-8 shrink-0 text-right text-[10px] font-mono tabular-nums text-ink/45">
+                      {item.models.length}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>

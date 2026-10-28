@@ -93,10 +93,6 @@ export function ProviderSettings({
               masterDetail.openDetail();
             }}
             onOpenAddModal={() => setIsAddModalOpen(true)}
-            onDeleteProvider={(provider) => {
-              setSelectedProviderId(provider.id);
-              setIsDeleteModalOpen(true);
-            }}
             {...(catalogError ? { catalogError } : {})}
           />
         }

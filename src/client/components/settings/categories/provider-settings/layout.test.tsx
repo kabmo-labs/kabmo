@@ -78,45 +78,41 @@ function rows(): HTMLElement[] {
 }
 
 describe('provider list columns', () => {
-  test('the name takes the slack, so the trailing columns are fixed', () => {
+  test('a row is a plate, a name and a count — and nothing else', () => {
     mountList([
       provider({ slug: 'a', name: 'A' }),
       provider({ slug: 'b', name: 'A much longer provider name than the first' }),
     ]);
 
     for (const row of rows()) {
-      const [plate, name, dot, count] = [...row.children] as HTMLElement[];
-      // The plate is a fixed box whatever the mark is (svg or initials pill).
+      const children = [...row.children] as HTMLElement[];
+      // Exactly three: the plate, the name, the count. The status dot and the
+      // per-row delete button were removed — the section already states the
+      // provider's state, and deleting belongs to the detail pane.
+      expect(children).toHaveLength(3);
+      const [plate, name, count] = children;
       expect(plate.style.width).toBe('22px');
       expect(plate.style.height).toBe('22px');
-      // The name is what absorbs the difference between short and long names.
+      // The name absorbs the difference between short and long names.
       expect(name.className).toContain('flex-1');
       expect(name.className).toContain('truncate');
-      // Both trailing slots are fixed, so dot and count share one column.
-      expect(dot.className).toContain('w-2');
       expect(count.className).toContain('w-8');
       expect(count.className).toContain('text-right');
       expect(count.className).toContain('tabular-nums');
     }
   });
 
-  test('the delete slot is reserved on a row that has no delete', () => {
-    // A provider omp merely discovered cannot be deleted; before the slot was
-    // reserved, those rows' counts sat 24px to the right of everyone else's.
+  test('no row carries a status dot or a delete control', () => {
     mountList([
       provider({ slug: 'native', inModelsYml: true }),
-      provider({ slug: 'discovered', status: 'connected' }),
+      provider({ slug: 'discovered' }),
+      provider({ slug: 'off', disabled: true }),
     ]);
 
-    const wrappers = [...container.querySelectorAll('div.group\\/row')] as HTMLElement[];
-    expect(wrappers).toHaveLength(2);
-    for (const wrapper of wrappers) {
-      const slot = wrapper.lastElementChild as HTMLElement;
-      expect(slot.className).toContain('w-6');
-      expect(slot.className).toContain('shrink-0');
-    }
-    // Only the deletable one actually carries the button.
-    expect(container.querySelectorAll('button[aria-label^="Delete "]')).toHaveLength(1);
+    // A coloured circle repeated a state the section header already names, and a
+    // trash icon on every row made a dense list a field of mostly-hidden icons.
+    expect(container.querySelectorAll('span.rounded-full')).toHaveLength(0);
+    expect(container.querySelectorAll('button[aria-label^="Delete "]')).toHaveLength(0);
   });
 
   test('the mark sits on a rounded plate', () => {
@@ -137,8 +133,14 @@ describe('provider list columns', () => {
       provider({ slug: 'b', models: [] }),
     ]);
 
-    const counts = rows().map((row) => row.children[3].textContent);
+    const counts = rows().map((row) => row.children[2].textContent);
     expect(counts).toEqual(['109', '0']);
+  });
+
+  test('the row still names its state in the title, now that the dot is gone', () => {
+    mountList([provider({ slug: 'a', status: 'disconnected', oauth: true })]);
+
+    expect(rows()[0].getAttribute('title')).toContain('sign in with OAuth');
   });
 });
 

@@ -17,7 +17,6 @@ import {
   groupProviders,
   providerGroupOf,
   providerStatusLabel,
-  providerStatusTone,
 } from '@/client/components/settings/categories/provider-settings/groups';
 import type { ProviderItem } from '@/shared/types';
 
@@ -85,13 +84,10 @@ describe('groupProviders', () => {
   });
 });
 
-describe('providerStatusTone / providerStatusLabel', () => {
-  test('the three tones are distinct states, not one "ok"', () => {
-    expect(providerStatusTone(provider({ slug: 'a' }))).toBe('success');
-    expect(providerStatusTone(provider({ slug: 'b', status: 'disconnected' }))).toBe('warning');
-    expect(providerStatusTone(provider({ slug: 'c', disabled: true }))).toBe('muted');
-  });
-
+describe('providerStatusLabel', () => {
+  // The label is the row's ONLY statement of state: the coloured dot that used
+  // to carry it was removed (the section already says signed-in vs not), so a
+  // wrong word here is a row with no state at all.
   test('the label names where the credential comes from', () => {
     expect(providerStatusLabel(provider({ slug: 'a', credentialOrigin: 'login' }))).toContain('OAuth');
     expect(providerStatusLabel(provider({ slug: 'b', credentialOrigin: 'environment' }))).toContain('environment');

@@ -90,20 +90,6 @@ export function providerDeletable(provider: ProviderItem): boolean {
   return provider.inModelsYml === true || provider.inOverlay === true;
 }
 
-/**
- * The tone of the row's status dot.
- *
- * Three states, the ones omp's hub shows: a credential resolves (success),
- * omp knows the provider but nothing is stored (warning), and the provider is
- * hidden on purpose (muted).
- */
-export type ProviderStatusTone = 'success' | 'warning' | 'muted';
-
-export function providerStatusTone(provider: ProviderItem): ProviderStatusTone {
-  if (provider.disabled === true) return 'muted';
-  return provider.status === 'connected' ? 'success' : 'warning';
-}
-
 /** A short reason for the row's title attribute, so the dot is not the only cue. */
 export function providerStatusLabel(provider: ProviderItem): string {
   if (provider.disabled === true) return 'Disabled — hidden from the model picker';
