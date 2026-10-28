@@ -143,12 +143,24 @@ export async function getDatabasePath(): Promise<string> {
   return path.join(defaultDir, 'db.sqlite');
 }
 
-export async function getDb(): Promise<DbClient> {
+/**
+ * The process-wide handle, opened on first use.
+ *
+ * **Deliberately NOT `async`.** An `async` wrapper returns a NEW promise that
+ * only adopts the slot's, so a handler attached to the slot does not mark the
+ * wrapper handled: `closeDb` retires the slot and reads it later, which left
+ * the caller's wrapper rejecting with no owner and Bun reporting "Unhandled
+ * error between tests" against whichever case happened to be running (measured
+ * on the Release gate: one Windows timeout reported a second, unrelated
+ * failure). Returning the slot's own promise is also what makes every caller
+ * share ONE open — an async wrapper would hand each of them a distinct promise.
+ */
+export function getDb(): Promise<DbClient> {
   const state = slot();
   if (state.promise) return state.promise;
   // A reload keeps the previous generation's handle: the schema was already
   // initialized in this process, and re-opening would leak the old one.
-  if (state.resolved) return state.resolved;
+  if (state.resolved) return Promise.resolve(state.resolved);
 
   const opening = (async () => {
     const dbPath = await getDatabasePath();
@@ -199,6 +211,13 @@ export async function getDb(): Promise<DbClient> {
     state.promise = null;
     throw error;
   });
+  // Mark the rejection as observed. A caller usually awaits this same promise,
+  // but `closeDb` can retire the slot first — it reads `state.promise` only
+  // after clearing it, and the handler above clears it again — so the rejection
+  // can land with no owner at all, and Bun reports that as "Unhandled error
+  // between tests" against whichever case happens to be running. Measured on
+  // the Release gate: one Windows timeout reported a second, unrelated failure.
+  state.promise.catch(noop);
 
   return state.promise;
 }

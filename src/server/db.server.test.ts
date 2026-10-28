@@ -150,6 +150,45 @@ describe('a failed open is not cached', () => {
       globalThis.__kabmoDb = savedSlot;
     }
   });
+
+  test('a failure nobody is awaiting yet is not reported as an unhandled rejection', async () => {
+    // The shape `closeDb` produces: it retires the slot and reads its promise
+    // LATER, so the rejection lands while no caller holds a handler — and the
+    // handler that clears the slot runs first, leaving a rejected promise with
+    // no owner. Bun reports that as "Unhandled error between tests", attributed
+    // to whichever case happens to be running; measured on the Release gate,
+    // where one Windows timeout reported a second, unrelated failure.
+    const blocker = path.join(roots[0] ?? tmpdir(), `blocker-unhandled-${process.pid}`);
+    await Bun.write(blocker, 'not a directory');
+    const savedSlot = globalThis.__kabmoDb;
+    const unhandled: unknown[] = [];
+    const record = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', record);
+    try {
+      Bun.env.KABMO_DB_PATH = path.join(blocker, 'db.sqlite');
+      globalThis.__kabmoDb = undefined;
+
+      const pending = getDb();
+      // Let the rejection settle with no handler attached. A macrotask, not a
+      // duration: Bun decides "unhandled" once the microtask queue drains, and
+      // the check has to happen after that decision either way.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      // `.then` rather than `expect(...).rejects`: measured, Bun's `rejects`
+      // matcher fails on a promise that settled in an EARLIER turn, reporting
+      // the rejection reason as the assertion's own error.
+      const failure = await pending.then(
+        () => null,
+        (error: unknown) => error,
+      );
+      expect(failure).toBeInstanceOf(Error);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', record);
+      globalThis.__kabmoDb = savedSlot;
+    }
+  });
 });
 
 describe('closeDb', () => {
