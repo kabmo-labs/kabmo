@@ -30,6 +30,13 @@ export const pristineWebSocket = globalThis.WebSocket;
 export const DOM_TEST_GLOBALS = [
   'window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement',
   'Event', 'CustomEvent', 'WebSocket', 'EventSource',
+  // The frame callbacks a component reads off `globalThis`, not off `window`.
+  // `Toast` schedules its fade-in through a bare `requestAnimationFrame`, which
+  // is the browser's own global — Bun defines neither, so a suite that mounts a
+  // toast died with `ReferenceError: requestAnimationFrame is not defined`
+  // while every other component rendered. Listed here they are installed from
+  // the window under test and put back with the rest.
+  'requestAnimationFrame', 'cancelAnimationFrame',
   // The three DOM data classes, because a suite that swaps `window` usually needs them and
   // a LOCAL save-and-restore loop is how they leaked: `editor/save-as.test.ts` installed
   // happy-dom's `File`/`Blob` and never put them back, so a later file's `carriesBytes` read

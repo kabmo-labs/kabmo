@@ -27,7 +27,7 @@ import { OPERATION_LABELS } from '@/shared/lib/fs/git-unmerged';
 import { continueArgsFor, mergeBranch, resolveConflict, type ConflictSide } from '@/server/lib/fs/git-merge';
 import { deleteBranch, renameBranch } from '@/server/lib/fs/git-branch';
 import { applyStash, dropStash, pushStash } from '@/server/lib/fs/git-stash';
-import { expectOk, field, fileForAction, flag, type GitActionHandler } from '@/server/lib/fs/git-actions-shared';
+import { expectOk, field, fileForAction, flag, stoppedOperationPayload, type GitActionHandler } from '@/server/lib/fs/git-actions-shared';
 
 /**
  * Refuse an action git will not accept while a conflict is unresolved.
@@ -50,6 +50,9 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
     // By NAME, not by hash: `git merge <sha>` writes `Merge commit '<sha>'`
     // where `git merge <branch>` writes `Merge branch '<name>'` (measured).
     await mergeBranch(targetDir, field(formData, 'branch'));
+    // A merge that stops on a conflict SUCCEEDS and leaves the tree to the
+    // operation bar, so the panel's toast must not claim it merged.
+    return stoppedOperationPayload(targetDir);
   },
 
   async abort_operation({ targetDir }) {
@@ -99,6 +102,10 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
   async pull({ targetDir }) {
     await pullBranch(targetDir);
     markRemoteRefsFresh(targetDir);
+    // `pullBranch` stands down on a branch with no upstream (nothing to pull is
+    // not a failure) and accepts a merge that stopped on a conflict — the
+    // second leaves the tree to the operation bar, and the toast says so.
+    return stoppedOperationPayload(targetDir);
   },
 
   async sync({ targetDir }) {
@@ -118,12 +125,14 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
     // remote contains work…") and the route would report a failed Sync over a
     // conflict the panel is about to offer to resolve. The operation bar is
     // the surface that has to be reached, so the push is skipped and the
-    // working tree is left exactly as the pull left it.
+    // working tree is left exactly as the pull left it — and the answer says
+    // which operation is now waiting, because nothing was pushed.
     const after = await readGitState(targetDir);
     if (!after.operation) await pushBranch(targetDir);
     // Both commands already moved the tracking ref; the next read must not
     // fetch again to see a state it just produced.
     markRemoteRefsFresh(targetDir);
+    return after.operation ? { success: true, stopped: after.operation } : undefined;
   },
 
   async rename_branch({ formData, targetDir }) {
@@ -157,6 +166,10 @@ export const GIT_BRANCH_ACTIONS: Record<string, GitActionHandler> = {
       ref: field(formData, 'ref') || 'stash@{0}',
       pop: flag(formData, 'pop'),
     });
+    // A conflicting `git stash pop` leaves its conflicts in the working tree
+    // with no operation file at all (`stash-pop`), so the toast must not claim
+    // the stash was popped cleanly.
+    return stoppedOperationPayload(targetDir);
   },
 
   async stash_drop({ formData, targetDir }) {

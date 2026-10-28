@@ -99,10 +99,18 @@ function counts(cwd: string): string {
   return git(cwd, 'rev-list', '--count', '--left-right', 'HEAD...@{upstream}').trim();
 }
 
-/** One sync, through the same handler the route dispatches. */
-async function sync(cwd: string): Promise<void> {
+/**
+ * One sync, through the same handler the route dispatches.
+ *
+ * The ANSWER is returned rather than dropped: it carries `stopped` — the
+ * operation a pull left behind — which is what the panel's toast reads to avoid
+ * reporting "Synced" over a merge that stopped on a conflict.
+ */
+async function sync(cwd: string): Promise<{ success: true; stopped?: string } | undefined> {
   const handler = GIT_BRANCH_ACTIONS.sync;
-  await handler({ formData: new FormData(), targetDir: cwd });
+  return (await handler({ formData: new FormData(), targetDir: cwd })) as
+    | { success: true; stopped?: string }
+    | undefined;
 }
 
 afterAll(() => {
@@ -117,9 +125,9 @@ describe('the sync action', () => {
     git(clone, 'fetch', '-q');
     expect(counts(clone)).toBe('1\t1');
 
-    await sync(clone);
-
-    // Both sides landed and the remote has them: nothing ahead or behind.
+    // A clean reconcile reports NOTHING stopped, so the panel toasts plain
+    // success rather than a conflict that is not there.
+    expect(await sync(clone)).toBeUndefined();
     expect(counts(clone)).toBe('0\t0');
     expect(fs.existsSync(path.join(clone, 'other.txt'))).toBe(true);
     expect(git(clone, 'log', '-1', '--pretty=%s')).toContain('Merge branch');
@@ -133,8 +141,11 @@ describe('the sync action', () => {
 
     // The pull exits 1 with MERGE_HEAD in place; the handler must treat that as
     // the state to show, not as a failure.
-    await sync(clone);
+    const answer = await sync(clone);
 
+    // ...and must SAY which operation is waiting, because the push never ran:
+    // the panel's toast would otherwise report a sync that did not publish.
+    expect(answer).toEqual({ success: true, stopped: 'merge' });
     expect(fs.existsSync(path.join(clone, '.git', 'MERGE_HEAD'))).toBe(true);
     expect(git(clone, 'status', '--porcelain=v1')).toContain('UU seed.txt');
   });

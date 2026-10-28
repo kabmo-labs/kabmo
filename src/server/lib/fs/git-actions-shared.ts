@@ -15,6 +15,8 @@
  */
 
 import { repoRelative, resolveRepoPath, runGit } from '@/server/lib/fs/git-run';
+import { readGitState } from '@/server/lib/fs/git-state';
+import type { GitOperation } from '@/shared/types';
 
 export interface GitActionContext {
   formData: FormData;
@@ -83,4 +85,26 @@ export function field(formData: FormData, name: string): string {
 /** A `'1'`/absent checkbox. */
 export function flag(formData: FormData, name: string): boolean {
   return formData.get(name) === '1';
+}
+
+/**
+ * The answer an action that can START an operation returns: whether one is now
+ * stopped on a conflict.
+ *
+ * `git merge`, `cherry-pick`, `revert`, `rebase` and `git pull` exit zero (or
+ * with the conflict left behind) and leave the tree in a state the operation bar
+ * owns — so the action SUCCEEDED, but what it did is not what its verb promised.
+ * The panel says so in its toast, which is why the name travels back: "Merged
+ * feature" over a merge that stopped on a conflict claims an outcome git never
+ * produced. A conflicting `git stash pop` reports `stash-pop` here too, from the
+ * conflicts it leaves with no operation file at all.
+ *
+ * `undefined` — the handler's "success, nothing to report" — when the tree is
+ * clean afterwards, so an ordinary merge answers exactly what it used to.
+ */
+export async function stoppedOperationPayload(
+  targetDir: string,
+): Promise<{ success: true; stopped: GitOperation } | undefined> {
+  const state = await readGitState(targetDir);
+  return state.operation ? { success: true, stopped: state.operation } : undefined;
 }

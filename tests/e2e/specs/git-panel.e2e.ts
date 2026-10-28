@@ -604,6 +604,12 @@ test.describe('Source Control — sync', () => {
     await expect(sync).toBeEnabled();
     await sync.click();
 
+    // The press has no other observable effect ON SCREEN: the working tree is
+    // byte-identical afterwards, so the toast is the panel's only report that
+    // anything happened — which is the reported "sync does nothing". Asserted
+    // before the state poll because the toast dismisses itself after 4s.
+    await expect(page.getByRole('status').filter({ hasText: 'Synced with upstream' })).toBeVisible();
+
     await waitUntil(async () =>
       repo.git('rev-list', '--count', '--left-right', 'HEAD...@{upstream}').trim() === '0\t0',
     );

@@ -17,6 +17,7 @@ import { useGitActions } from '@/client/hooks/workspace/git-actions';
 import { useCommitBox } from '@/client/hooks/workspace/commit-box';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
+import { useGitActionOutcome } from '@/client/hooks/workspace/git-action-outcome';
 import { confirmRequestFor } from '@/client/components/workspace/git-panel/confirm-request';
 import type { ConfirmRequest } from '@/client/components/workspace/git-panel/confirm-request';
 
@@ -67,18 +68,6 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // History and Graph states
   const [viewingOutput, setViewingOutput] = useState<CommitHistoryPage | null>(null);
   const [mounted, setMounted] = useState(false);
-  /**
-   * The payload this effect has already acted on.
-   *
-   * `actionFetcher.data` is STICKY — it holds the last response for the life of
-   * the mount — while `loadRepo` is a dependency whose identity changes whenever
-   * `rootPath` does. Switching to a session in another workspace therefore
-   * re-ran the effect against the PREVIOUS history payload and reopened a modal
-   * the user had already dismissed, which is the reported "clicking a session
-   * item opens the commit modal". Consuming each response exactly once is what
-   * makes the modal open because the user ASKED for it and nothing else.
-   */
-  const consumedActionRef = useRef<unknown>(null);
 
   const { toasts, pushToast, dismissToast } = useToasts();
 
@@ -93,32 +82,16 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
     }
   }, [branchPrompt]);
 
-  // Reload after action completes. A response is acted on ONCE: the fetcher
-  // keeps its last payload, so without the guard any later run of this effect
-  // (a new `loadRepo` identity, a re-render) would re-open the commit modal the
-  // user just closed.
-  useEffect(() => {
-    if (actionFetcher.state === 'idle' && actionFetcher.data) {
-      const payload = actionFetcher.data;
-      if (payload === consumedActionRef.current) return;
-      consumedActionRef.current = payload;
-      if (payload.type === 'history' || payload.type === 'graph') {
-        // `hasMore` and `total` are part of the page, not decoration: without
-        // them the modal cannot know the branch holds more than the 50 rows it
-        // was handed, and the header reports the page size as the total.
-        setViewingOutput({
-          title: payload.type === 'graph' ? 'Git Graph' : 'Commit History',
-          data: payload.data || [],
-          hasMore: payload.hasMore,
-          total: payload.total,
-        });
-      } else if (payload.success) {
-        loadRepo();
-      } else {
-        pushToast(payload.error || 'Git operation failed');
-      }
-    }
-  }, [actionFetcher.state, actionFetcher.data, loadRepo]);
+  // Reload after an action completes, open the page a read answered with, and
+  // report a mutation's outcome — see `git-action-outcome.ts` for the
+  // consume-once rule and why a stage stays silent while a sync does not.
+  useGitActionOutcome({
+    fetcher: actionFetcher,
+    onPage: setViewingOutput,
+    onReload: loadRepo,
+    onSuccess: (message) => pushToast(message, 'success'),
+    onError: (message) => pushToast(message),
+  });
 
   useOnClickOutside(optionsRef, () => setShowOptions(false));
   useOnClickOutside(branchRef, () => setShowBranchMenu(false));

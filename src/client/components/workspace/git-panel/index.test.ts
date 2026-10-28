@@ -81,6 +81,8 @@ afterAll(() => {
 async function mount(options: {
   topicSync?: { ahead: number; behind: number };
   httpSync?: { ahead: number; behind: number };
+  /** What a POST to `/api/fs/git` answers — the action channel. */
+  action?: unknown;
 } = {}): Promise<void> {
   server = await startRealtimeTestServer(new Map<string, TopicResolver>([
     [TOPIC, async () => statusOf(1, options.topicSync)],
@@ -90,11 +92,14 @@ async function mount(options: {
   installDomGlobals(win);
   const target = globalThis as unknown as Record<string, unknown>;
   target.WebSocket = pristineWebSocket;
-  target.fetch = async (input: unknown) => {
+  target.fetch = async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
     if (url.includes('/state')) return json({ sessionId: SESSION, state: {} });
     if (url.includes('reposOnly')) return json({ repos: ['.'], reposPending: false });
+    // The action channel, before the status read: a mutation and a read share
+    // `/api/fs/git` and differ only by method.
+    if (init?.method === 'POST' && options.action !== undefined) return json(options.action);
     // The panel's own HTTP read (mount + Refresh): EMPTY, deliberately.
     return json(statusOf(0, options.httpSync));
   };
@@ -216,6 +221,46 @@ describe('GitPanel sync badge', () => {
     if (!sync) throw new Error('no Sync control rendered');
     expect((sync as HTMLButtonElement).disabled).toBe(false);
     expect(container.textContent).toContain('↑1 ↓1');
+  });
+});
+
+/**
+ * A mutation's outcome is REPORTED.
+ *
+ * The change list is the answer for a stage or a discard, but a Sync leaves the
+ * working tree byte-identical — without a toast the press has no observable
+ * effect at all, which is the reported "sync does nothing". The toast is
+ * portal-mounted to `document.body`, so the assertion is against the document
+ * rather than the panel's own container.
+ */
+describe('GitPanel action toast', () => {
+  /** Click a toolbar control and let the request, the answer and the effect land. */
+  async function clickAndSettle(selector: string): Promise<void> {
+    const button = container.querySelector(selector);
+    if (!button) throw new Error(`no control for ${selector}`);
+    await act(async () => {
+      (button as HTMLElement).click();
+    });
+    for (let i = 0; i < 20; i += 1) await act(async () => {});
+  }
+
+  test('a successful Sync says so', async () => {
+    await mount({ action: { success: true } });
+    await clickAndSettle('button[aria-label="Sync with upstream"]');
+    expect(document.body.textContent).toContain('Synced with upstream');
+  });
+
+  test('a Sync that stopped on a conflict says the push did not run', async () => {
+    await mount({ action: { success: true, stopped: 'merge' } });
+    await clickAndSettle('button[aria-label="Sync with upstream"]');
+    expect(document.body.textContent).toContain('nothing was pushed');
+    expect(document.body.textContent).not.toContain('Synced with upstream');
+  });
+
+  test('a refused action reports the server sentence', async () => {
+    await mount({ action: { success: false, error: 'no upstream configured' } });
+    await clickAndSettle('button[aria-label="Sync with upstream"]');
+    expect(document.body.textContent).toContain('no upstream configured');
   });
 });
 

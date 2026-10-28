@@ -1,4 +1,4 @@
-import { useCallback } from 'preact/hooks';
+import { useCallback, useRef } from 'preact/hooks';
 import { useFetcher, type FetcherState } from '@/client/lib/router/fetcher';
 
 interface ActionPayload {
@@ -8,6 +8,21 @@ interface ActionPayload {
   hasMore?: boolean;
   total?: number;
   error?: string;
+  /**
+   * The operation the action left stopped on a conflict (`merge`, `rebase`,
+   * `stash-pop`, …), reported by the verbs that can leave one.
+   *
+   * A stopped operation is a SUCCESS with a different outcome — the pull ran
+   * but the push did not, the merge started but nothing is merged — so the
+   * toast cannot be built from `success` alone.
+   */
+  stopped?: string | null;
+}
+
+/** The action a response answers, kept so the toast can name what it acted on. */
+export interface GitDispatchedAction {
+  actionType: string;
+  extra?: Record<string, string>;
 }
 
 export interface GitActionFetcher {
@@ -17,6 +32,16 @@ export interface GitActionFetcher {
   execute: (actionType: string, file?: string, extra?: Record<string, string>) => void;
   /** The last response, consumed exactly once by the caller's effect. */
   data: ActionPayload | undefined;
+  /**
+   * The fields of the action `data` answers.
+   *
+   * Recorded HERE rather than at each call site: the panel reaches `execute`
+   * from a dozen handlers (the toolbar, the change rows, the modals, the commit
+   * box), and a toast that reads the dispatch's own operands — the branch, the
+   * commit subject, the stash ref — needs them without threading a second
+   * argument through every one of them.
+   */
+  lastAction: GitDispatchedAction | null;
 }
 
 /**
@@ -36,9 +61,11 @@ export interface GitActionFetcher {
  */
 export function useGitActions(rootPath: string | undefined, activeRepo: string): GitActionFetcher {
   const fetcher = useFetcher<ActionPayload>();
+  const lastActionRef = useRef<GitDispatchedAction | null>(null);
 
   const execute = useCallback(
     (actionType: string, file?: string, extra?: Record<string, string>) => {
+      lastActionRef.current = { actionType, extra };
       const formData = new FormData();
       formData.append('actionType', actionType);
       formData.append('repo', activeRepo);
@@ -52,5 +79,5 @@ export function useGitActions(rootPath: string | undefined, activeRepo: string):
     [activeRepo, rootPath, fetcher],
   );
 
-  return { state: fetcher.state, execute, data: fetcher.data };
+  return { state: fetcher.state, execute, data: fetcher.data, lastAction: lastActionRef.current };
 }

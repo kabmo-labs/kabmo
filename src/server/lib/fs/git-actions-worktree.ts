@@ -35,7 +35,7 @@ import {
   revertCommit,
 } from '@/server/lib/fs/git-merge';
 import { fetchCommitsPage, fetchDiffActions } from '@/server/lib/fs/git-actions-history';
-import { expectOk, field, fileForAction, hashFor, refExists, type GitActionHandler } from '@/server/lib/fs/git-actions-shared';
+import { expectOk, field, fileForAction, hashFor, refExists, stoppedOperationPayload, type GitActionHandler } from '@/server/lib/fs/git-actions-shared';
 
 /**
  * Checkout a branch, a remote-tracking ref or a commit.
@@ -189,14 +189,17 @@ export const GIT_WORKTREE_ACTIONS: Record<string, GitActionHandler> = {
 
   async merge_commit({ formData, targetDir }) {
     await mergeCommit(targetDir, hashFor(formData));
+    return stoppedOperationPayload(targetDir);
   },
 
   async cherry_pick({ formData, targetDir }) {
     await cherryPick(targetDir, hashFor(formData));
+    return stoppedOperationPayload(targetDir);
   },
 
   async revert_commit({ formData, targetDir }) {
     await revertCommit(targetDir, hashFor(formData));
+    return stoppedOperationPayload(targetDir);
   },
 
   async reset_commit({ formData, targetDir }) {
@@ -206,5 +209,6 @@ export const GIT_WORKTREE_ACTIONS: Record<string, GitActionHandler> = {
 
   async rebase_commit({ formData, targetDir }) {
     await rebaseOnto(targetDir, hashFor(formData));
+    return stoppedOperationPayload(targetDir);
   },
 };
