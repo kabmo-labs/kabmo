@@ -74,6 +74,8 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
   const caps = capabilities;
   const anyVerb = caps ? caps.comment || caps.state || caps.review || caps.merge : false;
   const closed = item.state === 'closed' || item.state === 'merged';
+  /** How the item is named in a button's accessible name. */
+  const label = item.number !== null ? `#${item.number}` : item.title;
 
   const submitComment = async () => {
     const text = body.trim();
@@ -122,6 +124,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
               type="button"
               onClick={() => void submitComment()}
               disabled={write.pending || body.trim().length === 0}
+              aria-label={`Post a comment on ${label}`}
               className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
             >
               Comment
@@ -133,6 +136,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                   type="button"
                   onClick={() => setPending('approve')}
                   disabled={write.pending}
+                  aria-label={`Approve ${label}`}
                   className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
                 >
                   Approve
@@ -141,6 +145,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                   type="button"
                   onClick={() => setPending('request_changes')}
                   disabled={write.pending}
+                  aria-label={`Request changes on ${label}`}
                   className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
                 >
                   Request changes
@@ -153,6 +158,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                 type="button"
                 onClick={() => setPending('merge')}
                 disabled={write.pending}
+                aria-label={`Merge ${label}`}
                 className="ml-auto flex items-center gap-1 rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
               >
                 <Glyph path={ICON.merge} size={10} />
@@ -160,11 +166,18 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
               </button>
             )}
 
+            {/*
+              The accessible name carries the ITEM (`Close #12`), because the
+              bare word collides with the header's `Closed` filter: two controls
+              whose names differ by a letter are ambiguous to a screen reader and
+              to anything else that addresses a control by name.
+            */}
             {caps.state && (
               <button
                 type="button"
                 onClick={() => setPending(closed ? 'reopen' : 'close')}
                 disabled={write.pending}
+                aria-label={`${closed ? 'Reopen' : 'Close'} ${label}`}
                 className={`${caps.merge && !closed ? '' : 'ml-auto'} rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40`}
               >
                 {closed ? 'Reopen' : 'Close'}

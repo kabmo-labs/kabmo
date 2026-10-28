@@ -42,6 +42,7 @@ let container: HTMLElement;
 let calls: Array<{ method: string; input: unknown }>;
 let listOutcome: { ok: true; value: ForgeList } | { ok: false; error: { code: string; message: string } };
 let detailOutcome: { ok: true; value: ForgeDetail } | { ok: false; error: { code: string; message: string } };
+let writeOutcome: { ok: true; value: unknown } | { ok: false; error: { code: string; message: string } };
 let scope: RepoScope;
 
 beforeAll(() => {
@@ -114,6 +115,7 @@ beforeEach(() => {
   calls = [];
   listOutcome = { ok: true, value: list() };
   detailOutcome = { ok: true, value: detail() };
+  writeOutcome = { ok: true, value: { item: item(), message: 'Comment posted.' } };
   scope = {
     root: '/ws',
     repo: 'projects/alpha',
@@ -134,7 +136,10 @@ beforeEach(() => {
     rescanRepoScope: () => {},
     callRpc: async (_pluginId, method, input) => {
       calls.push({ method, input });
-      return method === 'detail' ? detailOutcome : listOutcome;
+      if (method === 'detail') return detailOutcome;
+      if (method === 'write') return writeOutcome;
+      if (method === 'credential') return { ok: true, value: { source: 'cli', present: true, writeScope: null } };
+      return listOutcome;
     },
   };
   configureUiKit(services);
@@ -172,10 +177,36 @@ async function mount(): Promise<void> {
   });
 }
 
-/** Every button whose text matches, so a click can be addressed by its label. */
+/**
+ * A button by its ACCESSIBLE NAME, which is the label when it has one.
+ *
+ * Exact rather than `includes`, because `Close` is a prefix of `Closed` — the
+ * write verb and the header's state filter — and a substring match silently
+ * clicked the filter. The same ambiguity is why the verbs carry `Close #12`
+ * as their accessible name.
+ */
 function button(label: string): HTMLButtonElement | null {
   const buttons = [...container.querySelectorAll('button')] as HTMLButtonElement[];
-  return buttons.find((entry) => (entry.textContent ?? '').trim().includes(label)) ?? null;
+  return (
+    buttons.find((entry) => (entry.getAttribute('aria-label') ?? '').trim() === label) ??
+    // A section row's name is `<section> — <count>`, so a test that wants the
+    // section rather than the count addresses it by its `title`.
+    buttons.find((entry) => (entry.getAttribute('title') ?? '').trim() === label) ??
+    buttons.find((entry) => (entry.textContent ?? '').trim() === label) ??
+    null
+  );
+}
+
+/**
+ * A list row, by the title it shows.
+ *
+ * A row's accessible name is `Open #1: Something is broken by ana` — state, id,
+ * title and author, in that order — so it is addressed by a substring of that,
+ * which is the only handle a reader has either.
+ */
+function row(title: string): HTMLButtonElement | null {
+  const buttons = [...container.querySelectorAll('button')] as HTMLButtonElement[];
+  return buttons.find((entry) => (entry.getAttribute('aria-label') ?? '').includes(title)) ?? null;
 }
 
 describe('ForgePanel', () => {
@@ -211,7 +242,7 @@ describe('ForgePanel', () => {
   test('the section switch stays reachable while an item is open', async () => {
     await mount();
     await act(async () => {
-      button('Something is broken')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      row('Something is broken')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -270,9 +301,9 @@ describe('ForgePanel', () => {
 
   test('opening a row reads its detail and renders the body as markdown', async () => {
     await mount();
-    const row = button('Something is broken');
+    const target = row('Something is broken');
     await act(async () => {
-      row?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      target?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -300,9 +331,9 @@ describe('ForgePanel', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    const row = button('A change');
+    const change = row('A change');
     await act(async () => {
-      row?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      change?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     });
     await act(async () => {
       await Promise.resolve();

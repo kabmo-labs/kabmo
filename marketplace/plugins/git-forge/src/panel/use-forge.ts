@@ -112,6 +112,8 @@ export function useForgeDetail(
   const [loading, setLoading] = useState(false);
   /** Bumped after a write, so the same item is read again. */
   const [revision, setRevision] = useState(0);
+  /** The pick the value on screen belongs to, so a RELOAD does not clear it. */
+  const shownKey = useRef<string | null>(null);
 
   const callRef = useRef(call.call);
   callRef.current = call.call;
@@ -120,11 +122,21 @@ export function useForgeDetail(
     if (!scope || !id || !active) {
       setDetail(null);
       setError(null);
+      shownKey.current = null;
       return;
     }
+    // A different ITEM is a different document, so the previous one goes. A
+    // RELOAD of the same item — what a write triggers — must not: clearing it
+    // unmounted the write bar (and the notice saying the write landed), and
+    // blanked the body for the length of the read.
+    const key = `${scope.root}\u0000${scope.repo}\u0000${section}\u0000${id}`;
+    const different = shownKey.current !== key;
+    shownKey.current = key;
     let cancelled = false;
-    setDetail(null);
-    setError(null);
+    if (different) {
+      setDetail(null);
+      setError(null);
+    }
     setLoading(true);
     void callRef.current({ ...scope, section, id }).then((outcome) => {
       if (cancelled) return;

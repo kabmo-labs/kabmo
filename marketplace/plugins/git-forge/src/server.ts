@@ -52,6 +52,7 @@ import { invalidateWhere } from './server/write-http';
 import { parseRemote, type ProviderPreference } from './server/remote';
 import { readOrigin, resolveScope, type Scope } from './server/scope';
 import { resolveToken } from './server/token';
+import { probeWriteScope } from './server/scope-probe';
 import { patchedItem, performWrite } from './server/writes';
 import type { ForgeContext } from './server/context';
 
@@ -221,18 +222,19 @@ export default function plugin(api: KabmoPluginApi) {
     },
   });
 
-  api.rpc.register<{ root: string; repo: string }, ForgeCredential>(RPC.credential, {
+  api.rpc.register<{ root: string; repo: string; probe?: unknown }, ForgeCredential>(RPC.credential, {
     handler: async (input) => {
       const context = await contextFor(api, cache, input);
       const source = await resolveCredentialSource(api, context);
       return {
         source: source.source,
         present: Boolean(context.token),
-        // A credential's SCOPE cannot be read back from the host on every one of
-        // them (GitHub reports `x-oauth-scopes` on REST but not on search, GitLab
-        // reports nothing usable), so the panel is told the honest answer:
-        // unknown. What it does instead is offer the verbs and report a refusal.
-        writeScope: null,
+        // Probed only when the caller asks (`probe: true`, which the panel sends
+        // when the reader opens the credential sheet): it is one request against
+        // the same budget the reads use, and a panel mount must not spend it.
+        // A host that does not report scopes answers null, which is honest and
+        // different from false.
+        writeScope: input?.probe === true ? await probeWriteScope(context) : null,
       };
     },
   });

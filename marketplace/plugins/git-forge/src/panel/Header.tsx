@@ -29,8 +29,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { RepoPicker, type RepoScopeHandle } from '@kabmo-labs/kabmo-ui';
 
-import { filterIsDefault, type ForgeFilter, type ForgeList, type ForgeState } from '../protocol';
+import { filterIsDefault, type ForgeCredential, type ForgeFilter, type ForgeList, type ForgeState } from '../protocol';
+import { CredentialSheet } from './Credential';
 import { Glyph, ICON } from './Glyph';
+import type { Scope } from './use-forge';
 
 interface HeaderProps {
   scope: RepoScopeHandle;
@@ -38,6 +40,9 @@ interface HeaderProps {
   list: ForgeList | null;
   filter: ForgeFilter;
   loading: boolean;
+  credential: ForgeCredential | null;
+  /** The same scope the reads use, so the sheet's probe asks about this repo. */
+  target: Scope | null;
   onFilter: (next: ForgeFilter) => void;
   onRefresh: () => void;
 }
@@ -58,8 +63,9 @@ const STATES: Array<{ value: ForgeState; label: string }> = [
   { value: 'all', label: 'All' },
 ];
 
-export function Header({ scope, showHeader, list, filter, loading, onFilter, onRefresh }: HeaderProps) {
+export function Header({ scope, showHeader, list, filter, loading, credential, target, onFilter, onRefresh }: HeaderProps) {
   const [expanded, setExpanded] = useState(false);
+  const [credentialOpen, setCredentialOpen] = useState(false);
   const narrowed = !filterIsDefault(filter);
 
   // The two typed fields keep their own draft, committed after a pause. A
@@ -134,8 +140,36 @@ export function Header({ scope, showHeader, list, filter, loading, onFilter, onR
             <Glyph path={ICON.external} size={13} />
           </a>
         )}
+        {/*
+          The credential indicator is a DOT rather than a sentence: a full token
+          is present in the common case, and a row of prose about it would be the
+          panel's first line. It is a button because the sheet behind it is where
+          the two facts a reader needs live — which source, and whether it writes.
+        */}
+        <button
+          type="button"
+          onClick={() => setCredentialOpen((value) => !value)}
+          aria-expanded={credentialOpen}
+          title={
+            credential?.present
+              ? `Credential: ${credential.source}. Open for details.`
+              : 'No credential: public repositories only. Open for details.'
+          }
+          aria-label="Credential details"
+          className={`flex-shrink-0 rounded p-1 transition-colors hover:bg-ink/5 ${
+            credential?.present ? 'text-success' : 'text-warning'
+          }`}
+        >
+          <Glyph path={ICON.key} size={12} />
+        </button>
         {!showHeader && refresh}
       </div>
+
+      {credentialOpen && (
+        <div className="px-2 pb-1.5">
+          <CredentialSheet scope={target} credential={credential} onClose={() => setCredentialOpen(false)} />
+        </div>
+      )}
 
       <div className="flex items-center gap-1.5 px-2 pb-1.5">
         <div className="flex flex-shrink-0 items-center rounded border border-ink/15 p-px" role="group" aria-label="State filter">

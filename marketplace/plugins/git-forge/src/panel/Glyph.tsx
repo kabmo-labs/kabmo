@@ -63,6 +63,8 @@ export const ICON = {
   commit: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 12h7M15 12h7',
   /** A speech bubble with a plus — "add a comment". */
   commentAdd: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5a8.4 8.4 0 0 1-.9-3.9 8.5 8.5 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8zM12 8v6M9 11h6',
+  /** A key — "which credential is in use". */
+  key: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3',
   /** A merge arrow — "merge this". */
   merge: 'M8 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 12V3M8 12c6 0 8-3 8-6',
 } as const;

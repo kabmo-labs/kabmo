@@ -147,6 +147,8 @@ export function ForgePanel(_props: ForgePanelProps) {
         list={list.list}
         filter={filter}
         loading={list.loading}
+        credential={credential}
+        target={scope}
         onFilter={setFilter}
         onRefresh={() => void list.reload()}
       />

@@ -139,6 +139,13 @@ it. The environment and CLI above are the sources that work out of the box, and
 the panel's own sentences name them rather than pointing at a screen that does
 not exist. The same applies to `provider`, `apiBase` and `perPage`.
 
+The header carries a key glyph that opens a **credential sheet**: which source is
+in use, and — on request — whether that credential can WRITE. The probe is one
+request and answers three ways: `yes`, `no`, or "this host does not say" (a
+fine-grained GitHub token, Gitea, Bitbucket). A read-only token is the reason a
+panel would otherwise show verbs that can only fail, so it is worth one request
+when the reader asks; it is never run on a panel mount.
+
 ## The navbar readout and `/issue`
 
 - **`Waiting on me`** in the navbar shows open issues and open requests assigned
@@ -183,7 +190,7 @@ environment/CLI credential above.
 bun test marketplace/plugins/git-forge/
 ```
 
-172 assertions across 14 files. Each suite owns one rule that fails silently:
+189 assertions across 16 files. Each suite owns one rule that fails silently:
 
 - `remote.test.ts` — the remote parser: credentials, ports, subgroups, local
   paths, and the four hosts' API roots.
@@ -196,9 +203,12 @@ bun test marketplace/plugins/git-forge/
   not a failure, and an unknown word is neutral rather than red.
 - `diff.test.ts` — the unified diff parser for the two hosts that answer text.
 - `capabilities.test.ts` — what a read may offer, and the sentence a refusal uses.
+- `scope-probe.test.ts` — the write-scope probe, where "cannot tell" must never be
+  read as "no".
 - `writes.test.ts` — every verb on every host, through the injected fetch, so
   nothing here can reach a real repository.
 - `adapters.test.ts` / `gitlab.test.ts` / `forges.test.ts` — the four adapters
   against recorded bodies.
 - `command.test.ts` — `/issue`'s parsing, the quotation and the insert.
-- `panel/index.test.tsx` — the assembled panel in a real DOM.
+- `panel/index.test.tsx` / `panel/write.test.tsx` — the assembled panel and its
+  write surface in a real DOM.
