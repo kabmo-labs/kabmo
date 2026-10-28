@@ -23,6 +23,13 @@
       "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
       "category": "utility",
       "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
+    },
+    {
+      "name": "git-forge",
+      "source": "plugins/git-forge",
+      "description": "Reads and acts on a repository's issues, pull/merge requests and releases on GitHub, GitLab, Gitea or Bitbucket.",
+      "category": "utility",
+      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
     }
   ]
 }

@@ -105,6 +105,39 @@ describe('the catalog matches the tree', () => {
     }
   });
 
+  test('marketplace.json lists every bundled plugin, and every local entry exists', () => {
+    // The curated catalog is what a reader sees the store OFFER. It is read for
+    // its remote entries and for the marketplace's own identity, so a missing
+    // local entry does not break an install — but it is the file a human edits to
+    // describe the store, and a plugin absent from it is a plugin the store does
+    // not claim to ship. Measured: git-forge shipped in four commits without ever
+    // being added here, and nothing failed.
+    const catalogPath = join(repoRoot, 'marketplace/marketplace.json');
+    const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
+    const entries = Array.isArray(catalog.plugins) ? catalog.plugins : [];
+    const listed = new Set(entries.map((entry) => String(entry.source ?? '')));
+
+    const found = readdirSync(join(repoRoot, 'marketplace/plugins')).map((name) => `plugins/${name}`);
+
+    for (const source of found) {
+      expect(listed.has(source), `${source} exists but marketplace.json does not list it`).toBe(true);
+    }
+
+    for (const entry of entries) {
+      const source = String(entry.source ?? '');
+      // A remote entry names a repository, not a directory: there is nothing on
+      // disk to compare until it is cloned.
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(source) || source.startsWith('git@')) continue;
+
+      expect(found, `marketplace.json lists ${source}, which does not exist`).toContain(source);
+      // The catalog's `name` is the id an install writes, so it has to be the
+      // manifest's own id — a label would make the store offer a plugin under a
+      // name the registry cannot resolve.
+      const manifest = JSON.parse(readFileSync(join(repoRoot, 'marketplace', source, 'package.json'), 'utf8'));
+      expect(manifest.kabmo?.id, `${source}: catalog name "${entry.name}" is not the manifest id`).toBe(entry.name);
+    }
+  });
+
   test('the two version spellings agree in every manifest', () => {
     for (const entry of BUNDLED_PLUGINS) {
       const parsed = JSON.parse(readFileSync(join(repoRoot, entry.dir, 'package.json'), 'utf8'));
