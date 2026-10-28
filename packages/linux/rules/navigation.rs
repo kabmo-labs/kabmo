@@ -1,5 +1,5 @@
 // @license
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 //! Where a link goes, pinned without a display.
 //!

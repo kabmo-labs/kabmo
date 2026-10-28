@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Builtin-command output must survive a reload. omp writes NOTHING to the
  * session JSONL for a `/context` or `/usage` turn — the output exists only in

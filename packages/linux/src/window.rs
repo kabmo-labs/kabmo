@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  */
 
 /**
@@ -589,7 +589,7 @@ pub fn show_about(parent: &gtk::Window) {
     ));
     dialog.set_website(Some("https://github.com/kabmo-labs/kabmo"));
     dialog.set_website_label(Some("github.com/kabmo-labs/kabmo"));
-    dialog.set_license_type(gtk::License::Apache20);
+    dialog.set_license_type(gtk::License::MitX11);
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
     dialog.connect_response(|dialog, _| dialog.close());

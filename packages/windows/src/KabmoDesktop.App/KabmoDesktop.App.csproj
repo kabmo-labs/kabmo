@@ -43,7 +43,7 @@
     -->
     <FileVersion>$(Version)</FileVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
-    <Copyright>Apache-2.0</Copyright>
+    <Copyright>MIT</Copyright>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>app.ico</ApplicationIcon>

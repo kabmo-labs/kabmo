@@ -1,5 +1,5 @@
 // @license
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 //! The self-update's rules, pinned without a display.
 //!

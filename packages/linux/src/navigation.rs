@@ -1,5 +1,5 @@
 // @license
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 //! Where a navigation goes: inside this window, or out to the system browser.
 //!

@@ -28,7 +28,7 @@
   "files": [
     "src"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kabmo-labs/kabmo.git",

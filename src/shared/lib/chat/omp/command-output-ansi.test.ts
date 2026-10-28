@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Builtin-command output must be stripped of ANSI on BOTH paths that can render
  * it: the live `command_output` frame and the custom entry a reload replays.

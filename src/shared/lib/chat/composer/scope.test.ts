@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The composer's command pool is WORKSPACE-scoped: omp resolves project
  * commands and project skills from the process's cwd, so a request that omits

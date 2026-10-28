@@ -1,5 +1,5 @@
 ; @license
-; SPDX-License-Identifier: Apache-2.0
+; SPDX-License-Identifier: MIT
 ;
 ; The Windows installer, built by Inno Setup (`ISCC.exe`, preinstalled on the
 ; `windows-latest` runner — verified against actions/runner-images: "InnoSetup

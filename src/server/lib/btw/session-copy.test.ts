@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The topic transcript and its promotion are file surgery on a format omp
  * owns, and every failure mode here is silent: a title slot that is not the

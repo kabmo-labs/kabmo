@@ -1,5 +1,5 @@
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Assemble a runnable folder around the published app.
 #
@@ -76,6 +76,13 @@ if ($ServerPath -and (Test-Path $ServerPath)) {
 } else {
   Write-Host "no bundled server: the window will look for 'kabmo' on PATH"
 }
+
+# The MIT notice, beside the app so the installer's `{app}\*` glob carries it into
+# every install. Read from the repository root: a copy of the text here would be a
+# second copy that drifts.
+$license = Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'LICENSE'
+if (-not (Test-Path $license)) { throw "no LICENSE at $license" }
+Copy-Item $license (Join-Path $out 'LICENSE') -Force
 
 $exe = Join-Path $out 'Kabmo.exe'
 if (-not (Test-Path $exe)) { throw "publish did not produce $exe" }

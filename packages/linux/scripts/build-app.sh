@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Assemble a runnable Linux app directory around the release binary.
 #
@@ -66,6 +66,15 @@ cp "$HERE/scripts/kabmo.desktop.in" "$OUT/kabmo.desktop.in"
 cp "$HERE/scripts/install.sh" "$OUT/install.sh"
 chmod +x "$OUT/install.sh"
 
+# The MIT notice travels with the archive, because the licence requires it in
+# every copy and the three packagers each install it in the shape their format
+# expects (`.deb` a DEP-5 `copyright`, `.rpm` a `%license`, AppImage the file).
+# Read from the repository root rather than restated here: a copy of the text in
+# this script would be the second copy that drifts the first time the year or the
+# holder changes.
+[ -f "$REPO/LICENSE" ] || { echo "build-app: no LICENSE at $REPO/LICENSE" >&2; exit 1; }
+cp "$REPO/LICENSE" "$OUT/LICENSE"
+
 # The MIME types the entry declares, GENERATED from the one table the macOS plist
 # and the Windows installer are also rendered from. It travels as a file because a
 # published tarball carries no `scripts/` directory for `install.sh` to call, and a
@@ -79,5 +88,6 @@ echo "  $OUT/Kabmo"
 echo "  $OUT/kabmo.desktop.in"
 echo "  $OUT/kabmo.png"
 echo "  $OUT/install.sh"
+echo "  $OUT/LICENSE"
 echo ""
 echo "install with: $OUT/install.sh"

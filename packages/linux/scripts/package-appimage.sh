@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Build the AppImage for the staged directory `build-app.sh` produced.
 #
@@ -41,6 +41,7 @@ VERSION="${4:?usage: package-appimage.sh <staged-dir> <output-dir> <arch> <versi
 [ -f "$STAGE/kabmo.png" ] || { echo "package-appimage: no icon at $STAGE/kabmo.png" >&2; exit 1; }
 [ -f "$STAGE/kabmo.desktop.in" ] || { echo "package-appimage: no launcher template" >&2; exit 1; }
 [ -f "$STAGE/mime-types.txt" ] || { echo "package-appimage: no MimeType list beside the template (run build-app.sh)" >&2; exit 1; }
+[ -f "$STAGE/LICENSE" ] || { echo "package-appimage: no LICENSE beside the binary (run build-app.sh)" >&2; exit 1; }
 
 PKG=kabmo
 NAME="Kabmo-${VERSION}-linux-${AI_ARCH}"
@@ -97,6 +98,14 @@ mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
 install -m 755 "$STAGE/Kabmo" "$APPDIR/usr/bin/Kabmo"
 install -m 644 "$STAGE/kabmo.png" "$APPDIR/kabmo.png"
 install -m 644 "$STAGE/kabmo.png" "$APPDIR/usr/share/icons/hicolor/512x512/apps/$PKG.png"
+
+# The MIT notice. AppImage has no package-manager policy for it, so the file goes
+# where the format's own convention puts it — the AppDir root, beside `AppRun` —
+# and once more under `usr/share/doc` so `--appimage-extract` finds it where a
+# system install would have it.
+install -m 644 "$STAGE/LICENSE" "$APPDIR/LICENSE"
+mkdir -p "$APPDIR/usr/share/doc/$PKG"
+install -m 644 "$STAGE/LICENSE" "$APPDIR/usr/share/doc/$PKG/LICENSE"
 
 # `.DirIcon` is what a file manager shows for the AppImage itself.
 ln -sf kabmo.png "$APPDIR/.DirIcon"

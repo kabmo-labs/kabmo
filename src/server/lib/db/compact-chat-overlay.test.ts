@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The overlay repair. Its whole risk is asymmetric: narrowing a row it should
  * not touch DESTROYS a conversation (for a chamber-created session the DB is the

@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  */
 
 /** The `useOmpAgent` RPC-command half of `stream.test.ts`: follow-ups,

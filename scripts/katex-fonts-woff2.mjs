@@ -20,7 +20,7 @@ const target = join(root, 'src/shared/lib/markdown/katex-fonts.css');
 
 const HEADER = `/**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  */
 
 /*

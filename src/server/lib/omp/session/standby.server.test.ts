@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The standby-recycle contract, which is what makes an `omp update` visible
  * without a Kabmo restart.

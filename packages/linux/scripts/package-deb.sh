@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Build the Debian package for the packaged directory `build-app.sh` produced.
 #
@@ -85,10 +85,32 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
     || { echo "package-deb: the launcher entry is not valid" >&2; exit 1; }
 fi
 
-# No `copyright` file is written: this repository ships no LICENSE file, and a
-# `.deb` that invents one would be asserting a license the project has not
-# declared. `package.json` states `UNLICENSED`; the per-file SPDX headers are the
-# only licence statement there is.
+# The MIT notice, in the shape Debian policy requires: an UNCOMPRESSED
+# `/usr/share/doc/<pkg>/copyright` in DEP-5 format (policy §12.5 — a gzipped one
+# is a violation, unlike the changelog). Generated from the archive's own
+# `LICENSE` so the text has one source; only the machine-readable header is
+# written here, because it is the format's, not the licence's.
+[ -f "$STAGE/LICENSE" ] || { echo "package-deb: no LICENSE at $STAGE/LICENSE (run build-app.sh)" >&2; exit 1; }
+# Read out of the licence rather than restated: the year and the holder are stated
+# once, in `LICENSE`, and a copy here would be the second one that drifts.
+COPYRIGHT_HOLDER="$(sed -n 's/^Copyright (c) \(.*\)$/\1/p' "$STAGE/LICENSE")"
+[ -n "$COPYRIGHT_HOLDER" ] || { echo "package-deb: no 'Copyright (c) …' line in $STAGE/LICENSE" >&2; exit 1; }
+{
+  echo "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
+  echo "Upstream-Name: kabmo"
+  echo "Source: https://github.com/kabmo-labs/kabmo"
+  echo
+  echo "Files: *"
+  echo "Copyright: $COPYRIGHT_HOLDER"
+  echo "License: MIT"
+  # The licence body is indented by one space and its blank lines become ` .`,
+  # which is what DEP-5's continuation syntax asks for. The title and the
+  # copyright line are dropped: both are already stated above, and a `Copyright:`
+  # line repeated inside the body reads as a second claim.
+  sed -n '/^Permission is hereby granted/,$p' "$STAGE/LICENSE" \
+    | sed -e 's/^$/./' -e 's/^/ /'
+} > "$ROOT/usr/share/doc/$PKG/copyright"
+chmod 644 "$ROOT/usr/share/doc/$PKG/copyright"
 
 # The dependencies are the two native libraries the crate links, named for the
 # distribution this package targets. Ubuntu 24.04 renamed GTK 3's runtime package

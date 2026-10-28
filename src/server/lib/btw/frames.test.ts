@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * `finalStatus` decides what the panel shows under an answer and whether the
  * promote button is offered, so an abnormal stop read as `complete` would both

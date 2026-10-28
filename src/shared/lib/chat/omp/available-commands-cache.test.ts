@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * `available_commands_update` must drop the composer's cached command pool.
  * The cache lives five minutes, and this frame is the only signal that omp's

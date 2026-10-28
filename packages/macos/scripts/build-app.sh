@@ -26,6 +26,12 @@ VERSION="$(node "$REPO/release/macos-version.mjs")"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Kabmo"
+
+# The MIT notice, inside the bundle so it travels in the `.zip` and survives a
+# drag to /Applications — `Resources` is where a `.app` carries documents that are
+# not code. Read from the repository root: a copy of the text here would be a
+# second copy that drifts.
+cp "$REPO/LICENSE" "$APP/Contents/Resources/LICENSE"
 # Belt and braces: the copy is named `Kabmo` and the plist says so, so a launch
 # from Finder, from `open`, and from the binary directly all report one name.
 

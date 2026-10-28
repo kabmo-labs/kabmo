@@ -286,5 +286,6 @@ registered.
 ## Releases and license
 
 The package is versioned from commits by the repository's release pipeline —
-never bumped by hand. The manifest declares `UNLICENSED`; see the repository's
-own License section for the terms, which govern this package too.
+never bumped by hand. The manifest declares `MIT`; see the repository's
+[LICENSE](https://github.com/kabmo-labs/kabmo/blob/main/LICENSE) for the terms, which
+govern this package too.

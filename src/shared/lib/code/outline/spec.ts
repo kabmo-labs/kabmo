@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  */
 
 import type { DeclarationRule, MaskStyle, MemberRule } from '@/shared/lib/code/outline/rules';

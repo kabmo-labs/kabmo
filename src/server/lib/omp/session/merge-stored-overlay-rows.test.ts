@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The overlay narrowing. For a session omp owns on disk the transcript lives in
  * the JSONL, so Kabmo's copy only has to carry what omp cannot record

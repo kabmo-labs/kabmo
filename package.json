@@ -2,7 +2,7 @@
   "name": "@kabmo-labs/kabmo",
   "version": "0.12.0",
   "description": "Web console and diagnostic workbench for AI coding agents — Elysia + Preact on Bun.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Wijanarko Putra Rajeb <wijanarko.rajeb@gmail.com>",
   "type": "module",
   "engines": {

@@ -14,7 +14,7 @@
     "preact": "^10.29.8",
     "@kabmo-labs/kabmo-sdk": "workspace:*"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kabmo-labs/kabmo.git",

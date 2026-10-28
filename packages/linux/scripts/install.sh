@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Install the Kabmo desktop shell for the current user.
 #
@@ -8,12 +8,13 @@
 #   PREFIX=/usr ./install.sh     → a system-wide install (run with sudo)
 #   ./install.sh --uninstall     → remove what this script installed
 #
-# Three files are placed, and the launcher entry is GENERATED rather than shipped
+# Four files are placed, and the launcher entry is GENERATED rather than shipped
 # ready-made:
 #
 #   $PREFIX/bin/Kabmo
 #   $PREFIX/share/icons/hicolor/512x512/apps/kabmo.png
 #   $PREFIX/share/applications/kabmo.desktop
+#   $PREFIX/share/doc/kabmo/LICENSE
 #
 # **The entry cannot be shipped pre-written, and that was a real bug.** A desktop
 # entry's `Exec` takes an absolute path, and a tarball unpacks anywhere — so the
@@ -41,6 +42,8 @@ ICON_DIR="$PREFIX/share/icons/hicolor/512x512/apps"
 ICON_DEST="$ICON_DIR/$APP_ID.png"
 ENTRY_DIR="$PREFIX/share/applications"
 ENTRY_DEST="$ENTRY_DIR/$APP_ID.desktop"
+DOC_DIR="$PREFIX/share/doc/$APP_ID"
+LICENSE_DEST="$DOC_DIR/LICENSE"
 
 say() { printf '%s\n' "$*"; }
 
@@ -73,7 +76,10 @@ refresh_caches() {
 }
 
 uninstall() {
-  rm -f "$BIN_DEST" "$ICON_DEST" "$ENTRY_DEST"
+  rm -f "$BIN_DEST" "$ICON_DEST" "$ENTRY_DEST" "$LICENSE_DEST"
+  # Only the directory this script created, and only when it is empty — a
+  # `share/doc` that already existed belongs to the prefix, not to this app.
+  rmdir "$DOC_DIR" 2>/dev/null || true
   refresh_caches
   say "removed Kabmo from $PREFIX"
   # The shell's own state is deliberately kept: `$XDG_CONFIG_HOME/Kabmo` holds the
@@ -90,11 +96,16 @@ fi
 [ -x "$HERE/Kabmo" ] || die "no Kabmo binary beside this script (expected $HERE/Kabmo)"
 [ -f "$HERE/kabmo.desktop.in" ] || die "no kabmo.desktop.in beside this script"
 [ -f "$HERE/kabmo.png" ] || die "no kabmo.png beside this script"
+# MIT requires the notice in every copy, and an installed app is a copy. Required
+# rather than optional: `build-app.sh` puts it in the archive, so its absence means
+# the archive is not the one this script shipped with.
+[ -f "$HERE/LICENSE" ] || die "no LICENSE beside this script"
 
-mkdir -p "$PREFIX/bin" "$ICON_DIR" "$ENTRY_DIR"
+mkdir -p "$PREFIX/bin" "$ICON_DIR" "$ENTRY_DIR" "$DOC_DIR"
 
 install -m 755 "$HERE/Kabmo" "$BIN_DEST"
 install -m 644 "$HERE/kabmo.png" "$ICON_DEST"
+install -m 644 "$HERE/LICENSE" "$LICENSE_DEST"
 
 # The substitution is on `@PLACEHOLDER@` tokens rather than on a template with
 # example paths: a placeholder cannot be confused with a real path, and a token
@@ -153,5 +164,6 @@ say "installed Kabmo to $PREFIX"
 say "  $BIN_DEST"
 say "  $ICON_DEST"
 say "  $ENTRY_DEST"
+say "  $LICENSE_DEST"
 say ""
 say "Launch it from your applications menu, or run $BIN_DEST"

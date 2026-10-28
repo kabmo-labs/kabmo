@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The root table is data, and every consumer's correctness rests on it being
  * the set omp actually reads. These tests pin the two properties that have

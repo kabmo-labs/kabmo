@@ -536,6 +536,9 @@ describe('the gate contract', () => {
         writeFileSync(join(app, 'Kabmo'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
         writeFileSync(join(app, 'kabmo.png'), '');
         writeFileSync(join(app, 'mime-types.txt'), 'application/pdf;\n');
+        // The archive carries the licence notice, and `install.sh` refuses to run
+        // without it — so the fixture is the archive, not a subset of it.
+        copyFileSync(join(ROOT, 'LICENSE'), join(app, 'LICENSE'));
         for (const name of ['install.sh', 'kabmo.desktop.in']) {
           copyFileSync(join(scripts, name), join(app, name));
         }
@@ -552,6 +555,21 @@ describe('the gate contract', () => {
         // the same two facts the release body asserts with `grep -qx`.
         expect(exec).toBe(`Exec="${join(prefix, 'bin', 'Kabmo')}" %F`);
         expect(entry).toContain('MimeType=application/pdf;');
+
+        // The MIT notice is installed with the app, byte for byte: the licence
+        // requires it in every copy, and a trimmed or rewritten notice is not the
+        // notice. `--uninstall` then removes it, so a removed app leaves no claim
+        // behind in the prefix.
+        const licence = join(prefix, 'share/doc/kabmo/LICENSE');
+        expect(readFileSync(licence, 'utf8')).toBe(readFileSync(join(ROOT, 'LICENSE'), 'utf8'));
+
+        const removed = Bun.spawnSync(['bash', join(app, 'install.sh'), '--uninstall'], {
+          env: { ...process.env, PREFIX: prefix },
+          stdout: 'pipe',
+          stderr: 'pipe',
+        });
+        expect(removed.exitCode, removed.stderr.toString()).toBe(0);
+        expect(existsSync(licence)).toBe(false);
       } finally {
         rmSync(app, { recursive: true, force: true });
         rmSync(prefix, { recursive: true, force: true });

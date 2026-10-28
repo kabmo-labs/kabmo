@@ -199,7 +199,7 @@ to triage a new issue and to review a pull request, and its verdict is published
 
 ## License
 
-No license file is included. The source is public on GitHub and published to npm, but all rights are
-reserved by the author — no license is granted for redistribution or reuse.
+MIT — see [`LICENSE`](LICENSE). The terms cover the application and the published packages
+(`@kabmo-labs/kabmo-sdk`, `@kabmo-labs/kabmo-ui`).
 
 See [CHANGELOG.md](CHANGELOG.md) for the release history.

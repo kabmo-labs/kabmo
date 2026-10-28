@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The popup's command pool has two sources with different owners: omp's
  * `get_available_commands` and Kabmo's own commands. `/btw` exists only

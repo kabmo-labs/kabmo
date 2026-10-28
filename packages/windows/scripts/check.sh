@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # The two things a NON-Windows machine can check, in one command.
 #

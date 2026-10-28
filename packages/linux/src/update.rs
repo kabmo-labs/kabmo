@@ -1,5 +1,5 @@
 // @license
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 //! The rules a Linux self-update obeys, as pure values.
 //!

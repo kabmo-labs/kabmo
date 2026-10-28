@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * The discovery watcher's decisions: which directories it holds a watcher for,
  * and when it reports a change.

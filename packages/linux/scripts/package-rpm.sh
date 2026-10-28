@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @license
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
 #
 # Build the RPM package for the staged directory `build-app.sh` produced.
 #
@@ -35,6 +35,7 @@ done
 [ -f "$STAGE/kabmo.png" ] || { echo "package-rpm: no icon at $STAGE/kabmo.png" >&2; exit 1; }
 [ -f "$STAGE/kabmo.desktop.in" ] || { echo "package-rpm: no launcher template" >&2; exit 1; }
 [ -f "$STAGE/mime-types.txt" ] || { echo "package-rpm: no MimeType list beside the template (run build-app.sh)" >&2; exit 1; }
+[ -f "$STAGE/LICENSE" ] || { echo "package-rpm: no LICENSE beside the binary (run build-app.sh)" >&2; exit 1; }
 
 PKG=kabmo
 NAME="Kabmo-${VERSION}-linux-${RPM_ARCH}"
@@ -83,7 +84,7 @@ Name:           $PKG
 Version:        $VERSION
 Release:        1
 Summary:        Web console and diagnostic workbench for AI coding agents
-License:        Apache-2.0
+License:        MIT
 URL:            https://github.com/kabmo-labs/kabmo
 BuildArch:      $RPM_ARCH
 Requires:       gtk3
@@ -99,11 +100,16 @@ rm -rf %{buildroot}
 install -d %{buildroot}/usr/bin
 install -d %{buildroot}/usr/share/applications
 install -d %{buildroot}/usr/share/icons/hicolor/512x512/apps
+install -d %{buildroot}/usr/share/licenses/$PKG
 install -m 755 $STAGE/Kabmo %{buildroot}/usr/bin/Kabmo
 install -m 644 $STAGE/kabmo.png %{buildroot}/usr/share/icons/hicolor/512x512/apps/$PKG.png
 install -m 644 $TOP/kabmo.desktop %{buildroot}/usr/share/applications/$PKG.desktop
+install -m 644 $STAGE/LICENSE %{buildroot}/usr/share/licenses/$PKG/LICENSE
 
 %files
+# `%license` rather than a plain path: RPM tags the file as a licence, which is
+# what `dnf repoquery --licenses` and a distro's licence audit read.
+%license /usr/share/licenses/$PKG/LICENSE
 /usr/bin/Kabmo
 /usr/share/applications/$PKG.desktop
 /usr/share/icons/hicolor/512x512/apps/$PKG.png
