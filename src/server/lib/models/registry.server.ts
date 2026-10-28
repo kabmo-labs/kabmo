@@ -17,6 +17,7 @@ import { PROVIDERS_SETTINGS_KEY } from '@/server/lib/models/provider-registry.se
 import { readSettingsJson } from '@/server/lib/db/settings-store';
 import { readDisabledProviders } from '@/server/lib/omp/config/disabled-providers';
 import { runUtilityCommand, type OmpModel } from '@/server/lib/omp/rpc/utility';
+import { readProviderIconUrls } from '@/server/lib/models/provider-icon.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 import type { ModelsData, ProviderItem } from '@/shared/types';
 
@@ -137,6 +138,10 @@ async function loadModels(): Promise<ModelsData> {
 
   const disabledProviders = await readDisabledProviders();
   const hiddenModelKeys = await readHiddenModelKeys();
+  // The provider's own site is the only identity a custom endpoint has, and the
+  // picker draws a mark per section and per selected model. Read as STAMPS (one
+  // query, no bytes) — the bytes are served by `/api/provider-icon`.
+  const providerIconUrls = await readProviderIconUrls();
   const nameMap: Record<string, string> = {};
   const thinkingLevels: Record<string, string[]> = {};
   const modelList = filterSelectableModels(available, disabledProviders, hiddenModelKeys)
@@ -144,6 +149,9 @@ async function loadModels(): Promise<ModelsData> {
       id: m.id,
       name: m.name,
       provider: m.provider,
+      ...(providerIconUrls.get(m.provider.trim().toLowerCase())
+        ? { providerIconUrl: providerIconUrls.get(m.provider.trim().toLowerCase()) }
+        : {}),
       thinkingLevels: thinkingLevelsFor(m),
       supportsFastMode: supportsFastMode(m),
       contextWindow: m.contextWindow ?? undefined,

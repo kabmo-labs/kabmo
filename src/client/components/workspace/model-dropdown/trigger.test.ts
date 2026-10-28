@@ -121,3 +121,37 @@ describe('composer model trigger label', () => {
     expect(button.title).toBe('kenari • Deepseek-V4-1-Flash');
   });
 });
+
+describe('trigger mark for a provider whose own icon was fetched', () => {
+  test('falls back to the CATALOG row when the selection prop is a bare provider/id pair', async () => {
+    // The composer hands the selection back as `{provider, id}` — it carries
+    // neither `providerIcon` nor `providerIconUrl`. Reading only the prop made
+    // the trigger draw initials for a provider whose logo the picker itself was
+    // showing one row below.
+    silenceRealtime();
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      models: {},
+      modelList: [{
+        id: MODEL.id,
+        name: MODEL.name,
+        provider: MODEL.provider,
+        providerIconUrl: '/api/provider-icon?slug=kenari&v=1700000000000',
+        thinkingLevels: ['off'],
+      }],
+      defaultModel: null,
+      thinkingLevels: {},
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    try {
+      act(() => {
+        render(h(ModelDropdown, { selectedModel: { id: MODEL.id, name: MODEL.name, provider: MODEL.provider } }), container);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const image = container.querySelector('button[title] img') as HTMLImageElement | null;
+      expect(image).not.toBeNull();
+      expect(image?.getAttribute('src')).toContain('/api/provider-icon');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent } from 'preact/compat';
 import { AlertCircle, Globe, Info, Key, Save } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
-import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { Modal } from '@/client/components/common/Modal';
 import {
   EntryAdvanced,

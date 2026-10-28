@@ -1,9 +1,21 @@
 import { useState } from 'preact/hooks';
 import { ProviderIcon } from '@/client/components/common/provider-icon';
-import type { ProviderItem } from '@/shared/types';
+
+/**
+ * The parts of a provider a mark needs. Every field is optional because the two
+ * callers carry different shapes: the settings list has a full `ProviderItem`,
+ * while a model row only knows the catalog's `providerIcon` key and the slug it
+ * was served by. `ProviderIcon` already resolves from any of them.
+ */
+export interface ProviderMarkSource {
+  icon?: string;
+  slug?: string;
+  name?: string;
+  iconUrl?: string;
+}
 
 interface ProviderIconPlateProps {
-  provider: Pick<ProviderItem, 'icon' | 'slug' | 'name' | 'iconUrl'>;
+  provider: ProviderMarkSource;
   /** Outer box, in px. The mark inside is sized from it. */
   size: number;
   /** Corner radius, in px. Defaults to a quarter of the box. */
@@ -20,13 +32,18 @@ interface ProviderIconPlateProps {
  * row's name started at a different x and the column of names, dots and counts
  * came out ragged. A fixed-size plate gives all three a shared origin.
  *
+ * Lives in `common/` because TWO surfaces draw it — the provider settings list
+ * and the composer's model picker — and a composer importing from a settings
+ * folder is the kind of edge that turns into a copy the first time one of them
+ * needs a tweak.
+ *
  * **A provider's own web icon wins when it has one**, and it is the only mark
  * drawn in COLOUR: it is the site's own logo (`iconUrl`, fetched from the
  * provider's `baseUrl`), and recolouring it to `currentColor` would turn a
- * brand mark into a silhouette. Everything else in this list stays monochrome
- * on purpose — the app's palette is a paper/ink system, and a table of
- * hand-drawn brand shapes is what made the one coloured logo stand out as an
- * accident rather than as identity.
+ * brand mark into a silhouette. Everything else stays monochrome on purpose —
+ * the app's palette is a paper/ink system, and a table of hand-drawn brand
+ * shapes is what made the one coloured logo stand out as an accident rather
+ * than as identity.
  *
  * A failed image falls back to the built-in mark: the bytes come from a third
  * party, so a 404 after the fact (the site dropped its favicon) must not leave

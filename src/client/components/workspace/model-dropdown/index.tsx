@@ -5,7 +5,7 @@ import type { AIModelOption, ModelPreferences } from '@/shared/types';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { invalidateModelsCache } from '@/shared/lib/models/client';
 import { ModelDropdownPanel } from '@/client/components/workspace/model-dropdown/Panel';
-import { ProviderIcon } from '@/client/components/common/provider-icon';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { useModelCatalog } from '@/client/components/workspace/model-dropdown/use-catalog';
 import { useCollapsedSections } from '@/client/components/workspace/model-dropdown/collapsed';
 import { buildPickerGroups } from '@/client/components/workspace/model-dropdown/groups';
@@ -41,6 +41,32 @@ export function ModelDropdown({
     preferences,
     applyPreferences,
   } = useModelCatalog(externalSelectedModel);
+
+  /**
+   * The selected model's mark, resolved against the CATALOG when the value the
+   * composer handed us is a bare `{provider, id}` pair.
+   *
+   * The selection travels out of this component as `onSelectModel(model)` and
+   * comes back as a prop built by the parent from `provider` + `id` — which
+   * carries neither `providerIcon` nor `providerIconUrl`. Reading only the prop
+   * made the trigger fall back to initials for a provider whose site logo the
+   * picker itself was already showing one row below.
+   */
+  const selectedMark = useMemo(() => {
+    if (!selectedModel) return null;
+    const fromCatalog = models.find(
+      (model) => model.provider === selectedModel.provider
+        && (model.id === selectedModel.id || !selectedModel.id),
+    );
+    return {
+      icon: selectedModel.providerIcon ?? fromCatalog?.providerIcon,
+      slug: selectedModel.provider,
+      name: selectedModel.provider,
+      ...(selectedModel.providerIconUrl ?? fromCatalog?.providerIconUrl
+        ? { iconUrl: selectedModel.providerIconUrl ?? fromCatalog?.providerIconUrl }
+        : {}),
+    };
+  }, [selectedModel, models]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(containerRef, () => {
@@ -224,19 +250,19 @@ export function ModelDropdown({
       >
         {selectedModel ? (
           <>
-            <span className="text-ink/60 flex-shrink-0">
-              {selectedModel.isCmdAgent ? (
-                <span className="font-mono text-[10px] font-bold text-ink/70">⌘</span>
-              ) : (
-                <ProviderIcon
-                  icon={selectedModel.providerIcon}
-                  slug={selectedModel.provider}
-                  name={selectedModel.provider}
-                  size={12}
-                />
-              )}
-            </span>
-            <span className="flex items-center space-x-1 min-w-0">
+            {selectedModel.isCmdAgent ? (
+              <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-[4px] border border-ink/20 bg-ink/5 text-ink/70 flex-shrink-0 font-mono text-[10px] font-bold">
+                ⌘
+              </span>
+            ) : (
+              <ProviderIconPlate provider={selectedMark ?? {}} size={16} />
+            )}
+            {/* Provider and model are two labels with a separator between them.
+                The PROVIDER never truncates: `kenari` and `kenari-jatis` are two
+                accounts, and an ellipsis made them render identically. The MODEL
+                takes the slack, because it is the part the reader is choosing
+                and the only part whose identity survives a cut. */}
+            <span className="flex items-baseline gap-1 min-w-0">
               <span className="shrink-0 text-ink/50 font-normal">{selectedModel.provider}</span>
               <span className="text-ink/30 flex-shrink-0">•</span>
               <span className="min-w-0 flex-1 truncate">{selectedModel.name}</span>

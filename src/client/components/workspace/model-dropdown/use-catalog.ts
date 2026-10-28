@@ -20,6 +20,10 @@ function toOption(m: ModelEntry): AIModelOption {
     // down with it. `unknown` keeps the row visible and gives it a stable
     // section instead of dropping a model the user may have selected.
     provider: m.provider || 'unknown',
+    // The provider's fetched web icon, when the server has one. Carried through
+    // so the picker's section header and the selected model's mark can draw the
+    // site's own logo instead of the initials of a provider nobody has drawn.
+    ...(m.providerIconUrl ? { providerIconUrl: m.providerIconUrl } : {}),
     contextWindow: m.contextWindow,
     thinkingLevel: ladder[0] ?? 'off',
     thinkingLevels: ladder,

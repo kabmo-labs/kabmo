@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle2, Copy, ExternalLink, Key, Loader2 } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
-import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { Modal } from '@/client/components/common/Modal';
 import { useProviderLogin, deviceCodeOf, canOpenLocally } from '@/client/hooks/settings/providers/login';
 

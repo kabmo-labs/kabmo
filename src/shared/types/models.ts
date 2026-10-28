@@ -18,6 +18,8 @@ export interface AIModelOption {
   name: string;
   provider: string;
   providerIcon?: string;
+  /** The provider's fetched web icon (see {@link ModelEntry.providerIconUrl}). */
+  providerIconUrl?: string;
   contextWindow?: string | number;
   isCmdAgent?: boolean;
   /**
@@ -51,6 +53,16 @@ export interface ModelEntry {
   id: string;
   name: string;
   provider: string;
+  /**
+   * The provider's own web icon, when one has been fetched and stored.
+   *
+   * `/api/models` is read by the composer's picker, which draws a mark per
+   * SECTION and per selected model. Without this the picker could only use the
+   * built-in mark table, so a `models.yml` provider — the one kind the table
+   * cannot know — showed its initials while the settings panel showed the site's
+   * logo for the same provider.
+   */
+  providerIconUrl?: string;
   supportsFastMode?: boolean;
   contextWindow?: number;
   maxTokens?: number;

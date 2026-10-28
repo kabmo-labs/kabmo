@@ -1,7 +1,7 @@
 import { useRef, useState } from 'preact/hooks';
 import { Loader2, Plus, RefreshCw, Search, X } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
-import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import {
   groupProviders,
   providerStatusLabel,
