@@ -15,35 +15,39 @@
  * `RightActivityBar.test.ts` does.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { ModeToggles, type ModeTogglesProps } from '@/client/components/workspace/chat-timeline/chat-input/ModeToggles';
 import type { GoalRecord } from '@/shared/lib/omp/mode/types';
-
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
-/** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
+import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;
 
-beforeAll(() => {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
-  container = (globalThis as unknown as { document: Document }).document.createElement('div');
-  (globalThis as unknown as { document: Document }).document.body.appendChild(container);
+/**
+ * The SHARED DOM helpers, not a local save-and-restore map.
+ *
+ * `pristine-globals.ts` states why: Bun imports every file before any test
+ * runs, so a local `nativeGlobals` capture records whatever another suite had
+ * installed by then, and restoring it hands the next file a dead window. This
+ * file also never unmounted its last tree, so a component stayed mounted across
+ * `afterAll` — and a Preact flush that landed afterwards threw
+ * `ReferenceError: document is not defined` between the NEXT file's tests
+ * (measured on the Windows gate, which reports it as an `error`, not a failure).
+ */
+beforeEach(() => {
+  installDomGlobals(new Window({ url: 'http://localhost' }));
+  container = document.createElement('div');
+  document.body.appendChild(container);
 });
 
-afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
+afterEach(() => {
+  render(null, container);
+  container.remove();
+  restoreDomGlobals();
 });
+
+afterAll(() => restoreDomGlobals());
 
 function paint(overrides: Partial<ModeTogglesProps> = {}): HTMLElement {
   const props: ModeTogglesProps = {
