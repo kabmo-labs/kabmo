@@ -163,9 +163,12 @@ describe('model picker live updates', () => {
 
     container = await mountPicker();
     trigger(container).click();
-    await flush(8, 10);
     const panelText = () => container.textContent ?? '';
-    expect(panelText()).toContain('Alpha Model');
+    // The rows arrive over the realtime socket, so this waits for the CONDITION
+    // rather than for a duration: a fixed flush is enough on a fast runner and
+    // is not on a Windows one (measured: the panel still read "No models
+    // available" 80ms after the click).
+    await waitForDom(() => panelText().includes('Alpha Model'));
     expect(panelText()).toContain('Beta Model');
 
     // The app clears its client cache after a provider write, then the topic
@@ -185,9 +188,8 @@ describe('model picker live updates', () => {
 
     container = await mountPicker();
     trigger(container).click();
-    await flush(8, 10);
     const panelText = () => container.textContent ?? '';
-    expect(panelText()).toContain('Alpha Model');
+    await waitForDom(() => panelText().includes('Alpha Model'));
 
     invalidateModelsCache();
     server.publish(TOPIC_MODELS, ERROR_MODELS);
@@ -206,8 +208,8 @@ describe('model picker live updates', () => {
 
     container = await mountPicker(true);
     trigger(container).click();
-    await flush(8, 10);
     const panelText = () => container.textContent ?? '';
+    await waitForDom(() => panelText().includes('Alpha Model'));
 
     // Collapse the FIRST provider section. The group key is the provider name
     // upper-cased (`buildPickerGroups`), and the header renders that key.
@@ -224,8 +226,7 @@ describe('model picker live updates', () => {
     container.remove();
     container = await mountPicker(true);
     trigger(container).click();
-    await flush(8, 10);
-    expect(panelText()).toContain('Beta Model');
+    await waitForDom(() => panelText().includes('Beta Model'));
     expect(panelText()).not.toContain('Alpha Model');
   });
 });
