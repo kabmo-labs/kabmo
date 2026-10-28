@@ -23,6 +23,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ChatInput } from '@/client/components/workspace/chat-timeline/chat-input';
+import { delay } from '@/client/hooks/chat/composer/file-reads';
 import { restoreRealtime, silenceRealtime } from '@/test-support/silent-socket';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'Event', 'MouseEvent', 'KeyboardEvent', 'FocusEvent'] as const;
@@ -54,15 +55,27 @@ beforeEach(() => {
   silenceRealtime();
 });
 
-afterEach(() => {
-  container?.remove();
+afterEach(async () => {
+  // UNMOUNT, then drain while this window still exists — the same teardown
+  // `stretch-send.test.tsx` states for the same component. `container.remove()`
+  // alone left the whole `ChatInput` mounted: its model picker keeps a realtime
+  // subscription and a reconnect timer, and Preact's effect flush is deferred,
+  // so a render landed after `afterAll` deleted the globals and threw
+  // `ReferenceError: document is not defined` inside whichever file bun ran
+  // next. Measured on the Windows gate: `8648 pass, 0 fail, 1 error`, exit 1.
+  // The drain is a BARE timer — wrapping it in `act` queues another flush.
+  const host = container;
+  if (host) {
+    await act(async () => { render(null, host); });
+    host.remove();
+  }
   container = null;
   // The composer's model picker subscribes to the realtime topic, and its
-  // reconnect timer outlives this file's DOM — it then fires into a torn-down
-  // `window` and surfaces as an unhandled error in whichever test runs next.
-  // `restoreRealtime` resets the client AND puts the real constructor back, so
-  // the silence does not follow this file into the next one.
+  // reconnect timer outlives this file's DOM. `restoreRealtime` resets the
+  // client AND puts the real constructor back, so the silence does not follow
+  // this file into the next one.
   restoreRealtime();
+  await delay(50);
 });
 
 interface MountOptions {

@@ -19,34 +19,36 @@
  * keep behaving as it did.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ComposerToolbar } from '@/client/components/workspace/chat-timeline/chat-input/Toolbar';
+import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;
 
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
-/** The runner's own globals, restored on teardown — deleting them would strip natives (Event/CustomEvent) every later file needs. */
-const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-
-beforeAll(() => {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (!(key in nativeGlobals)) nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
+/**
+ * The SHARED DOM helpers, and an unmount between cases.
+ *
+ * A local `nativeGlobals` map is unsafe here for the reason `pristine-globals.ts`
+ * states: Bun imports every file before any test runs, so the capture can hold
+ * another suite's window. And a tree left mounted across `afterAll` lets a
+ * deferred Preact flush land after the globals are gone — measured on the
+ * Windows gate as `ReferenceError: document is not defined` between tests in the
+ * file that ran next.
+ */
+beforeEach(() => {
+  installDomGlobals(new Window({ url: 'http://localhost' }));
 });
 
-afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
+afterEach(() => {
+  render(null, container);
+  container?.remove();
+  restoreDomGlobals();
 });
+
+afterAll(() => restoreDomGlobals());
 
 interface MountOptions {
   isGenerating: boolean;
