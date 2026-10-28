@@ -39,6 +39,13 @@ export function useOmpAgent(
   sessionId: string | null,
   callbacks: OmpAgentCallbacks,
   activityRef: RefObject<string>,
+  /**
+   * The transcript on screen. A page reload mounts a fresh fold while the
+   * session keeps running server-side, so the card for a call that started
+   * before the reload exists only in these messages; the fold reads them to
+   * find the row a late result belongs to (see `resumedToolMessage`).
+   */
+  messagesRef?: RefObject<ChatMessageData[]>,
 ): OmpAgentHandle {
   const [state, setState] = useState<OmpAgentState>({ isGenerating: false, connected: false, error: null });
   const callbacksRef = useRef(callbacks);
@@ -56,6 +63,18 @@ export function useOmpAgent(
   // Phrase for an open provider-retry saga; while set it outranks the activity
   // the doomed attempt names (see `fold-deps.ts`).
   const providerRetryVerbRef = useRef<string | null>(null);
+  // Find the row that already owns a call this fold never streamed. Only the
+  // transcript can answer after a reload, and a call id is unique within a
+  // session, so the first row carrying it is the one to adopt.
+  const resumedToolMessage = useCallback((callId: string): ChatMessageData | undefined => {
+    const messages = messagesRef?.current;
+    if (!messages) return undefined;
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const row = messages[index];
+      if (row?.toolCalls?.some((tc) => tc.id === callId)) return row;
+    }
+    return undefined;
+  }, [messagesRef]);
   const { connect, disconnect, attachedSession } = useOmpAgentStream({
     setState,
     callbacksRef,
@@ -64,6 +83,7 @@ export function useOmpAgent(
     activityRef,
     currentThinkingLevelRef,
     providerRetryVerbRef,
+    resumedToolMessage,
   });
 
   /** The session id this hook last prepared refs for, so an ADOPTION can be

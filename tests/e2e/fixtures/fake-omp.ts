@@ -154,7 +154,20 @@ function persistTurn(role: 'user' | 'assistant', text: string): void {
  *  this keeps the in-flight window wide enough for a spec to observe. */
 const RENAME_DELAY_MS = 600;
 
-const { streamAnswer, streamToolCall, streamWait, streamWaitLimit, streamEditCall } = createFrameWriters({ write });
+/** Append one raw JSONL entry to the session file (see `persistTurn`). */
+function persistEntry(entry: unknown): void {
+  if (!process.env.FAKE_OMP_PERSIST) return;
+  try {
+    appendFileSync(sessionFile, `${JSON.stringify(entry)}\n`);
+  } catch {
+    // Persistence is a test convenience; never let it break the child.
+  }
+}
+
+const { streamAnswer, streamToolCall, streamWait, streamWaitLimit, streamEditCall } = createFrameWriters({
+  write,
+  persist: persistEntry,
+});
 
 const MODEL = {
   id: 'fake-model',

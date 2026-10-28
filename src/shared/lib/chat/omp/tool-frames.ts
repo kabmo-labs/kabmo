@@ -24,6 +24,7 @@ import {
   putToolResult,
   refreshToolMessage,
   resultDetails,
+  toolMessageFor,
 } from '@/shared/lib/chat/omp/tool-results';
 
 /** `tool_execution_start`: name the activity and open the call's clock. */
@@ -36,7 +37,10 @@ export function foldToolStart(data: Record<string, unknown>, deps: OmpAgentFoldD
   }), deps);
   const startedAt = Date.now();
   if (callId) deps.toolResultsRef.current?.set(callId, { output: '', startedAt, pending: true });
-  const last = deps.lastToolMessageRef.current;
+  // `toolMessageFor` falls back to the transcript row, so a run resumed by a
+  // page reload marks the card that is already on screen as running instead of
+  // finding no target and leaving it at whatever the transcript said.
+  const last = callId ? toolMessageFor(deps, callId) : deps.lastToolMessageRef.current;
   if (last?.toolCalls?.some(tc => tc.id === callId)) {
     deps.lastToolMessageRef.current = {
       ...last,

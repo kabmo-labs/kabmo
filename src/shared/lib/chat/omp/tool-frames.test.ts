@@ -52,6 +52,26 @@ describe('foldToolStart', () => {
     expect(typeof deps.toolResultsRef.current?.get('c1')?.startedAt).toBe('number');
     expect(updates.at(-1)?.toolCalls?.[0]?.status).toBe('running');
   });
+
+  test('adopts the transcript row when this fold never saw the call stream', () => {
+    // A reloaded page mounts a fresh fold over a transcript that already holds
+    // the call; without the transcript lookup the start frame found no target
+    // and the card kept the transcript's shape for the rest of the run.
+    const { deps, updates } = makeDeps();
+    const resumed = {
+      id: 'row-1',
+      role: 'ai',
+      content: '',
+      toolCalls: [{ id: 'c9', type: 'wait', title: 'Wait', status: 'running' }],
+    } as ChatMessageData;
+    deps.lastToolMessageRef.current = null as unknown as ChatMessageData;
+    deps.resumedToolMessage = (callId) => (callId === 'c9' ? resumed : undefined);
+
+    foldToolStart({ toolCallId: 'c9', toolName: 'wait', args: {} }, deps);
+
+    expect(updates.at(-1)?.id).toBe('row-1');
+    expect(typeof updates.at(-1)?.toolCalls?.[0]?.startedAt).toBe('number');
+  });
 });
 
 describe('foldToolUpdate', () => {

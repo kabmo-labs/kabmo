@@ -20,48 +20,12 @@
  */
 
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from 'bun:test';
-import { Window } from 'happy-dom';
-import { h, render } from 'preact';
-import { act } from 'preact/test-utils';
-import { Wait } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/Wait';
 import { WAIT_MAX_MS } from '@/shared/lib/omp/session/wait';
+import { installWaitDom, mountWait as mount, restoreWaitDom, waitBar as bar } from '@/client/components/workspace/chat-timeline/tool-renderers/panels/wait-test-util';
 import type { ToolCallData } from '@/shared/types';
 
-const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
-const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
-
-let container: HTMLElement;
-
-beforeAll(() => {
-  const win = new Window({ url: 'http://localhost' });
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    nativeGlobals[key] = target[key];
-    target[key] = (win as unknown as Record<string, unknown>)[key];
-  }
-});
-
-afterAll(() => {
-  const target = globalThis as unknown as Record<string, unknown>;
-  for (const key of DOM_GLOBALS) {
-    if (nativeGlobals[key] === undefined) delete target[key];
-    else target[key] = nativeGlobals[key];
-  }
-});
-
-async function mount(partial: Partial<ToolCallData> & Pick<ToolCallData, 'type'>) {
-  const tool = { id: 'c1', name: partial.type, title: partial.type, ...partial } as ToolCallData;
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  await act(async () => {
-    render(h(Wait, { tool }), container);
-  });
-  return container;
-}
-
-function bar(el: HTMLElement): HTMLElement | null {
-  return el.querySelector('[role="progressbar"]');
-}
+beforeAll(installWaitDom);
+afterAll(restoreWaitDom);
 
 /** A blocking wait: one bash job with no percentage, one task with one. */
 const BLOCKING: Partial<ToolCallData> & Pick<ToolCallData, 'type'> = {
@@ -315,13 +279,5 @@ describe('Wait panel — interrupted and messaged', () => {
     const text = el.textContent ?? '';
     expect(text).toContain('Sleeper');
     expect(text).toContain('sleeper reporting in');
-  });
-});
-
-describe('Wait panel — not a wait', () => {
-  test('falls back to the plain output for a result it cannot read', async () => {
-    const el = await mount({ type: 'wait', name: 'wait', status: 'success', output: 'Nothing to wait for.', details: {} });
-    expect(el.textContent ?? '').toContain('Nothing to wait for.');
-    expect(bar(el)).toBeNull();
   });
 });

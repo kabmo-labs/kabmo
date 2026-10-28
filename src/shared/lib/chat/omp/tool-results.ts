@@ -54,6 +54,18 @@ export interface ToolResultHost {
   lastToolMessageRef: RefObject<ChatMessageData>;
   /** Re-emit an updated assistant message into the timeline. */
   onMessageUpdate?: (msg: ChatMessageData) => void;
+  /**
+   * The transcript row that already OWNS a call the fold has not streamed.
+   *
+   * A page reload re-reads the JSONL and mounts a fresh fold: the card for a
+   * call that started before the reload is on screen, but `lastToolMessageRef`
+   * is null, so every later `tool_execution_update` / `tool_execution_end` has
+   * no target to pair onto — the result never reaches the card and a blocking
+   * `wait` keeps rendering the transcript's detail-less shape. This is the
+   * lookup that finds that row (the same rule `run-switch.ts` states for a
+   * spawn adoption, with the transcript as the evidence).
+   */
+  resumedToolMessage?: (callId: string) => ChatMessageData | undefined;
 }
 
 /** Truncate tool output to the cap, keeping the tail and marking the cut. */
@@ -171,10 +183,24 @@ export function pairToolOutputs(msg: ChatMessageData, host: ToolResultHost): Cha
   return { ...msg, toolCalls };
 }
 
+/**
+ * The message a call belongs to: the fold's own last tool-carrying row, or —
+ * when this fold never saw the call stream (a page reload resumed the run) —
+ * the transcript row that already holds it. Adopting that row is what makes the
+ * next frame able to paint it; without it the result has no target.
+ */
+export function toolMessageFor(host: ToolResultHost, callId: string): ChatMessageData | undefined {
+  const last = host.lastToolMessageRef.current;
+  if (last?.toolCalls?.some(tc => tc.id === callId)) return last;
+  const resumed = host.resumedToolMessage?.(callId);
+  if (resumed) host.lastToolMessageRef.current = resumed;
+  return resumed;
+}
+
 /** Re-emit the last tool-carrying message when `callId` belongs to it. */
 export function refreshToolMessage(callId: string | undefined, host: ToolResultHost): void {
   if (!callId) return;
-  const last = host.lastToolMessageRef.current;
-  if (!last?.toolCalls?.some(tc => tc.id === callId)) return;
-  host.onMessageUpdate?.(pairToolOutputs(last, host));
+  const message = toolMessageFor(host, callId);
+  if (!message) return;
+  host.onMessageUpdate?.(pairToolOutputs(message, host));
 }

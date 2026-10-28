@@ -214,7 +214,7 @@ export function useChatTimeline({
     withdrawExtensionDialog,
     reloadMessages,
     needsReloadRef,
-  }), activityRef);
+  }), activityRef, localMessagesRef);
   const spawn = useSpawnTarget(sessionId);
 
   const { steerOmpAgent, executeSend } = useChatTimelineSend({

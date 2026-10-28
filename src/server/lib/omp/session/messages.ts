@@ -61,8 +61,17 @@ function skillUserMessageFromRecord(record: Record<string, unknown>): ChatMessag
  * response is a faithful projection of the JSONL: nothing here reorders rows,
  * and no display-side reordering is applied anywhere either (a notice row
  * renders exactly where omp wrote it).
+ *
+ * `liveRun` says whether a run for this session is in flight RIGHT NOW. It is
+ * the only thing that can tell a call still blocking (whose result omp has not
+ * written yet) from one whose process died before writing it — the two
+ * transcripts are identical. Only the first is `running`; the second keeps the
+ * settled shape, because a crash must not leave a spinner in scrollback.
  */
-export async function loadSessionMessages(filePath: string): Promise<ChatMessageData[]> {
+export async function loadSessionMessages(
+  filePath: string,
+  options: { liveRun?: boolean } = {},
+): Promise<ChatMessageData[]> {
   try {
     const file = Bun.file(filePath);
     if ((await file.stat()).size > MAX_SESSION_LOAD_BYTES) return [];
@@ -116,14 +125,19 @@ export async function loadSessionMessages(filePath: string): Promise<ChatMessage
       mapped.toolCalls = mapped.toolCalls.map((call) => {
         const collected = state.outputsByCall.get(call.id);
         const images = call.images ?? collected?.images;
+        // A call with no result entry yet is only RUNNING when the run is
+        // actually live (see `liveRun`); its empty output is "not written yet"
+        // rather than an answer. Reporting it as a settled success drew a
+        // blocking `wait` as a finished call with nothing in it.
+        const pending = collected?.pending === true && options.liveRun === true;
         return {
           ...call,
-          output: call.output || collected?.output || undefined,
+          output: pending ? undefined : call.output || collected?.output || undefined,
           details: (call.details || collected?.details || undefined) as Record<string, any> | undefined,
           ...(collected?.durationMs !== undefined ? { durationMs: collected.durationMs } : {}),
           ...(collected?.startedAt !== undefined ? { startedAt: collected.startedAt } : {}),
           ...(images && images.length > 0 ? { images } : {}),
-          status: collected?.isError ? 'error' : call.status,
+          status: pending ? 'running' : collected?.isError ? 'error' : call.status,
         };
       });
     }

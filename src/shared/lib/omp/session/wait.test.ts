@@ -103,6 +103,34 @@ describe('waitViewOf', () => {
     expect(waitViewOf({ details: { proc: { jobs: [{ id: 'bg_1' }] } } })).toBeUndefined();
     expect(waitViewOf({})).toBeUndefined();
   });
+
+  test('a wait with NO result is still a wait, and says its jobs are unknown', () => {
+    // The reload case: the transcript holds the `toolCall` block and no
+    // `toolResult` behind it. Requiring `details.op` degraded the card to a
+    // generic Output block — the reported "wait renders as general after a
+    // reload". The name is the only evidence left, and `reported: false` is
+    // what keeps a reader from claiming "no jobs".
+    const view = waitViewOf({ name: 'wait' });
+    expect(view).toMatchObject({ op: 'wait', jobs: [], reported: false });
+  });
+
+  test("omp's own `details: {}` answer is unreported, not an empty job list", () => {
+    // "Nothing to wait for: no background job or service you started is
+    // running." arrives with `details: {}` — a real result, but it carries no
+    // snapshot, so the job list is UNKNOWN rather than known-empty.
+    const view = waitViewOf({ name: 'wait', details: {} });
+    expect(view?.reported).toBe(false);
+    expect(view?.jobs).toEqual([]);
+  });
+
+  test('a reported snapshot is marked reported', () => {
+    expect(waitViewOf({ name: 'wait', details: { op: 'wait', jobs: [] } })?.reported).toBe(true);
+  });
+
+  test('another tool with no result is not claimed by its name', () => {
+    expect(waitViewOf({ name: 'bash' })).toBeUndefined();
+    expect(waitViewOf({ type: 'task' })).toBeUndefined();
+  });
 });
 
 describe('waitJobSpanMs', () => {

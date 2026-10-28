@@ -48,6 +48,11 @@ export interface OmpStreamRefs {
   currentThinkingLevelRef: RefObject<string | undefined>;
   /** Phrase for an open provider-retry saga, or null (see `fold-deps.ts`). */
   providerRetryVerbRef: RefObject<string | null>;
+  /**
+   * The transcript row owning a call this fold never streamed — a run resumed
+   * after a page reload. See `ToolResultHost.resumedToolMessage`.
+   */
+  resumedToolMessage?: (callId: string) => ChatMessageData | undefined;
 }
 
 interface UseOmpAgentStreamOptions extends OmpStreamRefs {
@@ -63,6 +68,7 @@ export function useOmpAgentStream({
   activityRef,
   currentThinkingLevelRef,
   providerRetryVerbRef,
+  resumedToolMessage,
 }: UseOmpAgentStreamOptions) {
   /** The session this hook is currently attached to, or null. */
   const attachedRef = useRef<string | null>(null);
@@ -123,11 +129,12 @@ export function useOmpAgentStream({
         activityRef,
         currentThinkingLevelRef,
         providerRetryVerbRef,
+        resumedToolMessage,
       });
     });
 
     setState((prev) => ({ ...prev, connected: true }));
-  }, [disconnect, setState, callbacksRef, toolResultsRef, lastToolMessageRef, activityRef, currentThinkingLevelRef, providerRetryVerbRef]);
+  }, [disconnect, setState, callbacksRef, toolResultsRef, lastToolMessageRef, activityRef, currentThinkingLevelRef, providerRetryVerbRef, resumedToolMessage]);
 
   // The subscription outlives a session switch only through `connect`'s own
   // disconnect, so an unmount has to release it explicitly.

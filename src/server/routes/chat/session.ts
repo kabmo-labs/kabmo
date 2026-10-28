@@ -9,6 +9,7 @@ import { loadSessionMessages, loadSessionModel, loadSessionThinkingLevel, loadSe
 import { mergeOmpAttachments, overlayRowsForOmpSession } from '@/server/lib/omp/session/merge-stored';
 import { readRawHeaderLine } from '@/server/lib/omp/session/files';
 import { formatNewSessionTitle } from '@/shared/lib/omp/session/default-title';
+import { getLiveRunSessionIds } from '@/server/lib/omp/rpc/session-registry';
 
 /** Newest-message window served by default for omp JSONL sessions; the client
  *  pages further back via `?before=` when the user scrolls to the top. Large
@@ -64,7 +65,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     if (!mock) {
       const filePath = await findSessionFileById(sessionId);
       if (filePath) {
-        const messages = await loadSessionMessages(filePath);
+        // A run in flight is what makes a resultless tool call "still running"
+        // rather than "finished with nothing": a page reloaded mid-call reads
+        // the transcript, which cannot tell the two apart on its own.
+        const messages = await loadSessionMessages(filePath, {
+          liveRun: getLiveRunSessionIds().has(sessionId),
+        });
         // Real omp JSONL only records image blocks — text/pdf attachments
         // never reach the file. The Kabmo's DB copy (written by the chat
         // timeline) carries the full attachment metadata, so merge it back

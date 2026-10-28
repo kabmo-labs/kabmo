@@ -162,3 +162,54 @@ test.describe('wait card', () => {
     workspace.dispose();
   });
 });
+
+/**
+ * The reload path, which needs a TRANSCRIPT.
+ *
+ * `FAKE_OMP_PERSIST` makes the scripted child write the session JSONL as it
+ * runs, including the assistant turn's `toolCall` block and the
+ * `tool_execution_start` entry for a blocking `wait` — the two entries a page
+ * reloaded mid-call has to render from, with no `toolResult` behind them.
+ */
+test.describe('wait card after a reload', () => {
+  test.use({ serverEnv: { FAKE_OMP_PERSIST: '1' } });
+
+  test('a reload mid-call still draws the wait, not a generic tool', async ({ harness, page }) => {
+    // The reported bug: reload the page while a `wait` blocks and the card came
+    // back as a generic tool — a title over an empty Output block. The
+    // transcript written so far holds the assistant turn's `toolCall` block and
+    // the `tool_execution_start` entry, and NO `toolResult`, so there is no
+    // `details` to read; requiring `details.op` classified the call as "not a
+    // wait" and the panel bailed out.
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-wait-reload');
+
+    await startWait(page, server, workspace.id, 'e2e-wait-reload', 12);
+    // The card is on screen and blocking before the reload — the state the
+    // report is about.
+    await expect(page.getByRole('button', { name: /^Collapse Wait/ }).first()).toBeVisible({ timeout: 30_000 });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // Still a WAIT, still open, still counting: the panel is chosen by the tool
+    // and its clock comes from the transcript's start entry.
+    const card = page.getByRole('button', { name: /^Collapse Wait/ }).first();
+    await expect(card).toBeVisible({ timeout: 30_000 });
+    const clock = page.locator('.text-\\[22px\\]').first();
+    await expect(clock).toHaveText(/^\d+:\d{2}$/);
+    const before = await clock.textContent();
+    await page.waitForTimeout(1_400);
+    expect(await clock.textContent()).not.toBe(before);
+
+    // The reloaded card claims no job list until a snapshot arrives…
+    await expect(page.getByText('no jobs')).toHaveCount(0);
+
+    // …and the live frames still reach it: the child kept emitting the 500 ms
+    // snapshot after the reload, and the result pairs onto the transcript row
+    // that was on screen (a fresh fold has no `lastToolMessage` of its own).
+    await expect(card).toContainText('Done', { timeout: 40_000 });
+    await expect(page.getByText('bg_1').first()).toBeVisible();
+
+    workspace.dispose();
+  });
+});

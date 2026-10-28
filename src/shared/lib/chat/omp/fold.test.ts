@@ -142,6 +142,40 @@ describe('tool-results', () => {
     expect(updates.length).toBe(1);
     expect(updates[0].toolCalls?.[0]).toMatchObject({ output: 'out', status: 'success' });
   });
+
+  test('a result pairs onto the transcript row a RELOAD put on screen', () => {
+    // A page reload re-reads the JSONL and mounts a fresh fold, so
+    // `lastToolMessageRef` is null while the card for the still-running call is
+    // already rendered. Without the transcript lookup the result had no target
+    // and the card kept the transcript's detail-less shape for the whole run.
+    const deps = makeDeps();
+    const updates: ChatMessageData[] = [];
+    deps.onMessageUpdate = (m) => updates.push(m);
+    deps.lastToolMessageRef.current = null as unknown as ChatMessageData;
+    const resumed = toolMessage(['c1']);
+    deps.resumedToolMessage = (callId) => (callId === 'c1' ? resumed : undefined);
+    putToolResult(deps, 'c1', { output: 'settled', details: { op: 'wait', jobs: [] } });
+
+    refreshToolMessage('c1', deps);
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].id).toBe('m1');
+    expect(updates[0].toolCalls?.[0]).toMatchObject({ output: 'settled', status: 'success' });
+    // Adopted: the next frame finds it without asking the transcript again.
+    expect(deps.lastToolMessageRef.current).toBe(resumed);
+  });
+
+  test('an unknown call id still re-emits nothing', () => {
+    const deps = makeDeps();
+    const updates: ChatMessageData[] = [];
+    deps.onMessageUpdate = (m) => updates.push(m);
+    deps.lastToolMessageRef.current = null as unknown as ChatMessageData;
+    deps.resumedToolMessage = () => undefined;
+    putToolResult(deps, 'c9', { output: 'x' });
+
+    refreshToolMessage('c9', deps);
+    expect(updates).toHaveLength(0);
+  });
 });
 
 describe('fold-deps helpers', () => {

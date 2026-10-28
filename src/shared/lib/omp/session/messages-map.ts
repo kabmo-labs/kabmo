@@ -164,6 +164,12 @@ export interface CollectedToolResult {
   durationMs?: number;
   /** When the call started, from its `tool_execution_start` entry. */
   startedAt?: number;
+  /**
+   * The call has no result entry in this file — it was still running when the
+   * transcript was read (a page reloaded mid-call). Its `output` and `details`
+   * are UNKNOWN, not empty, and its status is `running`, not `success`.
+   */
+  pending?: boolean;
   /** Pictures the result returned (a `read` of an image). */
   images?: ToolImageRef[];
 }
@@ -189,19 +195,25 @@ export function collectToolOutputs(records: Record<string, unknown>[]): Map<stri
   // it blocked only from its own output prose. 114,642 such entries exist, so
   // the map is cheap and the join is exact by call id.
   const startedAt = new Map<string, number>();
-  for (const record of records) {
+  /** The position of each start entry, so "no result" can be told from "a
+   *  result that was never written while the run continued". */
+  const startIndex = new Map<string, number>();
+  for (const [index, record] of records.entries()) {
     if (record?.type !== 'custom' || record.customType !== 'tool_execution_start') continue;
     const data = isRecord(record.data) ? record.data : undefined;
     const id = typeof data?.toolCallId === 'string' ? data.toolCallId : undefined;
     if (!id) continue;
     const at = toEpochMs(data?.startedAt) ?? toEpochMs(record.timestamp);
     if (at !== undefined) startedAt.set(id, at);
+    startIndex.set(id, index);
   }
 
-  for (const record of records) {
+  let lastResultIndex = -1;
+  for (const [index, record] of records.entries()) {
     if (record?.type !== 'message') continue;
     const msg = (record as unknown as OmpMessageEntry).message;
     if (!msg || msg.role !== 'toolResult') continue;
+    lastResultIndex = index;
     const callId = typeof msg.toolCallId === 'string' ? msg.toolCallId : undefined;
     if (!callId) continue;
     const text = resultOutput(msg);
@@ -231,6 +243,26 @@ export function collectToolOutputs(records: Record<string, unknown>[]): Map<stri
       ...(started !== undefined ? { startedAt: started } : {}),
       ...(images.length > 0 ? { images } : existing?.images ? { images: existing.images } : {}),
     });
+  }
+
+  // A call whose `tool_execution_start` entry exists but whose result does not
+  // was still RUNNING when this file was read — the page was reloaded mid-call.
+  // Its clock is the start entry's, and it is the only thing such a call has:
+  // without this entry a reloaded `wait` lost its `startedAt` (the join above
+  // only ran for results) and the panel's stopwatch had no source at all. The
+  // empty output is a PLACEHOLDER, so `pending` is what says "unknown", not
+  // "returned nothing".
+  //
+  // Only a start that is the LAST thing in the file can be in flight: omp
+  // writes a result before the next turn, so a resultless start followed by
+  // any later result belongs to a run that DIED, and marking it pending would
+  // leave a spinner in scrollback for the rest of the session.
+  for (const [callId, started] of startedAt) {
+    if (outputs.has(callId)) continue;
+    const inFlight = (startIndex.get(callId) ?? -1) > lastResultIndex;
+    outputs.set(callId, inFlight
+      ? { output: '', pending: true, startedAt: started }
+      : { output: '', startedAt: started });
   }
   return outputs;
 }

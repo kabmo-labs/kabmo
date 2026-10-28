@@ -251,7 +251,7 @@ export function Wait({ tool }: { tool: ToolCallData }) {
       <ToolPanelHeader
         icon={<Hourglass size={12} />}
         label={view.op === 'wait' ? 'Waiting' : view.op}
-        badge={running ? 'running' : hitLimit ? 'limit reached' : interrupted ? 'interrupted' : 'settled'}
+        badge={running ? 'running' : hitLimit ? 'limit reached' : interrupted ? 'interrupted' : tool.status === 'error' ? 'failed' : 'settled'}
         copyText={output || undefined}
         copyLabel="Copy output"
       />
@@ -323,6 +323,13 @@ export function Wait({ tool }: { tool: ToolCallData }) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* A call whose result was never written — a run that died mid-call, so
+          not even omp's prose exists. Saying so is the honest answer; an empty
+          body would read as a panel that failed to draw. */}
+      {!running && !view.reported && !output && (
+        <p className="font-mono text-[10.5px] text-ink/45">No result was recorded.</p>
       )}
 
       {/* The prose omp writes: a completion summary, a refusal ("Nothing to

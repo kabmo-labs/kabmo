@@ -93,6 +93,16 @@ export interface WaitView {
   /** The message a `send` delivered to, for the `send` op. */
   from?: string;
   to?: string;
+  /**
+   * Whether `details` carried the `op` that identifies a coordination result.
+   *
+   * False for a wait the runtime has not reported a snapshot for yet — a call
+   * still blocking after a page reload, whose transcript carries only the
+   * `toolCall` block — and for omp's own `details: {}` on "Nothing to wait
+   * for". The view is still a wait (the tool's own name says so), but its job
+   * list is UNKNOWN rather than empty, so no reader may claim "no jobs".
+   */
+  reported: boolean;
 }
 
 function asString(value: unknown): string | undefined {
@@ -156,6 +166,15 @@ function messageOf(value: unknown): WaitMessage | undefined {
 
 const WAIT_OPS: Record<string, true> = { wait: true, send: true };
 
+/** The tool names that ARE a coordination call, independent of their result. */
+const WAIT_TOOL_NAMES: Record<string, true> = { wait: true };
+
+/** The op a tool's own name implies, for a call whose result reports none. */
+function opOfTool(tool: { name?: string; type?: string }): string | undefined {
+  const raw = (tool.name || tool.type || '').toLowerCase();
+  return WAIT_TOOL_NAMES[raw] ? raw : undefined;
+}
+
 /**
  * Normalize a `wait` result into `WaitView`, or undefined when the call is not
  * one of the coordination operations.
@@ -170,12 +189,27 @@ const WAIT_OPS: Record<string, true> = { wait: true, send: true };
  * background work may still be running") and when a service rather than a job
  * woke the call. Rejecting it drew the most interesting wait of all as a
  * generic card.
+ *
+ * A wait with NO result at all is still a wait, and the tool's own name is the
+ * only evidence left — a page reloaded while the call blocks reads the JSONL's
+ * `toolCall` block with no `toolResult` behind it, and omp's own
+ * "Nothing to wait for" answers `details: {}`. Requiring `details.op` there
+ * degraded the card to a generic Output block, which is the reported "wait
+ * rendered as general after a reload". Such a view is marked `reported: false`
+ * so nothing claims a job count it does not have.
  */
-export function waitViewOf(tool: { details?: Record<string, unknown> }): WaitView | undefined {
+export function waitViewOf(tool: {
+  details?: Record<string, unknown>;
+  name?: string;
+  type?: string;
+}): WaitView | undefined {
   const details = isRecord(tool.details) ? tool.details : undefined;
-  if (!details) return undefined;
-  const op = asString(details.op);
+  const reportedOp = details ? asString(details.op) : undefined;
+  const op = reportedOp ?? opOfTool(tool);
   if (!op || !WAIT_OPS[op]) return undefined;
+  if (!details) {
+    return { op, jobs: [], agents: [], interrupted: false, cancelled: [], reported: false };
+  }
 
   return {
     op,
@@ -190,6 +224,7 @@ export function waitViewOf(tool: { details?: Record<string, unknown> }): WaitVie
     waited: messageOf(details.waited),
     from: asString(details.from),
     to: asString(details.to),
+    reported: reportedOp !== undefined,
   };
 }
 

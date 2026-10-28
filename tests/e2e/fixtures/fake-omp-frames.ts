@@ -21,6 +21,16 @@
 export interface FrameWriterDeps {
   /** Write one frame to the child's stdout. */
   write: (frame: unknown) => void;
+  /**
+   * Append one JSONL entry to the session file, the way omp persists a run.
+   *
+   * Optional because most specs assert only what the STREAM renders. A spec
+   * that reloads the page mid-turn needs the transcript, and needs the entries
+   * omp writes for a tool call in flight — the assistant message carrying the
+   * `toolCall` block and the `tool_execution_start` custom entry — or the
+   * reloaded timeline has nothing to render.
+   */
+  persist?: (entry: unknown) => void;
 }
 
 /**
@@ -49,7 +59,7 @@ export function assistantMessage(text: string, stopReason = 'end_turn', id?: str
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-export function createFrameWriters({ write }: FrameWriterDeps) {
+export function createFrameWriters({ write, persist }: FrameWriterDeps) {
   /** Stream one assistant message as the frames omp would emit for it. */
   async function streamAnswer(messageId: string, text: string) {
     const full = assistantMessage(text, 'end_turn', messageId);
@@ -175,7 +185,18 @@ export function createFrameWriters({ write }: FrameWriterDeps) {
     write({ type: 'message_end', messageId, message });
     write({ type: 'turn_end', message, toolResults: [] });
 
+    // The transcript a reload reads: omp writes the assistant turn as it
+    // streams, then one `tool_execution_start` entry when the call opens — and
+    // NOTHING more until the result, which is exactly the window a reload
+    // lands in.
+    persist?.({ type: 'message', id: messageId, parentId: null, timestamp: new Date().toISOString(), message });
     write({ type: 'tool_execution_start', toolCallId: callId, toolName: 'wait', args });
+    persist?.({
+      type: 'custom',
+      customType: 'tool_execution_start',
+      timestamp: new Date().toISOString(),
+      data: { toolCallId: callId, toolName: 'wait', startedAt: new Date().toISOString() },
+    });
 
     const startedAt = Date.now();
     const totalMs = seconds * 1000;

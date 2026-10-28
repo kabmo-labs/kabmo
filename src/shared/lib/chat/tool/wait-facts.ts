@@ -33,6 +33,10 @@ export function waitFacts(tool: ToolCallData): ToolFact[] {
   const elapsed = tool.durationMs
     ?? (tool.startedAt !== undefined ? Math.max(0, Date.now() - tool.startedAt) : waitJobSpanMs(view));
   if (elapsed !== undefined) facts.push({ kind: 'time', label: formatToolMs(elapsed) });
+  // A wait whose result has not been reported yet (a reload mid-call, or omp's
+  // own `details: {}`) has an UNKNOWN job list, not an empty one: claiming
+  // "no jobs" would say the call looked and found none.
+  if (!view.reported) return facts;
   if (counts.total > 0) {
     facts.push({ kind: 'count', label: countPhrase(counts.total, 'job') });
     if (counts.running > 0) facts.push({ kind: 'note', label: `${counts.running} running` });
