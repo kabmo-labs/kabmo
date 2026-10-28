@@ -143,6 +143,25 @@ describe('buildProviders', () => {
     expect(entries[0]?.summary.id).toBe('a');
   });
 
+  test('the provider\'s fetched web icon rides on the row', () => {
+    // Both usage surfaces draw a mark, and the built-in glyph table cannot know
+    // a models.yml gateway — so the icon the provider list fetched has to travel
+    // with the summary or those rows show initials for a provider whose logo is
+    // already stored.
+    const entries = buildProviders({
+      isMock: false,
+      generatedAt: '',
+      providers: [
+        summary({ id: 'localtest', name: 'Local Test', iconUrl: '/api/provider-icon?slug=localtest&v=7' }),
+        summary({ id: 'plain', name: 'Plain' }),
+      ],
+    });
+    expect(entries[0]?.iconUrl).toBe('/api/provider-icon?slug=localtest&v=7');
+    // Absent stays absent: an empty string would make the plate paint a broken
+    // image and then fall back, which is a flash for no reason.
+    expect('iconUrl' in (entries[1] ?? {})).toBe(false);
+  });
+
   test('a kenari plan name is the hint', () => {
     const entry = buildProviders({
       isMock: false,

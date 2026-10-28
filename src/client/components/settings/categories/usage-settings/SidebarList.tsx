@@ -1,6 +1,6 @@
 import type { UsageReport } from '@/shared/types';
 import { buildProviders, statusLabel, type ProviderEntry, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
-import { ProviderIcon } from '@/client/components/common/provider-icon';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 
 interface UsageSidebarListProps {
   report: UsageReport;
@@ -8,11 +8,21 @@ interface UsageSidebarListProps {
   onSelectProvider: (providerId: UsageProviderId) => void;
 }
 
-function ProviderBadge({ provider, selected }: { provider: ProviderEntry; selected: boolean }) {
+/**
+ * The provider's mark, on the same plate the provider settings list uses — so a
+ * gateway whose site logo was fetched shows that logo here too, instead of the
+ * initials its unknown slug would produce.
+ */
+function ProviderBadge({ provider }: { provider: ProviderEntry }) {
   return (
-    <span className={selected ? 'text-ink/80' : 'text-ink/60'}>
-      <ProviderIcon slug={provider.id} name={provider.name} size={14} />
-    </span>
+    <ProviderIconPlate
+      provider={{
+        slug: provider.id,
+        name: provider.name,
+        ...(provider.iconUrl ? { iconUrl: provider.iconUrl } : {}),
+      }}
+      size={20}
+    />
   );
 }
 
@@ -59,7 +69,7 @@ export function UsageSidebarList({
                     <div className="flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className="relative">
-                          <ProviderBadge provider={provider} selected={isSelected} />
+                          <ProviderBadge provider={provider} />
                           <span
                             className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
                               provider.error ? 'bg-error/60' : 'bg-ink'

@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { Check, ChevronDown } from 'lucide-preact';
 import type { PresetProviderOption } from '@/shared/types/settings/provider';
 import { groupProviderPresets } from '@/shared/lib/models/provider/presets';
-import { ProviderIcon } from '@/client/components/common/provider-icon';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 
 interface PresetPickerProps {
   presets: PresetProviderOption[];
@@ -66,7 +66,10 @@ export function PresetPicker({ presets, selectedPresetId, onSelectPreset }: Pres
                           : 'border-ink/15 hover:border-ink/30 text-ink/70'
                       }`}
                     >
-                      <ProviderIcon icon={preset.icon} slug={preset.slug} name={preset.name} size={14} />
+                      <ProviderIconPlate
+                        provider={{ icon: preset.icon, slug: preset.slug, name: preset.name }}
+                        size={18}
+                      />
                       <span className="truncate flex-1">{preset.name}</span>
                       {isSelected && <Check size={12} className="shrink-0 text-ink" />}
                     </button>

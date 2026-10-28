@@ -11,6 +11,8 @@ export type UsageProviderId = string;
 export interface ProviderEntry {
   id: UsageProviderId;
   name: string;
+  /** The provider's fetched web icon, when the server has one. */
+  iconUrl?: string;
   /** Provider-side failure, already human-readable. */
   error?: string;
   /** Short status line under the name. */
@@ -46,6 +48,7 @@ export function buildProviders(report: UsageReport): ProviderEntry[] {
   return report.providers.map((summary) => ({
     id: summary.id,
     name: summary.name,
+    ...(summary.iconUrl ? { iconUrl: summary.iconUrl } : {}),
     error: summary.error,
     hint: providerHint(summary),
     limits: summary.limits,

@@ -22,6 +22,8 @@ export function ProviderDetail({ summary }: ProviderDetailProps) {
   return (
     <ProviderCard
       providerName={summary.name}
+      providerSlug={summary.id}
+      iconUrl={summary.iconUrl}
       credentialSources={summary.credentialSources}
       error={summary.error}
       note={summary.deepseek ? DEEPSEEK_NOTE : undefined}

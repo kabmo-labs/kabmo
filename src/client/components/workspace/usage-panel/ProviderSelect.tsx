@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'preact/compat';
 import { Check, ChevronDown, Search } from 'lucide-preact';
 import { statusLabel, type ProviderEntry, type UsageProviderId } from '@/client/components/settings/categories/usage-settings/providers';
-import { ProviderIcon } from '@/client/components/common/provider-icon';
+import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 
 interface ProviderSelectProps {
@@ -122,7 +122,16 @@ export function ProviderSelect({ providers, value, onChange }: ProviderSelectPro
         className="flex w-full min-w-0 items-center justify-between gap-2 bg-paper border border-ink/15 rounded-lg px-3 py-1.5 text-xs text-ink hover:bg-ink/5 transition-colors"
       >
         <span className="flex min-w-0 items-center gap-2">
-          {selected && <ProviderIcon slug={selected.id} name={selected.name} size={13} className="text-ink/60" />}
+          {selected && (
+            <ProviderIconPlate
+              provider={{
+                slug: selected.id,
+                name: selected.name,
+                ...(selected.iconUrl ? { iconUrl: selected.iconUrl } : {}),
+              }}
+              size={16}
+            />
+          )}
           <span className="truncate font-medium">{selected?.name ?? 'Select provider'}</span>
           {selected && (
             <span className="truncate text-[10px] text-ink/50">{statusLabel(selected)}</span>
@@ -193,7 +202,14 @@ export function ProviderSelect({ providers, value, onChange }: ProviderSelectPro
                   }`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <ProviderIcon slug={provider.id} name={provider.name} size={14} className="text-ink/60" />
+                    <ProviderIconPlate
+                      provider={{
+                        slug: provider.id,
+                        name: provider.name,
+                        ...(provider.iconUrl ? { iconUrl: provider.iconUrl } : {}),
+                      }}
+                      size={18}
+                    />
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-ink">{provider.name}</span>
                       <span className="block truncate text-[10px] text-ink/50">

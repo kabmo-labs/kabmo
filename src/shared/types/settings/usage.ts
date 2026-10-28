@@ -137,6 +137,16 @@ export interface UsageProviderSummary {
   /** Stable id (provider slug, lowercased) used for selection + persistence. */
   id: string;
   name: string;
+  /**
+   * The provider's own web icon, when one has been fetched and stored.
+   *
+   * Both usage surfaces draw a provider mark, and they drew the built-in glyph
+   * table — which cannot know a `models.yml` gateway, so those rows showed
+   * initials while the provider list showed the site's logo for the same
+   * provider. Carried on the summary because the usage payload does not include
+   * the provider registry.
+   */
+  iconUrl?: string;
   /** Where the credential was found ("models.yml", "agent.db", "app DB"). */
   credentialSources: string[];
   /**

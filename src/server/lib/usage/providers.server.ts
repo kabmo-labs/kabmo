@@ -20,6 +20,7 @@
  */
 
 import { fetchOmpRegistrySnapshot } from '@/server/lib/models/provider-registry.server';
+import { readProviderIconUrls } from '@/server/lib/models/provider-icon.server';
 import { buildDeepSeekReport } from '@/server/lib/usage/deepseek';
 import { buildKenariReport } from '@/server/lib/usage/kenari';
 import { fetchOmpUsageSnapshot, type OmpUsageSnapshot } from '@/server/lib/usage/omp-usage.server';
@@ -158,10 +159,11 @@ export function resolveUsageTracking(
  * `force` bypasses the provider-quota cache (see `fetchOmpUsageSnapshot`).
  */
 export async function buildUsageProviders(options: { force?: boolean } = {}): Promise<UsageProviderSummary[]> {
-  const [credentialed, snapshot, names] = await Promise.all([
+  const [credentialed, snapshot, names, iconUrls] = await Promise.all([
     listCredentialedProviders(),
     fetchOmpUsageSnapshot({ force: options.force }),
     loadProviderNames(),
+    readProviderIconUrls(),
   ]);
 
   const credentials = mergeCredentials(credentialed);
@@ -188,6 +190,7 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
     const summary: UsageProviderSummary = {
       id: slug,
       name: names[slug] ?? displayName(slug),
+      ...(iconUrls.get(slug) ? { iconUrl: iconUrls.get(slug) } : {}),
       credentialSources: sources,
       // A vendor balance is real quota data even when omp has no adapter for it.
       tracked: tracked || Boolean(balance && balance.limits.length > 0),
