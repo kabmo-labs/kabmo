@@ -15,7 +15,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { detailGitlab, listGitlab, mergeState, projectPath } from './gitlab';
+import { listGitlab, mergeState, projectPath } from './gitlab';
+import { detailGitlab } from './gitlab-detail';
 import { host } from './test-host';
 import { hostContext, openFilter } from './test-context';
 
@@ -108,6 +109,11 @@ describe('detailGitlab', () => {
         changes_count: '3',
         detailed_merge_status: 'mergeable',
         head_pipeline: { status: 'failed', web_url: 'https://gitlab/p/1' },
+        // The files are NOT here: measured on a real project, the detail carries
+        // `changes_count` and no `changes` array.
+      },
+      [`${PROJECT}/merge_requests/5/changes`]: {
+        iid: 5,
         changes: [
           { old_path: 'src/a.ts', new_path: 'src/a.ts', diff: '@@ -1 +1 @@' },
           { old_path: 'new.ts', new_path: 'new.ts', new_file: true, diff: '@@ -0,0 +1 @@' },
@@ -140,11 +146,27 @@ describe('detailGitlab', () => {
     expect(detail.commits.map((commit) => commit.message)).toEqual(['A commit']);
   });
 
+  test('the files come from the /changes sub-resource, because the detail carries none', async () => {
+    const { fetchImpl } = host({
+      [`${PROJECT}/merge_requests/8`]: { iid: 8, title: 't', state: 'opened', changes_count: '15' },
+      [`${PROJECT}/merge_requests/8/notes`]: [],
+      [`${PROJECT}/merge_requests/8/commits`]: [],
+      [`${PROJECT}/merge_requests/8/changes`]: {
+        changes: [{ old_path: 'a.ts', new_path: 'a.ts', diff: '@@ -1 +1 @@' }],
+      },
+    });
+
+    const detail = await detailGitlab(gitlab(fetchImpl), 'pulls', '8');
+    if ('error' in detail) throw new Error(detail.error);
+    expect(detail.files.map((file) => file.path)).toEqual(['a.ts']);
+  });
+
   test('a conflicting merge request says conflicts, not no', async () => {
     const { fetchImpl } = host({
       [`${PROJECT}/merge_requests/6`]: { iid: 6, title: 't', state: 'opened', has_conflicts: true },
       [`${PROJECT}/merge_requests/6/notes`]: [],
       [`${PROJECT}/merge_requests/6/commits`]: [],
+      [`${PROJECT}/merge_requests/6/changes`]: { changes: [] },
     });
 
     const detail = await detailGitlab(gitlab(fetchImpl), 'pulls', '6');

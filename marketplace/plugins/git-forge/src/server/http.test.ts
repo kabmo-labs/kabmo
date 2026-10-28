@@ -211,6 +211,14 @@ describe('describeFailure', () => {
     expect(describeFailure(new Response(null, { status: 404 }), true)).toContain('token');
   });
 
+  test('a 401 to an anonymous read asks for a token, not for a different one', () => {
+    const anonymous = describeFailure(new Response(null, { status: 401 }), false);
+    expect(anonymous).toContain('needs a token');
+    expect(anonymous).not.toContain('rejected');
+
+    expect(describeFailure(new Response(null, { status: 401 }), true)).toContain('rejected');
+  });
+
   test('a 403 to an ANONYMOUS read is not advice about a token scope', () => {
     const anonymous = describeFailure(new Response(null, { status: 403 }), false);
     expect(anonymous).toContain('anonymous');

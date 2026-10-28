@@ -163,6 +163,10 @@ when the reader asks; it is never run on a panel mount.
 
 - **No pagination past one page.** A section asks for `per_page` (default 30) and
   says when it came back full rather than pretending the list is complete.
+- **No counts without a token.** "Assigned to me" is not a question an anonymous
+  read can answer — measured on Gitea, where an anonymous `assigned=true` read
+  answered a full page and the readout said `3 issues · 3 PRs` for a reader who
+  has none — so the readout draws `—` with the reason.
 - **No review threads or inline comments.** The conversation is shown; a
   per-line review needs a diff view this panel does not own.
 - **No notifications.** Nothing polls in the background except the readout's own
@@ -190,7 +194,7 @@ environment/CLI credential above.
 bun test marketplace/plugins/git-forge/
 ```
 
-189 assertions across 16 files. Each suite owns one rule that fails silently:
+201 assertions across 17 files. Each suite owns one rule that fails silently:
 
 - `remote.test.ts` — the remote parser: credentials, ports, subgroups, local
   paths, and the four hosts' API roots.
@@ -208,7 +212,8 @@ bun test marketplace/plugins/git-forge/
 - `writes.test.ts` — every verb on every host, through the injected fetch, so
   nothing here can reach a real repository.
 - `adapters.test.ts` / `gitlab.test.ts` / `forges.test.ts` — the four adapters
-  against recorded bodies.
+  against recorded bodies, including the three sub-resources a host puts somewhere
+  other than on the item itself.
 - `command.test.ts` — `/issue`'s parsing, the quotation and the insert.
 - `panel/index.test.tsx` / `panel/write.test.tsx` — the assembled panel and its
   write surface in a real DOM.

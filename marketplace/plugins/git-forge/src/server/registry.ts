@@ -18,7 +18,8 @@ import type { ForgeContext } from './context';
 import { detailBitbucket, listBitbucket } from './bitbucket';
 import { detailGitea, listGitea } from './gitea';
 import { detailGithub, listGithub } from './github';
-import { detailGitlab, listGitlab } from './gitlab';
+import { listGitlab } from './gitlab';
+import { detailGitlab } from './gitlab-detail';
 
 /** What every adapter provides. */
 export interface ForgeAdapter {

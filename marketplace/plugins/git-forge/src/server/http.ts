@@ -125,7 +125,13 @@ export function isAuthenticated(headers: Record<string, string> | undefined): bo
 export function describeFailure(response: Response, authenticated: boolean): string {
   const status = response.status;
   if (status === 401) {
-    return 'The host rejected the credential (401). Check the token in GITHUB_TOKEN / GH_TOKEN / GITLAB_TOKEN, or the one `gh` / `glab` has stored.';
+    // Anonymous is a different problem from a bad token, and the advice differs:
+    // GitLab answers 401 on the notes endpoint to a reader with NO credential
+    // (measured on a public project), where "check your token" is advice about a
+    // token that was never sent.
+    return authenticated
+      ? 'The host rejected the credential (401). Check the token in GITHUB_TOKEN / GH_TOKEN / GITLAB_TOKEN, or the one `gh` / `glab` has stored.'
+      : 'This endpoint needs a token (401) even on a public repository. Set GITHUB_TOKEN / GITLAB_TOKEN / GITEA_TOKEN in the server environment, or run `gh` / `glab` auth login.';
   }
   if (status === 403) {
     const remaining = response.headers.get('x-ratelimit-remaining');

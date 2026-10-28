@@ -256,15 +256,19 @@ async function readCi(
 ): Promise<ForgeDetail['ci']> {
   const sha = textAt(record.head, 'sha');
   if (!sha) return null;
+  // `head.html_url` is NULL on the pull payload — measured — so the run's page is
+  // built from the slug and the sha. Without it the badge is inert text, and the
+  // one thing a reader wants from a failing check is the log.
+  const runUrl = textAt(record.head, 'html_url') || `https://${context.host}/${context.slug}/commit/${sha}/checks`;
   const checks = await get(context, joinUrl(context.apiBase, `/repos/${context.slug}/commits/${sha}/check-runs`));
   if (checks.ok) {
-    const badge = githubChecks(checks.value, textAt(record.head, 'html_url') || null);
+    const badge = githubChecks(checks.value, runUrl);
     if (badge) return badge;
   }
   // A repository using the older commit-status API has no check runs at all, and
   // answering "no CI" for one that has a red status is a wrong answer.
   const status = await get(context, joinUrl(context.apiBase, `/repos/${context.slug}/commits/${sha}/status`));
-  if (status.ok) return githubStatus(status.value, textAt(record.head, 'html_url') || null);
+  if (status.ok) return githubStatus(status.value, runUrl);
   if (!checks.ok && !status.ok) notes.push(`checks: ${checks.message}`);
   return null;
 }

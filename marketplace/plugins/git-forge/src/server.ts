@@ -205,6 +205,18 @@ export default function plugin(api: KabmoPluginApi) {
       // issues are open.
       const context = await contextFor(api, cache, { ...(input as object), filter: { ...defaultFilter(), mine: true } });
       const list = await adapterFor(context.provider).list(context);
+      // "Assigned to me" is not a question an anonymous read can answer, and a
+      // page length drawn as a count is a confident wrong number. Measured on
+      // Gitea: an anonymous `assigned=true` read answered a full page, so the
+      // readout said `3 issues · 3 PRs` for a reader who has none.
+      if (!context.token) {
+        return {
+          issues: null,
+          pulls: null,
+          host: context.host,
+          note: 'Set a token to see what is assigned to you: an anonymous read cannot answer it.',
+        };
+      }
       const counted = (section: 'issues' | 'pulls'): number | null => {
         const data = list.sections[section];
         if (data.total !== null) return data.total;
@@ -213,12 +225,7 @@ export default function plugin(api: KabmoPluginApi) {
         // truncation flag rather than pretending it is the whole number.
         return data.items.length > 0 || data.truncated ? data.items.length : 0;
       };
-      return {
-        issues: counted('issues'),
-        pulls: counted('pulls'),
-        host: context.host,
-        note: context.token ? null : 'Reading anonymously: only public repositories, and no items are assigned to you.',
-      };
+      return { issues: counted('issues'), pulls: counted('pulls'), host: context.host, note: null };
     },
   });
 
