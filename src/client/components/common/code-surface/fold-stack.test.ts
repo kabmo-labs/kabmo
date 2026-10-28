@@ -72,6 +72,10 @@ function stateFor(language: string, doc: string, readOnly = false): EditorState 
       languageCompartment: new Compartment(),
     indentCompartment: new Compartment(),
     typingCompartment: new Compartment(),
+    // This stack is about folding/indent, not blame: the option is `null` so the
+    // compartment is present and off, which is what the surface ships by default.
+    blameCompartment: new Compartment(),
+    blame: null,
     indentUnitText: '  ',
     typing: { autoCloseBrackets: false, autocomplete: false },
       wordWrap: false,

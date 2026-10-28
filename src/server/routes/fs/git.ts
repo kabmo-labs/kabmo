@@ -25,6 +25,7 @@ import { fetchWorkingFileDiff } from '@/server/lib/fs/git-diff';
 import { repoRelative, resolveRepoPath } from '@/server/lib/fs/git-run';
 import { parseConflictMarkers } from '@/shared/lib/fs/git-unmerged';
 import { readGitStatus } from '@/server/lib/fs/git-status-read';
+import { readBlame, readBlameHistory } from '@/server/lib/fs/git-blame';
 import { listBranchDetails } from '@/server/lib/fs/git-branch';
 import { listStashes } from '@/server/lib/fs/git-stash';
 import { GIT_ACTIONS } from '@/server/lib/fs/git-actions';
@@ -135,6 +136,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (!resolved) return json({ error: 'Invalid path' }, { status: 403 });
     const text = await Bun.file(resolved).text().catch(() => '');
     return json({ success: true, markers: parseConflictMarkers(text) });
+  }
+
+  // The editor's line blame, read on demand.
+  //
+  // NOT part of the status payload and NOT on the realtime `git:` topic: that
+  // topic republishes on every tool call, and a blame is one spawn plus a parse
+  // of the whole file. The panel asks for one file when a tab opens, and the
+  // server caches the answer per (path, mtime, HEAD).
+  if (url.searchParams.get('blame') === '1' || url.searchParams.get('blameHistory') === '1') {
+    const file = url.searchParams.get('file') || '';
+    if (!file) return json({ error: 'file is required' }, { status: 400 });
+    if (url.searchParams.get('blameHistory') === '1') {
+      const line = Number(url.searchParams.get('line') || '0');
+      return json({ success: true, ...(await readBlameHistory(targetDir, file, line)) });
+    }
+    return json({ success: true, ...(await readBlame(targetDir, file)) });
   }
 
   // Ahead/behind are only requested by the git panel (`?sync=1`); the

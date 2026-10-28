@@ -29,6 +29,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  GitCommitVertical,
   Maximize,
   Minimize,
   RotateCcw,
@@ -52,6 +53,8 @@ export interface ToolbarState {
   hasPreview: boolean;
   isPreview: boolean;
   wordWrap: boolean;
+  /** The inline blame label is drawn (the setting, not whether a file has blame). */
+  blameInline: boolean;
   findOpen: boolean;
   copied: boolean;
   isMaximized: boolean;
@@ -66,6 +69,7 @@ export interface ToolbarState {
   onTogglePreview: () => void;
   onToggleFind: () => void;
   onToggleWordWrap: () => void;
+  onToggleBlameInline: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onCopy: () => void;
@@ -172,6 +176,29 @@ export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
       children: (
         <Toggle label={state.wordWrapLabel} pressed={state.wordWrap} onClick={state.onToggleWordWrap}>
           <WrapText size={14} />
+        </Toggle>
+      ),
+    });
+    // A reading aid, so it sits with wrap rather than with Save: it changes how
+    // the document is SHOWN, and a narrow panel moves it into the `⋯` menu.
+    clusters.push({
+      id: 'blame',
+      actions: [
+        {
+          label: state.blameInline ? 'Hide line blame' : 'Show line blame',
+          icon: GitCommitVertical,
+          onSelect: state.onToggleBlameInline,
+          active: state.blameInline,
+        },
+      ],
+      children: (
+        <Toggle
+          label={state.blameInline ? 'Hide line blame' : 'Show line blame'}
+          pressed={state.blameInline}
+          title="Who last changed each block, from git (hover a line for the commit)"
+          onClick={state.onToggleBlameInline}
+        >
+          <GitCommitVertical size={14} />
         </Toggle>
       ),
     });

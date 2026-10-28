@@ -6,6 +6,7 @@ import { EditorFontSection } from '@/client/components/settings/categories/appea
 import { EditorThemeSection } from '@/client/components/settings/categories/appearance-settings/EditorThemeSection';
 import { EditorIndentSection } from '@/client/components/settings/categories/appearance-settings/EditorIndentSection';
 import { EditorTypingSection } from '@/client/components/settings/categories/appearance-settings/EditorTypingSection';
+import { EditorBlameSection } from '@/client/components/settings/categories/appearance-settings/EditorBlameSection';
 
 interface AppearanceSettingsProps {
   settings: SettingsState;
@@ -34,6 +35,8 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
       <EditorIndentSection settings={settings} onUpdate={onUpdate} />
 
       <EditorTypingSection settings={settings} onUpdate={onUpdate} />
+
+      <EditorBlameSection settings={settings} onUpdate={onUpdate} />
     </div>
   );
 }

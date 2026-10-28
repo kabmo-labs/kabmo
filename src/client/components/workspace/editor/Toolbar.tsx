@@ -8,6 +8,8 @@ import {
 import { EditorViewButtons, useEditorViewActions } from '@/client/components/common/editor-view-buttons';
 import { ToolbarRow } from '@/client/components/common/toolbar-row';
 import { ACTION_CLASS, buildEditorClusters } from '@/client/components/workspace/editor/toolbar-clusters';
+import { writeKabmoSettings } from '@/shared/lib/settings/client';
+import { EDITOR_BLAME_CHANGED_EVENT, currentEditorBlame, useEditorBlame } from '@/client/hooks/editor/blame-settings';
 
 export type EditorSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'needs-permission';
 
@@ -168,12 +170,14 @@ export function EditorToolbar({
     </button>
   );
 
+  const blame = useEditorBlame();
   const viewModeActions = useEditorViewActions();
   const clusters = buildEditorClusters({
     byteViewer,
     hasPreview,
     isPreview,
     wordWrap,
+    blameInline: blame.inline,
     findOpen,
     copied,
     isMaximized,
@@ -191,6 +195,14 @@ export function EditorToolbar({
     onTogglePreview,
     onToggleFind,
     onToggleWordWrap,
+    onToggleBlameInline: () => {
+      // The setting is written through the same helper the Settings modal uses,
+      // and the event is what reaches an editor already on screen — a prop read
+      // once would never arrive.
+      const next = { ...currentEditorBlame(), inline: !blame.inline };
+      writeKabmoSettings({ editorBlameInline: next.inline });
+      window.dispatchEvent(new CustomEvent(EDITOR_BLAME_CHANGED_EVENT, { detail: next }));
+    },
     onZoomIn,
     onZoomOut,
     onCopy,

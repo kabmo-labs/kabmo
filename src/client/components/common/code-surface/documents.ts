@@ -40,6 +40,14 @@ export interface SurfaceOptions {
   wordWrap: boolean;
   readOnly: boolean;
   /**
+   * The blame extension, or null when the panel has it off.
+   *
+   * Part of the live options because the toggle can be pressed while a
+   * document is open: a re-mount would drop the tab's undo history for a
+   * reading aid. Absent and `null` both mean off.
+   */
+  blame?: Extension | null;
+  /**
    * One indentation level, as a whitespace string.
    *
    * Part of the live options rather than the document key: an indentation setting is
@@ -64,6 +72,14 @@ export interface SurfaceOptions {
    * per theme would throw away every open tab's undo history on a colour change.
    */
   themes: ShikiThemeNames;
+  /**
+   * Text drawn while a document is empty, or absent for none.
+   *
+   * Creation-time rather than a compartment: it is a constant per call site
+   * ("This file is empty"), so a reconfigure path for it would be a transaction
+   * nobody dispatches.
+   */
+  placeholder?: string;
 }
 
 export interface DocumentCacheDeps extends SurfaceOptions {
@@ -121,11 +137,14 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
   const options: SurfaceOptions = {
     wordWrap: deps.wordWrap,
     readOnly: deps.readOnly,
+    blame: deps.blame ?? null,
     themes: deps.themes,
     indentUnitText: deps.indentUnitText,
     typing: deps.typing,
+    placeholder: deps.placeholder,
   };
   const wordWrapCompartment = new Compartment();
+  const blameCompartment = new Compartment();
   const readOnlyCompartment = new Compartment();
   const indentCompartment = new Compartment();
   const typingCompartment = new Compartment();
@@ -159,6 +178,15 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
    * for nothing on a file with a large gutter.
    */
   const indentByKey = new Map<string, string>();
+  /**
+   * The blame extension each cached state currently holds.
+   *
+   * Tracked for the same reason as `themesByKey`: `currentEffects` runs on every
+   * tab switch, and reconfiguring a compartment with the value it already has
+   * costs a transaction for nothing — here it would also re-create the label
+   * plugin, which rebuilds every decoration on the viewport.
+   */
+  const blameByKey = new Map<string, Extension | null>();
 
   const extensionsFor = (language: string): Extension[] =>
     surfaceExtensions({
@@ -169,6 +197,8 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       languageCompartment,
       indentCompartment,
       typingCompartment,
+      blameCompartment,
+      blame: options.blame ?? null,
       onCommand: deps.onCommand,
       onDocChange: deps.onDocChange,
       onState: deps.onState,
@@ -202,6 +232,7 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       languages.set(key, language);
       themesByKey.set(key, options.themes);
       indentByKey.set(key, options.indentUnitText);
+      blameByKey.set(key, options.blame ?? null);
       evict();
       return state;
     },
@@ -215,11 +246,14 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       languages.delete(key);
       themesByKey.delete(key);
       indentByKey.delete(key);
+      blameByKey.delete(key);
     },
 
     optionsEffects(next, key) {
       const wrapChanged = next.wordWrap !== options.wordWrap;
       const readOnlyChanged = next.readOnly !== options.readOnly;
+      const nextBlame = next.blame ?? null;
+      const blameChanged = nextBlame !== options.blame;
       const indentChanged = next.indentUnitText !== options.indentUnitText;
       const typingChanged =
         next.typing.autoCloseBrackets !== options.typing.autoCloseBrackets ||
@@ -227,11 +261,17 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       const themeChanged = next.themes.light !== options.themes.light || next.themes.dark !== options.themes.dark;
       options.wordWrap = next.wordWrap;
       options.readOnly = next.readOnly;
+      options.blame = nextBlame;
       options.themes = next.themes;
       options.indentUnitText = next.indentUnitText;
       options.typing = next.typing;
       const effects: StateEffect<unknown>[] = [];
       if (wrapChanged) effects.push(wordWrapCompartment.reconfigure(wrapExtension(options.wordWrap)));
+      // A reading aid, so the same rule as wrap: reconfigure, never re-mount.
+      if (blameChanged) {
+        effects.push(blameCompartment.reconfigure(options.blame ?? []));
+        if (key) blameByKey.set(key, options.blame ?? null);
+      }
       if (readOnlyChanged) effects.push(readOnlyCompartment.reconfigure(readOnlyExtension(options.readOnly)));
       // The indent unit AND the tab size move together: a tab-indented setting is
       // one column wide as a unit, and `getIndentUnit` reads `tabSize` to measure
@@ -258,8 +298,15 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       const effects: StateEffect<unknown>[] = [
         wordWrapCompartment.reconfigure(wrapExtension(options.wordWrap)),
         readOnlyCompartment.reconfigure(readOnlyExtension(options.readOnly)),
-
       ];
+      // A cached state carries the configuration it was CREATED with, so a tab
+      // opened before the toggle was pressed would come back with the other
+      // answer for its whole life.
+      const blame = options.blame ?? null;
+      if (key && blameByKey.get(key) !== blame) {
+        effects.push(blameCompartment.reconfigure(blame ?? []));
+        blameByKey.set(key, blame);
+      }
       const language = key ? languages.get(key) : undefined;
       // A cached state carries the unit it was CREATED with, so a tab opened before
       // the setting changed would indent by the old width for its whole life.

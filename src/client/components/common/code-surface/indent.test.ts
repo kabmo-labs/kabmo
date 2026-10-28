@@ -38,6 +38,7 @@ interface SurfaceCompartments {
   languageCompartment: Compartment;
   indentCompartment: Compartment;
   typingCompartment: Compartment;
+  blameCompartment: Compartment;
 }
 
 interface Built {
@@ -54,10 +55,14 @@ async function build(language: string): Promise<Built> {
     languageCompartment: new Compartment(),
     indentCompartment: new Compartment(),
     typingCompartment: new Compartment(),
+    blameCompartment: new Compartment(),
   };
   const extensions: Extension[] = surfaceExtensions({
     language,
     ...compartments,
+    // This stack is about indent, not blame: the compartment is present and
+    // off, which is what the surface ships by default.
+    blame: null,
     wordWrap: true,
     readOnly: false,
     themes: SHIKI_THEMES,

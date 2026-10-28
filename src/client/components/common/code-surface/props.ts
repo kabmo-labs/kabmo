@@ -13,6 +13,7 @@
  */
 
 import type { CSSProperties } from 'preact';
+import type { Extension } from '@codemirror/state';
 
 import type { ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import type { MarkRange } from '@/client/components/common/code-surface/marks';
@@ -61,6 +62,15 @@ export interface CodeSurfaceProps {
    * history.
    */
   typing?: EditorTypingOptions;
+  /**
+   * Line blame: the labels, the card and the state they read — or `null`.
+   *
+   * Built by the owner (`blameExtensions`) because the controller behind it
+   * needs the file's identity, which the surface does not have. `null` is off,
+   * and the surface reconfigures a compartment when it moves, so pressing the
+   * toggle does not cost an open tab its undo history.
+   */
+  blame?: Extension | null;
   /** Font family / size / line height (the zoom control and the font setting). */
   style?: CSSProperties;
   /** Padding around the document, in px. */
@@ -83,5 +93,12 @@ export interface CodeSurfaceProps {
    * cannot reach it through a `ref`, so the surface hands it over.
    */
   onScroller?: (element: HTMLElement | null) => void;
+  /**
+   * Text drawn while the document is empty.
+   *
+   * An open file with no bytes is a fact the panel should state: an unlabelled
+   * blank surface reads as a read that has not finished.
+   */
+  placeholder?: string;
   className?: string;
 }

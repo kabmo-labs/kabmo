@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
@@ -17,6 +17,9 @@ import { lineStartOffset } from '@/shared/lib/code/editor/lines';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
+import { useFileBlame } from '@/client/hooks/editor/blame';
+import { useEditorBlame } from '@/client/hooks/editor/blame-settings';
+import { blameExtensions } from '@/client/components/common/code-surface/blame';
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import type { EditorThemeState } from '@/client/hooks/editor/theme';
@@ -97,6 +100,40 @@ export function FileDocument({
   // an editor that is already open.
   const editorIndent = useEditorIndent();
   const editorTyping = useEditorTyping();
+  const editorBlame = useEditorBlame();
+  /**
+   * The blame answer for THIS file.
+   *
+   * `dirty` is the editor's own comparison against its baseline, which is what
+   * decides whether the blame describes the bytes on screen: an unsaved edit
+   * shifts every line number, and a label naming the wrong line is worse than
+   * no label. The controller refuses to read while it is true, and the labels
+   * disappear the moment it flips.
+   */
+  const blame = useFileBlame(
+    {
+      name: activeFile.name,
+      path: activeFile.path,
+      // A file tab carries no `repo` — only a diff tab does — so the panel's own
+      // scope is the fallback. Without it a file inside a NESTED repository is
+      // blamed against the workspace root, which answers "untracked" for a file
+      // that has a full history one directory down.
+      root: activeFile.root ?? rootPath ?? undefined,
+      repo: activeFile.repo ?? repoPath ?? '.',
+    },
+    { enabled: editorBlame.enabled, dirty: editor.isDirty },
+  );
+  /**
+   * The extension, rebuilt only when one of its inputs moves.
+   *
+   * A fresh array per render would reconfigure the compartment on every
+   * keystroke — and a reconfigure re-creates the label plugin, which rebuilds
+   * every decoration on the viewport.
+   */
+  const blameExtension = useMemo(
+    () => (editorBlame.enabled ? blameExtensions({ controller: blame, inline: editorBlame.inline }) : null),
+    [editorBlame.enabled, editorBlame.inline, blame],
+  );
   const [caret, setCaret] = useState<CaretPosition | null>(null);
   const [goToLineOpen, setGoToLineOpen] = useState(false);
   // The request is a COUNTER: the dialog closes itself, and a boolean would need a
@@ -218,6 +255,7 @@ export function FileDocument({
           // must not sit under it: an explicit theme's background is opaque and
           // would be a rectangle inside the panel's own colour.
           className="flex-1 min-h-0 text-ink select-text"
+          blame={blameExtension}
           themeVars={editorTheme.vars}
           themes={editorTheme.themes}
           indentUnitText={indentUnitFor(editorIndent)}

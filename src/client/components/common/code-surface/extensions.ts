@@ -151,6 +151,17 @@ export interface SurfaceExtensionsOptions {
   indentUnitText: string;
   /** Panel-owned commands the editor delegates instead of running. */
   onCommand?: (command: EditorCommand) => void;
+  /**
+   * Line blame: the labels, the field they read and the card — or null.
+   *
+   * One extension value rather than a set of options, because the three are one
+   * feature and the surface has nothing to decide about them. `null` is "off",
+   * which is the default: the blame costs a server read per file, so it is
+   * opt-in.
+   */
+  blame?: Extension | null;
+  /** Compartment holding the blame extension, so the toggle is a reconfigure. */
+  blameCompartment: Compartment;
   /** Fired for every user edit, with the whole new document. */
   onDocChange: (value: string) => void;
   /** Fired on every state that must be remembered (an edit or a selection move). */
@@ -180,6 +191,8 @@ export function surfaceExtensions({
   themes,
   typing,
   indentUnitText,
+  blame,
+  blameCompartment,
   onCommand,
   onDocChange,
   onState,
@@ -257,6 +270,11 @@ export function surfaceExtensions({
     foldGutter(),
     themeCompartment.of(shikiHighlight(language, themes)),
     surfaceTheme(),
+    // Line blame, when the panel turned it on: the labels, the state field they
+    // read, and the card. In a compartment because the toggle can be pressed
+    // while a document is open, and a reconfigure keeps its undo history —
+    // `null` is the off state, and CM6 wants an empty list for it.
+    blameCompartment.of(blame ?? []),
     wordWrapCompartment.of(wrapExtension(wordWrap)),
     readOnlyCompartment.of(readOnlyExtension(readOnly)),
     // The browser's own spellchecker underlines every identifier and offers to

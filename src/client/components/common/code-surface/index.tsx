@@ -33,6 +33,7 @@ import { useImperativeHandle, useLayoutEffect, useRef } from 'preact/hooks';
 import { forwardRef } from 'preact/compat';
 import type { CSSProperties } from 'preact';
 import { EditorView } from '@codemirror/view';
+import type { Extension } from '@codemirror/state';
 
 import { createDocumentCache, type DocumentCache } from '@/client/components/common/code-surface/documents';
 import type { ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
@@ -62,9 +63,11 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     themes,
     indentUnitText = '  ',
     typing = DEFAULT_EDITOR_TYPING,
+    blame = null,
     style,
     padding = 16,
     onCaret,
+    placeholder,
     scrollTestId,
     onScroller,
     className,
@@ -124,6 +127,15 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
   indentRef.current = indentUnitText;
   const typingRef = useRef(typing);
   typingRef.current = typing;
+  /**
+   * The blame extension, mirrored for the cache's first build.
+   *
+   * Its IDENTITY is the toggle: the owner builds it with `useMemo`, so pressing
+   * the button hands over a different value and the effect below reconfigures
+   * the compartment instead of re-mounting the view.
+   */
+  const blameRef = useRef<Extension | null>(blame);
+  blameRef.current = blame;
 
   // One cache for the component's life: it owns the per-document states.
   const cacheRef = useRef<DocumentCache | null>(null);
@@ -134,6 +146,8 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
       themes: themesRef.current,
       indentUnitText: indentRef.current,
       typing: typingRef.current,
+      blame: blameRef.current,
+      placeholder,
       onDocChange: (next) => {
         // Recorded BEFORE the writing guard: this is what the document holds,
         // whether or not the change came from the user.
@@ -235,11 +249,11 @@ export const CodeSurface = forwardRef<CodeSurfaceHandle, CodeSurfaceProps>(funct
     const cache = cacheRef.current;
     if (!view || !cache) return;
     const effects = cache.optionsEffects(
-      { wordWrap, readOnly, themes: activeThemes, indentUnitText, typing },
+      { wordWrap, readOnly, themes: activeThemes, indentUnitText, typing, blame },
       docKeyRef.current,
     );
     if (effects.length > 0) view.dispatch({ effects });
-  }, [wordWrap, readOnly, activeThemes.light, activeThemes.dark, indentUnitText, typing]);
+  }, [wordWrap, readOnly, activeThemes.light, activeThemes.dark, indentUnitText, typing, blame]);
 
   /**
    * The stream language: fetched for this document's language, installed when it

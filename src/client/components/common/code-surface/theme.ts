@@ -224,6 +224,26 @@ export function surfaceTheme(): Extension {
       backgroundSize: '1px 100%',
       backgroundPosition: 'calc(var(--indent-guide-col, 2ch) - 1px) 0',
     },
+    // The line-blame label at the end of a run's first line.
+    //
+    // A WIDGET, so it is drawn beside the text rather than inside it — and it
+    // is deliberately the faintest thing on the surface: it is a hint that the
+    // line has an answer, not information being read. `user-select: none`
+    // because a drag that selected it would put an author's name into a copied
+    // snippet of code, and `pointer-events: auto` because it is the hover
+    // target the card opens from.
+    '.cm-blame-label': {
+      marginLeft: '2.5ch',
+      color: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 30%, transparent)',
+      fontStyle: 'normal',
+      whiteSpace: 'nowrap',
+      userSelect: 'none',
+      cursor: 'help',
+      pointerEvents: 'auto',
+    },
+    '.cm-blame-label:hover': {
+      color: 'color-mix(in srgb, var(--editor-fg, var(--theme-ink)) 60%, transparent)',
+    },
     // Other occurrences of the selection. Deliberately SUBTLER than a find match:
     // this is a hint about the word under the caret, and on a common identifier it
     // paints a lot of the viewport.
