@@ -1,13 +1,13 @@
 {
   "name": "git-forge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Reads and acts on a repository's issues, pull/merge requests and releases on GitHub, GitLab, Gitea or Bitbucket.",
   "type": "module",
   "kabmo": {
     "id": "git-forge",
     "name": "Forge",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Reads and acts on a repository's issues, pull/merge requests and releases on GitHub, GitLab, Gitea or Bitbucket.",
     "app": "dist/app.js",
     "server": "dist/server.js",

@@ -1,13 +1,13 @@
 {
   "name": "session-info",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Shows the active workspace and keeps a note per session.",
   "type": "module",
   "kabmo": {
     "id": "session-info",
     "name": "Session Info",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "Shows the active workspace and keeps a note per session.",
     "app": "dist/app.js",
     "server": "dist/server.js",

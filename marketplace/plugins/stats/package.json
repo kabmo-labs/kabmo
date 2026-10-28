@@ -1,13 +1,13 @@
 {
   "name": "stats",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "CPU and RAM used by the omp stack — Kabmo, every omp child, the daemons and the shells.",
   "type": "module",
   "kabmo": {
     "id": "stats",
     "name": "Stats",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "CPU and RAM used by the omp stack — Kabmo, every omp child, the daemons and the shells.",
     "app": "dist/app.js",
     "server": "dist/server.js",
