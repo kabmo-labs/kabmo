@@ -29,7 +29,6 @@
 
 import type { ProviderItem } from '@/shared/types';
 import { saveProviderOverlay, setProviderEnabled, deleteProvider } from '@/shared/lib/models/provider/connection';
-import { connectOffers } from '@/shared/lib/models/provider/origin';
 import { addProviderMessage } from '@/client/hooks/settings/providers/messages';
 import { loadProvidersFromApi } from '@/client/hooks/settings/providers/api';
 
