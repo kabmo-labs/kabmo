@@ -74,7 +74,7 @@ afterAll(() => {
 afterEach(() => {
   disposeUtilityRpc();
   globalThis.__kabmoModelsCache = undefined;
-  globalThis.__kabmoProvidersRpcCache = undefined;
+  globalThis.__kabmoLoginProvidersCache = undefined;
   globalThis.__kabmoDb?.resolved?.raw.close();
   globalThis.__kabmoDb = undefined;
   delete Bun.env.FAKE_OMP_RESPONSES;
@@ -158,10 +158,10 @@ describe('loadModelsWithCache', () => {
 
   test('invalidateModelsCache drops the model and provider caches together', () => {
     globalThis.__kabmoModelsCache = { data: EMPTY_MODELS, expiresAt: Date.now() + 60_000 };
-    globalThis.__kabmoProvidersRpcCache = { data: [], expiresAt: Date.now() + 60_000 };
+    globalThis.__kabmoLoginProvidersCache = { data: [], expiresAt: Date.now() + 60_000 };
     invalidateModelsCache();
     expect(globalThis.__kabmoModelsCache).toBeUndefined();
-    expect(globalThis.__kabmoProvidersRpcCache).toBeUndefined();
+    expect(globalThis.__kabmoLoginProvidersCache).toBeUndefined();
   });
 });
 

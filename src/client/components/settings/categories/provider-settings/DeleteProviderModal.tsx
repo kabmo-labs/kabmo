@@ -1,7 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
-import { ProviderIcon } from '@/client/components/common/provider-icon';
+import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
 
 interface DeleteProviderModalProps {
   isOpen: boolean;
@@ -13,17 +13,20 @@ interface DeleteProviderModalProps {
 }
 
 /**
- * Confirmation for deleting a provider registered in `models.yml`.
+ * Confirmation for deleting a provider.
  *
- * The dialog names what actually disappears — the file entry, its model list,
- * and the endpoint/credential stored on it — because the action is not
- * reversible from the UI: the endpoint and API key are only ever shown masked,
- * so a deleted provider has to be reconfigured from scratch.
+ * What disappears depends on the provider's shape, and the dialog says which
+ * case it is instead of describing a `models.yml` entry for all of them:
  *
- * It also says what is NOT touched. A provider omp ships (a login provider, or
- * a bundled catalog entry) keeps its own configuration; only the `models.yml`
- * override goes, and that distinction is the difference between "I can add this
- * back" and "I just deleted my Anthropic login".
+ * - a `models.yml` entry goes, with its model list and the endpoint/key stored
+ *   on it (only ever shown masked, so it cannot be recovered);
+ * - a Kabmo-only row (a visibility/sampling overlay) goes, and omp keeps
+ *   serving the provider — so the dialog says the provider itself survives;
+ * - a login provider's credential is never touched by either path.
+ *
+ * The list can now offer delete on EVERY row, so this distinction is what stops
+ * "delete" from reading as "sign out" on a provider whose credential it cannot
+ * remove.
  */
 export function DeleteProviderModal({
   isOpen,
@@ -47,6 +50,9 @@ export function DeleteProviderModal({
   if (!isOpen || !provider) return null;
 
   const modelCount = provider.models.length;
+  const removesFileEntry = provider.inModelsYml === true;
+  const removesOnlySettings = !removesFileEntry;
+  const environmentCredential = provider.credentialOrigin === 'environment';
 
   return (
     <div
@@ -72,22 +78,42 @@ export function DeleteProviderModal({
 
         <div className="px-5 py-4 space-y-3">
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-ink/5 border border-ink/10">
-            <ProviderIcon icon={provider.icon} slug={provider.slug} name={provider.name} size={18} />
+            <ProviderIconPlate provider={provider} size={26} />
             <span className="text-xs font-medium text-ink truncate">{provider.name}</span>
           </div>
 
           <ul className="text-[11.5px] leading-relaxed text-ink/70 space-y-1.5">
-            <li>
-              Its entry is removed from{' '}
-              <span className="font-mono text-ink">~/.omp/agent/models.yml</span>
-              {modelCount > 0
-                ? `, along with its ${modelCount} registered model${modelCount === 1 ? '' : 's'}.`
-                : '.'}
-            </li>
-            <li>The endpoint and API key stored on that entry are removed with it — they are shown masked here, so you would need to enter them again.</li>
+            {removesFileEntry ? (
+              <>
+                <li>
+                  Its entry is removed from{' '}
+                  <span className="font-mono text-ink">~/.omp/agent/models.yml</span>
+                  {modelCount > 0
+                    ? `, along with its ${modelCount} registered model${modelCount === 1 ? '' : 's'}.`
+                    : '.'}
+                </li>
+                <li>The endpoint and API key stored on that entry are removed with it — they are shown masked here, so you would need to enter them again.</li>
+              </>
+            ) : (
+              <>
+                <li>
+                  Kabmo’s own settings row for this provider is removed (per-model visibility and
+                  sampling choices). omp keeps the provider itself.
+                </li>
+                <li>
+                  The provider and its models stay available to the chat picker — use{' '}
+                  <span className="text-ink">disable</span> to hide them instead.
+                </li>
+              </>
+            )}
+            {environmentCredential && (
+              <li className="text-ink/60">
+                Its credential comes from an environment variable, which this cannot remove.
+              </li>
+            )}
             {provider.credentialSource === 'omp-auth' && (
               <li className="text-ink/60">
-                Your omp login for <span className="font-mono">{provider.slug}</span> is NOT touched — only the models.yml
+                Your omp login for <span className="font-mono">{provider.slug}</span> is NOT touched — only the
                 entry above. The provider stays available through that login.
               </li>
             )}
@@ -95,7 +121,11 @@ export function DeleteProviderModal({
 
           <div className="flex items-start gap-2 px-3 py-2 rounded-md border border-error/30 bg-error/5 text-[11px] text-ink/75">
             <AlertTriangle size={13} className="mt-0.5 shrink-0 text-error" />
-            <span>This cannot be undone from the UI. Re-adding the provider starts from an empty endpoint and key.</span>
+            <span>
+              {removesOnlySettings
+                ? 'Only Kabmo’s stored preferences go — nothing in omp’s own configuration changes.'
+                : 'This cannot be undone from the UI. Re-adding the provider starts from an empty endpoint and key.'}
+            </span>
           </div>
         </div>
 

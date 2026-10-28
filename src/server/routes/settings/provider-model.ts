@@ -5,7 +5,7 @@ import { isMockMode } from '@/server/mock.server';
 import { upsertOmpProviderModels } from '@/server/lib/omp/config/providers';
 import { manualModelSeed } from '@/server/lib/omp/config/provider-seeds';
 import { readNativeProviders } from '@/server/lib/omp/config/models-config';
-import { isProviderAuthMode, isProviderThinkingEffort } from '@/shared/lib/models/provider/dialect';
+import { isProviderAuthMode, isProviderThinkingEffort, modelKindOf } from '@/shared/lib/models/provider/dialect';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
 
 /**
@@ -50,6 +50,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const seed = manualModelSeed({
       id,
       name: typeof body.name === 'string' ? body.name : undefined,
+      // An unknown kind is folded to chat rather than written: omp rejects the
+      // whole file over one value outside its `MODEL_KINDS`.
+      ...(typeof body.kind === 'string' ? { kind: modelKindOf(body.kind) } : {}),
       contextWindow: positiveInt(body.contextWindow),
       maxTokens: positiveInt(body.maxTokens),
       reasoning: body.reasoning === true,

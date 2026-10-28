@@ -16,6 +16,8 @@ import type { PresetProviderOption, ProviderItem, ProviderModel } from '@/shared
 export interface ProviderSettingsPayload {
   providers: ProviderItem[];
   presetProviders?: PresetProviderOption[];
+  /** Why the CLI model catalog could not be read, when it could not. */
+  catalogError?: string;
 }
 
 /** Load the merged provider registry (omp's sources + Kabmo overlay). */
@@ -24,7 +26,11 @@ export async function loadProvidersFromApi(): Promise<ProviderSettingsPayload | 
     const response = await fetch('/api/settings/providers');
     const data = await response.json() as Partial<ProviderSettingsPayload>;
     if (!Array.isArray(data?.providers)) return null;
-    return { providers: data.providers, ...(data.presetProviders ? { presetProviders: data.presetProviders } : {}) };
+    return {
+      providers: data.providers,
+      ...(data.presetProviders ? { presetProviders: data.presetProviders } : {}),
+      ...(typeof data.catalogError === 'string' ? { catalogError: data.catalogError } : {}),
+    };
   } catch (error) {
     console.error('Failed to load providers from API:', error);
     return null;

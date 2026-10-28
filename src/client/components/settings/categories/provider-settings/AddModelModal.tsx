@@ -4,7 +4,10 @@ import { Check, Globe, Hash, Layers, Plus, Sparkles } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
 import { addProviderModel, type ManualModelRequest } from '@/shared/lib/models/provider/models';
 import {
+  MODEL_KINDS,
+  MODEL_KIND_LABELS,
   PROVIDER_THINKING_EFFORTS,
+  type ProviderModelKind,
   type ProviderThinkingEffort,
 } from '@/shared/lib/models/provider/dialect';
 import { Modal } from '@/client/components/common/Modal';
@@ -50,6 +53,7 @@ export function AddModelModal({
   const [costOutput, setCostOutput] = useState('');
   const [costCacheRead, setCostCacheRead] = useState('');
   const [costCacheWrite, setCostCacheWrite] = useState('');
+  const [kind, setKind] = useState<ProviderModelKind>('chat');
   const [reasoning, setReasoning] = useState(false);
   const [imageInput, setImageInput] = useState(false);
   const [efforts, setEfforts] = useState<ProviderThinkingEffort[]>([]);
@@ -116,6 +120,7 @@ export function AddModelModal({
           ? { contextWindow: numberOrUndefined(contextWindow) }
           : {}),
         ...(numberOrUndefined(maxTokens) !== undefined ? { maxTokens: numberOrUndefined(maxTokens) } : {}),
+        ...(kind !== 'chat' ? { kind } : {}),
         ...(reasoning ? { reasoning: true } : {}),
         ...(reasoning && efforts.length > 0 ? { efforts } : {}),
         ...(imageInput ? { imageInput: true } : {}),
@@ -230,6 +235,26 @@ export function AddModelModal({
           placeholder="Shown in the chat model picker"
           className="w-full bg-paper border border-ink/20 rounded-md px-3 py-1.5 text-xs text-ink outline-none focus:border-ink/60"
         />
+      </div>
+
+      {/* Kind: which role omp resolves this model for. A provider routinely
+          serves an embedding, image or rerank model beside its chat models, and
+          registering one as `chat` made it appear in the chat picker and behave
+          oddly there. */}
+      <div>
+        <label className="block text-xs font-semibold text-ink mb-1">Kind</label>
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.currentTarget.value as ProviderModelKind)}
+          className="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-ink transition-colors cursor-pointer"
+        >
+          {MODEL_KINDS.map((value) => (
+            <option key={value} value={value}>{MODEL_KIND_LABELS[value]}</option>
+          ))}
+        </select>
+        <p className="text-[10px] text-ink/40 mt-1">
+          Chat is omp’s default. A non-chat kind keeps this model out of the chat picker.
+        </p>
       </div>
 
       {/* Limits */}

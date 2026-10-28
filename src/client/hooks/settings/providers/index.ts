@@ -1,38 +1,45 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
-import type { PresetProviderOption, ProviderItem, ProviderModel } from '@/shared/types';
-import { PRESET_NEW_PROVIDERS } from '@/client/data/settings/provider';
-import { buildAvailableProviderPresets } from '@/shared/lib/models/provider/presets';
-import { useToasts } from '@/client/hooks/ui/toasts';
-import { loadProvidersFromApi } from '@/client/hooks/settings/providers/api';
-import { createProviderActions } from '@/client/hooks/settings/providers/actions';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-interface UseProviderSettingsOptions {
+/**
+ * State wiring for Settings → Providers: the merged registry, the selection,
+ * the dialog flags, and the actions (`providers/actions.ts`).
+ *
+ * Two rules this file carries:
+ *
+ * - the sidebar lists EVERY provider omp knows — including one with no
+ *   credential, which is the row you click to sign it in. omp's own `/models`
+ *   hub draws them the same way, and filtering them out made an OAuth provider
+ *   that had never been signed in unreachable from the panel that signs it in;
+ * - `disabled` is kept separate from `status`, because a provider hidden on
+ *   purpose is not the same as one whose credential is missing, and the switch
+ *   that hid it has to stay reachable.
+ */
+
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import type { PresetProviderOption, ProviderItem } from '@/shared/types';
+import { buildAvailableProviderPresets, configuredProviderSlugs } from '@/shared/lib/models/provider/presets';
+import { useToasts } from '@/client/hooks/ui/toasts';
+import { createProviderActions } from '@/client/hooks/settings/providers/actions';
+import { createModelActions } from '@/client/hooks/settings/providers/model-actions';
+import { loadProvidersFromApi } from '@/client/hooks/settings/providers/api';
+
+export interface UseProviderSettingsOptions {
   autoOpenAdd?: boolean;
   onAddModalClose?: () => void;
 }
 
-/**
- * State wiring behind Settings → Providers.
- *
- * The mutations themselves live in `providers/actions.ts`, which receives this
- * hook's setters as one `deps` record — the split keeps both files under the
- * repo's size ceiling without changing closure semantics, since every action
- * still closes over the same state.
- *
- * Every mutation lands in one of two stores: Kabmo-local overlay (per-model
- * visibility and sampling config) or omp's own config.yml `disabledProviders`
- * (connect / disconnect). Disconnect has to use the latter — the overlay is
- * re-merged away on load, which is why a disconnected provider used to come back
- * as connected.
- */
 export function useProviderSettings({
   autoOpenAdd = false,
   onAddModalClose,
 }: UseProviderSettingsOptions = {}) {
   const [providers, setProviders] = useState<ProviderItem[]>([]);
-  const [presetProviders, setPresetProviders] = useState<PresetProviderOption[]>(PRESET_NEW_PROVIDERS);
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('provider-deepseek');
-  const [currentProject, setCurrentProject] = useState('kabmo');
+  const [presetProviders, setPresetProviders] = useState<PresetProviderOption[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const { toasts, pushToast, dismissToast } = useToasts();
 
@@ -41,10 +48,10 @@ export function useProviderSettings({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeletingProvider, setIsDeletingProvider] = useState(false);
-  const [isReconnectModalOpen, setIsReconnectModalOpen] = useState(false);
+  const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [configModel, setConfigModel] = useState<ProviderModel | null>(null);
-  const [capabilitiesModel, setCapabilitiesModel] = useState<ProviderModel | null>(null);
+  const [configModel, setConfigModel] = useState<ProviderItem['models'][number] | null>(null);
+  const [capabilitiesModel, setCapabilitiesModel] = useState<ProviderItem['models'][number] | null>(null);
 
   useEffect(() => {
     if (autoOpenAdd) setIsAddModalOpen(true);
@@ -53,35 +60,32 @@ export function useProviderSettings({
   useEffect(() => {
     let active = true;
     void loadProvidersFromApi().then((data) => {
-      if (!active || !data) return;
+      if (!active) return;
+      setIsLoading(false);
+      if (!data) return;
       setProviders(data.providers);
+      setPresetProviders(data.presetProviders ?? []);
+      setCatalogError(data.catalogError ?? null);
       const connected = data.providers.filter((provider) => provider.status === 'connected');
-      setSelectedProviderId(connected.length > 0 ? connected[0].id : '');
-      if (data.presetProviders) setPresetProviders(data.presetProviders);
+      setSelectedProviderId(connected[0]?.id ?? data.providers[0]?.id ?? '');
     });
     return () => { active = false; };
   }, []);
 
-  // The sidebar lists connected providers plus every provider the user disabled:
-  // a disabled provider reports `disconnected`, so filtering on status alone
-  // would make the switch that hid it unreachable.
-  const connectedProviders = useMemo(
-    () => providers.filter(
-      (provider) => provider.status === 'connected' || provider.disabled === true,
-    ),
-    [providers],
-  );
   const availablePresetProviders = useMemo(
     () => buildAvailableProviderPresets(providers, presetProviders),
     [providers, presetProviders],
   );
-  const selectedProvider = connectedProviders.find((p) => p.id === selectedProviderId) || connectedProviders[0];
+  const existingSlugs = useMemo(() => configuredProviderSlugs(providers), [providers]);
+  // The selection is resolved against the FULL list: a provider with no
+  // credential is selectable, because its detail pane is where the sign-in
+  // control lives.
+  const selectedProvider = providers.find((provider) => provider.id === selectedProviderId)
+    ?? providers[0];
 
-  const actions = createProviderActions({
+  const providerActions = createProviderActions({
     providers,
     selectedProvider,
-    connectedProviders,
-    isFetchingModels,
     isDeletingProvider,
     pushToast,
     setProviders,
@@ -89,17 +93,21 @@ export function useProviderSettings({
     setIsAddModalOpen,
     setIsDeleteModalOpen,
     setIsDeletingProvider,
-    setIsFetchingModels,
+    openLogin: () => setIsLoginModalOpen(true),
+    openEntryEditor: () => setIsEntryModalOpen(true),
     ...(onAddModalClose ? { onAddModalClose } : {}),
   });
+  const modelActions = createModelActions({
+    providers,
+    selectedProvider,
+    isFetchingModels,
+    pushToast,
+    setProviders,
+    setIsFetchingModels,
+    persistProviders: providerActions.persistProviders,
+    reloadProviders: providerActions.reloadProviders,
+  });
 
-  /**
-   * After a hand-registered model lands in models.yml, the registry has to be
-   * re-read: the new row exists only in omp's file, so nothing in Kabmo's
-   * own overlay knows about it yet. Re-fetching the MERGED list (rather than
-   * re-saving the overlay, whose response is the overlay alone) is what puts
-   * the model in the sidebar count and the chat picker.
-   */
   /**
    * After a stored credential is removed the merged registry has to be re-READ
    * rather than patched: the provider may drop out of the list entirely, and a
@@ -108,23 +116,21 @@ export function useProviderSettings({
   const handleSignedOut = async (message: string) => {
     setIsLogoutModalOpen(false);
     pushToast(message, 'success');
-    const data = await loadProvidersFromApi();
-    if (data) setProviders(data.providers);
+    await providerActions.reloadProviders();
   };
 
   const handleModelAdded = async (modelId: string) => {
     pushToast(`${modelId} registered in models.yml.`, 'success');
-    const data = await loadProvidersFromApi();
-    if (data) setProviders(data.providers);
+    await providerActions.reloadProviders();
   };
 
   return {
     providers,
-    connectedProviders,
     availablePresetProviders,
+    existingSlugs,
     selectedProvider,
-    currentProject,
-    setCurrentProject,
+    catalogError,
+    isLoading,
     isFetchingModels,
     toasts,
     pushToast,
@@ -140,8 +146,8 @@ export function useProviderSettings({
     isDeletingProvider,
     isAddModalOpen,
     setIsAddModalOpen,
-    isReconnectModalOpen,
-    setIsReconnectModalOpen,
+    isEntryModalOpen,
+    setIsEntryModalOpen,
     isLoginModalOpen,
     setIsLoginModalOpen,
     configModel,
@@ -149,6 +155,7 @@ export function useProviderSettings({
     capabilitiesModel,
     setCapabilitiesModel,
     setSelectedProviderId,
-    ...actions,
+    ...providerActions,
+    ...modelActions,
   };
 }

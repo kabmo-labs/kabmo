@@ -36,21 +36,25 @@ export const PROVIDER_APIS: readonly OmpProviderApi[] = [
   'google-gemini-cli',
   'google-vertex',
   'openrouter-decisions',
+  'openai-decisions',
+  'workers-ai-systemone',
   'typesafe',
 ];
 
 /** One-line explanation of what each dialect is, for the picker. */
 export const PROVIDER_API_LABELS: Readonly<Record<OmpProviderApi, string>> = {
-  'openai-completions': 'OpenAI Chat Completions — the default for gateways and local servers',
-  'openai-responses': 'OpenAI Responses API — newer OpenAI-shaped endpoints',
-  'openai-codex-responses': 'OpenAI Codex Responses — Codex-style endpoints',
-  'azure-openai-responses': 'Azure OpenAI Responses — api-key header, api-version query',
+  'openai-completions': '[OI] Chat Completions — the default for gateways and local servers',
+  'openai-responses': '[OI] Responses API — newer [OI]-shaped endpoints',
+  'openai-codex-responses': '[OC] Responses — Codex-style endpoints',
+  'azure-openai-responses': 'Azure [OI] Responses — api-key header, api-version query',
   'anthropic-messages': 'Anthropic Messages — Claude-shaped proxies (x-api-key)',
   'bedrock-converse-stream': 'Amazon Bedrock Converse — AWS credential chain',
   'google-generative-ai': 'Google Generative AI — Gemini API (x-goog-api-key)',
   'google-gemini-cli': 'Google Gemini CLI — OAuth-backed Gemini route',
   'google-vertex': 'Google Vertex AI — service-account / ADC route',
   'openrouter-decisions': 'OpenRouter decisions — judge role only',
+  'openai-decisions': '[OI] decisions — judge role only',
+  'workers-ai-systemone': 'Workers AI System One — judge role only',
   typesafe: 'Typesafe System One — judge role only',
 };
 
@@ -82,6 +86,72 @@ export const PROVIDER_AUTH_MODES: ReadonlyArray<{
   { value: 'none', label: 'No auth (keyless)', hint: 'Local server that needs no credential' },
   { value: 'oauth', label: 'OAuth', hint: 'Claude-Code-style proxy expecting the cloaked request shape' },
 ];
+
+/**
+ * omp's `ThinkingControlModeSchema` — how a model's effort selector is carried
+ * on the wire. A `thinking` block without a mode is a schema failure that takes
+ * every custom provider down with it, so the writer always states one.
+ */
+export const PROVIDER_THINKING_MODES = [
+  'effort',
+  'budget',
+  'google-level',
+  'anthropic-adaptive',
+  'anthropic-budget-effort',
+] as const;
+
+export type ProviderThinkingMode = (typeof PROVIDER_THINKING_MODES)[number];
+
+/** True when `value` is a thinking mode omp accepts. */
+export function isProviderThinkingMode(value: unknown): value is ProviderThinkingMode {
+  return typeof value === 'string' && (PROVIDER_THINKING_MODES as readonly string[]).includes(value);
+}
+
+/**
+ * omp's `MODEL_KINDS`, in omp's own order, with the label the model list's
+ * kind tabs show.
+ *
+ * A provider routinely serves more than chat: an embedding model, an image
+ * model, a reranker. The RPC's `get_available_models` answers CHAT ONLY
+ * (`modelRegistry.getAvailable()` defaults to kind `chat`), which is why the
+ * panel used to be unable to show them at all — the listing has to come from
+ * `omp models --json --kind all`, the same source the role dropdowns read.
+ */
+export const MODEL_KINDS = [
+  'chat',
+  'tiny',
+  'image',
+  'tts',
+  'stt',
+  'search',
+  'judge',
+  'embedding',
+  'rerank',
+  'video',
+] as const;
+
+export type ProviderModelKind = (typeof MODEL_KINDS)[number];
+
+/** Labels for the kind tabs. Absent means chat — omp's own default. */
+export const MODEL_KIND_LABELS: Readonly<Record<ProviderModelKind, string>> = {
+  chat: 'Chat',
+  tiny: 'Tiny',
+  image: 'Image',
+  tts: 'Speech',
+  stt: 'Transcribe',
+  search: 'Search',
+  judge: 'Judge',
+  embedding: 'Embedding',
+  rerank: 'Rerank',
+  video: 'Video',
+};
+
+/** The kind a row belongs to, folded to omp's default when it declares none. */
+export function modelKindOf(value: unknown): ProviderModelKind {
+  return typeof value === 'string' && (MODEL_KINDS as readonly string[]).includes(value)
+    ? (value as ProviderModelKind)
+    : 'chat';
+}
 
 /** Discovery types omp can drive itself, with what each one probes. */
 export const PROVIDER_DISCOVERY_TYPES: ReadonlyArray<{
@@ -198,10 +268,10 @@ export function providerFetchBlockReason(provider: {
   modelSource?: ProviderModelSource;
 }): string | undefined {
   if (provider.discovery !== undefined || provider.modelSource === 'discovery') {
-    return 'omp lists this provider’s models itself — a fetch here would freeze a snapshot beside that live list.';
+    return 'omp lists this provider’s models itself — importing would freeze a snapshot beside that live list. Use “refresh”.';
   }
   if (!provider.baseUrl) {
-    return 'This provider has no endpoint Kabmo can probe — omp owns its URL.';
+    return 'This provider has no endpoint Kabmo can probe — omp owns its URL. Use “refresh” instead.';
   }
   return undefined;
 }

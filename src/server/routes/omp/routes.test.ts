@@ -58,7 +58,7 @@ afterEach(() => {
   }
   invalidateOmpCliCache();
   globalThis.fetch = originalFetch;
-  delete (globalThis as { __kabmoLoginResponseSink?: unknown }).__kabmoLoginResponseSink;
+  globalThis.__kabmoLoginSinks?.clear();
   delete (globalThis as { __kabmoModelsDevCatalog?: unknown }).__kabmoModelsDevCatalog;
 });
 
@@ -108,26 +108,39 @@ describe('POST /api/omp/login', () => {
     expect((await payload(res)).error).toBe('Login is unavailable in mock mode');
   });
 
-  test('forwards an in-flight extension_ui_response to the registered sink', async () => {
+  test('forwards an in-flight extension_ui_response to the sink of ITS login', async () => {
     const seen: Array<Record<string, unknown>> = [];
-    (globalThis as { __kabmoLoginResponseSink?: (frame: Record<string, unknown>) => void }).__kabmoLoginResponseSink =
-      (frame) => seen.push(frame);
-    const frame = { id: 'ui-1', type: 'extension_ui_response', value: 'sk-abc' };
+    const other: Array<Record<string, unknown>> = [];
+    globalThis.__kabmoLoginSinks = new Map([
+      ['login-a', (frame) => seen.push(frame)],
+      ['login-b', (frame) => other.push(frame)],
+    ]);
+    const frame = { id: 'ui-1', type: 'extension_ui_response', loginId: 'login-a', value: 'sk-abc' };
 
     const res = (await login({ request: post(url, frame), params: {} } as never)) as Response;
     expect(res.status).toBe(200);
     expect(await payload(res)).toEqual({ success: true });
+    // The sibling login is untouched: one global slot made the two tabs
+    // overwrite each other, so a reply landed in the other provider's flow.
     expect(seen).toEqual([frame]);
+    expect(other).toEqual([]);
   });
 
-  test('an extension_ui_response with no login in flight is not treated as a login start', async () => {
-    // No sink is registered, so the frame falls through to the providerId check
-    // rather than spawning a process.
+  test('a reply for an expired login is reported, not silently dropped', async () => {
+    globalThis.__kabmoLoginSinks = new Map();
+    const res = (await login({
+      request: post(url, { id: 'ui-1', type: 'extension_ui_response', loginId: 'gone' }),
+      params: {},
+    } as never)) as Response;
+    expect(res.status).toBe(409);
+    expect((await payload(res)).error).toContain('login session has ended');
+  });
+
+  test('an extension_ui_response with no login id is not treated as a login start', async () => {
     const res = (await login({
       request: post(url, { id: 'ui-1', type: 'extension_ui_response' }),
       params: {},
     } as never)) as Response;
-    expect(res.status).toBe(400);
-    expect((await payload(res)).error).toBe('providerId is required');
+    expect(res.status).toBe(409);
   });
 });

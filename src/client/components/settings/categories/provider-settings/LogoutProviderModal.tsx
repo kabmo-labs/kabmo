@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { AlertTriangle, Loader2, LogOut } from 'lucide-preact';
 import type { ProviderItem } from '@/shared/types';
-import { ProviderIcon } from '@/client/components/common/provider-icon';
+import { ProviderIconPlate } from '@/client/components/settings/categories/provider-settings/IconPlate';
 import { fetchLogoutAccounts, logoutProvider, type LogoutAccount } from '@/client/hooks/settings/providers/logout';
 
 interface LogoutProviderModalProps {
@@ -101,7 +101,7 @@ export function LogoutProviderModal({ isOpen, provider, onClose, onSignedOut }: 
 
         <div className="px-5 py-4 space-y-3">
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-ink/5 border border-ink/10">
-            <ProviderIcon icon={provider.icon} slug={provider.slug} name={provider.name} size={18} />
+            <ProviderIconPlate provider={provider} size={26} />
             <span className="text-xs font-medium text-ink truncate">{provider.name}</span>
           </div>
 

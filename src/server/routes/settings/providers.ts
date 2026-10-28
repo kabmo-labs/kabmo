@@ -84,6 +84,10 @@ export async function loader({ request: _request }: LoaderFunctionArgs) {
         presetProviders: PRESET_NEW_PROVIDERS,
         isMock: mock,
         modelsConfigPath: merged.modelsConfigPath,
+        // Reported, not thrown: the provider list stays usable without the
+        // catalog, and an empty model list with no explanation reads as "this
+        // provider serves nothing".
+        ...(merged.catalogError ? { catalogError: merged.catalogError } : {}),
       });
     }
 
@@ -121,6 +125,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const merged = await mergeProviders(stored).catch(() => null);
       const target = merged?.providers.find((provider) => provider.id === id)
         ?? stored.find((provider) => provider.id === id);
+      // A delete that can remove nothing is REFUSED with the reason. Three
+      // providers reach here with no overlay row and no models.yml entry: one
+      // omp authenticates from the environment, one it merely knows, and one it
+      // discovered from the endpoint. Removing nothing and answering success is
+      // the "delete did nothing" bug this reports instead.
+      const inOverlay = stored.some((provider) => provider.id === id);
+      const removesFileEntry = target?.inModelsYml === true && Boolean(target.slug);
+      if (!inOverlay && !removesFileEntry) {
+        return json({
+          error: target?.credentialOrigin === 'environment'
+            ? `${target.name} is authenticated by an environment variable — there is nothing in models.yml or Kabmo to delete. Unset the variable, or disable the provider instead.`
+            : 'This provider has no models.yml entry and no Kabmo settings row, so there is nothing to delete. Disable it to hide it from the model list.',
+        }, { status: 400 });
+      }
       // The fallback list is MOCK-only demo data: seeding it in real mode would
       // write shipped sample providers into a user's overlay on the first
       // delete. Real mode starts from an empty overlay, which is what
@@ -170,9 +188,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return await setProviderEnabled(body.enableProvider, true);
       }
 
-      const updatedProviders = await providersStore.upsert(db, body, { absent: DEFAULT_PROVIDERS_LIST, empty: DEFAULT_PROVIDERS_LIST });
+      // Never the demo list here: `DEFAULT_PROVIDERS_LIST` is shipped sample
+      // data, and seeding it on a real install writes providers the user never
+      // configured. Real mode starts from an empty overlay, exactly as the
+      // loader's `providersStore.read` does.
+      const fallback = isMockMode() ? DEFAULT_PROVIDERS_LIST : [];
+      const updatedProviders = await providersStore.upsert(db, body, { absent: fallback, empty: fallback });
       await providersStore.write(db, updatedProviders);
-      return respondWithProviders(updatedProviders);
+      // The answer is the MERGED registry, not the overlay rows the caller just
+      // sent. The overlay only holds per-model visibility and sampling, so
+      // echoing it back replaced the panel's list with rows missing every
+      // omp-derived field (status, dialect, credential origin) — the next
+      // render then drew a provider as "not signed in" right after a save.
+      if (isMockMode()) return respondWithProviders(updatedProviders);
+      return respondWithProviders((await mergeProviders(updatedProviders)).providers);
     }
 
     return methodNotAllowed({ request, params });

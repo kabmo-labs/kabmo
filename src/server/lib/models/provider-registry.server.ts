@@ -4,19 +4,38 @@
  */
 
 /**
- * Provider registry assembly for the provider settings. Folds the three omp
+ * Provider registry assembly for the provider settings. Folds the four omp
  * sources — auth login providers, models.yml registrations, config.yml
- * disabledProviders — with Kabmo's local SQLite overlay into the
- * ProviderItem list the settings UI renders. Server-only: reads omp config
- * files and drives the shared utility RPC process.
+ * disabledProviders, and the CLI model catalog — with Kabmo's local SQLite
+ * overlay into the ProviderItem list the settings UI renders. Server-only:
+ * reads omp config files and drives the shared utility RPC process.
+ *
+ * Every provider omp KNOWS is listed, including one with no credential. omp's
+ * own `/models` hub draws them the same way (dimmed, under "Not signed in",
+ * with a pick forwarding to `/login`), and filtering them out made an OAuth
+ * provider that had never been signed in unreachable from the panel that is
+ * supposed to be able to sign it in.
  */
 
 import { readDisabledProviders } from '@/server/lib/omp/config/disabled-providers';
 import { getModelsConfigPath, readNativeProviders } from '@/server/lib/omp/config/models-config';
-import { runUtilityCommand, type OmpModel } from '@/server/lib/omp/rpc/utility';
-import { disabledProviderItem, nativeProviderItem } from '@/server/lib/models/provider-items.server';
+import { runUtilityCommand, type OmpLoginProvider, type OmpModel } from '@/server/lib/omp/rpc/utility';
+import {
+  catalogProviderItem,
+  disabledProviderItem,
+  loginProviderItem,
+  nativeProviderItem,
+  type CredentialContext,
+  type ModelOverlay,
+} from '@/server/lib/models/provider-items.server';
+import { readModelCatalogByProvider, type CatalogByProvider } from '@/server/lib/models/catalog.server';
+import {
+  readAgentDbCredentialIndex,
+  resolveCredentialOrigin,
+  type AgentDbCredentialIndex,
+} from '@/server/lib/models/credential-origin.server';
 import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
-import type { ProviderItem } from '@/shared/types';
+import type { ProviderItem, ProviderModel } from '@/shared/types';
 
 /** app_settings key holding Kabmo-local provider overlay. */
 export const PROVIDERS_SETTINGS_KEY = 'omp_providers_config';
@@ -24,10 +43,14 @@ export const PROVIDERS_SETTINGS_KEY = 'omp_providers_config';
 const RPC_CACHE_TTL_MS = 60_000;
 
 /** Minimal shape of a get_login_providers entry, as Kabmo reads it. */
-export interface DetectedLoginProvider {
-  id: string;
-  name: string;
-  authenticated: boolean;
+export interface DetectedLoginProvider extends OmpLoginProvider {}
+
+function isOmpModel(model: unknown): model is OmpModel {
+  return (
+    typeof model === 'object' && model !== null
+    && typeof (model as OmpModel).id === 'string'
+    && typeof (model as OmpModel).provider === 'string'
+  );
 }
 
 function isDetectedLoginProvider(provider: unknown): provider is DetectedLoginProvider {
@@ -39,26 +62,25 @@ function isDetectedLoginProvider(provider: unknown): provider is DetectedLoginPr
   );
 }
 
-function isOmpModel(model: unknown): model is OmpModel {
-  return (
-    typeof model === 'object' && model !== null
-    && typeof (model as OmpModel).id === 'string'
-    && typeof (model as OmpModel).provider === 'string'
-  );
-}
-
 export interface OmpRegistrySnapshot {
   /** Login providers omp reports (authenticated or not). */
   providers: DetectedLoginProvider[];
-  /** Every model omp currently serves. */
+  /**
+   * Every CHAT model omp currently serves.
+   *
+   * Deliberately the RPC's own view, chat only: the two callers that read this
+   * (`provider-key.ts`, the boot banner) ask a PROVIDER-level question — "does
+   * this provider serve anything" — and one chat model answers it. The settings
+   * panel's model list does NOT come from here: it needs every kind, so it
+   * reads `omp models --json --kind all` (`catalog.server.ts`).
+   */
   models: OmpModel[];
 }
 
 /**
- * Raw omp registry probe — the two commands that define "detected" for the
- * Kabmo: the login providers omp knows and the models they serve. Parsed here
- * once so the provider settings page and the startup banner count the same set.
- * Throws when the utility RPC is unreachable; each caller degrades its own way.
+ * Raw omp registry probe — the login providers omp knows and the chat models
+ * they serve. Throws when the utility RPC is unreachable; each caller degrades
+ * its own way.
  */
 export async function fetchOmpRegistrySnapshot(): Promise<OmpRegistrySnapshot> {
   const [loginResponse, modelsResponse] = await Promise.all([
@@ -71,42 +93,14 @@ export async function fetchOmpRegistrySnapshot(): Promise<OmpRegistrySnapshot> {
   };
 }
 
-/**
- * Provider registry straight from the omp agent: authenticated login providers
- * (omp auth) plus their registered models (get_available_models). This is the
- * source the composer's model dropdown already uses via /api/models.
- */
-async function loadRpcProviderItems(): Promise<ProviderItem[]> {
-  const cached = globalThis.__kabmoProvidersRpcCache;
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
+/** Login providers from the shared RPC, cached for a minute. */
+async function loadLoginProviders(): Promise<DetectedLoginProvider[]> {
+  const cached = globalThis.__kabmoLoginProvidersCache;
+  if (cached && cached.expiresAt > Date.now()) return cached.data as DetectedLoginProvider[];
   try {
-    const { providers: loginProviders, models: available } = await fetchOmpRegistrySnapshot();
-    const disabled = await readDisabledProviders().catch(() => new Set<string>());
-
-    const items = loginProviders.map((provider) => {
-      const providerModels = available.filter((model) => model.provider === provider.id);
-      const isDisabled = disabled.has(provider.id);
-      return {
-        id: `omp-auth-${provider.id}`,
-        name: provider.name,
-        slug: provider.id,
-        icon: provider.id,
-        status: (provider.authenticated && !isDisabled ? 'connected' : 'disconnected') as ProviderItem['status'],
-        disabled: isDisabled,
-        configuredIn: 'omp auth credentials',
-        credentialSource: 'omp-auth' as const,
-        models: providerModels.map((model) => ({
-          id: model.id,
-          name: typeof model.name === 'string' && model.name.length > 0 ? model.name : model.id,
-          contextWindow: model.contextWindow ? `${Math.round(model.contextWindow / 1000)}K ctx` : '',
-          hasTools: true,
-          hasVision: false,
-          isVisible: true,
-        })),
-      };
-    });
-    globalThis.__kabmoProvidersRpcCache = { data: items, expiresAt: Date.now() + RPC_CACHE_TTL_MS };
-    return items;
+    const { providers } = await fetchOmpRegistrySnapshot();
+    globalThis.__kabmoLoginProvidersCache = { data: providers, expiresAt: Date.now() + RPC_CACHE_TTL_MS };
+    return providers;
   } catch {
     // RPC unavailable (cold start / omp busy) — degrade to the remaining sources.
     return [];
@@ -150,6 +144,10 @@ function mergeProviderItems(existing: ProviderItem, incoming: ProviderItem): Pro
     credentialSource: primary.credentialSource === 'models.yml' || secondary.credentialSource === 'models.yml'
       ? 'models.yml'
       : primary.credentialSource ?? secondary.credentialSource,
+    // The origin is a fact about the credential STORE, so the half that knows
+    // it wins over the half that does not.
+    credentialOrigin: primary.credentialOrigin ?? secondary.credentialOrigin,
+    oauth: primary.oauth === true || secondary.oauth === true,
     // A union, not a winner-takes-all: the two halves see different files
     // (auth sees login providers, native sees models.yml), and the flag decides
     // whether the delete button may appear at all.
@@ -159,6 +157,9 @@ function mergeProviderItems(existing: ProviderItem, incoming: ProviderItem): Pro
     api: primary.api ?? secondary.api,
     auth: primary.auth ?? secondary.auth,
     discovery: primary.discovery ?? secondary.discovery,
+    headers: primary.headers ?? secondary.headers,
+    authHeader: primary.authHeader ?? secondary.authHeader,
+    transport: primary.transport ?? secondary.transport,
     configuredIn: primary.apiKey || primary.baseUrl ? primary.configuredIn : secondary.configuredIn,
     models,
   };
@@ -206,6 +207,7 @@ function applyStoredOverrides(registry: ProviderItem[], stored: ProviderItem[]):
     const savedModels = new Map(saved.models.map((model) => [model.id, model]));
     return {
       ...provider,
+      inOverlay: true,
       models: provider.models.map((model) => {
         const previous = savedModels.get(model.id);
         if (!previous) return model;
@@ -222,17 +224,94 @@ function applyStoredOverrides(registry: ProviderItem[], stored: ProviderItem[]):
   });
 }
 
-/** Merge all three omp provider sources with app-local custom SQLite entries. */
-export async function mergeProviders(custom: ProviderItem[]): Promise<{ providers: ProviderItem[]; modelsConfigPath: string }> {
-  const disabled = await readDisabledProviders().catch(() => new Set<string>());
-  const authItems = await loadRpcProviderItems();
-  const native = await readNativeProviders();
-  const nativeItems = native.map((info) => nativeProviderItem(info, disabled.has(info.slug)));
+/** The overlay's per-model state for one provider, keyed by model id. */
+function overlayFor(stored: ProviderItem[], slug: string): ModelOverlay | undefined {
+  const saved = stored.find((provider) => provider.slug.trim().toLowerCase() === slug.trim().toLowerCase());
+  if (!saved || saved.models.length === 0) return undefined;
+  const overlay: ModelOverlay = new Map();
+  for (const model of saved.models) {
+    overlay.set(model.id, {
+      isVisible: model.isVisible !== false,
+      ...(model.temperature !== undefined ? { temperature: model.temperature } : {}),
+      ...(model.maxTokens !== undefined ? { maxTokens: model.maxTokens } : {}),
+      ...(model.topP !== undefined ? { topP: model.topP } : {}),
+      ...(model.reasoningEffort !== undefined ? { reasoningEffort: model.reasoningEffort } : {}),
+    });
+  }
+  return overlay;
+}
+
+function credentialContext(
+  credentials: AgentDbCredentialIndex,
+  modelsYmlKeys: Set<string>,
+  authenticated: Set<string>,
+): CredentialContext {
+  return {
+    modelsYmlKeys,
+    originOf: (slug: string) => resolveCredentialOrigin({
+      slug,
+      authenticated: authenticated.has(slug.trim().toLowerCase()),
+      inModelsYml: false,
+      hasModelsYmlKey: modelsYmlKeys.has(slug.trim().toLowerCase()),
+      credentials,
+    }),
+  };
+}
+
+/** Merge every omp provider source with app-local custom SQLite entries. */
+export async function mergeProviders(custom: ProviderItem[]): Promise<{
+  providers: ProviderItem[];
+  modelsConfigPath: string;
+  catalogError: string | null;
+}> {
+  const [disabled, loginProviders, native, catalog, credentials] = await Promise.all([
+    readDisabledProviders().catch(() => new Set<string>()),
+    loadLoginProviders(),
+    readNativeProviders(),
+    readModelCatalogByProvider(),
+    readAgentDbCredentialIndex(),
+  ]);
+  const modelsYmlKeys = new Set(
+    native.filter((info) => info.hasApiKey === true).map((info) => info.slug.trim().toLowerCase()),
+  );
+  const authenticated = new Set(
+    loginProviders
+      .filter((provider) => provider.authenticated)
+      .map((provider) => provider.id.trim().toLowerCase()),
+  );
+  const ctx = credentialContext(credentials, modelsYmlKeys, authenticated);
+  const catalogFor = (slug: string) => catalog.byProvider.get(slug.trim().toLowerCase());
+
+  const authItems = loginProviders.map((provider) => loginProviderItem(provider, {
+    disabled: disabled.has(provider.id),
+    ...(catalogFor(provider.id) ? { catalog: catalogFor(provider.id) } : {}),
+    nativeModels: native.find((info) => info.slug === provider.id)?.models,
+    overlay: overlayFor(custom, provider.id),
+    credentials: ctx,
+  }));
+  const nativeItems = native.map((info) => nativeProviderItem(
+    info,
+    disabled.has(info.slug),
+    catalogFor(info.slug),
+    overlayFor(custom, info.slug),
+    ctx,
+  ));
   const disabledItems = [...disabled]
     .filter((slug) => !nativeItems.some((n) => n.slug === slug) && !authItems.some((a) => a.slug === slug))
     .map(disabledProviderItem);
+  // Providers that serve models but appear in neither source: a keyless local
+  // endpoint omp discovers itself. Their models reach the chat picker, so the
+  // panel that manages providers must list them too.
+  const knownSlugs = new Set([
+    ...loginProviders.map((provider) => provider.id.trim().toLowerCase()),
+    ...native.map((info) => info.slug.trim().toLowerCase()),
+  ]);
+  const catalogOnly = [...catalog.byProvider.entries()]
+    .filter(([slug]) => !knownSlugs.has(slug) && !disabled.has(slug))
+    .map(([slug, models]) => catalogProviderItem(slug, models, overlayFor(custom, slug)));
+
   const registryItems = applyStoredOverrides(
-    deduplicateProviderItems([...authItems, ...nativeItems, ...disabledItems]),
+    deduplicateProviderItems([...authItems, ...nativeItems, ...catalogOnly, ...disabledItems]),
     custom,
   );
   const nativeSlugs = new Set(registryItems.map((provider) => provider.slug.toLowerCase()));
@@ -253,5 +332,13 @@ export async function mergeProviders(custom: ProviderItem[]): Promise<{ provider
   return {
     providers,
     modelsConfigPath: await getModelsConfigPath(),
+    catalogError: catalog.error,
   };
 }
+
+/** Every provider's models, for the model pickers that only need the list. */
+export function flattenProviderModels(providers: ProviderItem[]): ProviderModel[] {
+  return providers.flatMap((provider) => provider.models);
+}
+
+export type { CatalogByProvider };

@@ -87,6 +87,8 @@ export interface ProviderModelsReplaceResult {
 export interface ManualModelRequest {
   provider: string;
   id: string;
+  /** omp's `ModelKind`; omitted means chat. */
+  kind?: string;
   name?: string;
   /** Token counts, not the compact labels a listing produces. */
   contextWindow?: number;

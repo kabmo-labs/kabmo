@@ -22,6 +22,12 @@ import type { ProviderThinkingEffort } from '@/shared/lib/models/provider/dialec
 export interface OmpProviderModelSeed {
   id: string;
   name?: string;
+  /**
+   * omp's `ModelKind`. Absent means chat, which is what omp assumes — so only a
+   * non-chat kind is written, and an embedding/image/judge model stops looking
+   * like a chat model that behaves oddly.
+   */
+  kind?: string;
   reasoning?: boolean;
   imageInput?: boolean;
   contextWindow?: number;
@@ -53,6 +59,7 @@ export function toModelEntry(model: OmpProviderModelSeed): Record<string, unknow
   return sanitizeModelEntry({
     id: model.id,
     ...(model.name ? { name: model.name } : {}),
+    ...(model.kind && model.kind !== 'chat' ? { kind: model.kind } : {}),
     ...(model.reasoning !== undefined ? { reasoning: model.reasoning } : {}),
     ...(efforts ? { thinking: { mode: 'effort', efforts } } : {}),
     ...(model.imageInput ? { input: ['text', 'image'] } : { input: ['text'] }),
@@ -175,6 +182,8 @@ export function prunableIds(
 export interface ManualModelInput {
   id: string;
   name?: string;
+  /** omp's `ModelKind`; `chat` (the default) is not written. */
+  kind?: string;
   contextWindow?: number;
   maxTokens?: number;
   reasoning?: boolean;
@@ -203,6 +212,7 @@ export function manualModelSeed(input: ManualModelInput): OmpProviderModelSeed {
   return {
     id: input.id.trim(),
     ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+    ...(input.kind && input.kind !== 'chat' ? { kind: input.kind } : {}),
     ...(input.reasoning ? { reasoning: true } : {}),
     ...(efforts ? { efforts } : {}),
     ...(input.imageInput ? { imageInput: true } : {}),

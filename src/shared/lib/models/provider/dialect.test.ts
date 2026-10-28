@@ -48,6 +48,8 @@ describe('dialect vocabulary', () => {
       'google-gemini-cli',
       'google-vertex',
       'openrouter-decisions',
+      'openai-decisions',
+      'workers-ai-systemone',
       'typesafe',
     ]);
   });
@@ -237,13 +239,13 @@ describe('providerEmptyReason', () => {
 describe('providerFetchBlockReason', () => {
   test('a discovery provider is blocked even with an endpoint', () => {
     const expected =
-      'omp lists this provider’s models itself — a fetch here would freeze a snapshot beside that live list.';
+      'omp lists this provider’s models itself — importing would freeze a snapshot beside that live list. Use “refresh”.';
     expect(providerFetchBlockReason({ baseUrl: 'http://localhost:11434', discovery: 'ollama' })).toBe(expected);
     expect(providerFetchBlockReason({ baseUrl: 'http://x/v1', modelSource: 'discovery' })).toBe(expected);
   });
 
   test('a provider without an endpoint is blocked', () => {
-    const expected = 'This provider has no endpoint Kabmo can probe — omp owns its URL.';
+    const expected = 'This provider has no endpoint Kabmo can probe — omp owns its URL. Use “refresh” instead.';
     expect(providerFetchBlockReason({})).toBe(expected);
     expect(providerFetchBlockReason({ baseUrl: '' })).toBe(expected);
     expect(providerFetchBlockReason({ baseUrl: undefined, modelSource: 'fetch' })).toBe(expected);

@@ -42,6 +42,14 @@ export interface NativeProviderInfo {
   auth?: string;
   /** Discovery type from the entry's `discovery`, when omp lists its models. */
   discovery?: string;
+  /** Extra request headers the entry pins for every call. */
+  headers?: Record<string, string>;
+  /** `authHeader: true` — send the credential as a raw auth header. */
+  authHeader?: boolean;
+  /** `transport: pi-native` routes every model through the auth gateway. */
+  transport?: 'pi-native';
+  /** The entry carries an `apiKey` (the value is never read here). */
+  hasApiKey?: boolean;
   /** Model ids registered under this provider in models.yml. */
   modelIds: string[];
   models: NativeModelInfo[];
@@ -54,6 +62,14 @@ export interface NativeModelInfo {
   maxTokens?: number;
   reasoning?: boolean;
   imageInput?: boolean;
+  /** `kind` from the entry, when it declares a non-chat one. */
+  kind?: string;
+  /** `supportsTools` from the entry; absent means omp's default (true). */
+  supportsTools?: boolean;
+  /** `thinking` block, when the entry declares a reasoning ladder. */
+  thinkingMode?: string;
+  thinkingEfforts?: string[];
+  cost?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
 }
 
 /**
@@ -77,12 +93,26 @@ export async function readNativeProviders(): Promise<NativeProviderInfo[]> {
         if (typeof value.baseUrl === 'string') info.baseUrl = value.baseUrl;
         if (typeof value.api === 'string') info.api = value.api;
         if (typeof value.auth === 'string') info.auth = value.auth;
+        if (typeof value.apiKey === 'string' && value.apiKey.length > 0) info.hasApiKey = true;
+        if (value.authHeader === true) info.authHeader = true;
+        if (value.transport === 'pi-native') info.transport = 'pi-native';
+        if (isRecord(value.headers)) {
+          const headers = Object.entries(value.headers).flatMap(([key, header]) => (
+            typeof header === 'string' ? [[key, header] as [string, string]] : []
+          ));
+          if (headers.length > 0) info.headers = Object.fromEntries(headers);
+        }
         if (isRecord(value.discovery) && typeof value.discovery.type === 'string') {
           info.discovery = value.discovery.type;
         }
         if (Array.isArray(value.models)) {
           info.models = value.models.flatMap((model) => {
             if (!isRecord(model) || typeof model.id !== 'string') return [];
+            const thinking = isRecord(model.thinking) ? model.thinking : undefined;
+            const efforts = Array.isArray(thinking?.efforts)
+              ? thinking.efforts.filter((effort): effort is string => typeof effort === 'string')
+              : undefined;
+            const cost = isRecord(model.cost) ? model.cost : undefined;
             return [{
               id: model.id,
               ...(typeof model.name === 'string' ? { name: model.name } : {}),
@@ -90,6 +120,18 @@ export async function readNativeProviders(): Promise<NativeProviderInfo[]> {
               ...(typeof model.maxTokens === 'number' ? { maxTokens: model.maxTokens } : {}),
               ...(model.reasoning === true ? { reasoning: true } : {}),
               ...(Array.isArray(model.input) && model.input.includes('image') ? { imageInput: true } : {}),
+              ...(typeof model.kind === 'string' ? { kind: model.kind } : {}),
+              ...(typeof model.supportsTools === 'boolean' ? { supportsTools: model.supportsTools } : {}),
+              ...(thinking && typeof thinking.mode === 'string' ? { thinkingMode: thinking.mode } : {}),
+              ...(efforts && efforts.length > 0 ? { thinkingEfforts: efforts } : {}),
+              ...(cost ? {
+                cost: {
+                  ...(typeof cost.input === 'number' ? { input: cost.input } : {}),
+                  ...(typeof cost.output === 'number' ? { output: cost.output } : {}),
+                  ...(typeof cost.cacheRead === 'number' ? { cacheRead: cost.cacheRead } : {}),
+                  ...(typeof cost.cacheWrite === 'number' ? { cacheWrite: cost.cacheWrite } : {}),
+                },
+              } : {}),
             }];
           });
         }

@@ -110,3 +110,31 @@ export function fetchModelsNote(result: {
   }
   return null;
 }
+
+/**
+ * The line reported after omp re-ran model discovery.
+ *
+ * The refresh is CATALOG-WIDE (`omp models refresh` is the only granularity omp
+ * offers), so a per-provider report would overstate what happened. Saying so is
+ * the honest half: the counts are this provider's, and the run covered all of
+ * them.
+ */
+export function refreshModelsMessage(
+  providerName: string,
+  result: { added: number; removed: number },
+): { text: string; tone: 'success' | 'error' } {
+  const plural = (count: number) => (count === 1 ? '' : 's');
+  if (result.added > 0 || result.removed > 0) {
+    const parts: string[] = [];
+    if (result.added > 0) parts.push(`${result.added} new model${plural(result.added)}`);
+    if (result.removed > 0) parts.push(`${result.removed} model${plural(result.removed)} gone`);
+    return {
+      text: `${providerName}: ${parts.join(', ')} after omp re-ran discovery.`,
+      tone: 'success',
+    };
+  }
+  return {
+    text: `${providerName}: omp re-ran discovery — this provider's list is unchanged.`,
+    tone: 'success',
+  };
+}

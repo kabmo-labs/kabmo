@@ -5,7 +5,7 @@ import { ProviderHeader } from '@/client/components/settings/categories/provider
 import { ProviderAuthSection } from '@/client/components/settings/categories/provider-settings/AuthSection';
 import { ProviderModelsList } from '@/client/components/settings/categories/provider-settings/ModelsList';
 import { AddProviderModal } from '@/client/components/settings/categories/provider-settings/AddProviderModal';
-import { ReconnectModal } from '@/client/components/settings/categories/provider-settings/ReconnectModal';
+import { ProviderEntryModal } from '@/client/components/settings/categories/provider-settings/EntryModal';
 import { LoginModal } from '@/client/components/settings/categories/provider-settings/LoginModal';
 import { ModelConfigModal } from '@/client/components/settings/categories/provider-settings/ModelConfigModal';
 import { ModelCapabilitiesModal } from '@/client/components/settings/categories/provider-settings/ModelCapabilitiesModal';
@@ -13,7 +13,6 @@ import { AddModelModal } from '@/client/components/settings/categories/provider-
 import { DeleteProviderModal } from '@/client/components/settings/categories/provider-settings/DeleteProviderModal';
 import { LogoutProviderModal } from '@/client/components/settings/categories/provider-settings/LogoutProviderModal';
 import { providerEmptyReason, providerFetchBlockReason } from '@/shared/lib/models/provider/dialect';
-import { configuredProviderSlugs } from '@/shared/lib/models/provider/presets';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
 import { SettingsMasterDetail } from '@/client/components/settings/master-detail';
 
@@ -27,13 +26,14 @@ export function ProviderSettings({
   onAddModalClose,
 }: ProviderSettingsProps) {
   const masterDetail = useSettingsMasterDetail();
+
   const {
     providers,
-    connectedProviders,
     availablePresetProviders,
+    existingSlugs,
     selectedProvider,
-    currentProject,
-    setCurrentProject,
+    catalogError,
+    isLoading,
     isFetchingModels,
     toasts,
     pushToast,
@@ -47,11 +47,10 @@ export function ProviderSettings({
     isLogoutModalOpen,
     setIsLogoutModalOpen,
     isDeletingProvider,
-    handleDeleteProvider,
     isAddModalOpen,
     setIsAddModalOpen,
-    isReconnectModalOpen,
-    setIsReconnectModalOpen,
+    isEntryModalOpen,
+    setIsEntryModalOpen,
     isLoginModalOpen,
     setIsLoginModalOpen,
     configModel,
@@ -60,12 +59,13 @@ export function ProviderSettings({
     setCapabilitiesModel,
     setSelectedProviderId,
     handleAddProvider,
-    handleReconnect,
+    handleConnect,
+    handleEntrySaved,
+    handleRefreshModels,
     handleFetchModels,
-    handleFetchModelsFromList,
     handleOmpAuthSuccess,
-    handleToggleDisconnect,
     handleToggleProviderDisabled,
+    handleDeleteProvider,
     handleHideAll,
     handleShowAll,
     handleToggleModelVisibility,
@@ -84,15 +84,18 @@ export function ProviderSettings({
         listLabel="Providers"
         list={
           <ProviderSidebarList
-            providers={connectedProviders}
-            selectedProviderId={selectedProvider?.id || ''}
+            providers={providers}
+            selectedProviderId={selectedProvider?.id ?? ''}
             onSelectProvider={(id) => {
               setSelectedProviderId(id);
               masterDetail.openDetail();
             }}
             onOpenAddModal={() => setIsAddModalOpen(true)}
-            currentProject={currentProject}
-            onSelectProject={setCurrentProject}
+            onDeleteProvider={(provider) => {
+              setSelectedProviderId(provider.id);
+              setIsDeleteModalOpen(true);
+            }}
+            {...(catalogError ? { catalogError } : {})}
           />
         }
         detail={
@@ -103,20 +106,7 @@ export function ProviderSettings({
 
                 <ProviderAuthSection
                   provider={selectedProvider}
-                  onOpenReconnectModal={() => {
-                    // A provider omp signs in through `/login` needs the OAuth
-                    // dialog; one whose endpoint and key live in models.yml (or the
-                    // Kabmo overlay) is edited in place. Testing the provider ID
-                    // for `omp-auth-` was wrong: a native models.yml entry shares
-                    // that ID prefix once merged, and a keyless local server has no
-                    // login flow to complete at all.
-                    if (selectedProvider.credentialSource === 'omp-auth' && selectedProvider.auth !== 'none') {
-                      setIsLoginModalOpen(true);
-                    } else {
-                      setIsReconnectModalOpen(true);
-                    }
-                  }}
-                  onToggleDisconnect={handleToggleDisconnect}
+                  onConnect={handleConnect}
                   onToggleDisabled={handleToggleProviderDisabled}
                   onDelete={() => setIsDeleteModalOpen(true)}
                   onSignOut={() => setIsLogoutModalOpen(true)}
@@ -128,7 +118,8 @@ export function ProviderSettings({
                   onToggleModelVisibility={handleToggleModelVisibility}
                   onHideAll={handleHideAll}
                   onShowAll={handleShowAll}
-                  onFetchModels={handleFetchModelsFromList}
+                  onRefreshModels={handleRefreshModels}
+                  onImportModels={handleFetchModels}
                   onAddModel={() => setIsAddModelModalOpen(true)}
                   fetchBlockReason={providerFetchBlockReason(selectedProvider)}
                   isFetchingModels={isFetchingModels}
@@ -136,9 +127,14 @@ export function ProviderSettings({
                   onOpenModelCapabilities={(model) => setCapabilitiesModel(model)}
                 />
               </>
+            ) : isLoading ? (
+              <div className="py-12 text-center text-xs text-ink/40">Reading omp’s provider registry…</div>
             ) : (
-              <div className="py-12 text-center text-xs text-ink/40">
-                Select a provider from the sidebar to view connection details
+              <div className="py-12 text-center text-xs text-ink/40 space-y-2">
+                <p>omp reports no providers yet.</p>
+                <p className="text-[11px] text-ink/35">
+                  Sign in to a provider from the list, or add one with the plus button.
+                </p>
               </div>
             )}
           </div>
@@ -161,17 +157,16 @@ export function ProviderSettings({
           masterDetail.openDetail();
         }}
         presets={availablePresetProviders}
-        existingSlugs={configuredProviderSlugs(providers)}
+        existingSlugs={existingSlugs}
       />
 
       {selectedProvider && (
-        <ReconnectModal
-          isOpen={isReconnectModalOpen}
+        <ProviderEntryModal
+          key={selectedProvider.id}
+          isOpen={isEntryModalOpen}
           provider={selectedProvider}
-          isFetchingModels={isFetchingModels}
-          onClose={() => setIsReconnectModalOpen(false)}
-          onReconnect={handleReconnect}
-          onFetchModels={handleFetchModels}
+          onClose={() => setIsEntryModalOpen(false)}
+          onSaved={(changed: string[]) => void handleEntrySaved(changed)}
         />
       )}
 
@@ -180,7 +175,7 @@ export function ProviderSettings({
           isOpen={isLoginModalOpen}
           provider={selectedProvider}
           onClose={() => setIsLoginModalOpen(false)}
-          onAuthenticated={handleOmpAuthSuccess}
+          onAuthenticated={() => void handleOmpAuthSuccess()}
         />
       )}
 

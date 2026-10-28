@@ -20,8 +20,14 @@
 import { describe, expect, test } from 'bun:test';
 
 import { deduplicateProviderItems } from '@/server/lib/models/provider-registry.server';
-import { nativeProviderItem } from '@/server/lib/models/provider-items.server';
+import { nativeProviderItem, type CredentialContext } from '@/server/lib/models/provider-items.server';
 import type { ProviderItem } from '@/shared/types/settings/provider';
+
+/** No stored credentials: every provider's origin resolves from models.yml alone. */
+const credentials: CredentialContext = {
+  modelsYmlKeys: new Set<string>(),
+  originOf: () => undefined,
+};
 
 function item(overrides: Partial<ProviderItem> & { slug: string }): ProviderItem {
   return {
@@ -130,13 +136,19 @@ describe('nativeProviderItem', () => {
     // `baseUrl` at all, so the button read `disabled` for every native provider
     // even though its endpoint was in the file. It is also not a secret — the
     // label beside it prints the same URL.
-    const native = nativeProviderItem({
-      slug: 'kenari',
-      baseUrl: 'https://kenari.id/v1',
-      api: 'openai-completions',
-      modelIds: ['m'],
-      models: [{ id: 'm' }],
-    });
+    const native = nativeProviderItem(
+      {
+        slug: 'kenari',
+        baseUrl: 'https://kenari.id/v1',
+        api: 'openai-completions',
+        modelIds: ['m'],
+        models: [{ id: 'm' }],
+      },
+      false,
+      undefined,
+      undefined,
+      credentials,
+    );
     expect(native.baseUrl).toBe('https://kenari.id/v1');
     expect(native.inModelsYml).toBe(true);
     expect(native.modelSource).toBe('fetch');
@@ -145,7 +157,13 @@ describe('nativeProviderItem', () => {
   test('omits the endpoint entirely when the entry declares none', () => {
     // A discovery entry is listed by omp and needs no probe URL; an empty
     // string would read as "known but unusable" instead of "not applicable".
-    const native = nativeProviderItem({ slug: 'lm-studio', discovery: 'lm-studio', modelIds: [], models: [] });
+    const native = nativeProviderItem(
+      { slug: 'lm-studio', discovery: 'lm-studio', modelIds: [], models: [] },
+      false,
+      undefined,
+      undefined,
+      credentials,
+    );
     expect(native.baseUrl).toBeUndefined();
     expect(native.modelSource).toBe('discovery');
   });

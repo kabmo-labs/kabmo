@@ -95,6 +95,13 @@ function model(overrides: Partial<ProviderModel> & { id: string }): ProviderMode
 
 afterAll(() => {
   globalThis.fetch = realFetch;
+  // `fetchModelsData` caches the answer for 60s on `globalThis`, so the stub
+  // above stays cached after this file ends. Measured: `model-dropdown/
+  // refresh.test.tsx` then read `{models:{}, modelList:[]}` from the cache on
+  // its FIRST render and failed "expected to contain Alpha Model" — a failure
+  // in a suite this file does not name, reproduced on the tree before this
+  // change. Dropping it is the whole hand-off.
+  invalidateModelsCache();
 });
 
 describe('titleCaseProviderSlug', () => {

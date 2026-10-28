@@ -44,9 +44,27 @@ interface ProviderIconProps {
   name?: string;
   size?: number;
   className?: string;
+  /**
+   * Draw inside a box of exactly `size` and never exceed it.
+   *
+   * The initials fallback is a PILL whose width follows its text, which is right
+   * when it stands alone beside a name (the composer picker) and wrong inside a
+   * fixed plate: measured in the settings list, `ab.` at the unbounded 1.2x font
+   * came out ~25px wide in a 20px content box and spilled over the plate's
+   * rounded edge. Bounded, the badge becomes a square that centres the text and
+   * sizes the font to fit the initials it actually has.
+   */
+  bounded?: boolean;
 }
 
-export function ProviderIcon({ icon, slug, name, size = 16, className = '' }: ProviderIconProps) {
+export function ProviderIcon({
+  icon,
+  slug,
+  name,
+  size = 16,
+  className = '',
+  bounded = false,
+}: ProviderIconProps) {
   // The ONE resolution point: a plugin's `providerIcon` registration for this
   // provider wins over the built-in table, and any other provider is untouched.
   // Read reactively, so a bundle that registers after this icon mounted still
@@ -55,25 +73,47 @@ export function ProviderIcon({ icon, slug, name, size = 16, className = '' }: Pr
   const glyph = resolveProviderMark([icon, slug, name], registered);
 
   if (!glyph) {
-    // No mark: the initials badge. It is a PILL, not a square — the text has to
-    // sit at the same visual weight as a brand mark, and `ti.` is far wider than
-    // it is tall, so a square column would force a font size half the height of
-    // its neighbours' ink (measured: `ti.` fits a 15px column only at 9.5px,
-    // whose glyph ink is 6.4px against the marks' 13.8px median). Height stays
-    // `size`, width follows the text.
+    // No mark: the initials badge.
     //
-    // 1.2x is the largest size whose ink still lands inside the box (measured on
-    // canvas: ink 10-15px in a 16px band with >=1px clearance, versus clipping
-    // at 1.3x), and it brings the text level with the marks' ink.
+    // Standalone (the default) it is a PILL, not a square — the text sits at the
+    // same visual weight as a brand mark beside it, and `ti.` is far wider than
+    // it is tall, so a square would force a font half the height of its
+    // neighbours' ink (measured: `ti.` fits a 15px column only at 9.5px, whose
+    // ink is 6.4px against the marks' 13.8px median). Width follows the text.
+    //
+    // `bounded` is the plate case, where the box is fixed and nothing may leave
+    // it: the badge becomes a square of exactly `size`, the text is centred, and
+    // the font is chosen from the initials' own length — three characters
+    // (`ab.`, `ti.`) are the widest the contract can produce
+    // ({@link providerInitials} caps at two words), so that is what the size is
+    // derived from.
+    //
     // `aria-hidden` because the provider's name is always rendered beside it —
     // a screen reader announcing "t." first is noise.
+    const initials = providerInitials(name || slug || icon || '');
+    if (bounded) {
+      return (
+        <span
+          aria-hidden="true"
+          className={`inline-flex flex-shrink-0 items-center justify-center overflow-hidden font-semibold lowercase leading-none ${className}`}
+          style={{
+            width: size,
+            height: size,
+            fontSize: Math.round(size * (initials.length >= 3 ? 0.64 : 0.82)),
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {initials}
+        </span>
+      );
+    }
     return (
       <span
         aria-hidden="true"
         className={`inline-flex flex-shrink-0 items-center justify-center font-semibold lowercase leading-none ${className}`}
         style={{ height: size, minWidth: size, paddingInline: Math.max(1, Math.round(size * 0.12)), fontSize: Math.round(size * 1.2) }}
       >
-        {providerInitials(name || slug || icon || '')}
+        {initials}
       </span>
     );
   }
@@ -92,6 +132,10 @@ export function ProviderIcon({ icon, slug, name, size = 16, className = '' }: Pr
       // carry their own attributes (`azure`'s `fill-opacity`, `synthetic`'s
       // stroked outline, the baked `currentColor` paths) keep them.
       fill="currentColor"
+      // `block` + the explicit width/height are the containment contract: an
+      // inline SVG sits on the text baseline and adds descender space, which is
+      // how a mark "fits" its attributes yet still pushes a plate's edge.
+      style={{ display: 'block' }}
       className={`flex-shrink-0 ${className}`}
       aria-hidden="true"
       focusable="false"

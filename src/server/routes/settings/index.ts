@@ -8,7 +8,9 @@ import * as settingsModelOverride from '@/server/routes/settings/model-override'
 import * as settingsMcpTest from '@/server/routes/settings/mcp-test';
 import * as settingsOmpConfig from '@/server/routes/settings/omp-config';
 import * as settingsProjects from '@/server/routes/settings/projects';
+import * as settingsProviderEntry from '@/server/routes/settings/provider-entry';
 import * as settingsProviderModels from '@/server/routes/settings/provider-models';
+import * as settingsProviderRefresh from '@/server/routes/settings/provider-refresh';
 import * as settingsProviderModel from '@/server/routes/settings/provider-model';
 import * as settingsProviders from '@/server/routes/settings/providers';
 import { logoutAction } from '@/server/routes/settings/provider-logout';
@@ -27,7 +29,9 @@ export const settingsBindings: HandlerBinding[] = [
   ...bindingsFor(settingsMcpTest, '/api/settings/mcp-test'),
   ...bindingsFor(settingsOmpConfig, '/api/settings/omp-config'),
   ...bindingsFor(settingsProjects, '/api/settings/projects'),
+  ...bindingsFor(settingsProviderEntry, '/api/settings/provider-entry'),
   ...bindingsFor(settingsProviderModels, '/api/settings/provider-models'),
+  ...bindingsFor(settingsProviderRefresh, '/api/settings/providers/refresh'),
   ...bindingsFor(settingsProviderModel, '/api/settings/provider-model'),
   ...bindingsFor(settingsProviders, '/api/settings/providers'),
   // Credential removal, distinct from the `disabledProviders` toggle above.

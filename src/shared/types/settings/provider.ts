@@ -1,3 +1,12 @@
+/**
+ * Where omp resolves a provider's credential from. The four values are omp's
+ * own distinctions (its `/login` selector prints the same set as
+ * `--api-key` / `config` / `login` / `api key` / `env`), folded to the ones
+ * that change what the settings UI may offer: a provider authenticated by the
+ * environment has nothing on disk to remove, so `sign out` cannot work on it.
+ */
+export type ProviderCredentialOrigin = 'models.yml' | 'api-key' | 'login' | 'environment';
+
 export interface ProviderModel {
   id: string;
   name: string;
@@ -6,6 +15,17 @@ export interface ProviderModel {
   hasVision: boolean;
   hasReasoning?: boolean;
   isVisible: boolean;
+  /**
+   * omp's `ModelKind` for this model (`chat`, `embedding`, `image`, `search`,
+   * `judge`, …). Absent means chat — omp's own default.
+   */
+  kind?: string;
+  /** The reasoning ladder the model declares, lowest first, when it thinks. */
+  thinkingEfforts?: string[];
+  /** `thinking.mode` from models.yml (`effort`, `budget`, `google-level`, …). */
+  thinkingMode?: string;
+  /** omp's pricing verdict for the row (`exact`, `estimated`, `unknown`). */
+  pricingStatus?: string;
   /** USD per 1M tokens (unit of measure not obvious from the name alone). */
   priceInput?: number;
   priceOutput?: number;
@@ -38,6 +58,8 @@ export type OmpProviderApi =
   | 'google-gemini-cli'
   | 'google-vertex'
   | 'openrouter-decisions'
+  | 'openai-decisions'
+  | 'workers-ai-systemone'
   | 'typesafe';
 
 /** omp's `ProviderAuthSchema`. `none` is what makes a local server keyless. */
@@ -89,6 +111,31 @@ export interface ProviderItem {
    * still accepted from a row written before the rename.
    */
   credentialSource?: 'omp-auth' | 'models.yml' | 'kabmo' | 'chamber';
+  /**
+   * WHERE omp resolves this provider's credential from, as the settings UI
+   * names it. omp's own `/login` selector prints the same distinctions, and
+   * folding them into one "connected" badge hid the case that matters most:
+   * a provider authenticated by an environment variable has no stored
+   * credential to remove, and `sign out` on it can only fail.
+   *
+   * - `models.yml` — an `apiKey` (or `!command`) in the provider entry
+   * - `api-key` — an api-key credential in omp's `agent.db`
+   * - `login` — an OAuth credential in omp's `agent.db`
+   * - `environment` — an env var omp reads; nothing on disk
+   */
+  credentialOrigin?: ProviderCredentialOrigin;
+  /** The provider is an OAuth provider omp can sign in to (`/login`). */
+  oauth?: boolean;
+  /** The provider is DISCOVERABLE — its own discovery/refresh is implemented. */
+  available?: boolean;
+  /** This provider has a row in Kabmo's SQLite overlay (visibility + sampling). */
+  inOverlay?: boolean;
+  /** Provider-level `headers` from models.yml, when the entry declares any. */
+  headers?: Record<string, string>;
+  /** `authHeader` from models.yml — send the credential as a raw auth header. */
+  authHeader?: boolean;
+  /** `transport` from models.yml (`pi-native` routes through the auth gateway). */
+  transport?: 'pi-native';
   /**
    * The provider HAS an entry in omp's own `models.yml`.
    *
