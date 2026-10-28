@@ -23,6 +23,9 @@ const ROOT = '/market/plugins/demo';
 
 const MANIFEST = { id: 'demo', name: 'Demo', version: '1.0.0', app: 'dist/app.js' };
 
+/** What the minimal manifest parses to — a body with nothing optional added. */
+const MANIFEST_EXPECTED = { ...MANIFEST };
+
 describe('toManifest', () => {
   test('accepts a minimal manifest and keeps its optional fields', () => {
     expect(toManifest({ ...MANIFEST, description: 'A demo', icon: 'icon.svg' }, ROOT)).toEqual({
@@ -155,6 +158,34 @@ describe('toManifest', () => {
       error: expect.stringContaining('no label'),
     });
   });
+
+  test('reads an author given as a name, and as an object with a URL', () => {
+    expect(toManifest({ ...MANIFEST, author: 'Ada Lovelace' }, ROOT)).toMatchObject({
+      author: { name: 'Ada Lovelace' },
+    });
+    expect(
+      toManifest({ ...MANIFEST, author: { name: 'Acme', url: 'https://acme.example', email: 'a@acme.example' } }, ROOT),
+    ).toMatchObject({ author: { name: 'Acme', url: 'https://acme.example', email: 'a@acme.example' } });
+  });
+
+  test('drops an author with no usable name instead of refusing the plugin', () => {
+    // A credit is not a requirement: a malformed one must not cost the user a
+    // plugin that works.
+    expect(toManifest({ ...MANIFEST, author: { email: 'nobody@example' } }, ROOT)).toEqual(MANIFEST_EXPECTED);
+    expect(toManifest({ ...MANIFEST, author: '   ' }, ROOT)).toEqual(MANIFEST_EXPECTED);
+    expect(toManifest({ ...MANIFEST, author: 42 }, ROOT)).toEqual(MANIFEST_EXPECTED);
+  });
+
+  test('keeps declared slots in the canonical order and drops unknown names', () => {
+    // Order is the table's, so the same plugin cannot list its slots two ways
+    // depending on how its manifest happened to be written.
+    expect(toManifest({ ...MANIFEST, slots: ['headerPanel', 'rightPanel', 'nope'] }, ROOT)).toMatchObject({
+      slots: ['rightPanel', 'headerPanel'],
+    });
+    // A declaration that names nothing real is absent, not an empty array.
+    expect(toManifest({ ...MANIFEST, slots: ['nope'] }, ROOT)).not.toHaveProperty('slots');
+    expect(toManifest({ ...MANIFEST, slots: 'rightPanel' }, ROOT)).not.toHaveProperty('slots');
+  });
 });
 
 describe('toMarketplaceCatalog', () => {
@@ -185,6 +216,40 @@ describe('toMarketplaceCatalog', () => {
     expect(toMarketplaceCatalog({ plugins: [{ name: 'evil', source: '../../etc' }] }, ROOT)).toMatchObject({
       error: expect.stringContaining('escapes the marketplace directory'),
     });
+  });
+
+  test('accepts a REMOTE git source and marks it, without an escape check', () => {
+    // There is no root to escape: the entry is an offer, and the installer
+    // clones the URL. Reading it as a relative path is the failure this pins.
+    const result = toMarketplaceCatalog(
+      {
+        plugins: [
+          { name: 'acme', source: 'https://github.com/acme/panels.git', version: '1.4.0' },
+          { name: 'gitlab', source: 'git@gitlab.example:team/panels.git' },
+          { name: 'local', source: 'plugins/local' },
+        ],
+      },
+      ROOT,
+    );
+    expect(result).toMatchObject({
+      plugins: [
+        { name: 'acme', source: 'https://github.com/acme/panels.git', remote: true, version: '1.4.0' },
+        { name: 'gitlab', remote: true },
+        { name: 'local', source: 'plugins/local' },
+      ],
+    });
+    // A directory source carries no marker at all — absence is "a directory".
+    if ('error' in result) throw new Error(result.error);
+    expect(result.plugins?.[2]?.remote).toBeUndefined();
+  });
+
+  test('carries an entry author and homepage through', () => {
+    expect(
+      toMarketplaceCatalog(
+        { plugins: [{ name: 'demo', source: 'plugins/demo', author: { name: 'Acme' }, homepage: 'https://acme.example' }] },
+        ROOT,
+      ),
+    ).toMatchObject({ plugins: [{ author: { name: 'Acme' }, homepage: 'https://acme.example' }] });
   });
 
   test('refuses a non-array plugins field', () => {

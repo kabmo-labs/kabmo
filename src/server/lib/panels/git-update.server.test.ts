@@ -138,6 +138,20 @@ describe('probeGitUpdate', () => {
     const status = await probeGitUpdate('from-git');
     expect(status.updateAvailable).toBe(true);
     expect(status.current).not.toBe(status.latest);
+    // The VERSION the remote publishes rides along, read from the remote's own
+    // manifest — a commit pair answers "is this behind", never "which release".
+    expect(status.latestVersion).toBe('2.0.0');
+  });
+
+  test.skipIf(!hasGit)('an up-to-date clone carries no remote version, and pays no fetch', async () => {
+    const repo = makeRepo();
+    await installPanelPluginFromGit(repo);
+
+    const status = await probeGitUpdate('from-git');
+    expect(status.updateAvailable).toBe(false);
+    // Absent, not equal: a clone with nothing to fetch never reads the remote's
+    // tree, so the card shows the installed version alone.
+    expect(status.latestVersion).toBeUndefined();
   });
 
   test.skipIf(!hasGit)('an unreachable remote is reported, not thrown', async () => {

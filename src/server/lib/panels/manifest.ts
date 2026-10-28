@@ -22,11 +22,15 @@
 import type {
   PanelMarketplaceManifest,
   PanelMarketplacePluginEntry,
+  PanelPluginAuthor,
   PanelPluginManifest,
+  PanelSlotName,
 } from '@/shared/types';
+import { PANEL_SLOT_NAMES } from '@/shared/types';
 import type { PluginSettingDefinition } from '@kabmo-labs/kabmo-sdk';
 import { isRecord } from '@/shared/lib/util/guards';
 import { isValidRange } from '@/shared/lib/updates/semver';
+import { isRemoteGitUrl } from '@/shared/lib/git/url';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
 /** An id segment: what a plugin id may look like. */
@@ -90,6 +94,8 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
   if ('error' in capabilities) return capabilities;
   const settings = toSettings(raw.settings);
   if ('error' in settings) return settings;
+  const author = toAuthor(raw.author);
+  const slots = toSlots(raw.slots);
 
   return {
     id,
@@ -106,6 +112,8 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
     ...(icon ? { icon } : {}),
     ...(readme ? { readme } : {}),
     ...(branding ? { branding: { icon: branding } } : {}),
+    ...(author ? { author } : {}),
+    ...(slots ? { slots } : {}),
   };
 }
 
@@ -152,6 +160,40 @@ function toCapabilities(raw: unknown): { value?: string[] } | { error: string } 
     value.push(capability);
   }
   return value.length > 0 ? { value } : {};
+}
+
+/**
+ * Parse `author`: a name string, or an object carrying a name.
+ *
+ * Both spellings are accepted because both are in the wild — `package.json`
+ * conventionally holds `{ name, email }`, while a hand-written `kabmo.json`
+ * usually names one person. A value with no usable name is dropped rather than
+ * refused: an author is a credit, not a requirement, and refusing a plugin for
+ * a malformed credit would hide a working plugin over a cosmetic field.
+ */
+function toAuthor(raw: unknown): PanelPluginAuthor | undefined {
+  const name = typeof raw === 'string' ? trimmed(raw) : isRecord(raw) ? trimmed(raw.name) : undefined;
+  if (!name) return undefined;
+  const record = isRecord(raw) ? raw : {};
+  const email = trimmed(record.email);
+  const url = trimmed(record.url);
+  return { name, ...(email ? { email } : {}), ...(url ? { url } : {}) };
+}
+
+/**
+ * Parse `slots`: the positional slots the plugin DECLARES it contributes.
+ *
+ * Unknown names are dropped rather than refused, and so is a non-array: the
+ * declaration is advisory (the live registrations are authoritative), so a
+ * stale or over-eager value must not cost the user a plugin that works. The
+ * order is the canonical one, so a card cannot list the same plugin's slots two
+ * ways depending on how its manifest happened to be written.
+ */
+function toSlots(raw: unknown): PanelSlotName[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const declared = new Set(raw.filter((entry): entry is string => typeof entry === 'string'));
+  const slots = PANEL_SLOT_NAMES.filter((slot) => declared.has(slot));
+  return slots.length > 0 ? slots : undefined;
 }
 
 /** Whether a value is one of the three primitives a setting may hold. */
@@ -213,6 +255,13 @@ function toSettings(raw: unknown): { value?: Record<string, PluginSettingDefinit
  * optional is a catalog entry's `source` — it is the key that binds an entry to
  * a directory, and an entry whose source escapes the marketplace root would let
  * the catalog point at anything.
+ *
+ * A `source` may be a REMOTE git URL instead of a path. That entry is an OFFER
+ * with no directory behind it: nothing is scanned for it and nothing is built
+ * until the user installs it, at which point the installer clones it exactly as
+ * it clones a URL typed into the form. The escape check does not apply — there
+ * is no root to escape — so the two shapes are separated before it runs, which
+ * is what stops a `git@host:repo` string from being read as a relative path.
  */
 export function toMarketplaceCatalog(raw: unknown, root: string): PanelMarketplaceManifest | { error: string } {
   if (!isRecord(raw)) return { error: 'marketplace.json is not an object' };
@@ -226,15 +275,20 @@ export function toMarketplaceCatalog(raw: unknown, root: string): PanelMarketpla
       const source = trimmed(item.source);
       if (!name) return { error: 'a marketplace plugin entry has no name' };
       if (!source) return { error: `marketplace plugin "${name}" has no source` };
-      if (!resolveInsideRoot(root, source)) {
+      const remote = isRemoteGitUrl(source);
+      if (!remote && !resolveInsideRoot(root, source)) {
         return { error: `marketplace plugin "${name}" source "${source}" escapes the marketplace directory` };
       }
+      const author = toAuthor(item.author);
       entries.push({
         name,
         source,
         description: trimmed(item.description),
         version: trimmed(item.version),
         category: trimmed(item.category),
+        ...(author ? { author } : {}),
+        ...(trimmed(item.homepage) ? { homepage: trimmed(item.homepage) } : {}),
+        ...(remote ? { remote: true } : {}),
       });
     }
   }

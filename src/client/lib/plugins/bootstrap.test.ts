@@ -60,7 +60,7 @@ function payload(enabled: boolean): PanelRegistryPayload {
       : [],
     marketplaces: [],
     errors: [],
-    plugins: [{ pluginId: 'demo', name: 'Demo', version: '1.0.0', isPackage: true, built: true, enabled, bundled: false, gitOrigin: null }],
+    plugins: [{ pluginId: 'demo', name: 'Demo', version: '1.0.0', isPackage: true, built: true, enabled, bundled: false, origin: 'local', gitOrigin: null }],
     catalog: [],
     disabledPanels: enabled ? [] : ['plugin:demo'],
     gitStatus: {},

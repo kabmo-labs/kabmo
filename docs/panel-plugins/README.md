@@ -147,6 +147,25 @@ show a view (VS Code's own affordance). A hidden view keeps its row in that menu
 with the checkbox off, which is where it is switched back on. The built-in views
 are pinned there — the panel toggles in the navbar are what control those.
 
+### What an installed card tells you
+
+Every installed plugin is one card, and it answers the five questions a reader
+actually asks, in that order:
+
+| Part | What it says |
+|---|---|
+| Mark, name, id | What this is. The id is the manifest id, which is also the directory name and the `plugin:<id>` panel key. |
+| Version | `v0.2.0`, or `v0.2.0 → v0.3.0` when the SOURCE offers something newer. The newer number comes from the store's manifest for a bundled install, and from the remote's manifest for a git clone (read only when the probe found the clone behind, so an up-to-date clone costs no extra round trip). |
+| Origin | `Bundled` (from Kabmo's store, kept current by Kabmo's update), `Git` (a clone you own — Update and auto-update apply), or `Local` (a directory in the marketplace; nothing updates it). |
+| Author | From the manifest's `author`, as a link when it carries a URL. "author unknown" when it does not. |
+| Slots | What the plugin actually contributes, named in words: `Panel view`, `Editor takeover`, `Header button`, `Message actions ×2`, … Read from the LIVE registration, because that is what the host imported. A plugin whose bundle is not loaded (disabled, failed, not built) falls back to the manifest's declared `slots`, drawn with a dashed border — a claim, not a fact. |
+| Placement | A **Panel view** is the one contribution that has a CHOICE of home, so its badge carries `Left` / `Right` chips with the current one marked. Clicking one moves the panel through the same store the Panel placement section writes, which is also what turns the left rail on — the card and that section cannot disagree about where a panel lives. An **Editor takeover** gets no chips: the editor column is its only home, and a chip row of one disabled button is a control that can never act. |
+
+The footer only draws a control that can do something: **Rebuild** for a bundle
+the build has not produced, **README** when the plugin ships one, **Remove**
+always. A git clone's freshness row carries the commit pair and its own
+**Update**, which refuses a dirty tree rather than discarding an edit.
+
 ## Building
 
 The Kabmo builds a plugin with Bun — the same runtime the app itself runs on,
@@ -215,8 +234,11 @@ author runs locally exactly what Kabmo will run on install.
 
 Settings → **Panel Plugins**. Two ways in, one install step out:
 
-- **Available from Kabmo** — the bundled store. **Install** copies that
-  plugin out of the package and builds it.
+- **Available** — the offers, from two sources in one grid: plugins bundled with
+  Kabmo (the store inside the package) and plugins a `marketplace.json` lists by
+  git URL. Each card says which (`Bundled` or `Git`), because only the bundled
+  one is kept current by Kabmo's own update. **Install** copies a bundled plugin
+  out of the package and builds it, or clones a git offer.
 - **Install from a git URL** — paste a URL → **Install**.
 
 The repository root must carry a manifest — a `kabmo` key in
@@ -262,6 +284,47 @@ The catalog. Every field is optional; an entry's `source` is not.
 
 `source` is a path relative to the marketplace root, resolved under it — a `../`
 segment or an absolute path is refused.
+
+### A remote source: a catalog that lists plugins it does not hold
+
+`source` may also be a **remote git URL** — `https://…`, `ssh://…`,
+`git@host:path`, `file://…`:
+
+```json
+{
+  "name": "acme-panels",
+  "source": "https://github.com/acme/acme-panels.git",
+  "description": "Acme's own panels, in their own repository.",
+  "version": "1.4.0",
+  "author": { "name": "Acme", "url": "https://acme.example" }
+}
+```
+
+That entry is an **offer**, not a directory: nothing is scanned for it and
+nothing is built until the user presses Install, at which point the installer
+clones the URL exactly as it clones one typed into the form. It is what lets one
+catalog curate plugins that live in their own repositories instead of vendoring
+a copy into the marketplace.
+
+Four rules follow from there being no directory:
+
+- **The escape check does not apply** — there is no root to escape — so the two
+  shapes are told apart before it runs. That is also why a `git@host:repo` string
+  is not read as a relative path.
+- **No dangling-entry report.** An entry with a remote source is skipped by the
+  scan's directory check, or every curated git plugin would be reported as
+  "listed in marketplace.json but no plugin was found there".
+- **No icon and no README.** Both are files inside the plugin's directory, and
+  the directory does not exist until the clone. The card draws the plugin's
+  initials and offers no reader.
+- **`version` is the catalog's claim.** The clone's own manifest is authoritative
+  once installed; before that, a card shows what the entry states or
+  "unversioned".
+
+The card says which kind of offer it is (`Bundled` or `Git`), because the two
+behave differently afterwards: a bundled install is kept current by Kabmo's own
+update, while a git clone is the user's to update from its remote.
+
 
 The catalog and the directory are independent, and **both directions matter**:
 
@@ -361,6 +424,8 @@ their positions are decided by the registrations the bundle makes when it loads.
 | `readme` | no | Markdown, relative to the plugin root. Defaults to `README.md` at the root when it exists. |
 | `description` | no | Shown in the store list and the settings pane. |
 | `homepage` | no | Displayed, never fetched. |
+| `author` | no | A name string, or `{ name, email?, url? }`. Shown on the store card and the installed card so a reader can credit the author without opening the README. A value with no usable name is dropped rather than refused — a credit is not a requirement. |
+| `slots` | no | The slots the plugin DECLARES it fills: any of `rightPanel`, `panel`, `headerPanel`, `settingsSection`. **Advisory.** The bundle's registrations are authoritative; this exists so a store card — which has no bundle to ask — can say what installing will add. An unknown name is dropped, never refused, and the card draws a declared-only badge with a dashed border so a claim never reads as a fact. |
 | `branding.icon` | no | An alias for `icon`; `icon` wins when both are present. |
 
 **At least one of `app` and `server` must be present.** A plugin that declares

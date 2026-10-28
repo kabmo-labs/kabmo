@@ -50,7 +50,7 @@ const PANELS: PanelRegistryPayload = {
   panels: [{ pluginId: 'demo', name: 'Demo', version: '1.0.0', appUrl: '/api/panels/bundle/demo.js' }],
   marketplaces: [],
   errors: [],
-  plugins: [{ pluginId: 'demo', name: 'Demo', version: '1.0.0', isPackage: true, built: true, enabled: true, bundled: false, gitOrigin: null }],
+  plugins: [{ pluginId: 'demo', name: 'Demo', version: '1.0.0', isPackage: true, built: true, enabled: true, bundled: false, origin: 'local', gitOrigin: null }],
   catalog: [],
   disabledPanels: [],
   gitStatus: {},

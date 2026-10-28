@@ -15,6 +15,11 @@
  * The commit SHAs are shortened to seven characters, which is what git itself
  * prints and enough to tell two commits apart by eye; the full value stays in the
  * `title` so a reader can copy it.
+ *
+ * When the probe could also read the remote's manifest, the newer VERSION is
+ * named beside the commit pair. A commit answers "is this behind"; it does not
+ * answer "which release is newer", and a card whose every other row carries a
+ * version would otherwise leave this one saying `a1b2c3d → d4e5f6a`.
  */
 
 import { ArrowDownToLine, Loader2 } from 'lucide-preact';
@@ -27,6 +32,8 @@ interface GitFreshnessProps {
   busy: string | null;
   pluginId: string;
   onUpdate: (pluginId: string) => Promise<boolean>;
+  /** The version the remote's manifest declares, when the probe read it. */
+  latestVersion?: string | undefined;
 }
 
 /** `a1b2c3d4e5` → `a1b2c3d`, the abbreviation git itself uses. */
@@ -34,7 +41,7 @@ function shortSha(sha: string | null): string {
   return sha ? sha.slice(0, 7) : '?';
 }
 
-export function GitFreshness({ status, origin, busy, pluginId, onUpdate }: GitFreshnessProps) {
+export function GitFreshness({ status, origin, busy, pluginId, onUpdate, latestVersion }: GitFreshnessProps) {
   const updating = busy === `update_git:${pluginId}`;
 
   if (!status) {
@@ -61,11 +68,17 @@ export function GitFreshness({ status, origin, busy, pluginId, onUpdate }: GitFr
     );
   }
 
+  const remote = latestVersion ?? status.latestVersion;
+
   return (
     <div className="flex items-center gap-1.5">
+      {/* Two elements, not one string: JSX trims the whitespace between a text
+          node and an adjacent element, so the version rendered jammed against
+          the SHA (`8d026acv1.1.0`). */}
       <span className="text-[10px] text-ink/50 font-mono truncate" title={`${origin}\n${status.current} → ${status.latest}`}>
         {shortSha(status.current)} → {shortSha(status.latest)}
       </span>
+      {remote ? <span className="text-[10px] text-warning font-mono flex-shrink-0">v{remote}</span> : null}
       <button
         type="button"
         onClick={() => void onUpdate(pluginId)}

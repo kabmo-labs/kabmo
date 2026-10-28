@@ -149,6 +149,26 @@ describe('discoverPanelPlugins', () => {
     expect(errors[0].source).toBe('plugins/ghost');
   });
 
+  test('a REMOTE catalog entry is an offer, never a dangling directory', async () => {
+    // The entry names a repository, not a folder here — so the scan must list
+    // it as installable and must NOT report it as "listed but not found".
+    writeCatalog({
+      plugins: [
+        { name: 'acme-panels', source: 'https://github.com/acme/panels.git', description: 'Acme panels' },
+      ],
+    });
+    invalidatePanelScan();
+    const { errors, catalog } = await discoverPanelPlugins();
+    expect(errors).toEqual([]);
+    const offer = catalog.find((entry) => entry.pluginId === 'acme-panels');
+    expect(offer).toMatchObject({
+      origin: 'git',
+      url: 'https://github.com/acme/panels.git',
+      description: 'Acme panels',
+      installed: false,
+    });
+  });
+
   test('a rejection that is not a dangling entry carries no source', async () => {
     // Nothing to forget: the fault is in a manifest that will not parse, and a
     // button that dropped the record would hide it rather than fix it.

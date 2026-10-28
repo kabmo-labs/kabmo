@@ -18,6 +18,24 @@
  * repository work.
  */
 
+/**
+ * True for a REMOTE source `git clone` accepts.
+ *
+ * The distinction from {@link isGitUrl} is a local path: `git clone` takes
+ * `/srv/repo` and `~/repo` too, and a marketplace catalog resolves those
+ * against its own root — so only a scheme or the `git@host:path` form is a
+ * remote here. Anything else is a directory, and a directory that escapes the
+ * marketplace is refused rather than cloned.
+ */
+export function isRemoteGitUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || /\s/.test(trimmed)) return false;
+  if (/^https?:\/\/\S+$/i.test(trimmed)) return true;
+  if (/^ssh:\/\/\S+$/i.test(trimmed)) return true;
+  if (/^git@[^:/\s]+:\S+$/.test(trimmed)) return true;
+  return /^file:\/\/\S+$/i.test(trimmed);
+}
+
 /** True for a source `git clone` accepts. */
 export function isGitUrl(value: string): boolean {
   const trimmed = value.trim();

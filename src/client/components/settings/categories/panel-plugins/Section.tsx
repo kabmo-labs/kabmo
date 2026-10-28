@@ -104,8 +104,10 @@ export function PanelPluginsSection() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs text-ink/60 max-w-xl">
-          Panels bundled with Kabmo, plus the ones you install from a git URL. A plugin is local code Kabmo loads into this page and renders in its own tree, so it looks and behaves like the rest of the
-          app — treat it the way you would a VS Code extension.
+          Panels bundled with Kabmo, plus the ones you install from a git URL — typed here or listed in
+          {' '}<span className="font-mono text-ink/70">marketplace.json</span>. A plugin is local code Kabmo loads
+          into this page and renders in its own tree, so it looks and behaves like the rest of the app — treat it
+          the way you would a VS Code extension.
         </p>
       </div>
 
@@ -156,7 +158,12 @@ export function PanelPluginsSection() {
         </div>
       ) : null}
 
-      <AvailableList entries={available} busy={actions.busy} onInstall={actions.installBundled} />
+      <AvailableList
+        entries={available}
+        busy={actions.busy}
+        onInstall={actions.installBundled}
+        onInstallUrl={actions.install}
+      />
 
       {/* A blocked bundled update, above the list it explains: the plugin is in
           the Installed grid below, and a notice underneath it would be read after
@@ -171,6 +178,7 @@ export function PanelPluginsSection() {
           iconUrls={iconUrls}
           readmeUrls={readmeUrls}
           busy={actions.busy}
+          dock={dock}
           onBuild={actions.build}
           onRemove={actions.remove}
           onSetEnabled={actions.setEnabled}

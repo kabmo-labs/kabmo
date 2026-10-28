@@ -7,19 +7,22 @@
       "name": "session-info",
       "source": "plugins/session-info",
       "description": "Shows the active workspace and keeps a note per session.",
-      "category": "utility"
+      "category": "utility",
+      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
     },
     {
       "name": "stats",
       "source": "plugins/stats",
       "description": "CPU and RAM used by the omp stack — Kabmo, every omp child, the daemons and the shells.",
-      "category": "utility"
+      "category": "utility",
+      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
     },
     {
       "name": "command-runner",
       "source": "plugins/command-runner",
       "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
-      "category": "utility"
+      "category": "utility",
+      "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" }
     }
   ]
 }

@@ -37,6 +37,7 @@ import { getMarketplacePluginsDir, invalidatePanelScan } from '@/server/lib/pane
 import { readGitOrigin } from '@/server/lib/panels/git-clone.server';
 import { readPluginManifest } from '@/server/lib/panels/files.server';
 import { toManifest } from '@/server/lib/panels/manifest';
+import { isRecord } from '@/shared/lib/util/guards';
 import { buildPanelPlugin } from '@/server/lib/panels/build.server';
 import type { PanelGitStatus } from '@/shared/types';
 
@@ -71,6 +72,40 @@ async function probeRemoteHead(dir: string): Promise<{ sha: string | null; error
 async function readLocalHead(dir: string): Promise<string | null> {
   const result = await gitRun(['rev-parse', 'HEAD'], { cwd: dir, timeoutMs: PROBE_TIMEOUT_MS });
   return result.exitCode === 0 ? asSha(result.stdout) : null;
+}
+
+/**
+ * The version the remote's manifest declares, read at the commit just fetched.
+ *
+ * Requires `FETCH_HEAD` to be current — the caller fetches first, and only when
+ * the clone is BEHIND, so an up-to-date clone pays no extra round trip. The two
+ * files a manifest can live in are tried in the same order the scan uses
+ * (`package.json`'s `kabmo`/`pi` key, then a standalone `kabmo.json`), through
+ * the same `toManifest`, so the version shown is the one the install would
+ * produce rather than a second parse of the same file.
+ *
+ * `undefined` when the remote's tree cannot be read — a repository whose
+ * manifest sits in a subdirectory, a private remote that answered the ref but
+ * not the blob. The card then shows the installed version alone; inventing one
+ * would be worse than saying nothing.
+ */
+async function readRemoteVersion(dir: string): Promise<string | undefined> {
+  for (const file of ['package.json', 'kabmo.json']) {
+    const show = await gitRun(['show', `FETCH_HEAD:${file}`], { cwd: dir, timeoutMs: PROBE_TIMEOUT_MS });
+    if (show.exitCode !== 0) continue;
+    let body: unknown;
+    try {
+      body = JSON.parse(show.stdout);
+    } catch {
+      continue;
+    }
+    const record = isRecord(body) ? body : {};
+    const raw = file === 'package.json' ? (record.kabmo ?? record.pi) : body;
+    const manifest = toManifest(raw, dir);
+    if ('error' in manifest) continue;
+    return manifest.version;
+  }
+  return undefined;
 }
 
 /** Whether the clone has uncommitted work that an update would discard. */
@@ -108,7 +143,34 @@ export async function probeGitUpdate(pluginId: string): Promise<PanelGitStatus> 
   if (remote.sha === null) {
     return { current, latest: null, updateAvailable: false, checkedAt, ...(remote.error ? { error: remote.error } : {}) };
   }
-  return { current, latest: remote.sha, updateAvailable: current !== null && current !== remote.sha, checkedAt };
+  const updateAvailable = current !== null && current !== remote.sha;
+  // The version only means anything when the two sides DIFFER, and reading it
+  // needs the remote's tree — so the fetch happens here, on the one branch where
+  // the answer is worth a round trip. An up-to-date clone pays nothing extra.
+  const latestVersion = updateAvailable ? await readRemoteVersionAfterFetch(dir) : undefined;
+  return {
+    current,
+    latest: remote.sha,
+    updateAvailable,
+    checkedAt,
+    ...(latestVersion ? { latestVersion } : {}),
+  };
+}
+
+/**
+ * Fetch the remote's HEAD, then read the version its manifest declares.
+ *
+ * A shallow single-ref fetch of objects only: the working tree is untouched, so
+ * a probe never changes what the plugin's directory holds — that is `update`'s
+ * job, and it is the one that refuses a dirty tree.
+ */
+async function readRemoteVersionAfterFetch(dir: string): Promise<string | undefined> {
+  const fetch = await gitRun(['fetch', '--depth', '1', '--quiet', 'origin', 'HEAD'], {
+    cwd: dir,
+    timeoutMs: FETCH_TIMEOUT_MS,
+  });
+  if (fetch.exitCode !== 0) return undefined;
+  return readRemoteVersion(dir);
 }
 
 export interface GitUpdateResult {

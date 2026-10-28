@@ -74,6 +74,17 @@ function isSlot(value: string): value is PluginPanelSlot {
 }
 
 /**
+ * Whether a value is one of the two PLACEABLE slot names.
+ *
+ * A card reads a contribution's slot name to decide whether it can offer a
+ * placement control, and the name arrives as a plain string — this is the
+ * narrowing, rather than a cast at the call site.
+ */
+export function isPluginPanelSlot(value: unknown): value is PluginPanelSlot {
+  return typeof value === 'string' && isSlot(value);
+}
+
+/**
  * The parts of a plugin panel id, or null.
  *
  * Two shapes are accepted, and the second is DELIBERATELY the one that shipped:

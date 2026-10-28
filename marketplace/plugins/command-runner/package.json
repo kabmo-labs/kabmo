@@ -12,6 +12,8 @@
     "app": "dist/app.js",
     "server": "dist/server.js",
     "icon": "icon.svg",
+    "author": { "name": "Kabmo Labs", "url": "https://github.com/kabmo-labs" },
+    "slots": ["rightPanel"],
     "capabilities": ["server", "storage", "rpc", "realtime", "repo-scope"],
     "settings": {
       "logTailKb": {

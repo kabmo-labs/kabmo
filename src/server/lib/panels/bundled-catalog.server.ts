@@ -47,6 +47,13 @@ export async function readBundledCatalog(bundledRoot: string, installed: Readonl
       // directory, which the routes resolve through the same registry.
       ...(manifest.icon ? { iconUrl: await iconUrl(pluginDir, manifest.icon) } : {}),
       ...(await readmeUrlFor(pluginDir, manifest)),
+      ...(manifest.author ? { author: manifest.author } : {}),
+      ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
+      ...(manifest.slots ? { slots: manifest.slots } : {}),
+      // A store card names where the code will come from, because a bundled
+      // install and a cloned one behave differently afterwards: one is kept
+      // current by Kabmo's own sync, the other is the user's clone.
+      origin: 'bundled',
       installed: installed.has(manifest.id),
     });
   }
