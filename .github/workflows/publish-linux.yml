@@ -272,8 +272,13 @@ jobs:
             || { echo "the installer wrote no launcher entry"; exit 1; }
           desktop-file-validate "$prefix/share/applications/kabmo.desktop" \
             || { echo "the installed launcher entry is not valid"; exit 1; }
-          grep -qx "Exec=\"$prefix/bin/Kabmo\"" "$prefix/share/applications/kabmo.desktop" \
-            || { echo "the entry's Exec does not name the installed binary"; exit 1; }
+          # `%F` is part of the line: the entry is a document handler, so `Exec`
+          # ends with the specifier that passes the FILES a file manager hands
+          # over. Asserting the whole line pins both facts — the installed binary
+          # and the argument — and the earlier exact match without `%F` was the
+          # check that went red the moment the specifier was added.
+          grep -qx "Exec=\"$prefix/bin/Kabmo\" %F" "$prefix/share/applications/kabmo.desktop" \
+            || { echo "the entry's Exec does not name the installed binary with %F"; exit 1; }
           "$prefix/bin/Kabmo" --version
           PREFIX="$prefix" "$out/install.sh" --uninstall
           test ! -e "$prefix/share/applications/kabmo.desktop" \

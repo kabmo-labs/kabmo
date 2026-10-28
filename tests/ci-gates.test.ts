@@ -14,7 +14,8 @@
  * production.
  */
 import { expect, test, describe } from 'bun:test';
-import { existsSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dir, '..');
@@ -508,6 +509,55 @@ describe('the gate contract', () => {
       /tar -C packages\/linux\/build -czf .* Kabmo/,
     );
   });
+
+  /**
+   * The launcher entry, generated for real.
+   *
+   * `install.sh` writes `Exec=` from `kabmo.desktop.in` with the prefix it just
+   * chose, and the release body greps that line. The two drifted once already:
+   * the entry gained `%F` (the file argument that makes Kabmo a document
+   * handler) while the grep still demanded the whole line be the bare path, so
+   * both Linux rows went red on a release whose gates were green — the drift is
+   * invisible until the packaging step runs, which is only on a release.
+   *
+   * This runs the installer into a throwaway prefix, the way the body does, so
+   * the template, the substitution and the specifier are exercised together.
+   * POSIX-only: the installer is bash.
+   */
+  test.skipIf(process.platform === 'win32')(
+    'the installer writes an Exec line naming the binary and taking files',
+    () => {
+      const scripts = join(ROOT, 'packages/linux/scripts');
+      const app = mkdtempSync(join(tmpdir(), 'kabmo-launcher-'));
+      const prefix = mkdtempSync(join(tmpdir(), 'kabmo-prefix-'));
+      try {
+        // What the release archive carries beside the script: the binary, the
+        // icon, and the MIME list `build-app.sh` generates.
+        writeFileSync(join(app, 'Kabmo'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        writeFileSync(join(app, 'kabmo.png'), '');
+        writeFileSync(join(app, 'mime-types.txt'), 'application/pdf;\n');
+        for (const name of ['install.sh', 'kabmo.desktop.in']) {
+          copyFileSync(join(scripts, name), join(app, name));
+        }
+        const run = Bun.spawnSync(['bash', join(app, 'install.sh')], {
+          env: { ...process.env, PREFIX: prefix },
+          stdout: 'pipe',
+          stderr: 'pipe',
+        });
+        expect(run.exitCode, run.stderr.toString()).toBe(0);
+
+        const entry = readFileSync(join(prefix, 'share/applications/kabmo.desktop'), 'utf8');
+        const exec = entry.split('\n').find((line) => line.startsWith('Exec='));
+        // The binary is QUOTED (a prefix may contain a space) and `%F` follows it:
+        // the same two facts the release body asserts with `grep -qx`.
+        expect(exec).toBe(`Exec="${join(prefix, 'bin', 'Kabmo')}" %F`);
+        expect(entry).toContain('MimeType=application/pdf;');
+      } finally {
+        rmSync(app, { recursive: true, force: true });
+        rmSync(prefix, { recursive: true, force: true });
+      }
+    },
+  );
 
   test('the IPA is BUILT before the app tags, and only attached after', async () => {
     // The iOS twin of the APK rule, and it exists for the same failure: a shell built
