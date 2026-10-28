@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
 import { AlertTriangle } from 'lucide-preact';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
+import { countConflicts } from '@/client/components/common/code-surface/conflict-markers';
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
 import { PreviewScroller } from '@/client/components/mobile/mobile-right-sidebar/PreviewScroller';
@@ -132,6 +133,9 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   const content = editor.content;
   const lang = editor.language;
   const linesCount = content.split('\n').length;
+  // The same count the desktop strip prints, from the same helper: a conflicted
+  // file opened on a phone must say so before the reader scrolls into it.
+  const conflicts = countConflicts(content);
 
   /**
    * Serve an outline row's jump: caret on the line, scrolled into view.
@@ -292,6 +296,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           indentUnitText={indentUnitFor(editorIndent)}
           typing={editorTyping}
           padding={12}
+          placeholder="This file is empty"
           style={{
             fontFamily: editorFontFamily,
             fontSize: `${fontSize}px`,
@@ -326,6 +331,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         language={lang}
         saveStatus={editor.saveStatus}
         path={file.path}
+        conflicts={conflicts}
       />
 
       {editor.saveMissingConfirm && file.path && (

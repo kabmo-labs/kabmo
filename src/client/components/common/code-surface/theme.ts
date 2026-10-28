@@ -250,5 +250,56 @@ export function surfaceTheme(): Extension {
     '.cm-selectionMatch': {
       backgroundColor: 'var(--editor-selection-match, color-mix(in srgb, var(--theme-info) 14%, transparent))',
     },
+    // Merge-conflict markers (`conflict-markers.ts`). A LINE decoration, so the
+    // whole line is banded rather than the seven characters — the reader is
+    // looking for where a block starts, not for a token.
+    //
+    // Ours and theirs take the two signal colours a diff already uses (removed /
+    // added), because that is the same distinction in the same direction; diff3's
+    // base section is neutral, since it belongs to neither side.
+    '.cm-line.cm-conflict-ours': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-error) 12%, transparent)',
+      boxShadow: 'inset 2px 0 0 var(--theme-error)',
+    },
+    '.cm-line.cm-conflict-theirs': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-success) 12%, transparent)',
+      boxShadow: 'inset 2px 0 0 var(--theme-success)',
+    },
+    '.cm-line.cm-conflict-base': {
+      backgroundColor: 'color-mix(in srgb, var(--theme-ink) 7%, transparent)',
+      boxShadow: 'inset 2px 0 0 color-mix(in srgb, var(--theme-ink) 35%, transparent)',
+    },
+    // Lint. The package ships hardcoded hex for every one of these, so they are
+    // restated from the palette — the same trap `matchingBracket` documents.
+    '.cm-lintRange-error': {
+      backgroundImage: 'none',
+      textDecoration: 'underline wavy var(--theme-error)',
+      textUnderlineOffset: '2px',
+    },
+    '.cm-lintRange-warning': {
+      backgroundImage: 'none',
+      textDecoration: 'underline wavy var(--theme-warning)',
+      textUnderlineOffset: '2px',
+    },
+    '.cm-lint-marker-error': { content: 'none', backgroundColor: 'var(--theme-error)' },
+    '.cm-lint-marker-warning': { content: 'none', backgroundColor: 'var(--theme-warning)' },
+    '.cm-diagnostic': {
+      borderLeftWidth: '3px',
+      borderLeftStyle: 'solid',
+      borderLeftColor: 'var(--theme-ink)',
+      padding: '3px 6px 3px 8px',
+      marginLeft: '-1px',
+      fontFamily: 'inherit',
+    },
+    '.cm-diagnostic-error': { borderLeftColor: 'var(--theme-error)' },
+    '.cm-diagnostic-warning': { borderLeftColor: 'var(--theme-warning)' },
+    '.cm-tooltip': {
+      backgroundColor: 'var(--editor-bg, var(--theme-paper))',
+      color: 'var(--editor-fg, var(--theme-ink))',
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: 'color-mix(in srgb, var(--theme-ink) 15%, transparent)',
+      fontFamily: 'inherit',
+    },
   });
 }

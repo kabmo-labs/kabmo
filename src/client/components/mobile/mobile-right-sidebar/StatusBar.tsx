@@ -29,6 +29,8 @@ interface EditorStatusBarProps {
   language: string;
   saveStatus: FileEditorSaveStatus;
   path?: string;
+  /** Merge-conflict blocks in the buffer, or 0 (see the desktop strip). */
+  conflicts?: number;
 }
 
 export function EditorStatusBar({
@@ -40,6 +42,7 @@ export function EditorStatusBar({
   language,
   saveStatus,
   path,
+  conflicts = 0,
 }: EditorStatusBarProps) {
   return (
     <footer
@@ -58,6 +61,11 @@ export function EditorStatusBar({
           <span className="uppercase">{VIEWER_LABELS[viewerKind]}</span>
         ) : (
           <>
+            {conflicts > 0 && (
+              <span className="text-error font-semibold tabular-nums">
+                ⚠ {conflicts}
+              </span>
+            )}
             <span>{lineCount} lines</span>
             <span>{charCount} chars</span>
             <span className="uppercase">{language}</span>

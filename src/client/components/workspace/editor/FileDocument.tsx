@@ -17,12 +17,13 @@ import { lineStartOffset } from '@/shared/lib/code/editor/lines';
 import type { UseFileEditorResult } from '@/client/hooks/editor/use-file-editor';
 import type { EditorFindState } from '@/client/hooks/editor/use-editor-find';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
-import { useFileBlame } from '@/client/hooks/editor/blame';
-import { useEditorBlame } from '@/client/hooks/editor/blame-settings';
-import { blameExtensions } from '@/client/components/common/code-surface/blame';
 import type { ViewerKind } from '@/shared/lib/fs/document-kind';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import type { EditorThemeState } from '@/client/hooks/editor/theme';
+import { useFileBlame } from '@/client/hooks/editor/blame';
+import { useEditorBlame } from '@/client/hooks/editor/blame-settings';
+import { blameExtensions } from '@/client/components/common/code-surface/blame';
+import { countConflicts } from '@/client/components/common/code-surface/conflict-markers';
 
 interface FileDocumentProps {
   activeFile: { id: number | string; name: string; path: string; root?: string; repo?: string };
@@ -135,6 +136,15 @@ export function FileDocument({
     [editorBlame.enabled, editorBlame.inline, blame],
   );
   const [caret, setCaret] = useState<CaretPosition | null>(null);
+  /**
+   * Merge-conflict blocks in the buffer.
+   *
+   * Derived from the CONTENT, not from git status: the panel's `conflicted` flag
+   * comes from the status string, which a hand-edited file no longer matches the
+   * moment the markers are gone. What the reader needs to know is how many
+   * blocks are still in front of them.
+   */
+  const conflicts = useMemo(() => countConflicts(editor.content), [editor.content]);
   const [goToLineOpen, setGoToLineOpen] = useState(false);
   // The request is a COUNTER: the dialog closes itself, and a boolean would need a
   // matching "closed" write from this component to the panel that owns the chord.
@@ -261,6 +271,7 @@ export function FileDocument({
           indentUnitText={indentUnitFor(editorIndent)}
           typing={editorTyping}
           padding={16}
+          placeholder="This file is empty"
           style={{
             fontFamily: editorFontFamily,
             fontSize: `${zoomLevel}px`,
@@ -283,6 +294,7 @@ export function FileDocument({
           byteViewer={editor.isBinaryViewer}
           viewerKind={viewerKind}
           lineCount={editor.content ? editor.content.split('\n').length : 0}
+          conflicts={conflicts}
         />
       ) : null}
     </div>

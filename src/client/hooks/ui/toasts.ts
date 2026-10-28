@@ -1,5 +1,6 @@
 import { useRef, useState } from 'preact/hooks';
 import type { ToastData } from '@/client/components/common/Toast';
+import { useEditorErrorToast } from '@/client/hooks/ui/editor-error-toast';
 
 /** What `useToasts` hands back — named, so a component takes the contract rather than `ReturnType`. */
 export interface ToastsHandle {
@@ -28,6 +29,12 @@ export function useToasts(): ToastsHandle {
   const dismissToast = (id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
+
+  // Every toast host already calls this hook — both shells, the sidebar and the
+  // settings modal — so subscribing here is what makes an editor exception
+  // impossible to miss by forgetting one call site. A CodeMirror plugin that
+  // throws is caught by the library and would otherwise reach only the console.
+  useEditorErrorToast(pushToast);
 
   return { toasts, pushToast, dismissToast };
 }

@@ -49,6 +49,13 @@ interface EditorStatusBarProps {
   byteViewer: boolean;
   viewerKind: ViewerKind;
   lineCount: number;
+  /**
+   * Merge-conflict blocks in the buffer, or 0.
+   *
+   * Printed only when non-zero: a permanent "0 conflicts" would be a readout
+   * about a file that has none, on every file the user opens.
+   */
+  conflicts?: number;
 }
 
 /** `Spaces: 2` / `Tabs`, which is what the indent actually inserts. */
@@ -66,6 +73,7 @@ export function EditorStatusBar({
   byteViewer,
   viewerKind,
   lineCount,
+  conflicts = 0,
 }: EditorStatusBarProps) {
   return (
     <footer
@@ -99,6 +107,17 @@ export function EditorStatusBar({
         )}
       </div>
       <div className="flex items-center gap-3 min-w-0">
+        {conflicts > 0 && (
+          // The count is the reason the file is red: the markers themselves are
+          // painted by the surface (`conflict-markers.ts`), but a reader who has
+          // scrolled past them needs to know how many blocks are left.
+          <span
+            className="text-error font-semibold tabular-nums"
+            title={`${conflicts} unresolved conflict${conflicts === 1 ? '' : 's'} — markers are highlighted in the file`}
+          >
+            ⚠ {conflicts} conflict{conflicts === 1 ? '' : 's'}
+          </span>
+        )}
         <span className="uppercase text-ink/40">{language}</span>
       </div>
     </footer>

@@ -42,6 +42,7 @@ import {
   highlightActiveLineGutter,
   highlightSpecialChars,
   lineNumbers,
+  placeholder as placeholderExtension,
   rectangularSelection,
   scrollPastEnd,
 } from '@codemirror/view';
@@ -60,6 +61,9 @@ import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
+import { conflictMarkers } from '@/client/components/common/code-surface/conflict-markers';
+import { lintExtensions } from '@/client/components/common/code-surface/lint';
+import { reportEditorError } from '@/client/lib/editor-errors';
 
 /**
  * The indentation facets, in one extension.
@@ -175,6 +179,14 @@ export interface SurfaceExtensionsOptions {
    * would pin a whole document snapshot in a component that prints its line number.
    */
   onCaret?: (position: { line: number; column: number }) => void;
+  /**
+   * Text shown while the document is empty, or absent for none.
+   *
+   * A file that exists and holds nothing is a different fact from "no file is
+   * open" (which the panel's `EmptyEditor` draws), and a blank surface said
+   * neither: it looked like a read that had not finished.
+   */
+  placeholder?: string;
 }
 
 /** Everything the editor needs, built once per document state. */
@@ -197,6 +209,7 @@ export function surfaceExtensions({
   onDocChange,
   onState,
   onCaret,
+  placeholder,
 }: SurfaceExtensionsOptions): Extension[] {
   return [
     lineNumbers(),
@@ -253,6 +266,13 @@ export function surfaceExtensions({
     // Auto-close brackets and the completer. Empty when both settings are off, which is
     // why this is a spread rather than a condition at the call site.
     typingCompartment.of(typingExtensions(typing)),
+    // The parser's verdict for a config format, and the gutter that marks it.
+    // Empty for every other language, which is why this is a spread.
+    ...lintExtensions(language),
+    // Merge-conflict markers, painted where a reader resolving one by hand
+    // meets them. Viewport-scoped, so an unconflicted file pays one scan of the
+    // visible lines and nothing else.
+    conflictMarkers(),
     findMarksField,
     // Bracket matching, plus the vertical guide from the caret's brace to its
     // pair. With a stream language loaded the pairing is token-aware; without
@@ -309,5 +329,11 @@ export function surfaceExtensions({
       }
     }),
     surfaceKeymap(onCommand, readOnly),
+    // An empty document says so, rather than looking like a read still running.
+    placeholder ? placeholderExtension(placeholder) : [],
+    // A plugin that throws is caught by CodeMirror and, by default, only reaches
+    // the console — which in a diagnostic workbench is a feature that silently
+    // stopped drawing. `reportEditorError` dedupes and raises a toast.
+    EditorView.exceptionSink.of((error) => reportEditorError(error)),
   ];
 }
