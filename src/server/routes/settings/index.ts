@@ -9,6 +9,7 @@ import * as settingsMcpTest from '@/server/routes/settings/mcp-test';
 import * as settingsOmpConfig from '@/server/routes/settings/omp-config';
 import * as settingsProjects from '@/server/routes/settings/projects';
 import * as settingsProviderEntry from '@/server/routes/settings/provider-entry';
+import * as settingsProviderIcon from '@/server/routes/settings/provider-icon';
 import * as settingsProviderModels from '@/server/routes/settings/provider-models';
 import * as settingsProviderRefresh from '@/server/routes/settings/provider-refresh';
 import * as settingsProviderModel from '@/server/routes/settings/provider-model';
@@ -30,6 +31,9 @@ export const settingsBindings: HandlerBinding[] = [
   ...bindingsFor(settingsOmpConfig, '/api/settings/omp-config'),
   ...bindingsFor(settingsProjects, '/api/settings/projects'),
   ...bindingsFor(settingsProviderEntry, '/api/settings/provider-entry'),
+  // A provider's fetched web icon; served outside the settings payload so the
+  // panel's first paint does not carry ~50 KB per provider.
+  ...bindingsFor(settingsProviderIcon, '/api/provider-icon'),
   ...bindingsFor(settingsProviderModels, '/api/settings/provider-models'),
   ...bindingsFor(settingsProviderRefresh, '/api/settings/providers/refresh'),
   ...bindingsFor(settingsProviderModel, '/api/settings/provider-model'),

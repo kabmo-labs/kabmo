@@ -137,6 +137,17 @@ export interface ProviderItem {
   /** `transport` from models.yml (`pi-native` routes through the auth gateway). */
   transport?: 'pi-native';
   /**
+   * The provider's own web icon, served from `/api/provider-icon` — the favicon
+   * of the site its `baseUrl` points at.
+   *
+   * Present only once one has been FETCHED and stored. A `models.yml` provider
+   * has no brand mark in Kabmo's table (nobody can ship a logo for a gateway a
+   * user registered yesterday), so without this every such row fell back to its
+   * initials. The URL carries the fetch time, so a changed icon is a changed
+   * URL and no cache can pin the old picture.
+   */
+  iconUrl?: string;
+  /**
    * The provider HAS an entry in omp's own `models.yml`.
    *
    * Read from the file by the server rather than inferred on the client, because

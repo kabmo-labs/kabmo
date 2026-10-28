@@ -35,6 +35,8 @@ export function ProviderSettings({
     catalogError,
     isLoading,
     isFetchingModels,
+    isRefreshingIcon,
+    handleRefreshIcon,
     toasts,
     pushToast,
     dismissToast,
@@ -102,7 +104,11 @@ export function ProviderSettings({
           <div className="flex-1 scrollbar-overlay-container p-6 md:p-8 space-y-6">
             {selectedProvider ? (
               <>
-                <ProviderHeader provider={selectedProvider} />
+                <ProviderHeader
+                  provider={selectedProvider}
+                  onRefreshIcon={() => void handleRefreshIcon()}
+                  isRefreshingIcon={isRefreshingIcon}
+                />
 
                 <ProviderAuthSection
                   provider={selectedProvider}

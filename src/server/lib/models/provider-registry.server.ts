@@ -34,6 +34,7 @@ import {
   resolveCredentialOrigin,
   type AgentDbCredentialIndex,
 } from '@/server/lib/models/credential-origin.server';
+import { stampProviderIcons } from '@/server/lib/models/provider-icon.server';
 import { removeLegacyKenariModels } from '@/shared/lib/models/provider/cleanup';
 import type { ProviderItem, ProviderModel } from '@/shared/types';
 
@@ -329,8 +330,13 @@ export async function mergeProviders(custom: ProviderItem[]): Promise<{
       ? { ...provider, inModelsYml: true }
       : provider
   ));
+  // A provider's own site is the only identity a `models.yml` endpoint has, so
+  // its favicon replaces the initials fallback wherever one has been fetched.
+  // `stampProviderIcons` reads stored stamps only and fetches in the background
+  // — a provider list must never wait on a third-party host.
+  const stamped = await stampProviderIcons(providers);
   return {
-    providers,
+    providers: stamped,
     modelsConfigPath: await getModelsConfigPath(),
     catalogError: catalog.error,
   };

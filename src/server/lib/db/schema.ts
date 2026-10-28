@@ -18,6 +18,7 @@ import { ensureScheduleSchema } from '@/server/lib/schedule/schema.server';
 import { ensureWaitingSchema } from '@/server/lib/waiting/schema.server';
 import { ensurePluginSchema } from '@/server/lib/plugins/schema.server';
 import { ensureModelRolePresetSchema } from '@/server/lib/model-roles/schema.server';
+import { ensureProviderIconSchema } from '@/server/lib/models/provider-icon-store.server';
 import { ensureWorktreeSchema } from '@/server/lib/db/worktree-registry.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
@@ -113,6 +114,7 @@ export async function initSchema(db: DbClient): Promise<void> {
   await ensurePluginSchema(db);
   // Named model-role presets (the role editor's preset picker).
   await ensureModelRolePresetSchema(db);
+  await ensureProviderIconSchema(db);
   // Worktree registry: the ref each worktree branched from, and the identity
   // cache that keys its folder.
   await ensureWorktreeSchema(db);

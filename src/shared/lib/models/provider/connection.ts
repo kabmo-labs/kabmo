@@ -100,6 +100,34 @@ export async function saveProviderEntry(
   }
 }
 
+export interface ProviderIconRefreshResult {
+  ok: boolean;
+  iconUrl?: string;
+  error?: string;
+}
+
+/**
+ * Refetch one provider's web icon from its own site.
+ *
+ * The stored icon is good for a week, which is right for a logo that rarely
+ * changes and wrong the moment the site ships a new one — this is the control
+ * that says "look again now".
+ */
+export async function refreshProviderIcon(slug: string, baseUrl: string): Promise<ProviderIconRefreshResult> {
+  try {
+    const response = await fetch('/api/provider-icon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, baseUrl }),
+    });
+    const data = await response.json() as ProviderIconRefreshResult;
+    if (!response.ok) return { ok: false, error: data.error ?? `HTTP ${response.status}` };
+    return data;
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Network error while fetching the icon' };
+  }
+}
+
 export interface CatalogRefreshResult {
   ok: boolean;
   added: number;

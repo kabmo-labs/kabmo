@@ -25,6 +25,8 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { createProviderActions } from '@/client/hooks/settings/providers/actions';
 import { createModelActions } from '@/client/hooks/settings/providers/model-actions';
 import { loadProvidersFromApi } from '@/client/hooks/settings/providers/api';
+import { refreshProviderIcon } from '@/shared/lib/models/provider/connection';
+import { subscribeModelsUpdated } from '@/shared/lib/models/client';
 
 export interface UseProviderSettingsOptions {
   autoOpenAdd?: boolean;
@@ -41,6 +43,7 @@ export function useProviderSettings({
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [isRefreshingIcon, setIsRefreshingIcon] = useState(false);
   const { toasts, pushToast, dismissToast } = useToasts();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(autoOpenAdd);
@@ -70,6 +73,33 @@ export function useProviderSettings({
       setSelectedProviderId(connected[0]?.id ?? data.providers[0]?.id ?? '');
     });
     return () => { active = false; };
+  }, []);
+
+  /**
+   * A provider's web icon is fetched in the BACKGROUND (the registry never makes
+   * a request wait on a third-party host), and the server republishes the
+   * `models` topic when it stored one. Without this subscription the icons
+   * arrived only on the next manual open — the panel had already drawn its
+   * initials fallbacks.
+   *
+   * Debounced: the pass stores several icons in a row, and each publish is one
+   * full registry read.
+   */
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeModelsUpdated(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        void loadProvidersFromApi().then((data) => {
+          if (data) setProviders(data.providers);
+        });
+      }, 400);
+    });
+    return () => {
+      unsubscribe();
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const availablePresetProviders = useMemo(
@@ -119,6 +149,36 @@ export function useProviderSettings({
     await providerActions.reloadProviders();
   };
 
+  /**
+   * Refetch this provider's icon from its own site.
+   *
+   * Separate from the registry's background pass: that one only runs when the
+   * stored icon is missing or older than a week, and this is the user saying
+   * "look again now" after the site changed.
+   */
+  const handleRefreshIcon = async () => {
+    const target = selectedProvider;
+    if (!target || isRefreshingIcon) return;
+    if (!target.baseUrl) {
+      pushToast('This provider has no endpoint, so there is no site to read an icon from.', 'error');
+      return;
+    }
+    setIsRefreshingIcon(true);
+    try {
+      const result = await refreshProviderIcon(target.slug, target.baseUrl);
+      if (!result.ok) {
+        pushToast(result.error || 'No usable icon on that host — keeping the current mark.', 'error');
+        return;
+      }
+      const refreshed = await providerActions.reloadProviders();
+      const next = refreshed.find((provider) => provider.slug === target.slug);
+      if (next) setSelectedProviderId(next.id);
+      pushToast(`${target.name}: icon updated from ${target.baseUrl}.`, 'success');
+    } finally {
+      setIsRefreshingIcon(false);
+    }
+  };
+
   const handleModelAdded = async (modelId: string) => {
     pushToast(`${modelId} registered in models.yml.`, 'success');
     await providerActions.reloadProviders();
@@ -132,6 +192,8 @@ export function useProviderSettings({
     catalogError,
     isLoading,
     isFetchingModels,
+    isRefreshingIcon,
+    handleRefreshIcon,
     toasts,
     pushToast,
     dismissToast,

@@ -211,3 +211,50 @@ describe('icon containment', () => {
     expect(mark.style.width === '22px' || mark.getAttribute('width') === '22').toBe(true);
   });
 });
+
+describe('provider icon plate with a fetched web icon', () => {
+  const withIcon = provider({
+    slug: 'localtest',
+    iconUrl: '/api/provider-icon?slug=localtest&v=1700000000000',
+  });
+
+  test('an iconUrl is drawn as the site’s own picture, not a recoloured mark', () => {
+    // The whole point of fetching it: a brand logo in `currentColor` is a
+    // silhouette. The img is the one thing in this list allowed chroma.
+    mountList([withIcon]);
+
+    const plate = rows()[0].children[0] as HTMLElement;
+    const image = plate.querySelector('img') as HTMLImageElement;
+    expect(image).not.toBeNull();
+    expect(image.getAttribute('src')).toBe('/api/provider-icon?slug=localtest&v=1700000000000');
+    expect(image.className).toContain('object-contain');
+    // No filter/blend that would tint the logo.
+    expect(image.className).not.toContain('grayscale');
+    // The mark is not drawn beside it.
+    expect(plate.querySelector('svg[fill="currentColor"]')).toBeNull();
+  });
+
+  test('a provider without one keeps the bounded mark', () => {
+    mountList([provider({ slug: 'plain' })]);
+    const plate = rows()[0].children[0] as HTMLElement;
+    expect(plate.querySelector('img')).toBeNull();
+    expect(plate.firstElementChild?.tagName).toBe('SPAN');
+  });
+
+  test('the header shows the web icon and offers a refetch control', () => {
+    let pressed = 0;
+    act(() => {
+      render(
+        h(ProviderHeader, { provider: withIcon, onRefreshIcon: () => { pressed += 1; } }),
+        container,
+      );
+    });
+
+    const plate = container.querySelector('span[aria-hidden]') as HTMLElement;
+    expect(plate.querySelector('img')?.getAttribute('src')).toContain('/api/provider-icon');
+    const refresh = container.querySelector('button[aria-label="Refresh provider icon"]') as HTMLButtonElement;
+    expect(refresh).not.toBeNull();
+    act(() => refresh.click());
+    expect(pressed).toBe(1);
+  });
+});
