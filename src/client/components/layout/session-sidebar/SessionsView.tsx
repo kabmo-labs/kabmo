@@ -121,10 +121,13 @@ export function SessionsView({
   };
 
   /** The folder whose context a new session will inherit — same resolution
-   *  the send path uses, so the prewarmed cwd matches the spawn cwd. */
+   *  the send path uses, so the prewarmed cwd matches the spawn cwd. The
+   *  access mode is deliberately not passed: the trigger reads the live
+   *  setting, which is what the send path spawns with (`appSettings` here is
+   *  the boot-time prop and goes stale the moment the composer changes it). */
   const prewarmForNewSession = (folderId?: number) => {
     const cwd = spawnCwdForNewSession(folders, sessionParam, folderId);
-    if (cwd) triggerSessionPrewarm(cwd, appSettings.omp_access_mode);
+    if (cwd) triggerSessionPrewarm(cwd);
   };
 
   const handleNewSession = () => {

@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from 'preact/hooks';
+import { useCallback, useMemo } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { AskFramesContext, splitAskFrames, type AskFramesHandle } from '@/client/hooks/chat/timeline/ask-frames';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
-import type { Attachment } from '@/shared/types';
 import type { UserTurnRef } from '@/shared/types/chat';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
 import { PendingChatView } from '@/client/components/workspace/chat-timeline/PendingChatView';
@@ -21,6 +20,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { ChatOverlays } from '@/client/components/workspace/chat-timeline/ChatOverlays';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { composerRootFor } from '@/shared/lib/workspace/active-project';
+import { useNewChatOpen } from '@/client/hooks/chat/timeline/new-chat-open';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useHeldWait } from '@/client/hooks/chat/waiting/held';
 
@@ -112,10 +112,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     [framesByTool, orphanAsks, respondToFrame],
   );
 
-  const [newChatInitialContent, setNewChatInitialContent] = useState<string | null>(null);
-  // Attachments of the row the modal was opened from: an image or inlined text
-  // file is half of the turn, and seeding the text alone dropped it.
-  const [newChatInitialAttachments, setNewChatInitialAttachments] = useState<Attachment[]>([]);
+  const newChat = useNewChatOpen({ folders, sessionId, selectedFolderId });
   const { pendingUndo, undoing, error: undoError, requestUndo: handleRequestUndo, closeUndoConfirm, confirmUndo } = useUndoConfirmation(handleUndo);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -149,10 +146,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     void jumpToUserTurn(turn.id, turn.index);
   }, [jumpToUserTurn]);
 
-  const handleNewChat = useCallback((content: string, attachments?: Attachment[]) => {
-    setNewChatInitialContent(content);
-    setNewChatInitialAttachments(attachments ?? []);
-  }, []);
+  const handleNewChat = newChat.open;
 
   const modelNames = useModelNames();
   const providerNames = useProviderNames();
@@ -322,12 +316,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
           onCloseUndo={closeUndoConfirm}
           onConfirmUndo={confirmUndo}
           isOmpSession={Boolean(sessionId) && !sessionId.startsWith('new-') && Number.isNaN(Number(sessionId))}
-          newChatInitialContent={newChatInitialContent}
-          newChatInitialAttachments={newChatInitialAttachments}
-          onCloseNewChat={() => {
-            setNewChatInitialContent(null);
-            setNewChatInitialAttachments([]);
-          }}
+          newChatInitialContent={newChat.content}
+          newChatInitialAttachments={newChat.attachments}
+          onCloseNewChat={newChat.close}
           onSendNewChat={submitNewChat}
           appSettings={appSettings}
           accessMode={accessMode}

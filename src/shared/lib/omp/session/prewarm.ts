@@ -1,4 +1,9 @@
 /**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
  * Client-side trigger for the server's prewarm pool: asking Kabmo server
  * to start an idle `omp --mode rpc-ui` process for a project cwd before the
  * first prompt is sent. Fired when the user opens a new (pending) session —
@@ -6,10 +11,27 @@
  *
  * Fire-and-forget by contract: a failed or slow prewarm must never block or
  * error the UI. The next send spawns cold in that case, exactly as before.
+ *
+ * **The access mode is read here, from the live settings snapshot, and is
+ * deliberately NOT a parameter.** `claimPrewarmedSession` only hands out an
+ * entry spawned with the mode the send asks for; a mismatch KILLS the
+ * prewarmed child and cold-spawns (measured: 762 ms against 6 ms), so the
+ * prewarm exists only if both ends name the same mode. Callers cannot supply
+ * it reliably: the desktop sidebar reads `appSettings.omp_access_mode`, a
+ * boot-time prop, while the send path reads the composer's live ref — a mode
+ * picked in the composer then spent the next prewarm on the previous one, and
+ * the phone passed nothing at all, so every prewarm there was always-ask
+ * against a yolo install. `writeSetting` updates the snapshot synchronously,
+ * so this reads exactly what the composer last chose.
  */
 
-export function triggerSessionPrewarm(cwd: string, accessMode?: string): void {
+import { ACCESS_MODE_SETTING_KEY, isApprovalMode } from '@/shared/lib/omp/config/access-mode';
+import { readKabmoSetting } from '@/shared/lib/settings/client';
+
+export function triggerSessionPrewarm(cwd: string): void {
   if (!cwd) return;
+  const stored = readKabmoSetting<unknown>(ACCESS_MODE_SETTING_KEY);
+  const accessMode = isApprovalMode(stored) ? stored : undefined;
   fetch('/api/agent/prewarm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

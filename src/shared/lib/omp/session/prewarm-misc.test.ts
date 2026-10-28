@@ -4,13 +4,13 @@
  */
 
 /**
- * The leftover edges of the omp bridge: the prewarm trigger that must never
- * block the UI, the telemetry content profiler whose badges the raw-messages
- * panel renders, the additive column migration, the generated UI password, the
- * synchronous transaction wrapper, and the persisted access-mode read. Each is
- * small but each fails user-visibly: a prewarm that throws on an offline
- * browser, a profiler that mislabels a tool, a migration that aborts startup,
- * a transaction that commits a failed write.
+ * The leftover edges of the omp bridge: the telemetry content profiler whose
+ * badges the raw-messages panel renders, the additive column migration, the
+ * generated UI password, the synchronous transaction wrapper, and the persisted
+ * access-mode read. Each is small but each fails user-visibly: a profiler that
+ * mislabels a tool, a migration that aborts startup, a transaction that commits
+ * a failed write. The prewarm trigger and its cwd resolution have their own
+ * file (`prewarm.test.ts`).
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -24,93 +24,10 @@ import { withTransaction } from '@/shared/lib/db/transaction.server';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
 import { ACCESS_MODE_SETTING_KEY, DEFAULT_APPROVAL_MODE } from '@/shared/lib/omp/config/access-mode';
 import { TYPE_ORDER, contentProfile } from '@/shared/lib/omp/session/telemetry-blocks';
-import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 import { createDb } from '@/server/lib/db/client';
 import { hashPassword, verifyPassword } from '@/server/lib/auth/config';
 import { getDb } from '@/server/db.server';
-
-describe('triggerSessionPrewarm', () => {
-  /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
-const originalFetch = Bun.fetch;
-  const calls: Array<{ url: string; method?: string; body: unknown }> = [];
-  const post = (url: unknown, init?: { method?: string; body?: string }) => {
-    calls.push({ url: String(url), method: init?.method, body: JSON.parse(String(init?.body)) });
-    return Promise.resolve(new Response('{}', { status: 200 }));
-  };
-
-  beforeAll(() => { globalThis.fetch = post as unknown as typeof fetch; });
-  afterAll(() => { globalThis.fetch = originalFetch; });
-
-  test('posts the cwd, and the access mode only when one is given', () => {
-    calls.length = 0;
-    triggerSessionPrewarm('/tmp/project');
-    triggerSessionPrewarm('/tmp/project', 'yolo');
-    expect(calls).toEqual([
-      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project' } },
-      { url: '/api/agent/prewarm', method: 'POST', body: { cwd: '/tmp/project', accessMode: 'yolo' } },
-    ]);
-  });
-
-  test('an empty cwd sends nothing', () => {
-    calls.length = 0;
-    triggerSessionPrewarm('');
-    expect(calls).toEqual([]);
-  });
-
-  test('a rejected request is swallowed — prewarm must never reach the UI', () => {
-    // Fire-and-forget: the function returns undefined synchronously and the
-    // module attaches its own catch, so the rejection never becomes an
-    // unhandled one that would surface as a test-run error.
-    calls.length = 0;
-    globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
-    expect(triggerSessionPrewarm('/tmp/project')).toBeUndefined();
-    expect(calls).toEqual([]);
-    globalThis.fetch = post as unknown as typeof fetch;
-  });
-});
-
-describe('spawnCwdForNewSession', () => {
-  const folders = [
-    { id: 1, name: 'alpha', project_path: '/work/alpha', sessions: [{ id: 's-1' }] },
-    { id: 2, name: 'beta', project_path: null, sessions: [] },
-    { id: 3, name: 'gamma', project_path: '/work/gamma' },
-  ];
-
-  test('an explicit folder id wins, resolved loosely by string form', () => {
-    expect(spawnCwdForNewSession(folders, null, 3)).toBe('/work/gamma');
-    expect(spawnCwdForNewSession(folders, null, '3')).toBe('/work/gamma');
-  });
-
-  test('an unknown folder id yields no cwd rather than the wrong one', () => {
-    expect(spawnCwdForNewSession(folders, null, 99)).toBeNull();
-  });
-
-  test('otherwise the folder owning the active session is used', () => {
-    expect(spawnCwdForNewSession(folders, 's-1')).toBe('/work/alpha');
-  });
-
-  test('without a session match the first folder WITH a project path is used', () => {
-    // Neither the active session nor an id matched, so the first folder that
-    // carries a project path (alpha) wins; folder 2 has none.
-    expect(spawnCwdForNewSession(folders, 'unknown-session')).toBe('/work/alpha');
-  });
-
-  test('a matched folder with no project path falls back to its name', () => {
-    const sessionFolder = [{ id: 2, name: 'beta', project_path: null, sessions: [{ id: 's-9' }] }];
-    expect(spawnCwdForNewSession(sessionFolder, 's-9')).toBe('beta');
-    expect(spawnCwdForNewSession(sessionFolder, null, 2)).toBe('beta');
-  });
-
-  test('no matching folder at all yields null', () => {
-    expect(spawnCwdForNewSession([{ id: 2, name: 'beta', project_path: null }], null)).toBeNull();
-  });
-
-  test('no folders at all yields null', () => {
-    expect(spawnCwdForNewSession([], null)).toBeNull();
-    expect(spawnCwdForNewSession([], 's-1', 1)).toBeNull();
-  });
-});
 
 describe('contentProfile', () => {
   test('the badge order is fixed', () => {
