@@ -188,9 +188,16 @@ final class ShellViewController: UIViewController {
     let scoped = url.startAccessingSecurityScopedResource()
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
+    // No `suggested` name here, and it is not an oversight: `suggestedFilename`
+    // exists only on `URLResponse` — the name a DOWNLOAD server offers, which
+    // `ShellDownloads` already reads. A document URL opened through
+    // `application(_:open:options:)` carries its name in `lastPathComponent`
+    // alone, and `url.suggestedFilename` does not compile at all: this whole
+    // target sits behind `#if canImport(UIKit)`, so the Mac-only logic suite
+    // cannot see it and the IPA build is the first place a wrong member shows.
     let name = DeviceFiles.displayName(
       resolved: url.lastPathComponent,
-      suggested: url.suggestedFilename,
+      suggested: nil,
       mimeType: DeviceFiles.mimeType(forExtension: url.pathExtension)
     )
     let mimeType = DeviceFiles.mimeType(forExtension: url.pathExtension)
