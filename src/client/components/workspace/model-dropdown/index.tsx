@@ -7,6 +7,7 @@ import { invalidateModelsCache } from '@/shared/lib/models/client';
 import { ModelDropdownPanel } from '@/client/components/workspace/model-dropdown/Panel';
 import { ProviderIcon } from '@/client/components/common/provider-icon';
 import { useModelCatalog } from '@/client/components/workspace/model-dropdown/use-catalog';
+import { useCollapsedSections } from '@/client/components/workspace/model-dropdown/collapsed';
 import { buildPickerGroups } from '@/client/components/workspace/model-dropdown/groups';
 import { modelKey } from '@/shared/lib/models/identity';
 import { RECENT_MODELS_LIMIT, filterKnownKeys, readModelPreferences, recordRecentKey, toggleFavoriteKey } from '@/shared/lib/models/preferences';
@@ -30,7 +31,7 @@ export function ModelDropdown({
   const [search, setSearch] = useState('');
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [hoveredModel, setHoveredModel] = useState<AIModelOption | null>(null);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [collapsedSections, toggleSection] = useCollapsedSections();
   const {
     models,
     isLoading,
@@ -74,10 +75,6 @@ export function ModelDropdown({
         })
       );
     }
-  };
-
-  const toggleSection = (section: string) => {
-    setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
   /**

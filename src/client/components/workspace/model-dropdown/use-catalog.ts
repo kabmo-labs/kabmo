@@ -85,7 +85,14 @@ export function useModelCatalog(externalSelectedModel?: AIModelOption): ModelCat
   const load = useCallback(async () => {
     try {
       const data = await fetchModelsData();
-      if (Array.isArray(data.modelList) && data.modelList.length > 0) {
+      // Apply the catalog whenever it came back as a LIST — even an empty one.
+      // `modelList: []` is the honest answer when every provider was disabled
+      // or removed, and skipping it kept a picker showing models that no longer
+      // exist (measured: disable the last provider, the dropdown kept its rows
+      // until a reload). `modelError` marks a FAILED read (the omp registry
+      // hiccupped), which keeps the previous list rather than flashing the
+      // empty state over a transient failure.
+      if (Array.isArray(data.modelList) && !data.modelError) {
         const prefs = readModelPreferences(data.modelPreferences);
         const realModels = applyModelPreferences(data.modelList.map(toOption), prefs);
         setPreferences(prefs);
@@ -103,7 +110,7 @@ export function useModelCatalog(externalSelectedModel?: AIModelOption): ModelCat
           const match = realModels.find(m => m.id === defaultModel.modelId && m.provider === defaultModel.provider);
           if (match) setSelectedModel(match);
         }
-      } else if (Array.isArray(data.models) && data.models.length > 0) {
+      } else if (Array.isArray(data.models)) {
         const prefs = readModelPreferences(data.modelPreferences);
         setPreferences(prefs);
         setModelsState(applyModelPreferences(data.models, prefs));
