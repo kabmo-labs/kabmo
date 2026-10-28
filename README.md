@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/kabmo-labs/kabmo/wiki">Wiki</a> ·
   <a href="AGENTS.md">Architecture</a> ·
   <a href="DESIGN.md">Design</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
@@ -28,13 +29,13 @@
 
 ## What it is
 
-The browser view onto a live `omp` install. It is not a terminal wrapper: Kabmo reads
-omp's own session JSONL, project registry, config and subagent transcripts, folds them into one
-live view, and writes back through omp's RPC mode.
+The browser view onto a live `omp` install. It is not a terminal wrapper: Kabmo reads omp's own
+session JSONL, project registry, config and subagent transcripts, folds them into one live view, and
+writes back through omp's RPC mode.
 
 ```bash
 kabmo serve                # production server + prebuilt client on :3000
-bun run dev                     # source checkout: one process, HMR, no build step
+bun run dev                # source checkout: one process, HMR, no build step
 ```
 
 - **One process.** Elysia serves the API and the client bundle, and the agent event stream is a
@@ -63,331 +64,99 @@ bun run dev                     # source checkout: one process, HMR, no build st
 | ![Panel plugins](docs/assets/settings-panel-plugins.png)<br>**Panel plugins** — every view is a plugin, including the eleven bundled ones | ![Providers](docs/assets/settings-providers.png)<br>**Providers** — dialects, discovery, hand-added models, credential removal |
 | ![Mobile view](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, and the panel drawer | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 45 light and dark themes, applied to the whole console |
 
-- **Chat timeline** — streaming thinking blocks (with omp's narrated prose promoted to answer
-  text), a structured renderer per tool (bash, LSP, AST edit, `proc://` services, `wait` with a
-  clock and progress, mermaid diagrams you can zoom), usage footers, a persistent follow-up queue,
-  a jump rail that reaches any user turn, drag-and-drop attachments, one-shot auto-titling, and
-  in-place undo that rewinds a session by truncating its JSONL behind a confirmation step.
-- **Steering, not cancelling** — a mid-run prompt is delivered INTO the running turn
-  (`POST /api/agent/:id {type:'steer'}`); the answer you were watching survives. A subagent can be
-  steered or stopped on its own, from the roster or its transcript.
-- **Side questions** (`/btw [question]`) — replaces the composer with a panel that answers from a
-  private copy of the session file, so the parent transcript is never written; a topic can be
-  promoted into a session of its own, and it runs the same tool cards, thinking and usage rows as
-  the chat.
+- **Chat timeline** — streaming thinking blocks (omp's narrated prose promoted to answer text), a
+  structured renderer per tool (bash, LSP, AST edit, `proc://` services, `wait` with a clock and
+  progress, zoomable mermaid), usage footers, a persistent follow-up queue, a jump rail, drag-and-drop
+  attachments, one-shot auto-titling and in-place undo that rewinds a session.
+- **Steering, not cancelling** — a mid-run prompt is delivered INTO the running turn, so the answer
+  you were watching survives. A subagent can be steered or stopped on its own.
+- **Side questions** (`/btw [question]`) — answer from a private copy of the session file, without
+  writing the parent transcript; a topic can be promoted into a session of its own.
 - **Workspace sidebar** — folder → session tree off omp's project registry, with search, sort,
-  archive, per-session stream status, subagent rows, scheduled tasks, and a New Workspace dialog
-  that can register a directory or clone a repository.
-- **Eleven right-panel views** — context & telemetry, files, search, source control, wiki,
-  terminal, your browser, the agent browser, usage, todos and plan; each remembers its own width
-  per session, and the bar is drag-reorderable.
-- **A plugin platform, not a fixed panel list** — a panel plugin can ship a Preact view, a server
-  half, its own storage, RPC methods, a realtime topic and declared settings. Three are bundled
-  (`Runner` — 18 command sources across 15 toolchains — plus `Stats` and `Session Info`),
-  and they are auto-synced on upgrade.
-- **Full omp settings surface** — engine config keys (generated from omp's own schema, 554
-  settings across 10 tabs), providers, agents, `AGENTS.md` / `RULES.md`, slash commands, MCP
-  servers with live connection tests, skills and the skills catalog, token usage, notifications,
-  and dictation.
-- **Self-update** — `kabmo update` installs the latest version from npm, and **About → Updates**
-  does the same from the console, restarting the server and reloading the page into the new build.
-- **Opt-in password, HTTPS and session revocation** — the UI is open by default and locked only when
-  you ask for it (`--ui-password` / `KABMO_UI_PASSWORD`), with `--tls` for a self-signed HTTPS
-  listener and `POST /api/auth/revoke` to end every session at once. See [Security](#security).
-- **Tray icon and start at login** — `serve --tray` / `--startup`, with the icon as a child of the
-  server so it can never outlive it.
-- **Dictation** — the composer's mic button runs omp's own speech-to-text worker (no API key, a
-  local model) and streams the transcript into the draft.
+  archive, per-session stream status, subagent rows, scheduled tasks, and a New Workspace dialog that
+  registers a directory or clones a repository.
+- **Eleven right-panel views, each a plugin** — context & telemetry, files, search, source control,
+  wiki, terminal, your browser, the agent browser, usage, todos and plan; each remembers its own width
+  per session. A plugin can ship a Preact view, a server half, storage, RPC methods, a realtime topic
+  and settings; three are bundled (`Runner`, `Stats`, `Session Info`).
+- **The whole omp settings surface** — engine config generated from omp's own schema, providers,
+  agents, `AGENTS.md` / `RULES.md`, slash commands, MCP servers with live connection tests, skills,
+  token usage, notifications and dictation.
+- **Self-update, opt-in auth, tray and dictation** — `kabmo update` and **About → Updates** restart
+  into the new build; a password and HTTPS are opt-in; `serve --tray` puts the icon in the menu bar;
+  the composer's mic runs omp's own local speech-to-text.
 
 ## Themes
-
-![The palette picker in Settings → Appearance](docs/assets/settings-themes.png)
-
-![Eight of the 45 palettes, same surface](docs/assets/theme-grid.png)
 
 45 palettes in one catalog (`src/shared/lib/theme/`): Kabmo's own three (`paper`, `contrast`,
 `one-dark-pro-soft`) and 21 light/dark pairs — Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula,
 Solarized, Kanagawa, Vesper, Ayu, Monokai and more. Switching repaints everything, syntax
-highlighting and Mermaid diagrams included, through one writer (`applyDocumentTheme`) that sets
-`data-theme` and announces it — so an open editor, a live terminal and a diagram in the transcript
-all follow with no reload.
+highlighting and Mermaid diagrams included, through one writer that sets `data-theme` and announces
+it — so an open editor, a live terminal and a diagram in the transcript all follow with no reload.
 
-![Theme cycle in motion](docs/assets/themes.gif)
+![Eight of the 45 palettes, same surface](docs/assets/theme-grid.png)
 
 ## Install
 
-Kabmo is published to npm and runs on Bun, not Node:
-
-> **Bun only** — the server imports `bun:sqlite` and `Bun.YAML`, neither of which Node can load.
-> Bun 1.4 or newer is required.
-
-> **omp required** — every live capability (agent sessions, omp config, session state, updates)
-> shells out to the `omp` binary, so `serve` refuses to start when it is not on `PATH` (or set via
-> `KABMO_OMP_BIN`). `MOCK=true` is the only mode that runs without a real omp install.
+Kabmo is published to npm and runs on **Bun 1.4+**, not Node. Live capabilities need the `omp`
+binary on `PATH` (or `KABMO_OMP_BIN`); `MOCK=true` is the only mode that runs without one.
 
 ```bash
 bun add -g @kabmo-labs/kabmo   # puts the `kabmo` command on your PATH
 kabmo serve                    # start the server on :3000
 ```
 
-An install that predates the rename keeps its state: the first boot moves
-`~/.ompchamber` to `~/.kabmo` (database, login, sessions and marketplace), and the
-`OMPCHAMBER_*` environment names are still read as fallbacks.
-
-The published tarball carries the source, the CLI and the prebuilt client bundle, so there is no
-build step after install. `npm install -g @kabmo-labs/kabmo` works too — the `kabmo` bin is a Bun
-script, so Bun still has to be on `PATH`.
-
-### From source
+From a checkout:
 
 ```bash
-git clone https://github.com/kabmo-labs/kabmo.git
-cd kabmo
-bun install
-bun run build                        # dist/client — the only build artifact
-
-bun run start                        # NODE_ENV=production bun run src/server/index.ts
-bun link                             # then: kabmo status
+git clone https://github.com/kabmo-labs/kabmo.git && cd kabmo
+bun install && bun run build   # dist/client — the only build artifact
+bun run start                  # or: bun link, then `kabmo status`
 ```
 
-> Without `dist/client` the server answers `503` with the exact command to run — never a bare `500`.
-
-### Updating
-
-```bash
-kabmo update --check        # report only: current version, latest release
-kabmo update                # install it, then restart a running instance
-kabmo update --force        # reinstall even when already up to date
-```
-
-A **bun global** install is refreshed with `bun add -g @kabmo-labs/kabmo@<version>`; a **git checkout** is
-fast-forwarded to the release tag and rebuilt. Uncommitted work is never merged over (the update asks
-you to commit or stash first), and an install owned by another package manager is left alone and told
-which command to run.
-
-A server Kabmo did not start is never restarted: `bun run dev`, `bun run start`, a manual
-`bun src/server/index.ts` and instances owned by a supervisor (systemd, pm2, a container) all record
-themselves as `direct`, so the update leaves them running and says so. `--no-restart` turns the
-restart off entirely. The console's **About → Updates** runs the same install, restarts the instance
-serving that console, and reloads the page once the replacement answers on the same port.
-
-## CLI
-
-`kabmo [COMMAND] [OPTIONS]` — `serve` is the default command.
-
-| Command | Purpose |
-|---|---|
-| `serve` | Start the web server (daemon by default) |
-| `update` | Install the latest version from npm, then restart the instance it started |
-| `stop` | Stop the instances the CLI started — `--port`/`--all` to stop any |
-| `restart` | Stop, then start again — leaving servers started from source alone |
-| `status` | Report whether an instance is running |
-| `logs` | Print or follow the server log |
-| `plugin` | Build, type, scaffold or list panel plugins |
-
-| Option | Purpose |
-|---|---|
-| `-p, --port <port>` | Web server port (default `3000`); scopes `status`/`stop`/`restart`/`logs` |
-| `--host <address>` (`--hostname`) | Bind address (default `127.0.0.1`) |
-| `--lan` | Bind to `0.0.0.0` for LAN access (warns when the traffic is unencrypted) |
-| `--tls` | Serve HTTPS from a self-signed certificate, generated once into `~/.kabmo/tls/` |
-| `--tray` | Show a menu-bar/notification-area icon for this server |
-| `--startup` | Start the server at login (and show the tray icon now) |
-| `--no-startup` | Remove the login entry |
-| `--ui-password [value]` | Require a password for the browser UI; generates one when the value is omitted |
-| `--no-ui-password` | Ignore `KABMO_UI_PASSWORD` for this start |
-| `--prod` | Accepted for compatibility — production is the default |
-| `--dev` | Run the dev server from source (HMR, unminified) instead |
-| `--foreground` (`--no-daemon`) | Run in the foreground (no daemon) |
-| `--all` | Apply the command to every running instance |
-| `-c, --check` | Report whether a newer release exists without installing it |
-| `--force` | Reinstall even when already up to date |
-| `--no-restart` | Do not restart a running instance after updating |
-| `-f, --follow` / `-n, --lines <count>` | Tail the log, optionally from a line count |
-| `--json` / `-q, --quiet` | Machine-readable output / suppress non-essential output |
-
-### Tray icon and start at login
-
-`kabmo serve --tray` puts a Kabmo icon in the menu bar (macOS) or the notification area
-(Windows, Linux). `--startup` additionally registers the server to start at every login, and
-`--no-startup` removes that registration:
-
-```bash
-kabmo serve --tray          # start the server with a tray icon
-kabmo serve --startup       # also start at every login
-kabmo serve --no-startup    # remove the login entry
-```
-
-The icon's menu reflects the server as it is **right now** — rebuilt on every open: Open Console,
-Open Logs, Start at Login / Disable Start at Login, Quit Kabmo.
-
-- **The tray is a child of the server.** It exits when the server does (it watches its parent), so a
-  killed or crashed server leaves no orphan icon, and **Quit Kabmo signals the server** — the
-  icon and the console end together. There is no pid file, no `status`/`stop` for the icon, and
-  nothing to keep in sync: the process tree is the registration.
-- **The login entry runs `serve --foreground`.** launchd reaps a job's whole process tree when the
-  job's program exits, so an entry that ran a detached `serve` (which returns once the health check
-  passes) produced no server at all. In the foreground the CLI is the long-lived job, the server is
-  its child, and the tray is the server's child. Verified against `launchctl print`: the entry is
-  `state = running` with the CLI as its program.
-- **macOS** registers `~/Library/LaunchAgents/dev.kabmo.tray.plist` (`RunAtLoad`, no
-  `KeepAlive` — a server stopped on purpose stays stopped). **Linux** writes
-  `$XDG_CONFIG_HOME/autostart/kabmo-tray.desktop`, which every freedesktop session reads.
-  **Windows** sets the HKCU `…\CurrentVersion\Run` value through `reg`, so registering never needs
-  elevation.
-- **What draws the icon is the platform's own tray API**: an AppKit status item on macOS (via
-  `osascript -l JavaScript`), `System.Windows.Forms.NotifyIcon` on Windows, and `yad`/`zenity`
-  `--notification` on Linux. Only Linux can lack a client — the icon is then skipped with the
-  package to install in the log, and the server keeps running.
-- `--startup` without `--tray` is a supported shape: the login-started server comes up without an
-  icon.
-
-### Ports and multiple instances
-
-One port is served by exactly one process, and `bun run dev`, `kabmo serve` and the production
-server all default to `3000`. **A starting instance never stops another one** — if the port is taken
-by Kabmo, the newcomer reports who holds it and exits non-zero so you can pick another port:
-
-```bash
-kabmo serve --port 3001        # CLI flag
-KABMO_PORT=3001 kabmo serve
-PORT=3001 bun run dev              # or: PORT=3001 bun run start
-```
-
-- Nothing is ever signalled to free a port; `kabmo stop --port 3000` is the deliberate way.
-- A process that is **not** Kabmo is never signalled either: the server names the port and
-  prints the `lsof -nP -iTCP:<port> -sTCP:LISTEN` command to identify it.
-- **`localhost` is two addresses, and the port is taken if either one is.** `Bun.serve` binds only
-  the family a name resolves to first (`[::1]` for `localhost`), so a check aimed at that family
-  alone reported a free port while another instance held `127.0.0.1` — two servers answering "port
-  3000", and a browser landing on whichever one it resolved. Both `127.0.0.1` and `::1` are now
-  probed (and both are asked over `/api/health`, which is what `status`/`stop` use to find a live
-  instance), and the refusal names the address that is held. A literal address (`--host 0.0.0.0`,
-  `127.0.0.1`) is one address and is probed as exactly that.
-- `bun run dev` hot reload is unaffected: `--hot` re-evaluates the entry inside the running
-  process, and a port held by that process is recognized as its own.
-- `status` and `logs` report **every** live instance by default; `--port <port>` narrows them to one.
-  `stop` acts on the instances the CLI started, and `restart`/`update` skip the rest: `bun run dev`
-  is a supervisor whose only job is to mirror the script under it, so stopping that server exits
-  the dev loop with it. Name the instance — `kabmo stop --port <port>`, or `--all` — to end
-  one anyway.
-
-The server writes `~/.kabmo/run/<port>.json` (`pid`, `host`, `mode`, `launchMode`, `startedAt`)
-once it owns the port, which is how `status`/`stop`/`logs` also see servers started by `bun run dev`
-or `--foreground`. `launchMode` is derived from the process's **argv**, never from an environment
-variable — env is inherited, so a `bun run dev` started inside a Kabmo shell would otherwise be
-replaced by an update. Records left by a killed server are pruned once their PID stops answering.
-
-- `stop` reports what actually happened. The record is dropped only once the process is gone, so a
-  stop that could not end the server keeps it — `kabmo status` still finds the instance, the
-  message says so, and the command exits non-zero. Deleting the record over a live process was how a
-  failed stop turned into a deadlock: `status` said "not running" while `serve` refused the port.
-- A PID whose identity cannot be read (Windows cannot read another process's command line, so every
-  PID there reads back as unverified) is resolved through the **port** instead: `/api/health` names
-  the instance serving it. Only when the port names a different PID — a recycled PID, a foreign
-  listener — is the record treated as stale and cleared without signalling anything.
+Updating, the full CLI reference, the tray and login entry, and multi-instance ports:
+**[Installation →](https://github.com/kabmo-labs/kabmo/wiki/Installation)**
 
 ## Configuration
 
-Environment variables, read from `.env` (see [`.env.example`](.env.example)):
+Environment variables (`PORT`, `HOST`, `MOCK`, `KABMO_DATA_DIR`, `KABMO_OMP_BIN`, …), the SQLite
+state and the two data modes: **[Configuration →](https://github.com/kabmo-labs/kabmo/wiki/Configuration)**
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `PORT` | `3000` | Server port |
-| `HOST` | `localhost` | Server bind address |
-| `MOCK` | `false` | `true` = demo datasets, `false` = real SQLite + workspace only |
-| `SYNC_WORKSPACE` | `true` | Seed the workspace list from discovered omp projects — only while the list is still empty (one-time bootstrap; a curated list is never appended to) |
-| `KABMO_DATA_DIR` (`OMPCHAMBER_DATA_DIR`) | `~/.kabmo` | CLI registry, logs, database, wiki mirrors and TLS certificate root |
-| `KABMO_PORT` / `KABMO_HOST` | — | Defaults for the CLI when no flag is passed |
-| `KABMO_UI_PASSWORD` (`OMPCHAMBER_UI_PASSWORD`) | — | Require a UI password (see [Security](#security)); erased from the environment at boot |
-| `KABMO_DB_PATH` (`OMPCHAMBER_DB_PATH`, `DB_PATH`) | `~/.kabmo/db.sqlite` | SQLite database path |
-| `KABMO_BUN` | — | Explicit Bun binary for the CLI to spawn |
-| `KABMO_OMP_BIN` (`OMPCHAMBER_OMP_BIN`) | — | Explicit `omp` binary path |
-| `KABMO_MARKETPLACE_DIR` / `KABMO_BUNDLED_MARKETPLACE_DIR` | — | Override where plugin marketplaces are read from |
-| `PI_CONFIG_DIR` / `PI_CODING_AGENT_DIR` | `~/.omp` | Oh-My-Pi config root overrides |
-| `SKILLS_API_URL` | `https://skills.sh` | Skills catalog source |
-| `NPM_CONFIG_REGISTRY` | `https://registry.npmjs.org` | Registry the update check reads |
-
-Runtime state, sessions and settings live in SQLite (`~/.kabmo/db.sqlite`), the single source
-of truth for persisted settings. Per-session UI state (open tabs, panel widths, the picked repo,
-drafts) lives beside it, keyed by session id, so a reload restores the layout that session was left
-in.
+```bash
+PORT=3001 kabmo serve          # one port, one process; a second instance never steals it
+MOCK=true bun run dev          # demo datasets, no omp install needed
+```
 
 ## Security
 
-**Off by default.** A plain `bun run dev` requires no password, and no file on disk can change that:
-the password is supplied per run and hashed in memory. Only a session *signing* secret is persisted
-(`~/.kabmo/auth.json`, mode 0600), so `bun run --hot` does not sign you out on every save while
-nothing durable can enable authentication on its own.
+The UI is **open by default**; a password is supplied per run and hashed in memory, so nothing on
+disk can enable authentication on its own.
 
 ```bash
-kabmo serve --ui-password my-secret    # or KABMO_UI_PASSWORD
-kabmo serve --ui-password              # generates one and prints it once
-kabmo serve --tls --ui-password …      # HTTPS, cookie gains Secure
+kabmo serve --ui-password      # generates one and prints it once
+kabmo serve --tls --ui-password …
 ```
 
-- **Password** — argon2id, verified in constant time. Login is throttled per socket address
-  (10 per 5 minutes, then a 15-minute lockout); `x-forwarded-for` is deliberately not trusted, so a
-  forged header cannot buy a fresh budget.
-- **Sessions** — a stateless HMAC token in a cookie named per port (`omp_session_<port>`), because
-  browsers key a cookie jar by host and ignore the port. `HttpOnly`, `SameSite=Lax`, and `Secure`
-  whenever the request arrived over https — including through a proxy that sets
-  `x-forwarded-proto`. Changing the password or calling `POST /api/auth/revoke` rotates the signing
-  secret and ends every session everywhere. The token binds to a key derived from the password, so a
-  restart with the same password keeps your session and a different one kills it.
-- **TLS** — `--tls` generates a self-signed certificate (SAN covering `localhost`, `127.0.0.1` and
-  the machine's LAN addresses) into `~/.kabmo/tls/`. Your browser warns once, then the
-  connection is encrypted. Without it, a password and the session cookie cross the network in
-  cleartext, which is what `--lan` warns about.
-- **No TLS locally?** A tunnel terminates TLS at the edge and needs no certificate:
-  `cloudflared tunnel --url http://127.0.0.1:3000`. Verified end to end — login, the API gate, SSE
-  and the terminal WebSocket all work through the public URL, in dev and in the production build.
-- **Local sockets are origin-checked.** The terminal PTY and dictation WebSockets verify the
-  upgrade's origin with the same predicate, because both trigger real work on this machine.
-
-Bind to loopback (the default) and reach it over SSH port-forwarding, a VPN, or a tunnel. Exposing
-the port directly is the option with the least margin for error.
+Sessions are stateless HMAC cookies named per port, login is throttled per socket address, `--tls`
+generates a self-signed certificate, and the terminal and dictation sockets are origin-checked.
+Bind to loopback and reach it over SSH, a VPN or a tunnel — full detail in
+**[Security →](https://github.com/kabmo-labs/kabmo/wiki/Security)**
 
 ## Architecture
 
 ```text
 src/
 ├─ client/    Preact UI — zero React packages
-│  ├─ components/   layout, workspace, settings, mobile, common
-│  ├─ hooks/        chat, workspace, ui, browser, models, settings
-│  ├─ data/         mock datasets, samples, themes, model + agent catalogs
-│  └─ tailwind.css  theme tokens (--theme-ink, --theme-paper, …)
 ├─ server/    Bun-only — Elysia routes, SQLite, omp RPC bridge, fs/git/terminal
-│  ├─ routes/       one plugin per domain, mounted in routes/index.ts
-│  ├─ lib/          omp session/subagent/config, panels, wiki, updates, lifecycle
-│  └─ plugins/      SSR shell, static assets, compression, dev assets
 ├─ shared/    Imported by both — types, chat timeline folding, pure helpers
 └─ cli/       kabmo command (plain ESM, runs under Bun)
-
-packages/
-├─ kabmo-sdk/   the panel-plugin contract (types, backend API, slots)
-└─ kabmo-ui/    the Preact kit a plugin builds against
-
-marketplace/plugins/
-├─ command-runner/  a repository's commands, 18 sources across 15 toolchains
-├─ stats/           CPU and RAM of the whole omp stack
-└─ session-info/    active workspace and a note per session
+packages/     kabmo-sdk (plugin contract) · kabmo-ui (Preact kit)
+marketplace/  command-runner · stats · session-info
 ```
 
-Non-obvious invariants worth reading before you edit:
-
-- **`src/shared/**` must never import a `node:` builtin or `bun:sqlite`** — it also runs in the
-  browser. Server-only helpers belong in `src/server/lib/**`.
-- **Route modules keep the ported Remix shape** (`loader` for GET, `action` for mutations) so status
-  codes stay identical; `action` owns method dispatch and returns its own `405`.
-- **Every internal import uses the `@/` alias**, folders mirror component names in kebab-case, and
-  every `.ts`/`.tsx` file stays under 350 lines.
-- **Every right-panel view is a plugin**, including the eleven Kabmo ships: one catalog merges
-  the built-ins and the installed ones, so a view cannot be a table in one layout and a fetch in the
-  other.
-
-[`AGENTS.md`](AGENTS.md) is the normative reference for all of the above — the invariants behind the
-panels, the BTW subsystem, the PTY terminal, the plugin platform and the build/dev loop.
+[`AGENTS.md`](AGENTS.md) is the short binding contract for contributors and agents. The detail —
+every subsystem, the invariants and the measured reason behind each one — lives in the
+**[wiki](https://github.com/kabmo-labs/kabmo/wiki)**.
 
 ## Development
 
@@ -396,16 +165,9 @@ bun run dev            # watched server; the client bundle is built on demand
 bun run dev:lan        # same, bound to the LAN
 ```
 
-One process. Bun serves the HTML shell and bundles its assets itself, so there is no separate
-client watcher to run and no build step before the first request: saving a server file restarts the
-server, saving a client file is pushed to the browser over HMR (`import.meta.hot`, wired by Bun).
-A dev server keeps the whole module graph open for HMR (~3.5k descriptors after one page load), so
-`GET /api/health` reports `fds.open` and `kabmo status` prints it — a long-lived session belongs
-on a production server.
-
-`bun run build` produces the production bundle — `scripts/build-client.ts` writes `dist/client`, which
-`kabmo serve` runs. The CLI builds it on demand the first time when it is missing, so a source
-checkout needs no manual build; `--dev` skips the bundle entirely.
+One process: Bun serves the HTML shell and bundles its assets itself, so there is no separate client
+watcher and no build before the first request — a server save restarts, a client save is pushed over
+HMR. `bun run build` writes `dist/client`, which `kabmo serve` runs.
 
 Verification gates, all mandatory:
 
@@ -417,139 +179,23 @@ bun test                                                      # unit + route sui
 bun run typecheck:e2e                                         # the Playwright specs
 ```
 
-The browser layer is Playwright (`tests/e2e/`, 22 specs, `*.e2e.ts`) and boots a real server
-subprocess against an isolated temp root per spec; `bun run test:e2e` runs it, and CI runs it on
-every push to `main` plus label-gated pull requests.
-
-The screenshots, GIFs and the MP4 in [`docs/assets`](docs/assets) are generated by
-`bun run readme:media` ([`scripts/readme-media.ts`](scripts/readme-media.ts)), which boots an
-isolated `MOCK=true` server (its own data dir, database, agent dir and marketplace root) and drives
-the real UI through Playwright, so they contain demo data only — never a real workspace. Pass
-`--shots` or `--video` to regenerate one half. The wordmark at the top is
-[`public/kabmo-wordmark.svg`](public/kabmo-wordmark.svg): the icon's K lockup with the word
-outlined (no font required), one ink that holds on a light *and* a dark README, and an
-`aria-label` so the image is still named for assistive tech.
-
-The three logos in the badge row live in [`docs/assets/brand`](docs/assets/brand) — Elysia and
-Shiki have no Simple Icons slug and shields rejects a remote `logo=` URL, so each mark is inlined
-in the badge as a base64 data URI. Their provenance, licences and recolouring are documented
-beside them, and `docs/assets/brand/badges.test.ts` fails if a mark and its embedded payload drift
-apart.
-
-## Releasing
-
-A push to `main` cuts the release — there is no manual version bump
-([`.github/workflows/release.yml`](.github/workflows/release.yml)). The workflow calls the same
-reusable gates a pull request runs, then publishes as the last jobs of its own run:
-
-```text
-gates → e2e → packages → packages-publish
-                       → marketplace → app → app-publish
-```
-
-1. `semantic-release` reads the Conventional Commits since the last tag, decides the next
-   version, writes it into `package.json` and a `## [x.y.z]` section of `CHANGELOG.md`, commits
-   both, then creates the tag and the GitHub Release.
-2. `publish-app.yml` checks out the tag, verifies it against `package.json`, typechecks, runs
-   `bun test`, builds `dist/client`, packs a dry run, and runs `bun publish`. Publishing is the
-   **last action of the release run** rather than a second run dispatched beside it, so a release
-   cannot report success while its publish is still queued, still waiting on the `npm` environment,
-   or already failed.
-3. The same run releases `@kabmo-labs/kabmo-sdk` and `@kabmo-labs/kabmo-ui` FIRST (the app pins them, and
-   a `workspace:` spec is substituted from `bun.lock`), then bumps the bundled marketplace plugins
-   by their own commit history — a bundled plugin's manifest version is the whole delivery
-   mechanism, since `syncBundledPlugins` applies a new copy only when the store's version is
-   strictly newer.
-
-What a commit does to the version is one table, in
-[`release/release-rules.js`](release/release-rules.js), and `release/bump.test.js` asserts it:
-
-| Commit | Version |
-| --- | --- |
-| `feat` | minor |
-| `fix`, `perf`, `revert` | patch |
-| `feat!` / `fix!` / `perf!` / `refactor!`, or a `BREAKING CHANGE:` footer | major |
-| `docs`, `refactor`, `chore`, `style`, `test`, `build`, `ci` | no release |
-
-Two of those rows exist because the toolchain's own defaults are wrong here: a `!` on a type that
-cannot carry a breaking change (`chore!`, `docs!`, an unknown `foo!`) used to cut a major version
-through the analyzer's built-in `{ breaking: true }` fallback, and the parser's note regex is
-case-insensitive, so any body line starting with `breaking change` — colon optional — counted as a
-breaking note. The second one is not hypothetical: a `docs` commit whose body wrapped onto
-`breaking-change (!) footer` cut **v1.0.0** where the `feat`s in the range asked for v0.9.0, and the
-changelog printed that prose as its breaking note. Both are fixed in `release/release-rules.js`, and
-both are locked by `release/bump.test.js`.
-
-A `BREAKING CHANGE:` footer is therefore read only in uppercase, and only where the type allows it.
-
-Two things to set up once and one to never do:
-
-- GitHub environment **`npm`** with a secret `NPM_TOKEN`: a granular npm token with read/write on
-  `kabmo` (and the two packages), 2FA bypass enabled and the `publish and stage` action (a
-  stage-only token is rejected — Bun has no `npm stage publish`).
-- A failed publish is retried with `gh workflow run publish.yml -f tag=vX.Y.Z`, which leaves the
-  release itself untouched. `publish.yml` is now only a TRIGGER (a published release, or that
-  dispatch); the steps it runs live in `publish-app.yml`, which `release.yml` also calls.
-- **Never** write a skip marker (`[skip ci]`, `[ci skip]`, `[no ci]`) into a message pushed to
-  `main` — it scans the whole message and silently skips the release run. Only the bot's release
-  commit carries one, so that it does not re-trigger the workflow.
-
-### GitHub Packages (optional, second destination)
-
-npmjs.org is the registry every install path reads, and nothing about it changes. A separate
-**manual** workflow can additionally publish the same packages to GitHub Packages
-([`publish-github-packages.yml`](.github/workflows/publish-github-packages.yml)):
-
-```bash
-gh workflow run publish-github-packages.yml -f packages="packages/kabmo-sdk packages/kabmo-ui"
-```
-
-It is not part of a release, and no manifest carries `publishConfig.registry` — that one field
-would redirect the whole pipeline, and GitHub Packages refuses **anonymous** reads for every
-package, public ones included. Moving the app's release there would turn
-`registry.npmjs.org/@kabmo-labs%2fkabmo/latest` (what `kabmo update` asks) into a 401 for every
-user. Use it only for the case the public registry cannot serve: a private fork, an internal
-mirror, a plugin author who already has a GitHub credential.
-
-A consumer then needs two lines in `.npmrc` and a token with `read:packages`:
-
-```ini
-@kabmo-labs:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-Three facts about that registry, each measured rather than assumed:
-
-- **A first publish is private.** Visibility is per package in the repository settings; no
-  manifest field or workflow input can set it.
-- **A version is never overwritten.** A republish is refused with `409`, and
-  `bun publish --tolerate-republish` does **not** suppress it — so the script skips a version that
-  is already there, which is also what makes a re-run finish a half-published run.
-- **`bun publish` needs `--registry` AND `NPM_CONFIG_TOKEN` together.** A `.npmrc`
-  `_authToken=${VAR}` is sent literally (bun does not expand the environment), and a bare
-  `@kabmo-labs:registry` line is ignored by `bun publish` — which would silently publish to
-  npmjs.org instead. `tests/publish-github-packages.test.ts` pins all of it.
-
-**Token.** The workflow's own `GITHUB_TOKEN` (`packages: write`) is enough **once each package is
-associated with this repository**, which the `repository` field in every `package.json` already
-does. The one case it cannot cover is a first publish that answers
-`403 … The requested installation does not exist` / `permission_denied: create_package` — a
-`GITHUB_TOKEN` may only write to a package associated with its own repository. Add a repository
-secret **`GH_PACKAGES_TOKEN`** for that: a PAT **classic** with `write:packages` (GitHub Packages
-does not accept granular tokens). It takes precedence over the job token when present, and the
-script prints both possible causes on a 403 rather than echoing the registry's text.
+The browser layer is Playwright (`tests/e2e/`, `*.e2e.ts`) and boots a real server subprocess against
+an isolated temp root per spec; `bun run test:e2e` runs it, and CI runs it on every push to `main`
+plus label-gated pull requests. The screenshots and GIFs in [`docs/assets`](docs/assets) are generated
+by `bun run readme:media` against an isolated `MOCK=true` server, so they contain demo data only.
 
 ## Contributing
 
 Issues and pull requests both get an automated first pass: a GitHub App runs the `omp` agent headlessly
 to triage a new issue and to review a pull request, and its verdict is published as a `review:*` label.
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) is the policy — the four mandatory gates, the pull request
-  sections the reviewer checks, what counts as evidence, and the label a review moves through.
-- The command surface is `@<bot> help | review | summarize | triage | reproduce` as the first line of a
-  comment. Run the **bot config check** workflow to print the name this repository answers to.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) is the policy — the mandatory gates, the pull request sections
+  the reviewer checks, what counts as evidence, and the label a review moves through.
+- The command surface is `@<bot> help | review | summarize | triage | reproduce` as the first line of
+  a comment. Run the **bot config check** workflow to print the name this repository answers to.
 - Bugs go through the issue form; requests through the feature form. Design and scope stay the
-  maintainer's call, and `AGENTS.md` is the normative reference for the code rules.
+  maintainer's call, and [`AGENTS.md`](AGENTS.md) plus the wiki are the normative reference for the
+  code rules.
 
 ## License
 

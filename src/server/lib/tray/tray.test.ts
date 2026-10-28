@@ -5,7 +5,8 @@
 // `.desktop` file a freedesktop session reads and the Run value Windows stores
 // are all strings, so they can be asserted without touching a real
 // `~/Library/LaunchAgents`, a real `reg.exe` or a real session. What IS verified
-// against the OS lives in the smoke runs recorded in AGENTS.md.
+// against the OS lives in the smoke runs recorded in the wiki's Desktop
+// integration page.
 
 import { describe, expect, test } from 'bun:test';
 import { existsSync } from 'node:fs';

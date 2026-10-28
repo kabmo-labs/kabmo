@@ -1,8 +1,9 @@
 # Contributing
 
-[`AGENTS.md`](AGENTS.md) is the normative reference for architecture and code rules; this file is
-the contribution policy. It is also the document the automated reviewer (`@kabmo-bot`) reads on
-every run, so everything below is written as something a reviewer can check against a diff.
+[`AGENTS.md`](AGENTS.md) is the binding contract for architecture and code rules, and the
+[wiki](https://github.com/kabmo-labs/kabmo/wiki) carries the per-subsystem detail behind it; this
+file is the contribution policy. It is also the document the automated reviewer (`@kabmo-bot`) reads
+on every run, so everything below is written as something a reviewer can check against a diff.
 
 ## 1. Setup and gates
 

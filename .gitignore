@@ -49,3 +49,7 @@ packages/linux/target/
 # .NET writes `bin/` and `obj/` inside the project, not at the shell's root.
 packages/windows/**/bin/
 packages/windows/**/obj/
+
+# The Kabmo wiki checkout. It is its OWN git repository, pushed to
+# https://github.com/kabmo-labs/kabmo.wiki.git — never part of the app tree.
+.wiki/

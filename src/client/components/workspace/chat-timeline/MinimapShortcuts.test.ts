@@ -16,7 +16,8 @@
  * geometry correct: one button spanning the whole row (so no child can be the
  * only element under the pointer), the visual line as a non-interactive span
  * inside it, and every row's button wired to that row's turn. The rendered
- * pixel behaviour is covered by the browser check recorded in AGENTS.md.
+ * pixel behaviour is covered by the browser check recorded in the wiki's App
+ * shell and layout page.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
