@@ -67,13 +67,24 @@ const ERROR_MODELS: ModelsData = {
 
 const originalFetch = globalThis.fetch;
 
-function stubFetch(modelsResponses: unknown[]): void {
-  let modelsCalls = 0;
+/**
+ * Serve `/api/models` from a payload the TEST swaps at the moment it writes.
+ *
+ * A positional queue assumes exactly one read per phase, and that assumption is
+ * what made this file flaky: `useModelCatalog` fetches on mount AND again on the
+ * realtime topic's first value, so on a runner where the socket's initial
+ * publish lands AFTER the mount fetch resolves, the mount phase consumes TWO
+ * entries — the second being the "after the write" payload — and the picker
+ * clears its rows before the test publishes anything. Measured in CI: the panel
+ * read `No models available` and the wait for `Alpha Model` timed out on Ubuntu
+ * and on Windows while passing locally. The stub therefore holds ONE payload and
+ * `serve()` replaces it; every read before the test's write sees the first one.
+ */
+function stubFetch(): { serve: (payload: unknown) => void } {
+  let payload: unknown = null;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.startsWith('/api/models')) {
-      const payload = modelsResponses[Math.min(modelsCalls, modelsResponses.length - 1)];
-      modelsCalls += 1;
       return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     if (url.includes('/state')) {
@@ -81,6 +92,7 @@ function stubFetch(modelsResponses: unknown[]): void {
     }
     return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
   }) as unknown as typeof fetch;
+  return { serve: (next: unknown) => { payload = next; } };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -159,7 +171,8 @@ describe('model picker live updates', () => {
   test('a reload carrying an EMPTY model list clears the picker', async () => {
     server = await startRealtimeTestServer(new Map([[TOPIC_MODELS, async () => WITH_MODELS]]));
     installDomGlobals(new Window({ url: `http://127.0.0.1:${server.port}` }));
-    stubFetch([WITH_MODELS, EMPTY_MODELS]);
+    const models = stubFetch();
+    models.serve(WITH_MODELS);
 
     container = await mountPicker();
     trigger(container).click();
@@ -172,7 +185,9 @@ describe('model picker live updates', () => {
     expect(panelText()).toContain('Beta Model');
 
     // The app clears its client cache after a provider write, then the topic
-    // delta drives the reload — mirrored here in that exact order.
+    // delta drives the reload — mirrored here in that exact order. The payload
+    // is swapped BEFORE the signal so the reload cannot read the old one.
+    models.serve(EMPTY_MODELS);
     invalidateModelsCache();
     server.publish(TOPIC_MODELS, EMPTY_MODELS);
 
@@ -184,13 +199,15 @@ describe('model picker live updates', () => {
   test('a FAILED read (modelError) keeps the previous list', async () => {
     server = await startRealtimeTestServer(new Map([[TOPIC_MODELS, async () => WITH_MODELS]]));
     installDomGlobals(new Window({ url: `http://127.0.0.1:${server.port}` }));
-    stubFetch([WITH_MODELS, ERROR_MODELS]);
+    const models = stubFetch();
+    models.serve(WITH_MODELS);
 
     container = await mountPicker();
     trigger(container).click();
     const panelText = () => container.textContent ?? '';
     await waitForDom(() => panelText().includes('Alpha Model'));
 
+    models.serve(ERROR_MODELS);
     invalidateModelsCache();
     server.publish(TOPIC_MODELS, ERROR_MODELS);
 
@@ -204,7 +221,8 @@ describe('model picker live updates', () => {
   test('a collapsed section is persisted and restored on remount', async () => {
     server = await startRealtimeTestServer(new Map([[TOPIC_MODELS, async () => WITH_MODELS]]));
     installDomGlobals(new Window({ url: `http://127.0.0.1:${server.port}` }));
-    stubFetch([WITH_MODELS]);
+    const models = stubFetch();
+    models.serve(WITH_MODELS);
 
     container = await mountPicker(true);
     trigger(container).click();

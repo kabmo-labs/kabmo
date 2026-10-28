@@ -134,13 +134,14 @@ describe('discoverNativeAgents', () => {
 
     const found = await discoverNativeAgents();
     expect(found.map((agent) => agent.id).sort()).toEqual(['omp-user-one', 'omp-user-two']);
-    expect(found[0]).toMatchObject({
+    // By id, never by index: `readdir` order is not guaranteed (Windows returned `two` first).
+    const byId = new Map(found.map((agent) => [agent.id, agent]));
+    expect(byId.get('omp-user-one')).toMatchObject({
       name: 'First', description: 'a description', mode: 'subagent', overrideModel: 'fast', thinkingVariant: 'high',
       temperature: 0.5, topP: null, systemPrompt: 'system prompt', sourceRoot: 'user', filePath: join(userAgents, 'one.md'),
     });
-    expect(found[1]).toMatchObject({
-      name: 'two', description: '', mode: 'all', temperature: null, topP: null,
-      systemPrompt: 'no frontmatter body',
+    expect(byId.get('omp-user-two')).toMatchObject({
+      name: 'two', description: '', mode: 'all', temperature: null, topP: null, systemPrompt: 'no frontmatter body',
     });
   });
 
