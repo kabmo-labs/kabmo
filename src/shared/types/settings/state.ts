@@ -1,4 +1,5 @@
 import type { ThemeId } from '@/shared/lib/theme/catalog';
+import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
@@ -84,6 +85,16 @@ export interface SettingsState {
    * the field empty. Null = no budget (the turn ceiling is then the only stop).
    */
   goalDefaultBudget: number | null;
+  /**
+   * How wide the chat's content column is (`compact` | `wide` | `full`). A
+   * READING width, not a layout: no mode hides a panel. The numbers live in
+   * `tailwind.css` (`--chat-column-max`); this field only names the choice.
+   *
+   * Global, not per-session: a comfortable line length is a property of the
+   * person and the display, not of one conversation, and a per-session value
+   * would send every new chat back to the default.
+   */
+  chatWidthMode: ChatWidthMode;
   followUpBehavior: 'queue' | 'steering';
   keybindingSend: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingNewLine: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';

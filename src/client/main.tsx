@@ -4,6 +4,7 @@ import { bootSyntax } from '@/shared/lib/code/highlighter';
 import { warmSyntaxTokenizers } from '@/shared/lib/code/highlighter-warmup';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { initDocumentTheme } from '@/client/hooks/ui/theme';
+import { initChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { primeWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { installAuthFetchBridge, primeAuthState } from '@/client/hooks/ui/auth';
 import { installPluginRuntime } from '@/client/lib/plugins/runtime';
@@ -31,6 +32,13 @@ primeAuthState(bootstrap?.authenticated, bootstrap?.authEnabled === true);
 installAuthFetchBridge();
 
 primeKabmoSettings(bootstrap?.appSettings);
+
+// The chat column's width, before the first render: the boot payload is what
+// `readKabmoSetting` answers from, so a user on `compact` would otherwise see
+// the default column for one frame and watch it snap narrower. Same reason
+// `initDocumentTheme` below is here rather than in a hook — the timeline is a
+// lazily mounted subtree, and a hook would not run until it mounted.
+initChatWidthMode();
 
 // BEFORE the theme init, which writes the chrome meta: a phone that repainted
 // it from the module default would flash the desktop's color for a frame. The

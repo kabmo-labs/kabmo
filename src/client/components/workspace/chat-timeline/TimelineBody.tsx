@@ -85,7 +85,7 @@ export function TimelineBody({
           isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
         }`}
       >
-        <div ref={contentRef} className="mx-auto w-full max-w-[970px]">
+        <div ref={contentRef} className="chat-column">
           {(loadingOlder || hasMore || loadOlderError) && (
             <div className="pb-1">
               {loadingOlder

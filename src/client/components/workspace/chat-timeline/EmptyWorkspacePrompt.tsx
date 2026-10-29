@@ -156,7 +156,7 @@ export function EmptyWorkspacePrompt({
       style={variant === 'mobile' ? { paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' } : undefined}
     >
       <div
-        className={`mx-auto w-full max-w-[970px] flex flex-col min-h-0 space-y-3 ${
+        className={`chat-column flex flex-col min-h-0 space-y-3 ${
           messages.length > 0 ? 'flex-1' : 'my-auto justify-center'
         }`}
       >
@@ -211,7 +211,7 @@ export function EmptyWorkspacePrompt({
             ref={timelineRef}
             className="flex-1 min-h-0 overflow-y-auto scroll-smooth overscroll-contain"
           >
-            <div className="mx-auto w-full max-w-[970px]">
+            <div className="chat-column">
               {messages.map((msg, idx) => {
                 const prev = messages[idx - 1];
                 const isLoading = isGenerating && idx === streamingIdx && msg.role === 'ai';

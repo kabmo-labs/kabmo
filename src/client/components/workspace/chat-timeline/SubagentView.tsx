@@ -114,7 +114,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
           isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
         }`}
       >
-        <div className="mx-auto w-full max-w-[970px]">
+        <div className="chat-column">
           {isLoading && messages.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-12 text-[11px] font-mono text-ink/50">
               <Loader2 size={14} className="animate-spin" />
@@ -168,7 +168,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
           has nothing left to control, so the strip renders only while running
           and the notice stands in otherwise. */}
       <div className="flex-shrink-0 p-4 pt-1">
-        <div className="mx-auto w-full max-w-[970px]">
+        <div className="chat-column">
           {isRunning ? (
             <SubagentControls sessionId={String(sessionId ?? '')} subagentId={subagent.id} running />
           ) : (

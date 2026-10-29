@@ -112,7 +112,7 @@ export function ComposerDock({
     >
       {/* `relative` keeps the queue/indicator stack anchored above the input
           while the side-question form takes the composer's place. */}
-      <div className="relative mx-auto w-full max-w-[970px]">
+      <div className="chat-column relative">
         {/* Plugin banner strip: above the input, in the chat's own composer.
             An empty slot renders nothing, so a Kabmo with no plugins keeps
             this dock byte-identical. */}

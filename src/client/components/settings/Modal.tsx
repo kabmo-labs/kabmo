@@ -3,13 +3,12 @@ import { AlertCircle, Check, ChevronLeft, X } from 'lucide-preact';
 import type { SettingsCategoryId, SettingsState } from '@/shared/types';
 import { mergeKabmoSettings } from '@/shared/lib/settings/client';
 import { diffSettings } from '@/shared/lib/settings/diff';
+import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
 import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-setting';
 import { useReloadOmpEngine } from '@/client/hooks/settings/reload-engine';
 import { useRestartKabmo } from '@/client/hooks/settings/restart-kabmo';
 import { applyDocumentTheme } from '@/client/hooks/ui/theme';
-import { DEFAULT_THEME_ID } from '@/shared/lib/theme/catalog';
-import { EDITOR_DEFAULT_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
-import { EDITOR_DEFAULT_THEME_ID } from '@/shared/lib/code/editor/themes';
+import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
@@ -39,22 +38,6 @@ export interface SettingsModalProps {
   appSettings?: Record<string, any>;
   autoOpenAddProvider?: boolean;
 }
-
-const DEFAULT_SETTINGS: SettingsState = {
-  theme: DEFAULT_THEME_ID,
-  editorFont: EDITOR_DEFAULT_FONT_FAMILY,
-  editorTheme: EDITOR_DEFAULT_THEME_ID,
-  autoSessionTitle: true,
-  soundAlerts: true,
-  chatCompletionSound: true,
-  goalAuditEnabled: true,
-  goalAuditModel: '',
-  goalDefaultBudget: null,
-  followUpBehavior: 'queue',
-  keybindingSend: 'Enter',
-  keybindingNewLine: 'Shift + Enter',
-  keybindingSteering: 'Ctrl / Cmd + Enter'
-};
 
 export function SettingsModal({ 
   isOpen, 
@@ -127,6 +110,13 @@ export function SettingsModal({
       // editor subscribes rather than reading the boot-time `appSettings`.
       if (typeof window !== 'undefined' && next.editorTheme !== prev.editorTheme) {
         window.dispatchEvent(new CustomEvent(EDITOR_THEME_CHANGED_EVENT, { detail: next.editorTheme }));
+      }
+      // The chat column's width is an attribute on `<html>` that CSS reads, so
+      // it applies the moment the choice is made — `appSettings` is a boot-time
+      // prop and would only show it after a reload. Announced only when the
+      // value actually moved.
+      if (next.chatWidthMode !== prev.chatWidthMode) {
+        applyChatWidthMode(next.chatWidthMode);
       }
       // Only the keys this update actually touched are persisted. The modal
       // holds a full `SettingsState` snapshot taken when it opened, so writing

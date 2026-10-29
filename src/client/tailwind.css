@@ -286,6 +286,46 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* The chat column's width, in ONE variable and ONE class.
+ *
+ * `data-chat-width` on `<html>` picks the mode (`shared/lib/chat/timeline/
+ * width-mode.ts`); the numbers live here and nowhere else, because they are
+ * CSS's fact and the settings control only needs the names. `wide` is the
+ * `:root` value, which is also why `applyChatWidthMode` REMOVES the attribute
+ * for the default: a document that never chose a mode and a document that chose
+ * `wide` are the same state, and this block is the single statement of it.
+ *
+ * `full` is `100%` of the chat PANEL, not of the window: the chat is the layout's
+ * filler column (`MIN_CHAT_PANEL_WIDTH` in `shared/lib/workspace/
+ * panel-widths.ts`), so an open editor or right panel narrows it and the column
+ * follows instead of overflowing.
+ *
+ * Before this, the number was written out at eight call sites as
+ * `max-w-[970px]` — transcript, composer dock, skeleton, subagent view and the
+ * empty workspace prompt — which is eight chances for a mode to half-apply.
+ */
+:root {
+  --chat-column-max: 970px;
+}
+
+/* `:root[data-chat-width]`, not a bare attribute selector: `[data-chat-width]`
+ * and `:root` have the SAME specificity (0,1,0), so the override would win or
+ * lose on source order alone. The element is the same (`<html>`), so this only
+ * raises the specificity above the default above it. */
+:root[data-chat-width="compact"] {
+  --chat-column-max: 720px;
+}
+
+:root[data-chat-width="full"] {
+  --chat-column-max: 100%;
+}
+
+.chat-column {
+  width: 100%;
+  max-width: var(--chat-column-max);
+  margin-inline: auto;
+}
+
 /* Markdown rendered output (marked) — mirrors the previous react-markdown
  * component styling with semantic tags. */
 :root {

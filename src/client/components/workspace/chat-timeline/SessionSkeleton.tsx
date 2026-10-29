@@ -51,7 +51,7 @@ export function SessionSkeleton() {
     <div aria-hidden className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Timeline body — mirrors the real container's padding in both variants. */}
       <div className="flex-1 min-h-0 overflow-hidden pl-4 pr-3 py-3 pb-8 sm:p-4 sm:pb-10">
-        <div className="mx-auto w-full max-w-[970px]">
+        <div className="chat-column">
           {rows.map((row, i) => (
             <SkeletonBubble key={i} row={row} index={i} />
           ))}
@@ -60,7 +60,7 @@ export function SessionSkeleton() {
 
       {/* Composer area — skeleton chat input, mirrors the real footer padding. */}
       <div className="flex-shrink-0 px-3 pt-1 pb-3 sm:p-4 sm:pt-1">
-        <div className="mx-auto w-full max-w-[970px]">
+        <div className="chat-column">
           <div className="rounded-md border border-ink/20 bg-paper p-3 space-y-2">
             <div className="h-9 rounded bg-ink/8 animate-pulse" style={{ animationDelay: '720ms' }} />
             <div className="flex items-center justify-between">
