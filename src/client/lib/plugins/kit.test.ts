@@ -28,6 +28,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 import { installUiKit } from '@/client/lib/plugins/kit';
+import { resetPluginReadiness } from '@/client/lib/plugins/readiness';
 import { uiKitServices } from '@kabmo-labs/kabmo-ui';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
@@ -50,6 +51,9 @@ beforeEach(() => {
     Reflect.set(globalThis, key, (win as unknown as Record<string, unknown>)[key]);
   }
   installUiKit();
+  // The readiness answer is cached once true, so each case starts from a
+  // process that has not been asked yet.
+  resetPluginReadiness();
 });
 
 afterEach(() => {
@@ -99,5 +103,118 @@ describe('the kit plugin-RPC reader', () => {
     expect(outcome.ok).toBe(false);
     if (outcome.ok) throw new Error('unreachable');
     expect(outcome.error.code).toBe('bad_response');
+  });
+});
+
+/**
+ * The BOOT WINDOW: a restarted server answers health before it has imported its
+ * plugin halves.
+ *
+ * The console reloads the page the moment health reports a different process,
+ * so the new page's first plugin RPC can 404 against a server that is still
+ * booting. Measured after a restart: `watch` fired 194 ms into the new page and
+ * 404'd, its effect never re-ran (the call's identity did not change), and the
+ * Stats readout stayed on `—` although the halves were up ~500 ms later.
+ *
+ * So a 404 on the route is retried ONCE, after the platform reports ready — and
+ * only while that is still plausible: once the platform is up, the same 404 is
+ * the plugin genuinely not being loaded, and it is returned as it stands.
+ */
+describe('a plugin call that lands during the boot window', () => {
+  /** Answer by URL, so the health probe and the RPC route can differ. */
+  function stubSequenced(handler: (url: string, attempt: number) => Response): void {
+    let rpcAttempts = 0;
+    globalThis.fetch = (async (input: unknown) => {
+      const url = String(input);
+      if (url.includes('/api/health')) return handler('/api/health', 0);
+      rpcAttempts += 1;
+      return handler(url, rpcAttempts);
+    }) as unknown as typeof fetch;
+  }
+
+  const notLoaded = () => new Response(JSON.stringify({ error: 'No plugin "stats" is loaded' }), {
+    status: 404,
+    headers: { 'content-type': 'application/json' },
+  });
+
+  test('is retried once the boot window it landed in closes, and succeeds', async () => {
+    let healthReads = 0;
+    stubSequenced((url, attempt) => {
+      if (url === '/api/health') {
+        healthReads += 1;
+        // The first answer is the boot in progress — that is what licenses the
+        // retry; the next one is the platform being up.
+        return Response.json({ pluginsReady: healthReads > 1 });
+      }
+      if (attempt === 1) return notLoaded();
+      return Response.json({ ok: true, value: { watching: 1 } });
+    });
+
+    const outcome = await callRpc('stats', 'watch', null);
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) throw new Error('unreachable');
+    expect(outcome.value).toEqual({ watching: 1 });
+  });
+
+  test('waits for a boot that is still running, then retries', async () => {
+    let healthReads = 0;
+    stubSequenced((url, attempt) => {
+      if (url === '/api/health') {
+        healthReads += 1;
+        // The first answer says "still booting"; the second says "up".
+        return Response.json({ pluginsReady: healthReads > 1 });
+      }
+      if (attempt === 1) return notLoaded();
+      return Response.json({ ok: true, value: { watching: 1 } });
+    });
+
+    const outcome = await callRpc('stats', 'watch', null);
+    expect(outcome.ok).toBe(true);
+    expect(healthReads).toBeGreaterThan(1);
+  });
+
+  test('a 404 on a platform that is already up stays plugin_not_loaded, unretried', async () => {
+    let rpcAttempts = 0;
+    stubSequenced((url) => {
+      if (url === '/api/health') return Response.json({ pluginsReady: true });
+      rpcAttempts += 1;
+      return notLoaded();
+    });
+
+    const outcome = await callRpc('stats', 'watch', null);
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) throw new Error('unreachable');
+    expect(outcome.error.code).toBe('plugin_not_loaded');
+    // No boot window was observed, so the 404 is the plugin really not being
+    // loaded — retrying it would only double a call that answered correctly.
+    expect(rpcAttempts).toBe(1);
+  });
+
+  test('an older server with no readiness field is not waited on', async () => {
+    let rpcAttempts = 0;
+    stubSequenced((url) => {
+      if (url === '/api/health') return Response.json({ ok: true, pid: 1 });
+      rpcAttempts += 1;
+      return notLoaded();
+    });
+
+    const outcome = await callRpc('stats', 'watch', null);
+    expect(outcome.ok).toBe(false);
+    // One attempt: an absent field is not evidence of a boot window, so there
+    // is nothing to wait for and nothing to retry.
+    expect(rpcAttempts).toBe(1);
+  });
+
+  test('a health probe that cannot be read is not waited on either', async () => {
+    let rpcAttempts = 0;
+    globalThis.fetch = (async (input: unknown) => {
+      if (String(input).includes('/api/health')) throw new TypeError('fetch failed');
+      rpcAttempts += 1;
+      return notLoaded();
+    }) as unknown as typeof fetch;
+
+    const outcome = await callRpc('stats', 'watch', null);
+    expect(outcome.ok).toBe(false);
+    expect(rpcAttempts).toBe(1);
   });
 });

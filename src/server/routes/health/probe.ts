@@ -6,6 +6,7 @@ import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
 import { isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
 import { isMockMode } from '@/server/mock.server';
+import { pluginPlatformReady } from '@/server/lib/plugins/loader.server';
 
 const STARTED_AT = Date.now();
 const STARTED_ISO = new Date(STARTED_AT).toISOString();
@@ -48,6 +49,12 @@ export async function loader() {
       // Reported so discovery does not have to guess the scheme: `status` and
       // `findLiveInstance` read it to build the URL they print and probe.
       tls: isTlsEnabledByArgv(),
+      // Whether the boot's plugin pass has finished. The listener answers before
+      // it runs, so a client that reloads on "a different process answers" can
+      // land in a server whose plugin halves are still loading; this is the fact
+      // that lets it retry a `plugin_not_loaded` RPC instead of reporting it as
+      // a plugin that is not running.
+      pluginsReady: pluginPlatformReady(),
       // Whether this run raises a tray icon. Reported so discovery can carry it
       // into a replacement's argv: a restart is spawned by a different process,
       // and the flag is not recoverable from the running server any other way.

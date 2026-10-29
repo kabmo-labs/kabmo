@@ -42,6 +42,7 @@ import {
   subscribeSidebarThreads,
 } from '@/client/lib/plugins/sidebar-bridge';
 import { repoScopeServices } from '@/client/lib/plugins/repo-scope-service';
+import { awaitPluginPlatformReady } from '@/client/lib/plugins/readiness';
 
 /**
  * Read a text file inside the active workspace, through Kabmo's own fs
@@ -76,6 +77,25 @@ async function readWorkspaceFile(workspacePath: string | null, relativePath: str
  */
 async function callRpc(pluginId: string, method: string, input: unknown): Promise<PluginRpcOutcome> {
   if (!pluginId) return { ok: false, error: { code: 'no_plugin', message: 'No plugin is in scope.' } };
+  const first = await callRpcOnce(pluginId, method, input);
+  // A 404 on the route means no plugin by this id is loaded — and the console
+  // reloads into a restarted server the moment `/api/health` reports a new
+  // process, which is BEFORE that boot has imported its plugin halves. So the
+  // first call of a freshly reloaded page can 404 against a server that is
+  // still booting, and a caller cannot tell that apart from a plugin that is
+  // not installed. `awaitPluginPlatformReady` answers the difference: only a
+  // boot window it actually observed licenses the retry, so a 404 on a settled
+  // server is returned as it stands. Measured after a restart, the Stats
+  // header's `watch` 404'd 194 ms into the new page and its effect never
+  // re-ran, so the readout stayed on `—` although the halves were up ~500 ms
+  // later.
+  if (first.ok || first.error.code !== 'plugin_not_loaded') return first;
+  if ((await awaitPluginPlatformReady()) !== 'booted') return first;
+  return callRpcOnce(pluginId, method, input);
+}
+
+/** One attempt, with the wire's answers mapped as the kit documents them. */
+async function callRpcOnce(pluginId: string, method: string, input: unknown): Promise<PluginRpcOutcome> {
   const path = pluginRpcPath(pluginId, method);
   try {
     const response = await fetch(path, {

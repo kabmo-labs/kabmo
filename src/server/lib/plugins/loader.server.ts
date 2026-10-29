@@ -71,10 +71,38 @@ declare global {
   var __kabmoLoadedPlugins: Map<string, LoadedPlugin> | undefined;
   // eslint-disable-next-line no-var
   var __kabmoPluginLoadErrors: PluginLoadError[] | undefined;
+  // eslint-disable-next-line no-var
+  var __kabmoPluginPlatformReady: boolean | undefined;
 }
 
 function loaded(): Map<string, LoadedPlugin> {
   return (globalThis.__kabmoLoadedPlugins ??= new Map());
+}
+
+/**
+ * Whether the boot's plugin pass has FINISHED.
+ *
+ * The listener answers `/api/health` before this pass runs — the boot awaits
+ * `syncBundledPlugins`, then every server half, after `Bun.serve` is up — so a
+ * client that reloads on "a different process answers health" lands in a server
+ * whose plugins are still loading. Every plugin RPC then answers 404, which the
+ * kit reports as `plugin_not_loaded` and a caller can only read as "this plugin
+ * is not running" (measured after a restart: the Stats readout's `watch` fired
+ * 194 ms into the new page, 404'd, and never retried — the header read the
+ * `—` placeholder until a manual reload, ~500 ms after the halves were up).
+ *
+ * Health carries this so the CLIENT can tell "not loaded YET" from "not loaded",
+ * and retry only the first. Set in a `finally`: a plugin that fails to load must
+ * not leave the flag false forever, or every later RPC would be retried for the
+ * whole ceiling.
+ */
+export function markPluginPlatformReady(): void {
+  globalThis.__kabmoPluginPlatformReady = true;
+}
+
+/** Whether the boot's plugin pass has finished. False until then. */
+export function pluginPlatformReady(): boolean {
+  return globalThis.__kabmoPluginPlatformReady === true;
 }
 
 /** Why a plugin did not load, for the pane. Empty when everything loaded. */
@@ -229,24 +257,31 @@ export async function disposePlugin(pluginId: string): Promise<void> {
 export async function loadPluginServers(): Promise<{ loaded: string[]; errors: PluginLoadError[] }> {
   const errors: PluginLoadError[] = [];
   const ids: string[] = [];
-  const payload = await discoverPanelPlugins();
+  try {
+    const payload = await discoverPanelPlugins();
 
-  for (const plugin of payload.plugins) {
-    if (!plugin.enabled || !plugin.built) continue;
-    try {
-      const record = await loadPluginServer(plugin.pluginId);
-      if (record) ids.push(plugin.pluginId);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      // A plugin with no server entry is not an error — most plugins are
-      // UI-only, and reporting those would make a normal install look broken.
-      if (reason.includes('declares no server entry')) continue;
-      errors.push({ pluginId: plugin.pluginId, reason });
+    for (const plugin of payload.plugins) {
+      if (!plugin.enabled || !plugin.built) continue;
+      try {
+        const record = await loadPluginServer(plugin.pluginId);
+        if (record) ids.push(plugin.pluginId);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        // A plugin with no server entry is not an error — most plugins are
+        // UI-only, and reporting those would make a normal install look broken.
+        if (reason.includes('declares no server entry')) continue;
+        errors.push({ pluginId: plugin.pluginId, reason });
+      }
     }
-  }
 
-  globalThis.__kabmoPluginLoadErrors = errors;
-  return { loaded: ids, errors };
+    globalThis.__kabmoPluginLoadErrors = errors;
+    return { loaded: ids, errors };
+  } finally {
+    // After the LAST half, whichever way the pass ended: a plugin that threw is
+    // a plugin that will not answer, and leaving the flag false would make every
+    // plugin RPC on the new page retry against a server that is done loading.
+    markPluginPlatformReady();
+  }
 }
 
 /** Unload every plugin — used by a forced reload and by tests. */
