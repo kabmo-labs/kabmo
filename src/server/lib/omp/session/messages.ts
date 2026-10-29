@@ -28,8 +28,20 @@ import type { OmpMessageEntry } from '@/shared/lib/omp/session/messages-parse';
 import { operatorTitleFromEntry } from '@/shared/lib/omp/session/operator-title';
 import { isRecord } from '@/shared/lib/util/guards';
 import { readBlobRef } from '@/server/lib/omp/session/blobs.server';
+import { readJsonlTail } from '@/server/lib/omp/session/jsonl-tail';
 
 const MAX_SESSION_LOAD_BYTES = 512 * 1024 * 1024;
+
+/**
+ * How much of a session's END the state readers look at.
+ *
+ * `model_change` and `thinking_level_change` are a handful of short records
+ * appended as the user changes them, so the newest one sits within a few
+ * kilobytes of the end. 256 KiB is two orders of magnitude of headroom, and it
+ * bounds the read even when a session carries a megabyte of tool output after
+ * the last change.
+ */
+const STATE_TAIL_BYTES = 256 * 1024;
 
 /** omp expands `/skill:<name>` into a `custom_message` record and stores no
  *  user message for it, so Kabmo reconstructs the bubble from it.
@@ -227,15 +239,7 @@ export async function loadSessionTitle(filePath: string): Promise<string | undef
  *  (omp records `"provider/model-id"`). Returns undefined when the file has
  *  no model_change entry or the value is malformed. */
 export async function loadSessionModel(filePath: string): Promise<{ provider: string; modelId: string } | undefined> {
-  try {
-    const file = Bun.file(filePath);
-    if ((await file.stat()).size > MAX_SESSION_LOAD_BYTES) return undefined;
-  } catch {
-    return undefined;
-  }
-  try {
-    const body = await Bun.file(filePath).text();
-    const records = parseJsonlLenient<Record<string, unknown>>(body);
+  const pick = (records: Record<string, unknown>[]): { provider: string; modelId: string } | undefined => {
     let last: { provider: string; modelId: string } | undefined;
     for (const record of records) {
       if (record?.type !== 'model_change') continue;
@@ -246,9 +250,8 @@ export async function loadSessionModel(filePath: string): Promise<{ provider: st
       last = { provider: model.slice(0, slash), modelId: model.slice(slash + 1) };
     }
     return last;
-  } catch {
-    return undefined;
-  }
+  };
+  return readStateValue(filePath, pick);
 }
 
 /** Resolve the thinking level last used by a session from its
@@ -281,22 +284,41 @@ async function readThinkingSelector(
   filePath: string,
   read: (record: Record<string, unknown>) => string,
 ): Promise<string | undefined> {
-  try {
-    const file = Bun.file(filePath);
-    if ((await file.stat()).size > MAX_SESSION_LOAD_BYTES) return undefined;
-  } catch {
-    return undefined;
-  }
-  try {
-    const body = await Bun.file(filePath).text();
-    const records = parseJsonlLenient<Record<string, unknown>>(body);
+  const pick = (records: Record<string, unknown>[]): string | undefined => {
     let last: string | undefined;
     for (const record of records) {
       if (record?.type !== 'thinking_level_change') continue;
       last = read(record);
     }
     return last;
+  };
+  return readStateValue(filePath, pick);
+}
+
+/**
+ * One value from a session's "last one wins" state records.
+ *
+ * The tail read is an OPTIMIZATION and the answer may predate its window — a
+ * session where the user changed the model once at the start and then ran a
+ * hundred turns has no `model_change` in the last 256 KiB. A miss on an
+ * INCOMPLETE window therefore re-reads the whole file under the same ceiling the
+ * transcript reader uses; answering `undefined` there would silently drop the
+ * model from the composer.
+ */
+async function readStateValue<T>(
+  filePath: string,
+  pick: (records: Record<string, unknown>[]) => T | undefined,
+): Promise<T | undefined> {
+  const parse = (body: string): Record<string, unknown>[] => parseJsonlLenient<Record<string, unknown>>(body);
+  const tail = await readJsonlTail(filePath, STATE_TAIL_BYTES, parse);
+  const fromTail = pick(tail.records);
+  if (fromTail !== undefined || tail.complete) return fromTail;
+  try {
+    const file = Bun.file(filePath);
+    if ((await file.stat()).size > MAX_SESSION_LOAD_BYTES) return undefined;
+    return pick(parse(await file.text()));
   } catch {
     return undefined;
   }
 }
+
