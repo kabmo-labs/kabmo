@@ -73,10 +73,10 @@ export interface ChatInputProps {
    */
   variant?: 'desktop' | 'mobile';
   /**
-   * Grow the textarea with its content, up to a ceiling, instead of keeping a
-   * fixed box that scrolls. On for a modal composer (the card is the only thing
-   * on screen, so growing it costs nothing); off for the chat, where a growing
-   * composer would push the conversation around under the reader.
+   * px bounds for a composer that must grow inside a card of its own (the New
+   * Chat modal). Omitted, the composer grows to `CHAT_COMPOSER_MAX_LINES`
+   * lines and scrolls past them — the ceiling is a line count, not px, because
+   * iOS renders the same textarea at 16px.
    */
   autoGrow?: { minHeightPx: number; maxHeightPx: number };
   composerModelRef: { current: { provider: string; modelId: string; thinkingLevel: string } | null };

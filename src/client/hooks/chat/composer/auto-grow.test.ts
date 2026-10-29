@@ -61,13 +61,15 @@ interface Measured {
   scrollHeight: number;
 }
 
-function GrowProbe({ value, min, max, measured }: {
+function GrowProbe({ value, min, max, maxLines, enabled, measured }: {
   value: string;
   min: number;
-  max: number;
+  max?: number;
+  maxLines?: number;
+  enabled?: boolean;
   measured: Measured;
 }) {
-  const ref = useAutoGrow({ value, minHeightPx: min, maxHeightPx: max });
+  const ref = useAutoGrow({ value, minHeightPx: min, maxHeightPx: max, maxLines, enabled });
   return h('textarea', {
     ref: (el: HTMLTextAreaElement | null) => {
       if (!el) return;
@@ -88,9 +90,17 @@ function box(scrollHeight: number): Measured {
   return { heights: [], scrollHeight };
 }
 
-async function mountGrow(measured: Measured, value: string, min: number, max: number) {
+async function mountGrow(
+  measured: Measured,
+  value: string,
+  min: number,
+  max?: number,
+  options: { maxLines?: number; enabled?: boolean } = {},
+) {
   container = document.body.appendChild(document.createElement('div'));
-  await act(async () => { render(h(GrowProbe, { value, min, max, measured }), container); });
+  await act(async () => {
+    render(h(GrowProbe, { value, min, max, measured, ...options }), container);
+  });
   return container.querySelector('textarea') as HTMLTextAreaElement;
 }
 
@@ -138,5 +148,49 @@ describe('useAutoGrow', () => {
     await act(async () => { render(h(GrowProbe, { value: 'x', min: 120, max: 480, measured }), container); });
     const el = container.querySelector('textarea') as HTMLTextAreaElement;
     expect(el.style.height).toBe('120px');
+  });
+});
+
+/**
+ * The chat's docked composer states its ceiling in LINES, not px: the same
+ * textarea renders at 13px on every platform except iOS, which forces 16px so
+ * Safari does not zoom the page. A px cap would therefore be a different number
+ * of lines on each, and the ceiling exists precisely to bound the box by lines.
+ */
+describe('useAutoGrow line ceiling', () => {
+  test('a line count is resolved against the element’s own line box', async () => {
+    // happy-dom reports the initial `line-height: normal` / `font-size: 16px`
+    // and no padding, so seven lines are 7 × 16 × 1.5 = 168px.
+    const el = await mountGrow(box(900), 'a long draft', 0, undefined, { maxLines: 7 });
+    expect(el.style.height).toBe('168px');
+    expect(el.style.overflowY).toBe('auto');
+  });
+
+  test('content under the line ceiling keeps its own height', async () => {
+    const el = await mountGrow(box(100), 'three lines', 0, undefined, { maxLines: 7 });
+    expect(el.style.height).toBe('100px');
+    expect(el.style.overflowY).toBe('hidden');
+  });
+});
+
+/**
+ * A stretched composer is sized by its layout (`h-full` on a phone, a share of
+ * the viewport on a desktop), so the hook must hand the height back instead of
+ * measuring over it — and must do so the moment the stretch starts, or the
+ * docked inline height would pin the box at its docked size.
+ */
+describe('useAutoGrow disabled', () => {
+  test('clears the inline height and stops measuring', async () => {
+    const measured = box(900);
+    const el = await mountGrow(measured, 'long', 80, 480);
+    expect(el.style.height).toBe('480px');
+
+    measured.heights.length = 0;
+    await act(async () => {
+      render(h(GrowProbe, { value: 'long', min: 80, max: 480, measured, enabled: false }), container);
+    });
+    expect(el.style.height).toBe('');
+    expect(el.style.overflowY).toBe('');
+    expect(measured.heights).toEqual([]);
   });
 });

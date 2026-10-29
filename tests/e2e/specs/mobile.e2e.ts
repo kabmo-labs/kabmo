@@ -431,6 +431,60 @@ test.describe('mobile layout', () => {
   });
 
   /**
+   * The docked phone composer grows with its draft to seven lines, then scrolls.
+   *
+   * The `max-h-40` this used to carry was a second, px ceiling under the
+   * hook's own: on iOS the same textarea renders at 16px, where seven lines are
+   * 206px and the class clipped the box at 160 — the growth stopped one and a
+   * half lines early, silently. A browser is where that resolves to pixels.
+   */
+  test('grows the docked composer to seven lines and scrolls past them', async ({ harness, page }) => {
+    const server = await harness('mock');
+    const workspace = await seedWorkspace(server, 'e2e-mobile-grow');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    const input = page.locator(`[data-testid="${TESTID.composerInput}"]`);
+    await expect(input).toBeVisible();
+
+    const box = () =>
+      page.evaluate(() => {
+        const el = document.querySelector('[data-testid="composer-input"]') as HTMLTextAreaElement | null;
+        if (!el) return null;
+        const style = getComputedStyle(el);
+        const lineHeight = Number.parseFloat(style.lineHeight);
+        const fontSize = Number.parseFloat(style.fontSize);
+        return {
+          height: Math.round(el.getBoundingClientRect().height),
+          clientHeight: el.clientHeight,
+          scrollHeight: el.scrollHeight,
+          overflowY: style.overflowY,
+          line: Number.isFinite(lineHeight) ? lineHeight : fontSize * 1.5,
+          padding: (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0),
+        };
+      });
+
+    const docked = (await box())!;
+    const lines = (count: number) => Array.from({ length: count }, (_, i) => `line ${i + 1}`).join('\n');
+
+    await input.fill(lines(3));
+    await expect.poll(async () => (await box())!.height).toBeGreaterThan(docked.height);
+    const three = (await box())!;
+    const ceiling = Math.ceil(7 * three.line + three.padding);
+    expect(three.height).toBeLessThan(ceiling);
+
+    await input.fill(lines(40));
+    await expect.poll(async () => (await box())!.overflowY).toBe('auto');
+    const capped = (await box())!;
+    expect(capped.height).toBeLessThanOrEqual(ceiling + 1);
+    expect(capped.scrollHeight).toBeGreaterThan(capped.clientHeight);
+
+    await input.fill('one line');
+    await expect.poll(async () => (await box())!.height).toBe(docked.height);
+
+    workspace.dispose();
+  });
+
+  /**
    * The drawer's left and right columns are ONE line each, and the transcript's
    * cards share the composer's frame.
    *

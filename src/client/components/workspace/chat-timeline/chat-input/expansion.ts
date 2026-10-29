@@ -118,8 +118,16 @@ export function composerExpansion({
       // conversation it is replying to. `composer-type` carries the iOS guard —
       // see the rule in tailwind.css, where a sub-16px control would make
       // Safari zoom the page on focus.
+      //
+      // The `min-h-*` is the floor `useAutoGrow` measures against and the class
+      // is what the box renders at when the draft is empty (an inline height of
+      // a bare line box would otherwise shrink it to its padding). There is NO
+      // `max-h-*` on either layout: the ceiling is the hook's own
+      // `CHAT_COMPOSER_MAX_LINES` lines, resolved against this element's line
+      // box — a px cap would be a different number of lines on iOS, where the
+      // same textarea renders at 16px.
       textareaClass: mobile
-        ? 'px-3 py-3 text-[13px] leading-relaxed composer-type min-h-[68px] max-h-40'
+        ? 'px-3 py-3 text-[13px] leading-relaxed composer-type min-h-[68px]'
         : 'px-3 py-3 text-[13px] leading-relaxed composer-type min-h-[80px]',
       wrapperClass: '',
       pickerPlacement: 'up',

@@ -9,7 +9,7 @@ import { usePublishComposerState } from '@/client/hooks/chat/composer/publish-st
 import { useModelSelection } from '@/client/hooks/chat/composer/model-selection';
 import { AttachmentToolbar } from '@/client/components/workspace/chat-timeline/chat-input/AttachmentToolbar';
 import { NO_PENDING_PICK } from '@/client/hooks/chat/timeline/deferred-model';
-import { useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
+import { CHAT_COMPOSER_MAX_LINES, useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
 import { useVoiceInput } from '@/client/hooks/chat/composer/voice-input';
 import { primeFileReads } from '@/client/hooks/chat/composer/file-reads';
 import { useComposerPipeline } from '@/client/hooks/chat/composer/pipeline';
@@ -140,14 +140,6 @@ export function ChatInput({
   });
 
   const isMobile = variant === 'mobile';
-  // A modal composer sizes itself to its content; the chat's keeps its fixed
-  // box (see `autoGrow`). The hook is unconditional — its ref is simply unused
-  // when growth is off.
-  const growRef = useAutoGrow({
-    value,
-    minHeightPx: autoGrow?.minHeightPx ?? 0,
-    maxHeightPx: autoGrow?.maxHeightPx ?? Number.POSITIVE_INFINITY,
-  });
 
   // The soft keyboard's overlap with the viewport. Measured ONLY while
   // stretched: that is the one state where the card is bottom-anchored to the
@@ -165,6 +157,19 @@ export function ChatInput({
     attachments,
   });
   const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset });
+
+  // Growth: a modal composer states its own px bounds, the chat's docked one
+  // grows to `CHAT_COMPOSER_MAX_LINES` lines. Either way it is measured only
+  // while the layout does NOT own the height — a stretched composer is `h-full`
+  // on a phone and a share of the viewport on a desktop, and a compact one
+  // renders no textarea at all.
+  const growRef = useAutoGrow({
+    value,
+    minHeightPx: autoGrow?.minHeightPx ?? 0,
+    maxHeightPx: autoGrow?.maxHeightPx,
+    maxLines: autoGrow ? undefined : CHAT_COMPOSER_MAX_LINES,
+    enabled: !expanded && !compact,
+  });
 
   // Escape returns to the docked composer. Bound to the document rather than to
   // the textarea so it works while the picker has focus — the picker consumes
@@ -290,7 +295,7 @@ export function ChatInput({
           className={`w-full bg-transparent border-none focus:outline-none resize-none text-ink placeholder-ink/40 disabled:opacity-50 disabled:cursor-not-allowed ${layout.textareaClass}`}
           onPaste={handlePaste}
           variant={variant}
-          textareaRef={autoGrow ? growRef : undefined}
+          textareaRef={growRef}
           onReady={onTextareaReady}
         />
       )}
