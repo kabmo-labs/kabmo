@@ -99,7 +99,7 @@ pub fn build_view() -> WebView {
     // (see `memory.rs`); a settings object WebKit refuses would leave the defaults
     // in place, so the policy is only applied when it is ordered.
     if let Some((conservative, strict, poll, kill)) =
-        crate::memory::PressurePolicy::CONSERVATIVE.engine_values()
+        kabmo_desktop::memory::PressurePolicy::CONSERVATIVE.engine_values()
     {
         let mut settings = webkit2gtk::MemoryPressureSettings::new();
         settings.set_conservative_threshold(conservative);
