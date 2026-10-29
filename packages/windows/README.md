@@ -175,6 +175,29 @@ The transport is the **same contract the macOS shell installs** over
 `WKScriptMessageHandler`, so `src/client/lib/desktop/bridge.ts` is shared
 verbatim.
 
+## Memory while minimised
+
+The console is one WebView2 holding a long transcript, a code editor and up to
+eight xterm buffers, so its renderer is the largest thing the shell owns. Measured
+on the WebKit builds of this same page: 817 MB of physical footprint for one long
+session, of which the JS heap was 12.6 MB — the rest is the render tree and
+graphics layers, which no page-level collection can return.
+
+`CoreWebView2.MemoryUsageTargetLevel` is the lever for exactly that case, and the
+shell sets it from `MemoryPolicy` (`src/KabmoDesktop/MemoryPolicy.cs`):
+
+| window | target |
+|---|---|
+| visible, not minimised | `Normal` |
+| minimised, or hidden | `Low` |
+
+Both conditions are checked because WPF reports them separately: a window
+minimised to the taskbar keeps `IsVisible == true`, and one hidden with `Hide()`
+keeps `WindowState == Normal`. `Low` asks the engine to shed what it can while the
+page keeps running — which is why this is used instead of `TrySuspendAsync`, that
+being for a webview with nothing to keep alive. A runtime too old for the property
+throws, and the shell keeps working without it.
+
 ## Build
 
 ```bash

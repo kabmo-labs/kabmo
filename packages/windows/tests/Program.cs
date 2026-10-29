@@ -510,6 +510,9 @@ ShellUpdateCases.Run(Check, Group);
 // opened twice.
 OpenPathCases.Run(Check, Group);
 
+// What the webview may keep while the window is off screen.
+MemoryPolicyCases.Run(Check, Group);
+
 Console.WriteLine($"\n{checks - failures}/{checks} checks passed");
 return failures == 0 ? 0 : 1;
 

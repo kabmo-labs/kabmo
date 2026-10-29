@@ -192,6 +192,17 @@ public sealed class ShellHost
             _splash.SetDetail("The webview process stopped.");
         };
 
+        // A minimised or hidden window holds the whole render tree: this console's
+        // WebKit build measured 817 MB of physical footprint for one long session
+        // against a 12.6 MB JS heap, so none of it is garbage the page could
+        // collect on its own. `Low` is the documented lever for exactly this case
+        // — an app that is invisible but must keep its scripts and sockets alive —
+        // and `Normal` is restored the moment the window is back. The decision is
+        // `MemoryPolicy`'s (tested in `tests/`); this is the wiring.
+        _window.StateChanged += (_, _) => ApplyMemoryTarget();
+        _window.IsVisibleChanged += (_, _) => ApplyMemoryTarget();
+        ApplyMemoryTarget();
+
         var info = new ShellInfo(
             Platform: "windows",
             ShellVersion: ShellVersion,
@@ -270,6 +281,33 @@ public sealed class ShellHost
     /// 2. **Nothing else re-opens it.** A later in-app navigation (the login submit
     ///    is one) must not flash the splash over a console that is already up.
     /// </summary>
+    /// <summary>
+    /// Hold the webview at the target the window's state asks for.
+    ///
+    /// Wrapped in try/catch on purpose: this runs from WPF's own event handlers,
+    /// and an exception there has no caller to report it — a shell that crashed
+    /// because it could not ask for memory would be a worse bug than the memory.
+    /// </summary>
+    private void ApplyMemoryTarget()
+    {
+        try
+        {
+            var core = _window.WebView.CoreWebView2;
+            if (core is null) return;
+            var target = MemoryPolicy.TargetFor(
+                minimized: _window.WindowState == WindowState.Minimized,
+                visible: _window.IsVisible);
+            core.MemoryUsageTargetLevel = target == WebViewMemoryTarget.Low
+                ? CoreWebView2MemoryUsageTargetLevel.Low
+                : CoreWebView2MemoryUsageTargetLevel.Normal;
+        }
+        catch
+        {
+            // An older WebView2 runtime without the property: the shell keeps
+            // working, it just cannot ask for the memory back.
+        }
+    }
+
     private void OnNavigationStarting(CoreWebView2NavigationStartingEventArgs args)
     {
         if (args.IsRedirected) return;
