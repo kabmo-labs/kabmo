@@ -42,17 +42,18 @@ export function ModelDropdownSection({
 
   return (
     <div className="space-y-0.5">
-      {/* The header shares the row grid — a fixed grip slot, then the plate at
-          the same size the rows use — so a section title starts at the same x
-          as the model names under it. It used to start at its own icon's edge,
-          which left the title a few pixels left of every row beneath. */}
+      {/* The header starts IN the row's grip column, not after it: its mark
+          occupies the 18px slot the rows keep for the drag handle, so the
+          provider logo centres on that handle, and the title then starts on the
+          column the rows draw their own plate in. The title is therefore a
+          column LEFT of the model names — deliberately not aligned with them,
+          which is what makes the two marks read as one column. */}
       <button
         type="button"
         onClick={() => onToggleCollapse(id)}
         className="w-full flex items-center justify-between gap-2 pl-1 pr-2 py-1 text-[11px] font-semibold text-ink/60 uppercase tracking-wider hover:text-ink cursor-pointer select-none"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="w-3 shrink-0" aria-hidden="true" />
           {iconType === 'star' && (
             <span className="inline-flex items-center justify-center w-[18px] h-[18px] shrink-0">
               <Star size={12} className="fill-sky-400 text-sky-400" />

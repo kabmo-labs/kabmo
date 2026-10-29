@@ -49,12 +49,17 @@ export function ModelDropdownItem({
       }`}
     >
       {/* Left: drag handle, plate, name, context. The grip keeps its own fixed
-          slot so a hover-only affordance cannot move the name. */}
+          slot so a hover-only affordance cannot move the name — and that slot is
+          the SAME 18px column as the plate, so the section header's mark (which
+          sits in this column) centres on the grip and the header's title starts
+          on the row's plate. */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <GripVertical
-          size={12}
-          className="text-ink/20 group-hover:text-ink/50 transition-colors flex-shrink-0"
-        />
+        <span className="inline-flex items-center justify-center w-[18px] h-[18px] shrink-0">
+          <GripVertical
+            size={12}
+            className="text-ink/20 group-hover:text-ink/50 transition-colors"
+          />
+        </span>
 
         {model.isCmdAgent ? (
           <span
