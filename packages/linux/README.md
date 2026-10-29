@@ -359,9 +359,12 @@ sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev \
 ```
 
 and the equivalent `gtk3-devel` / `webkit2gtk4.1-devel` packages elsewhere. The
-crate asks for the `v2_22` WebKitGTK feature — the floor the shell's API use
-actually needs — rather than the newest, so Ubuntu 22.04 and Debian 12 are
-supported.
+crate asks for the `v2_34` WebKitGTK feature — the floor the shell's API use
+actually needs, which is `WebContext::memory_pressure_settings` — rather than the
+newest, so Ubuntu 22.04 (WebKitGTK 2.36) and Debian 12 (2.40) are supported. The
+setting is what makes the web process trim under pressure: one long session
+measured 817 MB of physical footprint against a 12.6 MB JS heap, so none of it is
+memory a page-level collection can return (see `src/memory.rs`).
 
 ### Where the code lives
 
@@ -378,6 +381,7 @@ supported.
 | `src/splash_view.rs` | the overlay's widget: the wordmark, the bar and its sweep timer, the sentence, Retry |
 | `src/wordmark.rs` | the SVG path parser and the cairo painter for the README's lockup |
 | `src/wordmark_data.rs` | GENERATED from `public/kabmo-wordmark.svg` by `scripts/shell-wordmark.mjs` |
+| `src/memory.rs` | when the web process should trim: the pressure thresholds, and why a policy WebKit would refuse is never handed to it |
 | `src/window.rs` | the undecorated window, edge resizing, the bar and its menu, zoom, and the geometry arithmetic |
 | `rules/` | the rules suite, an ordinary executable split by domain (`support.rs` holds the runner and the fakes, the rest one file per rule family) — `bun test` has no analogue for a Rust crate |
 

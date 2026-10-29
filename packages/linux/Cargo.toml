@@ -28,7 +28,11 @@ path = "src/main.rs"
 # channel, a user script at document start, the inspector); asking for a newer
 # feature would exclude Ubuntu 22.04 and Debian 11 for nothing.
 gtk = "0.18"
-webkit2gtk = { version = "2.0", features = ["v2_22"] }
+# `v2_34` is the floor for `WebContext::memory_pressure_settings`, which is how
+# the shell asks the web process to trim under pressure. It is also the version
+# the oldest supported distribution ships (Ubuntu 22.04 has WebKitGTK 2.36), so
+# the bump costs nothing a supported machine lacks.
+webkit2gtk = { version = "2.0", features = ["v2_34"] }
 javascriptcore-rs = "1.1"
 # The health probe is one GET with a hard timeout, and it must work over https
 # for a remote server, so the client carries its own TLS rather than depending on

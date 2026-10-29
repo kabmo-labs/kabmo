@@ -90,7 +90,25 @@ pub fn build_view() -> WebView {
         .base_data_directory(base.join("data").to_string_lossy().as_ref())
         .base_cache_directory(base.join("cache").to_string_lossy().as_ref())
         .build();
-    let context = WebContext::with_website_data_manager(&manager);
+    let mut context_builder = WebContext::builder().website_data_manager(&manager);
+    // Tell the web process when to trim instead of hoping it notices. The console
+    // holds a long transcript, an editor and up to eight xterm buffers in one
+    // renderer — measured 817 MB of physical footprint for one long session on
+    // this engine family, against a 12.6 MB JS heap — and none of that is memory a
+    // page-level collection can return. `PressurePolicy` owns the numbers and why
+    // (see `memory.rs`); a settings object WebKit refuses would leave the defaults
+    // in place, so the policy is only applied when it is ordered.
+    if let Some((conservative, strict, poll, kill)) =
+        crate::memory::PressurePolicy::CONSERVATIVE.engine_values()
+    {
+        let mut settings = webkit2gtk::MemoryPressureSettings::new();
+        settings.set_conservative_threshold(conservative);
+        settings.set_strict_threshold(strict);
+        settings.set_poll_interval(poll);
+        settings.set_kill_threshold(kill);
+        context_builder = context_builder.memory_pressure_settings(&settings);
+    }
+    let context = context_builder.build();
     let content = UserContentManager::new();
     let view = WebView::builder()
         .web_context(&context)
