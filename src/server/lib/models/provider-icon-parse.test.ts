@@ -15,6 +15,8 @@ import { describe, expect, test } from 'bun:test';
 import {
   looksLikeSvg,
   pickIconHrefs,
+  providerBaseOrigin,
+  providerIconOrigins,
   providerOrigin,
   readLinkTags,
 } from '@/server/lib/models/provider-icon-parse';
@@ -39,6 +41,43 @@ describe('providerOrigin', () => {
     expect(providerOrigin('   ')).toBeNull();
     expect(providerOrigin('/tmp/models')).toBeNull();
     expect(providerOrigin('ftp://kenari.id')).toBeNull();
+  });
+});
+
+describe('providerBaseOrigin', () => {
+  test('a subdomain host yields its registrable domain', () => {
+    expect(providerBaseOrigin('https://api.kenari.id')).toBe(ORIGIN);
+    expect(providerBaseOrigin('https://llm.gateway.kenari.id')).toBe(ORIGIN);
+    // The brand's site is on the scheme's default port, not the gateway's.
+    expect(providerBaseOrigin('http://api.example.com:8080')).toBe('http://example.com');
+  });
+
+  test('a two-label ccTLD suffix is not a domain', () => {
+    expect(providerBaseOrigin('https://api.kenari.co.id')).toBe('https://kenari.co.id');
+    expect(providerBaseOrigin('https://kenari.co.id')).toBeNull();
+    expect(providerBaseOrigin('https://kenari.id')).toBeNull();
+  });
+
+  test('an IP, a single label and a shared platform apex have no base domain', () => {
+    expect(providerBaseOrigin('http://127.0.0.1:11434')).toBeNull();
+    expect(providerBaseOrigin('http://localhost:11434')).toBeNull();
+    expect(providerBaseOrigin('https://gateway.vercel.app')).toBeNull();
+    expect(providerBaseOrigin('https://user.github.io')).toBeNull();
+  });
+});
+
+describe('providerIconOrigins', () => {
+  test('the endpoint host comes first, the base domain second', () => {
+    expect(providerIconOrigins('https://api.kenari.id/v1')).toEqual([
+      'https://api.kenari.id',
+      'https://kenari.id',
+    ]);
+  });
+
+  test('one origin when there is no base domain or no site at all', () => {
+    expect(providerIconOrigins('http://127.0.0.1:11434/v1')).toEqual(['http://127.0.0.1:11434']);
+    expect(providerIconOrigins('https://gateway.vercel.app/v1')).toEqual(['https://gateway.vercel.app']);
+    expect(providerIconOrigins(undefined)).toEqual([]);
   });
 });
 

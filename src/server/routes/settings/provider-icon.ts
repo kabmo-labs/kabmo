@@ -94,6 +94,6 @@ export async function action({ request }: ActionFunctionArgs): Promise<Response>
   return json({
     ok: Boolean(stored),
     ...(stored ? { iconUrl: providerIconUrl(slug, stored.fetchedAt) } : {}),
-    ...(stored ? {} : { error: 'No usable icon on that host' }),
+    ...(stored ? {} : { error: 'No usable icon on that host or its base domain' }),
   });
 }

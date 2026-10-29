@@ -168,7 +168,7 @@ export function useProviderSettings({
     try {
       const result = await refreshProviderIcon(target.slug, target.baseUrl);
       if (!result.ok) {
-        pushToast(result.error || 'No usable icon on that host — keeping the current mark.', 'error');
+        pushToast(result.error || 'No usable icon on that host or its base domain — keeping the current mark.', 'error');
         return;
       }
       const refreshed = await providerActions.reloadProviders();

@@ -23,6 +23,10 @@
  *   tabs, so painting it in a plate shows a solid blob.
  * - a `baseUrl` of `https://host/v1` resolves against the ORIGIN, because
  *   `https://host/v1/favicon.ico` is a 404 on nearly every gateway.
+ * - the registrable domain is the SECOND origin tried, after the endpoint's own
+ *   host: `api.kenari.id` serves no page while `kenari.id` serves the brand's
+ *   logo. A shared platform apex (`x.vercel.app`) is never used — that favicon
+ *   is the platform's, not the provider's.
  */
 
 /** The scheme+host a provider's endpoint lives on, or null when it has none. */
@@ -44,6 +48,75 @@ export function providerOrigin(baseUrl: string | undefined): string | null {
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
   return parsed.origin;
+}
+
+/**
+ * Second labels that are a registry suffix under a two-letter ccTLD, so
+ * `kenari.co.id` is a SITE and `co.id` is the suffix it sits on. Deliberately
+ * short: an unknown pair is treated as a domain, which at worst skips one
+ * fallback attempt rather than fetching a stranger's logo.
+ */
+const CC_SECOND_LEVEL = new Set([
+  'co', 'com', 'net', 'org', 'ac', 'gov', 'edu', 'mil', 'sch', 'or', 'ne', 'go',
+  'biz', 'web', 'info', 'nom', 'ltd', 'plc',
+]);
+
+/**
+ * Apexes shared by unrelated sites (`foo.vercel.app`, `bar.github.io`). Their
+ * favicon is the PLATFORM's logo, so reading it would paint Vercel's triangle on
+ * a private gateway — worse than the initials this fallback exists to improve.
+ */
+const SHARED_APEXES = new Set([
+  'github.io', 'gitlab.io', 'vercel.app', 'netlify.app', 'pages.dev', 'workers.dev',
+  'fly.dev', 'onrender.com', 'herokuapp.com', 'azurewebsites.net', 'cloudfront.net',
+  'run.app', 'railway.app', 'replit.dev', 'glitch.me', 'firebaseapp.com', 'web.app',
+  'amplifyapp.com', 'elasticbeanstalk.com', 'amazonaws.com', 'trycloudflare.com',
+  'ngrok-free.app', 'ngrok.io', 'loca.lt', 'supabase.co', 'deno.dev',
+]);
+
+/**
+ * The registrable domain behind an origin — `https://api.kenari.id` →
+ * `https://kenari.id` — or null when there is none worth trying: an IP, a
+ * single-label host, or a shared platform apex.
+ *
+ * The API host is often a subdomain (`api.`, `gateway.`, `llm.`) that serves no
+ * page at all, while the brand's site sits on the apex and does serve one. That
+ * is the whole reason this exists: the endpoint host is where the gateway is,
+ * not where the logo is.
+ */
+export function providerBaseOrigin(origin: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  if (!host.includes('.') || /^\d+(\.\d+){3}$/.test(host)) return null;
+  const labels = host.split('.');
+  if (labels.some((label) => !label)) return null;
+  const tld = labels[labels.length - 1] ?? '';
+  const second = labels[labels.length - 2] ?? '';
+  const suffix = tld.length === 2 && CC_SECOND_LEVEL.has(second) ? 2 : 1;
+  // The host IS the public suffix (`co.id`): there is no site to read.
+  if (labels.length <= suffix) return null;
+  const apex = labels.slice(-(suffix + 1)).join('.');
+  if (SHARED_APEXES.has(apex)) return null;
+  const base = `${parsed.protocol}//${apex}`;
+  return base === origin ? null : base;
+}
+
+/**
+ * Every origin worth reading a provider's icon from, best first: the endpoint's
+ * own host, then the registrable domain behind it. The base domain is tried
+ * ONLY after the endpoint host yielded nothing, so a gateway that publishes its
+ * own favicon keeps it.
+ */
+export function providerIconOrigins(baseUrl: string | undefined): string[] {
+  const origin = providerOrigin(baseUrl);
+  if (!origin) return [];
+  const base = providerBaseOrigin(origin);
+  return base ? [origin, base] : [origin];
 }
 
 /** One `<link>` tag's `rel`/`href`/`sizes`, as far as the markup states them. */

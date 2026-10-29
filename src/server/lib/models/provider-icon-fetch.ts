@@ -12,6 +12,9 @@
  *
  * - **The icon is declared, not guessed.** `/favicon.ico` is the LAST resort
  *   (see `provider-icon-parse.ts` for the ranking).
+ * - **The base domain is the second origin.** A gateway's API host
+ *   (`api.kenari.id`) usually serves no page, while the apex does — so the
+ *   endpoint host is read first and the registrable domain only after it.
  * - **The bytes are sniffed, never trusted.** A "favicon" that answers
  *   `text/html` is a 404 page or a login wall; storing and painting it would be
  *   a broken image in the list.
@@ -21,7 +24,7 @@
  */
 
 import { getImageMimeFromBytes } from '@/shared/lib/fs/file-kind';
-import { looksLikeSvg, pickIconHrefs, providerOrigin } from '@/server/lib/models/provider-icon-parse';
+import { looksLikeSvg, pickIconHrefs, providerIconOrigins } from '@/server/lib/models/provider-icon-parse';
 
 /** Per-request ceiling. A favicon slower than this is not worth the wait. */
 const FETCH_TIMEOUT_MS = 4_000;
@@ -98,18 +101,24 @@ async function fetchOriginHtml(origin: string): Promise<string | null> {
  * The best icon a provider's site offers, or null when it offers none Kabmo can
  * use. Never throws: a provider without an icon is a normal state (a private
  * gateway, a host behind auth), and the caller falls back to its own mark.
+ *
+ * Origins are tried in order ({@link providerIconOrigins}): the endpoint's own
+ * host first, then the registrable domain behind it. An API host
+ * (`api.kenari.id`) usually serves no page while the apex does, so a single-host
+ * read left every such provider on its initials.
  */
 export async function fetchProviderIcon(baseUrl: string | undefined): Promise<ProviderIconBytes | null> {
-  const origin = providerOrigin(baseUrl);
-  if (!origin) return null;
-
-  const html = await fetchOriginHtml(origin);
-  if (html) {
-    for (const candidate of pickIconHrefs(html, origin, MAX_CANDIDATES)) {
-      const icon = await fetchIconAt(candidate);
-      if (icon) return icon;
+  for (const origin of providerIconOrigins(baseUrl)) {
+    const html = await fetchOriginHtml(origin);
+    if (html) {
+      for (const candidate of pickIconHrefs(html, origin, MAX_CANDIDATES)) {
+        const icon = await fetchIconAt(candidate);
+        if (icon) return icon;
+      }
     }
+    // Last resort: the root ICO every web server has served since 1999.
+    const root = await fetchIconAt(`${origin}/favicon.ico`);
+    if (root) return root;
   }
-  // Last resort: the root ICO every web server has served since 1999.
-  return fetchIconAt(`${origin}/favicon.ico`);
+  return null;
 }

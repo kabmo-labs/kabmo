@@ -113,7 +113,7 @@ export async function ensureProviderIcon(target: ProviderIconTarget): Promise<bo
       : {
         slug,
         status: 'missing',
-        error: 'no usable icon on the endpoint host',
+        error: 'no usable icon on the endpoint host or its base domain',
         fetchedAt: Date.now(),
       });
     return true;
