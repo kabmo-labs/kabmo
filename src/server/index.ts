@@ -24,6 +24,7 @@ import { SHELL_ROUTE } from '@/server/lib/lifecycle/shell-route';
 import { isMockMode } from '@/server/mock.server';
 import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
 import { stopDiscoveryRootsWatch, syncDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
+import { installMemoryMaintenance, stopMemoryMaintenance } from '@/server/lib/lifecycle/memory';
 import { startScheduleRuntime, stopScheduleRuntime } from '@/server/lib/schedule/runtime.server';
 import { startWaitingRuntime, stopWaitingRuntime } from '@/server/lib/waiting/runtime.server';
 import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
@@ -329,9 +330,13 @@ if (isTrayEnabledByArgv()) {
   else console.log(`[kabmo] tray:            not shown — ${result.reason}`);
 }
 
+// A full collection past the ceiling, never a schedule (`lib/lifecycle/memory.ts`).
+installMemoryMaintenance();
+
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, () => {
     stopDiscoveryRootsWatch();
+    stopMemoryMaintenance();
     stopScheduleRuntime();
     stopWaitingRuntime();
     void app.stop();

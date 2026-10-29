@@ -2,6 +2,7 @@ import { json, NO_STORE_HEADERS } from '@/server/lib/remix-compat';
 import pkg from '@/../package.json';
 import { isAuthEnabled } from '@/server/lib/auth/guard';
 import { countOpenFileDescriptors } from '@/server/lib/lifecycle/fd-pressure';
+import { snapshot as memorySnapshot } from '@/server/lib/lifecycle/memory';
 import { resolveLaunchMode } from '@/server/lib/lifecycle/launch-mode';
 import { isTrayEnabledByArgv } from '@/server/lib/lifecycle/argv-flags';
 import { isTlsEnabledByArgv } from '@/server/lib/lifecycle/tls';
@@ -60,6 +61,9 @@ export async function loader() {
       // and the flag is not recoverable from the running server any other way.
       tray: isTrayEnabledByArgv(),
       fds: countOpenFileDescriptors(),
+      // What the memory sweep reacts to, reported here so the condition is
+      // visible from `kabmo status` instead of only from a process monitor.
+      memory: memorySnapshot(),
     },
     { headers: NO_STORE_HEADERS },
   );

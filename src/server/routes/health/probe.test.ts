@@ -47,6 +47,19 @@ describe('GET /api/health', () => {
     expect((await health()).pluginsReady).toBe(true);
   });
 
+  test('reports the memory the sweep reacts to', async () => {
+    // The ceiling in `lib/lifecycle/memory.ts` is only actionable if the number
+    // it compares is visible: from Activity Monitor a reader cannot tell which
+    // of five `bun` processes is this server, and `kabmo status` has no other
+    // way to say so.
+    const payload = await health();
+    const memory = payload.memory as { rssMB?: unknown; heapUsedMB?: unknown; heapTotalMB?: unknown };
+    expect(typeof memory?.rssMB).toBe('number');
+    expect(typeof memory?.heapUsedMB).toBe('number');
+    expect(typeof memory?.heapTotalMB).toBe('number');
+    expect(memory.rssMB as number).toBeGreaterThan(0);
+  });
+
   test('still answers the identity the restart watch reads', async () => {
     // The field rides along with the facts that already exist; a payload that
     // lost `pid`/`startedAt` would break the restart flow that motivated it.
