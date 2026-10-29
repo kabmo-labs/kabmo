@@ -37,6 +37,7 @@ import { usePanelRegistry, usePanelSlots } from '@/client/hooks/workspace/panel-
 import { usePanelOrder } from '@/client/hooks/workspace/panel-order';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
+import { PluginRenderBoundary } from '@/client/components/common/plugin-render-boundary';
 import { rightPanelOf } from '@/client/lib/plugins/slots';
 import { pluginEnablementKey, pluginPanelKey } from '@/shared/lib/workspace/panel-ids';
 import { SESSIONS_VIEW_ID, panelSideOf, type PanelSide } from '@/shared/lib/workspace/left-dock';
@@ -179,9 +180,13 @@ export function usePanelCatalog(side: PanelCatalogSide = 'right'): ResolvedPanel
         ...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {}),
         // Wrapped so the kit's participant hooks resolve THIS plugin's id while
         // its panel renders — the scope is what `useRpc`/`useRealtime` read.
+        // The boundary is the other half: a plugin component that throws must
+        // fail inside its own column, never in the host's root diff.
         render: (props) => (
           <PluginIdProvider pluginId={panel.pluginId}>
-            <Component sessionId={props.sessionId ?? null} workspacePath={null} />
+            <PluginRenderBoundary pluginId={panel.pluginId} surface="its panel">
+              <Component sessionId={props.sessionId ?? null} workspacePath={null} />
+            </PluginRenderBoundary>
           </PluginIdProvider>
         ),
       };

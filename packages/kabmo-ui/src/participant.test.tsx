@@ -194,6 +194,32 @@ describe('useRealtime', () => {
     expect(realtime.get().value).toBeNull();
     expect(realtime.get().isLoading).toBe(true);
   });
+
+  /**
+   * The host answers `undefined` for a topic with no value yet, and that must
+   * stop here.
+   *
+   * `value` is declared `T | null`, so a plugin that guards `value !== null`
+   * and then reads a field is correct by this contract — an `undefined` passed
+   * through it throws inside the plugin's render. Measured after a server
+   * restart: the socket's resync notified every watched topic, the Stats
+   * readout read `snapshot.probe` off `undefined`, and the throw landed inside
+   * the app's ROOT diff, which left the container half-written and made the
+   * next render append a second app tree — the navbar drew twice until a
+   * reload.
+   */
+  test('a push that carries no value answers null, never undefined', () => {
+    const realtime = mount(() => useRealtime<{ count: number }>());
+    act(() => host.publishTopic(undefined));
+
+    expect(realtime.get().value).toBeNull();
+    expect(realtime.get().isLoading).toBe(false);
+
+    // A real value afterwards still lands, so the guard drops nothing but the
+    // no-value push.
+    act(() => host.publishTopic({ count: 3 }));
+    expect(realtime.get().value).toEqual({ count: 3 });
+  });
 });
 
 describe('useComposer', () => {

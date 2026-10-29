@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
+import { PluginRenderBoundary } from '@/client/components/common/plugin-render-boundary';
 import { requestOpenPanel } from '@/shared/lib/workspace/panel-open';
 import {
   MOBILE_HEADER_ENTRY_MAX_PX,
@@ -96,7 +97,22 @@ interface HeaderPanelEntryProps {
  * a button would advertise an interaction that does not exist, and a readout
  * like `10tps ⛁10GB` is not something a user should be able to "press".
  */
-function HeaderPanelEntry({ entry, layout, sessionId, open, onToggle, onClose }: HeaderPanelEntryProps) {
+function HeaderPanelEntry(props: HeaderPanelEntryProps) {
+  // Every plugin-owned render sits inside a boundary, and the navbar is where
+  // it matters most: this component is drawn by the app's ROOT diff, so a throw
+  // from the plugin's trigger does not merely blank one control — it leaves the
+  // root's vnode bookkeeping half-written and the next render appends a SECOND
+  // app tree (measured: two identical navbars until a reload). The boundary
+  // takes the throw, the row keeps its other controls, and the chip names the
+  // plugin and the reason.
+  return (
+    <PluginRenderBoundary pluginId={props.entry.pluginId} surface="its navbar entry">
+      <HeaderEntryControl {...props} />
+    </PluginRenderBoundary>
+  );
+}
+
+function HeaderEntryControl({ entry, layout, sessionId, open, onToggle, onClose }: HeaderPanelEntryProps) {
   const ref = useRef<HTMLDivElement>(null);
   useOnClickOutside(ref, onClose);
 

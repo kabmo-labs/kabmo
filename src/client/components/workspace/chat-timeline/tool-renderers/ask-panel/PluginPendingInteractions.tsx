@@ -27,11 +27,10 @@
  * plugin's answer from a user's, which is the whole point of the slot.
  */
 
-import { Component, type ComponentChildren } from 'preact';
 import { useMemo } from 'preact/hooks';
-import { AlertTriangle } from 'lucide-preact';
 import type { PendingInteractionQuestion, PendingInteractionRegistration } from '@kabmo-labs/kabmo-sdk';
 import { PluginIdProvider } from '@kabmo-labs/kabmo-ui';
+import { PluginRenderBoundary } from '@/client/components/common/plugin-render-boundary';
 import type { ExtensionUiDialogRequest } from '@/shared/types/omp/agent';
 import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
 import type { ExtensionDialogResponse } from '@/client/components/workspace/chat-timeline/tool-renderers/extension-dialog/Lazy';
@@ -109,52 +108,6 @@ function submitResponse(frame: ExtensionUiDialogRequest, answers: readonly Pendi
   return { value: text || answer?.selectedOptions[0] || '' };
 }
 
-interface PluginRenderBoundaryProps {
-  pluginId: string;
-  children?: ComponentChildren;
-}
-
-interface PluginRenderBoundaryState {
-  reason: string | null;
-}
-
-/**
- * Holds one plugin's render, so a component that throws takes itself off screen
- * and nothing else.
- *
- * The failure is reported twice over — on the console for whoever is debugging,
- * and in the card for the user who is now looking at a question no plugin is
- * helping with — so a plugin cannot fail invisibly.
- */
-class PluginRenderBoundary extends Component<PluginRenderBoundaryProps, PluginRenderBoundaryState> {
-  state: PluginRenderBoundaryState = { reason: null };
-
-  static getDerivedStateFromError(error: unknown): PluginRenderBoundaryState {
-    return { reason: error instanceof Error ? error.message : String(error) };
-  }
-
-  componentDidCatch(error: unknown): void {
-    console.error(`[plugin:${this.props.pluginId}] pendingInteraction failed to render`, error);
-  }
-
-  render(): ComponentChildren {
-    const { reason } = this.state;
-    if (reason === null) return this.props.children;
-    return (
-      <div
-        data-plugin-error={this.props.pluginId}
-        className="flex items-start gap-2 rounded-md border border-error/20 bg-error/[0.03] px-2.5 py-1.5 text-[10.5px] text-ink/70"
-      >
-        <AlertTriangle size={11} className="mt-0.5 shrink-0 text-error" />
-        <span className="select-text">
-          Plugin <span className="font-mono">{this.props.pluginId}</span> failed to render its answer control:{' '}
-          <span className="font-mono">{reason}</span>
-        </span>
-      </div>
-    );
-  }
-}
-
 /** Every registered plugin control that may answer the dialog in flight. */
 export function PluginPendingInteractions({ frame, recorded, onRespond }: PluginPendingInteractionsProps) {
   const rows = useListSlotRows<PendingInteractionRegistration>('pendingInteraction');
@@ -167,7 +120,7 @@ export function PluginPendingInteractions({ frame, recorded, onRespond }: Plugin
         const Component = entry.registration.component;
         return (
           <PluginIdProvider key={`${entry.pluginId}:${entry.registration.id}`} pluginId={entry.pluginId}>
-            <PluginRenderBoundary pluginId={entry.pluginId}>
+            <PluginRenderBoundary pluginId={entry.pluginId} surface="its answer control">
               <Component
                 questions={questions}
                 recorded={recorded}

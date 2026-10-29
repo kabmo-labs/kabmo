@@ -119,20 +119,33 @@ export function useRealtime<T = unknown>(): PluginRealtimeState<T> {
   useEffect(() => {
     const services = requireServices();
     if (!pluginId || !services.subscribePluginTopic) return;
+    // ONE writer for the seed and every push, because the host's answer for a
+    // topic with no value yet is `undefined` — and `undefined` is not a value
+    // this hook may hand out. `value` is declared `T | null`, so a component
+    // that guards `value !== null` and then reads a field is correct by this
+    // contract, and an `undefined` smuggled through it throws inside that
+    // component's render.
+    //
+    // Measured, and it is not hypothetical: a plugin's navbar readout guarded
+    // exactly that way threw `Cannot read properties of undefined (reading
+    // 'probe')` after a server restart. The socket's resync notifies every
+    // watched topic, and a topic whose server half had not published yet
+    // answered `undefined`. The throw landed inside the app's ROOT diff, which
+    // left the container's vnode bookkeeping half-written — and the next queued
+    // render then appended a SECOND app tree, so the navbar drew twice until a
+    // reload.
+    const apply = (next: unknown): void => {
+      setValue(next === undefined ? null : (next as T));
+      setIsLoading(false);
+      setStale(services.pluginTopicStale?.(pluginId) ?? false);
+    };
     // Seed from the host's current value BEFORE subscribing: a component that
     // mounted between two pushes would otherwise render empty until the next
     // one, which for a slow-publishing plugin is a visible blank.
     const seeded = services.readPluginTopic?.(pluginId);
-    if (seeded !== undefined) {
-      setValue(seeded as T);
-      setIsLoading(false);
-    }
-    setStale(services.pluginTopicStale?.(pluginId) ?? false);
-    const unsubscribe = services.subscribePluginTopic(pluginId, (next) => {
-      setValue(next as T);
-      setIsLoading(false);
-      setStale(services.pluginTopicStale?.(pluginId) ?? false);
-    });
+    if (seeded !== undefined) apply(seeded);
+    else setStale(services.pluginTopicStale?.(pluginId) ?? false);
+    const unsubscribe = services.subscribePluginTopic(pluginId, apply);
     return unsubscribe;
   }, [pluginId]);
 
