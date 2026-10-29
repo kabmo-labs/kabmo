@@ -496,6 +496,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     }
   }
 
+  /**
+   The web process was killed — most often by the OS under memory pressure.
+
+   Without this the shell shows a WHITE, permanently dead page: the view is still
+   there, the delegate is still installed, and no navigation is in flight, so
+   nothing ever redraws. Measured with this build against a 3,544-message
+   session: `kill -9` on `com.apple.WebKit.WebContent` left the window blank and
+   every later interaction a no-op, and only quitting the app recovered it —
+   the shell made one document request and never a second.
+
+   The page is re-loaded rather than the view rebuilt: the console is a
+   same-origin SPA whose state lives on the server, so a fresh document is the
+   same console. The splash goes up first, because a reload of a large session is
+   not instant and a blank frame is what this whole path exists to avoid. The
+   ADDRESS is `WebProcessRecovery`'s decision (tested in `Tests/`); loading it is
+   what actually works, because after a termination the view holds no document
+   and `reload()` has nothing to reload.
+   */
+  func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    NSLog("[Kabmo] web content process terminated — reloading")
+    applyLoading(.connecting)
+    guard let address = WebProcessRecovery.address(shown: shownURL, current: pendingBootURL),
+          let url = URL(string: address)
+    else { return }
+    webView.load(URLRequest(url: url))
+  }
+
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     failSplash(error)
   }

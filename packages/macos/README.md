@@ -95,6 +95,20 @@ free is then done in `ShellWindow.swift`:
 | green button | full screen; the webview is inset by `safeAreaInsets` so the page does not sit under the menu bar |
 | a press on any control in the bar | reaches the control — the selector stops at interactive elements |
 
+### When the OS kills the web process
+
+`webViewWebContentProcessDidTerminate` reloads the address the page had finished
+on (`WebProcessRecovery`, tested in `Tests/`). Without it the shell showed a
+WHITE, permanently dead page: the view is still there, the delegate is still
+installed, and no navigation is in flight, so nothing ever redraws. Measured with
+this build: `kill -9` on `com.apple.WebKit.WebContent` left the window blank and
+made every later interaction a no-op — the shell issued one document request and
+never a second. With the handler, the same kill produces a second request and the
+console comes back.
+
+It loads the address rather than calling `reload()`, because after a termination
+the view holds no document and there is nothing to reload.
+
 ### Settings › asks the page, because every settings screen is a modal
 
 There is no native panel to build: Appearance, Providers, Plugins, Skills and the
