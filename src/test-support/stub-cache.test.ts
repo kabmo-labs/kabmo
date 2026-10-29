@@ -25,8 +25,8 @@ import { pruneStubCache, STUB_CACHE_MAX_AGE_MS, STUB_CACHE_ROOT } from '@/test-s
 
 const roots: string[] = [];
 
-/** A private cache root with one entry per given name, aged by `ageMs`. */
-function makeRoot(entries: { name: string; ageMs: number }[]): string {
+/** A private cache root with one entry per given name, aged by `ageMs` against `nowMs`. */
+function makeRoot(nowMs: number, entries: { name: string; ageMs: number }[]): string {
   const root = mkdtempSync(join(tmpdir(), 'kabmo-stub-cache-'));
   roots.push(root);
   for (const { name, ageMs } of entries) {
@@ -34,7 +34,7 @@ function makeRoot(entries: { name: string; ageMs: number }[]): string {
     mkdirSync(dir, { recursive: true });
     const file = join(dir, name);
     writeFileSync(file, 'binary');
-    const stamp = (Date.now() - ageMs) / 1000;
+    const stamp = (nowMs - ageMs) / 1000;
     utimesSync(dir, stamp, stamp);
   }
   return root;
@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe('pruneStubCache', () => {
   test('removes an entry older than the age floor and keeps a fresh one', () => {
-    const root = makeRoot([
+    const root = makeRoot(Date.now(), [
       { name: 'fake-omp-stale', ageMs: STUB_CACHE_MAX_AGE_MS + 60_000 },
       { name: 'fake-omp-fresh', ageMs: 1_000 },
     ]);
@@ -56,17 +56,27 @@ describe('pruneStubCache', () => {
   });
 
   test('the age floor is a boundary, not a fuzzy cut', () => {
-    const now = Date.now();
-    const root = makeRoot([
+    // Anchor the mtimes and the injected `now` to a WHOLE SECOND. `utimesSync`
+    // takes seconds, and the round trip back into `mtimeMs` is exact only for
+    // whole seconds plus whole milliseconds: a sub-millisecond fraction drifts
+    // by about a millisecond on Windows, which flipped an entry pinned to the
+    // boundary between two runs of the same commit (measured: green, then red,
+    // on the Windows runner — the boundary case only). With the anchor, the
+    // at-floor entry differs from `now` by EXACTLY the floor and the
+    // under-floor entry by EXACTLY one millisecond less, on every platform —
+    // so this still pins "only a strictly younger entry survives" (a `<=`
+    // ceiling would keep `at-floor` and fail here) with no clock race.
+    const anchorMs = Math.floor(Date.now() / 1000) * 1000;
+    const root = makeRoot(anchorMs, [
       // Exactly the floor is stale: only a strictly younger entry survives, so
       // an entry can never be kept and dropped by two runs with the same age.
       { name: 'at-floor', ageMs: STUB_CACHE_MAX_AGE_MS },
       { name: 'under-floor', ageMs: STUB_CACHE_MAX_AGE_MS - 1 },
     ]);
 
-    // Injected `now` so the assertion cannot race the clock between `utimesSync`
-    // and the prune.
-    expect(pruneStubCache({ root, now, maxAgeMs: STUB_CACHE_MAX_AGE_MS })).toEqual([
+    // The anchor is the prune's `now`, so neither entry races the clock between
+    // `utimesSync` and the prune.
+    expect(pruneStubCache({ root, now: anchorMs, maxAgeMs: STUB_CACHE_MAX_AGE_MS })).toEqual([
       join(root, 'at-floor'),
     ]);
     expect(readdirSync(root)).toEqual(['under-floor']);
@@ -80,7 +90,10 @@ describe('pruneStubCache', () => {
   });
 
   test('a full sweep is repeatable: the second call has nothing left to remove', () => {
-    const root = makeRoot([{ name: 'a', ageMs: STUB_CACHE_MAX_AGE_MS + 1 }]);
+    // A whole second past the floor, not a millisecond: the case is about the
+    // SECOND call finding nothing, and a 1 ms margin sits inside the timestamp
+    // round trip's drift (see the boundary case).
+    const root = makeRoot(Date.now(), [{ name: 'a', ageMs: STUB_CACHE_MAX_AGE_MS + 1_000 }]);
 
     expect(pruneStubCache({ root })).toHaveLength(1);
     expect(pruneStubCache({ root })).toEqual([]);
