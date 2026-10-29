@@ -39,9 +39,19 @@ describe('snapshot', () => {
     // The ceiling must react to the number a process monitor shows. Measured on
     // Bun 1.4.4 / macOS 27: a live server holding 902 MB of real RSS reported
     // 299 MB through `process.memoryUsage().rss`, so a ceiling built on that
-    // would never fire and the sweep would never run. Compared against `ps`
-    // directly — the same source the module reads — so this pins the SOURCE
-    // rather than asserting a relationship between two estimates.
+    // would never fire and the sweep would never run.
+    //
+    // The number is compared against the SAME source the module reads on this
+    // platform — `ps` on POSIX, `process.memoryUsage().rss` on Windows, where
+    // there is no `ps` in the shell PATH (measured: the spawn answers nothing
+    // there, so the module's win32 branch IS the runtime's own number) — so
+    // this pins the SOURCE rather than asserting a relationship between two
+    // estimates.
+    if (process.platform === 'win32') {
+      const jsMB = Math.round(process.memoryUsage().rss / (1024 * 1024));
+      expect(Math.abs(snapshot().rssMB - jsMB)).toBeLessThanOrEqual(1);
+      return;
+    }
     const psKb = Number(
       Bun.spawnSync(['ps', '-o', 'rss=', '-p', String(process.pid)]).stdout.toString().trim(),
     );

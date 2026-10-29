@@ -47,10 +47,17 @@ const BYTES_PER_MB = 1024 * 1024;
  * would never run. `ps` is the number a process monitor shows, and one spawn per
  * interval is nothing beside the collection it decides.
  *
- * `ps` rather than `/proc/self/statm`: one code path for every platform the
- * shells ship on, and the sweep runs once a minute.
+ * `ps` rather than `/proc/self/statm`: one code path for the POSIX platforms
+ * the shells ship on, and the sweep runs once a minute.
+ *
+ * Windows is the exception: there is no `ps` in the shell PATH, so the spawn
+ * answers nothing and falls back anyway (measured on a Windows runner, where
+ * the answer is empty). The branch reads the runtime's own number directly —
+ * accurate there, the under-report above being macOS-specific — and saves a
+ * useless spawn on every interval.
  */
 function residentMB(): number {
+  if (process.platform === 'win32') return Math.round(process.memoryUsage().rss / BYTES_PER_MB);
   try {
     const out = Bun.spawnSync(['ps', '-o', 'rss=', '-p', String(process.pid)]);
     const kb = Number(out.stdout.toString().trim());

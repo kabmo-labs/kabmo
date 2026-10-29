@@ -54,8 +54,49 @@ function tempRoot(prefix: string): string {
   return root;
 }
 
+/**
+ * Remove a fixture root, tolerating the transient lock Windows holds on a
+ * directory whose child process only just exited.
+ *
+ * The repo's `src/test-support/remove-dir.ts` is the canonical version of this
+ * (measured there: 37 EBUSY failures on the first Windows CI run), but a plugin
+ * test must run from its own directory with the published packages alone — it
+ * cannot import Kabmo's test-support. Same bounded, lock-only retry. The dir is
+ * deleted before the deadline or the test fails, so a child that outlives its
+ * test is reported rather than hidden.
+ */
+const REMOVE_RETRY_DEADLINE_MS = 5_000;
+const REMOVE_RETRY_INTERVAL_MS = 25;
+
+function removeRoot(root: string): void {
+  const deadline = Date.now() + REMOVE_RETRY_DEADLINE_MS;
+  let attempt = 0;
+  for (;;) {
+    try {
+      rmSync(root, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      // Only a lock is worth retrying; a permission or path error will not
+      // resolve itself and should surface immediately.
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
+      if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'ENOTEMPTY') throw error;
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `could not remove ${root} after ${REMOVE_RETRY_DEADLINE_MS}ms (${code}) — a child process outlived its test`,
+          { cause: error },
+        );
+      }
+      // Forcing a collection when the plain retries fail is what releases a
+      // subprocess handle the runtime has not finished closing.
+      if (attempt++ >= 2) Bun.gc(true);
+      Bun.sleepSync(REMOVE_RETRY_INTERVAL_MS);
+    }
+  }
+}
+
 afterAll(() => {
-  for (const root of tempRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of tempRoots.splice(0)) removeRoot(root);
 });
 
 /** A storage fake over a Map — the host's contract, without a database. */
