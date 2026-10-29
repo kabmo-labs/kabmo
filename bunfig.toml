@@ -9,3 +9,23 @@
 # utility classes).
 [serve.static]
 plugins = ["./src/server/lib/bundler/css.ts"]
+
+# A freshly published version of a dependency is the window a compromised
+# maintainer account is exploited in, and this project's dependencies run inside
+# the server process (`bun:sqlite`, `elysia`, the bundler). Three days is long
+# enough for the registry's own malware reports to land and short enough that a
+# security fix is not blocked for a week.
+#
+# Only RESOLUTION is delayed: versions already in `bun.lock` install immediately,
+# so this changes nothing for CI (`--frozen-lockfile`) or for an existing
+# checkout. It applies to `bun install` when the lockfile has to pick a version,
+# `bun add`, `bun update` and `bunx`.
+#
+# SECONDS, not `"3d"`. The unit-suffixed form is accepted by `bun install` but
+# REJECTED by the bunfig loader every other Bun process uses: with `"3d"` here,
+# a `bun`/compiled-Bun child started in this directory dies at startup with
+# "Expected number of seconds for minimumReleaseAge" (measured: 10 of 15 cases
+# in `src/server/lib/wiki/git.test.ts` failed, because the fake `git` is a
+# compiled Bun executable that reads this file). 259200 = 3 days.
+[install]
+minimumReleaseAge = 259200
