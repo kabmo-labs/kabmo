@@ -127,8 +127,11 @@ describe('getDatabasePath', () => {
 describe('a failed open is not cached', () => {
   test('the next call retries after an open throws', async () => {
     // A path whose PARENT is a regular file: `mkdir -p` on it fails, so the
-    // open throws without any handle to leak.
-    const blocker = path.join(roots[0] ?? tmpdir(), `blocker-${process.pid}`);
+    // open throws without any handle to leak. Inside a REGISTERED root — the
+    // `roots[0] ?? tmpdir()` form fell through to `$TMPDIR` itself once
+    // `afterEach` had emptied the array, and both this file and the retry
+    // database then sat there for good (measured in an isolated `$TMPDIR`).
+    const blocker = path.join(tempRoot(), 'blocker');
     await Bun.write(blocker, 'not a directory');
     const savedSlot = globalThis.__kabmoDb;
     try {
@@ -142,7 +145,7 @@ describe('a failed open is not cached', () => {
       const afterFailure = globalThis.__kabmoDb as { promise?: unknown } | undefined;
       expect(afterFailure?.promise ?? null).toBeNull();
 
-      Bun.env.KABMO_DB_PATH = path.join(roots[0] ?? tmpdir(), `retry-${process.pid}`, 'db.sqlite');
+      Bun.env.KABMO_DB_PATH = path.join(tempRoot(), 'retry', 'db.sqlite');
       const db = await getDb();
       expect(db).toBeDefined();
       db.raw.close();
@@ -158,7 +161,7 @@ describe('a failed open is not cached', () => {
     // no owner. Bun reports that as "Unhandled error between tests", attributed
     // to whichever case happens to be running; measured on the Release gate,
     // where one Windows timeout reported a second, unrelated failure.
-    const blocker = path.join(roots[0] ?? tmpdir(), `blocker-unhandled-${process.pid}`);
+    const blocker = path.join(tempRoot(), 'blocker-unhandled');
     await Bun.write(blocker, 'not a directory');
     const savedSlot = globalThis.__kabmoDb;
     const unhandled: unknown[] = [];

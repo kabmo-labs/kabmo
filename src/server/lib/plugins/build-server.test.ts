@@ -26,16 +26,23 @@ import { packageDir } from '@/server/lib/fs/package-root';
 
 const BUNDLED_PLUGIN = 'marketplace/plugins/session-info';
 
-/** The example plugin, copied out of the repo so a build cannot write into it. */
+/**
+ * The example plugin, copied out of the repo so a build cannot write into it.
+ *
+ * Returns the COPY ROOT, not the plugin inside it: `mkdtemp` made a parent, so
+ * removing only the plugin left that parent behind — measured, two empty
+ * `omp-plugin-build-*` directories per run. A caller removes what it was given.
+ */
 async function copyExample(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'omp-plugin-build-'));
   await cp(join(packageDir(), BUNDLED_PLUGIN), join(dir, 'session-info'), { recursive: true });
-  return join(dir, 'session-info');
+  return dir;
 }
 
 describe('buildPanelPlugin with a server entry', () => {
   test('a plugin declaring both app and server produces both bundles', async () => {
-    const root = await copyExample();
+    const copy = await copyExample();
+    const root = join(copy, 'session-info');
     try {
       const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { kabmo: unknown };
       const manifest = toManifest(pkg.kabmo, root);
@@ -56,12 +63,13 @@ describe('buildPanelPlugin with a server entry', () => {
       const server = await readFile(join(root, manifest.server ?? ''), 'utf8');
       expect(server).toContain('session-info server half loaded');
     } finally {
-      await rm(root, { recursive: true, force: true });
+      await rm(copy, { recursive: true, force: true });
     }
   }, 240_000);
 
   test('a plugin whose server source is missing its declared entry reports the file by name', async () => {
-    const root = await copyExample();
+    const copy = await copyExample();
+    const root = join(copy, 'session-info');
     try {
       const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
         kabmo: Record<string, unknown>;
@@ -79,7 +87,7 @@ describe('buildPanelPlugin with a server entry', () => {
       expect(result.status).toBe('failed');
       expect(result.reason).toContain('dist/other.js');
     } finally {
-      await rm(root, { recursive: true, force: true });
+      await rm(copy, { recursive: true, force: true });
     }
   }, 240_000);
 });

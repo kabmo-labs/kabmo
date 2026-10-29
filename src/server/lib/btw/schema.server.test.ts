@@ -14,7 +14,7 @@
  * would otherwise render a turn that never completes.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { rmSync } from 'node:fs';
@@ -22,11 +22,14 @@ import { createDb, type DbClient } from '@/server/lib/db/client';
 import { ensureBtwSchema } from '@/server/lib/btw/schema.server';
 
 const paths: string[] = [];
+const open: DbClient[] = [];
 
 function tempDb(): DbClient {
   const path = join(tmpdir(), `btw-schema-${crypto.randomUUID()}.sqlite`);
   paths.push(path);
-  return createDb(path);
+  const db = createDb(path);
+  open.push(db);
+  return db;
 }
 
 describe('ensureBtwSchema', () => {
@@ -79,6 +82,15 @@ describe('ensureBtwSchema', () => {
   });
 });
 
-process.on('exit', () => {
-  for (const path of paths) rmSync(path, { force: true });
+// `afterAll`, not `process.on('exit', …)`: a `bun test` worker never fires the
+// exit hook for a file's registrations (measured — the marker file never
+// appeared, and each run left three `.sqlite` + `-wal` + `-shm` triples in
+// `$TMPDIR`). Each handle is closed before its files go, because WAL keeps
+// `-wal`/`-shm` beside the database and an open one makes the delete fail.
+afterAll(() => {
+  for (const db of open) db.raw.close();
+  open.length = 0;
+  for (const path of paths.splice(0)) {
+    for (const suffix of ['', '-wal', '-shm']) rmSync(`${path}${suffix}`, { force: true });
+  }
 });

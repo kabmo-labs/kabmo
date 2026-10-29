@@ -44,6 +44,15 @@ function tempDir(prefix: string): string {
   return dir;
 }
 
+// Every fixture this file minted goes, not only the database one the DB block
+// removes itself. The array was collected and never swept: a run left five
+// directories in `$TMPDIR` (`repo-scope` ×3, `reveal`, `shell`), measured in an
+// isolated TMPDIR. File-level, so it runs after the DB block's own teardown —
+// that block must close the handle BEFORE anything under it is deleted.
+afterAll(() => {
+  for (const dir of tempDirs.splice(0)) removeDir(dir);
+});
+
 describe('isWithinRoot / resolveWithinRoot', () => {
   const root = resolve(sep, 'srv', 'workspace');
 

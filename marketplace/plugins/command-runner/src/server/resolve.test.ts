@@ -26,8 +26,8 @@
  * is observed as the registry would publish it.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -37,6 +37,26 @@ import { CustomCommandStore, customCommandId } from './custom';
 import { startRun, withCustom } from './resolve';
 import { RunRegistry } from './runner';
 import type { RunnerState } from '../protocol';
+
+/**
+ * Every fixture root this file mints, swept at the end.
+ *
+ * The cases below each created a `cr-*` directory and never removed it —
+ * measured in an isolated `$TMPDIR`: 8 empty directories per run, which is the
+ * accumulation the repo's own E2E layer documents for its temp roots. A helper,
+ * not nine inline `mkdtempSync` calls, so a new case cannot forget.
+ */
+const tempRoots: string[] = [];
+
+function tempRoot(prefix: string): string {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  tempRoots.push(root);
+  return root;
+}
+
+afterAll(() => {
+  for (const root of tempRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
 /** A storage fake over a Map — the host's contract, without a database. */
 function fakeApi() {
@@ -70,7 +90,7 @@ function fakeApi() {
 
 describe('the merge', () => {
   test('puts the custom group first and always present', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cr-merge-'));
+    const root = tempRoot('cr-merge-');
     writeFileSync(join(root, 'Makefile'), 'build:\n\techo hi\n');
     const { api } = fakeApi();
     const store = new CustomCommandStore(api);
@@ -88,8 +108,8 @@ describe('the merge', () => {
   });
 
   test('a repo command is absent under another root', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cr-scope-'));
-    const other = mkdtempSync(join(tmpdir(), 'cr-other-'));
+    const root = tempRoot('cr-scope-');
+    const other = tempRoot('cr-other-');
     const { api } = fakeApi();
     const store = new CustomCommandStore(api);
     await store.save({ command: 'only here', scope: 'repo', root, cwd: '.' });
@@ -127,7 +147,7 @@ describe('starting a run', () => {
   }
 
   test('a file command resolves through the scan, as before', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cr-start-'));
+    const root = tempRoot('cr-start-');
     writeFileSync(join(root, 'Makefile'), 'build:\n\techo hi\n');
     const { api } = fakeApi();
     const store = new CustomCommandStore(api);
@@ -148,7 +168,7 @@ describe('starting a run', () => {
   });
 
   test('a custom command runs its STORED text through sh -c, in its stored cwd', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cr-custom-'));
+    const root = tempRoot('cr-custom-');
     mkdirSync(join(root, 'packages', 'api'), { recursive: true });
     const { api } = fakeApi();
     const store = new CustomCommandStore(api);
@@ -177,7 +197,7 @@ describe('starting a run', () => {
   });
 
   test('an id the client invented has nothing to resolve to', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cr-unknown-'));
+    const root = tempRoot('cr-unknown-');
     const { api } = fakeApi();
     const store = new CustomCommandStore(api);
     const { registry } = makeRegistry();
@@ -194,8 +214,8 @@ describe('starting a run', () => {
   });
 
   test('a repo command from another workspace is refused rather than run here', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cr-foreign-'));
-    const other = mkdtempSync(join(tmpdir(), 'cr-foreign2-'));
+    const root = tempRoot('cr-foreign-');
+    const other = tempRoot('cr-foreign2-');
     const { api } = fakeApi();
     const store = new CustomCommandStore(api);
     const saved = await store.save({ command: 'echo hi', scope: 'repo', root: other, cwd: '.' });

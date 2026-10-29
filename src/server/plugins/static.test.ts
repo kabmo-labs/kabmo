@@ -8,7 +8,8 @@ import { servePublicAsset } from '@/server/plugins/static';
 // `public/` is the only asset root now: the client bundle is served by Bun's own
 // routing table (`/_bun/*` in dev, `/chunk-*` in production), so there is no
 // second build-output root to fall back to.
-const PUBLIC_DIR = join(mkdtempSync(join(tmpdir(), 'omp-static-')), 'public');
+const STATIC_ROOT = mkdtempSync(join(tmpdir(), 'omp-static-'));
+const PUBLIC_DIR = join(STATIC_ROOT, 'public');
 const ROOTS = [PUBLIC_DIR] as const;
 
 beforeAll(() => {
@@ -25,7 +26,9 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  rmSync(PUBLIC_DIR, { recursive: true, force: true });
+  // The mkdtemp PARENT, not `public/`: removing only the child left an empty
+  // `omp-static-*` directory in `$TMPDIR` on every run (measured).
+  rmSync(STATIC_ROOT, { recursive: true, force: true });
 });
 
 describe('servePublicAsset', () => {
