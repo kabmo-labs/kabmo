@@ -80,11 +80,13 @@ export function ModelDropdownSection({
           )}
           <span className="min-w-0 truncate">{title}</span>
         </div>
-        {isCollapsed ? (
-          <ChevronDown size={12} className="text-ink/40 shrink-0" />
-        ) : (
-          <ChevronUp size={12} className="text-ink/40 shrink-0" />
-        )}
+        {/* The same slot a row's favourite star occupies — `p-1` around a 13px
+            mark — so the disclosure chevron sits on the stars' axis. A bare
+            icon was flush against the panel edge, 4.5px right of every star
+            below it (measured: chevron centre 675, star centre 670.5). */}
+        <span className="inline-flex items-center justify-center p-1 shrink-0 text-ink/40">
+          {isCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+        </span>
       </button>
 
       {!isCollapsed && (

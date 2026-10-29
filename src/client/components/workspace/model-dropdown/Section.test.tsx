@@ -104,4 +104,18 @@ describe('model picker section header columns', () => {
     expect(gripSlot.className).toContain('justify-center');
     expect(gripSlot.querySelector('svg')).not.toBeNull();
   });
+
+  test('the chevron is built from the same slot as a row’s star', () => {
+    mountSection();
+
+    // Measured before this: the bare chevron sat flush on the panel edge, its
+    // centre 4.5px right of every favourite star below it (675 vs 670.5).
+    const chevronSlot = header().lastElementChild as HTMLElement;
+    const starButton = container.querySelector('button[title*="favorites"]') as HTMLElement;
+
+    expect(chevronSlot.className).toContain('p-1');
+    expect(chevronSlot.className).toContain('justify-center');
+    expect(starButton.className).toContain('p-1');
+    expect(chevronSlot.querySelector('svg')).not.toBeNull();
+  });
 });
