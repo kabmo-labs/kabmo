@@ -12,6 +12,7 @@ import { describe, expect, test } from 'bun:test';
 
 import type { CapabilityInput } from './capabilities';
 import { capabilitiesFor, writeRefusal } from './capabilities';
+import { readOnly } from '../protocol';
 
 const github = (section: CapabilityInput['section'] = 'pulls', hasCredential = true): CapabilityInput => ({
   provider: 'github',
@@ -21,38 +22,58 @@ const github = (section: CapabilityInput['section'] = 'pulls', hasCredential = t
 
 describe('capabilitiesFor', () => {
   test('no credential removes everything, because every host refuses an anonymous write', () => {
-    expect(capabilitiesFor(github('pulls', false))).toEqual({
-      comment: false,
-      state: false,
-      review: false,
-      merge: false,
-    });
+    expect(capabilitiesFor(github('pulls', false))).toEqual(readOnly());
   });
 
   test('a pull request with a credential gets all four on GitHub', () => {
-    expect(capabilitiesFor(github('pulls'))).toEqual({ comment: true, state: true, review: true, merge: true });
-  });
-
-  test('an issue has no review and no merge', () => {
-    expect(capabilitiesFor(github('issues'))).toEqual({ comment: true, state: true, review: false, merge: false });
-  });
-
-  test('a release has nothing, even with a credential', () => {
-    expect(capabilitiesFor(github('releases'))).toEqual({
-      comment: false,
-      state: false,
-      review: false,
-      merge: false,
+    expect(capabilitiesFor(github('pulls'))).toEqual({
+      comment: true,
+      state: true,
+      review: true,
+      merge: true,
+      mergeMethods: ['merge', 'squash', 'rebase'],
+      reviewVerdicts: ['approve', 'request_changes'],
     });
   });
 
-  test('Bitbucket has no review verdict', () => {
-    expect(capabilitiesFor({ provider: 'bitbucket', section: 'pulls', hasCredential: true }).review).toBe(false);
+  test('an issue has no review, no merge and no merge styles', () => {
+    expect(capabilitiesFor(github('issues'))).toEqual({
+      comment: true,
+      state: true,
+      review: false,
+      merge: false,
+      mergeMethods: [],
+      reviewVerdicts: [],
+    });
   });
 
-  test('GitLab and Gitea both offer a review on a merge request', () => {
-    expect(capabilitiesFor({ provider: 'gitlab', section: 'pulls', hasCredential: true }).review).toBe(true);
+  test('a release has nothing, even with a credential', () => {
+    expect(capabilitiesFor(github('releases'))).toEqual(readOnly());
+  });
+
+  test('Bitbucket offers no verdict, because its review endpoints take no message', () => {
+    const caps = capabilitiesFor({ provider: 'bitbucket', section: 'pulls', hasCredential: true });
+    expect(caps.review).toBe(false);
+    expect(caps.reviewVerdicts).toEqual([]);
+  });
+
+  test('GitLab offers a review, but only the one verdict the host has', () => {
+    const caps = capabilitiesFor({ provider: 'gitlab', section: 'pulls', hasCredential: true });
+    expect(caps.review).toBe(true);
+    expect(caps.reviewVerdicts).toEqual(['approve']);
     expect(capabilitiesFor({ provider: 'gitea', section: 'pulls', hasCredential: true }).review).toBe(true);
+  });
+
+  test('only GitHub and Gitea can merge by rebase', () => {
+    const methods = (provider: 'github' | 'gitlab' | 'gitea' | 'bitbucket') =>
+      capabilitiesFor({ provider, section: 'pulls', hasCredential: true }).mergeMethods;
+    expect(methods('github')).toContain('rebase');
+    expect(methods('gitea')).toContain('rebase');
+    // GitLab's merge endpoint takes `squash` and nothing else; Bitbucket's
+    // fast-forward is not a rebase. Offering either would perform a different
+    // operation than the one the confirmation promised.
+    expect(methods('gitlab')).toEqual(['merge', 'squash']);
+    expect(methods('bitbucket')).toEqual(['merge', 'squash']);
   });
 });
 
@@ -82,7 +103,7 @@ describe('writeRefusal', () => {
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toContain('no "request changes"');
+    expect(result.reason).toContain('no "request changes" event');
   });
 
   test('GitLab accepts approve', () => {
@@ -94,14 +115,25 @@ describe('writeRefusal', () => {
     ).toBe(true);
   });
 
-  test('Bitbucket refuses a review verdict', () => {
-    const result = writeRefusal(
-      { kind: 'review', verdict: 'approve', body: '' },
+  test('Bitbucket refuses a review verdict, because it cannot carry the words', () => {
+    const refused = writeRefusal(
+      { kind: 'review', verdict: 'approve', body: 'why' },
       { provider: 'bitbucket', section: 'pulls', hasCredential: true },
+    );
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.reason).toContain('Bitbucket has no review verdict this panel can post');
+  });
+
+  test('GitLab refuses a rebase merge by name, and says what it can do', () => {
+    const result = writeRefusal(
+      { kind: 'merge', method: 'rebase' },
+      { provider: 'gitlab', section: 'pulls', hasCredential: true },
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toContain('no review verdict');
+    expect(result.reason).toContain('GitLab cannot merge with "rebase"');
+    expect(result.reason).toContain('merge or squash');
   });
 
   test('every ordinary verb is allowed where it is offered', () => {

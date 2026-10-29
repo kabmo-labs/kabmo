@@ -29,7 +29,8 @@ import {
 } from '@kabmo-labs/kabmo-ui';
 
 import { ForgePanel } from './index';
-import type { ForgeDetail, ForgeList } from '../protocol';
+import { readOnly, type ForgeDetail } from '../protocol';
+import { detail, item, list } from './test-fixtures';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
 const saved = new Map<string, unknown>();
@@ -55,51 +56,6 @@ afterAll(() => {
     else delete target[key];
   }
 });
-
-function item() {
-  return {
-    id: '1',
-    number: 1,
-    title: 'Something is broken',
-    state: 'open' as const,
-    author: 'ana',
-    updatedAt: new Date().toISOString(),
-    url: 'https://example/1',
-    labels: [],
-    comments: 0,
-    tag: null,
-  };
-}
-
-function list(): ForgeList {
-  return {
-    provider: 'github',
-    host: 'github.com',
-    slug: 'kabmo-labs/kabmo',
-    webUrl: 'https://github.com/kabmo-labs/kabmo',
-    filter: { state: 'open', mine: false, label: '', query: '' },
-    sections: {
-      issues: { items: [item()], truncated: false, total: 1 },
-      pulls: { items: [], truncated: false, total: 0 },
-      releases: { items: [], truncated: false, total: null },
-    },
-    notes: [],
-  };
-}
-
-function detail(): ForgeDetail {
-  return {
-    item: item(),
-    body: 'The body.',
-    comments: [],
-    facts: [],
-    files: [],
-    commits: [],
-    ci: null,
-    capabilities: { comment: true, state: true, review: false, merge: false },
-    notes: [],
-  };
-}
 
 let scope: RepoScope;
 
@@ -208,7 +164,7 @@ describe('WriteBar', () => {
   test('a read-only credential offers no verbs at all', async () => {
     detailOutcome = {
       ok: true,
-      value: { ...detail(), capabilities: { comment: false, state: false, review: false, merge: false } },
+      value: { ...detail(), capabilities: readOnly() },
     };
     await mount();
     for (const label of ['Post a comment on #1', 'Approve #1', 'Merge #1', 'Close #1']) {
@@ -230,12 +186,47 @@ describe('WriteBar', () => {
   test('a merge confirmation offers the three methods', async () => {
     detailOutcome = {
       ok: true,
-      value: { ...detail(), capabilities: { comment: true, state: true, review: true, merge: true } },
+      value: {
+        ...detail(),
+        capabilities: {
+          comment: true,
+          state: true,
+          review: true,
+          merge: true,
+          mergeMethods: ['merge', 'squash', 'rebase'],
+          reviewVerdicts: ['approve', 'request_changes'],
+        },
+      },
     };
     await mount();
     await click('Merge #1');
     expect(container.querySelectorAll('input[name="forge-merge-method"]').length).toBe(3);
     expect(container.textContent).toContain('the branch history is not kept');
+  });
+
+  test('GitLab offers two merge styles and one verdict, because that is what it has', async () => {
+    detailOutcome = {
+      ok: true,
+      value: {
+        ...detail(),
+        capabilities: {
+          comment: true,
+          state: true,
+          review: true,
+          merge: true,
+          mergeMethods: ['merge', 'squash'],
+          reviewVerdicts: ['approve'],
+        },
+      },
+    };
+    await mount();
+    expect(button('Approve #1')).not.toBeNull();
+    // GitLab has no request-changes event, so the button would only fail.
+    expect(button('Request changes on #1')).toBeNull();
+
+    await click('Merge #1');
+    expect(container.querySelectorAll('input[name="forge-merge-method"]').length).toBe(2);
+    expect(container.textContent).not.toContain('Replays the commits onto the target');
   });
 
   test('a comment posts the text that was typed, and reports the outcome', async () => {

@@ -16,18 +16,18 @@
  *
  * - **GitLab has no "request changes".** It has `approve` and it has a note; the
  *   review verdict GitHub models with two events has one event there, so
- *   `review` is offered for approve and `request_changes` is refused by name.
+ *   `reviewVerdicts` carries `approve` alone.
  * - **A release is not a discussion on any host.** No comments, no state, no
  *   merge — it is a published artifact with an edit form, and editing it is not
  *   what this panel is for.
  * - **Bitbucket's issues have no review concept at all**, only pull requests do.
- * - **Gitea needs the merge style on the request** and has no `rebase`-only
- *   option in older versions, so `rebase` is offered and the host's own refusal
- *   is surfaced if it does not support it.
+ * - **No host merges by rebase except GitHub and Gitea**, so the merge styles are
+ *   a list rather than a boolean (see `provider.ts`).
  */
 
 import type { ForgeCapabilities, ForgeProvider, ForgeSection, ForgeWrite } from '../protocol';
 import { readOnly } from '../protocol';
+import { mergeMethodsFor, providerLabel, reviewVerdictsFor } from './provider';
 
 export interface CapabilityInput {
   provider: ForgeProvider;
@@ -51,13 +51,16 @@ export function capabilitiesFor(input: CapabilityInput): ForgeCapabilities {
   if (section === 'releases') return readOnly();
 
   const isPull = section === 'pulls';
+  const verdicts = isPull ? reviewVerdictsFor(provider) : [];
   return {
     comment: commentable(provider, section),
     state: true,
-    // Only a pull request has a review, and only two of the four hosts model a
-    // verdict as an event; GitLab and Bitbucket approve without a verdict.
-    review: isPull && provider !== 'bitbucket',
+    // Only a pull request has a review, and Bitbucket's issues have no verdict
+    // at all — the list carries which verdicts the host can express.
+    review: isPull && verdicts.length > 0,
     merge: isPull,
+    mergeMethods: isPull ? [...mergeMethodsFor(provider)] : [],
+    reviewVerdicts: [...verdicts],
   };
 }
 
@@ -86,19 +89,30 @@ export function writeRefusal(
   if (write.kind === 'merge' && !capabilities.merge) {
     return { ok: false, reason: 'Only a pull or merge request can be merged.' };
   }
+  if (write.kind === 'merge' && !capabilities.mergeMethods.includes(write.method)) {
+    // The host cannot express this style, and the nearest thing it CAN do is a
+    // different operation: GitLab would send an ordinary merge commit for
+    // "rebase", Bitbucket a fast-forward. Refused by name instead.
+    return {
+      ok: false,
+      reason: `${providerLabel(input.provider)} cannot merge with "${write.method}". Use ${capabilities.mergeMethods.join(' or ')}.`,
+    };
+  }
   if (write.kind === 'review' && !capabilities.review) {
     return {
       ok: false,
       reason:
-        input.provider === 'bitbucket'
-          ? 'Bitbucket has no review verdict; approve the pull request instead.'
+        input.section === 'pulls'
+          ? `${providerLabel(input.provider)} has no review verdict this panel can post: its endpoints take no message. Add a comment instead.`
           : 'Only a pull or merge request can be reviewed.',
     };
   }
-  if (write.kind === 'review' && write.verdict === 'request_changes' && input.provider === 'gitlab') {
+  if (write.kind === 'review' && !capabilities.reviewVerdicts.includes(write.verdict)) {
+    // GitLab has `approve` and nothing else: "request changes" is not an event
+    // there, so the sentence names the alternative rather than the failure.
     return {
       ok: false,
-      reason: 'GitLab has no "request changes" event. Add a comment saying what must change, or approve it.',
+      reason: `${providerLabel(input.provider)} has no "${write.verdict.replace('_', ' ')}" event. Add a comment saying what must change, or approve it.`,
     };
   }
   return { ok: true };

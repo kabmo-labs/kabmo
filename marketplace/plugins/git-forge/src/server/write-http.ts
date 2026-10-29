@@ -18,6 +18,7 @@
  */
 
 import { describeFailure, isAuthenticated, type JsonCache } from './http';
+import { asRecord, listAt, text } from './map';
 
 /** Identifies this client to the host, as every API asks. */
 const USER_AGENT = 'kabmo-forge';
@@ -66,7 +67,9 @@ export async function sendJson(options: SendOptions): Promise<SendResult> {
   }
 
   if (!response.ok) {
-    return { ok: false, status: response.status, message: describeFailure(response, isAuthenticated(options.headers)) };
+    const reason = describeFailure(response, isAuthenticated(options.headers));
+    const detail = await failureDetail(response);
+    return { ok: false, status: response.status, message: detail ? `${reason} ${detail}` : reason };
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {
@@ -80,6 +83,41 @@ export async function sendJson(options: SendOptions): Promise<SendResult> {
     // the panel does not read (a merge reports nothing useful anyway).
     return { ok: true, value: null, status: response.status };
   }
+}
+
+/**
+ * The host's own sentence about a refused write, or an empty string.
+ *
+ * A write is the one place the reader needs the reason: GitLab answers
+ * `405 Method Not Allowed` with `{"message":"405 Method Not Allowed"}` for an
+ * unmergeable MR, and `409` with the SHA mismatch, while `describeFailure` can
+ * only name the status. The body is read once, here, because a refusal is
+ * terminal — nothing else will read it.
+ */
+async function failureDetail(response: Response): Promise<string> {
+  let body: string;
+  try {
+    body = (await response.text()).trim();
+  } catch {
+    return '';
+  }
+  if (!body) return '';
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    // Not JSON: a host that answers an HTML error page still said something, and
+    // a bounded excerpt is more useful than the status alone.
+    return body.replace(/\s+/g, ' ').slice(0, 300);
+  }
+
+  // GitHub/Gitea: `{message}`. GitLab: `{message}` or `{error}`. Bitbucket and
+  // GitHub's validation failures: `{errors: [{message}]}` or `{errors: [str]}`.
+  const record = asRecord(parsed);
+  const head = text(record?.message) || text(record?.error);
+  const errors = listAt(record?.errors).map((entry) => text(asRecord(entry)?.message) || String(entry));
+  return [head, ...errors].filter((part) => part.trim()).join('; ').slice(0, 300);
 }
 
 /**

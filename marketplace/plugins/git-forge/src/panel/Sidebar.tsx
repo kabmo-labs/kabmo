@@ -17,7 +17,8 @@
  *
  * A count of zero is shown rather than hidden — "0 releases" is information, and
  * a missing row would make the reader wonder whether the section exists at all.
- * A `+` says the host returned a full page.
+ * A `+` says the host returned a full page, and a `—` says the section could not
+ * be read at all (a 403 is not an empty project).
  *
  * There is no provider header here: the header's own badge already names the
  * host, and a second `GITHUB` label six lines below it was the panel saying the
@@ -54,7 +55,9 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
         {sections.map((section) => {
           const isActive = section === active;
           const data = list?.sections[section];
-          const count = data ? data.items.length : null;
+          // A section whose read FAILED has no count: `0 issues` over a 403 is a
+          // confident wrong number, and it is the number a reader acts on.
+          const count = data && !data.failed ? data.items.length : null;
           const name = sectionLabel(section, provider);
           // The name is stated ONCE, explicitly. Both the long and the short
           // label are in the DOM (the breakpoint decides which is drawn), so
@@ -62,7 +65,10 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
           // `IssuesIssues2+`, which a screen reader reads as two words and a
           // count with no separation. The count is part of the name because it
           // is the reason the row exists.
-          const accessibleName = count === null ? name : `${name} — ${count}${data?.truncated ? '+' : ''}`;
+          const accessibleName =
+            count === null
+              ? name
+              : `${name} — ${count}${data?.truncated ? '+' : ''}`;
           return (
             <button
               key={section}
@@ -83,7 +89,7 @@ export function Sidebar({ sections, active, list, provider, onSelect }: SidebarP
                 {sectionShort(section, provider)}
               </span>
               <span aria-hidden="true" className="ml-auto flex-shrink-0 pl-1 font-mono text-[10px] text-ink/40">
-                {count === null ? '' : data?.truncated ? `${count}+` : count}
+                {count === null ? (data?.failed ? '—' : '') : data?.truncated ? `${count}+` : count}
               </span>
             </button>
           );

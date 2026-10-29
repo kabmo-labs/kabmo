@@ -33,7 +33,8 @@ import {
 } from '@kabmo-labs/kabmo-ui';
 
 import { ForgePanel } from './index';
-import type { ForgeDetail, ForgeFilter, ForgeList, ForgeSection } from '../protocol';
+import { type ForgeDetail, type ForgeFilter, type ForgeList, type ForgeSection } from '../protocol';
+import { detail, item, list, section } from './test-fixtures';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Text', 'Element', 'SVGElement'] as const;
 const saved = new Map<string, unknown>();
@@ -61,55 +62,6 @@ afterAll(() => {
     else delete target[key];
   }
 });
-
-function item(overrides: Partial<ForgeList['sections']['issues']['items'][number]> = {}) {
-  return {
-    id: '1',
-    number: 1,
-    title: 'Something is broken',
-    state: 'open' as const,
-    author: 'ana',
-    updatedAt: new Date().toISOString(),
-    url: 'https://example/1',
-    labels: [],
-    comments: 0,
-    tag: null,
-    ...overrides,
-  };
-}
-
-function list(overrides: Partial<ForgeList> = {}): ForgeList {
-  return {
-    provider: 'github',
-    host: 'github.com',
-    slug: 'kabmo-labs/kabmo',
-    webUrl: 'https://github.com/kabmo-labs/kabmo',
-    filter: { state: 'open', mine: false, label: '', query: '' },
-    sections: {
-      issues: { items: [item()], truncated: false, total: 1 },
-      pulls: { items: [item({ id: '2', number: 2, title: 'A change' })], truncated: false, total: 1 },
-      releases: { items: [], truncated: false, total: null },
-    },
-    notes: [],
-    ...overrides,
-  };
-}
-
-function detail(): ForgeDetail {
-  return {
-    item: item(),
-    body: 'The **body** text.',
-    comments: [
-      { id: 'c1', author: 'bo', body: 'A reply', createdAt: new Date().toISOString(), url: null, system: false, bot: false },
-    ],
-    facts: [{ label: 'comments', value: '1' }],
-    files: [],
-    commits: [],
-    ci: null,
-    capabilities: { comment: true, state: true, review: false, merge: false },
-    notes: [],
-  };
-}
 
 beforeEach(() => {
   calls = [];
@@ -278,10 +230,27 @@ describe('ForgePanel', () => {
   test('a truncated page says so rather than looking complete', async () => {
     listOutcome = {
       ok: true,
-      value: list({ sections: { ...list().sections, issues: { items: [item()], truncated: true, total: 90 } } }),
+      value: list({ sections: { ...list().sections, issues: { items: [item()], truncated: true, total: 90, failed: false } } }),
     };
     await mount();
     expect(container.textContent).toContain('full page');
+  });
+
+  test('a section that could not be read says so instead of looking empty', async () => {
+    listOutcome = {
+      ok: true,
+      value: list({
+        notes: ['issues: Access refused (403). The token may not have scope for this repository.'],
+        sections: {
+          ...list().sections,
+          issues: section({ total: null, failed: true }),
+        },
+      }),
+    };
+    await mount();
+    expect(container.textContent).toContain('could not be read');
+    // The sidebar's count is a dash, never `0`, over a refused read.
+    expect(container.textContent).toContain('—');
   });
 
   test('the state filter asks the server again, with the new state', async () => {
@@ -300,6 +269,22 @@ describe('ForgePanel', () => {
   });
 
   test('opening a row reads its detail and renders the body as markdown', async () => {
+    detailOutcome = {
+      ok: true,
+      value: detail({
+        comments: [
+          {
+            id: 'c1',
+            author: 'bo',
+            body: 'A reply',
+            createdAt: new Date().toISOString(),
+            url: null,
+            system: false,
+            bot: false,
+          },
+        ],
+      }),
+    };
     await mount();
     const target = row('Something is broken');
     await act(async () => {

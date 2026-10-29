@@ -32,7 +32,7 @@
  * list and the detail.
  */
 
-import type { ForgeDetail, ForgeItem, ForgeItemState, ForgeList, ForgeSection } from '../protocol';
+import type { ForgeDetail, ForgeItem, ForgeItemState, ForgeList, ForgeSection, ForgeSectionData } from '../protocol';
 import { capabilitiesFor } from './capabilities';
 import { githubChecks, githubStatus } from './ci';
 import { get, joinUrl, type ForgeContext } from './context';
@@ -138,7 +138,7 @@ async function readSection(
   context: ForgeContext,
   section: ForgeSection,
   notes: string[],
-): Promise<{ items: ForgeItem[]; truncated: boolean; total: number | null }> {
+): Promise<ForgeSectionData> {
   const perPage = asked(context);
   const base = `/repos/${context.slug}`;
   const url =
@@ -152,7 +152,7 @@ async function readSection(
   const result = await get(context, url);
   if (!result.ok) {
     notes.push(`${section}: ${result.message}`);
-    return { items: [], truncated: false, total: null };
+    return { items: [], truncated: false, total: null, failed: true };
   }
 
   // The search endpoint wraps its rows in an envelope; the REST collection
@@ -162,7 +162,7 @@ async function readSection(
   const items = rows.map(mapper).filter((item): item is ForgeItem => item !== null);
   const reported = section === 'releases' ? null : count(fieldAt(result.value, 'total_count'), items.length);
   const total = reported === 0 ? null : reported;
-  return { items, truncated: total !== null ? total > items.length : rows.length >= perPage, total };
+  return { items, truncated: total !== null ? total > items.length : rows.length >= perPage, total, failed: false };
 }
 
 export async function listGithub(context: ForgeContext): Promise<ForgeList> {

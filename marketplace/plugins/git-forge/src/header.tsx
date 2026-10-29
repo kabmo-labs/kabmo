@@ -29,11 +29,17 @@ import { RPC, type ForgeCounts } from './protocol';
 /** How often the counts are re-read while the page is open. */
 const REFRESH_MS = 5 * 60 * 1000;
 
-/** One count, or a dash when it could not be read. */
-function Count({ value, label }: { value: number | null; label: string }) {
+/**
+ * One count, or a dash when it could not be read.
+ *
+ * `more` appends `+`: a host that reports no total (GitLab) answers a page, and
+ * its length drawn as the total is a number that is wrong by however much the
+ * page cut off.
+ */
+function Count({ value, more, label }: { value: number | null; more: boolean; label: string }) {
   return (
     <span className="flex items-baseline gap-0.5">
-      <span className="font-mono">{value === null ? '—' : value}</span>
+      <span className="font-mono">{value === null ? '—' : `${value}${more ? '+' : ''}`}</span>
       <span className="text-ink/50">{label}</span>
     </span>
   );
@@ -79,9 +85,9 @@ export function ForgeReadout() {
 
   return (
     <span className="flex items-center gap-1.5 text-[11px] text-ink/75" title={title}>
-      <Count value={counts.issues} label="issues" />
+      <Count value={counts.issues} more={counts.more.issues} label="issues" />
       <span className="text-ink/25">·</span>
-      <Count value={counts.pulls} label="PRs" />
+      <Count value={counts.pulls} more={counts.more.pulls} label="PRs" />
     </span>
   );
 }

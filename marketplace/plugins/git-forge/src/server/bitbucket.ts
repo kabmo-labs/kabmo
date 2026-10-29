@@ -25,7 +25,16 @@
  * say which one the reader meant.
  */
 
-import type { ForgeDetail, ForgeCommit, ForgeFile, ForgeItem, ForgeItemState, ForgeList, ForgeSection } from '../protocol';
+import type {
+  ForgeCommit,
+  ForgeDetail,
+  ForgeFile,
+  ForgeItem,
+  ForgeItemState,
+  ForgeList,
+  ForgeSection,
+  ForgeSectionData,
+} from '../protocol';
 import { capabilitiesFor } from './capabilities';
 import { get, getTextWith, joinUrl, pageSize, withParams, type ForgeContext } from './context';
 import { parseUnifiedDiff } from './diff';
@@ -119,11 +128,11 @@ async function readSection(
   context: ForgeContext,
   section: ForgeSection,
   notes: string[],
-): Promise<{ items: ForgeItem[]; truncated: boolean; total: number | null }> {
+): Promise<ForgeSectionData> {
   const repo = repoPath(context);
   if (!repo) {
     notes.push(`${section}: Bitbucket addresses a repository as workspace/repo, and "${context.slug}" is not that.`);
-    return { items: [], truncated: false, total: null };
+    return { items: [], truncated: false, total: null, failed: true };
   }
 
   const collection = section === 'issues' ? 'issues' : section === 'pulls' ? 'pullrequests' : 'refs/tags';
@@ -135,16 +144,21 @@ async function readSection(
 
   const result = await get(context, url);
   if (!result.ok) {
-    if (section === 'releases' && result.status === 404) return { items: [], truncated: false, total: null };
+    if (section === 'releases' && result.status === 404) return { items: [], truncated: false, total: null, failed: false };
     notes.push(`${section}: ${result.message}`);
-    return { items: [], truncated: false, total: null };
+    return { items: [], truncated: false, total: null, failed: true };
   }
 
   const mapper = section === 'issues' ? issueItem : section === 'pulls' ? pullItem : tagItem;
   const rows = valuesOf(result.value);
   const items = rows.map(mapper).filter((item): item is ForgeItem => item !== null);
   const size = count(fieldAt(result.value, 'size'), -1);
-  return { items, truncated: size > items.length || Boolean(fieldAt(result.value, 'next')), total: size >= 0 ? size : null };
+  return {
+    items,
+    truncated: size > items.length || Boolean(fieldAt(result.value, 'next')),
+    total: size >= 0 ? size : null,
+    failed: false,
+  };
 }
 
 export async function listBitbucket(context: ForgeContext): Promise<ForgeList> {

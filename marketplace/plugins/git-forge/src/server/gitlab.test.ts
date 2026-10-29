@@ -15,7 +15,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { listGitlab, mergeState, projectPath } from './gitlab';
+import { listGitlab, mergeState, projectPath, stateVariants } from './gitlab';
 import { detailGitlab } from './gitlab-detail';
 import { host } from './test-host';
 import { hostContext, openFilter } from './test-context';
@@ -71,6 +71,52 @@ describe('listGitlab', () => {
     expect(list.notes).toEqual([]);
   });
 
+  test('the Closed filter reads `merged` too, or every merged MR disappears', async () => {
+    // Measured on a self-hosted GitLab 18: `?state=closed` answered an EMPTY
+    // page for a project whose four merge requests were all merged, while
+    // `?state=merged` answered all four.
+    const asked: string[] = [];
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = String(input);
+      asked.push(url);
+      const body = url.includes('state=merged')
+        ? [{ iid: 4, title: 'Merged one', state: 'merged', updated_at: '2026-10-02T00:00:00Z' }]
+        : url.includes('state=closed')
+          ? [{ iid: 3, title: 'Closed one', state: 'closed', updated_at: '2026-10-01T00:00:00Z' }]
+          : [];
+      return new Response(JSON.stringify(body), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const list = await listGitlab(gitlab(fetchImpl, { filter: { ...openFilter(), state: 'closed' } }));
+    expect(asked.some((url) => url.includes('/merge_requests') && url.includes('state=closed'))).toBe(true);
+    expect(asked.some((url) => url.includes('/merge_requests') && url.includes('state=merged'))).toBe(true);
+    // Newest activity first, as the host orders the two pages separately.
+    expect(list.sections.pulls.items.map((item) => item.title)).toEqual(['Merged one', 'Closed one']);
+  });
+
+  test('label colours are asked for, so a GitLab chip is not grey by default', async () => {
+    const { asked, fetchImpl } = host({});
+    await listGitlab(gitlab(fetchImpl));
+    expect(asked.some((url) => url.includes('with_labels_details=true'))).toBe(true);
+  });
+
+  test('a refused section is marked failed, not empty', async () => {
+    // A 403 from a private project must not read as "no issues": the panel draws
+    // a dash for the count and the list says it could not be read, which is the
+    // difference between a wrong token and a quiet repository.
+    const { fetchImpl } = host({
+      [`${PROJECT}/issues`]: { status: 403 },
+      [`${PROJECT}/merge_requests`]: [],
+      [`${PROJECT}/releases`]: [],
+    });
+
+    const list = await listGitlab(gitlab(fetchImpl));
+    expect(list.sections.issues.failed).toBe(true);
+    expect(list.sections.issues.items).toEqual([]);
+    expect(list.sections.pulls.failed).toBe(false);
+    expect(list.notes.some((note) => note.startsWith('issues:'))).toBe(true);
+  });
+
   test('labels arrive as plain strings', async () => {
     const { fetchImpl } = host({
       [`${PROJECT}/issues`]: [{ iid: 1, title: 't', state: 'opened', labels: ['bug', 'p1'] }],
@@ -83,6 +129,18 @@ describe('listGitlab', () => {
       { name: 'bug', color: null },
       { name: 'p1', color: null },
     ]);
+  });
+});
+
+describe('stateVariants', () => {
+  test('open is `opened`, closed is two reads on merge requests, all is no parameter', () => {
+    const filter = (state: 'open' | 'closed' | 'all') => ({ ...openFilter(), state });
+    expect(stateVariants('issues', filter('open'))).toEqual(['opened']);
+    expect(stateVariants('issues', filter('closed'))).toEqual(['closed']);
+    expect(stateVariants('pulls', filter('closed'))).toEqual(['closed', 'merged']);
+    expect(stateVariants('pulls', filter('all'))).toEqual([]);
+    // A release has no state at all.
+    expect(stateVariants('releases', filter('closed'))).toEqual([]);
   });
 });
 
@@ -184,7 +242,14 @@ describe('detailGitlab', () => {
     if ('error' in detail) throw new Error(detail.error);
     expect(detail.files).toEqual([]);
     expect(detail.ci).toBeNull();
-    expect(detail.capabilities).toEqual({ comment: true, state: true, review: false, merge: false });
+    expect(detail.capabilities).toEqual({
+      comment: true,
+      state: true,
+      review: false,
+      merge: false,
+      mergeMethods: [],
+      reviewVerdicts: [],
+    });
   });
 });
 

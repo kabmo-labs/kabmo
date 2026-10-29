@@ -14,7 +14,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { firstParagraph, parseItemId, quoteFor, runIssueCommand, USAGE } from './command';
-import type { ForgeDetail, ForgeItem } from './protocol';
+import { readOnly, type ForgeDetail, type ForgeItem } from './protocol';
 
 function item(overrides: Partial<ForgeItem> = {}): ForgeItem {
   return {
@@ -41,7 +41,7 @@ function detail(body: string): ForgeDetail {
     files: [],
     commits: [],
     ci: null,
-    capabilities: { comment: true, state: true, review: false, merge: false },
+    capabilities: { ...readOnly(), comment: true, state: true },
     notes: [],
   };
 }

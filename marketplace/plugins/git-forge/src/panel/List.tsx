@@ -64,7 +64,12 @@ export function ItemList({ list, provider, section, selectedId, loading, error, 
         </div>
       )}
 
-      {data.items.length === 0 ? (
+      {data.failed ? (
+        // The server already pushed the sentence into `notes` (shown above), so
+        // this is the same fact in the place the list would have been: a failed
+        // read is not an empty section, and only one of them is actionable.
+        <Empty>{`The ${name} could not be read. See the note above.`}</Empty>
+      ) : data.items.length === 0 ? (
         <Empty>{`No ${name} for this repository.`}</Empty>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-overlay-container">

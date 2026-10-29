@@ -25,7 +25,16 @@
  *   answers only the REVIEW comments, which is a different collection.
  */
 
-import type { ForgeDetail, ForgeCommit, ForgeFile, ForgeItem, ForgeItemState, ForgeList, ForgeSection } from '../protocol';
+import type {
+  ForgeCommit,
+  ForgeDetail,
+  ForgeFile,
+  ForgeItem,
+  ForgeItemState,
+  ForgeList,
+  ForgeSection,
+  ForgeSectionData,
+} from '../protocol';
 import { capabilitiesFor } from './capabilities';
 import { ciBadge } from './ci';
 import { get, getTextWith, joinUrl, pageSize, withParams, type ForgeContext } from './context';
@@ -109,7 +118,7 @@ async function readSection(
   context: ForgeContext,
   section: ForgeSection,
   notes: string[],
-): Promise<{ items: ForgeItem[]; truncated: boolean; total: number | null }> {
+): Promise<ForgeSectionData> {
   const perPage = pageSize(context);
   const collection = section === 'releases' ? 'releases' : 'issues';
   const params: Record<string, string> = {
@@ -120,9 +129,11 @@ async function readSection(
 
   const result = await get(context, url);
   if (!result.ok) {
-    if (section === 'releases' && result.status === 404) return { items: [], truncated: false, total: null };
+    // A project with no releases answers 404 while its issues read fine, so that
+    // one is an EMPTY section rather than a failed read.
+    if (section === 'releases' && result.status === 404) return { items: [], truncated: false, total: null, failed: false };
     notes.push(`${section}: ${result.message}`);
-    return { items: [], truncated: false, total: null };
+    return { items: [], truncated: false, total: null, failed: true };
   }
 
   const mapper = section === 'issues' ? issueItem : section === 'pulls' ? pullItem : releaseItem;
@@ -130,7 +141,7 @@ async function readSection(
   // `{data: [...]}` is read through the same path.
   const rows = listAt(result.value).length > 0 ? listAt(result.value) : listAt(recordAt(result.value, 'data'));
   const items = rows.map(mapper).filter((item): item is ForgeItem => item !== null);
-  return { items, truncated: rows.length >= perPage, total: null };
+  return { items, truncated: rows.length >= perPage, total: null, failed: false };
 }
 
 export async function listGitea(context: ForgeContext): Promise<ForgeList> {

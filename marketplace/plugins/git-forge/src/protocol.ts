@@ -113,6 +113,14 @@ export interface ForgeSectionData {
   truncated: boolean;
   /** How many the host says exist, when it says. */
   total: number | null;
+  /**
+   * The read FAILED, so an empty list here means "could not be read".
+   *
+   * A section that answers 403 is not a section with nothing in it, and drawing
+   * the two the same way makes a wrong token look like an empty project — the
+   * count in the header said `0 issues` for a refused read before this flag.
+   */
+  failed: boolean;
 }
 
 /** One read of all three sections. */
@@ -176,7 +184,29 @@ export interface ForgeCapabilities {
   state: boolean;
   review: boolean;
   merge: boolean;
+  /**
+   * The merge styles the host can actually perform for this change.
+   *
+   * A separate list rather than a boolean because the styles are not
+   * interchangeable: GitLab and Bitbucket have no rebase-only merge, and
+   * offering one there would send a request that silently performs an ordinary
+   * merge while the confirmation promised no merge commit.
+   */
+  mergeMethods: ForgeMergeMethod[];
+  /**
+   * The review verdicts the host can express.
+   *
+   * GitLab has `approve` and nothing else: "request changes" is not an event
+   * there, so a button for it could only fail.
+   */
+  reviewVerdicts: ForgeReviewVerdict[];
 }
+
+/** The merge styles a change can be merged with. */
+export type ForgeMergeMethod = 'merge' | 'squash' | 'rebase';
+
+/** The verdicts a review can carry. */
+export type ForgeReviewVerdict = 'approve' | 'request_changes';
 
 export interface ForgeDetail {
   item: ForgeItem;
@@ -208,8 +238,8 @@ export interface ForgeDetailInput {
 export type ForgeWrite =
   | { kind: 'comment'; body: string }
   | { kind: 'state'; state: 'open' | 'closed' }
-  | { kind: 'review'; verdict: 'approve' | 'request_changes'; body: string }
-  | { kind: 'merge'; method: 'merge' | 'squash' | 'rebase' };
+  | { kind: 'review'; verdict: ForgeReviewVerdict; body: string }
+  | { kind: 'merge'; method: ForgeMergeMethod };
 
 export interface ForgeWriteInput extends ForgeDetailInput {
   write: ForgeWrite;
@@ -236,12 +266,18 @@ export interface ForgeCredential {
  * Two numbers and no list: a readout is one line in a header, and a payload it
  * has to narrow is a payload the server could have narrowed. `null` means the
  * count could not be read, which is different from zero and is drawn as `—`.
+ *
+ * `more` exists because a host that reports no total (GitLab) answers a PAGE,
+ * and drawing that page's length as the total is a confident wrong number — the
+ * readout says `30+` instead of `30`.
  */
 export interface ForgeCounts {
   /** Open issues assigned to the authenticated user. */
   issues: number | null;
   /** Open pull / merge requests assigned to the authenticated user. */
   pulls: number | null;
+  /** That count is a page's length, so there are at least this many. */
+  more: { issues: boolean; pulls: boolean };
   /** The host, for the readout's tooltip. */
   host: string;
   /** Why a count is null, when it is. */
@@ -269,7 +305,7 @@ export function isState(value: unknown): value is ForgeState {
 
 /** An empty section, for a read that has not answered yet or failed. */
 export function emptySection(): ForgeSectionData {
-  return { items: [], truncated: false, total: null };
+  return { items: [], truncated: false, total: null, failed: false };
 }
 
 /**
@@ -304,5 +340,5 @@ export function filterIsDefault(filter: ForgeFilter): boolean {
 
 /** The capabilities a read-only view has: none of them. */
 export function readOnly(): ForgeCapabilities {
-  return { comment: false, state: false, review: false, merge: false };
+  return { comment: false, state: false, review: false, merge: false, mergeMethods: [], reviewVerdicts: [] };
 }

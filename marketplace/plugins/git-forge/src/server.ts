@@ -127,7 +127,7 @@ async function contextFor(api: KabmoPluginApi, cache: JsonCache, input: unknown)
   const remote = parseRemote(origin, { provider: settings.provider, apiBase: settings.apiBase });
   if ('error' in remote) throw new Error(remote.error);
 
-  const token = resolveToken(remote.provider, { setting: settings.token, env: Bun.env });
+  const token = resolveToken(remote.provider, { setting: settings.token, env: Bun.env, host: remote.host });
   return {
     provider: remote.provider,
     apiBase: remote.apiBase,
@@ -213,19 +213,33 @@ export default function plugin(api: KabmoPluginApi) {
         return {
           issues: null,
           pulls: null,
+          more: { issues: false, pulls: false },
           host: context.host,
           note: 'Set a token to see what is assigned to you: an anonymous read cannot answer it.',
         };
       }
-      const counted = (section: 'issues' | 'pulls'): number | null => {
+      // A host that reports no total (GitLab) still answers a page, so the count
+      // is that page's length and `more` says it is a floor rather than the whole
+      // number — the readout draws `30+` instead of a confident `30`. A section
+      // whose read FAILED is `null`, not zero: "your token cannot see this" and
+      // "nothing is assigned to you" are different answers.
+      const counted = (section: 'issues' | 'pulls'): { count: number | null; more: boolean } => {
         const data = list.sections[section];
-        if (data.total !== null) return data.total;
-        // A host that reports no total (GitLab) still answers a page; the count
-        // is then the page's own length, and the readout says `30+` from the
-        // truncation flag rather than pretending it is the whole number.
-        return data.items.length > 0 || data.truncated ? data.items.length : 0;
+        if (data.failed) return { count: null, more: false };
+        if (data.total !== null) return { count: data.total, more: false };
+        return { count: data.items.length, more: data.truncated };
       };
-      return { issues: counted('issues'), pulls: counted('pulls'), host: context.host, note: null };
+      const issues = counted('issues');
+      const pulls = counted('pulls');
+      return {
+        issues: issues.count,
+        pulls: pulls.count,
+        more: { issues: issues.more, pulls: pulls.more },
+        host: context.host,
+        // The first note a section produced explains a `—`, and a count without
+        // its reason is a number the reader cannot act on.
+        note: issues.count === null || pulls.count === null ? (list.notes[0] ?? null) : null,
+      };
     },
   });
 
@@ -253,7 +267,7 @@ async function resolveCredentialSource(
   context: ForgeContext,
 ): Promise<{ source: ForgeCredential['source'] }> {
   const settings = await readSettings(api);
-  const resolved = resolveToken(context.provider, { setting: settings.token, env: Bun.env });
+  const resolved = resolveToken(context.provider, { setting: settings.token, env: Bun.env, host: context.host });
   return { source: resolved.source };
 }
 

@@ -31,7 +31,14 @@
 
 import { useState } from 'preact/hooks';
 
-import type { ForgeCapabilities, ForgeCredential, ForgeDetail, ForgeItem, ForgeWrite } from '../protocol';
+import type {
+  ForgeCapabilities,
+  ForgeCredential,
+  ForgeDetail,
+  ForgeItem,
+  ForgeMergeMethod,
+  ForgeWrite,
+} from '../protocol';
 import type { ForgeWriteState } from './use-forge';
 import { Glyph, ICON } from './Glyph';
 
@@ -47,14 +54,22 @@ interface WriteProps {
 /** Which dialog is open, if any. */
 type Pending = 'close' | 'reopen' | 'approve' | 'request_changes' | 'merge' | null;
 
-const MERGE_METHODS: Array<{ value: 'merge' | 'squash' | 'rebase'; label: string; hint: string }> = [
+/**
+ * The merge styles, by name and consequence.
+ *
+ * The list is the WHOLE vocabulary; which of them a host can perform is the
+ * server's `capabilities.mergeMethods`, and the dialog offers only those — a
+ * "Rebase" radio on GitLab would promise no merge commit and then send an
+ * ordinary one.
+ */
+const MERGE_METHODS: Array<{ value: ForgeMergeMethod; label: string; hint: string }> = [
   { value: 'merge', label: 'Merge commit', hint: 'Keeps every commit and adds a merge commit.' },
   { value: 'squash', label: 'Squash', hint: 'One commit on the target branch; the branch history is not kept.' },
   { value: 'rebase', label: 'Rebase', hint: 'Replays the commits onto the target, with no merge commit.' },
 ];
 
 /** The sentence a confirmation shows before an irreversible verb runs. */
-export function consequence(item: ForgeItem, pending: Pending, method: 'merge' | 'squash' | 'rebase'): string {
+export function consequence(item: ForgeItem, pending: Pending, method: ForgeMergeMethod): string {
   if (pending === 'merge') {
     const chosen = MERGE_METHODS.find((entry) => entry.value === method);
     return `Merge ${item.number !== null ? `#${item.number}` : item.title} into its target branch with "${chosen?.label ?? method}". ${chosen?.hint ?? ''}`;
@@ -69,13 +84,22 @@ export function consequence(item: ForgeItem, pending: Pending, method: 'merge' |
 export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
   const [body, setBody] = useState('');
   const [pending, setPending] = useState<Pending>(null);
-  const [method, setMethod] = useState<'merge' | 'squash' | 'rebase'>('merge');
+  const [method, setMethod] = useState<ForgeMergeMethod>('merge');
 
   const caps = capabilities;
   const anyVerb = caps ? caps.comment || caps.state || caps.review || caps.merge : false;
   const closed = item.state === 'closed' || item.state === 'merged';
   /** How the item is named in a button's accessible name. */
   const label = item.number !== null ? `#${item.number}` : item.title;
+  // The server says which styles THIS host can perform; the dialog offers only
+  // those, so "Rebase" never appears on GitLab (which would perform a merge
+  // commit) or on Bitbucket (which would perform a fast-forward).
+  const methods = caps?.mergeMethods ?? [];
+  const chosen = methods.includes(method) ? method : (methods[0] ?? 'merge');
+  const verdicts = caps?.reviewVerdicts ?? [];
+  // A merge with no style the host can perform is not a merge button: the dialog
+  // would offer zero choices and then send one anyway.
+  const canMerge = caps?.merge === true && methods.length > 0;
 
   const submitComment = async () => {
     const text = body.trim();
@@ -92,7 +116,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
         : pending === 'reopen'
           ? { kind: 'state', state: 'open' }
           : pending === 'merge'
-            ? { kind: 'merge', method }
+            ? { kind: 'merge', method: chosen }
             : pending === 'approve'
               ? { kind: 'review', verdict: 'approve', body: body.trim() }
               : { kind: 'review', verdict: 'request_changes', body: body.trim() };
@@ -132,28 +156,32 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
 
             {caps.review && !closed && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setPending('approve')}
-                  disabled={write.pending}
-                  aria-label={`Approve ${label}`}
-                  className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPending('request_changes')}
-                  disabled={write.pending}
-                  aria-label={`Request changes on ${label}`}
-                  className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
-                >
-                  Request changes
-                </button>
+                {verdicts.includes('approve') && (
+                  <button
+                    type="button"
+                    onClick={() => setPending('approve')}
+                    disabled={write.pending}
+                    aria-label={`Approve ${label}`}
+                    className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
+                  >
+                    Approve
+                  </button>
+                )}
+                {verdicts.includes('request_changes') && (
+                  <button
+                    type="button"
+                    onClick={() => setPending('request_changes')}
+                    disabled={write.pending}
+                    aria-label={`Request changes on ${label}`}
+                    className="rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40"
+                  >
+                    Request changes
+                  </button>
+                )}
               </>
             )}
 
-            {caps.merge && !closed && (
+            {canMerge && !closed && (
               <button
                 type="button"
                 onClick={() => setPending('merge')}
@@ -178,7 +206,7 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
                 onClick={() => setPending(closed ? 'reopen' : 'close')}
                 disabled={write.pending}
                 aria-label={`${closed ? 'Reopen' : 'Close'} ${label}`}
-                className={`${caps.merge && !closed ? '' : 'ml-auto'} rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40`}
+                className={`${canMerge && !closed ? '' : 'ml-auto'} rounded border border-ink/15 px-2 py-1 text-[10px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-40`}
               >
                 {closed ? 'Reopen' : 'Close'}
               </button>
@@ -192,15 +220,15 @@ export function WriteBar({ item, detail, capabilities, write }: WriteProps) {
 
       {pending && (
         <div className="rounded border border-ink/20 bg-canvas p-2">
-          <p className="text-[11px] leading-snug text-ink">{consequence(item, pending, method)}</p>
+          <p className="text-[11px] leading-snug text-ink">{consequence(item, pending, chosen)}</p>
           {pending === 'merge' && (
             <div className="mt-1.5 flex flex-col gap-0.5">
-              {MERGE_METHODS.map((entry) => (
+              {MERGE_METHODS.filter((entry) => methods.includes(entry.value)).map((entry) => (
                 <label key={entry.value} className="flex items-start gap-1.5 text-[10.5px] text-ink/80">
                   <input
                     type="radio"
                     name="forge-merge-method"
-                    checked={method === entry.value}
+                    checked={chosen === entry.value}
                     onChange={() => setMethod(entry.value)}
                     className="mt-0.5"
                   />

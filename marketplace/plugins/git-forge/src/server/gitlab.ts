@@ -33,7 +33,7 @@
  * every row of `/merge_requests`. A row badge would cost one request per row.
  */
 
-import type { ForgeItem, ForgeItemState, ForgeList, ForgeSection } from '../protocol';
+import type { ForgeFilter, ForgeItem, ForgeItemState, ForgeList, ForgeSection, ForgeSectionData } from '../protocol';
 import { get, joinUrl, pageSize, withParams, type ForgeContext } from './context';
 import { gitlabParams } from './filters';
 import { asRecord, count, flag, labelsOf, listAt, text, textAt } from './map';
@@ -118,36 +118,80 @@ export function releaseItem(raw: unknown): ForgeItem | null {
   };
 }
 
+/**
+ * The `state` values one section's read needs.
+ *
+ * **`closed` is TWO reads on merge requests, and it has to be.** GitLab keeps
+ * `merged` as a state of its own — measured on a self-hosted 18.x instance:
+ * `?state=closed` answered an empty page for a project whose four merge requests
+ * were all merged, and `?state=merged` answered all four. GitHub's `closed`
+ * includes merged, so a one-request translation would make every merged merge
+ * request disappear from the panel's Closed view.
+ *
+ * An empty list means "send no state parameter", which is what `all` means.
+ */
+export function stateVariants(section: ForgeSection, filter: ForgeFilter): string[] {
+  if (section === 'releases' || filter.state === 'all') return [];
+  if (filter.state === 'open') return ['opened'];
+  return section === 'pulls' ? ['closed', 'merged'] : ['closed'];
+}
+
 async function readSection(
   context: ForgeContext,
   section: ForgeSection,
   notes: string[],
-): Promise<{ items: ForgeItem[]; truncated: boolean; total: number | null }> {
+): Promise<ForgeSectionData> {
   const perPage = pageSize(context);
   const project = projectPath(context);
   const collection = section === 'issues' ? 'issues' : section === 'pulls' ? 'merge_requests' : 'releases';
-  const params: Record<string, string> = {
+  const base: Record<string, string> = {
     per_page: String(perPage),
     ...(section === 'releases' ? {} : { order_by: 'updated_at' }),
     ...gitlabParams(section, context.filter),
+    // The host's own label colours, which GitLab omits by default: without it
+    // every GitLab label chip is monochrome while the same label on GitHub is
+    // drawn in the colour its author chose.
+    ...(section === 'releases' ? {} : { with_labels_details: 'true' }),
   };
-  const url = withParams(joinUrl(context.apiBase, `${project}/${collection}`), params);
+  const variants = stateVariants(section, context.filter);
 
-  const result = await get(context, url);
-  if (!result.ok) {
-    // A project with no releases answers 404 on that endpoint while issues and
-    // MRs read fine, so a missing releases collection is not an error.
-    if (section === 'releases' && result.status === 404) return { items: [], truncated: false, total: null };
-    notes.push(`${section}: ${result.message}`);
-    return { items: [], truncated: false, total: null };
+  const results = await Promise.all(
+    (variants.length > 0 ? variants : [null]).map(async (state) => {
+      const params = state === null ? base : { ...base, state };
+      return get(context, withParams(joinUrl(context.apiBase, `${project}/${collection}`), params));
+    }),
+  );
+
+  const rows: unknown[] = [];
+  let failed = false;
+  for (const result of results) {
+    if (!result.ok) {
+      // A project with no releases answers 404 on that endpoint while issues and
+      // MRs read fine, so a missing releases collection is not an error.
+      if (section === 'releases' && result.status === 404) continue;
+      notes.push(`${section}: ${result.message}`);
+      failed = true;
+      continue;
+    }
+    rows.push(...listAt(result.value));
   }
+  if (failed && rows.length === 0) return { items: [], truncated: false, total: null, failed: true };
 
   const mapper = section === 'issues' ? issueItem : section === 'pulls' ? mergeItem : releaseItem;
-  const rows = listAt(result.value);
-  const items = rows.map(mapper).filter((item): item is ForgeItem => item !== null);
+  const mapped = rows.map(mapper).filter((item): item is ForgeItem => item !== null);
+  // Two variants answer two pages, each ordered on its own, so the combined list
+  // is re-sorted on the same key the host ordered by and cut back to one page.
+  if (variants.length > 1) {
+    mapped.sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+  }
   // GitLab reports the collection size on the response, and the cache stores the
   // body rather than the headers, so the count a row shows is the page's own.
-  return { items, truncated: rows.length >= perPage, total: null };
+  return {
+    items: mapped.slice(0, perPage),
+    truncated: mapped.length >= perPage,
+    total: null,
+    failed: false,
+  };
 }
 
 export async function listGitlab(context: ForgeContext): Promise<ForgeList> {

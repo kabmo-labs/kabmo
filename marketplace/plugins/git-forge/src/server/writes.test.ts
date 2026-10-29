@@ -6,7 +6,7 @@
 /**
  * The write table, over all four hosts.
  *
- * `callFor` is pure — it turns an intent into a URL, a method and a body — so
+ * `callsFor` is pure — it turns an intent into URLs, methods and bodies — so
  * every row can be asserted exactly. That matters because each host spells the
  * same verb differently and three of the differences are SILENT when wrong:
  *
@@ -15,6 +15,8 @@
  * - Bitbucket has no comment body at the top level (`{content: {raw}}`) and no
  *   state field on a pull request (a POST to `/decline`).
  * - Gitea's merge style is `Do: merge|squash|rebase`, not a `merge_method`.
+ * - GitLab and Bitbucket have no rebase merge, and GitLab's `/approve` takes no
+ *   message — so a review with words there is a comment and then the verdict.
  *
  * `performWrite` is driven through the injected fetch, so nothing here can reach
  * a real repository. That is deliberate: the first version of this suite was a
@@ -23,9 +25,10 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { callFor, patchedItem, performWrite, providerLabel } from './writes';
+import { callsFor, patchedItem, performWrite } from './writes';
+import { providerLabel } from './provider';
 import { hostContext } from './test-context';
-import type { ForgeItem, ForgeProvider } from '../protocol';
+import type { ForgeItem, ForgeProvider, ForgeSection, ForgeWrite } from '../protocol';
 
 /** A fetch that records one request and answers 200 with `body`. */
 function recorder(body: unknown = {}) {
@@ -42,9 +45,18 @@ function recorder(body: unknown = {}) {
   return { seen, fetchImpl };
 }
 
-const call = (provider: ForgeProvider, write: Parameters<typeof callFor>[3], section: Parameters<typeof callFor>[1] = 'pulls') => {
+/** The calls one write becomes, or the refusal. */
+const calls = (provider: ForgeProvider, write: ForgeWrite, section: ForgeSection = 'pulls') => {
   const { fetchImpl } = recorder();
-  return callFor(hostContext(provider, fetchImpl), section, '12', write);
+  return callsFor(hostContext(provider, fetchImpl), section, '12', write);
+};
+
+/** The single call a write becomes, which is every verb but a review with words. */
+const call = (provider: ForgeProvider, write: ForgeWrite, section: ForgeSection = 'pulls') => {
+  const outcome = calls(provider, write, section);
+  if ('error' in outcome) return outcome;
+  if (outcome.length !== 1) throw new Error(`expected one call, got ${outcome.length}`);
+  return outcome[0];
 };
 
 describe('callFor — a comment', () => {
@@ -107,7 +119,7 @@ describe('callFor — a state change', () => {
   });
 });
 
-describe('callFor — a merge', () => {
+describe('callsFor — a merge', () => {
   test('each host takes the style its own way', () => {
     const github = call('github', { kind: 'merge', method: 'squash' });
     if ('error' in github) throw new Error(github.error);
@@ -123,13 +135,27 @@ describe('callFor — a merge', () => {
     if ('error' in gitlab) throw new Error(gitlab.error);
     expect(gitlab.body).toEqual({ squash: true });
 
-    const bitbucket = call('bitbucket', { kind: 'merge', method: 'rebase' });
+    // Bitbucket's strategy is stated, never left to the repository default: an
+    // omitted `merge_strategy` follows the repo setting, so "Merge commit" could
+    // fast-forward.
+    const bitbucket = call('bitbucket', { kind: 'merge', method: 'merge' });
     if ('error' in bitbucket) throw new Error(bitbucket.error);
-    expect(bitbucket.body).toEqual({ merge_strategy: 'fast_forward' });
+    expect(bitbucket.body).toEqual({ merge_strategy: 'merge_commit' });
+    expect(bitbucket.method).toBe('POST');
+  });
+
+  test('a style the host cannot perform is refused, not substituted', () => {
+    for (const provider of ['gitlab', 'bitbucket'] as const) {
+      const result = calls(provider, { kind: 'merge', method: 'rebase' });
+      expect('error' in result).toBe(true);
+      if (!('error' in result)) continue;
+      expect(result.error).toContain('cannot merge with "rebase"');
+      expect(result.error).toContain('merge or squash');
+    }
   });
 });
 
-describe('callFor — a review', () => {
+describe('callsFor — a review', () => {
   test('GitHub sends an event; GitLab and Bitbucket POST approve', () => {
     const github = call('github', { kind: 'review', verdict: 'request_changes', body: 'why' });
     if ('error' in github) throw new Error(github.error);
@@ -141,9 +167,32 @@ describe('callFor — a review', () => {
     expect(gitlab.url).toContain('/approve');
     expect(gitlab.body).toEqual({});
   });
+
+  test('words typed with a GitLab approval are posted as a note, because /approve takes no body', () => {
+    const outcome = calls('gitlab', { kind: 'review', verdict: 'approve', body: '  Looks right  ' });
+    if ('error' in outcome) throw new Error(outcome.error);
+    expect(outcome).toHaveLength(2);
+    expect(outcome[0].url).toContain('/merge_requests/12/notes');
+    expect(outcome[0].body).toEqual({ body: 'Looks right' });
+    expect(outcome[1].url).toContain('/merge_requests/12/approve');
+  });
+
+  test('a GitHub review carries its own body, so it stays one call', () => {
+    const outcome = calls('github', { kind: 'review', verdict: 'approve', body: 'fine' });
+    if ('error' in outcome) throw new Error(outcome.error);
+    expect(outcome).toHaveLength(1);
+    expect(outcome[0].body).toEqual({ event: 'APPROVE', body: 'fine' });
+  });
+
+  test('a verdict the host has no event for is refused', () => {
+    const result = calls('gitlab', { kind: 'review', verdict: 'request_changes', body: 'why' });
+    expect('error' in result).toBe(true);
+    if (!('error' in result)) return;
+    expect(result.error).toContain('no "request changes" event');
+  });
 });
 
-describe('callFor — a section that has no write', () => {
+describe('callsFor — a section that has no write', () => {
   test('a release is not addressable, and the sentence says so', () => {
     const result = call('github', { kind: 'comment', body: 'x' }, 'releases');
     expect('error' in result).toBe(true);
@@ -214,5 +263,40 @@ describe('providerLabel', () => {
     for (const provider of ['github', 'gitlab', 'gitea', 'bitbucket'] as const) {
       expect(providerLabel(provider)).not.toBe(provider);
     }
+  });
+});
+
+describe('performWrite — a two-call write', () => {
+  test('a GitLab approval with words sends the note first, then the approve', async () => {
+    const { seen, fetchImpl } = recorder({});
+    const result = await performWrite(hostContext('gitlab', fetchImpl), 'pulls', '7', {
+      kind: 'review',
+      verdict: 'approve',
+      body: 'Ship it',
+    });
+
+    expect(result).toEqual({ ok: true, message: 'Approved.' });
+    expect(seen.map((entry) => entry.url)).toEqual([
+      'https://gitlab.com/api/v4/projects/group%2Fproject/merge_requests/7/notes',
+      'https://gitlab.com/api/v4/projects/group%2Fproject/merge_requests/7/approve',
+    ]);
+  });
+
+  test('a failure in the second call says what already landed', async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return calls === 1 ? new Response('{}', { status: 201 }) : new Response('{}', { status: 403 });
+    }) as unknown as typeof fetch;
+    const result = await performWrite(hostContext('gitlab', fetchImpl), 'pulls', '7', {
+      kind: 'review',
+      verdict: 'approve',
+      body: 'Ship it',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('Comment posted.');
+    expect(result.message).toContain('403');
   });
 });

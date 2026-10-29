@@ -22,7 +22,7 @@ at. One component, one data shape, one word per vendor.
 | Host | Read from | Notes |
 |---|---|---|
 | GitHub | `search/issues` + `/pulls` + `/releases` | Issues AND pull requests come from the search endpoint — see below |
-| GitLab | `/projects/:id/{issues,merge_requests,releases}` | Project path URL-encoded; `opened` not `open` |
+| GitLab | `/projects/:id/{issues,merge_requests,releases}` | Project path URL-encoded; `opened` not `open`; Closed reads `closed` **and** `merged`; `with_labels_details` for label colours |
 | Gitea / Forgejo | `/repos/:id/issues?type=…` + `/releases` | One endpoint for issues and pull requests, split by `type` |
 | Bitbucket Cloud | `api.bitbucket.org/2.0/repositories/:ws/:repo/…` | Paged envelopes, uppercase states, no label parameter |
 
@@ -50,7 +50,7 @@ nothing changed.
 
 | Control | GitHub | GitLab | Gitea | Bitbucket |
 |---|---|---|---|---|
-| Open / Closed / All | `state:` | `state=opened\|closed` | `state=` | BBQL `state="…"` |
+| Open / Closed / All | `state:` | `state=opened\|closed` (and `merged` for Closed) | `state=` | BBQL `state="…"` |
 | Mine | `assignee:@me` | `scope=assigned_to_me` | `assigned=true` | not offered |
 | Label | `label:` (quoted) | `labels=` | `labels=` | BBQL `labels ~` |
 | Text | free qualifier | `search=` | `q=` | BBQL `title ~` |
@@ -94,9 +94,9 @@ read anonymously offers nothing, and the panel never has to guess.
 |---|---|---|---|---|
 | Comment | `POST …/issues/:n/comments` | `POST …/notes` | `POST …/issues/:n/comments` | `POST …/comments` with `{content:{raw}}` |
 | Close / reopen | `PATCH {state}` | `PUT {state_event}` | `PATCH {state}` | `POST …/decline` (pull), `PUT {state}` (issue) |
-| Approve | `POST …/reviews` | `POST …/approve` | `POST …/reviews` | `POST …/approve` |
+| Approve | `POST …/reviews` | `POST …/approve` (+ a note when words are typed) | `POST …/reviews` | **not offered** |
 | Request changes | `POST …/reviews` | **not offered** | `POST …/reviews` | **not offered** |
-| Merge | `PUT …/merge {merge_method}` | `PUT …/merge {squash}` | `POST …/merge {Do}` | `POST …/merge {merge_strategy}` |
+| Merge styles | `merge`, `squash`, `rebase` | `merge`, `squash` | `merge`, `squash`, `rebase` | `merge`, `squash` |
 
 Three of those differences are silent when wrong, which is why they are stated
 per host rather than assumed: **GitLab's close is an event** (`state_event`) and
@@ -111,10 +111,21 @@ click through it.
 
 **GitLab has no "request changes" event**, so that button is absent there and the
 server refuses the verb by name with the alternative (add a comment, or approve).
-Bitbucket has no review verdict at all.
+Bitbucket's `/approve` and `/request-changes` endpoints take **no message**, so a
+verdict from this panel would drop what the reviewer typed; the comment box is the
+way to say it there, and no verdict button is offered.
+
+**The merge styles are the host's, not a preference.** GitLab's merge endpoint
+takes `squash` and nothing else, and Bitbucket's fast-forward is not a rebase — so
+neither offers "Rebase", and the server refuses it by name rather than sending an
+ordinary merge commit under a promise of none. A GitLab approval that carries
+words is a note followed by the approval (`/approve` takes no body); if the second
+call fails the message says the note already landed.
 
 After a write, every cached entry for the repository is dropped: a write changes
-the item AND the list it came from, and those are different URLs.
+the item AND the list it came from, and those are different URLs. A failed write
+carries the host's own sentence (`405 Method Not Allowed`, a SHA mismatch), and a
+two-call write says which half landed.
 
 ## Credential
 
@@ -123,9 +134,23 @@ Three sources, tried in this order:
 1. `GITHUB_TOKEN` / `GH_TOKEN` / `GITLAB_TOKEN` / `GITEA_TOKEN` /
    `BITBUCKET_TOKEN` in the **server's** environment (the process that runs
    `kabmo serve`, not your shell — restart it after exporting one);
-2. the vendor CLI — `gh auth token`, or `glab auth status` — read **once** per
-   process and cached, including a failure, so a logged-out machine pays one
-   spawn rather than one per panel open. Gitea and Bitbucket have no such CLI;
+2. the vendor CLI, read **once per host** and cached (including a failure), so a
+   logged-out machine pays one spawn rather than one per panel open. Every call is
+   scoped to the remote's own host: a machine logged into two GitLab instances
+   would otherwise be handed whichever token the CLI listed first.
+   - `gh auth token --hostname <host>`.
+   - GitLab tries **`glab config get token --host <host>` first** — it answers
+     from the config file in ~0.5 s with no network — and falls back to
+     `glab auth status --show-token --hostname <host>`, the only command that can
+     reach a token in the OS keyring. The order is measured: `auth status`
+     *verifies* the token against the API first, so on a host behind a VPN it
+     spent 30 s on that call and was still running when the spawn budget expired
+     — a perfectly good stored token read as "no credential", and the panel said
+     "reading anonymously" over a repository it could have read. `glab` prints
+     that report to stderr and exits non-zero when any configured instance is
+     logged out, so the output decides rather than the exit code.
+
+   Gitea and Bitbucket have no such CLI;
 3. nothing, which is legitimate: a public repository reads anonymously, and the
    panel says so above the list.
 
@@ -194,7 +219,7 @@ environment/CLI credential above.
 bun test marketplace/plugins/git-forge/
 ```
 
-201 assertions across 17 files. Each suite owns one rule that fails silently:
+517 assertions across 16 files. Each suite owns one rule that fails silently:
 
 - `remote.test.ts` — the remote parser: credentials, ports, subgroups, local
   paths, and the four hosts' API roots.
@@ -210,7 +235,8 @@ bun test marketplace/plugins/git-forge/
 - `scope-probe.test.ts` — the write-scope probe, where "cannot tell" must never be
   read as "no".
 - `writes.test.ts` — every verb on every host, through the injected fetch, so
-  nothing here can reach a real repository.
+  nothing here can reach a real repository; including the two-call GitLab
+  approval and the merge styles each host refuses.
 - `adapters.test.ts` / `gitlab.test.ts` / `forges.test.ts` — the four adapters
   against recorded bodies, including the three sub-resources a host puts somewhere
   other than on the item itself.

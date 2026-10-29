@@ -24,6 +24,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { detailGithub, isBotUser, listGithub } from './github';
+import { readOnly } from '../protocol';
 import { host } from './test-host';
 import { hostContext, openFilter } from './test-context';
 
@@ -208,7 +209,14 @@ describe('detailGithub', () => {
     expect(detail.ci).toEqual({ state: 'failure', label: '2 checks', url: 'https://github.com/c/abc123' });
     expect(detail.files.map((file) => file.path)).toEqual(['src/a.ts']);
     expect(detail.commits.map((commit) => commit.message)).toEqual(['Add a thing']);
-    expect(detail.capabilities).toEqual({ comment: true, state: true, review: true, merge: true });
+    expect(detail.capabilities).toEqual({
+      comment: true,
+      state: true,
+      review: true,
+      merge: true,
+      mergeMethods: ['merge', 'squash', 'rebase'],
+      reviewVerdicts: ['approve', 'request_changes'],
+    });
   });
 
   test('a commit status is read when there are no check runs', async () => {
@@ -242,7 +250,14 @@ describe('detailGithub', () => {
     if ('error' in detail) throw new Error(detail.error);
     expect(detail.ci).toBeNull();
     expect(detail.files).toEqual([]);
-    expect(detail.capabilities).toEqual({ comment: true, state: true, review: false, merge: false });
+    expect(detail.capabilities).toEqual({
+      comment: true,
+      state: true,
+      review: false,
+      merge: false,
+      mergeMethods: [],
+      reviewVerdicts: [],
+    });
   });
 
   test('a release has no comment thread', async () => {
@@ -253,7 +268,7 @@ describe('detailGithub', () => {
     const detail = await detailGithub(github(fetchImpl), 'releases', 'v1');
     if ('error' in detail) throw new Error(detail.error);
     expect(detail.comments).toEqual([]);
-    expect(detail.capabilities).toEqual({ comment: false, state: false, review: false, merge: false });
+    expect(detail.capabilities).toEqual(readOnly());
     expect(asked.some((url) => url.includes('/comments'))).toBe(false);
   });
 
