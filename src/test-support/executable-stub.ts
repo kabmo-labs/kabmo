@@ -26,15 +26,37 @@
  *
  * The source is a Bun program, so it keeps the ergonomics the scripts had:
  * `process.env`, `Bun.stdin.stream()`, `console.log`.
+ *
+ * THE SOURCE MUST BE CONSTANT. The cache key is a hash of the source text, so a
+ * source that embeds a per-run value — a `mkdtempSync` path is the one that
+ * happened — misses the cache on every run and leaves a fresh ~90 MB binary
+ * behind each time. Measured: `bun test` grew `$TMPDIR/kabmo-test-bins` by
+ * ~200 MB per run (two such suites), which is how it reached 40 GB. Pass the
+ * per-run value through the environment instead: every spawn site that runs a
+ * fixture binary hands the child an explicit `env` (`childEnv()` in
+ * `src/server/lib/fs/child-env.ts`), and that env is read from `Bun.env` at
+ * spawn time, so a `Bun.env.X = …` assignment made by a test DOES reach the
+ * child. `restart.test.ts` has used that shape all along.
+ *
+ * Nothing else may own this directory: `pruneStubCache` in `stub-cache.ts` is
+ * the only deleter, and `executableStub` calls it once per process.
  */
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-/** Where compiled fixtures live, so a suite re-run reuses them. */
-const CACHE_ROOT = join(tmpdir(), 'kabmo-test-bins');
+import { pruneStubCache, STUB_CACHE_ROOT } from '@/test-support/stub-cache';
+
+/** The prune runs once per process: a `readdir` of a small directory, but not per stub. */
+let prunedThisProcess = false;
+
+/** Prune at most once per process, before the cache is read. */
+function pruneOnce(): void {
+  if (prunedThisProcess) return;
+  prunedThisProcess = true;
+  pruneStubCache();
+}
 
 /**
  * Compile `source` into an executable and return its path.
@@ -44,8 +66,9 @@ const CACHE_ROOT = join(tmpdir(), 'kabmo-test-bins');
  * that is what makes it startable there.
  */
 export async function executableStub(source: string, label = 'stub'): Promise<string> {
+  pruneOnce();
   const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
-  const dir = join(CACHE_ROOT, `${label}-${hash}`);
+  const dir = join(STUB_CACHE_ROOT, `${label}-${hash}`);
   const outfile = join(dir, process.platform === 'win32' ? `${label}.exe` : label);
 
   // A cached build is reused as-is: the hash covers the source, and a partially
@@ -105,3 +128,15 @@ for await (const chunk of Bun.stdin.stream()) {
 export function ompRpcStub(): Promise<string> {
   return executableStub(OMP_RPC_STUB_SOURCE, 'fake-omp-rpc');
 }
+
+/**
+ * Records the argv of every `omp` call to `FAKE_OMP_ARGV_LOG`, so a suite can
+ * assert what the binary was asked to run.
+ *
+ * The destination is an environment variable rather than part of the source:
+ * a baked per-run path would miss the cache on every run (see the
+ * constant-source note above), which is exactly what this stub did.
+ */
+export const OMP_ARGV_LOG_STUB_SOURCE = `import { writeFileSync } from 'node:fs';
+writeFileSync(process.env.FAKE_OMP_ARGV_LOG, process.argv.slice(2).map((arg) => arg + '\\n').join(''));
+`;

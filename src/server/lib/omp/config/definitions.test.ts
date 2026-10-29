@@ -18,7 +18,7 @@
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { executableStub } from '@/test-support/executable-stub';
+import { executableStub, OMP_ARGV_LOG_STUB_SOURCE } from '@/test-support/executable-stub';
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,10 +83,8 @@ beforeAll(async () => {
   Bun.env.MOCK = 'true';
 
   logFile = join(root, 'argv.log');
-  const stubSource = `import { writeFileSync } from 'node:fs';
-writeFileSync(${JSON.stringify(logFile)}, process.argv.slice(2).map((arg) => arg + '\\n').join(''));
-`;
-  Bun.env.KABMO_OMP_BIN = await executableStub(stubSource, 'fake-omp-argv');
+  Bun.env.FAKE_OMP_ARGV_LOG = logFile;
+  Bun.env.KABMO_OMP_BIN = await executableStub(OMP_ARGV_LOG_STUB_SOURCE, 'fake-omp-argv');
   // `resolveOmpBin` memoizes the FIRST binary it resolves for the process.
   invalidateOmpCliCache();
 });
@@ -106,6 +104,7 @@ afterAll(() => {
   else Bun.env.PI_CODING_AGENT_DIR = prevAgentDir;
   if (prevBin === undefined) delete Bun.env.KABMO_OMP_BIN;
   else Bun.env.KABMO_OMP_BIN = prevBin;
+  delete Bun.env.FAKE_OMP_ARGV_LOG;
   invalidateOmpCliCache();
   if (prevMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = prevMock;

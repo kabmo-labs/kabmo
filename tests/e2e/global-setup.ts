@@ -19,6 +19,7 @@
  * using.
  */
 
+import { pruneStubCache } from '../../src/test-support/stub-cache';
 import { sweepStaleTempDirs } from './fixtures/temp-root';
 
 export default function globalSetup(): void {
@@ -27,5 +28,14 @@ export default function globalSetup(): void {
     // Reported rather than silent: a run that reclaims gigabytes should say so,
     // and the line is the only evidence the sweep still works.
     console.log(`e2e: removed ${removed.length} temp director${removed.length === 1 ? 'y' : 'ies'} from earlier runs`);
+  }
+
+  // The compiled-fixture cache is not `omc-e2e-`-prefixed and is not a test
+  // temp root: it is shared with `bun test` and meant to be reused, so the age
+  // sweep above can never reach it. It still has to be reclaimed when a stub's
+  // source changed, or the old ~90 MB binary sits there forever.
+  const staleBins = pruneStubCache();
+  if (staleBins.length > 0) {
+    console.log(`e2e: removed ${staleBins.length} stale compiled fixture${staleBins.length === 1 ? '' : 's'}`);
   }
 }

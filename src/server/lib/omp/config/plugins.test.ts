@@ -44,6 +44,12 @@ let prevXdg: string | undefined;
 let prevAgentDir: string | undefined;
 let prevBin: string | undefined;
 
+/** Prints the `omp plugin list` fixture. The path is read from the environment
+ * so the source — and therefore the cached binary — is constant. */
+const STUB_SOURCE = `import { readFileSync } from 'node:fs';
+process.stdout.write(readFileSync(process.env.FAKE_OMP_PLUGIN_LIST));
+`;
+
 /** Write a fixture file, creating its parent directory. */
 function writeJson(file: string, value: unknown): string {
   fs.mkdirSync(dirname(file), { recursive: true });
@@ -151,11 +157,12 @@ beforeAll(async () => {
     ],
   });
 
-  const stubSource = `import { readFileSync } from 'node:fs';
-process.stdout.write(readFileSync(${JSON.stringify(listFixture)}));
-`;
-  Bun.env.KABMO_OMP_BIN = await executableStub(stubSource, 'fake-omp-plugin-list');
-  invalidateOmpCliCache();
+  // The listing path comes from the environment, not from the source: the
+  // fixture binary is cached by a hash of its source, so a baked per-run
+  // `mkdtempSync` path missed the cache on every run and leaked a ~90 MB binary
+  // per `bun test` (measured).
+  Bun.env.FAKE_OMP_PLUGIN_LIST = listFixture;
+  Bun.env.KABMO_OMP_BIN = await executableStub(STUB_SOURCE, 'fake-omp-plugin-list');
   // `resolveOmpBin` memoizes the FIRST binary it resolves for the process, so a
   // sibling suite's value would otherwise answer every call here.
   invalidateOmpCliCache();
@@ -168,6 +175,7 @@ afterAll(() => {
   else Bun.env.PI_CODING_AGENT_DIR = prevAgentDir;
   if (prevBin === undefined) delete Bun.env.KABMO_OMP_BIN;
   else Bun.env.KABMO_OMP_BIN = prevBin;
+  delete Bun.env.FAKE_OMP_PLUGIN_LIST;
   invalidateOmpCliCache();
   fs.rmSync(root, { recursive: true, force: true });
 });

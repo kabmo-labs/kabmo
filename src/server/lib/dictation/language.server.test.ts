@@ -37,15 +37,16 @@ import {
  * Answers `omp config get stt.language` from a file the test rewrites, so the
  * cached read is observable across calls. Never touches the real agent.
  *
- * The path is BAKED into the stub rather than read from an environment
- * variable: `Bun.spawn` inherits the process's STARTUP environment, so a
- * `Bun.env.X = …` set by a test does not reach the child (verified on Bun
- * 1.4.2 — the child sees the variable only when `env:` is passed explicitly,
- * which the bridge does not do).
+ * The path comes from `FAKE_OMP_LANGUAGE_FILE`, NOT baked into the source: the
+ * fixture binary is cached by a hash of its source, so a baked per-run
+ * `mkdtempSync` path made every run compile a fresh ~90 MB binary and left the
+ * old one in `$TMPDIR` forever (measured: +101 MB per `bun test` run). The
+ * variable reaches the child because every spawn site passes an explicit `env`
+ * built from `Bun.env` at spawn time (`childEnv()`), not the startup environ.
  */
-function stubSource(langFile: string): string {
-  return `const args = process.argv.slice(2);
-const value = (await Bun.file(${JSON.stringify(langFile)}).text()).trim();
+const STUB_SOURCE = `const args = process.argv.slice(2);
+const file = process.env.FAKE_OMP_LANGUAGE_FILE;
+const value = (await Bun.file(file).text()).trim();
 if (args[0] === 'config' && args[1] === 'get' && args[2] === 'stt.language') {
   process.stdout.write(JSON.stringify(value));
   process.exit(0);
@@ -53,12 +54,12 @@ if (args[0] === 'config' && args[1] === 'get' && args[2] === 'stt.language') {
 process.stderr.write('Unknown setting: ' + (args[2] ?? '') + '\\n');
 process.exit(1);
 `;
-}
 
 const dirs: string[] = [];
 let stubBin = '';
 let langFile = '';
 let realBin: string | undefined;
+let realLangFile: string | undefined;
 const originalMock = Bun.env.MOCK;
 
 /** Point the stub at a language value (or an unreadable one for the failure case). */
@@ -71,9 +72,11 @@ beforeAll(async () => {
   dirs.push(dir);
   langFile = join(dir, 'language.txt');
   setStubLanguage('en');
-  stubBin = await executableStub(stubSource(langFile), 'fake-omp-language');
+  stubBin = await executableStub(STUB_SOURCE, 'fake-omp-language');
   realBin = Bun.env.KABMO_OMP_BIN;
+  realLangFile = Bun.env.FAKE_OMP_LANGUAGE_FILE;
   Bun.env.KABMO_OMP_BIN = stubBin;
+  Bun.env.FAKE_OMP_LANGUAGE_FILE = langFile;
   // A sibling suite may have cached the real `omp` path for the process
   // lifetime; without this the stub is bypassed and the real agent is driven.
   invalidateOmpCliCache();
@@ -84,6 +87,8 @@ afterAll(() => {
   else Bun.env.MOCK = originalMock;
   if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
   else Bun.env.KABMO_OMP_BIN = realBin;
+  if (realLangFile === undefined) delete Bun.env.FAKE_OMP_LANGUAGE_FILE;
+  else Bun.env.FAKE_OMP_LANGUAGE_FILE = realLangFile;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });

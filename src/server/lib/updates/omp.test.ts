@@ -20,16 +20,29 @@ import { join } from 'node:path';
 import { applyOmpUpdate, checkOmpUpdate } from '@/server/lib/updates/omp';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 
+/** Prints `omp --version` from the environment, so the source is constant and the
+ * compiled fixture is reused across runs and across answers. */
+const STUB_SOURCE = `process.stdout.write(process.env.FAKE_OMP_VERSION_OUTPUT || '');`;
+
 /** The runner's own fetch, reached through `Bun` so a stub leaked onto the global cannot be mistaken for it. */
 const originalFetch = Bun.fetch;
 
 describe('omp update check', () => {
   const realOverride = Bun.env.KABMO_OMP_BIN;
+  const realOutput = Bun.env.FAKE_OMP_VERSION_OUTPUT;
 
-  /** A stand-in binary: the check only reads `omp --version` from it. The answer
-   * is baked into the source (the check spawns without passing `env:`). */
+  /**
+   * A stand-in binary: the check only reads `omp --version` from it.
+   *
+   * The answer comes from `FAKE_OMP_VERSION_OUTPUT`, NOT baked into the source:
+   * the fixture binary is cached by a hash of its source, so a baked per-case
+   * answer compiled a fresh ~90 MB binary for every distinct output and left the
+   * old ones in `$TMPDIR` forever. The variable reaches the child because the
+   * spawn site passes `env` built from `Bun.env` at spawn time.
+   */
   function stubOmp(output: string): Promise<string> {
-    return executableStub(`process.stdout.write(${JSON.stringify(output)});`, 'fake-omp-version');
+    Bun.env.FAKE_OMP_VERSION_OUTPUT = output;
+    return executableStub(STUB_SOURCE, 'fake-omp-version');
   }
 
   /** The registry answering one fixed version. */
@@ -48,6 +61,8 @@ describe('omp update check', () => {
   afterEach(() => {
     if (realOverride === undefined) delete Bun.env.KABMO_OMP_BIN;
     else Bun.env.KABMO_OMP_BIN = realOverride;
+    if (realOutput === undefined) delete Bun.env.FAKE_OMP_VERSION_OUTPUT;
+    else Bun.env.FAKE_OMP_VERSION_OUTPUT = realOutput;
     globalThis.fetch = originalFetch;
     invalidateOmpCliCache();
   });

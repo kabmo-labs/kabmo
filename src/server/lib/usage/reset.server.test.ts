@@ -28,20 +28,28 @@ import { join } from 'node:path';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { listUsageResets, parseUsageResetList, spendUsageReset } from '@/server/lib/usage/reset.server';
 
-/** Answers `omp usage reset …` from a file the test rewrites. */
-function stubSource(responseFile: string): string {
-  return `const raw = (await Bun.file(${JSON.stringify(responseFile)}).text()).trim();
+/**
+ * Answers `omp usage reset …` from a file the test rewrites.
+ *
+ * The path comes from `FAKE_OMP_RESET_FILE`, NOT baked into the source: the
+ * fixture binary is cached by a hash of its source, so a baked per-run
+ * `mkdtempSync` path missed the cache on every run and left the previous ~90 MB
+ * binary behind (measured: +101 MB per `bun test` run). The variable reaches the
+ * child because the spawn site passes `childEnv()`, which is read from `Bun.env`
+ * at spawn time.
+ */
+const STUB_SOURCE = `const raw = (await Bun.file(process.env.FAKE_OMP_RESET_FILE).text()).trim();
 const { stdout = '', stderr = '', exit = 0 } = raw ? JSON.parse(raw) : {};
 if (stdout) process.stdout.write(stdout);
 if (stderr) process.stderr.write(stderr);
 process.exit(exit);
 `;
-}
 
 const dirs: string[] = [];
 let stubBin = '';
 let responseFile = '';
 let realBin: string | undefined;
+let realResetFile: string | undefined;
 const originalMock = Bun.env.MOCK;
 
 /** Point the stub at an outcome. */
@@ -54,9 +62,11 @@ beforeAll(async () => {
   dirs.push(dir);
   responseFile = join(dir, 'response.json');
   stubResult({ stdout: '{"generatedAt":1,"accounts":[]}' });
-  stubBin = await executableStub(stubSource(responseFile), 'fake-omp-reset');
+  stubBin = await executableStub(STUB_SOURCE, 'fake-omp-reset');
   realBin = Bun.env.KABMO_OMP_BIN;
+  realResetFile = Bun.env.FAKE_OMP_RESET_FILE;
   Bun.env.KABMO_OMP_BIN = stubBin;
+  Bun.env.FAKE_OMP_RESET_FILE = responseFile;
   invalidateOmpCliCache();
 });
 
@@ -65,6 +75,8 @@ afterAll(() => {
   else Bun.env.MOCK = originalMock;
   if (realBin === undefined) delete Bun.env.KABMO_OMP_BIN;
   else Bun.env.KABMO_OMP_BIN = realBin;
+  if (realResetFile === undefined) delete Bun.env.FAKE_OMP_RESET_FILE;
+  else Bun.env.FAKE_OMP_RESET_FILE = realResetFile;
   invalidateOmpCliCache();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
