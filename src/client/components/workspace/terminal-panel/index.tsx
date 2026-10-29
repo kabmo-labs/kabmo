@@ -23,11 +23,13 @@ interface TerminalPanelProps {
   enabled?: boolean;
   rootPath?: string;
   showHeader?: boolean;
+  /** True while this view is the one on screen (the layout's `active`). */
+  active?: boolean;
 }
 
 const encoder = new TextEncoder();
 
-export function TerminalPanel({ className = '', enabled = true, rootPath, showHeader = true }: TerminalPanelProps) {
+export function TerminalPanel({ className = '', enabled = true, rootPath, showHeader = true, active = true }: TerminalPanelProps) {
   const xtermRef = useRef<RealtimeXtermHandle>(null);
   const { isDark } = useTheme();
   // Only a device without a physical keyboard gets the key bar: on a desktop
@@ -213,6 +215,7 @@ export function TerminalPanel({ className = '', enabled = true, rootPath, showHe
           onBinaryInput={handleBinaryInput}
           onReady={handleReady}
           onGridChange={handleGridChange}
+          visible={active}
         />
       </div>
 

@@ -31,7 +31,7 @@
 
 import type { Terminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
-import type { WebglAddon } from '@xterm/addon-webgl';
+import { createWebglControl } from '@/client/components/workspace/terminal-panel/webgl';
 import {
   getXtermTheme,
   NERD_SYMBOLS_FAMILY,
@@ -63,6 +63,12 @@ export interface XtermMount {
    * panel. Grid reports are suppressed until the replay has been consumed.
    */
   writeReplay: (bytes: Uint8Array, cols: number, rows: number) => void;
+  /**
+   * Hold or release the WebGL context. Releasing falls back to xterm's DOM
+   * renderer, so the buffer stays readable while the panel is hidden; holding
+   * again re-creates the context on the next shown frame.
+   */
+  setWebgl: (enabled: boolean) => void;
   dispose: () => void;
 }
 
@@ -107,23 +113,12 @@ export async function mountXterm(
   term.open(container);
   safePatchRenderService(term);
 
-  // WebGL renderer: draws powerline glyphs (U+E0B0 etc.) as full-cell vector
-  // paths, so segmented prompts stay seamless the way a local terminal does.
-  // The DOM renderer draws them as ordinary glyphs inside the font box, which
-  // leaves notches at every segment joint. WebGL can fail (no GPU context,
-  // context-lost), and the DOM renderer is the automatic fallback.
-  try {
-    const webglModule = (await import('@xterm/addon-webgl')) as unknown as {
-      WebglAddon?: typeof WebglAddon;
-      default?: { WebglAddon?: typeof WebglAddon } & typeof WebglAddon;
-    };
-    const WebglAddonClass = webglModule.WebglAddon || webglModule.default?.WebglAddon || webglModule.default;
-    if (WebglAddonClass) {
-      const webgl = new WebglAddonClass() as WebglAddon;
-      webgl.onContextLoss(() => webgl.dispose());
-      term.loadAddon(webgl);
-    }
-  } catch {}
+  // WebGL renderer: powerline glyphs stay seamless, and the context is held only
+  // while this panel is on screen (`webgl.ts` owns that decision and the numbers
+  // behind it — 541.8 MB of graphics in an 817.7 MB footprint). It is attached by
+  // the caller, which is the only thing that knows whether this view is the one
+  // being looked at.
+  const webgl = await createWebglControl(term);
 
   const fitAddon = new FitAddonClass() as FitAddon;
   term.loadAddon(fitAddon);
@@ -231,6 +226,7 @@ export async function mountXterm(
     term,
     fitAddon,
     writeReplay,
+    setWebgl: webgl.set,
     dispose() {
       if (frame !== null) cancelAnimationFrame(frame);
       clearTimeout(fitTimer ?? undefined);

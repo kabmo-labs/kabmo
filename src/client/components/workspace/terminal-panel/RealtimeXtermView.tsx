@@ -43,6 +43,8 @@ interface RealtimeXtermViewProps {
   onGridChange: (cols: number, rows: number) => void;
   /** The terminal is measurable and knows its size; attach with these. */
   onReady: (cols: number, rows: number) => void;
+  /** False while another panel is on screen: the WebGL context is released. */
+  visible?: boolean;
 }
 
 /**
@@ -54,7 +56,7 @@ interface RealtimeXtermViewProps {
  * xterm's own streaming decoder rather than by a decode step here.
  */
 export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermViewProps>(
-  ({ onInput, onBinaryInput, onGridChange, onReady }, ref) => {
+  ({ onInput, onBinaryInput, onGridChange, onReady, visible = true }, ref) => {
     const { theme } = useTheme();
     const containerRef = useRef<HTMLDivElement>(null);
     const mountRef = useRef<XtermMount | null>(null);
@@ -70,6 +72,12 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
     readyRef.current = onReady;
     const themeRef = useRef(theme);
     themeRef.current = theme;
+    // Read when the async mount RESOLVES, not when this effect ran: `mountXterm`
+    // imports xterm and the WebGL addon, so `mountRef.current` is still null on
+    // the first pass and an effect that only ran then would leave the context
+    // held by a panel that was never on screen.
+    const visibleRef = useRef(visible);
+    visibleRef.current = visible;
 
     useEffect(() => {
       const term = mountRef.current?.term;
@@ -77,6 +85,21 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
       term.options.theme = getXtermTheme(theme);
       term.refresh(0, term.rows - 1);
     }, [theme]);
+
+    /**
+     * Hold the WebGL context only while this view is on screen.
+     *
+     * The right-panel stack keeps every built-in view MOUNTED and hides the
+     * inactive ones with CSS; the terminal is the one view that stays live while
+     * hidden, because it owns a PTY. That made its GPU context permanent: eight
+     * terminals held eight contexts, and `vmmap` on the desktop shell showed
+     * `owned unmapped (graphics)` at 541.8 MB of an 817.7 MB footprint while the
+     * JS heap was 12.6 MB. Releasing on hide drops the context — xterm's DOM
+     * renderer keeps the buffer readable — and showing the panel re-creates it.
+     */
+    useEffect(() => {
+      mountRef.current?.setWebgl(visible);
+    }, [visible]);
 
     useImperativeHandle(ref, () => ({
       write(bytes: Uint8Array) {
@@ -132,6 +155,10 @@ export const RealtimeXtermView = forwardRef<RealtimeXtermHandle, RealtimeXtermVi
           return;
         }
         mountRef.current = mount;
+        // The panel can mount while another view is on screen — the stack keeps
+        // every built-in mounted — so the context is released on arrival rather
+        // than on the next visibility change.
+        mount.setWebgl(visibleRef.current);
       });
 
       return () => {
