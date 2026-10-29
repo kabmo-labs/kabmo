@@ -118,6 +118,13 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
+        // A critical trim paused the WebView's timers; nothing else would ever
+        // start them again, and a paused WebView answers no JavaScript.
+        if (pausedTimers) {
+            webView.resumeTimers()
+            pausedTimers = false
+        }
+
         // Zoom is applied on EVERY resume, not only when it changes: the settings
         // screen writes it while this Activity is paused, and the value is cheap
         // to set (a float assignment; the WebView relayouts once).
@@ -177,6 +184,35 @@ class MainActivity : Activity() {
         flushCookies()
         super.onPause()
     }
+
+    /**
+     * Give memory back when the system asks for it.
+     *
+     * The console is a single WebView holding a long transcript, a code editor
+     * and up to eight xterm buffers, so the renderer is the largest allocation on
+     * the device — and Android reclaims a background app by killing the process,
+     * which is what "Kabmo restarts when I come back to it" looks like from the
+     * outside. `TrimPolicy` owns the mapping (tested without a device); this is
+     * the wiring.
+     *
+     * Nothing here reloads or clears the document: the console's state is the
+     * server's, and a reload would cost the user their scroll position to save
+     * memory the WebView is about to be asked for anyway.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        val action = TrimPolicy.forLevel(level)
+        if (action == TrimPolicy.Action.NONE) return
+        webView.freeMemory()
+        if (action == TrimPolicy.Action.CRITICAL) {
+            webView.clearCache(true)
+            webView.pauseTimers()
+            pausedTimers = true
+        }
+    }
+
+    /** Set by a critical trim; only `onResume` clears it. */
+    private var pausedTimers = false
 
     /**
      * The shell is one Activity, recreated by a process restart and by the

@@ -490,6 +490,7 @@ Every one of these is a Kabmo feature that dies silently without it:
 | `onReceivedSslError` | a named refusal instead of a blank page |
 | `shouldOverrideUrlLoading` | external links leave the shell instead of replacing Kabmo |
 | `window.__kabmoBack()` | the back button closes the drawer / editor / settings first |
+| `onTrimMemory` | the shell survives a low-memory moment instead of being killed: the renderer releases what it can rebuild, and a critical level also drops the HTTP cache and pauses timers (`TrimPolicy`) |
 
 The back button is a **page-delegated** decision: Kabmo's phone layout keeps its
 screens in React state (`MobileLayoutWrapper`'s `currentScreen`), not in the URL,
