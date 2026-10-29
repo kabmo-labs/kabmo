@@ -4,6 +4,47 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.13.0](https://github.com/kabmo-labs/kabmo/compare/v0.12.0...v0.13.0) — 2026-10-29
+
+### Added
+
+* **chat:** add compact, wide and full width modes to the conversation ([97bc64b](https://github.com/kabmo-labs/kabmo/commit/97bc64ba0e2d2b937675c2069681861445247aba)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** grow the prompt box to seven lines, then scroll ([4a2fd03](https://github.com/kabmo-labs/kabmo/commit/4a2fd0317fca52956a06c559b50e17ef3f5641cc)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **browser:** paint screencast frames into a canvas and bound the editor cache ([0f82a64](https://github.com/kabmo-labs/kabmo/commit/0f82a64ff09228a6b082f0df4cc4c16a70880f25)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git-forge:** drop the navbar readout, leaving the panel as the only surface ([cc20db7](https://github.com/kabmo-labs/kabmo/commit/cc20db7997aa29015567ea96b19491671bf4cc57)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **server:** answer the session model and thinking level from the file tail ([0f22b48](https://github.com/kabmo-labs/kabmo/commit/0f22b48277e2da2a5bed5d09f51bd37656c2e25d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **server:** collect once the process passes a memory ceiling ([ae3ffee](https://github.com/kabmo-labs/kabmo/commit/ae3ffee6567723c43912409c6d15d3d08bdd433a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** release the WebGL context while the panel is hidden ([01a678b](https://github.com/kabmo-labs/kabmo/commit/01a678bea172b42de4d253516e39f25c9c89230c)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **android:** trim the WebView when the system reports memory pressure ([a0b27aa](https://github.com/kabmo-labs/kabmo/commit/a0b27aa1d9e6edbf30d7b585b7e07ef1fbfb8b8e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **build:** align bun-types with the 1.4.4 runtime ([ed0e321](https://github.com/kabmo-labs/kabmo/commit/ed0e321b40354c4ce96d0061da401977782b2ba0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** land the jump rail on the clicked turn ([dd1e5bf](https://github.com/kabmo-labs/kabmo/commit/dd1e5bf65313137bab80fdad040320b554a504bd)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#60](https://github.com/kabmo-labs/kabmo/issues/60)
+* **composer:** line the picker's provider mark up with the row grips ([529a74f](https://github.com/kabmo-labs/kabmo/commit/529a74fb0d5cb3051f66d829d7989023dcee110c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** put the picker's chevron on the stars' axis ([9bc871f](https://github.com/kabmo-labs/kabmo/commit/9bc871f101345d0356a5fef403fcb52abe7347ea)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** remember folded picker sections across chats ([3bee458](https://github.com/kabmo-labs/kabmo/commit/3bee4583de7ae7d8ef12719add5d97d57af8bb96)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** tidy the model hover card and anchor it to its row ([3becfe2](https://github.com/kabmo-labs/kabmo/commit/3becfe20a00a1e4d84d35ba1286db39a4212c5da)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git-forge:** read a GitLab credential, and stop hiding merged requests ([b36c8bc](https://github.com/kabmo-labs/kabmo/commit/b36c8bc28f43dc3666d78c61cafd9b4a99ee67c1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ios:** reload the console when the OS kills the web process ([d478af2](https://github.com/kabmo-labs/kabmo/commit/d478af2e568c7a207f7598b4b89e234eba39ac0e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux:** reach the memory-pressure policy through the lib crate ([f8193d0](https://github.com/kabmo-labs/kabmo/commit/f8193d01da20c13c6ec817e58c993b0422bba42d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **linux:** tell WebKitGTK when the web process should trim ([f0f86ec](https://github.com/kabmo-labs/kabmo/commit/f0f86ecef0de1313793235dcc743e13652e00324)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **macos:** reload the console when the OS kills the web process ([42e6201](https://github.com/kabmo-labs/kabmo/commit/42e620180f021c0d388745f76ea122366b547d6d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** retry a plugin call that landed in a restart's boot window ([918e7b9](https://github.com/kabmo-labs/kabmo/commit/918e7b9ce1ed6d3198549ef906ddb55d0fcf4ba2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** stop a plugin's throw from drawing the app twice ([4fb04d8](https://github.com/kabmo-labs/kabmo/commit/4fb04d8f5458c8df0c1a72e06987b382f502c518)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **providers:** read a provider icon from its base domain too ([1d14cb9](https://github.com/kabmo-labs/kabmo/commit/1d14cb98ec04699b024357c823e6c285848d9a85)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **scrollbars:** bind an arm to the container the input landed in ([a071d2c](https://github.com/kabmo-labs/kabmo/commit/a071d2cf75808eab5252fd2a1c0d9311f9f4b220)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **scrollbars:** keep a user's scroll inside the reveal gate when a frame runs long ([13b66ce](https://github.com/kabmo-labs/kabmo/commit/13b66ce70ebcddd9391e33fc92a1e4e3a5cb29f2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **scrollbars:** make one input arm one reveal, so a blocked frame cannot swallow it ([c4968c2](https://github.com/kabmo-labs/kabmo/commit/c4968c2d55a01b2fea7b90812e0d6b99d41dc451)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** make the two Windows-only assertions answer on Windows ([fb07699](https://github.com/kabmo-labs/kabmo/commit/fb07699eee8f16e7a653417c771befd560da9d0f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** pin the stub-cache age floor to whole-second timestamps ([22e9982](https://github.com/kabmo-labs/kabmo/commit/22e998233476ba88cb4c717942d3c33e757b57d0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** remove the temp directories unit suites left in $TMPDIR ([add4f2e](https://github.com/kabmo-labs/kabmo/commit/add4f2ebde7be1343cd3cad4ed0c0ded1b38ceb0)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **test:** stop the compiled-fixture cache growing on every run ([2fc00a6](https://github.com/kabmo-labs/kabmo/commit/2fc00a644694d5d1c8e6b94f43f3d0b3b796bb9b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **windows:** lower the webview's memory target while minimised ([9049bd5](https://github.com/kabmo-labs/kabmo/commit/9049bd5d3b70484bde04214a9619905b96463646)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.12.0](https://github.com/kabmo-labs/kabmo/compare/v0.11.1...v0.12.0) — 2026-10-28
 
 ### Added
