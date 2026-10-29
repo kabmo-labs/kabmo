@@ -120,3 +120,39 @@ describe('document cache', () => {
     expect(state.facet(EditorView.editable)).toBe(false as boolean);
   });
 });
+
+/**
+ * The cache's byte budget.
+ *
+ * Twelve cached states is not twelve tabs' worth of memory: a text file may be
+ * 32 MiB, and each state carries the document plus its undo history's
+ * whole-document snapshots. Past the budget the least recently used document is
+ * dropped even while the count is under the tab bound — and the ACTIVE document
+ * is never the one dropped, because losing an open tab's history is the exact
+ * failure the cache exists to prevent.
+ */
+describe('document cache byte budget', () => {
+  /** A document large enough that a few of them cross the 8 MiB budget. */
+  const large = (marker: string) => `${marker}\n${'x'.repeat(3 * 1024 * 1024)}`;
+
+  test('large documents are dropped before the tab bound is reached', () => {
+    const documents = cache();
+    for (let index = 0; index < 4; index++) {
+      documents.stateFor(`big-${index}`, 'typescript', large(`// ${index}`));
+    }
+    // 4 × 3 MiB is past the 8 MiB budget, so the oldest is gone...
+    expect(documents.stateFor('big-0', 'typescript', 'fresh').doc.toString()).toBe('fresh');
+    // ...while the newest is still cached with its own text.
+    expect(documents.stateFor('big-3', 'typescript', 'fresh').doc.toString().startsWith('// 3')).toBe(true);
+  });
+
+  test('the document being opened is never the one evicted', () => {
+    const documents = cache();
+    const first = documents.stateFor('a', 'typescript', 'a'.repeat(20 * 1024 * 1024));
+    documents.stateFor('b', 'typescript', 'b'.repeat(20 * 1024 * 1024));
+    // Opening B evicted A, but B itself survived: the cache always holds the
+    // document on screen.
+    expect(documents.stateFor('b', 'typescript', 'fresh').doc.length).toBe(20 * 1024 * 1024);
+    expect(first.doc.length).toBe(20 * 1024 * 1024);
+  });
+});

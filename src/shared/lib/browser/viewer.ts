@@ -30,12 +30,25 @@ import { readNumber, readString } from '@/shared/lib/browser/util';
 import { isRecord } from '@/shared/lib/util/guards';
 import { BROWSER_POLL_MS } from '@/shared/lib/workspace/refresh-cadence';
 
+/**
+ * What the stream asks the page for.
+ *
+ * `everyNthFrame: 1` (every frame) is what the panel used to request, and it is
+ * the wrong default for a viewer that is watched, not sampled: a 30 fps page
+ * produced 30 decodes a second, each one a full RGBA surface the renderer has to
+ * allocate and free. Measured in WebKit with the canvas sink in place, 1 760
+ * frames at 16 fps still cost ~8 KB of WebContent footprint per frame, so the
+ * frame RATE is a real lever on top of the sink (`client/lib/browser/frame-canvas.ts`).
+ * Every second frame keeps the motion readable at half the decodes, and the
+ * size is the panel's own display width — 1 600 px was above every panel width
+ * the app renders, so it was only ever downscaled.
+ */
 const SCREENCAST_PARAMS = {
   format: 'jpeg',
   quality: 60,
-  maxWidth: 1600,
-  maxHeight: 1000,
-  everyNthFrame: 1,
+  maxWidth: 1280,
+  maxHeight: 800,
+  everyNthFrame: 2,
 };
 
 interface ScreencastOptions {

@@ -26,7 +26,7 @@ interface BrowserPanelProps {
  */
 export function BrowserPanel({ className = '', active = true }: BrowserPanelProps) {
   const [zoomLevel, setZoomLevel] = useSessionState<number>('browser.zoomLevel', 100);
-  const { status, url, title, tabs, targetId, frameSrc, actions, selectTarget, reconnect } = useScreencast(active);
+  const { status, url, title, tabs, targetId, frame, actions, selectTarget, reconnect } = useScreencast(active);
 
   const handleOpenExternal = () => {
     if (!url) return;
@@ -59,7 +59,7 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
         url={url}
         tabs={tabs}
         targetId={targetId}
-        frameSrc={frameSrc}
+        frame={frame}
         actions={actions}
         onSelectTarget={selectTarget}
         zoomLevel={zoomLevel}

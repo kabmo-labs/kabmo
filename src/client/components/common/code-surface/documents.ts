@@ -32,9 +32,7 @@ import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
 import { readOnlyExtension, surfaceExtensions, wrapExtension } from '@/client/components/common/code-surface/extensions';
 import { typingExtensions, type EditorTypingOptions } from '@/client/components/common/code-surface/typing';
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
-
-/** States kept alive; past this the least recently used one is dropped. */
-const MAX_CACHED = 12;
+import { documentsToEvict } from '@/client/components/common/code-surface/documents-budget';
 
 export interface SurfaceOptions {
   wordWrap: boolean;
@@ -212,12 +210,16 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
     states.set(key, state);
   };
 
-  const evict = (): void => {
-    while (states.size > MAX_CACHED) {
-      const oldest = states.keys().next();
-      if (oldest.done) return;
-      states.delete(oldest.value);
-    }
+  /** Drop the least recently used states until both budgets hold. `keep` is the
+   *  document that was just created or touched, so it is never the one evicted
+   *  (see `documents-budget.ts` for why there are two budgets). */
+  const evict = (keep: string): void => {
+    const dropped = documentsToEvict(
+      [...states.keys()],
+      (key) => states.get(key)?.doc.length ?? 0,
+      keep,
+    );
+    for (const key of dropped) states.delete(key);
   };
 
   return {
@@ -233,7 +235,7 @@ export function createDocumentCache(deps: DocumentCacheDeps): DocumentCache {
       themesByKey.set(key, options.themes);
       indentByKey.set(key, options.indentUnitText);
       blameByKey.set(key, options.blame ?? null);
-      evict();
+      evict(key);
       return state;
     },
 

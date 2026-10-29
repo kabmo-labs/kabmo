@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { Globe, Loader2, Radio } from 'lucide-preact';
 import { ActivityToasts } from '@/client/components/workspace/browser-panel/ActivityToasts';
+import { drawFrame } from '@/client/lib/browser/frame-canvas';
 import type { BrowserPanelAction, BrowserTabInfo, BrowserViewStatus } from '@/shared/types';
 
 interface BrowserScreencastProps {
@@ -7,7 +9,8 @@ interface BrowserScreencastProps {
   url?: string;
   tabs: BrowserTabInfo[];
   targetId?: string;
-  frameSrc?: string;
+  /** The newest frame; painted into a canvas, never into an `<img>`. */
+  frame?: { data: string; mimeType: string } | null;
   actions: BrowserPanelAction[];
   onSelectTarget: (targetId: string) => void;
   zoomLevel: number;
@@ -33,13 +36,35 @@ export function BrowserScreencast({
   url,
   tabs,
   targetId,
-  frameSrc,
+  frame,
   actions,
   onSelectTarget,
   zoomLevel,
 }: BrowserScreencastProps) {
   const isLive = status === 'live';
   const offline = isLive ? null : OFFLINE_COPY[status];
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Whether a frame has ever been painted. State, not a ref: the placeholder
+  // has to leave the DOM on the same commit the canvas gets its first pixels.
+  const [hasFrame, setHasFrame] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !frame) return;
+    let cancelled = false;
+    void drawFrame(canvas, frame.data, frame.mimeType).then((painted) => {
+      if (painted && !cancelled) setHasFrame(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [frame]);
+
+  // A session switch or a closed tab must not leave the previous page's pixels
+  // on screen under a "waiting" spinner.
+  useEffect(() => {
+    if (!isLive) setHasFrame(false);
+  }, [isLive]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-canvas/60 relative overflow-hidden">
@@ -79,15 +104,16 @@ export function BrowserScreencast({
               transformOrigin: 'top center',
             }}
           >
-            {frameSrc ? (
-              <img
-                src={frameSrc}
-                alt={url || 'Live browser view'}
-                className="w-full h-full object-contain bg-paper"
-                draggable={false}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 select-none">
+            {/* A canvas, not an `<img>`: WebKit keeps the decoded image of every
+                replaced `src` — measured 76 KB of WebContent footprint per frame,
+                gigabytes over a long session. See `frame-canvas.ts`. */}
+            <canvas
+              ref={canvasRef}
+              aria-label={url || 'Live browser view'}
+              className={`w-full h-full object-contain bg-paper ${hasFrame ? '' : 'hidden'}`}
+            />
+            {!hasFrame && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 select-none">
                 <Loader2 size={20} className="animate-spin text-ink/40 mb-2" />
                 <p className="text-xs text-ink/60">Menunggu frame pertama dari browser…</p>
               </div>

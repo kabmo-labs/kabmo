@@ -8,7 +8,15 @@ interface UseScreencastResult {
   title?: string;
   tabs: BrowserTabInfo[];
   targetId?: string;
-  frameSrc?: string;
+  /**
+   * The newest frame, as the payload the canvas painter decodes.
+   *
+   * NOT a `data:` URL handed to an `<img>`: WebKit never releases the decoded
+   * image behind a replaced `src`, measured at ~76 KB of WebContent footprint
+   * per frame (and ~123 KB for a revoked blob URL), which is gigabytes over a
+   * long session. See `lib/browser/frame-canvas.ts` for the numbers.
+   */
+  frame?: { data: string; mimeType: string } | null;
   actions: BrowserPanelAction[];
   /** Pin the viewer to one tab id; pass an empty string to follow the newest owned tab. */
   selectTarget: (targetId: string) => void;
@@ -41,7 +49,7 @@ type VisibleAction = BrowserPanelAction & { expiresAt: number };
 export function useScreencast(active = true): UseScreencastResult {
   const { sessionId, ready } = useSessionStateContext();
   const [state, setState] = useState<BrowserViewState>(INITIAL_STATE);
-  const [frameSrc, setFrameSrc] = useState<string | undefined>(undefined);
+  const [frame, setFrame] = useState<{ data: string; mimeType: string } | null>(null);
   const [actions, setActions] = useState<VisibleAction[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>('');
   const [nonce, setNonce] = useState(0);
@@ -76,7 +84,7 @@ export function useScreencast(active = true): UseScreencastResult {
 
   useEffect(() => {
     setState(INITIAL_STATE);
-    setFrameSrc(undefined);
+    setFrame(null);
     setSelectedTarget('');
     queueRef.current = [];
     setActions([]);
@@ -99,10 +107,10 @@ export function useScreencast(active = true): UseScreencastResult {
       source.addEventListener('state', (event) => {
         try {
           const next = JSON.parse((event as MessageEvent).data) as BrowserViewState;
-          if (next.targetId !== currentTargetRef.current) setFrameSrc(undefined);
+          if (next.targetId !== currentTargetRef.current) setFrame(null);
           currentTargetRef.current = next.targetId;
           setState(next);
-          if (next.status !== 'live') setFrameSrc(undefined);
+          if (next.status !== 'live') setFrame(null);
         } catch {
           // Ignore malformed state frames.
         }
@@ -110,10 +118,10 @@ export function useScreencast(active = true): UseScreencastResult {
 
       source.addEventListener('frame', (event) => {
         try {
-          const frame = JSON.parse((event as MessageEvent).data) as BrowserViewFrame;
+          const incoming = JSON.parse((event as MessageEvent).data) as BrowserViewFrame;
           const current = currentTargetRef.current;
-          if (current && frame.targetId && frame.targetId !== current) return;
-          setFrameSrc(`data:${frame.mimeType};base64,${frame.data}`);
+          if (current && incoming.targetId && incoming.targetId !== current) return;
+          setFrame({ data: incoming.data, mimeType: incoming.mimeType });
         } catch {
           // Ignore malformed frame payloads.
         }
@@ -170,7 +178,7 @@ export function useScreencast(active = true): UseScreencastResult {
     title: state.title,
     tabs: state.tabs,
     targetId: state.targetId,
-    frameSrc,
+    frame,
     actions,
     selectTarget,
     reconnect,

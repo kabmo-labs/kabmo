@@ -224,7 +224,10 @@ describe('screencast viewer', () => {
   test('starts the screencast with the viewer frame params', async () => {
     const { handle, socket } = await open();
     const start = socket.frames().find((frame) => frame.method === 'Page.startScreencast');
-    expect(start?.params).toEqual({ format: 'jpeg', quality: 60, maxWidth: 1600, maxHeight: 1000, everyNthFrame: 1 });
+    // Every frame at 1 600 px was the panel's old ask; the frame rate is a real
+    // memory lever (see `SCREENCAST_PARAMS`), so it is pinned here rather than
+    // left to drift back to `everyNthFrame: 1`.
+    expect(start?.params).toEqual({ format: 'jpeg', quality: 60, maxWidth: 1280, maxHeight: 800, everyNthFrame: 2 });
     expect(start?.sessionId).toBe('SESS-1');
     handle.close();
   });
