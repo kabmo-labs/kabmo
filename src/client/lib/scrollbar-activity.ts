@@ -49,6 +49,13 @@
  * reveal — it leaves the fade running, so the bar still disappears on schedule
  * mid-run instead of being pinned there.
  *
+ * The window is measured on the events' OWN timestamps, never on the clock read
+ * inside the handler. Those differ by however long the main thread was busy,
+ * and a busy frame is exactly what a streamed turn produces: reading `Date.now()`
+ * in the handler aged a wheel the user had just made into "not theirs", so the
+ * bar stayed hidden while they scrolled — intermittently, and worst under load.
+ * `eventMoment` is that rule in one place.
+ *
  * ## The other half of the contract
  *
  * `tailwind.css` declares `::-webkit-scrollbar-thumb` transparent and paints it
@@ -108,6 +115,34 @@ function scrolledElement(target: EventTarget | null): Element | null {
 }
 
 /**
+ * WHEN an event happened, on the one clock the gate compares.
+ *
+ * `Date.now()` read inside a handler is when the handler RAN, and the two are
+ * not the same moment: scroll events are coalesced and delivered at the next
+ * frame, so a main thread busy with a long task (a streamed markdown render, a
+ * 36 000px transcript re-layout) can delay the handler past the whole input
+ * window. Measuring the window on `Date.now()` therefore threw away scrolls
+ * the user had just caused — the bar stayed hidden while they scrolled, worst
+ * during exactly the runs that made the app busy, which reads as "sometimes".
+ * `Event.timeStamp` is stamped when the event is CREATED, so a late handler no
+ * longer changes the answer.
+ *
+ * The fallback covers synthetic events and engines that report a non-positive
+ * stamp (`0` is what a hand-built `new Event('scroll')` carries). It
+ * deliberately answers `performance.now()` and not `Date.now()`:
+ * `Event.timeStamp` is a `DOMHighResTimeStamp`, so mixing in wall time would
+ * make `scroll - input` a difference of two different clocks — measured as a
+ * negative gap that reads as "the user is scrolling right now" for every
+ * programmatic scroll, which is the bug this gate exists to prevent. An engine
+ * that stamps nothing therefore degrades to the previous behaviour (handler
+ * time on both sides) instead of disabling the gate.
+ */
+function eventMoment(event: Event): number {
+  const stamp = event.timeStamp;
+  return Number.isFinite(stamp) && stamp > 0 ? stamp : performance.now();
+}
+
+/**
  * Wire the reveal rule for one document. Idempotent per document.
  *
  * Both windows are parameters only so a test can drive them without waiting
@@ -127,8 +162,15 @@ export function installScrollbarActivity(
   // instead of being held alive by a map entry that still owes it a callback.
   const timers = new WeakMap<Element, FadeTimer>();
 
-  /** When the user last produced input anywhere in the page. */
-  let lastInputAt = 0;
+  /**
+   * When the user last produced input anywhere in the page.
+   *
+   * Starts at negative infinity, not `0`: the event clock begins near zero on
+   * a fresh page, so a `0` would make the FIRST scroll of a session look like
+   * it followed input that never happened — a programmatic scroll at load
+   * would paint the bar.
+   */
+  let lastInputAt = Number.NEGATIVE_INFINITY;
   /**
    * True between a pointer press and its release.
    *
@@ -138,17 +180,17 @@ export function installScrollbarActivity(
    */
   let heldPointer = false;
 
-  const noteInput = () => {
-    lastInputAt = Date.now();
+  const noteInput = (event: Event) => {
+    lastInputAt = eventMoment(event);
   };
-  const pressPointer = () => {
+  const pressPointer = (event: Event) => {
     heldPointer = true;
-    noteInput();
+    noteInput(event);
   };
-  const releasePointer = () => {
+  const releasePointer = (event: Event) => {
     heldPointer = false;
     // The release itself is input: a scroll it triggers is still the user's.
-    noteInput();
+    noteInput(event);
   };
 
   // Every one of these is passive: none of them ever calls `preventDefault`,
@@ -179,7 +221,10 @@ export function installScrollbarActivity(
       // see the bar. It leaves an existing reveal and its timer alone, so the
       // bar still disappears on schedule instead of being held on screen for
       // the length of the run.
-      const userDriven = heldPointer || Date.now() - lastInputAt <= inputWindowMs;
+      //
+      // Both sides of the comparison are EVENT moments (see `eventMoment`), so
+      // a frame the main thread spent rendering cannot age the user's input.
+      const userDriven = heldPointer || eventMoment(event) - lastInputAt <= inputWindowMs;
       if (!userDriven) return;
       element.setAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE, '');
       clearTimeout(timers.get(element));

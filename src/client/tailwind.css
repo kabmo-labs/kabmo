@@ -115,10 +115,10 @@
  *
  * ## The reveal rule
  *
- * The thumb is TRANSPARENT by default and painted only while the user is
+ * The thumb is TRANSPARENT at rest and painted only while the user is
  * scrolling that element. `installScrollbarActivity()` (see
  * `src/client/lib/scrollbar-activity.ts`) puts `data-scrollbar-active` on the
- * scroller itself for 10s after each of its own `scroll` events, and this
+ * scroller itself for 5s after each of its own `scroll` events, and this
  * stylesheet is the other half of that contract: a global `scroll` listener is
  * one listener for every scroll container in the document, including ones that
  * do not exist yet, which is why no component has to opt in.

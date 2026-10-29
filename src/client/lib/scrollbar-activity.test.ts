@@ -192,6 +192,31 @@ describe('installScrollbarActivity', () => {
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(false);
   });
 
+  test('a scroll handled after a long frame is still the user\'s', () => {
+    jest.useFakeTimers();
+    freshPage();
+    const box = scroller();
+
+    // The wheel happens and the container moves in the SAME frame, so the
+    // browser creates the scroll event then — but the main thread spends that
+    // frame in a streamed render, so the handler only runs afterwards. Measured
+    // live: the handler normally runs 0-3ms after the event, yet a busy frame is
+    // unbounded, and reading `Date.now()` in the handler aged the user's own
+    // wheel into "not theirs" — the bar stayed hidden while they scrolled, worst
+    // under load. The event is therefore created before the stall.
+    //
+    // The clock is advanced first so both events carry a real stamp: the fake
+    // clock starts at 0, and a zero stamp is what `eventMoment` treats as
+    // "unstamped".
+    jest.advanceTimersByTime(1_000);
+    inputAt();
+    const late = new Event('scroll');
+    jest.advanceTimersByTime(INPUT_MS + 500);
+    box.dispatchEvent(late);
+
+    expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(true);
+  });
+
   test('a held pointer keeps the bar up for a drag longer than the input window', () => {
     jest.useFakeTimers();
     freshPage();
