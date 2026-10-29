@@ -22,6 +22,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ModelDropdownSection } from '@/client/components/workspace/model-dropdown/Section';
+import { modelKey } from '@/shared/lib/models/identity';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { AIModelOption } from '@/shared/types';
 
@@ -117,5 +118,14 @@ describe('model picker section header columns', () => {
     expect(chevronSlot.className).toContain('justify-center');
     expect(starButton.className).toContain('p-1');
     expect(chevronSlot.querySelector('svg')).not.toBeNull();
+  });
+
+  test('a row carries its composite key, which the specs card anchors to', () => {
+    mountSection();
+
+    // Without this the card has no row to sit beside and falls back to the
+    // panel's own top — the drift that made it describe a model rows away.
+    const row = container.querySelector('[role="button"]') as HTMLElement;
+    expect(row.getAttribute('data-model-key')).toBe(modelKey(MODELS[0]));
   });
 });

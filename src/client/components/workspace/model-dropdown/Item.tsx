@@ -3,6 +3,7 @@ import { Brain, Check, Command, GripVertical, Star } from 'lucide-preact';
 import type { AIModelOption } from '@/shared/types';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
+import { modelKey } from '@/shared/lib/models/identity';
 
 interface ModelDropdownItemProps {
   model: AIModelOption;
@@ -38,6 +39,10 @@ export function ModelDropdownItem({
     <div
       role="button"
       tabIndex={0}
+      // The specs card anchors to the row it describes, and it finds that row
+      // by this key — the same composite identity the picker navigates by, so
+      // the mouse and the keyboard resolve to one anchor.
+      data-model-key={modelKey(model)}
       onClick={() => onSelect(model)}
       onMouseEnter={onMouseEnter}
       className={`group relative w-full flex items-center justify-between gap-2 pl-1 pr-2 py-1.5 rounded-lg text-xs transition-colors cursor-pointer select-none ${
