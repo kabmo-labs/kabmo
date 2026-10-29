@@ -30,6 +30,7 @@ import {
   writeThroughHandle,
 } from '@/client/lib/launch/file-handlers';
 import { BINARY_SNIFF_BYTES } from '@/shared/lib/fs/file-kind';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent', 'MouseEvent', 'KeyboardEvent', 'fetch'] as const;
 const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
@@ -70,7 +71,7 @@ function fakeHandle(name: string, bytes: Uint8Array, options: { readwrite?: Perm
     name,
     kind: 'file',
     async getFile() {
-      return new File([bytes], name);
+      return new File([bodyBytes(bytes)], name);
     },
     async queryPermission(descriptor?: { mode?: string }) {
       return descriptor?.mode === 'readwrite' ? state : 'granted';

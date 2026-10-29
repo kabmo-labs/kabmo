@@ -1,5 +1,6 @@
 // node:zlib stays for brotli only — Bun has no brotli API (Bun.brotliCompressSync is undefined).
 import { brotliCompressSync, constants } from 'node:zlib';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 /**
  * Compresses a response body, except `text/event-stream`.
@@ -54,12 +55,12 @@ export function pickEncoding(acceptEncoding: string | null): Encoding | null {
   return null;
 }
 
-export function compressBytes(body: Uint8Array<ArrayBuffer>, encoding: Encoding): Uint8Array {
-  if (encoding === 'zstd') return Bun.zstdCompressSync(body, { level: 3 });
+export function compressBytes(body: Uint8Array<ArrayBuffer>, encoding: Encoding): Uint8Array<ArrayBuffer> {
+  if (encoding === 'zstd') return bodyBytes(Bun.zstdCompressSync(body, { level: 3 }));
   if (encoding === 'br') {
-    return brotliCompressSync(body, { params: { [constants.BROTLI_PARAM_QUALITY]: 4 } });
+    return bodyBytes(brotliCompressSync(body, { params: { [constants.BROTLI_PARAM_QUALITY]: 4 } }));
   }
-  return Bun.gzipSync(body, { level: 6 });
+  return bodyBytes(Bun.gzipSync(body, { level: 6 }));
 }
 
 export async function maybeCompress(response: Response, acceptEncoding: string | null): Promise<Response> {
@@ -72,7 +73,7 @@ export async function maybeCompress(response: Response, acceptEncoding: string |
   const encoding = pickEncoding(acceptEncoding);
   if (!encoding) return response;
 
-  const buffer = new Uint8Array(await response.arrayBuffer()) as Uint8Array<ArrayBuffer>;
+  const buffer = bodyBytes(new Uint8Array(await response.arrayBuffer()));
   if (buffer.byteLength < MIN_BYTES) {
     // Body already consumed — hand back a rebuilt Response over the same bytes.
     return rebuild(response, buffer);
@@ -86,6 +87,6 @@ export async function maybeCompress(response: Response, acceptEncoding: string |
   return new Response(compressed, { status: response.status, headers });
 }
 
-function rebuild(response: Response, buffer: Uint8Array): Response {
+function rebuild(response: Response, buffer: Uint8Array<ArrayBuffer>): Response {
   return new Response(buffer, { status: response.status, headers: response.headers });
 }

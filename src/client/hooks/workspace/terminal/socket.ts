@@ -30,6 +30,7 @@ import {
   type TerminalReadyFrame,
   type TerminalServerFrame,
 } from '@/shared/lib/workspace/terminal/protocol';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS = 8000;
@@ -191,7 +192,9 @@ export function connectTerminal(terminalId: string, handlers: TerminalSocketHand
     input(data) {
       const ws = socket;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(data);
+      // `send` takes a `BufferSource`, which the platform refuses for a
+      // shared-backed view; `bodyBytes` returns a plain-backed one as-is.
+      ws.send(bodyBytes(data));
     },
     close() {
       send({ t: 'close' });

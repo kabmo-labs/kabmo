@@ -179,6 +179,10 @@ bun test                                                      # unit + route sui
 bun run typecheck:e2e                                         # the Playwright specs
 ```
 
+`bun run check:fast` (`bun check --no-script`) is the same program on all cores in ~0.3 s instead of
+~10 s. It is a local-loop convenience, not a gate: it uses Bun's own checker, whose verdict is not
+interchangeable with `tsc`'s.
+
 The browser layer is Playwright (`tests/e2e/`, `*.e2e.ts`) and boots a real server subprocess against
 an isolated temp root per spec; `bun run test:e2e` runs it, and CI runs it on every push to `main`
 plus label-gated pull requests. The screenshots and GIFs in [`docs/assets`](docs/assets) are generated

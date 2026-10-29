@@ -32,6 +32,7 @@ import { isMockMode } from '@/server/mock.server';
 import { deleteProviderIcon } from '@/server/lib/models/provider-icon-store.server';
 import { ensureProviderIcon, providerIconUrl, readProviderIconBytes } from '@/server/lib/models/provider-icon.server';
 import { invalidateModelsCaches } from '@/shared/lib/models/server-cache';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 const ICON_HEADERS = {
   'x-content-type-options': 'nosniff',
@@ -47,7 +48,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<Response>
   if (!icon?.bytes || !icon.mime) return new Response('no icon', { status: 404 });
 
   const versioned = url.searchParams.has('v');
-  return new Response(icon.bytes, {
+  return new Response(bodyBytes(icon.bytes), {
     headers: {
       'content-type': icon.mime,
       // A versioned URL names one fetch, so the bytes at it never change.

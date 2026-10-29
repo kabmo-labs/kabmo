@@ -28,8 +28,8 @@
 const MAX_ENTRIES = 8;
 const MAX_TOTAL_BYTES = 48 * 1024 * 1024;
 
-const entries = new Map<string, Uint8Array>();
-const inFlight = new Map<string, Promise<Uint8Array>>();
+const entries = new Map<string, Uint8Array<ArrayBuffer>>();
+const inFlight = new Map<string, Promise<Uint8Array<ArrayBuffer>>>();
 let totalBytes = 0;
 
 /**
@@ -38,7 +38,10 @@ let totalBytes = 0;
  * Concurrent requests for the same key share one computation: two tabs opening
  * a cold instance at the same moment would otherwise both compress 10 MB.
  */
-export async function compressedAsset(key: string, produce: () => Promise<Uint8Array>): Promise<Uint8Array> {
+export async function compressedAsset(
+  key: string,
+  produce: () => Promise<Uint8Array<ArrayBuffer>>,
+): Promise<Uint8Array<ArrayBuffer>> {
   const hit = entries.get(key);
   if (hit) {
     // Re-insert so the map's own order stays least-recently-used first.
@@ -60,7 +63,7 @@ export async function compressedAsset(key: string, produce: () => Promise<Uint8A
   return work;
 }
 
-function retain(key: string, bytes: Uint8Array): void {
+function retain(key: string, bytes: Uint8Array<ArrayBuffer>): void {
   // Too big to keep. The caller already holds the reference, so the response is
   // built from it; retaining it would evict everything else and then itself.
   if (bytes.byteLength > MAX_TOTAL_BYTES) return;

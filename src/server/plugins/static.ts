@@ -6,6 +6,7 @@ import { FONT_STYLESHEET_ROUTE, serveFontFile, serveFontStylesheet } from '@/ser
 import { FONT_ROUTE_PREFIX } from '@/server/lib/assets/fonts.server';
 import { packageDir } from '@/server/lib/fs/package-root';
 import { compressBytes, isCompressible, maybeCompress, MIN_BYTES, pickEncoding } from '@/server/plugins/compress';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 /**
  * File serving for `public/`, the font routes and the production build's own
@@ -140,7 +141,7 @@ async function serveFile(filePath: string, cacheControl: string, request?: Reque
 
   const bytes = await compressedAsset(`${etag}:${encoding}`, async () =>
     compressBytes(
-      new Uint8Array(await Bun.file(filePath).arrayBuffer()) as Uint8Array<ArrayBuffer>,
+      bodyBytes(new Uint8Array(await Bun.file(filePath).arrayBuffer())),
       encoding,
     ));
   return new Response(bytes, {

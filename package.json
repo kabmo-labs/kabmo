@@ -53,6 +53,7 @@
     "typecheck": "tsc",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "check:fast": "bun check --no-script",
     "test": "bun test",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "readme:media": "bun run scripts/readme-media.ts",

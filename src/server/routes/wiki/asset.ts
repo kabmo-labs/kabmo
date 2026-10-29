@@ -26,6 +26,7 @@ import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 import { gitRun } from '@/server/lib/wiki/git';
 import { ensureWikiMirror, readWikiAsset } from '@/server/lib/wiki/mirror.server';
 import { parseWikiRemote } from '@/server/lib/wiki/remote';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 /**
  * `getImageMimeType` deliberately excludes SVG (it is editable text in the
@@ -57,7 +58,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const bytes = await readWikiAsset(mirror.mirror.repoDir, assetPath);
   if (!bytes) return json({ error: `Asset not found: ${assetPath}` }, { status: 404 });
 
-  return new Response(bytes, {
+  return new Response(bodyBytes(bytes), {
     headers: {
       'content-type': contentTypeFor(assetPath),
       'content-length': String(bytes.byteLength),

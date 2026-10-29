@@ -23,6 +23,7 @@
 import { json, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { errorResponse } from '@/server/lib/route-adapter';
 import { readBlobImage } from '@/server/lib/omp/session/blobs.server';
+import { bodyBytes } from '@/shared/lib/util/bytes';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const hash = new URL(request.url).searchParams.get('hash');
@@ -40,7 +41,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // the same hash only by colliding, but a 404'd blob that later appears —
     // a store restored from a backup — must not stay broken for the life of
     // the tab.
-    return new Response(image.bytes, {
+    return new Response(bodyBytes(image.bytes), {
       headers: {
         'content-type': image.mimeType,
         'content-length': String(image.bytes.byteLength),

@@ -17,6 +17,7 @@ bun run dev            # watched server; it bundles the client itself
 bun run build          # scripts/build-client.ts -> dist/client (the production bundle)
 bun run start          # NODE_ENV=production bun run src/server/index.ts
 bun run lint           # tsc --noEmit
+bun run check:fast     # bun check --no-script: same program, ~0.3 s, local feedback only
 bun test               # bun test
 bun run typecheck:e2e  # tsc --noEmit -p tests/e2e
 bun run test:e2e       # Playwright browser specs (needs `bunx playwright install chromium` once)
@@ -51,6 +52,11 @@ All four verification gates are mandatory for every change:
 2. `bunx tsc --noEmit --noUnusedLocals --noUnusedParameters` without errors.
 3. `find src -name "*.ts" -o -name "*.tsx" | xargs wc -l | grep -v total | awk '$1>350'` prints nothing.
 4. `bun run build` succeeds.
+
+`bun run check:fast` (`bun check --no-script`) typechecks the same program on all cores in ~0.3 s
+instead of ~10 s, and is for the local loop only — it is NOT a gate. `bun check` uses its own
+checker, which is stricter in places TypeScript's is not (an unimplemented `noUncheckedSideEffectImports`,
+`Uint8Array<ArrayBufferLike>` against `BodyInit`), so its verdict and `tsc`'s are not interchangeable.
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs all four on every pull request and on
 `main`, so a red change is caught at the pull request rather than by the release job that would
