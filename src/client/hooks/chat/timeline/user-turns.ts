@@ -44,29 +44,21 @@ export interface UseUserTurnsDeps {
   messages: ChatMessageData[];
   /** Pages history until the turn's row is mounted (session-pagination). */
   jumpToTurn: (id: string, index: number) => Promise<boolean>;
-}
-
-/** How long a jump waits for the row it paged in to commit. A single prepend
- *  can add hundreds of rows, so this is wall-clock bounded rather than
- *  frame-counted — 30 frames is not enough to lay out a large window. */
-const ROW_COMMIT_TIMEOUT_MS = 3000;
-
-/** Wait for a row the paging walk just requested to commit, then center it.
- *  The prepend and the jump's own scroll are separate commits: the walk
- *  resolves before the DOM has the node, so this polls until it appears
- *  instead of scrolling to a row that does not exist yet. */
-function scrollToRow(id: string, deadline = Date.now() + ROW_COMMIT_TIMEOUT_MS): void {
-  const el = document.getElementById(id);
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
-  if (Date.now() >= deadline) return;
-  requestAnimationFrame(() => scrollToRow(id, deadline));
+  /**
+   * Scroll a row into view by id, mounting it if it is outside the timeline's
+   * mounted window.
+   *
+   * `scrollIntoView` is not enough once the timeline mounts a WINDOW of its
+   * rows: the target of a rail jump is usually hundreds of rows above the
+   * viewport and therefore has no DOM node to scroll to. This is the window's
+   * own reveal (`row-window.ts`), which writes the row's measured offset first
+   * and corrects it for a few frames.
+   */
+  revealRow: (id: string) => Promise<void>;
 }
 
 export function useUserTurns(deps: UseUserTurnsDeps): UserTurnsState {
-  const { sessionId, messages, jumpToTurn } = deps;
+  const { sessionId, messages, jumpToTurn, revealRow } = deps;
   const [indexed, setIndexed] = useState<UserTurnRef[] | null>(null);
   const [jumping, setJumping] = useState(false);
 
@@ -162,16 +154,20 @@ export function useUserTurns(deps: UseUserTurnsDeps): UserTurnsState {
   }, [indexed, mountedTurns]);
 
   const jump = async (id: string, index: number): Promise<boolean> => {
-    // A row with no committed position is mounted by definition, and so is one
-    // inside the loaded window — both only need the scroll below.
-    if (index < 0) {
-      scrollToRow(id);
-      return true;
-    }
     setJumping(true);
     try {
+      // A row with no committed position is mounted by definition, and so is
+      // one inside the loaded window — both only need the scroll below. The
+      // reveal is AWAITED so `useRailJump` holds follow mode off until the
+      // viewport has actually landed: a reveal it could not see left the
+      // scroll hook free to re-pin the tail on the next prepend, which is how
+      // a rail click ended at the bottom of the session instead of the turn.
+      if (index < 0) {
+        await revealRow(id);
+        return true;
+      }
       const reached = await jumpToTurn(id, index);
-      if (reached) scrollToRow(id);
+      if (reached) await revealRow(id);
       return reached;
     } finally {
       setJumping(false);

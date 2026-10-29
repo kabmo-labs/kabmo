@@ -104,13 +104,14 @@ interface Harness {
 
 /** Mount the hook and hand back the refs it was given, so a case can play the
  *  part of the scroll handler (movement + re-engage) frame by frame. */
-async function mount(opts: { scrollTop?: number; reached?: boolean } = {}): Promise<Harness> {
+async function mount(opts: { scrollTop?: number; reached?: boolean; jump?: () => Promise<boolean> } = {}): Promise<Harness> {
   const followRef = { current: true };
   const el = { scrollTop: opts.scrollTop ?? 0 };
   const scrollRef = { current: el as unknown as HTMLDivElement };
   const calls: Array<[string, number]> = [];
   const jump = (id: string, index: number): Promise<boolean> => {
     calls.push([id, index]);
+    if (opts.jump) return opts.jump();
     return Promise.resolve(opts.reached ?? true);
   };
   const refs: RailJumpRefs = { followRef, scrollRef };
@@ -159,6 +160,11 @@ describe('useRailJump', () => {
     const harness = await mount();
     void harness.jump('u1', 3);
     harness.el.scrollTop = 900;
+    // The hold ends on the JUMP's promise — that is what tells it the landing
+    // has settled — so the resolution has to be observed before the settle
+    // test can run. (In the app that promise resolves after `revealRow`'s
+    // correction window; here the stub resolves at once.)
+    await Promise.resolve();
     // Settled: the hold returns and stops touching the flag.
     clock.drain();
     expect(harness.followRef.current).toBe(false);
@@ -169,10 +175,34 @@ describe('useRailJump', () => {
     expect(harness.followRef.current).toBe(true);
   });
 
+  test('stays engaged while the jump is still paging, however still the viewport looks', async () => {
+    clock = installFrameClock();
+    // A paging walk in flight: the viewport sits at the tail, unmoving, for
+    // as long as the window request takes. A hold that counted still frames
+    // alone expired here, and the next prepend re-pinned the tail — measured
+    // as a jump to turn #60 of 120 ending at `scrollTop` max.
+    let finish: (value: boolean) => void = () => {};
+    const harness = await mount({ jump: () => new Promise<boolean>((resolve) => { finish = resolve; }) });
+    void harness.jump('u60', 59);
+    for (let i = 0; i < 30; i += 1) {
+      harness.followRef.current = true;
+      clock.step();
+      expect(harness.followRef.current).toBe(false);
+    }
+    finish(true);
+    await Promise.resolve();
+    // Landing settled: the hold releases and the scroll handler may re-engage.
+    clock.drain();
+    harness.followRef.current = true;
+    clock.drain();
+    expect(harness.followRef.current).toBe(true);
+  });
+
   test('a jump whose row was never reached still releases the hold', async () => {
     clock = installFrameClock();
     const harness = await mount({ reached: false });
     const returned = harness.jump('u9', 40);
+    await Promise.resolve();
     clock.drain();
     expect(harness.followRef.current).toBe(false);
     expect(await returned).toBe(false);

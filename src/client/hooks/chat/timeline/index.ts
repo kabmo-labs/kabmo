@@ -11,8 +11,7 @@ import { useTimelineAutoScroll } from '@/client/hooks/chat/timeline/auto-scroll'
 import { useChatTimelineActions } from '@/client/hooks/chat/timeline/actions';
 import { useChatTimelineSend } from '@/client/hooks/chat/timeline/send';
 import { useSessionLoad } from '@/client/hooks/chat/timeline/session-load';
-import { useUserTurns } from '@/client/hooks/chat/timeline/user-turns';
-import { useRailJump } from '@/client/hooks/chat/timeline/rail-jump';
+import { useTimelineJumpRail } from '@/client/hooks/chat/timeline/jump-rail';
 import { createOmpAgentCallbacks } from '@/shared/lib/chat/timeline/omp-callbacks';
 import { cancelStreamingCoalescer } from '@/shared/lib/chat/timeline/stream-coalescer';
 import { useChatTimelineAccessMode } from '@/client/hooks/chat/timeline/access-mode';
@@ -49,7 +48,7 @@ export function useChatTimeline({
   // without re-creating it (useSessionLoad is defined below the scroll hook).
   const loadOlderRef = useRef<() => void>(() => {});
 
-  const { scrollRef, contentRef, showScrollBottom, readingBack, handleScroll, scrollToBottom, jumpToBottom, followRef, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
+  const { scrollRef, scrollNodeRef, scrollNode, contentRef, showScrollBottom, readingBack, handleScroll, scrollToBottom, jumpToBottom, followRef, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
     onScrollTop: () => loadOlderRef.current(),
   });
 
@@ -154,11 +153,15 @@ export function useChatTimeline({
     jumpCountRef,
   });
   loadOlderRef.current = loadOlder;
-  // Jump rail: the full-history turn index plus the paging walk that reaches a
-  // turn outside the mounted window. The walk is wrapped so follow mode stands
-  // down until the jump lands (see rail-jump.ts).
-  const { turns: userTurns, jumping: jumpingTurn, jumpToTurn: pagedJumpToTurn } = useUserTurns({ sessionId, messages: localMessages, jumpToTurn });
-  const jumpToUserTurn = useRailJump(pagedJumpToTurn, { followRef, scrollRef });
+  // Jump rail: row window + full-history index + paging walk (`jump-rail.ts`).
+  const { userTurns, jumpingTurn, jumpToUserTurn, rowWindow } = useTimelineJumpRail({
+    sessionId,
+    messages: localMessages,
+    jumpToTurn,
+    followRef,
+    scrollRef,
+    scrollNode,
+  });
 
   // The composer's model/thinking mirrors and the mid-run stash (see the hook).
   const { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef } =
@@ -314,8 +317,9 @@ export function useChatTimeline({
     setInputValue,
     inputAttachments,
     setInputAttachments,
-    scrollRef,
+    scrollNodeRef,
     contentRef,
+    rowWindow,
     showScrollBottom,
     readingBack,
     handleScroll,

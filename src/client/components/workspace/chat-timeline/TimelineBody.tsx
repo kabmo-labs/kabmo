@@ -1,6 +1,6 @@
-import type { RefObject } from 'preact/compat';
 import { ArrowDown } from 'lucide-preact';
 import { MessageList } from '@/client/components/workspace/chat-timeline/MessageList';
+import type { TimelineRowWindow } from '@/client/hooks/chat/timeline/row-window';
 import { MinimapShortcuts } from '@/client/components/workspace/chat-timeline/MinimapShortcuts';
 import { MobileTurnJump } from '@/client/components/workspace/chat-timeline/MobileTurnJump';
 import { LoadingOlderIndicator } from '@/client/components/workspace/chat-timeline/SessionSkeleton';
@@ -14,7 +14,9 @@ interface TimelineBodyProps {
   /** A jump is paging history to reach the clicked turn. */
   jumpingTurn: boolean;
   onJumpTurn: (turn: UserTurnRef) => void;
-  scrollRef: RefObject<HTMLDivElement>;
+  /** Ref callback for the scroller: keeps `scrollRef` current and publishes
+   *  the node so subscribers re-attach when the surface is swapped. */
+  scrollNodeRef: (node: HTMLDivElement | null) => void;
   contentRef: (node: HTMLDivElement | null) => void;
   handleScroll: () => void;
   loadingOlder: boolean;
@@ -33,6 +35,8 @@ interface TimelineBodyProps {
   onNewChat: (content: string, attachments?: Attachment[]) => void;
   showScrollBottom: boolean;
   jumpToBottom: (behavior?: ScrollBehavior) => void;
+  /** Which rows of `messages` are mounted (see `useTimelineRowWindow`). */
+  rowWindow: TimelineRowWindow;
 }
 
 /**
@@ -46,7 +50,7 @@ export function TimelineBody({
   userTurns,
   jumpingTurn,
   onJumpTurn,
-  scrollRef,
+  scrollNodeRef,
   contentRef,
   handleScroll,
   loadingOlder,
@@ -65,6 +69,7 @@ export function TimelineBody({
   onNewChat,
   showScrollBottom,
   jumpToBottom,
+  rowWindow,
 }: TimelineBodyProps) {
   return (
     <>
@@ -79,7 +84,7 @@ export function TimelineBody({
 
       {/* Timeline Body */}
       <div
-        ref={scrollRef}
+        ref={scrollNodeRef}
         onScroll={handleScroll}
         className={`flex-1 scrollbar-overlay-container overscroll-contain scroll-smooth overflow-x-hidden ${
           isMobile ? 'pl-4 pr-3 py-3 pb-8' : 'p-4 pb-10'
@@ -115,6 +120,7 @@ export function TimelineBody({
             onRetry={onRetry}
             onNewChat={onNewChat}
             isMobile={isMobile}
+            rowWindow={rowWindow}
           />
           {/* An ask whose tool card this client cannot see (a subagent's, an
               extension's own dialog, a call outside the loaded window) still

@@ -1,4 +1,3 @@
-import { Fragment } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { memo } from 'preact/compat';
 
@@ -6,6 +5,7 @@ import { ChatMessageItem } from '@/client/components/workspace/chat-timeline/Mes
 import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter';
 import { isNoticeRow } from '@/shared/lib/chat/notice-row';
 import { previousNonNoticeIndex, resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
+import type { TimelineRowWindow } from '@/client/hooks/chat/timeline/row-window';
 import type { Attachment, ChatMessageData } from '@/shared/types';
 
 export interface MessageListProps {
@@ -30,6 +30,12 @@ export interface MessageListProps {
    * them off instead of showing buttons that do nothing.
    */
   userActions?: boolean;
+  /**
+   * Which rows are mounted. Absent renders every row, which is what a short
+   * list (the BTW panel) wants — see `useTimelineRowWindow` for why the chat's
+   * own timeline mounts a window instead.
+   */
+  rowWindow?: TimelineRowWindow;
 }
 
 /**
@@ -59,6 +65,7 @@ export const MessageList = memo(function MessageList({
   onNewChat,
   isMobile = false,
   userActions = true,
+  rowWindow,
 }: MessageListProps) {
   const { streamingIdx, footers, prevNonNoticeIdx } = useMemo(() => {
     return {
@@ -71,9 +78,18 @@ export const MessageList = memo(function MessageList({
     };
   }, [messages, isGenerating]);
 
+  const start = rowWindow ? rowWindow.start : 0;
+  const end = rowWindow ? Math.min(rowWindow.end, messages.length) : messages.length;
+  const visible = start === 0 && end === messages.length ? messages : messages.slice(start, end);
+
   return (
     <>
-      {messages.map((msg, idx) => {
+      {/* The rows above the window, as one spacer: the scrollbar and every
+          geometry read in `scroll.ts` still see the whole session's height,
+          while only the rows around the viewport are DOM. */}
+      {start > 0 && <div data-timeline-spacer="top" aria-hidden="true" style={{ height: rowWindow?.padTop ?? 0 }} />}
+      {visible.map((msg, offset) => {
+        const idx = start + offset;
         const prev = messages[idx - 1];
         const isLoading = isGenerating && idx === streamingIdx && msg.role === 'ai';
         const isAiFragment = msg.role !== 'user' && prev && prev.role !== 'user' && !isNoticeRow(prev);
@@ -82,7 +98,10 @@ export const MessageList = memo(function MessageList({
         const isPrevAssistant = Boolean(msg.role !== 'user' && prevReal && prevReal.role !== 'user');
         const footer = footers[idx];
         return (
-          <Fragment key={msg.id}>
+          // `flow-root` contains the row's own margins, so the measured height
+          // is the row PLUS the gap it draws — a plain wrapper would let the
+          // margin collapse out and the layout would sit a few px short per row.
+          <div key={msg.id} data-row-id={msg.id} style={{ display: 'flow-root' }}>
             <ChatMessageItem
               msg={msg}
               isStreaming={isLoading}
@@ -110,9 +129,10 @@ export const MessageList = memo(function MessageList({
                 showActions={userActions}
               />
             )}
-          </Fragment>
+          </div>
         );
       })}
+      {end < messages.length && <div data-timeline-spacer="bottom" aria-hidden="true" style={{ height: rowWindow?.padBottom ?? 0 }} />}
     </>
   );
 });

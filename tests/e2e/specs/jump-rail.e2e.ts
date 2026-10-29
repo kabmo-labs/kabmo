@@ -25,10 +25,26 @@
  *     landed back at the bottom instead of on the clicked turn. Measured on a
  *     760-message session: `scrollTop` ended at `max`, i.e. the tail.
  *
- * The jump case needs a session LONG ENOUGH TO WINDOW, and that is why it
- * seeds a real JSONL instead of using the mock presets: `/api/chat/:id` serves
+ *  3. The mounted window was FROZEN at the head of the session. Its scroll
+ *     subscription was keyed on the scroller REF, whose identity never changes
+ *     while the node behind it is replaced: the timeline paints a skeleton
+ *     first and swaps the real body in a commit later, so the listener was
+ *     attached to the detached first node. Measured at open on this same
+ *     session: `scrollTop` 9 804 (the tail) with rows 0–10 mounted and a
+ *     9 374 px spacer BELOW them — a blank tail. A rail click then wrote
+ *     `scrollTop` into that spacer, mounted nothing, and read as a dead
+ *     control.
+ *
+ *  4. A click during the paging walk was DROPPED when a window was already in
+ *     flight (`loadingOlder` refused the jump), and the follow-mode hold
+ *     expired on a frame count while the walk sat still at the tail — so the
+ *     next prepend re-pinned the bottom. Measured: a jump to turn #60 of 120
+ *     ended at `scrollTop` max.
+ *
+ * The jump cases need a session LONG ENOUGH TO WINDOW, and that is why they
+ * seed a real JSONL instead of using the mock presets: `/api/chat/:id` serves
  * a Kabmo-created (DB) session in FULL, with `hasMore: false`, so no paging
- * ever happens and the defect is unreachable. Verified: with the follow-mode
+ * ever happens and the defects are unreachable. Verified: with the follow-mode
  * fix reverted, the spec still passed against a DB session.
  */
 
@@ -79,6 +95,54 @@ function seedJsonlSession(server: HarnessServer): { sessionId: string; dispose: 
 }
 
 test.describe('jump rail', () => {
+  test('the mounted window follows the viewport at open, so the tail is real', async ({ harness, page }) => {
+    const server = await harness('real');
+    const seeded = seedJsonlSession(server);
+    await openApp(page, `${server.baseURL}/?sessionId=${seeded.sessionId}`);
+    await expect(page.locator('[aria-label^="Jump to your message ("] > div').first()).toBeVisible();
+
+    // The session opens at its tail. The LAST turn must therefore be mounted —
+    // the frozen window mounted the FIRST rows instead and left the whole
+    // session's height in a spacer under them.
+    await expect(page.locator(`#a-${PAIRS}`)).toHaveCount(1);
+    await expect(page.locator('#u-1')).toHaveCount(0);
+
+    seeded.dispose();
+  });
+
+  test('a click on a tick inside the loaded window lands on that turn, not on the tail', async ({ harness, page }) => {
+    const server = await harness('real');
+    const seeded = seedJsonlSession(server);
+    await openApp(page, `${server.baseURL}/?sessionId=${seeded.sessionId}`);
+
+    const rows = page.locator('[aria-label^="Jump to your message ("] > div');
+    await expect(rows.first()).toBeVisible();
+
+    // Inside the newest window, so no paging: this is the case the follow-mode
+    // re-pin dragged back to the bottom.
+    const target = 60;
+    await page.getByRole('button', { name: `Jump to your message #${target} of ${PAIRS}` }).click();
+
+    const row = page.locator(`#u-${target}`);
+    await expect(row).toHaveCount(1);
+    await expect
+      .poll(async () => row.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return box.top >= -8 && box.top <= window.innerHeight - 40;
+      }), { timeout: 15_000 })
+      .toBe(true);
+    // And the viewport is NOT parked at the tail, which is where the follow
+    // pin used to drag it.
+    expect(await page.evaluate(() => {
+      const scroller = document.querySelector('[aria-label^="Jump to your message ("]')
+        ?.parentElement?.querySelector('div.overflow-x-hidden') as HTMLElement | null;
+      if (!scroller) return true;
+      return scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 100;
+    })).toBe(true);
+
+    seeded.dispose();
+  });
+
   test('every pixel of a tick is a pointer target, including the line at its centre', async ({ harness, page }) => {
     const server = await harness('real');
     const seeded = seedJsonlSession(server);

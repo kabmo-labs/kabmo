@@ -63,8 +63,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     setInputValue,
     inputAttachments,
     setInputAttachments,
-    scrollRef,
+    scrollNodeRef,
     contentRef,
+    rowWindow,
     showScrollBottom,
     readingBack,
     handleScroll,
@@ -242,7 +243,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   userTurns={userTurns}
                   jumpingTurn={jumpingTurn}
                   onJumpTurn={handleJumpTurn}
-                  scrollRef={scrollRef}
+                  scrollNodeRef={scrollNodeRef}
                   contentRef={contentRef}
                   handleScroll={handleScroll}
                   loadingOlder={loadingOlder}
@@ -261,6 +262,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                   onNewChat={handleNewChat}
                   showScrollBottom={showScrollBottom}
                   jumpToBottom={jumpToBottom}
+                  rowWindow={rowWindow}
                 />
               )}
             </div>

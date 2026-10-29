@@ -62,6 +62,22 @@ export interface ChatTimelineScrollOptions {
 
 export interface ChatTimelineScrollResult {
   scrollRef: RefObject<HTMLDivElement>;
+  /**
+   * The scroller node as STATE. A consumer that must SUBSCRIBE to it (a
+   * `scroll` listener, a ResizeObserver) keys its effect on this, never on
+   * `scrollRef`: the surface is swapped in after the full-panel skeleton and
+   * again on a session switch, and a ref identity never changes, so an effect
+   * keyed on the ref subscribes to whichever node existed on its first run —
+   * or to none, when that run happened before the scroller mounted.
+   */
+  scrollNode: HTMLDivElement | null;
+  /**
+   * Ref callback for the scroller. Use this INSTEAD of `scrollRef` in the
+   * element's `ref`: it keeps the ref current AND publishes the node as
+   * {@link scrollNode}, so subscribing consumers re-run when the surface is
+   * swapped.
+   */
+  scrollNodeRef: (node: HTMLDivElement | null) => void;
   /** Attach to the timeline's inner content wrapper so its growth is observed. */
   contentRef: (node: HTMLDivElement | null) => void;
   showScrollBottom: boolean;
@@ -102,6 +118,17 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   const onScrollTopRef = useRef<(() => void) | undefined>(options.onScrollTop);
   onScrollTopRef.current = options.onScrollTop ?? onScrollTopRef.current;
   const scrollRef = useRef<HTMLDivElement>(null);
+  // The scroller NODE as state, not only as a ref. The surface is swapped in
+  // after the full-panel skeleton (and again on every session switch that
+  // clears the timeline), so a consumer that subscribes once from a ref is
+  // subscribed to a node that was detached a commit later — see
+  // `useTimelineRowWindow`, where that left the mounted window frozen at the
+  // head of a session while the viewport sat at its tail.
+  const [scrollNode, setScrollNode] = useState<HTMLDivElement | null>(null);
+  const scrollNodeRef = useCallback((node: HTMLDivElement | null) => {
+    scrollRef.current = node;
+    setScrollNode(node);
+  }, []);
   const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   // Hysteretic twin of `showScrollBottom` (see `ChatTimelineScrollResult`): it
@@ -222,7 +249,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   useEffect(() => {
     syncFollowBottom();
     if (typeof ResizeObserver === 'undefined') return;
-    const container = scrollRef.current;
+    const container = scrollNode;
     let frame: number | null = null;
     const observer = new ResizeObserver(() => {
       if (frame !== null) return;
@@ -238,7 +265,7 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
       observer.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [contentNode, pinToBottom, syncFollowBottom]);
+  }, [contentNode, scrollNode, pinToBottom, syncFollowBottom]);
 
   useEffect(() => () => {
     clearTimeout(jumpTimerRef.current);
@@ -246,6 +273,8 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
 
   return {
     scrollRef,
+    scrollNodeRef,
+    scrollNode,
     contentRef,
     showScrollBottom,
     readingBack,

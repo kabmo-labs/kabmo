@@ -20,19 +20,24 @@
  *    following". A jump that starts pinned at the tail (the normal case — the
  *    user is reading the newest answer) is still near the tail for every
  *    prepend, so the flag flips straight back on the first one.
- * 2. The landing itself is a SMOOTH scroll, which is still animating while
- *    the last window commits.
+ * 2. The landing itself takes several frames of correction (see `revealRow`),
+ *    and the paging walk before it can take seconds on a long session.
  *
- * So the flag is held off until the viewport has been still for a few frames —
- * the same settle test `releaseJumpGuard` uses for its own guard — and the
- * hold then stops touching it. That release is deliberate: a jump to the
- * NEWEST turn lands at the tail, where re-engaging is correct, and
- * `handleScroll` does exactly that on the next scroll event. Without the
- * release, jumping to the last turn would silently stop following the stream.
+ * So the flag is held off for the WHOLE jump — until the promise the jump
+ * returns settles, which is only after the landing has settled — and then for
+ * a few still frames, the same settle test `releaseJumpGuard` uses. The
+ * release is deliberate: a jump to the NEWEST turn lands at the tail, where
+ * re-engaging is correct, and `handleScroll` does exactly that on the next
+ * scroll event. Without the release, jumping to the last turn would silently
+ * stop following the stream.
  *
  * Measured on a 760-message session (1440x900, Chromium): before this, a jump
  * to turn #1 of 21 landed at the tail (`scrollTop` 165560 = max) instead of on
- * the target; after, every turn of the rail lands in view.
+ * the target; after, every turn of the rail lands in view. A hold that ended
+ * on a frame count alone was not enough either — the paging walk sat still at
+ * the tail for more than six frames while a window was in flight, so the hold
+ * expired mid-jump and the prepend re-pinned the tail (reproduced: a jump to
+ * turn #60 of 120 ended at `scrollTop` max).
  */
 
 import { useCallback } from 'preact/hooks';
@@ -41,9 +46,11 @@ import { useCallback } from 'preact/hooks';
  *  `releaseJumpGuard` in session-pagination.ts. */
 const SETTLE_FRAMES = 6;
 
-/** Frame ceiling on the hold. A guard, not a budget: a smooth scroll settles
- *  well inside it, and a pathological animation that never does must not spin
- *  a rAF loop forever (the same reason the paging walk is request-bounded). */
+/** Frame ceiling on the hold. A guard, not a budget: a jump settles well inside
+ *  it, and a pathological animation that never does must not spin a rAF loop
+ *  forever (the same reason the paging walk is request-bounded). The jump's own
+ *  promise is bounded too — `JUMP_MAX_REQUESTS` windows, then the reveal's
+ *  deadline — so this is the backstop, not the timer. */
 const MAX_HOLD_FRAMES = 600;
 
 export interface RailJumpRefs {
@@ -63,24 +70,36 @@ export function useRailJump(
 ): (id: string, index: number) => Promise<boolean> {
   return useCallback((id: string, index: number): Promise<boolean> => {
     followRef.current = false;
+    let inFlight = true;
     let lastTop = scrollRef.current?.scrollTop ?? 0;
     let settledFrames = 0;
     let frames = 0;
     const hold = () => {
       const el = scrollRef.current;
-      if (!el) return;
       // Re-assert before the settle test: the scroll handler may have flipped
       // the flag back on the prepend that just landed.
       followRef.current = false;
-      if (el.scrollTop === lastTop) settledFrames += 1;
-      else {
-        settledFrames = 0;
-        lastTop = el.scrollTop;
+      if (!el) return;
+      if (!inFlight) {
+        if (el.scrollTop === lastTop) settledFrames += 1;
+        else {
+          settledFrames = 0;
+          lastTop = el.scrollTop;
+        }
+        if (settledFrames >= SETTLE_FRAMES) return;
       }
-      if (settledFrames >= SETTLE_FRAMES || (frames += 1) > MAX_HOLD_FRAMES) return;
+      if ((frames += 1) > MAX_HOLD_FRAMES) return;
       requestAnimationFrame(hold);
     };
     requestAnimationFrame(hold);
-    return jumpToTurn(id, index);
+    const result = jumpToTurn(id, index);
+    // The jump's promise settles only once its landing has settled (the reveal
+    // awaits its own correction window), so this is the signal the hold waits
+    // for — never a fixed duration.
+    void result.then(
+      () => { inFlight = false; },
+      () => { inFlight = false; },
+    );
+    return result;
   }, [jumpToTurn, followRef, scrollRef]);
 }

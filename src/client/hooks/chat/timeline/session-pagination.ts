@@ -20,6 +20,7 @@
 
 import type { Dispatch, RefObject, SetStateAction } from 'preact/compat';
 import { useCallback, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { walkToTurn } from '@/client/hooks/chat/timeline/session-jump';
 import type { ChatMessageData } from '@/shared/types';
 
 export interface UseSessionPaginationDeps {
@@ -60,15 +61,6 @@ export interface SessionPagination {
   applyWindow: (hasMore: unknown, oldestIndex: unknown) => void;
 }
 
-/** Messages one jump request may pull. Larger than the default page so a jump
- *  is a few round trips instead of dozens, small enough that no single payload
- *  mounts an unbounded slice of the session. */
-const JUMP_CHUNK_MESSAGES = 300;
-
-/** Ceiling on jump requests: a cursor that refuses to advance (a server window
- *  that keeps re-serving the same slice) must end the walk, not spin. */
-const JUMP_MAX_REQUESTS = 40;
-
 interface WindowPayload {
   messages: ChatMessageData[];
   hasMore?: boolean;
@@ -99,7 +91,14 @@ export function useSessionPagination(deps: UseSessionPaginationDeps): SessionPag
   oldestIndexRef.current = oldestIndex;
   // Set while prepending older rows; the layout effect below re-anchors the
   // viewport to the content the user was reading instead of jumping.
-  const pendingScrollAnchorRef = useRef<{ prevHeight: number; prevTop: number; jumpCount: number } | null>(null);
+  const pendingScrollAnchorRef = useRef<{
+    prevHeight: number;
+    prevTop: number;
+    jumpCount: number;
+    /** The row at the top of the viewport, and its own top edge at capture. */
+    nodeId: string | null;
+    nodeTop: number;
+  } | null>(null);
 
   const resetPages = useCallback(() => {
     setHasMore(false);
@@ -134,12 +133,34 @@ export function useSessionPagination(deps: UseSessionPaginationDeps): SessionPag
 
   /** Record the viewport geometry an older-window prepend is about to shift,
    *  stamped with the bottom-jump count so the anchor can be dropped if the
-   *  user asked for the tail after this request went out. */
+   *  user asked for the tail after this request went out.
+   *
+   *  The anchor is a ROW, not a pixel offset. The timeline mounts a window of
+   *  its rows (`row-window.ts`), so a prepend does not add its real height to
+   *  `scrollHeight` at once — the new rows are estimates until they mount and
+   *  are measured, and the height keeps changing for a few frames after the
+   *  commit. Measured with the old pixel delta on a 27-turn session: "Load
+   *  earlier messages" moved the reader 10 641 px off the row they were
+   *  reading. The row's own top edge is the quantity that does not move. */
   const anchorViewport = useCallback(() => {
     const el = scrollRef?.current;
-    if (el) {
-      pendingScrollAnchorRef.current = { prevHeight: el.scrollHeight, prevTop: el.scrollTop, jumpCount: jumpCountRef?.current ?? 0 };
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    const rows = el.querySelectorAll<HTMLElement>('[data-row-id]');
+    let node: HTMLElement | null = null;
+    for (const candidate of rows) {
+      if (candidate.getBoundingClientRect().bottom > box.top + 1) {
+        node = candidate;
+        break;
+      }
     }
+    pendingScrollAnchorRef.current = {
+      prevHeight: el.scrollHeight,
+      prevTop: el.scrollTop,
+      jumpCount: jumpCountRef?.current ?? 0,
+      nodeId: node?.dataset.rowId ?? null,
+      nodeTop: node ? node.getBoundingClientRect().top : 0,
+    };
   }, [scrollRef, jumpCountRef]);
 
   /** Drop the jump's scroll-handler guard once its target scroll has settled.
@@ -227,72 +248,30 @@ export function useSessionPagination(deps: UseSessionPaginationDeps): SessionPag
       });
   }, [sessionId, sessionIdRef, hasMore, oldestIndex, fetchWindow, anchorViewport, setLocalMessages, applyWindow, bottomJumpActiveRef]);
 
-  /**
-   * Walk the cursor down until the row with `id` is mounted, prepending every
-   * window on the way so the timeline stays contiguous, then adopt the final
-   * window metadata. Shares the in-flight flag with `loadOlder`, so the
-   * scroll-triggered loader cannot interleave a second cursor walk.
-   *
-   * Resolves true when the row is mounted once the call returns — it already
-   * was (a live row, or one inside the mounted window) or the walk brought it
-   * in. The DOM commit for the last prepend may still be pending; the caller
-   * owns waiting for the node.
-   */
+  /** Reach a turn by paging history until its row is mounted (`session-jump.ts`). */
   const jumpToTurn = useCallback(async (id: string, index: number): Promise<boolean> => {
     if (!sessionId || sessionId.startsWith('new-')) return false;
-    // `index < 0` is a live row (an optimistic send the committed history does
-    // not carry yet); `index >= oldestIndex` is inside the mounted window.
-    // Both are already on screen, so the jump needs no paging.
-    if (index < 0 || index >= oldestIndexRef.current) return true;
-    if (loadingOlderRef.current) return false;
-    const requestedSessionId = sessionId;
-    loadingOlderRef.current = true;
+    // True from the jump's first request until its landing settles: a jump
+    // prepends rows above a viewport parked near the top, so the scroll
+    // handler would read "the user reached the top" and page an extra window
+    // nobody asked for — and that window's own anchor would fight the landing.
     railJumpActiveRef.current = true;
-    setLoadingOlder(true);
-    setLoadOlderError(false);
-    // No viewport anchor here, deliberately: the anchor exists to hold the
-    // user's reading position when history is paged in while they read, but a
-    // jump is an explicit request for a DIFFERENT position. Anchoring would
-    // write `scrollTop` on the prepend commit and abort the caller's smooth
-    // scroll to the target mid-flight.
-
-    let cursor = oldestIndexRef.current;
-    let lastHasMore: unknown = hasMore;
-    let reached = false;
-    let requests = 0;
-    try {
-      while (!reached && cursor > index && requests < JUMP_MAX_REQUESTS) {
-        requests += 1;
-        // Stop exactly at the target: a window ending before `index` with
-        // `cursor - index` rows has that turn as its oldest row.
-        const page = await fetchWindow(cursor, Math.min(JUMP_CHUNK_MESSAGES, cursor - index));
-        // The user switched sessions mid-walk: prepending this window would
-        // inject another session's rows into the fresh timeline.
-        if (!page || sessionIdRef.current !== requestedSessionId) return false;
-        const older = page.messages;
-        if (older.length === 0) break;
-        const next = typeof page.oldestIndex === 'number' ? page.oldestIndex : Math.max(0, cursor - older.length);
-        setLocalMessages(prev => [...older, ...prev]);
-        reached = older.some((message) => message.id === id);
-        // A cursor that did not advance would re-serve the same slice forever.
-        if (next >= cursor) break;
-        cursor = next;
-        lastHasMore = page.hasMore;
-      }
-    } catch {
-      if (sessionIdRef.current === requestedSessionId) setLoadOlderError(true);
-      return false;
-    } finally {
-      loadingOlderRef.current = false;
-      setLoadingOlder(false);
-    }
-    applyWindow(lastHasMore, cursor);
-    // Bump the prepend tick so the viewport-anchor effect re-runs for the rows
-    // this walk prepended (same contract as loadOlder).
-    if (requests > 0) setPrependTick(t => t + 1);
-    releaseJumpGuard();
-    return reached;
-  }, [sessionId, sessionIdRef, hasMore, fetchWindow, setLocalMessages, applyWindow, releaseJumpGuard]);
+    return walkToTurn({
+      id,
+      index,
+      sessionId,
+      sessionIdRef,
+      oldestIndexRef,
+      loadingOlderRef,
+      fetchWindow,
+      setLocalMessages,
+      applyWindow,
+      setLoadOlderError,
+      setLoadingOlder,
+      releaseJumpGuard,
+      bumpPrependTick: () => setPrependTick(t => t + 1),
+    });
+  }, [sessionId, sessionIdRef, fetchWindow, setLocalMessages, applyWindow, releaseJumpGuard]);
 
   // Position preservation: after older rows commit above the viewport, shift
   // scrollTop by the height delta so the rows the user was reading stay put.
@@ -309,6 +288,33 @@ export function useSessionPagination(deps: UseSessionPaginationDeps): SessionPag
     // window landing mid-jump parked the viewport ~26k px short of the tail).
     // The jump's own landing, plus the scroll hook's re-pin, owns the position.
     if (anchor.jumpCount !== (jumpCountRef?.current ?? 0)) return;
+    // The row the reader was on, held at its own offset from the top edge. The
+    // correction runs for a few frames because the prepended rows are measured
+    // on the commits that follow, and every one of them moves that edge.
+    if (anchor.nodeId) {
+      const id = anchor.nodeId;
+      let frames = 0;
+      let stable = 0;
+      const hold = (): void => {
+        const node = el.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(id)}"]`);
+        // The row is outside the mounted window this frame (the window moved
+        // while the rows above it were still being measured). The window hook
+        // owns the position in that case; a pixel delta here would fight it —
+        // measured: it wrote the viewport 10 500 px away from the row.
+        if (!node) return;
+        const shift = node.getBoundingClientRect().top - anchor.nodeTop;
+        if (Math.abs(shift) > 1) {
+          el.scrollTop += shift;
+          stable = 0;
+        } else {
+          stable += 1;
+        }
+        frames += 1;
+        if (frames < 45 && stable < 5) requestAnimationFrame(hold);
+      };
+      hold();
+      return;
+    }
     const delta = el.scrollHeight - anchor.prevHeight;
     if (delta > 0) el.scrollTop = anchor.prevTop + delta;
   }, [prependTick, scrollRef]);

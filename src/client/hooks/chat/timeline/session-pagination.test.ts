@@ -156,6 +156,21 @@ describe('prepend anchor vs bottom jump', () => {
     expect(scrollEl.scrollTop).toBe(0);
   });
 
+  test('a rail jump waits for a window already in flight instead of being dropped', async () => {
+    // The reader scrolls to the head, the trigger starts a window, and the
+    // rail is clicked while that request is out — the ordinary case, and the
+    // one where refusing the click made the rail look dead.
+    const requested = pagination.loadOlder();
+    const reached = await pagination.jumpToTurn('old-1', 50);
+    await requested;
+    await settle();
+
+    expect(reached).toBe(true);
+    // The window that landed already carries the target, so the jump paged
+    // nothing of its own — it did not race a second cursor walk.
+    expect(fetchCount).toBe(1);
+  });
+
   test('a jump in flight blocks the paging trigger', async () => {
     jumpActiveRef.current = true;
     await act(async () => { pagination.loadOlder(); });

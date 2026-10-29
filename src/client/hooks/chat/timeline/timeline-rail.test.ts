@@ -60,7 +60,6 @@ afterEach(() => {
   if (container) render(null, container);
   container?.remove();
   globalThis.fetch = originalFetch;
-  delete (document as unknown as Record<string, unknown>).getElementById;
 });
 
 async function drain(): Promise<void> {
@@ -76,7 +75,7 @@ function userMessage(id: string, content: string): ChatMessageData {
 describe('useUserTurns', () => {
   let rail: UserTurnsState | undefined;
   const turnsRequests: string[] = [];
-  const scrolled: string[] = [];
+  const revealed: string[] = [];
   let committed: { turns?: unknown } | null = { turns: [] };
 
   function RailProbe({ sessionId, messages, jumpToTurn }: {
@@ -84,23 +83,20 @@ describe('useUserTurns', () => {
     messages: ChatMessageData[];
     jumpToTurn: (id: string, index: number) => Promise<boolean>;
   }) {
-    rail = useUserTurns({ sessionId, messages, jumpToTurn });
+    rail = useUserTurns({ sessionId, messages, jumpToTurn, revealRow: async (id) => { revealed.push(id); } });
     return null;
   }
 
   beforeEach(() => {
     rail = undefined;
     turnsRequests.length = 0;
-    scrolled.length = 0;
+    revealed.length = 0;
     committed = { turns: [] };
     globalThis.fetch = (async (input: unknown) => {
       turnsRequests.push(String(input));
       if (committed === null) return new Response('no', { status: 500 });
       return new Response(JSON.stringify(committed), { status: 200, headers: { 'content-type': 'application/json' } });
     }) as typeof fetch;
-    (document as unknown as Record<string, unknown>).getElementById = () => ({
-      scrollIntoView: (opts: unknown) => { scrolled.push(JSON.stringify(opts)); },
-    });
   });
 
   async function open(sessionId: string | null, messages: ChatMessageData[], jumpToTurn = async () => true): Promise<void> {
@@ -188,7 +184,7 @@ describe('useUserTurns', () => {
     await act(async () => { reached = await rail!.jumpToTurn('u1', -1); });
     expect(reached).toBe(true);
     expect(paged).toBe(0);
-    expect(scrolled).toEqual([JSON.stringify({ behavior: 'smooth', block: 'center' })]);
+    expect(revealed).toEqual(['u1']);
   });
 
   test('a jump that pages scrolls only when the row was reached', async () => {
@@ -196,7 +192,7 @@ describe('useUserTurns', () => {
     let reached = true;
     await act(async () => { reached = await rail!.jumpToTurn('u9', 3); });
     expect(reached).toBe(false);
-    expect(scrolled).toEqual([]);
+    expect(revealed).toEqual([]);
     expect(rail?.jumping).toBe(false);
   });
 });
