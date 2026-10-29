@@ -171,31 +171,25 @@ fine-grained GitHub token, Gitea, Bitbucket). A read-only token is the reason a
 panel would otherwise show verbs that can only fail, so it is worth one request
 when the reader asks; it is never run on a panel mount.
 
-## The navbar readout and `/issue`
+## `/issue`
 
-- **`Waiting on me`** in the navbar shows open issues and open requests assigned
-  to you, and opens the panel. It reads at most once every five minutes, and only
-  with a credential — an anonymous read has no authenticated user, so "assigned
-  to me" is a question the host cannot answer (measured: GitHub answers
-  `assignee:@me` with a total of 0, which would draw a confident zero over an
-  unanswerable question).
 - **`/issue <number>`** quotes an item into the composer: its id, title, link and
   the first paragraph of its description, then a `---` divider so you type your
   question under it. `#12` and a full URL work too. The quote is INSERTED, not
   set, so a draft you already had is kept.
 
+The plugin contributes **one surface, the right panel**. There is no navbar
+readout: a count in the top bar costs a background read every few minutes for a
+number the panel's own sidebar already draws the moment it is opened.
+
 ## What it does not do
 
 - **No pagination past one page.** A section asks for `per_page` (default 30) and
   says when it came back full rather than pretending the list is complete.
-- **No counts without a token.** "Assigned to me" is not a question an anonymous
-  read can answer — measured on Gitea, where an anonymous `assigned=true` read
-  answered a full page and the readout said `3 issues · 3 PRs` for a reader who
-  has none — so the readout draws `—` with the reason.
 - **No review threads or inline comments.** The conversation is shown; a
   per-line review needs a diff view this panel does not own.
-- **No notifications.** Nothing polls in the background except the readout's own
-  five-minute timer.
+- **Nothing polls in the background.** A read happens when the panel is opened,
+  when the filter moves, or when Refresh is pressed.
 - **No search across repositories.** The scope is one checkout.
 - **No issue-tracker features** (milestones, assignee editing, boards).
 

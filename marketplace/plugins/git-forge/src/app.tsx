@@ -6,29 +6,25 @@
 /**
  * The Forge's app half.
  *
- * Three contributions, and each answers a question the others cannot:
+ * Two contributions, and each answers a question the other cannot:
  *
- * - **`rightPanel`** is the view: the list, the item, the writes.
- * - **`headerPanel`** is the readout — how many open items are assigned to the
- *   reader — and it OPENS the panel (`opensPanel`), so the number is a way back
- *   to the list it counts rather than a decoration. It is a readout and not a
- *   dropdown because a header dropdown is 320px in a 40px bar and the panel is
- *   already one click away.
+ * - **`rightPanel`** is the view: the list, the item, the writes. It is the only
+ *   surface — there is deliberately NO navbar readout: a count in the top bar
+ *   costs a background read every few minutes for a number the panel already
+ *   draws in its own sidebar the moment somebody opens it.
  * - **`commandPaletteAction`** is `/issue <n>`, which quotes an item into the
  *   composer. It is the one contribution that acts on the CONVERSATION, which is
  *   what makes the plugin useful for a repository nobody is reviewing.
  *
  * No content script: one exists when a plugin has work to do while its panel is
  * unmounted (the command-runner's force-stop is the example). A forge read is
- * only worth doing while somebody is looking at it — and the readout's own timer
- * lives with the readout, which the host keeps mounted.
+ * only worth doing while somebody is looking at it.
  */
 
 import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
 import { requireServices } from '@kabmo-labs/kabmo-ui';
 
 import { ForgePanel } from './panel';
-import { ForgeReadout } from './header';
 import { runIssueCommand } from './command';
 
 export default definePluginApp((app) => {
@@ -41,13 +37,6 @@ export default definePluginApp((app) => {
     // A row carries a state badge, a title, an id, an author, a count and up to
     // two labels; below this the title is a fragment.
     minWidth: 420,
-  });
-
-  app.headerPanel({
-    id: 'forge-counts',
-    title: 'Waiting on me',
-    component: ForgeReadout,
-    opensPanel: 'rightPanel',
   });
 
   /**

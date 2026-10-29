@@ -36,7 +36,6 @@ import {
   defaultFilter,
   isSection,
   isState,
-  type ForgeCounts,
   type ForgeCredential,
   type ForgeDetail,
   type ForgeFilter,
@@ -196,52 +195,6 @@ export default function plugin(api: KabmoPluginApi) {
       },
     },
   );
-
-  api.rpc.register<{ root: string; repo: string }, ForgeCounts>(RPC.counts, {
-    handler: async (input) => {
-      // The same list read, narrowed to the two sections a header can show. It
-      // is NOT a separate endpoint per host: the counts are the list's own
-      // totals, so the readout and the panel cannot disagree about how many
-      // issues are open.
-      const context = await contextFor(api, cache, { ...(input as object), filter: { ...defaultFilter(), mine: true } });
-      const list = await adapterFor(context.provider).list(context);
-      // "Assigned to me" is not a question an anonymous read can answer, and a
-      // page length drawn as a count is a confident wrong number. Measured on
-      // Gitea: an anonymous `assigned=true` read answered a full page, so the
-      // readout said `3 issues · 3 PRs` for a reader who has none.
-      if (!context.token) {
-        return {
-          issues: null,
-          pulls: null,
-          more: { issues: false, pulls: false },
-          host: context.host,
-          note: 'Set a token to see what is assigned to you: an anonymous read cannot answer it.',
-        };
-      }
-      // A host that reports no total (GitLab) still answers a page, so the count
-      // is that page's length and `more` says it is a floor rather than the whole
-      // number — the readout draws `30+` instead of a confident `30`. A section
-      // whose read FAILED is `null`, not zero: "your token cannot see this" and
-      // "nothing is assigned to you" are different answers.
-      const counted = (section: 'issues' | 'pulls'): { count: number | null; more: boolean } => {
-        const data = list.sections[section];
-        if (data.failed) return { count: null, more: false };
-        if (data.total !== null) return { count: data.total, more: false };
-        return { count: data.items.length, more: data.truncated };
-      };
-      const issues = counted('issues');
-      const pulls = counted('pulls');
-      return {
-        issues: issues.count,
-        pulls: pulls.count,
-        more: { issues: issues.more, pulls: pulls.more },
-        host: context.host,
-        // The first note a section produced explains a `—`, and a count without
-        // its reason is a number the reader cannot act on.
-        note: issues.count === null || pulls.count === null ? (list.notes[0] ?? null) : null,
-      };
-    },
-  });
 
   api.rpc.register<{ root: string; repo: string; probe?: unknown }, ForgeCredential>(RPC.credential, {
     handler: async (input) => {

@@ -260,37 +260,12 @@ export interface ForgeCredential {
   writeScope: boolean | null;
 }
 
-/**
- * How much is waiting on the reader, for the navbar readout.
- *
- * Two numbers and no list: a readout is one line in a header, and a payload it
- * has to narrow is a payload the server could have narrowed. `null` means the
- * count could not be read, which is different from zero and is drawn as `—`.
- *
- * `more` exists because a host that reports no total (GitLab) answers a PAGE,
- * and drawing that page's length as the total is a confident wrong number — the
- * readout says `30+` instead of `30`.
- */
-export interface ForgeCounts {
-  /** Open issues assigned to the authenticated user. */
-  issues: number | null;
-  /** Open pull / merge requests assigned to the authenticated user. */
-  pulls: number | null;
-  /** That count is a page's length, so there are at least this many. */
-  more: { issues: boolean; pulls: boolean };
-  /** The host, for the readout's tooltip. */
-  host: string;
-  /** Why a count is null, when it is. */
-  note: string | null;
-}
-
 /** The method names, in one place so a typo is a compile error on both sides. */
 export const RPC = {
   list: 'list',
   detail: 'detail',
   write: 'write',
   credential: 'credential',
-  counts: 'counts',
 } as const;
 
 export const SECTIONS: readonly ForgeSection[] = ['issues', 'pulls', 'releases'];
