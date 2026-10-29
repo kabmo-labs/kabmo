@@ -41,20 +41,31 @@
  * covers every `scrollIntoView` (a rail jump, a search reveal, an outline jump)
  * and the editor's scroll restore.
  *
- * So the reveal is gated on recent INPUT, not on the scroll event: a `wheel`,
- * `touch*`, `keydown` or a held pointer (a scrollbar drag lasts longer than any
- * input window, so the press state is tracked, not just the timestamp) marks
- * the user as scrolling, and a scroll that arrives inside that window is
- * theirs. A programmatic scroll neither reveals a bar nor extends a live
- * reveal — it leaves the fade running, so the bar still disappears on schedule
- * mid-run instead of being pinned there.
+ * So the reveal is gated on INPUT: a `wheel`, `touch*`, `keydown` or a pointer
+ * press ARMS exactly one reveal, and the next scroll consumes it. A held
+ * pointer is tracked as its own state, because a scrollbar drag outlives any
+ * expiry. That is what keeps a programmatic scroll from lighting a bar on its
+ * own, and what stops a stream from pinning one: the arm is spent by the first
+ * scroll, and every later frame has nothing left to spend.
  *
- * The window is measured on the events' OWN timestamps, never on the clock read
- * inside the handler. Those differ by however long the main thread was busy,
- * and a busy frame is exactly what a streamed turn produces: reading `Date.now()`
- * in the handler aged a wheel the user had just made into "not theirs", so the
- * bar stayed hidden while they scrolled — intermittently, and worst under load.
- * `eventMoment` is that rule in one place.
+ * The arm EXPIRES (`SCROLLBAR_INPUT_ARM_MS`) so a gesture cannot vouch for a
+ * scroll made much later, and it is compared on the events' own timestamps
+ * rather than on the clock read inside the handler.
+ *
+ * Two earlier shapes failed, and both are why this is an arm:
+ *
+ * - A 250ms rolling window read `Date.now()` inside the handler. Scroll events
+ *   are delivered at the next frame, so a busy main thread aged the user's own
+ *   wheel into "not theirs" and the bar stayed hidden while they scrolled.
+ * - The same window compared on `Event.timeStamp` fixed Chrome and still failed
+ *   in WebKit, which stamps a scroll when it is DISPATCHED: measured in WebKit
+ *   27.2, a wheel followed by a 700ms blocked frame produced a scroll stamped
+ *   703ms after that wheel, and the bar stayed dark while the container moved
+ *   240px. No timestamp can separate a late delivery from a late user there.
+ *
+ * An arm asks a question no clock has to answer: has any input happened since
+ * the last reveal? That holds under either stamping rule, and it is still
+ * one-shot, so it cannot pin a bar.
  *
  * ## The other half of the contract
  *
@@ -76,16 +87,16 @@ export const SCROLLBAR_ACTIVE_ATTRIBUTE = 'data-scrollbar-active';
 export const SCROLLBAR_IDLE_MS = 5_000;
 
 /**
- * How recently the user must have produced input for a scroll to count as
- * theirs.
+ * How long one input may vouch for the NEXT scroll.
  *
- * This only has to bridge the gaps BETWEEN a user's own scroll events: wheel
- * events arrive per frame through the momentum phase, a held key repeats, and a
- * scrollbar drag is covered by {@link heldPointer} rather than by this window.
- * It is deliberately short — a long window would let a programmatic scroll that
- * happens to follow a click be mistaken for the user's own.
+ * The arm exists to bridge a DELAYED DELIVERY, not to model a gesture: a wheel
+ * arms, and the scroll it causes may be dispatched a frame later — or, on a
+ * blocked main thread, much later. WebKit measured 700ms for a single stalled
+ * frame, so the bound has to clear that with room to spare while still expiring
+ * long before a gesture could be confused with a programmatic scroll made much
+ * later. Two seconds is that middle ground; it is not a gesture timeout.
  */
-export const SCROLLBAR_INPUT_WINDOW_MS = 250;
+export const SCROLLBAR_INPUT_ARM_MS = 2_000;
 
 /**
  * Documents already wired, on `globalThis` rather than in a module binding.
@@ -115,27 +126,27 @@ function scrolledElement(target: EventTarget | null): Element | null {
 }
 
 /**
- * WHEN an event happened, on the one clock the gate compares.
+ * WHEN an event happened, on the one clock the arm is compared on.
  *
  * `Date.now()` read inside a handler is when the handler RAN, and the two are
  * not the same moment: scroll events are coalesced and delivered at the next
  * frame, so a main thread busy with a long task (a streamed markdown render, a
- * 36 000px transcript re-layout) can delay the handler past the whole input
- * window. Measuring the window on `Date.now()` therefore threw away scrolls
- * the user had just caused — the bar stayed hidden while they scrolled, worst
- * during exactly the runs that made the app busy, which reads as "sometimes".
- * `Event.timeStamp` is stamped when the event is CREATED, so a late handler no
- * longer changes the answer.
+ * 36 000px transcript re-layout) can delay delivery by hundreds of milliseconds.
+ * `Event.timeStamp` is stamped when the event is CREATED, which is what makes
+ * the arm's expiry mean "this input is old" rather than "this handler is late".
+ *
+ * Engines disagree about the scroll stamp — Chrome stamps at creation, WebKit
+ * at dispatch — so this clock cannot decide whether a scroll was the user's.
+ * That is why the gate is an ARM (did any input happen since the last reveal?)
+ * and not a gap: the arm only has to bound how stale an input may be, and both
+ * engines answer that.
  *
  * The fallback covers synthetic events and engines that report a non-positive
- * stamp (`0` is what a hand-built `new Event('scroll')` carries). It
- * deliberately answers `performance.now()` and not `Date.now()`:
- * `Event.timeStamp` is a `DOMHighResTimeStamp`, so mixing in wall time would
- * make `scroll - input` a difference of two different clocks — measured as a
- * negative gap that reads as "the user is scrolling right now" for every
- * programmatic scroll, which is the bug this gate exists to prevent. An engine
- * that stamps nothing therefore degrades to the previous behaviour (handler
- * time on both sides) instead of disabling the gate.
+ * stamp (`0` is what a hand-built `new Event('scroll')` carries). It answers
+ * `performance.now()` and not `Date.now()`: `Event.timeStamp` is a
+ * `DOMHighResTimeStamp`, so mixing in wall time would make the subtraction a
+ * difference of two different clocks — measured as a negative gap, which would
+ * make every programmatic scroll look armed.
  */
 function eventMoment(event: Event): number {
   const stamp = event.timeStamp;
@@ -150,7 +161,7 @@ function eventMoment(event: Event): number {
  */
 export function installScrollbarActivity(
   idleMs = SCROLLBAR_IDLE_MS,
-  inputWindowMs = SCROLLBAR_INPUT_WINDOW_MS,
+  armMs = SCROLLBAR_INPUT_ARM_MS,
 ): void {
   if (typeof document === 'undefined') return;
   const host = globalThis as ScrollbarActivityHost;
@@ -163,25 +174,28 @@ export function installScrollbarActivity(
   const timers = new WeakMap<Element, FadeTimer>();
 
   /**
-   * When the user last produced input anywhere in the page.
+   * When the user produced the input that may vouch for the NEXT scroll, or
+   * `null` when nothing is armed.
    *
-   * Starts at negative infinity, not `0`: the event clock begins near zero on
-   * a fresh page, so a `0` would make the FIRST scroll of a session look like
-   * it followed input that never happened — a programmatic scroll at load
-   * would paint the bar.
+   * `null` is the starting state and the state after every consumption, which
+   * is what makes this a one-shot: a wheel buys exactly one reveal, so a
+   * programmatic scroll that follows it has nothing to spend. An earlier
+   * version kept a rolling timestamp instead, and a stream's own auto-follow
+   * rode that timestamp for as long as it was refreshed.
    */
-  let lastInputAt = Number.NEGATIVE_INFINITY;
+  let armedAt: number | null = null;
   /**
    * True between a pointer press and its release.
    *
    * A scrollbar drag is one press followed by a stream of scrolls that can last
-   * far longer than {@link inputWindowMs}; a timestamp alone would fade the bar
-   * out from under a finger that is still dragging it.
+   * far longer than {@link armMs}, and each of those scrolls is the user's
+   * without a fresh input event to spend — so the press is tracked as a state
+   * rather than as an arm.
    */
   let heldPointer = false;
 
   const noteInput = (event: Event) => {
-    lastInputAt = eventMoment(event);
+    armedAt = eventMoment(event);
   };
   const pressPointer = (event: Event) => {
     heldPointer = true;
@@ -208,8 +222,13 @@ export function installScrollbarActivity(
   document.addEventListener('pointercancel', releasePointer, INPUT_OPTIONS);
   // A press whose release never arrives (the drag ended outside the window, the
   // OS took the pointer) must not leave the flag stuck on: that would restore
-  // the very bug this gate exists to fix, one press at a time.
-  window.addEventListener('blur', () => { heldPointer = false; });
+  // the very bug this gate exists to fix, one press at a time. The ARM goes
+  // with it — once the window has been left, nothing that happened before is
+  // evidence about a scroll that happens after.
+  window.addEventListener('blur', () => {
+    heldPointer = false;
+    armedAt = null;
+  });
 
   document.addEventListener(
     'scroll',
@@ -222,10 +241,13 @@ export function installScrollbarActivity(
       // bar still disappears on schedule instead of being held on screen for
       // the length of the run.
       //
-      // Both sides of the comparison are EVENT moments (see `eventMoment`), so
-      // a frame the main thread spent rendering cannot age the user's input.
-      const userDriven = heldPointer || eventMoment(event) - lastInputAt <= inputWindowMs;
-      if (!userDriven) return;
+      // The arm is compared on EVENT moments (see `eventMoment`), so a frame
+      // the main thread spent rendering cannot age the input that armed it.
+      const armed = armedAt !== null && eventMoment(event) - armedAt <= armMs;
+      if (!heldPointer && !armed) return;
+      // Spent. A later scroll needs its own input, which is what keeps a run's
+      // auto-follow from riding one wheel for the whole turn.
+      if (!heldPointer) armedAt = null;
       element.setAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE, '');
       clearTimeout(timers.get(element));
       timers.set(

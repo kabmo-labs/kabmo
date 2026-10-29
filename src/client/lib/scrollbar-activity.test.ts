@@ -36,7 +36,7 @@ import {
   installScrollbarActivity,
   SCROLLBAR_ACTIVE_ATTRIBUTE,
   SCROLLBAR_IDLE_MS,
-  SCROLLBAR_INPUT_WINDOW_MS,
+  SCROLLBAR_INPUT_ARM_MS,
 } from '@/client/lib/scrollbar-activity';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
@@ -45,8 +45,8 @@ const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {}
 
 /** Short enough to drive in a test, long enough that the two windows do not overlap. */
 const IDLE_MS = 1_000;
-/** The production input window; its real value is what the gate is about. */
-const INPUT_MS = SCROLLBAR_INPUT_WINDOW_MS;
+/** The production arm; its real value is what the gate is about. */
+const ARM_MS = SCROLLBAR_INPUT_ARM_MS;
 
 beforeAll(() => {
   const target = globalThis as unknown as Record<string, unknown>;
@@ -78,7 +78,7 @@ function freshPage(): void {
   const win = new Window({ url: 'http://localhost' });
   const target = globalThis as unknown as Record<string, unknown>;
   for (const key of DOM_GLOBALS) target[key] = (win as unknown as Record<string, unknown>)[key];
-  installScrollbarActivity(IDLE_MS, INPUT_MS);
+  installScrollbarActivity(IDLE_MS, ARM_MS);
 }
 
 /** A scroll container in the live document. */
@@ -169,41 +169,39 @@ describe('installScrollbarActivity', () => {
 
     inputAt();
     scrollAt(box);
-    // The user has been quiet long enough that the next scroll cannot be
-    // theirs, but the bar is still inside its idle window.
-    jest.advanceTimersByTime(INPUT_MS + 50);
+    // That scroll SPENT the arm, so this one — 100ms later, still well inside
+    // the arm's own expiry and inside the idle window — has nothing behind it.
+    jest.advanceTimersByTime(100);
     scrollAt(box);
-    jest.advanceTimersByTime(IDLE_MS - INPUT_MS - 50);
+    jest.advanceTimersByTime(IDLE_MS - 100);
 
     // The fade runs on the USER's clock. Re-arming it here is exactly the bug
     // that pinned the chat timeline's bar on screen for a whole stream.
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(false);
   });
 
-  test('input older than the window does not vouch for a later scroll', () => {
+  test('an arm older than its expiry does not vouch for a later scroll', () => {
     jest.useFakeTimers();
     freshPage();
     const box = scroller();
 
     inputAt();
-    jest.advanceTimersByTime(INPUT_MS + 1);
+    jest.advanceTimersByTime(ARM_MS + 1);
     scrollAt(box);
 
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(false);
   });
 
-  test('a scroll handled after a long frame is still the user\'s', () => {
+  test('a scroll delivered after a long frame is still the user\'s', () => {
     jest.useFakeTimers();
     freshPage();
     const box = scroller();
 
-    // The wheel happens and the container moves in the SAME frame, so the
-    // browser creates the scroll event then — but the main thread spends that
-    // frame in a streamed render, so the handler only runs afterwards. Measured
-    // live: the handler normally runs 0-3ms after the event, yet a busy frame is
-    // unbounded, and reading `Date.now()` in the handler aged the user's own
-    // wheel into "not theirs" — the bar stayed hidden while they scrolled, worst
-    // under load. The event is therefore created before the stall.
+    // A wheel arrives, the main thread spends the next frame in a streamed
+    // render, and the scroll it caused is only delivered afterwards. Measured
+    // live in WebKit 27.2: a 700ms blocked frame produced a scroll stamped
+    // 703ms after the wheel — far outside any 250ms window — while the
+    // container had moved 240px. The arm is not a window: it is still unspent.
     //
     // The clock is advanced first so both events carry a real stamp: the fake
     // clock starts at 0, and a zero stamp is what `eventMoment` treats as
@@ -211,13 +209,13 @@ describe('installScrollbarActivity', () => {
     jest.advanceTimersByTime(1_000);
     inputAt();
     const late = new Event('scroll');
-    jest.advanceTimersByTime(INPUT_MS + 500);
+    jest.advanceTimersByTime(700);
     box.dispatchEvent(late);
 
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(true);
   });
 
-  test('a held pointer keeps the bar up for a drag longer than the input window', () => {
+  test('a held pointer keeps the bar up for a drag longer than the arm', () => {
     jest.useFakeTimers();
     freshPage();
     const box = scroller();
@@ -226,7 +224,7 @@ describe('installScrollbarActivity', () => {
     // far longer than the input window; a timestamp alone would fade the bar
     // out from under the finger still dragging it.
     document.dispatchEvent(new Event('pointerdown'));
-    for (let elapsed = 0; elapsed < INPUT_MS * 4; elapsed += 100) {
+    for (let elapsed = 0; elapsed < ARM_MS * 4; elapsed += 100) {
       scrollAt(box);
       jest.advanceTimersByTime(100);
     }
@@ -247,7 +245,7 @@ describe('installScrollbarActivity', () => {
     // flag would restore the pinned-bar bug one press at a time.
     document.dispatchEvent(new Event('pointerdown'));
     window.dispatchEvent(new Event('blur'));
-    jest.advanceTimersByTime(INPUT_MS + 1);
+    jest.advanceTimersByTime(ARM_MS + 1);
     scrollAt(box);
 
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(false);
@@ -287,7 +285,7 @@ describe('installScrollbarActivity', () => {
   test('installing twice on one document wires one listener', () => {
     jest.useFakeTimers();
     freshPage();
-    installScrollbarActivity(IDLE_MS, INPUT_MS);
+    installScrollbarActivity(IDLE_MS, ARM_MS);
     const box = scroller();
 
     // Measured as a DELTA: happy-dom's own Window arms timers of its own, and
