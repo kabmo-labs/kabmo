@@ -19,5 +19,6 @@ AppReleaseTests.run()
 HealthProbeTests.run()
 WordmarkTests.run()
 DeviceFilesTests.run()
+WebProcessRecoveryTests.run()
 
 Harness.finish()

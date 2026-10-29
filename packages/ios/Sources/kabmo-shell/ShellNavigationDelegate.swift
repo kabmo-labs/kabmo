@@ -100,6 +100,32 @@ final class ShellNavigationDelegate: NSObject, WKNavigationDelegate, WKUIDelegat
     onLoadFinished?()
   }
 
+  /**
+   The web process was killed — usually by the OS under memory pressure.
+
+   Without this the shell shows a WHITE, dead page: the view is still there and
+   no navigation is in flight, so nothing ever redraws. Measured with the macOS
+   shell (same engine, same delegate contract): `kill -9` on
+   `com.apple.WebKit.WebContent` left the window blank for good and the shell
+   never issued a second document request. The iOS shell had no handler either.
+
+   The page is re-loaded rather than the view rebuilt: the console is a
+   same-origin SPA whose state is the server's, so a fresh document is the same
+   console. `onLoadStarted` runs first so the overlay is already up — a reload of
+   a large session is not instant, and a blank frame is what the overlay exists to
+   avoid. The ADDRESS is `WebProcessRecovery`'s decision (tested in `Tests/`);
+   loading it is what works, because after a termination the view holds no
+   document and `reload()` has nothing to reload.
+   */
+  func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    guard let address = WebProcessRecovery.address(
+      shown: shownURL,
+      current: webView.url?.absoluteString
+    ), let url = URL(string: address) else { return }
+    onLoadStarted?(address, shownURL)
+    webView.load(URLRequest(url: url))
+  }
+
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     report(error)
   }

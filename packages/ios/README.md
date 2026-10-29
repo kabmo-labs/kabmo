@@ -208,6 +208,7 @@ Every one of these is a Kabmo feature that dies silently without it:
 | `didReceive challenge` | a named refusal instead of a blank page |
 | `decidePolicyFor navigationAction` | external links leave the shell instead of replacing Kabmo |
 | `window.__kabmoBack()` | a back gesture closes the drawer / editor / settings first |
+| `webViewWebContentProcessDidTerminate` | the console comes BACK after iOS kills the web process under memory pressure, instead of a white window that never redraws (`WebProcessRecovery`) |
 
 The back button is a **page-delegated** decision: Kabmo's phone layout keeps its
 screens in React state (`MobileLayoutWrapper`'s `currentScreen`), not in the URL, so
