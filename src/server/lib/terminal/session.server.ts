@@ -32,6 +32,7 @@
  */
 
 import { resolveRoot } from '@/server/lib/fs/root';
+import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
@@ -177,7 +178,7 @@ export async function createSession(request: AttachRequest): Promise<TerminalSes
     if (session.status === 'exited') return;
     session.status = 'exited';
     session.exitCode = code ?? null;
-    session.signal = proc.signalCode ?? null;
+    session.signal = signalName(proc.signalCode);
     session.lastActivity = Date.now();
     const frame = JSON.stringify({ t: 'exit', exitCode: session.exitCode, signal: session.signal });
     fanOut(session, frame);

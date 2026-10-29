@@ -214,6 +214,18 @@ variable names are case-insensitive.
 
 `KABMO_HOST_ENV_NAMES` and `KABMO_HOST_ENV_PREFIXES` are the lists themselves.
 
+### `signalName(signalCode)`
+
+The label for the signal that ended a child process, from
+`Bun.Subprocess.signalCode`. That field is `NodeJS.Signals | number | null`:
+Bun reports a NAME when the signal has one and a NUMBER when it does not (a
+Linux real-time signal). A number is rendered `SIG<n>` — a label, not a claim
+that such a signal exists, because the standard numbers differ between Linux and
+macOS and a name table would be wrong on one of them.
+
+Use it wherever a signal is stored in a `string | null` field, so the widening is
+closed in one place instead of once per call site.
+
 ### `PLUGIN_SURFACE_ATTR` / `pluginSurfaceSelector(pluginId)`
 
 The attribute (`data-plugin-surface`) every element a plugin's DOM lives in

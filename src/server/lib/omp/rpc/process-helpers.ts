@@ -60,7 +60,7 @@ export interface RpcProcessOptions {
   /** Called for every non-response frame (events, extension UI, subagent frames). */
   onFrame?: (frame: RpcFrame) => void;
   /** Called once when the child exits, after pending commands are rejected. */
-  onExit?: (info: { code: number | null; signal: NodeJS.Signals | null; stderrTail: string }) => void;
+  onExit?: (info: { code: number | null; signal: string | null; stderrTail: string }) => void;
   /** Injectable binary resolver for deterministic transport tests. */
   dependencies?: {
     resolveOmpBin?: typeof resolveOmpBin;

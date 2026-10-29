@@ -35,5 +35,6 @@ export * from './app';
 export * from './backend';
 export * from './env';
 export * from './scope';
+export * from './signals';
 export * from './slots';
 export * from './slots-sidebar';

@@ -29,6 +29,7 @@
  */
 
 import path from 'path';
+import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { isWithinRoot } from '@/server/lib/fs/root';
 import { isUnmergedCode } from '@/shared/lib/fs/git-unmerged';
 import type { GitChange } from '@/shared/types';
@@ -37,7 +38,8 @@ export interface GitRunResult {
   stdout: string;
   stderr: string;
   exitCode: number | null;
-  signalCode: NodeJS.Signals | null;
+  /** The signal that ended `git`, or null. `string`: see `signalName`. */
+  signalCode: string | null;
   killed: boolean;
   /** Set only when the spawn itself failed (git missing, bad cwd). */
   error?: Error;
@@ -148,7 +150,7 @@ export async function runGit(args: string[], options: GitRunOptions): Promise<Gi
     stdout,
     stderr,
     exitCode,
-    signalCode: proc.signalCode,
+    signalCode: signalName(proc.signalCode),
     killed: proc.killed,
     ...(error ? { error } : {}),
   };

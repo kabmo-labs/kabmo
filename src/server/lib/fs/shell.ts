@@ -27,13 +27,20 @@
  */
 
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
+import { signalName } from '@kabmo-labs/kabmo-sdk';
 import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 
 export interface ShellResult {
   stdout: string;
   stderr: string;
   exitCode: number | null;
-  signalCode: NodeJS.Signals | null;
+  /**
+   * The signal that ended the process, or null when it exited on its own.
+   *
+   * `string`, not `NodeJS.Signals`: Bun reports an unnamed (real-time) signal by
+   * its number, and `signalName` is the one place that widening is closed.
+   */
+  signalCode: string | null;
   killed: boolean;
   error?: Error;
 }
@@ -118,7 +125,7 @@ export function runShell(command: string, options: ShellOptions = {}): Promise<S
       stdout,
       stderr,
       exitCode,
-      signalCode: proc.signalCode,
+      signalCode: signalName(proc.signalCode),
       killed: proc.killed,
       error,
     };

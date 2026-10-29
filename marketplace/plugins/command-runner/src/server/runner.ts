@@ -12,7 +12,7 @@
  * ONE run and needs the process, while everything there happens to the SET.
  */
 
-import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
+import { signalName, stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 
 import type { Run } from './run-types';
 import { appendToRing, emptyRing } from './ring';
@@ -141,7 +141,7 @@ export class RunRegistry extends RunStore {
       run.status = run.signal ? 'stopped' : proc.exitCode === 0 ? 'exited' : 'failed';
     }
     run.exitCode = proc.exitCode;
-    run.signal = proc.signalCode ?? null;
+    run.signal = signalName(proc.signalCode);
     run.endedAt = Date.now();
     this.flushPublish(run);
     this.deps.publish(this.state());

@@ -15,7 +15,7 @@
  */
 
 import type { Subprocess } from 'bun';
-import { stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
+import { signalName, stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrames, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
@@ -35,7 +35,7 @@ export class RpcProcess {
   private nextId = 1;
   private stderrTail = '';
   private exited = false;
-  private exitInfo: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+  private exitInfo: { code: number | null; signal: string | null } | null = null;
   private protocolVersion: RpcProtocolVersion = 1;
   private nextChunkId = 1;
   // Serializes physical stdin writes: a v2 logical frame can span multiple
@@ -138,7 +138,7 @@ export class RpcProcess {
       });
     })();
 
-    const finalize = (code: number | null, signal: NodeJS.Signals | null) => {
+    const finalize = (code: number | null, signal: string | null) => {
       if (this.exited) return;
       this.exited = true;
       this.exitInfo = { code, signal };
@@ -154,7 +154,7 @@ export class RpcProcess {
       options.onExit?.({ code, signal, stderrTail: this.stderrTail });
     };
     void this.child.exited.then((code) => {
-      finalize(code, this.child.signalCode);
+      finalize(code, signalName(this.child.signalCode));
     });
   }
 
@@ -164,7 +164,7 @@ export class RpcProcess {
 
   /** OS pid of the spawned omp process (undefined before spawn settles). Used
    * by the browser viewer to map this process to its owned browser targets. */
-  get exitDetails(): { code: number | null; signal: NodeJS.Signals | null; stderrTail: string } | null {
+  get exitDetails(): { code: number | null; signal: string | null; stderrTail: string } | null {
     return this.exitInfo ? { ...this.exitInfo, stderrTail: this.stderrTail } : null;
   }
 
