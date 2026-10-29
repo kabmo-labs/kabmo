@@ -154,6 +154,31 @@ function eventMoment(event: Event): number {
 }
 
 /**
+ * Whether an input happened INSIDE the container that scrolled.
+ *
+ * An arm is spent by the first scroll that follows it, which is what stops a
+ * stream from pinning a bar — but "first scroll anywhere" was too loose: a
+ * wheel that cannot move its container (already at the top) produces no scroll
+ * event, so its arm stayed unspent for the rest of its life and the next
+ * PROGRAMMATIC scroll in any other panel could spend it. Measured: wheel up at
+ * `scrollTop = 0`, then `scrollTop = 500` 250ms later, and the bar lit for a
+ * scroll nobody made.
+ *
+ * Binding the arm to the subtree the input happened in closes that without
+ * adding a layout read: `contains` is a tree walk, not a `getComputedStyle`,
+ * and the wheel's target is already the element under the pointer.
+ *
+ * An input that names the document or the window itself (a keydown with nothing
+ * focused) is deliberately NOT bound — the scroller it drives is the focused
+ * one, which no target reveals, so it keeps the unbound behaviour.
+ */
+function belongsTo(element: Element, inputTarget: EventTarget | null): boolean {
+  if (inputTarget === null || inputTarget === document || inputTarget === window) return true;
+  if (inputTarget === element) return true;
+  return inputTarget instanceof Node ? element.contains(inputTarget) : false;
+}
+
+/**
  * Wire the reveal rule for one document. Idempotent per document.
  *
  * Both windows are parameters only so a test can drive them without waiting
@@ -184,6 +209,8 @@ export function installScrollbarActivity(
    * rode that timestamp for as long as it was refreshed.
    */
   let armedAt: number | null = null;
+  /** Where that input happened, so its arm belongs to that container only. */
+  let armedIn: EventTarget | null = null;
   /**
    * True between a pointer press and its release.
    *
@@ -196,6 +223,7 @@ export function installScrollbarActivity(
 
   const noteInput = (event: Event) => {
     armedAt = eventMoment(event);
+    armedIn = event.target;
   };
   const pressPointer = (event: Event) => {
     heldPointer = true;
@@ -228,6 +256,7 @@ export function installScrollbarActivity(
   window.addEventListener('blur', () => {
     heldPointer = false;
     armedAt = null;
+    armedIn = null;
   });
 
   document.addEventListener(
@@ -243,11 +272,16 @@ export function installScrollbarActivity(
       //
       // The arm is compared on EVENT moments (see `eventMoment`), so a frame
       // the main thread spent rendering cannot age the input that armed it.
-      const armed = armedAt !== null && eventMoment(event) - armedAt <= armMs;
+      const armed = armedAt !== null
+        && eventMoment(event) - armedAt <= armMs
+        && belongsTo(element, armedIn);
       if (!heldPointer && !armed) return;
       // Spent. A later scroll needs its own input, which is what keeps a run's
       // auto-follow from riding one wheel for the whole turn.
-      if (!heldPointer) armedAt = null;
+      if (!heldPointer) {
+        armedAt = null;
+        armedIn = null;
+      }
       element.setAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE, '');
       clearTimeout(timers.get(element));
       timers.set(

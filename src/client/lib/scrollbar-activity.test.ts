@@ -93,9 +93,14 @@ function scrollAt(element: Element): void {
   element.dispatchEvent(new Event('scroll'));
 }
 
-/** The input a browser delivers before a scroll the USER caused. */
-function inputAt(): void {
-  document.body.dispatchEvent(new Event('wheel'));
+/** The input a browser delivers before a scroll the USER caused.
+ *
+ * Dispatched ON the scroller, because that is what a wheel does: it is targeted
+ * at the element under the pointer, and the arm is bound to that subtree so a
+ * wheel that could not move its container cannot later vouch for a programmatic
+ * scroll somewhere else. */
+function inputAt(element: Element = document.body): void {
+  element.dispatchEvent(new Event('wheel'));
 }
 
 describe('installScrollbarActivity', () => {
@@ -104,7 +109,7 @@ describe('installScrollbarActivity', () => {
     freshPage();
     const box = scroller();
 
-    inputAt();
+    inputAt(box);
     scrollAt(box);
 
     // The reveal lands on the element that scrolled. A bubble-phase listener
@@ -132,7 +137,7 @@ describe('installScrollbarActivity', () => {
     freshPage();
     const box = scroller();
 
-    inputAt();
+    inputAt(box);
     scrollAt(box);
     jest.advanceTimersByTime(IDLE_MS - 1);
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(true);
@@ -146,10 +151,10 @@ describe('installScrollbarActivity', () => {
     freshPage();
     const box = scroller();
 
-    inputAt();
+    inputAt(box);
     scrollAt(box);
     jest.advanceTimersByTime(IDLE_MS - 300);
-    inputAt();
+    inputAt(box);
     scrollAt(box);
     jest.advanceTimersByTime(IDLE_MS - 300);
 
@@ -167,7 +172,7 @@ describe('installScrollbarActivity', () => {
     freshPage();
     const box = scroller();
 
-    inputAt();
+    inputAt(box);
     scrollAt(box);
     // That scroll SPENT the arm, so this one — 100ms later, still well inside
     // the arm's own expiry and inside the idle window — has nothing behind it.
@@ -185,7 +190,7 @@ describe('installScrollbarActivity', () => {
     freshPage();
     const box = scroller();
 
-    inputAt();
+    inputAt(box);
     jest.advanceTimersByTime(ARM_MS + 1);
     scrollAt(box);
 
@@ -207,7 +212,7 @@ describe('installScrollbarActivity', () => {
     // clock starts at 0, and a zero stamp is what `eventMoment` treats as
     // "unstamped".
     jest.advanceTimersByTime(1_000);
-    inputAt();
+    inputAt(box);
     const late = new Event('scroll');
     jest.advanceTimersByTime(700);
     box.dispatchEvent(late);
@@ -236,6 +241,27 @@ describe('installScrollbarActivity', () => {
     expect(box.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(false);
   });
 
+  test('an arm belongs to the container the input landed in', () => {
+    jest.useFakeTimers();
+    freshPage();
+    const wheeled = scroller();
+    const other = scroller();
+
+    // A wheel that cannot move its container (already at the top) fires no
+    // scroll, so its arm stays unspent — and before the arm was bound, the next
+    // programmatic scroll ANYWHERE spent it: measured as a bar lighting for a
+    // scroll nobody made, 250ms after a dead wheel.
+    inputAt(wheeled);
+    jest.advanceTimersByTime(250);
+    scrollAt(other);
+
+    expect(other.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(false);
+
+    // The container the input landed in still gets its reveal.
+    scrollAt(wheeled);
+    expect(wheeled.hasAttribute(SCROLLBAR_ACTIVE_ATTRIBUTE)).toBe(true);
+  });
+
   test('a release that never arrives does not leave the pointer held', () => {
     jest.useFakeTimers();
     freshPage();
@@ -257,10 +283,10 @@ describe('installScrollbarActivity', () => {
     const first = scroller();
     const second = scroller();
 
-    inputAt();
+    inputAt(first);
     scrollAt(first);
     jest.advanceTimersByTime(IDLE_MS - 400);
-    inputAt();
+    inputAt(second);
     scrollAt(second);
 
     // The first container's window has elapsed...
@@ -291,7 +317,7 @@ describe('installScrollbarActivity', () => {
     // Measured as a DELTA: happy-dom's own Window arms timers of its own, and
     // an absolute count would be asserting those.
     const before = jest.getTimerCount();
-    inputAt();
+    inputAt(box);
     scrollAt(box);
     // A second listener would arm a second fade; the first one firing would
     // clear the attribute while the second is still pending, so the count is
