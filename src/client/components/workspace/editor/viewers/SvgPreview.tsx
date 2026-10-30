@@ -36,10 +36,24 @@ export function SvgPreview({ content, name }: SvgPreviewProps) {
       {/* A checkerboard would be wrong here: an SVG is normally opaque or
           intended to sit on a surface, and the panel's paper is that surface.
           The SVG scales to the container via the CSS below rather than a
-          measured size, so no layout pass is needed. */}
+          measured size, so no layout pass is needed.
+
+          `w-full` on the wrapper is load-bearing, not cosmetic. A flex item is
+          shrink-to-fit, and an SVG that carries only a `viewBox` — no `width`
+          or `height` attributes, which is how most icon SVGs ship — defaults to
+          `width:100%` of its containing block. With no definite width above it,
+          that resolves against itself and the picture collapses to a 0x0 box:
+          the markup is in the DOM and nothing is drawn. The wrapper takes the
+          row's width, and the SVG then fills it, keeping its aspect ratio and
+          capped by `max-h`.
+
+          `mx-auto` pays for that width: an SVG that DOES declare its own size
+          is narrower than the wrapper, and the row's `justify-center` no longer
+          reaches it through a full-width child. It is a no-op for the filling
+          case above. */}
       <div className="flex min-h-full items-center justify-center p-6">
         <div
-          className="svg-preview max-w-full [&>svg]:h-auto [&>svg]:max-h-[80vh] [&>svg]:w-auto [&>svg]:max-w-full"
+          className="svg-preview w-full max-w-full [&>svg]:mx-auto [&>svg]:block [&>svg]:h-auto [&>svg]:max-h-[80vh] [&>svg]:w-auto [&>svg]:max-w-full"
           role="img"
           aria-label={name}
           dangerouslySetInnerHTML={{ __html: safeSvg }}

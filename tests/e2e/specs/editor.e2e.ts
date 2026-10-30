@@ -349,6 +349,53 @@ test.describe('editor', () => {
     workspace.dispose();
   });
 
+  /**
+   * An SVG that carries only a `viewBox` is DRAWN, not a 0x0 box.
+   *
+   * This is the shape almost every icon SVG ships in — `viewBox` and nothing
+   * else — and it is the one that broke: the preview wrapper was a flex item
+   * with a shrink-to-fit width, while an SVG with no `width`/`height` defaults
+   * to `width:100%` of its containing block. With no definite width anywhere
+   * above it, that percentage resolved against itself and the picture collapsed
+   * to 0x0: the sanitized markup was in the DOM, `hasViewerSurface` was true,
+   * and the panel looked empty.
+   *
+   * Only a browser can catch it. The unit test in `viewers.test.ts` asserts the
+   * markup reached the container and passes either way; happy-dom has no layout
+   * engine, so every box there is 0x0. The measurement below is the claim: a
+   * non-zero box, square for a square viewBox.
+   */
+  test('an SVG with only a viewBox is drawn at a real size', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-svg');
+    mkdirSync(join(workspace.path, 'icons'), { recursive: true });
+    writeFileSync(
+      join(workspace.path, 'icons', 'redis.svg'),
+      '<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Redis</title><path d="M2 2h20v20H2z"/></svg>\n',
+    );
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByText('icons', { exact: true }).first().click();
+    await page.getByText('redis.svg', { exact: true }).first().click();
+
+    // SVG is a RENDERED_VIEWER, so it opens in preview without a toggle.
+    const preview = page.locator('[data-panel-id="editor-panel"] .svg-preview');
+    await expect(preview).toBeVisible({ timeout: 15_000 });
+    await expect(preview.locator('svg')).toHaveCount(1);
+
+    const box = await preview.locator('svg').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.height).toBeGreaterThan(0);
+    // A square viewBox draws square; a stretched box would mean the width and
+    // the aspect ratio came from two different rules.
+    expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1);
+
+    workspace.dispose();
+  });
+
   test('the status bar switches the line ending the next save writes', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-eol-switch');
