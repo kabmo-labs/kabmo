@@ -45,6 +45,9 @@ describe('isTuiOnlySlashCommand', () => {
     expect(isTuiOnlySlashCommand('/q')).toBe(true);
     expect(isTuiOnlySlashCommand('/status')).toBe(true);
     expect(isTuiOnlySlashCommand('/rewind')).toBe(true);
+    // `hub` and its 18.14.0 alias `subagents` are the same TUI-only entry.
+    expect(isTuiOnlySlashCommand('/hub')).toBe(true);
+    expect(isTuiOnlySlashCommand('/subagents')).toBe(true);
   });
 
   test('lets every command omp answers over RPC through', () => {

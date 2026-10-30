@@ -32,6 +32,10 @@ export interface LoginUiFrame {
   launchUrl?: string;
   instructions?: string;
   placeholder?: string;
+  /** omp 18.14.0: `ctx.ui.input({ secret: true })`. Provider login rejects
+   *  secret prompts server-side, so a secret frame here is an unrelated
+   *  extension dialog and must not be taken for the OAuth code field. */
+  secret?: boolean;
 }
 
 export type LoginStatus = 'connecting' | 'waiting' | 'success' | 'failed';
@@ -184,6 +188,7 @@ export function useProviderLogin({ isOpen, providerId, onAuthenticated }: UsePro
                 ...(typeof frame.launchUrl === 'string' ? { launchUrl: frame.launchUrl } : {}),
                 ...(typeof frame.instructions === 'string' ? { instructions: frame.instructions } : {}),
                 ...(typeof frame.placeholder === 'string' ? { placeholder: frame.placeholder } : {}),
+                ...(typeof frame.secret === 'boolean' ? { secret: frame.secret } : {}),
               };
               const method = ui.method;
               if (method === 'open_url') {
@@ -206,7 +211,7 @@ export function useProviderLogin({ isOpen, providerId, onAuthenticated }: UsePro
                 }
                 continue;
               }
-              if (method === 'input') {
+              if (method === 'input' && ui.secret !== true) {
                 setState((prev) => ({ ...prev, status: 'waiting', prompt: ui }));
                 continue;
               }
@@ -222,7 +227,11 @@ export function useProviderLogin({ isOpen, providerId, onAuthenticated }: UsePro
                 respond({ id: ui.id, accepted: true });
                 continue;
               }
-              // Any other dialog method has no answer this dialog can give.
+              // Any other dialog method has no answer this dialog can give. A
+              // `secret` input lands here on purpose: omp's provider login
+              // refuses secret prompts server-side, so one arriving on this
+              // stream belongs to an unrelated extension and reading it as the
+              // OAuth code would post a password to the wrong dialog.
               respond({ id: ui.id, cancelled: true });
               continue;
             }

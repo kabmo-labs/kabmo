@@ -84,6 +84,7 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
         ) : (
           <input
             autoFocus
+            type={frame.secret === true ? 'password' : 'text'}
             value={text}
             placeholder={frame.placeholder || 'Type your answer…'}
             onChange={(event) => setText(event.currentTarget.value)}

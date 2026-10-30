@@ -327,3 +327,42 @@ describe('session_info_update', () => {
     expect(globalThis.__kabmoSidebarDataCache?.expiresAt).toBe(0);
   });
 });
+
+/**
+ * Both compaction pairs drive `compacting`, and the session-file caches.
+ *
+ * `auto_*` is omp's own threshold pass; `manual_*` is one the user asked for
+ * (the `compact` command, a typed `/compact`, an extension's `ctx.compact()`).
+ * 18.14.0 emits the manual pair — measured against a real child: a `/compact`
+ * prompt answers `manual_compaction_start`, then `_end`, then a `command_output`
+ * carrying omp's own sentence. Before it a typed `/compact` emitted nothing, so
+ * the flag stayed false and `isBusy()` called the session idle mid-pass.
+ */
+describe('compaction frames', () => {
+  test('the auto pair sets and clears `compacting`', () => {
+    const host = makeHost({ sessionId: 's1' });
+
+    foldSessionFrame(host, { type: 'auto_compaction_start', reason: 'context-full', action: 'context-full' });
+    expect(host.compacting).toBe(true);
+
+    foldSessionFrame(host, { type: 'auto_compaction_end', aborted: false, willRetry: false });
+    expect(host.compacting).toBe(false);
+  });
+
+  test('the manual pair does too, and drops the session-file caches on the way out', () => {
+    const host = makeHost({ sessionId: 's1' });
+
+    foldSessionFrame(host, { type: 'manual_compaction_start' });
+    expect(host.compacting).toBe(true);
+
+    // The compaction rewrote the transcript, so a cached scan would keep
+    // serving the pre-compaction read of the same file — the scan cache is
+    // keyed on `(size, mtimeMs)`, and omp rewrites the file in place.
+    globalThis.__kabmoSessionScanCache = { version: 3, entries: new Map([['/tmp/s.jsonl', {} as never]]) };
+    foldSessionFrame(host, { type: 'manual_compaction_end', aborted: false, skipped: true });
+
+    expect(host.compacting).toBe(false);
+    expect(globalThis.__kabmoSessionScanCache.entries.size).toBe(0);
+  });
+
+});

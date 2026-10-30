@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 563 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 574 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -156,7 +156,7 @@
         "tab": "interaction",
         "group": "Startup & Updates",
         "label": "Auto Resume",
-        "description": "Automatically resume the most recent session in the current directory"
+        "description": "Automatically resume the most recent session in the current directory. If its model cannot be restored and model fallback is disabled, interactive startup warns and starts a new session without the saved history"
       }
     },
     "git.enabled": {
@@ -569,8 +569,9 @@
     },
     "tui.autoGraph": {
       "type": "enum",
-      "default": "always",
+      "default": "auto",
       "values": [
+        "auto",
         "smart",
         "always",
         "off"
@@ -581,6 +582,11 @@
         "label": "Auto-Graph Tables",
         "description": "Draw a chart under numeric tables in the agent's answers, in your theme's colors, on terminals that show graphics",
         "options": [
+          {
+            "value": "auto",
+            "label": "Auto",
+            "description": "Smart when the judge role resolves to a native TypeSafe jev model, else Always"
+          },
           {
             "value": "smart",
             "label": "Smart",
@@ -689,7 +695,7 @@
         "tab": "appearance",
         "group": "Display",
         "label": "Mouse Click-to-Focus",
-        "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target. Native text selection becomes Shift+drag and wheel scroll becomes Shift+wheel while on"
+        "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target, and clicks on extension-owned links reach their extension (the link-hint key picks them without the mouse). Native text selection becomes Shift+drag and wheel scroll becomes Shift+wheel while on"
       }
     },
     "tui.tight": {
@@ -824,6 +830,39 @@
         "group": "Display",
         "label": "Cache Miss Marker",
         "description": "Show a divider after an assistant turn whose request lost (missed) the prompt cache"
+      }
+    },
+    "display.advisorCollapsedLines": {
+      "type": "number",
+      "default": 0,
+      "ui": {
+        "tab": "appearance",
+        "group": "Display",
+        "label": "Advisor Collapsed Lines",
+        "description": "Maximum note lines a collapsed advisor card shows below its header (0 keeps the full preview; expand with the tool-output toggle)",
+        "options": [
+          {
+            "value": "0",
+            "label": "No limit",
+            "description": "Default."
+          },
+          {
+            "value": "1",
+            "label": "1 line"
+          },
+          {
+            "value": "2",
+            "label": "2 lines"
+          },
+          {
+            "value": "3",
+            "label": "3 lines"
+          },
+          {
+            "value": "5",
+            "label": "5 lines"
+          }
+        ]
       }
     },
     "display.collapseCompacted": {
@@ -1511,6 +1550,32 @@
         ]
       }
     },
+    "session.worktreeScope": {
+      "type": "enum",
+      "default": "repo",
+      "values": [
+        "directory",
+        "repo"
+      ],
+      "ui": {
+        "tab": "interaction",
+        "group": "Startup & Updates",
+        "label": "Resume Worktree Scope",
+        "description": "Choose whether the resume picker's current folder includes sessions from other repository worktrees",
+        "options": [
+          {
+            "value": "directory",
+            "label": "This Directory",
+            "description": "Only sessions saved for this directory"
+          },
+          {
+            "value": "repo",
+            "label": "Repository Worktrees",
+            "description": "Also include sessions from sibling worktrees"
+          }
+        ]
+      }
+    },
     "power.sleepPrevention": {
       "type": "enum",
       "default": "idle",
@@ -1557,6 +1622,26 @@
         "group": "Prewalk",
         "label": "Enable Prewalk",
         "description": "Start on the active model, then switch to a fast/cheap model (default the 'smol' role) at the first edit/write after the plan nudge's todo list exists — the strong model plans, commits the todos, and starts the implementation before handing off. Overridable per session with --prewalk / --no-prewalk."
+      }
+    },
+    "prewalk.from": {
+      "type": "string",
+      "default": "@default",
+      "ui": {
+        "tab": "model",
+        "group": "Prewalk",
+        "label": "Prewalk planning model",
+        "description": "Model or role (default '@default') that /prewalk restart returns to for planning."
+      }
+    },
+    "prewalk.into": {
+      "type": "string",
+      "default": "@smol",
+      "ui": {
+        "tab": "model",
+        "group": "Prewalk",
+        "label": "Prewalk target",
+        "description": "Model or role (default '@smol') that prewalk hands off to at the first edit/write: /prewalk, /prewalk restart, Enable Prewalk, and --prewalk. Auto-prewalk uses its own target."
       }
     },
     "prewalk.auto": {
@@ -2488,6 +2573,16 @@
         ]
       }
     },
+    "retry.rateLimitWalksChain": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "model",
+        "group": "Retry & Fallback",
+        "label": "Rate Limit Walks Chain",
+        "description": "On a rate limit, do not hold the retry.fallbackChains walk for a turn whose thinking is signed by the failing model. Off (the default), such a turn keeps retrying the rate-limited model until retry.maxRetries is spent before the chain is reached."
+      }
+    },
     "retry.usageAwareFallback": {
       "type": "boolean",
       "default": false,
@@ -3042,7 +3137,7 @@
     },
     "providers.openaiLiveSteering": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "ui": {
         "tab": "providers",
         "group": "Protocol",
@@ -6418,6 +6513,16 @@
         "description": "Enable the ask tool for interactive user questions"
       }
     },
+    "out.enabled": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Available Tools",
+        "label": "Out",
+        "description": "Let the agent reply mid-task by writing to out://, shown like a response without ending its turn. Unset: on in the interactive TUI, off in print, RPC, and ACP"
+      }
+    },
     "tools.intentTracing": {
       "type": "boolean",
       "default": true,
@@ -6594,6 +6699,16 @@
         "description": "When xd:// Prompt Docs is Built-ins Only, inline dynamic devices whose names match these glob patterns (for example mcp__context_mode_*). Catalog Only ignores this setting."
       }
     },
+    "tools.xdevNotices": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Discovery & MCP",
+        "label": "xd:// Mount Notices",
+        "description": "Show an `xd://: mounted …` notice when MCP or extension tools are mounted or unmounted. The model still learns of the change with its next prompt."
+      }
+    },
     "dev.autoqa": {
       "type": "boolean",
       "default": true,
@@ -6758,7 +6873,7 @@
         "tab": "shell",
         "group": "Bash",
         "label": "Git Guard",
-        "description": "Refuse git commands that discard or move shared work in the bash tool: stash, reset --hard or to another commit, and checkout/switch/restore outside a merge or rebase conflict"
+        "description": "Refuse git commands that discard or move shared work in a repository's main checkout: stash, reset --hard or to another commit, and checkout/switch/restore outside a merge or rebase conflict. In a linked worktree they run, saving uncommitted changes they discard first"
       }
     },
     "bash.patterns": {
@@ -7186,6 +7301,16 @@
         "group": "Subagents",
         "label": "Batch Task Calls",
         "description": "Switch the task tool to its batch shape: one call carries { context, tasks[] } — one subagent per item, with an optional per-item agent (defaulting to the session spawn-policy agent), per-item isolation, and a required shared context prepended to every assignment. With async.enabled=true, each spawn runs as an independent background agent with the normal idle/parked lifecycle; otherwise the call blocks for merged results. Disable to restore the flat single-spawn schema."
+      }
+    },
+    "task.file": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "tasks",
+        "group": "Subagents",
+        "label": "Task Instructions from Files",
+        "description": "Let the task tool read subagent instructions from a file (taskFile), recording its path and SHA-256."
       }
     },
     "task.structured": {
@@ -7676,6 +7801,26 @@
         "group": "Extensions",
         "label": "Tool Call Handler Timeout (ms)",
         "description": "Positive finite active-work timeout for extension tool_call handlers; invalid values use 30000ms, and time awaiting OMP-owned dialogs does not count"
+      }
+    },
+    "extensionHandlers.modeControl": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "tools",
+        "group": "Extensions",
+        "label": "Extension Mode Control",
+        "description": "Let extensions enter and exit plan, vibe, goal, and loop modes via ctx.sessionModes.set(); reading mode state stays available"
+      }
+    },
+    "extensionRenderers.assistantText": {
+      "type": "boolean",
+      "default": false,
+      "ui": {
+        "tab": "tools",
+        "group": "Extensions",
+        "label": "Extension Reply Renderers",
+        "description": "Let extensions change how assistant replies are drawn, redraw a reply in place, and receive clicks on their own links; the session, exports and model context keep the reply as written"
       }
     },
     "exa.enabled": {

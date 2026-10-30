@@ -99,7 +99,42 @@ fi
 # running jobs, fewer redraws during background subagent progress) or inside
 # omp's own tools (a task subagent no longer receives AGENTS.md; an `ask` note
 # names the option it belongs to) — none of which reaches a Kabmo surface.
-OMP_VERSION="${OMP_VERSION:-18.13.1}"
+# 18.14.0 (2026-10-29), carrying 18.13.2 and 18.13.3 with it: the schema's
+# `source` line moves to 574 settings and the panel gains TEN rows —
+# `display.advisorCollapsedLines`, `extensionHandlers.modeControl`,
+# `extensionRenderers.assistantText`, `out.enabled`, `prewalk.from`,
+# `prewalk.into`, `retry.rateLimitWalksChain`, `session.worktreeScope`,
+# `task.file`, `tools.xdevNotices` — while `gc.autoCompress` stays out because
+# upstream gives it no `ui` block. The RPC wire moves for the first time in six
+# releases: 67 → 73 commands and 283 → 295 definitions, every one ADDITIVE
+# (`navigate_tree`, `set_label`, `abort_branch_summary`, `dictation_start`,
+# `dictation_stop`, `live_connect`; the `manual_compaction_*` and `dictation_*`
+# events; `secret` on an `input` dialog). No existing command or payload Kabmo
+# reads changed shape — `get_state`, `prompt`, `compact`, `set_model`,
+# `set_event_filter`, `SessionState`, `PromptAck`, `ModelInfo`,
+# `CompactionResult` and the approval frames are byte-identical.
+# `builtin-names.ts` and `MODEL_ROLES` are identical again.
+#
+# Three upstream changes DO reach a Kabmo surface, each fixed with the bump:
+#   - `/subagents` is a NEW alias of the TUI-only `/hub`. Kabmo's guard list is
+#     keyed on names, so without the row the alias was forwarded to the model
+#     as literal text (`tui-only.ts`).
+#   - `manual_compaction_start`/`_end` are new frames. Kabmo folded only the
+#     `auto_*` pair, so a `/compact` typed into the composer left `compacting`
+#     false for the whole pass — a reset could kill it, and the session-file
+#     caches were never dropped (`frame-fold.ts`).
+#   - `input` dialogs can now carry `secret: true`. Kabmo rendered every input
+#     as `type="text"`, which would print a password on screen
+#     (`ExtensionUiDialogRequest` + both dialog renderers).
+#
+# Breaking upstream (measured, none reach Kabmo): provider-qualified model
+# selectors must now be EXACT — `aihub-brisnets-jatis/deepseek-v4` fails with
+# "Did you mean …" where 18.13.1 fuzzy-matched a sibling. Kabmo builds every
+# selector it writes from `omp models --json` rows, so its own selectors are
+# exact by construction; a stale stored value now fails loudly instead of
+# silently running the wrong model. Custom tool loaders take `cwd` first (Kabmo
+# ships none), and WebMCP moved to Chrome's native support (not used here).
+OMP_VERSION="${OMP_VERSION:-18.14.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

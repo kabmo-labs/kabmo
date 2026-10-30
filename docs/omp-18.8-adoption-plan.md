@@ -1029,3 +1029,144 @@ formatting, which this console does not read).
 | R28 | restricted folders ask in every mode | `approval-gate.ts` + the routing, the prompt split, and the free-text guard | `approval-gate.test.ts` (8), `ask-frames.test.ts` (10), `approval-gate.test.tsx` (5); resolver measured per mode |
 | R29 | wire / roles / tool set unchanged | none needed | wire schema byte-identical; role, tool-name and model-schema diffs 0 |
 | R30 | TUI-side and in-omp changes | none needed | `/pause` is TUI-only here; subagent context and answer payloads are omp's |
+# omp 18.14.0 adoption (2026-10-30)
+
+The installed pin moved **18.13.1 → 18.14.0** (`omp/18.14.0`), which carries
+18.13.2 and 18.13.3 with it. Same three steps as every bump: regenerate the
+schema, re-read what the release changed, adopt whatever reaches a Kabmo
+surface.
+
+## Method
+
+- `bun add @oh-my-pi/pi-coding-agent@18.13.1` and `@18.14.0` into a temp tree,
+  then `diff -rq` over both packages (490 differing paths) and a targeted read
+  of each file whose subject Kabmo touches.
+- `rpc-wire.schema.json` from both versions compared whole: **67 → 73 commands,
+  283 → 295 definitions**, every difference ADDITIVE.
+- Every setting id in `src/**/*.ts` extracted from both trees and diffed;
+  `bun run omp:schema` + `omp:schema:check`, then every merged row and every
+  Kabmo extra probed against the 574 live keys of `omp config list --json`.
+- Real children driven over `--mode rpc-ui` for each claim: a `/compact`
+  prompt, `set_model` with an exact and a near-miss selector, `dictation_start`,
+  and a `get_state` handshake.
+- `.github/scripts/install-omp.sh` — the PIN the schema gate installs — bumped
+  and re-run.
+
+## Findings
+
+### R31 — The schema and the CI pin were a release behind (fixed)
+
+`bun run omp:schema` moved the file **421 → 431 entries** (`10 tabs / 574
+settings`). Ten rows are new; `gc.autoCompress` is the only new setting with no
+row, and that is upstream's own decision (it registers without a `ui` block, so
+omp's panel hides it too). **0 of the 431 rows and 0 of the 16 Kabmo extras**
+are rejected by `omp config list --json`.
+
+The pin moved with it (`OMP_VERSION` `18.13.1` → `18.14.0`), because the
+`Settings schema` job installs that pin and regenerates from it.
+
+### R32 — The RPC wire grew, additively (adopted where it reaches Kabmo)
+
+Six new commands — `navigate_tree`, `set_label`, `abort_branch_summary`,
+`dictation_start`, `dictation_stop`, `live_connect` — plus `secret` on
+`InputUiRequest`, the `manual_compaction_*` and `dictation_*` events, and a
+`LiveConnect*` pair. No existing command or payload changed shape: `get_state`,
+`prompt`, `compact`, `set_model`, `set_event_filter`, `set_ask_dialog`,
+`SessionState`, `PromptAck`, `ModelInfo`, `CompactionResult`, `PromptError` and
+every approval frame are byte-identical.
+
+`MessageUpdates`' description now says delta mode REPLACES the accumulated
+snapshot with the block a start/end event touches. Kabmo negotiates `"full"`
+and the reason for that choice (the tool call's name/id live on the seed block)
+is unchanged, so nothing moves.
+
+`navigate_tree`/`set_label`/`abort_branch_summary` are the RPC face of `/tree`
+and `/branch`, which Kabmo refuses as TUI-only and answers with its own
+JSONL rewind (`rewind-file.ts`). They stay unused: adopting them would be a
+second branch implementation, not a bump.
+
+`dictation_*` is draft-only speech-to-text over RPC, which would let Kabmo drop
+the `__omp_worker_stt` IPC child it spawns (`omp-stt-worker.ts`). Not adopted
+here — it is a feature, not a compatibility fix — and the worker protocol is
+untouched in this release (`asr-protocol.ts`, `asr-client.ts`, `models.ts` and
+`stt/settings.ts` are byte-identical), so the existing path still works.
+
+### R33 — `/subagents` is a new TUI-only alias (adopted)
+
+18.14.0 gives `hub` the alias `subagents`. The guard table in
+`shared/lib/chat/composer/tui-only.ts` is keyed on NAMES, so the alias was
+forwarded to the model as literal text — the exact failure that module exists
+to prevent. Measured: `/subagents` is absent from `available_commands_update`
+and `handleTui` is its only handler.
+
+### R34 — A manual compaction is now announced (adopted)
+
+`compact` (RPC), `/compact` (typed), and an extension's `ctx.compact()` now
+emit `manual_compaction_start` / `manual_compaction_end`. Kabmo folded only the
+`auto_*` pair. Measured on a real child: a `/compact` prompt answers
+`manual_compaction_start`, then `_end`, then the `command_output` carrying
+omp's own sentence — and on 18.13.1 that sequence produced NO compaction frame
+at all.
+
+Two consequences, both fixed by folding the pair into the same branch:
+
+- `compacting` stayed false for the whole pass, so `isBusy()` reported an idle
+  session while omp was rewriting the transcript. A command timeout's reset, or
+  a Stop escalation, could kill a compaction the user asked for.
+- `clearSessionFileCaches()` never ran on the manual path, so the scan cache
+  (keyed on `(size, mtimeMs)`, which an in-place rewrite need not move) kept
+  serving the pre-compaction read.
+
+### R35 — `input` dialogs can now be secret (adopted)
+
+`ctx.ui.input({ secret: true })` masks typed characters and forwards `secret`
+on the RPC frame. Kabmo rendered every `input` as `type="text"`, so a password
+would have been drawn in clear text. Both renderers now switch on it
+(`extension-dialog/index.tsx`, `ask-panel/FrameControl.tsx`), and the provider
+login flow — whose OAuth code field must never receive a password — now cancels
+a secret prompt instead of taking it for its own.
+
+### R36 — Provider-qualified selectors are exact now (breaking, no action)
+
+A `provider/id` selector naming a known provider resolves exactly or not at
+all; the provider-scoped fuzzy match is gone, and a near miss fails with
+"Did you mean …" instead of silently running a sibling model. Measured on a
+real child: `set_model aihub-brisnets-jatis/deepseek-v4` answers
+`Model not found: …`, and the CLI refuses the same selector with the hint.
+
+Nothing in Kabmo needs changing: every selector it writes is built from an
+`omp models --json` row (`provider/${id}`), which is exact by construction —
+`catalog.server.ts`, `resumable-model.server.ts`, `goal-auditor` and the role
+editor all do this. What changes is the failure mode of a STALE stored value:
+it now fails loudly rather than running the wrong model. Bare selectors
+(`opus`) keep their fuzzy matching, so the free-text audit-model field is
+unaffected.
+
+### R37 — Custom tool loaders and WebMCP changed (no action)
+
+Custom tool factories take `cwd` as their first argument instead of a `pi`
+namespace, and WebMCP moved to Chrome's native support. Kabmo ships no custom
+tools (its extension registers commands, not tools) and does not drive WebMCP.
+
+### R38 — TUI-side and in-omp changes that do not reach Kabmo (no action)
+
+`out://` replies (off by default outside the TUI), session pinning, the
+`/context` viewer, prewalk model settings, HTML exports, computer-tool approval
+modes, `task.file`, and the LSP/gh/browser fixes are all either TUI-only or
+behind a tool Kabmo never renders. `builtin-names.ts` and `MODEL_ROLES` are
+identical to 18.13.1, and `models-config-schema-bundle.ts` only gains
+`discovery.advertisedReasoning` (Kabmo writes `discovery` blocks, but that key
+is optional and unset).
+
+## 18.14.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R31 | schema + CI pin a release behind | regenerated (421 → 431 rows) and `OMP_VERSION` 18.13.1 → 18.14.0 | `omp:schema:check` passes; 0/447 merged keys rejected; script exits 0 reporting 18.14.0 |
+| R32 | wire grew additively | none needed for the existing surfaces | 6 commands + 12 definitions added, 0 removed; every payload Kabmo reads byte-identical |
+| R33 | `/subagents` alias reaches the model as text | `tui-only.ts` + its test | guard smoke against the shipped module: refused with the notice; `/usage` and `/model opus` still pass |
+| R34 | manual compaction was invisible | `frame-fold.ts` folds both pairs; 2 tests | fold smoke with the frames a real child emitted: `compacting` true → false |
+| R35 | secret input drawn in clear text | both dialog renderers + the login guard; 2 tests | render smoke: `secret:true` → `type="password"`, absent → `text` |
+| R36 | qualified selectors now exact | none needed | every Kabmo selector comes from an `omp models` row; near-miss measured failing |
+| R37 | custom tools / WebMCP | none needed | no custom tools shipped; WebMCP unused |
+| R38 | TUI-side and in-omp changes | none needed | role, tool-name and `builtin-names` diffs 0 |

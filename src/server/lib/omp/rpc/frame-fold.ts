@@ -246,10 +246,23 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
     case 'prompt_result':
       result.suppressForward = handlePromptResult(host, event);
       break;
+    // omp reports compaction progress in two pairs. `auto_*` is the one it runs
+    // itself at a threshold; `manual_*` is a pass the user asked for — the RPC
+    // `compact` command, a `/compact` typed into the composer, or an extension's
+    // `ctx.compact()`. 18.14.0 emits the manual pair (measured: a `/compact`
+    // prompt answers `manual_compaction_start`, then `_end`, then the
+    // `command_output` carrying omp's own sentence). Before it, a typed
+    // `/compact` emitted NOTHING, so `compacting` stayed false for the whole
+    // pass: `isBusy()` reported an idle session while omp was rewriting the
+    // transcript, and a reset (or a command timeout's reset) could kill it —
+    // and the session-file caches were never dropped, so the sidebar and the
+    // timeline kept serving the pre-compaction read. Both pairs fold here.
     case 'auto_compaction_start':
+    case 'manual_compaction_start':
       host.compacting = true;
       break;
     case 'auto_compaction_end':
+    case 'manual_compaction_end':
       host.compacting = false;
       clearSessionFileCaches();
       break;

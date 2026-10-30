@@ -218,7 +218,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
                 </div>
                 <input
                   ref={inputRef}
-                  type="text"
+                  type={request.secret === true ? 'password' : 'text'}
                   value={value}
                   placeholder={request.placeholder || 'Type your response...'}
                   onChange={(e) => setValue(e.currentTarget.value)}

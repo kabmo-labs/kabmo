@@ -77,6 +77,11 @@ export const TUI_ONLY_SLASH_COMMANDS: Record<string, true> = {
   agents: true,
   git: true,
   hub: true,
+  // omp 18.14.0 added `subagents` as an ALIAS of the TUI-only `hub`. The guard
+  // is keyed on names, so without this row the alias reached the model as
+  // literal text — measured on 18.14.0: `/subagents` is absent from
+  // `available_commands_update` and `handleTui` is its only handler.
+  subagents: true,
   branch: true,
   rewind: true,
   fork: true,

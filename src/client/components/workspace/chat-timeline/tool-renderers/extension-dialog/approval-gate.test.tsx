@@ -143,3 +143,34 @@ describe('the gate\'s answer', () => {
     expect(sent).toEqual([{ value: 'Approve' }]);
   });
 });
+
+/**
+ * omp 18.14.0 added `secret` to an `input` dialog (`ctx.ui.input({ secret:
+ * true })`) and forwards it on the frame. A client that ignores it draws the
+ * password in clear text on screen.
+ *
+ * The frame shape is upstream's: `InputUiRequest` gained `"secret": boolean`,
+ * validated as an optional member — measured against 18.14.0's
+ * `rpc-wire.schema.json`, where it is the only change to that definition.
+ */
+describe('a secret input dialog', () => {
+  const SECRET_INPUT: ExtensionUiDialogRequest = {
+    type: 'extension_ui_request',
+    id: 'i1',
+    method: 'input',
+    title: 'Paste the API key',
+    placeholder: 'sk-…',
+    secret: true,
+  };
+
+  test('masks what the user types', () => {
+    draw(SECRET_INPUT);
+    const field = container.querySelector('input');
+    expect(field?.getAttribute('type')).toBe('password');
+  });
+
+  test('a plain input stays readable', () => {
+    draw({ ...SECRET_INPUT, id: 'i2', secret: undefined });
+    expect(container.querySelector('input')?.getAttribute('type')).toBe('text');
+  });
+});

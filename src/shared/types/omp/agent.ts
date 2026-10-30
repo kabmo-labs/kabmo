@@ -208,6 +208,12 @@ export interface ExtensionUiDialogRequest {
   prefill?: string;
   timeout?: number;
   /**
+   * Mask what is typed. omp 18.14.0 added it to `ctx.ui.input({ secret: true })`
+   * and forwards it on this frame; a client that ignores it draws a password as
+   * plain text. Present only on `method: "input"`.
+   */
+  secret?: boolean;
+  /**
    * Present only on the GROUPED `ask` request, which omp sends after
    * `set_ask_dialog {enabled:true}`: every question of one `ask` tool call in a
    * single frame, answered by one `answers` response instead of one `select`
