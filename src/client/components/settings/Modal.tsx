@@ -7,10 +7,7 @@ import { DEFAULT_SETTINGS } from '@/shared/lib/settings/defaults';
 import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-setting';
 import { useReloadOmpEngine } from '@/client/hooks/settings/reload-engine';
 import { useRestartKabmo } from '@/client/hooks/settings/restart-kabmo';
-import { applyDocumentTheme } from '@/client/hooks/ui/theme';
-import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
-import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
-import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
+import { applySettingsSideEffects } from '@/client/components/settings/apply-side-effects';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
@@ -96,28 +93,9 @@ export function SettingsModal({
   const handleUpdateSettings = (updater: Partial<SettingsState> | ((prev: SettingsState) => SettingsState)) => {
     setSettings(prev => {
       const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      if (typeof document !== 'undefined' && next.theme) {
-        applyDocumentTheme(next.theme);
-      }
-      // The editor font is visual, so an open editor has to hear about the
-      // change now — `appSettings` is a boot-time prop and would only show it
-      // after a reload. Announced only when the value actually moved, so a
-      // re-render of an unrelated setting does not churn every editor's stack.
-      if (typeof window !== 'undefined' && next.editorFont !== prev.editorFont) {
-        window.dispatchEvent(new CustomEvent(EDITOR_FONT_CHANGED_EVENT, { detail: next.editorFont }));
-      }
-      // Same rule for the editor's colour theme: it is visual, and every open
-      // editor subscribes rather than reading the boot-time `appSettings`.
-      if (typeof window !== 'undefined' && next.editorTheme !== prev.editorTheme) {
-        window.dispatchEvent(new CustomEvent(EDITOR_THEME_CHANGED_EVENT, { detail: next.editorTheme }));
-      }
-      // The chat column's width is an attribute on `<html>` that CSS reads, so
-      // it applies the moment the choice is made — `appSettings` is a boot-time
-      // prop and would only show it after a reload. Announced only when the
-      // value actually moved.
-      if (next.chatWidthMode !== prev.chatWidthMode) {
-        applyChatWidthMode(next.chatWidthMode);
-      }
+      // Every visual consequence of this edit, applied now: the open surfaces
+      // subscribe rather than re-reading the boot-time `appSettings` prop.
+      applySettingsSideEffects(prev, next);
       // Only the keys this update actually touched are persisted. The modal
       // holds a full `SettingsState` snapshot taken when it opened, so writing
       // the whole object back would also republish every value it read at that

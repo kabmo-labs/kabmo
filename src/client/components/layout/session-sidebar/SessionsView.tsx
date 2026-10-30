@@ -2,48 +2,48 @@ import { useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { NewWorkspaceModal } from '@/client/components/layout/session-sidebar/Modals';
 import { SchedulerModal } from '@/client/components/layout/session-sidebar/scheduler-modal';
-import { SessionSidebarToolbar } from '@/client/components/layout/session-sidebar/Toolbar';
-import { SessionSidebarSessionList } from '@/client/components/layout/session-sidebar/SessionList';
-import { SessionListSkeleton } from '@/client/components/layout/session-sidebar/Skeleton';
+import { ClassicSidebarView } from '@/client/components/layout/session-sidebar/ClassicView';
+import { ModernSidebarView } from '@/client/components/layout/session-sidebar/modern';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { spawnCwdForNewSession, triggerSessionPrewarm } from '@/shared/lib/omp/session/prewarm';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
+import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
 import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { startPendingSession } from '@/client/hooks/chat/omp/pending-sessions';
 import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
-import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
-import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import { useSidebarBatch } from '@/client/hooks/workspace/sidebar-batch';
 import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
 import { BatchDeleteModal } from '@/client/components/common/batch-selection/BatchDeleteModal';
-import type { BatchBinding } from '@/client/components/common/batch-selection/types';
-import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
+import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
 
 /**
- * The session list — the left dock's own view.
+ * The session list — the left dock's own view, and the ONE owner of its data.
  *
- * It used to BE the left column. The column is a dock now, and this is the view
- * that fills it unless the user places a plugin panel there; the strip below it
- * (Settings · About · the APK offer) is the DOCK's, not this view's, because
- * those controls act on Kabmo rather than on the list.
+ * This file is a dispatcher, not a layout. It reads the controller, holds the
+ * search/archive/sort state, runs the batch machine, and renders the dialogs
+ * and toasts. Two chrome variants draw the result — `classic` (the layout Kabmo
+ * shipped before the style setting) and `modern` — and each receives exactly
+ * the same `SessionSidebarVariantProps`. That is the whole design: a style
+ * chooses a frame, never a behaviour, so an action added here exists in both
+ * and a style cannot grow a private copy of one.
  *
- * Three things are deliberately NOT here any more:
+ * Three things are deliberately NOT here:
  *
- * - **The header.** It is the COLUMN's title row now, and it spans the rail too
- *   (see `LeftColumn`): a title that stopped at the dock body would leave the
- *   rail starting above it, with a gap under the app's own titlebar.
+ * - **The header.** It is the COLUMN's title row (`LeftColumn`), spanning the
+ *   rail too: a title that stopped at the dock body would leave the rail
+ *   starting above it, with a gap under the app's own titlebar.
  * - **The footer.** It is dock furniture, and a plugin view on the same dock
  *   must not take it away — moving to a plugin panel would otherwise lose the
  *   only visible way into Settings.
  * - **The update popup and the About modal it hands over to.** Both are app
- *   level: they are about the console, not about one view, and the dock renders
- *   them so they survive a view switch.
+ *   level, and the dock renders them so they survive a view switch.
  *
- * Everything else — the header's collapse control, the toolbar, the batch bar,
- * the workspace and scheduler dialogs — belongs to the list and stays.
+ * The batch bar is drawn HERE rather than inside a variant: it is the same bar
+ * in both styles, and a style that owned it could forget to.
  */
 export function SessionsView({
   className = '',
@@ -72,6 +72,9 @@ export function SessionsView({
     handleSelectSession,
   } = useSessionSidebarController(appSettings, { expandSearchMatches: true });
   const [, setSearchParams] = useSearchParams();
+  // The style the user chose. Live: the settings modal announces a change and
+  // this subscription redraws the column behind it.
+  const sidebarStyle = useSidebarStyle();
 
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
@@ -81,44 +84,12 @@ export function SessionsView({
   // Follows a held prompt to its session — in whichever tab or instance sent it.
   useWaitingDispatch({ onNotice: pushToast });
 
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-
   // Batch selection: two separate modes (sessions from a workspace's `⋯` menu,
-  // workspaces from the toolbar). `batchDelete.pending` holds the ids the
-  // confirmation dialog is about; the bar's Delete opens it and never deletes
-  // on its own.
-  const batch = useBatchSelection();
-  const batchDelete = useBatchDeleteRun(refreshNow);
-
-  const scopeFolder = batch.scopeFolderId === null
-    ? null
-    : processedFolders.find((folder) => folder.id === batch.scopeFolderId) ?? null;
-  const batchAvailable = batch.mode === 'workspace'
-    ? processedFolders.map((folder) => String(folder.id))
-    : batch.mode === 'session'
-      ? selectableSessionIds(scopeFolder?.sessions ?? [], showArchived)
-      : [];
-  // The count and the payload are the LIVE selection: an id that vanished from
-  // the list (deleted in another tab, filtered away) is not something this bar
-  // may still claim, and not something Delete may still send.
-  const batchSelected = liveSelection(batch.selected, batchAvailable);
-
-  const batchBinding: BatchBinding | undefined = batch.mode
-    ? {
-        mode: batch.mode,
-        scopeFolderId: batch.scopeFolderId,
-        selected: batch.selected,
-        toggle: batch.toggle,
-        selectAllOf: batch.selectAllOf,
-        unselectAllOf: batch.unselectAllOf,
-        summaryOf: batch.summaryOf,
-      }
-    : undefined;
-
-  const startWorkspaceSelection = () => {
-    if (batch.mode === 'workspace') batch.end();
-    else batch.begin('workspace');
-  };
+  // workspaces from the toolbar). The machine, the live pruned payload and the
+  // confirmation dialog's state all come from one hook shared with the phone
+  // drawer, so the two layouts cannot count or send a different set.
+  const batch = useSidebarBatch(processedFolders, showArchived, refreshNow);
+  const { selection, deleteRun, binding: batchBinding, scopeFolder, available: batchAvailable, selected: batchSelected } = batch;
 
   /** The folder whose context a new session will inherit — same resolution
    *  the send path uses, so the prewarmed cwd matches the spawn cwd. The
@@ -186,62 +157,59 @@ export function SessionsView({
     }, { replace: true });
   };
 
+  const variantProps: SessionSidebarVariantProps = {
+    // The chrome fills the column; the batch bar, when it exists, is a sibling
+    // below it. `className` from the dock is the variant's own.
+    className: `flex-1 min-h-0 w-full ${className}`,
+    folders: processedFolders,
+    initializing,
+    activeSessionId,
+    sessionStatus,
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    showArchived,
+    onToggleArchived: () => setShowArchived(!showArchived),
+    sortOption,
+    optionsOpen,
+    onToggleOptions: () => setOptionsOpen(!optionsOpen),
+    onCloseOptions: () => setOptionsOpen(false),
+    onSortChange: handleSortChange,
+    onRefresh: refreshNow,
+    refreshing: isRefreshing,
+    scheduledCount,
+    onNewSession: handleNewSession,
+    onNewWorkspace: () => setNewWorkspaceOpen(true),
+    onScheduler: () => setSchedulerOpen(true),
+    onSelectSession: handleSelectSession,
+    onNewSessionForFolder: handleNewSessionForFolder,
+    onNewWorktreeSession: handleNewWorktreeSession,
+    onToast: pushToast,
+    onCancelWait: cancelWait,
+    batch: batchBinding,
+    onSelectWorkspaces: batch.toggleWorkspaceSelection,
+    onStartSessionSelection: (folderId) => selection.begin('session', folderId),
+  };
+
   return (
     <>
-      <div className={`flex flex-col h-full ${className}`}>
-        <SessionSidebarToolbar
-          isSearchVisible={isSearchVisible}
-          searchQuery={searchQuery}
-          showArchived={showArchived}
-          optionsOpen={optionsOpen}
-          sortOption={sortOption}
-          onToggleSearch={() => setIsSearchVisible(!isSearchVisible)}
-          onSearchChange={setSearchQuery}
-          onToggleArchived={() => setShowArchived(!showArchived)}
-          onHideArchived={() => setShowArchived(false)}
-          onToggleOptions={() => setOptionsOpen(!optionsOpen)}
-          onCloseOptions={() => setOptionsOpen(false)}
-          onSortChange={handleSortChange}
-          onNewSession={handleNewSession}
-          onNewWorkspace={() => setNewWorkspaceOpen(true)}
-          onScheduler={() => setSchedulerOpen(true)}
-          scheduledCount={scheduledCount}
-          onRefresh={refreshNow}
-          refreshing={isRefreshing}
-          onSelectWorkspaces={startWorkspaceSelection}
-          selecting={batch.mode !== null}
-        />
-
-        {initializing ? (
-          <SessionListSkeleton />
+      <div className="flex flex-col h-full">
+        {sidebarStyle === 'modern' ? (
+          <ModernSidebarView {...variantProps} />
         ) : (
-          <SessionSidebarSessionList
-            folders={processedFolders}
-            activeSessionId={activeSessionId}
-            searchQuery={searchQuery}
-            showArchived={showArchived}
-            sessionStatus={sessionStatus}
-            onSelectSession={handleSelectSession}
-            onNewSessionForFolder={handleNewSessionForFolder}
-            onNewWorktreeSession={handleNewWorktreeSession}
-            onToast={pushToast}
-            batch={batchBinding}
-            onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
-            onCancelWait={cancelWait}
-          />
+          <ClassicSidebarView {...variantProps} />
         )}
 
-        {batch.mode && (
+        {selection.mode && (
           <BatchActionBar
-            mode={batch.mode}
+            mode={selection.mode}
             count={batchSelected.length}
             total={batchAvailable.length}
-            busy={batchDelete.isDeleting}
+            busy={deleteRun.isDeleting}
             scopeLabel={scopeFolder?.name}
-            onSelectAll={() => batch.selectAllOf(batchAvailable)}
-            onUnselectAll={() => batch.unselectAllOf(batchAvailable)}
-            onDelete={() => batchDelete.request(batchSelected)}
-            onCancel={batch.end}
+            onSelectAll={() => selection.selectAllOf(batchAvailable)}
+            onUnselectAll={() => selection.unselectAllOf(batchAvailable)}
+            onDelete={() => deleteRun.request(batchSelected)}
+            onCancel={selection.end}
           />
         )}
       </div>
@@ -249,25 +217,25 @@ export function SessionsView({
       {/* Batch delete confirmation. It stays open on a refusal so the reasons
           can be read; a fully successful run closes itself and leaves the mode. */}
       <BatchDeleteModal
-        mode={batch.mode ?? 'session'}
-        count={batchDelete.pending.length}
+        mode={selection.mode ?? 'session'}
+        count={deleteRun.pending.length}
         scopeLabel={scopeFolder?.name}
-        isDeleting={batchDelete.isDeleting}
-        outcome={batchDelete.outcome}
+        isDeleting={deleteRun.isDeleting}
+        outcome={deleteRun.outcome}
         onClose={() => {
           // A run that finished cleanly also ends the mode; one that refused
           // ids keeps it, so the rows that survived are still selected for a
           // second attempt.
-          const refusedCount = batchDelete.outcome?.refused.length ?? 0;
-          batchDelete.cancel();
-          if (batchDelete.outcome && refusedCount === 0) batch.end();
+          const refusedCount = deleteRun.outcome?.refused.length ?? 0;
+          deleteRun.cancel();
+          if (deleteRun.outcome && refusedCount === 0) selection.end();
         }}
         onConfirm={() => {
-          const mode = batch.mode ?? 'session';
-          void batchDelete.confirm(mode).then((result) => {
+          const mode = selection.mode ?? 'session';
+          void deleteRun.confirm(mode).then((result) => {
             // A finished run leaves the mode; a refused one keeps it so the
             // remaining rows are still selectable for a second attempt.
-            if (result && result.refused.length === 0) batch.end();
+            if (result && result.refused.length === 0) selection.end();
           });
         }}
       />

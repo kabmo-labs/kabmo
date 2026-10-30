@@ -1,5 +1,6 @@
 import type { ThemeId } from '@/shared/lib/theme/catalog';
 import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
+import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
@@ -95,6 +96,16 @@ export interface SettingsState {
    * would send every new chat back to the default.
    */
   chatWidthMode: ChatWidthMode;
+  /**
+   * Which chrome the session sidebar draws (`classic` | `modern`). A
+   * PRESENTATION choice over one data source, not a second sidebar: both styles
+   * render the same folders, rows, actions and dialogs.
+   *
+   * Global and shared by desktop and phone, like the chat width and the tool
+   * style — the shape of a list is a property of the person and the display.
+   * `classic` is the default so an upgrade rearranges nothing.
+   */
+  sidebarStyle: SidebarStyle;
   followUpBehavior: 'queue' | 'steering';
   keybindingSend: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingNewLine: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';

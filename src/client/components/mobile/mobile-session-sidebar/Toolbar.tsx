@@ -171,7 +171,7 @@ export function MobileSessionToolbar({
             type="button"
             onClick={onToggleArchived}
             aria-pressed={showArchived}
-            className={`${CONTROL_CLASS} ${showArchived ? 'bg-amber-500/15 border-amber-500/40 text-amber-900' : CONTROL_IDLE}`}
+            className={`${CONTROL_CLASS} ${showArchived ? 'bg-warning/15 border-warning/40 text-warning' : CONTROL_IDLE}`}
             title={archiveLabel}
             aria-label={archiveLabel}
           >
@@ -288,13 +288,13 @@ export function MobileSessionToolbar({
             </span>
           )}
           {showArchived && (
-            <span className="inline-flex items-center space-x-1 bg-amber-500/15 border border-amber-500/25 text-amber-900 rounded-lg px-2 py-0.5 text-[10px] font-mono">
+            <span className="inline-flex items-center space-x-1 bg-warning/15 border border-warning/25 text-warning rounded-lg px-2 py-0.5 text-[10px] font-mono">
               <Archive size={10} />
               <span>Archived</span>
               <button
                 type="button"
                 onClick={onHideArchived}
-                className="hover:text-amber-950 ml-0.5"
+                className="hover:text-warning-hover ml-0.5"
                 title="Hide archived"
               >
                 <X size={10} />

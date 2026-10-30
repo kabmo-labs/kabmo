@@ -21,6 +21,7 @@
 import type { SettingsState } from '@/shared/types';
 import { DEFAULT_THEME_ID } from '@/shared/lib/theme/catalog';
 import { DEFAULT_CHAT_WIDTH_MODE } from '@/shared/lib/chat/timeline/width-mode';
+import { DEFAULT_SIDEBAR_STYLE } from '@/shared/lib/workspace/sidebar-style';
 import { EDITOR_DEFAULT_FONT_FAMILY } from '@/shared/lib/code/editor/typography';
 import { EDITOR_DEFAULT_THEME_ID } from '@/shared/lib/code/editor/themes';
 
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS = {
   goalAuditModel: '',
   goalDefaultBudget: null,
   chatWidthMode: DEFAULT_CHAT_WIDTH_MODE,
+  sidebarStyle: DEFAULT_SIDEBAR_STYLE,
   followUpBehavior: 'queue',
   keybindingSend: 'Enter',
   keybindingNewLine: 'Shift + Enter',

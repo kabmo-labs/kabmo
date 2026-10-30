@@ -1,7 +1,8 @@
-import { Palette } from 'lucide-preact';
+import { Palette, PanelLeft } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
 import { resolveThemeId } from '@/shared/lib/theme/catalog';
 import { ThemeGrid } from '@/client/components/settings/categories/appearance-settings/ThemeGrid';
+import { SidebarStyleSection } from '@/client/components/settings/categories/appearance-settings/SidebarStyleSection';
 import { EditorFontSection } from '@/client/components/settings/categories/appearance-settings/EditorFontSection';
 import { EditorThemeSection } from '@/client/components/settings/categories/appearance-settings/EditorThemeSection';
 import { EditorIndentSection } from '@/client/components/settings/categories/appearance-settings/EditorIndentSection';
@@ -26,6 +27,15 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
           selectedId={settings.theme}
           onSelect={(theme) => onUpdate({ theme: resolveThemeId(theme) })}
         />
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center space-x-2 border-b border-ink/10 pb-2">
+          <PanelLeft size={16} className="text-ink/60" />
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-ink/80">Layout</h3>
+        </div>
+
+        <SidebarStyleSection settings={settings} onUpdate={onUpdate} />
       </section>
 
       <EditorFontSection settings={settings} onUpdate={onUpdate} />

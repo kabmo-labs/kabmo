@@ -254,12 +254,12 @@ export function SessionSidebarToolbar({
       
       {/* Archive Status Pill */}
       {showArchived && (
-        <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 text-amber-900 rounded px-2.5 py-1.5 text-[10px] font-medium">
+        <div className="flex items-center justify-between bg-warning/10 border border-warning/25 text-warning rounded px-2.5 py-1.5 text-[10px] font-medium">
           <div className="flex items-center space-x-1.5">
             <Archive size={10} />
             <span>Showing Archived</span>
           </div>
-          <button className="hover:text-amber-950" onClick={onHideArchived}>
+          <button className="hover:text-warning-hover" onClick={onHideArchived}>
             <X size={10} />
           </button>
         </div>

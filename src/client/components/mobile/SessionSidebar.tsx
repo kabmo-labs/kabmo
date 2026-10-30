@@ -1,30 +1,44 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { MobileSessionHeader } from '@/client/components/mobile/mobile-session-sidebar/Header';
-import { MobileSessionToolbar } from '@/client/components/mobile/mobile-session-sidebar/Toolbar';
-import { MobileSessionList } from '@/client/components/mobile/mobile-session-sidebar/List';
+import { ClassicDrawer } from '@/client/components/mobile/mobile-session-sidebar/ClassicDrawer';
+import { ModernSidebarView } from '@/client/components/layout/session-sidebar/modern';
 import { MobileSessionFooter } from '@/client/components/mobile/mobile-session-sidebar/Footer';
 import { useShellOffer } from '@/client/hooks/ui/updates/shell-download';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useCancelWait } from '@/client/hooks/chat/waiting/cancel';
 import { useWaitingDispatch } from '@/client/hooks/chat/waiting/dispatch';
 import { useUpdates } from '@/client/hooks/ui/updates';
+import { useSidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { UPDATE_REQUEST_EVENT } from '@/shared/lib/updates/popup-state';
-import { useSessionSidebarController } from '@/client/hooks/chat/omp/session-sidebar-controller';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
-import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
-import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
-import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
-import { setFolderExpanded } from '@/client/hooks/workspace/folder-expansion';
 import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
-import { dockBodyProps, useMobileDock } from '@/client/components/mobile/mobile-session-sidebar/use-dock';
 import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
 import { MobileDrawerDialogs } from '@/client/components/mobile/mobile-session-sidebar/Dialogs';
+import { useDrawerState } from '@/client/components/mobile/mobile-session-sidebar/use-drawer';
 import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
-import type { BatchBinding } from '@/client/components/common/batch-selection/types';
-import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
+import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
 
+/**
+ * The phone's session drawer — the dispatcher, exactly like the desktop
+ * `SessionsView`.
+ *
+ * It owns the controller, the folder expansion, the batch machine and the
+ * dialogs; two chromes draw the list. `classic` is the drawer that shipped
+ * before the style setting (`ClassicDrawer`), `modern` is the same
+ * `ModernSidebarView` the desktop dock uses with `touch` density — NOT a second
+ * phone implementation, so a row drawn here and a row drawn on a desktop are
+ * the same component at two sizes.
+ *
+ * Two rules the drawer carries into both styles:
+ *
+ * - **The list is hidden, never unmounted, while a placed panel is on screen**
+ *   (the same rule the desktop dock follows): its folder expansion, scroll
+ *   position and batch selection must survive a look at another view, and a
+ *   re-mount would re-seed every expansion from the server's flags.
+ * - **New Session closes the drawer.** The pending chat is opened behind it, so
+ *   the user lands on the chat rather than on the list they just acted on.
+ */
 interface MobileSessionSidebarProps {
   activeSessionId: number | string | null;
   onSelectSession: (id: number | string) => void;
@@ -57,8 +71,16 @@ export function MobileSessionSidebar({
   onRefresh,
   onOpenFile,
 }: MobileSessionSidebarProps) {
+  const { controller, batch, expandedFolders, toggleFolder, optionsRef, dock, dockBody } = useDrawerState({
+    appSettings,
+    onSelectSession,
+    onClose,
+    rootPath,
+    refreshKey,
+    onRefresh,
+    onOpenFile,
+  });
   const {
-    folders,
     initializing,
     refreshNow,
     isRefreshing,
@@ -73,13 +95,9 @@ export function MobileSessionSidebar({
     processedFolders,
     sessionStatus,
     handleSelectSession,
-  } = useSessionSidebarController(appSettings, { onSelectSession, onAfterSelect: onClose });
-
-  const [expandedFolders, setExpandedFolders] = useState<Record<number, boolean>>({
-    1: true,
-    2: true,
-    3: true
-  });
+  } = controller;
+  const { selection, deleteRun, binding: batchBinding, scopeFolder, available, selected } = batch;
+  const sidebarStyle = useSidebarStyle();
 
   // Modals state (matching desktop)
   const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
@@ -107,35 +125,6 @@ export function MobileSessionSidebar({
     });
   });
 
-  const optionsRef = useRef<HTMLDivElement>(null);
-  useOnClickOutside(optionsRef, () => setOptionsOpen(false));
-
-  const toggleFolder = (folderId: number) => {
-    setExpandedFolders(prev => ({
-      ...prev,
-      [folderId]: !prev[folderId]
-    }));
-    const folder = folders.find(item => item.id === folderId);
-    const nextExpanded = !(expandedFolders[folderId] ?? folder?.isExpanded ?? true);
-    void setFolderExpanded(folderId, nextExpanded);
-  };
-
-  // Seeded from the list the drawer RENDERS, not from the raw server payload:
-  // the controller force-opens a folder that hosts a pending row (a chat whose
-  // transcript omp has not written yet), and a seed taken from the raw folders
-  // would collapse it again — hiding the one row the user cannot get back by
-  // expanding, because nothing else knows it exists.
-  //
-  // Keyed on the flags themselves rather than the array: `processedFolders` is
-  // a new array on every sidebar push (a tool call republishes the structure),
-  // and re-seeding on identity would discard every expansion the user just
-  // made, several times a minute.
-  const expansionSeed = processedFolders.map(folder => `${folder.id}:${folder.isExpanded}`).join('|');
-  useEffect(() => {
-    setExpandedFolders(Object.fromEntries(processedFolders.map(folder => [folder.id, folder.isExpanded])));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expansionSeed]);
-
   const handleNewSessionAndClose = () => {
     onNewSession();
     onClose();
@@ -148,66 +137,62 @@ export function MobileSessionSidebar({
     onClose();
   };
 
-  // The Archive button is a sibling of the sort dropdown, not a row inside it,
+  // The Archive control is a sibling of the sort dropdown, not a row inside it,
   // so this no longer has to dismiss the dropdown itself — clicking anywhere
-  // outside the menu does that already (`useOnClickOutside` below), and doing
-  // it here as well would be a second answer to the same question.
+  // outside the menu does that already, and doing it here as well would be a
+  // second answer to the same question.
   const handleToggleArchived = () => {
     setShowArchived(!showArchived);
   };
 
-  // Batch selection — same two modes and the same rules as the desktop sidebar
-  // (the state machine and the confirmation are shared hooks/components).
-  const batch = useBatchSelection();
-  const batchDelete = useBatchDeleteRun(refreshNow);
-
-  const scopeFolder = batch.scopeFolderId === null
-    ? null
-    : processedFolders.find((folder) => folder.id === batch.scopeFolderId) ?? null;
-  const batchAvailable = batch.mode === 'workspace'
-    ? processedFolders.map((folder) => String(folder.id))
-    : batch.mode === 'session'
-      ? selectableSessionIds(scopeFolder?.sessions ?? [], showArchived)
-      : [];
-  // Same rule as the desktop sidebar: the count and the payload are the LIVE
-  // selection, so a row removed elsewhere cannot be counted or sent.
-  const batchSelected = liveSelection(batch.selected, batchAvailable);
-
-  const batchBinding: BatchBinding | undefined = batch.mode
-    ? {
-        mode: batch.mode,
-        scopeFolderId: batch.scopeFolderId,
-        selected: batch.selected,
-        toggle: batch.toggle,
-        selectAllOf: batch.selectAllOf,
-        unselectAllOf: batch.unselectAllOf,
-        summaryOf: batch.summaryOf,
+  const closeAfterWorktree = onNewWorktreeSession
+    ? (id: number, path: string) => {
+        onNewWorktreeSession(id, path);
+        onClose();
       }
     : undefined;
 
-  const startWorkspaceSelection = () => {
-    if (batch.mode === 'workspace') batch.end();
-    else batch.begin('workspace');
+  // The same contract the desktop dispatcher hands its two styles, so the phone
+  // and the desktop cannot describe a folder, a row or an action differently.
+  const modernProps: SessionSidebarVariantProps = {
+    // Fills the drawer between the header and the batch bar, the same way the
+    // desktop dispatcher sizes its chrome.
+    className: 'flex-1 min-h-0 w-full',
+    folders: processedFolders,
+    initializing,
+    activeSessionId,
+    sessionStatus,
+    searchQuery,
+    onSearchChange: setSearchQuery,
+    showArchived,
+    onToggleArchived: handleToggleArchived,
+    sortOption,
+    optionsOpen,
+    onToggleOptions: () => setOptionsOpen(!optionsOpen),
+    onCloseOptions: () => setOptionsOpen(false),
+    onSortChange: handleSortChange,
+    onRefresh: refreshNow,
+    refreshing: isRefreshing,
+    scheduledCount,
+    onNewSession: handleNewSessionAndClose,
+    onNewWorkspace: () => setNewWorkspaceOpen(true),
+    onScheduler: () => setSchedulerOpen(true),
+    onSelectSession: handleSelectSession,
+    onNewSessionForFolder: handleNewSessionForFolderAndClose,
+    onNewWorktreeSession: closeAfterWorktree,
+    onToast: pushToast,
+    onCancelWait: cancelWait,
+    batch: batchBinding,
+    onSelectWorkspaces: batch.toggleWorkspaceSelection,
+    onStartSessionSelection: (folderId) => selection.begin('session', folderId),
   };
-
-  const dock = useMobileDock();
-  const showingSessions = dock.showingSessions;
-  const activeView = dock.activeView;
-  const dockBody = dockBodyProps({
-    sessionId: activeSessionId,
-    refreshKey,
-    rootPath,
-    onRefresh,
-    onOpenFile,
-    onClose,
-  });
 
   return (
     <div className="flex flex-col h-full w-full bg-canvas text-ink relative select-none">
 
       <MobileSessionHeader
         onClose={onClose}
-        viewLabel={showingSessions ? 'Sessions' : dock.activePanel?.label ?? 'Panel'}
+        viewLabel={dock.showingSessions ? 'Sessions' : dock.activePanel?.label ?? 'Panel'}
       />
 
       {/* The strip is the phone's RAIL, so it follows the switch: with the rail
@@ -215,7 +200,7 @@ export function MobileSessionSidebar({
           always holds Sessions). Requiring a second destination made the
           Settings switch a no-op on a phone with nothing placed. */}
       {phoneLeftStripVisible(dock.enabled) ? (
-        <MobileDockStrip panels={dock.catalog} activeId={activeView} onSelect={dock.setActiveView} />
+        <MobileDockStrip panels={dock.catalog} activeId={dock.activeView} onSelect={dock.setActiveView} />
       ) : null}
 
       {/* The list is HIDDEN, never unmounted, while a panel is on screen — the
@@ -223,20 +208,29 @@ export function MobileSessionSidebar({
           expansion, scroll position and batch selection must survive a look at
           another view, and a re-mount would also re-seed every expansion from
           the server's flags. */}
-      <div className={showingSessions ? 'contents' : 'hidden'}>
-        <>
-          <MobileSessionToolbar
+      <div className={dock.showingSessions ? 'contents' : 'hidden'}>
+        {sidebarStyle === 'modern' ? (
+          <ModernSidebarView {...modernProps} touch />
+        ) : (
+          <ClassicDrawer
+            folders={processedFolders}
+            initializing={initializing}
+            activeSessionId={activeSessionId}
+            expandedFolders={expandedFolders}
+            sessionStatus={sessionStatus}
             searchQuery={searchQuery}
             sortOption={sortOption}
             optionsOpen={optionsOpen}
             showArchived={showArchived}
             optionsRef={optionsRef}
+            scheduledCount={scheduledCount}
+            refreshing={isRefreshing}
+            selecting={selection.mode !== null}
+            batch={batchBinding}
             onNewSession={handleNewSessionAndClose}
             onNewWorkspace={() => setNewWorkspaceOpen(true)}
             onScheduler={() => setSchedulerOpen(true)}
-            scheduledCount={scheduledCount}
             onRefresh={refreshNow}
-            refreshing={isRefreshing}
             onToggleOptions={() => setOptionsOpen(!optionsOpen)}
             onSortChange={handleSortChange}
             onResetSort={() => handleSortChange('A-Z')}
@@ -244,52 +238,34 @@ export function MobileSessionSidebar({
             onHideArchived={() => setShowArchived(false)}
             onSearchChange={setSearchQuery}
             onClearSearch={() => setSearchQuery('')}
-            onSelectWorkspaces={startWorkspaceSelection}
-            selecting={batch.mode !== null}
+            onSelectWorkspaces={batch.toggleWorkspaceSelection}
+            onSelectSession={handleSelectSession}
+            onNewSessionForFolder={handleNewSessionForFolderAndClose}
+            onNewWorktreeSession={closeAfterWorktree}
+            onToggleFolder={toggleFolder}
+            onToast={pushToast}
+            onStartSessionSelection={(folderId) => selection.begin('session', folderId)}
+            onCancelWait={cancelWait}
           />
+        )}
 
-          {initializing ? (
-            <MobileSessionListSkeleton />
-          ) : (
-            <MobileSessionList
-              folders={processedFolders}
-              activeSessionId={activeSessionId}
-              expandedFolders={expandedFolders}
-              showArchived={showArchived}
-              sessionStatus={sessionStatus}
-              onSelectSession={handleSelectSession}
-              onNewSessionForFolder={handleNewSessionForFolderAndClose}
-              onNewWorktreeSession={
-                onNewWorktreeSession
-                  ? (id, path) => { onNewWorktreeSession(id, path); onClose(); }
-                  : undefined
-              }
-              onToggleFolder={toggleFolder}
-              onToast={pushToast}
-              batch={batchBinding}
-              onStartSessionSelection={(folderId) => batch.begin('session', folderId)}
-              onCancelWait={cancelWait}
-            />
-          )}
-
-          {batch.mode && (
-            <BatchActionBar
-              drawer
-              mode={batch.mode}
-              count={batchSelected.length}
-              total={batchAvailable.length}
-              busy={batchDelete.isDeleting}
-              scopeLabel={scopeFolder?.name}
-              onSelectAll={() => batch.selectAllOf(batchAvailable)}
-              onUnselectAll={() => batch.unselectAllOf(batchAvailable)}
-              onDelete={() => batchDelete.request(batchSelected)}
-              onCancel={batch.end}
-            />
-          )}
-        </>
+        {selection.mode && (
+          <BatchActionBar
+            drawer
+            mode={selection.mode}
+            count={selected.length}
+            total={available.length}
+            busy={deleteRun.isDeleting}
+            scopeLabel={scopeFolder?.name}
+            onSelectAll={() => selection.selectAllOf(available)}
+            onUnselectAll={() => selection.unselectAllOf(available)}
+            onDelete={() => deleteRun.request(selected)}
+            onCancel={selection.end}
+          />
+        )}
       </div>
-      {showingSessions ? null : (
-        <MobileDockBody panelKey={activeView} panel={dock.activePanel} body={dockBody} />
+      {dock.showingSessions ? null : (
+        <MobileDockBody panelKey={dock.activeView} panel={dock.activePanel} body={dockBody} />
       )}
 
       <MobileSessionFooter
@@ -314,9 +290,9 @@ export function MobileSessionSidebar({
         onCloseAbout={() => setAboutOpen(false)}
         updates={updates}
         pushToast={pushToast}
-        batchDelete={batchDelete}
-        batchMode={batch.mode}
-        onEndBatch={batch.end}
+        batchDelete={deleteRun}
+        batchMode={selection.mode}
+        onEndBatch={selection.end}
         scopeLabel={scopeFolder?.name}
         toasts={toasts}
         dismissToast={dismissToast}
