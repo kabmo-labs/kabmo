@@ -4,6 +4,15 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.14.1](https://github.com/kabmo-labs/kabmo/compare/v0.14.0...v0.14.1) — 2026-10-30
+
+### Fixed
+
+* **chat:** keep a thinking block open when its row leaves the mount window ([231ab98](https://github.com/kabmo-labs/kabmo/commit/231ab98822f4c060bd8eb8428e3954ff756b43b1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **command-runner:** give a run the PATH a terminal would have ([8750ba2](https://github.com/kabmo-labs/kabmo/commit/8750ba2bb365c032aa2cc2d61ef1f38b141195cd)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** draw a viewBox-only SVG preview at a real size ([9177dca](https://github.com/kabmo-labs/kabmo/commit/9177dca76d5e81b16f751ffab8117ce210db1797)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** draw the phone drawer's folder header on its own surface, and size its rows like that header ([2e93c9a](https://github.com/kabmo-labs/kabmo/commit/2e93c9a70fa1e9d1cefb13b731547a110add4121)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.14.0](https://github.com/kabmo-labs/kabmo/compare/v0.13.0...v0.14.0) — 2026-10-30
 
 ### Added
