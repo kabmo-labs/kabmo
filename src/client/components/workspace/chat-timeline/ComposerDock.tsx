@@ -59,6 +59,11 @@ interface ComposerDockProps {
    * scroll-to-bottom affordance.
    */
   shrinkWhileReading?: boolean;
+  /**
+   * The chat has no turns yet. Only the `stage` composer style reads it, and it
+   * only ever changes the card's frame — never which controls exist.
+   */
+  hero?: boolean;
 }
 
 /**
@@ -99,6 +104,7 @@ export function ComposerDock({
   sessionThinkingLevel,
   variant,
   shrinkWhileReading = false,
+  hero = false,
 }: ComposerDockProps) {
   // Side questions take over the composer entirely: the chat's own input is
   // hidden while the form is open, so a stray Enter cannot send to the wrong
@@ -167,6 +173,7 @@ export function ComposerDock({
             sessionThinkingLevel={sessionThinkingLevel}
             variant={variant}
             expandable
+            hero={hero}
             shrinkWhileReading={shrinkWhileReading}
           />
         )}

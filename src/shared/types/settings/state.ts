@@ -2,6 +2,7 @@ import type { ThemeId } from '@/shared/lib/theme/catalog';
 import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
+import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
@@ -114,6 +115,17 @@ export interface SettingsState {
    * `classic` is the default so an upgrade rearranges nothing.
    */
   sidebarStyle: SidebarStyle;
+  /**
+   * How the chat composer is drawn (`classic` | `calm` | `console` | `stage`).
+   * A PRESENTATION choice over one composer: every style renders the same
+   * controls — attachments, plan/goal, access, model, thinking, voice, stop,
+   * send, the `@`/`/` picker — and only their ORDER and frame change. The
+   * table lives in `shared/lib/chat/composer/style.ts`.
+   *
+   * Global and shared by desktop and phone, like the chat width and the tool
+   * style. `classic` is the default so an upgrade rearranges nothing.
+   */
+  composerStyle: ComposerStyle;
   followUpBehavior: 'queue' | 'steering';
   keybindingSend: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingNewLine: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';

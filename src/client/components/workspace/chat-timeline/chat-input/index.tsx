@@ -1,25 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ClipboardEvent, SetStateAction } from 'preact/compat';
-import { AlertTriangle, X } from 'lucide-preact';
 import type { Attachment } from '@/shared/types';
-import { ComposerToolbar } from '@/client/components/workspace/chat-timeline/chat-input/Toolbar';
-import { VoiceNotice } from '@/client/components/workspace/chat-timeline/chat-input/VoiceNotice';
-import { ComposerTextarea } from '@/client/components/common/ComposerTextarea';
-import { usePublishComposerState } from '@/client/hooks/chat/composer/publish-state';
 import { useModelSelection } from '@/client/hooks/chat/composer/model-selection';
-import { AttachmentToolbar } from '@/client/components/workspace/chat-timeline/chat-input/AttachmentToolbar';
 import { NO_PENDING_PICK } from '@/client/hooks/chat/timeline/deferred-model';
 import { CHAT_COMPOSER_MAX_LINES, useAutoGrow } from '@/client/hooks/chat/composer/auto-grow';
 import { useVoiceInput } from '@/client/hooks/chat/composer/voice-input';
 import { primeFileReads } from '@/client/hooks/chat/composer/file-reads';
 import { useComposerPipeline } from '@/client/hooks/chat/composer/pipeline';
+import { usePublishComposerState } from '@/client/hooks/chat/composer/publish-state';
 import { DropOverlay } from '@/client/components/workspace/chat-timeline/chat-input/DropOverlay';
 import { GoalSurfaces } from '@/client/components/workspace/chat-timeline/chat-input/GoalSurfaces';
+import { ComposerFrame } from '@/client/components/workspace/chat-timeline/chat-input/styles/index';
+import { composerRows } from '@/client/components/workspace/chat-timeline/chat-input/ComposerRows';
 import { normalizeGoalBudget } from '@/shared/lib/omp/mode/budget';
 import { readKabmoSetting } from '@/shared/lib/settings/client';
 import { useKeyboardInset } from '@/client/hooks/ui/keyboard-inset';
 import { composerExpansion } from '@/client/components/workspace/chat-timeline/chat-input/expansion';
 import { useComposerCompact } from '@/client/hooks/chat/composer/compact';
+import { useComposerStyle } from '@/client/hooks/chat/composer/style';
+import { composerStyleLayout } from '@/shared/lib/chat/composer/style';
 import type { ChatInputProps } from '@/client/components/workspace/chat-timeline/chat-input/props';
 
 export function ChatInput({ 
@@ -55,9 +54,9 @@ export function ChatInput({
   deferredComposerPickRef = NO_PENDING_PICK,
   chatRunning,
   expandable = false,
+  hero = false,
   shrinkWhileReading = false,
 }: ChatInputProps) {
-  const [internalAttachments, setInternalAttachments] = useState<Attachment[]>([]);
   // The Goal modal is owned here, not by the toolbar: the button is a toggle,
   // and the modal it opens needs the same `modes` slice the toolbar got.
   const [goalModalOpen, setGoalModalOpen] = useState(false);
@@ -80,19 +79,17 @@ export function ChatInput({
     onThinkingLevelChange,
   });
 
+  // Attachments: owned here when nobody else needs to read them (the New Chat
+  // modal), forwarded through the caller's setter when a dock does. The
+  // forward has to stay a state setter: evaluating a functional update here
+  // against the closed-over value would resurrect stale state (the async
+  // FileReader callback wiping the just-added image).
+  const [internalAttachments, setInternalAttachments] = useState<Attachment[]>([]);
   const attachments = externalAttachments !== undefined ? externalAttachments : internalAttachments;
   const setAttachments = (updater: SetStateAction<Attachment[]>) => {
-    if (onAttachmentsChange) {
-      // Forward the updater untouched: onAttachmentsChange is a state setter,
-      // so functional updates stay functional. Evaluating them here against
-      // the closure `attachments` would resurrect stale state (e.g. the async
-      // FileReader callback wiping the just-added image).
-      onAttachmentsChange(updater);
-    } else {
-      setInternalAttachments(updater);
-    }
+    if (onAttachmentsChange) onAttachmentsChange(updater);
+    else setInternalAttachments(updater);
   };
-
 
   const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboard = e.clipboardData;
@@ -158,6 +155,20 @@ export function ChatInput({
   });
   const layout = composerExpansion({ variant, expanded, isDragging, keyboardInset });
 
+  // The style only reorders rows and re-frames the card; every control below is
+  // rendered in every style. `hero` is the empty-chat state `stage` reacts to —
+  // the composer cannot see the transcript, so the caller says so, and the
+  // default (false) keeps the docked shape for a caller that does not care.
+  const style = useComposerStyle();
+  const styleLayout = composerStyleLayout({ style, hero });
+  // Position FIRST: `cardPositionClass` must not be cancelled by a later
+  // position utility (Tailwind resolves those by emission order regardless of
+  // class order, which is why `expansion.ts` keeps position in its own field).
+  // The style contributes NO class here — its pixels are `[data-composer-style]`
+  // rules in `tailwind.css`, because `rounded-md` beside `rounded-xl` lost.
+  const cardClass = `${layout.cardPositionClass} ${layout.cardClass} ${layout.cardLayoutClass}`;
+  const textareaClass = layout.textareaClass;
+
   // Growth: a modal composer states its own px bounds, the chat's docked one
   // grows to `CHAT_COMPOSER_MAX_LINES` lines. Either way it is measured only
   // while the layout does NOT own the height — a stretched composer is `h-full`
@@ -202,10 +213,13 @@ export function ChatInput({
   });
 
   return (
-    <div
-      ref={cardRef}
-      className={`@container transition-colors flex flex-col ${layout.cardPositionClass} ${layout.cardClass} ${layout.cardLayoutClass} ${className}`}
+    <ComposerFrame
+      layout={styleLayout}
+      cardClass={cardClass}
       style={layout.style}
+      className={className}
+      cardRef={cardRef}
+      expanded={expanded}
       // focusin/focusout BUBBLE, unlike focus/blur: the card has to learn that
       // the textarea inside it was focused, and a capture-phase `onFocus` on
       // this element is not the same question (it fires for the card's own
@@ -228,110 +242,76 @@ export function ChatInput({
       // Press-time, not click-time — see `useComposerCompact` for why a click
       // never arrives in the compact state.
       onPointerDown={onCardPointerDown}
-      {...dropProps}
-    >
-      <DropOverlay visible={isDragging} />
+      dropProps={dropProps}
+      header={
+        <>
+          <DropOverlay visible={isDragging} />
 
-      {/* Goal mode strip describes the turn the next message will join. */}
-      <GoalSurfaces
-        modes={modes}
-        running={chatRunning ?? isGenerating}
-        open={goalModalOpen}
-        defaultBudget={normalizeGoalBudget(readKabmoSetting<number>('goalDefaultBudget', appSettings))}
-        onOpen={() => setGoalModalOpen(true)}
-        onClose={() => setGoalModalOpen(false)}
-      />
-
-      <AttachmentToolbar
-        attachments={attachments}
-        onFilesSelected={(files) => acceptFiles(files)}
-        onRemove={removeAttachment}
-        // The phone hosts the mode toggles here; the desktop keeps them in the
-        // bottom toolbar, which has room. `showAccess` gates both hosts.
-        modes={isMobile && showAccess ? modes : undefined}
-        onOpenGoal={() => setGoalModalOpen(true)}
-        // Only the chat's own composer stretches; a caller that owns its size
-        // (the New Chat modal) gets no control and cannot be stretched.
-        expanded={expandable ? expanded : undefined}
-        onToggleExpand={expandable ? () => setExpanded((prev) => !prev) : undefined}
-        compact={compact}
-        onExpandComposer={reopen}
-      />
-
-      {/* Refused plan/goal command notice. */}
-      {(notice || modes?.error) && (
-        <div className="flex items-start gap-1.5 bg-error/5 px-3 py-1.5 text-[11px] text-error">
-          <AlertTriangle size={11} className="mt-0.5 shrink-0" />
-          <span className="min-w-0 flex-1 break-words">{notice || modes?.error}</span>
-          <button
-            type="button"
-            onClick={() => (notice ? dismissNotice() : modes?.clearError())}
-            className="shrink-0 text-error/60 hover:text-error transition-colors"
-            title="Dismiss"
-          >
-            <X size={11} />
-          </button>
-        </div>
-      )}
-
-      {/* Textarea. Not rendered at all while compact: the phone gives the
-          transcript its height back by removing the box, not by shrinking it,
-          and `AttachmentToolbar` then carries the "Type here" target that
-          brings it back. Rendering it at `h-0` would keep a focusable element
-          with no pixels, which is exactly the trap the `inert` rules elsewhere
-          exist to avoid. */}
-      {!compact && (
-        <ComposerTextarea
-          value={value}
-          onChange={onChange}
-          onSend={submit}
-          disabled={disabled}
-          appSettings={appSettings}
-          rootPath={rootPath}
-          enablePicker={enablePicker}
-          placement={layout.pickerPlacement}
-          wrapperClassName={layout.wrapperClass}
-          placeholder={placeholder ?? (disabled ? "Please select a workspace above to start prompting..." : "@ for files/agents; / for commands and skills (Paste images/files here)")}
-          className={`w-full bg-transparent border-none focus:outline-none resize-none text-ink placeholder-ink/40 disabled:opacity-50 disabled:cursor-not-allowed ${layout.textareaClass}`}
-          onPaste={handlePaste}
-          variant={variant}
-          textareaRef={growRef}
-          onReady={onTextareaReady}
-        />
-      )}
-      {/* Dictation progress / failure, above the toolbar that owns the mic. */}
-      <VoiceNotice status={voiceStatus} error={displayedVoiceError} />
-
-      {/* Bottom Config Toolbar */}
-      <ComposerToolbar
-        isMobile={isMobile}
-        selectedModel={selectedModel}
-        onSelectModel={(model) => {
+          {/* Goal mode strip describes the turn the next message will join. It
+              is card chrome, not a row: it stays above the rows in every style. */}
+          <GoalSurfaces
+            modes={modes}
+            running={chatRunning ?? isGenerating}
+            open={goalModalOpen}
+            defaultBudget={normalizeGoalBudget(readKabmoSetting<number>('goalDefaultBudget', appSettings))}
+            onOpen={() => setGoalModalOpen(true)}
+            onClose={() => setGoalModalOpen(false)}
+          />
+        </>
+      }
+      rows={composerRows({
+        textareaClass,
+        wrapperClass: layout.wrapperClass,
+        pickerPlacement: layout.pickerPlacement,
+        attachments,
+        onFilesSelected: (files) => acceptFiles(files),
+        onRemoveAttachment: removeAttachment,
+        modes,
+        onOpenGoal: () => setGoalModalOpen(true),
+        expanded,
+        onToggleExpand: expandable ? () => setExpanded((prev) => !prev) : undefined,
+        compact,
+        onExpandComposer: reopen,
+        notice,
+        dismissNotice,
+        value,
+        onChange,
+        submit,
+        sendDisabled: disabled || (!value.trim() && attachments.length === 0),
+        disabled,
+        appSettings,
+        rootPath,
+        enablePicker,
+        placeholder: placeholder ?? (disabled ? "Please select a workspace above to start prompting..." : "@ for files/agents; / for commands and skills (Paste images/files here)"),
+        onPaste: handlePaste,
+        variant,
+        textareaRef: growRef,
+        onTextareaReady,
+        voiceStatus,
+        voiceError: displayedVoiceError,
+        isMobile,
+        selectedModel,
+        onSelectModel: (model) => {
           setSelectedModel(model);
           onModelChange?.(model.provider, model.id);
-        }}
-        thinkingLevels={thinkingLevels}
-        currentThinking={currentThinking}
-        onSelectThinking={selectThinking}
-        onThinkingLevelChange={onThinkingLevelChange}
-        isGenerating={isGenerating}
-        chatRunning={chatRunning}
-        onStop={onStop}
-        onSend={() => submit()}
-        sendDisabled={disabled || (!value.trim() && attachments.length === 0)}
-        accessMode={accessMode}
-        onSelectAccess={onAccessModeChange}
-        showModel={showModel}
-        showThinking={showThinking}
-        showAccess={showAccess}
-        modes={modes}
-        onOpenGoal={() => setGoalModalOpen(true)}
-        voiceSupported={voiceSupported}
-        voiceListening={voiceListening}
-        voiceBusy={voiceBusy}
-        onVoiceToggle={handleVoiceToggle}
-        text={value}
-      />
-    </div>
+        },
+        thinkingLevels,
+        currentThinking,
+        onSelectThinking: selectThinking,
+        onThinkingLevelChange,
+        isGenerating,
+        chatRunning,
+        onStop,
+        accessMode,
+        onSelectAccess: onAccessModeChange,
+        showModel,
+        showThinking,
+        showAccess,
+        voiceSupported,
+        voiceListening,
+        voiceBusy,
+        onVoiceToggle: handleVoiceToggle,
+      })}
+    />
   );
 }

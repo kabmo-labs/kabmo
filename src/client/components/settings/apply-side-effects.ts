@@ -32,6 +32,7 @@ import { applyDocumentTheme } from '@/client/hooks/ui/theme';
 import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
+import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
 
@@ -77,5 +78,13 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   // effect the user watches happen.
   if (next.sidebarStyle !== previous.sidebarStyle) {
     applySidebarStyle(next.sidebarStyle);
+  }
+
+  // The composer style reorders the card's rows. The composer is NOT visible
+  // behind the settings modal, so this only has to keep the next render
+  // honest — but it is announced the same way, because the timeline is a
+  // separate subtree that never re-reads `appSettings`.
+  if (next.composerStyle !== previous.composerStyle) {
+    applyComposerStyle(next.composerStyle);
   }
 }

@@ -326,6 +326,117 @@
   margin-inline: auto;
 }
 
+/* ---- Composer style -------------------------------------------------------
+ *
+ * The composer's style states ORDER and STRUCTURE in JavaScript
+ * (`shared/lib/chat/composer/style.ts`) and its PIXELS here, keyed by two
+ * attributes the card carries. The split is not stylistic: Tailwind resolves
+ * two utilities of the same property by the order its RULES were emitted, so a
+ * style writing `rounded-md` into the same element as the expansion frame's
+ * `rounded-xl` rendered 12px regardless of class order (measured on `console`).
+ * These rules are plain CSS, unlayered, so they beat both utilities.
+ *
+ * `classic` states nothing: it is the shipped card, and every rule below is an
+ * OVERRIDE of it.
+ */
+[data-composer-style="calm"] {
+  border-radius: 1rem; /* rounded-2xl */
+}
+[data-composer-style="calm"] .composer-attach-row {
+  padding-bottom: 0.25rem;
+}
+[data-composer-style="calm"] .composer-toolbar-row {
+  padding-bottom: 0.375rem;
+}
+[data-composer-style="calm"] .composer-draft {
+  padding-inline: 0.875rem;
+  padding-top: 0.875rem;
+}
+
+[data-composer-style="console"] {
+  border-radius: 0.375rem; /* rounded-md */
+}
+[data-composer-style="console"] .composer-draft {
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+  font-size: 12.5px;
+}
+[data-composer-style="console"] .composer-attach-row,
+[data-composer-style="console"] .composer-toolbar-row {
+  padding-bottom: 0.25rem;
+}
+
+/* `glass` — a translucent capsule. The ONE style that departs from the paper
+ * identity in `DESIGN.md` §4 (flat, opaque, zero gradients), and it is here
+ * because it was asked for as a choice, not because the default changed.
+ *
+ * Everything is still a TOKEN: no raw hex, no chroma. The frosted surface is
+ * `--theme-paper` at 58%, the sheen is `--theme-ink` at 3–5%, so every palette
+ * in the catalog moves this card with it. That is also why the source render's
+ * "coloured glow behind send" is NOT reproduced: chroma is reserved for
+ * `--theme-error` (`DESIGN.md` §1), and a style is not a licence to break it.
+ *
+ * The blur has nothing to blur in the DOCKED state — the card sits below the
+ * transcript in normal flow, over the canvas — so there it reads as frosted
+ * paper. It has a real subject when the phone STRETCHES the composer over the
+ * transcript (`fixed inset-0`), which is the state the effect was drawn for.
+ */
+[data-composer-style="glass"] {
+  border-radius: 1.25rem;
+  border-color: color-mix(in srgb, var(--theme-ink) 12%, transparent);
+  background-color: color-mix(in srgb, var(--theme-paper) 58%, transparent);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-ink) 5%, transparent) 0%,
+    color-mix(in srgb, var(--theme-ink) 1.5%, transparent) 38%,
+    transparent 100%
+  );
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--theme-ink) 6%, transparent);
+}
+[data-composer-style="glass"] .composer-attach-row {
+  padding-bottom: 0.25rem;
+}
+[data-composer-style="glass"] .composer-toolbar-row {
+  padding-bottom: 0.5rem;
+}
+[data-composer-style="glass"] .composer-draft {
+  padding-inline: 1rem;
+  padding-top: 0.875rem;
+}
+/* A browser without `backdrop-filter` gets an opaque card rather than a
+ * half-transparent one with nothing behind the blur: a 58% paper card over the
+ * canvas is legible, a 58% card over the transcript is not. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-composer-style="glass"] {
+    background-color: var(--theme-paper);
+  }
+}
+
+/* A card that FILLS the viewport has no corners. The style rules above set a
+ * radius as plain CSS, so they beat the expansion frame's own `rounded-none`
+ * (measured: a stretched `glass` card kept 20px over a `fixed inset-0` surface,
+ * showing the canvas at its corners — and `console` kept 6px the same way).
+ * One rule, after every style, stated once. */
+[data-composer-style][data-composer-expanded="true"] {
+  border-radius: 0;
+}
+
+/* `stage` differs ONLY while the chat is still empty, and only in the card and
+ * the draft: a taller, softer frame so the first prompt is not written into a
+ * 68px slot in the middle of a blank screen. `hero` is written by the composer
+ * from the transcript's own length. */
+[data-composer-hero="true"] {
+  border-radius: 1rem;
+  border-color: color-mix(in srgb, var(--theme-ink) 15%, transparent);
+}
+[data-composer-hero="true"] .composer-draft {
+  min-height: 132px;
+  padding-inline: 1rem;
+  padding-block: 0.875rem;
+}
+
+
 /* Markdown rendered output (marked) — mirrors the previous react-markdown
  * component styling with semantic tags. */
 :root {

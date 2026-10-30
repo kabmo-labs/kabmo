@@ -49,7 +49,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
       {/* No separator and no second surface: the card is ONE colour, so the
           header, the draft and the toolbar read as one panel. A hairline over
           a tinted strip made the composer look like three stacked bars. */}
-      <div className="flex items-center flex-wrap gap-1.5 px-3 py-2 text-ink/60">
+      <div className="composer-attach-row flex items-center flex-wrap gap-1.5 px-3 py-2 text-ink/60">
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center justify-center hover:bg-ink/5 p-1 rounded transition-colors text-ink/60 hover:text-ink shrink-0"

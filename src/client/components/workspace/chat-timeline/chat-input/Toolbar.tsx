@@ -107,7 +107,7 @@ export function ComposerToolbar({
       // footer read as a second, heavier bar under the draft. A 32px target
       // still clears the 28px minimum for a touch control while bringing the
       // row to 44px — the same height as the compact textarea above it.
-      className="@container flex items-center justify-between rounded-b-[inherit] px-3 py-1.5"
+      className="composer-toolbar-row @container flex items-center justify-between rounded-b-[inherit] px-3 py-1.5"
     >
       <div className={`flex items-center min-w-0 ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
         {showModel && (

@@ -99,6 +99,13 @@ export interface ChatInputProps {
    */
   expandable?: boolean;
   /**
+   * The chat has no messages yet. Only the `stage` composer style reads it:
+   * an empty session draws a taller draft so the first prompt is not written
+   * into a 68px slot in the middle of a blank screen. Every other style — and
+   * every caller that omits it — draws the docked shape.
+   */
+  hero?: boolean;
+  /**
    * The reader has scrolled back through the transcript. On a phone with an
    * empty draft the composer then gives its height back to the conversation
    * (`composerExpansion`'s `compact`); it returns to full size as soon as the

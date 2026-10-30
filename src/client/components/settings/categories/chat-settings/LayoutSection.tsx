@@ -50,7 +50,7 @@ export function ChatLayoutSection({ settings, onUpdate }: ChatLayoutSectionProps
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="group" aria-label="Chat width">
         {CHAT_WIDTH_MODES.map((mode) => {
           const copy = CHAT_WIDTH_MODE_COPY[mode];
           const isSelected = selected === mode;

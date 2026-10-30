@@ -306,6 +306,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                 // transcript, so a phone composer may give its height back.
                 // `composerExpansion` ignores it on a desktop.
                 shrinkWhileReading={readingBack}
+                // No turns yet: the `stage` composer style draws its wider,
+                // taller card only here.
+                hero={localMessages.length === 0 && !timelineRunning}
               />
             )}
           </>

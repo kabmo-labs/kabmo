@@ -303,6 +303,9 @@ export function EmptyWorkspacePrompt({
           deferredComposerPickRef={deferredComposerPickRef}
           variant={variant}
           expandable
+          // A brand-new chat has no turns: the `stage` composer style draws its
+          // wider, taller card here and nowhere else.
+          hero={messages.length === 0}
         />
       </div>
     </div>

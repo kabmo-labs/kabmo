@@ -85,7 +85,9 @@ test.describe('chat width modes', () => {
 
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('omp:open-settings', { detail: { category: 'chats' } })));
     await expect(page.getByText('Chat Width', { exact: true })).toBeVisible();
-    await page.getByText('Compact', { exact: true }).click();
+    // Scoped to the width cards: "Compact" is also a tool-render style, so a
+    // bare text locator resolves to two cards and strict mode refuses it.
+    await page.getByRole('group', { name: 'Chat width' }).getByText('Compact', { exact: true }).click();
 
     await expect
       .poll(() => page.evaluate(() => document.documentElement.getAttribute('data-chat-width')))
