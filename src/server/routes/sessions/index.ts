@@ -15,6 +15,7 @@ import { listSubagents, readSubagentTranscript } from '@/server/routes/sessions/
 import { cancelSubagent, steerSubagent } from '@/server/routes/sessions/subagent-control';
 import { deleteSession } from '@/server/routes/sessions/delete';
 import { batchDeleteSessions } from '@/server/routes/sessions/batch-delete';
+import { batchArchiveSessions } from '@/server/routes/sessions/batch-archive';
 
 export const sessionsBindings: HandlerBinding[] = [
   ...bindingsFor(sessionsList, '/api/sessions/list'),
@@ -22,6 +23,9 @@ export const sessionsBindings: HandlerBinding[] = [
   // batch route is POST while `:sessionId` answers DELETE, so an id route
   // winning the match would turn every batch into a 405.
   { method: 'POST', path: '/api/sessions/batch-delete', handler: batchDeleteSessions },
+  // The archive batch is static too, and must be registered before the
+  // `:sessionId` routes for the same reason as batch-delete.
+  { method: 'POST', path: '/api/sessions/batch-archive', handler: batchArchiveSessions },
   ...bindingsFor(sessionsFolder, '/api/sessions/:sessionId'),
   // DELETE-only on the same path the folder loader answers GET on: mounting it
   // through `actionBindings` would register a 405 GET fallback that Elysia

@@ -6,11 +6,13 @@
 /**
  * The batch bar's contract, rendered.
  *
- * Three properties are load-bearing and each is a way a batch delete can go
+ * The properties here are load-bearing and each is a way a batch action can go
  * wrong: the bar names the mode's noun (a session batch that says "workspace"
- * deletes the wrong thing), Delete is refused with nothing selected, and
- * Select-all is refused once everything already is — a control that looks
- * available but does nothing is how a user concludes the feature is broken.
+ * deletes the wrong thing), Delete and Archive are refused with nothing
+ * selected, Select-all is refused once everything already is, and Archive never
+ * appears in workspace mode — a workspace has no archive state. A control that
+ * looks available but does nothing is how a user concludes the feature is
+ * broken.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
@@ -48,7 +50,7 @@ afterEach(() => {
 });
 
 async function mount(overrides: Partial<BatchActionBarProps> = {}) {
-  const calls = { selectAll: 0, unselectAll: 0, del: 0, cancel: 0 };
+  const calls = { selectAll: 0, unselectAll: 0, del: 0, arch: 0, cancel: 0 };
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
@@ -60,6 +62,7 @@ async function mount(overrides: Partial<BatchActionBarProps> = {}) {
       onSelectAll: () => { calls.selectAll += 1; },
       onUnselectAll: () => { calls.unselectAll += 1; },
       onDelete: () => { calls.del += 1; },
+      onArchive: () => { calls.arch += 1; },
       onCancel: () => { calls.cancel += 1; },
       ...overrides,
     }), container);
@@ -125,6 +128,40 @@ describe('BatchActionBar', () => {
   test('a running delete disables every control and says so', async () => {
     const { el } = await mount({ count: 2, busy: true });
     expect(el.textContent).toContain('Deleting…');
+    for (const button of Array.from(el.querySelectorAll('button'))) {
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+
+  test('Archive is drawn in session mode and names the session noun', async () => {
+    const { el, calls } = await mount({ count: 2, total: 5 });
+    const archive = buttonContaining(el, 'Archive');
+    expect(archive).not.toBeNull();
+    expect(archive?.textContent).toContain('2 sessions');
+    expect(archive?.disabled).toBe(false);
+    await act(async () => { archive?.click(); });
+    expect(calls.arch).toBe(1);
+  });
+
+  test('Archive is refused with nothing selected', async () => {
+    const { el, calls } = await mount({ count: 0 });
+    const archive = buttonContaining(el, 'Archive');
+    expect(archive?.disabled).toBe(true);
+    await act(async () => { archive?.click(); });
+    expect(calls.arch).toBe(0);
+  });
+
+  test('Archive is never drawn in workspace mode — a workspace has no archive state', async () => {
+    const { el } = await mount({ mode: 'workspace', count: 2, total: 4 });
+    expect(buttonContaining(el, 'Archive')).toBeNull();
+    expect(buttonContaining(el, 'Delete')).not.toBeNull();
+  });
+
+  test('a running archive says so on its own control, not on Delete', async () => {
+    const { el } = await mount({ count: 2, archiving: true });
+    expect(el.textContent).toContain('Archiving…');
+    expect(el.textContent).not.toContain('Deleting…');
+    // Every control is locked while the request is unresolved.
     for (const button of Array.from(el.querySelectorAll('button'))) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }

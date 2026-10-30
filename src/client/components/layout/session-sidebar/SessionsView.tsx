@@ -16,6 +16,7 @@ import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
 import { useScheduledTaskCount } from '@/client/hooks/workspace/scheduled-tasks';
 import { cloneWorkspaceFolder, createWorkspaceFolder } from '@/client/hooks/workspace/new-workspace';
 import { useSidebarBatch } from '@/client/hooks/workspace/sidebar-batch';
+import { archiveOutcomeMessage } from '@/client/hooks/workspace/batch-archive';
 import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
 import { BatchDeleteModal } from '@/client/components/common/batch-selection/BatchDeleteModal';
 import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
@@ -89,7 +90,23 @@ export function SessionsView({
   // confirmation dialog's state all come from one hook shared with the phone
   // drawer, so the two layouts cannot count or send a different set.
   const batch = useSidebarBatch(processedFolders, showArchived, refreshNow);
-  const { selection, deleteRun, binding: batchBinding, scopeFolder, available: batchAvailable, selected: batchSelected } = batch;
+  const { selection, deleteRun, archiveRun, binding: batchBinding, scopeFolder, available: batchAvailable, selected: batchSelected } = batch;
+
+  /**
+   * Archive the selection. Reversible, so there is no confirmation dialog: the
+   * rows move to the archive view, the sidebar refreshes once from the server's
+   * own signal, and the run reports itself as one toast. A request-level error
+   * keeps the selection so the user can retry; a completed run leaves the mode
+   * because the rows it named are no longer in this list.
+   */
+  const handleArchiveSelected = () => {
+    void archiveRun.archive(batchSelected).then((result) => {
+      if (!result) return;
+      const report = archiveOutcomeMessage(result);
+      if (report) pushToast(report.message, report.tone);
+      if (!result.error) selection.end();
+    });
+  };
 
   /** The folder whose context a new session will inherit — same resolution
    *  the send path uses, so the prewarmed cwd matches the spawn cwd. The
@@ -205,10 +222,12 @@ export function SessionsView({
             count={batchSelected.length}
             total={batchAvailable.length}
             busy={deleteRun.isDeleting}
+            archiving={archiveRun.isArchiving}
             scopeLabel={scopeFolder?.name}
             onSelectAll={() => selection.selectAllOf(batchAvailable)}
             onUnselectAll={() => selection.unselectAllOf(batchAvailable)}
             onDelete={() => deleteRun.request(batchSelected)}
+            onArchive={handleArchiveSelected}
             onCancel={selection.end}
           />
         )}

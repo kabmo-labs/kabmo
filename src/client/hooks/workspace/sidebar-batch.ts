@@ -27,9 +27,11 @@
 import { useCallback } from 'preact/hooks';
 import { useBatchSelection } from '@/client/hooks/workspace/batch-selection';
 import { useBatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import { useBatchArchiveRun } from '@/client/hooks/workspace/batch-archive-run';
 import { liveSelection, selectableSessionIds } from '@/shared/lib/workspace/batch-select';
 import type { BatchSelectionHandle } from '@/client/hooks/workspace/batch-selection';
 import type { BatchDeleteRun } from '@/client/hooks/workspace/batch-delete-run';
+import type { BatchArchiveRun } from '@/client/hooks/workspace/batch-archive-run';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { WorkspaceFolderData } from '@/shared/types';
 
@@ -38,6 +40,8 @@ export interface SidebarBatch {
   selection: BatchSelectionHandle;
   /** The same machine's delete run, for the bar and the confirmation dialog. */
   deleteRun: BatchDeleteRun;
+  /** The same machine's archive run, for the bar's Archive action. */
+  archiveRun: BatchArchiveRun;
   /** Present only while a mode is active. */
   binding: BatchBinding | undefined;
   /** The workspace a session batch is scoped to, or null. */
@@ -57,6 +61,7 @@ export function useSidebarBatch(
 ): SidebarBatch {
   const selection = useBatchSelection();
   const deleteRun = useBatchDeleteRun(refresh);
+  const archiveRun = useBatchArchiveRun(refresh);
 
   const scopeFolder = selection.scopeFolderId === null
     ? null
@@ -86,5 +91,5 @@ export function useSidebarBatch(
     else selection.begin('workspace');
   }, [selection]);
 
-  return { selection, deleteRun, binding, scopeFolder, available, selected, toggleWorkspaceSelection };
+  return { selection, deleteRun, archiveRun, binding, scopeFolder, available, selected, toggleWorkspaceSelection };
 }

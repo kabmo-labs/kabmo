@@ -16,6 +16,7 @@ import { phoneLeftStripVisible } from '@/shared/lib/workspace/mobile-dock';
 import { MobileDockBody, MobileDockStrip } from '@/client/components/mobile/mobile-session-sidebar/Dock';
 import { MobileDrawerDialogs } from '@/client/components/mobile/mobile-session-sidebar/Dialogs';
 import { useDrawerState } from '@/client/components/mobile/mobile-session-sidebar/use-drawer';
+import { archiveOutcomeMessage } from '@/client/hooks/workspace/batch-archive';
 import { BatchActionBar } from '@/client/components/common/batch-selection/BatchActionBar';
 import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
 
@@ -96,7 +97,7 @@ export function MobileSessionSidebar({
     sessionStatus,
     handleSelectSession,
   } = controller;
-  const { selection, deleteRun, binding: batchBinding, scopeFolder, available, selected } = batch;
+  const { selection, deleteRun, archiveRun, binding: batchBinding, scopeFolder, available, selected } = batch;
   const sidebarStyle = useSidebarStyle();
 
   // Modals state (matching desktop)
@@ -128,6 +129,18 @@ export function MobileSessionSidebar({
   const handleNewSessionAndClose = () => {
     onNewSession();
     onClose();
+  };
+
+  // Archive the selection — the same reversible flow the desktop dispatcher
+  // runs: no confirmation, one toast, leave the mode once the rows have moved
+  // to the archive view. A request-level error keeps the selection to retry.
+  const handleArchiveSelected = () => {
+    void archiveRun.archive(selected).then((result) => {
+      if (!result) return;
+      const report = archiveOutcomeMessage(result);
+      if (report) pushToast(report.message, report.tone);
+      if (!result.error) selection.end();
+    });
   };
 
   // Same dismissal as the toolbar's New Session: the pending session is opened
@@ -256,10 +269,12 @@ export function MobileSessionSidebar({
             count={selected.length}
             total={available.length}
             busy={deleteRun.isDeleting}
+            archiving={archiveRun.isArchiving}
             scopeLabel={scopeFolder?.name}
             onSelectAll={() => selection.selectAllOf(available)}
             onUnselectAll={() => selection.unselectAllOf(available)}
             onDelete={() => deleteRun.request(selected)}
+            onArchive={handleArchiveSelected}
             onCancel={selection.end}
           />
         )}
