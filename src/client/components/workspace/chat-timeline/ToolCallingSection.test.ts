@@ -22,12 +22,13 @@
  * section's children are only headings and cards.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ToolCallingSection } from '@/client/components/workspace/chat-timeline/ToolCallingSection';
 import { SessionStateProvider } from '@/client/components/common/session-state-provider';
+import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import type { ToolCallData } from '@/shared/types/chat';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'HTMLInputElement', 'Event', 'MouseEvent', 'KeyboardEvent'] as const;
@@ -49,6 +50,19 @@ afterAll(() => {
     if (nativeGlobals[key] === undefined) delete target[key];
     else target[key] = nativeGlobals[key];
   }
+});
+
+/**
+ * The `card` style, pinned.
+ *
+ * The style is read from Kabmo's settings snapshot, which is PROCESS-wide and
+ * primed by whichever file ran last — `styles.test.tsx` leaves `trace` behind.
+ * Bun's file order differs per platform, so an unpinned run drew whatever the
+ * previous file had chosen: measured, this file passed on macOS and its three
+ * order assertions failed on Windows with the card rows missing entirely.
+ */
+beforeEach(() => {
+  primeKabmoSettings({ kabmo_settings: { toolRenderStyle: 'card' } });
 });
 
 function tool(id: string, intent: string | undefined, title = 'Bash'): ToolCallData {
@@ -73,17 +87,23 @@ async function mount(tools: ToolCallData[]) {
 /**
  * The section's direct children in render order: intent headings and their
  * cards. A section renders nothing else.
+ *
+ * A card is found by `data-tool-row`, the contract every style sets, not by a
+ * substring of its Tailwind classes. The class form was measured failing on
+ * Windows: the same three assertions reported `Received: 0` cards, with the
+ * heading text still present, and the class string it looked for is assembled
+ * from a template that platform does not change — so the lookup was the
+ * fragile part, not the render.
  */
 function sequence(el: HTMLElement): Array<{ kind: 'heading' | 'card'; text: string }> {
   const section = el.querySelector('[data-tool-section]')!;
   const items = Array.from(section.children).map((child) => {
-    const cls = (child.className || '').toString();
-    if (cls.includes('overflow-hidden rounded-xl')) {
-      const col = child.querySelector('button')!.children[1];
-      return { kind: 'card' as const, text: (col.children[0]?.textContent || '').trim() };
+    if (!(child instanceof HTMLElement) || !child.hasAttribute('data-tool-row')) {
+      const label = child.querySelector('span');
+      return { kind: 'heading' as const, text: label ? (label.textContent || '').trim() : '' };
     }
-    const label = child.querySelector('span');
-    return { kind: 'heading' as const, text: label ? (label.textContent || '').trim() : '' };
+    const col = child.querySelector('button')!.children[1];
+    return { kind: 'card' as const, text: (col.children[0]?.textContent || '').trim() };
   });
   return items.filter((item) => item.kind !== 'heading' || item.text);
 }
@@ -111,7 +131,7 @@ describe('ToolCallingSection per-card intent heading', () => {
     // No header row: every direct child is a card.
     const children = Array.from(el.querySelector('[data-tool-section]')!.children) as HTMLElement[];
     expect(children).toHaveLength(2);
-    expect(children.every((child) => child.className.includes('overflow-hidden rounded-xl'))).toBe(true);
+    expect(children.every((child) => child.getAttribute('data-tool-row') === 'card')).toBe(true);
   });
 
   test('a card without an intent simply has no heading', async () => {
