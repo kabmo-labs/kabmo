@@ -5,6 +5,12 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.1.1...kabmo-sdk/v0.1.2) — 2026-10-30
+
+### Fixed
+
+* **command-runner:** give a run the PATH a terminal would have ([8750ba2](https://github.com/kabmo-labs/kabmo/commit/8750ba2bb365c032aa2cc2d61ef1f38b141195cd)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.1.1](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.1.0...kabmo-sdk/v0.1.1) — 2026-10-29
 
 ### Fixed
