@@ -112,14 +112,28 @@ export const test = base.extend<HarnessFixtures & AppFixtures & InternalFixtures
   app: async ({ harness, page }, use) => {
     const server = await harness('mock');
     const errors: string[] = [];
+    const gate: NavigationGate = { armed: false };
+    navigations.set(page, gate);
     page.on('console', (message) => {
+      // The first message from the new document is its init script's marker;
+      // anything the ARMED window swallowed before it belonged to the document
+      // that navigation discarded.
+      if (gate.armed && message.text() !== BOOT_MARKER) return;
+      gate.armed = false;
       if (message.type() === 'error' && !isIgnorable(message.text())) {
         errors.push(message.text());
       }
     });
     page.on('pageerror', (error) => {
+      // Same window as the console gate: WebKit also raises a page error when
+      // it cancels a request during navigation ("… due to access control
+      // checks"), and that is the discarded document, not the new one.
+      if (gate.armed) return;
       if (!isIgnorable(error.message)) errors.push(error.message);
     });
+    // The marker must be an ARGUMENT: the init script runs in the page, where a
+    // module constant does not exist (measured: `Can't find variable`).
+    await page.addInitScript((marker: string) => console.log(marker), BOOT_MARKER);
     await openApp(page, server.baseURL);
     await use(page);
     // After the spec, not during: a spec that asserts on the console itself
@@ -127,6 +141,44 @@ export const test = base.extend<HarnessFixtures & AppFixtures & InternalFixtures
     expect(errors, `console/page errors:\n${errors.join('\n')}`).toEqual([]);
   },
 });
+
+/**
+ * Which console messages belong to the document being navigated AWAY from.
+ *
+ * A reload aborts every request in flight, and WebKit reports a cancelled
+ * fetch as a rejected promise whose handler logs `TypeError: Load failed` —
+ * measured on WebKit 27: `/api/settings/projects` was listed by the browser as
+ * `cancelled`, its `.catch` logged `Failed to load workspace folders: …`, and
+ * the message arrived on the page's console stream after `reload()` had
+ * already returned. It is the discarded document reporting its own teardown,
+ * not the new one failing to boot, and there is no way to tell the two apart
+ * from the message text — the same string is a genuine network failure on a
+ * live page.
+ *
+ * So the boundary is the navigation itself: `reloadApp` arms the gate, and the
+ * first console message from the new document disarms it. Every document
+ * announces itself with `BOOT_MARKER` from an init script, so the disarm is an
+ * event rather than a timeout.
+ */
+const BOOT_MARKER = '__kabmo_e2e_boot__';
+
+interface NavigationGate {
+  armed: boolean;
+}
+
+const navigations = new WeakMap<Page, NavigationGate>();
+
+/**
+ * Reload the app, ignoring console output from the document being discarded.
+ *
+ * Use this instead of `page.reload()` in a spec that asserts on console
+ * cleanliness; see the `NavigationGate` note above for the measurement.
+ */
+export async function reloadApp(page: Page): Promise<void> {
+  const gate = navigations.get(page);
+  if (gate) gate.armed = true;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+}
 
 /** Console errors seen so far, for a spec that wants to assert on them itself. */
 export function collectConsoleErrors(page: Page): string[] {

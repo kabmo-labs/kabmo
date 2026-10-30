@@ -256,14 +256,16 @@ test.describe('mobile left dock', () => {
     expect(wide).toBe(true);
 
     await page.setViewportSize({ width: 412, height: 900 });
-    const fit = await chip.evaluate((element) => {
-      const strip = element.parentElement as HTMLElement;
-      const chipRect = element.getBoundingClientRect();
-      const stripRect = strip.getBoundingClientRect();
-      return { left: chipRect.left, right: chipRect.right, stripLeft: stripRect.left, stripRight: stripRect.right };
-    });
-    expect(fit.left).toBeGreaterThanOrEqual(fit.stripLeft - 1);
-    expect(fit.right).toBeLessThanOrEqual(fit.stripRight + 1);
+    // The reveal is driven by a ResizeObserver, so it lands a frame after the
+    // resize is applied; a single synchronous measurement races it.
+    const fits = () =>
+      chip.evaluate((element) => {
+        const strip = element.parentElement as HTMLElement;
+        const chipRect = element.getBoundingClientRect();
+        const stripRect = strip.getBoundingClientRect();
+        return chipRect.left >= stripRect.left - 1 && chipRect.right <= stripRect.right + 1;
+      });
+    await expect.poll(fits, { timeout: 10_000 }).toBe(true);
 
     workspace.dispose();
   });

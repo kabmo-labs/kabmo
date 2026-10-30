@@ -32,10 +32,11 @@
  */
 
 import type { EditorState, Extension, Line } from '@codemirror/state';
-import { bracketMatching, foldGutter, foldKeymap, foldService } from '@codemirror/language';
+import { bracketMatching, codeFolding, foldGutter, foldKeymap, foldService } from '@codemirror/language';
 import { keymap } from '@codemirror/view';
 
 import { bracketGuide } from '@/client/components/common/code-surface/bracket-guide';
+import { foldPlaceholderDom } from '@/client/components/common/code-surface/fold-placeholder';
 import { indentFoldService, MAX_FOLD_LINES } from '@/client/components/common/code-surface/fold';
 
 /** The brackets a line may open, and what closes each. */
@@ -130,5 +131,9 @@ export const diffFoldingExtensions: Extension[] = [
   braceFoldService,
   indentFoldService,
   foldGutter(),
+  // The package placeholder is lost to the editor's mouse selection on WebKit;
+  // `foldPlaceholderDom` cancels the press so the click survives. Listed after
+  // `foldGutter()` because a later `codeFolding()` config wins the merge.
+  codeFolding({ placeholderDOM: foldPlaceholderDom }),
   keymap.of(foldKeymap),
 ];

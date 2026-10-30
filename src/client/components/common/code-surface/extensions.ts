@@ -48,7 +48,7 @@ import {
 } from '@codemirror/view';
 import { highlightSelectionMatches } from '@codemirror/search';
 import { history } from '@codemirror/commands';
-import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
+import { bracketMatching, codeFolding, foldGutter, indentUnit } from '@codemirror/language';
 
 import { commentSyntaxFor } from '@/shared/lib/code/editor/comment-syntax';
 import type { EditorCommand } from '@/shared/lib/code/editor/keymap';
@@ -56,6 +56,7 @@ import { bracketGuide } from '@/client/components/common/code-surface/bracket-gu
 import { indentDataExtension, indentExtensions } from '@/client/components/common/code-surface/indent';
 import { typingExtensions, type EditorTypingOptions } from '@/client/components/common/code-surface/typing';
 import { indentFoldService } from '@/client/components/common/code-surface/fold';
+import { foldPlaceholderDom } from '@/client/components/common/code-surface/fold-placeholder';
 import { indentGuides } from '@/client/components/common/code-surface/indent-guide';
 import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
@@ -288,6 +289,11 @@ export function surfaceExtensions({
     // dropped silently — verified: no placeholder, no error.
     indentFoldService,
     foldGutter(),
+    // `foldGutter()` brings `codeFolding()` with its package placeholder, which
+    // WebKit loses to the editor's own mouse selection — see
+    // `fold-placeholder.ts` for the measurement. A later config wins in
+    // `combineConfig`, so this one replaces the package default.
+    codeFolding({ placeholderDOM: foldPlaceholderDom }),
     themeCompartment.of(shikiHighlight(language, themes)),
     surfaceTheme(),
     // Line blame, when the panel turned it on: the labels, the state field they

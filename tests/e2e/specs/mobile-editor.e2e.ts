@@ -94,6 +94,15 @@ test.describe('mobile editor', () => {
 
     const scroller = page.locator('[data-testid="editor-scroller"]').first();
     await expect(scroller).toBeVisible({ timeout: 15_000 });
+    // Every write of the session's UI state, from before the scroll: the
+    // debounced save can land either before or after the poll below returns,
+    // and `waitForResponse` attaches too late for the first case.
+    const stateWrites: string[] = [];
+    page.on('request', (request) => {
+      if (request.method() !== 'POST') return;
+      if (!new URL(request.url()).pathname.endsWith('/state')) return;
+      stateWrites.push(request.postData() ?? '');
+    });
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 15_000 })
       .toBeGreaterThan(500);
@@ -120,10 +129,13 @@ test.describe('mobile editor', () => {
       .toBeGreaterThan(500);
     const leftAt = await scroller.evaluate((el) => el.scrollTop);
 
-    // The write is debounced, so the POST is the gate rather than a duration.
-    await page.waitForResponse(
-      (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/state'),
-    );
+    // The write is debounced, so the SAVE is the gate rather than a duration —
+    // and it must be the write carrying THIS offset. A save queued during the
+    // restore replay (which applies the remembered 0) can land in between:
+    // measured, the reopen then restored 0 and the spec failed one run in ten.
+    await expect
+      .poll(() => stateWrites.some((body) => body.includes(String(leftAt))), { timeout: 15_000 })
+      .toBe(true);
 
     // Close the overlay by its OWN control. A loose `/close/` matches the
     // drawer's "Close right sidebar" behind the overlay, whose click the overlay

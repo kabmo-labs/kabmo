@@ -19,7 +19,7 @@
  * a container to scope every later query, not a name the UI already carries.
  */
 
-import { test, expect } from '../fixtures/app';
+import { test, expect, reloadApp } from '../fixtures/app';
 import { TESTID } from '../fixtures/selectors';
 
 test.describe('shell', () => {
@@ -41,7 +41,11 @@ test.describe('shell', () => {
     // The `app` fixture already asserts zero errors at teardown; this spec
     // exists so the assertion has a name and a failing line of its own, and so
     // a reload is exercised too (a boot that only works on the first paint).
-    await app.reload({ waitUntil: 'domcontentloaded' });
+    //
+    // `reloadApp`, not `page.reload()`: the discarded document's aborted
+    // fetches are logged by WebKit as console errors after the reload returns,
+    // and only the fixture knows which messages came from before it.
+    await reloadApp(app);
     await expect(app.locator(`[data-testid="${TESTID.appRoot}"]`)).toBeVisible();
     const server = await harness('mock');
     expect(server.port).toBeGreaterThan(0);

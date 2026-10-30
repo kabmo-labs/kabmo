@@ -12,6 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { X509Certificate } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -51,13 +52,12 @@ describe('ensureTlsCertificate', () => {
     expect(fs.existsSync(result.certPath)).toBe(true);
     expect(fs.existsSync(result.keyPath)).toBe(true);
 
-    // A certificate that openssl cannot read back is not a certificate.
-    const parsed = Bun.spawnSync({
-      cmd: ['openssl', 'x509', '-in', result.certPath, '-noout', '-ext', 'subjectAltName'],
-      stdout: 'pipe', stderr: 'pipe',
-    });
-    expect(parsed.exitCode).toBe(0);
-    const san = parsed.stdout.toString();
+    // A certificate the runtime cannot parse is not a certificate. Read it back
+    // through `node:crypto` rather than `openssl x509 -ext`: the `-ext` flag is
+    // OpenSSL 1.1.1+, and macOS ships LibreSSL 3.3.6 on PATH, where the flag is
+    // rejected as an unknown option — a red test that says nothing about the pair.
+    const parsed = new X509Certificate(fs.readFileSync(result.certPath));
+    const san = parsed.subjectAltName ?? '';
     // Loopback under both names a browser may use, or the warning is a name
     // mismatch on top of the self-signed warning.
     expect(san).toContain('DNS:localhost');
