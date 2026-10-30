@@ -214,6 +214,27 @@ variable names are case-insensitive.
 
 `KABMO_HOST_ENV_NAMES` and `KABMO_HOST_ENV_PREFIXES` are the lists themselves.
 
+### `withToolchainPath(env, platform)`
+
+The other half of the same rule: a Kabmo started by launchd — the desktop app, a
+LaunchAgent, `--launch-mode=daemon` — inherits `/usr/bin:/bin:/usr/sbin:/sbin`
+instead of the user's login-shell PATH, so a bare `bun`, `cargo` or `go` is not
+found and a plugin's `Bun.spawn` fails with `Executable not found in $PATH`.
+
+Returns a copy of `env` whose `PATH` also names `$HOME/.bun/bin`,
+`$HOME/.local/bin`, `$HOME/.cargo/bin`, `/opt/homebrew/bin`,
+`/opt/homebrew/sbin`, `/usr/local/bin` and the POSIX defaults. The inherited
+entries keep their order and precedence — the repair only APPENDS, so a version
+manager's shim or a project's `.bin` still wins. Idempotent, a no-op on Windows
+(a GUI launch there inherits the user environment), and `$HOME` is read from the
+`env` it is given rather than from `os.homedir()`.
+
+Call it beside `stripKabmoHostEnv` for the same child: one removes what belongs
+to Kabmo, the other adds what a GUI launch never had.
+
+`KABMO_TOOLCHAIN_PATH_DIRS`, `KABMO_TOOLCHAIN_HOME_DIRS` and
+`toolchainPathDirs(env, platform)` are the lists and the assembly behind it.
+
 ### `signalName(signalCode)`
 
 The label for the signal that ended a child process, from

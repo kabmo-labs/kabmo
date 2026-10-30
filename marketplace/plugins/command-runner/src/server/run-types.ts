@@ -54,4 +54,10 @@ export interface RunnerDeps {
   log(message: string, detail?: unknown): void;
   /** Read a plugin setting. */
   setting<T extends string | number | boolean>(key: string): Promise<T | undefined>;
+  /**
+   * The environment a run starts from — Kabmo's own, because this plugin's
+   * server half runs inside the host's process. A test hands in a minimal one
+   * to exercise the PATH repair without touching the runner's real environ.
+   */
+  env?: Record<string, string | undefined>;
 }

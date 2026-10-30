@@ -28,52 +28,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { RunRegistry } from './runner';
-import { scopeKeyOf } from './run-store';
-import { RUN_BUFFER_BYTES, ringText, stripAnsi } from './ring';
-import type { RunnerState } from '../protocol';
-
-/** A registry whose publish/log/setting calls are recorded instead of sent. */
-function makeRegistry(settings: Record<string, unknown> = {}) {
-  const published: RunnerState[] = [];
-  const logs: string[] = [];
-  const registry = new RunRegistry({
-    publish: (state) => published.push(state),
-    log: (message) => logs.push(message),
-    setting: async <T extends string | number | boolean>(key: string) => settings[key] as T | undefined,
-  });
-  return { registry, published, logs };
-}
-
-/**
- * Wait for a condition, so a test never sleeps for a FIXED time.
- *
- * The clock is real here on purpose, and this is the documented exception:
- * every condition below is "an actual OS process reached a state" — a `sleep 30`
- * child that the group kill reaped, a pipe that drained. Fake timers cannot
- * advance a real process, and awaiting the registry's own promise is not
- * possible because it deliberately keeps no per-run promise (a panel reads state,
- * it does not await a run). The poll interval is 10 ms and the bound is generous,
- * so a pass costs milliseconds and a failure names the condition.
- */
-async function waitFor(done: () => boolean, timeoutMs = 10_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    if (done()) return;
-    if (Date.now() >= deadline) throw new Error('waitFor timed out');
-    const gate = Promise.withResolvers<void>();
-    setTimeout(gate.resolve, 10);
-    await gate.promise;
-  }
-}
-
-const SCOPE = scopeKeyOf('/ws', '.');
-
-/** The run a registry holds, by its only id. */
-function onlyRun(state: RunnerState) {
-  expect(state.runs).toHaveLength(1);
-  return state.runs[0];
-}
+import { RUN_BUFFER_BYTES } from './ring';
+import { makeRegistry, onlyRun, SCOPE, waitFor } from './runner-harness';
 
 describe('RunRegistry', () => {
   test('runs a command and records its output and exit code', async () => {
@@ -307,29 +263,3 @@ describe('RunRegistry', () => {
     expect(registry.log('nope', 1024)).toBeNull();
   });
 });
-
-describe('ringText', () => {
-  test('returns the last N bytes of the ring', () => {
-    expect(ringText({ chunks: [Buffer.from('abcdefghij')], held: 10 }, 4)).toBe('ghij');
-  });
-
-  test('returns everything when the tail is larger than the buffer', () => {
-    expect(ringText({ chunks: [Buffer.from('abc')], held: 3 }, 1024)).toBe('abc');
-  });
-});
-
-describe('stripAnsi', () => {
-  test('removes colour and cursor sequences', () => {
-    // What a coloured build actually emits, including a 256-colour code.
-    expect(stripAnsi('\u001b[0m\u001b[2;38;5;11m$\u001b[0m make build')).toBe('$ make build');
-  });
-
-  test('removes an OSC sequence terminated by BEL', () => {
-    expect(stripAnsi('\u001b]0;title\u0007plain')).toBe('plain');
-  });
-
-  test('leaves ordinary text alone', () => {
-    expect(stripAnsi('12 pass · 0 fail')).toBe('12 pass · 0 fail');
-  });
-});
-

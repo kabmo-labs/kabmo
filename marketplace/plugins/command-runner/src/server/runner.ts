@@ -12,7 +12,7 @@
  * ONE run and needs the process, while everything there happens to the SET.
  */
 
-import { signalName, stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
+import { signalName, stripKabmoHostEnv, withToolchainPath } from '@kabmo-labs/kabmo-sdk';
 
 import type { Run } from './run-types';
 import { appendToRing, emptyRing } from './ring';
@@ -20,6 +20,23 @@ import { RunStore } from './run-store';
 
 /** How often a growing buffer is announced on the topic, per run. */
 const OUTPUT_PUBLISH_MS = 250;
+
+/**
+ * The absolute path of a bare executable, or the name unchanged.
+ *
+ * `Bun.spawn` resolves a bare name against the `PATH` of the env it is handed —
+ * measured on 1.4.4, and that is why the repaired PATH alone would be enough.
+ * An absolute path removes the dependency on that detail anyway, and it is what
+ * turns "the file is there but the spawn searched elsewhere" into an ordinary
+ * `Executable not found` only when the binary really is absent.
+ *
+ * A name that already carries a separator is a path the detector wrote, so it is
+ * left alone: rewriting it would resolve it against the wrong directory.
+ */
+function resolveExecutable(name: string, path: string | undefined): string {
+  if (!name || !path || name.includes('/') || name.includes('\\')) return name;
+  return Bun.which(name, { PATH: path }) ?? name;
+}
 
 /** The registry the server half holds: one instance per plugin load. */
 export class RunRegistry extends RunStore {
@@ -73,8 +90,19 @@ export class RunRegistry extends RunStore {
 
     let proc: Bun.Subprocess;
     try {
+      // The environment the child gets, in two steps that answer two different
+      // problems: the host's own variables are REMOVED (see below), and the
+      // toolchain directories a GUI/launchd launch never had are ADDED. Without
+      // the second, every command this panel offers fails at `Bun.spawn` with
+      // `Executable not found in $PATH: "bun"` — measured under a daemon started
+      // by launchd, whose PATH is `/usr/bin:/bin:/usr/sbin:/sbin`, while the
+      // same command in the user's terminal ran fine.
+      const env = withToolchainPath(
+        stripKabmoHostEnv(this.deps.env ?? Bun.env, process.platform),
+        process.platform,
+      );
       proc = Bun.spawn({
-        cmd: input.argv,
+        cmd: [resolveExecutable(input.argv[0], env.PATH), ...input.argv.slice(1)],
         cwd: input.cwd,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -89,7 +117,7 @@ export class RunRegistry extends RunStore {
         // served by Kabmo" while the same command in a plain terminal (where
         // `PORT` is unset) ran on 3000. The rule is the SDK's, shared with the
         // host's own child spawns so the two cannot drift.
-        env: stripKabmoHostEnv(Bun.env, process.platform),
+        env,
       });
     } catch (error) {
       // A missing binary THROWS here (measured), so this is the only path that

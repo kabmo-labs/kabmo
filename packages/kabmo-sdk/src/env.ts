@@ -53,6 +53,83 @@ export const KABMO_HOST_ENV_NAMES: readonly string[] = [
 export const KABMO_HOST_ENV_PREFIXES: readonly string[] = ['NEXT_'];
 
 /**
+ * Install directories a GUI- or launchd-started process does not have on PATH.
+ *
+ * The other half of the same problem, and the one that makes every toolchain
+ * command fail: a macOS app launched from Finder, a LaunchAgent, and the
+ * `--launch-mode=daemon` server they start all inherit launchd's own PATH
+ * (`/usr/bin:/bin:/usr/sbin:/sbin`), not the user's login shell PATH. Measured
+ * on this machine: a Command Runner run of `bun run dev` under that server
+ * answered `Executable not found in $PATH: "bun"` — the same command in a
+ * terminal, whose `~/.bun/bin` IS on PATH, ran fine. The terminal panel is
+ * unaffected because it launches a LOGIN shell (`-i -l`), which re-reads the
+ * user's profile; a plugin's `Bun.spawn` has no profile to read.
+ *
+ * So a child of the host is given these AFTER the inherited PATH, never before:
+ * the user's own ordering (a version manager's shim, a project's `.bin`) must
+ * keep winning, and this only fills in what a GUI launch never had.
+ */
+export const KABMO_TOOLCHAIN_PATH_DIRS: readonly string[] = [
+  '/opt/homebrew/bin',
+  '/opt/homebrew/sbin',
+  '/usr/local/bin',
+  '/usr/bin',
+  '/bin',
+  '/usr/sbin',
+  '/sbin',
+];
+
+/** Home-relative install directories, as POSIX suffixes of `$HOME`. */
+export const KABMO_TOOLCHAIN_HOME_DIRS: readonly string[] = ['.bun/bin', '.local/bin', '.cargo/bin'];
+
+/**
+ * The directories `withToolchainPath` adds, in the order it adds them.
+ *
+ * `$HOME` comes from the SAME env the child will receive rather than from
+ * `os.homedir()`: this module is reachable from a plugin's app bundle (where no
+ * `process` exists), and a child env that already carries a `HOME` is the one
+ * whose paths a probe can actually test.
+ */
+export function toolchainPathDirs(
+  env: Record<string, string | undefined>,
+  platform: string,
+): string[] {
+  // Windows resolves a bare executable through the user's environment, which a
+  // GUI launch inherits; there is no launchd-style minimal PATH to repair.
+  if (platform === 'win32') return [];
+  const home = env.HOME?.trim();
+  const fromHome = home ? KABMO_TOOLCHAIN_HOME_DIRS.map((suffix) => `${home}/${suffix}`) : [];
+  return [...fromHome, ...KABMO_TOOLCHAIN_PATH_DIRS];
+}
+
+/**
+ * A copy of `env` whose `PATH` also names the usual toolchain directories.
+ *
+ * The twin of `stripKabmoHostEnv`, applied to the same child environment and for
+ * the same reason: the host's environment is not the user's shell. One REMOVES
+ * what belongs to Kabmo; this ADDS what a launchd/GUI start never had, so a
+ * command that runs in the user's terminal also runs from a plugin.
+ *
+ * Idempotent, and the inherited entries keep their order and precedence — an
+ * entry already present is not appended twice. A missing `PATH` becomes exactly
+ * the fallback list rather than an empty search path.
+ */
+export function withToolchainPath(
+  env: Record<string, string | undefined>,
+  platform: string,
+): Record<string, string | undefined> {
+  const copy = { ...env };
+  if (platform === 'win32') return copy;
+  const separator = ':';
+  const merged = (copy.PATH ?? '').split(separator).filter((entry) => entry.length > 0);
+  for (const dir of toolchainPathDirs(copy, platform)) {
+    if (!merged.includes(dir)) merged.push(dir);
+  }
+  copy.PATH = merged.join(separator);
+  return copy;
+}
+
+/**
  * A copy of `env` with the host's own variables removed.
  *
  * A copy, never a mutation: the caller's environment (Kabmo's own
