@@ -27,8 +27,23 @@ import { join } from 'node:path';
 
 import { onlyRun, makeRegistry, waitFor, SCOPE } from './runner-harness';
 
+/**
+ * Both cases are POSIX-only, for the two reasons `src/test-support/platform.ts`
+ * names — a plugin cannot import it, so the guard is the same one
+ * `runner.test.ts` uses beside it:
+ *
+ * - the probe is a `#!/bin/sh` stub whose only "executability" is mode `0o755`,
+ *   and `CreateProcess` cannot start that file;
+ * - the repair under test is itself a no-op on Windows (`toolchainPathDirs`
+ *   returns nothing there), so there is no PATH to assert about.
+ *
+ * A skip is named in the log rather than weakened into an assertion that passes
+ * on both platforms while proving nothing.
+ */
+const testPosix = process.platform === 'win32' ? test.skip : test;
+
 describe('RunRegistry executable resolution', () => {
-  test('a command resolves when the host PATH has no toolchain directories', async () => {
+  testPosix('a command resolves when the host PATH has no toolchain directories', async () => {
     // The probe binary exists ONLY under `$HOME/.bun/bin`, which the inherited
     // PATH does not name, so a resolved run proves the repair appended it.
     const home = mkdtempSync(join(tmpdir(), 'cr-path-'));
@@ -82,7 +97,7 @@ describe('RunRegistry executable resolution', () => {
     }
   }, 20_000);
 
-  test('a name that is already a path is left alone', async () => {
+  testPosix('a name that is already a path is left alone', async () => {
     // A detector may write `./scripts/build.sh`; resolving that against PATH
     // would run a different file than the one the command names.
     const dir = mkdtempSync(join(tmpdir(), 'cr-path-rel-'));
