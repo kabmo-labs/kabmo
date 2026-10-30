@@ -4,6 +4,27 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.14.0](https://github.com/kabmo-labs/kabmo/compare/v0.13.0...v0.14.0) — 2026-10-30
+
+### Added
+
+* **chat:** let the composer draw in five selectable styles ([8695897](https://github.com/kabmo-labs/kabmo/commit/86958972d9bf28e3ae944887ab438e6fadc97b26)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** let the transcript draw tool calls in four selectable styles ([690e78f](https://github.com/kabmo-labs/kabmo/commit/690e78f3262d8787c30815ca25214c6a6e1a4e22)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.14.0 and adopt the three surfaces it exposes ([e0747a1](https://github.com/kabmo-labs/kabmo/commit/e0747a1ad7952ab0dfd0c02b0759981dff32e4f4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** group the Chats category into a master/detail sidebar ([c2c10eb](https://github.com/kabmo-labs/kabmo/commit/c2c10ebc96ddd902df0ba425f341979753c763ad)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** archive a session batch from the selection bar ([13159f1](https://github.com/kabmo-labs/kabmo/commit/13159f1b1d8cffeb06d16397c6434651909d85e3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** let the session sidebar draw a classic or modern chrome ([acab5e9](https://github.com/kabmo-labs/kabmo/commit/acab5e9bb814a23e034d4fd737ae24fc4939982d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **server:** move the post-listen boot into its own module ([24c2da3](https://github.com/kabmo-labs/kabmo/commit/24c2da31c7a7695b0bc56c7fa55cad453e63d9aa)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **composer:** name the provider of a shared model in the favorites and recent rails ([1e8c1e0](https://github.com/kabmo-labs/kabmo/commit/1e8c1e0a9ea39b6c78e24e124d2f815630bb3a3d)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** keep a folded block unfoldable on WebKit and steady the E2E layer ([e5be69e](https://github.com/kabmo-labs/kabmo/commit/e5be69e2db82e62c5f50d2ed7e40b029afef1992)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **plugins:** contain a background service's rejection instead of exiting ([e109f15](https://github.com/kabmo-labs/kabmo/commit/e109f158c6b9287c7bd2dddb220b793aa27c6d74)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.13.0](https://github.com/kabmo-labs/kabmo/compare/v0.12.0...v0.13.0) — 2026-10-29
 
 ### Added
