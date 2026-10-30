@@ -8,7 +8,7 @@ import { ModelDropdownPanel } from '@/client/components/workspace/model-dropdown
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { useModelCatalog } from '@/client/components/workspace/model-dropdown/use-catalog';
 import { useCollapsedSections } from '@/client/components/workspace/model-dropdown/collapsed';
-import { buildPickerGroups } from '@/client/components/workspace/model-dropdown/groups';
+import { buildPickerGroups, type PickerRow } from '@/client/components/workspace/model-dropdown/groups';
 import { modelKey } from '@/shared/lib/models/identity';
 import { RECENT_MODELS_LIMIT, filterKnownKeys, readModelPreferences, recordRecentKey, toggleFavoriteKey } from '@/shared/lib/models/preferences';
 
@@ -30,7 +30,10 @@ export function ModelDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
-  const [hoveredModel, setHoveredModel] = useState<AIModelOption | null>(null);
+  // Hover is a ROW, not a model: one model can be drawn twice (its rail and its
+  // provider section), and both the specs card and the keyboard focus have to
+  // address the row the pointer is actually on.
+  const [hoveredRow, setHoveredRow] = useState<PickerRow | null>(null);
   const [collapsedSections, toggleSection] = useCollapsedSections();
   const {
     models,
@@ -71,7 +74,7 @@ export function ModelDropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(containerRef, () => {
     setIsOpen(false);
-    setHoveredModel(null);
+    setHoveredRow(null);
     setFocusedIndex(-1);
   });
 
@@ -80,6 +83,7 @@ export function ModelDropdown({
     favorites: favoriteModels,
     recent: recentModels,
     byProvider: providerGroups,
+    ambiguousNames,
     visibleFlatList,
     index: modelIndex,
   } = useMemo(
@@ -91,7 +95,7 @@ export function ModelDropdown({
 
   const handleAddProviderClick = () => {
     setIsOpen(false);
-    setHoveredModel(null);
+    setHoveredRow(null);
     if (onOpenAddProvider) {
       onOpenAddProvider();
     } else {
@@ -180,7 +184,7 @@ export function ModelDropdown({
     setSelectedModel(model);
     onSelectModel?.(model);
     setIsOpen(false);
-    setHoveredModel(null);
+    setHoveredRow(null);
     // Move the pick to the top of RECENT straight away — the server records it
     // alongside the selection, and waiting for the round trip would leave the
     // rail stale until the next full reload. Same rules as the server's write:
@@ -200,38 +204,38 @@ export function ModelDropdown({
     } catch {}
   };
 
+  /** The focused row, or the one under the pointer when no row is focused. */
+  const activeRow = (focusedIndex >= 0 ? visibleFlatList[focusedIndex] : null) || hoveredRow;
+
   const handleKeyDown = (e: globalThis.KeyboardEvent) => {
     if (!isOpen) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setFocusedIndex(prev => {
         const next = (prev + 1) % Math.max(1, visibleFlatList.length);
-        setHoveredModel(visibleFlatList[next] || null);
+        setHoveredRow(visibleFlatList[next] || null);
         return next;
       });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocusedIndex(prev => {
         const prevIdx = (prev - 1 + visibleFlatList.length) % Math.max(1, visibleFlatList.length);
-        setHoveredModel(visibleFlatList[prevIdx] || null);
+        setHoveredRow(visibleFlatList[prevIdx] || null);
         return prevIdx;
       });
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const target = (focusedIndex >= 0 ? visibleFlatList[focusedIndex] : null) || hoveredModel;
-      if (target) handleSelect(target);
+      if (activeRow) handleSelect(activeRow.model);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setIsOpen(false);
-      setHoveredModel(null);
+      setHoveredRow(null);
     } else if (e.key === 'Tab') {
       e.preventDefault();
-      const target = (focusedIndex >= 0 ? visibleFlatList[focusedIndex] : null) || hoveredModel;
-      if (target) toggleAgentCmd(target);
+      if (activeRow) toggleAgentCmd(activeRow.model);
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      const target = (focusedIndex >= 0 ? visibleFlatList[focusedIndex] : null) || hoveredModel;
-      if (target) cycleThinkingLevel(target);
+      if (activeRow) cycleThinkingLevel(activeRow.model);
     }
   };
 
@@ -242,7 +246,7 @@ export function ModelDropdown({
         type="button"
         onClick={() => {
           setIsOpen(prev => !prev);
-          setHoveredModel(null);
+          setHoveredRow(null);
           setFocusedIndex(-1);
         }}
         className="flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium cursor-pointer min-w-0 max-w-full"
@@ -292,20 +296,24 @@ export function ModelDropdown({
           favoriteModels={favoriteModels}
           recentModels={recentModels}
           providerGroups={providerGroups}
+          ambiguousNames={ambiguousNames}
           collapsedSections={collapsedSections}
           onToggleCollapse={toggleSection}
           selectedModelKey={selectedModelKey}
           modelIndex={modelIndex}
           focusedIndex={focusedIndex}
-          hoveredModel={hoveredModel}
+          hoveredRow={hoveredRow}
           onSelect={handleSelect}
           onToggleFavorite={handleToggleFavorite}
           onCycleThinking={cycleThinkingLevel}
-          onHoverItem={(idx, m) => {
+          onHoverItem={(idx) => {
             setFocusedIndex(idx);
-            setHoveredModel(m);
+            // The flat list is the one order the panel renders, so an index is
+            // enough to name the exact row — including which of a model's two
+            // rows the pointer is on.
+            setHoveredRow(visibleFlatList[idx] ?? null);
           }}
-          onMouseLeave={() => setHoveredModel(null)}
+          onMouseLeave={() => setHoveredRow(null)}
         />
       )}
     </div>

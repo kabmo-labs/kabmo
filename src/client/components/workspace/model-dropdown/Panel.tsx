@@ -6,7 +6,7 @@ import { ModelDropdownSection } from '@/client/components/workspace/model-dropdo
 import { ModelDropdownFooter } from '@/client/components/workspace/model-dropdown/Footer';
 import { ModelDropdownSkeleton } from '@/client/components/workspace/model-dropdown/Skeleton';
 import { ModelSpecsTooltip } from '@/client/components/workspace/model-dropdown/SpecsTooltip';
-import { modelKey } from '@/shared/lib/models/identity';
+import type { PickerRow } from '@/client/components/workspace/model-dropdown/groups';
 
 interface ModelDropdownPanelProps {
   search: string;
@@ -18,18 +18,21 @@ interface ModelDropdownPanelProps {
   favoriteModels: AIModelOption[];
   recentModels: AIModelOption[];
   providerGroups: Record<string, AIModelOption[]>;
+  /** Lower-cased model names served by more than one provider. */
+  ambiguousNames: ReadonlySet<string>;
   collapsedSections: Record<string, boolean>;
   onToggleCollapse: (section: string) => void;
   /** Composite (`provider:id`) key of the active selection. */
   selectedModelKey: string;
-  /** Composite key → index in the keyboard-navigation flat list. */
+  /** Row id (`section::provider:id`) → index in the keyboard-navigation flat list. */
   modelIndex: Record<string, number>;
   focusedIndex: number;
-  hoveredModel: AIModelOption | null;
+  hoveredRow: PickerRow | null;
   onSelect: (model: AIModelOption) => void;
   onToggleFavorite: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
   onCycleThinking: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
-  onHoverItem: (index: number, model: AIModelOption) => void;
+  /** Row index in the flat list; the panel resolves it to the row it renders. */
+  onHoverItem: (index: number) => void;
   onMouseLeave: () => void;
 }
 
@@ -42,12 +45,13 @@ export function ModelDropdownPanel({
   favoriteModels,
   recentModels,
   providerGroups,
+  ambiguousNames,
   collapsedSections,
   onToggleCollapse,
   selectedModelKey,
   modelIndex,
   focusedIndex,
-  hoveredModel,
+  hoveredRow,
   onSelect,
   onToggleFavorite,
   onCycleThinking,
@@ -61,21 +65,22 @@ export function ModelDropdownPanel({
 
   // The card belongs to the ROW it describes, not to the panel: a card pinned
   // to the panel's middle described a model three rows away from it. The anchor
-  // is the row's own `data-model-key`, so the mouse and the keyboard resolve to
-  // the same element, and the offset is clamped to the panel because a card
-  // hanging past the list reads as a second, unrelated panel.
+  // is the row's own `data-picker-row`, so the mouse and the keyboard resolve to
+  // the same element — and so does each of the two rows one model can occupy
+  // (its rail and its provider section). The offset is clamped to the panel
+  // because a card hanging past the list reads as a second, unrelated panel.
   const alignCardToRow = useCallback(() => {
     const panel = panelRef.current;
     const card = cardRef.current;
-    if (!panel || !card || !hoveredModel) return;
-    const row = panel.querySelector(`[data-model-key="${CSS.escape(modelKey(hoveredModel))}"]`);
+    if (!panel || !card || !hoveredRow) return;
+    const row = panel.querySelector(`[data-picker-row="${CSS.escape(hoveredRow.rowId)}"]`);
     if (!row) return;
     const panelBox = panel.getBoundingClientRect();
     const maxTop = Math.max(0, panelBox.height - card.offsetHeight);
     const next = Math.min(maxTop, Math.max(0, row.getBoundingClientRect().top - panelBox.top));
     // Same offset ⇒ no state write, so scrolling does not re-render the panel.
     setCardTop((prev) => (prev === next ? prev : next));
-  }, [hoveredModel]);
+  }, [hoveredRow]);
 
   useLayoutEffect(alignCardToRow, [alignCardToRow, collapsedSections]);
 
@@ -117,6 +122,7 @@ export function ModelDropdownPanel({
                 onToggleCollapse={onToggleCollapse}
                 selectedModelKey={selectedModelKey}
                 modelIndex={modelIndex}
+                ambiguousNames={ambiguousNames}
                 focusedIndex={focusedIndex}
                 onSelect={onSelect}
                 onToggleFavorite={onToggleFavorite}
@@ -133,6 +139,7 @@ export function ModelDropdownPanel({
                 onToggleCollapse={onToggleCollapse}
                 selectedModelKey={selectedModelKey}
                 modelIndex={modelIndex}
+                ambiguousNames={ambiguousNames}
                 focusedIndex={focusedIndex}
                 onSelect={onSelect}
                 onToggleFavorite={onToggleFavorite}
@@ -151,6 +158,7 @@ export function ModelDropdownPanel({
                   onToggleCollapse={onToggleCollapse}
                   selectedModelKey={selectedModelKey}
                   modelIndex={modelIndex}
+                  ambiguousNames={ambiguousNames}
                   focusedIndex={focusedIndex}
                   onSelect={onSelect}
                   onToggleFavorite={onToggleFavorite}
@@ -168,13 +176,13 @@ export function ModelDropdownPanel({
       {/* Floating Specs Card: only visible when hovering or keyboard navigating.
           `translateY` rather than a top offset keeps it out of the flex row's
           sizing, so the card can never stretch or shift the panel itself. */}
-      {hoveredModel && (
+      {hoveredRow && (
         <div
           ref={cardRef}
           className="hidden lg:block ml-2"
           style={{ transform: `translateY(${cardTop}px)` }}
         >
-          <ModelSpecsTooltip model={hoveredModel} />
+          <ModelSpecsTooltip model={hoveredRow.model} />
         </div>
       )}
     </div>

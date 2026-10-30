@@ -4,7 +4,7 @@
  */
 
 /**
- * The Usage panel, the model picker, and the composer's thinking-level rule.
+ * The Usage panel and the composer's thinking-level rule.
  *
  * - `format.ts` renders every number the panel shows. The boundaries are the
  *   point: the compact-token thresholds sit exactly at 1_000/1_000_000/1_000_000_000,
@@ -14,9 +14,6 @@
  *   fixed precedence (kenari plan → DeepSeek balance → quota window), and picks
  *   the WORST used fraction — picking the first window instead shows a provider
  *   at 3% while it is actually at 98%.
- * - `buildPickerGroups` keys its hover index on the composite `provider:id`, not
- *   the bare id: the same model id is served by several providers, and an
- *   id-only key highlighted every provider's row at once.
  * - `resolveThinkingLevel` must keep a session's level when the ladder is
  *   unknown/empty, because an async catalog fetch resolving later used to reset
  *   the user's chosen effort to a ladder default.
@@ -40,7 +37,6 @@ import {
   statusLabel,
   type ProviderEntry,
 } from '@/client/components/settings/categories/usage-settings/providers';
-import { buildPickerGroups } from '@/client/components/workspace/model-dropdown/groups';
 import {
   resolveThinkingLevel,
   selectionFor,
@@ -238,69 +234,6 @@ describe('buildProviders', () => {
     })[0] as ProviderEntry;
     expect(statusLabel(failed)).toBe('Error');
     expect(statusLabel({ ...failed, error: undefined })).toBe('Connected');
-  });
-});
-
-describe('buildPickerGroups', () => {
-  const model = (provider: string, id: string, name: string, extra: Partial<AIModelOption> = {}): AIModelOption =>
-    ({ id, name, provider, ...extra }) as AIModelOption;
-
-  const catalog: AIModelOption[] = [
-    model('deepseek', 'v4-flash', 'Flash', { contextWindow: 128000, capabilities: ['tools'] }),
-    model('kenari', 'v4-flash', 'Flash (Kenari)', { contextWindow: 64000 }),
-    model('openai', 'gpt-5', 'GPT-5'),
-  ];
-
-  test('a search filters on name, provider, context window and capability', () => {
-    expect(buildPickerGroups(catalog, 'flash', {}, [], []).filtered).toHaveLength(2);
-    expect(buildPickerGroups(catalog, 'OPENAI', {}, [], []).filtered.map((m) => m.id)).toEqual(['gpt-5']);
-    expect(buildPickerGroups(catalog, '64000', {}, [], []).filtered.map((m) => m.provider)).toEqual(['kenari']);
-    expect(buildPickerGroups(catalog, 'tools', {}, [], []).filtered.map((m) => m.provider)).toEqual(['deepseek']);
-    expect(buildPickerGroups(catalog, '   ', {}, [], []).filtered).toHaveLength(3);
-  });
-
-  test('the rails follow the stored key order, not the catalog order', () => {
-    const groups = buildPickerGroups(catalog, '', {}, ['openai:gpt-5', 'deepseek:v4-flash'], ['kenari:v4-flash', 'openai:gpt-5']);
-    expect(groups.favorites.map((m) => m.id)).toEqual(['gpt-5', 'v4-flash']);
-    expect(groups.recent.map((m) => m.provider)).toEqual(['kenari']);
-  });
-
-  test('the rails are narrowed by the search like every other section', () => {
-    const groups = buildPickerGroups(catalog, 'flash', {}, ['openai:gpt-5', 'deepseek:v4-flash'], []);
-    expect(groups.favorites.map((m) => m.provider)).toEqual(['deepseek']);
-  });
-
-  test('providers are grouped under upper-cased names in catalog order', () => {
-    const groups = buildPickerGroups(catalog, '', {}, [], []);
-    expect(Object.keys(groups.byProvider)).toEqual(['DEEPSEEK', 'KENARI', 'OPENAI']);
-    expect(groups.byProvider.DEEPSEEK).toHaveLength(1);
-  });
-
-  test('the flat list renders rails first, then provider sections', () => {
-    const groups = buildPickerGroups(catalog, '', {}, ['openai:gpt-5'], ['deepseek:v4-flash']);
-    // A rail model is NOT removed from its provider section: the flat list is the
-    // order the panel walks for hover/keyboard focus, and a model appearing once
-    // under a rail and again under its provider is the shipped behavior.
-    expect(groups.visibleFlatList.map((m) => `${m.provider}:${m.id}`)).toEqual([
-      'openai:gpt-5', // favorites rail
-      'deepseek:v4-flash', // recent rail
-      'deepseek:v4-flash', // DEEPSEEK section
-      'kenari:v4-flash', // KENARI section
-      'openai:gpt-5', // OPENAI section
-    ]);
-  });
-
-  test('a collapsed section is dropped from the flat list but keeps its group', () => {
-    const groups = buildPickerGroups(catalog, '', { favorites: true, KENARI: true }, ['openai:gpt-5'], []);
-    expect(groups.visibleFlatList.map((m) => m.provider)).toEqual(['deepseek', 'openai']);
-    expect(groups.byProvider.KENARI).toHaveLength(1);
-  });
-
-  test('the hover index is keyed by provider+id, so shared ids stay distinct', () => {
-    const groups = buildPickerGroups(catalog, '', {}, [], []);
-    expect(groups.index['deepseek:v4-flash']).toBe(0);
-    expect(groups.index['kenari:v4-flash']).toBe(1);
-    expect(groups.index['deepseek:v4-flash']).not.toBe(groups.index['kenari:v4-flash']);
   });
 });
 

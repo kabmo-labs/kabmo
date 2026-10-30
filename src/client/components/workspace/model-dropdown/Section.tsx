@@ -2,6 +2,7 @@ import type { TargetedMouseEvent } from 'preact';
 import { ChevronDown, ChevronUp, History, Star } from 'lucide-preact';
 import type { AIModelOption } from '@/shared/types';
 import { ModelDropdownItem } from '@/client/components/workspace/model-dropdown/Item';
+import { normalizedModelName, rowIdFor } from '@/client/components/workspace/model-dropdown/groups';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { modelKey } from '@/shared/lib/models/identity';
 
@@ -14,13 +15,16 @@ interface ModelDropdownSectionProps {
   onToggleCollapse: (id: string) => void;
   /** Composite (`provider:id`) key of the active selection. */
   selectedModelKey: string;
-  /** Composite key → index in the keyboard-navigation flat list. */
+  /** Row id (`section::provider:id`) → index in the keyboard-navigation flat list. */
   modelIndex: Record<string, number>;
+  /** Lower-cased model names served by more than one provider. */
+  ambiguousNames: ReadonlySet<string>;
   focusedIndex: number;
   onSelect: (model: AIModelOption) => void;
   onToggleFavorite: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
   onCycleThinking: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
-  onHoverItem: (index: number, model: AIModelOption) => void;
+  /** Row index in the flat list; the panel resolves it to the row it renders. */
+  onHoverItem: (index: number) => void;
 }
 
 export function ModelDropdownSection({
@@ -32,6 +36,7 @@ export function ModelDropdownSection({
   onToggleCollapse,
   selectedModelKey,
   modelIndex,
+  ambiguousNames,
   focusedIndex,
   onSelect,
   onToggleFavorite,
@@ -92,20 +97,27 @@ export function ModelDropdownSection({
       {!isCollapsed && (
         <div className="space-y-0.5">
           {models.map((m) => {
-            // Identity is provider + id: the same model id is served by several
-            // providers, so an id-only match would focus/select their rows too.
-            const key = modelKey(m);
-            const index = modelIndex[key] ?? -1;
+            // Identity is per ROW, not per model: the same model id is served
+            // by several providers, and one model is drawn in a rail AND in its
+            // provider section. `section::provider:id` keeps every row's hover
+            // index and specs anchor its own.
+            const rowId = rowIdFor(id, m);
+            const index = modelIndex[rowId] ?? -1;
             return (
               <ModelDropdownItem
-                key={`${id}-${key}`}
+                key={rowId}
+                rowId={rowId}
                 model={m}
-                isSelected={selectedModelKey === key}
+                // A rail has no provider heading above it, so a name shared by
+                // two providers would render twice identically. A provider
+                // section already says the provider in its header.
+                showProvider={iconType !== 'provider' && ambiguousNames.has(normalizedModelName(m))}
+                isSelected={selectedModelKey === modelKey(m)}
                 isFocused={focusedIndex === index}
                 onSelect={onSelect}
                 onToggleFavorite={onToggleFavorite}
                 onCycleThinking={onCycleThinking}
-                onMouseEnter={() => onHoverItem(index, m)}
+                onMouseEnter={() => onHoverItem(index)}
               />
             );
           })}

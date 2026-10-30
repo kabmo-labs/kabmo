@@ -1,12 +1,20 @@
 import type { TargetedMouseEvent } from 'preact';
-import { Brain, Check, Command, GripVertical, Star } from 'lucide-preact';
+import { Brain, Command, GripVertical, Star } from 'lucide-preact';
 import type { AIModelOption } from '@/shared/types';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
-import { modelKey } from '@/shared/lib/models/identity';
 
 interface ModelDropdownItemProps {
   model: AIModelOption;
+  /** Identity of THIS row (`section::provider:id`); the specs card anchors to it. */
+  rowId: string;
+  /**
+   * Draw the provider tag. Set for a rail row whose model name is served by
+   * more than one provider — FAVORITES and RECENT have no provider header, so
+   * without the tag `DeepSeek V4 Pro` under `deepseek` and under `kenari` are
+   * two identical rows.
+   */
+  showProvider?: boolean;
   isSelected: boolean;
   isFocused: boolean;
   onSelect: (model: AIModelOption) => void;
@@ -28,6 +36,8 @@ interface ModelDropdownItemProps {
  */
 export function ModelDropdownItem({
   model,
+  rowId,
+  showProvider = false,
   isSelected,
   isFocused,
   onSelect,
@@ -40,9 +50,11 @@ export function ModelDropdownItem({
       role="button"
       tabIndex={0}
       // The specs card anchors to the row it describes, and it finds that row
-      // by this key — the same composite identity the picker navigates by, so
-      // the mouse and the keyboard resolve to one anchor.
-      data-model-key={modelKey(model)}
+      // by `rowId` — the section PLUS the composite model key. The model key
+      // alone is ambiguous: a favorite is drawn in the rail and again in its
+      // provider section, so the card (and the hover index) resolved to the
+      // first of the two and described a row three rows away.
+      data-picker-row={rowId}
       onClick={() => onSelect(model)}
       onMouseEnter={onMouseEnter}
       className={`group relative w-full flex items-center justify-between gap-2 pl-1 pr-2 py-1.5 rounded-lg text-xs transition-colors cursor-pointer select-none ${
@@ -94,24 +106,37 @@ export function ModelDropdownItem({
           className={`flex-1 min-w-0 truncate ${
             isSelected ? 'font-semibold text-ink' : 'font-normal text-ink/90'
           }`}
-          title={model.name}
+          title={showProvider ? `${model.name} · ${model.provider}` : model.name}
         >
           {model.name}
         </span>
-        {/* Fixed column: a number has to be comparable down the list, and a
-            badge that follows the name cannot be. */}
-        <span className="w-11 shrink-0 text-right font-mono text-[10px] tabular-nums text-ink/45">
-          {model.contextWindow ? formatContextWindow(model.contextWindow) : ''}
-        </span>
       </div>
 
-      {/* Right: thinking pill, checkmark, star.
-          A FIXED width, right-aligned: the pill's label and the checkmark's
-          presence both change this cluster's width, which moved the context
-          column 25px to the left on the one selected row (measured: 547 vs 572).
-          Reserving the whole cluster pins that column, and the star — the one
-          control on every row — stays on the row's edge. */}
-      <div className="flex items-center justify-end gap-1.5 flex-shrink-0 w-[100px]">
+      {/* Trailing cells in the reader's order: context number → thinking preset →
+          provider tag → star. The star is last because it is the one control on
+          every row and has to stay on the row's edge.
+          The check that used to live here is gone: selection is already the
+          row's tint and its semibold name, and the checkmark was the only thing
+          whose presence changed this cluster's width.
+          The number is no longer a column: it is the FIRST cell of a cluster
+          that is right-aligned, so its x moves with the width of the pill and
+          the tag to its right (measured over the seeded catalog: `626` on rows
+          with neither, down to `519` where both are present). The order is the
+          reader's, the alignment is the price.
+          On a tagged row at phone width the number yields instead of the name:
+          the row is 322px there, the tag costs 43-53px, and the name would have
+          collapsed to `Deepse…` (measured: 37px of a 99px name). Identity
+          outranks the context number on the one row whose identity is in
+          question. */}
+      <div className="flex items-center justify-end gap-1.5 flex-shrink-0">
+        <span
+          className={`w-11 shrink-0 text-right font-mono text-[10px] tabular-nums text-ink/45 ${
+            showProvider ? 'max-sm:hidden' : ''
+          }`}
+        >
+          {model.contextWindow ? formatContextWindow(model.contextWindow) : ''}
+        </span>
+
         {model.thinkingLevel && (
           <button
             type="button"
@@ -120,14 +145,26 @@ export function ModelDropdownItem({
               onCycleThinking?.(model, e);
             }}
             title={`Thinking preset: ${model.thinkingLevel} (Click or use ← / → to change)`}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-ink/70 bg-ink/5 hover:bg-ink/10 border border-ink/10 transition-colors cursor-pointer"
+            className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-ink/70 bg-ink/5 hover:bg-ink/10 border border-ink/10 transition-colors cursor-pointer"
           >
             <Brain size={10} className="text-ink/50" />
             <span>{model.thinkingLevel}</span>
           </button>
         )}
 
-        {isSelected && <Check size={13} className="text-ink flex-shrink-0" />}
+        {/* The provider tag, drawn only on a rail row whose name is shared by
+            another provider so the two rows are not identical. It never shrinks
+            and never wraps: `kenari` and `kenari-jatis` are two accounts, so an
+            ellipsis here would make them render identically — the same rule the
+            composer trigger follows. */}
+        {showProvider && (
+          <span
+            className="shrink-0 whitespace-nowrap rounded border border-ink/15 bg-ink/5 px-1 font-mono text-[9px] leading-4 text-ink/55"
+            title={`Provider: ${model.provider}`}
+          >
+            {model.provider}
+          </span>
+        )}
 
         <button
           type="button"
