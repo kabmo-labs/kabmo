@@ -254,7 +254,7 @@ export function SettingsModal({
 
           {/* Scrollable Settings Body - Full Width across all categories */}
           <div
-            className={`flex-1 scrollbar-overlay-container w-full ${['projects', 'providers', 'agents', 'behavior', 'commands', 'mcp', 'plugins', 'skills', 'skills-catalog', 'usage', 'panel-plugins'].includes(activeCategory) ? 'p-0 flex flex-col' : 'p-6 md:p-8 flex flex-col'}`}
+            className={`flex-1 scrollbar-overlay-container w-full ${['projects', 'providers', 'agents', 'behavior', 'commands', 'mcp', 'plugins', 'skills', 'skills-catalog', 'usage', 'panel-plugins', 'chats'].includes(activeCategory) ? 'p-0 flex flex-col' : 'p-6 md:p-8 flex flex-col'}`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="w-full h-full flex-1 flex flex-col">
