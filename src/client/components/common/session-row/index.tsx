@@ -32,6 +32,16 @@
  * with: the header's own `px-1` is inside a container that starts at the list's
  * edge, and matching the row's padding to the header's is what makes the columns
  * line up.
+ *
+ * ## The touch row is exactly as tall as the folder header
+ *
+ * `h-8` — 32px — is the workspace header's height on touch (`WorkspaceHeader`),
+ * and the rows under it must match it or the list reads as two rhythms: a thin
+ * name over tall items. The row's own height is driven by its tallest child,
+ * the 28px trailing action box (`p-1.5` + a 16px glyph, see `TrailingSlot`), so
+ * 2px of vertical padding lands on 32px. `py-0.5`, not a fixed `h-8`: a row that
+ * carries a second line (a held prompt, a worktree badge) has to grow, and a
+ * fixed height would clip it.
  */
 
 import type { TargetedMouseEvent } from 'preact';
@@ -139,7 +149,7 @@ export function SessionRow({
         onClick={selectable ? onToggleSelect : onClick}
         onContextMenu={hasActions && !selectable ? menu.openAtCursor : undefined}
         className={`group/item relative flex w-full items-center rounded-lg text-xs transition-colors select-none cursor-pointer ${
-          touch ? 'py-2.5 pl-1 pr-1' : 'py-[7px] pl-1 pr-1'
+          touch ? 'py-0.5 pl-1 pr-1' : 'py-[7px] pl-1 pr-1'
         } ${
           selectable && selected
             ? 'bg-ink/10 text-ink ring-1 ring-inset ring-ink/20'

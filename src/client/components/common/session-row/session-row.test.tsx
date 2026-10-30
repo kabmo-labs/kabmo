@@ -137,6 +137,16 @@ describe('modern session row', () => {
     expect(el.textContent).toContain('5m');
   });
 
+  test('the touch row is as tall as the folder header, and can still grow', async () => {
+    const el = await mount({ density: 'touch', onRename: () => {} });
+    const row = el.querySelector('[data-testid="session-item"]');
+    // 2px of padding around the 28px trailing action box = the header's `h-8`.
+    expect(row?.className).toContain('py-0.5');
+    // Padding, never a fixed height: a held prompt or a worktree badge adds a
+    // line, and `h-8` would clip it.
+    expect(row?.className ?? '').not.toMatch(/\bh-8\b/);
+  });
+
   test('a row with nothing to offer draws no menu trigger', async () => {
     const el = await mount();
     expect(el.querySelector('[aria-label="Session actions"]')).toBeNull();

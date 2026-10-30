@@ -35,6 +35,15 @@
  * The actions are the same components the classic header uses — `＋` opens a
  * chat in THIS folder and `⋯` is `WorkspaceOptionsMenu` — so pin, delete,
  * reveal, worktree and session-selection exist in both styles by construction.
+ *
+ * ## The sticky surface is the list's surface
+ *
+ * The header must be opaque — rows scroll underneath it — and the colour it
+ * paints has to be the one the list sits on, or every folder draws a band.
+ * `--theme-paper` is the desktop column's surface and `--theme-canvas` the phone
+ * drawer's (see `shared/lib/theme/chrome.ts`); a single `bg-paper` therefore
+ * put a lighter stripe behind each folder in the phone drawer, where the rows
+ * behind it are canvas.
  */
 
 import type { ReactNode } from 'preact/compat';
@@ -81,8 +90,8 @@ export function WorkspaceHeader({
 
   return (
     <div
-      className={`group/ws sticky top-0 z-10 -mx-1 flex items-center gap-1 rounded-md bg-paper px-1 text-xs font-semibold text-ink ${
-        touch ? 'h-8' : 'h-[26px]'
+      className={`group/ws sticky top-0 z-10 -mx-1 flex items-center gap-1 rounded-md px-1 text-xs font-semibold text-ink ${
+        touch ? 'h-8 bg-canvas' : 'h-[26px] bg-paper'
       }`}
     >
       <button

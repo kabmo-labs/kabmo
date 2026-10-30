@@ -16,9 +16,10 @@
  *
  * The geometry is the live geometry, measured rather than approximated: the
  * workspace header is 26px (32 on touch) with its mark in the same 4px + 16px
- * (18px) gutter the real header uses, and the rows are 31px (44 on touch) —
- * the live row's own measured height, not `padding + bar`. A placeholder whose
- * heights differ from the content is a layout shift with extra steps.
+ * (18px) gutter the real header uses, and the rows are 31px (32 on touch, the
+ * header's own `h-8` — see `common/session-row`) — the live row's own measured
+ * height, not `padding + bar`. A placeholder whose heights differ from the
+ * content is a layout shift with extra steps.
  */
 
 const PLACEHOLDER_FOLDERS = [3, 2];
@@ -35,7 +36,7 @@ export function ModernSidebarSkeleton({ touch = false }: { touch?: boolean }) {
           {Array.from({ length: rows }, (_, rowIndex) => (
             <div
               key={rowIndex}
-              className={`flex items-center gap-2 pl-1 pr-2 ${touch ? 'h-11' : 'h-[31px]'}`}
+              className={`flex items-center gap-2 pl-1 pr-2 ${touch ? 'h-8' : 'h-[31px]'}`}
             >
               <span
                 className={`shrink-0 animate-pulse rounded-full bg-ink/10 ${
