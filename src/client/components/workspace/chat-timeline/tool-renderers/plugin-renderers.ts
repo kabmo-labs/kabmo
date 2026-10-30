@@ -30,8 +30,13 @@ import { useListSlotRows } from '@/client/hooks/workspace/list-slots';
  * plugin's surface: a plugin's stylesheet is scoped to
  * `[data-plugin-surface="<id>"]`, so a renderer drawn outside its own surface
  * would have no CSS at all.
+ *
+ * The type is NAMED here rather than derived with `ReturnType<typeof …>` at the
+ * consumer, so the tool-view contract does not couple to this hook's signature.
  */
-export function usePluginTimelineRenderer(tool: string): ListSlotEntry<TimelineRendererRegistration> | null {
+export type PluginTimelineRenderer = ListSlotEntry<TimelineRendererRegistration> | null;
+
+export function usePluginTimelineRenderer(tool: string): PluginTimelineRenderer {
   const rows = useListSlotRows<TimelineRendererRegistration>('timelineRenderer');
   for (const entry of rows) {
     if (entry.registration.tool === tool) return entry;

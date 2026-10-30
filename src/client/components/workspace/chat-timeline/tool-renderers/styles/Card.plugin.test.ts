@@ -24,7 +24,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { ToolCallCard } from '@/client/components/workspace/chat-timeline/ToolCallCard';
+import { CardRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Card';
 import { registerListSlot, resetListSlots } from '@/client/lib/plugins/list-slots';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 import type { ToolCallData } from '@/shared/types';
@@ -65,12 +65,12 @@ const tool = (name: string): ToolCallData => ({
 
 function mount(name: string, isOpen = true) {
   act(() => {
-    render(h(ToolCallCard, { tool: tool(name), isOpen, defaultExpanded: true }), container);
+    render(h(CardRow, { tool: tool(name), isOpen, defaultExpanded: true }), container);
   });
   return container;
 }
 
-describe('ToolCallCard plugin renderer', () => {
+describe('CardRow plugin renderer', () => {
   test('renders no plugin panel when nothing was contributed', () => {
     mount('mytool');
     expect(container.querySelector('[data-testid="plugin-panel"]')).toBeNull();

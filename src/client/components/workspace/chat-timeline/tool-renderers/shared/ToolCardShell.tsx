@@ -27,6 +27,7 @@ import type { ToolCallData } from '@/shared/types';
 import { isSkippedTool } from '@/shared/lib/chat/tool-status';
 import type { ToolSummary } from '@/shared/lib/chat/tool/summary';
 import { ToolFactChips } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolFactChips';
+import { toolToggleLabel } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/toggle-label';
 
 interface ToolCardShellProps {
   tool: ToolCallData;
@@ -124,10 +125,11 @@ export function ToolCardShell({
   };
 
   const isSkipped = isSkippedTool(tool);
-  const toggleLabel = `${isExpanded ? 'Collapse' : 'Expand'} ${title}${subtitle ? ` — ${subtitle}` : ''}`;
+  const toggleLabel = toolToggleLabel(title, subtitle, isExpanded);
 
   return (
     <div
+      data-tool-row="card"
       className={`group overflow-hidden rounded-xl border transition-all duration-200 ${
         status === 'error' && !isSkipped
           ? 'border-error/25 bg-error/[0.03]'

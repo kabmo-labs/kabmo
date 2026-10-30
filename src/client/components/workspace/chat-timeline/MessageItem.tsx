@@ -15,6 +15,8 @@ import { capitalizeFirstLetter } from '@/shared/lib/chat/capitalize';
 import { isNoticeRow, messageAnswerText } from '@/shared/lib/chat/notice-row';
 import { formatMessageStamp } from '@/shared/lib/format/time';
 import { transcriptBlockPadding, transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
+import { traceInset } from '@/shared/lib/chat/timeline/block-chrome';
+import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 
 interface ChatMessageItemProps {
   msg: ChatMessageData | any;
@@ -182,6 +184,13 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   const cleanIntent = msg.intent ? capitalizeFirstLetter(msg.intent.replace(/^[.\s]+/, '')) : null;
   const hasToolCalls = Boolean(allToolCalls && allToolCalls.length > 0);
 
+  // `trace` draws a rail in the run's left gutter; content that reserves nothing
+  // there would be struck through by it. The inset is the same fact as the
+  // rail's own column, so it lives beside `blockChrome` (`traceInset`).
+  const mode = useToolRenderMode();
+  const textInset = traceInset(mode, isMobile);
+  const boxInset = traceInset(mode, isMobile, true);
+
   return (
     <div 
       id={msg.id} 
@@ -207,7 +216,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
 
         {/* Provider / API Error Alert */}
         {msg.error && (
-          <div className={`flex items-start space-x-2.5 bg-error/10 border border-error/30 rounded-lg ${transcriptGutter(isMobile)} px-3.5 py-2.5 text-[12px] text-ink select-text`}>
+          <div className={`flex items-start space-x-2.5 bg-error/10 border border-error/30 rounded-lg ${boxInset || transcriptGutter(isMobile)} px-3.5 py-2.5 text-[12px] text-ink select-text`}>
             <AlertCircle size={15} className="text-error flex-shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex items-center space-x-2 flex-wrap">
@@ -239,14 +248,14 @@ export const ChatMessageItem = memo(function ChatMessageItem({
 
         {/* Main AI Response Content (Rich Markdown with code blocks, tables, lists) rendered before tool calls */}
         {hasRenderableContent && (
-          <div className="text-[13px] text-ink leading-relaxed font-sans bg-transparent px-3 py-1 select-text">
+          <div className={`text-[13px] text-ink leading-relaxed font-sans bg-transparent px-3 py-1 select-text ${textInset}`}>
             <MarkdownRenderer content={assistantContent} />
           </div>
         )}
 
         {/* Tool Call Intent (rendered standalone only when there are no tool calls to absorb it as title) */}
         {cleanIntent && !hasToolCalls && (!hasRenderableContent || !msg.content.toLowerCase().includes(msg.intent.toLowerCase().trim())) && (
-          <div className={`leading-relaxed font-sans px-3 select-text ${
+          <div className={`leading-relaxed font-sans px-3 select-text ${textInset} ${
             hasRenderableContent
               ? 'text-[12px] text-ink/70 py-0.5'
               : 'text-[13px] text-ink py-1'
@@ -266,7 +275,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
 
         {/* Intermediate Diagnostic Note */}
         {msg.systemNote && (
-          <div className="text-[12px] text-ink leading-relaxed border-l-2 border-ink/30 bg-paper/60 px-3 py-2 rounded-r-md font-mono break-words whitespace-pre-wrap select-text">
+          <div className={`text-[12px] text-ink leading-relaxed border-l-2 border-ink/30 bg-paper/60 px-3 py-2 rounded-r-md font-mono break-words whitespace-pre-wrap select-text ${boxInset}`}>
             <span className="text-[10px] text-ink/50 uppercase tracking-wider block mb-0.5 font-sans font-semibold">
               Diagnostic Note
             </span>
@@ -285,7 +294,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
 
         {/* AI Final Summary / Conclusion Card (Only shown when not streaming) */}
         {!isStreaming && msg.summary && (
-          <div className="text-[12px] text-ink bg-paper border border-ink/15 rounded-lg p-3 space-y-1 select-text font-sans">
+          <div className={`text-[12px] text-ink bg-paper border border-ink/15 rounded-lg p-3 space-y-1 select-text font-sans ${boxInset}`}>
             <div className="font-semibold text-ink flex items-center space-x-1.5 text-[12px]">
               <span className="w-1.5 h-1.5 rounded-full bg-success" />
               <span>Resolution Summary</span>

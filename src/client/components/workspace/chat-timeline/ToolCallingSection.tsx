@@ -3,12 +3,37 @@
  * SPDX-License-Identifier: MIT
  */
 
+/**
+ * A block of tool calls in the transcript, drawn in the style the user chose.
+ *
+ * The section owns three things and delegates the rest:
+ *
+ * 1. **Normalization** — the MOCK/sample path carries `AgentActionData`, which
+ *    is mapped onto `ToolCallData` so every style reads one shape.
+ * 2. **Openness** — persisted per session by `useToolOpenState`, so a reload or
+ *    a history page-in does not close the call the reader opened.
+ * 3. **The intent heading** — one line above a call, naming what the call was
+ *    for. It is drawn by the section, not by a style, so the four styles cannot
+ *    disagree about it.
+ *
+ * The STYLE decides the frame: `card` draws `CardRow`, `compact` a status line,
+ * `trace` a rail node, `minimal` a faint line. Every style receives the same
+ * tool and the same openness, and each renders the shared `ToolBody`.
+ */
+
 import { Fragment } from 'preact';
 import { useMemo } from 'preact/hooks';
+import type { FunctionComponent } from 'preact/compat';
 import type { AgentActionData, ToolCallData, ToolType } from '@/shared/types';
-import { ToolCallCard } from '@/client/components/workspace/chat-timeline/ToolCallCard';
 import { useToolOpenState } from '@/client/hooks/chat/timeline/tool-open';
+import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
+import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
+import { CardRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Card';
+import { CompactRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Compact';
+import { TraceRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Trace';
+import { MinimalRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Minimal';
+import type { ToolRowProps } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/props';
 
 interface ToolCallingSectionProps {
   tools: (ToolCallData | AgentActionData)[];
@@ -16,6 +41,14 @@ interface ToolCallingSectionProps {
   /** Phone layout: the section's frame is the timeline gutter itself. */
   isMobile?: boolean;
 }
+
+/** One renderer per mode — a total map, so a new mode is a build error here. */
+const ROW_BY_MODE: Record<ToolRenderMode, FunctionComponent<ToolRowProps>> = {
+  card: CardRow,
+  compact: CompactRow,
+  trace: TraceRow,
+  minimal: MinimalRow,
+};
 
 function normalizeToolData(action: ToolCallData | AgentActionData, index: number): ToolCallData {
   if ('id' in action && action.id) {
@@ -57,6 +90,9 @@ function normalizeToolData(action: ToolCallData | AgentActionData, index: number
 }
 
 export function ToolCallingSection({ tools, defaultExpanded = false, isMobile = false }: ToolCallingSectionProps) {
+  const mode = useToolRenderMode();
+  const Row = ROW_BY_MODE[mode];
+
   const normalizedTools = useMemo(() => {
     return (tools || []).map((t, i) => normalizeToolData(t, i));
   }, [tools]);
@@ -68,13 +104,21 @@ export function ToolCallingSection({ tools, defaultExpanded = false, isMobile = 
   if (!normalizedTools || normalizedTools.length === 0) return null;
 
   return (
-    <div className={`${transcriptGutter(isMobile)} space-y-1.5`} data-tool-section>
+    <div
+      className={`${transcriptGutter(isMobile)} ${mode === 'trace' ? 'relative' : 'space-y-1.5'}`}
+      data-tool-section
+      data-tool-style={mode}
+    >
+      {/* The rail itself is drawn ONCE per turn by `TurnRail` (see
+          `MessageItem`): a segment per section broke wherever prose sat between
+          two blocks, which is exactly what a trace may not do. A row still
+          places its own node. */}
       {normalizedTools.map((tool) => {
         const intent = tool.intent?.trim();
         return (
           <Fragment key={tool.id}>
             {intent && (
-              <div className="flex items-center gap-2 px-1 pt-0.5">
+              <div className={`flex items-center gap-2 px-1 pt-0.5 ${mode === 'trace' ? 'pl-4' : ''}`}>
                 {/* Label sizes to its text; the rule takes everything left over,
                     so the line runs to the panel edge the way `ThinkingSection`
                     draws it. The label is NOT `flex-1` — two `flex-1` items split
@@ -91,7 +135,7 @@ export function ToolCallingSection({ tools, defaultExpanded = false, isMobile = 
                 <span className="h-px min-w-6 flex-1 bg-ink/8" />
               </div>
             )}
-            <ToolCallCard
+            <Row
               tool={tool}
               isOpen={Boolean(openMap[tool.id])}
               onToggle={toggle}

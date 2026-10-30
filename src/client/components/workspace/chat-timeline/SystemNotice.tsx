@@ -10,6 +10,8 @@ import { GoalNotice } from '@/client/components/workspace/chat-timeline/GoalNoti
 import { TaskResultContent } from '@/client/components/workspace/chat-timeline/TaskResultContent';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
 import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
+import { blockChrome } from '@/shared/lib/chat/timeline/block-chrome';
+import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 
 const KIND_LABEL: Record<GoalNoticeData['kind'], string> = {
   start: 'Goal started',
@@ -51,6 +53,8 @@ interface SystemNoticeProps {
  *  jobs, and <system-reminder> blocks, all collapsed by default; a goal-mode
  *  injection renders open and has no collapse control (see `forcedOpen`). */
 export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeProps) {
+  const mode = useToolRenderMode();
+  const chrome = blockChrome(mode);
   const [userOpen, setUserOpen] = useState(false);
 
   // 1. Check if notice contains a structured <task-result> block
@@ -203,20 +207,22 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
 
   return (
     <div
-      className={`${transcriptGutter(isMobile)} overflow-hidden rounded-xl border border-ink/10 bg-paper text-[12px] text-ink transition-colors ${
-        canToggle ? 'hover:border-ink/20' : ''
-      } select-text`}
+      className={`${transcriptGutter(isMobile)} text-[12px] text-ink select-text ${chrome.root}`}
     >
+      {/* The rail is drawn once per TURN by `TurnRail`; this block only places
+          its node. A segment per block broke wherever prose sat between two. */}
+      {mode === 'trace' && <span aria-hidden="true" className={chrome.node} />}
+      <div className={chrome.frame || undefined}>
       <button
         type="button"
         onClick={handleToggle}
         disabled={!canToggle}
         aria-expanded={canToggle ? isOpen : undefined}
-        className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
+        className={`${chrome.header} ${
           canToggle ? 'cursor-pointer hover:bg-ink/[0.03]' : 'cursor-default'
         } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20`}
       >
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${noticeStyle.badgeClass}`}>
+        <span className={`${chrome.icon} ${noticeStyle.badgeClass}`}>
           {noticeStyle.icon}
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
@@ -276,7 +282,7 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
       </button>
 
       {(forcedOpen || (isOpen && isExpandable)) && (
-        <div className="border-t border-ink/8 bg-canvas/40 px-3.5 py-2.5">
+        <div className={chrome.body}>
           {taskNotice ? (
             <TaskResultContent task={taskNotice} />
           ) : goalNotice ? (
@@ -299,6 +305,7 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

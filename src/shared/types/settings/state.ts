@@ -1,5 +1,6 @@
 import type { ThemeId } from '@/shared/lib/theme/catalog';
 import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
+import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
@@ -96,6 +97,13 @@ export interface SettingsState {
    * would send every new chat back to the default.
    */
   chatWidthMode: ChatWidthMode;
+  /**
+   * How a tool call is drawn in the transcript (`card` | `compact` | `trace` |
+   * `minimal`). A reading style: every mode renders the same call, facts and
+   * body — only the frame, density and grouping change. Global, like the chat
+   * width, because density is a property of the person and the display.
+   */
+  toolRenderStyle: ToolRenderMode;
   /**
    * Which chrome the session sidebar draws (`classic` | `modern`). A
    * PRESENTATION choice over one data source, not a second sidebar: both styles

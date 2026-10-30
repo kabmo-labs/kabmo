@@ -1,10 +1,14 @@
+import { Fragment } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { memo } from 'preact/compat';
 
 import { ChatMessageItem } from '@/client/components/workspace/chat-timeline/MessageItem';
 import { RunFooter } from '@/client/components/workspace/chat-timeline/RunFooter';
+import { TurnRail } from '@/client/components/workspace/chat-timeline/TurnRail';
+import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { isNoticeRow } from '@/shared/lib/chat/notice-row';
 import { previousNonNoticeIndex, resolveRunFooters, streamingRowIndex } from '@/shared/lib/chat/timeline/run-footer';
+import { groupTraceRows } from '@/shared/lib/chat/timeline/trace-groups';
 import type { TimelineRowWindow } from '@/client/hooks/chat/timeline/row-window';
 import type { Attachment, ChatMessageData } from '@/shared/types';
 
@@ -81,6 +85,16 @@ export const MessageList = memo(function MessageList({
   const start = rowWindow ? rowWindow.start : 0;
   const end = rowWindow ? Math.min(rowWindow.end, messages.length) : messages.length;
   const visible = start === 0 && end === messages.length ? messages : messages.slice(start, end);
+  const mode = useToolRenderMode();
+
+  // A `trace` rail belongs to the RUN, not to a row and not to one message.
+  // omp writes a turn as several rows (thinking + tools, then a notice, then the
+  // answer), so a per-row segment broke at every row boundary and a per-message
+  // one broke wherever a notice sat in its own row — measured in the browser as
+  // three disconnected segments with gaps of 256px and 99px. The rows of one run
+  // are therefore grouped under a single `relative` container that draws one
+  // line, and each block inside only places its node.
+  const groups = useMemo(() => groupTraceRows(messages, start, start + visible.length), [messages, start, visible.length]);
 
   return (
     <>
@@ -88,48 +102,83 @@ export const MessageList = memo(function MessageList({
           geometry read in `scroll.ts` still see the whole session's height,
           while only the rows around the viewport are DOM. */}
       {start > 0 && <div data-timeline-spacer="top" aria-hidden="true" style={{ height: rowWindow?.padTop ?? 0 }} />}
-      {visible.map((msg, offset) => {
-        const idx = start + offset;
-        const prev = messages[idx - 1];
-        const isLoading = isGenerating && idx === streamingIdx && msg.role === 'ai';
-        const isAiFragment = msg.role !== 'user' && prev && prev.role !== 'user' && !isNoticeRow(prev);
-        const prevRealIdx = prevNonNoticeIdx[idx];
-        const prevReal = prevRealIdx >= 0 ? messages[prevRealIdx] : null;
-        const isPrevAssistant = Boolean(msg.role !== 'user' && prevReal && prevReal.role !== 'user');
-        const footer = footers[idx];
+      {groups.map((group) => {
+        // The run footer belongs to the run but NOT to its trace: it is a model
+        // and duration stamp, not a step. Left inside the rail container it drew
+        // the line 58px past the last node (measured), so it renders after the
+        // grouped rows instead.
+        const lastIdx = group.rows[group.rows.length - 1];
+        const trailingFooter = footers[lastIdx];
         return (
-          // `flow-root` contains the row's own margins, so the measured height
-          // is the row PLUS the gap it draws — a plain wrapper would let the
-          // margin collapse out and the layout would sit a few px short per row.
-          <div key={msg.id} data-row-id={msg.id} style={{ display: 'flow-root' }}>
-            <ChatMessageItem
-              msg={msg}
-              isStreaming={isLoading}
-              onUndo={onUndo}
-              onNewChat={onNewChat}
-              isPrevAssistant={isPrevAssistant}
-              userActions={userActions}
-              isMobile={isMobile}
-              className={isNoticeRow(msg) ? 'mt-3 mb-1' : isAiFragment ? 'mt-1' : 'mt-3'}
-            />
-            {footer && (
-              <RunFooter
-                msg={footer.msg}
-                provider={provider}
-                providerNames={providerNames}
-                modelName={modelName}
-                modelNames={modelNames}
-                thinkingLevel={thinkingLevel}
-                durationMs={footer.durationMs}
-                answerText={footer.answerText}
-                retryTargetId={footer.runUserId}
-                onRetry={onRetry}
-                onNewChat={onNewChat}
-                isMobile={isMobile}
-                showActions={userActions}
-              />
-            )}
-          </div>
+        <Fragment key={group.key}>
+        <div className={group.trace ? 'relative' : undefined} data-trace-group={group.trace || undefined}>
+          {group.trace && <TurnRail visible={mode === 'trace'} isMobile={isMobile} />}
+          {group.rows.map((idx) => {
+            const msg = messages[idx];
+            const prev = messages[idx - 1];
+            const isLoading = isGenerating && idx === streamingIdx && msg.role === 'ai';
+            const isAiFragment = msg.role !== 'user' && prev && prev.role !== 'user' && !isNoticeRow(prev);
+            const prevRealIdx = prevNonNoticeIdx[idx];
+            const prevReal = prevRealIdx >= 0 ? messages[prevRealIdx] : null;
+            const isPrevAssistant = Boolean(msg.role !== 'user' && prevReal && prevReal.role !== 'user');
+            const footer = footers[idx];
+            // A footer that is NOT the group's trailing one still renders in
+            // place — it closes an earlier run's row and the rail already ended.
+            const inlineFooter = footer && idx !== lastIdx ? footer : null;
+            return (
+              // `flow-root` contains the row's own margins, so the measured height
+              // is the row PLUS the gap it draws — a plain wrapper would let the
+              // margin collapse out and the layout would sit a few px short per row.
+              <div key={msg.id} data-row-id={msg.id} style={{ display: 'flow-root' }}>
+                <ChatMessageItem
+                  msg={msg}
+                  isStreaming={isLoading}
+                  onUndo={onUndo}
+                  onNewChat={onNewChat}
+                  isPrevAssistant={isPrevAssistant}
+                  userActions={userActions}
+                  isMobile={isMobile}
+                  className={isNoticeRow(msg) ? 'mt-3 mb-1' : isAiFragment ? 'mt-1' : 'mt-3'}
+                />
+                {inlineFooter && (
+                  <RunFooter
+                    msg={inlineFooter.msg}
+                    provider={provider}
+                    providerNames={providerNames}
+                    modelName={modelName}
+                    modelNames={modelNames}
+                    thinkingLevel={thinkingLevel}
+                    durationMs={inlineFooter.durationMs}
+                    answerText={inlineFooter.answerText}
+                    retryTargetId={inlineFooter.runUserId}
+                    onRetry={onRetry}
+                    onNewChat={onNewChat}
+                    isMobile={isMobile}
+                    showActions={userActions}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {trailingFooter && (
+          <RunFooter
+            msg={trailingFooter.msg}
+            provider={provider}
+            providerNames={providerNames}
+            modelName={modelName}
+            modelNames={modelNames}
+            thinkingLevel={thinkingLevel}
+            durationMs={trailingFooter.durationMs}
+            answerText={trailingFooter.answerText}
+            retryTargetId={trailingFooter.runUserId}
+            onRetry={onRetry}
+            onNewChat={onNewChat}
+            isMobile={isMobile}
+            showActions={userActions}
+          />
+        )}
+        </Fragment>
         );
       })}
       {end < messages.length && <div data-timeline-spacer="bottom" aria-hidden="true" style={{ height: rowWindow?.padBottom ?? 0 }} />}

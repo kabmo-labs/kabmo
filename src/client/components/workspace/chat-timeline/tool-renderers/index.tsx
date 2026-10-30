@@ -155,7 +155,7 @@ const TOOL_KEY_TITLES: Record<string, true> = {
 };
 
 /**
- * Panel khusus per tool family — dirender di dalam body ToolCallCard.
+ * Panel khusus per tool family — dirender di dalam body setiap render style.
  * Classification is pure (`toolPanelKind`); this only maps the key to a
  * component, so asking "does this tool have a panel?" no longer builds one.
  */
@@ -166,7 +166,7 @@ export function ToolDetailsPanel({ tool }: { tool: ToolCallData }): ReactNode {
 }
 
 /** True kalau tool punya panel khusus yang sudah merender input/output sendiri —
- *  ToolCallCard tidak boleh render Input/Output generik lagi (anti dobel). */
+ *  ToolBody tidak boleh render Input/Output generik lagi (anti dobel). */
 export function hasToolDetailsPanel(tool: ToolCallData): boolean {
   return toolPanelKind(tool) !== null;
 }

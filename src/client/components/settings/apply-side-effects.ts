@@ -10,7 +10,7 @@
  * Every one of these settings changes something ALREADY ON SCREEN, and
  * `appSettings` is a boot-time prop the open surfaces only see again after a
  * reload — so the modal has to announce the change, and each consumer
- * subscribes (`useSidebarStyle`, `useEditorFont`, …).
+ * subscribes (`useSidebarStyle`, `useToolRenderMode`, `useEditorFont`, …).
  *
  * It lives here rather than inside the modal for two reasons: the modal sits at
  * the repo's 350-line ceiling, and this is a table of "value moved → announce",
@@ -30,6 +30,7 @@
 import type { SettingsState } from '@/shared/types';
 import { applyDocumentTheme } from '@/client/hooks/ui/theme';
 import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
+import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
@@ -63,6 +64,12 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   // applies the moment the choice is made.
   if (next.chatWidthMode !== previous.chatWidthMode) {
     applyChatWidthMode(next.chatWidthMode);
+  }
+
+  // The tool-render style picks a Preact renderer, so the open timeline has to
+  // hear about the change now.
+  if (next.toolRenderStyle !== previous.toolRenderStyle) {
+    applyToolRenderMode(next.toolRenderStyle);
   }
 
   // The sidebar style picks a Preact tree for the whole left column, and the
