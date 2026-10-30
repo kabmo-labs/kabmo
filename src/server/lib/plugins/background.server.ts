@@ -81,7 +81,23 @@ export function createPluginBackground(pluginId: string, now = Date.now()): {
       // The start runs HERE, at declaration: a service that needed the loader to
       // begin would be a service that does not exist for the first tick, and the
       // ordering between "started" and "scheduled" would depend on the loader.
-      void service.start();
+      //
+      // Its RETURNED promise is contained, because a service is plugin code and a
+      // rejection nobody holds is fatal to the whole server. A synchronous throw
+      // still propagates (the loader reports a plugin that cannot load); only the
+      // async half is caught, and it is reported under the plugin's own name
+      // rather than swallowed.
+      //
+      // This catches a plugin that `return`s its promise. It does NOT catch one
+      // that starts a floating `async` IIFE inside `start()` — measured, the
+      // stats plugin's sampler does exactly that, so its `SQLITE_IOERR_VNODE`
+      // never reached this line. The process boundary handles that case
+      // (`installRejectionGuard`, called from the entry).
+      void Promise.resolve(service.start()).catch((error) => {
+        console.error(
+          `[plugins] ${pluginId}: service "${id}" failed — ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
     },
     schedule(id, spec, run) {
       if (typeof run !== 'function') throw new Error(`schedule "${id}" has no run()`);

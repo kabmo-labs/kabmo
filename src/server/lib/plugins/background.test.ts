@@ -44,6 +44,39 @@ describe('background', () => {
     expect(handle.services[0]?.id).toBe('poller');
   });
 
+  test('a service that rejects is reported, not left to kill the process', async () => {
+    // Measured failure this pins: the stats plugin's sampler re-reads its
+    // interval from the database, and a data directory that vanished under it
+    // produced `SQLITE_IOERR_VNODE` from a floating promise — Bun exits 1 on an
+    // unhandled rejection, so one plugin's background loop took the whole server
+    // (and every session in it) down. The rejection must be logged instead.
+    const rejections: unknown[] = [];
+    const onRejection = (reason: unknown) => void rejections.push(reason);
+    process.on('unhandledRejection', onRejection);
+    const errors: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => void errors.push(args.map(String).join(' '));
+    try {
+      const { api } = createPluginBackground('alpha');
+      api.service('sampler', { start: async () => { throw new Error('disk I/O error'); } });
+      // One macrotask is enough for the rejection to settle and be handled.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    } finally {
+      console.error = originalError;
+      process.off('unhandledRejection', onRejection);
+    }
+    expect(rejections).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('alpha');
+    expect(errors[0]).toContain('sampler');
+    expect(errors[0]).toContain('disk I/O error');
+  });
+
+  test('a service that throws synchronously still refuses to load the plugin', () => {
+    const { api } = createPluginBackground('alpha');
+    expect(() => api.service('broken', { start: () => { throw new Error('no start'); } })).toThrow('no start');
+  });
+
   test('a schedule resolves its next fire with Kabmo own grammar', () => {
     const { api, handle } = createPluginBackground('alpha', 1_000_000);
     api.schedule('sweep', '5m', () => {});

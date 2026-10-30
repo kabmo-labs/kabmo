@@ -31,12 +31,18 @@ import { seedDefaultMarketplace } from '@/server/lib/panels/seed.server';
 import { syncBundledPlugins } from '@/server/lib/panels/sync.server';
 import { startPanelAutoUpdate } from '@/server/lib/panels/auto-update.server';
 import { disposeAllPluginsOnShutdown, loadPluginServers } from '@/server/lib/plugins/loader.server';
+import { installRejectionGuard } from '@/server/lib/lifecycle/rejection-guard';
 
 // A pre-rename install keeps its database, login and sessions: the data
 // directory is moved into place before ANYTHING reads a path under it. This is
 // the first statement in the file for that reason — the auth secret, the
 // instance record and the SQLite file all live there.
 migrateLegacyDataDir();
+
+// Before anything starts a timer, a plugin or a socket: a rejection from code we
+// do not own (a marketplace plugin's own background loop) must be REPORTED, not
+// allowed to exit a process that hosts every live session. See the module.
+installRejectionGuard();
 
 // Refuse to run without a resolvable omp binary — before the listener opens and
 // before the first request can reach a route that shells out to it. The database
