@@ -22,7 +22,20 @@ import type { ChatMessageData } from '@/shared/types/chat';
 import { isNoticeRow } from '@/shared/lib/chat/notice-row';
 
 export interface TraceGroup {
-  /** React key: the first row's id. */
+  /**
+   * Render key: the id of the row that STARTS the run — which is the window's
+   * first row only when the window happens to begin at the run's first row.
+   *
+   * It used to be `rows[0]` unconditionally, and that is what made a block
+   * inside a run collapse the moment it was expanded. The timeline mounts a
+   * WINDOW of rows, so every measurement that moved the window's `start` by one
+   * row renamed the group; a renamed `key` remounts the whole run, and a
+   * remount throws away every block's local state — the thinking accordion's
+   * own `useState` included, which is why expanding a thought snapped shut
+   * again (measured in the browser: one click removed and re-added all 14 rows
+   * of the run). A key derived from the run's first row is the same string for
+   * every window that covers part of that run.
+   */
   key: string;
   /** Indices into the caller's `messages` array, in order. */
   rows: number[];
@@ -41,11 +54,25 @@ export function hasTraceContent(msg: ChatMessageData): boolean {
 }
 
 /**
+ * The absolute index where the run containing `index` begins: the first row
+ * after the previous user row. Walks back past the window's own `start`,
+ * because the key must not depend on where the window happens to begin.
+ */
+function runStartIndex(messages: ChatMessageData[], index: number): number {
+  let cursor = index;
+  while (cursor > 0 && messages[cursor - 1].role !== 'user') cursor -= 1;
+  return cursor;
+}
+
+/**
  * Group `messages[start, end)` into render units.
  *
  * A user row is its own unit; every other row joins the run above it. The
  * group's `trace` is the OR of its rows' trace content, so a run whose steps sit
  * on one row and whose answer sits on the next still draws one line across both.
+ *
+ * A truncated run keeps the key of its FIRST row, outside the window included —
+ * see `TraceGroup.key`.
  */
 export function groupTraceRows(messages: ChatMessageData[], start = 0, end = messages.length): TraceGroup[] {
   const groups: TraceGroup[] = [];
@@ -62,7 +89,7 @@ export function groupTraceRows(messages: ChatMessageData[], start = 0, end = mes
       open.trace = open.trace || hasTraceContent(msg);
       continue;
     }
-    groups.push({ key: msg.id, rows: [idx], trace: hasTraceContent(msg) });
+    groups.push({ key: messages[runStartIndex(messages, idx)].id, rows: [idx], trace: hasTraceContent(msg) });
   }
   return groups;
 }

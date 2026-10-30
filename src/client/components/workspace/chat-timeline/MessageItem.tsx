@@ -208,6 +208,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         {thinkingData && (
           <ThinkingSection 
             thinking={thinkingData} 
+            messageId={String(msg.id)}
             defaultExpanded={false}
             showSeparator={isPrevAssistant}
             isMobile={isMobile}

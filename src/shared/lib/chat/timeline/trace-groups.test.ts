@@ -80,6 +80,18 @@ describe('trace grouping', () => {
     expect(groups[0].trace).toBe(true);
   });
 
+  test('a truncated run keeps the key of its first row, so a window shift cannot remount it', () => {
+    // The timeline mounts a WINDOW of rows, so the run is routinely rendered
+    // from the middle. Keying the group by `rows[0]` renamed it every time a
+    // measurement moved `start` by one row, and a renamed key remounts the
+    // whole run — which threw away the thinking accordion's own open state
+    // (measured: one expand removed and re-added all 14 rows of the run).
+    const whole = groupTraceRows(TURN, 1, 4);
+    const shifted = groupTraceRows(TURN, 2, 4);
+    expect(whole[0].key).toBe('a1');
+    expect(shifted[0].key).toBe(whole[0].key);
+  });
+
   test('hasTraceContent reads each shape omp writes', () => {
     expect(hasTraceContent({ id: 'x', role: 'ai', content: '', notice: 'n' } as unknown as ChatMessageData)).toBe(true);
     expect(hasTraceContent({ id: 'x', role: 'ai', content: '', thinking: { thought: 't' } } as unknown as ChatMessageData)).toBe(true);

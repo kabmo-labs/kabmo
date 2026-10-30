@@ -30,26 +30,9 @@
  */
 
 import type { RefObject } from 'preact/compat';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { layoutTimelineRows, rowIndex, rowScrollOffset, timelineWindow } from '@/shared/lib/chat/timeline/row-window';
-
-/**
- * How long a reveal keeps correcting after it first moves the viewport.
- *
- * Wall-clock rather than a frame count: the rows it just mounted are measured on
- * later commits (a tool card's output arrives through a deferred highlight, an
- * image decodes), and every measurement above the target moves it. Measured
- * here, a fixed short window left a jump to the newest turn 300 px short of the
- * tail — outside the follow-mode threshold, so the stream stopped following
- * after the jump.
- */
-const REVEAL_SETTLE_MS = 3000;
-
-/** Consecutive still frames that end a reveal early — the layout has settled. */
-const REVEAL_STILL_FRAMES = 10;
-
-/** How long a reveal waits for a row the pager is still bringing in. */
-const REVEAL_DEADLINE_MS = 3000;
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { layoutTimelineRows, rowIndex, timelineWindow } from '@/shared/lib/chat/timeline/row-window';
+import { createRevealRow, writeScrollTop } from '@/client/hooks/chat/timeline/row-window-reveal';
 
 /** A measurement is only adopted when it differs by more than this. */
 const MEASURE_EPSILON_PX = 0.5;
@@ -57,23 +40,6 @@ const MEASURE_EPSILON_PX = 0.5;
 /** Distance from the bottom, in px, that makes a reader "at the tail". Mirrors
  *  `FOLLOW_BOTTOM_THRESHOLD_PX` in `scroll.ts`: below it, follow mode is on. */
 const TAIL_ANCHOR_PX = 100;
-
-/**
- * Write a scroll position that is meant to LAND, not to animate.
- *
- * The timeline container carries Tailwind's `scroll-smooth`, and CSS
- * `scroll-behavior` applies to a `scrollTop` ASSIGNMENT too (CSSOM-View:
- * the setter scrolls with `behavior: auto`, which resolves to the element's
- * computed `scroll-behavior`). So `el.scrollTop = target` started a smooth
- * animation, the reveal's correction loop re-targeted it every frame, and the
- * jump was left mid-flight wherever the loop stopped — measured on a
- * 240-message session: the trace walked 9 804 → 6 504 px and stayed there.
- * `behavior: 'instant'` is the one value CSS cannot override.
- */
-function writeScrollTop(el: HTMLElement, top: number): void {
-  if (Math.abs(el.scrollTop - top) <= 1) return;
-  el.scrollTo({ top, behavior: 'instant' });
-}
 
 export interface TimelineRowWindow {
   /** First mounted row index (inclusive). */
@@ -126,12 +92,6 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
   const [viewport, setViewport] = useState(0);
   // The scroll container. STATE, not the ref: see `scrollNode` in the deps.
   const element = scrollNode;
-  // The row at the top of the viewport, captured before a re-layout so the
-  // reader's position can be restored after it. `scrollTop` is recorded with it
-  // so a restore can tell that SOMETHING ELSE moved the viewport in between —
-  // the opening jump to the tail, a rail jump, the follow pin — and stand down
-  // instead of writing the reader's old position back over it.
-  const anchorRef = useRef<{ id: string; offset: number; scrollTop: number; tail: boolean } | null>(null);
   /**
    * The viewport belongs to the BOTTOM until the reader scrolls away.
    *
@@ -157,6 +117,12 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
   viewportRef.current = viewport;
   // Bumped per reveal so a superseded one stops writing.
   const revealGenerationRef = useRef(0);
+  /**
+   * A reveal is flying: it re-writes its target every frame until it settles,
+   * so a measurement must not correct the position underneath it (the two
+   * would trade the viewport). See `adopt`.
+   */
+  const revealingRef = useRef(false);
 
   const range = useMemo(
     () => (enabled ? timelineWindow(layout, scrollTop, viewport) : { start: 0, end: ids.length, padTop: 0, padBottom: 0 }),
@@ -220,26 +186,48 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
       return changed;
     };
     const adopt = (): void => {
+      // Which row the reader is looking at, under the geometry they are still
+      // seeing: `el.scrollTop` has not moved yet (a browser does not adjust it
+      // when content above grows), so the OLD layout is the right one to read
+      // the anchor from.
       const current = timelineWindow(layout, el.scrollTop, el.clientHeight, 0);
       const anchorId = ids[current.start];
-      if (anchorId) {
-        anchorRef.current = {
-          id: anchorId,
-          offset: el.scrollTop - layout.offsets[current.start],
-          scrollTop: el.scrollTop,
-          // A reader parked at the tail follows the TAIL, not the row that
-          // happened to be at the top of the viewport: the rows below it are
-          // estimates until they mount, so a row anchor would leave the
-          // viewport short of the bottom — measured at 775 px on an opened
-          // session, which is past the 100 px threshold that decides whether
-          // the stream keeps following.
-          // Measured against the PREVIOUS layout, not the DOM: this effect runs
-          // after the content already grew, so the DOM's own distance is the
-          // growth itself. A reader who was at the bottom before a row was
-          // measured taller must stay at the bottom — measured against the DOM
-          // they were left 2 080 px short, i.e. outside follow mode.
-          tail: layout.total - scrollTop - (viewport || el.clientHeight) <= TAIL_ANCHOR_PX,
-        };
+      // A reader parked at the tail follows the TAIL, not the row that happened
+      // to be at the top of the viewport: the rows below it are estimates until
+      // they mount, so a row anchor would leave the viewport short of the
+      // bottom — measured at 775 px on an opened session, which is past the
+      // 100 px threshold that decides whether the stream keeps following.
+      // Measured against the PREVIOUS layout, not the DOM: this effect runs
+      // after the content already grew, so the DOM's own distance is the
+      // growth itself. A reader who was at the bottom before a row was measured
+      // taller must stay at the bottom — measured against the DOM they were
+      // left 2 080 px short, i.e. outside follow mode.
+      const tail = tailPinRef.current
+        || layout.total - scrollTop - (viewport || el.clientHeight) <= TAIL_ANCHOR_PX;
+      const offset = anchorId ? el.scrollTop - layout.offsets[current.start] : 0;
+
+      // The correction is written HERE, against the new layout, not deferred to
+      // an effect that runs after this commit. Deferring it is what made an
+      // expanded thinking block snap shut: the restore effect for the SAME
+      // commit still holds the pre-measurement layout, so it consumed the
+      // anchor and wrote the reader's old offset; the next commit then had no
+      // anchor left, `scrollTop` was still stale, and the mounted WINDOW moved
+      // one row — unmounting and remounting the rows at its edge (measured in
+      // the browser: three rows removed and re-added per expand), which throws
+      // away every block's local state.
+      const next = layoutTimelineRows(ids, measuredRef.current);
+      const target = tail || !anchorId
+        ? Math.max(0, el.scrollHeight - el.clientHeight)
+        : next.offsets[rowIndex(ids, anchorId)] + offset;
+      tailPinRef.current = tail;
+      // A reveal OWNS the viewport until it settles: it re-writes its target
+      // every frame, so a correction here would be written back over it and the
+      // two would trade the viewport (measured before this guard existed: the
+      // reveal and the restore alternated `0` and its target for the whole
+      // animation). The measurement is still adopted; only the position waits.
+      if (!revealingRef.current) {
+        setScrollTop(target);
+        writeScrollTop(el, target);
       }
       setVersion((value) => value + 1);
     };
@@ -266,80 +254,18 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
 
   // Restore the reading position after the layout moved under it.
   useLayoutEffect(() => {
-    const anchor = anchorRef.current;
-    if (!anchor) return;
-    anchorRef.current = null;
     const el = element;
-    if (!el) return;
-    // The viewport moved between the capture and this commit: a rail jump, the
-    // opening jump to the tail, the follow pin, the reader's own scroll. That
-    // mover owns the position — writing the captured one back is how a jump
-    // landed and was then dragged to the tail, and how the reveal and this
-    // effect ping-ponged a viewport between `0` and its target every frame
-    // (measured: `scrollTo` writes alternating 4 913 / 0 for the whole reveal).
-    if (anchor.tail || tailPinRef.current) {
-      // The bottom edge is the anchor. `writeScrollTop`, because the container
-      // carries `scroll-smooth`: a bare `scrollTop` assignment animates, and a
-      // correction that animates is a correction that arrives late.
-      writeScrollTop(el, Math.max(0, el.scrollHeight - el.clientHeight));
-      return;
-    }
-    const index = rowIndex(ids, anchor.id);
-    if (index < 0) return;
-    const target = layout.offsets[index] + anchor.offset;
-    writeScrollTop(el, target);
-  }, [layout, ids, element]);
+    if (!el || !tailPinRef.current) return;
+    // The tail pin outlives a commit: the rows above it are estimates until
+    // they mount, so every measurement can move the bottom by its own error.
+    // The bottom edge is the anchor. `writeScrollTop`, because the container
+    // carries `scroll-smooth`: a bare `scrollTop` assignment animates, and a
+    // correction that animates is a correction that arrives late.
+    writeScrollTop(el, Math.max(0, el.scrollHeight - el.clientHeight));
+  }, [layout, element]);
 
-  const revealRow = useCallback(
-    (id: string): Promise<void> => {
-      const el = scrollRef.current;
-      if (!el) return Promise.resolve();
-      const deadline = Date.now() + REVEAL_DEADLINE_MS;
-      const settleBy = Date.now() + REVEAL_SETTLE_MS;
-      // Supersedes an earlier reveal: two rail clicks in a row must land on the
-      // SECOND turn, not race each other to the first one's position.
-      const generation = (revealGenerationRef.current += 1);
-      return new Promise<void>((resolve) => {
-        let stillFrames = 0;
-        let lastTop = -1;
-        const step = (): void => {
-          if (generation !== revealGenerationRef.current) {
-            resolve();
-            return;
-          }
-          const rows = idsRef.current;
-          const index = rowIndex(rows, id);
-          if (index < 0) {
-            // The pager may still be bringing the row in; keep asking until the
-            // deadline rather than scrolling to a row that does not exist yet.
-            if (Date.now() < deadline) requestAnimationFrame(step);
-            else resolve();
-            return;
-          }
-          const current = layoutRef.current;
-          const view = el.clientHeight || viewportRef.current;
-          // The newest turn is the TAIL, not the centre of the last row: that
-          // is what the reader means by jumping there, and it is what lets
-          // follow mode re-engage (the scroll handler's threshold is 100 px).
-          tailPinRef.current = index === rows.length - 1;
-          const target = tailPinRef.current
-            ? Math.max(0, el.scrollHeight - view)
-            : rowScrollOffset(current, index, view);
-          writeScrollTop(el, target);
-          // A row that was just mounted is measured on a later commit; the
-          // corrections land on the MEASURED position rather than the estimate
-          // the first write used.
-          stillFrames = Math.abs(el.scrollTop - lastTop) <= 1 ? stillFrames + 1 : 0;
-          lastTop = el.scrollTop;
-          if (stillFrames >= REVEAL_STILL_FRAMES || Date.now() >= settleBy) {
-            resolve();
-            return;
-          }
-          requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      });
-    },
+  const revealRow = useMemo(
+    () => createRevealRow({ scrollRef, idsRef, layoutRef, viewportRef, tailPinRef, revealingRef, generationRef: revealGenerationRef }),
     [scrollRef],
   );
 

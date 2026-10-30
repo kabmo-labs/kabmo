@@ -23,7 +23,7 @@
  * a tool card with a title of "Thinking".
  */
 
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { BrainCircuit, ChevronDown, Sparkles } from 'lucide-preact';
 import type { ThinkingData } from '@/shared/types';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
@@ -31,9 +31,16 @@ import { CopyButton } from '@/client/components/common/CopyButton';
 import { transcriptGutter } from '@/shared/lib/chat/timeline/gutter';
 import { blockChrome, traceInset } from '@/shared/lib/chat/timeline/block-chrome';
 import { useToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
+import { useThinkingOpenState } from '@/client/hooks/chat/timeline/thinking-open';
 
 interface ThinkingSectionProps {
   thinking: ThinkingData | string;
+  /**
+   * The row this block belongs to, and the key its open state is stored under.
+   * Optional: a block mounted outside a timeline still toggles, it just cannot
+   * remember the choice across the row being unmounted (see `thinking-open`).
+   */
+  messageId?: string;
   defaultExpanded?: boolean;
   showSeparator?: boolean;
   /** Phone layout: the section's frame is the timeline gutter itself. */
@@ -42,6 +49,7 @@ interface ThinkingSectionProps {
 
 export function ThinkingSection({
   thinking,
+  messageId,
   defaultExpanded = false,
   showSeparator = false,
   isMobile = false,
@@ -51,12 +59,8 @@ export function ThinkingSection({
   const framed = mode === 'card';
 
   const isGenerating = typeof thinking === 'object' ? Boolean(thinking.isGenerating) : false;
-  const [isOpen, setIsOpen] = useState(defaultExpanded || isGenerating);
+  const { isOpen, toggle: toggleOpen } = useThinkingOpenState(messageId, defaultExpanded, isGenerating);
   const thoughtBodyRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isGenerating) setIsOpen(true);
-  }, [isGenerating]);
 
   const thoughtText = typeof thinking === 'string' ? thinking : thinking.thought || '';
   const noticeMatch = thoughtText.match(/<system-notice[^>]*>([\s\S]*?)<\/system-notice>/);
@@ -73,10 +77,7 @@ export function ThinkingSection({
     if (el) el.scrollTop = el.scrollHeight;
   }, [isOpen, cleanThought, isGenerating]);
 
-  const toggleOpen = () => setIsOpen(prev => !prev);
-
   if (!cleanThought) return null;
-
   const iconTone = framed ? 'bg-ink/5 text-ink/70' : 'text-ink/40';
 
   return (

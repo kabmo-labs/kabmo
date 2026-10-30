@@ -23,12 +23,18 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { ThinkingSection } from '@/client/components/workspace/chat-timeline/ThinkingSection';
 import { SystemNotice } from '@/client/components/workspace/chat-timeline/SystemNotice';
+import { SessionStateProvider } from '@/client/components/common/session-state-provider';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { blockChrome } from '@/shared/lib/chat/timeline/block-chrome';
+import { forgetSession } from '@/shared/lib/workspace/session-state/store';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
 let container: HTMLElement;
+/** The runner's own fetch, so a leaked stub cannot be mistaken for it. */
+const nativeFetch = Bun.fetch;
+/** A pending id: the provider loads it like any other and nothing is stored. */
+const SESSION = 'spec-block-chrome';
 
 beforeAll(() => installDomGlobals(new Window({ url: 'http://localhost' })));
 afterAll(() => restoreDomGlobals());
@@ -40,11 +46,20 @@ beforeEach(() => {
   // completed (`Cannot call beforeEach() after the test run has completed`).
   container = document.createElement('div');
   document.body.appendChild(container);
+  // The blocks remember their openness per session, so the provider they are
+  // mounted under asks for this session's blob.
+  (globalThis as unknown as Record<string, unknown>).fetch = async () =>
+    new Response(JSON.stringify({ sessionId: SESSION, state: {} }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
 });
 
 afterEach(() => {
   render(null, container);
   container.remove();
+  forgetSession(SESSION);
+  (globalThis as unknown as Record<string, unknown>).fetch = nativeFetch;
 });
 
 /** A thought long enough that the block renders (an empty one renders nothing). */
@@ -59,9 +74,14 @@ async function paint(style: string, node: preact.ComponentChildren): Promise<HTM
   // paint would assert against the previous style.
   render(null, container);
   primeKabmoSettings({ kabmo_settings: { toolRenderStyle: style } });
+  // The blocks remember their openness per session (`useToolOpenState`,
+  // `useThinkingOpenState`), so they are mounted the way the timeline mounts
+  // them: inside the provider.
   await act(async () => {
-    render(node as never, container);
+    render(h(SessionStateProvider, { sessionId: SESSION, children: node }) as never, container);
   });
+  // The provider's blob load settles across a tick.
+  for (let i = 0; i < 4; i += 1) await act(async () => {});
   return container;
 }
 

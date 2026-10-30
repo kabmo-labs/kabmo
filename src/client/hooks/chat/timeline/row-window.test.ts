@@ -208,4 +208,39 @@ describe('useTimelineRowWindow', () => {
 
     expect(scroller.scrollTop).toBe(soloTop);
   });
+
+  test('a row growing above the viewport keeps the mounted window and the reader', async () => {
+    // An expanded thinking block grows the row it sits in. The correction has
+    // to land in the SAME commit as the measurement: a deferred restore runs
+    // with the pre-measurement layout, so the next commit has no anchor left,
+    // the window re-derives from a stale `scrollTop`, and the rows at its edge
+    // unmount — measured in the browser as three rows removed and re-added per
+    // expand, which throws away every block's local state (an expanded thought
+    // snapping shut).
+    const scroller = installScroller(20_000);
+    const heights = new Map<string, number>();
+    for (let i = 0; i < ROWS; i += 1) {
+      const node = document.createElement('div');
+      node.dataset.rowId = `r-${i}`;
+      node.getBoundingClientRect = () => ({ height: heights.get(node.dataset.rowId!) ?? ROW_HEIGHT }) as DOMRect;
+      scroller.appendChild(node);
+    }
+    await mount(scroller);
+    await act(async () => {});
+    const opened = rowWindow!.start;
+    const before = scroller.scrollTop;
+    expect(opened).toBeGreaterThan(0);
+
+    heights.set('r-50', ROW_HEIGHT + 1_000);
+    // What the timeline does on the click: a re-render, then the measure
+    // effect adopts the grown row.
+    await act(async () => { render(h(Probe, { node: scroller }), container); });
+    drainFrames();
+    await act(async () => {});
+
+    expect(rowWindow!.start).toBe(opened);
+    // The row the reader was on kept its place: the 1 000 px that appeared
+    // above it moved the offset by exactly that much.
+    expect(scroller.scrollTop).toBe(before + 1_000);
+  });
 });

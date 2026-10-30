@@ -66,6 +66,11 @@
  *                             from another conversation is never restored
  * - chat.draft                string
  * - chat.draftAttachments     attachment metadata array
+ * - chat.toolOpen             Record<toolId, boolean> — the tool cards the
+ *                             reader opened or closed (see `useToolOpenState`)
+ * - chat.thinkingOpen         Record<messageId, boolean> — the same for the
+ *                             thinking accordions (`useThinkingOpenState`), so a
+ *                             block stays open when the row window unmounts it
  *
  * The module is three files, because one had passed the per-file ceiling: this
  * one owns the PUBLIC API (read, write, load, migrate) and what a write means;
