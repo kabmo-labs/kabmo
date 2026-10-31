@@ -4,6 +4,20 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.15.0](https://github.com/kabmo-labs/kabmo/compare/v0.14.1...v0.15.0) — 2026-10-31
+
+### Added
+
+* **command-runner:** open with every command file group collapsed ([2387306](https://github.com/kabmo-labs/kabmo/commit/2387306380195e89bbf2324247b76ebd3b0e510b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **git-panel:** widen the commit history dialog on desktop ([f48dcdb](https://github.com/kabmo-labs/kabmo/commit/f48dcdb17105344e9634ca848b3312c696fc1fbf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** enlarge the settings dialog to a 1280px desktop canvas ([8bc6228](https://github.com/kabmo-labs/kabmo/commit/8bc6228a06d613fdb210450e223496a19b2afbd9)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **chat:** land the scroll-to-bottom jump at the tail instead of stopping part way ([418a2c1](https://github.com/kabmo-labs/kabmo/commit/418a2c16b993ac5a1780557eadea5d5c552dee7c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** keep the stretched glass card opaque over the transcript ([0910b8e](https://github.com/kabmo-labs/kabmo/commit/0910b8ef27e5377adc0798ccdfa81551358090ad)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** stop reporting subfolder files as deleted ([91467d4](https://github.com/kabmo-labs/kabmo/commit/91467d4a10835f65c012aa2061883ee857250318)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.14.1](https://github.com/kabmo-labs/kabmo/compare/v0.14.0...v0.14.1) — 2026-10-30
 
 ### Fixed
