@@ -29,7 +29,11 @@ interface WikiPageViewProps {
   rootPath?: string;
   repoScope: string;
   onNavigate: (path: string) => void;
-  onBack: () => void;
+  /**
+   * The desktop's narrow-column back arrow. Absent on the phone, where the page
+   * list is a modal reached by the floating button and nothing needs a back.
+   */
+  onBack?: () => void;
 }
 
 /** Web URL of one page, for "open on the host". Null for an unknown provider. */
@@ -66,15 +70,17 @@ export function WikiPageView({
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-paper">
       <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-ink/10 px-2.5 py-1.5">
-        <button
-          type="button"
-          onClick={onBack}
-          title="Back to the page list"
-          aria-label="Back to the page list"
-          className="flex-shrink-0 rounded p-1 text-ink/60 hover:bg-ink/5 hover:text-ink @[520px]:hidden"
-        >
-          <ArrowLeft size={13} />
-        </button>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            title="Back to the page list"
+            aria-label="Back to the page list"
+            className="flex-shrink-0 rounded p-1 text-ink/60 hover:bg-ink/5 hover:text-ink @[520px]:hidden"
+          >
+            <ArrowLeft size={13} />
+          </button>
+        )}
         <span className="min-w-0 flex-1 truncate text-[11px] text-ink/50" title={path}>
           {path}
         </span>

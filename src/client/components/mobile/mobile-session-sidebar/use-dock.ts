@@ -85,5 +85,6 @@ export function dockBodyProps(input: {
     ...(input.onOpenFile ? { onOpenFile: input.onOpenFile } : {}),
     onClose: input.onClose,
     showHeader: false,
+    layout: 'phone',
   };
 }

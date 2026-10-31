@@ -53,6 +53,13 @@ export interface PanelBodyProps {
   /** The phone's drawer hides a view's own header; the desktop stack does not. */
   showHeader?: boolean;
   /**
+   * Which shell is drawing this body. A view with its own small-screen form
+   * (the wiki's floating page-list button) must know the PHONE from a merely
+   * narrow desktop column; no container or media query can tell the two apart.
+   * Omitted means desktop.
+   */
+  layout?: 'desktop' | 'phone';
+  /**
    * The boot settings snapshot, for the views that read it (the session list
    * passes it to its own Settings modal and to the prewarm's access mode).
    */

@@ -299,6 +299,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
                 onRefresh: onRefreshWorkspace,
                 onOpenFile,
                 onClose: onToggleRightPanel,
+                layout: 'desktop',
               };
               return (
                 <div key={panel.id} className={isActiveView ? 'w-full h-full' : 'hidden'}>

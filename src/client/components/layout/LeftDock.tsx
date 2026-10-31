@@ -86,6 +86,7 @@ export function LeftDockView({
     ...(onClose ? { onClose } : {}),
     appSettings,
     ...(streamStatus ? { streamStatus } : {}),
+    layout: 'desktop',
   };
 
   return (

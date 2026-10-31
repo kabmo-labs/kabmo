@@ -19,6 +19,11 @@ export interface ModalProps {
   maxWidthClass?: string;
   /** Backdrop z-index class. Default `z-[60]`. */
   zClass?: string;
+  /**
+   * Accessible name for the dialog. The header is ordinary content, so without
+   * this the `role="dialog"` announces itself anonymously to a screen reader.
+   */
+  ariaLabel?: string;
 }
 
 /**
@@ -34,6 +39,7 @@ export function Modal({
   form,
   maxWidthClass = 'max-w-md',
   zClass = 'z-[60]',
+  ariaLabel,
 }: ModalProps) {
   const body = (
     <>
@@ -62,6 +68,7 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
+        aria-label={ariaLabel}
         className={`bg-paper border border-ink/15 rounded-xl shadow-2xl w-full ${maxWidthClass} max-h-full flex flex-col overflow-hidden text-ink`}
         onClick={(e) => e.stopPropagation()}
       >

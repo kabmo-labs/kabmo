@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AlertCircle, BookOpen, ExternalLink, Loader2, RefreshCw } from 'lucide-preact';
 import { GitRepoPicker } from '@/client/components/workspace/repo-picker';
 import { WikiNav } from '@/client/components/workspace/wiki-panel/Nav';
+import { WikiNavModal, WikiNavTrigger } from '@/client/components/workspace/wiki-panel/NavModal';
 import { WikiPageView } from '@/client/components/workspace/wiki-panel/PageView';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
@@ -36,6 +37,12 @@ interface WikiPanelProps {
   active?: boolean;
   rootPath?: string;
   refreshKey?: number;
+  /**
+   * Which shell is drawing this view. The phone gets the floating page-list
+   * button; the desktop keeps its nav column and the drill-down a narrow
+   * column has always used. Defaults to desktop for a caller that predates it.
+   */
+  layout?: 'desktop' | 'phone';
 }
 
 /** Why there is no wiki, in the reader's terms. */
@@ -52,7 +59,15 @@ interface WikiPick {
   path: string;
 }
 
-export function WikiPanel({ className = '', enabled = true, active = true, rootPath, refreshKey = 0 }: WikiPanelProps) {
+export function WikiPanel({
+  className = '',
+  enabled = true,
+  active = true,
+  rootPath,
+  refreshKey = 0,
+  layout = 'desktop',
+}: WikiPanelProps) {
+  const isPhone = layout === 'phone';
   const { activeRepo, setActiveRepo } = useRepoScope(rootPath);
   const { repos, scanning: reposScanning, rescan: rescanRepos } = useRepoList(rootPath, enabled);
   const scope = wikiScopeKey(rootPath, activeRepo);
@@ -60,6 +75,10 @@ export function WikiPanel({ className = '', enabled = true, active = true, rootP
   // The pick is stored WITH its scope: a page path from another repository names
   // a page this wiki does not have, and restoring it would open a 404.
   const [pick, setPick] = useSessionState<WikiPick | null>('wiki.selectedPage', null);
+  // The phone's page-list modal.
+  const [navOpen, setNavOpen] = useState(false);
+  // The desktop's narrow-column drill-down: the list replaces the page until a
+  // page is chosen, then the page carries a back arrow.
   const [narrowShowingPage, setNarrowShowingPage] = useState(false);
   // Bumped by the panel's own Refresh so the open page follows a re-listed tree
   // (the tree's revision is what a page read is anchored to).
@@ -74,6 +93,9 @@ export function WikiPanel({ className = '', enabled = true, active = true, rootP
     () => tree.data?.sidebar ?? sectionsFromEntries(entries),
     [tree.data?.sidebar, entries],
   );
+  // A wiki with no links has nothing for the narrow modal to show, so the
+  // floating trigger stays away rather than opening an empty sheet.
+  const hasNavLinks = useMemo(() => sections.some((section) => section.links.length > 0), [sections]);
 
   const storedPath = pick && pick.scope === scope ? pick.path : null;
   // The stored page when it still exists in this wiki, else Home, else the first
@@ -100,15 +122,17 @@ export function WikiPanel({ className = '', enabled = true, active = true, rootP
     setPick({ scope, path: selectedPath });
   }, [selectedPath, storedPath, scope, setPick]);
 
-  // A different wiki is a different document: drop the narrow-layout drill-down
-  // so a repo switch lands on the list rather than on a page of the old one.
+  // A different wiki is a different document: close the nav and drop the
+  // desktop drill-down so a repo switch lands on the list, not on a page of the
+  // old one.
   useEffect(() => {
+    setNavOpen(false);
     setNarrowShowingPage(false);
   }, [scope]);
 
   const handleSelect = (path: string) => {
     setPick({ scope, path });
-    setNarrowShowingPage(true);
+    if (!isPhone) setNarrowShowingPage(true);
   };
 
   const handleRefresh = () => {
@@ -209,15 +233,17 @@ export function WikiPanel({ className = '', enabled = true, active = true, rootP
         // narrow drill-down's hidden/shown pair needs no second set of rules.
         <div className="flex min-h-0 flex-1 flex-col @[520px]:flex-row-reverse">
           <div
-            className={`min-h-0 w-full @[520px]:w-52 @[520px]:flex-shrink-0 border-b border-ink/10 @[520px]:border-b-0 @[520px]:border-l ${
-              narrowShowingPage ? 'hidden @[520px]:flex' : 'flex'
-            } flex-col`}
+            className={`${
+              isPhone ? 'hidden' : narrowShowingPage ? 'hidden @[520px]:flex' : 'flex'
+            } min-h-0 w-full flex-col @[520px]:w-52 @[520px]:flex-shrink-0 @[520px]:border-l @[520px]:border-ink/10`}
           >
             <WikiNav sections={sections} selected={selectedPath} onSelect={handleSelect} />
           </div>
 
           <div
-            className={`min-w-0 min-h-0 flex-1 ${narrowShowingPage ? 'flex' : 'hidden @[520px]:flex'} flex-col`}
+            className={`relative min-w-0 min-h-0 flex-1 ${
+              isPhone ? 'flex' : narrowShowingPage ? 'flex' : 'hidden @[520px]:flex'
+            } flex-col`}
           >
             {repo && selectedPath ? (
               <WikiPageView
@@ -230,13 +256,22 @@ export function WikiPanel({ className = '', enabled = true, active = true, rootP
                 rootPath={rootPath}
                 repoScope={activeRepo}
                 onNavigate={handleSelect}
-                onBack={() => setNarrowShowingPage(false)}
+                onBack={isPhone ? undefined : () => setNarrowShowingPage(false)}
               />
             ) : (
               <div className="flex h-full items-center justify-center px-6 text-center text-[11px] text-ink/40">
                 This wiki has no markdown pages.
               </div>
             )}
+
+            {isPhone && hasNavLinks && <WikiNavTrigger open={navOpen} onClick={() => setNavOpen(true)} />}
+            <WikiNavModal
+              open={navOpen}
+              sections={sections}
+              selected={selectedPath}
+              onSelect={handleSelect}
+              onClose={() => setNavOpen(false)}
+            />
           </div>
         </div>
       )}

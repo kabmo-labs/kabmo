@@ -85,6 +85,7 @@ export function MobileRightSidebar({
     onClose,
     // The drawer draws its own tab bar, so a view's own header would be a second one.
     showHeader: false,
+    layout: 'phone',
   };
 
   return (
