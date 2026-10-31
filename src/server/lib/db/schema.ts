@@ -74,6 +74,17 @@ export async function initSchema(db: DbClient): Promise<void> {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- The sidebar's subagent badge, saved per file version so a restart does
+    -- not re-derive it by streaming every transcript (see
+    -- lib/omp/session/subagent-presence-store). Derived data: deleting the
+    -- table only costs one cold pass.
+    CREATE TABLE IF NOT EXISTS session_subagent_presence (
+      session_path TEXT PRIMARY KEY,
+      version TEXT NOT NULL,
+      has_subagents INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT 0
+    );
+
     CREATE TABLE IF NOT EXISTS queued_messages (
       id TEXT PRIMARY KEY,
       session_id TEXT NOT NULL,

@@ -7,22 +7,37 @@
  * Cached "does this session have subagents?" probe.
  *
  * The sidebar loader asks this for EVERY session on EVERY fetch. The honest
- * answer needs the session file's `task` toolCalls, which is the authoritative
- * roster — but reading them means parsing a file that can reach hundreds of
- * megabytes, and doing that per session per fetch dominated the endpoint's cost
- * (the dataset scan itself is cached; this probe was not).
+ * answer needs the parent session's `task` toolResults, which are the
+ * authoritative roster — but deriving them by materializing the transcript is
+ * what made a freshly restarted server hold ~900 MB: on a 1349-file / 2.0 GB
+ * agent directory the old fold read and parsed 1.38 GB in one cold pass, and
+ * Bun keeps the freed arena (measured: RSS 233 MB → 1148 MB after one console
+ * load, physical footprint 62 MB, `Bun.gc(true)` returning nothing).
+ *
+ * Three answers, in ascending cost:
+ *
+ * 1. the in-process map, keyed by a version that changes when the roster could
+ *    have changed;
+ * 2. the saved verdict for that same version (see `subagent-presence-store`),
+ *    which is what makes the SECOND start's sidebar load cheap — the case the
+ *    in-process map cannot cover, because a restart empties it;
+ * 3. the sibling artifacts directory (one stat + one readdir, the common case
+ *    for a session that ever spawned anything) and, failing that, a streaming
+ *    scan that stops at the first roster entry
+ *    (`subagent-presence-scan`), which never holds the transcript.
  *
  * The roster can only change when the session file gains entries or its
  * sibling artifacts directory changes, so that (last-entry timestamp,
  * sibling-dir mtime) pair is a sufficient cache version. Both cost one stat —
- * orders of magnitude cheaper than the parse they gate. The timestamp is the
+ * orders of magnitude cheaper than the work they gate. The timestamp is the
  * file's last ENTRY time, not its mtime: a title-slot rewrite bumps mtime
  * without appending anything, and a spurious version bump would re-run the
- * parse it exists to avoid.
+ * work it exists to avoid.
  */
 
 import { promises as fs, statSync } from 'fs';
-import { extractSubagentHistory } from '@/server/lib/omp/subagent/history';
+import { sessionFileHasSubagents } from '@/server/lib/omp/session/subagent-presence-scan';
+import { readPresenceVerdict, writePresenceVerdict } from '@/server/lib/omp/session/subagent-presence-store';
 import { siblingDirForSession } from '@/server/lib/omp/subagent/history/paths';
 
 interface PresenceEntry {
@@ -34,6 +49,15 @@ interface PresenceEntry {
 const MAX_ENTRIES = 2_000;
 
 const cache = new Map<string, PresenceEntry>();
+
+/** Record a verdict in the in-process map, evicting the oldest when full. */
+function remember(sessionPath: string, version: string, hasSubagents: boolean): void {
+  if (!cache.has(sessionPath) && cache.size >= MAX_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(sessionPath, { version, hasSubagents });
+}
 
 /**
  * Version of the sibling artifacts directory, or `0` when it does not exist —
@@ -67,6 +91,12 @@ function siblingDirVersion(dir: string): number {
   }
 }
 
+/** Drop the in-process map, so a caller observes the saved verdict again.
+ *  Exported for tests: a process restart is what does this in production. */
+export function clearSubagentPresenceCache(): void {
+  cache.clear();
+}
+
 export async function sessionHasSubagents(
   sessionPath: string,
   sessionLastEntryAt: string,
@@ -77,6 +107,12 @@ export async function sessionHasSubagents(
 
   const cached = cache.get(sessionPath);
   if (cached && cached.version === version) return cached.hasSubagents;
+
+  const saved = await readPresenceVerdict(sessionPath, version);
+  if (saved !== null) {
+    remember(sessionPath, version, saved);
+    return saved;
+  }
 
   let hasSubagents = false;
   // Guarded on the version: an unguarded readdir on the absent dir is the same
@@ -93,16 +129,17 @@ export async function sessionHasSubagents(
   }
   if (!hasSubagents) {
     try {
-      hasSubagents = (await extractSubagentHistory(sessionPath)).length > 0;
+      hasSubagents = await sessionFileHasSubagents(sessionPath);
     } catch {
-      hasSubagents = false;
+      // A transcript that cannot be read answers "no subagents" for this call,
+      // and is deliberately NOT saved: a transient failure must not freeze the
+      // badge until the file's next version bump.
+      remember(sessionPath, version, false);
+      return false;
     }
   }
 
-  if (!cached && cache.size >= MAX_ENTRIES) {
-    const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
-  }
-  cache.set(sessionPath, { version, hasSubagents });
+  remember(sessionPath, version, hasSubagents);
+  await writePresenceVerdict(sessionPath, version, hasSubagents);
   return hasSubagents;
 }
