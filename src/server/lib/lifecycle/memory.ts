@@ -18,12 +18,6 @@
  * | 20 concurrent `GET /api/chat/:id` | 1.69 GB |
  * | 10 s idle afterwards | 1.13 GB |
  *
- * The same work with an explicit `Bun.gc(true)` in the middle measured
- * 319 MB → 69 MB in a standalone probe, so the memory is garbage the collector
- * had simply not been asked to reclaim — a young-generation collection returns
- * the JS objects but leaves the arena, and nothing in this process allocates
- * enough to force a full one.
- *
  * Two rules keep the sweep honest:
  *
  * 1. **It is a CEILING, not a schedule.** A full collection is stop-the-world,
@@ -32,10 +26,38 @@
  * 2. **It is observable.** `snapshot()` is what `/api/health` reports, so the
  *    condition the sweep reacts to is visible from `kabmo status` rather than
  *    only from Activity Monitor.
+ *
+ * ## Which number is "memory"
+ *
+ * RSS is NOT it. On macOS a Bun process that has read and dropped a large
+ * transcript keeps the freed pages resident: measured on a live server, RSS
+ * 752 MB while the operating system charged the process a 70.6 MB physical
+ * footprint (`vmmap -summary`), with a 24 MB JS heap — and `Bun.gc(true)`
+ * changed nothing (`swept 1049 MB → 1050 MB`, every minute, for hours). The
+ * same process's RSS fell to 134 MB on its own once the OS reclaimed the
+ * clean pages.
+ *
+ * So the ceiling is applied to the OS's PHYSICAL FOOTPRINT where the host can
+ * answer, and `rssMB` is reported beside it as a diagnostic because that is
+ * the number `ps`-style tools show. `footprint -p <pid>` prints it on macOS
+ * (78 ms, and its headline matched `vmmap`'s "Physical footprint" exactly —
+ * 122 MB against 121.6 MB); Linux answers from `/proc/self/smaps_rollup`
+ * (`Pss`, which discounts shared pages) with `VmRSS` as the fallback; Windows
+ * uses the runtime's own number, which is accurate there.
+ *
+ * A reading is cached for `FOOTPRINT_TTL_MS`: the probe costs a spawn, and
+ * `/api/health` is polled far more often than the number can move. The sweep
+ * always refreshes both sides, because it is reporting the effect of a
+ * collection it just ran.
  */
+
+import { readFileSync } from 'node:fs';
 
 /** Bytes in a megabyte, for the MB-shaped numbers this module reports. */
 const BYTES_PER_MB = 1024 * 1024;
+
+/** How long an operating-system footprint reading is reused. */
+const FOOTPRINT_TTL_MS = 30_000;
 
 /**
  * The process's resident set, in MB, from the OPERATING SYSTEM.
@@ -69,6 +91,79 @@ function residentMB(): number {
   return Math.round(process.memoryUsage().rss / BYTES_PER_MB);
 }
 
+/**
+ * The footprint line from `footprint -p <pid>`:
+ * `bun [123]: 64-bit    Footprint: 122 MB (16384 bytes per page)`.
+ *
+ * Exported as a pure parser so the shape is pinned without spawning anything.
+ */
+export function footprintMBFromOutput(output: string): number | null {
+  const match = /Footprint:\s+([\d.]+)\s+(B|KB|MB|GB)\b/i.exec(output);
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return null;
+  const unit = match[2].toUpperCase();
+  const mb = unit === 'GB' ? value * 1024
+    : unit === 'KB' ? value / 1024
+    : unit === 'B' ? value / BYTES_PER_MB
+    : value;
+  return Math.round(mb);
+}
+
+/** `Pss:` from `/proc/self/smaps_rollup` — the Linux analogue of footprint. */
+export function footprintMBFromSmapsRollup(text: string): number | null {
+  const match = /^Pss:\s+(\d+)\s+kB$/m.exec(text);
+  if (!match) return null;
+  return Math.round(Number(match[1]) / 1024);
+}
+
+/** The OS's own charge for this process, in MB, or null where it cannot answer. */
+function readFootprintMB(): number | null {
+  if (process.platform === 'win32') {
+    return Math.round(process.memoryUsage().rss / BYTES_PER_MB);
+  }
+  if (process.platform === 'linux') {
+    try {
+      const pss = footprintMBFromSmapsRollup(readFileSync('/proc/self/smaps_rollup', 'utf8'));
+      if (pss !== null) return pss;
+    } catch {
+      // smaps_rollup is unreadable on a hardened kernel; VmRSS below.
+    }
+    try {
+      const match = /^VmRSS:\s+(\d+)\s+kB$/m.exec(readFileSync('/proc/self/status', 'utf8'));
+      if (match) return Math.round(Number(match[1]) / 1024);
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  try {
+    const out = Bun.spawnSync(['footprint', '-p', String(process.pid)]);
+    return footprintMBFromOutput(out.stdout.toString());
+  } catch {
+    // No `footprint` on this host (an older macOS, another POSIX): the sweep
+    // falls back to RSS.
+    return null;
+  }
+}
+
+interface FootprintCache {
+  at: number;
+  mb: number | null;
+}
+
+let footprintCache: FootprintCache | null = null;
+
+/** The cached OS charge, refreshed when `refresh` or when the reading is stale. */
+function footprintMB(refresh: boolean): number | null {
+  if (!refresh && footprintCache && Date.now() - footprintCache.at < FOOTPRINT_TTL_MS) {
+    return footprintCache.mb;
+  }
+  const mb = readFootprintMB();
+  footprintCache = { at: Date.now(), mb };
+  return mb;
+}
+
 /** Default ceiling: above this, a sweep is worth a pause. */
 const DEFAULT_CEILING_MB = 1024;
 
@@ -77,8 +172,13 @@ const DEFAULT_CEILING_MB = 1024;
 const DEFAULT_INTERVAL_MS = 60_000;
 
 export interface MemorySnapshot {
-  /** Resident set size in MB — what a process monitor shows. */
+  /** Resident set size in MB — what a `ps`-style monitor shows. On macOS it
+   *  counts freed pages Bun has not returned, so it can exceed the footprint
+   *  many times over. Reported for diagnosis; never the sweep's input. */
   rssMB: number;
+  /** What the operating system actually charges this process, in MB. Null when
+   *  the host cannot answer. This is the number the sweep reacts to. */
+  footprintMB: number | null;
   /** Live JS objects in MB. */
   heapUsedMB: number;
   /** Reserved JS heap in MB (what the collector has not returned). */
@@ -97,14 +197,24 @@ export interface MemoryMaintenance {
   stop: () => void;
 }
 
-/** The process's memory, in MB. Reads `process.memoryUsage()`, never throws. */
-export function snapshot(): MemorySnapshot {
+function takeSnapshot(refreshFootprint: boolean): MemorySnapshot {
   const usage = process.memoryUsage();
   return {
     rssMB: residentMB(),
+    footprintMB: footprintMB(refreshFootprint),
     heapUsedMB: Math.round(usage.heapUsed / BYTES_PER_MB),
     heapTotalMB: Math.round(usage.heapTotal / BYTES_PER_MB),
   };
+}
+
+/** The process's memory, in MB. Cached footprint, never throws. */
+export function snapshot(): MemorySnapshot {
+  return takeSnapshot(false);
+}
+
+/** The pressure the ceiling is applied to: the OS's charge when it is known. */
+function pressureMB(snap: MemorySnapshot): number {
+  return snap.footprintMB ?? snap.rssMB;
 }
 
 /** The ceiling in bytes, from `KABMO_MEMORY_CEILING_MB` when set. */
@@ -121,14 +231,16 @@ function ceilingBytes(): number {
  * arena is holding it — the maintenance interval never passes it.
  */
 export function maintainMemory(force = false): SweepResult {
-  const before = snapshot();
-  if (!force && before.rssMB * BYTES_PER_MB < ceilingBytes()) {
+  // Both sides refresh the OS reading: this function exists to report what a
+  // collection did, and a cached number would report the state before it.
+  const before = takeSnapshot(true);
+  if (!force && pressureMB(before) * BYTES_PER_MB < ceilingBytes()) {
     return { swept: false, before, after: before };
   }
   // A full collection: the point is to release the arena, and the young
   // generation alone is what failed to do that.
   Bun.gc(true);
-  return { swept: true, before, after: snapshot() };
+  return { swept: true, before, after: takeSnapshot(true) };
 }
 
 /** Where the interval lives, so a `bun --hot` reload does not install a second. */
@@ -159,7 +271,12 @@ export function installMemoryMaintenance(): MemoryMaintenance {
     try {
       const result = maintainMemory();
       if (result.swept) {
-        console.log(`[kabmo] memory: swept ${result.before.rssMB} MB → ${result.after.rssMB} MB`);
+        // Footprint first: it is the number the decision used, and the one a
+        // reader should trust. RSS rides along because a monitor shows it.
+        console.log(
+          `[kabmo] memory: swept ${pressureMB(result.before)} MB → ${pressureMB(result.after)} MB`
+          + ` (rss ${result.after.rssMB} MB)`,
+        );
       }
     } catch (error) {
       // A sweep is maintenance, never a reason to take the server down.

@@ -13,7 +13,13 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { maintainMemory, snapshot, stopMemoryMaintenance } from '@/server/lib/lifecycle/memory';
+import {
+  footprintMBFromOutput,
+  footprintMBFromSmapsRollup,
+  maintainMemory,
+  snapshot,
+  stopMemoryMaintenance,
+} from '@/server/lib/lifecycle/memory';
 
 const originalCeiling = Bun.env.KABMO_MEMORY_CEILING_MB;
 
@@ -56,6 +62,40 @@ describe('snapshot', () => {
       Bun.spawnSync(['ps', '-o', 'rss=', '-p', String(process.pid)]).stdout.toString().trim(),
     );
     expect(Math.abs(snapshot().rssMB - Math.round(psKb / 1024))).toBeLessThanOrEqual(2);
+  });
+
+  test('reports a physical footprint, because RSS is not the memory in use', () => {
+    // On macOS a Bun process that has read and dropped a transcript keeps
+    // freed pages resident: measured on a live server, RSS 752 MB against a
+    // 70.6 MB physical footprint and a 24 MB JS heap. The sweep reacts to the
+    // footprint, so it has to be there.
+    const snap = snapshot();
+    expect(snap.footprintMB).not.toBeNull();
+    expect(snap.footprintMB ?? 0).toBeGreaterThan(0);
+    // A footprint larger than the resident set would mean the parser read the
+    // wrong field; compressed pages can push it close, never past it by much.
+    expect(snap.footprintMB ?? 0).toBeLessThanOrEqual(snap.rssMB * 1.25 + 16);
+  });
+});
+
+describe('footprint parsing', () => {
+  test('reads the macOS `footprint -p` headline', () => {
+    expect(footprintMBFromOutput('bun [98166]: 64-bit    Footprint: 122 MB (16384 bytes per page)')).toBe(122);
+  });
+
+  test('honours the unit the tool prints', () => {
+    expect(footprintMBFromOutput('  Footprint: 512 KB (4096 bytes per page)')).toBe(1);
+    expect(footprintMBFromOutput('  Footprint: 1.5 GB (16384 bytes per page)')).toBe(1536);
+  });
+
+  test('an unreadable report is null rather than a guess', () => {
+    expect(footprintMBFromOutput('')).toBeNull();
+    expect(footprintMBFromOutput('some other report')).toBeNull();
+  });
+
+  test('reads Pss from Linux smaps_rollup', () => {
+    expect(footprintMBFromSmapsRollup('Rss: 40960 kB\nPss: 12345 kB\nPss_Anon: 1 kB\n')).toBe(12);
+    expect(footprintMBFromSmapsRollup('Rss: 40960 kB\n')).toBeNull();
   });
 });
 
