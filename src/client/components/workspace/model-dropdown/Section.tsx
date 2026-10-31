@@ -56,7 +56,11 @@ export function ModelDropdownSection({
       <button
         type="button"
         onClick={() => onToggleCollapse(id)}
-        className="w-full flex items-center justify-between gap-2 pl-1 pr-2 py-1 text-[11px] font-semibold text-ink/60 uppercase tracking-wider hover:text-ink cursor-pointer select-none"
+        // Sticky: the list is capped at `max-h-80`, and a section heading that
+        // scrolled away left the rows below it with no provider to name them.
+        // The opaque paper background is what hides those rows as they pass
+        // under the pinned heading; `z-10` keeps the heading above the rows.
+        className="sticky top-0 z-10 w-full flex items-center justify-between gap-2 pl-1 pr-2 py-1 text-[11px] font-semibold text-ink/60 uppercase tracking-wider hover:text-ink cursor-pointer select-none bg-paper"
       >
         <div className="flex items-center gap-2 min-w-0">
           {iconType === 'star' && (

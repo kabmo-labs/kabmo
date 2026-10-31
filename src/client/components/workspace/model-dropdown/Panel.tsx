@@ -93,9 +93,14 @@ export function ModelDropdownPanel({
           onAddProvider={onAddProvider}
         />
 
-        {/* Scrollable Model Lists */}
+        {/* Scrollable Model Lists. Deliberately no top padding: Chrome's
+            sticky view rectangle is the scrollport's CONTENT box, so a
+            `sticky top-0` heading inside a padded list pins below the padding
+            and leaves that strip showing rows sliding above it (measured: a
+            `p-1.5` list pinned its heading 6px down and `elementFromPoint` at
+            2px returned a row). The first heading sits flush instead. */}
         <div
-          className="flex-1 scrollbar-overlay-container p-1.5 space-y-2 max-h-80"
+          className="flex-1 scrollbar-overlay-container px-1.5 pb-1.5 space-y-2 max-h-80"
           onMouseLeave={onMouseLeave}
           // The row under a resting pointer moves when the list scrolls; the
           // card follows it instead of staying where the hover started.

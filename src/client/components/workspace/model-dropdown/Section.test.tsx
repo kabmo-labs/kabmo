@@ -123,6 +123,19 @@ describe('model picker section header columns', () => {
     expect(chevronSlot.querySelector('svg')).not.toBeNull();
   });
 
+  test('the header pins to the top of the scrolling list', () => {
+    mountSection();
+
+    // The list is capped (`max-h-80`), so a provider heading that scrolled
+    // away left its rows unnamed. `sticky top-0` keeps it in view; the opaque
+    // paper background is what hides the rows passing underneath, and z-10
+    // keeps the heading above them.
+    expect(header().className).toContain('sticky');
+    expect(header().className).toContain('top-0');
+    expect(header().className).toContain('bg-paper');
+    expect(header().className).toContain('z-10');
+  });
+
   test('a row carries its row id, which the specs card anchors to', () => {
     mountSection();
 
