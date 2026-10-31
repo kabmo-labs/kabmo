@@ -31,6 +31,7 @@ to touch before you change it; the map is at the end of this file.
 ```bash
 bun run lint                                            # tsc --noEmit
 bunx tsc --noEmit --noUnusedLocals --noUnusedParameters  # no dead code
+bun run typecheck:consumer                               # published .ts with `types: []`
 bun run build                                           # production bundle
 bun test                                                # unit + route suites
 bun run typecheck:e2e                                   # the Playwright specs

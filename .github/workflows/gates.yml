@@ -72,6 +72,18 @@ jobs:
       - name: Typecheck without unused code
         run: bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
 
+      # `kabmo-sdk` and `kabmo-ui` are published as `.ts` SOURCE, so an ambient
+      # global named in either one becomes part of what a consumer must install.
+      # The root program cannot see that: it includes `packages` and HAS
+      # `bun-types`/`@types/node` installed, so `NodeJS.Signals` in `signals.ts`
+      # typechecked here while every consumer without `@types/node` got `TS2503`
+      # — and `skipLibCheck` does not hide it, because the shipped file is `.ts`,
+      # not `.d.ts` (measured against the published tarball). This project
+      # resolves the packages the way a consumer does — `package.json` `exports`,
+      # no `paths` — with `types: []`.
+      - name: Typecheck the published packages as a consumer sees them
+        run: bun run typecheck:consumer
+
       # The E2E layer has its own tsconfig (it runs under Playwright/Node, not
       # Bun) and is deliberately outside the root program. Typechecking it here
       # means a broken spec is caught by the cheap gate rather than by the

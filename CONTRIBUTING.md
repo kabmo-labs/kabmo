@@ -13,14 +13,15 @@ Bun is the only runtime. Bun 1.4 or newer (`engines.bun`); no `npm`, `npx`, `yar
 
 ```bash
 bun install
-bun run dev            # watched server; it bundles the client itself
-bun run build          # scripts/build-client.ts -> dist/client (the production bundle)
-bun run start          # NODE_ENV=production bun run src/server/index.ts
-bun run lint           # tsc --noEmit
-bun run check:fast     # bun check --no-script: same program, ~0.3 s, local feedback only
-bun test               # bun test
-bun run typecheck:e2e  # tsc --noEmit -p tests/e2e
-bun run test:e2e       # Playwright browser specs (needs `bunx playwright install chromium` once)
+bun run dev                 # watched server; it bundles the client itself
+bun run build               # scripts/build-client.ts -> dist/client (the production bundle)
+bun run start               # NODE_ENV=production bun run src/server/index.ts
+bun run lint                # tsc --noEmit
+bun run typecheck:consumer  # tsc --noEmit -p tsconfig.consumer.json
+bun run check:fast          # bun check --no-script: same program, ~0.3 s, local feedback only
+bun test                    # bun test
+bun run typecheck:e2e       # tsc --noEmit -p tests/e2e
+bun run test:e2e            # Playwright browser specs (needs `bunx playwright install chromium` once)
 ```
 
 `bun run test:e2e` runs the browser layer in `tests/e2e/`: real server subprocess,

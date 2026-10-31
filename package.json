@@ -61,6 +61,7 @@
     "shell:docs": "bun run scripts/shell-document-types.mjs --write",
     "shell:docs:check": "bun run scripts/shell-document-types.mjs --check",
     "typecheck:e2e": "tsc --noEmit -p tests/e2e",
+    "typecheck:consumer": "tsc --noEmit -p tsconfig.consumer.json",
     "publish:plugins": "bash .github/scripts/publish-plugin-packages.sh packages/kabmo-sdk packages/kabmo-ui"
   },
   "dependencies": {

@@ -1,0 +1,35 @@
+{
+  // The published packages are shipped as `.ts` SOURCE, so their type surface is
+  // whatever those files say — including any ambient global they name. This
+  // project typechecks them the way an outside consumer resolves them: through
+  // `package.json` `exports` (the bun workspace symlink, no `paths`), and with
+  // NO ambient types at all.
+  //
+  // That is the one thing the root program cannot check. `tsconfig.json` includes
+  // `packages` AND has `bun-types`/`@types/node` installed, so `NodeJS.Signals`
+  // in `signals.ts` typechecked here while failing for every consumer without
+  // `@types/node` — `TS2503`, and `skipLibCheck` does not hide it because the
+  // shipped file is `.ts`, not `.d.ts` (measured: a plugin-half consumer with
+  // `"types": []` and `skipLibCheck: true`).
+  //
+  // `types: []` also rules out a Bun global (`Bun.spawn`, `Bun.env`) reaching the
+  // browser half of a plugin, whose bundler has no such global either.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["packages/kabmo-sdk/src", "packages/kabmo-ui/src"],
+  // Tests may name `bun:test` and the host's own globals; they are not shipped.
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+}
