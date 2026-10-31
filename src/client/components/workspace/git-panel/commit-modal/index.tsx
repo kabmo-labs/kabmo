@@ -232,7 +232,7 @@ export function GitCommitModal({
       <div
         className="bg-paper border-ink/20 shadow-2xl flex flex-col overflow-hidden
           w-full h-full rounded-none border-0
-          lg:w-[min(96vw,980px)] lg:h-[88vh] lg:rounded-xl lg:border
+          lg:w-[min(94vw,1200px)] lg:h-[88vh] lg:rounded-xl lg:border
           pt-[env(safe-area-inset-top,0px)] lg:pt-0"
         onClick={(e) => e.stopPropagation()}
       >

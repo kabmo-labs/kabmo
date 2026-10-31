@@ -39,9 +39,10 @@ interface GitBranchModalProps {
  * actions — the row's click is already checkout — and a row that both checks
  * out and merges is a row whose click means two things.
  *
- * Follows the commit modal's shell (`lg:w-[min(96vw,980px)] lg:h-[88vh]`,
- * full-screen on phones), so this is a sibling of an existing surface rather
- * than a new convention.
+ * Follows the commit modal's shell SHAPE — a desktop-capped, centred card that
+ * is full-screen on phones — but takes its own width from `Modal`
+ * (`max-w-[min(96vw,720px)]`): a branch list is one column, while the commit
+ * history spends the extra width on the graph gutter and the message column.
  *
  * **Everything the row shows comes from ONE read** (`?branches=1`, a single
  * `for-each-ref` with the upstream/ahead-behind/date/subject fields), fetched
