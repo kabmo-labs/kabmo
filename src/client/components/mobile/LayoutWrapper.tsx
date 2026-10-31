@@ -19,7 +19,7 @@ import { ToastStack } from '@/client/components/common/ToastStack';
 import { useEditorDrop, type EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { PluginBootstrap } from '@/client/lib/plugins/bootstrap';
-import { mobileEditorFileFrom, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
+import { mobileEditorFileFrom, mobileProbeTabs, type MobileEditorFile } from '@/client/components/mobile/open-file-payload';
 import { useLeftDock } from '@/client/hooks/workspace/left-dock';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { setSessionKey } from '@/shared/lib/workspace/session-state/store';
@@ -61,13 +61,11 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // The phone's full-screen editor shows ONE file at a time, so the probe has a
   // single subject and a constant id. `refreshKey` is what carries a deletion
   // here: the Files panel's delete, an agent `rm` that triggers a workspace
-  // refresh, and the editor's own save all bump it.
-  const mobileEditorMissingIds = useMissingFiles(
-    mobileEditorFile?.path
-      ? [{ id: 'mobile-editor', path: mobileEditorFile.path, root: mobileEditorFile.root }]
-      : [],
-    refreshKey,
-  );
+  // refresh, and the editor's own save all bump it. The scope comes from
+  // `mobileProbeTabs` so `repo` travels with it — without it the server resolved
+  // a nested-repo file against the workspace root and answered "gone" for a file
+  // that had just been read.
+  const mobileEditorMissingIds = useMissingFiles(mobileProbeTabs(mobileEditorFile), refreshKey);
   const { toasts, pushToast, dismissToast } = useToasts();
   const handleDropResult = useCallback(
     (result: EditorDropResult) => pushToast(result.message, result.ok ? 'success' : 'error'),
@@ -118,10 +116,13 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   // never receive the first drop.
   const editorDrop = useEditorDrop({ enabled: hasContext, onResult: handleDropResult });
 
-  // Listen to open-file event on mobile
+  // Listen to open-file event on mobile. The active project is the fallback
+  // root, exactly as the desktop tab opener applies it: a payload with no root
+  // of its own (a chat link, a plugin readout) then reads AND probes against the
+  // workspace it belongs to instead of the server's default root.
   useKabmoEvent('omp:open-file', (e) => {
     const customEvent = e as CustomEvent<unknown>;
-    const next = mobileEditorFileFrom(customEvent.detail);
+    const next = mobileEditorFileFrom(customEvent.detail, activeProjectPath);
     if (next) setMobileEditorFile(next);
   });
 

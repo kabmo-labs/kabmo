@@ -14,6 +14,8 @@
  * server-reachable path, so its bytes come from the live handle instead).
  */
 
+import type { ProbeableTab } from '@/client/hooks/workspace/missing-files';
+
 /** The one file the phone's full-screen editor has open. */
 export interface MobileEditorFile {
   name: string;
@@ -24,6 +26,8 @@ export interface MobileEditorFile {
   repo?: string;
   /** A dropped/launched file's live handle — its bytes have no server path. */
   handleId?: string;
+  /** The bytes came from the DEVICE: renderable, with no path the server can stat. */
+  deviceFile?: boolean;
 }
 
 function readString(source: Record<string, unknown>, key: string): string | undefined {
@@ -56,5 +60,29 @@ export function mobileEditorFileFrom(payload: unknown, fallbackRoot?: string | n
     root: readString(source, 'root') ?? fallbackRoot ?? undefined,
     repo: readString(source, 'repo'),
     handleId: readString(source, 'handleId'),
+    deviceFile: source.deviceFile === true ? true : undefined,
   };
+}
+
+/**
+ * The scope the phone's "is this file still there?" probe must ask about.
+ *
+ * `repo` is load-bearing and used to be dropped here: the server resolves
+ * `root` + `repo` + `path` exactly as the READ route does, so a file opened from
+ * a nested repository — the tree lists it relative to that repo — was read
+ * successfully and then reported as deleted by a probe that named the workspace
+ * root instead. Everything else (inline content, a launched handle, a device
+ * file) is carried through so `isProbeableTab` can refuse it in one place.
+ */
+export function mobileProbeTabs(file: MobileEditorFile | null): ProbeableTab[] {
+  if (!file) return [];
+  return [{
+    id: 'mobile-editor',
+    path: file.path,
+    root: file.root,
+    repo: file.repo,
+    content: file.content,
+    handleId: file.handleId,
+    deviceFile: file.deviceFile,
+  }];
 }

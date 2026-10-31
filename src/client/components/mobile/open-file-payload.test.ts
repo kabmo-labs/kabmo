@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { mobileEditorFileFrom } from '@/client/components/mobile/open-file-payload';
+import { mobileEditorFileFrom, mobileProbeTabs } from '@/client/components/mobile/open-file-payload';
 
 describe('mobileEditorFileFrom', () => {
   test('carries repo and handleId through', () => {
@@ -34,6 +34,7 @@ describe('mobileEditorFileFrom', () => {
       root: '/ws',
       repo: 'projects/token',
       handleId: 'handle-7',
+      deviceFile: undefined,
     });
   });
 
@@ -67,5 +68,32 @@ describe('mobileEditorFileFrom', () => {
     expect(result?.name).toBe('x.md');
     expect(result?.repo).toBeUndefined();
     expect(result?.handleId).toBeUndefined();
+  });
+
+  test('a device file is marked, so the existence probe refuses it', () => {
+    expect(mobileEditorFileFrom({ path: 'report.md', deviceFile: true })?.deviceFile).toBe(true);
+    expect(mobileEditorFileFrom({ path: 'x.md', deviceFile: 'yes' })?.deviceFile).toBeUndefined();
+  });
+});
+
+describe('mobileProbeTabs', () => {
+  test('carries the tree the file was opened from — repo included', () => {
+    // The regression: the phone's probe sent `root` + `path` and dropped `repo`,
+    // so the server resolved a nested-repo file against the workspace root and
+    // answered "gone" for a file the editor had just read.
+    const file = mobileEditorFileFrom({ path: 'src/inner.ts', root: '/ws', repo: 'pkg/nested' });
+    expect(mobileProbeTabs(file)).toEqual([{
+      id: 'mobile-editor',
+      path: 'src/inner.ts',
+      root: '/ws',
+      repo: 'pkg/nested',
+      content: undefined,
+      handleId: undefined,
+      deviceFile: undefined,
+    }]);
+  });
+
+  test('nothing open means nothing to probe', () => {
+    expect(mobileProbeTabs(null)).toEqual([]);
   });
 });

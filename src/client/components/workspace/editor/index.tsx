@@ -79,14 +79,12 @@ export function Editor({
   const editorTheme = useEditorTheme();
 
   // A deleted file keeps its tab (its buffer is still on screen), but the tab
-  // strip must say so. Only a plain FILE tab is probed: a diff tab's path names
-  // a change rather than a document, and an attachment chip carries inline
-  // `content` with no file behind its `path` at all — probing that name would
-  // strike the chip through the moment it was opened.
-  const missingIds = useMissingFiles(
-    openedFiles.filter((file) => !file.isDiff && file.content === undefined),
-    refreshKey,
-  );
+  // strip must say so. Which tabs can be probed is the hook's own rule
+  // (`isProbeableTab`): a diff tab's path names a change rather than a document,
+  // and an attachment chip carries inline `content` with no file behind its
+  // `path` at all — probing that name would strike the chip through the moment
+  // it was opened.
+  const missingIds = useMissingFiles(openedFiles, refreshKey);
   const activeFileMissing = Boolean(activeFile && missingIds.has(activeFile.id));
 
   const editor = useFileEditor(activeFile ?? null, {

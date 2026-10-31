@@ -24,7 +24,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import { Window } from 'happy-dom';
 import type { h as PreactH, render as PreactRender } from 'preact';
 import type { act as PreactAct } from 'preact/test-utils';
-import type { OpenTabScope, useMissingFiles as UseMissingFilesHook } from '@/client/hooks/workspace/missing-files';
+import type { OpenTabScope, ProbeableTab, useMissingFiles as UseMissingFilesHook } from '@/client/hooks/workspace/missing-files';
 
 let useMissingFiles: typeof UseMissingFilesHook;
 let openTabScopeKey: (tab: OpenTabScope) => string;
@@ -66,8 +66,8 @@ async function settle() {
   }
 }
 
-async function mount(tabs: OpenTabScope[], refreshKey = 0) {
-  const Probe = ({ tabs: current, refreshKey: key }: { tabs: OpenTabScope[]; refreshKey: number }) => {
+async function mount(tabs: ProbeableTab[], refreshKey = 0) {
+  const Probe = ({ tabs: current, refreshKey: key }: { tabs: ProbeableTab[]; refreshKey: number }) => {
     mounted = useMissingFiles(current, key);
     return null;
   };
@@ -166,6 +166,23 @@ describe('useMissingFiles', () => {
     await mount([{ id: 1, path: 'src/a.ts', root: '/ws', repo: '.' }], 1);
 
     expect([...(mounted ?? [])]).toEqual([1]);
+  });
+
+  test('a tab with no server-backed file is never probed', async () => {
+    // Measured on a phone: opening an attachment chip, a launched document or a
+    // file in a nested repo struck it through as deleted, because the caller
+    // filtered these itself and the phone's caller forgot. The rule now lives in
+    // `isProbeableTab`, so this asserts the SKIP for every such tab.
+    await mount([
+      { id: 'chip', path: 'notes.md', content: '# inline' },
+      { id: 'handle', path: 'launched.md', handleId: 'handle-1' },
+      { id: 'device', path: 'report.md', deviceFile: true },
+      { id: 'diff', path: 'src/a.ts', isDiff: true },
+      { id: 'plain', path: 'src/a.ts' },
+    ]);
+
+    expect(probes.map((p) => p.path)).toEqual(['src/a.ts']);
+    expect([...(mounted ?? [])]).toEqual(['plain']);
   });
 
   test('the scope key keeps two trees apart', () => {

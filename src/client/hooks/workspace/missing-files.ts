@@ -36,6 +36,38 @@ export interface OpenTabScope {
   repo?: string;
 }
 
+/**
+ * An open tab as a layout holds it: the scope above, plus the facts that decide
+ * whether a probe can say anything true about the file behind it.
+ */
+export interface ProbeableTab extends OpenTabScope {
+  /** Inline bytes — an attachment chip is a name AND its content, not a file on disk. */
+  content?: string;
+  /** A launched/dropped file's live handle: no server path exists to `stat`. */
+  handleId?: string;
+  /** The bytes came from the DEVICE, so there is no path the server can reach. */
+  deviceFile?: boolean;
+  /** A diff tab's path names a CHANGE, not a document. */
+  isDiff?: boolean;
+}
+
+/**
+ * Whether a probe about this tab means anything.
+ *
+ * The answer lives HERE, once, because the two layouts that ask it — the desktop
+ * tab strip and the phone's full-screen editor — disagreed: the desktop skipped
+ * a tab carrying inline `content` and the phone did not, so every attachment
+ * chip and every device/handle file opened on a phone was struck through as
+ * deleted while its buffer was on screen and perfectly fine. A predicate stated
+ * twice is how that happens; neither caller filters on its own any more.
+ */
+export function isProbeableTab(tab: ProbeableTab): boolean {
+  if (!tab.path) return false;
+  if (tab.content !== undefined) return false;
+  if (tab.handleId || tab.deviceFile) return false;
+  return !tab.isDiff;
+}
+
 /** The scope key a probe's verdict is stored under. Exported for its test. */
 export function openTabScopeKey(tab: OpenTabScope): string {
   return `${tab.root ?? ''}\u0000${tab.repo ?? '.'}\u0000${tab.path ?? ''}`;
@@ -66,11 +98,13 @@ async function probeExists(tab: OpenTabScope): Promise<boolean> {
  * The tab ids whose file is gone.
  *
  * `refreshKey` is the workspace's own "something was written" counter, so a
- * delete issued from any panel reaches here without a poll. The CALLER decides
- * which tabs are plain files — a diff tab and an attachment chip have no file
- * behind their `path`, and probing one would strike it through on sight.
+ * delete issued from any panel reaches here without a poll. Which tabs can be
+ * probed at all is decided HERE (`isProbeableTab`), not at each call site: a
+ * diff tab and an attachment chip have no file behind their `path`, and probing
+ * one would strike it through on sight — a rule the two layouts used to apply
+ * differently, so the phone struck through files the desktop left alone.
  */
-export function useMissingFiles(tabs: readonly OpenTabScope[], refreshKey: number): Set<number | string> {
+export function useMissingFiles(tabs: readonly ProbeableTab[], refreshKey: number): Set<number | string> {
   const [missing, setMissing] = useState<Set<number | string>>(() => new Set());
   // Bumped by a focus or a visibility change: the effect below owns the probe,
   // and re-running it is the whole repair for an external deletion.
@@ -88,9 +122,9 @@ export function useMissingFiles(tabs: readonly OpenTabScope[], refreshKey: numbe
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const probes = new Map<string, OpenTabScope>();
+      const probes = new Map<string, ProbeableTab>();
       for (const tab of tabsRef.current) {
-        if (tab.path) probes.set(openTabScopeKey(tab), tab);
+        if (isProbeableTab(tab)) probes.set(openTabScopeKey(tab), tab);
       }
       const results = await Promise.all(
         [...probes.entries()].map(async ([key, tab]) => ({ key, exists: await probeExists(tab) })),
@@ -102,7 +136,7 @@ export function useMissingFiles(tabs: readonly OpenTabScope[], refreshKey: numbe
 
       const next = new Set<number | string>();
       for (const tab of tabsRef.current) {
-        if (tab.path && gone.has(openTabScopeKey(tab))) next.add(tab.id);
+        if (isProbeableTab(tab) && gone.has(openTabScopeKey(tab))) next.add(tab.id);
       }
       // A fresh Set only when the verdict moved: the tab strip is cheap, but a
       // new identity on every probe would re-render it for nothing.
