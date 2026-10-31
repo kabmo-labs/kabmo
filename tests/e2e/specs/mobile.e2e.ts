@@ -379,6 +379,18 @@ test.describe('mobile layout', () => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-mobile-stretch');
 
+    // The GLASS style, persisted through the real settings route so the
+    // composer boots drawing it: the stretched card covers the transcript, and
+    // a docked-alpha surface under it makes the two layers merge. Which
+    // `background-color` wins is a CASCADE answer, so only a browser can make
+    // this assertion.
+    const saved = await fetch(`${server.baseURL}/api/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kabmo_settings: { composerStyle: 'glass' } }),
+    });
+    expect(saved.ok).toBe(true);
+
     await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
     await expect(page.getByText('e2e-mobile-stretch').first()).toBeVisible();
 
@@ -404,6 +416,26 @@ test.describe('mobile layout', () => {
     expect(docked!.position).toBe('relative');
     expect(docked!.height).toBeLessThan(docked!.viewport.height);
 
+    /** The card's painted alpha, which is what decides how much transcript reads through. */
+    const cardSurface = () =>
+      page.evaluate(() => {
+        const input = document.querySelector('[data-testid="composer-input"]');
+        const element = input?.closest('[data-composer-style]');
+        if (!element) return null;
+        const background = getComputedStyle(element).backgroundColor;
+        return {
+          style: element.getAttribute('data-composer-style'),
+          // `color(srgb … / 0.92)` in Chromium; an opaque colour has no slash.
+          alpha: Number(background.match(/\/\s*([\d.]+)\s*\)/)?.[1] ?? 1),
+        };
+      });
+
+    const dockedSurface = await cardSurface();
+    expect(dockedSurface!.style).toBe('glass');
+    // Docked, the glass stays translucent: the style is a choice, and this spec
+    // must not lock it into an opaque card everywhere.
+    expect(dockedSurface!.alpha).toBeLessThan(0.7);
+
     await page.getByRole('button', { name: /maximize composer/i }).click();
     await expect(page.getByRole('button', { name: /restore composer/i })).toHaveAttribute('aria-pressed', 'true');
 
@@ -416,6 +448,15 @@ test.describe('mobile layout', () => {
     expect(stretched!.y).toBe(0);
     expect(stretched!.width).toBe(stretched!.viewport.width);
     expect(stretched!.height).toBe(stretched!.viewport.height);
+
+    // Stretched over the transcript, the card is the writing surface: message
+    // text must not read through the draft. The docked alpha above would let
+    // it, which is the bug this pins. Polled because the card transitions its
+    // colour (`transition-colors`), and the first frame is still the docked
+    // paint.
+    await expect
+      .poll(async () => (await cardSurface())!.alpha)
+      .toBeGreaterThanOrEqual(0.9);
 
     // Sending returns to the dock: the stretched composer covers the
     // transcript, so staying open would hide the answer being streamed.

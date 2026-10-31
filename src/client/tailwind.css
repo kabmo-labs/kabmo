@@ -404,11 +404,22 @@
   padding-inline: 1rem;
   padding-top: 0.875rem;
 }
+/* STRETCHED, the frosted card covers the transcript instead of sitting under
+ * it, so 58% paper stops being a surface and becomes a veil: message text
+ * reads through the draft at 42% and the two layers merge (measured: the
+ * expanded desktop card overlapped timeline rows at 58% with `blur(16px)`).
+ * The stretch exists to write a long prompt against that transcript, so the
+ * card must win the overlap — 92% paper keeps the tint and the blurred edge
+ * while leaving the text underneath 8% of its contrast. */
+[data-composer-style="glass"][data-composer-expanded="true"] {
+  background-color: color-mix(in srgb, var(--theme-paper) 92%, transparent);
+}
 /* A browser without `backdrop-filter` gets an opaque card rather than a
  * half-transparent one with nothing behind the blur: a 58% paper card over the
  * canvas is legible, a 58% card over the transcript is not. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  [data-composer-style="glass"] {
+  [data-composer-style="glass"],
+  [data-composer-style="glass"][data-composer-expanded="true"] {
     background-color: var(--theme-paper);
   }
 }
