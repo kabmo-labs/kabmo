@@ -26,8 +26,16 @@
  * browser too, so a `node:os` lookup is not available here.
  */
 
-/** A process's terminating signal as a label, or null when it was not signalled. */
-export function signalName(value: NodeJS.Signals | number | null | undefined): string | null {
+/**
+ * A process's terminating signal as a label, or null when it was not signalled.
+ *
+ * The parameter is `string`, not `NodeJS.Signals`: a name is what Bun reports,
+ * and `NodeJS.Signals` would make every TypeScript consumer depend on
+ * `@types/node` to read this signature — a plugin's browser half has no reason
+ * to install it. A `NodeJS.Signals` value is a `string`, so call sites narrow
+ * nothing.
+ */
+export function signalName(value: string | number | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   if (typeof value === 'string') return value;
   return `SIG${value}`;

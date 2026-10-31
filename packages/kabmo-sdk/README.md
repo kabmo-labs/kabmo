@@ -247,6 +247,11 @@ macOS and a name table would be wrong on one of them.
 Use it wherever a signal is stored in a `string | null` field, so the widening is
 closed in one place instead of once per call site.
 
+The parameter is `string | number | null | undefined`, not `NodeJS.Signals`: a
+name is what Bun reports, and naming the ambient Node type would make every
+TypeScript consumer install `@types/node` to read this signature. `skipLibCheck`
+does not hide it either — the SDK ships `.ts` source, not `.d.ts`.
+
 ### `PLUGIN_SURFACE_ATTR` / `pluginSurfaceSelector(pluginId)`
 
 The attribute (`data-plugin-surface`) every element a plugin's DOM lives in
