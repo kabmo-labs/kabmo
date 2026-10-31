@@ -25,7 +25,7 @@ import { createSampler, type SampleDeps } from './sampler';
 const SERVER_PID = 100;
 
 function proc(pid: number, ppid: number, argv: string[] | null, extra: Partial<ProcessInfo> = {}): ProcessInfo {
-  return { pid, ppid, rss: 1024, cpuNs: 0, threads: 1, argv, cwd: null, startedAt: 1, ...extra };
+  return { pid, ppid, rss: 1024, footprint: null, cpuNs: 0, threads: 1, argv, cwd: null, startedAt: 1, ...extra };
 }
 
 /** A probe whose table the test controls, so the sampler's math is deterministic. */
@@ -42,6 +42,8 @@ function deps(rows: ProcessInfo[], overrides: Partial<SampleDeps> = {}): SampleD
     readDaemons: () => [],
     includeDaemons: false,
     historyPoints: 5,
+    // Injected so a sample never spawns `vm_stat` in a unit test.
+    readMachine: () => ({ totalMemBytes: 16 * 1024 ** 3, freeMemBytes: 8 * 1024 ** 3, cpuCount: 8, loadPerCore: 0.1 }),
     // No leases by default: every rpc-ui host reads as a prewarm unless a test
     // supplies one, which is exactly what a fresh pool looks like.
     readLease: () => null,
@@ -104,7 +106,7 @@ describe('createSampler', () => {
     const pids = snapshot.rows.map((row) => row.pid).sort((a, b) => a - b);
     expect(pids).toEqual([SERVER_PID, 101, 199, 200, 201]);
     expect(snapshot.total.processes).toBe(5);
-    expect(snapshot.total.rss).toBe(1500);
+    expect(snapshot.total.memory).toBe(1500);
     // Deduped: pid 199 is reached by the daemon walk AND (via its own child
     // chain) by nothing else, but the browser subtree must appear once each.
     expect(new Set(pids).size).toBe(pids.length);
@@ -143,7 +145,7 @@ describe('createSampler', () => {
     const host = snapshot.groups.find((group) => group.key === 'prewarm:101');
     expect(host).toBeDefined();
     expect(host?.processes).toBe(2);
-    expect(host?.rss).toBe(500);
+    expect(host?.memory).toBe(500);
     // The rows carry the same key, so the table can group them.
     expect(snapshot.rows.find((row) => row.pid === 102)?.groupKey).toBe('prewarm:101');
   });
@@ -179,10 +181,46 @@ describe('createSampler', () => {
     const sampler = createSampler(deps(rows, { historyPoints: 3 }));
     for (let i = 0; i < 6; i += 1) sampler.sample();
     const bounded = sampler.sample();
-    expect(bounded.history?.rss).toHaveLength(3);
+    expect(bounded.history?.memory).toHaveLength(3);
 
     const noHistory = createSampler(deps(rows, { historyPoints: 0 })).sample();
     expect(noHistory.history).toBeUndefined();
+  });
+
+  test('the memory figure is the footprint when the probe has one, and RSS when it does not', () => {
+    // Measured on the live server: 317 MB resident for a process whose
+    // footprint was 134 MB. The panel shows the second, because that is what
+    // the OS is actually charging; a row that cannot report one keeps RSS
+    // rather than contributing nothing.
+    const rows: ProcessInfo[] = [
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 317, footprint: 134 }),
+      proc(101, SERVER_PID, ['bun', '/bin/omp', '--mode', 'rpc-ui'], { rss: 200, footprint: null }),
+    ];
+    const snapshot = createSampler(deps(rows)).sample();
+    const server = snapshot.rows.find((row) => row.pid === SERVER_PID);
+    const host = snapshot.rows.find((row) => row.pid === 101);
+    expect(server?.memory).toBe(134);
+    expect(server?.memorySource).toBe('footprint');
+    expect(server?.rss).toBe(317);
+    expect(host?.memory).toBe(200);
+    expect(host?.memorySource).toBe('rss');
+    // One of each: the totals sum what the rows print, and say they mixed.
+    expect(snapshot.total.memory).toBe(334);
+    expect(snapshot.memorySource).toBe('mixed');
+  });
+
+  test('a fully-footprint sample says so, and a fully-resident one says that', () => {
+    const footprinted = createSampler(
+      deps([proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 317, footprint: 134 })]),
+    ).sample();
+    expect(footprinted.memorySource).toBe('footprint');
+    expect(footprinted.total.memory).toBe(134);
+
+    const resident = createSampler(
+      deps([proc(SERVER_PID, 1, ['bun', '--kabmo-server'], { rss: 317, footprint: null })]),
+    ).sample();
+    expect(resident.memorySource).toBe('rss');
+    expect(resident.total.memory).toBe(317);
   });
 
   test('an unsupported probe reports its reason instead of an empty table', () => {

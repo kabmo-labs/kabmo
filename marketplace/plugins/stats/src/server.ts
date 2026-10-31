@@ -36,6 +36,7 @@ import type { KabmoPluginApi, PluginJson } from '@kabmo-labs/kabmo-sdk';
 
 import { createSampler, type StatsSnapshot } from './sampler';
 import { readDaemonRegistry } from './daemons';
+import { killStackProcess, type KillOutcome } from './kill';
 
 /** The tick's floor: below this a CPU delta is noise against the clock. */
 const MIN_SAMPLE_MS = 200;
@@ -113,7 +114,8 @@ export default function plugin(api: KabmoPluginApi) {
         probe: { name: 'unknown', supported: false, reason },
         rows: [],
         groups: [],
-        total: { processes: 0, rss: 0, cpuPercent: 0 },
+        total: { processes: 0, memory: 0, cpuPercent: 0 },
+        memorySource: 'rss',
         machine: {
           totalMemBytes: 0,
           freeMemBytes: 0,
@@ -136,7 +138,8 @@ export default function plugin(api: KabmoPluginApi) {
       probe: { name: 'pending', supported: true },
       rows: [],
       groups: [],
-      total: { processes: 0, rss: 0, cpuPercent: 0 },
+      total: { processes: 0, memory: 0, cpuPercent: 0 },
+      memorySource: 'rss',
       machine: { totalMemBytes: 0, freeMemBytes: 0, cpuCount: 0, loadPerCore: 0 },
       daemons: [],
       serverPid: process.pid,
@@ -216,6 +219,30 @@ export default function plugin(api: KabmoPluginApi) {
     handler: ({ force } = {}) => {
       if (force || !latest) return sampleAndPublish();
       return latest;
+    },
+  });
+
+  /**
+   * Stop one process in the measured stack.
+   *
+   * The sample taken HERE is the authority, not the table the panel drew: a
+   * pid the caller read off a stale snapshot may since have been recycled, and
+   * the fresh union is what turns "some pid" into "a process this panel
+   * measured". `killStackProcess` owns the refusals and never throws; a
+   * refusal is a result the dialog renders, not a 500.
+   */
+  api.rpc.register<{ pid: number }, KillOutcome>('kill', {
+    handler: ({ pid } = { pid: 0 }) => {
+      const outcome = killStackProcess(pid, {
+        sample: () => sampler.sample(),
+        serverPid: process.pid,
+      });
+      api.log.info(
+        outcome.killed
+          ? `signalled pid ${outcome.pid} (${outcome.title})`
+          : `refused to signal pid ${String(pid)}: ${outcome.reason}`,
+      );
+      return outcome;
     },
   });
 

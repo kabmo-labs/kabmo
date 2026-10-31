@@ -29,7 +29,12 @@ interface TotalsBarProps {
 
 export function TotalsBar({ snapshot, onRefresh, refreshing }: TotalsBarProps) {
   const { total, machine, probe } = snapshot;
-  const memoryShare = machine.totalMemBytes > 0 ? (total.rss / machine.totalMemBytes) * 100 : null;
+  const memoryShare = machine.totalMemBytes > 0 ? (total.memory / machine.totalMemBytes) * 100 : null;
+  // Which figure the column and the totals carry. A sum of two different
+  // quantities must not be labelled as one of them, so `mixed` says so.
+  const memoryLabel = snapshot.memorySource === 'footprint' ? 'footprint'
+    : snapshot.memorySource === 'mixed' ? 'footprint + rss'
+    : 'resident';
 
   return (
     <div class="flex flex-col gap-3 border-b border-ink/10 px-3 py-3">
@@ -43,9 +48,10 @@ export function TotalsBar({ snapshot, onRefresh, refreshing }: TotalsBarProps) {
       <div class="grid grid-cols-3 gap-3">
         <div class="flex flex-col gap-0.5">
           <span class="text-[10px] uppercase font-mono text-ink/40">Memory</span>
-          <span class="text-sm font-semibold font-mono text-ink">{formatBytes(total.rss)}</span>
+          <span class="text-sm font-semibold font-mono text-ink">{formatBytes(total.memory)}</span>
           <span class="text-[10px] font-mono text-ink/45">
             {memoryShare === null ? 'machine unknown' : `${memoryShare.toFixed(1)}% of ${formatBytes(machine.totalMemBytes)}`}
+            {` · ${memoryLabel}`}
           </span>
         </div>
         <div class="flex flex-col gap-0.5">
@@ -88,7 +94,11 @@ export function MachineFacts({ snapshot }: { snapshot: StatsSnapshot }) {
   return (
     <FieldList>
       <Field label="total memory" value={formatBytes(machine.totalMemBytes)} />
-      <Field label="free memory" value={formatBytes(machine.freeMemBytes)} />
+      {/* "available", not "free": this is free + inactive + speculative on
+          macOS and `MemAvailable` on Linux — the memory a new allocation can
+          get without swapping. `os.freemem()` reported 1.05 GB here while
+          5.60 GB was available. */}
+      <Field label="memory available" value={formatBytes(machine.freeMemBytes)} />
       <Field label="cores" value={String(machine.cpuCount)} />
       <Field label="load (1m/core)" value={machine.loadPerCore.toFixed(3)} />
     </FieldList>

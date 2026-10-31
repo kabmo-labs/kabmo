@@ -28,6 +28,17 @@ export interface ProcessInfo {
   ppid: number;
   /** Resident set size in bytes. */
   rss: number;
+  /**
+   * The operating system's charge for this process, in bytes, or null.
+   *
+   * Not the same quantity as `rss`: on macOS a Bun process that has read and
+   * dropped a transcript keeps the freed pages resident, so RSS read 317 MB for
+   * a process whose physical footprint was 134 MB (measured on the live server
+   * with `proc_pid_rusage(RUSAGE_INFO_V4).ri_phys_footprint` against
+   * `footprint -p`). Linux has no such gap at this scale, so its probe answers
+   * null and the sampler falls back to RSS there.
+   */
+  footprint: number | null;
   /** Cumulative CPU time (user + system) in nanoseconds. */
   cpuNs: number;
   /** Thread count, 0 when the platform cannot report it. */

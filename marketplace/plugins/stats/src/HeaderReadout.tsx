@@ -99,7 +99,7 @@ export function StatsHeaderReadout() {
   const snapshot = realtime.value;
   const measurable = snapshot !== null && snapshot.probe.supported;
   const cpu = measurable ? formatCompactPercent(snapshot.total.cpuPercent) : '—';
-  const ram = measurable ? formatCompactBytes(snapshot.total.rss) : '—';
+  const ram = measurable ? formatCompactBytes(snapshot.total.memory) : '—';
   // A figure with no sample behind it must not look like a measurement: the
   // tooltip is the only place the header can say so.
   const title = measurable
@@ -109,7 +109,11 @@ export function StatsHeaderReadout() {
   return (
     <span class="flex items-center gap-2.5" aria-label={`CPU ${cpu}, RAM ${ram}`} title={title}>
       <ReadoutCell label="CPU" value={cpu} title="CPU over the last sample interval, across every process" />
-      <ReadoutCell label="RAM" value={ram} title="Resident memory across every process" />
+      <ReadoutCell
+        label="RAM"
+        value={ram}
+        title="Physical footprint across every process, wherever the OS reports one"
+      />
     </span>
   );
 }

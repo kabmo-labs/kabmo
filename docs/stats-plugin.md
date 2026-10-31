@@ -52,10 +52,15 @@ Two traps, both verified:
   Apple-silicon host. Read as nanoseconds they understate CPU by ~41x.
   Cross-checked against `ps`: a spin loop measured 1003.8 ms of CPU over
   1002 ms of wall, and `ps -o %cpu=` printed `100.0`.
-- **`proc_pid_rusage` is a decoy.** It returns 0 and its first two u64s are also
-  ticks, but its resident field reads **zero** for a 200 MB allocation on this
-  host, while `pti_resident_size` matched `ps rss` and Bun's own
-  `process.memoryUsage().rss` to within 0.3%.
+- **`proc_pid_rusage` is a decoy for RSS, and the only source of FOOTPRINT.**
+  The first two u64s of its reply are CPU times, and its resident field
+  (`ri_resident_size`, offset 64) read **zero** in the first probe, which is
+  what this page used to record. Re-measured with `RUSAGE_INFO_V4`: the call
+  returns 0 and both fields are populated — resident 317,407,232 bytes for the
+  live server, and **`ri_phys_footprint` (offset 72) 134,252,248 bytes, exactly
+  `footprint -p`'s `128 MB` for the same pid**. The panel shows the footprint,
+  not RSS, because RSS keeps counting pages Bun has freed but not returned (see
+  [the sampler note](#memory-is-the-os-charge-not-rss)).
 
 Linux needs no new file: `/proc/<pid>/stat` (already read for liveness) carries
 `utime`/`stime` at indices 11/12 of the tail, and `/proc/<pid>/status` carries
@@ -192,6 +197,39 @@ subprocess-free route to a foreign process's CPU (`Get-Counter`) reports a
 different quantity in the same column. The probe is `supported: false` with a
 reason, and the panel shows it.
 
+**D8 — Memory is the OS's charge, not RSS.** <a id="memory-is-the-os-charge-not-rss"></a>
+RSS on macOS counts pages an allocator has freed but not returned, so the panel
+used to over-report the one process a reader cares about most. Measured on the
+live server: **317 MB resident** against a **134 MB physical footprint**, with
+`Bun.gc(true)` moving neither (`swept 1049 MB → 1050 MB`, every minute). Every
+row now carries `memory` = `footprint ?? rss` plus `memorySource`, the totals sum
+that same figure, and `StatsSnapshot.memorySource` says when a sample mixed the
+two so a sum is never labelled as one quantity. Darwin reads
+`proc_pid_rusage(RUSAGE_INFO_V4).ri_phys_footprint`; Linux answers null (a `Pss`
+read per pid per tick is not worth it, and Linux RSS has no such gap) and the
+sampler falls back; `ps` does the same.
+
+The machine's OWN denominator was wrong for the same reason. `os.freemem()` on
+macOS reports `Pages free` alone — measured **1.05 GB** while **5.60 GB** was
+available (`free + inactive + speculative`) — so the panel showed a nearly full
+machine. `src/machine.ts` reads `vm_stat` (8.8 ms, cached 5 s) on macOS and
+`MemAvailable` from `/proc/meminfo` on Linux, and the field is labelled
+**memory available** rather than "free".
+
+**D9 — Killing is a conversation.** The `×` on a row opens a dialog that names
+the process, its pid, its footprint and its thread count; Cancel holds focus on
+open, Escape cancels, and Tab stays inside. The server half (`src/kill.ts`)
+refuses, in this order: anything that is not an integer above 1 (`kill(2)`
+treats `0` as the caller's process group and `-1` as every signalable process),
+the Kabmo's own pid (the panel runs inside the server it measures — stopping it
+is `kabmo stop`), and any pid outside the union a **fresh** sample just measured
+(a pid read off a seconds-old table may have been recycled). `SIGTERM`, not
+`SIGKILL`: omp children flush their transcript on the polite signal, and a
+process that ignores it stays visible rather than being silently destroyed.
+Verified against a live server: the unmeasured pid, `pid 1`, `0` and the server
+pid all answer `{ killed: false, reason }`, and confirming on a child of the
+server removed its row from the table while the server stayed healthy.
+
 ## Files
 
 | Path | Role |
@@ -207,12 +245,14 @@ reason, and the panel shows it.
 | `src/groups.ts` | `assignGroups` — which processes belong to one session |
 | `src/daemons.ts` | omp's daemon registry, read off disk |
 | `src/snapshot.ts` | `ProcessRow` / `GroupSummary` / `StatsSnapshot` — the wire shapes |
-| `src/sampler.ts` | the union, the delta, the rollups, the history |
+| `src/sampler.ts` | the union, the delta, the rollups, the history, the memory figure |
+| `src/machine.ts` | total/available memory, cores, load — the platform readers |
+| `src/kill.ts` | the kill rules (which pids, which refusals, which signal) |
 | `src/format.ts` | the byte/percent/age formatters |
-| `src/server.ts` | the service, the RPC methods, the HTTP route, the topic, the settings |
+| `src/server.ts` | the service, the RPC methods (`watch`, `unwatch`, `snapshot`, `kill`), the HTTP route, the topic, the settings |
 | `src/app.tsx` | the right-panel view |
-| `src/TotalsBar.tsx`, `src/ProcessTable.tsx`, `src/Sparkline.tsx` | the three render blocks |
-| `src/labels.test.ts`, `src/groups.test.ts`, `src/sessions.test.ts`, `src/sampler.test.ts`, `src/format.test.ts` | the tests |
+| `src/TotalsBar.tsx`, `src/ProcessTable.tsx`, `src/Sparkline.tsx`, `src/KillConfirm.tsx` | the render blocks, including the kill dialog |
+| `src/labels.test.ts`, `src/groups.test.ts`, `src/sessions.test.ts`, `src/sampler.test.ts`, `src/format.test.ts`, `src/machine.test.ts`, `src/kill.test.ts`, `src/KillConfirm.test.tsx` | the tests |
 
 ## Rows say what a process IS, and belong to the session that owns them
 
@@ -255,7 +295,7 @@ that is noise.
 ## Verification
 
 ```bash
-bun test marketplace/plugins/stats/src     # 64 tests: labels, groups, sessions, the union, the delta, the live probe
+bun test marketplace/plugins/stats/src     # 99 tests: labels, groups, sessions, the union, the delta, the live probe, the machine readers, the kill rules, the dialog
 bun run lint && bunx tsc --noEmit --noUnusedLocals --noUnusedParameters
 bun run build
 bun src/cli/kabmo.js plugin build marketplace/plugins/stats
@@ -278,6 +318,14 @@ Smoke, run end to end against a real server on a temp data dir:
    stack (`-apple-system`, i.e. `--font-sans` with the Nerd Font fallback) so a
    session's card icon paints rather than tofu. `table.scrollWidth ===
    clientWidth === 420` — no overflow.
+
+Re-verified after D8/D9 against a temp instance on port 3989: the RPC snapshot
+reported `memorySource: "footprint"` with rows whose footprint exceeded their RSS
+(`1,051,990,496` against `834,240,512`), `machine.freeMemBytes` matched
+`vm_stat`'s `free + inactive + speculative` (4.86 GB against 4.55 GB a few
+seconds later), the table rendered `memory available 4.4 GB` where
+`os.freemem()` would have said ~1 GB, and the dialog's stop on a measured child
+of the server removed its row while the server answered `/api/health` normally.
 
 The lease rule was proved against the live machine before it was coded: three
 hosts whose argv said `prewarm` held open descriptors on

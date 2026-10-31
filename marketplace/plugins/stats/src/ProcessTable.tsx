@@ -36,6 +36,8 @@ import type { GroupSummary, ProcessRow, StatsSnapshot } from './sampler';
 
 interface ProcessTableProps {
   snapshot: StatsSnapshot;
+  /** Ask before signalling: the table never kills anything itself. */
+  onRequestKill: (row: ProcessRow) => void;
 }
 
 /** The colour a group's dot takes, so the list is scannable. */
@@ -95,7 +97,15 @@ function indent(depth: number): string {
   return '  '.repeat(Math.min(depth, 4));
 }
 
-function ProcessRowView({ row, serverPid }: { row: ProcessRow; serverPid: number }) {
+function ProcessRowView({
+  row,
+  serverPid,
+  onRequestKill,
+}: {
+  row: ProcessRow;
+  serverPid: number;
+  onRequestKill: (row: ProcessRow) => void;
+}) {
   const pad = indent(row.depth);
   return (
     <tr class="border-t border-ink/5 hover:bg-ink/[0.02]">
@@ -115,14 +125,38 @@ function ProcessRowView({ row, serverPid }: { row: ProcessRow; serverPid: number
           </div>
         ) : null}
       </td>
-      <td class="py-1 pr-2 align-top text-right font-mono text-[11px] text-ink whitespace-nowrap w-16">
-        {formatBytes(row.rss)}
+      <td
+        class="py-1 pr-2 align-top text-right font-mono text-[11px] text-ink whitespace-nowrap w-16"
+        title={
+          row.memorySource === 'footprint'
+            ? `Physical footprint ${formatBytes(row.memory)} (resident ${formatBytes(row.rss)})`
+            : `Resident size ${formatBytes(row.rss)} — this process reports no footprint`
+        }
+      >
+        {formatBytes(row.memory)}
       </td>
       <td class="py-1 pr-2 align-top text-right font-mono text-[11px] text-ink/70 whitespace-nowrap w-14 @max-[360px]:hidden">
         {formatPercent(row.cpuPercent)}
       </td>
       <td class="py-1 pr-2 align-top text-right font-mono text-[10px] text-ink/40 w-9 @max-[300px]:hidden">
         {row.threads > 0 ? row.threads : ''}
+      </td>
+      <td class="py-1 align-top text-right w-6">
+        {/* No button for the server that hosts this panel: it would take the
+            UI, every live session and the sampler with it, and stopping it is
+            `kabmo stop` — the refusal is stated by omission, and the server
+            half refuses it too. */}
+        {row.pid === serverPid ? null : (
+          <button
+            type="button"
+            onClick={() => onRequestKill(row)}
+            aria-label={`Stop pid ${row.pid}`}
+            title={`Stop pid ${row.pid}`}
+            class="inline-flex h-4 w-4 items-center justify-center rounded text-[11px] leading-none text-ink/30 hover:bg-error/10 hover:text-error"
+          >
+            ×
+          </button>
+        )}
       </td>
     </tr>
   );
@@ -162,17 +196,18 @@ function GroupRow({ group }: { group: GroupSummary }) {
         ) : null}
       </td>
       <td class="py-1.5 pr-2 text-right font-mono text-[10px] text-ink/60 whitespace-nowrap w-16">
-        {formatBytes(group.rss)}
+        {formatBytes(group.memory)}
       </td>
       <td class="py-1.5 pr-2 text-right font-mono text-[10px] text-ink/60 whitespace-nowrap w-14 @max-[360px]:hidden">
         {formatPercent(group.cpuPercent)}
       </td>
       <td class="py-1.5 pr-2 w-9 @max-[300px]:hidden" />
+      <td class="py-1.5 w-6" />
     </tr>
   );
 }
 
-export function ProcessTable({ snapshot }: ProcessTableProps) {
+export function ProcessTable({ snapshot, onRequestKill }: ProcessTableProps) {
   const rowsByGroup = new Map<string, ProcessRow[]>();
   for (const row of snapshot.rows) {
     const bucket = rowsByGroup.get(row.groupKey);
@@ -204,7 +239,12 @@ export function ProcessTable({ snapshot }: ProcessTableProps) {
           <tr>
             <HeaderCell label="PID" align="right" title="Operating-system process id" class="w-14" />
             <HeaderCell label="Process" title="What it is, and the project, session and age behind it" />
-            <HeaderCell label="Memory" align="right" title="Resident set size (RSS)" class="w-16" />
+            <HeaderCell
+              label="Memory"
+              align="right"
+              title="Physical footprint where the OS reports one (macOS); resident size otherwise"
+              class="w-16"
+            />
             <HeaderCell
               label="CPU"
               align="right"
@@ -212,6 +252,7 @@ export function ProcessTable({ snapshot }: ProcessTableProps) {
               class="w-14 @max-[360px]:hidden"
             />
             <HeaderCell label="Thr" align="right" title="Thread count" class="w-9 @max-[300px]:hidden" />
+            <HeaderCell label="" class="w-6" />
           </tr>
         </thead>
         {snapshot.groups.map((group) => {
@@ -224,9 +265,14 @@ export function ProcessTable({ snapshot }: ProcessTableProps) {
                 // Owner first, then the tree in BFS order, and only then by size:
                 // sorting by RSS alone put a 719 MB grandchild above the process
                 // that spawned it, which is the one row the group is about.
-                .sort((a, b) => a.depth - b.depth || b.rss - a.rss)
+                .sort((a, b) => a.depth - b.depth || b.memory - a.memory)
                 .map((row) => (
-                  <ProcessRowView key={row.pid} row={row} serverPid={snapshot.serverPid} />
+                  <ProcessRowView
+                    key={row.pid}
+                    row={row}
+                    serverPid={snapshot.serverPid}
+                    onRequestKill={onRequestKill}
+                  />
                 ))}
             </tbody>
           );

@@ -21,7 +21,7 @@ import type { ProcessInfo } from './proc/types';
 const SERVER_PID = 100;
 
 function proc(pid: number, ppid: number, argv: string[] | null): ProcessInfo {
-  return { pid, ppid, rss: 1024, cpuNs: 0, threads: 1, argv, cwd: null, startedAt: 1 };
+  return { pid, ppid, rss: 1024, footprint: null, cpuNs: 0, threads: 1, argv, cwd: null, startedAt: 1 };
 }
 
 function daemon(name: string, pid: number, brokerPid: number | null, state = 'ready'): DaemonEntry {

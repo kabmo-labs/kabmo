@@ -107,6 +107,8 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
         detail: 'the server itself · 1m',
         groupKey: 'kabmo',
         depth: 0,
+        memory: 2 * 1024 * 1024,
+        memorySource: 'rss',
         rss: 2 * 1024 * 1024,
         cpuPercent: 1.5,
         threads: 4,
@@ -120,11 +122,12 @@ function snapshot(overrides: Partial<StatsSnapshot> = {}): StatsSnapshot {
         title: 'Kabmo server',
         detail: 'the server itself · 1m',
         processes: 1,
-        rss: 2 * 1024 * 1024,
+        memory: 2 * 1024 * 1024,
         cpuPercent: 1.5,
       },
     ],
-    total: { processes: 1, rss: 2 * 1024 * 1024, cpuPercent: 1.5 },
+    total: { processes: 1, memory: 2 * 1024 * 1024, cpuPercent: 1.5 },
+    memorySource: 'rss',
     machine: { totalMemBytes: 8 * 1024 ** 3, freeMemBytes: 1024 ** 3, cpuCount: 8, loadPerCore: 0.1 },
     daemons: [],
     serverPid: 1,
@@ -192,7 +195,8 @@ describe('StatsPanel server-half state', () => {
         probe: { name: 'win32', supported: false, reason: 'no subprocess-free route' },
         rows: [],
         groups: [],
-        total: { processes: 0, rss: 0, cpuPercent: 0 },
+        total: { processes: 0, memory: 0, cpuPercent: 0 },
+        memorySource: 'rss',
         error: 'no subprocess-free route',
       }),
     });
@@ -206,7 +210,7 @@ describe('StatsPanel server-half state', () => {
     const text = await textFor({
       live: true,
       publish: snapshot({
-        history: { rss: [1_400_000_000, 1_500_000_000], cpuPercent: [2.5, 12.0] },
+        history: { memory: [1_400_000_000, 1_500_000_000], cpuPercent: [2.5, 12.0] },
       }),
     });
     expect(text).not.toMatch(/\d{9,}\.\d/);
@@ -224,5 +228,97 @@ describe('StatsPanel server-half state', () => {
     expect(html).toContain('@container');
     expect(html).toContain('@max-[360px]:hidden');
     expect(html).toContain('@max-[300px]:hidden');
+  });
+});
+
+/** A row the panel may stop, beside the one it may not. */
+function killableSnapshot(): StatsSnapshot {
+  const base = snapshot();
+  const server = base.rows[0];
+  const host = {
+    ...server,
+    pid: 101,
+    ppid: server.pid,
+    title: 'omp · rpc-ui',
+    detail: 'project · 2m',
+    groupKey: 'session',
+    depth: 1,
+  };
+  return {
+    ...base,
+    rows: [server, host],
+    // The table renders GROUPS and then their rows, so a row without a group
+    // is a row the panel never draws.
+    groups: [base.groups[0], { ...base.groups[0], key: 'session', kind: 'session', ownerPid: 101, title: host.title, detail: host.detail }],
+  };
+}
+
+describe('StatsPanel kill control', () => {
+  test('the × exists for a measured process and never for the server itself', async () => {
+    const { harness } = loadPluginApp(pluginDefinition);
+    harness.services.rpc.stub('watch', { watching: 1 });
+    harness.services.publishTopic(killableSnapshot());
+    const rendered = await renderStatsPanel(harness);
+
+    expect(rendered.html).toContain('aria-label="Stop pid 101"');
+    expect(rendered.html).not.toContain('aria-label="Stop pid 1"');
+
+    rendered.unmount();
+    harness.dispose();
+    configureUiKit(uiKitServices() ?? harness.services);
+  });
+
+  test('clicking × opens the dialog, and Cancel closes it without a kill', async () => {
+    const { harness } = loadPluginApp(pluginDefinition);
+    harness.services.rpc.stub('watch', { watching: 1 });
+    harness.services.rpc.stub('kill', { killed: true, pid: 101, title: 'omp · rpc-ui', signal: 'SIGTERM' });
+    harness.services.publishTopic(killableSnapshot());
+    const rendered = await renderStatsPanel(harness);
+
+    const container = document.body.lastElementChild as HTMLElement;
+    const button = container.querySelector<HTMLButtonElement>('button[aria-label="Stop pid 101"]');
+    expect(button).not.toBeNull();
+    await act(async () => {
+      button?.click();
+    });
+    expect(container.textContent).toContain('Stop pid 101?');
+
+    const cancel = [...container.querySelectorAll('button')].find((candidate) => candidate.textContent === 'Cancel');
+    await act(async () => {
+      cancel?.click();
+    });
+    expect(container.textContent).not.toContain('Stop pid 101?');
+    expect(harness.services.rpc.calls.filter((call) => call.method === 'kill')).toHaveLength(0);
+
+    rendered.unmount();
+    harness.dispose();
+    configureUiKit(uiKitServices() ?? harness.services);
+  });
+
+  test('confirming sends the pid and forces a sample so the row disappears', async () => {
+    const { harness } = loadPluginApp(pluginDefinition);
+    harness.services.rpc.stub('watch', { watching: 1 });
+    harness.services.rpc.stub('kill', { killed: true, pid: 101, title: 'omp · rpc-ui', signal: 'SIGTERM' });
+    harness.services.rpc.stub('snapshot', killableSnapshot());
+    harness.services.publishTopic(killableSnapshot());
+    const rendered = await renderStatsPanel(harness);
+
+    const container = document.body.lastElementChild as HTMLElement;
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="Stop pid 101"]')?.click();
+    });
+    const stop = [...container.querySelectorAll('button')].find((candidate) => candidate.textContent === 'Stop process');
+    await act(async () => {
+      stop?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const calls = harness.services.rpc.calls;
+    expect(calls.filter((call) => call.method === 'kill').map((call) => call.input)).toEqual([{ pid: 101 }]);
+    expect(calls.some((call) => call.method === 'snapshot' && (call.input as { force?: boolean } | undefined)?.force === true)).toBe(true);
+
+    rendered.unmount();
+    harness.dispose();
+    configureUiKit(uiKitServices() ?? harness.services);
   });
 });

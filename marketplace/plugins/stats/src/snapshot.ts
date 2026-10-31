@@ -29,6 +29,20 @@ export interface ProcessRow {
   groupKey: string;
   /** Distance from the group's owner; 0 is the owner itself. */
   depth: number;
+  /**
+   * The figure the panel shows and sorts by: the OS's physical footprint when
+   * it reports one, resident size otherwise. See `memorySource`.
+   */
+  memory: number;
+  /**
+   * Which of the two `memory` is, per row.
+   *
+   * Both exist because a row can fall back independently: on macOS a process
+   * owned by another user answers no footprint, and dropping its RSS would
+   * remove it from the totals instead of reporting what is known.
+   */
+  memorySource: 'footprint' | 'rss';
+  /** Resident set size, kept beside `memory` so a row can explain the gap. */
   rss: number;
   cpuPercent: number | null;
   threads: number;
@@ -52,7 +66,8 @@ export interface GroupSummary {
   /** The owner's detail line. */
   detail: string;
   processes: number;
-  rss: number;
+  /** Sum of the members' `memory` — the same figures the rows print. */
+  memory: number;
   cpuPercent: number;
 }
 
@@ -84,14 +99,22 @@ export interface StatsSnapshot {
    */
   groups: GroupSummary[];
   /** The whole union. */
-  total: { processes: number; rss: number; cpuPercent: number };
+  total: { processes: number; memory: number; cpuPercent: number };
+  /**
+   * Which figure `memory` is across the sample.
+   *
+   * `footprint` when every row reported one, `rss` when none did, `mixed` when
+   * both appear — the panel needs to say which, because a sum of two different
+   * quantities must not be labelled as one of them.
+   */
+  memorySource: 'footprint' | 'rss' | 'mixed';
   machine: MachineContext;
   /** omp daemons the registry reports, so a row can be named by its daemon. */
   daemons: DaemonEntry[];
   /** The Kabmo's own pid, so the panel can mark it. */
   serverPid: number;
   /** Sparkline series, oldest first. Absent when history is disabled. */
-  history?: { rss: number[]; cpuPercent: number[] };
+  history?: { memory: number[]; cpuPercent: number[] };
   /** Why the table is empty, when it is. */
   error?: string;
 }
@@ -110,6 +133,11 @@ export interface SampleDeps {
   includeDaemons?: boolean;
   /** Samples retained for the sparklines; 0 disables history. */
   historyPoints?: number;
+  /**
+   * The machine reading, injected so a unit test does not spawn `vm_stat`.
+   * Defaults to `readMachine` from `./machine`.
+   */
+  readMachine?: () => MachineContext;
   /**
    * The lease lookup, injected so the sampler is testable without libproc.
    *

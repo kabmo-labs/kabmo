@@ -174,6 +174,10 @@ export const linuxProbe: ProcProbe = {
         pid,
         ppid: stat.ppid,
         rss: status.rss,
+        // No Linux analogue at this budget: `Pss` would mean a
+        // `/proc/<pid>/smaps_rollup` read per process per tick, and Linux RSS
+        // does not carry macOS's freed-arena gap. The sampler falls back.
+        footprint: null,
         cpuNs: stat.cpuNs,
         threads: status.threads,
         argv: argvOf(pid),

@@ -29,19 +29,38 @@ than printing zeros as measurements.
 
 | Block | What you get |
 |---|---|
-| Totals | Memory and CPU for the whole stack, against the machine's own total and core count |
-| Trend | Two sparklines (RSS, CPU) over the last `historyPoints` samples |
-| Process table | One row per process, grouped by category, heaviest first — under a sticky column header (`PID`, `Process`, `Memory`, `CPU`, `Thr`) |
-| Machine | Total/free memory, cores, 1-minute load per core |
+| Totals | Memory and CPU for the whole stack, against the machine's own total and core count, saying which figure the memory is (`footprint` / `resident` / `footprint + rss`) |
+| Trend | Two sparklines (memory, CPU) over the last `historyPoints` samples |
+| Process table | One row per process, grouped by category, heaviest first — under a sticky column header (`PID`, `Process`, `Memory`, `CPU`, `Thr`), each row with a `×` that stops it |
+| Machine | Total memory, **memory available**, cores, 1-minute load per core |
 | Daemons | Every daemon omp's registry reports, with its pid, state and supervising broker |
 
 The process list carries **one** column header for the whole table rather than
 one per group: the labels are the thing that must not be ambiguous, and a row of
 bare numbers (`417.5 MB`, `1.5%`, `41`) is unreadable without them. Each column
-label also carries a `title` naming what the figure is (`Resident set size`,
-`CPU time over the last sample interval`, `Thread count`). A group's rollup puts
-its figures in the **same columns** as the rows it sums, so a total lines up with
-what it totals.
+label also carries a `title` naming what the figure is (`Physical footprint where
+the OS reports one (macOS); resident size otherwise`, `CPU time over the last
+sample interval`, `Thread count`). A group's rollup puts its figures in the
+**same columns** as the rows it sums, so a total lines up with what it totals.
+
+**Memory is the operating system's charge, not RSS.** On macOS a Bun process that
+has read and dropped a transcript keeps the freed pages resident — measured on
+the live server, 317 MB resident for a 134 MB physical footprint — so each row
+shows `footprint` where the OS reports one and falls back to RSS otherwise, with
+the source in the row's tooltip and the totals' caption. `memory available` is
+free + inactive + speculative (`vm_stat`) / `MemAvailable`, not `os.freemem()`,
+which counts only free pages (1.05 GB against 5.60 GB available on this host).
+
+## Stopping a process
+
+Every row except Kabmo's own carries a `×`. It opens a confirmation naming the
+process, its pid, its memory and its thread count; Cancel holds focus, Escape
+cancels. Confirming sends `SIGTERM` (omp children flush their transcript on it)
+and takes a fresh sample so the row disappears instead of leaving a dead pid on
+screen. Refused, with the reason shown in the dialog: the Kabmo itself (that is
+`kabmo stop`), a pid outside the stack this panel measures (the table may be
+stale, and a recycled pid belongs to something the user never looked at), and
+anything that is not an integer above 1.
 
 Categories are `Kabmo`, `omp`, `Terminal`, `Dictation`, `Tray`, and one group
 per omp daemon (`omp.browser.headless`, `omp.lsp.mux`, …). A process that cannot

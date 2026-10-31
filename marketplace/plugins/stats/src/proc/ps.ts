@@ -105,6 +105,7 @@ export const psProbe: ProcProbe = {
           ppid: Number(match[2]),
           // `ps rss` is kB on every platform this runs on.
           rss: Number(match[3]) * 1024,
+          footprint: null,
           cpuNs: cpuNs ?? 0,
           threads: 0,
           argv: match[6].trim() ? [match[6].trim()] : null,

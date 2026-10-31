@@ -30,12 +30,14 @@ import { definePluginApp } from '@kabmo-labs/kabmo-sdk/app';
 import { usePanelHost, useRealtime, useRpc } from '@kabmo-labs/kabmo-ui';
 import { Empty, Note, Panel } from '@kabmo-labs/kabmo-ui/components';
 
+import { KillConfirm } from './KillConfirm';
 import { ProcessTable } from './ProcessTable';
 import { Sparkline } from './Sparkline';
 import { MachineFacts, TotalsBar } from './TotalsBar';
 import { StatsHeaderReadout } from './HeaderReadout';
 import { formatAge, formatBytes, formatPercent } from './format';
-import type { StatsSnapshot } from './sampler';
+import type { KillOutcome } from './kill';
+import type { ProcessRow, StatsSnapshot } from './sampler';
 
 function StatsPanel() {
   const host = usePanelHost();
@@ -48,6 +50,12 @@ function StatsPanel() {
   // subscriber, and the force call publishes to it, so reading the RPC's own
   // reply would put a second copy of the same snapshot on screen.
   const sample = useRpc<{ force?: boolean }, StatsSnapshot>('snapshot');
+  // The kill call and the row it is aimed at. A refusal comes back as a RESULT
+  // (the server never throws for one), so the sentence belongs in the dialog
+  // rather than in a toast that can vanish while the reader looks away.
+  const kill = useRpc<{ pid: number }, KillOutcome>('kill');
+  const [killTarget, setKillTarget] = useState<ProcessRow | null>(null);
+  const [killError, setKillError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // Arm the server's sampler while this panel is on screen, and disarm it on
@@ -75,6 +83,26 @@ function StatsPanel() {
   // The kit's realtime state exposes `stale`/`isLoading`/`refresh` but no
   // in-flight flag — the RPC call's own `pending` is the honest spinner.
   const refreshing = sample.pending;
+
+  /** Run the confirmed kill, then take a sample so the row disappears. */
+  async function confirmKill(): Promise<void> {
+    if (!killTarget) return;
+    const outcome = await kill.call({ pid: killTarget.pid });
+    if (!outcome.ok) {
+      setKillError(outcome.error.message);
+      return;
+    }
+    const value = outcome.value as KillOutcome;
+    if (!value.killed) {
+      setKillError(value.reason);
+      return;
+    }
+    setKillTarget(null);
+    setKillError(null);
+    // The row is still in the snapshot the table is drawing; a forced sample
+    // publishes the table without it instead of leaving a dead pid on screen.
+    void sample.call({ force: true });
+  }
 
   // The arm attempt is also the LIVENESS probe: a plugin whose server half is
   // not loaded answers this route with a 404, which the kit reports as
@@ -120,12 +148,18 @@ function StatsPanel() {
 
         {history ? (
           <div class="flex flex-col gap-1.5 border-b border-ink/10 px-3 py-2">
-            <Sparkline values={history.rss} label="rss" tone="text-info" format={formatBytes} />
+            <Sparkline values={history.memory} label={snapshot.memorySource === 'rss' ? 'rss' : 'mem'} tone="text-info" format={formatBytes} />
             <Sparkline values={history.cpuPercent} label="cpu" tone="text-warning" format={(value) => formatPercent(value)} />
           </div>
         ) : null}
 
-        <ProcessTable snapshot={snapshot} />
+        <ProcessTable
+          snapshot={snapshot}
+          onRequestKill={(row) => {
+            setKillError(null);
+            setKillTarget(row);
+          }}
+        />
 
         <div class="flex flex-col gap-2 px-3 py-3 border-t border-ink/10">
           <div class="flex items-center gap-2">
@@ -162,9 +196,22 @@ function StatsPanel() {
           ) : null}
 
           <span class="text-[10px] font-mono text-ink/35">
-            {formatBytes(snapshot.total.rss)} across {snapshot.total.processes} processes
+            {formatBytes(snapshot.total.memory)} across {snapshot.total.processes} processes
           </span>
         </div>
+
+        {killTarget ? (
+          <KillConfirm
+            row={killTarget}
+            pending={kill.pending}
+            error={killError}
+            onCancel={() => {
+              setKillTarget(null);
+              setKillError(null);
+            }}
+            onConfirm={() => void confirmKill()}
+          />
+        ) : null}
       </div>
     </Panel>
   );

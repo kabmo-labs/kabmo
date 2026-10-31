@@ -28,6 +28,7 @@ function proc(pid: number, argv: string[] | null, extra: Partial<ProcessInfo> = 
     pid,
     ppid: 1,
     rss: 1024,
+    footprint: null,
     cpuNs: 0,
     threads: 1,
     argv,

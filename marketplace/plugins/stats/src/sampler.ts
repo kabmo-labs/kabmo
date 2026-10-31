@@ -37,11 +37,19 @@
  *
  * A process that appeared since the last sweep has no baseline and reports no
  * rate for one sample — the same honest gap, for the same reason.
+ *
+ * ## The memory figure is the OS's charge, not RSS
+ *
+ * RSS on macOS counts pages Bun has freed but not returned: measured on the
+ * live server, 317 MB resident for a process whose physical footprint was
+ * 134 MB. The panel is what a reader uses to decide whether to restart
+ * something, so each row reports `footprint ?? rss` and remembers which it is;
+ * the totals sum that same figure, and `memorySource` says when the sample
+ * mixed the two (see `./machine` for the platform rules).
  */
 
-import os from 'node:os';
-
 import { type DaemonEntry, readDaemonRegistry } from './daemons';
+import { readMachine } from './machine';
 import { assignGroups, type GroupKind } from './groups';
 import { describeProcess } from './labels';
 import { leaseOfPid } from './proc/identity';
@@ -151,15 +159,16 @@ export function createSampler(deps: SampleDeps): Sampler {
   const readLease = deps.readLease ?? leaseOfPid;
   const includeDaemons = deps.includeDaemons ?? true;
   const historyPoints = deps.historyPoints ?? 60;
+  const readFacts = deps.readMachine ?? readMachine;
 
   let baseline: Baseline | null = null;
-  const rssHistory: number[] = [];
+  const memoryHistory: number[] = [];
   const cpuHistory: number[] = [];
 
   return {
     reset() {
       baseline = null;
-      rssHistory.length = 0;
+      memoryHistory.length = 0;
       cpuHistory.length = 0;
     },
     sample(): StatsSnapshot {
@@ -204,6 +213,8 @@ export function createSampler(deps: SampleDeps): Sampler {
           serverPid: deps.serverPid,
           lease: leases.get(process.pid) ?? null,
         });
+        const footprint = process.footprint;
+        const memory = footprint ?? process.rss;
 
         rows.push({
           pid: process.pid,
@@ -212,6 +223,8 @@ export function createSampler(deps: SampleDeps): Sampler {
           detail: label.detail,
           groupKey: assignment.key,
           depth: assignment.depth,
+          memory,
+          memorySource: footprint === null ? 'rss' : 'footprint',
           rss: process.rss,
           cpuPercent,
           threads: process.threads,
@@ -226,11 +239,11 @@ export function createSampler(deps: SampleDeps): Sampler {
           title: label.title,
           detail: label.detail,
           processes: 0,
-          rss: 0,
+          memory: 0,
           cpuPercent: 0,
         };
         group.processes += 1;
-        group.rss += process.rss;
+        group.memory += memory;
         group.cpuPercent += cpuPercent ?? 0;
         if (process.pid === assignment.ownerPid) {
           group.title = label.title;
@@ -241,21 +254,26 @@ export function createSampler(deps: SampleDeps): Sampler {
 
       baseline = { at, cpuNs: cpuNsNow };
 
-      rows.sort((a, b) => b.rss - a.rss);
-      const groups = [...byGroup.values()].sort((a, b) => groupRank(a) - groupRank(b) || b.rss - a.rss);
+      const footprints = rows.filter((row) => row.memorySource === 'footprint').length;
+      const memorySource: StatsSnapshot['memorySource'] = footprints === 0 ? 'rss'
+        : footprints === rows.length ? 'footprint'
+        : 'mixed';
+
+      rows.sort((a, b) => b.memory - a.memory);
+      const groups = [...byGroup.values()].sort((a, b) => groupRank(a) - groupRank(b) || b.memory - a.memory);
       const total = {
         processes: rows.length,
-        rss: groups.reduce((sum, entry) => sum + entry.rss, 0),
+        memory: groups.reduce((sum, entry) => sum + entry.memory, 0),
         cpuPercent: groups.reduce((sum, entry) => sum + entry.cpuPercent, 0),
       };
 
       let history: StatsSnapshot['history'];
       if (historyPoints > 0) {
-        rssHistory.push(total.rss);
+        memoryHistory.push(total.memory);
         cpuHistory.push(Number(total.cpuPercent.toFixed(1)));
-        while (rssHistory.length > historyPoints) rssHistory.shift();
+        while (memoryHistory.length > historyPoints) memoryHistory.shift();
         while (cpuHistory.length > historyPoints) cpuHistory.shift();
-        history = { rss: [...rssHistory], cpuPercent: [...cpuHistory] };
+        history = { memory: [...memoryHistory], cpuPercent: [...cpuHistory] };
       }
 
       const snapshot: StatsSnapshot = {
@@ -264,12 +282,8 @@ export function createSampler(deps: SampleDeps): Sampler {
         rows,
         groups,
         total,
-        machine: {
-          totalMemBytes: os.totalmem(),
-          freeMemBytes: os.freemem(),
-          cpuCount: os.cpus().length,
-          loadPerCore: os.cpus().length > 0 ? os.loadavg()[0] / os.cpus().length : os.loadavg()[0],
-        },
+        memorySource,
+        machine: readFacts(),
         daemons,
         serverPid: deps.serverPid,
         ...(history ? { history } : {}),
