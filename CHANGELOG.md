@@ -4,6 +4,23 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.16.0](https://github.com/kabmo-labs/kabmo/compare/v0.15.0...v0.16.0) — 2026-10-31
+
+### Added
+
+* **model-picker:** pin provider headings while the model list scrolls ([567be1e](https://github.com/kabmo-labs/kabmo/commit/567be1e69d706e9d81c7e21b34537c96e8bb8ce4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **stats:** stop a process, and report footprint and available memory ([8a8a6c4](https://github.com/kabmo-labs/kabmo/commit/8a8a6c4e8f7119b0b1d32679cbc8a6301f86075a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **wiki:** read phone wiki pages with a floating page-list modal ([3de287a](https://github.com/kabmo-labs/kabmo/commit/3de287a5430aa652d5756d040fbfa1e13bc5f272)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **sessions:** answer the subagent badge without reading full transcripts ([c31d8b1](https://github.com/kabmo-labs/kabmo/commit/c31d8b1c7b36c6800adb50af345dc66beb2ccddb)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **kabmo-sdk:** stop requiring @types/node to read signalName ([f32cb16](https://github.com/kabmo-labs/kabmo/commit/f32cb169da54c3c294777e0bc1ca7e09a755e8a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **lifecycle:** report physical footprint as the process memory ([af1dced](https://github.com/kabmo-labs/kabmo/commit/af1dcedf241dec712394e78b71b9f6ac03ce5e16)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.15.0](https://github.com/kabmo-labs/kabmo/compare/v0.14.1...v0.15.0) — 2026-10-31
 
 ### Added
