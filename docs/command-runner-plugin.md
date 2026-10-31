@@ -660,6 +660,10 @@ are gone and the row itself is the disclosure.
 └──────────────────────────────────────────────────────────────┘
 ```
 
+Every group starts CLOSED — the sketch shows the files the reader opened. A
+repository with twenty command sources therefore opens as twenty headers, not as
+every command it contains.
+
 The four controls on a row, in order:
 
 | Control | Meaning |
@@ -691,11 +695,13 @@ A row that has never run says so in its own expansion rather than drawing an emp
 log, and a killed run reads `stopped (SIGTERM)` — never `exit 0`, which is what a
 null exit code would look like.
 
-**The two levels default independently and collapse independently.** A group shows
-its rows (absent from `commandRunner.collapsedGroups` means expanded); a row does
-NOT show output it was never asked to keep. Collapsing a group leaves its rows in
-the DOM but `inert`, so they leave the tab order and the accessibility tree — and
-collapsing one group touches no other file's.
+**The two levels default independently and collapse independently.** A group
+opens COLLAPSED (absent from `commandRunner.collapsedGroups` means collapsed; only
+an explicit `false` keeps it open), so a repository with twenty command files
+opens as a list of twenty headers rather than every command it contains. A row
+does NOT show output it was never asked to keep. Collapsing a group leaves its
+rows in the DOM but `inert`, so they leave the tab order and the accessibility
+tree — and collapsing one group touches no other file's.
 
 ## 8. The repo picker, and why it is a kit change
 

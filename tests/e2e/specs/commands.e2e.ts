@@ -107,6 +107,22 @@ async function ensureBackgroundOn(page: Page, label: string): Promise<void> {
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 }
 
+/**
+ * Open a command-file group.
+ *
+ * Every group starts CLOSED (the panel opens as a list of files), so a spec that
+ * clicks a row's control must open its group first — the rows exist but are
+ * inside an `inert`, zero-height body until then.
+ */
+async function expandGroup(page: Page, file: string): Promise<void> {
+  const header = page
+    .getByRole('button', { name: new RegExp(`^${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) })
+    .first();
+  await expect(header).toBeVisible({ timeout: 20_000 });
+  if ((await header.getAttribute('aria-expanded')) === 'false') await header.click();
+  await expect(header).toHaveAttribute('aria-expanded', 'true');
+}
+
 /** The visible Commands panel's activity-bar button. */
 function commandsButton(page: Page) {
   return page.getByRole('button', { name: 'Commands — Runner' });
@@ -135,6 +151,8 @@ test.describe('command runner plugin', () => {
     // three `package.json` groups in a monorepo.
     await expect(page.getByText('package.json').first()).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText('Makefile').first()).toBeVisible();
+    // Groups start closed; the row's controls are only reachable once opened.
+    await expandGroup(page, 'package.json');
 
     // The row's label carries the RESOLVED runner, so the guess is visible, and
     // the Run control is icon-only — its accessible name is the whole handle.
@@ -162,6 +180,7 @@ test.describe('command runner plugin', () => {
 
     await openRunner(page, `${server.baseURL}/?folderId=${workspace.id}`);
     await commandsButton(page).click();
+    await expandGroup(page, 'package.json');
 
     // Before it runs, the row has nothing to expand: its disclosure is disabled.
     await expect(page.getByRole('button', { name: /has not run yet/ })).toHaveCount(1);
@@ -205,6 +224,7 @@ test.describe('command runner plugin', () => {
     try {
       await openRunner(page, `${server.baseURL}/?folderId=${workspace.id}`);
       await commandsButton(page).click();
+      await expandGroup(page, 'Makefile');
 
       // The per-command background toggle: ON, so the run is tracked as a job.
       await ensureBackgroundOn(page, 'make slow');

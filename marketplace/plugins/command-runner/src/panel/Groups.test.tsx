@@ -171,38 +171,32 @@ function rowDisclosures(): HTMLButtonElement[] {
 }
 
 describe('CommandGroups', () => {
-  test('renders one collapsible group per file, expanded by default', async () => {
+  test('renders one collapsible group per file, collapsed by default', async () => {
     await mount();
 
     const headers = groupHeaders();
     expect(headers).toHaveLength(2);
     expect(headers[0].textContent).toContain('package.json');
     expect(headers[1].textContent).toContain('Makefile');
-    // Absent from the map means EXPANDED: a workspace seen for the first time
-    // must show its commands.
-    expect(headers.every((h) => h.getAttribute('aria-expanded') === 'true')).toBe(true);
-    // The group bodies are expanded, and every command row is inside one — the
-    // two levels default independently: a group shows its rows, a row does not
-    // show output it was never asked to keep.
+    // Absent from the map means COLLAPSED: the panel opens as a list of files,
+    // not every command in the repository.
+    expect(headers.every((h) => h.getAttribute('aria-expanded') === 'false')).toBe(true);
     for (const header of headers) {
-      expect(bodyOf(header).getAttribute('data-expanded')).toBe('true');
+      expect(bodyOf(header).getAttribute('data-expanded')).toBe('false');
+      expect(bodyOf(header).hasAttribute('inert')).toBe(true);
     }
+    // The row level is independent: a row still does not show output it was
+    // never asked to keep.
     for (const row of rowDisclosures()) {
       expect(row.getAttribute('aria-expanded')).toBe('false');
     }
   });
 
-  test('a collapsed group hides its rows AND takes them out of the tab order', async () => {
-    await mount({ collapsedGroups: { 'package.json': true } });
+  test('an explicitly expanded group shows its rows AND puts them back in the tab order', async () => {
+    // Only the map's explicit `false` opens a group; the other file, absent
+    // from it, stays closed — an expansion is per file.
+    await mount({ collapsedGroups: { Makefile: false } });
 
-    const pkgHeader = headerFor('package.json');
-    expect(pkgHeader.getAttribute('aria-expanded')).toBe('false');
-
-    const pkgBody = bodyOf(pkgHeader);
-    expect(pkgBody.getAttribute('data-expanded')).toBe('false');
-    expect(pkgBody.hasAttribute('inert')).toBe(true);
-
-    // The OTHER group is untouched — a collapse is per file.
     const makeHeader = headerFor('Makefile');
     expect(makeHeader.getAttribute('aria-expanded')).toBe('true');
     const makeBody = bodyOf(makeHeader);
@@ -213,6 +207,13 @@ describe('CommandGroups', () => {
     // from whether the group hides it.)
     const row = rowDisclosures().find((b) => makeBody.contains(b))!;
     expect(hasInertAncestor(row)).toBe(false);
+
+    // The OTHER group is untouched — a collapse is per file.
+    const pkgHeader = headerFor('package.json');
+    expect(pkgHeader.getAttribute('aria-expanded')).toBe('false');
+    const pkgBody = bodyOf(pkgHeader);
+    expect(pkgBody.getAttribute('data-expanded')).toBe('false');
+    expect(pkgBody.hasAttribute('inert')).toBe(true);
     // In the COLLAPSED group the same question answers yes: the group is what
     // takes its rows out of the tab order.
     const hiddenRow = rowDisclosures().find((b) => pkgBody.contains(b))!;
@@ -221,9 +222,10 @@ describe('CommandGroups', () => {
 
   test('the group toggle reports the FILE, so the caller can persist it per file', async () => {
     await mount();
+    // The group starts collapsed, so the first click EXPANDS it.
     await act(async () => headerFor('Makefile').click());
     // Reporting an index would break the moment the scan reorders the list.
-    expect(calls).toEqual(['group:Makefile:true']);
+    expect(calls).toEqual(['group:Makefile:false']);
   });
 
   test('every group header carries aria-controls naming its own body', async () => {
@@ -238,9 +240,11 @@ describe('CommandGroups', () => {
 
   test('a command row collapses independently of its group', async () => {
     // A run, so the row has something to open — without one its disclosure is
-    // disabled, which is a different test.
+    // disabled, which is a different test. The group is explicitly opened, or
+    // the row's controls are inert behind it.
     const dev = finishedRun('package.json#package:dev', 'run-dev');
-    await mount({ runs: [dev] });
+    await mount({ runs: [dev], collapsedGroups: { 'package.json': false } });
+    expect(headerFor('package.json').getAttribute('aria-expanded')).toBe('true');
 
     const rowDisclosure = rowDisclosures()[0];
     // A run OPENS the row, so it starts expanded and the click closes it.

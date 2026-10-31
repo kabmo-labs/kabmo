@@ -266,7 +266,10 @@ export function CommandGroups({
           key={group.file}
           group={group}
           latest={latest}
-          collapsed={collapsedGroups[group.file] === true}
+          // Absent means COLLAPSED: the panel opens as a list of files, and a
+          // reader opens the one they came for. Only an explicit `false`
+          // (the user expanded it) shows the rows.
+          collapsed={collapsedGroups[group.file] !== false}
           background={background}
           logs={logs}
           onToggleGroup={onToggleGroup}

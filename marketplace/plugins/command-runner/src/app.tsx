@@ -77,9 +77,9 @@ function CommandRunnerPanel() {
   // prefix is what keeps a plugin out of the host's key space. They are the two
   // panel-wide checkboxes this panel used to carry (`Output`, `Background`),
   // moved onto each command because the answer differs per command.
-  // Which FILES the reader collapsed. Absent means expanded — the same shape the
-  // todo panel uses for its phases, and the reason a workspace seen for the first
-  // time shows its commands rather than hiding them.
+  // Which FILES the reader expanded. Absent means COLLAPSED — a workspace seen
+  // for the first time opens as a list of command files rather than every
+  // command in the repository; only an explicit `false` keeps one open.
   const [collapsedGroups, setCollapsedGroups] = useSessionState<Record<string, boolean>>(
     'commandRunner.collapsedGroups',
     {},

@@ -122,9 +122,11 @@ The custom group's header is **not** a disclosure: the `+` lives in it, and a
 button inside a button is invalid HTML whose inner click never fires.
 
 A **group header** is one command FILE — it collapses its rows, and carries the
-count. A **row** is one command — it collapses its own output. Both use the same
-reveal, and a collapsed body leaves the tab order entirely (its rows cannot be
-reached with `Tab` or announced), so a closed group is genuinely closed.
+count. Every group starts CLOSED, so the panel opens as a list of files; the
+sketch above shows the ones the reader opened. A **row** is one command — it
+collapses its own output. Both use the same reveal, and a collapsed body leaves
+the tab order entirely (its rows cannot be reached with `Tab` or announced), so a
+closed group is genuinely closed.
 
 ## Every command is a row that opens
 
