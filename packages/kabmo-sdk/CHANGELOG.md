@@ -5,6 +5,12 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.1.2...kabmo-sdk/v0.1.3) — 2026-10-31
+
+### Fixed
+
+* **kabmo-sdk:** stop requiring @types/node to read signalName ([f32cb16](https://github.com/kabmo-labs/kabmo/commit/f32cb169da54c3c294777e0bc1ca7e09a755e8a1)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.1.2](https://github.com/kabmo-labs/kabmo/compare/kabmo-sdk/v0.1.1...kabmo-sdk/v0.1.2) — 2026-10-30
 
 ### Fixed
