@@ -1,13 +1,13 @@
 {
   "name": "command-runner",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
   "type": "module",
   "kabmo": {
     "id": "command-runner",
     "name": "Runner",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "description": "Lists a repository's commands and runs them, in the foreground or as background jobs.",
     "app": "dist/app.js",
     "server": "dist/server.js",
