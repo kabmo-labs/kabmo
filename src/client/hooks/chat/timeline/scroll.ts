@@ -21,14 +21,25 @@
  * button, re-engages it. Programmatic jumps (`scrollTo`) never flip the mode.
  *
  * `jumpToBottom` is the unconditional bypass (`follow` is re-engaged, geometry
- * is re-baselined, and the paging trigger stands down for a moment) — the
- * button's jump, the open-session jump, and the send jump all go through it.
- * `follow` lives across session switches, so an open jump that honoured it was
- * simply refused for a session opened after the user had scrolled up.
+ * is re-baselined, and the paging trigger stands down until the landing
+ * settles) — the button's jump, the open-session jump, and the send jump all
+ * go through it. `follow` lives across session switches, so an open jump that
+ * honoured it was simply refused for a session opened after the user had
+ * scrolled up.
+ *
+ * A jump OWNS the viewport until it has actually landed, the same way
+ * `revealRow` owns it while it flies. The timeline mounts a window of its rows
+ * and ESTIMATES the rest, so `scrollHeight` changes while a jump mounts the
+ * rows it passes over — the target it was issued against is stale before the
+ * animation ends. The jump watch therefore re-reads the geometry every frame
+ * and re-aims until the viewport has SAT at the tail; the content observer and
+ * the row window stand down meanwhile, so no measurement drags the landing
+ * back. See `createJumpLanding` for what each state means.
  */
 
 import type { RefObject } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { createJumpLanding, type JumpLanding } from '@/client/hooks/chat/timeline/jump-landing';
 
 /** Distance from the tail, in pixels, that still counts as "at the bottom". */
 const FOLLOW_BOTTOM_THRESHOLD_PX = 100;
@@ -47,12 +58,11 @@ const FOLLOW_BOTTOM_THRESHOLD_PX = 100;
  */
 const COMPACT_TRIGGER_PX = FOLLOW_BOTTOM_THRESHOLD_PX + 64;
 
-/** How long a bottom jump counts as settling. The scroll handler reads "the
- *  viewport is at the top, fetch older history" from geometry, and a jump that
- *  STARTS at the top (the button, on a session scrolled back to its head)
- *  passes through those first pixels — so the paging trigger stands down for
- *  the jump's duration instead of paging a window the jump must then outrun. */
-const JUMP_SETTLE_MS = 1000;
+/** How long after a wheel/touch/pointer/key event an upward scroll still
+ *  counts as the READER's. Only consulted while a jump is landing: a layout
+ *  clamp moves `scrollTop` up with nobody behind it, and treating that as the
+ *  reader taking the viewport back is what cancelled a jump mid-flight. */
+const READER_INPUT_WINDOW_MS = 600;
 
 export interface ChatTimelineScrollOptions {
   /** Called when the viewport reaches the top (history paging trigger).
@@ -97,8 +107,10 @@ export interface ChatTimelineScrollResult {
    *  over the jump (reproduced: the jump stopped ~26k px short of the tail and
    *  only the next click reached it, once no window was left to page in). */
   jumpCountRef: RefObject<number>;
-  /** True while a bottom jump is settling ({@link JUMP_SETTLE_MS}); history
-   *  paging stands down meanwhile. */
+  /** True while a bottom jump is landing: the jump owns the viewport, so
+   *  history paging stands down and neither the content observer nor the row
+   *  window writes a position under it. Released once the viewport has SAT at
+   *  the tail (see `createJumpLanding`), never on a fixed timer. */
   jumpActiveRef: RefObject<boolean>;
   handleScroll: () => void;
   scrollToBottom: (behavior?: ScrollBehavior) => void;
@@ -109,10 +121,6 @@ export interface ChatTimelineScrollResult {
 
 /** Distance from the top that counts as "reached the history boundary". */
 const SCROLL_TOP_TRIGGER_PX = 40;
-
-/** Pending timeout handle. Named here rather than re-derived per ref because
- *  the DOM and Bun/Node typings disagree on what `setTimeout` returns. */
-type TimeoutHandle = ReturnType<typeof setTimeout>;
 
 export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): ChatTimelineScrollResult {
   const onScrollTopRef = useRef<(() => void) | undefined>(options.onScrollTop);
@@ -144,7 +152,14 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
   // Bottom-jump bookkeeping; see ChatTimelineScrollResult for each ref.
   const jumpCountRef = useRef(0);
   const jumpActiveRef = useRef(false);
-  const jumpTimerRef = useRef<TimeoutHandle>();
+  // The landing watch: owns the viewport until the jump has landed.
+  const landingRef = useRef<JumpLanding | null>(null);
+  // Last time the READER touched the scroller (wheel, touch, pointer, key).
+  // `scrollTop` moving up is not enough to tell them from a layout clamp.
+  // `-Infinity`, not `0`: the window is compared against `performance.now()`,
+  // which starts near zero, so a zero sentinel would read as input on the first
+  // moments of a page load.
+  const readerInputAtRef = useRef(Number.NEGATIVE_INFINITY);
 
   const contentRef = useCallback((node: HTMLDivElement | null) => {
     setContentNode(node);
@@ -183,10 +198,17 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
       // mid-animation as content outgrows the animation. Re-engage whenever
       // the viewport is back near the tail, whichever way it got there.
       if (el.scrollTop < lastScrollTopRef.current - 1) {
-        followRef.current = false;
-        // The user took the viewport back: a jump still settling must not keep
-        // re-pinning the tail under them.
-        jumpActiveRef.current = false;
+        // An upward move is not automatically the reader's: the row window
+        // replacing estimates with measured heights CLAMPS `scrollTop` up, and
+        // while a jump is landing that clamp used to cancel the jump outright —
+        // the animation stopped mid-flight, the button stayed up, and only the
+        // next click (or scrolling the rest of the way by hand) reached the
+        // tail. While the guard is up, only real input takes the viewport back.
+        const reader = performance.now() - readerInputAtRef.current < READER_INPUT_WINDOW_MS;
+        if (!jumpActiveRef.current || reader) {
+          followRef.current = false;
+          jumpActiveRef.current = false;
+        }
       }
       if (el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_BOTTOM_THRESHOLD_PX) followRef.current = true;
       lastScrollTopRef.current = el.scrollTop;
@@ -196,6 +218,14 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     }
     syncFollowBottom();
   }, [syncFollowBottom]);
+
+  /** The landing watch, created on first use. Lazily, because the open-session
+   *  jump runs from a LAYOUT effect — before this hook's own passive effects —
+   *  and a watch created there must not be replaced by a second one later. */
+  const landing = useCallback((): JumpLanding => {
+    landingRef.current ??= createJumpLanding({ scrollRef, jumpActiveRef, pinToBottom });
+    return landingRef.current;
+  }, [pinToBottom]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     // Follow-gated: a stream chunk in read mode (user scrolled away) must not
@@ -209,10 +239,12 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     followRef.current = true;
     jumpActiveRef.current = true;
     jumpCountRef.current += 1;
-    clearTimeout(jumpTimerRef.current);
-    jumpTimerRef.current = setTimeout(() => { jumpActiveRef.current = false; }, JUMP_SETTLE_MS);
+    // The click that starts a jump is not a scroll input: the reader has not
+    // taken the viewport back, so a clamp right after this must not cancel it.
+    readerInputAtRef.current = Number.NEGATIVE_INFINITY;
+    landing().start();
     pinToBottom(behavior);
-  }, [pinToBottom]);
+  }, [landing, pinToBottom]);
 
   // Geometry, not events: content that grows without the user scrolling
   // (history prepending, an accordion expanding, an image decoding, a late
@@ -255,7 +287,10 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
       if (frame !== null) return;
       frame = requestAnimationFrame(() => {
         frame = null;
-        if (followRef.current) pinToBottom('instant');
+        // A jump in flight owns the position: its watch re-aims at the tail
+        // itself, and a pin from here would replace a smooth landing with an
+        // instant snap on every measurement along the way.
+        if (followRef.current && !jumpActiveRef.current) pinToBottom('instant');
         syncFollowBottom();
       });
     });
@@ -267,8 +302,24 @@ export function useChatTimelineScroll(options: ChatTimelineScrollOptions = {}): 
     };
   }, [contentNode, scrollNode, pinToBottom, syncFollowBottom]);
 
+  // What counts as the reader having taken the viewport back, for
+  // `handleScroll`'s upward-scroll test. Wired on the scroller NODE (state, not
+  // the ref — the surface is swapped in a commit late), because a wheel, a
+  // finger or a key only ever arrives there.
+  useEffect(() => {
+    if (!scrollNode) return;
+    const note = () => {
+      readerInputAtRef.current = performance.now();
+    };
+    const types = ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'keydown'] as const;
+    for (const type of types) scrollNode.addEventListener(type, note, { passive: true });
+    return () => {
+      for (const type of types) scrollNode.removeEventListener(type, note);
+    };
+  }, [scrollNode]);
+
   useEffect(() => () => {
-    clearTimeout(jumpTimerRef.current);
+    landingRef.current?.stop();
   }, []);
 
   return {

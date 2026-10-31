@@ -78,8 +78,10 @@ export interface ScrollProbe {
   StubResizeObserver: typeof StubResizeObserver;
   /** Preact's test-utils `act`, loaded after the DOM globals exist. */
   act: typeof PreactAct;
-  /** Drain the deferred frames the hook scheduled. */
-  flushFrames(): Promise<void>;
+  /** Drain the deferred frames the hook scheduled. `rounds` runs the queue
+   *  again for callbacks those frames scheduled themselves (a per-frame watch),
+   *  which is the only way a multi-frame loop advances without a real clock. */
+  flushFrames(rounds?: number): Promise<void>;
   message(id: string): ChatMessageData;
   mountProbe(sessionId: string, messages: ChatMessageData[]): Promise<ProbeHandle>;
   updateProbe(probe: ProbeHandle, sessionId: string, messages: ChatMessageData[]): Promise<void>;
@@ -158,7 +160,11 @@ export async function setupScrollProbe(): Promise<ScrollProbe> {
       enabled: true,
     });
     props.holder.current = scroll;
-    return h('div', { ref: scroll.scrollRef, onScroll: scroll.handleScroll },
+    // `scrollNodeRef`, not `scrollRef`: the product uses it, and it is what
+    // publishes the scroller as state for the subscriptions (the reader-input
+    // listeners, the row window). A probe on the bare ref subscribes to
+    // nothing, which is a state the product cannot be in.
+    return h('div', { ref: scroll.scrollNodeRef, onScroll: scroll.handleScroll },
       h('div', { ref: scroll.contentRef }));
   }
 
@@ -173,6 +179,11 @@ export async function setupScrollProbe(): Promise<ScrollProbe> {
     await act(async () => { render(h(Probe, { sessionId, messages, holder }), node); });
     const el = holder.current!.scrollRef.current!;
     installScroller(el);
+    // A browser runs the frames a mount scheduled; the fake platform does not,
+    // so drain them here. Without this the open jump's landing watch is still
+    // armed when the test's first assertion runs, which is a state the product
+    // never stays in.
+    await flushFrames(8);
     return { holder, node, el };
   }
 
@@ -181,6 +192,7 @@ export async function setupScrollProbe(): Promise<ScrollProbe> {
     await act(async () => {
       render(h(Probe, { sessionId, messages, holder: probe.holder }), probe.node);
     });
+    await flushFrames(8);
   }
 
   async function unmountProbe(probe: ProbeHandle) {
@@ -196,14 +208,15 @@ export async function setupScrollProbe(): Promise<ScrollProbe> {
    * that fires an observer has to let the frame it scheduled run before the
    * geometry it asserts on has been applied.
    */
-  async function flushFrames() {
-    for (let i = 0; i < pendingFrames.length; i++) {
-      const callback = pendingFrames[i];
-      pendingFrames[i] = null;
-      if (!callback) continue;
-      await act(async () => { callback(); });
+  async function flushFrames(rounds = 1) {
+    for (let round = 0; round < rounds; round++) {
+      const scheduled = pendingFrames.splice(0, pendingFrames.length);
+      if (scheduled.length === 0) return;
+      for (const callback of scheduled) {
+        if (!callback) continue;
+        await act(async () => { callback(); });
+      }
     }
-    pendingFrames.length = 0;
   }
 
   function teardown() {

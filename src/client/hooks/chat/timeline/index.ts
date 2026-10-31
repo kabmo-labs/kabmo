@@ -48,9 +48,8 @@ export function useChatTimeline({
   // without re-creating it (useSessionLoad is defined below the scroll hook).
   const loadOlderRef = useRef<() => void>(() => {});
 
-  const { scrollRef, scrollNodeRef, scrollNode, contentRef, showScrollBottom, readingBack, handleScroll, scrollToBottom, jumpToBottom, followRef, jumpActiveRef, jumpCountRef } = useChatTimelineScroll({
-    onScrollTop: () => loadOlderRef.current(),
-  });
+  const scroll = useChatTimelineScroll({ onScrollTop: () => loadOlderRef.current() });
+  const { scrollRef, scrollNodeRef, contentRef, showScrollBottom, readingBack, handleScroll, scrollToBottom, jumpToBottom, jumpActiveRef, jumpCountRef } = scroll;
 
   const { inputValue, setInputValue, inputAttachments, setInputAttachments } = useComposerDraft();
   const [localMessages, setLocalMessages] = useState<ChatMessageData[]>([]);
@@ -158,9 +157,7 @@ export function useChatTimeline({
     sessionId,
     messages: localMessages,
     jumpToTurn,
-    followRef,
-    scrollRef,
-    scrollNode,
+    scroll,
   });
 
   // The composer's model/thinking mirrors and the mid-run stash (see the hook).

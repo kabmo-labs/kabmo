@@ -77,11 +77,30 @@ export interface UseTimelineRowWindowDeps {
    * wrote `scrollTop` into a spacer and mounted nothing.
    */
   scrollNode: HTMLDivElement | null;
+  /** The scroll hook's bottom-jump guard. While a jump to the tail is landing
+   *  it OWNS the position: this hook still adopts measurements and still
+   *  re-lays the window, but writes no `scrollTop` — a correction written under
+   *  the animation drags the viewport back and the jump has to be re-aimed,
+   *  which is what reads as the button "jumping in pieces". */
+  jumpActiveRef?: RefObject<boolean>;
+  /** The scroll hook's bottom-jump counter. A new value means the reader asked
+   *  for the TAIL, so this hook claims the tail pin: without it the very next
+   *  measurement wrote the OLD reading anchor back over the landing (measured:
+   *  the jump reached the bottom and the correction pulled the viewport
+   *  2 000 px back up, 217 px short of the tail once the stream grew again). */
+  jumpCountRef?: RefObject<number>;
   /** False renders every row (a short list, or a surface without a scroller). */
   enabled?: boolean;
 }
 
-export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = true }: UseTimelineRowWindowDeps): TimelineRowWindow {
+export function useTimelineRowWindow({
+  ids,
+  scrollRef,
+  scrollNode,
+  jumpActiveRef,
+  jumpCountRef,
+  enabled = true,
+}: UseTimelineRowWindowDeps): TimelineRowWindow {
   // Heights of rows that have been on screen at least once, by id — so a row
   // keeps its height across being unmounted, which is what keeps the scrollbar
   // steady while the reader moves through a long session.
@@ -103,6 +122,17 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
    * the stream stopped following after the jump.
    */
   const tailPinRef = useRef(false);
+  // Bottom jumps this hook has already claimed for the tail. A new count means
+  // the reader asked for the BOTTOM, so the tail pin belongs on: without it the
+  // next measurement corrected the viewport back to the reading anchor it had
+  // before the jump, and the landing was undone the moment the jump settled.
+  const seenJumpCountRef = useRef(jumpCountRef?.current ?? 0);
+  useLayoutEffect(() => {
+    const count = jumpCountRef?.current ?? 0;
+    if (count === seenJumpCountRef.current) return;
+    seenJumpCountRef.current = count;
+    tailPinRef.current = true;
+  });
 
   const layout = useMemo(
     () => layoutTimelineRows(ids, measuredRef.current),
@@ -202,7 +232,12 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
       // growth itself. A reader who was at the bottom before a row was measured
       // taller must stay at the bottom — measured against the DOM they were
       // left 2 080 px short, i.e. outside follow mode.
+      // A jump to the tail is a claim about the BOTTOM, exactly like a reveal
+      // of the last row: mid-flight the viewport is far from it, so the
+      // geometry test below would read "reading back" and clear the claim the
+      // jump just made.
       const tail = tailPinRef.current
+        || Boolean(jumpActiveRef?.current)
         || layout.total - scrollTop - (viewport || el.clientHeight) <= TAIL_ANCHOR_PX;
       const offset = anchorId ? el.scrollTop - layout.offsets[current.start] : 0;
 
@@ -224,8 +259,9 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
       // every frame, so a correction here would be written back over it and the
       // two would trade the viewport (measured before this guard existed: the
       // reveal and the restore alternated `0` and its target for the whole
-      // animation). The measurement is still adopted; only the position waits.
-      if (!revealingRef.current) {
+      // animation). A bottom JUMP owns it for the same reason. The measurement
+      // is still adopted; only the position waits.
+      if (!revealingRef.current && !jumpActiveRef?.current) {
         setScrollTop(target);
         writeScrollTop(el, target);
       }
@@ -256,13 +292,17 @@ export function useTimelineRowWindow({ ids, scrollRef, scrollNode, enabled = tru
   useLayoutEffect(() => {
     const el = element;
     if (!el || !tailPinRef.current) return;
+    // A jump to the tail owns the position while it lands; its own watch is
+    // what puts the viewport at the bottom, and a second writer here is a
+    // second animation.
+    if (jumpActiveRef?.current) return;
     // The tail pin outlives a commit: the rows above it are estimates until
     // they mount, so every measurement can move the bottom by its own error.
     // The bottom edge is the anchor. `writeScrollTop`, because the container
     // carries `scroll-smooth`: a bare `scrollTop` assignment animates, and a
     // correction that animates is a correction that arrives late.
     writeScrollTop(el, Math.max(0, el.scrollHeight - el.clientHeight));
-  }, [layout, element]);
+  }, [layout, element, jumpActiveRef]);
 
   const revealRow = useMemo(
     () => createRevealRow({ scrollRef, idsRef, layoutRef, viewportRef, tailPinRef, revealingRef, generationRef: revealGenerationRef }),

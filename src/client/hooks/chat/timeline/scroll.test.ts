@@ -81,7 +81,9 @@ describe('timeline scroll', () => {
     expect(scroll().jumpCountRef.current).toBe(1);
     expect(scroll().jumpActiveRef.current).toBe(true);
 
-    // The user reads back. A stream chunk must not yank the viewport down...
+    // The user reads back (a wheel, then the viewport moves up). A stream chunk
+    // must not yank it down...
+    await p.act(() => { probe.el.dispatchEvent(new Event('wheel')); });
     probe.el.scrollTop = 100;
     expect(scroll().followRef.current).toBe(false);
     p.scrolled.length = 0;
@@ -97,20 +99,75 @@ describe('timeline scroll', () => {
     await p.unmountProbe(probe);
   });
 
-  test('the jump guard releases so history paging is not blocked for good', async () => {
+  test('the jump guard releases when the landing SETTLES, not on a clock', async () => {
     p.scrolled.length = 0;
     p.geometry.top = 0;
     p.geometry.height = 5000;
     const probe = await p.mountProbe('a', [p.message('a1')]);
     const scroll = () => probe.holder.current!;
 
+    // A long session on a slow device is still animating seconds later. A guard
+    // released by a timer here is a guard released mid-flight: the paging
+    // trigger it was holding off then fires at the top of history, and the
+    // window it pages is one the jump must outrun.
     fakeTimers.useFakeTimers();
+    await p.act(() => { scroll().jumpToBottom('smooth'); });
+    expect(scroll().jumpActiveRef.current).toBe(true);
+    await p.act(() => { fakeTimers.advanceTimersByTime(10_000); });
+    expect(scroll().jumpActiveRef.current).toBe(true);
+    fakeTimers.useRealTimers();
+
+    // Landed: the guard lets go, so history paging is not blocked for good.
+    await p.act(() => { probe.el.scrollTo({ top: p.geometry.height, behavior: 'instant' }); });
+    await p.flushFrames(6);
+    expect(scroll().jumpActiveRef.current).toBe(false);
+    await p.unmountProbe(probe);
+  });
+
+  test('a jump that lands short re-aims instead of leaving the button up', async () => {
+    p.scrolled.length = 0;
+    p.geometry.top = 0;
+    p.geometry.height = 5000;
+    const probe = await p.mountProbe('a', [p.message('a1')]);
+    const scroll = () => probe.holder.current!;
+
+    // A smooth scroll that never moves: the browser dropped it because the rows
+    // it was scrolling through were replaced by the mounted window. This is the
+    // reported "the button does nothing until I scroll the rest myself".
+    p.scrolled.length = 0;
+    await p.act(() => { scroll().jumpToBottom('smooth'); });
+    expect(p.scrolled.length).toBe(1);
+    expect(probe.el.scrollTop).toBe(0);
+
+    await p.flushFrames(8);
+    // The watch re-aimed on its own rather than giving up.
+    expect(p.scrolled.length).toBeGreaterThan(1);
+    expect(p.scrolled.at(-1)?.top).toBe(p.geometry.height);
+    await p.unmountProbe(probe);
+  });
+
+  test('a layout clamp may not cancel a jump in flight; real input still may', async () => {
+    p.scrolled.length = 0;
+    p.geometry.top = 0;
+    p.geometry.height = 5000;
+    const probe = await p.mountProbe('a', [p.message('a1')]);
+    const scroll = () => probe.holder.current!;
+
     await p.act(() => { scroll().jumpToBottom('instant'); });
     expect(scroll().jumpActiveRef.current).toBe(true);
 
-    await p.act(() => { fakeTimers.advanceTimersByTime(1000); });
+    // A measurement replaced an estimate with a taller height and the browser
+    // clamped `scrollTop` UP. Nobody touched the scroller: the jump stands.
+    probe.el.scrollTop = 300;
+    expect(scroll().followRef.current).toBe(true);
+    expect(scroll().jumpActiveRef.current).toBe(true);
+
+    // The reader themselves: a wheel, then the viewport moves up. The jump must
+    // stand down rather than keep pulling the tail under them.
+    await p.act(() => { probe.el.dispatchEvent(new Event('wheel')); });
+    probe.el.scrollTop = 100;
+    expect(scroll().followRef.current).toBe(false);
     expect(scroll().jumpActiveRef.current).toBe(false);
-    fakeTimers.useRealTimers();
     await p.unmountProbe(probe);
   });
 
