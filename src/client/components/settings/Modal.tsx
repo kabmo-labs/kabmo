@@ -187,11 +187,11 @@ export function SettingsModal({
       onClick={onClose}
     >
       <div
-        className="relative bg-paper border border-ink/15 md:rounded-2xl shadow-2xl w-full h-full md:max-w-4xl lg:max-w-5xl xl:max-w-[1150px] md:h-[782px] md:max-h-[92vh] flex flex-col md:flex-row overflow-hidden text-ink"
+        className="relative bg-paper border border-ink/15 md:rounded-2xl shadow-2xl w-full h-full md:max-w-5xl lg:max-w-6xl xl:max-w-[1280px] md:h-[min(90vh,900px)] md:max-h-[92vh] flex flex-col md:flex-row overflow-hidden text-ink"
         onClick={(e) => e.stopPropagation()}
       >
         {/* DESKTOP VIEW: 2-Column Split */}
-        <div className="hidden md:flex w-64 flex-shrink-0 h-full">
+        <div className="hidden md:flex w-72 flex-shrink-0 h-full">
           <SettingsSidebar
             activeCategory={activeCategory}
             onSelectCategory={(catId) => setActiveCategory(catId)}
