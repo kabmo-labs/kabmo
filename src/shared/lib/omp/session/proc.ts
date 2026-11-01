@@ -93,6 +93,10 @@ export interface ProcJob {
   type?: string;
   status?: string;
   label?: string;
+  /** What the job is for, in the MODEL's words — the `i` intent of the call
+   *  that started it (omp 18.15.0). Absent on rows omp built before the
+   *  release, on subagent tasks, and on a call the model gave no intent. */
+  intent?: string;
   durationMs?: number;
   exitCode?: number;
   /** Self-estimated completion of a subagent task (0–100). */
@@ -181,6 +185,7 @@ function jobOf(value: unknown): ProcJob | undefined {
     type: asString(value.type),
     status: asString(value.status),
     label: asString(value.label),
+    intent: asString(value.intent),
     durationMs: asNumber(value.durationMs),
     exitCode: asNumber(value.exitCode),
     completionPercent: asNumber(value.completionPercent),

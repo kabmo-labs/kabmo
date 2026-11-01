@@ -269,3 +269,49 @@ describe('Proc panel — legacy hub tool', () => {
     expect(text).toContain('22985');
   });
 });
+
+/**
+ * omp 18.15.0 puts the caller's `i` intent on the job snapshot and leads its
+ * own `/jobs` rows with it. Kabmo drew `label` alone, so the purpose was
+ * dropped and the raw command stood in for it. Both lines are drawn now: the
+ * intent as the subject, the command beneath.
+ */
+describe('Proc panel — a job the model gave a purpose to', () => {
+  test('leads with the intent and keeps the command line beneath it', async () => {
+    const el = await mount({
+      type: 'read',
+      name: 'read',
+      target: 'proc://',
+      input: { path: 'proc://' },
+      output: 'bg_1 [bash] running — Start the dev server — bun run dev',
+      status: 'success',
+      details: {
+        proc: {
+          jobs: [
+            { id: 'bg_1', type: 'bash', status: 'running', label: 'bun run dev', intent: 'Start the dev server', durationMs: 1200 },
+          ],
+        },
+      },
+    });
+    const text = el.textContent ?? '';
+    expect(text).toContain('Start the dev server');
+    expect(text).toContain('bun run dev');
+    // The subject precedes the command: the purpose is the first line.
+    expect(text.indexOf('Start the dev server')).toBeLessThan(text.indexOf('bun run dev'));
+  });
+
+  test('a job with no intent draws only its label', async () => {
+    const el = await mount({
+      type: 'read',
+      name: 'read',
+      target: 'proc://',
+      input: { path: 'proc://' },
+      output: '',
+      status: 'success',
+      details: {
+        proc: { jobs: [{ id: 'bg_2', type: 'task', status: 'running', label: 'audit', durationMs: 500 }] },
+      },
+    });
+    expect(el.textContent ?? '').toContain('audit');
+  });
+});

@@ -82,3 +82,34 @@ export function jobProgressLine(job: JobProgressFields, options: JobProgressOpti
   const parts = jobProgressParts(job, options);
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
+
+/** The two fields a job row leads with. */
+export interface JobSubjectFields {
+  /** What the job is for, in the MODEL's words — the `i` intent of the call
+   *  that started it (omp 18.15.0). Only the tools that start a single job set
+   *  it, so a subagent task row never has one. */
+  intent?: string;
+  /** The raw command line (bash) or the task's own label. */
+  label?: string;
+}
+
+/**
+ * What a job row says: the intent first, the command beneath it.
+ *
+ * omp 18.15.0 records the caller's `i` intent on the job and leads its own
+ * `/jobs` rows with it, because `bun run dev` does not say what the job is FOR.
+ * Kabmo drew the label alone, so the purpose the model had already stated was
+ * dropped and the raw command stood in for it. Resolved in one place so the
+ * `wait` card, the `proc://` card and their fact chips cannot disagree about
+ * which line is the subject.
+ *
+ * `primary` falls back to the label when there is no intent, so a row always
+ * has something to draw; `secondary` is only present when both exist (the
+ * command is still worth reading, under the purpose it serves).
+ */
+export function jobSubject(job: JobSubjectFields): { primary?: string; secondary?: string } {
+  const intent = job.intent?.replace(/\s+/g, ' ').trim();
+  const label = job.label?.trim();
+  if (!intent) return { primary: label };
+  return { primary: intent, secondary: label };
+}

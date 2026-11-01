@@ -22,6 +22,7 @@ import { toTitleCase } from '@/shared/lib/chat/title-case';
 import { parseAskQuestions } from '@/shared/lib/chat/ask-questions';
 import { procOpLabel, procPathOf, procViewOf } from '@/shared/lib/omp/session/proc';
 import { waitViewOf } from '@/shared/lib/omp/session/wait';
+import { jobSubject } from '@/shared/lib/omp/session/job-progress';
 import { isXdDocRead, xdDocPath } from '@/client/components/workspace/chat-timeline/tool-renderers/registry';
 import { resolveTargetFile } from '@/client/components/workspace/chat-timeline/tool-renderers';
 import {
@@ -114,11 +115,14 @@ export function toolCardHeader(tool: ToolCallData, toolKey: string): ToolCardHea
   // The generic path printed the tool name and nothing else, so a card that
   // blocked for two minutes was indistinguishable from a call that never ran.
   // The subtitle names the job (or the message) the wait was for; the clock is
-  // a fact chip, not a title line.
+  // a fact chip, not a title line. The subject comes from `jobSubject`, the same
+  // resolver the job rows read, so a header and its row cannot name different
+  // things — and since omp 18.15.0 that means the model's intent when it gave
+  // one, with the raw command as the fallback.
   if (toolKey === 'wait') {
     const view = waitViewOf(tool);
     const job = view?.jobs[0];
-    const subject = job?.label?.split('\n')[0]?.trim() || job?.id || view?.waited?.from;
+    const subject = (job ? jobSubject(job).primary?.split('\n')[0]?.trim() : undefined) || job?.id || view?.waited?.from;
     return { title: 'Wait', subtitle: subject ? clip(subject) : undefined };
   }
 

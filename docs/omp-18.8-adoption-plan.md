@@ -1170,3 +1170,128 @@ is optional and unset).
 | R36 | qualified selectors now exact | none needed | every Kabmo selector comes from an `omp models` row; near-miss measured failing |
 | R37 | custom tools / WebMCP | none needed | no custom tools shipped; WebMCP unused |
 | R38 | TUI-side and in-omp changes | none needed | role, tool-name and `builtin-names` diffs 0 |
+
+# omp 18.15.0 adoption (2026-11-01)
+
+The installed pin moved **18.14.0 → 18.15.0**. Same three steps as every bump:
+regenerate the schema, re-read what the release changed, adopt whatever reaches
+a Kabmo surface.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.14.0` and `@18.15.0` into a temp tree,
+  then `diff -rq` over both packages (**222 differing paths**) and a targeted
+  read of each file whose subject Kabmo touches.
+- `rpc-wire.schema.json` from both versions compared whole: **73 → 74 commands,
+  295 → 297 definitions**, every difference ADDITIVE.
+- `bun run omp:schema` + `omp:schema:check`, then every merged row probed
+  against the **579** live keys of `omp config list --json`.
+- The TUI-only slash-command set extracted from both trees' registries
+  (`handle` vs `handleTui`): **158 names, 41 TUI-only, identical in both**.
+- `bun run scripts/omp-schema.mjs --check` after installing 18.15.0 globally;
+  `omp models --json --kind all` and `omp config list --json` exercised on the
+  installed binary (256 model rows, 579 config keys).
+- The release's own `snapshotJobs` driven with a job that carries an `intent`,
+  to confirm the field survives into the `wait`/`proc://` snapshot.
+
+## Findings
+
+### R39 — The job snapshot gained `intent`, which Kabmo dropped (fixed)
+
+18.15.0 records the caller's `i` intent on the background job it starts, and
+omp's own `/jobs` rows, `proc://` listing and jobs sheet lead with it before the
+command line. Measured with the release's `snapshotJobs`:
+
+```js
+snapshotJobs({}, [{ id: 'bg_1', type: 'bash', status: 'running', label: 'bun run dev',
+                    intent: 'Start the dev server', startTime: Date.now() - 42_000 }])
+// [{ id:'bg_1', type:'bash', status:'running', label:'bun run dev',
+//    intent:'Start the dev server', durationMs:42000 }]
+```
+
+Kabmo's `wait` and `proc://` cards parsed `label` only, so the purpose the model
+had already stated was dropped and the raw command stood in for it. Both job
+views now carry `intent` (`shared/lib/omp/session/{wait,proc}.ts`), and one
+resolver — `jobSubject` in `shared/lib/omp/session/job-progress.ts` — decides
+the subject for every job row: the intent when present, the label beneath it,
+the label alone otherwise. Two tests per surface plus four on the resolver.
+
+`intent` is set only by the tools that start a single job (`bash`), so a
+`task` row has none and keeps its label — the fallback is the common path, not
+an edge case.
+
+### R40 — The settings schema and the CI pin were a release behind (fixed)
+
+`bun run omp:schema` moved the file **431 → 435 entries** (`10 tabs / 579
+settings`). Four rows are new: `providers.openai-codex.daybreak` (providers /
+Protocol), `task.perCallModel` and `task.perCallModelAllow` (tasks / Subagents),
+`title.refreshAfterPrompts` (tasks / Modes). **0 of the 435 rows** are rejected
+by `omp config list --json`.
+
+One new upstream condition arrives with them, `perCallModelAllowNotProject`: it
+hides the allowlist row when a PROJECT layer supplies it, and `omp config list
+--json` carries no provenance, so this panel degrades it to visible — exactly
+the decision `contextFilesExtraNotProject` and `restrictedFoldersNotProject`
+already take (`isConditionMet`'s default arm).
+
+The pin moved with it (`OMP_VERSION` `18.14.0` → `18.15.0`), because the
+`Settings schema` job installs that pin and regenerates from it.
+
+### R41 — The RPC wire grew by one command (adopted nowhere, by design)
+
+74 commands and 297 definitions: `get_session_lease` plus
+`GetSessionLeaseParams`/`GetSessionLeaseResult` (`{held: string[], unknown:
+string[]}`). `RpcAgentEvent`, `RpcInbound`, `RpcServerFrame`, `RpcNotification`,
+`SessionState`, `PromptAck`, `ModelInfo` and every approval frame are
+byte-identical.
+
+Not adopted. Kabmo already answers both halves of the lease question with the
+same primitive omp uses: `lease-flock.server.ts` probes the `flock` and
+`lease-holder.server.ts` names the holding pid, which RPC cannot (the report
+lists ids, not owners). Replacing that with an RPC round-trip would lose the
+pid, and the pid is what maps a holder to the Kabmo instance a client must be
+relayed to.
+
+### R42 — `title.refreshAfterPrompts` is unreachable under rpc-ui (no action)
+
+The new setting retitles a generated title once the judge finds it stale. It is
+gated by `#scheduleTitleRefresh`, which opens with `if ($env.PI_NO_TITLE)
+return`, and `main.ts` sets `PI_NO_TITLE=1` for `--mode rpc`, `rpc-ui` and
+`acp`. Kabmo's children run `--mode rpc-ui`, so the row exists in the panel and
+changes nothing there. Kabmo owns titling through its own `/rename` path
+(`session/auto-title.server.ts`), which is a different mechanism entirely.
+
+### R43 — `task.perCallModel` grants a model per subagent call (no action)
+
+`off` by default. Turning it on lets a task item or an eval `agent()`/
+`workpool()` call name one exact model, approved against
+`Settings.grantAuthority()` (an operator-only view that deliberately excludes
+project settings) and narrowed by `task.perCallModelAllow`. Kabmo never sends a
+per-call `model` on a task item — subagent work is spawned by the agent itself,
+through omp's own task tool — so there is no selector here to approve. The row
+is editable in the panel because it is a real omp setting; enabling it changes
+what the MODEL may do, not what Kabmo sends.
+
+### R44 — TUI-side and in-omp changes that do not reach Kabmo (no action)
+
+Asking a dialog to close when a USER-queued message arrives, the eval kernel
+restart notice, snapcompact's kept text for image-less models, job captions
+written by the `widget` role, `/fast` accepting `ultrafast` from a relay's
+`service_tiers`, the LSP Rust-crate rescan, and the STT preview throttle. Each
+is inside omp's own TUI or its own tools. The STT worker protocol Kabmo speaks
+(`asr-protocol.ts`, `asr-client.ts`, `models.ts`, `stt/settings.ts`) is
+byte-identical, so `omp-stt-worker.ts` is untouched.
+
+`builtin-names.ts`, `MODEL_ROLES` and the 41 TUI-only slash commands are
+identical, so `tui-only.ts` needs no new row.
+
+## 18.15.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R39 | job `intent` dropped from both job cards | `wait.ts`/`proc.ts` parse it; `jobSubject` picks the subject; 2 panel tests | render smoke: intent drawn ABOVE the command on both cards; a task row with no intent still reads |
+| R40 | schema + CI pin a release behind | regenerated (431 → 435 rows) and `OMP_VERSION` 18.14.0 → 18.15.0 | `omp:schema:check` passes; 0/435 rows rejected by `omp config list --json` |
+| R41 | `get_session_lease` added | none — Kabmo's `flock` probe also names the holder pid | wire diff: 1 command + 2 definitions added, 0 removed, every read payload byte-identical |
+| R42 | title refresh is PI_NO_TITLE-gated | none needed | `main.ts` sets it for `rpc-ui`; Kabmo titles through its own `/rename` |
+| R43 | per-call model grant | none needed | Kabmo sends no per-call `model` on task items |
+| R44 | TUI-side / in-omp changes | none needed | STT worker modules, `builtin-names.ts`, `MODEL_ROLES` and the 41 TUI-only names all byte-identical |

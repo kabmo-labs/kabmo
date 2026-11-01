@@ -38,6 +38,10 @@ export interface WaitJob {
   type?: string;
   status?: string;
   label?: string;
+  /** What the job is for, in the MODEL's words — the `i` intent of the call
+   *  that started it (omp 18.15.0); absent on subagent tasks and on a call the
+   *  model gave no intent. */
+  intent?: string;
   /** Elapsed time AT SNAPSHOT TIME — omp computes `now - startTime` while the
    *  job runs, so a live snapshot's value is the real elapsed clock. */
   durationMs?: number;
@@ -124,6 +128,7 @@ function jobOf(value: unknown): WaitJob | undefined {
     type: asString(value.type),
     status: asString(value.status),
     label: asString(value.label),
+    intent: asString(value.intent),
     durationMs: asNumber(value.durationMs),
     exitCode: asNumber(value.exitCode),
     completionPercent: asNumber(value.completionPercent),

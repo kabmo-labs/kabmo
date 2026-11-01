@@ -157,12 +157,35 @@ describe('toolCardHeader — read xd:// docs', () => {
   });
 });
 
+describe('toolCardHeader — a wait names what it blocks on', () => {
+  test('leads with the job intent omp 18.15.0 records', () => {
+    // The header reads the SAME resolver as the job rows, so a card and its row
+    // cannot name different things — and the intent is the better subject: the
+    // raw command does not say what the job is for.
+    expect(header({
+      type: 'wait',
+      status: 'running',
+      details: {
+        op: 'wait',
+        jobs: [{ id: 'bg_1', type: 'bash', status: 'running', label: 'bun run dev', intent: 'Start the dev server' }],
+      },
+    })).toEqual({ title: 'Wait', subtitle: 'Start the dev server' });
+  });
+
+  test('falls back to the raw label when the job has no intent', () => {
+    expect(header({
+      type: 'wait',
+      status: 'running',
+      details: { op: 'wait', jobs: [{ id: 'bg_2', type: 'task', status: 'running', label: 'audit the diff' }] },
+    })).toEqual({ title: 'Wait', subtitle: 'audit the diff' });
+  });
+});
+
 describe('toolCardHeader — generic', () => {
   test('splits a `name — subject` title', () => {
     expect(header({ type: 'bash', title: 'grep — export function ToolCallCard' }))
       .toEqual({ title: 'Grep', subtitle: 'export function ToolCallCard' });
   });
-
   test('carries the subagent from tasks[0] for a task call', () => {
     expect(header({
       type: 'task',

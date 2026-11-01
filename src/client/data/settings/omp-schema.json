@@ -1,5 +1,5 @@
 {
-  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 574 settings",
+  "source": "@oh-my-pi/pi-coding-agent 10 tabs / 579 settings",
   "tabs": [
     {
       "id": "appearance",
@@ -2291,7 +2291,7 @@
           {
             "value": "ultrafast",
             "label": "Ultrafast",
-            "description": "Lowest-latency serving; OpenAI API preview access, or Codex models that advertise it"
+            "description": "Lowest-latency serving; OpenAI API preview access, or Codex and relay models that advertise it"
           }
         ]
       }
@@ -3153,6 +3153,16 @@
         "group": "Protocol",
         "label": "Muse Code Stored Responses",
         "description": "Store Muse Code results on Meta's servers so a turn whose connection drops is recovered instead of re-run. Stored runs keep prompts and outputs on Meta's side."
+      }
+    },
+    "providers.openai-codex.daybreak": {
+      "type": "boolean",
+      "default": true,
+      "ui": {
+        "tab": "providers",
+        "group": "Protocol",
+        "label": "Codex Daybreak Blue",
+        "description": "Automatically request the Daybreak Blue cyber access program on ChatGPT accounts eligible for it. OpenAI may use content from Daybreak Blue sessions to improve its models. Does not cover dedicated Daybreak Blue models (gpt-daybreak-blue-*), which may still run as Daybreak sessions."
       }
     },
     "providers.cacheRetention": {
@@ -6644,7 +6654,7 @@
         "tab": "tools",
         "group": "Execution",
         "label": "Live Job Widgets",
-        "description": "Draw a live widget for each running background job (charts, bars, status grids derived from its output) in the wait card, the jobs pill and the jobs sheet. The `widget` model role (default: `smol`) writes one spec per job; updates need no further model calls"
+        "description": "Draw a live widget for each running background job (charts, bars, status grids derived from its output) in the wait card, the jobs pill and the jobs sheet, and caption long shell commands with one line on what they do. The `widget` model role (default: `smol`) writes one spec and at most one caption per job; updates need no further model calls"
       }
     },
     "tools.xdev": {
@@ -7343,6 +7353,50 @@
         "description": "Expose the optional effort parameter on task spawns, allowing callers to override each subagent's thinking level"
       }
     },
+    "task.perCallModel": {
+      "type": "enum",
+      "default": "off",
+      "values": [
+        "off",
+        "eval",
+        "on"
+      ],
+      "ui": {
+        "tab": "tasks",
+        "group": "Subagents",
+        "label": "Per-Call Model",
+        "description": "Whether a subagent call may pick its model with one exact provider/model-id[@upstream][:level] selector. An @upstream pin is part of the model identity and is supported only by aggregators. Only models the configuration already routes to are accepted. Project settings can turn it off but not on, and never approve a model.",
+        "options": [
+          {
+            "value": "off",
+            "label": "Off",
+            "description": "Reject `model` on task items and eval agent()/workpool()"
+          },
+          {
+            "value": "eval",
+            "label": "Eval only",
+            "description": "Accept `model` in eval agent() and workpool() only"
+          },
+          {
+            "value": "on",
+            "label": "On",
+            "description": "Accept `model` on task items and in eval agent()/workpool()"
+          }
+        ]
+      }
+    },
+    "task.perCallModelAllow": {
+      "type": "array",
+      "default": [],
+      "ui": {
+        "tab": "tasks",
+        "group": "Subagents",
+        "label": "Per-Call Model Allowlist",
+        "editor": "json",
+        "condition": "perCallModelAllowNotProject",
+        "description": "Exact selectors: `provider/model-id`, including `@upstream` only for a pinned OpenRouter/Vercel route (e.g. `openrouter/x@y`). When set, a per-call model must also be listed here. Empty: every model the configuration grants. A project list can only narrow this one."
+      }
+    },
     "task.maxConcurrency": {
       "type": "number",
       "default": 32,
@@ -7536,7 +7590,7 @@
         "tab": "tasks",
         "group": "Subagents",
         "label": "Maximum Per-Spawn Effort",
-        "description": "Maximum reasoning effort allowed for the task tool's per-spawn effort hint. Lower values prevent callers from escalating subagents above this ceiling; the default preserves the model's full range.",
+        "description": "Maximum reasoning effort allowed for the task tool's per-spawn effort hint or a per-call model. An explicit `:level` is clamped to the highest supported effort at or below this ceiling, and an omitted `:level` inherits the agent's thinking level capped at this value; cold revival re-applies the cap. Unset, `:inherit` and `:off` keep their existing meaning. A per-call model must support an effort at or below this ceiling; the default preserves the model's full range.",
         "options": [
           {
             "value": "minimal",
@@ -7731,6 +7785,39 @@
         "group": "Modes",
         "label": "Refresh Title on Replan",
         "description": "Refresh generated session titles after todo init replans unless the title was set by the user"
+      }
+    },
+    "title.refreshAfterPrompts": {
+      "type": "number",
+      "default": 0,
+      "ui": {
+        "tab": "tasks",
+        "group": "Modes",
+        "label": "Refresh Title After Prompts",
+        "description": "Every this many operator prompts, ask the judge model whether a generated session title still fits the conversation, and regenerate it if not",
+        "options": [
+          {
+            "value": "0",
+            "label": "Off",
+            "description": "Default"
+          },
+          {
+            "value": "1",
+            "label": "Every prompt"
+          },
+          {
+            "value": "3",
+            "label": "Every 3 prompts"
+          },
+          {
+            "value": "5",
+            "label": "Every 5 prompts"
+          },
+          {
+            "value": "10",
+            "label": "Every 10 prompts"
+          }
+        ]
       }
     },
     "skills.registryUrl": {

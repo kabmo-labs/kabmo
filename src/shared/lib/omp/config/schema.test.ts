@@ -24,6 +24,7 @@ import {
 import { SCHEMA_EXTRAS } from '@/shared/lib/omp/config/schema-extras';
 import { ALL_SCHEMA_ENTRIES, OMP_SCHEMA, configValue, entriesForTab, isConditionMet, matchesSearch } from '@/shared/lib/omp/config/schema';
 import type { ConfigEntry } from '@/server/lib/omp/config/config-cli';
+import type { SchemaEntry } from '@/shared/lib/omp/config/schema-types';
 
 /** Build a config snapshot from `{ key: value }` pairs. */
 function snapshot(values: Record<string, unknown>): Record<string, ConfigEntry> {
@@ -85,6 +86,25 @@ describe('OMP_SCHEMA', () => {
     expect(entry?.type).toBe('array');
     expect(entry?.ui.tab).toBe('interaction');
     expect(entry?.ui.group).toBe('Approvals');
+  });
+
+  test('the rows omp 18.15.0 adds are offered', () => {
+    // Measured against `omp config list --json` on 18.15.0: all four exist and
+    // every one accepts a write through `omp config set`. A schema regenerated
+    // without them is a release of settings the panel cannot reach.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string }> = {
+      'providers.openai-codex.daybreak': { type: 'boolean', tab: 'providers', group: 'Protocol' },
+      'task.perCallModel': { type: 'enum', tab: 'tasks', group: 'Subagents' },
+      'task.perCallModelAllow': { type: 'array', tab: 'tasks', group: 'Subagents' },
+      'title.refreshAfterPrompts': { type: 'number', tab: 'tasks', group: 'Modes' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
   });
 });
 
@@ -162,6 +182,21 @@ describe('isConditionMet', () => {
 
   test('an unknown condition degrades to visible', () => {
     expect(isConditionMet('someFutureCondition', {})).toBe(true);
+  });
+
+  test('the provenance conditions degrade to visible, deliberately', () => {
+    // These three hide an editor row when a PROJECT layer supplies the value,
+    // because the editor writes the GLOBAL layer and promoting a repository's
+    // list would be the bug. `omp config list --json` carries no provenance, so
+    // the client cannot answer them — visible is the decision, not an oversight.
+    // `perCallModelAllowNotProject` arrived with 18.15.0's `task.perCallModelAllow`.
+    for (const condition of [
+      'contextFilesExtraNotProject',
+      'restrictedFoldersNotProject',
+      'perCallModelAllowNotProject',
+    ]) {
+      expect({ condition, met: isConditionMet(condition, {}) }).toEqual({ condition, met: true });
+    }
   });
 });
 

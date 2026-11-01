@@ -280,4 +280,33 @@ describe('Wait panel — interrupted and messaged', () => {
     expect(text).toContain('Sleeper');
     expect(text).toContain('sleeper reporting in');
   });
+
+  test('leads a job row with the intent omp 18.15.0 records', async () => {
+    const el = await mount({
+      type: 'wait',
+      name: 'wait',
+      status: 'running',
+      details: {
+        op: 'wait',
+        jobs: [
+          { id: 'bg_1', type: 'bash', status: 'running', label: 'bun run dev', intent: 'Start the dev server', durationMs: 4_000 },
+        ],
+      },
+    });
+    const text = el.textContent ?? '';
+    expect(text).toContain('Start the dev server');
+    expect(text).toContain('bun run dev');
+    // The purpose is the row's subject: it comes BEFORE the raw command.
+    expect(text.indexOf('Start the dev server')).toBeLessThan(text.indexOf('bun run dev'));
+  });
+
+  test('a task job without an intent still draws its label', async () => {
+    const el = await mount({
+      type: 'wait',
+      name: 'wait',
+      status: 'running',
+      details: { op: 'wait', jobs: [{ id: 'bg_2', type: 'task', status: 'running', label: 'audit', durationMs: 2_000 }] },
+    });
+    expect(el.textContent ?? '').toContain('audit');
+  });
 });

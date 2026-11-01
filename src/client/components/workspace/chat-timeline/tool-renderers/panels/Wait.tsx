@@ -49,7 +49,7 @@ import {
 } from '@/shared/lib/omp/session/wait';
 import { FallbackOutput } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/FallbackOutput';
 import { ToolPanelHeader } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/ToolPanelHeader';
-import { jobProgressLine } from '@/shared/lib/omp/session/job-progress';
+import { jobSubject, jobProgressLine } from '@/shared/lib/omp/session/job-progress';
 
 const TONE_CLASSES = {
   ok: 'text-success',
@@ -127,11 +127,14 @@ function ProgressTrack({ percent, active }: { percent: number | null; active: bo
   );
 }
 
-/** One job row: what it runs, its status, and how long it has run. */
+/** One job row: what it is for, its status, and how long it has run. */
 function JobRow({ job }: { job: WaitJob }) {
   const tone = jobTone(job.status);
   const running = job.status === 'running';
-  const label = job.label ?? job.resultText ?? job.errorText ?? job.id ?? '';
+  // omp 18.15.0 records the caller's intent on the job and leads its own rows
+  // with it, so `bun run dev` is not what the reader sees first.
+  const subject = jobSubject(job);
+  const label = subject.primary ?? job.resultText ?? job.errorText ?? job.id ?? '';
   const percent = running ? job.completionPercent : undefined;
   // The percent is already a chip in this row, so the progress line leaves it out.
   const progress = jobProgressLine(job);
@@ -175,6 +178,11 @@ function JobRow({ job }: { job: WaitJob }) {
       </div>
       {running && percent !== undefined && (
         <ProgressTrack percent={percent} active />
+      )}
+      {subject.secondary && (
+        <div className="truncate font-mono text-[9px] text-ink/45" title={subject.secondary}>
+          {subject.secondary.split('\n')[0]}
+        </div>
       )}
       {progress && (
         <div className="truncate font-mono text-[9px] text-ink/40">{progress}</div>

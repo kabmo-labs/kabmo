@@ -134,7 +134,36 @@ fi
 # exact by construction; a stale stored value now fails loudly instead of
 # silently running the wrong model. Custom tool loaders take `cwd` first (Kabmo
 # ships none), and WebMCP moved to Chrome's native support (not used here).
-OMP_VERSION="${OMP_VERSION:-18.14.0}"
+#
+# 18.15.0 (2026-11-01): the schema's `source` line moves to 579 settings and the
+# panel gains FOUR rows — `providers.openai-codex.daybreak` (providers /
+# Protocol), `task.perCallModel` and `task.perCallModelAllow` (tasks /
+# Subagents), `title.refreshAfterPrompts` (tasks / Modes) — plus one new
+# upstream condition, `perCallModelAllowNotProject`. That condition hides the
+# allowlist row when a PROJECT layer supplies it, which `omp config list
+# --json` cannot express (no provenance), so this panel degrades to visible
+# exactly like `contextFiles.extra` and `tools.restrictedFolders` already do.
+# The RPC wire grows by ONE command and TWO definitions, both ADDITIVE:
+# `get_session_lease` + `GetSessionLeaseParams`/`GetSessionLeaseResult`.
+# `RpcAgentEvent`, `RpcInbound`, `RpcServerFrame`, `RpcNotification`,
+# `SessionState`, every approval frame and `builtin-names.ts`/`MODEL_ROLES` are
+# byte-identical, and the TUI-only slash-command set is unchanged (41 names in
+# both releases), so nothing Kabmo folds or guards moved.
+#
+# One upstream change DOES reach a Kabmo surface, adopted here: a background
+# job's snapshot now carries `intent`, the model's own one-line purpose for the
+# call that started it (omp 18.15.0 leads its own `/jobs` rows with it). Kabmo
+# drew only `label` in the `wait` and `proc://` cards, so the purpose was
+# dropped while the raw command stood in for it. Both cards now lead with the
+# intent and keep the label beneath — see R39 in
+# docs/omp-18.8-adoption-plan.md.
+#
+# Not adopted, deliberately: `get_session_lease` (Kabmo already probes the
+# lease with its own `flock` and resolves the holder pid, which RPC cannot
+# name); `title.refreshAfterPrompts` (gated by `PI_NO_TITLE`, which rpc-ui sets,
+# and Kabmo owns titling through its own `/rename` path); `task.perCallModel`
+# (it grants a MODEL per subagent call, a capability Kabmo never requests).
+OMP_VERSION="${OMP_VERSION:-18.15.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 
