@@ -11,7 +11,8 @@ import { GLOBAL_SCOPE_ID, useWorkspaceRoots } from '@/client/hooks/settings/work
 interface SkillSettingsProps {
   settings?: SettingsState;
   onUpdate?: (updater: Partial<SettingsState> | ((prev: SettingsState) => SettingsState)) => void;
-  onNavigateToCatalog?: () => void;
+  /** Opens the catalog, on the tab the click came from. */
+  onNavigateToCatalog?: (tab?: 'browse' | 'git' | 'sources') => void;
 }
 
 /**
@@ -79,7 +80,7 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'reload', ...roots.scopeBodyFor(selectedRootId) }),
     })
-      .catch((error) => console.error('Failed to reload plugins:', error))
+      .catch((error) => console.error('Failed to reload skills:', error))
       .finally(() => setIsReloading(false));
   };
 
@@ -106,6 +107,8 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
               startCreate();
               masterDetail.openDetail();
             }}
+            onImportFromGit={() => onNavigateToCatalog?.('git')}
+            onOpenCatalog={() => onNavigateToCatalog?.('browse')}
             selectedProject={selectedRootId}
             onSelectProject={setSelectedRootId}
             projectOptions={roots.options}
@@ -117,7 +120,7 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
             isCreatingNew={isCreatingNew}
             onSave={save}
             onDelete={remove}
-            onOpenCatalog={onNavigateToCatalog}
+            onOpenCatalog={() => onNavigateToCatalog?.('browse')}
             onReload={reload}
             isReloading={isReloading}
             projectScopeDisabled={!isWorkspaceScope}

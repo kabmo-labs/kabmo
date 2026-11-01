@@ -21,7 +21,7 @@ import { McpSettings } from '@/client/components/settings/categories/McpSettings
 import { SkillSettings } from '@/client/components/settings/categories/SkillSettings';
 import { PluginSettings } from '@/client/components/settings/categories/PluginSettings';
 import { PanelPluginSettings } from '@/client/components/settings/categories/PanelPluginSettings';
-import { SkillCatalogSettings } from '@/client/components/settings/categories/SkillCatalogSettings';
+import { SkillCatalogSettings, type CatalogTab } from '@/client/components/settings/categories/SkillCatalogSettings';
 import { OtherSettings } from '@/client/components/settings/categories/OtherSettings';
 import { OmpSettings } from '@/client/components/settings/categories/OmpSettings';
 import { TokenUsageSettings } from '@/client/components/settings/categories/TokenUsageSettings';
@@ -44,6 +44,9 @@ export function SettingsModal({
   autoOpenAddProvider = false,
 }: SettingsModalProps) {
   const [activeCategory, setActiveCategory] = useState<SettingsCategoryId>(initialCategory);
+  // Which catalog tab a navigation asked for; the catalog itself owns the state
+  // once it is mounted, so this only seeds the mount.
+  const [catalogTab, setCatalogTab] = useState<CatalogTab>('browse');
   const [autoOpenAdd, setAutoOpenAdd] = useState(autoOpenAddProvider);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileDrilled, setIsMobileDrilled] = useState(false);
@@ -167,11 +170,14 @@ export function SettingsModal({
           <SkillSettings
             settings={settings}
             onUpdate={handleUpdateSettings}
-            onNavigateToCatalog={() => setActiveCategory('skills-catalog')}
+            onNavigateToCatalog={(tab) => {
+              setCatalogTab(tab ?? 'browse');
+              setActiveCategory('skills-catalog');
+            }}
           />
         );
       case 'skills-catalog':
-        return <SkillCatalogSettings />;
+        return <SkillCatalogSettings initialTab={catalogTab} />;
       case 'omp':
         return <OmpSettings settings={settings} onUpdate={handleUpdateSettings} />;
       case 'usage':

@@ -26,13 +26,23 @@ export interface SkillItem {
   catalogSource?: string;
 }
 
+/**
+ * A git repository offered as a skill source.
+ *
+ * There is deliberately no star count and no "last updated" here: Kabmo never
+ * fetched either one, and the two used to be rendered from literals (`'1.2K'`,
+ * `'Just now'`) — a panel stating a number no request produced. `skillCount` is
+ * `null` until a scan of that repository reports a real one, and the card says
+ * "Not scanned" rather than inventing a number.
+ */
 export interface SkillCatalogSource {
   id: string;
   name: string;
   repo: string;
-  stars: string;
-  updatedAt: string;
-  skillCount: number;
+  /** SKILL.md files found by the last scan, or null when never scanned. */
+  skillCount: number | null;
+  /** Epoch ms of the last successful scan, or null. */
+  scannedAt?: number | null;
   isCustom?: boolean;
 }
 
@@ -45,4 +55,44 @@ export interface CatalogSkillItem {
   githubUrl?: string;
   instructions?: string;
   installed?: boolean;
+  /** Install count reported by skills.sh; absent for a git-repo entry. */
+  installs?: number;
+}
+
+/** One SKILL.md found inside a cloned repository. */
+export interface GitSkillEntry {
+  /** Repo-relative directory holding the SKILL.md, e.g. `skills/review-pr`. */
+  path: string;
+  name: string;
+  description: string;
+  /** False when omp would refuse to load it (no `description` in frontmatter). */
+  loadable: boolean;
+  /** A skill with this name is already installed, so a plain install skips it. */
+  installed?: boolean;
+}
+
+/** What `inspect_git_repo` answers: the repository and the skills inside it. */
+export interface GitRepoInspection {
+  repo: string;
+  /** Branch/tag the clone resolved, when git reported one. */
+  ref?: string | null;
+  skills: GitSkillEntry[];
+  /** Notes worth showing (a scan hit its cap, a subtree was skipped, …). */
+  notes: string[];
+}
+
+/** How an imported skill is installed. */
+export type GitSkillInstallMode =
+  /** Copy the SKILL.md directory into a root Kabmo owns; editable here. */
+  | 'managed_copy'
+  /** `bunx skills add` into `~/.agents/skills`; read-only here, updatable. */
+  | 'registry';
+
+export interface GitSkillInstallResult {
+  repo: string;
+  mode: GitSkillInstallMode;
+  installed: string[];
+  skipped: Array<{ name: string; reason: string }>;
+  /** The refreshed discovery list, so the pane needs no second round trip. */
+  skills: SkillItem[];
 }

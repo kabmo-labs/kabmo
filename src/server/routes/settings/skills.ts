@@ -5,7 +5,7 @@ import { getDb } from '@/server/db.server';
 import { DEFAULT_CATALOG_SKILLS, DEFAULT_CATALOG_SOURCES, DEFAULT_SKILLS } from '@/client/data/settings/skill';
 import { isMockMode } from '@/server/mock.server';
 import type { SkillItem } from '@/shared/types';
-import { readSettingsJson, writeSettingsJson } from '@/server/lib/db/settings-store';
+import { readCatalogSources } from '@/server/lib/omp/config/skill-sources';
 import {
   deleteSkillDir,
   discoverSkills,
@@ -20,10 +20,9 @@ import {
   toCatalogSkills,
   uninstallCatalogSkill,
 } from '@/server/lib/omp/config/skills-catalog';
+import { runCatalogAction } from '@/server/routes/settings/skills-catalog-actions';
 import { resolveDiscoveryScope, type DiscoveryScope } from '@/server/lib/omp/config/scope';
 import { reloadLiveSessions } from '@/server/lib/omp/session/reload.server';
-
-const SOURCES_KEY = 'omp_catalog_sources';
 
 /** Human label for an omp discovery source. */
 const SOURCE_LABELS: Record<string, string> = {
@@ -83,10 +82,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   try {
     if (mock) {
       const db = await getDb();
-      const storedSources = await readSettingsJson<typeof DEFAULT_CATALOG_SOURCES>(db, SOURCES_KEY, DEFAULT_CATALOG_SOURCES);
       return json({
         skills: DEFAULT_SKILLS,
-        catalogSources: Array.isArray(storedSources) && storedSources.length > 0 ? storedSources : DEFAULT_CATALOG_SOURCES,
+        catalogSources: await readCatalogSources(db),
         catalogSkills: DEFAULT_CATALOG_SKILLS,
         root: null,
         isMock: true,
@@ -96,9 +94,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const db = await getDb();
     const url = new URL(request.url);
     const scope = await resolveDiscoveryScope(url.searchParams.get('root'), url.searchParams.get('scope'));
-
-    const storedSources = await readSettingsJson<typeof DEFAULT_CATALOG_SOURCES>(db, SOURCES_KEY, DEFAULT_CATALOG_SOURCES);
-    const catalogSources = Array.isArray(storedSources) && storedSources.length > 0 ? storedSources : DEFAULT_CATALOG_SOURCES;
+    const catalogSources = await readCatalogSources(db);
 
     const [skills, popular, curated] = await Promise.all([
       listSkills(scope),
@@ -106,8 +102,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       searchSkillCatalog('code review', 8),
     ]);
 
+    // skills.sh entries are their own source: their install runs the CLI against
+    // a registry package, which is a different path from a local source card.
     const seen = new Set<string>();
-    const catalogSkills = toCatalogSkills([...popular, ...curated], catalogSources[0]?.id ?? 'skills-sh')
+    const catalogSkills = toCatalogSkills([...popular, ...curated], 'skills-sh')
       .filter((item) => (seen.has(item.repoTag) ? false : (seen.add(item.repoTag), true)));
 
     return json({ skills, catalogSources, catalogSkills, root: scope.workspace, isMock: false });
@@ -170,12 +168,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return json({ success: true, reloaded });
     }
 
-    if (body.type === 'add_source') {
-      const sources = await readSettingsJson<typeof DEFAULT_CATALOG_SOURCES>(db, SOURCES_KEY, DEFAULT_CATALOG_SOURCES);
-      const updated = [...sources, body.source];
-      await writeSettingsJson(db, SOURCES_KEY, updated);
-      return json({ success: true, catalogSources: updated });
-    }
+    const catalogResponse = await runCatalogAction(body as Record<string, unknown>, {
+      db,
+      scope,
+      // A request that names no root is scoped to the app root for READING, but
+      // that is not a workspace a write may land in.
+      hasWorkspace:
+        Boolean(url.searchParams.get('root') ?? (typeof body.root === 'string' ? body.root : null)) &&
+        (url.searchParams.get('scope') ?? body.scope) !== 'user',
+      listSkills: async (target) => listSkills(target),
+    });
+    if (catalogResponse) return catalogResponse;
 
     // Catalog install/uninstall goes through the real skills CLI, which is what
     // actually puts the skill where omp reads it.

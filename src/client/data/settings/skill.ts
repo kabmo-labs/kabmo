@@ -153,38 +153,12 @@ description: "Automated pre-flight security review, secret leak inspection, and 
 ];
 
 export const DEFAULT_CATALOG_SOURCES: SkillCatalogSource[] = [
-  {
-    id: 'anthropic',
-    name: 'Anthropic',
-    repo: 'anthropics/skills',
-    stars: '175K',
-    updatedAt: 'Updated 3d ago',
-    skillCount: 20,
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    repo: 'openai/skills',
-    stars: '26K',
-    updatedAt: 'Updated 7w ago',
-    skillCount: 14,
-  },
-  {
-    id: 'cursor',
-    name: 'Cursor',
-    repo: 'cursor/plugins',
-    stars: '7K',
-    updatedAt: 'Updated 2d ago',
-    skillCount: 18,
-  },
-  {
-    id: 'matt-pocock',
-    name: 'Matt Pocock',
-    repo: 'mattpocock/skills',
-    stars: '255K',
-    updatedAt: 'Updated 2d ago',
-    skillCount: 12,
-  },
+  // `skillCount: null` — these counts are NOT known until a scan runs, and the
+  // card says "Not scanned" rather than printing an invented number.
+  { id: 'anthropic', name: 'Anthropic', repo: 'anthropics/skills', skillCount: null },
+  { id: 'openai', name: 'OpenAI', repo: 'openai/skills', skillCount: null },
+  { id: 'cursor', name: 'Cursor', repo: 'cursor/plugins', skillCount: null },
+  { id: 'matt-pocock', name: 'Matt Pocock', repo: 'mattpocock/skills', skillCount: null },
 ];
 
 export const DEFAULT_CATALOG_SKILLS: CatalogSkillItem[] = [
