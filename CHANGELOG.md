@@ -4,6 +4,25 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.17.0](https://github.com/kabmo-labs/kabmo/compare/v0.16.0...v0.17.0) — 2026-11-02
+
+### Added
+
+* **editor:** show whitespace on the selection, and drop indent guides ([c5551af](https://github.com/kabmo-labs/kabmo/commit/c5551aff023e5a12ba4d5934ad27c0e7efd7e90b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** bump the pin to 18.15.0 and lead job rows with the intent it adds ([be44d55](https://github.com/kabmo-labs/kabmo/commit/be44d5547d1c50ce1829b16c43700788927825c3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** make Settings → Projects a working editor, with a custom accent ([bb251c4](https://github.com/kabmo-labs/kabmo/commit/bb251c4c46dbb5582340f44ac9873b0a12b7f088)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shell:** add a server switcher to the Android and iOS console ([9ccc562](https://github.com/kabmo-labs/kabmo/commit/9ccc562cd157d8c0224716024c5ec6a7c29f1905)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **skills:** import skills from any git repository ([a9b73c7](https://github.com/kabmo-labs/kabmo/commit/a9b73c768079d1874364ed0eba75ca68ab29a87a)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **ci:** raise one workflow per push to main ([af26528](https://github.com/kabmo-labs/kabmo/commit/af265280332dbf80a9961d92dde1e856793e0145)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** scope SVG ids before sanitizing so a gradient keeps its paint ([6318bb5](https://github.com/kabmo-labs/kabmo/commit/6318bb52ac173f86a6215f0e9ae8c6a8ba381a94)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#body](https://github.com/kabmo-labs/kabmo/issues/body) [#body](https://github.com/kabmo-labs/kabmo/issues/body) [#id](https://github.com/kabmo-labs/kabmo/issues/id)
+* **files:** make a collapsed folder chain navigable, and drop-highlight the hovered row ([e87ffcb](https://github.com/kabmo-labs/kabmo/commit/e87ffcbf950def9c622629ed4c2ced9c6df7d515)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **release:** commit the shell bumps only after every build passed ([12f3665](https://github.com/kabmo-labs/kabmo/commit/12f36659654ffa52b5abc132c90e3aa3de2ce7cf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shell:** open a real file panel for uploads in the macOS and Android shells ([0de09e4](https://github.com/kabmo-labs/kabmo/commit/0de09e4d9593f87e2bfbf610ba31295c5d927c3e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shell:** read a macOS/Linux shell as desktop, not as an iPhone ([26333b1](https://github.com/kabmo-labs/kabmo/commit/26333b1428f1e196df89ea6afad14ab2c921eb31)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.16.0](https://github.com/kabmo-labs/kabmo/compare/v0.15.0...v0.16.0) — 2026-10-31
 
 ### Added
