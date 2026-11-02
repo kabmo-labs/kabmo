@@ -29,10 +29,11 @@ real Chromium, real streaming. It is a separate runner from `bun test` on purpos
 (the specs need a per-file browser context and server), and the two own disjoint
 globs — `*.spec.ts` is Bun's, `*.e2e.ts` is Playwright's — so neither picks up the
 other's files. It is NOT part of the four gates below, but it **is** a requirement
-of every release: `.github/workflows/e2e.yml` runs it on every push to `main`, on
-a pull request only when the `e2e` label is applied, and nightly, and
-`release.yml`, `publish-app.yml` and `publish-packages.yml` each call the same
-reusable workflow and `needs:` it before they tag or publish anything. It runs on
+of every release: `.github/workflows/e2e.yml` runs it on a pull request only when
+the `e2e` label is applied, and nightly, while a push to `main` runs it inside
+`release.yml` — the one workflow such a push raises. `release.yml`,
+`publish-app.yml` and `publish-packages.yml` each call the same reusable workflow
+and `needs:` it before they tag or publish anything. It runs on
 **Windows as well as Linux**, because Kabmo ships a Windows CLI and the
 win32 branches in its path helpers, `stop`'s ownership guard and the process-tree
 kill are otherwise never executed by any gate on this macOS-developed repository.
@@ -59,9 +60,10 @@ instead of ~10 s, and is for the local loop only — it is NOT a gate. `bun chec
 checker, which is stricter in places TypeScript's is not (an unimplemented `noUncheckedSideEffectImports`,
 `Uint8Array<ArrayBufferLike>` against `BodyInit`), so its verdict and `tsc`'s are not interchangeable.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs all four on every pull request and on
-`main`, so a red change is caught at the pull request rather than by the release job that would
-otherwise tag it. The steps themselves live in [`.github/workflows/gates.yml`](.github/workflows/gates.yml),
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs all four on every pull request, and
+`release.yml` runs them again as its first job on every push to `main`, so a red change is caught at
+the pull request rather than by the release job that would otherwise tag it. The steps themselves
+live in [`.github/workflows/gates.yml`](.github/workflows/gates.yml),
 a reusable workflow `ci.yml` calls — which is also what makes them a **requirement** rather than a
 parallel opinion: `release.yml`, `publish-app.yml` and `publish-packages.yml` call the same file
 and `needs:` it, so no tag and no publish happens until the gates have passed on the commit being
@@ -70,9 +72,10 @@ The unit suite runs on **Windows** there too (`Checks (Windows)`), for the reaso
 
 Never write a skip marker (`[skip ci]`, `[ci skip]`, `[no ci]`) anywhere in a commit message pushed to
 `main` — **including inside prose that merely mentions it**. GitHub matches the token in the whole
-message, so a sentence like "the release commits carry `[skip ci]`" skips CI *and* the release run for
-that push. Verified the hard way: a commit whose body explained the marker triggered no CI, no E2E and
-no Release, and the only way back is another push, because `main` is protected against force-push.
+message, and on a push to `main` the marker skips the Release run, which is the only thing that gates
+that commit: no gates, no browser specs, no tag, and no way to re-trigger them but another push,
+because `main` is protected against force-push. Verified the hard way: a commit whose body explained
+the marker triggered nothing at all.
 `CHANGELOG.md` is written by the release pipeline only, never by hand.
 
 **Bundled marketplace plugins are versioned by the pipeline, not by you.** The three plugins under

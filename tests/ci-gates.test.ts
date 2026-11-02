@@ -14,7 +14,7 @@
  * production.
  */
 import { expect, test, describe } from 'bun:test';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -157,6 +157,37 @@ describe('the gate contract', () => {
       const calls = jobs.map((job) => job?.uses).filter(Boolean);
       expect(calls, `${file} does not call ${target}`).toContain(target);
     }
+  });
+
+  test('a push to `main` raises exactly one workflow', async () => {
+    // GitHub starts one run per workflow FILE whose `on.push` matches, and none of
+    // them knows about the others. The gates used to be triggered three ways on
+    // the same commit — `ci.yml`, `e2e.yml` and `release.yml` calling the same two
+    // reusable workflows — so every merge ran the Windows leg and the browser
+    // matrix twice. Measured on 26333b1: CI 6m33s and E2E 25m17s beside the
+    // identical jobs inside Release, and the duplicate pair DISAGREED on that sha
+    // (the CI leg's `Gates / Checks (Windows)` failed on an `EBUSY` temp rmdir
+    // while Release's leg passed), which is a false red `main` with no code change
+    // behind it.
+    //
+    // A `paths:` filter is NOT every push (pr-intake re-validates its own
+    // scripts), and a `push` that only lists tags is not a branch push at all.
+    const workflows = readdirSync(WORKFLOWS).filter((name) => name.endsWith('.yml'));
+    const everyMainPush: string[] = [];
+    for (const file of workflows) {
+      const doc = await load(file);
+      const push = doc.on?.push;
+      if (!push) continue;
+      if (push.paths || push['paths-ignore']) continue;
+      const branches: string[] = push.branches ?? [];
+      const tags: string[] = push.tags ?? [];
+      if (tags.length > 0 && branches.length === 0) continue;
+      if (!branches.includes('main')) continue;
+      everyMainPush.push(file);
+    }
+    expect(everyMainPush.sort(), 'a push to `main` must raise only the release run').toEqual([
+      'release.yml',
+    ]);
   });
 
   test('every caller grants the permissions its callee declares', async () => {

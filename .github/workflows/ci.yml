@@ -1,13 +1,21 @@
 name: CI
 
-# The gates every change is required to pass (CONTRIBUTING.md §1), on the pull
-# request and again on `main`.
+# The gates every change is required to pass (CONTRIBUTING.md §1), on the PULL
+# REQUEST — `pull_request` is the only automatic trigger. A push to `main` is
+# verified by `release.yml`, whose first job calls this same reusable workflow on
+# the same commit, so a `push:` trigger here ran the gates a second time on every
+# merge: measured on 26333b1, CI 6m33s beside Release's own `Gates / Checks`, and
+# the duplicate pair had already DISAGREED on the same sha — the CI leg's
+# `Gates / Checks (Windows)` went red on an `EBUSY` temp-directory rmdir in
+# `applyStash` while Release's leg of that identical job passed. Two runs of one
+# gate is twice the chance of a flake reading as a red `main`.
 #
 # They used to run only inside `release.yml` — after a merge, on the commit that was
 # about to be tagged — so a red `main` was discovered by the release job that then
 # refused to cut a release, and the fix was another push that ran the gates again.
 # Running them here means the pull request is where a broken change is caught, and
 # the release job re-running them is what keeps a tag from being cut on a red main.
+# `workflow_dispatch` stays for a hand-run on a commit that has no pull request.
 #
 # This file is a TRIGGER, not the implementation: the steps live in `gates.yml`,
 # which `release.yml`, `publish-app.yml` and `publish-packages.yml` call and
@@ -33,8 +41,6 @@ name: CI
 # the pull request could still be skipped by a direct push.
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:

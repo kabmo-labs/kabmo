@@ -8,10 +8,18 @@ name: label-merge-conflict
 # conflicted it: one push to `main` can conflict a dozen pull requests at once, and
 # GitHub computes mergeability asynchronously, so asking once for all of them is both
 # simpler and more accurate than trying to predict which event changed the answer.
-
+#
+# The sweep runs on a SCHEDULE, not on the push that caused it. A push to `main`
+# raises exactly one workflow (`release.yml`), and a label mirror is not worth a
+# second run on every merge — the release run is 20+ minutes and this one is 26s,
+# but a push that raises two workflows is what makes the Actions list unreadable.
+# A pull request's own events are still handled immediately (opened, a head push,
+# reopened, ready for review) because those are the moments a reviewer is watching;
+# a conflict caused by the BASE moving is labelled within four hours instead.
 on:
-  push:
-    branches: [main]
+  schedule:
+    # Every four hours, off the hour so it does not queue behind other cron.
+    - cron: "17 */4 * * *"
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:

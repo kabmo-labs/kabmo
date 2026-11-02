@@ -8,18 +8,25 @@ name: Release
 # NOTHING IS TAGGED UNTIL THE GATES AND THE BROWSER SPECS HAVE PASSED. The two
 # gate jobs below CALL `.github/workflows/gates.yml` and
 # `.github/workflows/e2e-specs.yml` — the same reusable workflows `ci.yml` and
-# `e2e.yml` call — and `packages`/`app` `needs:` them. Re-running the commands
-# inside this file would be a second copy that can drift from the gates a pull
-# request runs, and reading the parallel CI run's conclusion over the API races
-# with the run it is waiting for (a release run starts at the same instant as the
-# CI run, so "no run yet" has to be told apart from "no run exists" — and a red
-# `main` read as a missing run is exactly the failure this shape prevents).
+# `e2e.yml` run on a pull request — and `packages`/`app` `needs:` them. Re-running
+# the commands inside this file would be a second copy that can drift from what a
+# pull request runs.
 #
-# The browser layer is a RELEASE gate, not only a `main` gate: `e2e.yml` skips it
-# on a pull request without the `e2e` label, so the merge that produced this
-# commit may never have run a browser at all. Waiting on the parallel `e2e.yml`
-# run for the same push would race it; calling the reusable workflow is a
-# requirement, and a requirement cannot be won by finishing first.
+# This run is the ONLY workflow a push to `main` raises, which is why the gates
+# are jobs of it and not a separate trigger beside it. A `push:` trigger on
+# `ci.yml` and `e2e.yml` ran those same two reusable workflows again on the same
+# commit (measured on 26333b1: CI 6m33s and E2E 25m17s beside this run's own
+# `Gates / …` and `E2E specs / …` jobs), and the duplicate pair had already
+# disagreed — that run's `Gates / Checks (Windows)` went red on an `EBUSY` temp
+# rmdir while this run's identical leg passed. Reading a parallel run's conclusion
+# over the API would race the run it is waiting for, too: "no run yet" would have
+# to be told apart from "no run exists", and a red `main` read as a missing run is
+# exactly the failure this shape prevents.
+#
+# The browser layer is a RELEASE gate for a second reason: `e2e.yml` skips it on a
+# pull request without the `e2e` label, so the merge that produced this commit may
+# never have run a browser at all. A requirement cannot be won by finishing first,
+# so the suite is called here.
 #
 # The order is the point, not a preference. The app does NOT ship `packages/`
 # (see the `files` list in package.json) — at runtime it resolves

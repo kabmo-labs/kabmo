@@ -4,8 +4,9 @@ name: Gates
 # generated settings schema, as a REUSABLE workflow — so they can be a
 # REQUIREMENT of a release instead of being restated inside it.
 #
-# `ci.yml` is the trigger: it runs this file on every pull request and on `main`.
-# `release.yml`, `publish.yml` and `publish-plugins.yml` CALL it and `needs:` it,
+# `ci.yml` is the PULL REQUEST trigger: it runs this file on every pull request,
+# and `release.yml` calls it on every push to `main` — the only workflow such a
+# push raises. `publish.yml` and `publish-plugins.yml` CALL it and `needs:` it,
 # which is what makes the gate binding. The alternative — reading the CI run's
 # conclusion over the API — races with the run it is waiting for (the release run
 # starts at the same instant as the CI run, so "no run found yet" has to be
@@ -32,8 +33,8 @@ on:
   workflow_call:
     inputs:
       # Which commit to gate. Empty means the caller's own commit — what
-      # `ci.yml` (a pushed commit), `release.yml` (the pushed commit) and
-      # `e2e.yml` (the pull request's head) all want. `publish.yml` is the one
+      # `ci.yml` (a pull request's head), `release.yml` (the pushed commit) and
+      # `e2e.yml` (a pull request's head too) all want. `publish.yml` is the one
       # caller that names a ref: a publish is dispatched with a TAG, and gating
       # it against `main`'s tip would verify a different commit than the one
       # about to reach npm.

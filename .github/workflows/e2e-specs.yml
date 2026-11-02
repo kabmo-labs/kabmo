@@ -3,12 +3,12 @@ name: E2E specs
 # The browser end-to-end suite (Playwright) as a REUSABLE workflow, so a release
 # can REQUIRE it instead of hoping a parallel run passed.
 #
-# `e2e.yml` is the trigger: every push to `main`, a pull request only when the
-# `e2e` label is applied, nightly, and manual dispatch. `release.yml`,
-# `publish.yml` and `publish-plugins.yml` CALL this file and `needs:` it — which
-# is the whole point: those runs are triggered by the same push (or by the tag
-# that push produced), so a red `main` and a release used to be decided by two
-# independent runs, and the release could win.
+# `e2e.yml` is the PULL REQUEST trigger: a pull request only when the `e2e` label
+# is applied, nightly, and manual dispatch. `release.yml`, `publish.yml` and
+# `publish-plugins.yml` CALL this file and `needs:` it — a release tags a commit
+# whose pull request may never have run a browser at all (the label is the
+# escape hatch), so the suite is a REQUIREMENT of that run rather than a parallel
+# opinion it could wait on.
 #
 # The PR label condition deliberately does NOT live here. A reusable workflow's
 # job `if:` is evaluated in the CALLER's context, but the condition is a property
