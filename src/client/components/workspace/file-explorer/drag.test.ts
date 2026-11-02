@@ -25,6 +25,12 @@
  *    already lives in, or a folder into its own subtree, must not reach the
  *    server: a request would be a move the user did not ask for.
  *
+ * 5. **The blue block belongs to the row under the POINTER, not to every legal
+ *    target.** It was drawn from `acceptsDrop` — the capability — so a drag
+ *    painted every folder and file on screen at once and read as "everything is
+ *    selected" (measured: dragging `a.ts` over `b` and `c` highlighted both).
+ *    The background's tint had the same bug, over the whole tree.
+ *
  * Driven through the shared harness, so this file and the listing specs exercise
  * one mount and one HTTP stub.
  */
@@ -144,5 +150,42 @@ describe('Files panel drag and drop', () => {
     await panel.dragRow('a.ts', 'dest');
 
     expect(panel.dirReads).toContain('.');
+  });
+
+  test('only the row under the pointer is highlighted during a drag', async () => {
+    panel.disk = { '.': { 'a.ts': 'file', first: null, second: null }, first: { 'x.ts': 'file' }, second: { 'y.ts': 'file' } };
+    await panel.mount();
+
+    await panel.hoverRow('a.ts', 'first');
+
+    // `second` would accept the drop just as well, and used to be painted.
+    const highlighted = [...panel.container.querySelectorAll('[class*="bg-info"]')]
+      .map((el) => el.textContent?.trim() ?? '');
+    expect(highlighted).toEqual(['first']);
+  });
+
+  test('the highlight leaves the row when the pointer does, and the drop still lands', async () => {
+    // `a.ts` lives INSIDE `dest`, so dropping it on the background is a real
+    // move to the root rather than the no-op the rule refuses.
+    panel.disk = { '.': { dest: null, other: null }, dest: { 'a.ts': 'file' }, other: {} };
+    await panel.mount();
+    await panel.clickRow('dest');
+
+    await panel.hoverRow('a.ts', 'other');
+    expect(panel.container.querySelectorAll('[class*="bg-info"]')).toHaveLength(1);
+
+    // Leaving the row for the background: the row's block goes out and the
+    // drop lands at the root, which is where the pointer is.
+    await panel.dropOnBackground();
+    expect(panel.transferRequests[0]?.targetPath).toBe('.');
+  });
+
+  test('the background is not tinted for the whole gesture', async () => {
+    panel.disk = { '.': { 'a.ts': 'file', dest: null }, dest: {} };
+    await panel.mount();
+
+    // The drag is in flight and no row is hovered: nothing to promise yet.
+    await panel.startDrag('a.ts');
+    expect(panel.container.querySelectorAll('[class*="bg-info"]')).toHaveLength(0);
   });
 });

@@ -63,6 +63,90 @@ function foldNode(node: FsNode): FsNode {
 }
 
 /**
+ * Whether this row is a folded chain — one row standing for several directories.
+ *
+ * Decided by the LABEL alone, and that is load-bearing in both directions: a
+ * directory name cannot contain a separator, so a `/` in a folder's `name` can
+ * only come from the fold. Comparing `name` with `path` does not work, because a
+ * chain folded at the listing's own root is labelled with the whole path
+ * (`name === path === 'dev/src/main/code'`) while still standing for four
+ * directories — every surface that asks "does this row hide levels?" (drop
+ * targets, the rename and delete dialogs, the unfold menu row) reads this one
+ * answer, so they cannot disagree about the same row.
+ */
+export function isChainRow(node: { type: 'file' | 'folder'; name: string }): boolean {
+  return node.type === 'folder' && node.name.includes('/');
+}
+
+/**
+ * The paths of the directories a collapsed row STANDS FOR, outermost first —
+ * or null when the row's label does not name a chain.
+ *
+ * The fold is a RENDERING decision, not a filesystem fact, and it hides
+ * destinations: `dev/src/main` is not a row, so it cannot be dropped on,
+ * renamed, or created inside — a drop on the one row lands in the deepest
+ * directory (`code`) instead. The panel keeps a set of chains the user asked to
+ * unfold and projects it onto the tree the listing hands over
+ * (`unfoldChains`), and this is the one place that turns the row's LABEL
+ * (`dev/src/main/code`) plus its `path` (the deepest directory) back into the
+ * levels between them.
+ */
+export function chainLevelPaths(path: string, label: string): string[] | null {
+  const names = label.split('/');
+  const segments = path.split('/');
+  if (names.length < 2 || names.length > segments.length || names.some((name) => !name)) return null;
+  const outer = segments.slice(0, segments.length - names.length);
+  return names.map((_, index) => [...outer, ...names.slice(0, index + 1)].join('/'));
+}
+
+/**
+ * Drawn rows with the chains named in `unfolded` split back into one row per
+ * directory, so every level of a folded chain becomes a real drop target, a
+ * real rename target and a real place to create something.
+ *
+ * The deepest row keeps its own `children` — and therefore its own read — so
+ * unfolding a chain never costs a request. Whether the intermediate rows are
+ * DRAWN open is the panel's business, not this projection's: they are ordinary
+ * rows, opened through the panel's expansion set like any other folder.
+ */
+export function unfoldChains(nodes: FsNode[], unfolded: ReadonlySet<string>): {
+  nodes: FsNode[];
+  /** The outermost level of each chain that was actually unfolded → its deepest path. */
+  roots: Map<string, string>;
+} {
+  const roots = new Map<string, string>();
+  if (unfolded.size === 0) return { nodes, roots };
+  let changed = false;
+  const walk = (list: FsNode[]): FsNode[] => list.flatMap((node) => {
+    if (node.type !== 'folder') return [node];
+    const children = Array.isArray(node.children) ? walk(node.children) : node.children;
+    const row: FsNode = children === node.children ? node : { ...node, children };
+    const levels = unfolded.has(node.path) ? chainLevelPaths(node.path, node.name) : null;
+    if (!levels) return [row];
+    changed = true;
+    roots.set(levels[0]!, node.path);
+    // Rebuilt from the outside in, so the deepest row is the original one —
+    // its children, its expansion state and its git answer all stay attached.
+    let deepest: FsNode = { ...row, name: levels[levels.length - 1]!.split('/').pop()! };
+    for (let depth = levels.length - 1; depth > 0; depth -= 1) {
+      const path = levels[depth - 1]!;
+      deepest = {
+        name: path.split('/').pop()!,
+        path,
+        type: 'folder',
+        // A rule matching any level of the chain answers for the deepest too
+        // (see `foldNode`), so every level wears the row's own answer.
+        ignored: row.ignored,
+        children: [deepest],
+      };
+    }
+    return [deepest];
+  });
+  const next = walk(nodes);
+  return { nodes: changed ? next : nodes, roots };
+}
+
+/**
  * The paths of the DRAWN rows that contain `path`, outermost first.
  *
  * This is what a reveal expands. It cannot be the path's own segments: a

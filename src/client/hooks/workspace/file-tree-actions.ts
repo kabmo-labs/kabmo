@@ -51,6 +51,16 @@ export interface FileActionDeps {
   onCreated?: (entry: CreatedEntry) => void;
   /** A row the panel just renamed, moved locally — same reason as `onCreated`. */
   onRenamed?: (fromPath: string, toPath: string) => void;
+  /**
+   * Split this row's collapsed chain into one row per directory.
+   *
+   * Present only where an unfold makes sense (a folder whose label names more
+   * than one directory); the menu row that calls it is drawn from the same
+   * condition, so a menu never offers an action the panel cannot perform.
+   */
+  onUnfold?: () => void;
+  /** Fold this row back into the one chain row it is listed as. */
+  onFold?: () => void;
   /** The panel's clipboard: Cut/Copy fill it, Paste reads it. */
   clipboard: FileClipboard;
   /** Whether this row is a folder — what Cut/Copy/Paste need to name their target. */
@@ -80,6 +90,14 @@ export interface FileActions {
   busy: boolean;
   /** Label of the row's Paste action, or null when a paste cannot land here. */
   pasteLabel: string | null;
+  /**
+   * True when the row's label names more than one directory — a collapsed
+   * chain, whose inner levels are not rows and therefore not renameable until
+   * it is unfolded.
+   */
+  chainLabel: boolean;
+  /** True when this row is an unfolded chain's outermost level, so it can fold. */
+  foldable: boolean;
   /** The fetcher's own state/data, for the history modal. */
   fetcherState: string;
   fetcherData: FsActionResponse | undefined;
@@ -93,7 +111,7 @@ export interface FileActions {
   closeHistory: () => void;
 }
 
-export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCreated, onRenamed, clipboard, isFolder }: FileActionDeps): FileActions {
+export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCreated, onRenamed, onUnfold, onFold, clipboard, isFolder }: FileActionDeps): FileActions {
   const actionFetcher = useFetcher<FsActionResponse>();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -212,6 +230,10 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
     } else if (actionType === 'rename') {
       setRenameValue(file.path);
       setShowRenameModal(true);
+    } else if (actionType === 'unfold') {
+      onUnfold?.();
+    } else if (actionType === 'fold') {
+      onFold?.();
     } else if (actionType === 'new_file') {
       create.openDialog('file');
     } else if (actionType === 'new_folder') {
@@ -264,6 +286,8 @@ export function useFileActions({ file, diff, onOpenFile, onActionComplete, onCre
     renameError,
     busy: actionFetcher.state !== 'idle' || create.busy || clipboard.busy,
     pasteLabel,
+    chainLabel: onUnfold !== undefined,
+    foldable: onFold !== undefined,
     fetcherState: actionFetcher.state,
     fetcherData: actionFetcher.data,
     handleAction,

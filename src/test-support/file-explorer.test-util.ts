@@ -27,6 +27,7 @@ import { installDomGlobals, pristineWebSocket, restoreDomGlobals } from '@/test-
 import type { TopicResolver } from '@/server/lib/realtime/hub.server';
 import type { GitStatusPayload } from '@/server/lib/fs/git-status-read';
 import { diskHas, entriesOf, moveOnDisk, writeToDisk, type Disk } from '@/test-support/file-explorer-disk.test-util';
+import { fireDrag, rowElementFor, settleDrag, transferOf } from '@/test-support/file-explorer-drag.test-util';
 
 export type { Disk } from '@/test-support/file-explorer-disk.test-util';
 
@@ -80,12 +81,30 @@ export interface FileExplorerHarness {
   clickMenuRow: (label: string) => Promise<void>;
   /** Drag `from` onto `to` (or the background when null): dragstart, dragover, drop. */
   dragRow: (from: string, to: string | null) => Promise<void>;
+  /**
+   * Hover `over` with `from` in flight and stop there.
+   *
+   * A drop is not always the whole story: a hovered collapsed chain UNFOLDS, and
+   * the level it exposed is a row only once that has happened — which is what a
+   * drag to `dev/src/main` inside the row labelled `dev/src/main/code` needs.
+   */
+  hoverRow: (from: string, over: string) => Promise<void>;
+  /** Let go of a drag started by `hoverRow`, without dropping it anywhere. */
+  releaseDrag: (from: string) => Promise<void>;
+  /** Start a drag and leave it in flight over nothing. */
+  startDrag: (from: string) => Promise<void>;
+  /** Drop the drag in flight on the panel background — the listing root. */
+  dropOnBackground: () => Promise<void>;
+  /** The element carrying a row's drag handlers, by the row's visible text. */
+  rowFor: (name: string) => HTMLElement;
   /** DOM globals for the whole file (call from beforeAll / afterAll). */
   install: () => void;
   restore: () => void;
 }
 
 export function createFileExplorerHarness(): FileExplorerHarness {
+  /** The transfer of a drag left in flight by `startDrag`. */
+  let inFlight = transferOf();
   const harness: FileExplorerHarness = {
     disk: {},
     dirReads: [],
@@ -295,53 +314,34 @@ export function createFileExplorerHarness(): FileExplorerHarness {
       for (let i = 0; i < 5; i += 1) await act(async () => {});
     },
     async dragRow(from, to) {
-      const rowFor = (name: string) => {
-        // The row itself is the element carrying the drag handlers: the deepest
-        // `div` whose own text is exactly the name is the row's inner content,
-        // and its parent is the handler-carrying row.
-        const matches = [...harness.container.querySelectorAll('div')].filter((el) => el.textContent?.trim() === name);
-        const inner = matches[matches.length - 1];
-        if (!inner) throw new Error(`no row named ${name}`);
-        return (inner.closest('[draggable]') as HTMLElement | null) ?? (inner.parentElement as HTMLElement);
-      };
-      const source = rowFor(from);
-      const target = to === null ? harness.panelBackground() : rowFor(to);
-      // A real `DataTransfer` does not exist in happy-dom, and the handlers read
-      // only `setData`/`dropEffect`, so a minimal stand-in is what the event
-      // carries. Without it `handleDragStart` would throw on `setData`.
-      const transfer = {
-        data: {} as Record<string, string>,
-        effectAllowed: '',
-        dropEffect: '',
-        types: [] as string[],
-        setData(type: string, value: string) {
-          this.data[type] = value;
-        },
-        getData(type: string) {
-          return this.data[type] ?? '';
-        },
-      };
-      const fire = (element: HTMLElement, type: string) => {
-        const event = new window.Event(type, { bubbles: true, cancelable: true });
-        Object.defineProperty(event, 'dataTransfer', { value: transfer });
-        element.dispatchEvent(event);
-        return event;
-      };
-      await act(async () => {
-        fire(source, 'dragstart');
-      });
-      for (let i = 0; i < 3; i += 1) await act(async () => {});
-      await act(async () => {
-        fire(target, 'dragover');
-      });
-      for (let i = 0; i < 3; i += 1) await act(async () => {});
-      await act(async () => {
-        fire(target, 'drop');
-      });
-      await act(async () => {
-        fire(source, 'dragend');
-      });
-      for (let i = 0; i < 20; i += 1) await act(async () => {});
+      const source = harness.rowFor(from);
+      const target = to === null ? harness.panelBackground() : harness.rowFor(to);
+      const transfer = transferOf();
+      await settleDrag(() => fireDrag(source, 'dragstart', transfer), 3);
+      await settleDrag(() => fireDrag(target, 'dragover', transfer), 3);
+      await settleDrag(() => fireDrag(target, 'drop', transfer), 0);
+      await settleDrag(() => fireDrag(source, 'dragend', transfer), 20);
+    },
+    async hoverRow(from, over) {
+      inFlight = transferOf();
+      await settleDrag(() => fireDrag(harness.rowFor(from), 'dragstart', inFlight), 3);
+      await settleDrag(() => fireDrag(harness.rowFor(over), 'dragover', inFlight), 5);
+    },
+    async releaseDrag(from) {
+      await settleDrag(() => fireDrag(harness.rowFor(from), 'dragend', inFlight), 20);
+    },
+    async startDrag(from) {
+      inFlight = transferOf();
+      await settleDrag(() => fireDrag(harness.rowFor(from), 'dragstart', inFlight), 3);
+    },
+    async dropOnBackground() {
+      const background = harness.panelBackground();
+      await settleDrag(() => fireDrag(background, 'dragenter', inFlight), 3);
+      await settleDrag(() => fireDrag(background, 'dragover', inFlight), 3);
+      await settleDrag(() => fireDrag(background, 'drop', inFlight), 20);
+    },
+    rowFor(name: string) {
+      return rowElementFor(harness.container, name);
     },
   };
   return harness;

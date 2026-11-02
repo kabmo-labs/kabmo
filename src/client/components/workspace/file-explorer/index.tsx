@@ -11,6 +11,7 @@ import { useFileListing } from '@/client/hooks/workspace/file-listing';
 import { useFileCreate } from '@/client/hooks/workspace/file-create';
 import { useFileClipboard, type ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
 import { useFileTreeEdits } from '@/client/hooks/workspace/file-tree-edits';
+import { useUnfoldedChains } from '@/client/hooks/workspace/unfolded-chains';
 import { filterFileTree } from '@/client/components/workspace/file-explorer/filter';
 import { useRepoList, useRepoScope } from '@/client/hooks/workspace/repo-scope';
 import { useRealtimeTopic } from '@/client/hooks/ui/realtime';
@@ -18,6 +19,8 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { useTouchDevice } from '@/client/hooks/ui/touch-device';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { fsTopic } from '@/shared/lib/realtime/protocol';
+import { unfoldChains } from '@/shared/lib/fs/folder-chain';
+import { useRootDropTarget } from '@/client/hooks/workspace/root-drop-target';
 
 export function FileExplorer({ className = '', enabled = true, rootPath, onOpenFile, refreshKey = 0, onRefresh }: { className?: string, enabled?: boolean, rootPath?: string, onOpenFile?: (file: any) => void, refreshKey?: number, onRefresh?: () => void }) {
   const [searchQuery, setSearchQuery] = useSessionState<string>('files.searchQuery', '');
@@ -117,7 +120,14 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
     setExpandedPaths,
     setStoredExpandedPaths,
     reload: refresh,
+    onMoved: (fromPath, toPath) => rekeyUnfold(fromPath, toPath),
   });
+
+  // A collapsed chain row is ONE row standing for several directories, so the
+  // levels inside its label have no row to drop on (a drop lands in the deepest
+  // directory) and no row to rename. Unfolding — on a hovering drag, or from the
+  // row's own menu — turns each level back into a row.
+  const { unfolded, unfold, fold, rekey: rekeyUnfold } = useUnfoldedChains({ scope: listing.scope, setExpandedPaths, setStoredExpandedPaths });
 
   // One clipboard for the whole tree, owned here and passed down: a
   // subscription per row would be hundreds of listeners for a value that
@@ -156,11 +166,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
    */
   const [dragging, setDragging] = useState<ClipboardTarget | null>(null);
 
-  /**
-   * Whether the listing root may accept the drag in flight — the background is
-   * a drop target like any other, and the rule is the same one a row uses.
-   */
-  const rootAcceptsDrop = Boolean(dragging) && clipboard.moveRefusalFor(dragging!, rootTarget) === null;
+  const root = useRootDropTarget({ dragging, clipboard, target: rootTarget });
 
   // The root's own "New File": the panel background is the one target whose
   // create belongs at the tree's top, and it is the only action the root menu
@@ -186,7 +192,8 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
 
   const tree = listing.files;
 
-  const files = filterFileTree(tree, searchQuery);
+  const projected = unfoldChains(tree, unfolded);
+  const files = filterFileTree(projected.nodes, searchQuery);
   // The button spins for this panel's own read OR a topic push: the server
   // republishes `fs:` on every tool call, so the tree moved with nothing on
   // screen saying so otherwise.
@@ -210,7 +217,7 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
       <div
         className={`flex-1 scrollbar-overlay-container p-2 font-mono text-[11px] text-ink/80 ${
           touch ? 'file-tree-touch' : ''
-        } ${rootAcceptsDrop ? 'bg-info/[0.06]' : ''}`}
+        } ${root.highlighted ? 'bg-info/[0.06]' : ''}`}
         onContextMenu={(e) => {
           // The panel's own background. A row stops propagation before this
           // runs, so this handler only ever sees a right-click that named NO
@@ -218,19 +225,10 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
           e.preventDefault();
           setRootMenu({ x: e.clientX, y: e.clientY });
         }}
-        onDragOver={(e) => {
-          // The background is the LISTING ROOT's drop target — the only way to
-          // move an entry back out of a folder, since a drop on a file lands in
-          // that file's own directory instead.
-          if (!rootAcceptsDrop) return;
-          e.preventDefault();
-          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        }}
-        onDrop={(e) => {
-          if (!rootAcceptsDrop) return;
-          e.preventDefault();
-          clipboard.move(dragging!, rootTarget);
-        }}
+        onDragEnter={root.onDragEnter}
+        onDragLeave={root.onDragLeave}
+        onDragOver={root.onDragOver}
+        onDrop={root.onDrop}
       >
         {listing.isLoading && files.length === 0 ? (
           <div className="p-4 text-center text-ink/40">
@@ -265,6 +263,9 @@ export function FileExplorer({ className = '', enabled = true, rootPath, onOpenF
                 if (!dragging) return;
                 clipboard.move(dragging, target);
               }}
+              onUnfold={unfold}
+              onFold={fold}
+              foldRoots={projected.roots}
               touch={touch}
             />
           ))

@@ -132,6 +132,8 @@ interface RenameModalProps {
   isFolder: boolean;
   renameValue: string;
   originalPath: string;
+  /** The row's label, when it differs from the path (a collapsed chain). */
+  displayName?: string;
   /** The server's refusal (an existing destination, a bad path), shown inline. */
   error?: string | null;
   isLoading: boolean;
@@ -148,8 +150,13 @@ interface RenameModalProps {
  * `lib/deep/a.ts` both renames the file and moves it, and its parents are
  * created on the way. A leaf-only field would have made that a create-then-
  * delete, which is not a rename.
+ *
+ * A collapsed chain row is LABELLED `dev/src/main/code` while its path is the
+ * deepest directory only, so the field shows the path and the dialog says which
+ * of the two it renames — typing the label would otherwise move the deepest
+ * directory out and leave the rest of the chain behind.
  */
-export function FileRenameModal({ isFolder, renameValue, originalPath, error, isLoading, onChange, onCancel, onSubmit }: RenameModalProps) {
+export function FileRenameModal({ isFolder, renameValue, originalPath, displayName, error, isLoading, onChange, onCancel, onSubmit }: RenameModalProps) {
   return createPortal(
     <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
       <form onSubmit={onSubmit} className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
@@ -167,6 +174,13 @@ export function FileRenameModal({ isFolder, renameValue, originalPath, error, is
         <p className="text-[10px] text-ink/40 mb-2">
           Paths are relative to the tree — <span className="font-mono">lib/deep/name.ts</span> moves it too.
         </p>
+        {displayName && (
+          <p className="text-[11px] text-ink/50 mb-2">
+            The row is <span className="font-mono">{displayName}</span>; this renames{' '}
+            <span className="font-mono">{originalPath}</span>. Use{' '}
+            <span className="font-mono">Unfold Folders</span> to rename a folder inside the chain.
+          </p>
+        )}
         {error && <p className="text-[11px] text-error mb-2">{error}</p>}
         <div className="flex justify-end space-x-2">
           <button 

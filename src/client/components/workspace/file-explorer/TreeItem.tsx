@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight } from 'lucide-preact';
-import { FileIcon } from '@/client/components/common/file-icon';
+import { TreeRowLabel } from '@/client/components/workspace/file-explorer/RowLabel';
 import { FileContextMenu } from '@/client/components/workspace/file-explorer/ContextMenu';
 import { FileCreateModal, FileDeleteModal, FileHistoryModal, FileRenameModal } from '@/client/components/workspace/file-explorer/Modals';
 import { getGitStatusInfo, type FolderGitStatusInfo } from '@/shared/lib/fs/git-status';
+import { isChainRow } from '@/shared/lib/fs/folder-chain';
 import { useFileActions } from '@/client/hooks/workspace/file-tree-actions';
 import { useFileRowDrag } from '@/client/hooks/workspace/file-row-drag';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useLongPress } from '@/client/hooks/ui/long-press';
 import type { FileClipboard, ClipboardTarget } from '@/client/hooks/workspace/file-clipboard';
+import type { FileTreeDragProps } from '@/client/components/workspace/file-explorer/drag-props';
 import type { GitChange } from '@/shared/types/git';
 
-interface FileTreeItemProps {
+interface FileTreeItemProps extends FileTreeDragProps {
   file: any;
   rootPath?: string;
   /** Absolute base dir of the listing (server-reported `root`), anchors Copy Path. */
@@ -31,12 +32,6 @@ interface FileTreeItemProps {
   gitFolderMap?: Map<string, FolderGitStatusInfo>;
   /** The panel's clipboard — one instance for the whole tree, passed down. */
   clipboard: FileClipboard;
-  /** The row currently being dragged, or null. Panel state: see `FileTreeItem`. */
-  dragging: ClipboardTarget | null;
-  /** A drag of this row started / ended / was dropped on `target`. */
-  onDragStart: (target: ClipboardTarget) => void;
-  onDragEnd: () => void;
-  onDropOn: (target: ClipboardTarget) => void;
   /**
    * True on a device typed into with a finger. A row is a drag SOURCE, and on
    * touch a long press starts a native drag of the whole panel — the reported
@@ -87,6 +82,9 @@ export function FileTreeItem({
   onDragStart,
   onDragEnd,
   onDropOn,
+  onUnfold,
+  onFold,
+  foldRoots,
   touch = false,
 }: FileTreeItemProps) {
   const isFolder = file.type === 'folder';
@@ -126,6 +124,21 @@ export function FileTreeItem({
     }
   }, [isFolder, actualIsOpen, file.children, file.path, onLoadChildren, isLoadingChildren, attempted]);
 
+  /**
+   * The row as a drag source and a drop target.
+   *
+   * The row's own identity is what both roles need: a drop on a FILE lands in
+   * that file's directory — the same rule a paste obeys (`pasteTargetDir`) — so
+   * a drop beside a file is a real destination rather than an invisible one.
+   * The handlers themselves live in the hook, which owns the two platform facts
+   * they depend on (see `useFileRowDrag`).
+   */
+  const target: ClipboardTarget = {
+    path: file.path,
+    name: file.name,
+    kind: isFolder ? 'folder' : 'file',
+  };
+
   const actions = useFileActions({
     file: { path: file.path, name: file.name, basePath, rootPath, repo },
     diff: { staged: gitChange?.staged || (gitChange?.status ? gitChange.status[0] !== ' ' && gitChange.status[0] !== '?' : false), status: gitStatusInfo?.charStatus },
@@ -133,6 +146,13 @@ export function FileTreeItem({
     onActionComplete,
     onCreated,
     onRenamed,
+    // A collapsed chain row's label names directories that are not rows, so an
+    // unfold is the only way to reach the ones inside it.
+    onUnfold: onUnfold && isChainRow({ type: isFolder ? 'folder' : 'file', name: file.name }) ? () => onUnfold(target) : undefined,
+    // An UNFOLDED chain draws `dev` → `src` → `main` → `code`, and folding is
+    // asked for on the row that starts it: the outermost level named by the
+    // chain the listing actually folded.
+    onFold: onFold && foldRoots?.has(file.path) ? () => onFold(foldRoots.get(file.path)!) : undefined,
     clipboard,
     isFolder,
   });
@@ -182,72 +202,36 @@ export function FileTreeItem({
     actions.openContextMenu(e.clientX, e.clientY);
   };
 
-  /**
-   * The row as a drag source and a drop target.
-   *
-   * The row's own identity is what both roles need: a drop on a FILE lands in
-   * that file's directory — the same rule a paste obeys (`pasteTargetDir`) — so
-   * a drop beside a file is a real destination rather than an invisible one.
-   * The handlers themselves live in the hook, which owns the two platform facts
-   * they depend on (see `useFileRowDrag`).
-   */
-  const target: ClipboardTarget = {
-    path: file.path,
-    name: file.name,
-    kind: isFolder ? 'folder' : 'file',
-  };
-  const drag = useFileRowDrag({ target, dragging, clipboard, onDragStart, onDragEnd, onDropOn });
+  const drag = useFileRowDrag({ target, dragging, clipboard, onDragStart, onDragEnd, onDropOn, onHoverAccept: onUnfold });
 
   return (
     <div>
       <div
         className={`flex items-center space-x-1.5 py-1 px-2 hover:bg-ink/5 cursor-pointer rounded group select-none ${
           drag.isDragging ? 'opacity-40' : ''
-        } ${drag.acceptsDrop ? 'bg-info/10 ring-1 ring-info/40 ring-inset' : ''}`}
+        } ${drag.isDropHovered ? 'bg-info/10 ring-1 ring-info/40 ring-inset' : ''}`}
         draggable={!touch}
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
         onDragStart={drag.onDragStart}
         onDragEnd={drag.onDragEnd}
         onDragOver={drag.onDragOver}
+        onDragLeave={drag.onDragLeave}
         onDrop={drag.onDrop}
         onTouchStart={longPress.onTouchStart}
         onTouchMove={longPress.onTouchMove}
         onTouchEnd={longPress.onTouchEnd}
         onTouchCancel={longPress.onTouchCancel}
       >
-        {isFolder ? (
-          actualIsOpen ? <ChevronDown size={12} className="flex-shrink-0 text-ink/40" /> : <ChevronRight size={12} className="flex-shrink-0 text-ink/40" />
-        ) : (
-          <span className="w-3 flex-shrink-0"></span>
-        )}
-
-        <FileIcon name={file.name} isFolder={isFolder} isOpen={actualIsOpen} size={12} className={`flex-shrink-0${isIgnored ? ' opacity-40' : ''}`} />
-        <span
-          className={`truncate min-w-0 flex-1 ${gitStatusInfo ? gitStatusInfo.colorClass : folderStatus ? folderStatus.colorClass : isIgnored ? 'text-ink/40' : ''}`}
-          title={isIgnored ? `${file.path} — git-ignored` : undefined}
-        >
-          {file.name}
-        </span>
-
-        {gitStatusInfo && (
-          <span
-            className={`font-mono text-[9px] font-bold px-1 rounded flex-shrink-0 ${gitStatusInfo.colorClass}`}
-            title={`Git: ${gitStatusInfo.label}`}
-          >
-            {gitStatusInfo.charStatus}
-          </span>
-        )}
-
-        {folderStatus && (
-          <span
-            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-              folderStatus.hasDeleted ? 'bg-error' :
-              folderStatus.hasModified || folderStatus.hasStaged ? 'bg-info' : 'bg-success'
-            }`}
-            title={`${folderStatus.count} changed file${folderStatus.count > 1 ? 's' : ''}`}
-          />
-        )}
+        <TreeRowLabel
+          name={file.name}
+          path={file.path}
+          isFolder={isFolder}
+          isOpen={actualIsOpen}
+          ignored={isIgnored}
+          gitStatus={gitStatusInfo}
+          folderStatus={folderStatus}
+        />
       </div>
 
       {actualIsOpen && isLoadingChildren && (
@@ -277,6 +261,9 @@ export function FileTreeItem({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               onDropOn={onDropOn}
+              onUnfold={onUnfold}
+              onFold={onFold}
+              foldRoots={foldRoots}
               touch={touch}
             />
           ))}
@@ -290,6 +277,8 @@ export function FileTreeItem({
           isFolder={isFolder}
           hasGitStatus={hasGitStatus}
           pasteLabel={actions.pasteLabel}
+          chainLabel={actions.chainLabel}
+          foldable={actions.foldable}
           busy={actions.busy}
           onAction={actions.handleAction}
         />
@@ -324,6 +313,7 @@ export function FileTreeItem({
           isFolder={isFolder}
           renameValue={actions.renameValue}
           originalPath={file.path}
+          displayName={isChainRow({ type: isFolder ? 'folder' : 'file', name: file.name }) ? file.name : undefined}
           error={actions.renameError}
           isLoading={actions.busy}
           onChange={actions.setRenameValue}

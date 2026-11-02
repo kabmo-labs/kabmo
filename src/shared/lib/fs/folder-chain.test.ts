@@ -22,7 +22,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import type { FsNode } from '@/shared/types';
-import { drawnAncestors, foldSingleChildFolders } from '@/shared/lib/fs/folder-chain';
+import { chainLevelPaths, drawnAncestors, foldSingleChildFolders, unfoldChains } from '@/shared/lib/fs/folder-chain';
 
 const baseNameOf = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
 const file = (path: string): FsNode => ({ name: baseNameOf(path), path, type: 'file' });
@@ -64,6 +64,86 @@ describe('foldSingleChildFolders', () => {
   test('the folded row wears the deepest directory’s ignored flag', () => {
     const tree = [folder('a', [{ name: 'b', path: 'a/b', type: 'folder', ignored: true, children: [] }])];
     expect(foldSingleChildFolders(tree)[0]!.ignored).toBe(true);
+  });
+});
+
+describe('chainLevelPaths', () => {
+  test('the levels a folded row stands for, outermost first', () => {
+    expect(chainLevelPaths('dev/src/main/code', 'dev/src/main/code')).toEqual([
+      'dev',
+      'dev/src',
+      'dev/src/main',
+      'dev/src/main/code',
+    ]);
+    // A chain inside a folder is labelled relative to that folder, so only the
+    // part of the path the label names moves.
+    expect(chainLevelPaths('com/java/app/package', 'java/app/package')).toEqual([
+      'com/java',
+      'com/java/app',
+      'com/java/app/package',
+    ]);
+  });
+
+  test('a row whose label is its own name is not a chain', () => {
+    expect(chainLevelPaths('src/deep', 'deep')).toBeNull();
+    expect(chainLevelPaths('src', 'src')).toBeNull();
+    // A label naming more segments than the path has cannot be a chain.
+    expect(chainLevelPaths('a', 'b/c')).toBeNull();
+  });
+});
+
+describe('unfoldChains', () => {
+  const chain = (): FsNode[] => [{
+    name: 'dev/src/main/code',
+    path: 'dev/src/main/code',
+    type: 'folder',
+    children: [file('dev/src/main/code/a.ts')],
+  }];
+
+  test('a named chain becomes one row per directory, the deepest keeping its children', () => {
+    const { nodes, roots } = unfoldChains(chain(), new Set(['dev/src/main/code']));
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]!.name).toBe('dev');
+    expect(nodes[0]!.path).toBe('dev');
+    expect(nodes[0]!.children?.[0]!.path).toBe('dev/src');
+    expect(nodes[0]!.children?.[0]!.children?.[0]!.path).toBe('dev/src/main');
+    const deepest = nodes[0]!.children![0]!.children![0]!.children![0]!;
+    expect(deepest.name).toBe('code');
+    expect(deepest.path).toBe('dev/src/main/code');
+    // The deepest level is the row that owns the read, so unfolding costs none.
+    expect(deepest.children?.map((node) => node.path)).toEqual(['dev/src/main/code/a.ts']);
+    expect(roots.get('dev')).toBe('dev/src/main/code');
+  });
+
+  test('a chain nothing unfolded keeps its own array and node identities', () => {
+    const tree = chain();
+    const projected = unfoldChains(tree, new Set());
+
+    expect(projected.nodes).toBe(tree);
+    expect(projected.roots.size).toBe(0);
+  });
+
+  test('a plain folder is not unfoldable, even when it is named', () => {
+    const tree = [folder('src', [file('src/a.ts')])];
+    expect(unfoldChains(tree, new Set(['src'])).nodes[0]).toBe(tree[0]);
+  });
+
+  test('a chain nested inside an open branch unfolds in place', () => {
+    // The shape the server lists for `com`: its one child is folded into a row
+    // labelled relative to `com`, whose path is the chain's deepest directory.
+    const tree = [folder('com', [{
+      name: 'java/app',
+      path: 'com/java/app',
+      type: 'folder',
+      children: [file('com/java/app/Main.java')],
+    }])];
+    const { nodes, roots } = unfoldChains(tree, new Set(['com/java/app']));
+
+    expect(nodes[0]!.path).toBe('com');
+    expect(nodes[0]!.children?.[0]!.path).toBe('com/java');
+    expect(nodes[0]!.children?.[0]!.children?.[0]!.path).toBe('com/java/app');
+    expect(roots.get('com/java')).toBe('com/java/app');
   });
 });
 

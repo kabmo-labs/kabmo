@@ -48,13 +48,37 @@ function splitPath(path: string): { dir: string; name: string } {
   return cut === -1 ? { dir: '.', name: path } : { dir: path.slice(0, cut), name: path.slice(cut + 1) };
 }
 
-/** Apply a rename: remove the old entry, write the new one, kind preserved. */
+/**
+ * Apply a rename: remove the old entry, write the new one, kind preserved.
+ *
+ * A FOLDER takes its subtree with it — `fs.rename` moves the directory and
+ * everything under it, and a double that moved only the top entry would let a
+ * spec assert a tree the real route never produces (the reported rename of a
+ * collapsed chain left the levels beneath it behind for exactly that reason).
+ * Every directory the old path owned is rekeyed, and the entry is then placed
+ * the way a create places one.
+ */
 export function moveOnDisk(disk: Disk, fromPath: string, toPath: string): void {
   const from = splitPath(fromPath);
   const source = disk[from.dir];
   const kind = source?.[from.name] === null ? 'folder' : 'file';
   if (source) delete source[from.name];
+  if (kind === 'folder') {
+    const children = Object.keys(disk)
+      .filter((key) => key === fromPath || key.startsWith(`${fromPath}/`))
+      .map((key) => [key, disk[key]!] as const);
+    for (const [key] of children) delete disk[key];
+    for (const [key, listing] of children) disk[`${toPath}${key.slice(fromPath.length)}`] = listing;
+  }
   const to = splitPath(toPath);
+  // The real route creates the destination's parents (`mkdir -p`), which is
+  // what makes a rename INTO a new nested folder work.
+  let parent = '';
+  for (const segment of to.dir === '.' ? [] : to.dir.split('/')) {
+    listingOf(disk, parent || '.')[segment] = null;
+    parent = parent ? `${parent}/${segment}` : segment;
+    listingOf(disk, parent);
+  }
   writeToDisk(disk, to.dir, to.name, kind);
 }
 

@@ -35,6 +35,14 @@ export interface FileTreeEditDeps {
    * the only honest way to learn where the row went.
    */
   reload: () => void;
+  /**
+   * A rename landed, in the panel's own coordinates.
+   *
+   * The listing re-keys its expansion set itself; this is for the OTHER
+   * per-path state a rename has to move with the row — the panel's unfolded
+   * chains. Absent means "nothing else remembers a path".
+   */
+  onMoved?: (fromPath: string, toPath: string) => void;
 }
 
 export interface FileTreeEdits {
@@ -49,6 +57,7 @@ export function useFileTreeEdits({
   setExpandedPaths,
   setStoredExpandedPaths,
   reload,
+  onMoved,
 }: FileTreeEditDeps): FileTreeEdits {
   /**
    * Open every folder row that leads to `path`.
@@ -82,22 +91,30 @@ export function useFileTreeEdits({
    * A folder's descendants and every open branch beneath it carry its path as a
    * prefix, so the expansion set is rekeyed in the same step — an open `src`
    * renamed to `lib` must stay open as `lib`, not collapse.
+   *
+   * The re-key runs BEFORE the local placement is attempted and whatever it
+   * answers: an unfolded chain row's inner levels are not in the tree's own
+   * coordinates, so a rename of one of them answers "not in this tree" and
+   * falls back to a reload — and the paths every other holder of this state
+   * remembers (the expansion set, the panel's unfolded chains) have still
+   * moved.
    */
   const moveRenamed = useCallback((fromPath: string, toPath: string) => {
-    const tree = listing.moveEntry(fromPath, toPath);
-    if (!tree) {
-      reload();
-      return;
-    }
+    onMoved?.(fromPath, toPath);
     setExpandedPaths((prev) => {
       const next = rekeyExpansion(prev, fromPath, toPath);
       setStoredExpandedPaths(Array.from(next));
       return next;
     });
+    const tree = listing.moveEntry(fromPath, toPath);
+    if (!tree) {
+      reload();
+      return;
+    }
     // A rename INTO a new folder (`a.ts` → `nested/a.ts`) has the same problem a
     // nested create does: the destination folder is one nobody has opened.
     reveal(toPath, tree);
-  }, [listing, reload, reveal, setExpandedPaths, setStoredExpandedPaths]);
+  }, [listing, reload, reveal, setExpandedPaths, setStoredExpandedPaths, onMoved]);
 
   return { insertCreated, moveRenamed };
 }

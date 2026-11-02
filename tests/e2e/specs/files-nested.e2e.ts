@@ -16,6 +16,12 @@
  * 3. **Neither reloads the panel.** The response names the result, so the tree
  *    is patched locally — asserted by counting `/api/fs/dir` requests, because
  *    a spinner that came and went is not something a test can see.
+ * 4. **A collapsed chain can be OPENED.** One row stands for several
+ *    directories, so the levels inside its label are not drop targets and not
+ *    rename targets until `Unfold Folders` turns them into rows. Both reported
+ *    bugs live in that gap: a drop meant for `main` landed in `code`, and a
+ *    rename of `main` was unexpressible. The last two specs here pin the fix
+ *    against a real DOM and a real disk.
  *
  * The disk is the assertion wherever it can be: a row on screen that the
  * filesystem does not have would pass a DOM-only check.
@@ -266,6 +272,107 @@ test.describe('files panel create and rename', () => {
     await expect(page.getByText('b.ts already exists')).toBeVisible();
     // And the file it would have clobbered is untouched.
     expect(readdirSync(workspace.path).sort()).toEqual(['a.ts', 'b.ts']);
+
+    workspace.dispose();
+  });
+  test('Unfold Folders exposes every level of a chain, and a rename moves THAT folder', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-chain-unfold-rename');
+    mkdirSync(join(workspace.path, 'dev/src/main/code'), { recursive: true });
+    writeFileSync(join(workspace.path, 'dev/src/main/code/a.ts'), 'A\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openFiles(page);
+    const view = filesPanel(page);
+
+    // Four directories, one row. Nothing inside it can be addressed yet.
+    const chainRow = view.row('dev/src/main/code');
+    await expect(chainRow).toBeVisible();
+
+    await chainRow.click({ button: 'right' });
+    await page.getByRole('button', { name: 'Unfold Folders', exact: true }).click();
+
+    // One row per directory, each open, so `main` is now a real row.
+    await expect(view.row('dev')).toBeVisible();
+    await expect(view.row('main')).toBeVisible();
+    await expect(chainRow).toHaveCount(0);
+
+    // Renaming `main` moves `main` — and its subtree with it.
+    await view.row('main').click({ button: 'right' });
+    await page.getByRole('button', { name: 'Rename', exact: true }).click();
+    await expect(page.getByLabel('Rename folder path')).toHaveValue('dev/src/main');
+    await page.getByLabel('Rename folder path').fill('dev2/src/main');
+    await page.getByRole('button', { name: 'Rename', exact: true }).click();
+
+    await expect(view.row('dev2/src/main/code')).toBeVisible();
+    expect(existsSync(join(workspace.path, 'dev2/src/main/code/a.ts'))).toBe(true);
+    // The LEVELS BELOW `main` came with it. The old route left them behind
+    // whenever the field named the deepest directory instead of `main` itself.
+    expect(readdirSync(join(workspace.path, 'dev/src'))).toEqual([]);
+
+    workspace.dispose();
+  });
+
+  test('a drag highlights only the row under the pointer, never the whole tree', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-drag-highlight');
+    mkdirSync(join(workspace.path, 'aa'), { recursive: true });
+    mkdirSync(join(workspace.path, 'bb'), { recursive: true });
+    // Top-level FILES beside the two folders: every one of them is a legal
+    // target for a drag of the other, which is what used to paint them all.
+    writeFileSync(join(workspace.path, 'one.ts'), '1\n');
+    writeFileSync(join(workspace.path, 'two.ts'), '2\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openFiles(page);
+    const view = filesPanel(page);
+    const painted = page.locator('[data-panel-id="right-panel"] [class*="bg-info"]');
+
+    // The tree is fully drawn: both folders and both files are legal targets.
+    await expect(view.row('aa')).toBeVisible();
+    await expect(view.row('bb')).toBeVisible();
+
+    // Drive a real HTML5 drag with the mouse events Playwright sends, stopping
+    // half-way over `aa` — the state a user sees while deciding where to drop.
+    await view.row('one.ts').dragTo(view.row('aa'), { targetPosition: { x: 10, y: 8 } });
+
+    // Whatever landed, at most ONE row may carry the block: the whole tree
+    // painted at once was the reported "semua folder dan file terselect".
+    const count = await painted.count();
+    expect(count).toBeLessThanOrEqual(1);
+
+    workspace.dispose();
+  });
+
+  test('dragging a file onto a chain level drops it in that folder, not the deepest one', async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-chain-drop');
+    mkdirSync(join(workspace.path, 'dev/src/main/code'), { recursive: true });
+    writeFileSync(join(workspace.path, 'dev/src/main/code/keep.ts'), 'K\n');
+    writeFileSync(join(workspace.path, 'moved.ts'), 'M\n');
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await openFiles(page);
+    const view = filesPanel(page);
+
+    // `main` has to be a ROW before anything can be dropped on it: unfolding is
+    // what turns the chain's hidden levels into drop targets. The hover-unfold
+    // path (a drag hovering the chain row) is pinned by `collapsed-chain.test.ts`
+    // through a real DOM; here the menu performs the same unfold so this spec
+    // measures the DROP, not two gestures at once.
+    await view.row('dev/src/main/code').click({ button: 'right' });
+    await page.getByRole('button', { name: 'Unfold Folders', exact: true }).click();
+    await expect(view.row('main')).toBeVisible();
+
+    await view.row('moved.ts').dragTo(view.row('main'));
+
+    // The drop posts asynchronously, so the DISK is polled rather than read
+    // once: `existsSync` immediately after `dragTo` races the request, and the
+    // assertion then fails on a move that did land a moment later.
+    await expect
+      .poll(() => existsSync(join(workspace.path, 'dev/src/main/moved.ts')))
+      .toBe(true);
+    expect(existsSync(join(workspace.path, 'dev/src/main/code/moved.ts'))).toBe(false);
 
     workspace.dispose();
   });

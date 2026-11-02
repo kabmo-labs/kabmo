@@ -29,7 +29,7 @@
 
 import { createPortal } from 'preact/compat';
 import type { ReactNode, RefObject } from 'preact/compat';
-import { ClipboardPaste, Copy, CopyPlus, Edit2, ExternalLink, Eye, FilePlus, FolderPlus, GitCompare, History, Scissors, Trash2 } from 'lucide-preact';
+import { ChevronDown, ChevronRight, ClipboardPaste, Copy, CopyPlus, Edit2, ExternalLink, Eye, FilePlus, FolderPlus, GitCompare, History, Scissors, Trash2 } from 'lucide-preact';
 
 interface ContextMenuProps {
   x: number;
@@ -38,6 +38,10 @@ interface ContextMenuProps {
   hasGitStatus?: boolean;
   /** Label of the Paste row, or null when a paste cannot land on this target. */
   pasteLabel: string | null;
+  /** True when this row's label names more than one directory (a chain). */
+  chainLabel?: boolean;
+  /** True when this row is an unfolded chain's outermost level. */
+  foldable?: boolean;
   /** True while a transfer is in flight; the acting rows disable on it. */
   busy: boolean;
   onAction: (actionType: string) => void;
@@ -55,13 +59,22 @@ const SEPARATOR_PX = 9;
 const PADDING_PX = 8;
 
 /** The rows this target offers, in order — the menu's single source of truth. */
-function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLabel: string | null; busy: boolean }): MenuEntry[] {
-  const { isFolder, hasGitStatus, pasteLabel, busy } = options;
+function buildRows(options: { isFolder: boolean; hasGitStatus?: boolean; pasteLabel: string | null; busy: boolean; chainLabel?: boolean; foldable?: boolean }): MenuEntry[] {
+  const { isFolder, hasGitStatus, pasteLabel, busy, chainLabel, foldable } = options;
   const entries: MenuEntry[] = [];
 
   if (isFolder) {
     entries.push({ kind: 'item', id: 'new_file', label: 'New File', icon: <FilePlus size={13} className="text-ink/60" /> });
     entries.push({ kind: 'item', id: 'new_folder', label: 'New Folder', icon: <FolderPlus size={13} className="text-ink/60" /> });
+    // A row labelled `dev/src/main/code` is one row standing for four
+    // directories: the levels inside it cannot be dropped on or renamed until
+    // they are rows, and this is the explicit way to make them so.
+    if (chainLabel) {
+      entries.push({ kind: 'item', id: 'unfold', label: 'Unfold Folders', icon: <ChevronDown size={13} className="text-ink/60" /> });
+    }
+    if (foldable) {
+      entries.push({ kind: 'item', id: 'fold', label: 'Fold Folders', icon: <ChevronRight size={13} className="text-ink/60" /> });
+    }
     entries.push({ kind: 'separator' });
   } else {
     entries.push({ kind: 'item', id: 'view', label: 'View', icon: <Eye size={13} className="text-ink/60" /> });
@@ -100,9 +113,9 @@ function menuHeightOf(entries: MenuEntry[]): number {
   return items * ROW_PX + separators * SEPARATOR_PX + PADDING_PX;
 }
 
-export function FileContextMenu({ x, y, isFolder, hasGitStatus, pasteLabel, busy, onAction, menuRef }: ContextMenuProps) {
+export function FileContextMenu({ x, y, isFolder, hasGitStatus, pasteLabel, chainLabel, foldable, busy, onAction, menuRef }: ContextMenuProps) {
   const menuWidth = 190;
-  const entries = buildRows({ isFolder, hasGitStatus, pasteLabel, busy });
+  const entries = buildRows({ isFolder, hasGitStatus, pasteLabel, busy, chainLabel, foldable });
   const menuHeight = menuHeightOf(entries);
 
   const posX = typeof window !== 'undefined' ? Math.max(10, Math.min(x, window.innerWidth - menuWidth - 12)) : x;
