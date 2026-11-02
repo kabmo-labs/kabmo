@@ -81,6 +81,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   private var pendingBootURL: String?
   /// Strong reference to the message handler (the content controller's is weak).
   private var bridgeHandler: BridgeHandler?
+  /// Same rule for the upload-`accept` relay: a temporary handler is
+  /// deallocated before the first click and every report goes nowhere.
+  private var uploadRelayHandler: UploadAcceptRelay?
   private var splash: SplashView?
   /// The deferred quit: stop every child server, then answer AppKit.
   ///
@@ -113,6 +116,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// `applicationDidFinishLaunching` on a cold start — and drained on every
   /// load finish, because that is the first moment a page can answer.
   private let openedPaths = OpenPathQueue()
+  /// The `accept` of the upload control that was last clicked.
+  ///
+  /// `WKUIDelegate`'s `runOpenPanel` is told the PARAMETERS of the control but
+  /// not which attributes it carried, so the page reports `accept` on a capture
+  /// click (see `uploadAcceptScript`) and the delegate reads it back here.
+  private let uploadAccept = UploadAcceptStore()
+  /// The `WKUIDelegate`: the file panel. Built in `buildWindow`, when the window
+  /// it presents over exists.
+  private var uploadPanels: UploadPanelDelegate?
   /// True once a page has finished a load, so a flush is worth attempting.
   private var pageReady = false
 
@@ -253,6 +265,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     if let bridgeHandler {
       controller.add(bridgeHandler, name: "kabmo")
     }
+    // The upload control's `accept`, reported on a capture click. WebKit's
+    // `runOpenPanel` names no element, so this is how the panel learns the
+    // filter the page asked for; without it a single-file icon field and a
+    // multi-file attach field would be offered the same panel.
+    controller.addUserScript(
+      WKUserScript(
+        source: uploadAcceptScript,
+        injectionTime: .atDocumentStart,
+        forMainFrameOnly: false
+      )
+    )
+    let uploadRelay = UploadAcceptRelay(store: uploadAccept)
+    uploadRelayHandler = uploadRelay
+    controller.add(uploadRelay, name: uploadAcceptMessageName)
     configuration.userContentController = controller
     // The page is a live console: it needs its own cookies per server, and a
     // non-persistent store would drop the login on every relaunch.
@@ -262,6 +288,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     webView = DropWebView(frame: rect, configuration: configuration)
     webView.autoresizingMask = [.width, .height]
     webView.navigationDelegate = self
+    // A web view with no `uiDelegate` answers EVERY `<input type="file">` click
+    // as Cancel — WebKit documents exactly that. Both the composer's attach
+    // button and the project icon's upload were dead in the desktop window and
+    // alive in a browser tab, which is why this went unnoticed.
+    let panels = UploadPanelDelegate(store: uploadAccept, window: window)
+    uploadPanels = panels
+    webView.uiDelegate = panels
     // The page draws the title bar, so it must reach the window's top edge.
     webView.setValue(false, forKey: "drawsBackground")
 

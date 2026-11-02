@@ -26,7 +26,7 @@ import android.webkit.WebViewClient
  */
 class KabmoChromeClient(
     private val activity: Activity,
-    private val onFileChooser: (ValueCallback<Array<Uri>>) -> Unit,
+    private val onFileChooser: (ValueCallback<Array<Uri>>, FileChooserParams) -> Unit,
     /** The main document's own progress, 0–100. */
     private val onProgress: (Int) -> Unit = {},
 ) : WebChromeClient() {
@@ -101,7 +101,10 @@ class KabmoChromeClient(
         filePathCallback: ValueCallback<Array<Uri>>,
         fileChooserParams: FileChooserParams,
     ): Boolean {
-        onFileChooser(filePathCallback)
+        // The PARAMS travel: they carry the control's `accept` list and whether
+        // it takes several files, which is what the picker must be opened with.
+        // Dropping them opened every picker as `*/*` with multi-select.
+        onFileChooser(filePathCallback, fileChooserParams)
         return true
     }
 

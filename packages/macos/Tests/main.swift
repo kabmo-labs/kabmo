@@ -610,6 +610,8 @@ shellUpdateCases()
 // The paths a drop carries, which is the only route a WebKit page has to them.
 droppedPathsCases()
 openPathsCases()
+// The panel behind every `<input type="file">`, which WebKit otherwise cancels.
+filePanelCases()
 WebProcessRecoveryTests.run()
 
 print("\n\(checks - failures)/\(checks) checks passed")

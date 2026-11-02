@@ -21,6 +21,8 @@
 import AppKit
 import WebKit
 
+import KabmoDesktop
+
 /// What the shell reports about itself, once, before the page asks anything.
 struct DesktopInfo: Codable {
   let platform: String
@@ -45,6 +47,29 @@ protocol ShellCommandHost: AnyObject {
   func handle(method: String, params: [String: Any]) async throws -> Any?
   func navigate(to url: String)
 }
+
+/**
+ Records the `accept` of the upload control that was clicked.
+
+ One message and no reply: the page posts the attribute on a capture click, and
+ `runOpenPanel` — which WebKit calls with the element's two booleans but not its
+ attributes — reads the store afterwards. A handler with no reply path cannot
+ report an error, which is correct here: a missing `accept` only widens the
+ panel's filter.
+ */
+final class UploadAcceptRelay: NSObject, WKScriptMessageHandler {
+  private let store: UploadAcceptStore
+
+  init(store: UploadAcceptStore) {
+    self.store = store
+  }
+
+  func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+    store.record(message.body as? String)
+  }
+}
+
+
 
 final class BridgeHandler: NSObject, WKScriptMessageHandler {
   private weak var host: ShellCommandHost?

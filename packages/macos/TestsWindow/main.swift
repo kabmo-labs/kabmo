@@ -60,6 +60,8 @@ let page = """
 </div>
 <div style="height:400px;background:#fafafa">body</div>
 <textarea id="composer" style="position:absolute;left:8px;bottom:8px;width:220px;height:40px"></textarea>
+<input id="icon-upload" type="file" accept="image/png,image/jpeg,image/svg+xml" style="position:absolute;left:8px;top:200px;width:220px;height:24px">
+<input id="attach-upload" type="file" multiple style="position:absolute;left:8px;top:260px;width:220px;height:24px">
 """ + dropRecorderScript + settingsRecorderScript + """
 </body></html>
 """
@@ -98,6 +100,12 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   var phase = "the page was still loading"
   /// Set only by the quit case, which needs the app's OWN terminate reply path.
   var quitProbe: TerminateCoordinator?
+  /// The accept store the page's capture-click script reports into.
+  let uploadAccept = UploadAcceptStore()
+  let uploadProxy = UploadAcceptProxy()
+  /// The delegate the APP installs, pointed at this window: a stand-in would let
+  /// a near-miss signature pass while the shipped shell kept cancelling uploads.
+  lazy var uploadAcceptDelegate = UploadPanelDelegate(store: uploadAccept, window: window)
 
   /**
    The app's quit path, installed for the one case that drives it.
@@ -129,6 +137,22 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     webView = DropWebView(frame: rect)
     webView.navigationDelegate = self
+    // The app installs a `uiDelegate` (see `AppDelegate.buildWindow`); the suite
+    // must too, or every file-input case would be describing a shell nobody
+    // ships. The probe is the delegate so the cases can read what WebKit asked.
+    let content = webView.configuration.userContentController
+    // The relay the app installs, inlined: the page posts the clicked control's
+    // `accept` on a capture click, and the probe reads it back. Held by the
+    // runner, because a content controller keeps its handler WEAKLY.
+    uploadProxy.store = uploadAccept
+    content.add(uploadProxy, name: uploadAcceptMessageName)
+    content.addUserScript(
+      WKUserScript(source: uploadAcceptScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+    )
+    // The app's own delegate installs `runOpenPanel`; the suite installs a
+    // stand-in so a file-input click is not auto-cancelled here either, which is
+    // exactly what these cases would otherwise be proving nothing about.
+    webView.uiDelegate = uploadAcceptDelegate
     window.contentView = webView
 
     // The probe the app installs, inlined: it evaluates the shell's own selector
@@ -213,6 +237,23 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
       eventNumber: 1, clickCount: 1, pressure: 1
     ) else { return }
     window.sendEvent(event)
+  }
+
+  /// A press AND its release, which is what a real click is.
+  ///
+  /// The upload cases need the release: WebKit reports a file input's activation
+  /// on mouse-UP, so a lone `mouseDown` leaves the control untouched (measured —
+  /// the panel request never arrived).
+  func click(at point: NSPoint) {
+    for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+      guard let event = NSEvent.mouseEvent(
+        with: type, location: point, modifierFlags: [],
+        timestamp: ProcessInfo.processInfo.systemUptime,
+        windowNumber: window.windowNumber, context: nil,
+        eventNumber: 1, clickCount: 1, pressure: 1
+      ) else { continue }
+      window.sendEvent(event)
+    }
   }
 
   /**
@@ -536,6 +577,19 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     proveClickCloses()
     runSplashCases()
     runSplashFillCases()
+    // The upload cases come BEFORE the drop cases for the same measured reason:
+    // releasing a drag leaves the suite's view with no document, so a later
+    // `evaluateJavaScript` answers nil and every element lookup fails.
+    uploadPanelWindowCases(
+      view: webView,
+      window: window,
+      check: check,
+      pump: pump,
+      evaluate: evaluateSync
+    )
+
+    uploadPanelSheetCases(window: window, check: check, pump: pump)
+
     // BEFORE the drop cases, and the order is load-bearing: those end by
     // releasing the drag, after which the suite's view has no document and every
     // `evaluateJavaScript` answers nil — measured, the first version of this case
