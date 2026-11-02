@@ -9,6 +9,7 @@ import { StreamStatusDot } from '@/client/components/common/StreamStatusDot';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
 import { HeaderControls } from '@/client/components/common/header-controls';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
+import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
 interface MobileHeaderProps {
@@ -174,21 +175,14 @@ export function MobileHeader({
 
           {/* Pinned to the viewport, not to the trigger: the trigger sits
               ~155px from the left edge, so a 288px panel anchored at its
-              `left-0` ran off the right edge of a phone screen. Fixed with
-              both insets keeps it inside the safe area at any width. */}
+              `left-0` ran off the right edge of a phone screen. The six numbers
+              that keep it inside the safe area at any width live in
+              `mobileOverlayStyle`, shared with the server panel — the two used
+              to state them separately and drifted. */}
           {showSessionPicker && (
             <div
               className="fixed z-50 bg-paper border border-ink/15 rounded-xl shadow-lg p-2 text-xs"
-              style={{
-                top: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.375rem)',
-                left: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-                right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-                maxWidth: '18rem',
-                // A landscape phone is only ~390px tall; without this the list
-                // ran past the bottom edge the same way it ran past the right.
-                maxHeight: 'calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px) - 1.125rem)',
-                overflowY: 'auto',
-              }}
+              style={mobileOverlayStyle()}
             >
               <button
                 type="button"

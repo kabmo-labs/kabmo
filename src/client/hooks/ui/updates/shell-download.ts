@@ -283,7 +283,7 @@ export interface DesktopIdentity {
 
 function readDesktopIdentity(): DesktopIdentity | null {
   if (typeof window === 'undefined') return null;
-  // `window.__kabmoDesktop` is declared by `lib/desktop/bridge` — the same
+  // `window.__kabmoDesktop` is declared by `lib/shell/desktop` — the same
   // object the shell injects, so this reads the shell's own contract rather
   // than re-declaring its shape here.
   return window.__kabmoDesktop ?? null;

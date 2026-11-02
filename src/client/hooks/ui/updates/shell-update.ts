@@ -30,12 +30,8 @@
  */
 
 import { useCallback, useRef, useState } from 'preact/hooks';
-import {
-  applyShellUpdate,
-  bridgeError,
-  isDesktopShell,
-  type ShellUpdateOutcome,
-} from '@/client/lib/desktop/bridge';
+import { applyShellUpdate, type ShellUpdateOutcome } from '@/client/lib/shell/desktop';
+import { bridgeError, isDesktopShell } from '@/client/lib/shell/transport';
 import type { ShellDownload } from '@/client/hooks/ui/updates/shell-download';
 
 /** What the control is doing right now. */

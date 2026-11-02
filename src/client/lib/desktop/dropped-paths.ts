@@ -38,7 +38,7 @@
  *   wrong file later. The clock is the shell's own, and it runs on this machine.
  */
 
-import { isDesktopShell } from '@/client/lib/desktop/bridge';
+import { isDesktopShell } from '@/client/lib/shell/transport';
 
 /** What the shell answers with. */
 export interface ShellDroppedPaths {

@@ -22,6 +22,10 @@ data class HealthResult(
     val port: Int = 0,
     val authEnabled: Boolean = false,
     val mock: Boolean = false,
+    /** Reported by the server, and drawn on the server panel's row. */
+    val mode: String? = null,
+    val pid: Int? = null,
+    val startedAt: String? = null,
 )
 
 object HealthProbe {
@@ -32,6 +36,16 @@ object HealthProbe {
             onResult(request(baseUrl))
         }
     }
+
+    /**
+     * The same probe, ON THE CALLER'S THREAD.
+     *
+     * The server panel answers `servers_state` with one row per stored server,
+     * which means N probes before the answer; running them from a background
+     * worker and returning the value is simpler than fanning callbacks out and
+     * collecting them. Never call this on the UI thread.
+     */
+    fun checkNow(baseUrl: String): HealthResult = request(baseUrl)
 
     private fun request(baseUrl: String): HealthResult {
         var connection: HttpURLConnection? = null
@@ -63,6 +77,9 @@ object HealthProbe {
                 port = json.optInt("port", 0),
                 authEnabled = json.optBoolean("authEnabled", false),
                 mock = json.optBoolean("mock", false),
+                mode = json.optString("mode").takeIf { it.isNotEmpty() },
+                pid = json.optInt("pid", 0).takeIf { it > 0 },
+                startedAt = json.optString("startedAt").takeIf { it.isNotEmpty() },
             )
         } catch (_: Exception) {
             HealthResult(false, "unreachable")

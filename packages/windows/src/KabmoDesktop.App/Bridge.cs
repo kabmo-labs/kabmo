@@ -9,7 +9,7 @@
  * The page posts `{ id, method, params }` with `window.chrome.webview.postMessage`,
  * and the shell answers by executing `window.__kabmoReply(id, ok, payload)`. That
  * is the SAME contract the macOS shell installs over `WKScriptMessageHandler`, so
- * `src/client/lib/desktop/bridge.ts` and everything above it cannot tell which
+ * `src/client/lib/shell/transport.ts` and everything above it cannot tell which
  * shell it is talking to — which is the point of the client being shared.
  *
  * The identity script runs at document start, before the page's own scripts, for

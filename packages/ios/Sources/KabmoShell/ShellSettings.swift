@@ -31,7 +31,11 @@ public struct ShellSettings {
   public static let zoomStep = 1
   public static let zoomDefault = 100
 
+  /// The single address a build older than the server list stored. Read ONCE, to
+  /// seed the list (`servers`), and then removed — a second migration would
+  /// resurrect an address the user removed from the list.
   private static let urlKey = "server_url"
+  private static let serversKey = "server_list"
   private static let zoomKey = "zoom_percent"
   private static let paletteKey = "shell_palette"
 
@@ -41,15 +45,49 @@ public struct ShellSettings {
     self.defaults = defaults
   }
 
-  /// The saved origin, or nil on a first run.
+  /// The server this shell is on, or nil on a first run.
   public var url: String? {
-    guard let value = defaults.string(forKey: Self.urlKey) else { return nil }
-    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    return trimmed.isEmpty ? nil : trimmed
+    servers.activeURL
   }
 
+  /// Every server this shell knows, plus which one it is on.
+  ///
+  /// The list is the source of truth; `url` above is the one-address view of it,
+  /// kept because the load path, the navigation policy and the settings screen
+  /// all ask that question and none of them should know about a list. A pre-list
+  /// build's single address is migrated on first read.
+  public var servers: ServerList {
+    if let wire = defaults.string(forKey: Self.serversKey) {
+      return ServerList.parse(wire)
+    }
+    let legacy = defaults.string(forKey: Self.urlKey)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let migrated = ServerList.migrated(legacyURL: legacy)
+    if let legacy, !legacy.isEmpty {
+      defaults.set(migrated.wire, forKey: Self.serversKey)
+      defaults.removeObject(forKey: Self.urlKey)
+    }
+    return migrated
+  }
+
+  public func write(servers list: ServerList) {
+    defaults.set(list.wire, forKey: Self.serversKey)
+  }
+
+  /// Remember `value` and make it the active server.
+  ///
+  /// The settings screen's Connect calls this, so typing the address of a server
+  /// that is already known must not add a second row for the same origin —
+  /// `ServerList.withRemembered` owns that rule.
   public func write(url value: String) {
-    defaults.set(value, forKey: Self.urlKey)
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      // A blank write means "no address", which is what the settings screen's own
+      // field asks when it is cleared — it must not add a row for an empty URL.
+      write(servers: ServerList(entries: servers.entries, activeURL: nil))
+      return
+    }
+    write(servers: servers.withRemembered(url: trimmed))
   }
 
   /// The saved page zoom, clamped and snapped onto the slider's grid.
@@ -68,6 +106,11 @@ public struct ShellSettings {
 
   /// Remove everything this shell stores. Used by "Clear cookies" only when the
   /// caller also drops the web store; see `SettingsScreen`.
+  /// Forget everything EXCEPT the server list.
+  ///
+  /// The list is an address book, not a session: signing out of one server must
+  /// not make the user retype the address of the other one they added. The zoom
+  /// and the palette go, because both describe the console just signed out of.
   public func clear() {
     defaults.removeObject(forKey: Self.urlKey)
     defaults.removeObject(forKey: Self.zoomKey)

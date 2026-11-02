@@ -468,14 +468,12 @@ class SettingsActivity : Activity() {
         status.text = message
     }
 
-    private fun messageFor(code: String): String = when (code) {
-        "empty" -> getString(R.string.err_empty)
-        "scheme" -> getString(R.string.err_scheme)
-        "path" -> getString(R.string.err_path)
-        "shape" -> getString(R.string.err_shape)
-        "not-kabmo" -> getString(R.string.err_not_kabmo)
-        else -> getString(R.string.err_unreachable)
-    }
+    /**
+     * The refusal's sentence. Shared with the console's server panel, which sends
+     * the same words to the page — one mapping, so the two surfaces cannot word
+     * the same refusal differently.
+     */
+    private fun messageFor(code: String): String = ServerMessages.messageFor(this, code)
 
     private fun dp(value: Int): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP,

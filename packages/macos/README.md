@@ -11,7 +11,7 @@ in the middle is what the previous two attempts had.
 
 Two other desktop shells are ports of this one rather than second designs: the
 same server list, the same ownership rule and the same bridge contract, so
-`src/client/lib/desktop/bridge.ts` and everything above it are shared.
+`src/client/lib/shell/transport.ts` and everything above it are shared.
 
 - `packages/windows` (.NET 8 + WPF + WebView2) — read that README for the two
   places the platforms genuinely differ: the drag region (`app-region: drag`

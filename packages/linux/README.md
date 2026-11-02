@@ -118,7 +118,7 @@ shell owns the webview, so the page cannot be anything but one this window chose
 to load.
 
 The transport is the **same contract the macOS and Windows shells install**, so
-`src/client/lib/desktop/bridge.ts` is shared verbatim. Verified against a real
+`src/client/lib/shell/transport.ts` is shared verbatim. Verified against a real
 page in the running shell: `servers_state` answered, and the `servers_add` that
 followed it landed in `servers.json` with the label the page built from the
 answer.

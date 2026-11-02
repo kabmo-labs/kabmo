@@ -4,37 +4,33 @@
  */
 
 /**
- * Which server the window is on, and how to change it.
+ * The server panel's own markup: one row per server, the empty state, and the
+ * two footers a shell may or may not offer.
  *
- * The panel lists three groups, and the split is the whole design:
- *
- * - **This window** — the servers the shell remembers, with the active one
- *   marked. A remote entry is a URL somebody typed; a managed entry is a local
- *   server this shell started, which is why it can be stopped here.
- * - **Found on this machine** — servers the shell did NOT start: `kabmo serve`
- *   in a terminal, `bun run dev`, a login entry. They are read from the
- *   per-port records the servers themselves write, so a server that appeared
- *   after the panel opened shows up on the next refresh. They can be connected
- *   to but not stopped — this window did not start them, and a Stop here would
- *   kill a process somebody else is watching.
- * - **Add a server** — a URL and a label.
- *
- * A server is only offered as connectable while it ANSWERS: the shell probes
- * every URL before answering, so `running: false` is a real fact rather than a
- * guess, and the row says so instead of letting a click fail on a blank window.
+ * Split from `ServerControl` so the trigger (a chip on a phone, a labelled
+ * button in a desktop navbar) and the list can be read and tested apart. The
+ * STORE is the control's, not the panel's: the old panel opened a second
+ * `useShellServers`, which meant two copies of the list, two 4-second polls and
+ * a trigger that could disagree with the rows directly under it.
  */
 
 import { useState } from 'preact/hooks';
 import { Check, Loader2, Play, Plus, RefreshCw, Server, Square, Trash2 } from 'lucide-preact';
-import { useDesktopServers } from '@/client/hooks/desktop/servers';
-import type { DesktopServer } from '@/client/lib/desktop/bridge';
+import type { ShellServersStore } from '@/client/hooks/shell/servers';
+import type { ShellServer } from '@/client/lib/shell/servers';
+import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 
-interface ServerSwitcherProps {
+export type ServerControlVariant = 'nav' | 'chip';
+
+interface ServerPanelProps {
   open: boolean;
   onClose: () => void;
+  /** `nav` hangs under a desktop navbar button; `chip` is a phone sheet. */
+  variant: ServerControlVariant;
+  store: ShellServersStore;
 }
 
-function statusLine(server: DesktopServer): string {
+function statusLine(server: ShellServer): string {
   if (!server.running) return 'Stopped';
   const parts: string[] = [];
   if (server.version) parts.push(`v${server.version}`);
@@ -51,7 +47,7 @@ function Row({
   onStop,
   onRemove,
 }: {
-  server: DesktopServer;
+  server: ShellServer;
   active: boolean;
   busy: boolean;
   onActivate: () => void;
@@ -113,8 +109,30 @@ function Row({
   );
 }
 
-export function ServerSwitcher({ open, onClose }: ServerSwitcherProps) {
-  const store = useDesktopServers(open);
+/**
+ * Which server this window is on, and how to change it.
+ *
+ * The panel lists two groups, and the split is the whole design:
+ *
+ * - **This window** — the servers the shell remembers, with the active one
+ *   marked. A remote entry is a URL somebody typed; a managed entry is a local
+ *   server this shell started, which is why it can be stopped here.
+ * - **Found on this machine** — servers the shell did NOT start: `kabmo serve`
+ *   in a terminal, `bun run dev`, a login entry. They are read from the
+ *   per-port records the servers themselves write, so a server that appeared
+ *   after the panel opened shows up on the next refresh. They can be connected
+ *   to but not stopped — this window did not start them, and a Stop here would
+ *   kill a process somebody else is watching.
+ *
+ * A phone answers neither group's second half: it cannot spawn a server, and it
+ * has no per-port records on the device, so those two sections are ABSENT there
+ * rather than drawn empty (`startable: false` and `detected: []` are the facts).
+ *
+ * A server is only offered as connectable while it ANSWERS: the shell probes
+ * every URL before answering, so `running: false` is a real fact rather than a
+ * guess, and the row says so instead of letting a click fail on a blank window.
+ */
+export function ServerPanel({ open, onClose, variant, store }: ServerPanelProps) {
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -125,6 +143,7 @@ export function ServerSwitcher({ open, onClose }: ServerSwitcherProps) {
   const entries = state?.entries ?? [];
   const detected = state?.detected ?? [];
   const activeId = state?.activeId;
+  const startable = state?.startable !== false;
 
   const submit = async () => {
     if (!url.trim()) return;
@@ -136,11 +155,24 @@ export function ServerSwitcher({ open, onClose }: ServerSwitcherProps) {
     }
   };
 
+  // Desktop hangs under its navbar button; a phone pins to the VIEWPORT, because
+  // its trigger sits in the drawer header and a 340px panel anchored there runs
+  // off the right edge (measured at 390) and past the bottom in landscape.
+  const placement =
+    variant === 'chip'
+      ? mobileOverlayStyle()
+      : undefined;
+
   return (
     <div
       role="dialog"
       aria-label="Servers"
-      className="absolute right-2 top-full mt-1 z-50 w-[340px] rounded-xl border border-ink/15 bg-paper shadow-xl overflow-hidden"
+      className={
+        variant === 'chip'
+          ? 'fixed z-50 rounded-xl border border-ink/15 bg-paper shadow-xl overflow-hidden'
+          : 'absolute right-2 top-full mt-1 z-50 w-[340px] rounded-xl border border-ink/15 bg-paper shadow-xl overflow-hidden'
+      }
+      style={placement}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation();
@@ -156,7 +188,7 @@ export function ServerSwitcher({ open, onClose }: ServerSwitcherProps) {
           type="button"
           onClick={() => void store.reload()}
           disabled={store.busy}
-          title="Refresh — re-probe every server and look for new local ones"
+          title="Refresh — re-probe every server"
           aria-label="Refresh servers"
           className="p-1 rounded text-ink/40 hover:text-ink hover:bg-ink/10 cursor-pointer disabled:opacity-40"
         >
@@ -207,7 +239,7 @@ export function ServerSwitcher({ open, onClose }: ServerSwitcherProps) {
 
         {state && entries.length === 0 && detected.length === 0 && (
           <p className="px-1 py-2 text-[11px] text-ink/50">
-            Nothing running yet. Start a local server, or add one by address.
+            Nothing here yet. Add a server by address.
           </p>
         )}
       </div>
@@ -217,14 +249,20 @@ export function ServerSwitcher({ open, onClose }: ServerSwitcherProps) {
       )}
 
       <div className="border-t border-ink/10 px-2 py-2 space-y-1.5">
-        <button
-          type="button"
-          onClick={() => void store.start()}
-          disabled={store.busy}
-          className="w-full flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 text-xs text-ink hover:bg-ink/5 cursor-pointer disabled:opacity-40"
-        >
-          <Play size={12} /> Start a local server
-        </button>
+        {/* A phone cannot spawn a server: there is no process to start and no
+            terminal to own it. The control is ABSENT rather than disabled,
+            because a disabled button would promise a capability the shell does
+            not have. */}
+        {startable && (
+          <button
+            type="button"
+            onClick={() => void store.start()}
+            disabled={store.busy}
+            className="w-full flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 text-xs text-ink hover:bg-ink/5 cursor-pointer disabled:opacity-40"
+          >
+            <Play size={12} /> Start a local server
+          </button>
+        )}
 
         {adding ? (
           <form

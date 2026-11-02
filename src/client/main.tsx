@@ -12,6 +12,7 @@ import { installUiKit } from '@/client/lib/plugins/kit';
 import { installScrollbarActivity } from '@/client/lib/scrollbar-activity';
 import { installBackDispatcher } from '@/client/lib/native/back';
 import { installPalettePublisher } from '@/client/lib/native/palette';
+import { installShellTransport } from '@/client/lib/shell/transport';
 import { installResumeDispatcher } from '@/client/lib/native/resume';
 import { installFileLaunchHandler } from '@/client/lib/launch/file-handlers';
 import { installOpenPaths } from '@/client/lib/native/open-paths';
@@ -78,6 +79,14 @@ installBackDispatcher();
 // nothing is running to ask. Installed before the first render because a shell
 // asks on the load it is hiding, not on a later interaction.
 installPalettePublisher();
+
+// A phone's shell exposes its own transport (`window.kabmoHost` on Android,
+// `window.webkit.messageHandlers.kabmo` on iOS) and cannot inject script before
+// the page — so the console adapts it into `__kabmoCall` here, before the first
+// render, which is what makes the header's server control appear on the first
+// paint instead of after a round trip. A no-op in a browser and in the three
+// desktop shells, which install `__kabmoCall` themselves.
+installShellTransport();
 
 // The native shell calls `window.__kabmoResume()` when its app returns to the
 // foreground. A backgrounded Android WebView fires no `visibilitychange` and

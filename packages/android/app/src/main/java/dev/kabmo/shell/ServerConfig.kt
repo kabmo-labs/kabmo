@@ -13,7 +13,13 @@ import java.net.URI
  */
 object ServerConfig {
     private const val PREFS = "kabmo-shell"
+    /**
+     * The address a build older than the server list stored, and the only key it
+     * had. Read ONCE, to seed the list (`servers`), and then removed — a second
+     * migration would resurrect an address the user removed from the list.
+     */
     private const val KEY_URL = "server_url"
+    private const val KEY_SERVERS = "server_list"
     private const val KEY_ZOOM = "zoom_percent"
     private const val KEY_PALETTE = "shell_palette"
 
@@ -42,15 +48,46 @@ object ServerConfig {
     const val ZOOM_STEP = 1
     const val ZOOM_DEFAULT = 100
 
-    fun read(context: Context): String? =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_URL, null)
-            ?.takeIf { it.isNotBlank() }
+    /** The server this shell is on, or null on a first run. */
+    fun read(context: Context): String? = servers(context).activeUrl
 
+    /**
+     * Remember `url` and make it the active server.
+     *
+     * The settings screen's Connect calls this, so typing the address of a server
+     * that is already known must not add a second row for the same origin —
+     * `ServerList.withRemembered` owns that rule.
+     */
     fun write(context: Context, url: String) {
+        writeServers(context, servers(context).withRemembered(url))
+    }
+
+    /**
+     * Every server this shell knows, plus which one it is on.
+     *
+     * The list is the source of truth; `read`/`write` above are the one-address
+     * view of it, kept because the load path, the navigation policy and the
+     * settings screen all ask that question and none of them should know about a
+     * list. A pre-list build's single address is migrated on first read.
+     */
+    fun servers(context: Context): ServerList {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.getString(KEY_SERVERS, null)?.let { return ServerList.parse(it) }
+        val legacy = prefs.getString(KEY_URL, null)?.takeIf { it.isNotBlank() }
+        val migrated = ServerList.migrated(legacy)
+        if (legacy != null) {
+            prefs.edit()
+                .putString(KEY_SERVERS, migrated.wire())
+                .remove(KEY_URL)
+                .apply()
+        }
+        return migrated
+    }
+
+    fun writeServers(context: Context, list: ServerList) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_URL, url)
+            .putString(KEY_SERVERS, list.wire())
             .apply()
     }
 
@@ -75,8 +112,20 @@ object ServerConfig {
             .apply()
     }
 
+    /**
+     * Forget everything EXCEPT the server list.
+     *
+     * The list is an address book, not a session: signing out of one server must
+     * not make the user retype the address of the other one they added. The zoom
+     * and the palette go, because both describe the console that was just
+     * signed out of.
+     */
     fun clear(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_ZOOM)
+            .remove(KEY_PALETTE)
+            .apply()
     }
 
     /**

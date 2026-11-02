@@ -15,7 +15,7 @@
  *    every row as a remote server, so the Stop button silently disappears from
  *    the servers this window started. `JsonStringEnumConverter` is what keeps the
  *    wire the same one the macOS shell writes (its `Codable` enums are strings).
- * 2. **camelCase**, which is what `src/client/lib/desktop/bridge.ts` declares and
+ * 2. **camelCase**, which is what `src/client/lib/shell/servers.ts` declares and
  *    what Swift's `Codable` produced.
  * 3. **Nulls are OMITTED** rather than sent as `null`: the client's types mark
  *    them optional, and a `pid: null` on a stopped server would render as a pid

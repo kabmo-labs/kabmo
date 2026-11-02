@@ -28,6 +28,29 @@ enum ShellSettingsTests {
     settings.write(url: "   ")
     Harness.equal("a blank address reads as none", settings.url, nil)
 
+    Harness.group("ShellSettings — the server list")
+
+    // A build before the list stored ONE address under `server_url`; it must not
+    // be lost on upgrade.
+    let legacyDefaults = freshDefaults("legacy")
+    legacyDefaults.set("http://192.168.1.30:3000", forKey: "server_url")
+    let legacy = ShellSettings(defaults: legacyDefaults)
+    Harness.equal("the old address becomes the active one", legacy.url, "http://192.168.1.30:3000")
+    Harness.equal("and is kept as one row", legacy.servers.entries.count, 1)
+    Harness.equal("the old key is gone after migration", legacyDefaults.string(forKey: "server_url"), nil)
+
+    let listDefaults = freshDefaults("list")
+    let listed = ShellSettings(defaults: listDefaults)
+    listed.write(url: "http://a:3000")
+    listed.write(url: "http://b:3000")
+    Harness.equal("a second Connect adds a row", listed.servers.entries.count, 2)
+    Harness.equal("and moves the active address", listed.url, "http://b:3000")
+
+    // Signing out is not "forget every server": the list is an address book.
+    listed.clear()
+    Harness.equal("clearing keeps the list", listed.servers.entries.count, 2)
+    Harness.equal("and the active address", listed.url, "http://b:3000")
+
     settings.write(zoom: 170)
     Harness.equal("a written zoom reads back", settings.zoom, 170)
 

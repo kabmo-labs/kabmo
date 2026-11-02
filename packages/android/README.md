@@ -350,13 +350,32 @@ The field says so instead of accepting a URL that breaks.
 
 ### Getting back to it
 
-**One entry point: long-press the Kabmo icon → *Server settings*.**
+**Two entry points: the console's Server chip, and long-press the Kabmo icon →
+*Server settings*.**
 
-There is deliberately no in-app control. The WebView fills the display, and every
-edge of it belongs to Kabmo's own chrome — a floating button sits on a control it
-is not, and an edge tab covers the transcript's scroll gutter. The launcher
-shortcut is also the only entry point that still works when the saved address no
-longer answers, which is exactly when it is needed.
+The chip sits in the DRAWER's title bar (`☰` → server icon), not in the chat
+header. Measured at 390px with a password set, the chat header leaves the session
+title 89px and a 32px chip plus its gap costs 40 of them (49px left); the drawer
+row has ~158px spare and truncates nothing to pay for it. It is a chip and not a
+labelled button for the same reason — the name lives in its `aria-label` and in
+the panel. The WebView still fills the display and every edge of it belongs to
+Kabmo's own chrome: there is no floating button and no edge tab.
+
+The launcher shortcut stays, because it is the only entry point that still works
+when the saved address no longer answers — a console that cannot load renders no
+drawer to switch from. `SettingsActivity` still edits the ACTIVE server's address;
+the chip is where a second server is added and where the window moves between
+them.
+
+**The chip exists only in the APK.** The page finds `window.kabmoHost`
+(`ServerHost.kt`) and adapts it into the same `__kabmoCall` the desktop shells
+install (`src/client/lib/shell/transport.ts`). Commands: `servers_state`,
+`servers_add`, `servers_remove`, `servers_activate`. There is deliberately no
+`servers_start` / `servers_stop` — a phone has no child process to own — and the
+state answers `startable: false`, so the panel never draws the control. The list
+is `server_list` in SharedPreferences, migrated once from the single
+`server_url` an older build wrote; `ServerListTest` and `ServerWireTest` pin the
+migration, the duplicate-origin rule and the exact JSON.
 
 The shortcut intent targets `MainActivity`, not `SettingsActivity`: a shortcut is
 launched with the launcher's identity, so a non-exported target is refused
@@ -514,7 +533,11 @@ packages/android/
 │   │   ├── KabmoChromeClient.kt     window.open, file chooser
 │   │   ├── KabmoDownloads.kt        DownloadManager + session cookie
 │   │   ├── HealthProbe.kt           GET /api/health
-│   │   └── ServerConfig.kt          storage + URL normalization
+│   │   ├── ServerConfig.kt          storage + URL normalization
+│   │   ├── ServerList.kt            the servers it knows, and the rules (pure, JVM-tested)
+│   │   ├── ServerWire.kt            the `servers_state` JSON the page reads (pure, JVM-tested)
+│   │   ├── ServerHost.kt            the page's server commands (`@JavascriptInterface`)
+│   │   └── ServerMessages.kt        one refusal sentence, shared with SettingsActivity
 │   └── res/                         strings, colours, theme, icons, xml
 │       └── drawable/kabmo_wordmark.xml  the README wordmark as a VectorDrawable
 ├── build.gradle.kts                 AGP + Kotlin pins
@@ -523,11 +546,13 @@ packages/android/
 
 ## Client-side counterpart
 
-One file in the main app serves this shell:
+Two files in the main app serve this shell:
 
 - `src/client/lib/native/back.ts` — `window.__kabmoBack()` and the handler stack,
   which is how the hardware back button closes a drawer, the editor or a dialog
-  before the shell walks WebView history.
-
-It is inert in a browser: the shell is the only caller, and `main.tsx` installs
-the dispatcher unconditionally because a function nothing calls costs nothing.
+  before the shell walks WebView history. Inert in a browser: the shell is the
+  only caller, and `main.tsx` installs the dispatcher unconditionally because a
+  function nothing calls costs nothing.
+- `src/client/lib/shell/transport.ts` — adapts `window.kabmoHost` into the same
+  `__kabmoCall` the desktop shells install, so the Server chip in the drawer is
+  drawn on the first paint with no per-shell branch in the UI.

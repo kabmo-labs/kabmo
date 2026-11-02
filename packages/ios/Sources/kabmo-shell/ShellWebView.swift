@@ -16,8 +16,19 @@ enum ShellWebView {
   /// read when the web view is created, and a value assigned afterwards is ignored
   /// with no error. Building the configuration first is what makes the UA token
   /// arrive on the very FIRST request — the one that renders the shell.
-  static func makeConfiguration(version: String) -> WKWebViewConfiguration {
+  static func makeConfiguration(
+    version: String,
+    /** Answers the console's server commands; nil in tests that build no shell. */
+    serverHost: ShellServerHost? = nil
+  ) -> WKWebViewConfiguration {
     let configuration = WKWebViewConfiguration()
+
+    // The console's server panel. Registered on the configuration because a
+    // message handler cannot be added to a LIVE web view, and it is what the
+    // page adapts into `__kabmoCall` (`src/client/lib/shell/bridge.ts`).
+    if let serverHost {
+      configuration.userContentController.add(serverHost, name: ShellServerHost.handlerName)
+    }
 
     // Kabmo keeps drafts in `sessionStorage` and the plugin runtime probes storage
     // availability; the default data store already persists both, and naming it

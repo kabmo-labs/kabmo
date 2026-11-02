@@ -15,6 +15,10 @@ public struct HealthResult: Equatable {
   public let port: Int
   public let authEnabled: Bool
   public let mock: Bool
+  /// Reported by the server, and drawn on the server panel's row.
+  public let mode: String?
+  public let pid: Int?
+  public let startedAt: String?
 
   public init(
     ok: Bool,
@@ -22,7 +26,10 @@ public struct HealthResult: Equatable {
     version: String? = nil,
     port: Int = 0,
     authEnabled: Bool = false,
-    mock: Bool = false
+    mock: Bool = false,
+    mode: String? = nil,
+    pid: Int? = nil,
+    startedAt: String? = nil
   ) {
     self.ok = ok
     self.problem = problem
@@ -30,6 +37,9 @@ public struct HealthResult: Equatable {
     self.port = port
     self.authEnabled = authEnabled
     self.mock = mock
+    self.mode = mode
+    self.pid = pid
+    self.startedAt = startedAt
   }
 }
 
@@ -73,7 +83,10 @@ public enum HealthProbe {
       version: (object["version"] as? String).flatMap { $0.isEmpty ? nil : $0 },
       port: object["port"] as? Int ?? 0,
       authEnabled: object["authEnabled"] as? Bool ?? false,
-      mock: object["mock"] as? Bool ?? false
+      mock: object["mock"] as? Bool ?? false,
+      mode: (object["mode"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+      pid: (object["pid"] as? Int).flatMap { $0 > 0 ? $0 : nil },
+      startedAt: (object["startedAt"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     )
   }
 

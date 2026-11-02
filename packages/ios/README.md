@@ -171,12 +171,28 @@ of accepting a URL that breaks.
 
 ### Getting back to it
 
-**One entry point: long-press the Kabmo icon → _Server settings_.**
+**Two entry points: the console's Server chip, and long-press the Kabmo icon →
+_Server settings_.**
 
-There is deliberately no in-app control. The web view fills the display, and every
-edge belongs to Kabmo's own chrome — a floating button sits on a control it is not.
-The quick action is also the only entry point that still works when the saved address
-no longer answers, which is exactly when it is needed.
+The chip sits in the DRAWER's title bar (`☰` → server icon), not in the chat header:
+measured at 390px with a password set, the chat header leaves the session title 89px
+and a 32px chip plus its gap costs 40 of them, while the drawer row has ~158px spare.
+The web view still fills the display and every edge belongs to Kabmo's own chrome —
+there is no floating button and no edge tab.
+
+The quick action stays, because it is the only entry point that still works when the
+saved address no longer answers: a console that cannot load renders no drawer to
+switch from. `SettingsViewController` still edits the ACTIVE server's address; the
+chip is where a second server is added and where the window moves between them.
+
+**The chip exists only in the IPA.** The page finds
+`window.webkit.messageHandlers.kabmo` (`ShellServerHost.swift`) and adapts it into
+the same `__kabmoCall` the desktop shells install. Commands: `servers_state`,
+`servers_add`, `servers_remove`, `servers_activate`; no start/stop, because a phone
+has no child process, and the state answers `startable: false` so the panel never
+draws the control. The list is `server_list` in `UserDefaults`, migrated once from
+the single `server_url` an older build wrote — `ServerListTests` and
+`ShellSettingsTests` pin the migration, the duplicate-origin rule and the wire.
 
 ## Plain http, and what it costs
 
@@ -289,7 +305,8 @@ packages/ios/
 ├── Sources/
 │   ├── KabmoShell/                  every rule that can be tested without a screen
 │   │   ├── URLNormalizer.swift      the server address, and every refusal
-│   │   ├── ShellSettings.swift      address + zoom storage, the zoom mapping
+│   │   ├── ServerList.swift         the servers it knows, and the wire the page reads
+│   │   ├── ShellSettings.swift      server list + zoom storage, the zoom mapping
 │   │   ├── LoadingState.swift       the overlay's rules (pure)
 │   │   ├── HealthProbe.swift        GET /api/health, and what counts as a Kabmo
 │   │   ├── ShellUpdate.swift        what counts as an IPA, and the version compare

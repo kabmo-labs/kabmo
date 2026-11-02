@@ -10,7 +10,7 @@
  * `window.webkit.messageHandlers.kabmo.postMessage(...)`, and the shell answers
  * by evaluating `window.__kabmoReply(id, ok, payload)`. That is the SAME
  * contract the macOS shell installs over `WKScriptMessageHandler` and the
- * Windows shell over `chrome.webview`, so `src/client/lib/desktop/bridge.ts` and
+ * Windows shell over `chrome.webview`, so `src/client/lib/shell/transport.ts` and
  * everything above it cannot tell which shell it is talking to — which is the
  * point of the client being shared.
  *

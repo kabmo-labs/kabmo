@@ -226,7 +226,43 @@ class MainActivity : Activity() {
         // Activity; leaving it alive past the instance is a leak, and its
         // `webView.post` would land on a destroyed view.
         io.shutdownNow()
+        // The server worker holds this Activity too, and its reply would run
+        // `evaluateJavascript` on a destroyed WebView.
+        serverWork.shutdownNow()
         super.onDestroy()
+    }
+
+    /**
+     * Answer a command the page sent over the server bridge.
+     *
+     * Called from `ServerHost`'s worker thread, which is why it hops to the main
+     * one: `WebView.evaluateJavascript` is not thread-safe, and a reply that
+     * races a navigation is lost either way.
+     */
+    fun replyToPage(script: String) {
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            webView.evaluateJavascript(script, null)
+        }
+    }
+
+    /**
+     * Point the window at another server, from the console's own panel.
+     *
+     * The same three steps a changed saved address takes in `onResume` — drop the
+     * cookie jar because the origin is different, latch the new address, load it
+     * — and for the same measured reason: moving from one Kabmo instance to
+     * another on the same host:port leaves a cookie for a user that does not
+     * exist there, and the login screen is skipped into a 401 loop.
+     */
+    fun switchServer(url: String) {
+        if (url == loadedUrl) return
+        if (loadedUrl != null) {
+            CookieManager.getInstance().removeAllCookies(null)
+            flushCookies()
+        }
+        loadedUrl = url
+        startLoad(url)
     }
 
     /**
@@ -346,6 +382,20 @@ class MainActivity : Activity() {
 
     private fun configureWebView() {
         KabmoWebView.configure(webView)
+        // The console's server panel. `addJavascriptInterface` is exposed to
+        // every frame in this WebView, so the object is only safe because the
+        // navigation policy hands every other origin to the system browser
+        // (`KabmoWebViewClient.shouldOverrideUrlLoading`): the only document
+        // that can reach it is the server's own.
+        webView.addJavascriptInterface(
+            ServerHost(
+                context = this,
+                work = serverWork,
+                reply = { script -> replyToPage(script) },
+                onActivate = { url -> switchServer(url) },
+            ),
+            "kabmoHost",
+        )
         webView.webViewClient = KabmoWebViewClient(
             activity = this,
             onCertificateProblem = { description -> showCertificateDialog(description) },
@@ -391,7 +441,7 @@ class MainActivity : Activity() {
         )
         webView.webChromeClient = KabmoChromeClient(
             activity = this,
-            onFileChooser = { callback -> showFileChooser(callback) },
+            onFileChooser = { callback, params -> showFileChooser(callback, params) },
             onProgress = { percent -> applyLoading(loading.progressed(percent)) },
         )
         webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
@@ -578,16 +628,36 @@ class MainActivity : Activity() {
     /** Reads a document off the main thread; the chunk post goes back to it. */
     private val io = Executors.newSingleThreadExecutor()
 
-    private fun showFileChooser(callback: android.webkit.ValueCallback<Array<Uri>>) {
-        // The WebView's chooser is delegated to the system picker. `*/*` rather
-        // than the accept types the page asked for: Kabmo's attach button
-        // accepts images AND arbitrary files, and Android's picker needs one
-        // MIME to decide which app to open.
+    /**
+     * Answers the console's server commands.
+     *
+     * One thread, not the reader's: `servers_state` probes every stored server
+     * (6 s each) and must not queue behind a 20 MiB document being read for a
+     * tab, nor block the JS thread that is waiting on the reply.
+     */
+    private val serverWork = Executors.newSingleThreadExecutor()
+
+    private fun showFileChooser(
+        callback: android.webkit.ValueCallback<Array<Uri>>,
+        params: android.webkit.WebChromeClient.FileChooserParams,
+    ) {
+        // The picker is opened with the CONTROL's own rules (`FileChooserSpec`):
+        // its `accept` list decides which files are offered, and its mode decides
+        // whether several may be chosen. Opening everything as `*/*` with
+        // multi-select — what this did before — offered a PDF to an image-only
+        // icon field and returned several URIs to a single-file control.
+        val spec = FileChooserSpec.forElement(
+            params.acceptTypes,
+            params.mode == android.webkit.WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE,
+        )
         try {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                type = spec.mimeType
+                if (spec.extraMimeTypes.isNotEmpty()) {
+                    putExtra(Intent.EXTRA_MIME_TYPES, spec.extraMimeTypes.toTypedArray())
+                }
+                if (spec.allowMultiple) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             }
             // Assigned BEFORE the launch: a picker that returns immediately (a
             // remembered choice, or an instant cancellation) would otherwise

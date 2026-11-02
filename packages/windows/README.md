@@ -172,7 +172,7 @@ and no per-origin allowance: the shell owns the webview, so the page cannot be
 anything but one this window chose to load.
 
 The transport is the **same contract the macOS shell installs** over
-`WKScriptMessageHandler`, so `src/client/lib/desktop/bridge.ts` is shared
+`WKScriptMessageHandler`, so `src/client/lib/shell/transport.ts` is shared
 verbatim.
 
 ## Memory while minimised

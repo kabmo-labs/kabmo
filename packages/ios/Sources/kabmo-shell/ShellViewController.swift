@@ -51,6 +51,10 @@ final class ShellViewController: UIViewController {
 
   private let settings = ShellSettings()
 
+  /// Answers the console's server panel — the same four commands the desktop
+  /// shells answer, minus the two a phone cannot (there is no child process).
+  private lazy var serverHost = ShellServerHost(settings: settings)
+
   /// This build's version, read from the bundle. One source: `Info.plist`, which
   /// the build script fills from `version.properties`.
   private var version: String {
@@ -249,9 +253,13 @@ final class ShellViewController: UIViewController {
     // the shell.
     let webView = WKWebView(
       frame: .zero,
-      configuration: ShellWebView.makeConfiguration(version: version)
+      configuration: ShellWebView.makeConfiguration(version: version, serverHost: serverHost)
     )
     ShellWebView.configure(webView, zoomPercent: settings.zoom)
+    serverHost.attach(webView)
+    // A server the user picks is loaded by the CONTROLLER, not by the host: the
+    // cookie jar, the loading overlay and `loadedURL` all live here.
+    serverHost.onActivate = { [weak self] url in self?.switchServer(url) }
 
     navigation.serverURL = settings.url
     navigation.installedVersion = version
@@ -318,6 +326,23 @@ final class ShellViewController: UIViewController {
   /// The state is armed BEFORE `load`, because a cached document can call
   /// `didStartProvisionalNavigation` on the same tick: arming afterwards would let
   /// the first progress frame of a real load be ignored as "already finished".
+  /**
+   Point the window at another server, from the console's own panel.
+
+   The same three steps a changed saved address takes in `viewDidAppear` — drop the
+   cookie jar because the origin is different, latch the new address, load it — and
+   for the same measured reason: moving from one Kabmo instance to another on the
+   same host:port leaves a cookie for a user that does not exist there, and the
+   login screen is skipped into a 401 loop.
+   */
+  private func switchServer(_ url: String) {
+    guard url != loadedURL else { return }
+    navigation.serverURL = url
+    if loadedURL != nil { clearCookies() }
+    loadedURL = url
+    startLoad(url)
+  }
+
   private func startLoad(_ url: String) {
     guard let target = URL(string: url) else { return }
     applyLoading(.connecting)

@@ -36,7 +36,7 @@
  *    identity, and the answer is the caller's own padding rather than a guess.
  */
 
-import { isDesktopShell } from '@/client/lib/desktop/bridge';
+import { isDesktopShell } from '@/client/lib/shell/transport';
 
 /** Width macOS reserves for its traffic lights, plus the gap after them. */
 export const TRAFFIC_LIGHT_INSET = '5rem';

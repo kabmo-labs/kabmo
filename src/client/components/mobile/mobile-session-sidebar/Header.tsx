@@ -1,8 +1,30 @@
 import { X } from 'lucide-preact';
 import { BrandWordmark } from '@/client/components/common/brand-wordmark';
+import { ServerControl } from '@/client/components/common/server-control';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
 
+/**
+ * The session drawer's title bar.
+ *
+ * Two controls on the right, and the second one is why this row exists in the
+ * shape it does:
+ *
+ * - the **server chip** — which server this window is on. A PHONE puts its
+ *   server control here rather than in the chat header because this row has the
+ *   room and that one does not: measured at 390px with a password set, the chat
+ *   header has ~100px spare while the session title is the one thing that may
+ *   give up width, and adding 40px there left the title 49px. This row has
+ *   ~158px spare and truncates nothing to pay for the chip.
+ * - the **close** button.
+ *
+ * The chip is also what a DESKTOP shell window narrowed below the layout
+ * breakpoint relies on: it renders the phone layout, so its navbar — and the
+ * server control in it — is gone, and this is the only surface left.
+ *
+ * `viewLabel` says what the drawer is showing (Sessions, or a panel's name), so
+ * the chip is available in every view the drawer has.
+ */
 export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClose: () => void; viewLabel?: string }) {
   return (
     <div 
@@ -22,23 +44,29 @@ export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClo
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-      <div className="flex items-center space-x-2.5 titlebar-no-drag">
-        <span className="font-bold text-sm tracking-tight flex items-center">
+      <div className="flex items-center space-x-2.5 titlebar-no-drag min-w-0">
+        <span className="font-bold text-sm tracking-tight flex items-center flex-shrink-0">
           <BrandWordmark className="text-[16px]" />
         </span>
-        <span className="text-ink/25 text-xs select-none">/</span>
-        <span className="text-[11px] font-semibold text-ink/60 uppercase tracking-wider font-mono">{viewLabel}</span>
+        <span className="text-ink/25 text-xs select-none flex-shrink-0">/</span>
+        <span className="text-[11px] font-semibold text-ink/60 uppercase tracking-wider font-mono truncate">{viewLabel}</span>
       </div>
 
-      <button
-        type="button"
-        onClick={onClose}
-        className="w-9 h-9 rounded-xl hover:bg-ink/5 active:bg-ink/10 text-ink flex items-center justify-center transition-colors cursor-pointer titlebar-no-drag"
-        title="Close sidebar"
-        aria-label="Close sidebar"
-      >
-        <X size={19} strokeWidth={2} />
-      </button>
+      <div className="flex items-center gap-1 titlebar-no-drag flex-shrink-0">
+        {/* Draws nothing in a browser: `ServerControl` hides itself when no
+            native host is present, which is the same rule the desktop navbar
+            follows rather than a second one stated here. */}
+        <ServerControl variant="chip" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-9 h-9 rounded-xl hover:bg-ink/5 active:bg-ink/10 text-ink flex items-center justify-center transition-colors cursor-pointer"
+          title="Close sidebar"
+          aria-label="Close sidebar"
+        >
+          <X size={19} strokeWidth={2} />
+        </button>
+      </div>
     </div>
   );
 }
