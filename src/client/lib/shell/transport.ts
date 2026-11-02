@@ -74,10 +74,15 @@ export function shellHost(): ShellHostKind | null {
   if (typeof window === 'undefined') return null;
   const marked = window.__kabmoShellHost;
   if (marked) return marked;
-  const detected = detectedHost();
-  if (detected) return detected;
+  // The DESKTOP trio is asked FIRST, and not for tidiness: macOS and Linux post
+  // over `window.webkit.messageHandlers.kabmo` — the very handler name iOS uses
+  // — so a phone-first check read every macOS/Linux shell as `ios`,
+  // `isDesktopShell()` answered false, and `titlebarInsetLeft` stopped reserving
+  // the 5rem macOS keeps for its traffic lights. The wordmark and the drawer's
+  // title were drawn UNDER close / minimise / maximise.
+  if (window.__kabmoDesktop) return 'desktop';
   if (typeof window.__kabmoCall === 'function') return 'desktop';
-  return null;
+  return detectedHost();
 }
 
 /** True once some shell answers `__kabmoCall` — desktop or a phone. */
@@ -128,9 +133,13 @@ const REPLY_TIMEOUT_MS = 60_000;
  */
 export function installShellTransport(): void {
   if (typeof window === 'undefined') return;
+  // A desktop shell installed its own transport before the page's scripts, and
+  // macOS/Linux expose the same WebKit handler name a phone does — so this test
+  // is the identity, not `detectedHost()`.
+  if (window.__kabmoDesktop) return;
+  if (typeof window.__kabmoCall === 'function') return;
   const host = detectedHost();
   if (!host) return;
-  if (typeof window.__kabmoCall === 'function') return;
 
   window.__kabmoShellHost = host;
 

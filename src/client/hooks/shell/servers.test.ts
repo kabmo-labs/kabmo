@@ -71,6 +71,24 @@ describe('shell bridge', () => {
     expect(info?.trafficLightInset).toBe('5rem');
   });
 
+  /**
+   * macOS and Linux post over `window.webkit.messageHandlers.kabmo` — the same
+   * handler NAME iOS uses — so "is there a WebKit handler?" cannot decide which
+   * shell this is. When it did, `isDesktopShell()` answered false in every macOS
+   * window, `titlebarInsetLeft` stopped reserving the 5rem for the traffic
+   * lights, and the wordmark was drawn under close / minimise / maximise.
+   */
+  test('a macOS shell is not read as an iPhone, though it posts over the same handler', () => {
+    shell().window = {
+      __kabmoCall: async () => null,
+      __kabmoDesktop: { platform: 'macos', shellVersion: '0.1.0', overlayTitlebar: true, trafficLightInset: '5rem' },
+      webkit: { messageHandlers: { kabmo: { postMessage: () => {} } } },
+    };
+    expect(shellHost()).toBe('desktop');
+    expect(isDesktopShell()).toBe(true);
+    expect(isMobileShell()).toBe(false);
+  });
+
   test('a command answers through __kabmoCall', async () => {
     const seen: string[] = [];
     shell().window = {

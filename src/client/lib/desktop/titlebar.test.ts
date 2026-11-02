@@ -29,6 +29,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 type Shell = {
   __kabmoCall?: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
   __kabmoDesktop?: Record<string, unknown>;
+  /** macOS and Linux post through this handler — the SAME name iOS uses. */
+  webkit?: { messageHandlers?: { kabmo?: { postMessage: (message: unknown) => void } } };
 };
 
 const scope = () => globalThis as unknown as { window?: Shell };
@@ -38,9 +40,16 @@ async function titlebar() {
 }
 
 function shell(identity: Record<string, unknown> | null) {
-  scope().window = identity === null
-    ? { __kabmoCall: async () => null }
-    : { __kabmoCall: async () => null, __kabmoDesktop: identity };
+  // The WebKit handler is part of the REAL desktop shape, not test decoration:
+  // macOS and Linux post over `window.webkit.messageHandlers.kabmo`, so a fixture
+  // without it let a phone-first host check read every desktop shell as `ios` and
+  // drop this inset — the wordmark was drawn under the traffic lights.
+  const window: Shell = {
+    __kabmoCall: async () => null,
+    webkit: { messageHandlers: { kabmo: { postMessage: () => {} } } },
+  };
+  if (identity !== null) window.__kabmoDesktop = identity;
+  scope().window = window;
 }
 
 const MACOS = { platform: 'macos', shellVersion: '0.1.0', overlayTitlebar: true, trafficLightInset: '5rem' };
