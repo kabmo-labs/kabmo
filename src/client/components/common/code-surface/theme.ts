@@ -214,15 +214,40 @@ export function surfaceTheme(): Extension {
       backgroundColor: 'var(--editor-active-line, color-mix(in srgb, var(--theme-ink) 4%, transparent))',
       color: 'var(--editor-fg, var(--theme-ink))',
     },
-    // An indent guide: one rule per nesting level, at the level's column. It must be
-    // VISUALLY distinct from the bracket pair guide (which sits under the opening
-    // brace), so this is a dim border at the column boundary rather than a band.
-    '.cm-indent-guide': {
-      backgroundImage:
-        'linear-gradient(to right, var(--editor-indent-guide, color-mix(in srgb, var(--theme-ink) 12%, transparent)) 0 1px, transparent 1px)',
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: '1px 100%',
-      backgroundPosition: 'calc(var(--indent-guide-col, 2ch) - 1px) 0',
+    // Whitespace marks (`whitespace.ts`): a dot per space and an arrow per tab,
+    // drawn only for characters the reader has SELECTED — VS Code's
+    // `renderWhitespace: 'selection'`. Nothing is painted for a bare caret.
+    //
+    // The ink is read from `--editor-fg`, NOT from `currentColor`: a mark that lands
+    // inside a Shiki token inherits that token's colour, so the dots in one line
+    // would come out in as many colours as the highlighting uses.
+    //
+    // The dot geometry is the package's own (`.4em`, centred at 55%): a dot wide
+    // enough to read at 8px would touch its neighbours at 24px. The tab draws an
+    // ARROW rather than a second dot, because one tab and a run of spaces are the
+    // same width and must not look alike. The arrow is a MASK, not a background
+    // image: an SVG in `url()` is its own document, so `currentColor` inside it
+    // resolves to black and the arrow would vanish in a dark theme.
+    '.cm-whitespace-space': {
+      background:
+        'radial-gradient(circle at 50% 55%, var(--editor-fg, var(--theme-ink)) 20%, transparent 0) no-repeat',
+      backgroundSize: '.4em',
+      backgroundPosition: 'calc(min(50%, 0px)) center',
+      opacity: '0.45',
+    },
+    '.cm-whitespace-tab': {
+      backgroundColor: 'var(--editor-fg, var(--theme-ink))',
+      maskImage:
+        "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"20\"><path stroke=\"%23000\" stroke-width=\"1\" fill=\"none\" d=\"M1 10H196L190 5M190 15L196 10M197 4L197 16\"/></svg>')",
+      WebkitMaskImage:
+        "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"20\"><path stroke=\"%23000\" stroke-width=\"1\" fill=\"none\" d=\"M1 10H196L190 5M190 15L196 10M197 4L197 16\"/></svg>')",
+      maskSize: 'auto 100%',
+      WebkitMaskSize: 'auto 100%',
+      maskPosition: 'right 90%',
+      WebkitMaskPosition: 'right 90%',
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      opacity: '0.45',
     },
     // The line-blame label at the end of a run's first line.
     //

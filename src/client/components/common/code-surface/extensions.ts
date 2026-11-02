@@ -57,7 +57,7 @@ import { indentDataExtension, indentExtensions } from '@/client/components/commo
 import { typingExtensions, type EditorTypingOptions } from '@/client/components/common/code-surface/typing';
 import { indentFoldService } from '@/client/components/common/code-surface/fold';
 import { foldPlaceholderDom } from '@/client/components/common/code-surface/fold-placeholder';
-import { indentGuides } from '@/client/components/common/code-surface/indent-guide';
+import { whitespaceMarks } from '@/client/components/common/code-surface/whitespace';
 import { findMarksField } from '@/client/components/common/code-surface/marks';
 import { surfaceKeymap } from '@/client/components/common/code-surface/keymap';
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
@@ -228,9 +228,12 @@ export function surfaceExtensions({
     // Control characters drawn as their glyph instead of nothing: a stray NUL or a
     // zero-width space is invisible, which makes a corrupted file look fine.
     highlightSpecialChars(),
-    // A rule at every nesting level, from indentation (there is no tree). Deliberately
-    // dimmer than `bracketGuide`, which draws ONE line between a brace and its pair.
-    indentGuides,
+    // A space drawn as a dot and a tab as an arrow, on the SELECTION only — VS Code's
+    // `renderWhitespace: 'selection'`, its default. The package's own
+    // `highlightWhitespace()` marks every space in the viewport, which is a permanent
+    // dotted layer over the code; these marks appear when a reader drags over a
+    // block, which is the moment they are asking about the bytes.
+    whitespaceMarks,
     history(),
     drawSelection(),
     dropCursor(),

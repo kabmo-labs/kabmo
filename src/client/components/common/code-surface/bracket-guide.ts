@@ -15,8 +15,8 @@
  * **The guide is driven by the CARET, not by every pair in the viewport.** A
  * viewport-wide version (VS Code's `bracketPairGuides`) draws a rule for every
  * brace on screen: on a 337-line component that is dozens of overlapping lines,
- * which is the same noise as a permanently-on indent guide and hides the one
- * pair the reader is looking at. This shows the pair the caret is IN.
+ * which is noise that hides the one pair the reader is looking at. This shows
+ * the pair the caret is IN.
  *
  * **It reads `matchBrackets`, the same call `bracketMatching()` makes.** A second
  * pairing rule would eventually disagree with the highlight, and a guide that

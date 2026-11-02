@@ -118,7 +118,7 @@ are cheap.
 | G9 | **Desktop status bar** (Ln/Col, indent, EOL) | `rg StatusBar` over `components/workspace/editor` → 0; the phone's strip prints only `N lines · N chars · LANG` |
 | G10 | **Highlight active line** | `rg highlightActiveLine` → 0 |
 | G11 | **Highlight other occurrences of the selection** | `rg highlightSelectionMatches` → 0 |
-| G12 | **Whitespace / special chars / INDENT guides** | `highlightSpecialChars`, `indentGuide` → 0. Note the bracket pair guide that shipped in `ae318411` is a different feature: it connects a brace to its pair, not each nesting level |
+| G12 | **Whitespace / special chars** | `highlightSpecialChars`, `highlightWhitespace`, `indentGuide` → 0. What shipped is narrower than all three: whitespace marks on the SELECTION only (`code-surface/whitespace.ts`), and no indent guides — the vertical rules were read as noise inside the code |
 | G13 | **Tab size / indent width** (hardcoded 2 spaces, no setting, no detect) | `extensions.ts:56` `const INDENT = '  '`; `rg tabSize` → 0 |
 | G14 | **Toggle BLOCK comment** | `toggleBlockComment` exported by `@codemirror/commands`, unused; only line comments are bound |
 | G15 | **Line transforms**: join, sort, case, trim trailing, final newline | all 0 |
@@ -297,11 +297,23 @@ that REFUSES rather than overwrites, and the original tab left open beside the n
 **P4.1 `highlightSpecialChars()`** — a stray control character currently renders as
 nothing, which makes a corrupted file look fine.
 
-**P4.2 Indent guides** — a `ViewPlugin` drawing a left border per nesting level for the
-viewport, capped by line length. Grammar-free for the same reason `fold.ts` is. Must be
-visually distinct from `bracket-guide.ts`'s pair rule (that one sits under the opening
-brace; this one at each level's column) — otherwise two lines that mean different things
-look identical.
+**P4.2 Whitespace marks** — a dot per space and an arrow per tab, drawn on the SELECTION
+only: VS Code's `editor.renderWhitespace: 'selection'`, its default. Both alternatives were
+rejected on sight — the package's `highlightWhitespace()` (`'all'`) marks every space in the
+viewport, and a leading-only mark (`'boundary'`) is a permanent dotted layer over every
+block; either way the marks compete with the code and answer a question nobody asked. This
+is `code-surface/whitespace.ts`, a `ViewPlugin` that walks only the intersection of the
+selection with the VIEWPORT (so `⌘A` on a 20 MB file costs the rendered lines). One mark per
+CHARACTER, because a mark's box is what the CSS paints: a single span over four spaces can
+hold only one dot. The package's `#aaa`/`#888` are hardcoded hex
+outside the palette, so both marks restate `var(--editor-fg, var(--theme-ink))` in
+`theme.ts`, and the tab arrow is a MASK because an SVG inside `url()` resolves
+`currentColor` to black.
+
+**Indent guides were built and then removed.** The per-level vertical rules
+(`code-surface/indent-guide.ts`, since deleted) read as noise inside the code; the
+whitespace marks above answer the same question — where does this block start — without
+drawing a line through it.
 
 **P4.3 EOL switch** — a status-bar control that sets `eol` for the NEXT save. The write
 path already carries the field; this is a UI over an existing capability.
@@ -399,11 +411,12 @@ once they keep ten tabs; both are array operations over existing state.
 **Cons** — drag-reorder is real work (pointer events, autoscroll, keyboard accessibility)
 and must cooperate with the width-driven overflow menu. Ship the menu first.
 
-### P4.2 Indent guides
+### P4.2 Whitespace marks
 
-**Pros** — what makes 4-space YAML and 2-space TS readable side by side.
-**Cons** — a viewport heuristic: an alignment-indented continuation line gets a guide it
-should not have. Also must be visually distinct from the bracket pair guide.
+**Pros** — a block's indentation becomes countable, and a tab is told apart from spaces at
+a glance; this is what makes 4-space YAML and 2-space TS readable side by side.
+**Cons** — every space is drawn, so a document that aligns values with spaces is busy.
+It is a display aid only: nothing here touches what a save writes.
 
 ### P5.3 Auto-close brackets
 
@@ -471,7 +484,7 @@ bounded viewport window. Anything more is LSP.
 | P1.1 | `indent-rules.test.ts`: the table per language + the mode gate (a language whose mode answers must return `undefined`) | `editor-commands.e2e.ts`: Enter after `{` in TS, YAML, bash; typed `}` dedents | type a block in YAML and TS |
 | P1.2 | `tab-size.test.ts` | `editor-theme.e2e.ts` extension | a 4-space repo |
 | P2 | `status-bar.test.tsx`, `palette.test.ts`, `go-to-line.test.tsx` | `editor-commands.e2e.ts` | ⌘G on a 3 000-line file |
-| P4 | `whitespace.test.ts`, `indent-guide.test.ts` | `editor-theme.e2e.ts` extension | YAML with 4-space indent |
+| P4 | `whitespace.test.ts` | `editor-whitespace.e2e.ts` | select a YAML block with 4-space indent |
 
 Gates, unchanged: `bun run lint`, `bunx tsc --noEmit --noUnusedLocals
 --noUnusedParameters`, the 350-line check, the relative-import check, `bun run build`.
@@ -648,7 +661,7 @@ switch (or a tab switch would keep the previous file's line number).
 
 ### Not done
 
-P4 (whitespace/indent guides, EOL switch, Ctrl+wheel zoom) and P5 (block comment, line
+P4 (EOL switch, Ctrl+wheel zoom) and P5 (block comment, line
 transforms, auto-close brackets, autocomplete, find-in-selection, phone find) are unchanged
 from the plan. The two that are worth doing next are
 `toggleBlockComment` (free — the command is installed and `commentTokens` already returns
@@ -668,16 +681,17 @@ Verified: `bun test` 7876 pass / 0 fail, `bun run lint`, the `--noUnusedLocals` 
 | Item | Where | Note |
 |---|---|---|
 | `highlightSpecialChars` | `extensions.ts` | A stray control character was invisible, which made a corrupted file look fine |
-| Indent guides | `code-surface/indent-guide.ts` + `shared/lib/code/editor/indent-guide-rule.ts` | Grammar-free: a `ViewPlugin` over the visible ranges, one rule per indented line |
+| Whitespace marks | `code-surface/whitespace.ts` | A dot per space and an arrow per tab ON THE SELECTION — VS Code's `renderWhitespace: 'selection'`; a bare caret paints nothing |
 | EOL switch | `editor/StatusBar.tsx` + `setEol` on the contract | A UI over a capability the write path already had |
 | Ctrl/⌘ + wheel zoom | `hooks/editor/wheel-zoom.ts` | Also gives trackpad pinch (macOS reports it as `ctrlKey + wheel`) |
 
-**Two decisions worth stating.** The indent guide is NOT the bracket pair guide: that one
-draws ONE line between a brace and its match, at the opening brace's column; this draws one
-rule per LEVEL, and making them look alike would teach the reader that the marks mean the
-same thing. And the guide rule lives in `shared/lib` as a pure function so the three cases
-a naive version gets wrong (one guide per level, none on a blank line, none past the column
-cap) are testable without a mounted editor.
+**Two decisions worth stating.** The marks are SELECTION-scoped: nothing is drawn until a
+reader selects text, because a permanent dotted layer over every block competes with the
+code it explains — and the per-level indent guides that shipped before them are gone,
+because a column of vertical rules through the code reads as structure the file does not
+have. Both draw from `var(--editor-fg, var(--theme-ink))` rather than the package's
+`#aaa`/`#888`: hardcoded grey is chroma the palette does not own, and it disappears against
+a dark editor theme.
 
 **The wheel handler must stand down over a nested scroller.** The find bar and a popup are
 real scroll containers inside the panel, so the handler walks from the event target to the

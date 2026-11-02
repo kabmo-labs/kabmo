@@ -29,8 +29,8 @@
  * still held their text, i.e. the line's content was swallowed by a decoration
  * that should not have covered it.
  *
- * The walk below is the shape `indent-guide.ts` uses: visible lines only,
- * rebuilt on scroll and on edit, so a 20 MB file costs the viewport.
+ * The walk below visits the VISIBLE lines only and is rebuilt on scroll and on
+ * edit, so a 20 MB file costs the viewport.
  */
 
 import type { Range } from '@codemirror/state';
@@ -84,9 +84,9 @@ function buildMarkers(view: EditorView): DecorationSet {
 /**
  * The marker bands, as a view plugin.
  *
- * A plugin rather than a state field for the same reason `indentGuides` is: the
- * bands are derived from what is RENDERED, so a scroll has to rebuild them, and
- * a field would hold a decoration set the document does not own.
+ * A plugin rather than a state field because the bands are derived from what is
+ * RENDERED: a scroll has to rebuild them, and a field would hold a decoration
+ * set the document does not own.
  */
 export function conflictMarkers() {
   return ViewPlugin.fromClass(

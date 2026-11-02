@@ -9,8 +9,8 @@
  * Three failure modes are silent here and each is a test:
  *
  * - A guide drawn at the line's LEFT edge instead of under the opening brace
- *   looks like an indent guide, which is a different feature. The column is a
- *   decoration attribute, so the assertion is on the emitted style.
+ *   points at the wrong column. The column is a decoration attribute, so the
+ *   assertion is on the emitted style.
  * - A guide through a BLANK line makes a block read as if it continued across
  *   the gap between two functions.
  * - A mode table entry that does not exist in `@codemirror/legacy-modes` fails
