@@ -68,12 +68,18 @@ test.describe('editor whitespace', () => {
     // Select the indented line itself (the file's first line has no indent, so a
     // selection there would prove nothing): `  const answer = 1;` holds FIVE
     // spaces — two of indent and three between its tokens.
+    //
+    // `ControlOrMeta+Home` left the caret at column 0 of the first line, and
+    // `ArrowDown` keeps that goal column, so the caret is already at column 0 of
+    // this line and `Shift+End` selects the indent with the rest.
+    //
+    // Two `Home` presses used to stand here to reach column 0, and they were the
+    // flake: on macOS `Home` is CM6's own smart-home, but on Windows/Linux the
+    // keymap binds it to `lineStart`, whose command returns `false` at column 0 —
+    // so CM6's smart-home runs instead and moves to the end of the indent. Two
+    // presses then landed on column 2, the selection skipped the indent, and the
+    // count was 3 instead of 5 (measured on `windows-latest`/`ubuntu-latest`).
     await page.keyboard.press('ArrowDown');
-    // Home twice: the first stop is the first non-space (CodeMirror's own
-    // behaviour), the second is column 0 — and only a selection that INCLUDES the
-    // indent can show it.
-    await page.keyboard.press('Home');
-    await page.keyboard.press('Home');
     await page.keyboard.press('Shift+End');
     await expect(line.locator('.cm-whitespace-space')).toHaveCount(5, { timeout: 15_000 });
     // The mark holds the character it replaces, so ⌘C still carries spaces.
