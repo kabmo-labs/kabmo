@@ -6,7 +6,9 @@ import { DEFAULT_AGENTS_LIST } from '@/client/data/agent-data';
 import { isMockMode } from '@/server/mock.server';
 import type { AgentItem } from '@/shared/types';
 import { createSettingsListStore } from '@/server/lib/db/settings-store';
+import { join } from 'path';
 import { deleteAgentDefinition, discoverNativeAgents, writeAgentDefinition, type DiscoveredAgent } from '@/server/lib/omp/config/agents';
+import { resolveRoot } from '@/server/lib/fs/root';
 
 const agentsStore = createSettingsListStore<AgentItem>({
   key: 'omp_agents',
@@ -40,8 +42,8 @@ function nativeToAgentItem(agent: DiscoveredAgent): AgentItem & { sourceRoot: st
 }
 
 /** Merge native omp agents (disk discovery) with app-local custom agents. */
-async function mergeAgents(custom: AgentItem[]): Promise<Array<AgentItem & { sourceRoot?: string }>> {
-  const native = (await discoverNativeAgents()).map(nativeToAgentItem);
+async function mergeAgents(custom: AgentItem[], projectDir?: string): Promise<Array<AgentItem & { sourceRoot?: string }>> {
+  const native = (await discoverNativeAgents(projectDir)).map(nativeToAgentItem);
   const nativeNames = new Set(native.map((a) => a.name.toLowerCase()));
   return [...native, ...custom.filter((a) => !nativeNames.has(a.name.toLowerCase()))];
 }
@@ -54,13 +56,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const mock = isMockMode();
     const agents = await agentsStore.read(db);
 
+    // The panel's project picker is a SCOPE, not decoration: `<workspace>/.omp/agents`
+    // holds agents that only exist for that workspace, and an unscoped read
+    // could never list them. Gated through `resolveRoot` like every other
+    // client-supplied path, so an arbitrary directory is not readable here.
+    const rawRoot = url.searchParams.get('root');
+    const projectDir = rawRoot
+      ? join(await resolveRoot(rawRoot, ''), '.omp', 'agents')
+      : undefined;
+
     if (includeNative && !mock) {
-      return json({ agents: await mergeAgents(agents), isMock: mock });
+      return json({ agents: await mergeAgents(agents, projectDir), isMock: mock });
     }
 
     return json({ agents, isMock: mock });
-  } catch (error: any) {
-    return json({ error: error.message, agents: isMockMode() ? DEFAULT_AGENTS_LIST : [], isMock: isMockMode() }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ error: message, agents: isMockMode() ? DEFAULT_AGENTS_LIST : [], isMock: isMockMode() }, { status: 500 });
   }
 }
 
@@ -122,7 +134,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     return methodNotAllowed({ request, params });
-  } catch (error: any) {
-    return json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

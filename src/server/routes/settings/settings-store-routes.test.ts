@@ -121,11 +121,14 @@ describe('settings root', () => {
 });
 
 describe('settings projects', () => {
-  test('the loader reports the model and accent options alongside the list', async () => {
+  test('the loader reports the accent options alongside the list', async () => {
     const body = await (await call(projectsLoader, new Request(`${API}/projects`))).json();
     expect(Array.isArray(body.projects)).toBe(true);
-    expect(Array.isArray(body.availableModels)).toBe(true);
     expect(Array.isArray(body.accentColorOptions)).toBe(true);
+    expect(body.accentColorOptions[0]).toMatchObject({ label: 'None', value: '' });
+    // The default model comes from the live catalog, not from this route: a
+    // hardcoded list of display names here was never readable by a spawn.
+    expect(body.availableModels).toBeUndefined();
   });
 
   test('a delete without an id is refused before touching the store', async () => {

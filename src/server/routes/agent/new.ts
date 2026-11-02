@@ -7,6 +7,7 @@ import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.ser
 import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
+import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
 
 /** The model-dropdown persists its selection here (actionType 'selectModel');
  *  a spawn that arrives without an explicit provider/modelId falls back to it. */
@@ -79,7 +80,13 @@ export async function action({ request }: ActionFunctionArgs) {
       thinkingLevel?: string;
     };
 
-    const effectiveModel = provider && modelId ? { provider, modelId } : await loadPersistedModel();
+    // The workspace's own default is the FIRST fallback: "Defaults for new
+    // chats" exists to decide the model a chat starts on, so a project pick
+    // outranks Kabmo's global one for a chat born in that project.
+    const projectModel = await projectModelForCwd(await getDb(), cwd);
+    const effectiveModel = provider && modelId
+      ? { provider, modelId }
+      : projectModel ?? await loadPersistedModel();
     if (effectiveModel) {
       await session.send({ type: 'set_model', ...effectiveModel }).catch(() => {});
     }

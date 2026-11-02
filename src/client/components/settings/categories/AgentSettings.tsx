@@ -7,18 +7,33 @@ import { LoadingState } from '@/client/components/settings/LoadingState';
 import { useCrudList } from '@/client/hooks/settings/crud-list';
 import { useSettingsMasterDetail } from '@/client/hooks/settings/master-detail';
 import { SettingsMasterDetail } from '@/client/components/settings/master-detail';
+import { GLOBAL_SCOPE_ID, useWorkspaceRoots } from '@/client/hooks/settings/workspace-roots';
 
 interface AgentSettingsProps {
   settings: SettingsState;
   onUpdate: (settings: SettingsState) => void;
 }
 
+/**
+ * The Agents panel, scoped to one project at a time.
+ *
+ * The project picker used to offer three hardcoded names and do nothing with
+ * the choice — `selectedProject` was local state no request read, so
+ * `<workspace>/.omp/agents` was unreachable from the one screen whose job is
+ * listing agents. It now scopes the read through the same `?root=` contract the
+ * skills and commands panels use, so the three panels agree about what a
+ * project scope is.
+ */
 export const AgentSettings: FunctionComponent<AgentSettingsProps> = () => {
   const masterDetail = useSettingsMasterDetail();
-  const [selectedProject, setSelectedProject] = useState('kabmo');
+  const roots = useWorkspaceRoots();
+  const [selectedRootId, setSelectedRootId] = useState<string>(GLOBAL_SCOPE_ID);
+  const query = roots.queryFor(selectedRootId);
+
   const { items: agents, selectedId, selected: selectedAgent, isCreatingNew, isLoading, select, startCreate, save, remove } =
     useCrudList<AgentItem>({
       endpoint: '/api/settings/agents',
+      query,
       listKey: 'agents',
       bodyKey: 'agent',
       messages: {
@@ -46,8 +61,11 @@ export const AgentSettings: FunctionComponent<AgentSettingsProps> = () => {
     isBuiltIn: false,
   };
 
+  // A different scope is a different list: `useCrudList` re-reads when the query
+  // changes and resolves its selection against the new list, so no extra reset
+  // is needed here.
   if (isLoading) {
-    return <LoadingState>Loading agents from database...</LoadingState>;
+    return <LoadingState>Loading agents…</LoadingState>;
   }
 
   return (
@@ -68,8 +86,9 @@ export const AgentSettings: FunctionComponent<AgentSettingsProps> = () => {
               startCreate();
               masterDetail.openDetail();
             }}
-            selectedProject={selectedProject}
-            onChangeProject={setSelectedProject}
+            selectedProject={selectedRootId}
+            onChangeProject={setSelectedRootId}
+            projectOptions={roots.options}
           />
         }
         detail={
@@ -89,8 +108,10 @@ export const AgentSettings: FunctionComponent<AgentSettingsProps> = () => {
                 onDelete={remove}
               />
             ) : (
-              <div className="flex-1 flex items-center justify-center text-xs font-mono text-ink/40">
-                Select an agent or click + to create one
+              <div className="flex-1 flex items-center justify-center px-6 text-center text-xs text-ink/40">
+                {roots.isWorkspace(selectedRootId)
+                  ? 'No agents in this project. Create one, or pick Global.'
+                  : 'Select an agent or click + to create one.'}
               </div>
             )}
           </div>

@@ -1,5 +1,13 @@
-import type { AccentColorOption, ProjectConfigItem } from '@/shared/types';
+import type { ProjectConfigItem } from '@/shared/types';
 
+/**
+ * Legacy seed rows for the one-shot migration off `omp_projects_config`.
+ *
+ * Read ONLY by `migrateLegacyProjectSettings`: when the legacy row exists but
+ * is not an array, that migration falls back to this list. Nothing else may
+ * read it — the live project list comes from the `workspace_folders` table, and
+ * the accent palette lives in `@/shared/lib/workspace/project-accent`.
+ */
 export const DEFAULT_PROJECTS_LIST: ProjectConfigItem[] = [
   { id: 'proj-workspace', name: 'Workspace', path: '/Users/rajebdev/JatisMobile/Workspace', model: 'Not selected', accentColor: '#a3e635', icon: 'default' },
   { id: 'proj-drrealhandler', name: 'drrealhandler', path: '/Users/rajebdev/JatisMobile/drrealhandler', model: 'Not selected', accentColor: '#94a3b8', icon: 'default' },
@@ -28,31 +36,4 @@ export const DEFAULT_PROJECTS_LIST: ProjectConfigItem[] = [
   { id: 'proj-bofis-pro', name: 'bofis-pro', path: '/Users/rajebdev/JatisMobile/bofis-pro', model: 'Not selected', accentColor: '#fbbf24', icon: 'default' },
   { id: 'proj-ompweb', name: 'ompweb', path: '/Users/rajebdev/JatisMobile/ompweb', model: 'Not selected', accentColor: '#f43f5e', icon: 'default' },
   { id: 'proj-kabmo', name: 'kabmo', path: '/Users/rajebdev/JatisMobile/kabmo', model: 'Not selected', accentColor: '#38bdf8', icon: 'default' },
-];
-
-export const ACCENT_COLOR_OPTIONS: AccentColorOption[] = [
-  { label: 'None', value: '', bgHex: 'transparent' },
-  { label: 'Sky Blue', value: '#38bdf8', bgHex: '#38bdf8' },
-  { label: 'Light Green', value: '#a3e635', bgHex: '#a3e635' },
-  { label: 'Coral', value: '#f87171', bgHex: '#f87171' },
-  { label: 'Amber', value: '#fbbf24', bgHex: '#fbbf24' },
-  { label: 'Teal', value: '#2dd4bf', bgHex: '#2dd4bf' },
-  { label: 'Slate', value: '#94a3b8', bgHex: '#94a3b8' },
-  { label: 'Rose', value: '#f43f5e', bgHex: '#f43f5e' },
-  { label: 'Vivid Blue', value: '#3b82f6', bgHex: '#3b82f6' },
-  { label: 'Lime Green', value: '#84cc16', bgHex: '#84cc16' },
-];
-
-export const AVAILABLE_PROJECT_MODELS: string[] = [
-  'Not selected',
-  'DeepSeek-V3',
-  'DeepSeek-R1',
-  'Claude 3.5 Sonnet',
-  'Claude 3.7 Sonnet',
-  'GPT-4o',
-  'GPT-4o-mini',
-  'Gemini 2.5 Flash',
-  'Gemini 2.5 Pro',
-  'Qwen 2.5 Coder 32B',
-  'Llama 3.3 70B',
 ];

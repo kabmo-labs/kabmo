@@ -20,6 +20,7 @@ import { useToasts } from '@/client/hooks/ui/toasts';
 import { ChatOverlays } from '@/client/components/workspace/chat-timeline/ChatOverlays';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { composerRootFor } from '@/shared/lib/workspace/active-project';
+import { usePendingProjectModel } from '@/client/hooks/chat/timeline/pending-model';
 import { useNewChatOpen } from '@/client/hooks/chat/timeline/new-chat-open';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useHeldWait } from '@/client/hooks/chat/waiting/held';
@@ -160,6 +161,10 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
 
   const { heldWait, cancelHeldWait } = useHeldWait(sessionId, isPendingSession, pushToast);
   const composerRoot = composerRootFor(folders, sessionId, selectedFolderId);
+  // The workspace's own default model, resolved by the same rule the spawn
+  // uses, so the pending composer's pill does not promise Kabmo's global pick.
+  const pendingProjectModel = usePendingProjectModel(folders, selectedFolderId);
+  const sessionDataModel = typeof sessionData?.model === 'object' ? sessionData.model : null;
 
   // The chat-level "a run is in flight" flag is computed in `useChatTimeline`
   // (it owns the queue-vs-send decision that depends on it) and consumed here
@@ -199,7 +204,7 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
         modes={modes}
         composerModelRef={composerModelRef}
         deferredComposerPickRef={deferredComposerPickRef}
-        sessionModel={typeof sessionData?.model === 'object' ? sessionData.model : null}
+        sessionModel={sessionDataModel ?? pendingProjectModel}
         sessionThinkingLevel={sessionData?.thinkingLevel}
         generatingVerb={generatingVerb}
         variant={variant}

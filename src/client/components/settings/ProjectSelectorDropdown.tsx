@@ -13,13 +13,6 @@ export interface ProjectOption {
   value?: string;
 }
 
-/** Static project list shared by the agent, command, and skill sidebars. */
-export const PROJECT_OPTIONS: ProjectOption[] = [
-  { id: 'kabmo', name: 'kabmo', label: 'kabmo' },
-  { id: 'workspace-edge', name: 'workspace-edge', label: 'workspace-edge' },
-  { id: 'global', name: 'global config', label: 'Global (All Projects)' },
-];
-
 const optionValue = (option: ProjectOption): string => option.value ?? option.id;
 
 /**
@@ -34,7 +27,11 @@ const defaultTriggerLabel = (options: ProjectOption[], selectedProject: string):
 interface ProjectSelectorDropdownProps {
   selectedProject: string;
   onChangeProject: (value: string) => void;
-  /** Defaults to {@link PROJECT_OPTIONS}. */
+  /**
+   * The real workspace folders (`useWorkspaceRoots`). Defaults to NONE: this
+   * used to fall back to a hardcoded list of made-up projects, so a panel that
+   * forgot to pass its options offered scopes that resolved to nothing.
+   */
   options?: ProjectOption[];
   /** Trigger label resolver; defaults to a `name` lookup by value. */
   getTriggerLabel?: (options: ProjectOption[], selectedProject: string) => string;
@@ -50,7 +47,7 @@ interface ProjectSelectorDropdownProps {
 export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownProps> = ({
   selectedProject,
   onChangeProject,
-  options = PROJECT_OPTIONS,
+  options = [],
   getTriggerLabel = defaultTriggerLabel,
   variant = 'default',
 }) => {
@@ -96,6 +93,19 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
       </button>
     );
   });
+
+  // No projects at all: the trigger says why instead of opening an empty menu
+  // (or, worse, naming a scope that does not exist).
+  if (options.length === 0) {
+    return (
+      <div className={variant === 'compact' ? 'p-2.5 border-b border-ink/10' : 'p-3 border-b border-ink/10'}>
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed border-ink/15 text-[11px] text-ink/50">
+          <Folder size={13} className="text-ink/40 flex-shrink-0" />
+          <span className="truncate">No projects yet — add one in Settings → Projects</span>
+        </div>
+      </div>
+    );
+  }
 
   if (variant === 'compact') {
     return (
