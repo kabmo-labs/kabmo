@@ -139,6 +139,45 @@ describe('SvgPreview', () => {
     expect(container.querySelector('script')).toBeNull();
     expect((globalThis as Record<string, unknown>).__pwned).toBeUndefined();
   });
+
+  // THE gradient regression. DOMPurify drops an `id` whose value is already a
+  // property of the page — `body` is — while the `fill="url(#body)"` that
+  // referenced it survives, so the shape silently paints with whatever else
+  // claims that name. Measured on a real icon: the chicken's body and head came
+  // out dark green instead of cream. The ids are therefore prefixed before the
+  // sanitizer sees them, and BOTH halves must move together.
+  test('a defs id the page already owns survives, and its reference follows', async () => {
+    await mount(
+      h(SvgPreview, {
+        content:
+          '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><defs><linearGradient id="body"><stop offset="0" stop-color="#fff"/></linearGradient></defs><rect width="10" height="10" fill="url(#body)"/></svg>',
+        name: 'icon.svg',
+      }),
+    );
+    // happy-dom's own sanitizer keeps these; the browser's is the one that
+    // would have dropped `id="body"`, which is why the prefix exists at all.
+    const gradient = container.querySelector('linearGradient, lineargradient');
+    const rect = container.querySelector('rect');
+    expect(rect).not.toBeNull();
+    const declared = gradient?.getAttribute('id') ?? '';
+    expect(declared).toMatch(/^svg\d+-body$/);
+    expect(rect?.getAttribute('fill')).toBe(`url(#${declared})`);
+  });
+
+  // Two previews must not resolve one another's definitions: `defs` ids are
+  // document-scoped, so an unprefixed pair means the second picture paints with
+  // the first one's gradient.
+  test('two previews scoped their ids apart', async () => {
+    const markup =
+      '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="paint"/></defs><rect width="4" height="4" fill="url(#paint)"/></svg>';
+    await mount(h(SvgPreview, { content: markup, name: 'a.svg' }));
+    const firstId = container.querySelector('linearGradient, lineargradient')?.getAttribute('id');
+    await mount(h(SvgPreview, { content: markup, name: 'b.svg' }));
+    const secondId = container.querySelector('linearGradient, lineargradient')?.getAttribute('id');
+    expect(firstId).toBeTruthy();
+    expect(secondId).toBeTruthy();
+    expect(firstId).not.toBe(secondId);
+  });
 });
 
 describe('DocxView', () => {

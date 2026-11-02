@@ -20,8 +20,9 @@
  * container whose size is driven by the SVG's own viewBox.
  */
 
-import { useMemo } from 'preact/hooks';
+import { useMemo, useRef } from 'preact/hooks';
 import { sanitizeMermaidSvg } from '@/shared/lib/markdown/sanitize';
+import { nextSvgScopePrefix, scopeSvgIds } from '@/shared/lib/ui/svg-scope';
 
 interface SvgPreviewProps {
   content: string;
@@ -29,7 +30,22 @@ interface SvgPreviewProps {
 }
 
 export function SvgPreview({ content, name }: SvgPreviewProps) {
-  const safeSvg = useMemo(() => sanitizeMermaidSvg(content), [content]);
+  // The id namespace is allocated ONCE per mounted preview and kept across
+  // edits: a prefix that changed with every keystroke would rewrite every id
+  // on every render for no benefit, and the sanitized markup is memoized on
+  // `content` alone.
+  const scopeRef = useRef('');
+  if (!scopeRef.current) scopeRef.current = nextSvgScopePrefix();
+
+  // SCOPED BEFORE SANITIZED, and the order is the fix rather than a detail.
+  // DOMPurify drops any `id` whose value is already a property of the page
+  // (`body`, `title`, `name`, …) because that attribute is its DOM-clobbering
+  // vector, and the `fill="url(#body)"` that referenced it is left behind — a
+  // gradient-painted shape silently adopts the wrong paint. See `svg-scope`.
+  const safeSvg = useMemo(
+    () => sanitizeMermaidSvg(scopeSvgIds(content, scopeRef.current)),
+    [content],
+  );
 
   return (
     <div className="flex-1 overflow-auto bg-paper">

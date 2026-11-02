@@ -396,6 +396,74 @@ test.describe('editor', () => {
     workspace.dispose();
   });
 
+  /**
+   * A gradient painted through `url(#id)` must survive the sanitizer with its
+   * id intact.
+   *
+   * DOMPurify drops an `id` whose value is already a property of the page
+   * (`document.body` is, so `id="body"` is the realistic case) and leaves the
+   * reference behind, so the shape silently paints with something else — and
+   * nothing is logged. Measured on a real icon: the body and head came out the
+   * background's dark green instead of cream.
+   *
+   * Only a browser can catch it: the happy-dom sanitizer does not perform the
+   * clobber check at all, so the unit test in `viewers.test.ts` passes against
+   * the broken picture. This reads the COMPUTED paint of the shape, which is
+   * what the eye sees.
+   */
+  test("a gradient whose id the page already owns is still painted by it", async ({ harness, page }) => {
+    const server = await harness('real');
+    const workspace = await seedWorkspace(server, 'e2e-editor-svg-gradient');
+    mkdirSync(join(workspace.path, 'icons'), { recursive: true });
+    writeFileSync(
+      join(workspace.path, 'icons', 'chicken.svg'),
+      [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">',
+        '<defs><linearGradient id="body"><stop offset="0" stop-color="#fffdf1"/><stop offset="1" stop-color="#fffdf1"/></linearGradient></defs>',
+        '<rect id="painted" width="40" height="40" fill="url(#body)"/>',
+        '</svg>',
+        '',
+      ].join('\n'),
+    );
+
+    await openApp(page, `${server.baseURL}/?folderId=${workspace.id}`);
+    await page.getByText('icons', { exact: true }).first().click();
+    await page.getByText('chicken.svg', { exact: true }).first().click();
+
+    const preview = page.locator('[data-panel-id="editor-panel"] .svg-preview');
+    await expect(preview).toBeVisible({ timeout: 15_000 });
+
+    const painted = await preview.locator('[id$="painted"]').evaluate((element) => {
+      // The gradient's declaration must still exist under the same name the
+      // shape references; `null` means the sanitizer dropped it and the shape
+      // would paint with its `none` fallback.
+      const reference = element.getAttribute('fill') ?? '';
+      const id = reference.replace(/^url\(#|\)$/g, '');
+      const root = (element as SVGElement).ownerSVGElement;
+      const def = root?.querySelector(`linearGradient[id="${id}"]`) ?? null;
+      const stop = def?.querySelector('stop');
+      return {
+        reference,
+        defFound: def !== null,
+        stopColor: stop ? getComputedStyle(stop).stopColor : null,
+        paint: getComputedStyle(element).fill,
+      };
+    });
+
+    // A `url(#…)` that resolves is what the browser reports for a live paint
+    // server; a dangling reference collapses to `none`, i.e. an invisible shape.
+    // Chromium serializes the reference quoted (`url("#svg1-body")`), so the
+    // assertion reads the shape of the value, not its quoting.
+    expect(painted.defFound).toBe(true);
+    expect(painted.paint).toContain(`url("#`);
+    expect(painted.paint).not.toContain('none');
+    // And the definition it resolves to is the one authored here, still
+    // carrying its own stop colour rather than falling back to black.
+    expect(painted.stopColor).toBe('rgb(255, 253, 241)');
+
+    workspace.dispose();
+  });
+
   test('the status bar switches the line ending the next save writes', async ({ harness, page }) => {
     const server = await harness('real');
     const workspace = await seedWorkspace(server, 'e2e-eol-switch');
