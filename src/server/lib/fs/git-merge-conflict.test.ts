@@ -20,13 +20,26 @@
  * a real failure (a bad ref, a dirty tree) leaves none.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { mergeBranch, rebaseOnto } from '@/server/lib/fs/git-merge';
 import { applyStash, pushStash } from '@/server/lib/fs/git-stash';
 import { readGitState } from '@/server/lib/fs/git-state';
+
+/**
+ * Every case here builds a real repository and drives several `git` processes
+ * through it (`init`, two `config`, `add`, two `commit`, `stash push`, `stash
+ * pop`), so Bun's 5s per-test default is a budget for the RUNNER rather than
+ * for the code. Measured on `windows-latest`: "applyStash resolves with the
+ * stash-pop state" timed out at 5011ms while the same suite is green locally in
+ * well under a second, and process spawn on that runner costs several times
+ * what it does on POSIX. A budget, not a skip: the behaviour is identical on
+ * both platforms. `git-actions-sync.test.ts` and the route's `git-merge.test.ts`
+ * set the same 30s for the same reason.
+ */
+setDefaultTimeout(30_000);
 
 const repos: string[] = [];
 
