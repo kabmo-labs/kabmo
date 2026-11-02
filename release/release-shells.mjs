@@ -12,11 +12,16 @@
  * this repository's history before the change: 29 shell bump commits across six
  * releases.
  *
- * **That position in the graph is still the whole design.** The job runs after
- * `marketplace` and before the five builds, and `app` fast-forwards onto the
- * commit it makes (the same `Sync to the current remote` the other bump jobs
- * rely on). A bump landing after the app packed would reach installs one
- * release late, which is exactly the lag these bumps exist to remove.
+ * **That position in the graph is still the whole design, and the commit is now
+ * PUBLISHED only after every build passed.** The job runs after `marketplace` and
+ * before the five builds; it commits the five files on a staging branch
+ * (`release/shell-bump`), the builds compile that commit, and `shell-commit`
+ * fast-forwards `main` onto it once all five are green — so a failed build leaves
+ * `main`'s version files untouched instead of recording a version no artifact
+ * exists for. `app` then fast-forwards onto that commit (the same `Sync to the
+ * current remote` the other bump jobs rely on). A bump landing after the app
+ * packed would reach installs one release late, which is exactly the lag these
+ * bumps exist to remove.
  *
  * **Why a bump is the release.** No shell is published anywhere — they are
  * private applications whose only artifact is the file attached to the app's

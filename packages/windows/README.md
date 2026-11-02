@@ -225,7 +225,10 @@ library and its executable.
 The version lives in `version.properties` — the ONE place it is declared. The
 `shells` job of `.github/workflows/release.yml` bumps it from the Conventional
 Commits touching `packages/windows` (a `fix` is a patch, a `feat` a minor), and
-`publish-windows.yml` builds the ZIP and attaches it to the app's release.
+`publish-windows.yml` builds the ZIP and attaches it to the app's release. The bump
+is staged first and reaches `main` only after the Windows build and the four other
+shell builds pass (`shell-commit`), so a build failure cannot leave a bumped version
+behind for an artifact that was never produced.
 
 ```bash
 node release/windows-version.mjs      # the declared version

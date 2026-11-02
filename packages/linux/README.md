@@ -187,7 +187,8 @@ unparsable line FAILS the build.
 `release/release-shells.mjs`, which ranges from the commit that last wrote the
 version LINE (`git log -L`) over `packages/linux`, derives the bump level from the
 same Conventional Commits rules the app uses, and commits the result — all five
-shells in ONE commit. The `chore` it
+shells in ONE commit, staged and published only after every shell build passed
+(`shell-commit` fast-forwards `main` onto it). The `chore` it
 commits releases nothing on its own.
 
 There is deliberately **no User-Agent token**, unlike the Android and iOS shells.
@@ -203,7 +204,8 @@ asset request carried it for a string the bridge already supplies.
 ### Releasing
 
 `.github/workflows/publish-linux.yml` is the reusable body. `release.yml`'s
-`linux-build` job calls it with `mode: build` and `ref: main` BEFORE `app` tags — so
+`linux-build` job calls it with `mode: build` and the staged shell-bump commit
+(`ref: ${{ needs.shells.outputs.ref }}`) BEFORE `app` tags — so
 a compile error, a missing `libwebkit2gtk-4.1-dev`, or a rules-suite failure stops
 the release instead of shipping a tag whose GitHub release carries no shell — and
 `linux-app` calls it again with `mode: attach` after the release exists. It builds

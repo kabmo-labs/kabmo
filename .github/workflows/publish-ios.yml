@@ -47,9 +47,10 @@ on:
         default: build
       # The commit to build: `ref`, then `tag`, then the caller's own commit.
       #
-      # `release.yml` passes `main`, never the run's starting sha: the `shells` bump job
-      # has just pushed the shell version, and the bump is what the IPA's
-      # `CFBundleShortVersionString` comes from.
+      # `release.yml` passes the COMMIT the `shells` job staged, never the run's
+      # starting sha: the bump is what the IPA's `CFBundleShortVersionString` comes
+      # from, and it reaches `main` only after this build and its four siblings
+      # pass.
       ref:
         description: Commit to build the IPA from; empty falls back to the tag, then the caller's commit.
         required: false

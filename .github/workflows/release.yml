@@ -372,21 +372,34 @@ jobs:
           git log --oneline -1
 
   # ---------------------------------------------------------------------------
-  # 1c. Every shell's version, in ONE job and ONE commit.
+  # 1c. Every shell's version, in ONE job and ONE commit — committed to `main`
+  # only AFTER every build has passed.
   #
   # It was five chained jobs (`android` -> `ios` -> `windows` -> `macos` ->
   # `linux`), each with its own checkout, install, bump, commit and push. The
   # chain was never a requirement: every bump reads its own watermark, its own
   # version file and its own commit range, and the five builds below only need
-  # every version to be on `main`. Measured on this repository's history before
-  # the change: 29 shell bump commits across six releases.
+  # every version to be in the tree they compile. Measured on this repository's
+  # history before the change: 29 shell bump commits across six releases.
   #
-  # The POSITION is unchanged and is the whole design: after `marketplace` and
-  # before every shell build. `app` fast-forwards onto the commit this job makes
-  # (the same `Sync to the current remote` the other bump jobs rely on), so the
-  # bumped files are inside the tarball and inside every artifact built from
-  # `main`. A bump landing after the app packed would reach installs one release
-  # late.
+  # The ORDER is the design: bump -> build -> COMMIT -> tag -> attach.
+  #
+  #   - this job writes the five files, commits them LOCALLY and publishes that
+  #     commit on a STAGING BRANCH (`release/shell-bump`), never on `main`;
+  #   - the five builds compile the staging ref, so every artifact declares the
+  #     bumped version;
+  #   - `shell-commit` fast-forwards `main` onto that commit only once all five
+  #     have passed, and deletes the staging ref.
+  #
+  # Committing first was the bug: a build that failed (a Kotlin compiler that
+  # moved, a missing keystore, a Rust crate that stopped building) left `main`
+  # declaring a shell version no artifact exists for, so the next release bumped
+  # again and the version file became a record of attempts rather than of builds.
+  #
+  # `app` fast-forwards onto the commit `shell-commit` makes (the same `Sync to
+  # the current remote` the other bump jobs rely on), so the bumped files are
+  # inside the tarball. A bump landing after the app packed would reach installs
+  # one release late.
   #
   # Nothing is tagged and nothing is published: every artifact is attached to the
   # app's release, so a shell bump reaches an installed app on the NEXT app
@@ -396,17 +409,20 @@ jobs:
   # The runner decides EVERY shell before it writes ANY of them (see
   # `release/release-shells.mjs`), so a broken descriptor stops the run with no
   # version file touched. Where a write did land, the failing step exits 1 and
-  # this job never commits — `main` gets all five files or none, which the five
+  # this job never commits — the tree gets all five files or none, which the five
   # sequential jobs could not promise.
   # ---------------------------------------------------------------------------
   shells:
-    name: Bump the shell versions
+    name: Stage the shell version bumps
     needs: marketplace
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
+      # The ref the five builds compile: the staged commit when there is one, and
+      # `main` when nothing changed (a chore-only push still runs every build).
+      ref: ${{ steps.stage.outputs.ref || 'main' }}
     permissions:
       contents: write
     steps:
@@ -452,9 +468,21 @@ jobs:
       # when that job resets to its checkout — and every artifact would declare
       # the OLD shell version.
       #
+      # Published on the STAGING BRANCH, not on `main`: the five builds compile
+      # that commit, and `shell-commit` fast-forwards `main` onto it only after
+      # all five have passed — so a build failure leaves `main`'s version files
+      # exactly as they were. The ref is force-updated rather than created: a run
+      # that stopped at a build leaves it behind, and the next release replaces it.
+      #
+      # The output is the COMMIT, not the branch name: each build compiles an
+      # immutable sha, so a later run cannot move the tree under a build. The sha
+      # stays fetchable either way — from `main` once `shell-commit` landed it,
+      # from the staging branch while a run is still stopped at a build.
+      #
       # The five files are NAMED rather than staged with `-A`: a `chore` that
       # claims to be a version bump must not sweep a lockfile change into itself.
       - name: Commit the bumps
+        id: stage
         if: steps.bump.outputs.any == 'true'
         env:
           GIT_AUTHOR_NAME: kabmo-bot[bot]
@@ -475,7 +503,8 @@ jobs:
             exit 0
           fi
           git commit -q -m "chore(release): bump the shells (${{ steps.bump.outputs.bumped }}) [skip ci]"
-          git push origin HEAD:main
+          git push --force origin HEAD:refs/heads/release/shell-bump
+          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           git log --oneline -1
 
   # 1e. The IPA, BUILT — a GATE on the app release, for the APK's reason.
@@ -486,10 +515,11 @@ jobs:
   # tagged and nothing is published — instead of a release that goes out with no
   # shell in it, repaired only by a hand-run dispatch.
   #
-  # `ref: main`, not the trigger commit: the `shells` job just pushed every shell
-  # version, and the bundle must declare THAT number — building the starting
-  # commit would produce an IPA declaring the previous one, which is an update no
-  # installed app is ever offered.
+  # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
+  # staged every shell version, and the bundle must declare THAT number — building
+  # the starting commit would produce an IPA declaring the previous one, which is an
+  # update no installed app is ever offered. The staged ref is a COMMIT, so the tree
+  # this compiles cannot move under it.
   #
   # It does NOT gate on the shell having changed: whether `app` will tag is not
   # knowable before `app` runs, and a build that might be wasted is the price of the
@@ -513,7 +543,7 @@ jobs:
     uses: ./.github/workflows/publish-ios.yml
     with:
       mode: build
-      ref: main
+      ref: ${{ needs.shells.outputs.ref }}
       build-number: ${{ github.run_number }}
 
   # ---------------------------------------------------------------------------
@@ -534,12 +564,12 @@ jobs:
   # release; the two calls are one pipeline because artifacts are scoped to the
   # run, so no rebuild happens between the check and the upload.
   #
-  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
-  # version bumps, and the APK must declare THAT version — building the
-  # starting commit would produce an APK declaring the previous one, which is
-  # an update no installed app is ever offered. `main` resolves against the
-  # remote, so it lands on the bumps (the same reason `packages-publish` names
-  # it).
+  # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
+  # staged the shell version bumps, and the APK must declare THAT version —
+  # building the starting commit would produce an APK declaring the previous one,
+  # which is an update no installed app is ever offered. The ref is the staged
+  # COMMIT (or `main` when nothing was bumped), so it names exactly the tree
+  # `shell-commit` publishes once this build and its four siblings pass.
   #
   # A run whose commits ask for no version bump still builds here; there is no
   # way to know whether `app` will tag before `app` runs, and a build that
@@ -575,7 +605,7 @@ jobs:
     uses: ./.github/workflows/publish-android.yml
     with:
       mode: build
-      ref: main
+      ref: ${{ needs.shells.outputs.ref }}
       version-code: ${{ github.run_number }}
     secrets: inherit
 
@@ -588,9 +618,9 @@ jobs:
   # and nothing is published — instead of a release that goes out with no Windows
   # artifact in it.
   #
-  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
-  # versions, and the artifact must declare THAT number — building the starting
-  # commit would produce an app reporting the previous one.
+  # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
+  # staged the shell versions, and the artifact must declare THAT number — building
+  # the starting commit would produce an app reporting the previous one.
   #
   # It does NOT gate on the shell having changed: whether `app` will tag is not
   # knowable before `app` runs, and a build that might be wasted is the price of
@@ -598,8 +628,8 @@ jobs:
   # ---------------------------------------------------------------------------
   win-build:
     name: Build the Windows app
-    # `shells` alone: every shell build reads `main` after the one bump commit, and
-    # `app` names all five builds, so nothing else needs a chain here.
+    # `shells` alone: every shell build reads the one staged bump commit, and `app`
+    # names all five builds plus `shell-commit`, so nothing else needs a chain here.
     needs: shells
     permissions:
       # `contents: write`, for the parse-time reason `apk-build` documents: GitHub
@@ -612,7 +642,7 @@ jobs:
     uses: ./.github/workflows/publish-windows.yml
     with:
       mode: build
-      ref: main
+      ref: ${{ needs.shells.outputs.ref }}
 
   # ---------------------------------------------------------------------------
   # 2. The app. Waits for the packages, the marketplace bumps, the shell bumps
@@ -630,8 +660,8 @@ jobs:
   # stops `app`, so nothing is tagged and nothing is published — instead of a release
   # that goes out with no app in it, repaired only by a hand-run dispatch.
   #
-  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
-  # versions, and the bundle must declare THAT number.
+  # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
+  # staged the shell versions, and the bundle must declare THAT number.
   #
   # It does NOT gate on the shell having changed: whether `app` will tag is not
   # knowable before `app` runs, and a build that might be wasted is the price of the
@@ -651,15 +681,15 @@ jobs:
     uses: ./.github/workflows/publish-macos.yml
     with:
       mode: build
-      ref: main
+      ref: ${{ needs.shells.outputs.ref }}
 
   # The Linux app, BUILT — a gate on the app release, for the macOS/Windows reason:
   # a Rust error, a missing GTK/WebKitGTK development package or a rules-suite
   # failure must stop `app` before it tags.
   #
-  # `ref: main`, not the trigger commit: the `shells` job just pushed the shell
-  # versions, and `build.rs` bakes that number into the binary — building the
-  # starting commit would declare the previous one.
+  # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
+  # staged the shell versions, and `build.rs` bakes that number into the binary —
+  # building the starting commit would declare the previous one.
   linux-build:
     name: Build the Linux app
     needs: shells
@@ -673,16 +703,87 @@ jobs:
     uses: ./.github/workflows/publish-linux.yml
     with:
       mode: build
-      ref: main
+      ref: ${{ needs.shells.outputs.ref }}
+
+  # ---------------------------------------------------------------------------
+  # 1j. The shell bumps, committed to `main` — and ONLY once every build passed.
+  #
+  # This is the step that used to sit at the end of `shells`, and moving it here is
+  # the point of the staging branch: a build that fails (a Kotlin compiler that
+  # moved, a missing keystore, a Rust crate that stopped building) now stops the run
+  # with `main`'s version files untouched, instead of leaving a bumped version behind
+  # for an artifact that was never produced. The order is bump -> build -> COMMIT ->
+  # tag -> attach.
+  #
+  # No job-level `if:` on purpose: a skipped job skips every dependent, and `app`
+  # must still run on a push that bumped no shell version, to report that there is
+  # nothing to release. In that case `shells.ref` is `main`, not a sha, and the steps
+  # below no-op.
+  #
+  # `--ff-only` on purpose too. `main` moving during the build window is a failure
+  # this run should report, not a merge it should invent: every artifact was built
+  # from a tree that would no longer be `main`'s. `app` fast-forwards onto this
+  # commit for the same reason.
+  # ---------------------------------------------------------------------------
+  shell-commit:
+    name: Commit the shell bumps
+    needs: [shells, apk-build, ipa-build, win-build, macos-build, linux-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Nothing was bumped
+        if: needs.shells.outputs.any != 'true'
+        run: echo "No shell version changed; main is already current."
+
+      - name: Checkout the staged bump commit
+        if: needs.shells.outputs.any == 'true'
+        uses: actions/checkout@v7
+        with:
+          # Every jump is a fast-forward, and `main` must be fetched as a real ref.
+          fetch-depth: 0
+          persist-credentials: true
+          ref: ${{ needs.shells.outputs.ref }}
+
+      - name: Fast-forward `main` onto it
+        if: needs.shells.outputs.any == 'true'
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            echo "::error::main moved during the build; the shell bump was not committed and nothing is attached."
+            exit 1
+          fi
+          git push origin HEAD:main
+          git log --oneline -1
+
+      # The staging ref is transport, not history, and it is deleted only after the
+      # commit landed: while a run is stopped at a build it is the only ref holding
+      # the tree those artifacts were built from, which is what makes re-running a
+      # failed build job possible.
+      #
+      # Conditional on the ref EXISTING, because `any` can be true while the staged
+      # diff turned out empty ("Nothing staged; the bump produced no change") — and a
+      # delete of a missing ref exits non-zero, which would fail the job and skip
+      # `app` for a release that has nothing wrong with it.
+      - name: Delete the staging ref
+        if: needs.shells.outputs.any == 'true'
+        run: |
+          if git ls-remote --exit-code origin refs/heads/release/shell-bump >/dev/null; then
+            git push origin --delete release/shell-bump
+          else
+            echo "No staging ref to delete."
+          fi
 
   app:
     name: Release the app
     # The five shell builds are the gate: `app` must not tag from a tree whose
-    # APK, IPA, Windows app, macOS app or Linux app could not be built, and each
-    # of them reads `main` after the one `shells` commit. Every build (and so
+    # APK, IPA, Windows app, macOS app or Linux app could not be built — and
+    # `shell-commit` is what puts their version bumps on `main`, so `app` waits for
+    # it too (it depends on all five, so the gate is unchanged). Every build (and so
     # this job) reaches both gate workflows transitively through `shells` ->
     # `marketplace` -> `packages`.
-    needs: [apk-build, ipa-build, win-build, macos-build, linux-build]
+    needs: [shell-commit, apk-build, ipa-build, win-build, macos-build, linux-build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:

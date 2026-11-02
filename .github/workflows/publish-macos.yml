@@ -54,9 +54,9 @@ on:
         type: string
         default: build
       # The commit to build, in this order: `ref`, then `tag`, then the caller's own
-      # commit. `release.yml` passes `main`, never the run's starting sha: the
-      # `shells` job just pushed the version bumps, and building the starting commit
-      # would produce an app declaring the previous version.
+      # commit. `release.yml` passes the COMMIT the `shells` job staged, never the
+      # run's starting sha: it carries the version bumps, and building the starting
+      # commit would produce an app declaring the previous version.
       ref:
         description: Commit to build from; empty falls back to the tag, then the caller's commit.
         required: false

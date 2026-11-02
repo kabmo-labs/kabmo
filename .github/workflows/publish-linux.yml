@@ -46,10 +46,11 @@ on:
       # The commit to build, in this order: `ref`, then `tag`, then the caller's own
       # commit.
       #
-      # `release.yml` passes `main`, never the run's starting sha: the `linux` bump
-      # job has just pushed the shell version, and `build.rs` bakes that version into
-      # the binary. Building the trigger commit would produce a shell reporting the
-      # PREVIOUS version, which no one could tell from the last download.
+      # `release.yml` passes the COMMIT the `shells` job staged, never the run's
+      # starting sha: the bump is what `build.rs` bakes into the binary, and it
+      # reaches `main` only after this build and its four siblings pass. Building the
+      # trigger commit would produce a shell reporting the PREVIOUS version, which no
+      # one could tell from the last download.
       ref:
         description: Commit to build the app from; empty falls back to the tag, then the caller's commit.
         required: false

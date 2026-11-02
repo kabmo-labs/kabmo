@@ -57,11 +57,12 @@ on:
       # The commit to build, in this order: `ref`, then `tag`, then the caller's
       # own commit.
       #
-      # `release.yml` passes `main`, never the run's starting sha: the `android`
-      # bump job has just pushed the shell version, and the bump is what the
-      # APK's `versionName` comes from — building the trigger commit would
-      # produce an APK declaring the PREVIOUS shell version, an update no
-      # installed app is ever offered.
+      # `release.yml` passes the COMMIT the `shells` job staged (a `chore` bump on
+      # `release/shell-bump`, fast-forwarded onto `main` only after every build
+      # passed), never the run's starting sha: the bump is what the APK's
+      # `versionName` comes from — building the trigger commit would produce an APK
+      # declaring the PREVIOUS shell version, an update no installed app is ever
+      # offered.
       #
       # The `tag` step in that chain is the repair path: a dispatch names an
       # existing release and builds ITS tree, so the artifact matches the

@@ -363,8 +363,10 @@ release.yml
   pipeline bumps it.** The `shells` job runs `release/release-shells.mjs` before
   `ipa-build` compiles: it reads the commits since the version line was last written,
   asks the same `release-rules.js` analyzer the app uses for the level (`fix` → patch,
-  `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and commits it.
-  A `chore`/`docs`/`test`-only change to the shell asks for no bump.
+  `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and commits it —
+  on a staging branch, which `shell-commit` fast-forwards onto `main` only once the IPA
+  and the four other shell builds pass. A `chore`/`docs`/`test`-only change to the shell
+  asks for no bump.
 - **The artifact is `Kabmo-<version>-ios.ipa`** — the shell's version, never the
   release tag, because `versionFromAssetName('ios', …)` reads the published version out
   of the asset name.

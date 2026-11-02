@@ -170,9 +170,12 @@ release.yml
   `release-rules.js` analyzer the app uses for the level (`fix` → patch,
   `feat` → minor, a `BREAKING CHANGE:` → major), rewrites the one line, and
   commits it. A `chore`/`docs`/`test`-only change to the shell asks for no bump
-  and none is written. `apk-build` checks out `main` rather than the trigger
-  commit for exactly this reason — the bump is on `main`, and building the
-  starting commit would declare the previous version.
+  and none is written. **The commit reaches `main` only after every shell build
+  passed**: `shells` stages it on `release/shell-bump`, `apk-build` checks that
+  commit out (the `ref:` input), and `shell-commit` fast-forwards `main` onto it
+  once the APK and its four siblings are green — so a failed build cannot leave a
+  bumped version on `main` for an artifact that was never produced. Building the
+  trigger commit instead would declare the previous version.
 - **Why a version of its own.** The number is the entire delivery mechanism: the
   shell appends `KabmoAndroid/<versionName>` to its WebView User-Agent, and the
   console offers a download only when the published asset's version is *newer*

@@ -71,11 +71,12 @@ on:
       # The commit to build, in this order: `ref`, then `tag`, then the caller's own
       # commit.
       #
-      # `release.yml` passes `main`, never the run's starting sha: the `windows`
-      # bump job has just pushed the shell version, and the bump is what the
-      # assembly's `Version` — and therefore the asset name — comes from. Building
-      # the trigger commit would produce an app declaring the PREVIOUS shell
-      # version, an update no installed app is ever offered.
+      # `release.yml` passes the COMMIT the `shells` job staged, never the run's
+      # starting sha: the bump is what the assembly's `Version` — and therefore the
+      # asset name — comes from, and it reaches `main` only after this build and its
+      # four siblings pass. Building the trigger commit would produce an app
+      # declaring the PREVIOUS shell version, an update no installed app is ever
+      # offered.
       ref:
         description: Commit to build the app from; empty falls back to the tag, then the caller's commit.
         required: false

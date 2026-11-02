@@ -468,7 +468,8 @@ declares cannot disagree. `build-app.sh` fills `CFBundleShortVersionString` and
 `release/release-shells.mjs`, which ranges from the commit that last wrote the
 version LINE (`git log -L`) over `packages/macos`, derives the bump level from the
 same Conventional Commits rules the app uses, and commits the result — all five
-shells in ONE commit. The `chore`
+shells in ONE commit, staged and published only after every shell build passed
+(`shell-commit` fast-forwards `main` onto it). The `chore`
 it commits releases nothing on its own.
 
 There is deliberately **no User-Agent token**, unlike the Android and iOS shells.

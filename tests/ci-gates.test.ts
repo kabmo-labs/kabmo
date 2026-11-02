@@ -408,6 +408,62 @@ describe('the gate contract', () => {
     );
   });
 
+  test('the shell bump reaches `main` only after every build passed', async () => {
+    // Committing first was the bug: a build that failed (a Kotlin compiler that
+    // moved, a missing keystore, a Rust crate that stopped building) left `main`
+    // declaring a shell version no artifact exists for, so the next release bumped
+    // again and the version file became a record of attempts rather than of builds.
+    // The order is bump -> build -> COMMIT -> tag -> attach: `shells` stages the
+    // commit on a scratch branch, the five builds compile it, and `shell-commit`
+    // fast-forwards `main` onto it once they have all passed.
+    const doc = await load('release.yml');
+
+    // The staging job must not publish to `main` itself.
+    const shellsText = JSON.stringify(doc.jobs.shells.steps);
+    expect(shellsText, 'the shells job must not push the bump to main').not.toContain('HEAD:main');
+    expect(shellsText, 'the shells job must publish the staged commit').toContain(
+      'refs/heads/release/shell-bump',
+    );
+    // Empty when nothing was bumped, and the builds then compile `main` as before.
+    expect(doc.jobs.shells.outputs?.ref, 'the builds need the staged ref').toBe(
+      "${{ steps.stage.outputs.ref || 'main' }}",
+    );
+
+    const commitJob = doc.jobs['shell-commit'];
+    expect(commitJob, 'release.yml has no shell-commit job').toBeDefined();
+    const needs: string[] = Array.isArray(commitJob.needs) ? commitJob.needs : [commitJob.needs];
+    for (const build of ['apk-build', 'ipa-build', 'win-build', 'macos-build', 'linux-build']) {
+      // One edge per build, named: a single `needs: shells` here would land the
+      // commit while a build was still running, which is the failure being fixed.
+      expect(needs, `shell-commit must wait for ${build}`).toContain(build);
+    }
+    expect(needs, 'shell-commit must wait for the staging job').toContain('shells');
+    // A job-level `if:` would skip `app` with it, and `app` must still run on a
+    // push that bumped no shell version, to report that there is nothing to release.
+    expect(commitJob.if, 'a skipped commit job would skip app too').toBeUndefined();
+
+    // Every build compiles THAT ref, or the artifact declares the version `main`
+    // carried before the bump — the one update an installed shell is never offered.
+    for (const build of ['apk-build', 'ipa-build', 'win-build', 'macos-build', 'linux-build']) {
+      expect(doc.jobs[build].with?.ref, `${build} must compile the staged bump commit`).toBe(
+        '${{ needs.shells.outputs.ref }}',
+      );
+    }
+
+    const commitText = JSON.stringify(commitJob.steps);
+    expect(commitText, 'the commit job must fast-forward main').toContain('HEAD:main');
+    expect(commitText, 'the commit job must refuse a main that moved').toContain(
+      'merge-base --is-ancestor',
+    );
+
+    // `app` packs the tarball: it must see the committed bumps, so it waits for the
+    // commit and not only for the builds.
+    const appNeeds: string[] = Array.isArray(doc.jobs.app.needs) ? doc.jobs.app.needs : [doc.jobs.app.needs];
+    expect(appNeeds, 'the app must tag from a tree that carries the committed bumps').toContain(
+      'shell-commit',
+    );
+  });
+
   test('the macOS app is BUILT before the app tags, and only attached after', async () => {
     // The third shell, and the same contract as the APK and the IPA: a build
     // failure must stop the release BEFORE a tag exists, so a release never goes
@@ -427,9 +483,12 @@ describe('the gate contract', () => {
     expect(build.needs, 'the macOS build must come after the shell bumps').toContain('shells');
     expect(doc.jobs.app.needs, 'the app must not tag unless the macOS app built').toContain('macos-build');
 
-    // The build compiles from `main`, not the trigger commit: the bump just landed
-    // there, and the starting commit declares the OLD version.
-    expect(build.with?.ref, 'the macOS build must compile the bumped branch').toBe('main');
+    // The build compiles the STAGED bump commit, not the trigger commit: the
+    // starting commit declares the OLD version, and the staged ref is a sha, so the
+    // tree cannot move under a 30-minute build.
+    expect(build.with?.ref, 'the macOS build must compile the staged bump commit').toBe(
+      '${{ needs.shells.outputs.ref }}',
+    );
 
     expect(attach?.uses, 'release.yml:macos-app must call the macOS body').toBe(
       `./.github/workflows/${MACOS_BODY}`,
@@ -486,9 +545,10 @@ describe('the gate contract', () => {
       'linux-build',
     );
 
-    // `main`, not the trigger commit: the bump just landed there, and `build.rs`
-    // bakes that number in.
-    expect(build.with?.ref, 'the Linux build must compile the bumped branch').toBe('main');
+    // The staged commit, not the trigger commit: `build.rs` bakes its version in.
+    expect(build.with?.ref, 'the Linux build must compile the staged bump commit').toBe(
+      '${{ needs.shells.outputs.ref }}',
+    );
 
     expect(attach?.uses, 'release.yml:linux-app must call the Linux body').toBe(
       `./.github/workflows/${LINUX_BODY}`,
@@ -639,9 +699,11 @@ describe('the gate contract', () => {
     );
     expect(attach.with?.['build-number'], 'the attach must not restate the build number').toBeUndefined();
 
-    // The bundle must declare the BUMPED version, so it compiles from the branch the
-    // bump landed on rather than the commit this run was triggered by.
-    expect(build.with?.ref, 'the IPA must build the bumped shell version').toBe('main');
+    // The bundle must declare the BUMPED version, so it compiles the staged commit
+    // rather than the commit this run was triggered by.
+    expect(build.with?.ref, 'the IPA must build the staged shell version').toBe(
+      '${{ needs.shells.outputs.ref }}',
+    );
 
     // The body needs the iOS SDK, which only a macOS runner has.
     const body = await load(IOS_BODY);
@@ -793,10 +855,12 @@ describe('the gate contract', () => {
     );
     expect(apk.with?.['version-code'], 'the attach must not restate the versionCode').toBeUndefined();
 
-    //   4. the build compiles from the branch the shell bump landed on, not the
-    //      commit this run was triggered by — otherwise the APK declares the
-    //      PREVIOUS shell version and no installed app is offered it.
-    expect(build.with?.ref, 'the APK must build the bumped shell version').toBe('main');
+    //   4. the build compiles the STAGED bump commit, not the commit this run was
+    //      triggered by — otherwise the APK declares the PREVIOUS shell version and
+    //      no installed app is offered it.
+    expect(build.with?.ref, 'the APK must build the staged shell version').toBe(
+      '${{ needs.shells.outputs.ref }}',
+    );
 
     //   5. it asks for no npm publish, so nothing about it can drift into one.
     const body = await load(ANDROID_BODY);
