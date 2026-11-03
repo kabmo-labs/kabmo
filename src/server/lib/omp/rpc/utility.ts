@@ -20,6 +20,7 @@
 import { homedir } from 'os';
 import { RpcProcess } from '@/server/lib/omp/rpc/process';
 import { RELOAD_PLUGINS_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
+import { ensureUtilityAgentDir, removeUtilityAgentDir } from '@/server/lib/omp/rpc/utility-agent-dir';
 
 // Extensions stay ENABLED: they can register models and login providers, and
 // omitting them made the web UI's model/provider lists disagree with the CLI's.
@@ -124,6 +125,9 @@ export function disposeUtilityRpc(): void {
     if (proc) void proc.dispose();
   }
   states.clear();
+  // The overlay is rebuilt on the next spawn; removing it here keeps a server
+  // that restarts often from leaving one symlink farm per process behind.
+  void removeUtilityAgentDir();
 }
 
 /**
@@ -210,9 +214,17 @@ function scheduleIdleKill(state: UtilityRpcState): void {
 }
 
 async function startProcess(state: UtilityRpcState, cwd: string): Promise<RpcProcess> {
+  // MCP is removed for THIS child only, by pointing its agent dir at an overlay
+  // with every state file symlinked through and `mcp.json` left out: these
+  // children answer registry/auth queries and never run a turn, so an MCP server
+  // here is a proxy plus its watchdog (~88 MB) serving nothing. `undefined`
+  // means the real dir — a working child beats a saved process.
+  // See `utility-agent-dir.ts` for the measurements.
+  const agentDir = await ensureUtilityAgentDir();
   const proc = new RpcProcess({
     cwd,
     extraArgs: UTILITY_EXTRA_ARGS,
+    env: agentDir ? { PI_CODING_AGENT_DIR: agentDir } : undefined,
     onExit: () => {
       if (state.proc === proc) state.proc = null;
     },
