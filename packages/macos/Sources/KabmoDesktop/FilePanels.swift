@@ -245,21 +245,35 @@ public func presentUploadPanel(
 }
 
 /**
- The `WKUIDelegate` that answers file-input clicks, as the app ships it.
+ The `WKUIDelegate` the shell installs: the file panel, and where a popup goes.
 
  Lives here rather than in `App.swift` so the window suite drives THIS object
  instead of a stand-in: a near-miss Swift signature still compiles (the method is
  optional on the protocol) and WebKit then keeps treating uploads as Cancel, so
  the class the app installs is the thing worth pressing.
+
+ The popup half is here for the same reason — WebKit asks ONE delegate for both
+ questions, and a web view with no `createWebViewWith` answers `window.open` and
+ `<a target="_blank">` by doing nothing at all. Every external link in the console
+ is written that way (release notes, the social rows, the provider OAuth page), so
+ the click silently did nothing before this existed.
  */
 @MainActor
-public final class UploadPanelDelegate: NSObject, WKUIDelegate {
+public final class ShellUIDelegate: NSObject, WKUIDelegate {
   private let store: UploadAcceptStore
   private weak var window: NSWindow?
+  /// Where a popup goes. Injected so a case can record the URL instead of
+  /// launching Safari.
+  private let openExternally: (URL) -> Void
 
-  public init(store: UploadAcceptStore, window: NSWindow?) {
+  public init(
+    store: UploadAcceptStore,
+    window: NSWindow?,
+    openExternally: @escaping (URL) -> Void = { NSWorkspace.shared.open($0) }
+  ) {
     self.store = store
     self.window = window
+    self.openExternally = openExternally
     super.init()
   }
 
@@ -280,5 +294,25 @@ public final class UploadPanelDelegate: NSObject, WKUIDelegate {
       accept: store.take()
     )
     presentUploadPanel(prompt, on: window, completion: completionHandler)
+  }
+
+  /// `window.open(url, '_blank')` and `<a target="_blank">`.
+  ///
+  /// The URL goes to the system browser and `nil` is returned, because this shell
+  /// owns exactly one window: a second chromeless web view would have no address
+  /// bar and no way back. `NavigationPolicy` allows these through its own gate
+  /// (`.newWindow`) rather than opening them itself, so one click opens one
+  /// browser — measured in a real `WKWebView`: with an external open on BOTH
+  /// paths, one click launched two tabs.
+  public func webView(
+    _ webView: WKWebView,
+    createWebViewWith configuration: WKWebViewConfiguration,
+    for navigationAction: WKNavigationAction,
+    windowFeatures: WKWindowFeatures
+  ) -> WKWebView? {
+    if let url = navigationAction.request.url {
+      openExternally(url)
+    }
+    return nil
   }
 }

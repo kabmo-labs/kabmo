@@ -74,7 +74,7 @@ func uploadPanelWindowCases(
     "the shipped delegate implements runOpenPanelWithParameters:",
     view.uiDelegate?.responds(to: selector) == true
   )
-  check("the delegate the app installs is the one under test", view.uiDelegate is UploadPanelDelegate)
+  check("the delegate the app installs is the one under test", view.uiDelegate is ShellUIDelegate)
 
   // 3. The assembled behaviour: clicking the control opens the REAL panel, with
   //    the rules of THAT control. This is the case a user performs, and it is

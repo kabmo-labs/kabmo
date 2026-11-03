@@ -36,8 +36,8 @@ enum URLNormalizerTests {
     // The scheme is lowercased; the HOST keeps the case it was typed with, because
     // that is the address the shell loads and the one the user recognises — and
     // because `packages/android` does the same, so both shells save the same string.
-    // Host case is not a difference in origin: `sameOrigin` and
-    // `ShellWebView.origin` compare case-insensitively.
+    // Host case is not a difference in origin: `ShellNavigation` compares
+    // `URLComponents.origin`, which lowercases the host.
     Harness.equal(
       "the scheme is lowercased and the host kept",
       URLNormalizer.normalize("HTTP://Host.Example:3000").url,

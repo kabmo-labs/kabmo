@@ -29,6 +29,25 @@ public enum NavigationTarget
     External,
 }
 
+/// <summary>
+/// The frame a navigation lands in.
+///
+/// The same three cases every shell's table carries. <c>NewWindow</c> exists
+/// because a popup is not a departure this rule decides: `NewWindowRequested` owns
+/// it, and cancelling here as well would open two browsers for one click.
+/// </summary>
+public enum NavigationFrame
+{
+    /// <summary>The document itself.</summary>
+    Main,
+
+    /// <summary>An embedded frame: the user browser panel, a plugin's preview.</summary>
+    Subframe,
+
+    /// <summary>A popup this shell does not host.</summary>
+    NewWindow,
+}
+
 public static class NavigationPolicy
 {
     /// <summary>
@@ -43,8 +62,32 @@ public static class NavigationPolicy
         new(StringComparer.Ordinal) { "about", "blob", "data", "javascript" };
 
     /// <summary>The decision for a navigation from <paramref name="current"/> to <paramref name="destination"/>.</summary>
-    public static NavigationTarget Decide(string? current, string? destination)
+    public static NavigationTarget Decide(string? current, string? destination) =>
+        Decide(current, destination, NavigationFrame.Main);
+
+    /// <summary>
+    /// The decision for a navigation, knowing which frame it lands in.
+    ///
+    /// A SUBFRAME stays unconditionally: whatever an embedded page does — navigate,
+    /// redirect, load a login form — it is that page's own content, and only the
+    /// document the shell itself hosts may leave the window. The console embeds the
+    /// user's own browser as an `&lt;iframe&gt;`
+    /// (`components/workspace/user-browser-panel/`), and without this rule every URL
+    /// typed into that panel was cancelled here and handed to the system browser.
+    ///
+    /// The shell's own caller always passes <see cref="NavigationFrame.Main"/>,
+    /// because WebView2's `NavigationStarting` is raised for the MAIN FRAME only
+    /// (its own wording) and a child frame arrives at `FrameNavigationStarting`,
+    /// which the shell does not subscribe to. The overload stays frame-aware so the
+    /// table is the same one macOS, Linux and Android carry, and so a future
+    /// `FrameNavigationStarting` handler cannot re-derive the rules.
+    /// </summary>
+    public static NavigationTarget Decide(
+        string? current,
+        string? destination,
+        NavigationFrame frame)
     {
+        if (frame != NavigationFrame.Main) return NavigationTarget.Inside;
         if (string.IsNullOrEmpty(destination)) return NavigationTarget.Inside;
 
         var scheme = SchemeOf(destination);

@@ -86,25 +86,5 @@ enum ShellWebView {
     // the page rather than the native callout.
     webView.isUserInteractionEnabled = true
   }
-
-  /// Origin of a URL, or nil when it cannot be parsed.
-  static func origin(of url: String) -> String? {
-    guard let components = URLComponents(string: url),
-          let scheme = components.scheme?.lowercased(),
-          let host = components.host
-    else { return nil }
-    let port = components.port.map { ":\($0)" } ?? ""
-    return "\(scheme)://\(host.lowercased())\(port)"
-  }
-
-  /// Whether a URL stays inside the shell's server.
-  ///
-  /// The comparison is on the ORIGIN, never on a prefix of the string:
-  /// `http://host:3000.evil.example` starts with the server's address and is a
-  /// different server.
-  static func isInternal(_ url: String, server: String?) -> Bool {
-    guard let server, let serverOrigin = origin(of: server) else { return false }
-    return origin(of: url) == serverOrigin
-  }
 }
 #endif

@@ -14,7 +14,7 @@
 //! The cases are the macOS and Windows suites', restated: the three shells share
 //! no runtime, so the same table in each is what keeps them from disagreeing.
 
-use kabmo_desktop::navigation::{decide, origin_of, same_origin, NavigationTarget};
+use kabmo_desktop::navigation::{decide, decide_for, origin_of, same_origin, NavigationFrame, NavigationTarget};
 
 use crate::support::Runner;
 
@@ -107,5 +107,64 @@ pub fn cases(r: &mut Runner) {
     r.check(
         "a host and port with no scheme is no origin",
         origin_of("192.168.1.20:3000").is_none(),
+    );
+
+    r.group("navigation — an embedded frame never leaves");
+    // The user browser panel is an `<iframe>`. Its cross-origin loads must stay in
+    // the frame: sending them to `xdg-open` made the panel unable to browse.
+    r.check(
+        "a cross-origin page in an iframe stays",
+        decide_for(
+            Some("http://127.0.0.1:3000/"),
+            Some("http://127.0.0.1:5173/"),
+            Some(NavigationFrame::Subframe),
+        ) == NavigationTarget::Inside,
+    );
+    r.check(
+        "a mailto: in an iframe stays, because a frame is not a place to leave from",
+        decide_for(
+            Some("http://kabmo.test/"),
+            Some("mailto:x@y.test"),
+            Some(NavigationFrame::Subframe),
+        ) == NavigationTarget::Inside,
+    );
+    r.check(
+        "a popup is left to the create handler",
+        decide_for(
+            Some("http://kabmo.test/"),
+            Some("https://example.test/"),
+            Some(NavigationFrame::NewWindow),
+        ) == NavigationTarget::Inside,
+    );
+    r.check(
+        "the same cross-origin URL in the MAIN frame still leaves",
+        decide_for(
+            Some("http://127.0.0.1:3000/"),
+            Some("http://127.0.0.1:5173/"),
+            Some(NavigationFrame::Main),
+        ) == NavigationTarget::External,
+    );
+
+    r.group("navigation — an engine that cannot name the frame");
+    // WebKitGTK before 2.56 reports nothing about the frame: measured on 2.52.6,
+    // a subframe load is byte-identical to a document load. The direction taken
+    // there is stated in `decide_for`: keep pages, still leave for a scheme no
+    // frame can render.
+    r.check(
+        "an http(s) navigation stays when the frame is unknown",
+        decide_for(None, Some("http://elsewhere.test/"), None) == NavigationTarget::Inside,
+    );
+    r.check(
+        "a relative reference stays when the frame is unknown",
+        decide_for(Some("http://kabmo.test/a"), Some("/b"), None) == NavigationTarget::Inside,
+    );
+    r.check(
+        "a mailto: still leaves when the frame is unknown",
+        decide_for(Some("http://kabmo.test/"), Some("mailto:x@y.test"), None)
+            == NavigationTarget::External,
+    );
+    r.check(
+        "a document scheme stays when the frame is unknown",
+        decide_for(None, Some("about:blank"), None) == NavigationTarget::Inside,
     );
 }

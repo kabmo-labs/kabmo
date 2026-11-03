@@ -71,6 +71,66 @@ pub fn decide(here: Option<&str>, there: Option<&str>) -> NavigationTarget {
     }
 }
 
+/// The frame a navigation lands in.
+///
+/// The same three cases every shell's table carries. `NewWindow` exists because a
+/// popup is not a departure this rule decides: the shell's `create` handler owns
+/// it, and cancelling here as well would open two browsers for one click.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavigationFrame {
+    /// The document itself.
+    Main,
+    /// An embedded frame: the user browser panel, a plugin's preview.
+    Subframe,
+    /// A popup this shell does not host.
+    NewWindow,
+}
+
+/// The decision for a navigation from `here` to `there`, knowing its frame.
+///
+/// A SUBFRAME never leaves: whatever an embedded page does — navigate, redirect,
+/// load a login form — it is that page's own content, and only the document the
+/// shell itself hosts may leave the window. The console embeds the user's own
+/// browser as an `<iframe>` (`components/workspace/user-browser-panel/`), and
+/// without this rule every URL typed into that panel was handed to `xdg-open`.
+///
+/// A NEW WINDOW stays for the same reason `create` exists — that handler is what
+/// opens it, and doing both opens two browsers per click.
+///
+/// `frame: None` is the engine saying it CANNOT tell, which is measured fact for
+/// every WebKitGTK before 2.56: on 2.52 the decision carries no frame name, the
+/// request has no `Sec-Fetch-Dest`, and a subframe load is byte-identical to a
+/// document load (`Referer` present, user gesture set). The two directions are
+/// not symmetric there — refusing sends the user's own browsing to `xdg-open`
+/// again, while allowing only affects a cross-origin navigation that is NOT a
+/// popup, and the console produces none: every external link it draws is
+/// `target="_blank"` or `window.open`, which arrive at `create` instead
+/// (`src/client/components/**`, verified by grep). So an http(s) navigation
+/// stays, and a scheme no frame could ever render (`mailto:`, `tel:`) still
+/// leaves.
+pub fn decide_for(
+    here: Option<&str>,
+    there: Option<&str>,
+    frame: Option<NavigationFrame>,
+) -> NavigationTarget {
+    match frame {
+        Some(NavigationFrame::Main) => decide(here, there),
+        Some(NavigationFrame::Subframe) | Some(NavigationFrame::NewWindow) => {
+            NavigationTarget::Inside
+        }
+        None => match there.and_then(scheme_of) {
+            // A relative reference, an internal scheme, or a page: the engine
+            // cannot say which frame it belongs to, and a frame is the only case
+            // where the answer differs.
+            None => NavigationTarget::Inside,
+            Some(scheme) if INTERNAL_SCHEMES.contains(&scheme.as_str()) => NavigationTarget::Inside,
+            Some(scheme) if scheme == "http" || scheme == "https" => NavigationTarget::Inside,
+            // No frame renders these: the system owns them.
+            Some(_) => NavigationTarget::External,
+        },
+    }
+}
+
 /// Whether two URLs share an origin, for a caller that only needs the test.
 pub fn same_origin(here: &str, there: &str) -> bool {
     decide(Some(here), Some(there)) == NavigationTarget::Inside

@@ -42,6 +42,7 @@ use kabmo_desktop::splash::Progress;
 use kabmo_desktop::splash_view::Splash;
 use kabmo_desktop::store::ServerStore;
 use kabmo_desktop::system::{Supervisor, SystemDeps};
+use kabmo_desktop::navigation::{decide_for, NavigationTarget};
 use kabmo_desktop::update;
 use kabmo_desktop::update_run;
 use kabmo_desktop::window::{make_window, remember_press, wire_edge_resize};
@@ -49,10 +50,7 @@ use kabmo_desktop::window::{make_window, remember_press, wire_edge_resize};
 mod chrome;
 mod commands;
 
-use chrome::{
-    build_view, handle_chrome, handle_key, open_external, restore_geometry, same_origin,
-    save_geometry,
-};
+use chrome::{build_view, handle_chrome, handle_key, open_external, restore_geometry, save_geometry};
 use commands::handle_command;
 
 /// The commands that are window chrome rather than bridge calls: the page posts
@@ -484,22 +482,31 @@ impl Shell {
         });
 
         // A navigation the page did not ask for — a link to another origin, an
-        // OAuth launch — leaves the console. The same-origin check is what keeps
-        // a login flow from replacing the app with a provider's page.
+        // OAuth launch — leaves the console. The rule is the shared table's
+        // (`navigation::decide_for`), and it is asked with the frame when this
+        // engine can say what it is.
+        //
+        // WebKitGTK cannot, on every version before 2.56: measured on 2.52.6 with
+        // a real iframe — `frame_name` is NULL for a subframe load, the request
+        // carries no `Sec-Fetch-Dest`, and a frame navigation is byte-identical to
+        // a document one (`Referer` present, user gesture set). `None` is that
+        // answer, and the table's own comment states the direction it takes.
         self.view.connect_decide_policy(|view, decision, kind| {
             if kind != PolicyDecisionType::NavigationAction {
                 return false;
             }
-            let Some(navigation) = decision
-                .downcast_ref::<webkit2gtk::NavigationPolicyDecision>()
-                .and_then(|nav| nav.navigation_action())
-                .and_then(|action| action.request())
-                .and_then(|request| request.uri())
+            let Some(nav_decision) = decision.downcast_ref::<webkit2gtk::NavigationPolicyDecision>()
             else {
                 return false;
             };
-            let here = view.uri().map(|uri| uri.to_string()).unwrap_or_default();
-            if same_origin(&here, &navigation) {
+            let Some(action) = nav_decision.navigation_action() else {
+                return false;
+            };
+            let Some(navigation) = action.request().and_then(|request| request.uri()) else {
+                return false;
+            };
+            let here = view.uri().map(|uri| uri.to_string());
+            if decide_for(here.as_deref(), Some(&navigation), None) == NavigationTarget::Inside {
                 return false;
             }
             decision.ignore();

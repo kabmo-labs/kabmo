@@ -145,14 +145,6 @@ pub fn handle_chrome(
     }
 }
 
-/// Whether a navigation leaves the console.
-///
-/// The rule lives in the library (`navigation::decide`) so the rules suite can
-/// reach it; this is the binary's one call site.
-pub fn same_origin(here: &str, there: &str) -> bool {
-    kabmo_desktop::navigation::same_origin(here, there)
-}
-
 pub fn open_external(url: &str) {
     if !(url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mailto:")) {
         return;

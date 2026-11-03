@@ -222,7 +222,7 @@ Every one of these is a Kabmo feature that dies silently without it:
 | `createWebViewWith` | provider OAuth login (`window.open(…, '_blank')`), release notes, social links |
 | `decidePolicyFor navigationResponse` + `WKDownload` | the editor's Download button, fetched WITH the session cookie |
 | `didReceive challenge` | a named refusal instead of a blank page |
-| `decidePolicyFor navigationAction` | external links leave the shell instead of replacing Kabmo |
+| `decidePolicyFor navigationAction` | external links leave the shell instead of replacing Kabmo — and a SUBFRAME stays unconditionally, so the user browser panel's `<iframe>` keeps its page (`targetFrame.isMainFrame`) |
 | `window.__kabmoBack()` | a back gesture closes the drawer / editor / settings first |
 | `webViewWebContentProcessDidTerminate` | the console comes BACK after iOS kills the web process under memory pressure, instead of a white window that never redraws (`WebProcessRecovery`) |
 

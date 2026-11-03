@@ -19,12 +19,21 @@
  *
  * ## The rules, and why each is a table entry rather than a branch
  *
- * A same-origin link stays: the console is a single-page app whose own routes and
- * asset loads are same-origin by definition.
+ * A same-origin MAIN-FRAME link stays: the console is a single-page app whose own
+ * routes and asset loads are same-origin by definition.
  *
- * Everything else — another host, another scheme — leaves for the system browser.
- * A non-http scheme (`mailto:`, `tel:`) has no page to load at all, so it is the
- * same answer.
+ * Everything else in the main frame — another host, another scheme — leaves for
+ * the system browser. A non-http scheme (`mailto:`, `tel:`) has no page to load at
+ * all, so it is the same answer.
+ *
+ * **A SUBFRAME navigation NEVER leaves.** The console embeds the user's own
+ * browser as an `<iframe>` (`components/workspace/user-browser-panel/`), and a
+ * cross-origin page inside a frame is CONTENT, not a departure. Without this rule
+ * every URL typed into that panel was cancelled here and handed to the system
+ * browser — measured in a real `WKWebView`: an iframe navigating to
+ * `127.0.0.1:59999` arrives at `decidePolicyFor` with
+ * `targetFrame?.isMainFrame == false`, and the origin test alone fired on it.
+ * The panel was unusable and nothing in its own code was wrong.
  *
  * `about:blank` and a page with no origin are treated as INTERNAL. That is the
  * conservative direction: sending one out to a browser would break the OAuth
@@ -34,6 +43,7 @@
  * reason `SplashState` and `ShellVersion` live in the testable target.
  */
 import Foundation
+import WebKit
 
 /// One navigation's destination.
 public enum NavigationTarget: Equatable {
@@ -41,6 +51,22 @@ public enum NavigationTarget: Equatable {
   case inside
   /// Hand it to the system browser.
   case external
+}
+
+/// The frame the navigation lands in.
+///
+/// `newWindow` is a third case rather than "main or subframe" because WebKit asks
+/// twice for one click: `<a target="_blank">` arrives here with no target frame
+/// AND reaches `createWebViewWith` when this decision allows it (measured). The
+/// shell opens those in ONE place — the UI delegate — so answering `newWindow`
+/// here as `inside` is what keeps a single click from opening two browsers.
+public enum NavigationFrame: Equatable {
+  /// The document itself.
+  case main
+  /// An embedded frame: the user browser panel, a plugin's preview.
+  case subframe
+  /// A popup this shell does not host.
+  case newWindow
 }
 
 /**
@@ -54,11 +80,45 @@ public enum NavigationTarget: Equatable {
 private let INTERNAL_SCHEMES: Set<String> = ["about", "blob", "data", "javascript"]
 
 public enum NavigationPolicy {
+  /// The frame a navigation action lands in.
+  ///
+  /// In the LIBRARY, not inline in the delegate, because the mapping is the half
+  /// that was missing: the delegate read the origin and never looked at
+  /// `targetFrame`, so every subframe navigation was judged as a departure. A case
+  /// that rebuilt this mapping itself would keep passing with the delegate
+  /// unfixed — measured, while proving the regression — which makes it part of the
+  /// rule rather than part of the wiring.
+  ///
+  /// `nil` is a popup: WebKit reports `target="_blank"` with NO target frame and
+  /// then asks the UI delegate to open it, so answering it here as a departure
+  /// opens two browsers for one click (measured).
+  public static func frame(of action: WKNavigationAction) -> NavigationFrame {
+    action.targetFrame.map { $0.isMainFrame ? .main : .subframe } ?? .newWindow
+  }
+
   /// The decision for a navigation from `current` to `destination`.
   ///
   /// A destination with no scheme is INTERNAL: it is a relative reference, and
   /// resolving it is the web view's job (it already knows the base URL).
   public static func decide(from current: String?, to destination: String?) -> NavigationTarget {
+    decide(from: current, to: destination, frame: .main)
+  }
+
+  /// The decision for a navigation, knowing which frame it lands in.
+  ///
+  /// A SUBFRAME stays unconditionally: whatever an embedded page does — navigate,
+  /// redirect, load a login form — it is that page's own content, and only the
+  /// document the shell itself hosts may leave the window. This is the rule the
+  /// user browser panel needs; without it a typed URL was handed to Safari.
+  ///
+  /// A NEW WINDOW stays too, because the shell's `WKUIDelegate` is what opens it
+  /// (`createWebViewWith`) and doing both would open two browsers per click.
+  public static func decide(
+    from current: String?,
+    to destination: String?,
+    frame: NavigationFrame
+  ) -> NavigationTarget {
+    if frame != .main { return .inside }
     guard let destination, !destination.isEmpty else { return .inside }
     guard let scheme = scheme(of: destination) else { return .inside }
 

@@ -186,6 +186,20 @@ public sealed class ShellHost
         core.WebMessageReceived += (_, args) => Bridge.OnMessage(_window.WebView, new CommandHost(this), args);
         core.NavigationStarting += (_, args) => OnNavigationStarting(args);
         core.NavigationCompleted += (_, args) => OnNavigationCompleted(args);
+        // `window.open` and `<a target="_blank">`. WebView2's default is to open a
+        // popup of its own, with no address bar and no way back — the documented
+        // consequence of leaving `Handled` false. The console produces those on
+        // purpose (the provider OAuth page, release notes, social links), so they
+        // leave for the system browser like every other off-console link.
+        //
+        // `NavigationStarting` covers only the MAIN frame (WebView2's own wording),
+        // so this is not a second copy of that rule — it is the half that event
+        // cannot see.
+        core.NewWindowRequested += (_, args) =>
+        {
+            args.Handled = true;
+            if (!string.IsNullOrEmpty(args.Uri)) OpenExternally(args.Uri);
+        };
         core.ProcessFailed += (_, _) =>
         {
             RenderSplash(SplashState.Connecting.FailedBecause(SplashState.SplashFailure.Other));

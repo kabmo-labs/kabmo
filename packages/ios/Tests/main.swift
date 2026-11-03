@@ -11,6 +11,7 @@ import Foundation
 /// needs a window server and an iOS SDK, and the rules it wires are already pinned
 /// on their own.
 URLNormalizerTests.run()
+ShellNavigationTests.run()
 ServerListTests.run()
 ShellSettingsTests.run()
 ShellPaletteTests.run()

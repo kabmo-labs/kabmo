@@ -95,4 +95,44 @@ func navigationPolicyCases() {
     "a console with no origin keeps its own links",
     NavigationPolicy.decide(from: nil, to: "http://kabmo.test/x") == .inside
   )
+
+  group("NavigationPolicy — an embedded frame never leaves")
+
+  // The user browser panel is an `<iframe>` (`components/workspace/
+  // user-browser-panel/`). Measured in a real `WKWebView`: a cross-origin load
+  // inside one arrives at `decidePolicyFor` with
+  // `targetFrame?.isMainFrame == false`, and the origin rule alone handed every
+  // URL typed into the panel to Safari — the panel could not browse at all.
+  check(
+    "a cross-origin page in an iframe stays",
+    NavigationPolicy.decide(
+      from: "http://127.0.0.1:3000/s/abc",
+      to: "http://127.0.0.1:5173/",
+      frame: .subframe
+    ) == .inside
+  )
+  check(
+    "a cross-origin https page in an iframe stays",
+    NavigationPolicy.decide(from: "http://127.0.0.1:3000/", to: "https://example.test/", frame: .subframe)
+      == .inside
+  )
+  check(
+    "a mailto: inside an iframe stays, because a frame is not a place to leave from",
+    NavigationPolicy.decide(from: "http://kabmo.test/", to: "mailto:x@y.test", frame: .subframe) == .inside
+  )
+  check(
+    "a SAME-origin page in an iframe stays too",
+    NavigationPolicy.decide(from: "http://kabmo.test/", to: "http://kabmo.test/inner", frame: .subframe)
+      == .inside
+  )
+  check(
+    "a popup is left to createWebViewWith, so it stays here",
+    NavigationPolicy.decide(from: "http://kabmo.test/", to: "https://example.test/", frame: .newWindow)
+      == .inside
+  )
+  check(
+    "the same cross-origin URL in the MAIN frame still leaves",
+    NavigationPolicy.decide(from: "http://127.0.0.1:3000/", to: "http://127.0.0.1:5173/", frame: .main)
+      == .external
+  )
 }

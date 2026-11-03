@@ -510,7 +510,7 @@ Every one of these is a Kabmo feature that dies silently without it:
 | `onCreateWindow` | provider OAuth login (`window.open(…, '_blank')`), release notes, social links |
 | `setDownloadListener` + cookie forwarding | the editor's Download button |
 | `onReceivedSslError` | a named refusal instead of a blank page |
-| `shouldOverrideUrlLoading` | external links leave the shell instead of replacing Kabmo |
+| `shouldOverrideUrlLoading` | external links leave the shell instead of replacing Kabmo — and a SUBFRAME is answered first, so the user browser panel's `<iframe>` keeps its page (`request.isForMainFrame`) |
 | `window.__kabmoBack()` | the back button closes the drawer / editor / settings first |
 | `onTrimMemory` | the shell survives a low-memory moment instead of being killed: the renderer releases what it can rebuild, and a critical level also drops the HTTP cache and pauses timers (`TrimPolicy`) |
 

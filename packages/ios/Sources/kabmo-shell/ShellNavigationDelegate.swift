@@ -56,32 +56,30 @@ final class ShellNavigationDelegate: NSObject, WKNavigationDelegate, WKUIDelegat
       return
     }
 
-    // A navigation the page started itself inside our origin is always allowed —
-    // including `target="_blank"`, which arrives here as a link-activated action.
-    let scheme = url.scheme?.lowercased()
-    if scheme != "http" && scheme != "https" {
-      // `mailto:`, `tel:`, an app link: the system's, never the web view's.
-      onOpenExternally?(url)
-      decisionHandler(.cancel)
-      return
-    }
+    // The table is `ShellNavigation`'s (pure, tested on a Mac). The frame is the
+    // FIRST question it asks, because a SUBFRAME is not a departure: the console
+    // embeds the user's own browser as an `<iframe>`
+    // (`components/workspace/user-browser-panel/`), and an origin test alone sent
+    // every page typed there to Safari. `targetFrame == nil` is a popup, which
+    // `createWebViewWith` below opens — cancelling it here as well would open it
+    // twice.
+    let frame: ShellNavigation.Frame = navigationAction.targetFrame.map {
+      $0.isMainFrame ? .main : .subframe
+    } ?? .newWindow
 
-    if ShellWebView.isInternal(url.absoluteString, server: serverURL) {
-      // `target="_blank"` INSIDE the console (the OAuth popup's first hop) is
-      // opened in the system browser by `createWebViewWith` below, so it is
-      // cancelled here rather than loaded in a second window this shell does not
-      // have.
-      if navigationAction.targetFrame == nil {
-        onOpenExternally?(url)
-        decisionHandler(.cancel)
-        return
-      }
+    let decision = ShellNavigation.decide(
+      to: url.absoluteString,
+      server: serverURL,
+      frame: frame,
+      scheme: url.scheme
+    )
+    guard decision == .external else {
       decisionHandler(.allow)
       return
     }
 
-    // An oauth callback may come back on a different origin; that still belongs to
-    // the user's provider flow, so it opens in the browser too.
+    // An oauth callback may come back on a different origin, and a `mailto:` has no
+    // page at all: both leave for the system.
     onOpenExternally?(url)
     decisionHandler(.cancel)
   }

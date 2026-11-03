@@ -159,6 +159,22 @@ launch — leaves the console and opens in the user's browser via `xdg-open`. Th
 same-origin check is what keeps a login flow from replacing the app with a
 provider's page.
 
+**A SUBFRAME never leaves, and this engine cannot always say which frame it is
+looking at — measured, not assumed.** The console embeds the user's own browser as
+an `<iframe>` (`src/client/components/workspace/user-browser-panel/`), so a
+cross-origin load inside one is CONTENT: sending it to `xdg-open` made the panel
+unable to browse at all (the reported symptom — a typed URL opened a browser
+window instead of the panel). WebKitGTK only gained frame identity in **2.56**
+(`webkit_navigation_action_get_target_frame_info`); on 2.52.6, probed with a real
+iframe in this container, `webkit_navigation_action_get_frame_name` answered NULL
+for a subframe load, the request carried no `Sec-Fetch-Dest`, and a frame
+navigation was byte-identical to a document one (`Referer` present, user gesture
+set). So `navigation::decide_for` takes `Option<NavigationFrame>`, and `None` —
+"the engine cannot tell" — keeps http(s) navigations INSIDE and still sends a
+scheme no frame can render (`mailto:`, `tel:`) to the system. That direction costs
+nothing the console produces: every external link it draws is `target="_blank"` or
+`window.open`, which arrive at `connect_create`, not here.
+
 ### The name
 
 The app is **Kabmo** everywhere a user can see it, and that is four independent

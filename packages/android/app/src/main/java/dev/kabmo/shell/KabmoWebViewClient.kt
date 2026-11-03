@@ -24,6 +24,12 @@ import android.webkit.WebViewClient
  * - **External links.** A wiki page or a chat citation pointing at another site
  *   must leave the shell, not replace Kabmo inside it — replacing it would put
  *   the user in a page with no way back except the system back button.
+ *
+ * The decision itself is `NavigationPolicy`'s (pure, JVM-tested). The rule that
+ * bug it fixes: this callback is documented as also firing for SUBFRAMES, and
+ * answering one like a main-frame link sent every page typed into the console's
+ * own browser panel (`components/workspace/user-browser-panel/`) to the system
+ * browser instead of the panel.
  */
 class KabmoWebViewClient(
     private val activity: Activity,
@@ -59,26 +65,26 @@ class KabmoWebViewClient(
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url.toString()
-        val scheme = request.url.scheme?.lowercase()
-
-        // Non-http(s) schemes are the OS's: `mailto:`, `tel:`, an app link.
-        if (scheme != "http" && scheme != "https") {
-            return openExternally(url)
+        val action = NavigationPolicy.decide(
+            // Android documents this callback as "may be called for subframes", and
+            // it is: the browser panel's own iframe arrives here.
+            isForMainFrame = request.isForMainFrame,
+            isInternal = KabmoWebView.isInternal(activity, url),
+            isApkDownload = ApkUpdate.isApkDownload(url, null, null),
+            scheme = request.url.scheme,
+        )
+        return when (action) {
+            // Load it here: the frame keeps its page (ALLOW), and that includes
+            // every same-origin route of the console itself.
+            NavigationPolicy.Action.ALLOW -> false
+            NavigationPolicy.Action.EXTERNAL -> openExternally(url)
+            NavigationPolicy.Action.APK_DOWNLOAD -> {
+                // The shell installs it rather than sending the user to a
+                // Downloads folder to find the file and tap it there.
+                UpdateFlow.start(activity, UpdateFlow.Download(url, ApkUpdate.fileNameFrom(null, url)))
+                true
+            }
         }
-
-        if (KabmoWebView.isInternal(activity, url)) return false;
-
-        // An APK link without `target="_blank"` reaches this path instead of the
-        // popup one, and it is the same offer: the shell installs it rather than
-        // sending the user to a Downloads folder.
-        if (ApkUpdate.isApkDownload(url, null, null)) {
-            UpdateFlow.start(activity, UpdateFlow.Download(url, ApkUpdate.fileNameFrom(null, url)))
-            return true
-        }
-
-        // An oauth callback may come back on a different origin; that still
-        // belongs to the user's provider flow, so it opens in the browser too.
-        return openExternally(url);
     }
 
     override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {

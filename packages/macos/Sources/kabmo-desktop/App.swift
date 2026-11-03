@@ -122,9 +122,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// not which attributes it carried, so the page reports `accept` on a capture
   /// click (see `uploadAcceptScript`) and the delegate reads it back here.
   private let uploadAccept = UploadAcceptStore()
-  /// The `WKUIDelegate`: the file panel. Built in `buildWindow`, when the window
-  /// it presents over exists.
-  private var uploadPanels: UploadPanelDelegate?
+  /// The `WKUIDelegate`: the file panel and where a popup goes. Built in
+  /// `buildWindow`, when the window it presents over exists.
+  private var shellUI: ShellUIDelegate?
   /// True once a page has finished a load, so a flush is worth attempting.
   private var pageReady = false
 
@@ -292,8 +292,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // as Cancel — WebKit documents exactly that. Both the composer's attach
     // button and the project icon's upload were dead in the desktop window and
     // alive in a browser tab, which is why this went unnoticed.
-    let panels = UploadPanelDelegate(store: uploadAccept, window: window)
-    uploadPanels = panels
+    let panels = ShellUIDelegate(store: uploadAccept, window: window)
+    shellUI = panels
     webView.uiDelegate = panels
     // The page draws the title bar, so it must reach the window's top edge.
     webView.setValue(false, forKey: "drawsBackground")
@@ -428,8 +428,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
   /// desktop artifact is per-architecture) and it was already wrong for the
   /// release notes, the social links and every citation in a chat.
   ///
-  /// A same-origin navigation stays; anything else goes to the system browser,
-  /// which is what a user expects from a link that leaves the app.
+  /// A same-origin MAIN-FRAME navigation stays; anything else there goes to the
+  /// system browser, which is what a user expects from a link that leaves the
+  /// app. A SUBFRAME stays unconditionally and a popup is left to
+  /// `createWebViewWith` — see `NavigationPolicy.decide(from:to:frame:)` for the
+  /// measured reason: the user browser panel is an `<iframe>`, and the origin
+  /// test alone sent every URL typed into it to Safari.
   func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,
@@ -439,7 +443,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Shel
     // `webView.url` is the document being SHOWN at this point: the incoming one
     // has not committed yet, which is exactly the "where are we leaving from"
     // this decision needs.
-    guard NavigationPolicy.decide(from: webView.url?.absoluteString, to: destination) == .external else {
+    let frame = NavigationPolicy.frame(of: navigationAction)
+    guard NavigationPolicy.decide(from: webView.url?.absoluteString, to: destination, frame: frame) == .external else {
       decisionHandler(.allow)
       return
     }

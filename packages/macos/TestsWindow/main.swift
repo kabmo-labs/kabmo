@@ -105,7 +105,7 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
   let uploadProxy = UploadAcceptProxy()
   /// The delegate the APP installs, pointed at this window: a stand-in would let
   /// a near-miss signature pass while the shipped shell kept cancelling uploads.
-  lazy var uploadAcceptDelegate = UploadPanelDelegate(store: uploadAccept, window: window)
+  lazy var uploadAcceptDelegate = ShellUIDelegate(store: uploadAccept, window: window)
 
   /**
    The app's quit path, installed for the one case that drives it.
@@ -589,6 +589,19 @@ final class Runner: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     )
 
     uploadPanelSheetCases(window: window, check: check, pump: pump)
+
+    // HERE, before the drop cases: this case loads a page of its own (the upload
+    // and drop pages are other cases' subjects), and the drop cases end by
+    // releasing a drag that leaves the view with no document at all — after them
+    // `evaluateJavaScript` answers nil and this case would fail for a reason that
+    // has nothing to do with navigation (measured, twice).
+    navigationWindowCases(
+      view: webView,
+      window: window,
+      suitePage: page,
+      check: check,
+      pump: pump
+    )
 
     // BEFORE the drop cases, and the order is load-bearing: those end by
     // releasing the drag, after which the suite's view has no document and every

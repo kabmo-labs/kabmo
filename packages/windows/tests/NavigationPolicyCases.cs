@@ -89,5 +89,30 @@ static class NavigationPolicyCases
         check("no host is no origin", NavigationPolicy.OriginOf("http:///x") is null);
         check("a non-http scheme has no comparable origin", NavigationPolicy.OriginOf("mailto:x@y.test") is null);
         check("a host and port with no scheme is no origin", NavigationPolicy.OriginOf("192.168.1.20:3000") is null);
+
+        group("NavigationPolicy — an embedded frame never leaves");
+
+        // The user browser panel is an `<iframe>`. Its cross-origin loads are
+        // CONTENT, and sending one to the shell handed every URL typed into the
+        // panel to the system browser. `NavigationStarting` is main-frame only, so
+        // this table is asked with the frame the caller already knows.
+        check(
+            "a cross-origin page in an iframe stays",
+            NavigationPolicy.Decide(
+                "http://127.0.0.1:3000/",
+                "http://127.0.0.1:5173/",
+                NavigationFrame.Subframe) == NavigationTarget.Inside);
+        check(
+            "a mailto: in an iframe stays, because a frame is not a place to leave from",
+            NavigationPolicy.Decide("http://kabmo.test/", "mailto:x@y.test", NavigationFrame.Subframe)
+                == NavigationTarget.Inside);
+        check(
+            "a popup is left to NewWindowRequested",
+            NavigationPolicy.Decide("http://kabmo.test/", "https://example.test/", NavigationFrame.NewWindow)
+                == NavigationTarget.Inside);
+        check(
+            "the same cross-origin URL in the MAIN frame still leaves",
+            NavigationPolicy.Decide("http://127.0.0.1:3000/", "http://127.0.0.1:5173/", NavigationFrame.Main)
+                == NavigationTarget.External);
     }
 }
