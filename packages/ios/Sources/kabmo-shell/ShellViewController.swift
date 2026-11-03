@@ -400,11 +400,6 @@ final class ShellViewController: UIViewController {
     webView.pageZoom = CGFloat(ShellSettings.pageZoom(for: settings.zoom))
   }
 
-  private func applyLoading(_ next: LoadingState) {
-    loading = next
-    overlay.render(next)
-  }
-
   // MARK: - Settings
 
   private func openSettings() {

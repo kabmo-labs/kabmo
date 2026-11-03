@@ -80,6 +80,27 @@ func navigationWindowCases(
     return answer
   }
 
+  /// Run the run loop until `ready` answers true, or give up at the deadline.
+  ///
+  /// A FIXED `pump` is a guess about how long WebKit needs to commit a page, and
+  /// it is the wrong guess on a loaded runner: measured on the x64 macOS Release
+  /// leg, `pump(1.2)` returned before `loadHTMLString` had committed, so
+  /// `getElementById('panel')` was null, the subframe never navigated, and five
+  /// cases in this section failed — while the arm64 leg passed with the same
+  /// code. Waiting on the page's own state removes the race instead of widening
+  /// the window it lives in.
+  ///
+  /// The budget is generous on purpose: this is not a performance assertion, and
+  /// the slowest runner only makes it wait longer.
+  func waitUntil(_ deadlineSeconds: TimeInterval = 10, _ ready: () -> Bool) -> Bool {
+    let deadline = Date().addingTimeInterval(deadlineSeconds)
+    while Date() < deadline {
+      if ready() { return true }
+      RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.02))
+    }
+    return ready()
+  }
+
   print("\nthe navigation policy, through a real web view")
 
   var probe = NavigationProbe()
@@ -99,24 +120,31 @@ func navigationWindowCases(
   webView.navigationDelegate = delegate
   webView.uiDelegate = panels
   webView.loadHTMLString(navigationPage, baseURL: URL(string: "http://console.test/")!)
-  pump(1.2)
+  // The page must be COMMITTED before its elements are addressable.
+  _ = waitUntil { ((evaluate(webView, "document.getElementById('panel') !== null") as? Bool) ?? false) }
 
   // 1. The panel's own frame navigates to another origin — the reported case.
   _ = evaluate(webView, "document.getElementById('panel').src = 'http://127.0.0.1:59979/app'")
-  pump(0.8)
-  check("a cross-origin load inside the panel's iframe stays in the frame", probe.decisions.contains { line in
-    line.hasPrefix("subframe:inside:http://127.0.0.1:59979/app")
-  })
+  // The decision is what is asserted, so wait for the decision itself rather
+  // than for a durée that hopes to contain it.
+  let decided = waitUntil { probe.decisions.contains { $0.hasPrefix("subframe:inside:http://127.0.0.1:59979/app") } }
+  check("a cross-origin load inside the panel's iframe stays in the frame", decided)
   check("...and it did NOT leave for the system browser", !probe.opened.contains("http://127.0.0.1:59979/app"))
 
-  let frameURL = (evaluate(webView, "document.getElementById('panel').src") as? String) ?? ""
-  check("...so the frame really loaded it", frameURL == "http://127.0.0.1:59979/app")
+  let frameURL = ((evaluate(webView, "document.getElementById('panel').src") as? String) ?? "")
+  _ = waitUntil { frameURL == "http://127.0.0.1:59979/app" }
+  let realFrameURL = ((evaluate(webView, "document.getElementById('panel').src") as? String) ?? "")
+  check("...so the frame really loaded it", realFrameURL == "http://127.0.0.1:59979/app")
 
   // 2. A `target="_blank"` link — every external link the console draws. It must
   //    reach the system browser EXACTLY once.
   let before = probe.opened.count
   _ = evaluate(webView, "document.getElementById('blank').click()")
-  pump(0.8)
+  // ONE popup is the assertion; anything more is the bug. Waiting for the count
+  // to settle is what makes "exactly once" observable instead of a snapshot
+  // taken before the second (wrong) open had time to happen.
+  _ = waitUntil { probe.opened.count > before }
+  pump(0.5)
   let opened = Array(probe.opened.dropFirst(before))
   check("a target=_blank link opens the system browser", opened == ["https://example.test/release"])
   check("...exactly once, not once per policy plus delegate", opened.count == 1)
