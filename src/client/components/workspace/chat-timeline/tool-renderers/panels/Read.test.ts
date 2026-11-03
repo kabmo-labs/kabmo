@@ -153,6 +153,40 @@ describe('Read panel — language and markdown', () => {
     expect(rendered).toContain('Static content? Use read.');
   });
 
+  test('an xd:// doc sectioned with XML wrappers renders headings, not tags', async () => {
+    // omp's `xd://eval/browser` docs mark `<instruction>`, `<examples>` and
+    // `<critical>` as XML wrappers rather than `##` headings. Prose escapes its
+    // own HTML, so the panel printed the wrapper lines literally and every
+    // section ran together as one block.
+    const text = [
+      'Drive real Chromium tabs.',
+      '',
+      '<instruction>',
+      '- Static content? Use `read`.',
+      '</instruction>',
+      '',
+      '<critical>',
+      '- MUST open a tab before direct use.',
+      '</critical>',
+    ].join('\n');
+    const el = await mount(readTool({
+      target: 'xd://eval/browser',
+      input: { path: 'xd://eval/browser' },
+      output: text.split('\n').map((line, index) => `${index + 1}|${line}`).join('\n'),
+      details: {
+        contentType: 'text/plain',
+        totalLines: 9,
+        displayContent: { text, startLine: 1, lineNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+      },
+    }));
+    const rendered = el.textContent ?? '';
+    const headings = Array.from(el.querySelectorAll('h2')).map((node) => node.textContent);
+    expect(headings).toEqual(['Instruction', 'Critical']);
+    expect(rendered).not.toContain('<instruction>');
+    expect(rendered).not.toContain('</instruction>');
+    expect(el.querySelectorAll('ul li').length).toBe(2);
+  });
+
   test('a one-row doc read keeps its line-number gutter out of the prose', async () => {
     // omp's raw output prefixes every row with its line number, and the
     // stripper needs two numbered rows to recognise the format — so the real

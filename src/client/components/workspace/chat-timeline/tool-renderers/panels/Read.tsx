@@ -7,6 +7,7 @@ import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 import { buildFsRawUrl, isVirtualPath, stripReadSelector } from '@/shared/lib/fs/paths';
 import { toolImageSrc } from '@/shared/lib/omp/session/tool-images';
 import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
+import { xmlSectionsToHeadings } from '@/shared/lib/markdown/xml-sections';
 import type { ToolCallData } from '@/shared/types/chat';
 import { MAX_OUTPUT_LINES, truncateTailLines } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/truncate';
 import { extractLineMeta } from '@/client/components/workspace/chat-timeline/tool-renderers/shared/read-line-meta';
@@ -185,6 +186,9 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
    *  stripper that serves every other read keeps a one-row document's `1|`
    *  prefix (it needs two numbered rows to recognise the format). */
   const markdownContent = displayText || parsedCode.cleanCode || displayContent;
+  /** An omp doc marks some sections with XML wrappers (`<instruction>…`), and
+   *  prose escapes its own HTML: parse them as headings. Copy keeps the file. */
+  const markdownSource = useMemo(() => xmlSectionsToHeadings(markdownContent), [markdownContent]);
 
   const visibleEntries = dirInfo.entries.slice(-MAX_OUTPUT_LINES);
   const skippedEntries = dirInfo.entries.length - visibleEntries.length;
@@ -299,7 +303,7 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
            two numbered rows to recognise the format, so a one-row document
            (`read xd://propose`) kept its prefix through it. */
         <div className="max-h-80 overflow-auto rounded-lg border border-ink/8 bg-paper px-3.5 py-3 select-text">
-          <MarkdownRenderer content={markdownContent} className="text-[12.5px] text-ink/85" />
+          <MarkdownRenderer content={markdownSource} className="text-[12.5px] text-ink/85" />
         </div>
       ) : rawContent ? (
         /* Render Code Content with synchronized, straight line numbers and clean code */
