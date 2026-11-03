@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
 import { Check, Code, Copy, Info, RotateCcw, Save, ShieldCheck } from 'lucide-preact';
 import type { InstructionFileKind, InstructionSaveResult } from '@/shared/types';
@@ -49,6 +49,9 @@ export const BehaviorEditor: FunctionComponent<BehaviorEditorProps> = ({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // The gutter follows the textarea's own scroll. Without it the numbers stay
+  // at line 1 while the body scrolls away, which reads as the wrong file.
+  const gutterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditorValue(content);
@@ -85,12 +88,21 @@ export const BehaviorEditor: FunctionComponent<BehaviorEditorProps> = ({
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(editorValue);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(editorValue)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        // A refused clipboard is REPORTED: the button used to flip to "Copied"
+        // whether or not anything reached it.
+        setError(`The clipboard refused the copy: ${err instanceof Error ? err.message : String(err)}`);
+      });
   };
 
-  const handleSave = () => runPersist(() => onSave(editorValue));
+  const handleSave = () => {
+    void runPersist(() => onSave(editorValue));
+  };
 
   const handleReset = async () => {
     if (!onReset) return;
@@ -210,7 +222,11 @@ export const BehaviorEditor: FunctionComponent<BehaviorEditorProps> = ({
       <div className="flex-1 min-h-0 mt-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-ink/5 overflow-hidden flex flex-col font-mono text-xs focus-within:border-ink transition-colors">
         <div className="flex-1 flex overflow-hidden">
           {/* Line Numbers */}
-          <div className="w-10 py-3 pr-2 select-none text-right font-mono text-xs text-ink/30 border-r border-ink/10 bg-ink/[0.02] overflow-hidden leading-relaxed">
+          <div
+            ref={gutterRef}
+            aria-hidden="true"
+            className="w-10 py-3 pr-2 select-none text-right font-mono text-xs text-ink/30 border-r border-ink/10 bg-ink/[0.02] overflow-hidden leading-relaxed"
+          >
             {Array.from({ length: Math.max(lineCount, 12) }).map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
@@ -219,8 +235,12 @@ export const BehaviorEditor: FunctionComponent<BehaviorEditorProps> = ({
           {/* Text Area */}
           <textarea
             value={editorValue}
-            onChange={(e) => setEditorValue(e.currentTarget.value)}
+            onInput={(e) => setEditorValue(e.currentTarget.value)}
+            onScroll={(e) => {
+              if (gutterRef.current) gutterRef.current.scrollTop = e.currentTarget.scrollTop;
+            }}
             spellcheck={false}
+            aria-label={`${copy.title} content`}
             className="flex-1 p-3 bg-transparent text-ink font-mono text-xs leading-relaxed resize-none focus:outline-none overflow-y-auto"
             placeholder={copy.placeholder}
           />
