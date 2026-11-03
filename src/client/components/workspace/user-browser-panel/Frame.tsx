@@ -15,6 +15,12 @@ interface UserBrowserFrameProps {
   active?: boolean;
   /** The annotation surface, rendered over the page while the mode is on. */
   overlay?: ComponentChildren;
+  /**
+   * The live `<iframe>`. A mark's element is read through this handle, which is
+   * why it is reported rather than left to a query across the DOM: only THIS
+   * frame holds the page the user is annotating.
+   */
+  onFrame?: (frame: HTMLIFrameElement | null) => void;
 }
 
 const ALLOW = 'clipboard-read; clipboard-write; fullscreen';
@@ -37,6 +43,7 @@ export function UserBrowserFrame({
   onLoad,
   active = true,
   overlay,
+  onFrame,
 }: UserBrowserFrameProps) {
   if (!active) return null;
   if (!url) {
@@ -75,6 +82,7 @@ export function UserBrowserFrame({
       >
         <iframe
           key={frameKey}
+          ref={(node: HTMLIFrameElement | null) => onFrame?.(node)}
           src={url}
           title="Browser pengguna"
           onLoad={onLoad}

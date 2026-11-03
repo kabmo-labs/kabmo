@@ -33,6 +33,8 @@ export interface UseAnnotateResult {
   /** Commit one finished mark and open its note field. */
   add: (shape: AnnotateShape) => void;
   setNote: (id: string, note: string) => void;
+  /** Name the region a mark covers ("Ringkasan pesanan"); the user owns this fact. */
+  setLabel: (id: string, label: string) => void;
   select: (id: string | null) => void;
   remove: (id: string) => void;
   reset: () => void;
@@ -78,6 +80,10 @@ export function useAnnotate(frameKey: number): UseAnnotateResult {
     setShapes((prev) => prev.map((shape) => (shape.id === id ? { ...shape, note } : shape)));
   }, []);
 
+  const setLabel = useCallback((id: string, label: string) => {
+    setShapes((prev) => prev.map((shape) => (shape.id === id ? { ...shape, label } : shape)));
+  }, []);
+
   const remove = useCallback((id: string) => {
     setShapes((prev) => prev.filter((shape) => shape.id !== id));
     setSelectedId((current) => (current === id ? null : current));
@@ -88,5 +94,5 @@ export function useAnnotate(frameKey: number): UseAnnotateResult {
     setSelectedId(null);
   }, []);
 
-  return { active, tool, shapes, selectedId, setTool, toggle, close, add, setNote, select: setSelectedId, remove, reset };
+  return { active, tool, shapes, selectedId, setTool, toggle, close, add, setNote, setLabel, select: setSelectedId, remove, reset };
 }

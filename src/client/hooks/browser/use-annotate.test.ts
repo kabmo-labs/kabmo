@@ -42,7 +42,7 @@ afterAll(() => {
 });
 
 function mark(id: string, note = ''): AnnotateShape {
-  return { id, tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.3, y: 0.3 }, note };
+  return { id, tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.3, y: 0.3 }, label: '', note };
 }
 
 let container: HTMLElement | undefined;

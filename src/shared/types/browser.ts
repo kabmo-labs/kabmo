@@ -68,14 +68,46 @@ export interface AnnotatePoint {
   y: number;
 }
 
-/** One numbered mark. `box`/`arrow` use both points; `pin` uses `start`. */
+/**
+ * What the marked spot IS, when the page allows reading it.
+ *
+ * Only a SAME-ORIGIN frame can be read (`contentDocument` is non-null); a real
+ * dev server runs on its own port, which is a different origin even on the same
+ * host — measured in Chromium: `:7101` reading `:7102` yields `contentDocument
+ * === null`. So this is present only when the page was readable, and the prompt
+ * says so when it is absent instead of pretending.
+ */
+export interface AnnotateElement {
+  /** `section[aria-label="Ringkasan"] > button#pay`, at most 4 levels. */
+  path: string;
+  /** Lowercase tag name, e.g. `select`. */
+  tag: string;
+  /** Explicit `role`, when the element declares one. */
+  role?: string;
+  /** Visible text, whitespace-collapsed and cut short. */
+  text?: string;
+  /** `<select>` value and option count, `disabled`, and similar. */
+  state?: string;
+}
+
+/**
+ * One numbered mark. `box`/`arrow` use both points; `pin` uses `start`.
+ *
+ * `label` is the user's NAME for the region ("Ringkasan pesanan", "form
+ * alamat"). It is not derived from the page: the label is the one fact a
+ * cross-origin frame can never give us, and the user always has it.
+ */
 export interface AnnotateShape {
   id: string;
   tool: AnnotateTool;
   start: AnnotatePoint;
   end: AnnotatePoint;
+  /** The user's name for the region; empty until they say it. */
+  label: string;
   /** What the user says about this region; empty while they are still drawing. */
   note: string;
+  /** The element under the mark, when the frame was same-origin and readable. */
+  element?: AnnotateElement;
 }
 
 /**

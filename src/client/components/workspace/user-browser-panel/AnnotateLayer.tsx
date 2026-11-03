@@ -89,7 +89,7 @@ export function AnnotateLayer({ shapes, tool, selectedId, onMeasure, onAdd, onSe
     event.preventDefault();
     onSelect(null);
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-    const next: AnnotateShape = { id: nextShapeId(), tool, start: point.normalized, end: point.normalized, note: '' };
+    const next: AnnotateShape = { id: nextShapeId(), tool, start: point.normalized, end: point.normalized, label: '', note: '' };
     draftRef.current = next;
     setDraft(next);
   };

@@ -22,7 +22,7 @@
  * percentage of 1024px and a percentage of 375px are different places.
  */
 
-import type { AnnotatePanelSize, AnnotatePoint, AnnotateShape, AnnotateTool } from '@/shared/types';
+import type { AnnotateElement, AnnotatePanelSize, AnnotatePoint, AnnotateShape, AnnotateTool } from '@/shared/types';
 
 /** Panel box a pointer position is normalized against. */
 export interface AnnotateRect {
@@ -60,8 +60,10 @@ export function shapeRegion(shape: Pick<AnnotateShape, 'start' | 'end'>): { x: n
 }
 
 /** Whether a mark carries anything worth sending (a click with no drag still counts). */
-export function isUsableShape(shape: Pick<AnnotateShape, 'start' | 'end' | 'note'>): boolean {
+export function isUsableShape(shape: Pick<AnnotateShape, 'start' | 'end' | 'note'> & { label?: string; element?: unknown }): boolean {
   if (shape.note.trim().length > 0) return true;
+  if ((shape.label ?? '').trim().length > 0) return true;
+  if (shape.element) return true;
   const region = shapeRegion(shape);
   return region.width > 0.005 || region.height > 0.005;
 }
@@ -71,6 +73,42 @@ export const ANNOTATE_TOOL_LABEL: Record<AnnotateTool, string> = {
   pin: 'titik',
   arrow: 'panah',
 };
+
+/**
+ * The regions a user reaches for most, offered as chips so naming a mark costs
+ * one click instead of typing.
+ *
+ * A fixed vocabulary, NOT a guess from the page: the panel's frame is
+ * cross-origin in the normal case, so the only entity that knows this page has
+ * a "modal" is the person looking at it.
+ */
+export const ANNOTATE_LABEL_SUGGESTIONS = [
+  'header',
+  'nav',
+  'konten',
+  'form',
+  'tabel',
+  'daftar',
+  'modal',
+  'sidebar',
+  'footer',
+] as const;
+
+/** `bagian "Ringkasan pesanan"` for a named mark, nothing for an unnamed one. */
+function labelPrefix(label: string | undefined): string {
+  const name = label?.trim();
+  return name ? `bagian "${name}" — ` : '';
+}
+
+/** What the mark sits on, when the frame was readable. */
+function elementSuffix(element: AnnotateShape['element']): string {
+  if (!element) return '';
+  const facts = [element.path];
+  if (element.role) facts.push(`role ${element.role}`);
+  if (element.state) facts.push(element.state);
+  if (element.text) facts.push(`teks "${element.text}"`);
+  return ` [elemen: ${facts.join(' · ')}]`;
+}
 
 /** `12.0%` — one decimal, which is precise enough to re-find a spot by hand. */
 function percent(value: number): string {
@@ -96,19 +134,21 @@ export function describeShape(
 ): string {
   const where = `(${percent(shape.start.x)}, ${percent(shape.start.y)})`;
   const spot = `(${px(shape.start.x, panel.width)}×${px(shape.start.y, panel.height)} px)`;
-  const label = ANNOTATE_TOOL_LABEL[shape.tool];
+  const tool = ANNOTATE_TOOL_LABEL[shape.tool];
+  const head = `${index}. ${labelPrefix(shape.label)}${tool}`;
   const note = shape.note.trim();
   const tail = note.length > 0 ? ` — ${note}` : '';
+  const element = elementSuffix(shape.element);
 
-  if (shape.tool === 'pin') return `${index}. ${label} di ${where} ${spot}${tail}`;
+  if (shape.tool === 'pin') return `${head} di ${where} ${spot}${element}${tail}`;
   if (shape.tool === 'arrow') {
     const to = `(${percent(shape.end.x)}, ${percent(shape.end.y)})`;
-    return `${index}. ${label} ${where} → ${to}${tail}`;
+    return `${head} ${where} → ${to}${element}${tail}`;
   }
   const region = shapeRegion(shape);
   const size = `lebar ${percent(region.width)}, tinggi ${percent(region.height)}`;
   const pixels = `(${px(region.width, panel.width)}×${px(region.height, panel.height)} px)`;
-  return `${index}. ${label} kiri ${percent(region.x)}, atas ${percent(region.y)}, ${size} ${pixels}${tail}`;
+  return `${head} kiri ${percent(region.x)}, atas ${percent(region.y)}, ${size} ${pixels}${element}${tail}`;
 }
 
 /** Every usable mark, described and numbered from 1 in draw order. */
@@ -135,6 +175,19 @@ function readPoint(value: unknown): AnnotatePoint | null {
   return { x: clamp01(x), y: clamp01(y) };
 }
 
+/** A marked element's facts, kept only in the shapes the formatter can print. */
+function readElement(value: unknown): AnnotateElement | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.path !== 'string' || !record.path) return null;
+  if (typeof record.tag !== 'string' || !record.tag) return null;
+  const element: AnnotateElement = { path: record.path, tag: record.tag };
+  if (typeof record.role === 'string' && record.role) element.role = record.role;
+  if (typeof record.text === 'string' && record.text) element.text = record.text;
+  if (typeof record.state === 'string' && record.state) element.state = record.state;
+  return element;
+}
+
 /**
  * The marks from a DOM event's detail, dropping anything malformed.
  *
@@ -154,7 +207,9 @@ export function readAnnotationShapes(value: unknown): AnnotateShape[] | null {
     if (!tool || !start || !end) continue;
     const id = typeof record.id === 'string' && record.id ? record.id : `annot-${shapes.length + 1}`;
     const note = typeof record.note === 'string' ? record.note : '';
-    shapes.push({ id, tool, start, end, note });
+    const label = typeof record.label === 'string' ? record.label : '';
+    const element = readElement(record.element);
+    shapes.push({ id, tool, start, end, label, note, ...(element ? { element } : {}) });
   }
   return shapes.length > 0 ? shapes : null;
 }

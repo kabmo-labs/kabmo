@@ -39,15 +39,23 @@ export function formatPageContextBlock(detail: BrowserPageContext): string {
   const lines = ['[Konteks halaman browser]', `URL: ${detail.url}`];
   if (detail.title) lines.push(`Judul: ${detail.title}`);
 
-  const description = detail.annotations && detail.panel
-    ? describeAnnotations(detail.annotations, detail.panel)
+  const panel = detail.panel;
+  const description = detail.annotations && panel
+    ? describeAnnotations(detail.annotations, panel)
     : [];
-  if (detail.panel && detail.annotations) {
-    lines.push(`Panel: ${detail.panel.viewportMode} ${Math.round(detail.panel.width)}×${Math.round(detail.panel.height)} px @${detail.panel.zoom}%`);
+  if (panel && detail.annotations) {
+    lines.push(`Panel: ${panel.viewportMode} ${Math.round(panel.width)}×${Math.round(panel.height)} px @${panel.zoom}%`);
   }
-  if (description.length > 0) {
+  if (description.length > 0 && panel) {
     lines.push(`Anotasi (${description.length}):`, ...description);
     lines.push('Halaman ini hanya terlihat oleh user — buka URL di atas sendiri sebelum mengubah apa pun.');
+    // The coordinates are fractions of the panel the user was looking at, not
+    // of whatever viewport the agent opens. Saying so is what lets the agent
+    // resolve them (`elementFromPoint` at the same box, or scaled) instead of
+    // treating a percentage as an absolute position.
+    lines.push(
+      `Koordinat relatif ke viewport ${Math.round(panel.width)}×${Math.round(panel.height)} px; pakai ukuran yang sama saat membuka halaman ini, lalu cari elemennya di titik itu.`,
+    );
   }
   lines.push('(Lanjutkan dari halaman ini.)');
   return lines.join('\n');

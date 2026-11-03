@@ -28,6 +28,7 @@ function shape(overrides: Partial<AnnotateShape> = {}): AnnotateShape {
     tool: 'box',
     start: { x: 0.1, y: 0.2 },
     end: { x: 0.3, y: 0.35 },
+    label: '',
     note: '',
     ...overrides,
   };
@@ -191,5 +192,92 @@ describe('appendPageContext', () => {
   test('a draft already ending in a blank line does not gain a third', () => {
     expect(appendPageContext('halo\n\n', { url: 'https://a.test' })).toContain('halo\n\n[Konteks');
     expect(appendPageContext('halo\n\n', { url: 'https://a.test' })).not.toContain('halo\n\n\n');
+  });
+});
+
+describe('label on a mark', () => {
+  test('a named region leads the line, so the agent knows WHAT before WHERE', () => {
+    expect(describeShape(shape({ label: 'Ringkasan pesanan', note: 'total terpotong' }), 1, PANEL))
+      .toBe('1. bagian "Ringkasan pesanan" — kotak kiri 10.0%, atas 20.0%, lebar 20.0%, tinggi 15.0% (205×115 px) — total terpotong');
+  });
+
+  test('an unnamed mark keeps exactly the line it produced before labels existed', () => {
+    expect(describeShape(shape(), 1, PANEL))
+      .toBe('1. kotak kiri 10.0%, atas 20.0%, lebar 20.0%, tinggi 15.0% (205×115 px)');
+  });
+
+  test('a label alone makes a zero-size mark worth sending', () => {
+    expect(isUsableShape({ start: { x: 0.5, y: 0.5 }, end: { x: 0.5, y: 0.5 }, note: '', label: 'modal' })).toBe(true);
+  });
+
+  test('a whitespace-only label is not a name', () => {
+    expect(isUsableShape({ start: { x: 0.5, y: 0.5 }, end: { x: 0.5, y: 0.5 }, note: '', label: '   ' })).toBe(false);
+  });
+});
+
+describe('element on a mark', () => {
+  const select = {
+    path: 'section[aria-label="Ringkasan"] > form > select#prov',
+    tag: 'select',
+    state: 'nilai "Jawa Barat", 5 opsi',
+    text: 'Provinsi',
+  };
+
+  test('a readable element adds its path, state and text after the geometry', () => {
+    const line = describeShape(shape({ element: select }), 1, PANEL);
+    expect(line).toContain('[elemen: section[aria-label="Ringkasan"] > form > select#prov');
+    expect(line).toContain('nilai "Jawa Barat", 5 opsi');
+    expect(line).toContain('teks "Provinsi"');
+    // The note still ends the line, after the element facts.
+    expect(line.endsWith('px) [elemen:')).toBe(false);
+  });
+
+  test('an unreadable mark says nothing about elements rather than printing an empty one', () => {
+    expect(describeShape(shape(), 1, PANEL)).not.toContain('elemen');
+  });
+
+  test('role is stated when the element declares one', () => {
+    const line = describeShape(shape({ element: { path: 'div > div', tag: 'div', role: 'dialog' } }), 2, PANEL);
+    expect(line).toContain('role dialog');
+  });
+});
+
+describe('readAnnotationShapes with the new fields', () => {
+  test('carries label and element through', () => {
+    const parsed = readAnnotationShapes([{
+      id: 'a', tool: 'pin', start: { x: 0.2, y: 0.3 }, end: { x: 0.2, y: 0.3 },
+      label: 'form', note: 'kosong',
+      element: { path: 'body > form', tag: 'form', state: 'nonaktif' },
+    }]);
+    expect(parsed?.[0]?.label).toBe('form');
+    expect(parsed?.[0]?.element).toEqual({ path: 'body > form', tag: 'form', state: 'nonaktif' });
+  });
+
+  test('a malformed element is dropped, and the mark survives with its label', () => {
+    const parsed = readAnnotationShapes([{
+      id: 'a', tool: 'pin', start: { x: 0.2, y: 0.3 }, end: { x: 0.2, y: 0.3 },
+      label: 'form', note: '',
+      element: { path: '', tag: 'form' },
+    }]);
+    expect(parsed?.[0]?.element).toBeUndefined();
+    expect(parsed?.[0]?.label).toBe('form');
+  });
+});
+
+describe('viewport resolution hint', () => {
+  const base = {
+    url: 'https://a.test',
+    panel: { width: 276, height: 620, viewportMode: 'laptop', zoom: 110 },
+    annotations: [shape({ note: 'mati' })],
+  };
+
+  test('the block states the viewport the coordinates are fractions of', () => {
+    const block = formatPageContextBlock(base);
+    expect(block).toContain('Koordinat relatif ke viewport 276×620 px');
+    expect(block).toContain('cari elemennya di titik itu');
+  });
+
+  test('the hint belongs to an annotated page, not to a plain one', () => {
+    expect(formatPageContextBlock({ url: 'https://a.test' })).not.toContain('Koordinat relatif');
   });
 });

@@ -79,7 +79,7 @@ describe('useBrowserPageContextInsert', () => {
     mountBridge();
     act(() => emitBrowserPageContext({
       url: 'https://a.test/x',
-      annotations: [{ id: 'a', tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.2, y: 0.2 }, note: 'mati' }],
+      annotations: [{ id: 'a', tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.2, y: 0.2 }, label: '', note: 'mati' }],
       panel: { width: 1000, height: 500, viewportMode: 'laptop', zoom: 100 },
     }));
     expect(draft).toContain('Anotasi (1):');

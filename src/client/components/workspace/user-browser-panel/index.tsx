@@ -4,6 +4,7 @@ import { UserBrowserFrame } from '@/client/components/workspace/user-browser-pan
 import { AnnotateBar } from '@/client/components/workspace/user-browser-panel/AnnotateBar';
 import { AnnotateLayer } from '@/client/components/workspace/user-browser-panel/AnnotateLayer';
 import { useUserBrowser } from '@/client/hooks/browser/use-user-browser';
+import { elementAtPoint, type ElementAtResult } from '@/client/lib/browser/element-at';
 import { useAnnotate } from '@/client/hooks/browser/use-annotate';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { emitBrowserPageContext } from '@/shared/lib/browser/page-context';
@@ -30,6 +31,10 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
   const [viewportMode, setViewportMode] = useSessionState<ViewportMode>('userBrowser.viewportMode', 'responsive');
   const [zoomLevel, setZoomLevel] = useSessionState<number>('userBrowser.zoomLevel', 100);
   const [panelSize, setPanelSize] = useState<{ width: number; height: number } | null>(null);
+  // The frame the marks are drawn over, needed to read the element under one.
+  const [frame, setFrame] = useState<HTMLIFrameElement | null>(null);
+  // How the LAST lookup went, so the bar can say why a mark has no element.
+  const [readability, setReadability] = useState<ElementAtResult | null>(null);
   const {
     url,
     input,
@@ -61,9 +66,15 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
     setPanelSize((prev) => (prev && prev.width === size.width && prev.height === size.height ? prev : size));
   }, []);
 
+  // The element is resolved at the mark's own anchor, the moment it is drawn:
+  // the page can change under a mark, and a lookup deferred to Send would
+  // describe whatever the page became, not what the user pointed at. A frame
+  // that is not same-origin answers a reason instead, and the bar states it.
   const handleAddShape = useCallback((shape: AnnotateShape) => {
-    annotate.add(shape);
-  }, [annotate]);
+    const resolution = elementAtPoint(frame, shape.start);
+    setReadability(resolution);
+    annotate.add(resolution.ok ? { ...shape, element: resolution.element } : shape);
+  }, [annotate, frame]);
 
   // The marks travel with the panel box they were normalized against: `12%` of
   // a laptop and `12%` of a phone are different places, and CSS zoom is undone
@@ -120,7 +131,9 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
           tool={annotate.tool}
           shapes={annotate.shapes}
           selectedId={annotate.selectedId}
+          readability={readability}
           onTool={annotate.setTool}
+          onLabel={annotate.setLabel}
           onNote={annotate.setNote}
           onRemove={annotate.remove}
           onReset={annotate.reset}
@@ -135,6 +148,7 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
         viewportMode={viewportMode}
         zoomLevel={zoomLevel}
         onLoad={markLoaded}
+        onFrame={setFrame}
         active={active}
         overlay={annotateActive ? (
           <AnnotateLayer

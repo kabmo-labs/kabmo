@@ -9,11 +9,13 @@
  * It sits above the page rather than in the toolbar because the note belongs to
  * the mark the user just drew — a note field in the address bar would be a
  * second place to type about the same thing. The bar also spells out the limit
- * the panel cannot hide: the page is the user's own cross-origin frame, so no
- * screenshot exists and the mark travels as coordinates.
+ * the panel cannot hide: the page is the user's own frame, so no screenshot
+ * exists and the mark travels as coordinates plus words.
  */
 
 import { Send, Trash2, X } from 'lucide-preact';
+import { AnnotateTarget } from '@/client/components/workspace/user-browser-panel/AnnotateTarget';
+import type { ElementAtResult } from '@/client/lib/browser/element-at';
 import { ANNOTATE_TOOL_LABEL } from '@/shared/lib/browser/annotate';
 import type { AnnotateShape, AnnotateTool } from '@/shared/types';
 
@@ -21,7 +23,10 @@ interface AnnotateBarProps {
   tool: AnnotateTool;
   shapes: AnnotateShape[];
   selectedId: string | null;
+  /** How the last mark's element lookup went, for the "why no element" line. */
+  readability: ElementAtResult | null;
   onTool: (tool: AnnotateTool) => void;
+  onLabel: (id: string, label: string) => void;
   onNote: (id: string, note: string) => void;
   onRemove: (id: string) => void;
   onReset: () => void;
@@ -40,7 +45,9 @@ export function AnnotateBar({
   tool,
   shapes,
   selectedId,
+  readability,
   onTool,
+  onLabel,
   onNote,
   onRemove,
   onReset,
@@ -80,29 +87,26 @@ export function AnnotateBar({
         </button>
       </div>
 
-      <div className="flex items-start gap-1.5">
-        {selected ? (
-          <>
-            <span className="text-[11px] font-mono text-ink/45 pt-1 flex-shrink-0">
-              {ANNOTATE_TOOL_LABEL[selected.tool]} #{shapes.indexOf(selected) + 1}
-            </span>
-            <textarea
-              value={selected.note}
-              onInput={(event) => onNote(selected.id, event.currentTarget.value)}
-              placeholder="Apa yang salah di bagian ini? (mis. tombol Bayar terlihat nonaktif)"
-              rows={2}
-              className="flex-1 min-w-0 resize-y bg-canvas border border-ink/15 rounded px-2 py-1 text-[11px] font-mono text-ink placeholder:text-ink/35 focus:outline-none focus:border-ink/40"
+      {selected ? (
+        <div className="flex items-start gap-1.5">
+          <div className="flex-1 min-w-0">
+            <AnnotateTarget
+              shape={selected}
+              index={shapes.indexOf(selected) + 1}
+              readability={readability}
+              onLabel={(label) => onLabel(selected.id, label)}
+              onNote={(note) => onNote(selected.id, note)}
             />
-            <button type="button" onClick={() => onRemove(selected.id)} className={ACTION_BUTTON} title="Hapus tanda ini">
-              <Trash2 size={12} />
-            </button>
-          </>
-        ) : (
-          <p className="text-[11px] text-ink/45">
-            Halaman ini tidak bisa di-screenshot (iframe milik user) — yang dikirim adalah area + catatanmu.
-          </p>
-        )}
-      </div>
+          </div>
+          <button type="button" onClick={() => onRemove(selected.id)} className={ACTION_BUTTON} title="Hapus tanda ini">
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ) : (
+        <p className="text-[11px] text-ink/45">
+          Halaman ini tidak bisa di-screenshot — yang dikirim adalah area, nama bagian, dan catatanmu.
+        </p>
+      )}
     </div>
   );
 }

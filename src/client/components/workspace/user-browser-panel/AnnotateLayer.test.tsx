@@ -170,8 +170,8 @@ describe('AnnotateLayer marks', () => {
   test('every committed mark is painted with its number', () => {
     container = document.body.appendChild(document.createElement('div'));
     const shapes: AnnotateShape[] = [
-      { id: 'a', tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.2, y: 0.2 }, note: '' },
-      { id: 'b', tool: 'pin', start: { x: 0.5, y: 0.5 }, end: { x: 0.5, y: 0.5 }, note: '' },
+      { id: 'a', tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.2, y: 0.2 }, label: '', note: '' },
+      { id: 'b', tool: 'pin', start: { x: 0.5, y: 0.5 }, end: { x: 0.5, y: 0.5 }, label: '', note: '' },
     ];
     act(() => {
       render(h(AnnotateLayer, {
