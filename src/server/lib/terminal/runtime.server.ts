@@ -55,6 +55,11 @@ const resizeTimers = registry.resizeTimers;
 export async function attachTerminal(viewer: TerminalViewer, request: AttachRequest): Promise<TerminalAttachment> {
   const session = await openTerminal(request);
 
+  // Pending bytes are already in history, so they have to leave the coalescer
+  // BEFORE the replay is captured: delivered after, the viewer would receive
+  // them twice; captured first, they would be missing from the replay and then
+  // arrive out of order. Either way xterm shows duplicated or shuffled lines.
+  session.output.flush();
   const replay = session.history.replay();
   const snapshot = snapshotOf(session);
   session.viewers.add(viewer);

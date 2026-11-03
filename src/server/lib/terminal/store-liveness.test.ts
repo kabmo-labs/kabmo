@@ -30,6 +30,7 @@ import { attachTerminal, disposeAllTerminals } from '@/server/lib/terminal/runti
 import { terminalStore, type TerminalStore, type TerminalTimeout } from '@/server/lib/terminal/store';
 import { countLiveTerminals, distinguishesIdleShells, listTerminals } from '@/server/lib/terminal/liveness.server';
 import type { TerminalSession, TerminalViewer } from '@/server/lib/terminal/session.server';
+import { createTerminalOutputQueue } from '@/server/lib/terminal/output';
 import { join } from 'node:path';
 import { describePosix, testPosix } from '@/test-support/platform';
 
@@ -44,6 +45,9 @@ function fakeSession(over: Partial<TerminalSession> & { id: string }): TerminalS
     term: undefined as unknown as Bun.Terminal,
     proc: null,
     history: { replay: () => '' } as unknown as TerminalSession['history'],
+    // The real queue, not a stub: `disposeAllTerminals` disposes it, and a
+    // shape-only fake would hide a missing `dispose` at exactly that point.
+    output: createTerminalOutputQueue(() => {}),
     viewers: new Set(),
     cols: 80,
     rows: 24,

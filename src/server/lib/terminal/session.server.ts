@@ -29,6 +29,14 @@
  *
  * A fourth: a PTY read may split a multi-byte character, so bytes are forwarded
  * verbatim and xterm's own streaming decoder reassembles them.
+ *
+ * A fifth, and the reason `output.ts` exists: **reads are coalesced into frames,
+ * never forwarded one-per-read**. One read is one line for a line-oriented
+ * producer (`seq 1 300000` arrived as 182,259 reads, p50 = 12 bytes), so
+ * framing each read spent the socket on headers: measured end to end, 249,349
+ * frames carried 33.7 MB at 2.12 MB/s, and the same bytes coalesced reached
+ * 6.9–7.3 MB/s — where the PTY producer, not the client, was the ceiling. The
+ * ordering rule that comes with it is stated at `attachTerminal`.
  */
 
 import { resolveRoot } from '@/server/lib/fs/root';
@@ -37,6 +45,7 @@ import { scopeToRepo } from '@/server/lib/fs/repo-scope';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { createTerminalHistory, type TerminalHistory } from '@/server/lib/terminal/history';
+import { createTerminalOutputQueue, type TerminalOutputQueue } from '@/server/lib/terminal/output';
 import { resolveShellExecutable, shellCandidates, shellLaunch, terminalEnv } from '@/server/lib/terminal/shell';
 import { shellSpawnOptions } from '@/server/lib/terminal/spawn';
 import {
@@ -50,13 +59,14 @@ export const TERMINATION_GRACE_MS = 1000;
 /** A socket attached to a terminal. Output is raw PTY bytes; control is JSON. */
 export interface TerminalViewer {
   /**
-   * Deliver one frame. Returns false when the viewer could not accept it —
-   * the socket's send buffer is over its high-water mark — which the session
-   * treats as "this viewer is gone": a PTY producer cannot be paused, so the
-   * alternative is buffering unbounded output in a socket nobody is reading.
+   * Deliver one frame. Returns false only when it was DROPPED — not when the
+   * socket merely reported backpressure, which Bun's `send` does with `-1` and
+   * still delivers (see `send-result.ts`). A false return means this viewer can
+   * no longer be trusted with the byte stream: the PTY cannot be paused, so the
+   * session drops it and the client replays from history on reconnect.
    */
   send(frame: string | Uint8Array): boolean;
-  /** Detach this viewer. Called when `send` reports it cannot keep up. */
+  /** Detach this viewer. Called when `send` reports the frame was dropped. */
   drop(): void;
 }
 
@@ -67,6 +77,8 @@ export interface TerminalSession {
   term: Bun.Terminal;
   proc: Bun.Subprocess | null;
   history: TerminalHistory;
+  /** Pending PTY bytes, framed on a timer or a size threshold. See `output.ts`. */
+  output: TerminalOutputQueue;
   viewers: Set<TerminalViewer>;
   cols: number;
   rows: number;
@@ -82,13 +94,13 @@ export interface TerminalSession {
 /**
  * Deliver `frame` to every viewer, dropping the ones that cannot keep up.
  *
- * `Bun.ServerWebSocket.send` returns the bytes queued, or `-1` when the socket
- * is over its high-water mark and the frame was NOT sent (verified on 1.4.2:
- * 40 sends of 1 MiB to a socket nobody reads all return `-1`). A viewer that
- * reports `-1` is closed rather than skipped — skipping would leave xterm's
+ * A viewer reports false only for a real drop (`send-result.ts` owns that
+ * contract: Bun's `-1` means "queued, draining" and `0` means "dropped"). A
+ * dropped viewer is closed rather than skipped — skipping would leave xterm's
  * parser mid-sequence, so the honest outcome is a reconnect that replays the
  * scrollback. The PTY cannot be paused, so this is the only backpressure a
- * terminal has.
+ * terminal has; coalescing in `output.ts` is what keeps it from firing on a
+ * producer that simply emits many small reads.
  */
 export function fanOut(session: TerminalSession, frame: string | Uint8Array): void {
   for (const viewer of session.viewers) {
@@ -135,6 +147,8 @@ export async function createSession(request: AttachRequest): Promise<TerminalSes
     term: undefined as unknown as Bun.Terminal,
     proc: null,
     history: createTerminalHistory(),
+    // Same reason as `term`: the queue's sink fans out through `session`.
+    output: undefined as unknown as TerminalOutputQueue,
     viewers: new Set(),
     cols: size.cols,
     rows: size.rows,
@@ -146,14 +160,21 @@ export async function createSession(request: AttachRequest): Promise<TerminalSes
     lastActivity: Date.now(),
   };
 
+  session.output = createTerminalOutputQueue((frame) => fanOut(session, frame));
+
   const term = new Bun.Terminal({
     cols: size.cols,
     rows: size.rows,
     name: 'xterm-256color',
     data(_term, bytes) {
+      // History first, then the frame: every byte that can reach a viewer is
+      // already replayable, which is what lets `attachTerminal` flush and then
+      // capture a replay without the two ever overlapping.
       session.history.append(bytes);
       session.lastActivity = Date.now();
-      fanOut(session, bytes);
+      // Nobody watching: the replay carries it on the next attach, so there is
+      // nothing to frame — and an unwatched session pays no queue cost at all.
+      if (session.viewers.size > 0) session.output.push(bytes);
     },
   });
   session.term = term;
@@ -180,6 +201,10 @@ export async function createSession(request: AttachRequest): Promise<TerminalSes
     session.exitCode = code ?? null;
     session.signal = signalName(proc.signalCode);
     session.lastActivity = Date.now();
+    // Queued output is older than this frame. Flushing first keeps xterm's
+    // order honest: otherwise the shell's last bytes would print after the
+    // notice that the shell is gone.
+    session.output.flush();
     const frame = JSON.stringify({ t: 'exit', exitCode: session.exitCode, signal: session.signal });
     fanOut(session, frame);
   });
@@ -248,7 +273,16 @@ export function signalGroup(session: TerminalSession, signal: NodeJS.Signals): v
   killProcessTree(pid, signal === 'SIGKILL', signal);
 }
 
+/**
+ * Release the PTY and anything still queued for it.
+ *
+ * The coalescer's timer and its pending bytes are dropped here rather than at
+ * each caller: every path that closes the stream (spawn failure, `forgetTerminal`,
+ * process exit) leaves no viewer to deliver them to, and an armed timer would
+ * otherwise keep the process alive for another flush tick.
+ */
 export function closeTerminalStream(session: TerminalSession): void {
+  session.output.dispose();
   try {
     session.term.close();
   } catch {

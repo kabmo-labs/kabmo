@@ -39,6 +39,7 @@ import {
   type TerminalSession,
   type TerminalViewer,
 } from '@/server/lib/terminal/session.server';
+import { createTerminalOutputQueue } from '@/server/lib/terminal/output';
 import { clampTerminalSize } from '@/shared/lib/workspace/terminal/protocol';
 import { testPosix } from '@/test-support/platform';
 describe('clampTerminalSize and session constants', () => {
@@ -213,6 +214,9 @@ function fakeSession(
     term: undefined as unknown as Bun.Terminal,
     proc: null,
     history: undefined as never,
+    // A real queue: `closeTerminalStream` disposes it, which is one of the
+    // behaviours this file pins.
+    output: createTerminalOutputQueue(() => {}),
     viewers: new Set(viewers),
     cols: 80,
     rows: 24,
