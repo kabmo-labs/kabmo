@@ -15,6 +15,7 @@
 
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useBrowserPageContextInsert } from '@/client/hooks/chat/composer/browser-context';
+import { useReviewIncludeInsert } from '@/client/hooks/chat/composer/review-context';
 import { CHAT_DRAFT_ATTACHMENTS_KEY, CHAT_DRAFT_KEY } from '@/shared/lib/chat/composer/draft';
 import type { Attachment } from '@/shared/types';
 
@@ -28,6 +29,7 @@ export interface ComposerDraftState {
 export function useComposerDraft(): ComposerDraftState {
   const [inputValue, setInputValue] = useSessionState<string>(CHAT_DRAFT_KEY, '');
   useBrowserPageContextInsert(setInputValue);
+  useReviewIncludeInsert(setInputValue);
   const [inputAttachments, setInputAttachments] = useSessionState<Attachment[]>(CHAT_DRAFT_ATTACHMENTS_KEY, []);
   return { inputValue, setInputValue, inputAttachments, setInputAttachments };
 }

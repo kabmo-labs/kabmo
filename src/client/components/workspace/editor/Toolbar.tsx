@@ -7,7 +7,8 @@ import {
 } from 'lucide-preact';
 import { EditorViewButtons, useEditorViewActions } from '@/client/components/common/editor-view-buttons';
 import { ToolbarRow } from '@/client/components/common/toolbar-row';
-import { ACTION_CLASS, buildEditorClusters } from '@/client/components/workspace/editor/toolbar-clusters';
+import { buildEditorClusters } from '@/client/components/workspace/editor/toolbar-clusters';
+import { ACTION_CLASS } from '@/client/components/workspace/editor/toolbar-toggle';
 import { writeKabmoSettings } from '@/shared/lib/settings/client';
 import { EDITOR_BLAME_CHANGED_EVENT, currentEditorBlame, useEditorBlame } from '@/client/hooks/editor/blame-settings';
 
@@ -25,6 +26,13 @@ interface EditorToolbarProps {
    */
   hasPreview: boolean;
   isPreview: boolean;
+  /**
+   * A rendered markdown document is on screen, so blocks can be judged. False
+   * for every other kind: a CSV grid and an SVG picture have no markdown blocks.
+   */
+  hasReview: boolean;
+  /** Review mode is on for this tab. */
+  isReviewing: boolean;
   /** True for the 1.5s after a copy landed, so the button can confirm it. */
   copied: boolean;
   /**
@@ -59,6 +67,8 @@ interface EditorToolbarProps {
   onToggleFind: () => void;
   onSave: () => void;
   onTogglePreview: () => void;
+  /** Turn review mode on or off; the panel owns the state. */
+  onToggleReview: () => void;
   onToggleWordWrap: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -94,6 +104,8 @@ export function EditorToolbar({
   wordWrap,
   hasPreview,
   isPreview,
+  hasReview,
+  isReviewing,
   copied,
   byteViewer = false,
   saveDisabled = false,
@@ -105,6 +117,7 @@ export function EditorToolbar({
   onToggleFind,
   onSave,
   onTogglePreview,
+  onToggleReview,
   onToggleWordWrap,
   onZoomIn,
   onZoomOut,
@@ -177,6 +190,8 @@ export function EditorToolbar({
     hasPreview,
     isPreview,
     wordWrap,
+    hasReview,
+    isReviewing,
     blameInline: blame.inline,
     findOpen,
     copied,
@@ -193,6 +208,7 @@ export function EditorToolbar({
     copyLabel: copied ? 'Copied' : byteViewer ? 'Copy image' : 'Copy content',
     maximizeLabel,
     onTogglePreview,
+    onToggleReview,
     onToggleFind,
     onToggleWordWrap,
     onToggleBlameInline: () => {

@@ -34,6 +34,9 @@ function state(): ToolbarState {
     previewLabel: 'Preview',
     isPreview: false,
     onTogglePreview: noop,
+    hasReview: false,
+    isReviewing: false,
+    onToggleReview: noop,
     findLabel: 'Find and replace',
     findOpen: false,
     onToggleFind: noop,
@@ -74,6 +77,17 @@ describe('buildEditorClusters order', () => {
     const clusters = buildEditorClusters(state());
     const pinned = clusters.filter((cluster) => cluster.pinned).map((cluster) => cluster.id);
     expect(pinned).toEqual(['save', 'view-modes', 'maximize']);
+  });
+
+  test('the review toggle exists only where a rendered document can be judged', () => {
+    expect(buildEditorClusters(state()).map((cluster) => cluster.id)).not.toContain('review');
+    const reviewing = buildEditorClusters({ ...state(), hasReview: true, isReviewing: true });
+    expect(reviewing.map((cluster) => cluster.id)).toContain('review');
+    // A reading AID, but one that changes what a click means: it sits with the
+    // view toggles, after every write and before the reading-only clusters.
+    const ids = reviewing.map((cluster) => cluster.id);
+    expect(ids.indexOf('review')).toBeGreaterThan(ids.indexOf('save-as'));
+    expect(ids.indexOf('review')).toBeLessThan(ids.indexOf('preview'));
   });
 
   test('a byte viewer drops the text-only clusters, Save as among them', () => {

@@ -27,14 +27,10 @@ import type { ComponentChildren } from 'preact';
 import {
   Copy,
   Download,
-  Eye,
-  EyeOff,
   GitCommitVertical,
   Maximize,
   Minimize,
   RotateCcw,
-  Save,
-  SaveAll,
   Search,
   WrapText,
   ZoomIn,
@@ -42,16 +38,22 @@ import {
 } from 'lucide-preact';
 
 import type { ToolbarCluster } from '@/client/components/common/toolbar-row';
-
-/** Shared icon-button shell. Every action here is icon-only, so each carries both names. */
-export const ACTION_CLASS =
-  'flex items-center justify-center p-1.5 rounded transition-colors cursor-pointer disabled:cursor-default disabled:opacity-50';
+import {
+  previewClusters,
+  reviewCluster,
+  writeClusters,
+} from '@/client/components/workspace/editor/toolbar-write-clusters';
+import { ACTION_CLASS, Toggle } from '@/client/components/workspace/editor/toolbar-toggle';
 
 /** The state the toolbar draws, already resolved by the caller. */
 export interface ToolbarState {
   byteViewer: boolean;
   hasPreview: boolean;
   isPreview: boolean;
+  /** The file has annotatable blocks (markdown) and a rendered preview to judge. */
+  hasReview: boolean;
+  /** Review mode is on, so the button reads as pressed. */
+  isReviewing: boolean;
   wordWrap: boolean;
   /** The inline blame label is drawn (the setting, not whether a file has blame). */
   blameInline: boolean;
@@ -67,6 +69,7 @@ export interface ToolbarState {
   copyLabel: string;
   maximizeLabel: string;
   onTogglePreview: () => void;
+  onToggleReview: () => void;
   onToggleFind: () => void;
   onToggleWordWrap: () => void;
   onToggleBlameInline: () => void;
@@ -83,34 +86,6 @@ export interface ToolbarState {
   viewModeButtons: ComponentChildren;
 }
 
-/** One pressed-state toggle. */
-function Toggle({
-  label,
-  pressed,
-  title,
-  onClick,
-  children,
-}: {
-  label: string;
-  pressed: boolean;
-  title?: string;
-  onClick: () => void;
-  children: ComponentChildren;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${ACTION_CLASS} hover:bg-ink/5 ${pressed ? 'text-ink' : 'hover:text-ink'}`}
-      title={title ?? label}
-      aria-label={label}
-      aria-pressed={pressed}
-    >
-      {children}
-    </button>
-  );
-}
-
 /**
  * The clusters, in hiding order.
  *
@@ -123,56 +98,7 @@ function Toggle({
 export function buildEditorClusters(state: ToolbarState): ToolbarCluster[] {
   const clusters: ToolbarCluster[] = [];
 
-  if (!state.byteViewer) {
-    clusters.push({
-      id: 'save',
-      // The primary action of the panel: a menu row must never be the only way to
-      // save a file.
-      pinned: true,
-      actions: [{ label: 'Save file', icon: Save, onSelect: state.onSave, disabled: state.saveDisabled }],
-      children: state.saveButton,
-    });
-
-    clusters.push({
-      id: 'save-as',
-      // Never pinned: it is a rare operation, and the row's space belongs to Save.
-      // It IS placed directly after Save, because unpinned clusters take the row in
-      // ROW ORDER: measured at the 320px floor, the 26px blame cluster added after
-      // it claimed the last 30px and pushed `Save as` into `⋯` — a reading aid
-      // evicting a write. Sibling writes outrank reading aids here.
-      actions: [{ label: 'Save as…', icon: SaveAll, onSelect: state.onSaveAs }],
-      children: (
-        <button
-          type="button"
-          onClick={state.onSaveAs}
-          className={`${ACTION_CLASS} hover:bg-ink/5 hover:text-ink`}
-          title="Save the buffer to a new file"
-          aria-label="Save as"
-        >
-          <SaveAll size={14} />
-        </button>
-      ),
-    });
-  }
-
-  if (state.hasPreview) {
-    clusters.push({
-      id: 'preview',
-      actions: [
-        {
-          label: state.previewLabel,
-          icon: state.isPreview ? EyeOff : Eye,
-          onSelect: state.onTogglePreview,
-          active: state.isPreview,
-        },
-      ],
-      children: (
-        <Toggle label={state.previewLabel} pressed={state.isPreview} onClick={state.onTogglePreview}>
-          {state.isPreview ? <EyeOff size={14} /> : <Eye size={14} />}
-        </Toggle>
-      ),
-    });
-  }
+  clusters.push(...writeClusters(state), ...reviewCluster(state), ...previewClusters(state));
 
   if (!state.byteViewer) {
     clusters.push({

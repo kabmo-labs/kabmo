@@ -21,6 +21,9 @@ interface EditorBodyProps {
   /** The surface this file's kind is drawn by (see `document-kind`). */
   viewerKind: ViewerKind;
   isPreview: boolean;
+  /** Review mode is on for this tab (and only ever for a rendered document). */
+  isReviewing: boolean;
+  onToggleReview: () => void;
   isMaximized: boolean;
   setIsMaximized: (next: boolean) => void;
   zoomLevel: number;
@@ -65,6 +68,8 @@ export function EditorBody({
   setWordWrap,
   viewerKind,
   isPreview,
+  isReviewing,
+  onToggleReview,
   isMaximized,
   setIsMaximized,
   zoomLevel,
@@ -124,6 +129,8 @@ export function EditorBody({
       setWordWrap={setWordWrap}
       viewerKind={viewerKind}
       isPreview={isPreview}
+      isReviewing={isReviewing}
+      onToggleReview={onToggleReview}
       isMaximized={isMaximized}
       setIsMaximized={setIsMaximized}
       zoomLevel={zoomLevel}

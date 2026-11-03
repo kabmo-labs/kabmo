@@ -32,7 +32,10 @@ import { codeSafeAutolink } from '@/shared/lib/markdown/autolink';
 import remend from 'remend';
 import { highlightCode } from '@/shared/lib/code/syntax-highlight';
 import { directiveBlockHtml, isDirectiveLanguage, parseDirectiveAttributes } from '@/shared/lib/markdown/directives';
-import { MATH_PENDING_CLASS } from '@/shared/lib/markdown/katex';
+import { mathExtensions, setProseEscaped } from '@/shared/lib/markdown/math-extensions';
+import { registerBlockMapper } from '@/shared/lib/markdown/blocks/renderer';
+import { mapBlocks } from '@/shared/lib/markdown/blocks/scan';
+import type { MdBlock } from '@/shared/lib/markdown/blocks/types';
 
 /** Escape HTML for safe interpolation inside highlighted output. */
 function escapeHtml(value: string): string {
@@ -44,56 +47,6 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#039;');
 }
 
-/**
- * True while `renderMarkdown` parses prose it escaped itself. Set around the
- * `marked.parse` call, read by `renderMathPlaceholder`. Synchronous by
- * construction: `marked.parse` never awaits, so no nested `renderMarkdown`
- * can observe the flag mid-parse.
- */
-let proseEscaped = false;
-
-/**
- * Emit a math placeholder instead of rendering KaTeX inline.
- *
- * `katex` is ~522 kB of JS worth loading only when a message contains math, so
- * it is not imported here. The placeholder carries the TeX source and the
- * display flag; `katex.ts` swaps it for real markup once the library lands
- * (see `hydrateMathBlocks`).
- *
- * Two things happen to the captured source here, and both exist because this
- * renderer is the one place all four math extensions funnel through:
- *
- * 1. **Entities are reversed** when `renderMarkdown` escaped the prose itself
- *    (`proseEscaped`). `escapeHtmlOutsideCode` rewrites the source BEFORE
- *    marked sees it, so a tokenizer captures `x &lt; y` rather than `x < y` and
- *    KaTeX reports a syntax error for a perfectly good formula. Only the three
- *    entities that escaper emits are reversed, and only when it ran — a
- *    document (`allowHtml`) whose own text legitimately holds `&amp;` is left
- *    alone.
- * 2. **The result is percent-encoded**, the way a mermaid block carries its
- *    source. HTML-escaping the payload instead re-escapes what step 1 just
- *    restored, and the attribute round-trip hides the extra layer from both
- *    ends. An encoded payload holds no HTML-special character, so nothing
- *    between here and `renderPlaceholder` can alter it.
- */
-function renderMathPlaceholder(tex: string, displayMode: boolean): string {
-  const restored = proseEscaped
-    ? tex.replace(/&(amp|lt|gt);/g, (_, name: string) => (name === 'amp' ? '&' : name === 'lt' ? '<' : '>'))
-    : tex;
-  const display = displayMode ? ' data-math-display="1"' : '';
-  const span = `<span class="${MATH_PENDING_CLASS}" data-math="${encodeURIComponent(restored)}"${display}></span>`;
-  // Block math must stay inside a block element: DOMPurify drops a bare
-  // `<span>` that sits at the top level of the fragment, which silently deleted
-  // every `$$…$$` formula. KaTeX's own output is inline-level too, so the old
-  // synchronous renderer relied on the same wrapper being present.
-  return displayMode ? `<p>${span}</p>` : span;
-}
-
-interface TokenLike {
-  type: string;
-  text?: string;
-  raw?: string;
-}
 
 const marked = new Marked({
   gfm: true,
@@ -190,97 +143,15 @@ marked.use({
   },
 });
 
-marked.use({
-  extensions: [
-    // \( ... \) inline math
-    {
-      name: 'inlineMath',
-      level: 'inline',
-      start(src: string) {
-        return src.match(/\\\(/)?.index;
-      },
-      tokenizer(src: string) {
-        const match = /^\\\(([\s\S]+?)\\\)/.exec(src);
-        return match
-          ? { type: 'inlineMath', raw: match[0], text: match[1] }
-          : undefined;
-      },
-      renderer(token: TokenLike) {
-        return renderMathPlaceholder(token.text ?? '', false);
-      },
-    },
-    // \[ ... \] block math
-    {
-      name: 'blockMath',
-      level: 'block',
-      start(src: string) {
-        return src.match(/^\\\[/)?.index;
-      },
-      tokenizer(src: string) {
-        const match = /^\\\[([\s\S]+?)\\\]/.exec(src);
-        return match
-          ? { type: 'blockMath', raw: match[0], text: match[1] }
-          : undefined;
-      },
-      renderer(token: TokenLike) {
-        return renderMathPlaceholder(token.text ?? '', true);
-      },
-    },
-    // $$ ... $$ display math (block-level, must be its own line)
-    {
-      name: 'blockMathDisplay',
-      level: 'block',
-      start(src: string) {
-        return src.match(/^\$\$/)?.index;
-      },
-      tokenizer(src: string) {
-        const match = /^\$\$([\s\S]+?)\$\$(?:\n|$)/.exec(src);
-        return match
-          ? { type: 'blockMathDisplay', raw: match[0], text: match[1] }
-          : undefined;
-      },
-      renderer(token: TokenLike) {
-        return renderMathPlaceholder(token.text ?? '', true);
-      },
-    },
-    // $ ... $ inline math. The flanking rules are the whole defence: a single
-    // `$` is the one delimiter that collides with ordinary text, and this
-    // pipeline renders shell output, currency, SQL and awk programs all day.
-    //
-    //   opening $  — not preceded by a word char (checked in `start`, the only
-    //                place the preceding character is visible), and not
-    //                followed by a digit, `$` or `{`. The digit guard is what
-    //                makes `$5`, `$1` and `$10` text; `{` keeps `${HOME}` out.
-    //   closing $  — not preceded by whitespace, and not followed by a WORD
-    //                char or `$`. That trailing guard is load-bearing twice
-    //                over: it rejects `PATH=$PATH:$HOME` (closer followed by
-    //                `H`) and `a$b$c` (followed by `c`), and it is the reason
-    //                the rule no longer depends on where `start` happened to
-    //                land — the tokenizer is anchored at `^` and cannot see
-    //                the preceding character, so `a$b$c` was math while
-    //                `ax$b$c` was text on the identical rule.
-    //
-    // `$n$ = 3` and `$x^2$ benar` still parse: a space after the closer is not
-    // a word char.
-    {
-      name: 'inlineMathDollar',
-      level: 'inline',
-      start(src: string) {
-        const match = /(^|[^\w$])\$(?!\$)(?!\s)/.exec(src);
-        return match ? match.index + (match[1]?.length ?? 0) : undefined;
-      },
-      tokenizer(src: string) {
-        const match = /^\$(?![\d${])((?:\\\$|[^$])*?)(?<!\s)\$(?![\w$])/.exec(src);
-        return match
-          ? { type: 'inlineMathDollar', raw: match[0], text: match[1] }
-          : undefined;
-      },
-      renderer(token: TokenLike) {
-        return renderMathPlaceholder(token.text ?? '', false);
-      },
-    },
-  ],
-});
+marked.use({ extensions: mathExtensions() });
+
+// LAST, and the order is the contract: the mapper captures these renderers as
+// they stand, so registering it before the overrides above would capture the
+// un-wrapped `code`/`table` and every previewed document would lose its copy
+// buttons and its table scroller. A math block's token is not in this table at
+// all (it belongs to the extension), which is why the mapper also wraps
+// `defaults.extensions.renderers` — see `blocks/renderer.ts`.
+registerBlockMapper(marked);
 
 /** Escape HTML special chars in text, leaving backtick-delimited code intact
  *  (inline `code` and fenced ``` blocks) so code like `a < b` is not mangled
@@ -314,22 +185,62 @@ export interface RenderMarkdownOptions {
 }
 
 /**
+ * The healed source both entry points parse — one spelling of the pipeline, so
+ * the preview and the mapped preview can never disagree about what a document
+ * says.
+ */
+function heal(markdown: string, allowHtml: boolean): string {
+  const source = allowHtml ? markdown : escapeHtmlOutsideCode(markdown);
+  return remend(source, { katex: true, inlineKatex: false })
+    .replace(INCOMPLETE_LINK_RE, (_, text: string) => `<span class="md-incomplete-link">${text}</span>`);
+}
+
+/**
  * Heal streaming markdown (remend) then parse to HTML via marked.
  * Synchronous and side-effect free — safe in both server loaders and the
  * browser. The output must be sanitized with DOMPurify before injection.
  */
 export function renderMarkdown(markdown: string, options: RenderMarkdownOptions = {}): string {
-  const source = options.allowHtml ? markdown : escapeHtmlOutsideCode(markdown);
-  const healed = remend(source, { katex: true, inlineKatex: false })
-    .replace(INCOMPLETE_LINK_RE, (_, text: string) => `<span class="md-incomplete-link">${text}</span>`);
+  const healed = heal(markdown, options.allowHtml === true);
   // The math renderers need to know the prose was escaped, so they can hand
   // KaTeX the source the author wrote instead of `x &lt; y`. `marked.parse`
   // never awaits, so no nested render can observe this mid-parse.
-  proseEscaped = !options.allowHtml;
+  setProseEscaped(options.allowHtml !== true);
   try {
     return (marked.parse(healed) as string).trim();
   } finally {
-    proseEscaped = false;
+    setProseEscaped(false);
+  }
+}
+
+/** The mapped render: the same HTML, plus the block each element came from. */
+export interface MappedMarkdown {
+  html: string;
+  blocks: MdBlock[];
+}
+
+/**
+ * Render a document AND say which source block each rendered element is.
+ *
+ * The preview needs the second half: a reviewer points at a paragraph, and a
+ * line number cannot express that (the render has no lines). The identity rides
+ * on `data-md-block`, a content-derived anchor, so it survives an edit above the
+ * block — see `blocks/anchor.ts`.
+ *
+ * Deliberately NOT `marked.parse(healed)`: that lexes a second time and the
+ * fresh tokens carry no tag. One lexer pass, then `parser(tokens)` on those
+ * objects. The attributes are a strict no-op for an untagged token, so the
+ * chat path (`renderMarkdown`) stays byte-identical.
+ */
+export function renderMappedMarkdown(markdown: string, options: RenderMarkdownOptions = {}): MappedMarkdown {
+  const healed = heal(markdown, options.allowHtml === true);
+  const { tokens, blocks } = mapBlocks(marked, healed);
+  setProseEscaped(options.allowHtml !== true);
+  try {
+    const html = (marked.parser(tokens) as string).trim();
+    return { html, blocks };
+  } finally {
+    setProseEscaped(false);
   }
 }
 

@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from 'preact/hooks';
-import { AlertTriangle } from 'lucide-preact';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { countConflicts } from '@/client/components/common/code-surface/conflict-markers';
 import { ImageViewer } from '@/client/components/common/image-viewer';
 import { EditorHeader } from '@/client/components/mobile/mobile-right-sidebar/Header';
 import { PreviewScroller } from '@/client/components/mobile/mobile-right-sidebar/PreviewScroller';
 import { SaveDeletedFileModal } from '@/client/components/workspace/editor/SaveDeletedFileModal';
+import { MissingFileBanner } from '@/client/components/mobile/mobile-right-sidebar/MissingFileBanner';
 import { EditorStatusBar } from '@/client/components/mobile/mobile-right-sidebar/StatusBar';
 import { EditorDropOverlay } from '@/client/components/workspace/editor/EditorDropOverlay';
 import { useEditorDrop } from '@/client/hooks/editor/use-editor-drop';
@@ -28,6 +28,7 @@ import { useEditorFontStack } from '@/client/hooks/editor/font';
 import { useEditorTheme } from '@/client/hooks/editor/theme';
 import { indentUnitFor, useEditorIndent } from '@/client/hooks/editor/indent-settings';
 import { useEditorTyping } from '@/client/hooks/editor/typing-settings';
+import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
 import { MOBILE_SCROLL_POSITIONS_KEY } from '@/shared/lib/workspace/scroll-positions';
 import { ViewerSurface, hasViewerSurface } from '@/client/components/workspace/editor/viewers/dispatch';
 import { BINARY_VIEWERS, RENDERED_VIEWERS, VIEWER_LABELS, viewerKindFor } from '@/shared/lib/fs/document-kind';
@@ -60,6 +61,11 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
   // The picture/grid/prose is what the file was opened to read, so a rendered
   // kind defaults to its preview and only a user's own toggle moves it.
   const isPreview = previewOverrides[fileKey] ?? hasPreview;
+  // Review mode is the same per-tab toggle the desktop pane uses (one key, one
+  // rule), and it exists only where a rendered markdown document is on screen —
+  // a CSV grid and an SVG picture have no markdown blocks to judge.
+  const review = useFileReviewMode(String(fileKey));
+  const hasReview = isMd && isPreview;
   const togglePreview = () => setPreviewOverrides((prev) => ({ ...prev, [fileKey]: !isPreview }));
 
   // The full-screen editor is the phone's editor panel, so it is a drop target
@@ -191,6 +197,9 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         onSave={editor.saveNow}
         onClose={onClose}
         onTogglePreview={togglePreview}
+        hasReview={hasReview}
+        isReviewing={hasReview && review.active}
+        onToggleReview={review.toggle}
         onToggleFind={() => (find.open ? find.close() : find.openFind())}
         findOpen={find.open}
         onToggleWrap={() => setWordWrap(!wordWrap)}
@@ -200,20 +209,7 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
         onDownload={editor.download}
       />
 
-      {/* A deleted file: the buffer is still on screen and still editable, so
-          the state has to be stated where the user is looking, and the Save
-          that recreates it has to be confirmed. Same rule as the desktop pane. */}
-      {missing && (
-        <div className="flex items-start gap-2 px-3 py-2 border-b border-error/30 bg-error/10 text-error shrink-0">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <div className="text-[11.5px] font-sans">This file was deleted from disk.</div>
-            <div className="text-[11px] font-sans text-error/80">
-              The buffer is still here. Saving recreates the file — autosave is off until then.
-            </div>
-          </div>
-        </div>
-      )}
+{missing && <MissingFileBanner />}
 
       {/* Find/replace, as a ROW under the header rather than a floating card: the
           desktop bar is 330px wide, and on a 390px screen a floating card would cover
@@ -266,6 +262,8 @@ export function MobileFullEditor({ file, missing = false, onClose, onFileSaved, 
           isLoading={editor.isLoading}
           unsupported={editor.unsupported}
           loadError={editor.loadError}
+          reviewActive={hasReview && review.active}
+          onExitReview={review.toggle}
         />
       ) : (
         /* The code surface owns its own scroller (CodeMirror's), so it is NOT

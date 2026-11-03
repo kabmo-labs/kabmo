@@ -27,6 +27,9 @@ interface FilePaneProps {
   /** The surface this file's kind is drawn by (see `document-kind`). */
   viewerKind: ViewerKind;
   isPreview: boolean;
+  /** Review mode is on for this tab, and the document can be reviewed at all. */
+  isReviewing: boolean;
+  onToggleReview: () => void;
   isMaximized: boolean;
   setIsMaximized: (next: boolean) => void;
   zoomLevel: number;
@@ -78,6 +81,8 @@ export function FilePane({
   setWordWrap,
   viewerKind,
   isPreview,
+  isReviewing,
+  onToggleReview,
   isMaximized,
   setIsMaximized,
   zoomLevel,
@@ -112,6 +117,10 @@ export function FilePane({
         wordWrap={wordWrap}
         hasPreview={hasPreview}
         isPreview={isPreview}
+        // The toggle exists only while the RENDERED document is what is on
+        // screen: a markdown tab showing its source has no blocks to judge.
+        hasReview={viewerKind === 'markdown' && isPreview}
+        isReviewing={isReviewing}
         copied={editor.copied}
         byteViewer={byteViewer}
         saveDisabled={Boolean(editor.loadError) || editor.handleMissing || editor.deviceBacked}
@@ -123,6 +132,7 @@ export function FilePane({
         onToggleFind={() => (find.open ? find.close() : find.openFind())}
         onSave={editor.saveNow}
         onTogglePreview={togglePreview}
+        onToggleReview={onToggleReview}
         onToggleWordWrap={() => setWordWrap(!wordWrap)}
         onZoomIn={() => setZoomLevel((z) => Math.min(EDITOR_MAX_FONT_SIZE, z + 1))}
         onZoomOut={() => setZoomLevel((z) => Math.max(EDITOR_MIN_FONT_SIZE, z - 1))}
@@ -283,6 +293,8 @@ export function FilePane({
           editorFontFamily={editorFontFamily}
           editorTheme={editorTheme}
           isPreview={isPreview}
+          reviewActive={isReviewing}
+          onToggleReview={onToggleReview}
           viewerKind={viewerKind}
           revealActive={revealActive}
         />

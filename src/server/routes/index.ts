@@ -23,6 +23,7 @@ import { modelsBindings } from '@/server/routes/models';
 import { ompBindings } from '@/server/routes/omp';
 import { updatesBindings } from '@/server/routes/updates';
 import { wikiBindings } from '@/server/routes/wiki';
+import { reviewBindings } from '@/server/routes/review/bindings';
 import { panelsBindings } from '@/server/routes/panels/bindings';
 import { pluginsBindings } from '@/server/routes/plugins/bindings';
 import { realtimeWsRoutes } from '@/server/routes/realtime/ws';
@@ -52,6 +53,7 @@ const allBindings: HandlerBinding[] = [
   ...ompBindings,
   ...updatesBindings,
   ...wikiBindings,
+  ...reviewBindings,
   ...panelsBindings,
   ...pluginsBindings,
   ...healthBindings,

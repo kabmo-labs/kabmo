@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, Save, Search, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
+import { ArrowLeft, Check, Copy, Download, Eye, EyeOff, MessageSquare, Save, Search, WrapText, ZoomIn, ZoomOut } from 'lucide-preact';
 import { FileIcon } from '@/client/components/common/file-icon';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 
@@ -7,6 +7,10 @@ interface EditorHeaderProps {
   /** The file has a rendered form (markdown prose, CSV grid, SVG), so the eye toggles. */
   hasPreview: boolean;
   isPreview: boolean;
+  /** A rendered markdown document is on screen, so its blocks can be judged. */
+  hasReview: boolean;
+  isReviewing: boolean;
+  onToggleReview: () => void;
   wordWrap: boolean;
   copied: boolean;
   /** A byte-drawing viewer (image, PDF, DOCX, workbook): wrap and zoom are text-only, so both are hidden. */
@@ -33,6 +37,9 @@ export function EditorHeader({
   fileName,
   hasPreview,
   isPreview,
+  hasReview,
+  isReviewing,
+  onToggleReview,
   wordWrap,
   copied,
   byteViewer = false,
@@ -103,6 +110,21 @@ export function EditorHeader({
             aria-pressed={findOpen}
           >
             <Search size={15} />
+          </button>
+        )}
+
+        {/* Beside the eye, and only while the RENDERED document is on screen:
+            reviewing the source has no blocks to judge. */}
+        {hasReview && (
+          <button
+            type="button"
+            onClick={onToggleReview}
+            className={`p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer ${isReviewing ? 'bg-ink text-canvas' : ''}`}
+            title={isReviewing ? 'Exit review mode' : 'Review this document'}
+            aria-label={isReviewing ? 'Exit review mode' : 'Review this document'}
+            aria-pressed={isReviewing}
+          >
+            <MessageSquare size={15} />
           </button>
         )}
 

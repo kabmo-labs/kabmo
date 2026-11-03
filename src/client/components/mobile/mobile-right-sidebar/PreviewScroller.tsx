@@ -18,7 +18,7 @@
  */
 
 import { AlertTriangle, FileX, Loader2 } from 'lucide-preact';
-import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
+import { MarkdownReview } from '@/client/components/common/markdown-review';
 
 interface PreviewScrollerProps {
   fileName: string;
@@ -36,6 +36,15 @@ interface PreviewScrollerProps {
   unsupported: string | null | undefined;
   /** The read's failure message, when the bytes could not be fetched. */
   loadError: string | null | undefined;
+  /**
+   * Review mode, owned by the phone's own header.
+   *
+   * The same surface as the desktop preview, deliberately: the phone had no way
+   * to review a document before, and a second implementation would let the two
+   * disagree about what a mark means.
+   */
+  reviewActive: boolean;
+  onExitReview: () => void;
 }
 
 export function PreviewScroller({
@@ -50,6 +59,8 @@ export function PreviewScroller({
   isLoading,
   unsupported,
   loadError,
+  reviewActive,
+  onExitReview,
 }: PreviewScrollerProps) {
   return (
     <div
@@ -85,7 +96,12 @@ export function PreviewScroller({
            timeline's system), see the desktop editor for why there is no
            `prose` wrapper. */
         <div className="p-4 bg-paper text-ink min-h-full font-sans" style={{ fontSize: `${fontSize}px` }}>
-          <MarkdownRenderer content={content} document scope={{ path, root, repo }} />
+          <MarkdownReview
+            content={content}
+            file={{ name: fileName, path, root, repo }}
+            active={reviewActive}
+            onExit={onExitReview}
+          />
         </div>
       )}
     </div>

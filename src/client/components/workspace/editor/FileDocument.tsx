@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
-import { MarkdownRenderer } from '@/client/components/common/MarkdownRenderer';
+import { PreviewPane } from '@/client/components/workspace/editor/PreviewPane';
 import { CodeSurface, type CodeSurfaceHandle } from '@/client/components/common/code-surface';
 import { FindWidget } from '@/client/components/workspace/editor/FindWidget';
 import { CommandPalette } from '@/client/components/workspace/editor/CommandPalette';
@@ -51,6 +51,10 @@ interface FileDocumentProps {
   viewerKind: ViewerKind;
   /** The rendered view is on for the active file — render it, not the source. */
   isPreview: boolean;
+  /** Review mode is on for this file: blocks become clickable judgements. */
+  reviewActive: boolean;
+  /** Turns review mode on or off (the toolbar's own toggle). */
+  onToggleReview: () => void;
   /**
    * A search hit was jumped to in this file. The find bar is closed (a search
    * jump must not cover the lines it is showing), but its matches still have to
@@ -90,6 +94,8 @@ export function FileDocument({
   editorTheme,
   viewerKind,
   isPreview,
+  reviewActive,
+  onToggleReview,
   revealActive,
 }: FileDocumentProps) {
   // Only markdown reaches this component in preview mode; the CSV grid and the
@@ -223,27 +229,15 @@ export function FileDocument({
         />
       ) : null}
       {isMd && isPreview ? (
-        <div
-          ref={previewRef}
+        <PreviewPane
+          content={editor.content}
+          file={{ name: activeFile.name, path: activeFile.path, root: activeFile.root, repo: activeFile.repo }}
+          zoomLevel={zoomLevel}
+          reviewActive={reviewActive}
+          onExitReview={onToggleReview}
+          scrollRef={previewRef}
           onScroll={scroll.onScroll}
-          // No accessible name exists for a scroll container, so the E2E layer
-          // addresses it by testid (see `tests/e2e/fixtures/selectors.ts`).
-          data-testid="editor-scroller"
-          className="flex-1 overflow-auto bg-paper flex"
-        >
-          {/* No `prose` wrapper: markdown is styled by `.prose-content` alone
-              (the same system the chat timeline uses). The typography plugin
-              fought it — `.prose img` added 2em vertical margins that ballooned
-              a badge row into its own line box, and `--tw-prose-*` colors
-              ignored the theme. */}
-          <div className="p-6 max-w-4xl mx-auto font-sans flex-1" style={{ fontSize: `${zoomLevel}px` }}>
-            <MarkdownRenderer
-              content={editor.content}
-              document
-              scope={{ path: activeFile.path, root: activeFile.root, repo: activeFile.repo }}
-            />
-          </div>
-        </div>
+        />
       ) : (
         // The code surface owns its own scroller (CodeMirror's), so it is NOT
         // wrapped in one: an outer `overflow-auto` would take the document's

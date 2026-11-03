@@ -852,3 +852,68 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
     transform: translateX(33%);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Review mode on a rendered markdown document.
+ *
+ * The verdict lives on `data-md-verdict` on the block element, painted by the
+ * renderer after the annotations land. Two rules make it legible without
+ * spending the palette:
+ *
+ * - a LEFT RAIL is the mark. It is the only thing that survives a reflow —
+ *   a background tint over a 3-line paragraph and over a 40-line code block
+ *   read as unrelated states.
+ * - `needs-work` is the one state that uses chroma (`--theme-error`), because
+ *   it is the one state the reader must not miss. Chroma stays reserved for it.
+ *
+ * `data-md-selected` is the block whose popover is open: it gets an outline, not
+ * a colour, so it composes with either verdict.
+ * ------------------------------------------------------------------------- */
+
+.md-review-active .prose-content [data-md-block] {
+  position: relative;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+/* The hover affordance exists only where a review is possible, and only for a
+ * block that has not been judged yet — a judged block already says so. */
+.md-review-active .prose-content [data-md-block]:hover:not([data-md-verdict]) {
+  background: color-mix(in srgb, var(--theme-ink) 4%, transparent);
+}
+
+.md-review-active .prose-content [data-md-verdict]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: -0.6rem;
+  width: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--theme-ink) 35%, transparent);
+}
+
+.md-review-active .prose-content [data-md-verdict='needs-work']::before {
+  background: var(--theme-error);
+}
+
+/* A judged block keeps a faint tint so the marks read as a set when scrolled
+ * past quickly; `needs-work` is the only one allowed to be a colour. */
+.md-review-active .prose-content [data-md-verdict='good'] {
+  background: color-mix(in srgb, var(--theme-ink) 3%, transparent);
+}
+
+.md-review-active .prose-content [data-md-verdict='needs-work'] {
+  background: color-mix(in srgb, var(--theme-error) 8%, transparent);
+}
+
+.md-review-active .prose-content [data-md-selected] {
+  outline: 1px solid color-mix(in srgb, var(--theme-ink) 40%, transparent);
+  outline-offset: 2px;
+}
+
+/* Review mode is a reading mode: a link inside a block is part of what is being
+ * judged, and following it would leave the block. The handler consumes the
+ * click; this only says so. */
+.md-review-active .prose-content [data-md-block] a {
+  cursor: pointer;
+}

@@ -27,6 +27,8 @@ import { useSplitEditor } from '@/client/hooks/editor/use-split-editor';
 import { useExternalChangeNotice } from '@/client/hooks/editor/use-external-change-notice';
 import { useEditorPanelKeys } from '@/client/hooks/editor/use-editor-panel-keys';
 import { useCloseGuard } from '@/client/hooks/editor/use-close-guard';
+import { useFileReviewMode } from '@/client/hooks/editor/use-file-review-mode';
+import { useEditorPanelUi } from '@/client/hooks/editor/use-editor-panel-ui';
 import type { EditorProps } from '@/client/components/workspace/editor/props';
 
 export function Editor({ 
@@ -54,18 +56,16 @@ export function Editor({
   const activeFile = openedFiles.find(f => f.id === resolvedActiveFileId);
 
   const [previewMode, setPreviewMode, previewReady] = useSessionState<Record<string | number, boolean>>('editor.previewMode', {});
+  // Review mode: the same per-tab toggle the phone editor uses (one key, one rule).
+  // Off by default — the surface swallows block clicks, which is the last thing a
+  // reader who only wanted to follow a link asked for.
+  const review = useFileReviewMode(String(resolvedActiveFileId ?? ''));
   const [zoomLevel, setZoomLevel] = useSessionState<number>('editor.zoomLevel', EDITOR_DEFAULT_FONT_SIZE);
   const [isMaximized, setIsMaximized] = useState(false);
   const [wordWrap, setWordWrap] = useSessionState<boolean>('editor.wordWrap', true);
-  // The panel's own transient UI: the palette, the go-to-line request, quick open and Save
-  // As. All four are component state (never persisted) because each is a thing the user is
-  // doing right now.
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  // A counter, not a boolean: the dialog lives in the document (where the caret and the
-  // handle are), so a boolean would need a matching "closed" write from there.
-  const [goToLineRequest, setGoToLineRequest] = useState(0);
-  const [quickOpen, setQuickOpen] = useState(false);
-  const [saveAsOpen, setSaveAsOpen] = useState(false);
+  // The panel's transient UI (palette, go-to-line, quick open, Save As) lives in its own
+  // hook: all four are things the user is doing right now, and none is persisted.
+  const panelUi = useEditorPanelUi();
   const { sessionId } = useSessionStateContext();
   // The split's state and its derived values. `enabled: false` in a split pane, which never
   // splits again — the column has two panes, not a tree.
@@ -200,7 +200,7 @@ export function Editor({
       return;
     }
     if (command === 'goToLine') {
-      setGoToLineRequest((previous) => previous + 1);
+      panelUi.openGoToLine();
       return;
     }
     // Everything else is the editor's, and it runs through the editor's own
@@ -210,11 +210,11 @@ export function Editor({
 
   const panelKeys = useEditorPanelKeys({
     find,
-    paletteOpen,
-    setPaletteOpen,
+    paletteOpen: panelUi.paletteOpen,
+    setPaletteOpen: panelUi.setPaletteOpen,
     runCommand,
     saveNow: editor.saveNow,
-    openQuickOpen: () => setQuickOpen(true),
+    openQuickOpen: () => panelUi.setQuickOpen(true),
     reopenClosed: onReopenClosed,
   });
 
@@ -244,16 +244,19 @@ export function Editor({
     setWordWrap,
     viewerKind,
     isPreview: Boolean(isPreview),
+    // A review needs a rendered document: the source view has no blocks.
+    isReviewing: Boolean(isPreview) && review.active,
+    onToggleReview: review.toggle,
     isMaximized,
     setIsMaximized,
     zoomLevel,
     setZoomLevel,
-    paletteOpen,
-    setPaletteOpen,
-    goToLineRequest,
-    onSaveAs: () => setSaveAsOpen(true),
-    quickOpen,
-    onCloseQuickOpen: () => setQuickOpen(false),
+    paletteOpen: panelUi.paletteOpen,
+    setPaletteOpen: panelUi.setPaletteOpen,
+    goToLineRequest: panelUi.goToLineRequest,
+    onSaveAs: () => panelUi.setSaveAsOpen(true),
+    quickOpen: panelUi.quickOpen,
+    onCloseQuickOpen: () => panelUi.setQuickOpen(false),
     onOpenPath,
     rootPath,
     repoPath,
@@ -318,10 +321,10 @@ export function Editor({
       onReload={editor.resolveConflictByReload}
       onKeepMine={keepMineAgainstDisk}
       body={<EditorBody {...bodyProps} />}
-      saveAsOpen={saveAsOpen}
-      onSaveAsClose={() => setSaveAsOpen(false)}
+      saveAsOpen={panelUi.saveAsOpen}
+      onSaveAsClose={() => panelUi.setSaveAsOpen(false)}
       onSavedAs={(path) => {
-        setSaveAsOpen(false);
+        panelUi.setSaveAsOpen(false);
         // The new file gets its OWN tab and the original stays open, which is what makes
         // Save As reversible by closing one tab.
         onOpenPath?.(path);

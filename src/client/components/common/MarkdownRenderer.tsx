@@ -12,6 +12,12 @@
  * delegated click handler manages the per-block "Copy" buttons. Mermaid
  * fences hydrate async into sanitized SVGs after mount.
  *
+ * ONE more mode: a `review` bridge switches the parse to the MAPPED render, so
+ * every top-level block carries `data-md-block` and a click names the block it
+ * landed on instead of following its link. The handler consults that bridge
+ * FIRST — a second click listener on the same container would have to agree with
+ * this one about precedence, and the two would eventually disagree.
+ *
  * Three source kinds, one pipeline: agent output (default), a workspace file's
  * preview (`document`), and a wiki page (`wikiScope`). The last two differ only
  * in what they let through — a document's own HTML is markup, and a wiki page
@@ -21,15 +27,16 @@
 
 import type { TargetedMouseEvent } from 'preact';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { renderMarkdown } from '@/shared/lib/markdown/marked';
+import { renderMarkdown, renderMappedMarkdown } from '@/shared/lib/markdown/marked';
+import type { BlockVerdict, MdBlock } from '@/shared/lib/markdown/blocks/types';
 import { rewriteDocumentReferences, type DocumentScope } from '@/shared/lib/markdown/document-urls';
 import { rewriteWikiReferences, type WikiRenderScope } from '@/shared/lib/wiki/document-urls';
 import { expandGollumLinks } from '@/shared/lib/wiki/pages';
-import { hydrateMathBlocks, MATH_PENDING_CLASS, preloadKatex } from '@/shared/lib/markdown/katex';
+import { MATH_PENDING_CLASS, preloadKatex } from '@/shared/lib/markdown/katex';
 import { sanitizeHtml } from '@/shared/lib/markdown/sanitize';
-import { hydrateMermaidBlocks } from '@/shared/lib/markdown/mermaid';
 import { DIRECTIVE_BLOCK_CLASS } from '@/shared/lib/markdown/directives';
 import { hydrateDirectiveBlocks, unmountDirectiveBlocks } from '@/client/lib/plugins/directives';
+import { useMathHydration, useMermaidHydration } from '@/client/hooks/ui/markdown-hydration';
 import { useDirectiveContext, useDirectiveRenderer } from '@/client/hooks/workspace/directives';
 import { copyToClipboard } from '@/client/hooks/ui/clipboard';
 import { openFileInEditor } from '@/client/hooks/ui/open-file';
@@ -38,6 +45,7 @@ import { DiagramViewer } from '@/client/components/common/diagram-viewer';
 import { readDiagramBlock, type DiagramSnapshot } from '@/client/components/common/diagram-viewer/read-block';
 
 
+/** `useLayoutEffect` warns under SSR; the document renderer runs in both. */
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 interface MarkdownRendererProps {
@@ -59,9 +67,42 @@ interface MarkdownRendererProps {
   wikiScope?: WikiRenderScope;
   /** Follow a wiki link to another page of the same wiki. */
   onWikiNavigate?: (path: string) => void;
+  /**
+   * The review layer, when it is ON.
+   *
+   * Absent is the ordinary renderer: no `data-md-*` attributes are emitted and
+   * every click keeps its usual meaning. Present switches the pipeline to the
+   * MAPPED render (each block carries its identity) and routes block clicks to
+   * `onPick` BEFORE the copy/link/diagram branches — one handler, one
+   * precedence rule, because two handlers on one container would have to agree
+   * about which wins.
+   */
+  review?: MarkdownReviewBridge;
+  /** The blocks the render produced, for a caller that stores judgements. */
+  onBlocks?: (blocks: MdBlock[]) => void;
 }
 
-export function MarkdownRenderer({ content, className = '', document: isDocument = false, scope, wikiScope, onWikiNavigate }: MarkdownRendererProps) {
+/** What the renderer needs of the review surface — nothing about storage. */
+export interface MarkdownReviewBridge {
+  active: boolean;
+  /** Verdicts by block key, painted as `data-md-verdict`. */
+  marks: ReadonlyMap<string, BlockVerdict>;
+  /** The block the popover is open on, painted as `data-md-selected`. */
+  selected: string | null;
+  /** A block was clicked while review was active; `rect` is where it was. */
+  onPick: (block: MdBlock, rect: DOMRect) => void;
+}
+
+export function MarkdownRenderer({
+  content,
+  className = '',
+  document: isDocument = false,
+  scope,
+  wikiScope,
+  onWikiNavigate,
+  review,
+  onBlocks,
+}: MarkdownRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   /** Block the open viewer was read from, so a theme re-render can refresh it. */
   const diagramBlockRef = useRef<HTMLElement | null>(null);
@@ -81,25 +122,70 @@ export function MarkdownRenderer({ content, className = '', document: isDocument
   /** Presence, not identity: this drives the click handler, never the parse. */
   const isWiki = wikiScope !== undefined;
 
-  const html = useMemo(() => {
-    if (!content) return '';
+  /**
+   * Review mode is a MODE, not a flag on the parse: it changes which pipeline
+   * entry point runs, because only the mapped one emits `data-md-block`. Kept
+   * to a boolean so a caller passing a fresh bridge object per render does not
+   * re-parse the whole document.
+   */
+  const reviewActive = review?.active === true;
+
+  const rendered = useMemo(() => {
+    if (!content) return { html: '', blocks: [] as MdBlock[] };
     // Gollum's `[[Page]]` is invisible to a markdown parser, so it is expanded
     // before parsing rather than patched afterwards.
     const source = wikiPath ? expandGollumLinks(content) : content;
-    const rendered = renderMarkdown(source, { allowHtml: isDocument || isWiki });
+    const allowHtml = isDocument || isWiki;
+    const mapped = reviewActive ? renderMappedMarkdown(source, { allowHtml }) : null;
+    const markdown = mapped ? mapped.html : renderMarkdown(source, { allowHtml });
     const scoped = wikiPath && wikiEntries
-      ? rewriteWikiReferences(rendered, { path: wikiPath, entries: wikiEntries, root: wikiRoot, repo: wikiRepo })
+      ? rewriteWikiReferences(markdown, { path: wikiPath, entries: wikiEntries, root: wikiRoot, repo: wikiRepo })
       : isDocument && scopePath
-        ? rewriteDocumentReferences(rendered, { path: scopePath, root: scopeRoot, repo: scopeRepo })
-        : rendered;
+        ? rewriteDocumentReferences(markdown, { path: scopePath, root: scopeRoot, repo: scopeRepo })
+        : markdown;
     // If the message contains math, start fetching KaTeX during parse rather
     // than waiting for the post-mount hydration effect — the request overlaps
     // sanitization and the rest of the render instead of following it.
     if (scoped.includes(MATH_PENDING_CLASS)) preloadKatex();
-    return sanitizeHtml(scoped);
+    return { html: sanitizeHtml(scoped), blocks: mapped?.blocks ?? [] };
     // Primitives, never the `wikiScope` object: the panel memoizes it, but a
     // call site that builds one inline must not re-parse the page per render.
-  }, [content, syntaxReady, isDocument, scopePath, scopeRoot, scopeRepo, isWiki, wikiPath, wikiEntries, wikiRoot, wikiRepo]);
+  }, [content, syntaxReady, isDocument, scopePath, scopeRoot, scopeRepo, isWiki, wikiPath, wikiEntries, wikiRoot, wikiRepo, reviewActive]);
+
+  const { html, blocks } = rendered;
+
+  // The caller stores judgements against these, so it has to know what the
+  // render actually produced — never what the file contains (a healed or
+  // truncated document renders fewer blocks than it has lines).
+  useEffect(() => {
+    if (onBlocks) onBlocks(blocks);
+  }, [blocks, onBlocks]);
+
+  const byKey = useMemo(() => new Map(blocks.map((block) => [block.key, block])), [blocks]);
+
+  /**
+   * Paint the verdicts onto the rendered DOM.
+   *
+   * An imperative pass rather than markup: the annotations arrive from the
+   * server AFTER the HTML string was built (and the string is memoized on
+   * content), so there is nothing to interpolate. The attributes are what the
+   * CSS hangs off, and what the click handler reads.
+   */
+  const marks = review?.marks;
+  const selected = review?.selected ?? null;
+  useIsomorphicLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || !reviewActive) return;
+    for (const element of container.querySelectorAll<HTMLElement>('[data-md-block]')) {
+      const key = element.dataset.mdBlock;
+      if (!key) continue;
+      const verdict = marks?.get(key);
+      if (verdict) element.dataset.mdVerdict = verdict;
+      else delete element.dataset.mdVerdict;
+      if (key === selected) element.dataset.mdSelected = 'true';
+      else delete element.dataset.mdSelected;
+    }
+  }, [html, marks, selected, reviewActive]);
 
   const hasMermaid = html.includes('mermaid-block');
   const hasMath = html.includes(MATH_PENDING_CLASS);
@@ -125,87 +211,48 @@ export function MarkdownRenderer({ content, className = '', document: isDocument
   }, [hasDirective, html, directive, slotContext]);
 
   // KaTeX is ~522 kB of JS fetched only when a message contains math; the
-  // placeholders emitted by `marked.ts` are swapped for real markup here.
-  useEffect(() => {
-    if (!hasMath || typeof window === 'undefined') return;
-    const container = containerRef.current;
-    if (!container) return;
+  // placeholders emitted by `marked.ts` are swapped for real markup by the hook.
+  useMathHydration(containerRef, html, hasMath);
 
-    let cancelled = false;
-    const hydrate = async () => {
-      if (!container.isConnected) return;
-      await hydrateMathBlocks(container);
-      if (cancelled) return;
-    };
-    void hydrate();
-    // Same reason as the mermaid observer: a timeline re-render can replace the
-    // container's innerHTML with an identical string without this effect
-    // re-running, stranding new placeholders. hydrate() only writes inside the
-    // placeholder elements, so it never re-triggers this observer.
-    const observer = new MutationObserver(() => {
-      const current = containerRef.current;
-      if (current?.isConnected) void hydrateMathBlocks(current);
-    });
-    observer.observe(container, { childList: true });
+  // Diagrams bake the palette into their SVG, so a theme write re-renders them —
+  // through the block the open viewer was read from, which the hook hands back
+  // when that block survived the re-render.
+  const onDiagramBlock = useCallback((block: HTMLElement) => {
+    const snapshot = readDiagramBlock(block);
+    if (snapshot) setDiagram(snapshot);
+  }, []);
+  useMermaidHydration({
+    container: containerRef,
+    html,
+    active: hasMermaid,
+    diagramBlock: diagramBlockRef,
+    onDiagramBlock,
+  });
 
-    return () => {
-      cancelled = true;
-      observer.disconnect();
-    };
-  }, [hasMath, html]);
-
-  useIsomorphicLayoutEffect(() => {
-    if (!hasMermaid || typeof window === 'undefined') return;
-    const container = containerRef.current;
-    if (!container) return;
-
-    let timer: number | undefined;
-    const hydrate = async () => {
-      const current = containerRef.current;
-      if (!current || !current.isConnected) return;
-      await hydrateMermaidBlocks(current);
-    };
-
-    void hydrate();
-    // React can rewrite the container's innerHTML with an identical html
-    // string (timeline re-renders) without this effect re-running, which
-    // would strand freshly-inserted pending blocks. Re-hydrate on any
-    // direct-child replacement; hydrate writes only to grandchildren, so it
-    // never re-triggers this observer.
-    const observer = new MutationObserver(() => {
-      const current = containerRef.current;
-      if (current?.isConnected) void hydrateMermaidBlocks(current, { cachedOnly: true });
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => void hydrate(), 120);
-    });
-    observer.observe(container, { childList: true });
-
-    // Diagrams bake the palette into their SVG, so every theme write must
-    // re-render them. The trigger is the `data-theme` attribute itself rather
-    // than the `omp:theme-changed` event: the navbar toggle and the settings
-    // modal are both writers, and observing the attribute catches all of them
-    // the moment the document changes. Vacuously cheap for a same-palette write
-    // (blocks already matching the new theme key are skipped).
-    const rehydrateForTheme = async () => {
-      await hydrate();
-      const block = diagramBlockRef.current;
-      // A timeline re-render can replace the block under an open viewer; keep
-      // the last snapshot then rather than closing the viewer on the user.
-      if (!block?.isConnected) return;
-      const snapshot = readDiagramBlock(block);
-      if (snapshot) setDiagram(snapshot);
-    };
-    const themeObserver = new MutationObserver(() => void rehydrateForTheme());
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-
-    return () => {
-      window.clearTimeout(timer);
-      observer.disconnect();
-      themeObserver.disconnect();
-    };
-  }, [hasMermaid, html]);
+  // Read through a ref so the single delegated handler never has to be rebuilt
+  // for a new bridge object — and so it always sees the CURRENT mode.
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
+  const byKeyRef = useRef(byKey);
+  byKeyRef.current = byKey;
 
   const handleContainerClick = useCallback((e: TargetedMouseEvent<HTMLDivElement>) => {
+    const bridge = reviewRef.current;
+    if (bridge?.active) {
+      // In review mode a click names a BLOCK. Consumed before the copy button,
+      // the diagram and the document links, because otherwise the reader could
+      // not select a block that happens to contain one of them.
+      const block = (e.target as HTMLElement).closest<HTMLElement>('[data-md-block]');
+      const key = block?.dataset.mdBlock;
+      const picked = key ? byKeyRef.current.get(key) : undefined;
+      if (picked) {
+        e.preventDefault();
+        e.stopPropagation();
+        bridge.onPick(picked, block!.getBoundingClientRect());
+      }
+      return;
+    }
+
     const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button.code-copy-float');
     if (target) {
       const text = target.dataset.copy ?? '';
