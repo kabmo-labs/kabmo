@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
-import { Check, Code, Globe, Plus, Terminal, Trash2 } from 'lucide-preact';
-import type { McpEnvVar, McpScope, McpServerItem } from '@/shared/types';
+import { AlertCircle, Check, Code, Globe, Loader2, Save, Terminal, Trash2 } from 'lucide-preact';
+import type { McpEnvVar, McpScope, McpServerItem, WriteOutcome } from '@/shared/types';
 import { ConnectionTest } from '@/client/components/settings/categories/mcp-settings/ConnectionTest';
+import { McpEnvVarsSection } from '@/client/components/settings/categories/mcp-settings/EnvVarsSection';
+import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 
 function parseCommandArgs(text: string): string[] {
   return text.split('\n').map((s) => s.trim()).filter(Boolean);
@@ -11,8 +13,8 @@ function parseCommandArgs(text: string): string[] {
 interface McpDetailPaneProps {
   server: McpServerItem;
   isNew?: boolean;
-  onSave: (updatedServer: McpServerItem) => void;
-  onDelete?: (serverId: string) => void;
+  onSave: (updatedServer: McpServerItem) => Promise<WriteOutcome>;
+  onDelete?: (serverId: string) => Promise<WriteOutcome>;
   onOpenImportModal: () => void;
 }
 
@@ -25,26 +27,49 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
 }) => {
   const [formData, setFormData] = useState<McpServerItem>(server);
   const [commandText, setCommandText] = useState('');
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const feedback = useWriteFeedback();
 
   useEffect(() => {
     setFormData(server);
     setCommandText(server.commandArgs.join('\n'));
-    setSavedSuccess(false);
+    setConfirmDelete(false);
   }, [server]);
+
+  /**
+   * A server is reachable by a command or a link, and neither may be blank: an
+   * empty command writes a config entry omp connects to and fails, which reads
+   * as "the server is broken" rather than "the form was empty".
+   */
+  const validationError = (() => {
+    if (!formData.name.trim()) return 'A server needs a name — omp keys its config by it.';
+    if (formData.reachType === 'command' && parseCommandArgs(commandText).length === 0) {
+      return 'Paste the command that starts the server, one argument per line.';
+    }
+    if (formData.reachType === 'link' && !(formData.linkUrl ?? '').trim()) {
+      return 'Paste the server’s MCP endpoint URL.';
+    }
+    return null;
+  })();
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
-    const parsedArgs = parseCommandArgs(commandText);
-
+    if (validationError || feedback.saving) return;
     const updated: McpServerItem = {
       ...formData,
-      commandArgs: parsedArgs,
+      name: formData.name.trim(),
+      commandArgs: parseCommandArgs(commandText),
     };
+    void feedback.run(() => onSave(updated));
+  };
 
-    onSave(updated);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
+  const handleDelete = () => {
+    if (!onDelete) return;
+    void feedback.run(async () => {
+      const outcome = await onDelete(formData.id);
+      if (!outcome.ok) setConfirmDelete(false);
+      return outcome;
+    });
   };
 
   const handleAddEnvVar = () => {
@@ -218,90 +243,80 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
       <div className="border-t border-ink/10" />
 
       {/* SECTION: Environment Variables */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
-              Environment Variables
-            </h3>
-            <p className="text-[11px] text-ink/60 mt-0.5">
-              Values the server needs, such as an API key.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleAddEnvVar}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-ink/20 hover:border-ink/40 hover:bg-ink/5 text-ink transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add variable</span>
+      <McpEnvVarsSection
+        envVars={formData.envVars}
+        onAdd={handleAddEnvVar}
+        onUpdate={handleUpdateEnvVar}
+        onRemove={handleRemoveEnvVar}
+      />
+
+      {validationError && (
+        <div className="rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-[11px] text-error">
+          {validationError}
+        </div>
+      )}
+
+      {feedback.error && (
+        <div className="flex items-start gap-1.5 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-[11px] text-error">
+          <AlertCircle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
+          <span className="flex-1 break-words">{feedback.error}</span>
+          <button type="button" onClick={feedback.dismissError} className="cursor-pointer text-error/60 hover:text-error" aria-label="Dismiss error">
+            ×
           </button>
         </div>
-
-        {formData.envVars.length === 0 ? (
-          <div className="p-4 rounded-lg border border-dashed border-ink/20 text-center text-xs text-ink/50">
-            No environment variables configured.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {formData.envVars.map((env) => (
-              <div key={env.id} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={env.key}
-                  onChange={(e) => handleUpdateEnvVar(env.id, e.currentTarget.value, env.value)}
-                  placeholder="KEY"
-                  className="w-1/3 text-xs font-mono px-3 py-1.5 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-ink transition-colors"
-                />
-                <input
-                  type="text"
-                  value={env.value}
-                  onChange={(e) => handleUpdateEnvVar(env.id, env.key, e.currentTarget.value)}
-                  placeholder="VALUE"
-                  className="flex-1 text-xs font-mono px-3 py-1.5 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-ink transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveEnvVar(env.id)}
-                  className="p-1.5 text-ink/40 hover:text-error transition-colors rounded-md cursor-pointer"
-                  title="Remove variable"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Footer Controls */}
-      <div className="pt-3 border-t border-ink/10 flex items-center justify-between">
+      <div className="pt-3 border-t border-ink/10 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {!isNew && onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(formData.id)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink/20 hover:border-error hover:text-error text-ink/70 text-xs font-medium transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete
-            </button>
+            confirmDelete ? (
+              <>
+                <span className="text-[11px] text-ink/70">Delete “{formData.name}”?</span>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={feedback.saving}
+                  className="px-2.5 py-1 rounded-lg border border-error/40 text-error text-xs font-medium hover:bg-error/10 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-2 py-1 text-xs text-ink/50 hover:text-ink cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink/20 hover:border-error hover:text-error text-ink/70 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            )
           )}
 
           <ConnectionTest server={serverForTest} />
         </div>
 
         <div className="flex items-center gap-3">
-          {savedSuccess && (
+          {feedback.saved && (
             <span className="flex items-center gap-1 text-xs text-ink font-medium">
               <Check className="w-3.5 h-3.5" />
-              Saved successfully
+              Saved
             </span>
           )}
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer"
+            disabled={feedback.saving || Boolean(validationError)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
+            {feedback.saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             {isNew ? 'Create Server' : 'Save Changes'}
           </button>
         </div>

@@ -36,7 +36,7 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
   const query = roots.queryFor(selectedRootId);
   const isWorkspaceScope = roots.isWorkspace(selectedRootId);
 
-  const { items: skills, selectedId, selected: selectedSkill, isCreatingNew, isLoading, select, startCreate, save, remove } =
+  const { items: skills, selectedId, selected: selectedSkill, isCreatingNew, isLoading, loadError, reload: reloadList, select, startCreate, save, remove } =
     useCrudList<SkillItem, Partial<SkillItem>>({
       endpoint: '/api/settings/skills',
       query,
@@ -70,7 +70,6 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
         ...(selected || { id: selectedId || `skill-${Date.now()}` }),
         ...skillData,
       }) as SkillItem,
-      isDeleteError: (data) => Boolean((data as { error?: string } | null)?.error),
     });
 
   const reload = () => {
@@ -112,6 +111,7 @@ export function SkillSettings({ onNavigateToCatalog }: SkillSettingsProps) {
             selectedProject={selectedRootId}
             onSelectProject={setSelectedRootId}
             projectOptions={roots.options}
+            {...(loadError ? { loadError, onRetry: reloadList } : {})}
           />
         }
         detail={

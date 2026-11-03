@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { Check, Eye, EyeOff, Lock, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-preact';
+import { AlertCircle, Check, Eye, EyeOff, Loader2, Lock, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-preact';
 import type { SkillItem } from '@/shared/types';
 import { scopeLabel, sourceBadge } from '@/client/components/settings/categories/skill-settings/row-meta';
 
@@ -21,6 +21,13 @@ interface SkillDetailHeaderProps {
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
   onSave: () => void;
+  /** A write is in flight: the buttons report that instead of accepting another. */
+  saving?: boolean;
+  /** The last write landed (flashes briefly). */
+  saved?: boolean;
+  /** The last write's refusal, in the server's own words. */
+  writeError?: string | null;
+  onDismissWriteError?: () => void;
 }
 
 function Badge({ children, title }: { children: ComponentChildren; title?: string }) {
@@ -60,6 +67,10 @@ export function SkillDetailHeader({
   onConfirmDelete,
   onCancelDelete,
   onSave,
+  saving = false,
+  saved = false,
+  writeError = null,
+  onDismissWriteError,
 }: SkillDetailHeaderProps) {
   const title = isCreatingNew ? 'New skill' : (skill?.name ?? name);
 
@@ -151,6 +162,18 @@ export function SkillDetailHeader({
 
       {validationError ? <p className="text-[11px] text-error leading-relaxed">{validationError}</p> : null}
 
+      {writeError ? (
+        <div className="flex items-start gap-1.5 rounded-lg border border-error/30 bg-error/5 px-2.5 py-2 text-[11px] text-error">
+          <AlertCircle size={12} className="mt-px flex-shrink-0" />
+          <span className="flex-1 break-words">{writeError}</span>
+          {onDismissWriteError ? (
+            <button type="button" onClick={onDismissWriteError} className="cursor-pointer text-error/60 hover:text-error" aria-label="Dismiss error">
+              ×
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-between gap-2">
         {!isCreatingNew && skill && !readOnly ? (
           confirmingDelete ? (
@@ -188,19 +211,24 @@ export function SkillDetailHeader({
           <button
             type="button"
             onClick={onSave}
-            disabled={Boolean(validationError) || (!dirty && !isCreatingNew)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-paper text-[11px] font-medium hover:bg-ink/90 disabled:opacity-40 transition-colors cursor-pointer"
+            disabled={saving || Boolean(validationError) || (!dirty && !isCreatingNew)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-paper text-[11px] font-medium hover:bg-ink/90 disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
-            <Save size={12} />
-            <span>{isCreatingNew ? 'Create skill' : 'Save changes'}</span>
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            <span>{saving ? 'Saving…' : isCreatingNew ? 'Create skill' : 'Save changes'}</span>
           </button>
         ) : null}
       </div>
 
-      {!readOnly && !dirty && !isCreatingNew ? (
+      {saved ? (
+        <p className="flex items-center gap-1 text-[10px] text-ink/60">
+          <Check size={10} />
+          Saved
+        </p>
+      ) : !readOnly && !dirty && !isCreatingNew ? (
         <p className="flex items-center gap-1 text-[10px] text-ink/40">
           <Check size={10} />
-          Saved — nothing to write
+          Nothing to write
         </p>
       ) : null}
     </div>

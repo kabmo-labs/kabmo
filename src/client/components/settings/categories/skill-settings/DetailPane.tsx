@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { Info } from 'lucide-preact';
-import type { SkillItem } from '@/shared/types';
+import type { SkillItem, WriteOutcome } from '@/shared/types';
+import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 import { SkillDetailHeader } from '@/client/components/settings/categories/skill-settings/DetailHeader';
 import { InstructionsEditor } from '@/client/components/settings/categories/skill-settings/InstructionsEditor';
 
 interface SkillDetailPaneProps {
   skill: SkillItem | null;
   isCreatingNew: boolean;
-  onSave: (skillData: Partial<SkillItem>) => void;
-  onDelete?: (id: string) => void;
+  onSave: (skillData: Partial<SkillItem>) => Promise<WriteOutcome>;
+  onDelete?: (id: string) => Promise<WriteOutcome>;
   onOpenCatalog?: () => void;
   onReload?: () => void;
   isReloading?: boolean;
@@ -51,6 +52,7 @@ export function SkillDetailPane({
   const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
+  const feedback = useWriteFeedback();
 
   const readOnly = !isCreatingNew && skill != null && skill.managed !== true;
   const locationLabel = location === 'project' ? 'Project / .omp/skills' : 'User / omp agent';
@@ -95,17 +97,31 @@ export function SkillDetailPane({
     return null;
   }, [name, description, readOnly]);
 
+  // The timestamp is set from the WRITE'S answer, not the click: a refused save
+  // (a duplicate name, a read-only file) used to print "Last saved <time>".
   const handleSave = () => {
-    if (readOnly || validationError) return;
-    onSave({
-      name: name.trim(),
-      description: description.trim(),
-      location,
-      locationLabel,
-      instructions: draftBody(instructions),
-      hidden,
+    if (readOnly || validationError || feedback.saving) return;
+    void feedback.run(async () => {
+      const outcome = await onSave({
+        name: name.trim(),
+        description: description.trim(),
+        location,
+        locationLabel,
+        instructions: draftBody(instructions),
+        hidden,
+      });
+      if (outcome.ok) setSavedAt(Date.now());
+      return outcome;
     });
-    setSavedAt(Date.now());
+  };
+
+  const handleDelete = () => {
+    if (!skill || !onDelete) return;
+    void feedback.run(async () => {
+      const outcome = await onDelete(skill.id);
+      if (!outcome.ok) setConfirmingDelete(false);
+      return outcome;
+    });
   };
 
   return (
@@ -128,9 +144,13 @@ export function SkillDetailPane({
         onCancelDelete={() => setConfirmingDelete(false)}
         onConfirmDelete={() => {
           setConfirmingDelete(false);
-          if (skill && onDelete) onDelete(skill.id);
+          handleDelete();
         }}
         onSave={handleSave}
+        saving={feedback.saving}
+        saved={feedback.saved}
+        writeError={feedback.error}
+        onDismissWriteError={feedback.dismissError}
       />
 
       {!readOnly ? (
@@ -204,7 +224,7 @@ export function SkillDetailPane({
         onToggleLineNumbers={() => setShowLineNumbers(!showLineNumbers)}
       />
 
-      {savedAt > 0 && !dirty ? (
+      {savedAt > 0 && !dirty && !feedback.error ? (
         <p className="text-[10px] text-ink/40">
           Last saved {new Date(savedAt).toLocaleTimeString()} — omp sessions were told to reload their skills.
         </p>

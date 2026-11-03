@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
-import type { McpServerItem, SettingsState } from '@/shared/types';
+import type { McpServerItem, SettingsState, WriteOutcome } from '@/shared/types';
 import { McpSidebarList } from '@/client/components/settings/categories/mcp-settings/SidebarList';
 import type { McpProjectOption } from '@/client/components/settings/categories/mcp-settings/SidebarList';
 import { McpDetailPane } from '@/client/components/settings/categories/mcp-settings/DetailPane';
@@ -33,7 +33,7 @@ export const McpSettings: FunctionComponent<McpSettingsProps> = () => {
 
   const query = selectedProject ? `?project=${encodeURIComponent(selectedProject)}` : '';
 
-  const { items: servers, selectedId, selected: selectedServer, isCreatingNew, isLoading, select, startCreate, save, remove } =
+  const { items: servers, selectedId, selected: selectedServer, isCreatingNew, isLoading, loadError, reload, select, startCreate, save, remove } =
     useCrudList<McpServerItem>({
       endpoint: '/api/settings/mcp',
       listKey: 'servers',
@@ -62,27 +62,9 @@ export const McpSettings: FunctionComponent<McpSettingsProps> = () => {
         const saved = list.find((s) => s.name.toLowerCase() === target.name.toLowerCase());
         return saved?.id ?? target.id;
       },
-      isSaveError: (data) => {
-        const error = (data as { error?: string } | null)?.error;
-        if (error) {
-          console.error('Failed to save MCP server via API:', error);
-          return true;
-        }
-        return false;
-      },
-      isDeleteError: (data) => {
-        const error = (data as { error?: string } | null)?.error;
-        if (error) {
-          console.error('Failed to delete MCP server via API:', error);
-          return true;
-        }
-        return false;
-      },
     });
 
-  const handleImportServer = (imported: McpServerItem) => {
-    save(imported);
-  };
+  const handleImportServer = (imported: McpServerItem): Promise<WriteOutcome> => save(imported);
 
   const emptyServerTemplate: McpServerItem = {
     id: `new-${Date.now()}`,
@@ -120,6 +102,7 @@ export const McpSettings: FunctionComponent<McpSettingsProps> = () => {
             }}
             selectedProject={selectedProject}
             onChangeProject={setSelectedProject}
+            {...(loadError ? { loadError, onRetry: reload } : {})}
           />
         }
         detail={

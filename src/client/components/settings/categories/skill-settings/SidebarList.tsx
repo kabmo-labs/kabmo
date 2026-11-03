@@ -23,6 +23,9 @@ interface SkillSidebarListProps {
   onSelectProject: (project: string) => void;
   /** Real workspace folders; defaults to the shared placeholder list. */
   projectOptions?: ProjectOption[];
+  /** Why the list could not be read, and how to try again. */
+  loadError?: string;
+  onRetry?: () => void;
 }
 
 /**
@@ -43,6 +46,8 @@ export function SkillSidebarList({
   selectedProject,
   onSelectProject,
   projectOptions,
+  loadError,
+  onRetry,
 }: SkillSidebarListProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
@@ -134,6 +139,22 @@ export function SkillSidebarList({
       </div>
 
       <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-2">
+        {loadError ? (
+          <div className="mx-1 rounded-lg border border-error/30 bg-error/5 px-2.5 py-2 text-[11px] leading-snug text-error">
+            <div className="font-semibold">Could not read the skills</div>
+            <div className="mt-0.5 break-words text-error/80">{loadError}</div>
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-1.5 rounded border border-error/40 px-2 py-0.5 font-medium hover:bg-error/10 cursor-pointer"
+              >
+                Retry
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         {isCreatingNew ? (
           <div className="px-2.5 py-1.5 rounded-lg bg-ink/10 text-ink font-medium text-xs">new-skill</div>
         ) : null}

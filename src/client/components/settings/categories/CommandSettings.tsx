@@ -37,7 +37,7 @@ export const CommandSettings: FunctionComponent<CommandSettingsProps> = () => {
   const query = roots.queryFor(selectedRootId);
   const isWorkspaceScope = roots.isWorkspace(selectedRootId);
 
-  const { items: commands, selectedId, selected: selectedCommand, isCreatingNew, isLoading, select, startCreate, save, remove } =
+  const { items: commands, selectedId, selected: selectedCommand, isCreatingNew, isLoading, loadError, reload, select, startCreate, save, remove } =
     useCrudList<CommandItem>({
       endpoint: '/api/settings/commands',
       query,
@@ -64,7 +64,6 @@ export const CommandSettings: FunctionComponent<CommandSettingsProps> = () => {
         scope: isWorkspaceScope ? 'project' : 'user',
       }),
       buildUpdate: (updated) => updated,
-      isDeleteError: (data) => Boolean((data as { error?: string } | null)?.error),
     });
 
   const emptyCommandTemplate: CommandItem = {
@@ -103,6 +102,7 @@ export const CommandSettings: FunctionComponent<CommandSettingsProps> = () => {
             selectedProject={selectedRootId}
             onChangeProject={setSelectedRootId}
             projectOptions={roots.options}
+            {...(loadError ? { loadError, onRetry: reload } : {})}
           />
         }
         detail={

@@ -22,7 +22,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import type { SkillItem } from '@/shared/types';
+import type { SkillItem, WriteOutcome } from '@/shared/types';
 import {
   SKILL_FILTERS,
   filterCounts,
@@ -53,6 +53,15 @@ function mount(node: h.JSX.Element): HTMLElement {
   act(() => render(node, container));
   return container;
 }
+
+/** A save the server accepts; the pane's badge is driven by this answer. */
+const okSave = async (): Promise<WriteOutcome> => ({ ok: true });
+
+/** Collect the drafts a pane sends, while answering like a healthy server. */
+const okSaveTracking = (saved: Partial<SkillItem>[]) => async (draft: Partial<SkillItem>): Promise<WriteOutcome> => {
+  saved.push(draft);
+  return { ok: true };
+};
 
 function skill(overrides: Partial<SkillItem> = {}): SkillItem {
   return {
@@ -117,12 +126,12 @@ describe('filterSkills and filterCounts', () => {
 describe('SkillDetailPane', () => {
   test('an unchanged draft cannot be saved', () => {
     const el = mount(
-      h(SkillDetailPane, { skill: skill(), isCreatingNew: false, onSave: () => {} }),
+      h(SkillDetailPane, { skill: skill(), isCreatingNew: false, onSave: okSave }),
     );
     const save = [...el.querySelectorAll('button')].find((button) => button.textContent?.includes('Save changes'));
     expect(save).toBeDefined();
     expect((save as HTMLButtonElement).disabled).toBe(true);
-    expect(el.textContent).toContain('Saved — nothing to write');
+    expect(el.textContent).toContain('Nothing to write');
   });
 
   test('a draft missing its description reports that omp would not load it', () => {
@@ -130,7 +139,7 @@ describe('SkillDetailPane', () => {
       h(SkillDetailPane, {
         skill: skill({ description: '' }),
         isCreatingNew: false,
-        onSave: () => {},
+        onSave: okSave,
       }),
     );
     expect(el.textContent).toContain('omp does not load a SKILL.md without one');
@@ -140,7 +149,7 @@ describe('SkillDetailPane', () => {
 
   test('a read-only skill offers no editor or save at all', () => {
     const el = mount(
-      h(SkillDetailPane, { skill: skill({ managed: false, source: 'agents:user' }), isCreatingNew: false, onSave: () => {} }),
+      h(SkillDetailPane, { skill: skill({ managed: false, source: 'agents:user' }), isCreatingNew: false, onSave: okSave }),
     );
     expect(el.textContent).toContain('read-only');
     expect(el.textContent).not.toContain('Save changes');
@@ -153,7 +162,7 @@ describe('SkillDetailPane', () => {
       h(SkillDetailPane, {
         skill: skill({ instructions: '---\ndescription: First skill\n---\n\ndo the thing\n' }),
         isCreatingNew: false,
-        onSave: (draft) => saved.push(draft),
+        onSave: okSaveTracking(saved),
       }),
     );
     // The pane has two textareas: the description and the SKILL.md body.

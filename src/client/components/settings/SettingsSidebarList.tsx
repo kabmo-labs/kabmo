@@ -26,6 +26,9 @@ interface SettingsSidebarListProps {
   onChangeProject: (project: string) => void;
   /** Real workspace folders; defaults to the shared placeholder list. */
   projectOptions?: ProjectOption[];
+  /** Why the list could not be read. An empty list is not the same fact. */
+  loadError?: string;
+  onRetry?: () => void;
 }
 
 /**
@@ -46,6 +49,8 @@ export const SettingsSidebarList: FunctionComponent<SettingsSidebarListProps> = 
   selectedProject,
   onChangeProject,
   projectOptions,
+  loadError,
+  onRetry,
 }) => {
   const builtInItems = items.filter((item) => item.isBuiltIn);
   const customItems = items.filter((item) => !item.isBuiltIn);
@@ -102,6 +107,21 @@ export const SettingsSidebarList: FunctionComponent<SettingsSidebarListProps> = 
       </div>
 
       <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-3 text-xs">
+        {loadError && (
+          <div className="mx-1 rounded-lg border border-error/30 bg-error/5 px-2.5 py-2 text-[11px] leading-snug text-error">
+            <div className="font-semibold">Could not read the list</div>
+            <div className="mt-0.5 break-words text-error/80">{loadError}</div>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-1.5 rounded border border-error/40 px-2 py-0.5 font-medium hover:bg-error/10 cursor-pointer"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
         <div>
           <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold text-ink/50 uppercase tracking-wider">
             {builtInLabel}

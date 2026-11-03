@@ -1,12 +1,13 @@
 import { useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
-import { AlertCircle, Code, X } from 'lucide-preact';
-import type { McpEnvVar, McpServerItem } from '@/shared/types';
+import { AlertCircle, Code, Loader2, X } from 'lucide-preact';
+import type { McpEnvVar, McpServerItem, WriteOutcome } from '@/shared/types';
 
 interface McpImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (server: McpServerItem) => void;
+  /** Resolves with the save's outcome; a refusal keeps this dialog open. */
+  onImport: (server: McpServerItem) => Promise<WriteOutcome>;
 }
 
 const SAMPLE_JSON = `{
@@ -28,10 +29,11 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
 }) => {
   const [jsonText, setJsonText] = useState(SAMPLE_JSON);
   const [error, setError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleParseAndImport = () => {
+  const handleParseAndImport = async () => {
     setError(null);
     try {
       const parsed = JSON.parse(jsonText);
@@ -44,20 +46,20 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
         }
         const firstKey = serverKeys[0];
         const serverConfig = parsed.mcpServers[firstKey];
-        importConfig(firstKey, serverConfig);
+        await importConfig(firstKey, serverConfig);
         return;
       }
 
       // Handle direct config: { name, command, args, env } or { command, args }
       const name = parsed.name || 'imported-mcp-server';
-      importConfig(name, parsed);
+      await importConfig(name, parsed);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid JSON format';
       setError(message);
     }
   };
 
-  const importConfig = (serverName: string, cfg: Record<string, unknown>) => {
+  const importConfig = async (serverName: string, cfg: Record<string, unknown>) => {
     const isUrl = typeof cfg.url === 'string' && cfg.url.length > 0;
     const reachType = isUrl ? 'link' : 'command';
 
@@ -82,6 +84,7 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
       });
     }
 
+    const resolvedUrl = typeof cfg.url === 'string' ? cfg.url : undefined;
     const newServer: McpServerItem = {
       id: `mcp-${Date.now()}`,
       name: serverName,
@@ -89,13 +92,21 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
       enabled: true,
       reachType,
       commandArgs,
-      linkUrl: isUrl ? (cfg.url as string) : undefined,
+      ...(resolvedUrl ? { linkUrl: resolvedUrl } : {}),
       envVars,
       status: 'active',
     };
 
-    onImport(newServer);
-    onClose();
+    // The dialog closes on the SAVE's answer, not on the click: a refused
+    // write has to be readable against the JSON that produced it.
+    setImporting(true);
+    try {
+      const outcome = await onImport(newServer);
+      if (outcome.ok) onClose();
+      else setError(outcome.error ?? 'The server refused the import.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -149,10 +160,12 @@ export const McpImportModal: FunctionComponent<McpImportModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={handleParseAndImport}
-            className="px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer"
+            onClick={() => void handleParseAndImport()}
+            disabled={importing}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-progress"
           >
-            Import Server
+            {importing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {importing ? 'Importing…' : 'Import Server'}
           </button>
         </div>
       </div>

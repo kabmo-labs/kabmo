@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
-import { Check, Copy, Eye, EyeOff, Trash2 } from 'lucide-preact';
-import type { CommandItem, CommandScope } from '@/shared/types';
+import { AlertCircle, Check, Copy, Eye, EyeOff, Loader2, Save, Trash2 } from 'lucide-preact';
+import type { CommandItem, CommandScope, WriteOutcome } from '@/shared/types';
+import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
 
 interface CommandDetailPaneProps {
   command: CommandItem;
   isNew?: boolean;
-  onSave: (updatedCommand: CommandItem) => void;
-  onDelete?: (commandId: string) => void;
+  onSave: (updatedCommand: CommandItem) => Promise<WriteOutcome>;
+  onDelete?: (commandId: string) => Promise<WriteOutcome>;
   /** Disabled for the project scope: there is no workspace to write it into. */
   projectScopeDisabled?: boolean;
 }
@@ -33,9 +34,10 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
   projectScopeDisabled = false,
 }) => {
   const [formData, setFormData] = useState<CommandItem>(command);
-  const [savedSuccess, setSavedSuccess] = useState(false);
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const feedback = useWriteFeedback();
 
   // A LIVE command Kabmo does not own (a builtin, a `skill:<name>` entry,
   // an extension or a `.claude`/`.agents` file) renders read-only: its file, if
@@ -45,20 +47,27 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
 
   useEffect(() => {
     setFormData(command);
-    setSavedSuccess(false);
+    setConfirmDelete(false);
   }, [command]);
+
+  const readOnlyNow = readOnly || feedback.saving;
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
+    if (readOnly || feedback.saving) return;
+    void feedback.run(() => onSave(formData));
+  };
+
+  const handleDelete = () => {
+    if (!onDelete) return;
+    void feedback.run(() => onDelete(formData.id));
   };
 
   const handleCopyTemplate = () => {
-    navigator.clipboard.writeText(formData.template);
-    setCopiedTemplate(true);
-    setTimeout(() => setCopiedTemplate(false), 1800);
+    navigator.clipboard.writeText(formData.template).then(() => {
+      setCopiedTemplate(true);
+      setTimeout(() => setCopiedTemplate(false), 1800);
+    }).catch((err) => console.error('Failed to copy the command template:', err));
   };
 
   const handleInsertPlaceholder = (text: string) => {
@@ -123,7 +132,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
                 }
                 required
                 placeholder="command-name"
-                disabled={readOnly}
+                disabled={readOnlyNow}
                 className="w-full text-xs font-mono px-3 py-2 bg-transparent focus:outline-none disabled:opacity-60 text-ink"
               />
             </div>
@@ -138,7 +147,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, scope: e.currentTarget.value as CommandScope })
               }
-              disabled={readOnly || projectScopeDisabled}
+              disabled={readOnlyNow || projectScopeDisabled}
               title={projectScopeDisabled ? 'Select a workspace folder to write a project command' : undefined}
               className="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink disabled:opacity-60 text-ink transition-colors cursor-pointer"
             >
@@ -155,7 +164,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.currentTarget.value })}
-            disabled={readOnly}
+            disabled={readOnlyNow}
             placeholder="What does this command do?"
             rows={2}
             className="w-full text-xs p-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/30 text-ink transition-colors disabled:opacity-60"
@@ -170,7 +179,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
             type="text"
             value={formData.inputHint ?? ''}
             onChange={(e) => setFormData({ ...formData, inputHint: e.currentTarget.value })}
-            disabled={readOnly}
+            disabled={readOnlyNow}
             placeholder="[on|off|status]"
             className="w-full text-xs font-mono p-2.5 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/30 text-ink transition-colors disabled:opacity-60"
           />
@@ -218,7 +227,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
           <button
             type="button"
             onClick={() => handleInsertPlaceholder('$ARGUMENTS')}
-            disabled={readOnly}
+            disabled={readOnlyNow}
             className="px-2.5 py-1 text-xs font-mono rounded-md bg-ink/5 hover:bg-ink/10 border border-ink/15 text-ink transition-colors cursor-pointer disabled:opacity-50"
           >
             +$ARGUMENTS
@@ -226,7 +235,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
           <button
             type="button"
             onClick={() => handleInsertPlaceholder('!`bun test`')}
-            disabled={readOnly}
+            disabled={readOnlyNow}
             className="px-2.5 py-1 text-xs font-mono rounded-md bg-ink/5 hover:bg-ink/10 border border-ink/15 text-ink transition-colors cursor-pointer disabled:opacity-50"
           >
             +!shell
@@ -234,7 +243,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
           <button
             type="button"
             onClick={() => handleInsertPlaceholder('@src/App.tsx')}
-            disabled={readOnly}
+            disabled={readOnlyNow}
             className="px-2.5 py-1 text-xs font-mono rounded-md bg-ink/5 hover:bg-ink/10 border border-ink/15 text-ink transition-colors cursor-pointer disabled:opacity-50"
           >
             +@filename
@@ -253,7 +262,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
             value={formData.template}
             onChange={(e) => setFormData({ ...formData, template: e.currentTarget.value })}
             rows={Math.max(lineCount, 7)}
-            disabled={readOnly}
+            disabled={readOnlyNow}
             spellcheck={false}
             placeholder="Enter command template instructions..."
             className="flex-1 p-3 bg-transparent text-ink resize-none focus:outline-none leading-relaxed disabled:opacity-60"
@@ -261,33 +270,66 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
         </div>
       </div>
 
+      {feedback.error && (
+        <div className="flex items-start gap-1.5 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-[11px] text-error">
+          <AlertCircle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
+          <span className="flex-1 break-words">{feedback.error}</span>
+          <button type="button" onClick={feedback.dismissError} className="cursor-pointer text-error/60 hover:text-error" aria-label="Dismiss error">
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Footer Controls */}
-      <div className="pt-3 border-t border-ink/10 flex items-center justify-between">
-        <div>
+      <div className="pt-3 border-t border-ink/10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           {!readOnly && !isNew && onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(formData.id)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink/20 hover:border-error hover:text-error text-ink/70 text-xs font-medium transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Command
-            </button>
+            confirmDelete ? (
+              <>
+                <span className="text-[11px] text-ink/70">Delete “/{formData.name}”? Its file is removed.</span>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={feedback.saving}
+                  className="px-2.5 py-1 rounded-lg border border-error/40 text-error text-xs font-medium hover:bg-error/10 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-2 py-1 text-xs text-ink/50 hover:text-ink cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink/20 hover:border-error hover:text-error text-ink/70 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Command
+              </button>
+            )
           )}
         </div>
 
         <div className="flex items-center gap-3">
-          {savedSuccess && (
+          {feedback.saved && (
             <span className="flex items-center gap-1 text-xs text-ink font-medium">
               <Check className="w-3.5 h-3.5" />
-              Saved successfully
+              Saved
             </span>
           )}
           {!readOnly && (
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer"
+              disabled={feedback.saving}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-progress"
             >
+              {feedback.saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               {isNew ? 'Create Command' : 'Save Command'}
             </button>
           )}

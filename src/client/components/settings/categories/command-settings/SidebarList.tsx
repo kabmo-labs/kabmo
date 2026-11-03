@@ -13,6 +13,9 @@ interface CommandSidebarListProps {
   onChangeProject: (project: string) => void;
   /** Real workspace folders; defaults to the shared placeholder list. */
   projectOptions?: ProjectOption[];
+  /** Why the list could not be read, and how to try again. */
+  loadError?: string;
+  onRetry?: () => void;
 }
 
 export const CommandSidebarList: FunctionComponent<CommandSidebarListProps> = ({
@@ -23,6 +26,8 @@ export const CommandSidebarList: FunctionComponent<CommandSidebarListProps> = ({
   selectedProject,
   onChangeProject,
   projectOptions,
+  loadError,
+  onRetry,
 }) => (
   <SettingsSidebarList
     items={commands}
@@ -37,6 +42,8 @@ export const CommandSidebarList: FunctionComponent<CommandSidebarListProps> = ({
     selectedProject={selectedProject}
     onChangeProject={onChangeProject}
     {...(projectOptions ? { projectOptions } : {})}
+    {...(loadError ? { loadError } : {})}
+    {...(onRetry ? { onRetry } : {})}
     renderIcon={(isBuiltIn) => (
       <Terminal className={`w-3.5 h-3.5 ${isBuiltIn ? 'text-ink/70' : 'text-ink/60'} flex-shrink-0`} />
     )}

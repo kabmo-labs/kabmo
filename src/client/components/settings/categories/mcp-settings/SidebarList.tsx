@@ -17,6 +17,9 @@ interface McpSidebarListProps {
   onAddNewServer: () => void;
   selectedProject: string;
   onChangeProject: (projectPath: string) => void;
+  /** Why the list could not be read, and how to try again. */
+  loadError?: string;
+  onRetry?: () => void;
 }
 
 export const McpSidebarList: FunctionComponent<McpSidebarListProps> = ({
@@ -27,6 +30,8 @@ export const McpSidebarList: FunctionComponent<McpSidebarListProps> = ({
   onAddNewServer,
   selectedProject,
   onChangeProject,
+  loadError,
+  onRetry,
 }) => {
   const activeProjectName = projects.find((proj) => proj.path === selectedProject)?.name ?? 'Global (all projects)';
 
@@ -59,6 +64,21 @@ export const McpSidebarList: FunctionComponent<McpSidebarListProps> = ({
       </div>
 
       <div className="flex-1 scrollbar-overlay-container p-1.5 space-y-3 text-xs">
+        {loadError && (
+          <div className="mx-1 rounded-lg border border-error/30 bg-error/5 px-2.5 py-2 text-[11px] leading-snug text-error">
+            <div className="font-semibold">Could not read the list</div>
+            <div className="mt-0.5 break-words text-error/80">{loadError}</div>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-1.5 rounded border border-error/40 px-2 py-0.5 font-medium hover:bg-error/10 cursor-pointer"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
         <div>
           <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold text-ink/50 uppercase tracking-wider flex items-center justify-between">
             <span>User Servers</span>
