@@ -48,35 +48,62 @@ function parseOmpVersion(output: string): string | null {
   return output.match(/^omp\/(\S+)/m)?.[1] ?? null;
 }
 
-export async function checkOmpUpdate(): Promise<UpdateTargetInfo> {
+export interface OmpInstalledVersion {
+  /** Whether an `omp` binary was found at all. */
+  installed: boolean;
+  /** The version the binary names itself, or null when it could not be read. */
+  current: string | null;
+  error: string | null;
+}
+
+/**
+ * The version `omp --version` reports, split out of the update check because
+ * the About modal's "What's new in Oh-My-Pi" needs only this half: the notes
+ * belong to the running binary, and reading npm again would answer a different
+ * question (what is published, not what is installed).
+ */
+export async function readOmpInstalledVersion(): Promise<OmpInstalledVersion> {
   const bin = resolveOmpBin();
-  if (!bin) {
+  if (!bin) return { installed: false, current: null, error: 'omp binary not found' };
+
+  try {
+    const { stdout, stderr, exitCode } = await runCapture(bin, ['--version'], 30000, 1024 * 1024);
+    const current = parseOmpVersion(combined(stdout, stderr));
+    if (current) return { installed: true, current, error: null };
+    const error =
+      exitCode !== 0
+        ? `omp --version exited with code ${exitCode}`
+        : 'Could not determine the installed omp version';
+    return { installed: true, current: null, error };
+  } catch (err) {
+    return {
+      installed: true,
+      current: null,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+export async function checkOmpUpdate(): Promise<UpdateTargetInfo> {
+  const probe = await readOmpInstalledVersion();
+  if (!probe.installed) {
     return {
       current: null,
       latest: null,
       updateAvailable: false,
       installed: false,
-      error: 'omp binary not found',
+      error: probe.error,
     };
   }
 
-  let current: string | null = null;
-  let execMessage: string | null = null;
-  try {
-    const { stdout, stderr, exitCode } = await runCapture(bin, ['--version'], 30000, 1024 * 1024);
-    current = parseOmpVersion(combined(stdout, stderr));
-    if (exitCode !== 0) execMessage = `omp --version exited with code ${exitCode}`;
-  } catch (err) {
-    execMessage = err instanceof Error ? err.message : String(err);
-  }
-
+  const current = probe.current;
   const latest = await fetchNpmLatest(OMP_PACKAGE);
   // With no version on disk there is nothing to compare, and "an update exists"
   // would be a claim about a copy that could not be read.
   const updateAvailable = Boolean(current && latest && isNewer(latest, current));
 
-  let error: string | null = null;
-  if (!current) error = execMessage ?? 'Could not determine the installed omp version';
+  let error: string | null = probe.error;
+  if (!current) error = probe.error ?? 'Could not determine the installed omp version';
   else if (!latest) error = 'Could not read the latest oh-my-pi version from npm';
 
   return { current, latest, updateAvailable, installed: true, error };

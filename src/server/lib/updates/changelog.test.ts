@@ -25,7 +25,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { MAX_NOTES_BYTES, MAX_VERSIONS, capReleaseNotes, selectReleaseRange } from '@/server/lib/updates/changelog';
-import { CHANGELOG_URL, fetchChangelogNotes, parseChangelogSections } from '@/server/lib/updates/changelog-file';
+import { CHANGELOG_URL, OMP_CHANGELOG_URL, fetchChangelogNotes, fetchOmpChangelogNotes, parseChangelogSections } from '@/server/lib/updates/changelog-file';
 import { releaseTagUrl } from '@/server/lib/updates/release-url';
 import type { ReleaseNote } from '@/shared/types/updates';
 
@@ -110,6 +110,8 @@ describe('fetchChangelogNotes', () => {
   beforeEach(() => {
     delete (globalThis as typeof globalThis & { __kabmoChangelogCache?: unknown }).__kabmoChangelogCache;
     urls = [];
+    body = CHANGELOG;
+    status = 200;
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       urls.push(String(input));
       return new Response(body, { status, headers: { 'content-type': 'text/markdown' } });
@@ -144,6 +146,18 @@ describe('fetchChangelogNotes', () => {
     expect(await fetchChangelogNotes()).toEqual([]);
     expect(await fetchChangelogNotes()).toEqual([]);
     expect(urls).toHaveLength(2);
+  });
+
+  test('the omp source is its own URL and links omp release tags', async () => {
+    const notes = await fetchOmpChangelogNotes();
+    expect(urls[0]).toBe(OMP_CHANGELOG_URL);
+    expect(notes[0]!.url).toBe('https://github.com/can1357/oh-my-pi/releases/tag/v3.14.0');
+  });
+
+  test('a warm Kabmo cache does not answer the omp read', async () => {
+    await fetchChangelogNotes();
+    await fetchOmpChangelogNotes();
+    expect(urls).toEqual([CHANGELOG_URL, OMP_CHANGELOG_URL]);
   });
 });
 

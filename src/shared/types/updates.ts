@@ -78,6 +78,26 @@ export interface UpdateChangelog {
   error: string | null;
 }
 
+/**
+ * The release notes for the version a target is ACTUALLY RUNNING.
+ *
+ * This is the About modal's pair of "What's new" buttons: the update popup
+ * answers "what would I get", these answer "what am I running". Both versions
+ * are read server-side from the install itself, never from the caller, so the
+ * section shown always belongs to the copy on disk.
+ */
+export interface ActiveReleaseNotes {
+  target: UpdateTarget;
+  /** The installed/running version whose section is shown, or null when unreadable. */
+  version: string | null;
+  /** That version's changelog section, or null when the file does not name it. */
+  note: ReleaseNote | null;
+  /** The repository changelog, for the "Full changelog" link. */
+  changelogUrl: string;
+  /** Human-readable reason `note` is absent, or null. */
+  error: string | null;
+}
+
 export interface UpdateApplyResult {
   success: boolean;
   target: UpdateTarget;

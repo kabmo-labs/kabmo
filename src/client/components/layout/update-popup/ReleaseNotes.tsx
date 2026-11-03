@@ -20,8 +20,11 @@ const LINK_CLASS = 'inline-flex items-center gap-1 text-[10px] font-medium text-
  * A changelog body is full of links — commits, compare ranges, pull requests.
  * Without this, one click navigates the console away from the user's session;
  * a release note is a reference, so every link leaves in a new tab.
+ *
+ * Exported because the About modal's per-target dialog renders a single section
+ * through the same handler; a second copy would let one path navigate in place.
  */
-function openLinksExternally(event: TargetedMouseEvent<HTMLDivElement>) {
+export function openLinksExternally(event: TargetedMouseEvent<HTMLDivElement>) {
   const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
   if (!link) return;
   event.preventDefault();
@@ -29,7 +32,7 @@ function openLinksExternally(event: TargetedMouseEvent<HTMLDivElement>) {
   window.open(link.href, '_blank', 'noopener,noreferrer');
 }
 
-function ReleaseSection({ note }: { note: ReleaseNote }) {
+export function ReleaseSection({ note }: { note: ReleaseNote }) {
   return (
     <article className="border-t border-ink/10 pt-4 first:border-t-0 first:pt-0">
       <header className="flex items-baseline justify-between gap-3">
@@ -44,8 +47,10 @@ function ReleaseSection({ note }: { note: ReleaseNote }) {
           </a>
         )}
       </header>
+      {/* `text-[13px]`, not the 12px a narrow column needed: at this width the
+          smaller size left lines too short to read as prose. */}
       {note.body ? (
-        <MarkdownRenderer content={note.body} className="mt-2 text-[12px]" />
+        <MarkdownRenderer content={note.body} className="mt-2 text-[13px]" />
       ) : (
         <p className="mt-2 text-[11px] text-ink/40">This release was published without notes.</p>
       )}

@@ -94,7 +94,11 @@ export function UpdatePopup({ updates }: UpdatePopupProps) {
     <Modal
       onClose={close}
       zClass="z-[65]"
-      maxWidthClass="max-w-[560px]"
+      // Same width as the About modal's per-version notes: both render release
+      // prose through `ReleaseNotes`, and a panel that fits a commit subject
+      // once at 768px takes three lines for it at 560px. This dialog is the one
+      // with the MOST of that prose — up to 20 releases in one scroll.
+      maxWidthClass="max-w-3xl"
       header={
         <div className="flex items-center gap-3 min-w-0">
           <Sparkles size={16} className="shrink-0 text-ink/70" />

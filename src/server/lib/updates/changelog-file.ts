@@ -15,7 +15,7 @@
  * the heading itself and links each section to that version's release page.
  */
 
-import { releaseTagUrl, REPO } from '@/server/lib/updates/release-url';
+import { OMP_REPO, releaseTagUrl, REPO, ompReleaseTagUrl } from '@/server/lib/updates/release-url';
 import type { ReleaseNote } from '@/shared/types/updates';
 
 /**
@@ -27,6 +27,12 @@ import type { ReleaseNote } from '@/shared/types/updates';
  * a reader to follow.
  */
 export const CHANGELOG_URL = `https://raw.githubusercontent.com/${REPO}/HEAD/CHANGELOG.md`;
+
+/**
+ * oh-my-pi's changelog: the coding-agent package inside its monorepo. Same
+ * contract as Kabmo's — one `## [x.y.z]` section per release tag.
+ */
+export const OMP_CHANGELOG_URL = `https://raw.githubusercontent.com/${OMP_REPO}/HEAD/packages/coding-agent/CHANGELOG.md`;
 
 /** How long a read is reused. The file changes on release, not on read. */
 const TTL_MS = 60_000;
@@ -57,7 +63,10 @@ const REFERENCE_DEFINITION = /^\[[^\]]+\]:\s/;
  * definitions, not notes, and without the guard they rendered as the last
  * section's body.
  */
-export function parseChangelogSections(markdown: string): ReleaseNote[] {
+export function parseChangelogSections(
+  markdown: string,
+  releaseUrl: (version: string) => string = releaseTagUrl,
+): ReleaseNote[] {
   const notes: ReleaseNote[] = [];
   let version: string | null = null;
   let date: string | null = null;
@@ -65,7 +74,7 @@ export function parseChangelogSections(markdown: string): ReleaseNote[] {
 
   const flush = () => {
     if (version === null) return;
-    notes.push({ version, date, url: releaseTagUrl(version), body: body.join('\n').trim() });
+    notes.push({ version, date, url: releaseUrl(version), body: body.join('\n').trim() });
   };
 
   for (const raw of markdown.split('\n')) {
@@ -97,26 +106,48 @@ interface ChangelogCache {
   at: number;
 }
 
-const cacheSlot = globalThis as typeof globalThis & { __kabmoChangelogCache?: ChangelogCache };
+/**
+ * Keyed by source URL: Kabmo and omp are two files, and a shared single slot
+ * made one target's read answer the other's — measured as omp notes rendering
+ * under the Kabmo heading. A `Map` also keeps the boot cost at one read per
+ * file rather than one per target.
+ */
+type ChangelogCacheSlot = { __kabmoChangelogCache?: Map<string, ChangelogCache> };
 
-/** Never throws: an unreadable changelog is an empty list, and the caller words it. */
-export async function fetchChangelogNotes(force = false): Promise<ReleaseNote[]> {
-  const cached = cacheSlot.__kabmoChangelogCache;
+const cacheSlot = globalThis as typeof globalThis & ChangelogCacheSlot;
+
+async function fetchNotes(
+  url: string,
+  releaseUrl: (version: string) => string,
+  force: boolean,
+): Promise<ReleaseNote[]> {
+  const cache = (cacheSlot.__kabmoChangelogCache ??= new Map<string, ChangelogCache>());
+  const cached = cache.get(url);
   if (!force && cached && Date.now() - cached.at < TTL_MS) return cached.notes;
 
   let notes: ReleaseNote[] = [];
   try {
-    const response = await fetch(CHANGELOG_URL, {
+    const response = await fetch(url, {
       headers: { 'User-Agent': 'kabmo' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (response.ok) notes = parseChangelogSections(await response.text());
+    if (response.ok) notes = parseChangelogSections(await response.text(), releaseUrl);
   } catch {
-    // Reported as an empty list; the popup says the notes could not be fetched.
+    // Reported as an empty list; the caller words the failure.
   }
 
   // An empty read is not cached: a transient failure would otherwise pin "no
   // release notes" for a minute and hide a real update.
-  if (notes.length > 0) cacheSlot.__kabmoChangelogCache = { notes, at: Date.now() };
+  if (notes.length > 0) cache.set(url, { notes, at: Date.now() });
   return notes;
+}
+
+/** Never throws: an unreadable changelog is an empty list, and the caller words it. */
+export function fetchChangelogNotes(force = false): Promise<ReleaseNote[]> {
+  return fetchNotes(CHANGELOG_URL, releaseTagUrl, force);
+}
+
+/** oh-my-pi's sections, linked to omp's own release tags. Never throws. */
+export function fetchOmpChangelogNotes(force = false): Promise<ReleaseNote[]> {
+  return fetchNotes(OMP_CHANGELOG_URL, ompReleaseTagUrl, force);
 }

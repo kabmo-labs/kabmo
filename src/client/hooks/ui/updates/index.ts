@@ -38,6 +38,23 @@ export interface UseUpdatesOptions {
   restart?: RestartWatchDeps;
 }
 
+/**
+ * How often a console left open re-reads the update status.
+ *
+ * The mount check alone was the published-release gap users hit: a server that
+ * booted before `vX` reached npm kept that answer for the life of the page, so
+ * the "update available" popup never appeared until a restart. Half an hour is
+ * the cost of one registry read plus one `omp --version` spawn per open console.
+ */
+export const UPDATE_RECHECK_INTERVAL_MS = 30 * 60_000;
+
+/**
+ * Floor between automatic re-checks. `focus` and `visibilitychange` both fire
+ * on the same return to the app, and a burst of them must not become a burst of
+ * registry reads; the manual "Check again" button bypasses this.
+ */
+export const UPDATE_RECHECK_MIN_GAP_MS = 60_000;
+
 function responseMessage(payload: unknown, fallback: string): string {
   if (typeof payload !== 'object' || payload === null) return fallback;
 
@@ -65,12 +82,14 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
   const [progress, setProgress] = useState<UpdateLogState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inFlightCheckRef = useRef<Promise<void> | null>(null);
+  const lastCheckAtRef = useRef(0);
   const didAutoCheckRef = useRef(false);
   const applyAbortRef = useRef<AbortController | null>(null);
 
   const check = useCallback(() => {
     if (inFlightCheckRef.current) return inFlightCheckRef.current;
 
+    lastCheckAtRef.current = Date.now();
     const request = (async () => {
       setChecking(true);
       setError(null);
@@ -237,6 +256,37 @@ export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
     if (didAutoCheckRef.current) return;
     didAutoCheckRef.current = true;
     void check();
+  }, [check]);
+
+  /**
+   * Re-read the status without a reload.
+   *
+   * Two triggers because a console has two ways of being away and coming back:
+   * a browser tab reports `visibilitychange`, and a native shell window reports
+   * `focus` (the WKWebView/WebView keeps `visibilityState: visible` while the
+   * app is in the background). The interval is the fallback for a console that
+   * never left the screen — the page that stays open for days is exactly the
+   * one the mount check used to strand.
+   */
+  useEffect(() => {
+    const recheck = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (Date.now() - lastCheckAtRef.current < UPDATE_RECHECK_MIN_GAP_MS) return;
+      void check();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') recheck();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', recheck);
+    const timer = window.setInterval(recheck, UPDATE_RECHECK_INTERVAL_MS);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', recheck);
+      window.clearInterval(timer);
+    };
   }, [check]);
 
   useEffect(() => () => applyAbortRef.current?.abort(), []);

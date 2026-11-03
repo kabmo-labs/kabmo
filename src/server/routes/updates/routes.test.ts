@@ -26,6 +26,7 @@ import { action as applyUpdateRoute } from '@/server/routes/updates/apply';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import { loader as checkRoute } from '@/server/routes/updates/check';
 import { loader as changelogRoute } from '@/server/routes/updates/changelog';
+import { loader as notesRoute } from '@/server/routes/updates/notes';
 import { readInstalledVersion } from '@/server/lib/updates/install';
 import { runningUpdate, withUpdateSlot } from '@/server/lib/updates/single-flight';
 
@@ -265,5 +266,53 @@ describe('GET /api/updates/changelog', () => {
     expect(result.versions as unknown[]).toHaveLength(3);
     expect(result.total).toBe(3);
     expect(result.error).toBeNull();
+  });
+});
+
+describe('GET /api/updates/notes', () => {
+  test('serves the section for the version this install is running', async () => {
+    const installed = await readInstalledVersion();
+    expect(installed).not.toBeNull();
+    globalThis.fetch = (async () =>
+      new Response(
+        `# Changelog\n\n## [${installed}] — 2026-01-01\n\n* running notes\n`,
+        { status: 200, headers: { 'content-type': 'text/markdown' } },
+      )) as unknown as typeof fetch;
+
+    const res = (await notesRoute({
+      request: new Request('http://localhost/api/updates/notes?target=kabmo'),
+      params: {},
+    })) as unknown as Response;
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const result = await payload(res);
+    expect(result).toMatchObject({ target: 'kabmo', version: installed, error: null });
+    expect(asRecord(result.note).body).toBe('* running notes');
+    expect(result.changelogUrl).toBe('https://github.com/kabmo-labs/kabmo/blob/HEAD/CHANGELOG.md');
+  });
+
+  test('an unknown or missing target is a 400, never a guessed source', async () => {
+    for (const query of ['', '?target=nope']) {
+      const res = (await notesRoute({
+        request: new Request(`http://localhost/api/updates/notes${query}`),
+        params: {},
+      })) as unknown as Response;
+      expect(res.status).toBe(400);
+      expect((await payload(res)).error).toBe('Unknown update target');
+    }
+  });
+
+  test('an install that cannot be read is an error field, not a 500', async () => {
+    const res = (await notesRoute({
+      request: new Request('http://localhost/api/updates/notes?target=omp'),
+      params: {},
+    })) as unknown as Response;
+
+    expect(res.status).toBe(200);
+    const result = await payload(res);
+    expect(result).toMatchObject({ target: 'omp', version: null, note: null });
+    // `KABMO_OMP_BIN` points at a path that cannot exist in `beforeEach`.
+    expect(result.error).toBe('omp binary not found');
   });
 });

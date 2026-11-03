@@ -21,7 +21,12 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 
-import { isUpdateApplyResult, useUpdates, type UseUpdatesResult } from '@/client/hooks/ui/updates';
+import {
+  isUpdateApplyResult,
+  UPDATE_RECHECK_MIN_GAP_MS,
+  useUpdates,
+  type UseUpdatesResult,
+} from '@/client/hooks/ui/updates';
 import type { RestartWatchDeps } from '@/client/hooks/ui/updates/restart';
 import { installDomGlobals, restoreDomGlobals } from '@/test-support/pristine-globals';
 
@@ -194,6 +199,100 @@ describe('an update that restarts its own server', () => {
     if (!isUpdateApplyResult(result)) throw new Error('expected an apply result');
     expect(result.restarting).toBe(false);
     expect(result.message).toContain('did not come back');
+  });
+});
+
+describe('a console left open across a release', () => {
+  /** Count the checks a render has issued. */
+  const checks = (harness: Harness): number =>
+    harness.requests.filter((url) => url.includes('/api/updates/check')).length;
+
+  /** Move `Date.now` past the re-check floor for the duration of `run`. */
+  async function pastCooldown(run: () => Promise<void> | void): Promise<void> {
+    const realNow = Date.now;
+    const origin = realNow();
+    Date.now = () => origin + UPDATE_RECHECK_MIN_GAP_MS + 1;
+    try {
+      await run();
+    } finally {
+      Date.now = realNow;
+    }
+  }
+
+  test('the tab becoming visible again re-reads the status', async () => {
+    const harness = await mount(
+      () => Response.json(checkPayload()),
+      () => ({ pid: 100, startedAt: '2026-10-15T00:00:00.000Z', uptime: 900 }),
+    );
+    expect(checks(harness)).toBe(1);
+
+    await pastCooldown(async () => {
+      win.document.dispatchEvent(new win.Event('visibilitychange'));
+      await act(async () => {});
+    });
+
+    expect(checks(harness)).toBe(2);
+    expect(harness.updates.info?.kabmo.latest).toBe('2.0.0');
+  });
+
+  test('the interval re-reads a console that never left the screen', async () => {
+    let tick: (() => void) | null = null;
+    const realSetInterval = win.setInterval;
+    const realClearInterval = win.clearInterval;
+    win.setInterval = ((handler: Parameters<typeof win.setInterval>[0]) => {
+      tick = handler as () => void;
+      return 1;
+    }) as unknown as typeof win.setInterval;
+    win.clearInterval = (() => undefined) as typeof win.clearInterval;
+
+    try {
+      const harness = await mount(
+        () => Response.json(checkPayload()),
+        () => ({ pid: 100, startedAt: '2026-10-15T00:00:00.000Z', uptime: 900 }),
+      );
+      expect(checks(harness)).toBe(1);
+
+      await pastCooldown(async () => {
+        tick?.();
+        await act(async () => {});
+      });
+
+      expect(checks(harness)).toBe(2);
+    } finally {
+      win.setInterval = realSetInterval;
+      win.clearInterval = realClearInterval;
+    }
+  });
+
+  test('a re-check inside the cooldown does not read npm again', async () => {
+    const harness = await mount(
+      () => Response.json(checkPayload()),
+      () => ({ pid: 100, startedAt: '2026-10-15T00:00:00.000Z', uptime: 900 }),
+    );
+
+    // `focus` and `visibilitychange` both fire on the same return to the app.
+    win.document.dispatchEvent(new win.Event('visibilitychange'));
+    win.dispatchEvent(new win.Event('focus'));
+    await act(async () => {});
+
+    expect(checks(harness)).toBe(1);
+  });
+
+  test('an unmounted console stops listening', async () => {
+    const harness = await mount(
+      () => Response.json(checkPayload()),
+      () => ({ pid: 100, startedAt: '2026-10-15T00:00:00.000Z', uptime: 900 }),
+    );
+
+    act(() => render(null, container));
+
+    await pastCooldown(async () => {
+      win.document.dispatchEvent(new win.Event('visibilitychange'));
+      win.dispatchEvent(new win.Event('focus'));
+      await act(async () => {});
+    });
+
+    expect(checks(harness)).toBe(1);
   });
 });
 

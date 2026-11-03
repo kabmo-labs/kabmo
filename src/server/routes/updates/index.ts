@@ -5,6 +5,7 @@ import * as updatesChangelog from '@/server/routes/updates/changelog';
 import * as updatesCheck from '@/server/routes/updates/check';
 import * as updatesDesktop from '@/server/routes/updates/desktop';
 import * as updatesIos from '@/server/routes/updates/ios';
+import * as updatesNotes from '@/server/routes/updates/notes';
 
 export const updatesBindings: HandlerBinding[] = [
   ...bindingsFor(updatesAndroid, '/api/updates/android'),
@@ -13,4 +14,5 @@ export const updatesBindings: HandlerBinding[] = [
   ...bindingsFor(updatesCheck, '/api/updates/check'),
   ...bindingsFor(updatesDesktop, '/api/updates/desktop'),
   ...bindingsFor(updatesIos, '/api/updates/ios'),
+  ...bindingsFor(updatesNotes, '/api/updates/notes'),
 ];
