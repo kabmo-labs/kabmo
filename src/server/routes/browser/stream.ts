@@ -37,6 +37,9 @@ import { BROWSER_POLL_MS, STREAM_HEARTBEAT_MS } from '@/shared/lib/workspace/ref
 
 const BROWSER_OFFLINE: BrowserViewState = { status: 'browser-offline', tabs: [] };
 
+/** How soon a frame held under backpressure is offered to the stream again. */
+const FRAME_FLUSH_RETRY_MS = 120;
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const sessionId = params.sessionId ?? '';
   const preferTargetId = new URL(request.url).searchParams.get('target') ?? undefined;
@@ -81,6 +84,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       const cleanup = (): void => {
         if (closed) return;
         closed = true;
+        pendingFrame = null;
+        if (frameTimer !== null) {
+          clearTimeout(frameTimer);
+          frameTimer = null;
+        }
         detachViewer();
         dropWatcher();
         unsubscribeAgent?.();
@@ -104,10 +112,31 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
         handlers.send('action', payload);
       };
 
-      const emitFrame = (frame: BrowserViewFrame): void => {
-        // Backpressure: keep at most a couple of pending frames; drop the rest.
+      let pendingFrame: BrowserViewFrame | null = null;
+      let frameTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const flushFrame = (): void => {
+        if (closed || !pendingFrame) return;
         if (handlers.isBackpressured()) return;
+        const frame = pendingFrame;
+        pendingFrame = null;
         handlers.send('frame', frame);
+      };
+
+      const emitFrame = (frame: BrowserViewFrame): void => {
+        // Backpressure: hold the NEWEST frame instead of dropping it. A drop is
+        // only harmless while the page keeps painting; an idle tab (the normal
+        // state of a tab the agent finished with) produces exactly one frame —
+        // the seeding snapshot — so dropping it is what put the panel back on
+        // "waiting for the first frame".
+        pendingFrame = frame;
+        flushFrame();
+        if (!pendingFrame || frameTimer !== null) return;
+        frameTimer = setTimeout(() => {
+          frameTimer = null;
+          flushFrame();
+          if (pendingFrame) emitFrame(pendingFrame);
+        }, FRAME_FLUSH_RETRY_MS);
       };
 
       const tick = async (): Promise<void> => {

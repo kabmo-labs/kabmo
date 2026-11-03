@@ -107,7 +107,13 @@ export function useScreencast(active = true): UseScreencastResult {
       source.addEventListener('state', (event) => {
         try {
           const next = JSON.parse((event as MessageEvent).data) as BrowserViewState;
-          if (next.targetId !== currentTargetRef.current) setFrame(null);
+          // Do NOT clear the frame on a target change: the viewer seeds the new
+          // tab with a snapshot, and that frame can reach this handler BEFORE
+          // the state event that names the tab (measured: 26–47 ms from attach).
+          // Clearing here threw away the first picture of an idle tab, which is
+          // exactly the picture the snapshot exists to provide. A stale tab's
+          // pixels are dropped by the target check in the `frame` handler, and
+          // a non-live state below still clears.
           currentTargetRef.current = next.targetId;
           setState(next);
           if (next.status !== 'live') setFrame(null);
@@ -120,7 +126,10 @@ export function useScreencast(active = true): UseScreencastResult {
         try {
           const incoming = JSON.parse((event as MessageEvent).data) as BrowserViewFrame;
           const current = currentTargetRef.current;
+          // Adopt the frame's tab when no state has named one yet: the seed
+          // snapshot is the first thing this stream can deliver.
           if (current && incoming.targetId && incoming.targetId !== current) return;
+          if (!current && incoming.targetId) currentTargetRef.current = incoming.targetId;
           setFrame({ data: incoming.data, mimeType: incoming.mimeType });
         } catch {
           // Ignore malformed frame payloads.

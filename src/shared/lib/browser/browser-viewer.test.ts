@@ -224,11 +224,33 @@ describe('screencast viewer', () => {
   test('starts the screencast with the viewer frame params', async () => {
     const { handle, socket } = await open();
     const start = socket.frames().find((frame) => frame.method === 'Page.startScreencast');
-    // Every frame at 1 600 px was the panel's old ask; the frame rate is a real
-    // memory lever (see `SCREENCAST_PARAMS`), so it is pinned here rather than
-    // left to drift back to `everyNthFrame: 1`.
-    expect(start?.params).toEqual({ format: 'jpeg', quality: 60, maxWidth: 1280, maxHeight: 800, everyNthFrame: 2 });
+    // `everyNthFrame` MUST be 1: Chromium drops the odd frames of a burst, so
+    // 2 turned a page that painted once into a page that sent NOTHING — the
+    // "waiting for the first frame" hang. The rate limit is downstream now
+    // (`frame-gate.ts`), where it can only defer, never swallow, a lone paint.
+    expect(start?.params).toEqual({ format: 'jpeg', quality: 60, maxWidth: 1280, maxHeight: 800, everyNthFrame: 1 });
     expect(start?.sessionId).toBe('SESS-1');
+    handle.close();
+  });
+
+  test('snapshots the attached page so a static tab is not stuck on "waiting for the first frame"', async () => {
+    FakeSocket.replies.set('Page.getLayoutMetrics', {
+      cssVisualViewport: { clientWidth: 1600, clientHeight: 1000 },
+    });
+    FakeSocket.replies.set('Page.captureScreenshot', { data: 'SNAPSHOT' });
+    const { handle, socket, seen } = await open();
+    await flush(20);
+    const screenshot = socket.frames().find((frame) => frame.method === 'Page.captureScreenshot');
+    // Clipped to the frame box: captureScreenshot has no maxWidth, so `scale`
+    // is the only thing that keeps the snapshot the screencast's size.
+    expect(screenshot?.params).toEqual({
+      format: 'jpeg',
+      quality: 60,
+      clip: { x: 0, y: 0, width: 1600, height: 1000, scale: 0.8 },
+      captureBeyondViewport: false,
+    });
+    expect(screenshot?.sessionId).toBe('SESS-1');
+    expect(seen.frames).toEqual([{ data: 'SNAPSHOT', mimeType: 'image/jpeg', targetId: 'mine-2' }]);
     handle.close();
   });
 

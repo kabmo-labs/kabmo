@@ -26,30 +26,11 @@ import { CdpConnection } from '@/shared/lib/browser/cdp';
 import { acquireConnection, releaseConnection } from '@/shared/lib/browser/connection';
 import { OBSERVER_BINDING, installObserver, parseObserverPayload, type ObserverHandle } from '@/shared/lib/browser/observer';
 import { ownedPages, parsePageTargets, pickTargetId, readTargetInfoPatch, type PageTarget } from '@/shared/lib/browser/targets';
+import { SCREENCAST_PARAMS } from '@/shared/lib/browser/frame-params';
+import { createFramePipeline, type FramePipeline } from '@/shared/lib/browser/frame-pipeline';
 import { readNumber, readString } from '@/shared/lib/browser/util';
 import { isRecord } from '@/shared/lib/util/guards';
 import { BROWSER_POLL_MS } from '@/shared/lib/workspace/refresh-cadence';
-
-/**
- * What the stream asks the page for.
- *
- * `everyNthFrame: 1` (every frame) is what the panel used to request, and it is
- * the wrong default for a viewer that is watched, not sampled: a 30 fps page
- * produced 30 decodes a second, each one a full RGBA surface the renderer has to
- * allocate and free. Measured in WebKit with the canvas sink in place, 1 760
- * frames at 16 fps still cost ~8 KB of WebContent footprint per frame, so the
- * frame RATE is a real lever on top of the sink (`client/lib/browser/frame-canvas.ts`).
- * Every second frame keeps the motion readable at half the decodes, and the
- * size is the panel's own display width — 1 600 px was above every panel width
- * the app renders, so it was only ever downscaled.
- */
-const SCREENCAST_PARAMS = {
-  format: 'jpeg',
-  quality: 60,
-  maxWidth: 1280,
-  maxHeight: 800,
-  everyNthFrame: 2,
-};
 
 interface ScreencastOptions {
   /** Caller's preferred tab id; honored while it is still a live, owned page. */
@@ -102,10 +83,16 @@ class ScreencastSession {
   private unsubscribeClose: (() => void) | null = null;
   private ticking = false;
   private _closed = false;
+  private readonly frames: FramePipeline;
 
   constructor(conn: CdpConnection, opts: ScreencastOptions) {
     this.conn = conn;
     this.opts = opts;
+    this.frames = createFramePipeline(
+      conn,
+      () => (this.currentSessionId && this.currentTargetId ? { sessionId: this.currentSessionId, targetId: this.currentTargetId } : null),
+      (frame) => this.emitFrame(frame),
+    );
   }
 
   get closed(): boolean {
@@ -148,6 +135,7 @@ class ScreencastSession {
       this.targets = targets;
       const nextTargetId = pickTargetId(targets, ownedIds, this.opts.preferTargetId);
       if (nextTargetId !== this.currentTargetId) await this.switchTarget(nextTargetId);
+      else this.frames.seed();
       this.emitCurrent();
     } catch {
       this.fail();
@@ -168,12 +156,31 @@ class ScreencastSession {
     if (!sessionId) throw new Error('CDP attachToTarget returned no session id');
     this.currentTargetId = nextTargetId;
     this.currentSessionId = sessionId;
+    this.frames.reset();
     this.observer = await installObserver(this.conn, sessionId).catch(() => null);
     try {
+      // Page.loadEventFired is only delivered once the domain is enabled; the
+      // observer enables it too, but that install is best-effort and must not
+      // be what the snapshot depends on.
+      await this.conn.send('Page.enable', {}, sessionId).catch(() => {});
       await this.conn.send('Page.startScreencast', SCREENCAST_PARAMS, sessionId);
     } catch (error) {
       await this.detach();
       throw error;
+    }
+    // The page has nothing to redraw right now — it may never push a frame
+    // until the agent touches it — so take a snapshot instead of spinning on
+    // "waiting for the first frame" (`frame-pipeline.ts` measures why).
+    this.frames.seed();
+  }
+
+  /** What actually crosses to the SSE stream. */
+  private emitFrame(frame: BrowserViewFrame): void {
+    if (this._closed) return;
+    try {
+      this.opts.onFrame(frame);
+    } catch {
+      // Subscriber bugs (SSE encode failure) must not break frame acking.
     }
   }
 
@@ -204,6 +211,10 @@ class ScreencastSession {
       this.handleFrameNavigated(params, sessionId);
       return;
     }
+    if (method === 'Page.loadEventFired') {
+      this.handleLoadEvent(sessionId);
+      return;
+    }
     if (method === 'Target.targetInfoChanged') {
       const patch = readTargetInfoPatch(params);
       if (!patch) return;
@@ -231,6 +242,18 @@ class ScreencastSession {
     this.emitAction({ kind: 'loaded', label: `Halaman dimuat: ${shortUrl(url)}` });
   }
 
+  /**
+   * A load settled: the page is idle now and may push nothing until the agent
+   * touches it, so take the picture. `Page.loadEventFired` is the signal a
+   * viewer session actually receives — measured on Chromium 1248, a
+   * background navigation delivers it (plus `domContentEventFired`) even
+   * though the screencast stays silent, and a 1.2s wait is enough.
+   */
+  private handleLoadEvent(sessionId?: string): void {
+    if (!sessionId || sessionId !== this.currentSessionId) return;
+    this.frames.seedAfterLoad();
+  }
+
   private emitAction(action: BrowserActionDraft): void {
     try {
       this.opts.onAction?.(action);
@@ -253,11 +276,7 @@ class ScreencastSession {
       mimeType: 'image/jpeg',
       targetId: this.currentTargetId ?? '',
     };
-    try {
-      this.opts.onFrame(frame);
-    } catch {
-      // Subscriber bugs (SSE encode failure) must not break frame acking.
-    }
+    this.frames.pushLive(frame);
   }
 
   private emitCurrent(): void {
