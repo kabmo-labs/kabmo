@@ -40,4 +40,15 @@ describe('agentFileBaseName', () => {
     expect(agentFileBaseName('C:/agents/helper.MD')).toBe('helper');
     expect(agentFileBaseName('plain')).toBe('plain');
   });
+
+  test('strips a BACKSLASH path, which is what a Windows host reports', () => {
+    // The pane sends this value straight back as `fileName` on the next rename
+    // or delete, so returning the whole path made every write land at a path
+    // named after itself and no delete find its file — measured on the Windows
+    // gate, where the list answered
+    // `fileName: "C:\Users\RUNNER~1\AppData\Local\Temp\…\agents\reviewer"`
+    // and three cases failed.
+    expect(agentFileBaseName('C:\\Users\\u\\.omp\\agent\\agents\\reviewer.md')).toBe('reviewer');
+    expect(agentFileBaseName('D:\\agents\\helper.MD')).toBe('helper');
+  });
 });

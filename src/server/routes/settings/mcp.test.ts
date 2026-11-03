@@ -23,7 +23,7 @@ import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getDb } from '@/server/db.server';
+import { closeDb } from '@/server/db.server';
 import { action as mcpAction, loader as mcpLoader } from '@/server/routes/settings/mcp';
 import type { McpServerItem } from '@/shared/types';
 import { removeDir } from '@/test-support/remove-dir';
@@ -33,20 +33,24 @@ const AGENT_DIR = path.join(ROOT, 'agent');
 const MCP_JSON = path.join(AGENT_DIR, 'mcp.json');
 const API = 'http://localhost/api/settings';
 
-beforeEach(() => {
+beforeEach(async () => {
+  // CLOSE the handle before removing its directory, never drop the slot.
+  // `globalThis.__kabmoDb = undefined` leaves an open `bun:sqlite` connection
+  // holding `db.sqlite`, and `removeDir` then spins its full 5s retry window
+  // before throwing — which is what made every case in this file fail as
+  // "a beforeEach/afterEach hook timed out for this test" on Windows, where the
+  // lock is real rather than advisory.
+  await closeDb();
   removeDir(ROOT);
   fs.mkdirSync(AGENT_DIR, { recursive: true });
   Bun.env.PI_CODING_AGENT_DIR = AGENT_DIR;
   Bun.env.KABMO_DB_PATH = path.join(ROOT, 'db.sqlite');
   Bun.env.SYNC_WORKSPACE = 'false';
   delete Bun.env.MOCK;
-  globalThis.__kabmoDb = undefined;
 });
 
 afterAll(async () => {
-  await getDb();
-  globalThis.__kabmoDb?.resolved?.raw.close();
-  globalThis.__kabmoDb = undefined;
+  await closeDb();
   delete Bun.env.PI_CODING_AGENT_DIR;
   delete Bun.env.KABMO_DB_PATH;
   delete Bun.env.SYNC_WORKSPACE;

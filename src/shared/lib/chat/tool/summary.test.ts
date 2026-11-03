@@ -6,14 +6,12 @@
 /**
  * The collapsed card's one line.
  *
- * What this pins is the whole point of the feature: a closed card must state
- * what the call DID, from the data omp actually sends. The fixtures below are
- * verbatim `details` shapes measured off real toolResults (bash carries
- * `wallTimeMs` on 97% of results and `exitCode` on only 2%, `edit` carries the
- * excerpt diff on 99%, `grep` carries `matchCount` on 100%) — so the "no chip"
- * cases are as load-bearing as the populated ones, because a fabricated
- * `exit 0` on the 98% of bash results that report no code is the failure this
- * guards against.
+ * A closed card must state what the call DID, from the data omp actually sends.
+ * The fixtures are verbatim `details` shapes measured off real toolResults
+ * (bash carries `wallTimeMs` on 97% of results and `exitCode` on only 2%,
+ * `edit` the excerpt diff on 99%, `grep` `matchCount` on 100%) — so the "no
+ * chip" cases are as load-bearing as the populated ones: a fabricated `exit 0`
+ * on the 98% of bash results that report no code is the failure this guards.
  *
  * Pure function, no mounting.
  */

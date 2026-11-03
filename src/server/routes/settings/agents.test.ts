@@ -18,7 +18,7 @@
  *   - MOCK serves the demo presets and refuses to touch disk.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -30,9 +30,17 @@ const ROOT = path.join(os.tmpdir(), 'omc-settings-agents-route-test');
 const API = 'http://localhost/api/settings';
 const ORIGINAL_AGENT_DIR = Bun.env.PI_CODING_AGENT_DIR;
 
-beforeAll(() => {
+/**
+ * A CLEAN agent dir per case, not one shared by the file.
+ *
+ * The cases assert on what a write left behind (`toEqual(['helper-2.md'])`), so
+ * a file a previous case created is a failure that names the wrong thing: a
+ * delete refused for a full-path `fileName` left `reviewer.md` behind and the
+ * rename case then failed on the leftover rather than on its own behaviour.
+ */
+beforeEach(() => {
   removeDir(ROOT);
-  fs.mkdirSync(path.join(ROOT, 'agent'), { recursive: true });
+  fs.mkdirSync(path.join(ROOT, 'agent', 'agents'), { recursive: true });
   Bun.env.PI_CODING_AGENT_DIR = path.join(ROOT, 'agent');
   delete Bun.env.MOCK;
 });
