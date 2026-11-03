@@ -4,6 +4,47 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.18.0](https://github.com/kabmo-labs/kabmo/compare/v0.17.0...v0.18.0) — 2026-11-03
+
+### Added
+
+* **about:** open each product's running-release notes from its version line ([57baed5](https://github.com/kabmo-labs/kabmo/commit/57baed56d10d5a176037baca260df732648b673c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **agents:** edit omp's own definition files, with omp's own keys ([5348f35](https://github.com/kabmo-labs/kabmo/commit/5348f35f3f3a476d5287a2a62152d1c7ee35ff2a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **browser:** annotate the user browser panel and send the marks to chat ([8b2dbcf](https://github.com/kabmo-labs/kabmo/commit/8b2dbcf04246e639aff72b4a6775c24160cc881f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **browser:** close the agent's tabs from the browser panel ([67bb753](https://github.com/kabmo-labs/kabmo/commit/67bb753fca64b1c01ada80a7d938d771c9a5ac5c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **browser:** name an annotation's region and read its element when the page allows ([5fcbfcb](https://github.com/kabmo-labs/kabmo/commit/5fcbfcbc0b93188e0ccecf85e4bd4e410e075daf)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **editor:** review a rendered markdown document block by block ([9a6b8f5](https://github.com/kabmo-labs/kabmo/commit/9a6b8f5e299ab92326b0feefcdb7cec4c7e5c0d1)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** name what a config row's draft cannot be parsed as ([deed9a2](https://github.com/kabmo-labs/kabmo/commit/deed9a29cc367bc2f95ccb9b7f58a5cf20545aeb)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** rebuild the OMP Engine panel's controls around what omp reports ([4f27635](https://github.com/kabmo-labs/kabmo/commit/4f276351f967cfae20bb1f248e15ef5cf5ccd906)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tools:** add tui tool-render style, coloured terminal text without a card ([a77421c](https://github.com/kabmo-labs/kabmo/commit/a77421cceb78ad26947397fad885784222867c65)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **tools:** state omp 18.16.0's minimized bash output and bump the pin ([78dec3b](https://github.com/kabmo-labs/kabmo/commit/78dec3b231195bfef8c252f55d9ddffd8a8dbf36)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **usage:** index token usage on disk and report it per provider ([ba4c31a](https://github.com/kabmo-labs/kabmo/commit/ba4c31a6d3593df152ad66217687573b913556c4)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **omp:** drop MCP from the shared utility child ([902b20d](https://github.com/kabmo-labs/kabmo/commit/902b20d8c65a604df47ed647f51f8703ea7b7ade)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** coalesce PTY reads into bounded frames ([f053d0c](https://github.com/kabmo-labs/kabmo/commit/f053d0c2c335eab5a243e05d24993e574c59ceee)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **agents:** read a Windows path, and stop the settings suites leaking ([43d1379](https://github.com/kabmo-labs/kabmo/commit/43d1379fb32ccd4b58fad73cfe60df3fcfd474ae)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **behavior:** scroll the line numbers with the text and report a refused copy ([1f9467d](https://github.com/kabmo-labs/kabmo/commit/1f9467d7444a610559feff33fd3244026d71b2e5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **browser:** seed the agent panel's first frame instead of waiting for one ([8a2aeb9](https://github.com/kabmo-labs/kabmo/commit/8a2aeb96b08b868f2e8a823f9ef4ef7590fefd4a)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **chat:** keep the landing draft in memory instead of the fallback session ([1c7d11e](https://github.com/kabmo-labs/kabmo/commit/1c7d11e322389897fb67f97ea341fe426f883df5)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **diff:** count changes from the merge view's own chunks ([b43f9fe](https://github.com/kabmo-labs/kabmo/commit/b43f9fe9c7432f19a9eb8dc69b644ba549c21cba)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **mcp:** answer with the server list instead of an empty object ([ed9ce86](https://github.com/kabmo-labs/kabmo/commit/ed9ce864246ea786e6c1e11cf17ae97e51a6a01e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** re-enable an extension instead of answering nothing to do ([9200671](https://github.com/kabmo-labs/kabmo/commit/920067156e504a992435f398315827fae2c2d7d3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **omp:** send every command as one frame so image prompts reach the model ([718f867](https://github.com/kabmo-labs/kabmo/commit/718f867b669aad10cebb8fc6f29fbc82480c6a2f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **read:** render XML section wrappers in omp docs as headings ([29fe534](https://github.com/kabmo-labs/kabmo/commit/29fe5347ef5e650eb8afec44660a788a026bb104)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **router:** follow the live window, and stop the suites leaking globals ([33c7042](https://github.com/kabmo-labs/kabmo/commit/33c7042b0f9af8cca3eff34a9325feb4fb8cabc2)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** make the Agents, Commands, MCP and Skills panes report their writes ([e745b36](https://github.com/kabmo-labs/kabmo/commit/e745b36b49b767f883ea562814b54b023aeee536)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **settings:** report every write's real outcome instead of assuming success ([9a0a5f8](https://github.com/kabmo-labs/kabmo/commit/9a0a5f80678eba5eb3df8446b14e388823784aab)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** drop a duplicate applyLoading, and wait for the page instead of a timer ([01dd09e](https://github.com/kabmo-labs/kabmo/commit/01dd09e38764d5c4739fa8ceae92ac94e4fdd249)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** keep a subframe navigation inside the user browser panel ([a536244](https://github.com/kabmo-labs/kabmo/commit/a5362445b74506a99eaff1bbb2d318959ae62614)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **shells:** stop the phone shells crashing and signing out on a server switch ([ddd3220](https://github.com/kabmo-labs/kabmo/commit/ddd3220ec055c711a446d843088738955fa72438)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** portal the folder and server menus so no sticky row can cover them ([92067ef](https://github.com/kabmo-labs/kabmo/commit/92067efb23bc26d05bb3c8f34ce2aed78c1fcb52)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **terminal:** treat a backpressured send as delivered ([7fd4a3c](https://github.com/kabmo-labs/kabmo/commit/7fd4a3c1bd342dc9ab36cf55d51cd19e21abf021)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.17.0](https://github.com/kabmo-labs/kabmo/compare/v0.16.0...v0.17.0) — 2026-11-02
 
 ### Added
