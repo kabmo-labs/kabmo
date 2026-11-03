@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { ArrowLeft, ArrowRight, Globe, RefreshCw } from 'lucide-preact';
 import { BrowserToolbar } from '@/client/components/workspace/browser-toolbar/index';
+import type { BrowserToolbarAnnotate } from '@/client/components/workspace/browser-toolbar/index';
 import type { ViewportMode } from '@/shared/types';
 
 interface UserBrowserAddressBarProps {
@@ -24,6 +25,8 @@ interface UserBrowserAddressBarProps {
   onZoomOut: () => void;
   onResetZoom: () => void;
   onSetZoom: (zoom: number) => void;
+  /** Annotation toggle — this panel is the only one that offers it. */
+  annotate?: BrowserToolbarAnnotate;
 }
 
 type UserBrowserPhase = 'idle' | 'loading' | 'ready';
@@ -59,6 +62,7 @@ export function UserBrowserAddressBar({
   onZoomOut,
   onResetZoom,
   onSetZoom,
+  annotate,
 }: UserBrowserAddressBarProps) {
   const followedRef = useRef<string | undefined>(undefined);
 
@@ -99,6 +103,7 @@ export function UserBrowserAddressBar({
       onZoomOut={onZoomOut}
       onResetZoom={onResetZoom}
       onSetZoom={onSetZoom}
+      annotate={annotate}
       onIncludeInChat={onIncludeInChat}
       onOpenExternal={onOpenExternal}
       openExternalLabel="Buka di tab baru"

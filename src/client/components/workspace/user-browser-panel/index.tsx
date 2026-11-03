@@ -1,10 +1,13 @@
-import { useCallback } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { UserBrowserAddressBar } from '@/client/components/workspace/user-browser-panel/AddressBar';
 import { UserBrowserFrame } from '@/client/components/workspace/user-browser-panel/Frame';
+import { AnnotateBar } from '@/client/components/workspace/user-browser-panel/AnnotateBar';
+import { AnnotateLayer } from '@/client/components/workspace/user-browser-panel/AnnotateLayer';
 import { useUserBrowser } from '@/client/hooks/browser/use-user-browser';
+import { useAnnotate } from '@/client/hooks/browser/use-annotate';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { emitBrowserPageContext } from '@/shared/lib/browser/page-context';
-import type { ViewportMode } from '@/shared/types';
+import type { AnnotateShape, ViewportMode } from '@/shared/types';
 
 interface UserBrowserPanelProps {
   className?: string;
@@ -19,10 +22,14 @@ interface UserBrowserPanelProps {
  * It is private to the user — the omp agent has no handle to this frame. Sites
  * that forbid embedding (Google, GitHub) show an empty frame; the toolbar's
  * open-in-new-tab action is the escape hatch for those.
+ *
+ * Annotating it therefore hands the agent GEOMETRY, not a picture: the page is
+ * cross-origin, so nothing here can read or paint it (see `shared/lib/browser/annotate.ts`).
  */
 export function UserBrowserPanel({ className = '', active = true }: UserBrowserPanelProps) {
   const [viewportMode, setViewportMode] = useSessionState<ViewportMode>('userBrowser.viewportMode', 'responsive');
   const [zoomLevel, setZoomLevel] = useSessionState<number>('userBrowser.zoomLevel', 100);
+  const [panelSize, setPanelSize] = useState<{ width: number; height: number } | null>(null);
   const {
     url,
     input,
@@ -38,6 +45,7 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
     reload,
     markLoaded,
   } = useUserBrowser();
+  const annotate = useAnnotate(frameKey);
 
   const handleOpenExternal = useCallback(() => {
     if (!url) return;
@@ -48,6 +56,35 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
     if (!url) return;
     emitBrowserPageContext({ url });
   }, [url]);
+
+  const handleMeasure = useCallback((size: { width: number; height: number }) => {
+    setPanelSize((prev) => (prev && prev.width === size.width && prev.height === size.height ? prev : size));
+  }, []);
+
+  const handleAddShape = useCallback((shape: AnnotateShape) => {
+    annotate.add(shape);
+  }, [annotate]);
+
+  // The marks travel with the panel box they were normalized against: `12%` of
+  // a laptop and `12%` of a phone are different places, and CSS zoom is undone
+  // here so the agent receives the page's own size rather than the display's.
+  const handleSendAnnotations = useCallback(() => {
+    if (!url || annotate.shapes.length === 0) return;
+    const scale = zoomLevel / 100;
+    emitBrowserPageContext({
+      url,
+      annotations: annotate.shapes,
+      panel: {
+        width: (panelSize?.width ?? 0) / scale,
+        height: (panelSize?.height ?? 0) / scale,
+        viewportMode,
+        zoom: zoomLevel,
+      },
+    });
+    annotate.close();
+  }, [url, annotate, panelSize, viewportMode, zoomLevel]);
+
+  const annotateActive = annotate.active && Boolean(url);
 
   return (
     <div className={`flex flex-col h-full w-full bg-paper text-ink overflow-hidden ${className}`}>
@@ -72,7 +109,25 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
         onZoomOut={() => setZoomLevel((prev) => Math.max(50, prev - 10))}
         onResetZoom={() => setZoomLevel(100)}
         onSetZoom={setZoomLevel}
+        annotate={{
+          active: annotateActive,
+          count: annotate.shapes.length,
+          onToggle: annotate.toggle,
+        }}
       />
+      {annotateActive && (
+        <AnnotateBar
+          tool={annotate.tool}
+          shapes={annotate.shapes}
+          selectedId={annotate.selectedId}
+          onTool={annotate.setTool}
+          onNote={annotate.setNote}
+          onRemove={annotate.remove}
+          onReset={annotate.reset}
+          onCancel={annotate.close}
+          onSend={handleSendAnnotations}
+        />
+      )}
       <UserBrowserFrame
         url={url}
         frameKey={frameKey}
@@ -81,6 +136,16 @@ export function UserBrowserPanel({ className = '', active = true }: UserBrowserP
         zoomLevel={zoomLevel}
         onLoad={markLoaded}
         active={active}
+        overlay={annotateActive ? (
+          <AnnotateLayer
+            shapes={annotate.shapes}
+            tool={annotate.tool}
+            selectedId={annotate.selectedId}
+            onMeasure={handleMeasure}
+            onAdd={handleAddShape}
+            onSelect={annotate.select}
+          />
+        ) : null}
       />
     </div>
   );

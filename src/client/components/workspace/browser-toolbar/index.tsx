@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { Check, Copy, ExternalLink, MessageSquarePlus } from 'lucide-preact';
+import { Check, Copy, ExternalLink, MessageSquarePlus, SquarePen } from 'lucide-preact';
 import { BrowserViewportSelector } from '@/client/components/common/ViewportSelector';
 import { ZoomControls } from '@/client/components/workspace/browser-toolbar/ZoomControls';
 import type { ComponentChildren } from 'preact';
@@ -7,6 +7,13 @@ import type { ViewportMode } from '@/shared/types';
 
 export const ICON_BUTTON =
   'p-1.5 rounded hover:bg-ink/5 disabled:opacity-25 disabled:hover:bg-transparent text-ink/70 hover:text-ink transition-colors cursor-pointer disabled:cursor-not-allowed';
+
+/** The user panel's annotation toggle; the agent panel never supplies it. */
+export interface BrowserToolbarAnnotate {
+  active: boolean;
+  count: number;
+  onToggle: () => void;
+}
 
 export interface BrowserToolbarProps {
   url: string;
@@ -29,6 +36,13 @@ export interface BrowserToolbarProps {
   viewportMode?: ViewportMode;
   onChangeViewport?: (mode: ViewportMode) => void;
   onSetZoom?: (zoom: number) => void;
+  /**
+   * Annotation mode, rendered only when supplied. The USER panel passes it: its
+   * marks are normalized against a measured iframe box. The AGENT panel does
+   * not — its surface is the agent's own live view, so the user annotates the
+   * page by asking the agent instead of drawing on a JPEG.
+   */
+  annotate?: BrowserToolbarAnnotate;
   /** Shown after the include/copy buttons — the agent panel's reconnect button. */
   trailingControls?: ComponentChildren;
   /** Open-external button label/title, differing between the two panels. */
@@ -57,6 +71,7 @@ export function BrowserToolbar({
   onZoomOut,
   onResetZoom,
   onSetZoom,
+  annotate,
   onIncludeInChat,
   onOpenExternal,
   trailingControls,
@@ -120,6 +135,31 @@ export function BrowserToolbar({
         >
           {included ? <Check size={14} className="text-success" /> : <MessageSquarePlus size={14} />}
         </button>
+
+        {annotate && (
+          <button
+            type="button"
+            onClick={annotate.onToggle}
+            disabled={!url}
+            aria-label="Mode anotasi halaman"
+            aria-pressed={annotate.active}
+            title={
+              annotate.active
+                ? 'Tutup mode anotasi'
+                : annotate.count > 0
+                  ? `Anotasi (${annotate.count}) — buka lagi`
+                  : 'Tandai bagian halaman lalu kirim ke chat'
+            }
+            className={`${ICON_BUTTON} relative ${annotate.active ? 'bg-ink/10 text-ink' : ''}`}
+          >
+            <SquarePen size={14} />
+            {annotate.count > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] px-0.5 rounded-full bg-error text-paper text-[9px] leading-[13px] font-mono text-center">
+                {annotate.count}
+              </span>
+            )}
+          </button>
+        )}
 
         <button
           type="button"

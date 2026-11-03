@@ -1,5 +1,6 @@
 import { Globe, Loader2 } from 'lucide-preact';
 import { VIEWPORT_CLASSES } from '@/client/components/common/viewport';
+import type { ComponentChildren } from 'preact';
 import type { ViewportMode } from '@/shared/types';
 
 interface UserBrowserFrameProps {
@@ -12,6 +13,8 @@ interface UserBrowserFrameProps {
   /** False while the panel is hidden: no iframe is mounted, so a background
    *  page cannot keep loading scripts or animating behind the panel. */
   active?: boolean;
+  /** The annotation surface, rendered over the page while the mode is on. */
+  overlay?: ComponentChildren;
 }
 
 const ALLOW = 'clipboard-read; clipboard-write; fullscreen';
@@ -20,8 +23,21 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen';
  * The user's browsing surface: a plain iframe. Interaction (scroll, click,
  * typing, cookies, logins) is the browser's own, so this costs nothing to keep
  * mounted. Cross-origin pages cannot read this app, and vice versa.
+ *
+ * The annotation overlay is a child of the wrapper that carries the zoom and
+ * the viewport preset, so `inset: 0` covers the page exactly at every scale —
+ * measured in Chromium at 150%: iframe 900×450, overlay 900×450.
  */
-export function UserBrowserFrame({ url, frameKey, loading, viewportMode, zoomLevel, onLoad, active = true }: UserBrowserFrameProps) {
+export function UserBrowserFrame({
+  url,
+  frameKey,
+  loading,
+  viewportMode,
+  zoomLevel,
+  onLoad,
+  active = true,
+  overlay,
+}: UserBrowserFrameProps) {
   if (!active) return null;
   if (!url) {
     return (
@@ -65,7 +81,12 @@ export function UserBrowserFrame({ url, frameKey, loading, viewportMode, zoomLev
           referrerPolicy="no-referrer"
           allow={ALLOW}
           className="w-full h-full bg-white border-0"
+          // While annotating, the page must not receive a drag: the overlay owns
+          // every pointer event, and a click reaching the page would navigate the
+          // user away from the thing they were marking.
+          style={overlay ? { pointerEvents: 'none' } : undefined}
         />
+        {overlay}
       </div>
     </div>
   );

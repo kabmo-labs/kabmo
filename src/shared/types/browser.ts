@@ -51,8 +51,54 @@ export interface BrowserPanelAction {
   label: string;
 }
 
+/**
+ * How the user marked a spot on the user-browser panel.
+ *
+ * The panel is a cross-origin iframe, so a mark can never carry PIXELS: the
+ * page inside is unreadable to this origin (`contentDocument` is null,
+ * `drawImage(iframe)` throws, and a capture would show the user's whole
+ * screen). What travels is geometry plus words — the exact region, and what
+ * the user says is wrong there.
+ */
+export type AnnotateTool = 'box' | 'pin' | 'arrow';
+
+/** One point, normalized to the measured panel: 0..1 on both axes. */
+export interface AnnotatePoint {
+  x: number;
+  y: number;
+}
+
+/** One numbered mark. `box`/`arrow` use both points; `pin` uses `start`. */
+export interface AnnotateShape {
+  id: string;
+  tool: AnnotateTool;
+  start: AnnotatePoint;
+  end: AnnotatePoint;
+  /** What the user says about this region; empty while they are still drawing. */
+  note: string;
+}
+
+/**
+ * The panel box the marks were drawn on, in CSS px.
+ *
+ * Percentages alone are not enough: `12% of a 1024px panel` and `12% of a
+ * 375px panel` are different places, and the agent has to know which page
+ * shape the user was looking at to reproduce the view.
+ */
+export interface AnnotatePanelSize {
+  width: number;
+  height: number;
+  viewportMode: string;
+  /** CSS zoom the panel was showing at (100 = none). */
+  zoom: number;
+}
+
 /** Page context handed from a browser panel to the chat composer draft. */
 export interface BrowserPageContext {
   url: string;
   title?: string;
+  /** The marks the user made, in draw order. Absent when they only shared a page. */
+  annotations?: AnnotateShape[];
+  /** The box those marks were normalized against. Present whenever `annotations` is. */
+  panel?: AnnotatePanelSize;
 }
