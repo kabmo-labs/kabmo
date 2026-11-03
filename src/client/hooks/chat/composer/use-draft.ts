@@ -11,8 +11,20 @@
  * and the browser-panel insert appends to the text beside the attachments that
  * arrived with it. Extracted from the timeline hook, which is at the repo's
  * per-file ceiling.
+ *
+ * A LANDING draft (no `?sessionId=` in the URL) is memory-only.
+ *
+ * The landing mounts `SessionStateProvider` on its fallback id (`'1'`), which
+ * is not a chat: the composer there is disabled until a workspace is picked, so
+ * nothing the user does can send or clear it. Persisting under that id made the
+ * slot permanent — measured: a browser-panel annotation appended once at the
+ * landing was still sitting in the composer on every later launch, looking like
+ * text a new chat had inherited. A draft belongs to the chat named in the URL;
+ * with no chat named, it is kept for this page session only.
  */
 
+import { useState } from 'preact/hooks';
+import { useSearchParams } from '@/client/lib/router/search-params';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { useBrowserPageContextInsert } from '@/client/hooks/chat/composer/browser-context';
 import { useReviewIncludeInsert } from '@/client/hooks/chat/composer/review-context';
@@ -27,9 +39,24 @@ export interface ComposerDraftState {
 }
 
 export function useComposerDraft(): ComposerDraftState {
-  const [inputValue, setInputValue] = useSessionState<string>(CHAT_DRAFT_KEY, '');
+  const [searchParams] = useSearchParams();
+  const scoped = Boolean(searchParams.get('sessionId'));
+
+  // Both branches are mounted unconditionally (hook order) and the scope only
+  // picks which one this render OBSERVES: the session copy keeps following the
+  // store, and the landing copy keeps whatever was typed at the landing, so
+  // stepping into a chat and back does not destroy either.
+  const [storedText, setStoredText] = useSessionState<string>(CHAT_DRAFT_KEY, '');
+  const [storedAttachments, setStoredAttachments] = useSessionState<Attachment[]>(CHAT_DRAFT_ATTACHMENTS_KEY, []);
+  const [landingText, setLandingText] = useState('');
+  const [landingAttachments, setLandingAttachments] = useState<Attachment[]>([]);
+
+  const inputValue = scoped ? storedText : landingText;
+  const setInputValue = scoped ? setStoredText : setLandingText;
   useBrowserPageContextInsert(setInputValue);
   useReviewIncludeInsert(setInputValue);
-  const [inputAttachments, setInputAttachments] = useSessionState<Attachment[]>(CHAT_DRAFT_ATTACHMENTS_KEY, []);
+
+  const inputAttachments = scoped ? storedAttachments : landingAttachments;
+  const setInputAttachments = scoped ? setStoredAttachments : setLandingAttachments;
   return { inputValue, setInputValue, inputAttachments, setInputAttachments };
 }
