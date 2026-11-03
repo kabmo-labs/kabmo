@@ -22,6 +22,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { useCrudList, type CrudListConfig, type CrudListController } from '@/client/hooks/settings/crud-list';
+import type { WriteOutcome } from '@/shared/types';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 /** The runner's own globals, restored on teardown so later files still have them. */
@@ -198,19 +199,40 @@ describe('useCrudList save', () => {
     expect(controller?.items.map((row) => row.id)).toEqual(['z']);
   });
 
-  test('isSaveError aborts without touching the list', async () => {
-    config = baseConfig({
-      isSaveError: (data) => typeof data === 'object' && data !== null && 'error' in data && data.error === 'nope',
-    });
-    respond = (_url, init) => ((init?.method ?? 'GET') === 'GET' ? json({ things: [{ id: 'a' }] }) : json({ error: 'nope' }));
+  test('a refusal returns its sentence and touches nothing', async () => {
+    // The panes report `outcome.error`; a swallowed refusal used to paint
+    // "Saved successfully" over a row the server had rejected.
+    config = baseConfig();
+    respond = (_url, init) => ((init?.method ?? 'GET') === 'GET'
+      ? json({ things: [{ id: 'a' }] })
+      : json({ error: 'A saved thing needs a name' }, 400));
     await mount(h(CrudProbe, {}));
     await flush(() => controller?.startCreate());
-    await flush(() => controller?.save({ id: 'b' }));
+    const outcomes: WriteOutcome[] = [];
+    await flush(() => { void controller?.save({ id: 'b' }).then((result) => outcomes.push(result)); });
+    expect(outcomes[0]).toEqual({ ok: false, error: 'A saved thing needs a name' });
     expect(controller?.items.map((row) => row.id)).toEqual(['a']);
     // The refusal returns before any of the success bookkeeping, so the create
     // draft is still open for the user to retry or abandon.
     expect(controller?.isCreatingNew).toBe(true);
     expect(controller?.selectedId).toBeNull();
+  });
+
+  test('a write that lands reports ok', async () => {
+    config = baseConfig();
+    await mount(h(CrudProbe, {}));
+    await flush(() => controller?.select('a'));
+    const outcomes: WriteOutcome[] = [];
+    await flush(() => { void controller?.save({ id: 'a', name: 'renamed' }).then((result) => outcomes.push(result)); });
+    expect(outcomes[0]).toEqual({ ok: true });
+  });
+
+  test('a failed list read is reported instead of reading as an empty list', async () => {
+    config = baseConfig();
+    respond = () => json({ error: 'the agent directory is unreadable' }, 500);
+    await mount(h(CrudProbe, {}));
+    expect(controller?.loadError).toBe('the agent directory is unreadable');
+    expect(controller?.items).toEqual([]);
   });
 
   test('serverListOnly never upserts optimistically', async () => {

@@ -18,6 +18,7 @@ export * from '@/shared/types/settings/mcp';
 export * from '@/shared/types/settings/usage';
 export * from '@/shared/types/settings/skill';
 export * from '@/shared/types/settings/plugin';
+export * from '@/shared/types/settings/write';
 export * from '@/shared/types/context';
 export * from '@/shared/types/omp/session';
 export * from '@/shared/types/omp/agent';

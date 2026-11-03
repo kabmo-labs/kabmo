@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
 import { invalidateComposerCache } from '@/shared/lib/chat/composer/client';
+import type { WriteOutcome } from '@/shared/types';
 
 export interface CrudListMessages {
   load: string;
@@ -42,10 +43,6 @@ export interface CrudListConfig<T extends { id: string }, D = T> {
   deleteFromResponse?: boolean;
   /** When false, `selected` is undefined if no id matches. Defaults true. */
   fallbackToFirst?: boolean;
-  /** Return true to abort save on a payload error (log inside the callback). */
-  isSaveError?: (data: unknown) => boolean;
-  /** Return true to abort delete on a payload error (log inside the callback). */
-  isDeleteError?: (data: unknown) => boolean;
 }
 
 export interface CrudListController<T extends { id: string }, D = T> {
@@ -54,10 +51,15 @@ export interface CrudListController<T extends { id: string }, D = T> {
   selected: T | undefined;
   isCreatingNew: boolean;
   isLoading: boolean;
+  /** Why the list could not be read, or null. A failed read is never an empty list. */
+  loadError: string | null;
+  /** Re-run the list read (after a save that the server answered differently). */
+  reload: () => void;
   select: (id: string) => void;
   startCreate: () => void;
-  save: (draft: D) => void;
-  remove: (id: string) => void;
+  /** Resolves with the server's answer; the caller reports it. */
+  save: (draft: D) => Promise<WriteOutcome>;
+  remove: (id: string) => Promise<WriteOutcome>;
 }
 
 function defaultReadList<T>(listKey: string) {
@@ -65,6 +67,13 @@ function defaultReadList<T>(listKey: string) {
     const value = (data as Record<string, unknown> | null | undefined)?.[listKey];
     return Array.isArray(value) ? (value as T[]) : null;
   };
+}
+
+/** The refusal sentence a payload carries, when it carries one. */
+function payloadError(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null || !('error' in data)) return null;
+  const error = data.error;
+  return typeof error === 'string' && error.trim() ? error : null;
 }
 
 /** Shared load/save/delete + selection controller for the settings CRUD screens. */
@@ -76,34 +85,50 @@ export function useCrudList<T extends { id: string }, D = T>(
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadNonce, setLoadNonce] = useState(0);
 
   const readList = config.readList ?? defaultReadList<T>(listKey);
 
   useEffect(() => {
     let active = true;
+    setIsLoading(true);
     fetch(`${endpoint}${query ?? ''}`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data: unknown = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(payloadError(data) ?? `GET ${endpoint} answered ${res.status}`);
+        return data;
+      })
       .then((data) => {
         if (!active) return;
         const list = readList(data) ?? [];
         setItems(list);
+        setLoadError(null);
         setSelectedId((prev) =>
           config.resolveOnLoad ? config.resolveOnLoad(prev, list) : list.length > 0 ? list[0].id : null,
         );
       })
-      .catch((err) => console.error(messages.load, err))
+      .catch((err) => {
+        if (!active) return;
+        // Reported, never swallowed into an empty list: "no agents" and "the
+        // read failed" are different facts and the panel says which it is.
+        console.error(messages.load, err);
+        setLoadError(err instanceof Error ? err.message : String(err));
+      })
       .finally(() => {
         if (active) setIsLoading(false);
       });
     return () => {
       active = false;
     };
-  }, [endpoint, query]);
+  }, [endpoint, query, loadNonce]);
 
   const selected =
     config.fallbackToFirst === false
       ? items.find((item) => item.id === selectedId)
       : items.find((item) => item.id === selectedId) ?? items[0];
+
+  const reload = useCallback(() => setLoadNonce((n) => n + 1), []);
 
   const select = (id: string) => {
     setIsCreatingNew(false);
@@ -115,62 +140,74 @@ export function useCrudList<T extends { id: string }, D = T>(
     setSelectedId(null);
   };
 
-  const save = (draft: D) => {
+  const save = async (draft: D): Promise<WriteOutcome> => {
     const target = isCreatingNew
       ? config.buildNew(draft)
       : config.buildUpdate(draft, selected, selectedId);
     const body = config.buildBody ? config.buildBody(target) : { [config.bodyKey]: target };
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (config.isSaveError?.(data)) return;
-        const list = readList(data);
-        if (list) {
-          setItems(list);
-        } else if (!config.serverListOnly) {
-          setItems((prev) => {
-            const exists = prev.some((item) => item.id === target.id);
-            return exists
-              ? prev.map((item) => (item.id === target.id ? target : item))
-              : [...prev, target];
-          });
-        }
-        const nextId = config.resolveOnSave ? config.resolveOnSave(target, list) : target.id;
-        if (nextId !== undefined) setSelectedId(nextId);
-        setIsCreatingNew(false);
-        if (cacheKey) invalidateComposerCache(cacheKey);
-      })
-      .catch((err) => console.error(messages.save, err));
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data: unknown = await res.json().catch(() => null);
+      const error = payloadError(data) ?? (res.ok ? null : `POST ${endpoint} answered ${res.status}`);
+      if (error) {
+        console.error(messages.save, error);
+        return { ok: false, error };
+      }
+      const list = readList(data);
+      if (list) {
+        setItems(list);
+      } else if (!config.serverListOnly) {
+        setItems((prev) => {
+          const exists = prev.some((item) => item.id === target.id);
+          return exists
+            ? prev.map((item) => (item.id === target.id ? target : item))
+            : [...prev, target];
+        });
+      }
+      const nextId = config.resolveOnSave ? config.resolveOnSave(target, list) : target.id;
+      if (nextId !== undefined) setSelectedId(nextId);
+      setIsCreatingNew(false);
+      if (cacheKey) invalidateComposerCache(cacheKey);
+      return { ok: true };
+    } catch (err) {
+      console.error(messages.save, err);
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string): Promise<WriteOutcome> => {
     const deleteQuery = config.buildDeleteQuery
       ? config.buildDeleteQuery(id)
       : `?id=${encodeURIComponent(id)}`;
-    fetch(`${endpoint}${deleteQuery}`, { method: 'DELETE' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (config.isDeleteError?.(data)) return;
-        if (cacheKey) invalidateComposerCache(cacheKey);
-        if (config.deleteFromResponse) {
-          const list = readList(data) ?? items.filter((item) => item.id !== id);
-          setItems(list);
-          if (selectedId === id) setSelectedId(list[0]?.id ?? null);
-        } else {
-          fetch(`${endpoint}${query ?? ''}`)
-            .then((r) => r.json())
-            .then((d) => {
-              const next = readList(d) ?? [];
-              setItems(next);
-              if (selectedId === id) setSelectedId(next[0]?.id || null);
-            });
-        }
-      })
-      .catch((err) => console.error(messages.delete, err));
+    try {
+      const res = await fetch(`${endpoint}${deleteQuery}`, { method: 'DELETE' });
+      const data: unknown = await res.json().catch(() => null);
+      const error = payloadError(data) ?? (res.ok ? null : `DELETE ${endpoint} answered ${res.status}`);
+      if (error) {
+        console.error(messages.delete, error);
+        return { ok: false, error };
+      }
+      if (cacheKey) invalidateComposerCache(cacheKey);
+      if (config.deleteFromResponse) {
+        const list = readList(data) ?? items.filter((item) => item.id !== id);
+        setItems(list);
+        if (selectedId === id) setSelectedId(list[0]?.id ?? null);
+      } else {
+        const reloadRes = await fetch(`${endpoint}${query ?? ''}`);
+        const reloadData: unknown = await reloadRes.json().catch(() => null);
+        const next = readList(reloadData) ?? [];
+        setItems(next);
+        if (selectedId === id) setSelectedId(next[0]?.id || null);
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error(messages.delete, err);
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   };
 
   return {
@@ -179,6 +216,8 @@ export function useCrudList<T extends { id: string }, D = T>(
     selected,
     isCreatingNew,
     isLoading,
+    loadError,
+    reload,
     select,
     startCreate,
     save,
