@@ -1,7 +1,8 @@
-import { useCallback } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { BrowserAddressBar } from '@/client/components/workspace/browser-panel/AddressBar';
 import { BrowserScreencast } from '@/client/components/workspace/browser-panel/Screencast';
 import { useScreencast } from '@/client/hooks/browser/use-screencast';
+import { useCloseBrowserTab } from '@/client/hooks/browser/use-close-tab';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { emitBrowserPageContext } from '@/shared/lib/browser/page-context';
 
@@ -15,8 +16,13 @@ interface BrowserPanelProps {
  * Read-only live view of the browser tab this session's omp agent drives in the
  * project-shared Chromium (see app/lib/browser/ + /api/browser/:id/stream).
  *
- * This panel only mirrors what the agent does. Interactive browsing belongs to
- * the separate user-browser panel, which runs its own private Chromium.
+ * This panel only mirrors what the agent does, with ONE exception: it can CLOSE
+ * the session's tabs. The agent opens a page per site and never tidies up, and
+ * the viewer follows the newest owned tab — so without a close control a stale
+ * page keeps stealing the panel.
+ *
+ * Interactive browsing belongs to the separate user-browser panel, which runs
+ * its own private Chromium.
  *
  * There is deliberately NO device/viewport selector here: the surface is a
  * fixed-resolution screencast JPEG, so a preset could only letterbox the image
@@ -26,7 +32,9 @@ interface BrowserPanelProps {
  */
 export function BrowserPanel({ className = '', active = true }: BrowserPanelProps) {
   const [zoomLevel, setZoomLevel] = useSessionState<number>('browser.zoomLevel', 100);
-  const { status, url, title, tabs, targetId, frame, actions, selectTarget, reconnect } = useScreencast(active);
+  const { status, url, title, tabs, targetId, frame, actions, sessionId, selectTarget, reconnect } = useScreencast(active);
+  const { closeTab, closing } = useCloseBrowserTab(sessionId);
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   const handleOpenExternal = () => {
     if (!url) return;
@@ -39,6 +47,24 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
     if (!url) return;
     emitBrowserPageContext({ url, title });
   }, [url, title]);
+
+  // Closing a tab re-points the viewer at the neighbour the server named. The
+  // empty string means "follow the newest owned tab"; a real id pins it so the
+  // strip does not jump to an unrelated page.
+  const handleCloseTarget = useCallback(
+    (closingTarget: string) => {
+      if (closing === closingTarget) return;
+      void closeTab(closingTarget).then((result) => {
+        if (!result.ok) {
+          setCloseError(result.error ?? 'Gagal menutup tab');
+          return;
+        }
+        setCloseError(null);
+        selectTarget(result.next ?? '');
+      });
+    },
+    [closeTab, closing, selectTarget],
+  );
 
   return (
     <div className={`flex flex-col h-full w-full bg-paper text-ink overflow-hidden select-none ${className}`}>
@@ -54,6 +80,24 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
         onResetZoom={() => setZoomLevel(100)}
       />
 
+      {closeError && (
+        <div
+          role="alert"
+          className="px-2.5 py-1 border-b border-error/30 bg-error/5 text-[11px] text-error flex items-center justify-between gap-2 flex-shrink-0"
+        >
+          <span className="truncate" title={closeError}>
+            {closeError}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCloseError(null)}
+            className="text-[10px] uppercase tracking-wide text-error/80 hover:text-error cursor-pointer flex-shrink-0"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
       <BrowserScreencast
         status={status}
         url={url}
@@ -62,6 +106,8 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
         frame={frame}
         actions={actions}
         onSelectTarget={selectTarget}
+        onCloseTarget={handleCloseTarget}
+        closingTarget={closing}
         zoomLevel={zoomLevel}
       />
     </div>

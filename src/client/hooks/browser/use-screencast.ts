@@ -18,6 +18,8 @@ interface UseScreencastResult {
    */
   frame?: { data: string; mimeType: string } | null;
   actions: BrowserPanelAction[];
+  /** The session whose tabs these are; the tab-close request needs it. */
+  sessionId: string;
   /** Pin the viewer to one tab id; pass an empty string to follow the newest owned tab. */
   selectTarget: (targetId: string) => void;
   /** Drop the current SSE connection and open a fresh one. */
@@ -189,6 +191,7 @@ export function useScreencast(active = true): UseScreencastResult {
     targetId: state.targetId,
     frame,
     actions,
+    sessionId,
     selectTarget,
     reconnect,
   };

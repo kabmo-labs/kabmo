@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Globe, Loader2, Radio } from 'lucide-preact';
 import { ActivityToasts } from '@/client/components/workspace/browser-panel/ActivityToasts';
+import { BrowserTabStrip } from '@/client/components/workspace/browser-panel/TabStrip';
 import { drawFrame } from '@/client/lib/browser/frame-canvas';
 import type { BrowserPanelAction, BrowserTabInfo, BrowserViewStatus } from '@/shared/types';
 
@@ -13,6 +14,10 @@ interface BrowserScreencastProps {
   frame?: { data: string; mimeType: string } | null;
   actions: BrowserPanelAction[];
   onSelectTarget: (targetId: string) => void;
+  /** Close one of the session's tabs; only the strip offers it. */
+  onCloseTarget: (targetId: string) => void;
+  /** Tab whose close request is in flight. */
+  closingTarget?: string | null;
   zoomLevel: number;
 }
 
@@ -39,6 +44,8 @@ export function BrowserScreencast({
   frame,
   actions,
   onSelectTarget,
+  onCloseTarget,
+  closingTarget,
   zoomLevel,
 }: BrowserScreencastProps) {
   const isLive = status === 'live';
@@ -69,28 +76,16 @@ export function BrowserScreencast({
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-canvas/60 relative overflow-hidden">
       <ActivityToasts actions={actions} />
-      {/* Tab strip: only useful when the session owns more than one page. */}
-      {isLive && tabs.length > 1 && (
-        <div className="px-2 py-1 border-b border-ink/10 bg-paper flex items-center gap-1 overflow-x-auto flex-shrink-0">
-          {tabs.map((tab) => {
-            const active = tab.targetId === targetId;
-            return (
-              <button
-                key={tab.targetId}
-                type="button"
-                onClick={() => onSelectTarget(active ? '' : tab.targetId)}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono max-w-[220px] truncate border transition-colors cursor-pointer ${
-                  active
-                    ? 'bg-ink text-canvas border-ink'
-                    : 'bg-paper text-ink/70 border-ink/15 hover:border-ink/35 hover:text-ink'
-                }`}
-                title={tab.url || tab.title || tab.targetId}
-              >
-                {tab.title || tab.url || tab.targetId}
-              </button>
-            );
-          })}
-        </div>
+      {/* Tab strip: the selector needs two tabs, but the CLOSE control is the
+          point of the strip — a single leftover page must be closable too. */}
+      {isLive && tabs.length > 0 && (
+        <BrowserTabStrip
+          tabs={tabs}
+          targetId={targetId}
+          closing={closingTarget}
+          onSelectTarget={onSelectTarget}
+          onCloseTarget={onCloseTarget}
+        />
       )}
 
       <div className="flex-1 flex items-center justify-center p-2 min-h-0 overflow-auto">

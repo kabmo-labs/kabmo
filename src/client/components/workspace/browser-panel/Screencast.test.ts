@@ -74,6 +74,7 @@ async function mount(frame: { data: string; mimeType: string } | null): Promise<
         frame,
         actions: [],
         onSelectTarget: () => {},
+        onCloseTarget: () => {},
         zoomLevel: 100,
       }),
       host,
