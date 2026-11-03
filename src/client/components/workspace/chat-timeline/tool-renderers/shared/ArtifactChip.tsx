@@ -4,13 +4,14 @@
  */
 
 /**
- * "Full output" — the chip that opens the stream omp spilled to disk.
+ * "Full output" — the chip that opens the stream omp kept beside the session.
  *
- * When a tool result is too long omp keeps only a truncated body in the
- * transcript and writes the whole thing beside the session, leaving an
- * `artifactId` in `details.meta.limits`. Measured over 5,441 real results, 65
- * carry one — and they are the longest outputs in the corpus, so the reader was
- * stopped at 768 bytes exactly where they wanted the rest.
+ * Two records name one, and both are reachable here (`artifactRefOf`):
+ * a result too long to keep inline leaves `details.meta.limits.columnTruncated`
+ * — measured over 5,441 real results, 65 carry one, and they are the longest
+ * outputs in the corpus — and since 18.16.0 a result the shell minimizer
+ * REWROTE carries `details.meta.minimized`, whose file is the lossless original
+ * of the compressed body on screen.
  *
  * The chip lives in the card's action slot rather than inside a panel: it must
  * be reachable without expanding anything, because the reason it exists is that

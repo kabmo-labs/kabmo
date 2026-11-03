@@ -106,6 +106,25 @@ describe('OMP_SCHEMA', () => {
       });
     }
   });
+
+  test('the rows omp 18.16.0 adds are offered', () => {
+    // Measured against `omp config list --json` on 18.16.0: all three exist and
+    // `omp config get` answers each. Two are TUI-composer features Kabmo has no
+    // surface for, but the panel is the only place a user CAN reach an omp
+    // setting, so a regenerated schema that drops them removes the row entirely.
+    const expected: Record<string, { type: SchemaEntry['type']; tab: string; group: string }> = {
+      'btw.inject': { type: 'boolean', tab: 'interaction', group: 'Input' },
+      'composer.predictionAlternatives': { type: 'boolean', tab: 'interaction', group: 'Input' },
+      'hindsight.globalScope': { type: 'boolean', tab: 'memory', group: 'Hindsight' },
+    };
+    for (const [key, want] of Object.entries(expected)) {
+      const entry = OMP_SCHEMA.entries[key];
+      expect({ key, entry: entry && { type: entry.type, tab: entry.ui.tab, group: entry.ui.group } }).toEqual({
+        key,
+        entry: want,
+      });
+    }
+  });
 });
 
 describe('ALL_SCHEMA_ENTRIES', () => {
@@ -178,6 +197,18 @@ describe('isConditionMet', () => {
     // rows must never disappear.
     expect(isConditionMet('macOS', {})).toBe(true);
     expect(isConditionMet('hasImageProtocol', {})).toBe(true);
+  });
+
+  test('the prediction-alternatives row follows composer predictions (omp 18.16.0)', () => {
+    // Upstream: `cfgComposerPredictionAlternatives` is gated on
+    // `cfgComposerPredictions.get(s) === true`. Falling through to the default
+    // arm would keep the modifier row visible with its parent switched off.
+    expect(isConditionMet('composerPredictionsEnabled', snapshot({ 'composer.predictions': true }))).toBe(true);
+    expect(isConditionMet('composerPredictionsEnabled', snapshot({ 'composer.predictions': false }))).toBe(false);
+    expect(isConditionMet('composerPredictionsEnabled', {})).toBe(false);
+    // And the row really is the one carrying that condition.
+    expect(OMP_SCHEMA.entries['composer.predictionAlternatives']?.ui.condition).toBe('composerPredictionsEnabled');
+    expect(OMP_SCHEMA.entries['composer.predictions']?.ui.condition).toBeUndefined();
   });
 
   test('an unknown condition degrades to visible', () => {

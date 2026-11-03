@@ -55,6 +55,12 @@ export function isConditionMet(condition: string | undefined, entries: Record<st
       return configValue(entries, 'retry.usageAwareFallback') === true;
     case 'planModeEnabled':
       return configValue(entries, 'plan.enabled') === true;
+    // omp 18.16.0's `composer.predictionAlternatives` hangs off this one: the
+    // alternatives row is a modifier of composer predictions, and offering it
+    // while predictions are off would present a setting the user cannot reach
+    // a use for. Upstream evaluates `cfgComposerPredictions.get(s) === true`.
+    case 'composerPredictionsEnabled':
+      return configValue(entries, 'composer.predictions') === true;
     case 'planAutosaveEnabled':
       return configValue(entries, 'plan.enabled') === true && configValue(entries, 'plan.autosave') === true;
     case 'unexpectedStopSmart':

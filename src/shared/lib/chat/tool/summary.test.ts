@@ -87,6 +87,28 @@ describe('toolSummary — bash', () => {
     }));
     expect(summary?.line).toBe('900ms · 3 lines');
   });
+
+  test('names the minimizer rewrite omp 18.16.0 records', () => {
+    // Verbatim from a real child: the body on the card is the COMPRESSED text,
+    // and without this chip a reader had no way to know 7 KB were dropped.
+    // It outranks the line count because the count describes the rewrite.
+    const summary = toolSummary(tool({
+      type: 'bash',
+      details: { wallTimeMs: 412, meta: { minimized: { filter: 'git', inputBytes: 10970, outputBytes: 3905, artifactId: '0' } } },
+      output: 'a\nb',
+    }));
+    expect(summary?.line).toBe('412ms · git 10.7 KB → 3.8 KB · 2 lines');
+    expect(summary?.facts.find((fact) => fact.kind === 'note')).toMatchObject({ tone: 'warn' });
+  });
+
+  test('states no rewrite when the minimizer left the output alone', () => {
+    const summary = toolSummary(tool({
+      type: 'bash',
+      details: { wallTimeMs: 12, meta: { limits: {} } },
+      output: 'ok',
+    }));
+    expect(summary?.line).not.toContain('→');
+  });
 });
 
 describe('toolSummary — edit', () => {

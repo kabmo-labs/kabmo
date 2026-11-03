@@ -27,7 +27,8 @@
 import type { ToolCallData } from '@/shared/types/chat';
 import { procPathOf } from '@/shared/lib/omp/session/proc';
 import { isExcerptFurniture } from '@/shared/lib/chat/excerpt';
-import { bashServiceFacts, procFacts } from '@/shared/lib/chat/tool/proc-facts';
+import { bashFacts } from '@/shared/lib/chat/tool/bash-facts';
+import { procFacts } from '@/shared/lib/chat/tool/proc-facts';
 import { waitFacts } from '@/shared/lib/chat/tool/wait-facts';
 import {
   countPhrase,
@@ -133,37 +134,7 @@ export function toolSummary(tool: ToolCallData): ToolSummary | null {
 
   // ── bash / terminal ───────────────────────────────────────────────────────
   if (key === 'bash' || key === 'terminal' || key === 'run_command') {
-    // A `bash` that launches a named service answers with `details.service` —
-    // the same snapshot `proc://<id>` reports — and its identity leads the row:
-    // an exit code is not the story for a process that is meant to keep running.
-    facts.push(...bashServiceFacts(tool));
-    const exitCode = asNumber(details.exitCode);
-    if (exitCode !== undefined) {
-      facts.push({ kind: 'exit', label: `exit ${exitCode}`, tone: exitCode === 0 ? 'ok' : 'error' });
-    } else if (isError) {
-      facts.push({ kind: 'exit', label: 'failed', tone: 'error' });
-    }
-    const wallMs = asNumber(details.wallTimeMs);
-    if (wallMs !== undefined) {
-      facts.push({ kind: 'time', label: formatToolMs(wallMs) });
-    } else if (tool.duration || tool.time) {
-      // The MOCK/legacy path carries a preformatted duration instead of
-      // `wallTimeMs`; it is the same fact in the same slot.
-      facts.push({ kind: 'time', label: tool.duration || tool.time || '' });
-    }
-    const output = (tool.output ?? '').trimEnd();
-    if (output) {
-      const lines = output.split(/\r?\n/).length;
-      if (lines > 1) facts.push({ kind: 'count', label: `${lines} lines` });
-    }
-    const async = asRecord(details.async);
-    if (async?.state === 'running') {
-      facts.push({ kind: 'warn', label: `background ${asString(async.jobId) ?? ''}`.trim(), tone: 'warn' });
-    }
-    const timeoutSeconds = asNumber(details.timeoutSeconds);
-    if (exitCode === undefined && isError && timeoutSeconds !== undefined) {
-      facts.push({ kind: 'note', label: `timeout ${timeoutSeconds}s`, tone: 'warn' });
-    }
+    facts.push(...bashFacts(tool, isError));
   }
 
   // ── edit / write ──────────────────────────────────────────────────────────

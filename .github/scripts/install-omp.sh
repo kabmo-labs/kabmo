@@ -158,12 +158,40 @@ fi
 # intent and keep the label beneath — see R39 in
 # docs/omp-18.8-adoption-plan.md.
 #
-# Not adopted, deliberately: `get_session_lease` (Kabmo already probes the
-# lease with its own `flock` and resolves the holder pid, which RPC cannot
+# 18.16.0 (2026-11-02): the schema's `source` line moves to 582 settings and the
+# panel gains THREE rows — `btw.inject` and `composer.predictionAlternatives`
+# (interaction / Input), `hindsight.globalScope` (memory / Hindsight; upstream
+# gates it on `hindsightActive`, which this panel already resolves). One new
+# upstream condition arrives with the alternatives row, `composerPredictionsEnabled`
+# (`composer.predictions === true`), and `isConditionMet` now answers it — the
+# default arm would have shown a modifier row whose parent was off.
+# The RPC wire is byte-identical: 74 commands and 297 definitions, 0 added, 0
+# removed, 0 changed; `builtin-names.ts`, `MODEL_ROLES` and the 41 TUI-only
+# slash commands are unchanged, so `tui-only.ts` needs no row.
+#
+# One upstream change DOES reach a Kabmo surface, adopted here: a `bash` result
+# now carries `details.meta.minimized` when omp's shell minimizer rewrote the
+# output, naming the filter, both byte sizes and the artifact holding the
+# LOSSLESS original (a new `bash-original` kind). Kabmo rendered the compressed
+# body as if the command had produced it — measured on a real child running
+# `git --no-pager log` in a 60-commit repo: `inputBytes: 10970`,
+# `outputBytes: 3905`, `artifactId: "0"`, and `[raw output: artifact://0]` at the
+# end of the inline text. The card now states the rewrite and the artifact chip
+# opens the original — see R45/R46 in docs/omp-18.8-adoption-plan.md.
+#
+# Not adopted, deliberately: `btw.inject` (it drafts an `<inject>` steering block
+# for omp's own Alt+I, a TUI keybinding; Kabmo's side panel has no inject path and
+# the row stays editable because it is a real omp setting); `composer.predictions`
+# and its alternatives row (ghost text is the TUI composer's, and Kabmo has no
+# prediction surface); `hindsight.globalScope` (it widens what the MODEL may
+# retain for Hindsight's backend — the same class as `task.perCallModel`).
+#
+# Not adopted, deliberately (18.15.0): `get_session_lease` (Kabmo already probes
+# the lease with its own `flock` and resolves the holder pid, which RPC cannot
 # name); `title.refreshAfterPrompts` (gated by `PI_NO_TITLE`, which rpc-ui sets,
 # and Kabmo owns titling through its own `/rename` path); `task.perCallModel`
 # (it grants a MODEL per subagent call, a capability Kabmo never requests).
-OMP_VERSION="${OMP_VERSION:-18.15.0}"
+OMP_VERSION="${OMP_VERSION:-18.16.0}"
 PACKAGE="@oh-my-pi/pi-coding-agent"
 WANTED="omp/${OMP_VERSION}"
 

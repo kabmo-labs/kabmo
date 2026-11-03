@@ -1,7 +1,9 @@
 import { useMemo } from 'preact/hooks';
-import { Check, Clock, Server, Terminal } from 'lucide-preact';
+import { Check, Clock, Server, Shrink, Terminal } from 'lucide-preact';
 import type { ToolCallData } from '@/shared/types';
 import { bashServiceOf, daemonTone, procUptime } from '@/shared/lib/omp/session/proc';
+import { formatToolBytes } from '@/shared/lib/chat/tool/labels';
+import { minimizedOutputOf } from '@/shared/lib/chat/tool/minimized';
 import { CopyButton } from '@/client/components/common/CopyButton';
 import { stripAnsiCodes } from '@/shared/lib/code/ansi';
 import { isCodeLike } from '@/shared/lib/code/language';
@@ -83,6 +85,7 @@ export function Bash({ tool }: { tool: ToolCallData }) {
   const service = bashServiceOf(tool);
   const serviceTone = daemonTone(service?.state);
   const serviceUptime = service ? procUptime(service) : undefined;
+  const minimized = minimizedOutputOf(tool);
 
   return (
     <div className="space-y-2">
@@ -138,6 +141,26 @@ export function Bash({ tool }: { tool: ToolCallData }) {
           <span className="text-ink/35">
             read <span className="font-semibold">proc://{service.name}</span>
           </span>
+        </div>
+      )}
+
+      {/* omp 18.16.0 compresses verbose shell output before returning it. The
+          body below is the REWRITE, so a card that said nothing about it looked
+          like the command had produced that text — `git log` lost 6 KB and the
+          reader had no way to know. Naming the filter and both sizes is what
+          omp's own TUI does; the full output is behind the artifact chip. */}
+      {minimized && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-ink/8 bg-paper px-3 py-2 font-mono text-[10.5px]">
+          <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+            <Shrink size={11} className="text-ink/40" />
+            Minimized
+          </span>
+          <span className="font-semibold text-ink">{minimized.filter}</span>
+          <span className="text-ink/45">
+            <strong className="text-ink">{formatToolBytes(minimized.inputBytes)}</strong> {'→'}{' '}
+            <strong className="text-ink">{formatToolBytes(minimized.outputBytes)}</strong>
+          </span>
+          <span className="text-ink/35">the output below is the filtered rewrite</span>
         </div>
       )}
 

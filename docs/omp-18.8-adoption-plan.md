@@ -1295,3 +1295,110 @@ identical, so `tui-only.ts` needs no new row.
 | R42 | title refresh is PI_NO_TITLE-gated | none needed | `main.ts` sets it for `rpc-ui`; Kabmo titles through its own `/rename` |
 | R43 | per-call model grant | none needed | Kabmo sends no per-call `model` on task items |
 | R44 | TUI-side / in-omp changes | none needed | STT worker modules, `builtin-names.ts`, `MODEL_ROLES` and the 41 TUI-only names all byte-identical |
+
+# omp 18.16.0 adoption (2026-11-02)
+
+The installed pin moved **18.15.0 → 18.16.0**. Same three steps as every bump:
+regenerate the schema, re-read what the release changed, adopt whatever reaches
+a Kabmo surface.
+
+## Method
+
+- `npm pack @oh-my-pi/pi-coding-agent@18.15.0` and `@18.16.0` into a temp tree,
+  then `diff -rq` over both packages (**148 differing paths**) and a targeted
+  read of each file whose subject Kabmo touches.
+- `rpc-wire.schema.json` from both versions compared as a whole **and** as a
+  flattened leaf map: **74 commands, 297 definitions, 0 added, 0 removed, 0
+  changed**; the only leaf that moved is `BashResult.minimized` gaining
+  `"type": "object"`.
+- The schema generator was proved deterministic before trusting it: run against
+  a temp 18.15.0 tree it reproduces the committed file **byte-for-byte**
+  (435 entries), and against 18.16.0 it writes 438.
+- `bun run omp:schema` + `omp:schema:check`, then every merged row probed
+  against the **582** live keys of `omp config list --json` (0 rejected).
+- The TUI-only slash-command set extracted from both trees: unchanged, so
+  `tui-only.ts` needs no row.
+- A live probe of the new `minimized` record: `omp --mode rpc-ui` in a
+  60-commit temp repo, one `bash` command `git --no-pager log`, which answered
+  `{filter:"git", inputBytes:10970, outputBytes:3905, artifactId:"0"}` and wrote
+  `<sessionId>/0.bash-original.log`.
+
+## Findings
+
+### R45 — A minimized `bash` result said nothing about the rewrite (fixed)
+
+18.16.0 returns `details.meta.minimized` when its shell minimizer compressed the
+command's output, and its own TUI states it (`Minimized: git 120.4KB → 3.2KB`).
+Kabmo rendered the compressed body as if the command had produced it, so a
+`git log` that lost 7 KB of commits looked complete — the reader had no way to
+know a rewrite had happened, let alone reach the original.
+
+`minimizedOutputOf` / `minimizedLabel` (`shared/lib/chat/tool/minimized.ts`)
+parse and format the record; the collapsed card states it as a `warn` fact
+**before** the line count (the count describes the rewrite), and the Bash panel
+draws a `Minimized <filter> <in> → <out>` strip above the command window.
+
+### R46 — The lossless original had no path through the artifact chip (fixed)
+
+`minimized.artifactId` names a file of a kind Kabmo did not know:
+`bash-original`, beside the `bash` stream the truncation record points at.
+`artifactRefOf` now reads the minimizer record FIRST (it holds the command's own
+bytes; a truncation record only ever holds the already-rewritten stream),
+returns `kind: 'bash-original'`, and derives `elidedBytes` as
+`inputBytes - outputBytes`. `ARTIFACT_KINDS` already carried `bash-original`,
+so the route and the reader needed no change.
+
+Verified end to end: the chip opens the modal with
+`10.7 KB · 360 lines · 6.9 KB elided inline` for the probe session, and
+`GET /api/omp/artifact?…&kind=bash-original` answered `200` with the 3962-byte
+original of a real Kabmo session's minimized `read`.
+
+### R47 — The schema and the CI pin were a release behind (fixed)
+
+`bun run omp:schema` moved the file **435 → 438 entries** (`10 tabs / 582
+settings`). Three rows are new: `btw.inject` and
+`composer.predictionAlternatives` (interaction / Input),
+`hindsight.globalScope` (memory / Hindsight). **0 of the 438 rows** are rejected
+by `omp config list --json`.
+
+One new upstream condition arrives with the alternatives row,
+`composerPredictionsEnabled` (`composer.predictions === true`).
+`isConditionMet` now answers it — the default arm would have shown a modifier
+row whose parent was switched off.
+
+The pin moved with it (`OMP_VERSION` `18.15.0` → `18.16.0`), because the
+`Settings schema` job installs that pin and regenerates from it.
+
+### R48 — New rows that have no Kabmo surface (no action)
+
+- `btw.inject` drafts an `<inject>` steering block for omp's own `Alt+I`. Kabmo's
+  side panel is its own child with its own transcript; there is no inject path
+  to wire, and the row stays editable because it is a real omp setting.
+- `composer.predictions` / `composer.predictionAlternatives` are the TUI
+  composer's ghost text. Kabmo's composer has no prediction surface.
+- `hindsight.globalScope` widens what the MODEL may retain (a memory every
+  project recalls). It changes what the agent may do, not what Kabmo sends —
+  the same class as `task.perCallModel`.
+
+### R49 — Changes that do not reach Kabmo (no action)
+
+The release's remaining work is inside omp: `/resume` filling from
+`history.db` (`PickerListing` is a TUI picker type; Kabmo reads the JSONL and
+its own sidebar snapshot), `mountedTools` on a task entry (Kabmo never reads a
+task entry's tool list), the date-cwd reminder journal (a session `custom` entry
+with no content, which `noticeFromCustomMessage` already drops), the prompt-preflight
+error class (it reaches RPC as a thrown prompt error, which `frame-fold` already
+surfaces as `prompt_error`), `gh`'s origin correction and the browser/cmux fixes.
+
+`builtin-names.ts`, `MODEL_ROLES`, the 41 TUI-only slash commands and the STT
+worker modules are unchanged.
+
+## 18.16.0 outcomes
+
+| # | Finding | Action | Verification |
+|---|---|---|---|
+| R45 | minimized rewrite invisible on the card | `minimized.ts` + `bash-facts.ts` + Bash strip; 10 unit tests + 2 panel tests | browser smoke on a real 18.16.0 session: chip reads `git 10.7 KB → 3.8 KB`, strip reads `Minimized git 10.7 KB → 3.8 KB` |
+| R46 | lossless `bash-original` unreachable | `artifactRefOf` reads `minimized` first, kind `bash-original` | chip opened the modal at `360 lines · 6.9 KB elided`; route answered the real file |
+| R47 | schema + CI pin a release behind | regenerated (435 → 438) and `OMP_VERSION` 18.15.0 → 18.16.0 | `omp:schema:check` passes; 0/438 rows rejected; generator proved byte-identical at 18.15.0 first |
+| R48 | three new rows, no Kabmo surface | none needed | each verified TUI-only or model-capability only |
+| R49 | TUI/internal changes | none needed | wire diff 0 added/removed/changed; name and role tables byte-identical |
