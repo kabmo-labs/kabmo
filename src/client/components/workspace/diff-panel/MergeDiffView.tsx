@@ -16,14 +16,11 @@
  * existed only because the old table renderer could not collapse anything.
  */
 
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { useScrollRestore } from '@/client/hooks/editor/use-scroll-restore';
 import { EDITOR_LINE_HEIGHT } from '@/shared/lib/code/editor/typography';
-import {
-  countChanges,
-  foldWhitespaceOnly,
-} from '@/client/components/workspace/diff-panel/changes';
+import { foldWhitespaceOnly } from '@/client/components/workspace/diff-panel/changes';
 import {
   mountSplitDiff,
   mountUnifiedDiff,
@@ -98,7 +95,16 @@ export function MergeDiffView({
   /** The pair the live view holds, so a change is a re-state rather than a re-mount. */
   const pairRef = useRef<{ original: string; next: string }>({ original, next });
 
-  const left = ignoreWhitespace ? foldWhitespaceOnly(original, next) : original;
+  // MEMOIZED, not computed in the render body: the fold is a character-level
+  // diff of both documents, and this component re-renders whenever the panel
+  // around it does — the count report, the hunk label, a busy flag. Measured on
+  // a 30 000-line pair, one fold of an untouched file cost 324 ms of main-thread
+  // work, and a 5 000-line pair that was wholly rewritten cost 12.7 s; paid per
+  // render it made the whitespace toggle the slowest thing in the panel.
+  const left = useMemo(
+    () => (ignoreWhitespace ? foldWhitespaceOnly(original, next) : original),
+    [ignoreWhitespace, original, next],
+  );
 
   // The scroll offset is per SHAPE: unified and split rows are different
   // heights, so one view's position says nothing about the other's. The hook
@@ -171,9 +177,17 @@ export function MergeDiffView({
 
   // Counts describe the pair ON SCREEN, so the badge cannot disagree with the
   // rows under it (git's own `+n/-n` still counts a hidden whitespace change).
+  // They are the view's own chunks: re-diffing the pair here cost a second full
+  // line diff per load (see `countChunks`).
   useEffect(() => {
     if (!onCounts) return;
-    onCounts(empty ? { additions: 0, deletions: 0 } : countChanges(left, next));
+    if (empty) {
+      onCounts({ additions: 0, deletions: 0 });
+      return;
+    }
+    const handle = handleRef.current;
+    if (!handle) return;
+    onCounts(handle.counts());
   }, [left, next, empty, onCounts]);
 
   if (empty) {

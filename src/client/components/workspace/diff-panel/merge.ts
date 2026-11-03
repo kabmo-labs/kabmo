@@ -29,11 +29,12 @@
 
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import { MergeView, unifiedMergeView } from '@codemirror/merge';
+import { MergeView, getChunks, getOriginalDoc, unifiedMergeView } from '@codemirror/merge';
 
 import { shikiHighlight, type ShikiThemeNames } from '@/client/components/common/code-surface/shiki';
 import { surfaceTheme } from '@/client/components/common/code-surface/theme';
 import { diffFoldingExtensions } from '@/client/components/workspace/diff-panel/folding';
+import { countChunks } from '@/client/components/workspace/diff-panel/changes';
 import {
   chunkPositionOf,
   chunkReporter,
@@ -156,6 +157,15 @@ export interface DiffViewHandle {
    * buttons inert rather than silently doing nothing.
    */
   stepChunk(direction: 1 | -1): boolean;
+  /**
+   * Additions and deletions of the pair ON SCREEN.
+   *
+   * Read from the view's own chunks rather than re-diffed: the merge package
+   * builds them when it is constructed and whenever the documents are
+   * re-stated, so this is the same arithmetic on work already done — and the
+   * badge cannot describe a different diff than the rows under it.
+   */
+  counts(): { additions: number; deletions: number };
   /** The element that actually scrolls, for scroll restore. */
   scroller(): HTMLElement | null;
   destroy(): void;
@@ -249,6 +259,15 @@ export function mountUnifiedDiff(parent: HTMLElement, options: DiffViewOptions):
     },
     chunkPosition: () => chunkPositionOf(view),
     stepChunk: (direction) => stepChunkIn(view, direction),
+    counts: () => {
+      // The unified field is keyed to the ORIGINAL document it was configured
+      // with, so both sides come from this state: re-reading `options` would
+      // describe the pair before the last `setDocuments`.
+      const chunks = getChunks(view.state);
+      return chunks
+        ? countChunks(getOriginalDoc(view.state), view.state.doc, chunks.chunks)
+        : { additions: 0, deletions: 0 };
+    },
     scroller: () => view.scrollDOM,
     destroy: () => {
       options.onScroller(null);
@@ -306,6 +325,7 @@ export function mountSplitDiff(parent: HTMLElement, options: DiffViewOptions): D
     // same either way.
     chunkPosition: () => chunkPositionOf(merge.b),
     stepChunk: (direction) => stepChunkIn(merge.b, direction),
+    counts: () => countChunks(merge.a.state.doc, merge.b.state.doc, merge.chunks),
     scroller: () => scroller,
     destroy: () => {
       options.onScroller(null);

@@ -99,6 +99,34 @@ describe('chunk position', () => {
   });
 });
 
+describe('counts', () => {
+  test('both shapes report the pair on screen', () => {
+    for (const kind of ['unified', 'split'] as const) {
+      const { handle } = mount(kind);
+      // Two edited lines: one deletion and one addition each.
+      expect(handle.counts()).toEqual({ additions: 2, deletions: 2 });
+      handle.destroy();
+    }
+  });
+
+  test('a re-stated pair counts the NEW documents, not the ones it mounted with', () => {
+    for (const kind of ['unified', 'split'] as const) {
+      const { handle } = mount(kind);
+      handle.setDocuments('a\nb\nc', 'a\nc');
+      expect(handle.counts()).toEqual({ additions: 0, deletions: 1 });
+      handle.destroy();
+    }
+  });
+
+  test('an identical pair counts zero on both shapes', () => {
+    for (const kind of ['unified', 'split'] as const) {
+      const { handle } = mount(kind, ORIGINAL, ORIGINAL);
+      expect(handle.counts()).toEqual({ additions: 0, deletions: 0 });
+      handle.destroy();
+    }
+  });
+});
+
 describe('stepChunk', () => {
   test('steps forward through every chunk and wraps', () => {
     const { handle } = mount('unified');
