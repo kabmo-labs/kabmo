@@ -1,140 +1,133 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * Native omp agents — the definitions omp itself loads.
+ *
+ * A definition is a markdown file with frontmatter, and the FILE is the only
+ * thing omp reads: user agents at `~/.omp/agent/agents/*.md`, project agents at
+ * `<workspace>/.omp/agents/*.md`. The panel therefore reads and writes those
+ * files directly. It used to keep a mirrored list in Kabmo's SQLite and POST
+ * into it, which made "Create Agent" a button that reported success and changed
+ * nothing the agent could see.
+ *
+ * Project agents stay read-only: that directory belongs to the workspace, and a
+ * console that rewrites another checkout's definitions is a surprise. The route
+ * still lists them, flagged `sourceRoot: 'project'`.
+ */
+
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { getDb } from '@/server/db.server';
 import { DEFAULT_AGENTS_LIST } from '@/client/data/agent-data';
 import { isMockMode } from '@/server/mock.server';
-import type { AgentItem } from '@/shared/types';
-import { createSettingsListStore } from '@/server/lib/db/settings-store';
 import { join } from 'path';
-import { deleteAgentDefinition, discoverNativeAgents, writeAgentDefinition, type DiscoveredAgent } from '@/server/lib/omp/config/agents';
+import {
+  deleteAgentDefinition,
+  discoverNativeAgents,
+  writeAgentDefinition,
+  type DiscoveredAgent,
+} from '@/server/lib/omp/config/agents';
+import { agentFileBaseName } from '@/shared/lib/omp/config/agent-file';
 import { resolveRoot } from '@/server/lib/fs/root';
+import type { AgentItem } from '@/shared/types';
 
-const agentsStore = createSettingsListStore<AgentItem>({
-  key: 'omp_agents',
-  mockDefaults: DEFAULT_AGENTS_LIST,
-  idOf: (agent) => agent.id,
-  singular: 'agent',
-  plural: 'agents',
-});
-
-/**
- * Convert a natively discovered omp agent into Kabmo AgentItem shape.
- * Native agents are surfaced as read-only built-ins (isBuiltIn) so the UI
- * lists them alongside app-local custom agents without offering edits that
- * would silently not persist.
- */
-function nativeToAgentItem(agent: DiscoveredAgent): AgentItem & { sourceRoot: string } {
+/** Project agents are listed but never written from here. */
+function toAgentItem(agent: DiscoveredAgent): AgentItem {
   return {
     id: agent.id,
     name: agent.name,
-    description: agent.description || `Native omp agent (${agent.sourceRoot})`,
+    description: agent.description || `omp agent (${agent.sourceRoot})`,
     scope: agent.sourceRoot === 'user' ? 'user' : 'project',
-    mode: agent.mode,
-    overrideModel: agent.overrideModel,
-    thinkingVariant: agent.thinkingVariant,
-    temperature: agent.temperature,
-    topP: agent.topP,
+    ...(agent.tools ? { tools: agent.tools } : {}),
+    ...(agent.spawns ? { spawns: agent.spawns } : {}),
+    ...(agent.model ? { model: agent.model } : {}),
+    ...(agent.thinkingLevel ? { thinkingLevel: agent.thinkingLevel } : {}),
     systemPrompt: agent.systemPrompt,
-    isBuiltIn: true,
+    isBuiltIn: agent.sourceRoot !== 'user',
+    filePath: agent.filePath,
+    fileName: agentFileBaseName(agent.filePath),
     sourceRoot: agent.sourceRoot,
   };
 }
 
-/** Merge native omp agents (disk discovery) with app-local custom agents. */
-async function mergeAgents(custom: AgentItem[], projectDir?: string): Promise<Array<AgentItem & { sourceRoot?: string }>> {
-  const native = (await discoverNativeAgents(projectDir)).map(nativeToAgentItem);
-  const nativeNames = new Set(native.map((a) => a.name.toLowerCase()));
-  return [...native, ...custom.filter((a) => !nativeNames.has(a.name.toLowerCase()))];
+async function readList(projectRoot: string | null): Promise<AgentItem[]> {
+  const projectDir = projectRoot
+    ? join(await resolveRoot(projectRoot, ''), '.omp', 'agents')
+    : undefined;
+  return (await discoverNativeAgents(projectDir)).map(toAgentItem);
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  const mock = isMockMode();
+  if (mock) return json({ agents: DEFAULT_AGENTS_LIST, isMock: true });
   try {
-    const db = await getDb();
     const url = new URL(request.url);
-    const includeNative = url.searchParams.get('native') === '1' || !isMockMode();
-    const mock = isMockMode();
-    const agents = await agentsStore.read(db);
-
-    // The panel's project picker is a SCOPE, not decoration: `<workspace>/.omp/agents`
-    // holds agents that only exist for that workspace, and an unscoped read
-    // could never list them. Gated through `resolveRoot` like every other
-    // client-supplied path, so an arbitrary directory is not readable here.
-    const rawRoot = url.searchParams.get('root');
-    const projectDir = rawRoot
-      ? join(await resolveRoot(rawRoot, ''), '.omp', 'agents')
-      : undefined;
-
-    if (includeNative && !mock) {
-      return json({ agents: await mergeAgents(agents, projectDir), isMock: mock });
-    }
-
-    return json({ agents, isMock: mock });
+    const root = url.searchParams.get('root');
+    return json({ agents: await readList(root), isMock: false });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return json({ error: message, agents: isMockMode() ? DEFAULT_AGENTS_LIST : [], isMock: isMockMode() }, { status: 500 });
+    return json({ error: message, agents: [], isMock: false }, { status: 500 });
   }
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  try {
-    const db = await getDb();
-
-    if (request.method === 'DELETE') {
-      const url = new URL(request.url);
-      const id = url.searchParams.get('id');
-      if (!id) {
-        return json({ error: 'id is required' }, { status: 400 });
-      }
-      if (id.startsWith('omp-')) {
-        return json({ error: 'Native omp agents are read-only in Kabmo' }, { status: 403 });
-      }
-
-      const list = await agentsStore.remove(db, id);
-      return json({ success: true, agents: list });
-    }
-
-    if (request.method === 'POST' || request.method === 'PUT') {
-      const body = await request.json();
-
-      // Native agent file write: { type: "write_native", fileName, ...definition }
-      if (body.type === 'write_native') {
-        if (isMockMode()) return json({ error: 'Native agent writes are unavailable in mock mode' }, { status: 400 });
-        const written = await writeAgentDefinition({
-          fileName: String(body.fileName ?? ''),
-          name: typeof body.name === 'string' ? body.name : undefined,
-          description: typeof body.description === 'string' ? body.description : undefined,
-          mode: typeof body.mode === 'string' ? body.mode : undefined,
-          model: typeof body.model === 'string' ? body.model : undefined,
-          thinking: typeof body.thinking === 'string' ? body.thinking : undefined,
-          temperature: typeof body.temperature === 'number' ? body.temperature : null,
-          topP: typeof body.topP === 'number' ? body.topP : null,
-          tools: Array.isArray(body.tools) ? body.tools.map(String) : undefined,
-          systemPrompt: String(body.systemPrompt ?? ''),
-        });
-        return json({ success: true, path: written.path, agents: await mergeAgents([]) });
-      }
-
-      // Native agent file delete: { type: "delete_native", fileName }
-      if (body.type === 'delete_native') {
-        if (isMockMode()) return json({ error: 'Native agent deletes are unavailable in mock mode' }, { status: 400 });
-        const removed = await deleteAgentDefinition(String(body.fileName ?? ''));
-        if (!removed) return json({ error: 'Native agent file not found' }, { status: 404 });
-        return json({ success: true, agents: await mergeAgents([]) });
-      }
-
-      if (!Array.isArray(body) && !Array.isArray(body.agents) && body.agent
-        && typeof body.agent.id === 'string' && body.agent.id.startsWith('omp-')) {
-        return json({ error: 'Native omp agents are read-only in Kabmo' }, { status: 403 });
-      }
-
-      const updatedAgents = await agentsStore.upsert(db, body);
-      await agentsStore.write(db, updatedAgents);
-      return json({ success: true, agents: updatedAgents });
-    }
-
+  if (request.method !== 'POST') {
     return methodNotAllowed({ request, params });
+  }
+  if (isMockMode()) {
+    return json({ error: 'Agent files cannot be written in mock mode' }, { status: 400 });
+  }
+  try {
+    const body: unknown = await request.json();
+    if (typeof body !== 'object' || body === null || !('type' in body)) {
+      return json({ error: 'type is required (write or delete)' }, { status: 400 });
+    }
+    const root = 'root' in body && typeof body.root === 'string' ? body.root : null;
+
+    if (body.type === 'delete') {
+      if (!('fileName' in body) || typeof body.fileName !== 'string') {
+        return json({ error: 'fileName is required' }, { status: 400 });
+      }
+      const removed = await deleteAgentDefinition(body.fileName);
+      if (!removed) return json({ error: `No agent file named “${body.fileName}”` }, { status: 404 });
+      return json({ success: true, agents: await readList(root) });
+    }
+
+    if (body.type === 'write') {
+      const fileName = 'fileName' in body && typeof body.fileName === 'string' ? body.fileName : '';
+      const systemPrompt = 'systemPrompt' in body && typeof body.systemPrompt === 'string' ? body.systemPrompt : '';
+      const text = (key: string): string | undefined => (
+        key in body && typeof body[key as keyof typeof body] === 'string'
+          ? String(body[key as keyof typeof body])
+          : undefined
+      );
+      const tools = 'tools' in body && Array.isArray(body.tools)
+        ? body.tools.filter((item): item is string => typeof item === 'string')
+        : undefined;
+      const written = await writeAgentDefinition({
+        fileName,
+        name: text('name') ?? fileName,
+        description: text('description') ?? '',
+        ...(text('model') ? { model: text('model') } : {}),
+        ...(text('thinkingLevel') ? { thinkingLevel: text('thinkingLevel') } : {}),
+        ...(text('spawns') ? { spawns: text('spawns') } : {}),
+        ...(tools ? { tools } : {}),
+        systemPrompt,
+      });
+      // A rename writes the new file and removes the old one, so one definition
+      // cannot survive under two names.
+      const previous = 'previousFileName' in body && typeof body.previousFileName === 'string'
+        ? body.previousFileName
+        : '';
+      if (previous && previous !== fileName) await deleteAgentDefinition(previous);
+      return json({ success: true, path: written.path, agents: await readList(root) });
+    }
+
+    return json({ error: `Unknown action “${String(body.type)}”` }, { status: 400 });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
   }
 }

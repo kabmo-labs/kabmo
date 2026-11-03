@@ -4,8 +4,8 @@
  */
 
 /**
- * The settings routes backed by Kabmo SQLite store: root, projects,
- * behavior, agents and providers.
+ * The settings routes backed by Kabmo SQLite store: root, projects and
+ * behavior.
  *
  * Each of these modules owns a request contract that is easy to break from the
  * client side and invisible from the server side, so every case here pins a
@@ -19,14 +19,11 @@
  *   missing workspace.
  * - `behavior` refuses an unknown `file` and a non-string `rules`, and its
  *   reset restores the shipped AGENTS.md preset but clears RULES.md.
- * - `agents` refuses every mutation of a native `omp-` agent with 403 and
- *   refuses native writes outright under MOCK.
- * - `providers` reports a delete without an id as a 400 rather than silently
- *   removing the whole overlay.
  *
- * The DB is a fresh temp file (`KABMO_DB_PATH`, `SYNC_WORKSPACE=false`)
- * and the agent dir a temp tree, so no case can reach the developer's real
- * `~/.omp` or `~/.kabmo`. Tests run in real mode unless a case opts into
+ * The DB is a fresh temp file (`KABMO_DB_PATH`, `SYNC_WORKSPACE=false`) and the
+ * agent dir a temp tree, so no case can reach the developer's real `~/.omp` or
+ * `~/.kabmo`. The agents route writes FILES, so its cases live beside it in
+ * `agents.test.ts`. Tests run in real mode unless a case opts into
  * MOCK for a mock-only branch; the db slot is primed in `beforeAll` so a later
  * MOCK toggle cannot re-resolve the path to the repo's own `workspace.db`.
  */
@@ -36,12 +33,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getDb } from '@/server/db.server';
-import { DEFAULT_AGENTS_LIST } from '@/client/data/agent-data';
 import { DEFAULT_BEHAVIOR_RULES } from '@/client/data/settings/behavior';
-import { action as agentsAction, loader as agentsLoader } from '@/server/routes/settings/agents';
 import { action as behaviorAction, loader as behaviorLoader } from '@/server/routes/settings/behavior';
 import { action as projectsAction, loader as projectsLoader } from '@/server/routes/settings/projects';
-import { action as providersAction, loader as providersLoader } from '@/server/routes/settings/providers';
 import { action as rootAction, loader as rootLoader } from '@/server/routes/settings/root';
 import { removeDir } from '@/test-support/remove-dir';
 
@@ -230,107 +224,6 @@ describe('settings behavior', () => {
 
   test('a wrong verb is the route-owned 405', async () => {
     const res = await call(behaviorAction, new Request(`${API}/behavior`, { method: 'DELETE' }));
-    expect(res.status).toBe(405);
-    expect(await res.json()).toEqual({ error: 'Method not allowed' });
-  });
-});
-
-describe('settings agents', () => {
-  test('native omp agents are read-only for delete and for write', async () => {
-    const del = await call(agentsAction, new Request(`${API}/agents?id=omp-reviewer`, { method: 'DELETE' }));
-    expect(del.status).toBe(403);
-    expect(await del.json()).toEqual({ error: 'Native omp agents are read-only in Kabmo' });
-
-    const write = await call(agentsAction, send(`${API}/agents`, 'POST', { agent: { id: 'omp-reviewer', name: 'x' } }));
-    expect(write.status).toBe(403);
-    expect(await write.json()).toEqual({ error: 'Native omp agents are read-only in Kabmo' });
-  });
-
-  test('a delete without an id is a 400', async () => {
-    const res = await call(agentsAction, new Request(`${API}/agents`, { method: 'DELETE' }));
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'id is required' });
-  });
-
-  test('native write and delete round-trip in the temp agent dir', async () => {
-    const written = await call(agentsAction, send(`${API}/agents`, 'POST', {
-      type: 'write_native', fileName: 'helper', name: 'Helper', systemPrompt: 'You help.',
-    }));
-    expect(written.status).toBe(200);
-    expect((await written.json()).path).toEndWith('helper.md');
-
-    const deleted = await call(agentsAction, send(`${API}/agents`, 'POST', { type: 'delete_native', fileName: 'helper' }));
-    expect(deleted.status).toBe(200);
-
-    const missing = await call(agentsAction, send(`${API}/agents`, 'POST', { type: 'delete_native', fileName: 'gone' }));
-    expect(missing.status).toBe(404);
-    expect(await missing.json()).toEqual({ error: 'Native agent file not found' });
-  });
-
-  test('an invalid native file name and an empty prompt are refused', async () => {
-    const badName = await call(agentsAction, send(`${API}/agents`, 'POST', { type: 'write_native', fileName: 'bad name', systemPrompt: 'x' }));
-    expect(badName.status).toBe(500);
-
-    const empty = await call(agentsAction, send(`${API}/agents`, 'POST', { type: 'write_native', fileName: 'ok', systemPrompt: '   ' }));
-    expect(empty.status).toBe(500);
-    expect(await empty.json()).toEqual({ error: 'Agent system prompt cannot be empty' });
-  });
-
-  test('MOCK refuses native writes and serves the demo list', async () => {
-    Bun.env.MOCK = 'true';
-    const write = await call(agentsAction, send(`${API}/agents`, 'POST', { type: 'write_native', fileName: 'x' }));
-    expect(write.status).toBe(400);
-    expect(await write.json()).toEqual({ error: 'Native agent writes are unavailable in mock mode' });
-
-    const del = await call(agentsAction, send(`${API}/agents`, 'POST', { type: 'delete_native', fileName: 'x' }));
-    expect(del.status).toBe(400);
-    expect(await del.json()).toEqual({ error: 'Native agent deletes are unavailable in mock mode' });
-
-    const body = await (await call(agentsLoader, new Request(`${API}/agents`))).json();
-    expect(body.isMock).toBe(true);
-    expect(body.agents).toHaveLength(DEFAULT_AGENTS_LIST.length);
-  });
-
-  test('a wrong verb is the route-owned 405', async () => {
-    const res = await call(agentsAction, send(`${API}/agents`, 'PATCH'));
-    expect(res.status).toBe(405);
-    expect(await res.json()).toEqual({ error: 'Method not allowed' });
-  });
-});
-
-describe('settings providers', () => {
-  test('MOCK serves the preset list without probing the agent', async () => {
-    Bun.env.MOCK = 'true';
-    const body = await (await call(providersLoader, new Request(`${API}/providers`))).json();
-    expect(body.isMock).toBe(true);
-    expect(Array.isArray(body.providers)).toBe(true);
-    expect(Array.isArray(body.presetProviders)).toBe(true);
-  });
-
-  test('MOCK connect and disconnect flip the overlay row', async () => {
-    Bun.env.MOCK = 'true';
-    const seeded = await call(providersAction, send(`${API}/providers`, 'POST', {
-      provider: { id: 'p-test', name: 'Test', slug: 'testp', icon: 'test', status: 'connected', configuredIn: 'chamber' },
-    }));
-    expect(seeded.status).toBe(200);
-
-    const off = await call(providersAction, send(`${API}/providers`, 'POST', { disableProvider: 'testp' }));
-    const offBody = await off.json();
-    expect(offBody.providers.find((p: { slug: string }) => p.slug === 'testp')).toMatchObject({ disabled: true, status: 'disconnected' });
-
-    const on = await call(providersAction, send(`${API}/providers`, 'POST', { enableProvider: 'testp' }));
-    const onBody = await on.json();
-    expect(onBody.providers.find((p: { slug: string }) => p.slug === 'testp')).toMatchObject({ disabled: false, status: 'connected' });
-  });
-
-  test('a delete without an id is refused before any registry probe', async () => {
-    const res = await call(providersAction, new Request(`${API}/providers`, { method: 'DELETE' }));
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'id is required' });
-  });
-
-  test('a wrong verb is the route-owned 405', async () => {
-    const res = await call(providersAction, new Request(`${API}/providers`));
     expect(res.status).toBe(405);
     expect(await res.json()).toEqual({ error: 'Method not allowed' });
   });

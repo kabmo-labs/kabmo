@@ -4,17 +4,15 @@
  */
 
 /**
- * The definition files Kabmo owns (agents, instruction files) and the plugin CLI wrapper. Agent discovery is read-only and forgiving: a malformed
- * frontmatter field becomes a default (`mode: all`, `temperature: null`) rather
- * than dropping the agent, a non-`.md` entry and an oversized file are skipped,
- * and a USER agent wins over a project agent with the same base name.
- * `writeAgentDefinition` is the only writer — it refuses a name that escapes the
- * agents directory and an empty prompt, and emits exactly the frontmatter keys
- * omp reads (`thinking-level`, `top_p`) with quoted scalars. An instruction file
- * of only whitespace REMOVES the file, or an empty AGENTS.md would still claim
- * the context scope; plugin wrappers pass `--scope` only where omp accepts it,
- * and `pluginCliError` prefers stderr. `PI_CODING_AGENT_DIR` points at a temp
- * dir and `KABMO_OMP_BIN` at a stub recording its argv — no real process (the stub is a compiled executable, so it spawns on both platforms).
+ * The definition files Kabmo owns besides agent definitions (the instruction
+ * files) and the plugin CLI wrapper. Agent discovery and the agent-file writer
+ * have their own suite, `agent-definitions.test.ts`.
+ *
+ * An instruction file of only whitespace REMOVES the file, or an empty AGENTS.md
+ * would still claim the context scope; plugin wrappers pass `--scope` only where
+ * omp accepts it, and `pluginCliError` prefers stderr. `PI_CODING_AGENT_DIR`
+ * points at a temp dir and `KABMO_OMP_BIN` at a stub recording its argv — no real
+ * process (the stub is a compiled executable, so it spawns on both platforms).
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
@@ -23,7 +21,6 @@ import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { deleteAgentDefinition, discoverNativeAgents, writeAgentDefinition } from '@/server/lib/omp/config/agents';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
 import {
   clearInstructionFile,
@@ -109,99 +106,6 @@ afterAll(() => {
   if (prevMock === undefined) delete Bun.env.MOCK;
   else Bun.env.MOCK = prevMock;
   fs.rmSync(root, { recursive: true, force: true });
-});
-
-describe('discoverNativeAgents', () => {
-  test('shapes frontmatter, defaults malformed fields, and skips non-markdown entries', async () => {
-    write(join(userAgents, 'one.md'), [
-      '---',
-      'name: First',
-      'description: "a description"',
-      'mode: subagent',
-      'model: fast',
-      'thinking: high',
-      'temperature: 0.5',
-      'top_p: nope',
-      '---',
-      '',
-      '  system prompt  ',
-      '',
-    ].join('\n'));
-    write(join(userAgents, 'two.md'), 'no frontmatter body\n');
-    write(join(userAgents, 'ignored.txt'), 'x');
-    fs.mkdirSync(join(userAgents, 'nested.md'), { recursive: true });
-
-    const found = await discoverNativeAgents();
-    expect(found.map((agent) => agent.id).sort()).toEqual(['omp-user-one', 'omp-user-two']);
-    // By id, never by index: `readdir` order is not guaranteed (Windows returned `two` first).
-    const byId = new Map(found.map((agent) => [agent.id, agent]));
-    expect(byId.get('omp-user-one')).toMatchObject({
-      name: 'First', description: 'a description', mode: 'subagent', overrideModel: 'fast', thinkingVariant: 'high',
-      temperature: 0.5, topP: null, systemPrompt: 'system prompt', sourceRoot: 'user', filePath: join(userAgents, 'one.md'),
-    });
-    expect(byId.get('omp-user-two')).toMatchObject({
-      name: 'two', description: '', mode: 'all', temperature: null, topP: null, systemPrompt: 'no frontmatter body',
-    });
-  });
-
-  test('an unrecognized mode and a non-numeric temperature degrade to defaults', async () => {
-    write(join(userAgents, 'weird.md'), '---\nmode: wizard\ntemperature: hot\n---\nbody\n');
-    const agent = (await discoverNativeAgents()).find((item) => item.id === 'omp-user-weird');
-    expect(agent).toMatchObject({ mode: 'all', temperature: null });
-  });
-
-  test('a user agent wins over a project agent with the same base name', async () => {
-    write(join(userAgents, 'shared.md'), '---\nname: FromUser\n---\nuser body\n');
-    write(join(projectAgents, 'shared.md'), '---\nname: FromProject\n---\nproject body\n');
-    write(join(projectAgents, 'project-only.md'), '---\nname: OnlyProject\n---\nbody\n');
-
-    const found = await discoverNativeAgents(projectAgents);
-    expect(found.find((agent) => agent.filePath === join(userAgents, 'shared.md'))?.name).toBe('FromUser');
-    expect(found.some((agent) => agent.filePath === join(projectAgents, 'shared.md'))).toBe(false);
-    expect(found.find((agent) => agent.id === 'omp-project-project-only')?.sourceRoot).toBe('project');
-  });
-
-  test('an oversized definition is skipped and a missing directory is not an error', async () => {
-    write(join(userAgents, 'huge.md'), `---\nname: Huge\n---\n${'x'.repeat(512 * 1024 + 1)}\n`);
-    const found = await discoverNativeAgents();
-    expect(found.some((agent) => agent.name === 'Huge')).toBe(false);
-    expect(await discoverNativeAgents(join(root, 'no-such-dir'))).toEqual(found);
-  });
-});
-
-describe('writeAgentDefinition', () => {
-  test('refuses an unsafe file name and an empty system prompt', async () => {
-    await expect(writeAgentDefinition({ fileName: '../escape', systemPrompt: 'x' })).rejects.toThrow(/may contain letters/);
-    await expect(writeAgentDefinition({ fileName: 'ok', systemPrompt: '   ' })).rejects.toThrow(/cannot be empty/);
-    expect(fs.existsSync(join(userAgents, 'ok.md'))).toBe(false);
-  });
-
-  test('writes omp frontmatter keys, quoting scalars, then deletes on request', async () => {
-    const { path } = await writeAgentDefinition({
-      fileName: 'written',
-      description: 'has "quotes" and \\ slashes',
-      mode: 'primary',
-      thinking: 'low',
-      temperature: 0.2,
-      topP: 0.9,
-      tools: ['read', 'bash'],
-      systemPrompt: 'do the thing',
-    });
-    expect(path).toBe(join(userAgents, 'written.md'));
-    const text = fs.readFileSync(path, 'utf8');
-    expect(text).toContain('name: "written"');
-    expect(text).toContain('mode: "primary"');
-    expect(text).toContain('thinking-level: "low"');
-    expect(text).toContain('temperature: 0.2');
-    expect(text).toContain('top_p: 0.9');
-    expect(text).toContain('tools: "read", "bash"');
-    expect(text).toContain('has \\"quotes\\" and \\\\ slashes');
-    expect(text.endsWith('\n')).toBe(true);
-
-    expect(await deleteAgentDefinition('written')).toBe(true);
-    expect(await deleteAgentDefinition('written')).toBe(false);
-    await expect(deleteAgentDefinition('bad/name')).rejects.toThrow(/Invalid agent file name/);
-  });
 });
 
 describe('instruction files', () => {

@@ -1,331 +1,323 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
-import { Check, Copy, Info, Minus, PenTool, Plus, Trash2 } from 'lucide-preact';
-import type { AgentItem, AgentMode, AgentScope } from '@/shared/types';
+import { AlertCircle, Check, Copy, Info, Loader2, Save, Trash2 } from 'lucide-preact';
+import type { AgentItem, WriteOutcome } from '@/shared/types';
+import { agentFileNameError } from '@/shared/lib/omp/config/agent-file';
+import { useWriteFeedback } from '@/client/hooks/settings/write-feedback';
+import { AgentModelPicker } from '@/client/components/settings/categories/agent-settings/ModelPicker';
+import { AGENT_THINKING_DEFAULT, AGENT_THINKING_LEVELS } from '@/client/components/settings/categories/agent-settings/levels';
 
 interface AgentDetailPaneProps {
   agent: AgentItem;
   isNew?: boolean;
-  onSave: (updatedAgent: AgentItem) => void;
-  onDelete?: (agentId: string) => void;
+  /** The file this definition replaced, when the name changed. */
+  previousFileName?: string | null;
+  onSave: (agent: AgentItem, previousFileName?: string | null) => Promise<WriteOutcome>;
+  onDelete?: (agent: AgentItem) => Promise<WriteOutcome>;
 }
 
-const AVAILABLE_MODELS = [
-  'Not selected',
-  'claude-3-7-sonnet-20250219',
-  'claude-3-5-sonnet-20241022',
-  'claude-3-5-haiku-20241022',
-  'gpt-4o',
-  'gpt-4o-mini',
-  'o3-mini',
-  'gemini-2.5-pro-preview-03-25',
-  'gemini-2.5-flash',
-  'deepseek-chat-v3',
-  'deepseek-reasoner-r1',
-];
-
+/**
+ * One agent definition, as the markdown file omp loads.
+ *
+ * Every control here corresponds to a key omp's own `parseAgentFields` reads
+ * (`name`, `description`, `model`, `thinkingLevel`, `tools`, `spawns`) or to the
+ * file body, which becomes the system prompt. That is deliberate: the pane used
+ * to offer `mode`, `temperature` and `topP`, and omp ignores all three — editing
+ * them changed a file to no effect, which is the worst kind of control.
+ *
+ * The file IS the agent, so creating one here writes it, and the tool allowlist
+ * and `spawns` are edited as the CSV omp reads rather than re-serialized from a
+ * record (that is what would drop a shipped agent's block-list `tools:`).
+ *
+ * Project agents stay read-only: that directory belongs to the workspace.
+ */
 export const AgentDetailPane: FunctionComponent<AgentDetailPaneProps> = ({
   agent,
   isNew = false,
+  previousFileName = null,
   onSave,
   onDelete,
 }) => {
   const [formData, setFormData] = useState<AgentItem>(agent);
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [toolsText, setToolsText] = useState((agent.tools ?? []).join(', '));
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const feedback = useWriteFeedback();
+
+  const readOnly = agent.sourceRoot === 'project';
 
   useEffect(() => {
     setFormData(agent);
-    setSavedSuccess(false);
+    setToolsText((agent.tools ?? []).join(', '));
+    setConfirmDelete(false);
   }, [agent]);
 
-  const handleSave = (e: FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
+  /** The name becomes the file name, and a blank prompt writes an agent that does nothing. */
+  const validationError = (() => {
+    if (readOnly) return null;
+    const nameError = agentFileNameError(formData.name);
+    if (nameError) return nameError;
+    if (!formData.systemPrompt.trim()) return 'A system prompt is required — an empty agent does nothing.';
+    return null;
+  })();
+
+  const dirty =
+    formData.name !== agent.name
+    || formData.description !== agent.description
+    || (formData.model ?? '') !== (agent.model ?? '')
+    || (formData.thinkingLevel ?? '') !== (agent.thinkingLevel ?? '')
+    || (formData.spawns ?? '') !== (agent.spawns ?? '')
+    || toolsText !== (agent.tools ?? []).join(', ')
+    || formData.systemPrompt !== agent.systemPrompt;
+
+  const handleSave = (event: FormEvent) => {
+    event.preventDefault();
+    if (readOnly || validationError || feedback.saving) return;
+    // An UNTOUCHED tools field sends `undefined`, so the file keeps its own
+    // block-list form: re-sending the same names as CSV rewrote a shipped
+    // agent's `tools:\n  - read` into one line for no reason.
+    const toolsChanged = toolsText.trim() !== (agent.tools ?? []).join(', ');
+    const tools = toolsChanged
+      ? toolsText.split(',').map((name) => name.trim()).filter(Boolean)
+      : undefined;
+    void feedback.run(() => onSave({ ...formData, name: formData.name.trim(), tools }, previousFileName));
   };
 
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(formData.systemPrompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 1800);
-  };
-
-  const adjustTemp = (delta: number) => {
-    setFormData((prev) => {
-      const current = prev.temperature ?? 0.7;
-      const next = Math.max(0, Math.min(2.0, parseFloat((current + delta).toFixed(2))));
-      return { ...prev, temperature: next };
-    });
-  };
-
-  const adjustTopP = (delta: number) => {
-    setFormData((prev) => {
-      const current = prev.topP ?? 0.95;
-      const next = Math.max(0, Math.min(1.0, parseFloat((current + delta).toFixed(2))));
-      return { ...prev, topP: next };
+  const handleDelete = () => {
+    if (!onDelete) return;
+    void feedback.run(async () => {
+      const outcome = await onDelete(agent);
+      if (!outcome.ok) setConfirmDelete(false);
+      return outcome;
     });
   };
 
   return (
     <form onSubmit={handleSave} className="flex-1 flex flex-col h-full scrollbar-overlay-container bg-paper text-ink p-6 md:p-8 space-y-6">
-      {/* SECTION 1: Identity & Role */}
+      {readOnly && (
+        <div className="rounded-lg border border-ink/15 bg-ink/5 px-3 py-2 text-[11px] leading-relaxed text-ink/70">
+          This agent is defined by the workspace at{' '}
+          <span className="font-mono text-ink/80">{agent.filePath}</span>. It is listed here and stays read-only:
+          that <span className="font-mono">.omp/agents</span> directory belongs to the project.
+        </div>
+      )}
+
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
-            Identity & Role
-          </h2>
-          {formData.isBuiltIn && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-ink/5 border border-ink/10 text-ink/60">
-              Built-in System Agent (Read-only System Core)
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-ink">Identity &amp; Role</h2>
+          {agent.fileName && (
+            <span className="truncate font-mono text-[10px] text-ink/40" title={agent.filePath}>
+              {agent.sourceRoot === 'project' ? '.omp/agents' : '~/.omp/agent/agents'}/{agent.fileName}.md
             </span>
           )}
         </div>
 
-        {/* Name and Scope row */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-ink/80 mb-1.5">
-              Agent Name
-            </label>
-            <div className="flex items-center border border-ink/20 hover:border-ink/40 focus-within:border-ink rounded-lg bg-paper transition-colors">
-              <span className="px-3 py-2 font-mono text-xs text-ink/40 border-r border-ink/15 select-none">
-                @
-              </span>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.currentTarget.value })}
-                required
-                placeholder="agent-name"
-                disabled={formData.isBuiltIn}
-                className="w-full text-xs font-mono px-3 py-2 bg-transparent focus:outline-none disabled:opacity-60 text-ink"
-              />
-            </div>
-          </div>
-
-          <div className="w-40">
-            <label className="block text-xs font-semibold text-ink/80 mb-1.5">
-              Scope
-            </label>
-            <select
-              value={formData.scope}
-              onChange={(e) => setFormData({ ...formData, scope: e.currentTarget.value as AgentScope })}
-              disabled={formData.isBuiltIn}
-              className="w-full text-xs py-2 px-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink disabled:opacity-60 text-ink transition-colors cursor-pointer"
-            >
-              <option value="user">user</option>
-              <option value="project">project</option>
-              <option value="system">system</option>
-            </select>
-          </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold text-ink/80">Agent name</label>
+          <input
+            type="text"
+            value={formData.name}
+            onInput={(e) => setFormData({ ...formData, name: e.currentTarget.value })}
+            required
+            placeholder="agent-name"
+            disabled={readOnly || feedback.saving}
+            aria-invalid={agentFileNameError(formData.name) ? true : undefined}
+            className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-60"
+          />
+          <p className="mt-1 text-[10px] text-ink/45">
+            The file name omp loads it from — letters, numbers, dots, dashes, underscores.
+          </p>
         </div>
 
-        {/* Description */}
         <div>
-          <label className="block text-xs font-semibold text-ink/80 mb-1.5">
-            Description
-          </label>
+          <label className="mb-1.5 block text-xs font-semibold text-ink/80">Description</label>
           <textarea
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.currentTarget.value })}
-            placeholder="What does this agent do?"
+            onInput={(e) => setFormData({ ...formData, description: e.currentTarget.value })}
+            placeholder="What does this agent do? Shown when omp lists it."
             rows={2}
-            className="w-full text-xs p-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/30 text-ink transition-colors"
+            disabled={readOnly || feedback.saving}
+            className="w-full rounded-lg border border-ink/20 bg-paper p-3 text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/30 disabled:opacity-60"
           />
-        </div>
-
-        {/* Mode Segmented Pills */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <label className="text-xs font-semibold text-ink/80">Mode</label>
-            <span title="Defines agent delegation context (primary, subagent, or all)">
-              <Info className="w-3.5 h-3.5 text-ink/40" />
-            </span>
-          </div>
-          <div className="inline-flex rounded-lg border border-ink/15 p-0.5 bg-ink/5">
-            {(['primary', 'subagent', 'all'] as AgentMode[]).map((mode) => (
-              <button
-                type="button"
-                key={mode}
-                onClick={() => setFormData({ ...formData, mode })}
-                className={`px-3 py-1 text-xs rounded-md transition-colors cursor-pointer capitalize ${
-                  formData.mode === mode
-                    ? 'bg-paper text-ink shadow-xs font-semibold'
-                    : 'text-ink/60 hover:text-ink'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+          <p className="mt-1 text-[10px] text-ink/45">
+            Required by omp: a definition without a description is not loaded at all.
+          </p>
         </div>
       </div>
 
       <div className="border-t border-ink/10" />
 
-      {/* SECTION 2: Model & Parameters */}
       <div className="space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
-          Model & Parameters
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Override Model */}
+        <h2 className="text-xs font-bold uppercase tracking-wider text-ink">Model &amp; Capabilities</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-xs font-semibold text-ink/80 mb-1.5">
-              Override Model
-            </label>
-            <div className="flex items-center border border-ink/20 hover:border-ink/40 focus-within:border-ink rounded-lg bg-paper transition-colors">
-              <span className="px-2.5 text-ink/40">
-                <PenTool className="w-3.5 h-3.5" />
+            <div className="mb-1.5 flex items-center gap-1">
+              <label className="text-xs font-semibold text-ink/80">Model</label>
+              <span title="A provider/model selector from the live catalog. Leave it unselected to inherit the session model.">
+                <Info className="h-3.5 w-3.5 text-ink/40" />
               </span>
-              <select
-                value={formData.overrideModel || 'Not selected'}
-                onChange={(e) => setFormData({ ...formData, overrideModel: e.currentTarget.value })}
-                className="w-full text-xs font-mono py-2 pr-3 bg-transparent focus:outline-none cursor-pointer text-ink"
-              >
-                {AVAILABLE_MODELS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
             </div>
+            <AgentModelPicker
+              value={formData.model ?? ''}
+              disabled={readOnly || feedback.saving}
+              onChange={(selector) => setFormData({ ...formData, model: selector || undefined })}
+            />
           </div>
 
-          {/* Thinking Variant */}
           <div>
-            <div className="flex items-center gap-1 mb-1.5">
-              <label className="text-xs font-semibold text-ink/80">Thinking Variant</label>
-              <span title="Controls chain-of-thought token depth">
-                <Info className="w-3.5 h-3.5 text-ink/40" />
+            <div className="mb-1.5 flex items-center gap-1">
+              <label className="text-xs font-semibold text-ink/80">Thinking level</label>
+              <span title="An omp thinking selector. “inherit” leaves the level to the session.">
+                <Info className="h-3.5 w-3.5 text-ink/40" />
+              </span>
+            </div>
+            <select
+              aria-label="Thinking level"
+              value={formData.thinkingLevel ?? AGENT_THINKING_DEFAULT}
+              onChange={(e) => setFormData({ ...formData, thinkingLevel: e.currentTarget.value || undefined })}
+              disabled={readOnly || feedback.saving}
+              className="w-full cursor-pointer rounded-lg border border-ink/20 bg-paper py-2 pl-2 pr-3 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-60"
+            >
+              <option value={AGENT_THINKING_DEFAULT}>inherit (session level)</option>
+              {AGENT_THINKING_LEVELS.map((level) => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center gap-1">
+              <label className="text-xs font-semibold text-ink/80">Tools</label>
+              <span title="Comma-separated tool names. Empty means omp's default set for this kind of agent.">
+                <Info className="h-3.5 w-3.5 text-ink/40" />
               </span>
             </div>
             <input
               type="text"
-              value={formData.thinkingVariant || 'default'}
-              onChange={(e) => setFormData({ ...formData, thinkingVariant: e.currentTarget.value })}
-              placeholder="default"
-              className="w-full text-xs font-mono px-3 py-2 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink text-ink transition-colors"
+              value={toolsText}
+              onInput={(e) => setToolsText(e.currentTarget.value)}
+              placeholder="read, grep, glob, edit"
+              disabled={readOnly || feedback.saving}
+              className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/30 disabled:opacity-60"
             />
           </div>
 
-          {/* Temperature Stepper */}
           <div>
-            <div className="flex items-center gap-1 mb-1.5">
-              <label className="text-xs font-semibold text-ink/80">Temperature</label>
-              <span title="Higher values make output more random, lower values more deterministic">
-                <Info className="w-3.5 h-3.5 text-ink/40" />
+            <div className="mb-1.5 flex items-center gap-1">
+              <label className="text-xs font-semibold text-ink/80">Spawns</label>
+              <span title="Which agents this one may delegate to: * for any, or a comma-separated list.">
+                <Info className="h-3.5 w-3.5 text-ink/40" />
               </span>
             </div>
-            <div className="flex items-center border border-ink/20 rounded-lg max-w-[150px] bg-paper overflow-hidden">
-              <button
-                type="button"
-                onClick={() => adjustTemp(-0.05)}
-                className="px-3 py-1.5 text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="flex-1 text-center font-mono text-xs font-medium text-ink">
-                {formData.temperature != null ? formData.temperature.toFixed(2) : '—'}
-              </span>
-              <button
-                type="button"
-                onClick={() => adjustTemp(0.05)}
-                className="px-3 py-1.5 text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Top P Stepper */}
-          <div>
-            <div className="flex items-center gap-1 mb-1.5">
-              <label className="text-xs font-semibold text-ink/80">Top P</label>
-              <span title="Nucleus sampling cutoff">
-                <Info className="w-3.5 h-3.5 text-ink/40" />
-              </span>
-            </div>
-            <div className="flex items-center border border-ink/20 rounded-lg max-w-[150px] bg-paper overflow-hidden">
-              <button
-                type="button"
-                onClick={() => adjustTopP(-0.05)}
-                className="px-3 py-1.5 text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="flex-1 text-center font-mono text-xs font-medium text-ink">
-                {formData.topP != null ? formData.topP.toFixed(2) : '—'}
-              </span>
-              <button
-                type="button"
-                onClick={() => adjustTopP(0.05)}
-                className="px-3 py-1.5 text-ink/60 hover:text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <input
+              type="text"
+              value={formData.spawns ?? ''}
+              onInput={(e) => setFormData({ ...formData, spawns: e.currentTarget.value || undefined })}
+              placeholder="*"
+              disabled={readOnly || feedback.saving}
+              className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/30 disabled:opacity-60"
+            />
           </div>
         </div>
       </div>
 
       <div className="border-t border-ink/10" />
 
-      {/* SECTION 3: System Prompt */}
-      <div className="space-y-2 flex-1 flex flex-col">
+      <div className="flex flex-1 flex-col space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-ink">
-            System Prompt
-          </label>
+          <label className="text-xs font-bold uppercase tracking-wider text-ink">System prompt</label>
           <button
             type="button"
-            onClick={handleCopyPrompt}
-            className="flex items-center gap-1.5 text-xs text-ink/60 hover:text-ink transition-colors cursor-pointer"
+            onClick={() => {
+              navigator.clipboard.writeText(formData.systemPrompt).then(() => {
+                setCopiedPrompt(true);
+                setTimeout(() => setCopiedPrompt(false), 1800);
+              }).catch((err) => console.error('Failed to copy the system prompt:', err));
+            }}
+            className="flex items-center gap-1.5 text-xs text-ink/60 transition-colors hover:text-ink cursor-pointer"
           >
-            {copiedPrompt ? <Check className="w-3.5 h-3.5 text-ink" /> : <Copy className="w-3.5 h-3.5" />}
+            {copiedPrompt ? <Check className="h-3.5 w-3.5 text-ink" /> : <Copy className="h-3.5 w-3.5" />}
             <span>{copiedPrompt ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
         <textarea
           value={formData.systemPrompt}
-          onChange={(e) => setFormData({ ...formData, systemPrompt: e.currentTarget.value })}
+          onInput={(e) => setFormData({ ...formData, systemPrompt: e.currentTarget.value })}
           rows={7}
-          placeholder="You are an expert coding assistant..."
-          className="w-full flex-1 min-h-[140px] text-xs font-mono p-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-ink/5 focus:outline-none focus:border-ink leading-relaxed transition-colors"
+          disabled={readOnly || feedback.saving}
+          placeholder="You are an expert coding assistant…"
+          aria-invalid={validationError && !agentFileNameError(formData.name) ? true : undefined}
+          className={`min-h-[140px] w-full flex-1 rounded-lg border bg-ink/5 p-3 font-mono text-xs leading-relaxed text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-60 ${
+            validationError && !agentFileNameError(formData.name) ? 'border-error' : 'border-ink/20'
+          }`}
         />
       </div>
 
-      {/* Footer Controls */}
-      <div className="pt-3 border-t border-ink/10 flex items-center justify-between">
-        <div>
-          {!formData.isBuiltIn && !isNew && onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(formData.id)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink/20 hover:border-error hover:text-error text-ink/70 text-xs font-medium transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Agent
-            </button>
+      {feedback.error && (
+        <div className="flex items-start gap-1.5 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-[11px] text-error">
+          <AlertCircle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
+          <span className="flex-1 break-words">{feedback.error}</span>
+          <button type="button" onClick={feedback.dismissError} className="cursor-pointer text-error/60 hover:text-error" aria-label="Dismiss error">
+            ×
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-3">
+        <div className="flex items-center gap-2">
+          {!readOnly && !isNew && onDelete && (
+            confirmDelete ? (
+              <>
+                <span className="text-[11px] text-ink/70">Delete “{agent.name}”? The file is removed.</span>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={feedback.saving}
+                  className="rounded-lg border border-error/40 px-2.5 py-1 text-xs font-medium text-error transition-colors hover:bg-error/10 cursor-pointer disabled:opacity-50"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-2 py-1 text-xs text-ink/50 transition-colors hover:text-ink cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-ink/20 px-3.5 py-2 text-xs font-medium text-ink/70 transition-colors hover:border-error hover:text-error cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete agent
+              </button>
+            )
           )}
         </div>
 
         <div className="flex items-center gap-3">
-          {savedSuccess && (
-            <span className="flex items-center gap-1 text-xs text-ink font-medium">
-              <Check className="w-3.5 h-3.5" />
-              Saved successfully
+          {feedback.saved && (
+            <span className="flex items-center gap-1 text-xs font-medium text-ink">
+              <Check className="h-3.5 w-3.5" /> Saved to the agent file
             </span>
           )}
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-lg bg-ink text-paper text-xs font-medium hover:bg-ink/90 transition-colors shadow-xs cursor-pointer"
-          >
-            {isNew ? 'Create Agent' : 'Save Agent'}
-          </button>
+          {validationError && !feedback.saved && (
+            <span className="max-w-[16rem] text-right text-[11px] leading-snug text-error">{validationError}</span>
+          )}
+          {!readOnly && (
+            <button
+              type="submit"
+              disabled={feedback.saving || Boolean(validationError) || (!isNew && !dirty)}
+              title={!isNew && !dirty ? 'Nothing changed yet' : undefined}
+              className="flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-medium text-paper shadow-xs transition-colors hover:bg-ink/90 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {feedback.saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {isNew ? 'Create agent' : 'Save agent'}
+            </button>
+          )}
         </div>
       </div>
     </form>

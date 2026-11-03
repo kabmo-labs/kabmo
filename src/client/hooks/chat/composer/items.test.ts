@@ -255,7 +255,7 @@ describe('plugin commands in the popup', () => {
 describe('pick item mapping', () => {
   test('an agent becomes a bare @name token', () => {
     const [item] = toAgentPickItems([
-      { id: 'a1', name: 'sonic', description: 'fast', scope: 'user', mode: 'primary', systemPrompt: '' },
+      { id: 'a1', name: 'sonic', description: 'fast', scope: 'user', systemPrompt: '' },
     ]);
     expect(item).toMatchObject({ id: 'agent-sonic', name: 'sonic', kind: 'agent', source: 'agent', token: '@sonic' });
   });
