@@ -1,166 +1,87 @@
-import { json } from '@/server/lib/remix-compat';
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * `GET|POST /api/telemetry/tokens` — token and cost usage for the settings
+ * panel.
+ *
+ * The response is ONE payload carrying every view the panel can draw for the
+ * requested period (totals, the provider → model tree, daily rows with their
+ * per-provider split, project rows). Cadence and breakdown tabs are therefore
+ * client-side re-buckets, not requests — the previous shape answered a fresh
+ * full scan for each one.
+ *
+ * What is deliberately absent:
+ *  - `rangeData` / `breakdownData`: three copies of data the panel never read.
+ *    It kept only `metrics`, `breakdownRows` and `chartSeries`.
+ *  - `pricing`: the models.dev catalog was fetched (5.96 MB, measured 5.63 s,
+ *    8 s timeout) on every request and no client code ever read the result.
+ *
+ * `?refresh=1` re-checks the sessions tree before answering; without it the
+ * index is at most 20 seconds stale, which is what makes a period change cost
+ * milliseconds.
+ */
+
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
-import { BREAKDOWN_DATA, MOCK_CHART_SERIES, MOCK_CUSTOM_RANGE_DATA, MOCK_RANGE_DATA, TIME_RANGES } from '@/client/data/mock/token-usage';
 import { isMockMode } from '@/server/mock.server';
-import { loadModelsDevCatalog } from '@/shared/lib/models/catalog';
-import { aggregateUsageWindows, PRESET_RANGES, type UsageWindow } from '@/server/lib/omp/session/usage/aggregate';
-import { buildChartSeries, toBreakdownRows, toMetricSet } from '@/server/lib/omp/session/usage/shaping';
-import type { BreakdownRow, BreakdownTab, CadenceType, ChartSeriesPoint, TimeRangeType, TokenUsageMetricSet } from '@/shared/types';
+import { buildTokenUsagePayload } from '@/server/lib/usage/index-query.server';
+import { mockTokenUsagePayload } from '@/client/data/mock/token-usage';
+import type { TimeRangeType } from '@/shared/types';
 
-const REAL_ZERO_METRIC: TokenUsageMetricSet = {
-  rawCost: '$0.00',
-  processedTokens: '0',
-  activeRate: '0 per active day',
-  cachedInput: '0',
-  cachedPercent: '0.0% of observed input',
-  uncachedInput: '0',
-  outputTokens: '0',
-  reasoning: 'includes 0 reasoning',
-  cacheSavings: '$0.00',
-  scannedTranscripts: 0,
-  usageRecords: 0,
-};
+const RANGES: readonly TimeRangeType[] = ['today', '7d', '30d', '90d', 'all', 'custom'];
+/** Never cached: the index can change under a client that is polling. */
+const HEADERS = { 'cache-control': 'no-store' };
 
-const CADENCES: CadenceType[] = ['daily', 'weekly', 'monthly'];
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-function parseWindow(url: URL): UsageWindow {
-  const timeRange = (url.searchParams.get('timeRange') as TimeRangeType) || '30d';
-  if (timeRange === 'custom') {
-    const from = url.searchParams.get('customFrom') || '';
-    const to = url.searchParams.get('customTo') || '';
-    if (ISO_DATE.test(from) && ISO_DATE.test(to) && from <= to) {
-      return { kind: 'custom', from, to };
-    }
-    return { kind: 'preset', range: '30d' };
-  }
-  if (timeRange === 'all') return { kind: 'all' };
-  if (PRESET_RANGES.includes(timeRange as Exclude<TimeRangeType, 'custom'>)) {
-    return { kind: 'preset', range: timeRange as Exclude<TimeRangeType, 'custom'> };
-  }
-  return { kind: 'preset', range: '30d' };
+function readQuery(url: URL): { range: TimeRangeType; customFrom: string | null; customTo: string | null } {
+  const requested = url.searchParams.get('range') ?? url.searchParams.get('timeRange') ?? '30d';
+  const range = (RANGES as readonly string[]).includes(requested) ? (requested as TimeRangeType) : '30d';
+  return {
+    range,
+    customFrom: url.searchParams.get('customFrom'),
+    customTo: url.searchParams.get('customTo'),
+  };
 }
 
-/** Optional per-model rates from the models.dev catalog (input/output per
- *  1M tokens). Failures degrade to an empty map — pricing is supplementary. */
-async function loadModelRates(modelNames: string[]): Promise<Record<string, { input?: number; output?: number }>> {
-  try {
-    const catalog = await loadModelsDevCatalog();
-    const rates: Record<string, { input?: number; output?: number }> = {};
-    for (const name of modelNames) {
-      const bare = name.split('/').pop()?.toLowerCase() ?? name.toLowerCase();
-      for (const provider of Object.values(catalog)) {
-        const models = provider?.models;
-        if (!models || typeof models !== 'object') continue;
-        const match = Object.entries(models).find(([key, model]) => {
-          const candidates = [key.toLowerCase(), (model?.name ?? '').toLowerCase()];
-          return candidates.some((candidate) => candidate === bare || candidate === name.toLowerCase());
-        });
-        if (match) {
-          rates[name] = { input: match[1]?.cost?.input, output: match[1]?.cost?.output };
-          break;
-        }
-      }
-    }
-    return rates;
-  } catch {
-    return {};
-  }
-}
-
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+  if (request.method !== 'GET') return methodNotAllowed({ request, params });
   const url = new URL(request.url);
-  const timeRange = (url.searchParams.get('timeRange') as TimeRangeType) || '30d';
-  const breakdownTab = (url.searchParams.get('breakdownTab') as BreakdownTab) || 'model';
-  const cadenceParam = url.searchParams.get('cadence');
-  const cadence = CADENCES.includes(cadenceParam as CadenceType) ? (cadenceParam as CadenceType) : 'daily';
-  const window = parseWindow(url);
-  const mock = isMockMode();
+  const query = readQuery(url);
 
-  if (mock) {
-    const activeMetrics = window.kind === 'custom'
-      ? MOCK_CUSTOM_RANGE_DATA
-      : (MOCK_RANGE_DATA[timeRange as Exclude<TimeRangeType, 'custom'>] || MOCK_RANGE_DATA['30d']);
-    const activeBreakdownRows = BREAKDOWN_DATA[breakdownTab] || BREAKDOWN_DATA.model;
-    const chartSeries = MOCK_CHART_SERIES[cadence] || MOCK_CHART_SERIES.daily;
+  if (isMockMode()) return json(mockTokenUsagePayload(query.range), { headers: HEADERS });
 
-    return json({
-      timeRanges: TIME_RANGES,
-      rangeData: MOCK_RANGE_DATA,
-      breakdownData: BREAKDOWN_DATA,
-      activeMetrics,
-      activeBreakdownRows,
-      chartSeries,
-      metrics: activeMetrics,
-      breakdownRows: activeBreakdownRows,
-      timeRange,
-      breakdownTab,
-      cadence,
-      isMock: true,
-    });
-  }
-
-  // Real Mode: aggregate actual token/cost usage from omp session files.
   try {
-    // One scan, every window: the tree read is the expensive part (measured
-    // 795 ms over 455 transcripts), and folding six windows from one scan
-    // replaced six separate reads — 3.3 s cold on this machine.
-    const { ranges, active: activeAggregate } = await aggregateUsageWindows(window);
-    const realRangeData = {} as Record<Exclude<TimeRangeType, 'custom'>, TokenUsageMetricSet>;
-    for (const range of PRESET_RANGES) {
-      realRangeData[range] = toMetricSet(ranges[range], cadence);
-    }
-
-    const realBreakdown: Record<BreakdownTab, BreakdownRow[]> = {
-      model: toBreakdownRows(activeAggregate, 'model'),
-      day: toBreakdownRows(activeAggregate, 'day', cadence),
-      project: toBreakdownRows(activeAggregate, 'project'),
-    };
-    const activeMetrics = toMetricSet(activeAggregate, cadence);
-    const activeBreakdownRows = realBreakdown[breakdownTab] || [];
-    const perModelRates = await loadModelRates(
-      realBreakdown.model.map((row) => row.name),
+    const payload = await buildTokenUsagePayload(query);
+    return json(payload, { headers: HEADERS });
+  } catch (error) {
+    // A failure is REPORTED, never rendered as "$0.00 usage": an empty panel
+    // claiming zero spend is indistinguishable from a month without work.
+    return json(
+      { error: error instanceof Error ? error.message : 'Failed to read token usage' },
+      { status: 500, headers: HEADERS },
     );
-
-    return json({
-      timeRanges: TIME_RANGES,
-      rangeData: realRangeData,
-      breakdownData: realBreakdown,
-      activeMetrics,
-      activeBreakdownRows,
-      chartSeries: buildChartSeries(activeAggregate, cadence),
-      metrics: activeMetrics,
-      breakdownRows: activeBreakdownRows,
-      pricing: perModelRates,
-      timeRange,
-      breakdownTab,
-      cadence,
-      isMock: false,
-    });
-  } catch (error: any) {
-    const zeroBreakdown: Record<BreakdownTab, BreakdownRow[]> = { model: [], day: [], project: [] };
-    return json({
-      timeRanges: TIME_RANGES,
-      rangeData: { today: REAL_ZERO_METRIC, '7d': REAL_ZERO_METRIC, '30d': REAL_ZERO_METRIC, '90d': REAL_ZERO_METRIC, all: REAL_ZERO_METRIC },
-      breakdownData: zeroBreakdown,
-      activeMetrics: REAL_ZERO_METRIC,
-      activeBreakdownRows: [],
-      chartSeries: [] as ChartSeriesPoint[],
-      metrics: REAL_ZERO_METRIC,
-      breakdownRows: [],
-      timeRange,
-      breakdownTab,
-      cadence,
-      isMock: false,
-      error: error.message,
-    });
   }
 }
 
+/**
+ * POST — force a re-check of the sessions tree.
+ *
+ * The panel's Refresh button. It answers with the same payload shape so the
+ * client can replace its state in one step.
+ */
 export async function action({ request, params }: ActionFunctionArgs) {
-  if (request.method === 'POST') {
-    return json({ success: true, timestamp: new Date().toISOString() });
+  if (request.method !== 'POST') return methodNotAllowed({ request, params });
+  const url = new URL(request.url);
+  const query = readQuery(url);
+  if (isMockMode()) return json(mockTokenUsagePayload(query.range), { headers: HEADERS });
+  try {
+    return json(await buildTokenUsagePayload({ ...query, wait: true, force: true }), { headers: HEADERS });
+  } catch (error) {
+    return json(
+      { error: error instanceof Error ? error.message : 'Failed to read token usage' },
+      { status: 500, headers: HEADERS },
+    );
   }
-  return methodNotAllowed({ request, params });
 }

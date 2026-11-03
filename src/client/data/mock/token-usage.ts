@@ -1,129 +1,179 @@
-import type { BreakdownRow, BreakdownTab, CadenceType, ChartSeriesPoint, TimeRangeOption, TimeRangeType, TokenUsageMetricSet } from '@/shared/types';
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
 
-export const TIME_RANGES: TimeRangeOption[] = [
-  { id: 'today', label: 'Today', dateRange: 'Sep 7, 2026' },
-  { id: '7d', label: 'Last 7 days', dateRange: 'Sep 1 to Sep 7' },
-  { id: '30d', label: 'Last 30 days', dateRange: 'Aug 8 to Sep 7' },
-  { id: '90d', label: 'Last 90 days', dateRange: 'Jun 9 to Sep 7' },
-  { id: 'all', label: 'All time', dateRange: 'Jan 1 to Sep 7' },
-  { id: 'custom', label: 'Custom…', dateRange: 'Custom period' },
+/**
+ * Deterministic demo payload for the Token Usage panel under MOCK mode.
+ *
+ * Built through the same `TokenUsagePayload` shape the real route answers with,
+ * so a demo-only field can never exist and a real-only field can never be
+ * missing from the demo — that divergence is how a panel renders correctly in
+ * one mode and crashes in the other.
+ *
+ * The numbers are a plausible month for two providers sharing one model id,
+ * which is exactly the case the breakdown exists to separate.
+ */
+
+import { dayRangeLabel, dayWindow, localDayKey, timeRangeOptions } from '@/shared/lib/usage/range';
+import type {
+  TimeRangeType,
+  TokenUsagePayload,
+  UsageDayRow,
+  UsageProviderRow,
+  UsageProjectRow,
+} from '@/shared/types';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** A record's worth of counters, so every row sums the same way. */
+function counters(cost: number, tokens: number, records: number) {
+  const cacheRead = Math.round(tokens * 0.965);
+  const input = Math.round(tokens * 0.028);
+  const output = tokens - cacheRead - input;
+  return {
+    cost, tokens, input, output, cacheRead, cacheWrite: 0,
+    reasoning: Math.round(output * 0.21), cacheReadCost: cost * 0.12,
+    records, unpriced: 0,
+  };
+}
+
+const PROVIDER_BASE: Array<{ id: string; name: string; models: Array<[string, number, number, number]> }> = [
+  {
+    id: 'kenari-jatis',
+    name: 'Kenari Jatis',
+    models: [['deepseek-v4-1-flash', 38.42, 210_400_000, 1_120]],
+  },
+  {
+    id: 'kenari',
+    name: 'Kenari.id',
+    models: [
+      ['deepseek-v4-1-flash', 5.18, 190_200_000, 980],
+      ['minimax-m3', 2.71, 41_800_000, 214],
+      ['glm-5-3-flash', 0.42, 22_100_000, 168],
+    ],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    models: [
+      ['deepseek-flash', 1.96, 64_300_000, 402],
+      ['deepseek-v4-pro', 0.61, 8_400_000, 96],
+    ],
+  },
 ];
 
-export const MOCK_RANGE_DATA: Record<Exclude<TimeRangeType, 'custom'>, TokenUsageMetricSet> = {
-  today: {
-    rawCost: '$0.01',
-    processedTokens: '320K',
-    activeRate: '320K per active day',
-    cachedInput: '275K',
-    cachedPercent: '85.9% of observed input',
-    uncachedInput: '38.2K',
-    outputTokens: '6.8K',
-    reasoning: 'includes 2.9K reasoning',
-    cacheSavings: '$0.00',
-    scannedTranscripts: 3,
-    usageRecords: 14,
-  },
-  '7d': {
-    rawCost: '$0.04',
-    processedTokens: '1.24M',
-    activeRate: '248K per active day',
-    cachedInput: '1.08M',
-    cachedPercent: '87.0% of observed input',
-    uncachedInput: '142.5K',
-    outputTokens: '17.5K',
-    reasoning: 'includes 7.1K reasoning',
-    cacheSavings: '$0.00',
-    scannedTranscripts: 7,
-    usageRecords: 38,
-  },
-  '30d': {
-    rawCost: '$0.10',
-    processedTokens: '3.08M',
-    activeRate: '1.54M per active day',
-    cachedInput: '2.65M',
-    cachedPercent: '87.2% of observed input',
-    uncachedInput: '390.7K',
-    outputTokens: '34.1K',
-    reasoning: 'includes 14.5K reasoning',
-    cacheSavings: '$0.00',
-    scannedTranscripts: 12,
-    usageRecords: 78,
-  },
-  '90d': {
-    rawCost: '$0.38',
-    processedTokens: '11.4M',
-    activeRate: '1.42M per active day',
-    cachedInput: '9.82M',
-    cachedPercent: '86.1% of observed input',
-    uncachedInput: '1.34M',
-    outputTokens: '240K',
-    reasoning: 'includes 102K reasoning',
-    cacheSavings: '$0.00',
-    scannedTranscripts: 34,
-    usageRecords: 215,
-  },
-  all: {
-    rawCost: '$1.24',
-    processedTokens: '38.6M',
-    activeRate: '1.28M per active day',
-    cachedInput: '33.1M',
-    cachedPercent: '85.7% of observed input',
-    uncachedInput: '4.82M',
-    outputTokens: '680K',
-    reasoning: 'includes 294K reasoning',
-    cacheSavings: '$0.00',
-    scannedTranscripts: 89,
-    usageRecords: 642,
-  },
-};
+/** The provider → model tree for one period, scaled from the base numbers. */
+function providersFor(scale: number): UsageProviderRow[] {
+  return PROVIDER_BASE.map((provider) => {
+    const models = provider.models.map(([model, cost, tokens, records]) => ({
+      model,
+      ...counters(cost * scale, Math.round(tokens * scale), Math.round(records * scale)),
+    }));
+    const summed = models.reduce(
+      (acc, model) => {
+        acc.cost += model.cost;
+        acc.tokens += model.tokens;
+        acc.input += model.input;
+        acc.output += model.output;
+        acc.cacheRead += model.cacheRead;
+        acc.cacheWrite += model.cacheWrite;
+        acc.reasoning += model.reasoning;
+        acc.cacheReadCost += model.cacheReadCost;
+        acc.records += model.records;
+        acc.unpriced += model.unpriced;
+        return acc;
+      },
+      { cost: 0, tokens: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, cacheReadCost: 0, records: 0, unpriced: 0 },
+    );
+    return { id: provider.id, name: provider.name, models, ...summed };
+  }).sort((a, b) => b.cost - a.cost);
+}
 
-export const BREAKDOWN_DATA: Record<BreakdownTab, BreakdownRow[]> = {
-  model: [
-    { name: 'deepseek-v4-flash', cost: '$0.06', share: '63.7%', tokens: '2.0M', sharePercent: 63.7, dotColorClass: 'bg-ink/80' },
-    { name: 'deepseek-v4-flash-vi...', cost: '$0.03', share: '28.0%', tokens: '1.0M', sharePercent: 28.0, dotColorClass: 'bg-ink/50' },
-    { name: 'deepseek-v4-pro', cost: '$0.008', share: '8.3%', tokens: '18K', sharePercent: 8.3, dotColorClass: 'bg-transparent border border-ink/40' },
-  ],
-  day: [
-    { name: 'Sep 07 (Today)', cost: '$0.054', share: '54.0%', tokens: '1.8M', sharePercent: 54.0, dotColorClass: 'bg-ink/80' },
-    { name: 'Sep 06', cost: '$0.032', share: '32.0%', tokens: '950K', sharePercent: 32.0, dotColorClass: 'bg-ink/50' },
-    { name: 'Sep 05', cost: '$0.014', share: '14.0%', tokens: '330K', sharePercent: 14.0, dotColorClass: 'bg-transparent border border-ink/40' },
-  ],
-  project: [
-    { name: 'kabmo-core', cost: '$0.068', share: '68.0%', tokens: '2.1M', sharePercent: 68.0, dotColorClass: 'bg-ink/80' },
-    { name: 'agent-runner', cost: '$0.022', share: '22.0%', tokens: '680K', sharePercent: 22.0, dotColorClass: 'bg-ink/50' },
-    { name: 'remis-edge-runtime', cost: '$0.010', share: '10.0%', tokens: '300K', sharePercent: 10.0, dotColorClass: 'bg-transparent border border-ink/40' },
-  ],
-};
+/** Days covered by a range, newest last, with a plausible weekend shape. */
+function daysFor(range: TimeRangeType, now: number): UsageDayRow[] {
+  const window = dayWindow(range, now);
+  const dayCount = window
+    ? Math.max(1, Math.round((Date.parse(`${window.to}T00:00:00`) - Date.parse(`${window.from}T00:00:00`)) / DAY_MS) + 1)
+    : 30;
+  const days: UsageDayRow[] = [];
+  for (let offset = dayCount - 1; offset >= 0; offset--) {
+    const at = now - offset * DAY_MS;
+    const dayKey = localDayKey(at);
+    if (window && (dayKey < window.from || dayKey > window.to)) continue;
+    const weekday = new Date(at).getDay();
+    const weekend = weekday === 0 || weekday === 6;
+    const weight = weekend ? 0.35 : 1;
+    const providers: Record<string, { cost: number; tokens: number }> = {
+      'kenari-jatis': { cost: 1.24 * weight, tokens: Math.round(6_900_000 * weight) },
+      kenari: { cost: 0.24 * weight, tokens: Math.round(6_600_000 * weight) },
+      deepseek: { cost: 0.08 * weight, tokens: Math.round(2_200_000 * weight) },
+    };
+    const cost = Object.values(providers).reduce((sum, split) => sum + split.cost, 0);
+    const tokens = Object.values(providers).reduce((sum, split) => sum + split.tokens, 0);
+    days.push({ day: dayKey, providers, ...counters(cost, tokens, Math.round(weight * 78)) });
+  }
+  return days;
+}
 
-const point = (label: string, cost: number, tokens: number): ChartSeriesPoint => ({ label, cost, tokens });
+const PROJECTS = ['kabmo', 'omp', 'notes', 'scratch'];
 
-export const MOCK_CUSTOM_RANGE_DATA: TokenUsageMetricSet = {
-  rawCost: '$0.07',
-  processedTokens: '2.16M',
-  activeRate: '9 active days',
-  cachedInput: '1.86M',
-  cachedPercent: '86.1% of observed input',
-  uncachedInput: '271.4K',
-  outputTokens: '24.3K',
-  reasoning: 'includes 10.2K reasoning',
-  cacheSavings: '$0.00',
-  scannedTranscripts: 9,
-  usageRecords: 57,
-};
+function projectsFor(scale: number): UsageProjectRow[] {
+  const shares = [0.62, 0.24, 0.1, 0.04];
+  return PROJECTS.map((project, index) => ({
+    project,
+    ...counters(
+      Number((48.3 * scale * shares[index]).toFixed(2)),
+      Math.round(528_000_000 * scale * shares[index]),
+      Math.round(2_980 * scale * shares[index]),
+    ),
+  }));
+}
 
-export const MOCK_CHART_SERIES: Record<CadenceType, ChartSeriesPoint[]> = {
-  daily: [
-    point('Aug 8', 0.004, 210_000), point('Aug 11', 0.002, 95_000), point('Aug 14', 0.008, 310_000),
-    point('Aug 17', 0.003, 150_000), point('Aug 20', 0.011, 420_000), point('Aug 23', 0.005, 240_000),
-    point('Aug 26', 0.007, 330_000), point('Aug 29', 0.014, 560_000), point('Sep 1', 0.006, 280_000),
-    point('Sep 4', 0.016, 640_000), point('Sep 7', 0.024, 880_000),
-  ],
-  weekly: [
-    point('Aug 10', 0.014, 520_000), point('Aug 17', 0.019, 760_000), point('Aug 24', 0.026, 1_120_000),
-    point('Aug 31', 0.031, 1_380_000), point('Sep 7', 0.052, 2_290_000),
-  ],
-  monthly: [
-    point('Jun', 0.081, 3_120_000), point('Jul', 0.148, 5_640_000), point('Aug', 0.512, 16_860_000),
-    point('Sep', 0.499, 12_980_000),
-  ],
-};
+/** Demo payload for the requested range. */
+export function mockTokenUsagePayload(range: TimeRangeType, now: number = Date.now()): TokenUsagePayload {
+  const window = dayWindow(range, now);
+  const scale = range === 'today' ? 0.04 : range === '7d' ? 0.24 : range === '90d' ? 2.6 : range === 'all' ? 3.4 : 1;
+  const providers = providersFor(scale);
+  const days = daysFor(range, now);
+  const projects = projectsFor(scale);
+
+  const totals = providers.reduce(
+    (acc, provider) => {
+      acc.cost += provider.cost;
+      acc.tokens += provider.tokens;
+      acc.input += provider.input;
+      acc.output += provider.output;
+      acc.cacheRead += provider.cacheRead;
+      acc.cacheWrite += provider.cacheWrite;
+      acc.reasoning += provider.reasoning;
+      acc.cacheReadCost += provider.cacheReadCost;
+      acc.records += provider.records;
+      acc.unpriced += provider.unpriced;
+      return acc;
+    },
+    {
+      cost: 0, tokens: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+      reasoning: 0, cacheReadCost: 0, records: 0, unpriced: 0,
+      activeDays: days.length,
+    },
+  );
+
+  return {
+    generatedAt: now,
+    index: {
+      state: 'ready',
+      transcripts: 1_225,
+      records: 143_969,
+      indexedAt: now,
+      scanMs: 4_120,
+    },
+    timeRanges: timeRangeOptions(now),
+    range,
+    periodLabel: window ? dayRangeLabel(window.from, window.to, now) : 'All time',
+    totals,
+    providers,
+    days,
+    projects,
+  };
+}

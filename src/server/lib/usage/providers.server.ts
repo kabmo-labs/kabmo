@@ -26,57 +26,8 @@ import { buildKenariReport } from '@/server/lib/usage/kenari';
 import { fetchOmpUsageSnapshot, type OmpUsageSnapshot } from '@/server/lib/usage/omp-usage.server';
 import { fetchVendorBalance, type VendorBalance } from '@/server/lib/usage/vendor-balance.server';
 import { kenariProviderSlugs, listCredentialedProviders, type CredentialedProvider } from '@/server/lib/usage/provider-key';
-import { titleCaseProviderSlug } from '@/shared/lib/models/provider/label';
+import { canonicalProviderSlug, providerDisplayName } from '@/shared/lib/models/provider/label';
 import type { KenariUsageReport, UsageProviderSummary } from '@/shared/types';
-
-/** Slug aliases omp uses interchangeably, folded onto one display entry. */
-const SLUG_ALIASES: Record<string, string> = {
-  'command-code': 'commandcode',
-};
-
-/**
- * Brand spellings a title-case pass cannot produce. Kept small on purpose: the
- * slug is the identity, this is only how it is printed.
- */
-const BRAND_NAMES: Record<string, string> = {
-  openai: 'OpenAI',
-  kenari: 'Kenari.id',
-  deepseek: 'DeepSeek',
-  'openai-codex': 'OpenAI Codex',
-  'google-gemini-cli': 'Google Gemini CLI',
-  'google-antigravity': 'Google Antigravity',
-  'github-copilot': 'GitHub Copilot',
-  zai: 'Z.AI',
-  'zai-coding-plan': 'Z.AI Coding Plan',
-  xai: 'xAI',
-  'xai-oauth': 'xAI (OAuth)',
-  'kimi-code': 'Kimi Code',
-  'qwen-portal': 'Qwen Portal',
-  'minimax-code': 'MiniMax Code',
-  'minimax-code-cn': 'MiniMax Code (CN)',
-  'alibaba-token-plan': 'Alibaba Token Plan',
-  'alibaba-coding-plan': 'Alibaba Coding Plan',
-  'zhipu-coding-plan': 'Zhipu Coding Plan',
-  'gitlab-duo': 'GitLab Duo',
-  'gitlab-duo-agent': 'GitLab Duo Agent',
-  'charm-hyper': 'Charm Hyper',
-  'cline-pass': 'Cline Pass',
-  'opencode-go': 'OpenCode Go',
-  'xiaomi-token-plan-sgp': 'Xiaomi Token Plan (SGP)',
-  'xiaomi-token-plan-ams': 'Xiaomi Token Plan (AMS)',
-  'xiaomi-token-plan-cn': 'Xiaomi Token Plan (CN)',
-  'openai-codex-device': 'OpenAI Codex (Device)',
-};
-
-function canonicalSlug(slug: string): string {
-  const lower = slug.trim().toLowerCase();
-  return SLUG_ALIASES[lower] ?? lower;
-}
-
-/** Human-readable provider name: brand spelling when known, title case otherwise. */
-function displayName(slug: string): string {
-  return BRAND_NAMES[slug] ?? titleCaseProviderSlug(slug);
-}
 
 /**
  * omp's own display names for the providers it knows (slug → name), e.g.
@@ -88,7 +39,7 @@ async function loadProviderNames(): Promise<Record<string, string>> {
     const { providers } = await fetchOmpRegistrySnapshot();
     const names: Record<string, string> = {};
     for (const provider of providers) {
-      const slug = canonicalSlug(provider.id);
+      const slug = canonicalProviderSlug(provider.id);
       const name = provider.name.trim();
       if (slug && name) names[slug] = name;
     }
@@ -118,7 +69,7 @@ async function loadVendorBalances(slugs: string[]): Promise<Map<string, VendorBa
 function mergeCredentials(entries: CredentialedProvider[]): Map<string, string[]> {
   const bySlug = new Map<string, string[]>();
   for (const entry of entries) {
-    const slug = canonicalSlug(entry.slug);
+    const slug = canonicalProviderSlug(entry.slug);
     if (!slug) continue;
     const sources = bySlug.get(slug) ?? [];
     for (const source of entry.sources) {
@@ -189,7 +140,7 @@ export async function buildUsageProviders(options: { force?: boolean } = {}): Pr
     const { tracked, limitsUnavailable } = resolveUsageTracking(slug, snapshot);
     const summary: UsageProviderSummary = {
       id: slug,
-      name: names[slug] ?? displayName(slug),
+      name: names[slug] ?? providerDisplayName(slug),
       ...(iconUrls.get(slug) ? { iconUrl: iconUrls.get(slug) } : {}),
       credentialSources: sources,
       // A vendor balance is real quota data even when omp has no adapter for it.
