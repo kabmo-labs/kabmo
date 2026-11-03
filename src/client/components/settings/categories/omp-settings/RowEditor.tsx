@@ -7,25 +7,26 @@
  * Schema-driven value editor for one native omp setting key.
  *
  * Renders the control matching the schema entry's type:
- *  - boolean → inline toggle
- *  - enum → select (submenu options or raw values)
- *  - string → select for submenu options, password input for credentials,
- *    otherwise a text field
- *  - number → select for submenu options (option value parses to a number,
- *    e.g. retry.maxRetries) or a plain number field
- *  - array → ordered chip editor (first-match-ordered patterns; multi-select
- *    checkboxes for unordered lists); JSON array string accepted when no
- *    submenu choices exist
+ *  - boolean → inline switch (commits on click)
+ *  - enum → select over the schema's own values
+ *  - string → select for submenu options, password input for credentials
+ *    (with a reveal), otherwise a text field
+ *  - number → text field with a numeric keypad hint
+ *  - array → ordered chip editor when the schema ships options, JSON text
+ *    otherwise
  *  - record → single-line JSON object editor
  *
- * The initial value is captured once on mount; every control commits on
- * blur/change instead of per keystroke, so the parent's dirty-state diffing
- * against `initialValue` stays stable.
+ * Text controls commit on blur, Enter or the row's own check button, and
+ * Escape abandons the draft. A draft that cannot be parsed for its type says
+ * WHY under the field instead of reverting silently — the old editor reverted
+ * on a bad number or JSON with no message, which reads as "saving is broken".
  */
 
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { X } from 'lucide-preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { Check, Eye, EyeOff, X } from 'lucide-preact';
 import type { SchemaEntry } from '@/shared/lib/omp/config/schema-types';
+import { parseDraft, valueToText } from '@/shared/lib/omp/config/row-value';
+import { OrderedChips } from '@/client/components/settings/categories/omp-settings/OrderedChips';
 
 interface RowEditorProps {
   entryKey: string;
@@ -33,49 +34,14 @@ interface RowEditorProps {
   value: unknown;
   initialValue: unknown;
   /** Report the local editing state so the parent can defer saving. */
-  onChangeDirty: (key: string, dirty: boolean, revert: () => void) => void;
-  /** Commit the new value; returns a promise resolving on success. */
+  onChangeDirty: (key: string, dirty: boolean) => void;
+  /** Commit the new value; resolves with the server's answer. */
   onCommit: (key: string, value: unknown) => Promise<boolean>;
   /** True while a commit/reset for this key is in flight. */
   saving: boolean;
   /** Set when the last commit for this key failed. */
   saveError: boolean;
 }
-
-/** Deep equality for JSON-safe values (arrays, records, scalars). */
-const valuesEqual = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
-
-/** Number-editor conversion: strip invalid input instead of shipping NaN. */
-const toFiniteNumber = (raw: string): number | null => {
-  const trimmed = raw.trim();
-  if (trimmed === '' || trimmed === '-' || trimmed === '+') return null;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-/** Parse a JSON array; null when invalid (keeps previous value). */
-const parseJsonArray = (raw: string): unknown[] | null => {
-  const trimmed = raw.trim();
-  if (trimmed === '') return [];
-  try {
-    const parsed = JSON.parse(trimmed);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-};
-
-/** Parse a JSON record; null when invalid (keeps previous value). */
-const parseJsonRecord = (raw: string): Record<string, unknown> | null => {
-  const trimmed = raw.trim();
-  if (trimmed === '') return {};
-  try {
-    const parsed = JSON.parse(trimmed);
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-};
 
 export function RowEditor({
   entryKey,
@@ -87,80 +53,64 @@ export function RowEditor({
   saving,
   saveError,
 }: RowEditorProps) {
-  const [raw, setRaw] = useState<string>(() => {
-    if (value === undefined || value === null) return '';
-    return Array.isArray(value) || (typeof value === 'object') ? JSON.stringify(value) : String(value);
-  });
+  const [raw, setRaw] = useState(() => valueToText(value));
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
   // True when a blur should commit (control went dirty then lost focus).
   const dirtyRef = useRef(false);
   const initialRef = useRef<unknown>(initialValue);
-  const options = useMemo(() => (Array.isArray(entry.ui.options) ? entry.ui.options : null), [entry.ui.options]);
+  const options = Array.isArray(entry.ui.options) ? entry.ui.options : null;
 
   useEffect(() => {
-    const next = value === undefined || value === null ? '' : Array.isArray(value) || (typeof value === 'object') ? JSON.stringify(value) : String(value);
-    setRaw(next);
+    setRaw(valueToText(value));
+    setDraftError(null);
     dirtyRef.current = false;
   }, [value]);
 
   const revert = () => {
-    const initial = initialRef.current;
-    const text = initial === undefined || initial === null ? '' : Array.isArray(initial) || (typeof initial === 'object') ? JSON.stringify(initial) : String(initial);
-    setRaw(text);
+    setRaw(valueToText(initialRef.current));
+    setDraftError(null);
     dirtyRef.current = false;
-    onChangeDirty(entryKey, false, () => {});
+    onChangeDirty(entryKey, false);
   };
 
-  /** Commit a normalized value; optimistic revert keeps the row consistent. */
-  const commit = (next: unknown) => {
+  /** Commit a normalized value; a refusal puts the previous text back. */
+  const commit = async (next: unknown) => {
     const priorRaw = raw;
-    setRaw(typeof next === 'string' ? next : JSON.stringify(next));
+    setRaw(valueToText(next));
+    setDraftError(null);
     dirtyRef.current = false;
-    onCommit(entryKey, next)
-      .then((ok) => {
-        if (ok) onChangeDirty(entryKey, false, () => {});
-        else {
-          setRaw(priorRaw);
-          onChangeDirty(entryKey, true, revert);
-        }
-      })
-      .catch(() => {
-        setRaw(priorRaw);
-        onChangeDirty(entryKey, true, revert);
-      });
+    const ok = await onCommit(entryKey, next);
+    if (ok) onChangeDirty(entryKey, false);
+    else {
+      setRaw(priorRaw);
+      dirtyRef.current = true;
+      onChangeDirty(entryKey, true);
+    }
   };
 
-  const commitBlur = () => {
+  /** Commit the text draft, or name why it cannot be committed. */
+  const commitDraft = () => {
     if (!dirtyRef.current) return;
-    if (entry.type === 'number') {
-      const parsed = toFiniteNumber(raw);
-      if (parsed === null || parsed === value) { revert(); return; }
-      commit(parsed);
+    const parsed = parseDraft(entry.type, raw);
+    if (!parsed.ok) {
+      setDraftError(parsed.error);
       return;
     }
-    if (entry.type === 'string') {
-      const next = raw.trim();
-      if (next === value) { revert(); return; }
-      commit(next);
+    if (JSON.stringify(parsed.value) === JSON.stringify(value)) {
+      setDraftError(null);
+      dirtyRef.current = false;
+      onChangeDirty(entryKey, false);
       return;
     }
-    // array / record as JSON text
-    if (entry.type === 'array') {
-      const parsed = parseJsonArray(raw);
-      if (parsed === null || valuesEqual(parsed, value)) { revert(); return; }
-      commit(parsed);
-      return;
-    }
-    if (entry.type === 'record') {
-      const parsed = parseJsonRecord(raw);
-      if (parsed === null || valuesEqual(parsed, value)) { revert(); return; }
-      commit(parsed);
-    }
+    void commit(parsed.value);
   };
 
   const markDirty = () => {
     const wasDirty = dirtyRef.current;
     dirtyRef.current = true;
-    if (!wasDirty) onChangeDirty(entryKey, true, revert);
+    setDraftError(null);
+    if (!wasDirty) onChangeDirty(entryKey, true);
   };
 
   if (entry.type === 'boolean') {
@@ -171,105 +121,64 @@ export function RowEditor({
         role="switch"
         aria-checked={checked}
         aria-label={entry.ui.label}
-        onClick={() => {
-          onChangeDirty(entryKey, false, () => {});
-          commit(!checked);
-        }}
+        onClick={() => void commit(!checked)}
         disabled={saving}
-        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors cursor-pointer ${checked ? 'bg-ink' : 'bg-ink/15'} ${saving ? 'opacity-50' : ''}`}
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors cursor-pointer disabled:cursor-progress ${
+          checked ? 'bg-ink' : 'bg-ink/15'
+        } ${saving ? 'opacity-50' : ''}`}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-paper shadow-sm transition-all ${checked ? 'left-[18px]' : 'left-0.5'}`}
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-paper shadow-sm transition-all ${
+            checked ? 'left-[18px]' : 'left-0.5'
+          }`}
         />
       </button>
     );
   }
 
   if (entry.type === 'array' && entry.ui.ordered && options) {
-    // Ordered chip list — value is an array of option values; reorder + toggle.
-    const current = Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
-    const toggle = (optionValue: string) => {
-      commit(current.includes(optionValue) ? current.filter((v) => v !== optionValue) : [...current, optionValue]);
-    };
-    const move = (index: number, delta: number) => {
-      const target = index + delta;
-      if (target < 0 || target >= current.length) return;
-      const next = [...current];
-      const [moved] = next.splice(index, 1);
-      next.splice(target, 0, moved);
-      commit(next);
-    };
     return (
-      <div className="flex flex-wrap items-center gap-1.5 justify-end max-w-72">
-        {current.map((chip, index) => {
-          const option = options.find((o) => o.value === chip);
-          return (
-            <span key={chip} className="inline-flex items-center gap-1 rounded-md border border-ink/15 bg-ink/[0.03] px-2 py-0.5 text-[10px] text-ink">
-              {index > 0 && (
-                <button type="button" aria-label={`${option?.label ?? chip} left`} onClick={() => move(index, -1)} className="text-ink/40 hover:text-ink cursor-pointer" disabled={saving}>←</button>
-              )}
-              {option?.label ?? chip}
-              {index < current.length - 1 && (
-                <button type="button" aria-label={`${option?.label ?? chip} right`} onClick={() => move(index, 1)} className="text-ink/40 hover:text-ink cursor-pointer" disabled={saving}>→</button>
-              )}
-              <button type="button" aria-label={`Remove ${option?.label ?? chip}`} onClick={() => toggle(chip)} className="text-ink/40 hover:text-error cursor-pointer" disabled={saving}>
-                <X size={10} />
-              </button>
-            </span>
-          );
-        })}
-        {current.length === 0 && <span className="text-[10px] text-ink/40">empty</span>}
-        <details className="relative">
-          <summary className="cursor-pointer rounded-md border border-ink/15 px-2 py-0.5 text-[10px] text-ink/70 hover:text-ink select-none">add…</summary>
-          <div className="absolute right-0 top-full z-10 mt-1 max-h-44 w-48 overflow-auto rounded-md border border-ink/15 bg-paper p-1 shadow-lg">
-            {options.filter((o) => !current.includes(o.value)).map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => toggle(option.value)}
-                className="block w-full rounded px-2 py-1 text-left text-[11px] text-ink/80 hover:bg-ink/5"
-              >
-                {option.label || option.value}
-              </button>
-            ))}
-            {options.every((o) => current.includes(o.value)) && (
-              <div className="px-2 py-1 text-[10px] text-ink/40">all selected</div>
-            )}
-          </div>
-        </details>
-      </div>
+      <OrderedChips
+        options={options}
+        value={value}
+        saving={saving}
+        onCommit={(next) => void commit(next)}
+      />
     );
   }
 
-  const choices = options ?? (entry.type === 'enum' && entry.values ? entry.values.map((v) => ({ value: v, label: v, description: '' })) : null);
+  const choices = options
+    ?? (entry.type === 'enum' && entry.values
+      ? entry.values.map((optionValue) => ({ value: optionValue, label: optionValue, description: '' }))
+      : null);
 
   if (choices) {
     const current = value === undefined || value === null ? '' : String(value);
     return (
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
         <select
           aria-label={entry.ui.label}
           value={current}
-          onChange={(e) => {
-            const selected = e.currentTarget.value;
+          onChange={(event) => {
+            const selected = event.currentTarget.value;
+            if (selected === current) return;
             if (entry.type === 'number') {
-              const parsed = toFiniteNumber(selected);
-              if (parsed === null || parsed === value) return;
-              commit(parsed);
+              const parsed = Number(selected);
+              if (!Number.isFinite(parsed)) return;
+              void commit(parsed);
             } else {
-              if (selected === value) return;
-              commit(selected);
+              void commit(selected);
             }
           }}
           disabled={saving}
-          className={`bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink max-w-56 ${saving ? 'opacity-50' : ''}`}
+          className={`max-w-56 rounded-md border border-ink/15 bg-paper px-2 py-1 text-ink cursor-pointer disabled:cursor-progress ${
+            saving ? 'opacity-50' : ''
+          }`}
         >
-          {current === '' && (
-            <option value="" disabled>select…</option>
-          )}
-          {choices.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label || option.value}
+          {current === '' && <option value="" disabled>select…</option>}
+          {choices.map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.label || choice.value}
             </option>
           ))}
         </select>
@@ -277,61 +186,91 @@ export function RowEditor({
     );
   }
 
-  if (entry.type === 'array') {
-    return (
-      <input
-        aria-label={entry.ui.label}
-        type="text"
-        value={raw}
-        onChange={(e) => { setRaw(e.currentTarget.value); markDirty(); }}
-        onBlur={commitBlur}
-        disabled={saving}
-        placeholder='["anthropic","openai"]'
-        className={`w-48 bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink text-right font-mono text-[11px] ${saving ? 'opacity-50' : ''}`}
-      />
-    );
-  }
+  const isText = entry.type === 'string' || entry.type === 'number'
+    || entry.type === 'array' || entry.type === 'record';
+  const placeholder = entry.type === 'array'
+    ? '["anthropic","openai"]'
+    : entry.type === 'record'
+      ? '{"bash":"prompt"}'
+      : entry.type === 'number'
+        ? 'unset'
+        : entry.credential
+          ? 'not set'
+          : 'unset';
 
-  if (entry.type === 'record') {
-    return (
-      <input
-        aria-label={entry.ui.label}
-        type="text"
-        value={raw}
-        onChange={(e) => { setRaw(e.currentTarget.value); markDirty(); }}
-        onBlur={commitBlur}
-        disabled={saving}
-        placeholder='{"bash":"prompt"}'
-        className={`w-48 bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink text-right font-mono text-[11px] ${saving ? 'opacity-50' : ''}`}
-      />
-    );
-  }
-
-  if (entry.type === 'number') {
-    return (
-      <input
-        aria-label={entry.ui.label}
-        type="text"
-        inputMode="decimal"
-        value={raw}
-        onChange={(e) => { setRaw(e.currentTarget.value); markDirty(); }}
-        onBlur={commitBlur}
-        disabled={saving}
-        className={`w-28 bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink text-right font-mono text-[11px] ${saving ? 'opacity-50' : ''}`}
-      />
-    );
-  }
-
-  // string without submenu options
   return (
-    <input
-      aria-label={entry.ui.label}
-      type={entry.credential ? 'password' : 'text'}
-      value={raw}
-      onChange={(e) => { setRaw(e.currentTarget.value); markDirty(); }}
-      onBlur={commitBlur}
-      disabled={saving}
-      className={`w-48 bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink text-right font-mono text-[11px] ${saving ? 'opacity-50' : ''} ${saveError ? 'border-error' : ''}`}
-    />
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <div className="flex items-center gap-1">
+        <input
+          aria-label={entry.ui.label}
+          aria-invalid={draftError ? true : undefined}
+          type={entry.credential && !revealed ? 'password' : 'text'}
+          inputMode={entry.type === 'number' ? 'decimal' : undefined}
+          value={raw}
+          onChange={(event) => {
+            setRaw(event.currentTarget.value);
+            markDirty();
+          }}
+          onBlur={() => {
+            if (isText) commitDraft();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commitDraft();
+            }
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              revert();
+            }
+          }}
+          disabled={saving}
+          spellcheck={false}
+          placeholder={placeholder}
+          className={`bg-paper border rounded-md px-2 py-1 text-ink text-right text-[11px] ${
+            entry.type === 'string' && !entry.credential ? '' : 'font-mono'
+          } ${entry.type === 'number' ? 'w-28' : 'w-48'} ${
+            draftError || saveError ? 'border-error' : 'border-ink/15'
+          } ${saving ? 'opacity-50 cursor-progress' : ''} focus:outline-none focus:border-ink/50`}
+        />
+        {entry.credential && (
+          <button
+            type="button"
+            aria-label={revealed ? `Hide ${entry.ui.label}` : `Show ${entry.ui.label}`}
+            title={revealed ? 'Hide the value' : 'Show the value'}
+            onClick={() => setRevealed((isRevealed) => !isRevealed)}
+            className="rounded p-1 text-ink/35 hover:text-ink hover:bg-ink/5 cursor-pointer"
+          >
+            {revealed ? <EyeOff size={11} /> : <Eye size={11} />}
+          </button>
+        )}
+        {isText && dirtyRef.current && (
+          <button
+            type="button"
+            aria-label={`Save ${entry.ui.label}`}
+            title="Save (Enter)"
+            onClick={commitDraft}
+            disabled={saving}
+            className="rounded p-1 text-ink/50 hover:text-ink hover:bg-ink/5 cursor-pointer disabled:opacity-40"
+          >
+            <Check size={11} />
+          </button>
+        )}
+        {isText && draftError && (
+          <button
+            type="button"
+            aria-label={`Discard the change to ${entry.ui.label}`}
+            title="Discard (Escape)"
+            onClick={revert}
+            className="rounded p-1 text-error/70 hover:text-error hover:bg-error/5 cursor-pointer"
+          >
+            <X size={11} />
+          </button>
+        )}
+      </div>
+      {draftError && (
+        <span className="max-w-56 text-right text-[10px] leading-snug text-error">{draftError}</span>
+      )}
+    </div>
   );
 }

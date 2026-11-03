@@ -133,10 +133,11 @@ export function RoleEditor({
     void commit({ ...preset.roles });
   }, [commit]);
 
-  const saveAs = useCallback(async (name: string) => {
+  const saveAs = useCallback(async (name: string): Promise<boolean> => {
     setBusy(true);
     try {
-      await onSavePreset(name, draft);
+      // The answer decides whether the caller keeps its name form open.
+      return await onSavePreset(name, draft);
     } finally {
       setBusy(false);
     }
@@ -165,16 +166,24 @@ export function RoleEditor({
 
   return (
     <div className="pt-2">
-      <div className="flex items-center justify-between pb-2">
+      <div className="flex items-center justify-between gap-3 pb-2">
         <div>
           <h3 className="text-sm font-semibold text-ink">Model Roles</h3>
           <p className="text-ink/50 mt-0.5">
             Role → model selectors from config.yml. Pick a preset to switch every role at once.
           </p>
         </div>
-        {savedRole && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-ink/60"><Check size={11} /> saved</span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* How many roles carry an override: the one number that says whether
+              the map is doing anything at all (an empty map means omp decides
+              every role itself). */}
+          <span className="rounded bg-ink/5 px-1.5 py-0.5 text-[10px] text-ink/60" title="Roles with an override in config.yml">
+            {Object.keys(draft).length} / {ROLE_IDS.length} set
+          </span>
+          {savedRole && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-ink/60"><Check size={11} /> saved</span>
+          )}
+        </div>
       </div>
 
       <PresetBar

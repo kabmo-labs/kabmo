@@ -42,7 +42,8 @@ interface PresetBarProps {
   /** A write is in flight; every control is disabled rather than racing it. */
   busy: boolean;
   onApply: (preset: ModelRolePreset) => void;
-  onSave: (name: string) => void;
+  /** Resolves whether the preset was stored; a refusal keeps the name form open. */
+  onSave: (name: string) => Promise<boolean>;
   onUpdate: () => void;
   onDelete: () => void;
 }
@@ -61,12 +62,18 @@ export function PresetBar({
   const [name, setName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const commitNew = () => {
+  /**
+   * Keep the name form open until the preset is actually stored. Closing it on
+   * the click threw away what the user typed, so a refused name ("A preset
+   * named “cheap” already exists") left them re-typing it from scratch.
+   */
+  const commitNew = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSave(trimmed);
-    setName('');
-    setCreating(false);
+    if (await onSave(trimmed)) {
+      setName('');
+      setCreating(false);
+    }
   };
 
   return (
@@ -138,7 +145,7 @@ export function PresetBar({
             autoFocus
             onInput={(event) => setName(event.currentTarget.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') commitNew();
+              if (event.key === 'Enter') void commitNew();
               if (event.key === 'Escape') { setCreating(false); setName(''); }
             }}
             placeholder="e.g. cheap, thinking, review"
@@ -146,7 +153,7 @@ export function PresetBar({
           />
           <button
             type="button"
-            onClick={commitNew}
+            onClick={() => void commitNew()}
             disabled={!name.trim() || busy}
             className="px-2 py-1 rounded-md border border-ink/15 text-ink/80 hover:bg-ink/5 transition-colors cursor-pointer disabled:opacity-50 text-[11px]"
           >

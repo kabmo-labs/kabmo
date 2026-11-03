@@ -9,69 +9,85 @@
  *
  * - Header: live engine state (running, model, thinking, context) + refresh.
  * - Config: every schema entry with UI metadata, rendered in omp's own
- *   tab/group layout (Appearance → Providers), with search across all keys,
- *   condition gating (e.g. mnemopi.* only when memory.backend === mnemopi),
- *   per-row reset-to-default, and debounced persistence through
- *   /api/settings/omp-config (omp config set under the hood).
+ *   tab/group layout, with search across ALL keys, condition gating (e.g.
+ *   `mnemopi.*` only when `memory.backend === 'mnemopi'`), per-row
+ *   reset-to-default, and persistence through /api/settings/omp-config
+ *   (`omp config set` under the hood).
  * - Model Roles: role → model selector overrides (config.yml modelRoles).
- * - Extensions: .omp/extensions toggles.
+ * - Extensions: `.omp/extensions` toggles.
+ *
+ * Every write resolves with the server's answer: the per-key state lives in
+ * `useOmpConfigWrites`, and the panel keeps ONE problem banner for refusals
+ * that have no row of their own (a failed load, a rejected extension toggle) so
+ * they reach the screen instead of a console line.
  */
 
 import { useCallback, useEffect, useState } from 'preact/hooks';
-import { RefreshCw, Search, X } from 'lucide-preact';
+import { AlertCircle, Check, X } from 'lucide-preact';
 import type { SettingsState } from '@/shared/types';
 import type { ConfigEntry } from '@/server/lib/omp/config/config-cli';
 import { OMP_SCHEMA } from '@/shared/lib/omp/config/schema';
 import { ConfigTabs } from '@/client/components/settings/categories/omp-settings/ConfigTabs';
+import { EngineHeader } from '@/client/components/settings/categories/omp-settings/EngineHeader';
 import { RoleEditor } from '@/client/components/settings/categories/omp-settings/RoleEditor';
-import { useModelRoles } from '@/client/hooks/settings/model-roles';
 import { ExtensionsPanel } from '@/client/components/settings/categories/omp-settings/ExtensionsPanel';
+import type {
+  EngineState,
+  ExtensionItem,
+} from '@/client/components/settings/categories/omp-settings/types';
+import { useModelRoles } from '@/client/hooks/settings/model-roles';
+import { useOmpConfigWrites } from '@/client/hooks/settings/omp-config';
 
 interface OmpSettingsProps {
   settings: SettingsState;
   onUpdate: (updater: Partial<SettingsState> | ((prev: SettingsState) => SettingsState)) => void;
 }
 
-interface AgentState {
-  model?: { provider?: string; id?: string };
-  contextUsage?: { percent?: number } | null;
-  fastModeEnabled?: boolean;
-  thinkingLevel?: string;
+/** A problem that has no config row of its own to sit under. */
+interface PanelProblem {
+  message: string;
+  /** The thing it belongs to, so the same failure can clear itself. */
+  scope?: string;
 }
 
-interface ExtensionItem {
-  id: string;
-  name: string;
-  sourceRoot: string;
-  filePath: string;
-  disabled: boolean;
+/** The read failure sentence of a payload, when it carries one. */
+function payloadError(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null || !('error' in data)) return null;
+  return typeof data.error === 'string' ? data.error : null;
 }
 
 export function OmpSettings(_props: OmpSettingsProps) {
-  const [state, setState] = useState<AgentState | null>(null);
+  const [state, setState] = useState<EngineState | null>(null);
   const [stateRunning, setStateRunning] = useState(false);
-  const [entries, setEntries] = useState<Record<string, ConfigEntry>>({});
   const [extensions, setExtensions] = useState<ExtensionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTabId, setActiveTabId] = useState(OMP_SCHEMA.tabs[0]?.id ?? 'model');
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeTabId, setActiveTabId] = useState(OMP_SCHEMA.tabs[0]?.id ?? 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
-  const [savedKey, setSavedKey] = useState<string | null>(null);
-  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
-  const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
-  const [saveErrors, setSaveErrors] = useState<Map<string, string>>(new Map());
+  const [pendingExtensions, setPendingExtensions] = useState<Set<string>>(new Set());
+  const [problem, setProblem] = useState<PanelProblem | null>(null);
+  const [mounted, setMounted] = useState(true);
 
-  /** Flash a saved badge for one key, then clear it. */
-  const flashSaved = useCallback((key: string) => {
-    setSavedKey(key);
-    setTimeout(() => setSavedKey((current) => (current === key ? null : current)), 2000);
-  }, []);
+  useEffect(() => () => setMounted(false), []);
+
+  const writes = useOmpConfigWrites();
+  const { applyEntries, flashSaved, savedKey } = writes;
 
   // The role map, its presets and the role dropdowns' catalog. Its writes answer
   // with the server's whole map/list, so the panel never renders a guess.
   const modelRoles = useModelRoles(flashSaved);
 
-  const load = useCallback(() => {
-    setLoading(true);
+  /**
+   * Read the whole panel. `initial` keeps the full-screen spinner for the first
+   * paint only: a refresh must not tear the panel down, or every open row loses
+   * its editor state for a snapshot that arrives a second later.
+   */
+  const load = useCallback((initial: boolean) => {
+    if (initial) setLoading(true);
+    else setRefreshing(true);
+    setLoadError(null);
     Promise.all([
       fetch('/api/omp/state').then((res) => res.json()),
       fetch('/api/settings/omp-config').then((res) => res.json()),
@@ -79,194 +95,128 @@ export function OmpSettings(_props: OmpSettingsProps) {
       fetch('/api/omp/extensions').then((res) => res.json()),
     ])
       .then(([stateData, configData, rolesData, extensionsData]) => {
-        if (stateData.running && stateData.state) setState(stateData.state as AgentState);
+        if (!mounted) return;
+        if (stateData.running && stateData.state) setState(stateData.state as EngineState);
+        else setState(null);
         setStateRunning(Boolean(stateData.running));
-        if (configData.entries) setEntries(configData.entries as Record<string, ConfigEntry>);
+        const configFailure = payloadError(configData);
+        if (configFailure) setLoadError(configFailure);
+        else if (configData.entries) applyEntries(configData.entries as Record<string, ConfigEntry>);
         modelRoles.applyPayload(rolesData);
-        if (Array.isArray(extensionsData.extensions)) setExtensions(extensionsData.extensions as ExtensionItem[]);
+        const extensionFailure = payloadError(extensionsData);
+        if (extensionFailure) setProblem({ message: extensionFailure });
+        else if (Array.isArray(extensionsData.extensions)) setExtensions(extensionsData.extensions as ExtensionItem[]);
+        setUpdatedAt(Date.now());
       })
-      .catch((err) => console.error('Failed to load omp settings:', err))
-      .finally(() => setLoading(false));
-  }, [modelRoles.applyPayload]);
+      .catch((err) => {
+        console.error('Failed to load omp settings:', err);
+        if (!mounted) return;
+        setLoadError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, [applyEntries, modelRoles.applyPayload, mounted]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(true); }, [load]);
 
   /**
-   * Apply one write's outcome. A failure keeps omp's OWN sentence, not just a
-   * flag: `omp config set` refuses a stale key with "Unknown setting: <key>",
-   * a bad value with "Invalid value: …", and a timeout with nothing at all, and
-   * a bare "save failed" badge made all three read the same. The server already
-   * returns the sentence (`configFailureLine`); this is where it stops being
-   * dropped.
+   * Toggle one extension. The row owns its pending state and a refusal lands in
+   * the panel's problem banner: the old code only logged, so a rejected write
+   * left the row showing a state config.yml did not hold.
    */
-  const applyWriteResult = (key: string, ok: boolean, returned?: unknown, errorMessage?: string) => {
-    setSavingKeys((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-    setDirtyKeys((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-    if (ok) {
-      setSaveErrors((prev) => {
-        if (!prev.has(key)) return prev;
-        const next = new Map(prev);
-        next.delete(key);
+  const handleToggleExtension = async (extension: ExtensionItem) => {
+    const disabled = !extension.disabled;
+    setPendingExtensions((prev) => new Set(prev).add(extension.id));
+    try {
+      const res = await fetch('/api/omp/extensions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: extension.id, disabled }),
+      });
+      const data: unknown = await res.json().catch(() => null);
+      const error = payloadError(data) ?? (res.ok ? null : `The toggle answered ${res.status}`);
+      const scope = `ext-${extension.id}`;
+      if (error) {
+        setProblem({ message: error, scope });
+        return;
+      }
+      setExtensions((prev) => prev.map((item) => (
+        item.id === extension.id ? { ...item, disabled } : item
+      )));
+      setProblem((current) => (current?.scope === scope ? null : current));
+      flashSaved(scope);
+    } catch (err) {
+      console.error('Failed to toggle extension:', err);
+      setProblem({
+        message: err instanceof Error ? err.message : String(err),
+        scope: `ext-${extension.id}`,
+      });
+    } finally {
+      setPendingExtensions((prev) => {
+        const next = new Set(prev);
+        next.delete(extension.id);
         return next;
       });
-      if (returned !== undefined) {
-        setEntries((prev) => ({ ...prev, [key]: { ...prev[key], value: returned } }));
-      }
-      flashSaved(key);
-    } else {
-      setSaveErrors((prev) => new Map(prev).set(key, errorMessage ?? 'omp rejected the write'));
     }
-  };
-
-  /** Commit a value; all editors save on change/blur, never per keystroke. */
-  const commitValue = useCallback(async (key: string, value: unknown): Promise<boolean> => {
-    setSavingKeys((prev) => new Set(prev).add(key));
-    setDirtyKeys((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-    try {
-      const res = await fetch('/api/settings/omp-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value }),
-      });
-      const data = await res.json();
-      const ok = Boolean(data.success);
-      applyWriteResult(key, ok, data.value, typeof data.error === 'string' ? data.error : undefined);
-      return ok;
-    } catch (err) {
-      console.error('Failed to save omp config:', err);
-      applyWriteResult(key, false, undefined, err instanceof Error ? err.message : undefined);
-      return false;
-    }
-  }, []);
-
-  const handleReset = useCallback(async (key: string): Promise<boolean> => {
-    setSavingKeys((prev) => new Set(prev).add(key));
-    try {
-      const res = await fetch('/api/settings/omp-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, action: 'reset' }),
-      });
-      const data = await res.json();
-      const ok = Boolean(data.success);
-      applyWriteResult(key, ok, data.value, typeof data.error === 'string' ? data.error : undefined);
-      return ok;
-    } catch (err) {
-      console.error('Failed to reset omp config:', err);
-      applyWriteResult(key, false, undefined, err instanceof Error ? err.message : undefined);
-      return false;
-    }
-  }, []);
-
-  const handleDirty = useCallback((key: string, dirty: boolean) => {
-    setDirtyKeys((prev) => {
-      const next = new Set(prev);
-      if (dirty) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  }, []);
-
-  const handleToggleExtension = (extension: ExtensionItem) => {
-    fetch('/api/omp/extensions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: extension.id, disabled: !extension.disabled }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setExtensions((prev) => prev.map((item) => (
-            item.id === extension.id ? { ...item, disabled: !extension.disabled } : item
-          )));
-          flashSaved(`ext-${extension.id}`);
-        }
-      })
-      .catch((err) => console.error('Failed to toggle extension:', err));
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8 text-ink/40 text-xs">
-        Loading OMP settings...
+        Reading omp’s state, config schema and extensions…
       </div>
     );
   }
 
   return (
     <div className="w-full space-y-4 text-ink pb-2 text-xs">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-ink/10">
-        <div>
-          <h2 className="text-sm font-semibold text-ink">OMP Engine</h2>
-          <p className="text-ink/50 mt-0.5">Live agent state and the full native config schema from oh-my-pi.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-ink/40 pointer-events-none" />
-            <input
-              aria-label="Search settings"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.currentTarget.value)}
-              placeholder="Search settings…"
-              className="w-44 bg-paper border border-ink/15 rounded-md pl-6 pr-6 py-1 text-ink placeholder:text-ink/40"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink cursor-pointer"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </div>
+      <EngineHeader
+        running={stateRunning}
+        state={state}
+        refreshing={refreshing}
+        updatedAt={updatedAt}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onRefresh={() => load(false)}
+      />
+
+      {loadError && (
+        <div className="flex items-start gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-[11px] text-error">
+          <AlertCircle size={13} className="mt-px flex-shrink-0" />
+          <span className="flex-1">
+            omp’s config could not be read: {loadError}. The rows below cannot show what config.yml holds until this
+            succeeds.
+          </span>
           <button
             type="button"
-            onClick={load}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-ink/15 text-ink/70 hover:text-ink hover:bg-ink/5 transition-all cursor-pointer"
+            onClick={() => load(false)}
+            className="flex shrink-0 items-center gap-1 rounded border border-error/40 px-2 py-0.5 font-medium hover:bg-error/10 cursor-pointer"
           >
-            <RefreshCw size={12} /> Refresh
+            Retry
           </button>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wide text-ink/40">Engine</div>
-          <div className="font-semibold text-ink mt-0.5">{stateRunning ? 'Running' : 'Idle'}</div>
+      {problem && (
+        <div className="flex items-start gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-[11px] text-error">
+          <AlertCircle size={13} className="mt-px flex-shrink-0" />
+          <span className="flex-1 break-words">{problem.message}</span>
+          <button
+            type="button"
+            onClick={() => setProblem(null)}
+            aria-label="Dismiss error"
+            className="text-error/60 hover:text-error cursor-pointer"
+          >
+            <X size={12} />
+          </button>
         </div>
-        <div className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wide text-ink/40">Model</div>
-          <div className="font-semibold text-ink mt-0.5 truncate">{state?.model?.id ?? '—'}</div>
-        </div>
-        <div className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wide text-ink/40">Thinking</div>
-          <div className="font-semibold text-ink mt-0.5">{state?.thinkingLevel ?? '—'}</div>
-        </div>
-        <div className="rounded-lg border border-ink/10 bg-ink/[0.03] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wide text-ink/40">Context</div>
-          <div className="font-semibold text-ink mt-0.5">
-            {state?.contextUsage?.percent != null ? `${state.contextUsage.percent.toFixed(1)}%` : '—'}
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="pt-1">
-        <div className="flex items-center justify-between pb-2">
+        <div className="flex items-center justify-between gap-3 pb-2">
           <div>
             <h3 className="text-sm font-semibold text-ink">Config</h3>
             <p className="text-ink/50 mt-0.5">
@@ -275,21 +225,23 @@ export function OmpSettings(_props: OmpSettingsProps) {
             </p>
           </div>
           {savedKey && savedKey !== 'role-map' && !savedKey.startsWith('ext-') && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-ink/60">saved {savedKey}</span>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-ink/60">
+              <Check size={11} /> saved <span className="font-mono">{savedKey}</span>
+            </span>
           )}
         </div>
         <ConfigTabs
           tabs={OMP_SCHEMA.tabs}
-          entries={entries}
+          entries={writes.entries}
           activeTabId={activeTabId}
           onSelectTab={setActiveTabId}
           searchQuery={searchQuery}
-          dirtyKeys={dirtyKeys}
-          savingKeys={savingKeys}
-          saveErrors={saveErrors}
-          onCommit={commitValue}
-          onReset={handleReset}
-          onDirty={handleDirty}
+          dirtyKeys={writes.dirtyKeys}
+          savingKeys={writes.savingKeys}
+          saveErrors={writes.saveErrors}
+          onCommit={writes.commitValue}
+          onReset={writes.resetKey}
+          onDirty={writes.setDirty}
         />
       </div>
 
@@ -310,6 +262,7 @@ export function OmpSettings(_props: OmpSettingsProps) {
       <ExtensionsPanel
         extensions={extensions}
         savedExtension={savedKey?.startsWith('ext-') ? savedKey.slice(4) : null}
+        pendingIds={pendingExtensions}
         onToggle={handleToggleExtension}
       />
     </div>
