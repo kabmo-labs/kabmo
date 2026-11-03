@@ -31,7 +31,6 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { ServerCog } from 'lucide-preact';
 import { useShellServers } from '@/client/hooks/shell/servers';
 import { hasShellBridge } from '@/client/lib/shell/transport';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { ServerPanel } from '@/client/components/common/server-control/Panel';
 
 export type ServerControlVariant = 'nav' | 'chip';
@@ -50,14 +49,15 @@ export function ServerControl({ variant }: ServerControlProps) {
   // would be a button that never works.
   const available = hasShellBridge();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  // The panel is PORTALLED (see `Panel.tsx` for the measured reason), so its
+  // dismissal is its own backdrop — an outside-click listener rooted at the
+  // trigger would read every click inside the panel as "outside".
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const store = useShellServers(open);
   const active =
     store.state?.entries.find((entry) => entry.id === store.state?.activeId) ??
     store.state?.detected.find((entry) => entry.url === store.state?.activeUrl) ??
     null;
-
-  useOnClickOutside(ref, () => setOpen(false));
 
   // A shell that went away (a page kept across a host restart) must not leave a
   // dangling promise behind: closing it is the honest state.
@@ -73,8 +73,9 @@ export function ServerControl({ variant }: ServerControlProps) {
 
   if (variant === 'chip') {
     return (
-      <div className="relative flex-shrink-0" ref={ref}>
+      <div className="relative flex-shrink-0">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen((was) => !was)}
           className={CHIP_CLASS}
@@ -85,14 +86,15 @@ export function ServerControl({ variant }: ServerControlProps) {
         >
           <ServerCog size={18} strokeWidth={1.8} />
         </button>
-        <ServerPanel open={open} onClose={() => setOpen(false)} variant="chip" store={store} />
+        <ServerPanel open={open} onClose={() => setOpen(false)} variant="chip" store={store} triggerRef={triggerRef} />
       </div>
     );
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((was) => !was)}
         className="flex items-center gap-1.5 rounded px-1.5 py-1 text-ink/60 hover:text-ink hover:bg-ink/10 transition-colors cursor-pointer"
@@ -112,7 +114,7 @@ export function ServerControl({ variant }: ServerControlProps) {
           aria-hidden="true"
         />
       </button>
-      <ServerPanel open={open} onClose={() => setOpen(false)} variant="nav" store={store} />
+      <ServerPanel open={open} onClose={() => setOpen(false)} variant="nav" store={store} triggerRef={triggerRef} />
     </div>
   );
 }

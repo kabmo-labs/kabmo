@@ -14,8 +14,10 @@
  * props; this file only decides how the two states look.
  */
 
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { ChevronDown, ChevronRight, MoreHorizontal, Pin, Plus } from 'lucide-preact';
+import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/index';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
@@ -37,9 +39,10 @@ export interface CategoryHeaderProps {
   checkbox: CategoryHeaderCheckbox | null;
   /** True while a batch selection is active — actions are hidden then. */
   batchActive: boolean;
-  menuRef: { current: HTMLDivElement | null };
   showMenu: boolean;
   onToggleMenu: () => void;
+  /** Close the `⋯` menu (backdrop, Escape, or a parent that moved on). */
+  onCloseMenu: () => void;
   onNewSession: () => void;
   /** Start a chat in a worktree made from this folder. */
   onNewWorktreeSession?: (folderId: number, worktreePath: string) => void;
@@ -58,9 +61,9 @@ export function CategoryHeader({
   onToggleFolder,
   checkbox,
   batchActive,
-  menuRef,
   showMenu,
   onToggleMenu,
+  onCloseMenu,
   onNewSession,
   onNewWorktreeSession,
   onOpenFolder,
@@ -76,6 +79,13 @@ export function CategoryHeader({
   // one, and the folder it belongs to is what the dialog needs.
   const [worktreeDialogOpen, setWorktreeDialogOpen] = useState(false);
   const canCreateWorktree = Boolean(onNewWorktreeSession && folder.project_path);
+
+  // The `⋯` panel is portalled and measured from this rectangle, because the
+  // sidebar this row sits in is a scroller: an `absolute` menu was clipped at
+  // the scroller's edge, and one at `z-50` inside the row still lost to a later
+  // sibling's stacking context. See `common/anchored-menu/`.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = useState<AnchorRect | null>(null);
 
   return (
     <div className="group flex items-center justify-between h-7 text-xs font-semibold text-ink px-2 hover:bg-ink/5 rounded-md transition-colors select-none">
@@ -150,33 +160,44 @@ export function CategoryHeader({
             <Plus size={12} />
           </button>
 
-          <div className="relative flex items-center" ref={menuRef}>
+          <div className="relative flex items-center">
             <button
+              ref={triggerRef}
               type="button"
               title={`Options for ${folder.name}`}
               aria-label={`Options for ${folder.name}`}
+              aria-haspopup="menu"
+              aria-expanded={showMenu}
               className="w-5 h-5 flex items-center justify-center text-ink/40 hover:text-ink hover:bg-ink/10 rounded cursor-pointer transition-colors"
-              onClick={(e) => { e.stopPropagation(); onToggleMenu(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (triggerRef.current) setAnchor(anchorRectOf(triggerRef.current));
+                onToggleMenu();
+              }}
             >
               <MoreHorizontal size={12} />
             </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-paper border border-ink/15 rounded-md shadow-lg z-50 py-1 text-xs">
-                <WorkspaceOptionsMenu
-                  variant="desktop"
-                  isPinned={folder.isPinned}
-                  onOpenFolder={onOpenFolder}
-                  onSelectSessions={onSelectSessions}
-                  onNewWorktree={canCreateWorktree ? () => { onToggleMenu(); setWorktreeDialogOpen(true); } : undefined}
-                  confirmDelete={confirmDelete}
-                  onPin={onPin}
-                  onDelete={onDelete}
-                  onRequestDelete={onRequestDelete}
-                  onCancelDelete={onCancelDelete}
-                />
-              </div>
-            )}
+            <AnchoredMenu
+              anchor={showMenu ? anchor : null}
+              align="end"
+              ariaLabel={`Options for ${folder.name}`}
+              className="w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
+              onClose={onCloseMenu}
+            >
+              <WorkspaceOptionsMenu
+                variant="desktop"
+                isPinned={folder.isPinned}
+                onOpenFolder={onOpenFolder}
+                onSelectSessions={onSelectSessions}
+                onNewWorktree={canCreateWorktree ? () => { onToggleMenu(); setWorktreeDialogOpen(true); } : undefined}
+                confirmDelete={confirmDelete}
+                onPin={onPin}
+                onDelete={onDelete}
+                onRequestDelete={onRequestDelete}
+                onCancelDelete={onCancelDelete}
+              />
+            </AnchoredMenu>
           </div>
         </div>
       )}

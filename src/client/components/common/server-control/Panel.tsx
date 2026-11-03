@@ -16,6 +16,8 @@
 
 import { useState } from 'preact/hooks';
 import { Check, Loader2, Play, Plus, RefreshCw, Server, Square, Trash2 } from 'lucide-preact';
+import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { anchorRectOf } from '@/shared/lib/ui/menu-anchor';
 import type { ShellServersStore } from '@/client/hooks/shell/servers';
 import type { ShellServer } from '@/client/lib/shell/servers';
 import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
@@ -28,6 +30,8 @@ interface ServerPanelProps {
   /** `nav` hangs under a desktop navbar button; `chip` is a phone sheet. */
   variant: ServerControlVariant;
   store: ShellServersStore;
+  /** The button this panel hangs from; the nav variant is measured off it. */
+  triggerRef: { current: HTMLButtonElement | null };
 }
 
 function statusLine(server: ShellServer): string {
@@ -131,8 +135,24 @@ function Row({
  * A server is only offered as connectable while it ANSWERS: the shell probes
  * every URL before answering, so `running: false` is a real fact rather than a
  * guess, and the row says so instead of letting a click fail on a blank window.
+ *
+ * ## The panel is portalled, and why that is the fix rather than a z-index bump
+ *
+ * The desktop trigger lives in the navbar, a FLEX ITEM at `z-20`; a `z-50`
+ * panel inside it is still confined to that stacking context, so anything at
+ * `z-20`+ in the chat column painted over it (measured: an `elementFromPoint`
+ * walk found the timeline's minimap on top of the panel's middle rows at
+ * 1100×460). Raising the panel's own number cannot help — the number that
+ * decides is the ANCESTOR's. Same story on the phone: the drawer's title bar
+ * is a `z-20` flex item, and the sheet's lower rows fell under the sticky
+ * workspace headers beneath it.
+ *
+ * So the body is drawn by `common/anchored-menu/`: `fixed`, in `document.body`,
+ * at the layer above every panel and modal. The nav variant measures the
+ * trigger it hangs from; the chip variant keeps `mobileOverlayStyle`'s insets,
+ * which are a property of the device rather than of the button.
  */
-export function ServerPanel({ open, onClose, variant, store }: ServerPanelProps) {
+export function ServerPanel({ open, onClose, variant, store, triggerRef }: ServerPanelProps) {
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
   const [adding, setAdding] = useState(false);
@@ -155,30 +175,20 @@ export function ServerPanel({ open, onClose, variant, store }: ServerPanelProps)
     }
   };
 
-  // Desktop hangs under its navbar button; a phone pins to the VIEWPORT, because
-  // its trigger sits in the drawer header and a 340px panel anchored there runs
-  // off the right edge (measured at 390) and past the bottom in landscape.
-  const placement =
-    variant === 'chip'
-      ? mobileOverlayStyle()
-      : undefined;
+  // The panel's own chrome. `overflow-hidden` is gone: the rows scroll inside
+  // the body below, and a clipping root would cut the Add form's focus ring.
+  const panelClass = variant === 'chip'
+    ? 'rounded-xl border border-ink/15 bg-paper shadow-xl'
+    : 'w-[340px] rounded-xl border border-ink/15 bg-paper shadow-xl';
 
   return (
-    <div
+    <AnchoredMenu
+      anchor={variant === 'nav' && triggerRef.current ? anchorRectOf(triggerRef.current) : null}
+      viewportStyle={variant === 'chip' ? mobileOverlayStyle() : undefined}
       role="dialog"
-      aria-label="Servers"
-      className={
-        variant === 'chip'
-          ? 'fixed z-50 rounded-xl border border-ink/15 bg-paper shadow-xl overflow-hidden'
-          : 'absolute right-2 top-full mt-1 z-50 w-[340px] rounded-xl border border-ink/15 bg-paper shadow-xl overflow-hidden'
-      }
-      style={placement}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation();
-          onClose();
-        }
-      }}
+      ariaLabel="Servers"
+      className={panelClass}
+      onClose={onClose}
     >
       <div className="flex items-center justify-between px-3 py-2 border-b border-ink/10">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
@@ -314,6 +324,6 @@ export function ServerPanel({ open, onClose, variant, store }: ServerPanelProps)
           </button>
         )}
       </div>
-    </div>
+    </AnchoredMenu>
   );
 }

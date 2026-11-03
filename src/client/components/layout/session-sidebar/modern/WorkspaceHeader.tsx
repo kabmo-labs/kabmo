@@ -46,8 +46,11 @@
  * behind it are canvas.
  */
 
+import { useRef, useState } from 'preact/hooks';
 import type { ReactNode } from 'preact/compat';
 import { ChevronDown, ChevronRight, MoreHorizontal, Pin, Plus } from 'lucide-preact';
+import { AnchoredMenu } from '@/client/components/common/anchored-menu';
+import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import type { CategoryHeaderCheckbox } from '@/client/components/layout/session-sidebar/CategoryHeader';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
@@ -61,11 +64,12 @@ export interface WorkspaceHeaderProps {
   sessionCount: number;
   checkbox: CategoryHeaderCheckbox | null;
   batchActive: boolean;
-  menuRef: { current: HTMLDivElement | null };
   showMenu: boolean;
   onToggleMenu: () => void;
+  /** The `⋯` menu, dismissed by its own backdrop, Escape, or this call. */
+  onCloseMenu: () => void;
   onNewSession: () => void;
-  /** The menu body, drawn in this header's anchored container while open. */
+  /** The menu body, drawn in a portalled panel while open. */
   menu?: ReactNode;
   /** Taller row and larger tap targets for the phone drawer. */
   touch?: boolean;
@@ -78,15 +82,20 @@ export function WorkspaceHeader({
   sessionCount,
   checkbox,
   batchActive,
-  menuRef,
   showMenu,
   onToggleMenu,
+  onCloseMenu,
   onNewSession,
   menu,
   touch = false,
 }: WorkspaceHeaderProps) {
   const ProjectIcon = getProjectIcon(folder.icon);
   const accent = folder.accentColor || undefined;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Captured when the menu OPENS, not while it is open: the list scrolls under
+  // it, so a rectangle read on every render would drag the panel along with the
+  // rows instead of leaving it where the click put it.
+  const [anchor, setAnchor] = useState<AnchorRect | null>(null);
 
   return (
     <div
@@ -161,8 +170,9 @@ export function WorkspaceHeader({
             <Plus size={touch ? 15 : 12} />
           </button>
 
-          <div className="relative flex items-center" ref={menuRef}>
+          <div className="relative flex items-center">
             <button
+              ref={triggerRef}
               type="button"
               title={`Options for ${folder.name}`}
               aria-label={`Options for ${folder.name}`}
@@ -170,6 +180,7 @@ export function WorkspaceHeader({
               aria-expanded={showMenu}
               onClick={(event) => {
                 event.stopPropagation();
+                if (triggerRef.current) setAnchor(anchorRectOf(triggerRef.current));
                 onToggleMenu();
               }}
               className={`flex items-center justify-center rounded text-ink/40 transition-colors cursor-pointer hover:bg-ink/10 hover:text-ink ${
@@ -179,12 +190,19 @@ export function WorkspaceHeader({
               <MoreHorizontal size={touch ? 15 : 12} />
             </button>
             {/* The menu body is the caller's: it owns the state the menu acts
-                on (pin, delete confirmation, the worktree dialog). */}
-            {showMenu && menu && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg">
-                {menu}
-              </div>
-            )}
+                on (pin, delete confirmation, the worktree dialog). The PANEL is
+                this file's, portalled and measured, because the header is a
+                `sticky z-10` stacking context — a `z-50` child of it still
+                painted under the NEXT workspace's sticky header. */}
+            <AnchoredMenu
+              anchor={showMenu && menu ? anchor : null}
+              align="end"
+              ariaLabel={`Options for ${folder.name}`}
+              className="w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
+              onClose={onCloseMenu}
+            >
+              {menu}
+            </AnchoredMenu>
           </div>
         </div>
       )}

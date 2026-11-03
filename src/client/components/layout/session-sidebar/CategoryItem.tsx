@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { ChevronDown, ChevronUp } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useFetcher } from '@/client/lib/router/fetcher';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
@@ -63,8 +62,7 @@ export function Category({
   useEffect(() => {
     if (typeof folder.isExpanded === 'boolean') setIsOpen(folder.isExpanded);
   }, [folder.isExpanded]);
-  
-  const menuRef = useRef<HTMLDivElement>(null);
+
   const { refresh } = useSidebarData();
   const toggleFetcher = useFetcher<{ success?: boolean }>();
   const {
@@ -80,10 +78,13 @@ export function Category({
   } = useWorkspaceFolderActions(folder, refresh, onToast);
   const sessionDelete = useSessionDelete();
 
-  useOnClickOutside(menuRef, () => {
+  // The menu's own portalled backdrop is the dismissal now, so there is exactly
+  // one close path (`common/anchored-menu/`) and it also closes the inline
+  // delete confirmation.
+  const closeMenu = () => {
     setShowMenu(false);
     cancelDelete();
-  });
+  };
 
   const allSessions = folder.sessions;
 
@@ -170,9 +171,9 @@ export function Category({
             : null
         }
         batchActive={Boolean(batch)}
-        menuRef={menuRef}
         showMenu={showMenu}
         onToggleMenu={() => setShowMenu(!showMenu)}
+        onCloseMenu={closeMenu}
         onNewSession={() => onNewSessionForFolder(folder.id)}
         onNewWorktreeSession={onNewWorktreeSession}
         onOpenFolder={onOpenFolder}

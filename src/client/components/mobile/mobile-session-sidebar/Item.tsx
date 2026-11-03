@@ -1,9 +1,8 @@
-import { useRef, useState } from 'preact/hooks';
-import { ChevronDown, ChevronRight, GitBranch, MessageSquare, MoreHorizontal, Plus } from 'lucide-preact';
+import { ChevronDown, ChevronRight, GitBranch, MessageSquare, Plus } from 'lucide-preact';
+import { FolderItemMenu } from '@/client/components/mobile/mobile-session-sidebar/ItemMenu';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { MobileSessionRow } from '@/client/components/mobile/mobile-session-sidebar/SessionRow';
 import { SubagentList } from '@/client/components/common/subagent-list';
-import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { useWorktreeDialog } from '@/client/components/mobile/mobile-session-sidebar/WorktreeDialog';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useExpandedSessions } from '@/client/hooks/workspace/expanded-sessions';
@@ -12,7 +11,6 @@ import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
 import { relativeTimeAgo } from '@/shared/lib/workspace/relative-time';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import type { WorkspaceFolderData } from '@/shared/types';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
@@ -69,8 +67,6 @@ export function MobileSessionCategory({
   const [searchParams] = useSearchParams();
   const urlSubagentId = searchParams.get('subagent');
   const urlSessionId = searchParams.get('sessionId');
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const {
     confirmDelete,
     requestDelete,
@@ -84,29 +80,12 @@ export function MobileSessionCategory({
   } = useWorkspaceFolderActions(folder, refresh, onToast);
   const sessionDelete = useSessionDelete();
 
-  useOnClickOutside(menuRef, () => {
-    setShowMenu(false);
-    cancelDelete();
-  });
-
-  const onPin = () => {
-    handlePin();
-    setShowMenu(false);
-  };
-
-  const onDelete = () => {
-    handleDelete();
-    setShowMenu(false);
-  };
-
-  // Same rule as the desktop header: reveal is an action, so the menu closes
-  // on it — otherwise the toast would render behind the menu that triggered it.
-  const onOpenFolder = handleOpenFolder
-    ? () => {
-        handleOpenFolder();
-        setShowMenu(false);
-      }
-    : undefined;
+  // The `⋯` menu closes itself around each action (`ItemMenu`), so these stay
+  // plain: the reveal path is the one that used to leave the menu over its own
+  // toast.
+  const onPin = handlePin;
+  const onDelete = handleDelete;
+  const onOpenFolder = handleOpenFolder ?? undefined;
 
   // Archived rows are filtered first; the badge reports the visible set so the
   // count always matches what the list can actually show.
@@ -213,44 +192,20 @@ export function MobileSessionCategory({
             <Plus size={15} />
           </button>
 
-          <div className="relative flex items-center" ref={menuRef} onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowMenu(value => !value);
-              }}
-              className="p-1.5 rounded-lg hover:bg-ink/10 active:bg-ink/15 text-ink/60 hover:text-ink"
-              title="Workspace options"
-              aria-label={`Options for ${folder.name}`}
-            >
-              <MoreHorizontal size={15} />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-paper border border-ink/15 rounded-lg shadow-lg z-50 py-1 text-xs">
-                <WorkspaceOptionsMenu
-                  variant="mobile"
-                  isPinned={folder.isPinned}
-                  onOpenFolder={onOpenFolder}
-                  onNewWorktree={
-                    onNewWorktreeSession && folder.project_path
-                      ? () => { setShowMenu(false); worktreeDialog.open(); }
-                      : undefined
-                  }
-                  onSelectSessions={
-                    onStartSessionSelection
-                      ? () => { setShowMenu(false); onStartSessionSelection(folder.id); }
-                      : undefined
-                  }
-                  confirmDelete={confirmDelete}
-                  onPin={onPin}
-                  onDelete={onDelete}
-                  onRequestDelete={requestDelete}
-                  onCancelDelete={cancelDelete}
-                />
-              </div>
-            )}
-          </div>
+          <FolderItemMenu
+            folder={folder}
+            canWorktree={Boolean(onNewWorktreeSession && folder.project_path)}
+            onOpenFolder={onOpenFolder}
+            onNewWorktree={onNewWorktreeSession ? () => worktreeDialog.open() : undefined}
+            onSelectSessions={
+              onStartSessionSelection ? () => onStartSessionSelection(folder.id) : undefined
+            }
+            confirmDelete={confirmDelete}
+            onPin={onPin}
+            onDelete={onDelete}
+            onRequestDelete={requestDelete}
+            onCancelDelete={cancelDelete}
+          />
 
           {/* The disclosure glyph's BOX ends on the list's content edge — the
               same x the toolbar row's last control ends on above it — and its

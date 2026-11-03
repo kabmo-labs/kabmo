@@ -24,11 +24,10 @@
  *   is not silently hidden.
  */
 
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { ChevronDown, ChevronUp } from 'lucide-preact';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useFetcher } from '@/client/lib/router/fetcher';
-import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useShowMore } from '@/client/hooks/ui/show-more';
 import { useWorkspaceFolderActions } from '@/client/hooks/workspace/workspace-folder-actions';
 import { useSessionDelete } from '@/client/hooks/workspace/session-delete';
@@ -87,7 +86,6 @@ export function WorkspaceSection({
   const urlSubagentId = searchParams.get('subagent');
   const urlSessionId = searchParams.get('sessionId');
   const { expandedSessionIds, toggleSession } = useExpandedSessions();
-  const menuRef = useRef<HTMLDivElement>(null);
   const { refresh } = useSidebarData();
   const toggleFetcher = useFetcher<{ success?: boolean }>();
   const {
@@ -110,10 +108,13 @@ export function WorkspaceSection({
     if (typeof folder.isExpanded === 'boolean') setIsOpen(folder.isExpanded);
   }, [folder.isExpanded]);
 
-  useOnClickOutside(menuRef, () => {
+  // ONE dismissal path for the `⋯` menu: its own backdrop (in the header's
+  // portalled panel) is the click that closes it, so the sidebar no longer
+  // listens for outside clicks that the portal would read as "outside" anyway.
+  const closeMenu = () => {
     setShowMenu(false);
     cancelDelete();
-  });
+  };
 
   const toggleFolder = () => {
     const next = !isOpen;
@@ -169,9 +170,9 @@ export function WorkspaceSection({
             : null
         }
         batchActive={Boolean(batch)}
-        menuRef={menuRef}
         showMenu={showMenu}
         onToggleMenu={() => setShowMenu((open) => !open)}
+        onCloseMenu={closeMenu}
         onNewSession={() => onNewSessionForFolder(folder.id)}
         touch={density === 'touch'}
         menu={

@@ -103,7 +103,13 @@ async function settle() {
   });
 }
 
-const text = () => (container.textContent ?? '').replace(/\s+/g, ' ').trim();
+/**
+ * The panel is PORTALLED to `document.body` (an `absolute` panel inside the
+ * navbar's `z-20` stacking context lost to column content at equal or higher
+ * numbers — see `Panel.tsx`), so the panel's words are read from the document
+ * rather than from the trigger's own container.
+ */
+const text = () => (win.document.body.textContent ?? '').replace(/\s+/g, ' ').trim();
 
 beforeEach(() => {
   win = new Window({ url: 'http://127.0.0.1:3001/' });
@@ -137,7 +143,7 @@ describe('ServerControl', () => {
     expect(text()).toContain('Found on this machine');
     expect(text()).toContain('Local :3000');
     // The active row carries its own marker rather than a colour alone.
-    expect(container.querySelector('[aria-label="Active"]')).not.toBeNull();
+    expect(win.document.querySelector('[aria-label="Active"]')).not.toBeNull();
   });
 
   test('the trigger and the panel read ONE list — one read, not two polls', async () => {
@@ -150,17 +156,17 @@ describe('ServerControl', () => {
     mount(DESKTOP);
     await settle();
     expect(text()).toContain('Stopped');
-    const nas = [...container.querySelectorAll('button')].find((button) =>
+    const nas = [...win.document.querySelectorAll('button')].find((button) =>
       (button.textContent ?? '').includes('NAS'),
     );
     expect(nas).toBeDefined();
-    expect((nas as HTMLButtonElement).disabled).toBe(true);
+    expect(nas?.disabled).toBe(true);
   });
 
   test('Stop is offered only for a server this shell started', async () => {
     mount(DESKTOP);
     await settle();
-    const stops = [...container.querySelectorAll('button')].filter((button) =>
+    const stops = [...win.document.querySelectorAll('button')].filter((button) =>
       (button.getAttribute('aria-label') ?? '').startsWith('Stop '),
     );
     expect(stops.map((button) => button.getAttribute('aria-label'))).toEqual(['Stop Local :3001']);
