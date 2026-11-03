@@ -134,14 +134,14 @@ final class ShellViewController: UIViewController {
     guard let url = settings.url else { return }
     if url == loadedURL { return }
 
-    // A saved address change is a different origin, so the previous session is
-    // dropped. Without this, moving from one Kabmo instance to another on the same
-    // host:port leaves a cookie for a user that does not exist there, and the login
-    // screen is skipped into a 401 loop.
-    if loadedURL != nil {
-      clearCookies()
-    }
-    loadedURL = url
+    // The saved address changed — the settings screen's Connect, or the list
+    // losing its active row. The web store is NOT dropped: a cookie is scoped to
+    // its own host and the session cookie is named per port
+    // (`omp_session_<port>`), so the address being left cannot reach the one
+    // being opened, and it keeps the login that coming back should restore. The
+    // desktop shells never clear the store on this gesture either; the one
+    // stale-session case (a cookie the server no longer accepts) is a `302
+    // /login` from the auth gate, not a 401 loop.
     startLoad(url)
   }
 
@@ -329,22 +329,30 @@ final class ShellViewController: UIViewController {
   /**
    Point the window at another server, from the console's own panel.
 
-   The same three steps a changed saved address takes in `viewDidAppear` — drop the
-   cookie jar because the origin is different, latch the new address, load it — and
-   for the same measured reason: moving from one Kabmo instance to another on the
-   same host:port leaves a cookie for a user that does not exist there, and the
-   login screen is skipped into a 401 loop.
+   The saved address was already made active by `ShellServerHost` before this is
+   called, so there are two steps: latch the new address and load it. (It is
+   answered on the main actor, which is where `load` belongs — a phone's bridge
+   runs `servers_state` off the main thread, so the hop is the contract.)
+
+   **The cookie store is deliberately untouched**, unlike the Android shell's
+   first version: a cookie is scoped to its host and named per port, so it
+   cannot leak into a different server, and deleting every cookie was what made
+   moving between two servers sign the user out of BOTH. A switch therefore
+   resumes the session the target still holds, which is what the desktop shells
+   have always done.
    */
   private func switchServer(_ url: String) {
     guard url != loadedURL else { return }
     navigation.serverURL = url
-    if loadedURL != nil { clearCookies() }
-    loadedURL = url
     startLoad(url)
   }
 
   private func startLoad(_ url: String) {
     guard let target = URL(string: url) else { return }
+    // Latched HERE rather than by each caller, so the recorded address is the one
+    // a load was actually started for — an address the URL parser refused must
+    // not look like the window is already on it.
+    loadedURL = url
     applyLoading(.connecting)
     webView.load(URLRequest(url: target))
   }
@@ -353,8 +361,7 @@ final class ShellViewController: UIViewController {
   ///
   /// A failed load leaves the web view on WebKit's error page, which is not a
   /// document the console can recover from; reloading the saved address is the only
-  /// retry that means anything. `loadedURL` is deliberately NOT cleared — it is what
-  /// keeps a return from the settings screen from clearing the cookie jar.
+  /// retry that means anything.
   private func retryLoad() {
     guard let url = settings.url else { return }
     startLoad(url)
@@ -393,11 +400,9 @@ final class ShellViewController: UIViewController {
     webView.pageZoom = CGFloat(ShellSettings.pageZoom(for: settings.zoom))
   }
 
-  private func clearCookies() {
-    let store = WKWebsiteDataStore.default()
-    store.httpCookieStore.getAllCookies { cookies in
-      for cookie in cookies { store.httpCookieStore.delete(cookie) }
-    }
+  private func applyLoading(_ next: LoadingState) {
+    loading = next
+    overlay.render(next)
   }
 
   // MARK: - Settings
@@ -408,9 +413,11 @@ final class ShellViewController: UIViewController {
       guard let self else { return }
       // The saved address may have changed, so the origin test's input has to move
       // with it — otherwise the next navigation to the NEW server would be treated
-      // as external and opened in Safari.
+      // as external and opened in Safari. `loadedURL` is NOT cleared: a save that
+      // only moved the zoom slider must not reload the console (that was the
+      // phone's "pressing Save reloads the page and I lose the draft"), and a real
+      // address change is caught by `viewDidAppear` comparing it to `loadedURL`.
       self.navigation.serverURL = self.settings.url
-      self.loadedURL = nil
     }
     let nav = UINavigationController(rootViewController: screen)
     nav.modalPresentationStyle = .pageSheet

@@ -213,11 +213,13 @@ release.yml
 3. **Test connection** calls `GET /api/health` and reports the server's version,
    port, whether a password is required, and whether it is in demo mode. A
    response from something that is not Kabmo is refused by name.
-4. **Connect** saves the address and clears cookies **only when the address
-   changed** — a different origin is a different server, and a stale session
-   cookie would be sent to it. Pressing Connect on the address already saved
-   keeps the session, because this is also the screen the zoom slider lives on:
-   it used to sign the user out for adjusting the zoom and then confirming.
+4. **Connect** saves the address and loads it. It does **not** clear cookies: a
+   cookie is scoped to its own host and the session cookie is named per port
+   (`omp_session_<port>`), so the address being left cannot reach the one being
+   opened — while wiping the jar signed the user out of every OTHER server in the
+   list too. Keeping it is what makes switching back resume that server's
+   session, exactly as the desktop shells do; the one gesture that ends a session
+   is the explicit **Clear cookies** button.
 
 ### Launch overlay
 
@@ -290,9 +292,15 @@ device*), and the shell keeps it across a restart in two ways:
   `app_webview/Default/Cookies` at **t+30 s** after signing in, so closing the app
   inside that window always cost a login. With the flush it is on disk by t+4 s,
   and a force-stop → reopen comes back signed in.
-- **Cookies are cleared only when the origin changes** (`UrlNormalizer.sameOrigin`
-  in the settings screen, and `loadedUrl` in `MainActivity`). A cookie is scoped
-  to a host and port, so the same address keeps it.
+- **A switch between servers keeps every origin's session.** The first build
+  called `CookieManager.removeAllCookies` on the switch and on a changed saved
+  address, on the theory that "a different origin is a different server". Cookies
+  are already scoped — keyed by host, with the session cookie NAMED per port —
+  so that call could not protect anything; all it did was sign the user out of
+  every server in the list (the reported "the login disappears when I switch").
+  A stale cookie the server no longer accepts is answered by the auth gate with
+  `302 /login`, not a 401 loop. The desktop trio never clears the jar on
+  `servers_activate` for the same reason.
 
 ### Page zoom
 
@@ -386,6 +394,17 @@ launched with the launcher's identity, so a non-exported target is refused
 unexported and `MainActivity` opens it when the action arrives — on create and
 again in `onNewIntent`, because `singleTask` delivers a re-launch to the running
 instance.
+
+**`servers_activate` is answered on the bridge's worker thread, so the relay back
+to the UI is part of the contract.** `ServerHost` runs every command on
+`serverWork` (a `servers_state` probe is network I/O), and `onActivate` fires from
+inside it. `MainActivity.switchServer` therefore hops through `runOnUiThread`
+before touching `LoadingOverlay` or `WebView.loadUrl` — both assert the main
+thread, and the first build called them inline, which ended the app on the tap
+(`CalledFromWrongThreadException`) or, when the throw landed after the address had
+been latched, left `loadedUrl` claiming the window was already on the server the
+user picked, so no page load ever followed. `startLoad` latches `loadedUrl` now,
+which is the one place a load can actually begin.
 
 ## The APK download button
 

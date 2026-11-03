@@ -111,10 +111,13 @@ artifact, not to replace either.
 3. **Test connection** calls `GET /api/health` and reports the server's version,
    port, whether a password is required, and whether it is in demo mode. A response
    from something that is not Kabmo is refused by name.
-4. **Connect** saves the address and clears cookies **only when the address changed**
-   — a different origin is a different server, and a stale session cookie would be
-   sent to it. Pressing Connect on the address already saved keeps the session,
-   because this is also the screen the zoom slider lives on.
+4. **Connect** saves the address and loads it. It does **not** clear cookies: a
+   cookie is scoped to its own host and the session cookie is named per port
+   (`omp_session_<port>`), so the address being left cannot reach the one being
+   opened — while wiping the store signed the user out of every OTHER server in the
+   list too. Keeping it is what makes switching back resume that server's session,
+   exactly as the desktop shells do; the one gesture that ends a session is the
+   explicit **Clear cookies** button.
 
 ### Launch overlay
 
@@ -193,6 +196,14 @@ has no child process, and the state answers `startable: false` so the panel neve
 draws the control. The list is `server_list` in `UserDefaults`, migrated once from
 the single `server_url` an older build wrote — `ServerListTests` and
 `ShellSettingsTests` pin the migration, the duplicate-origin rule and the wire.
+
+`servers_activate` reaches `ShellViewController.switchServer` on the main actor
+(`ShellServerHost` hops there itself, because its health probes run in a `Task`),
+so navigation needs no second dispatch. The web store is **not** touched: the
+first build deleted every cookie on a switch, which signed the user out of both
+servers, and reopening the settings screen (even just to move the zoom slider)
+reloaded a console whose address had not changed. `startLoad` latches
+`loadedURL`; `onSaved` only re-points the navigation policy.
 
 ## Plain http, and what it costs
 

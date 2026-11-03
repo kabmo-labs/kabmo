@@ -404,12 +404,14 @@ class SettingsActivity : Activity() {
      * stopped server. The check is cheap (one dependency-free route) and the
      * screen already has to run it to show a version.
      *
-     * **The cookies are cleared only when the ORIGIN changes.** A cookie is
-     * scoped to a host and port, so the same address keeps its session — and
-     * this screen is also where the zoom slider lives, so pressing Connect after
-     * adjusting the zoom used to sign the user out of the server they were
-     * already on. The address is what makes a stale cookie wrong; nothing else
-     * on this screen does.
+     * **No cookies are touched.** A cookie is scoped to its host, and the session
+     * cookie is named per port (`omp_session_<port>`), so an address that changed
+     * cannot receive the previous server's session and the previous server keeps
+     * the login that going back should restore. Clearing the jar here signed the
+     * user out of EVERY server in the list, which is the reported "the login is
+     * gone after switching". This screen is also where the zoom slider lives, so
+     * it used to sign the user out for adjusting the zoom; the explicit
+     * "Clear cookies" button is the one gesture that ends a session.
      */
     private fun save() {
         val normalized = UrlNormalizer.normalize(urlField.text.toString())
@@ -418,7 +420,6 @@ class SettingsActivity : Activity() {
             return
         }
         val base = (normalized as NormalizedUrl.Ok).url
-        val previous = ServerConfig.read(this)
 
         setBusy(true)
         status.text = getString(R.string.testing)
@@ -432,10 +433,6 @@ class SettingsActivity : Activity() {
                     return@runOnUiThread
                 }
                 ServerConfig.write(this, base)
-                if (!UrlNormalizer.sameOrigin(previous, base)) {
-                    CookieManager.getInstance().removeAllCookies(null)
-                    CookieManager.getInstance().flush()
-                }
                 startActivity(Intent(this, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 })

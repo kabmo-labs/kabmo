@@ -58,26 +58,5 @@ enum URLNormalizerTests {
     Harness.equal("a fragment", URLNormalizer.normalize("http://host:3000#x").problem, .shape)
     Harness.equal("a missing host", URLNormalizer.normalize("http://").problem, .shape)
     Harness.equal("a port outside the range", URLNormalizer.normalize("http://host:99999").problem, .shape)
-
-    Harness.group("URLNormalizer — same origin")
-
-    Harness.check(
-      "the same address in different case is the same server",
-      URLNormalizer.sameOrigin("http://Host.Example:3000", "http://host.example:3000")
-    )
-    Harness.check(
-      "a trailing slash does not make it a different server",
-      URLNormalizer.sameOrigin("http://host:3000/", "http://host:3000")
-    )
-    Harness.check(
-      "another port is a different server",
-      !URLNormalizer.sameOrigin("http://host:3000", "http://host:3001")
-    )
-    Harness.check(
-      "another host is a different server",
-      !URLNormalizer.sameOrigin("http://a.example:3000", "http://b.example:3000")
-    )
-    Harness.check("no saved address is never the same", !URLNormalizer.sameOrigin(nil, "http://host:3000"))
-    Harness.check("a blank saved address is never the same", !URLNormalizer.sameOrigin("  ", "http://host:3000"))
   }
 }

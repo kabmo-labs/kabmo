@@ -149,15 +149,17 @@ class MainActivity : Activity() {
         if (url == null) return
         if (url == loadedUrl) return
 
-        // A saved URL change is a different origin, so the previous session is
-        // dropped. Without this, moving from one Kabmo instance to another on
-        // the same host:port leaves a cookie for a user that does not exist
-        // there, and the login screen is skipped into a 401 loop.
-        if (loadedUrl != null) {
-            CookieManager.getInstance().removeAllCookies(null)
-            flushCookies()
-        }
-        loadedUrl = url
+        // The saved address changed — the settings screen's Connect, or the list
+        // losing its active row. The cookie jar is NOT dropped, because a cookie
+        // is already scoped: the jar is keyed by host, and the session cookie is
+        // NAMED per port (`omp_session_<port>`, see the server's `token.ts`) so
+        // the address being left can neither leak into the one being opened nor
+        // collide with it. Wiping the jar therefore only had one effect — it
+        // signed the user out of every server they had logged into, so moving
+        // between them always asked for the password again. The desktop shells
+        // keep the jar on exactly this gesture, and the one stale-session case
+        // there is (a cookie a server no longer accepts) is answered by the auth
+        // gate with `302 /login`, not with a 401 loop.
         startLoad(url)
     }
 
@@ -249,20 +251,24 @@ class MainActivity : Activity() {
     /**
      * Point the window at another server, from the console's own panel.
      *
-     * The same three steps a changed saved address takes in `onResume` — drop the
-     * cookie jar because the origin is different, latch the new address, load it
-     * — and for the same measured reason: moving from one Kabmo instance to
-     * another on the same host:port leaves a cookie for a user that does not
-     * exist there, and the login screen is skipped into a 401 loop.
+     * **This arrives on `ServerHost`'s worker thread, not the main one.** The
+     * bridge hands every command to that worker (a `servers_state` probe is
+     * network I/O), and `onActivate` is called from inside it. Everything below
+     * is a view or WebView call: `LoadingOverlay.render` mutates views and
+     * `WebView.loadUrl` asserts its own thread, so running this inline answered
+     * the tap with `CalledFromWrongThreadException` — the reported "the app
+     * stops". When the throw landed after the address had been latched, the next
+     * `onResume` saw `url == loadedUrl` and returned, which is the other half of
+     * the report: the page never restarted and never moved to the server picked.
+     * One hop to the UI thread removes both.
+     *
+     * The cookie jar is deliberately left alone; see `onResume`.
      */
     fun switchServer(url: String) {
-        if (url == loadedUrl) return
-        if (loadedUrl != null) {
-            CookieManager.getInstance().removeAllCookies(null)
-            flushCookies()
+        runOnUiThread {
+            if (url == loadedUrl) return@runOnUiThread
+            startLoad(url)
         }
-        loadedUrl = url
-        startLoad(url)
     }
 
     /**
@@ -273,6 +279,11 @@ class MainActivity : Activity() {
      * progress frame of a real load be ignored as "already finished".
      */
     private fun startLoad(url: String) {
+        // Latched HERE rather than by each caller, so the recorded address is the
+        // one a load was actually started for: a caller that latched it first and
+        // then failed left `onResume` believing the window was already there and
+        // it never retried.
+        loadedUrl = url
         loading = LoadingState.connecting()
         overlay.render(loading)
         webView.loadUrl(url)

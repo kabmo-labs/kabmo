@@ -302,13 +302,15 @@ final class SettingsViewController: UIViewController {
   /// stopped server. The check is cheap (one dependency-free route) and the screen
   /// already has to run it to show a version.
   ///
-  /// **The cookies are cleared only when the ORIGIN changes.** A cookie is scoped to
-  /// a host and port, so the same address keeps its session — and this screen is also
-  /// where the zoom slider lives, so pressing Connect after adjusting the zoom used
-  /// to sign the user out of the server they were already on.
+  /// **No cookies are touched.** A cookie is scoped to its host and the session
+  /// cookie is named per port (`omp_session_<port>`), so an address that changed
+  /// cannot receive the previous server's session, and the previous server keeps
+  /// the login that going back should restore. Clearing the store here signed the
+  /// user out of EVERY server in the list — the reported "the login is gone after
+  /// switching" — and this screen is also where the zoom slider lives. The
+  /// explicit "Clear cookies" button is the one gesture that ends a session.
   private func save() {
     guard let base = normalizedURL() else { return }
-    let previous = settings.url
 
     setBusy(true)
     status("Checking…", tone: .neutral)
@@ -322,9 +324,6 @@ final class SettingsViewController: UIViewController {
       }
 
       self.settings.write(url: base)
-      if !URLNormalizer.sameOrigin(previous, base) {
-        await self.clearCookies()
-      }
       self.onSaved?()
       self.dismiss(animated: true)
     }

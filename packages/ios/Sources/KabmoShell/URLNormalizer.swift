@@ -52,21 +52,6 @@ public enum URLProblem: String, Equatable {
 /// below runs on the PARSED scheme rather than on a `contains("://")` guess.
 public enum URLNormalizer {
 
-  /// Whether `candidate` names the SAME server as `saved`.
-  ///
-  /// Both sides are `normalize` output, so a path, query or fragment cannot reach
-  /// either one, and scheme and host are case-insensitive in an origin — which
-  /// makes a case-insensitive compare of the whole string exact.
-  ///
-  /// This is the decision the settings screen uses to decide whether Connect must
-  /// sign the user out. Clearing the cookie unconditionally signed a user out of a
-  /// server whose address had not changed at all — the screen is also where the
-  /// zoom slider lives.
-  public static func sameOrigin(_ saved: String?, _ candidate: String) -> Bool {
-    guard let saved, !saved.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-    return trimSlash(saved).caseInsensitiveCompare(trimSlash(candidate)) == .orderedSame
-  }
-
   /// Normalize a typed address into an origin.
   public static func normalize(_ raw: String) -> NormalizedURL {
     let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -99,11 +84,5 @@ public enum URLNormalizer {
     let portPart = components.port.map { ":\($0)" } ?? ""
 
     return .ok("\(scheme)://\(formatted)\(portPart)")
-  }
-
-  private static func trimSlash(_ value: String) -> String {
-    var out = value.trimmingCharacters(in: .whitespaces)
-    while out.hasSuffix("/") { out.removeLast() }
-    return out
   }
 }
