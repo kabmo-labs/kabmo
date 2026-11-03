@@ -88,6 +88,14 @@ export const SUBAGENT_STALE_MS = 30 * 60 * 1000;
 export const READY_TIMEOUT_MS = 120_000;
 export const GET_STATE_TIMEOUT_MS = 5_000;
 export const PROMPT_ACK_TIMEOUT_MS = 30_000;
+// An image-bearing prompt is NOT ack'd at dispatch time: omp stores the bytes,
+// downscales them and asks the vision model for a description FIRST. Measured
+// on 18.16.0: a plain prompt acks in ~0 ms, while a 1 MB PNG took 21 s and a
+// 30 MB one 26 s — a size-independent cost dominated by that model call, which
+// left 4 s of headroom under the text budget. Overrunning the ack cap does not
+// merely report late: `settleCommandTimeout` RESETS the child, destroying the
+// turn the operator just sent.
+export const IMAGE_PROMPT_ACK_TIMEOUT_MS = 120_000;
 // A `/reload-plugins` re-read of the skill/command roots. omp answers it in
 // ~16-40 ms even mid-turn (measured on 18.4.3), so a short cap only bounds a
 // child that stopped answering at all — the caller's retry is the recovery.
@@ -251,6 +259,13 @@ export function validateAgentImages(images: unknown): string | null {
 export function toImageContents(value: unknown): Array<{ type: 'image'; data: string; mimeType: string }> | undefined {
   const images = value as Array<{ type: 'image'; data: string; mimeType: string }> | undefined;
   return images?.length ? images : undefined;
+}
+
+/** How long a prompt dispatch may wait for its ack, given what it carries.
+ *  One function because both dispatch paths (the session command router and the
+ *  BTW side question) must give an image prompt the same window. */
+export function promptAckTimeoutMs(images: unknown): number {
+  return toImageContents(images) ? IMAGE_PROMPT_ACK_TIMEOUT_MS : PROMPT_ACK_TIMEOUT_MS;
 }
 
 /** Pick a spawn cwd that actually exists. A session records the directory it

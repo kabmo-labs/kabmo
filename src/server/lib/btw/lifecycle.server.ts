@@ -15,7 +15,7 @@
  */
 
 import type { RpcProcess, RpcFrame } from '@/server/lib/omp/rpc/process';
-import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, PROMPT_ACK_TIMEOUT_MS } from '@/server/lib/omp/rpc/constants';
+import { GET_STATE_TIMEOUT_MS, IDLE_REAP_MS, promptAckTimeoutMs } from '@/server/lib/omp/rpc/constants';
 import { buildBtwPrompt } from '@/server/lib/btw/prompt';
 import { boundSideReply } from '@/server/lib/btw/reply';
 import { appendBtwTurn, settleRunningBtwTurns, updateBtwTurn } from '@/server/lib/btw/store.server';
@@ -63,7 +63,7 @@ export async function askSideQuestion(host: BtwLifecycleHost, question: string, 
     const proc = await host.start();
     await proc.sendCommand(
       { type: 'prompt', message: buildBtwPrompt(question), ...(images?.length ? { images } : {}) },
-      PROMPT_ACK_TIMEOUT_MS,
+      promptAckTimeoutMs(images),
     );
   } catch (error) {
     await settleSideTurn(host, 'error');

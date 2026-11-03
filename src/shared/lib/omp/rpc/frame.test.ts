@@ -8,19 +8,21 @@
  *
  * Framing bugs are silent data corruption: a frame read as two lines, or a
  * chunk sequence reassembled with the wrong bytes, reaches the session wrapper
- * as a plausible-looking but wrong event. These tests pin the length boundary
- * that selects single-line vs chunked encoding, the exact chunk sequence
- * bookkeeping (ordering, count, declared byte length), the strict base64 and
- * UTF-8 decoding, and the failure modes that must reject rather than guess.
+ * as a plausible-looking but wrong event. These tests pin the OUTBOUND rule
+ * (one line, never chunked — omp does not reassemble what Kabmo writes), the
+ * inbound chunk bookkeeping (ordering, count, declared byte length), the strict
+ * base64 and UTF-8 decoding, and the failure modes that must reject rather than
+ * guess.
  */
 
 import { describe, expect, test } from 'bun:test';
 
 import {
+  MAX_OUTBOUND_FRAME_BYTES,
   MAX_RPC_FRAME_BYTES,
   MAX_RPC_REASSEMBLED_BYTES,
   RpcFrameDecoder,
-  encodeRpcFrames,
+  encodeRpcFrameLine,
   type RpcFrameRecord,
 } from '@/shared/lib/omp/rpc/frame';
 
@@ -36,6 +38,21 @@ function chunk(overrides: Record<string, unknown>): Record<string, unknown> {
   return { type: 'rpc_chunk', chunkId: 'c1', index: 0, count: 2, byteLength: MAX_RPC_FRAME_BYTES, data: 'AAAA', ...overrides };
 }
 
+/** A complete inbound `rpc_chunk` sequence for `frame`, the shape omp emits.
+ *  Kabmo never writes one (see `encodeRpcFrameLine`), so the test owns it. */
+function chunkSequence(frame: RpcFrameRecord, chunkId: string): Record<string, unknown>[] {
+  const bytes = new TextEncoder().encode(JSON.stringify(frame));
+  const count = Math.ceil(bytes.byteLength / (256 * 1024));
+  return Array.from({ length: count }, (_, index) => ({
+    type: 'rpc_chunk',
+    chunkId,
+    index,
+    count,
+    byteLength: bytes.byteLength,
+    data: bytes.subarray(index * 256 * 1024, (index + 1) * 256 * 1024).toBase64(),
+  }));
+}
+
 describe('transport limits', () => {
   test('the frame and reassembly ceilings are the documented values', () => {
     expect(MAX_RPC_FRAME_BYTES).toBe(1024 * 1024);
@@ -43,54 +60,27 @@ describe('transport limits', () => {
   });
 });
 
-describe('encodeRpcFrames — single-line path', () => {
+describe('encodeRpcFrameLine — one line, never chunked', () => {
   test('a small frame is one JSON line terminated by a newline', () => {
     const frame = { type: 'ready', n: 1 };
-    expect(encodeRpcFrames(frame, 1, 'chunk')).toEqual([`${JSON.stringify(frame)}\n`]);
+    expect(encodeRpcFrameLine(frame)).toBe(`${JSON.stringify(frame)}\n`);
   });
 
-  test('the exact boundary is a frame whose JSON is MAX-1 bytes (plus newline = MAX)', () => {
-    const frame = frameOfBytes(MAX_RPC_FRAME_BYTES - 1);
-    const lines = encodeRpcFrames(frame, 1, 'chunk');
-    expect(lines.length).toBe(1);
-    expect(lines[0].length).toBe(MAX_RPC_FRAME_BYTES);
-  });
-
-  test('one byte over the boundary stops being a single line', () => {
-    const frame = frameOfBytes(MAX_RPC_FRAME_BYTES);
-    // v1 has no fallback: an oversized frame is a hard error.
-    expect(() => encodeRpcFrames(frame, 1, 'chunk')).toThrow('RPC frame exceeds the v1 transport limit');
-  });
-});
-
-describe('encodeRpcFrames — v2 chunking', () => {
-  test('an oversized frame becomes a contiguous chunk sequence that round-trips', () => {
+  test('a frame ABOVE the inbound frame limit is still a single line', () => {
+    // The regression this pins: a >1 MiB prompt (any real screenshot) used to be
+    // split into `rpc_chunk` records, which omp's rpc-ui stdin loop rejects with
+    // `Unknown command: rpc_chunk` — the prompt was never dispatched and the
+    // session was reset on ack timeout.
     const frame = frameOfBytes(MAX_RPC_FRAME_BYTES + 5_000);
-    const lines = encodeRpcFrames(frame, 2, 'chunk-1');
-    const payload = new TextEncoder().encode(JSON.stringify(frame));
-    const expectedCount = Math.ceil(payload.byteLength / (256 * 1024));
-    expect(lines.length).toBe(expectedCount);
-
-    const decoder = new RpcFrameDecoder();
-    const records = lines.map((line) => JSON.parse(line));
-    for (let i = 0; i < records.length; i++) {
-      expect(records[i].type).toBe('rpc_chunk');
-      expect(records[i].chunkId).toBe('chunk-1');
-      expect(records[i].index).toBe(i);
-      expect(records[i].count).toBe(expectedCount);
-      expect(records[i].byteLength).toBe(payload.byteLength);
-      expect(lines[i].endsWith('\n')).toBe(true);
-      // Every push before the last must yield nothing — the decoder is holding
-      // an incomplete logical frame.
-      const out = decoder.push(records[i]);
-      if (i < records.length - 1) expect(out).toBeUndefined();
-      else expect(out).toEqual(frame);
-    }
+    const line = encodeRpcFrameLine(frame);
+    expect(line.endsWith('\n')).toBe(true);
+    expect(line.indexOf('\n')).toBe(line.length - 1);
+    expect(JSON.parse(line)).toEqual(frame);
   });
 
-  test('a frame over the reassembly ceiling is refused before chunking', () => {
-    const frame = { type: 'x', pad: 'A'.repeat(MAX_RPC_REASSEMBLED_BYTES) };
-    expect(() => encodeRpcFrames(frame, 2, 'chunk')).toThrow('RPC frame exceeds the v2 reassembly limit');
+  test('a frame over the outbound ceiling is refused instead of chunked', () => {
+    const frame = { type: 'x', pad: 'A'.repeat(MAX_OUTBOUND_FRAME_BYTES) };
+    expect(() => encodeRpcFrameLine(frame)).toThrow('exceeds the');
   });
 });
 
@@ -232,10 +222,21 @@ describe('RpcFrameDecoder — sequence bookkeeping', () => {
     expect(() => decoder.push({ type: 'rpc_chunk', ...base, index: 3, data: last })).toThrow();
   });
 
+  test('an inbound sequence reassembles to the frame omp emitted', () => {
+    // omp → Kabmo is the direction that DOES chunk, so the decoder must keep
+    // reassembling: an oversized event (a big tool result) arrives this way.
+    const frame = frameOfBytes(MAX_RPC_FRAME_BYTES + 5_000);
+    const decoder = new RpcFrameDecoder();
+    const records = chunkSequence(frame, 'chunk-1');
+    expect(records.length).toBeGreaterThan(1);
+    for (const record of records.slice(0, -1)) expect(decoder.push(record)).toBeUndefined();
+    expect(decoder.push(records.at(-1))).toEqual(frame);
+  });
+
   test('a fresh sequence can start after a completed one', () => {
     const decoder = new RpcFrameDecoder();
     const frame = frameOfBytes(MAX_RPC_FRAME_BYTES + 1_000);
-    for (const line of encodeRpcFrames(frame, 2, 'a')) decoder.push(JSON.parse(line));
+    for (const record of chunkSequence(frame, 'a')) decoder.push(record);
     expect(decoder.push({ type: 'ready' })).toEqual({ type: 'ready' });
   });
 });

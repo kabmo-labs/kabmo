@@ -30,6 +30,7 @@ import {
   GET_STATE_TIMEOUT_MS,
   IDLE_REAP_MS,
   IMAGE_BEARING_COMMANDS,
+  IMAGE_PROMPT_ACK_TIMEOUT_MS,
   MAX_AGGREGATE_IMAGE_BYTES,
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGES,
@@ -43,6 +44,7 @@ import {
   SESSION_BUSY_MESSAGE,
   SUBAGENT_STALE_MS,
   buildSessionSpawnArgs,
+  promptAckTimeoutMs,
   resolveSpawnCwd,
   toImageContents,
   validateAgentImages,
@@ -71,9 +73,18 @@ describe('timeout windows and messages', () => {
     expect(READY_TIMEOUT_MS).toBe(120_000);
     expect(GET_STATE_TIMEOUT_MS).toBe(5_000);
     expect(PROMPT_ACK_TIMEOUT_MS).toBe(30_000);
+    expect(IMAGE_PROMPT_ACK_TIMEOUT_MS).toBe(120_000);
     expect(RELOAD_PLUGINS_TIMEOUT_MS).toBe(10_000);
     expect(NON_TERMINAL_CONTINUATION_GRACE_MS).toBe(2_000);
     expect(AWAITING_AGENT_START_TIMEOUT_MS).toBe(10_000);
+  });
+
+  test('an image prompt gets the longer ack budget; a text prompt keeps the short one', () => {
+    // omp describes the image before it acks, which measured 21-26 s — past the
+    // text budget, and overrunning it RESETS the child and loses the turn.
+    expect(promptAckTimeoutMs([{ type: 'image', data: 'AAAA', mimeType: 'image/png' }])).toBe(IMAGE_PROMPT_ACK_TIMEOUT_MS);
+    expect(promptAckTimeoutMs(undefined)).toBe(PROMPT_ACK_TIMEOUT_MS);
+    expect(promptAckTimeoutMs([])).toBe(PROMPT_ACK_TIMEOUT_MS);
   });
 
   test('user-facing messages are verbatim', () => {

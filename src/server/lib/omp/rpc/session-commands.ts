@@ -10,7 +10,7 @@
  */
 
 import { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process';
-import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT_MS, GET_STATE_TIMEOUT_MS, IMAGE_BEARING_COMMANDS, PASSTHROUGH_COMMANDS, PROMPT_ACK_TIMEOUT_MS, RESTARTING_MESSAGE, STEER_ACK_TIMEOUT_MS, WebRpcError, toImageContents, type RpcSessionState, validateAgentImages } from '@/server/lib/omp/rpc/constants';
+import { AGENT_BUSY_MESSAGE, AGENT_BUSY_REFUSAL_RE, AWAITING_AGENT_START_TIMEOUT_MS, GET_STATE_TIMEOUT_MS, IMAGE_BEARING_COMMANDS, PASSTHROUGH_COMMANDS, RESTARTING_MESSAGE, STEER_ACK_TIMEOUT_MS, WebRpcError, promptAckTimeoutMs, toImageContents, type RpcSessionState, validateAgentImages } from '@/server/lib/omp/rpc/constants';
 import { clearSessionFileCaches } from '@/server/lib/omp/session/files';
 import { awaitTitleDispatch } from '@/server/lib/omp/session/title-request.server';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
@@ -88,12 +88,15 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
         if (ownsStreamRow) void markStreamStatus(host.sessionId, 'stream', host.runModel);
       }
       try {
+        // Resolved once: the same payload decides both what rides the command
+        // and how long its ack may take.
+        const images = toImageContents(command.images);
         const ack = await host.proc.sendCommand<{ agentInvoked?: boolean } | undefined>({
           type: 'prompt',
           message: command.message as string,
-          ...(toImageContents(command.images) ? { images: toImageContents(command.images) } : {}),
+          ...(images ? { images } : {}),
           ...(streamingBehavior ? { streamingBehavior } : {}),
-        }, PROMPT_ACK_TIMEOUT_MS);
+        }, promptAckTimeoutMs(command.images));
         if (ack?.agentInvoked === false && !streamingBehavior) {
           // Only a dispatch that CLAIMED the turn slot may settle it. A command
           // dispatched while a run is in flight — a mode toggle, the plan-review

@@ -8,8 +8,9 @@
  * Protocol v1: commands `{id, type, ...}` on stdin; `{type:"response", id, ...}`
  * plus interleaved event frames on stdout. omp announces readiness with a
  * `{type:"ready"}` frame before accepting commands. When readiness advertises
- * protocol v2, callers negotiate it before sending normal commands; oversized
- * logical frames are then carried as bounded `rpc_chunk` sequences.
+ * protocol v2, callers negotiate it so OMP's own OVERSIZED EVENTS arrive as
+ * bounded `rpc_chunk` sequences (see `frame.ts` for why the same encoding must
+ * never be used in the other direction).
  *
  * Faithful port of omp-web/lib/omp/rpc-process.ts.
  */
@@ -18,7 +19,7 @@ import type { Subprocess } from 'bun';
 import { signalName, stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
-import { RpcFrameDecoder, encodeRpcFrames, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
+import { RpcFrameDecoder, encodeRpcFrameLine, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
 import { RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
@@ -37,11 +38,8 @@ export class RpcProcess {
   private exited = false;
   private exitInfo: { code: number | null; signal: string | null } | null = null;
   private protocolVersion: RpcProtocolVersion = 1;
-  private nextChunkId = 1;
-  // Serializes physical stdin writes: a v2 logical frame can span multiple
-  // `rpc_chunk` records (>1 MiB payloads), and two frames written concurrently
-  // would interleave their chunk sequences on stdin, which RpcFrameDecoder
-  // rejects. Each logical frame is enqueued whole.
+  // Serializes stdin writes: a frame is queued whole so two writers cannot
+  // interleave halves of two frames on the pipe.
   private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(options: RpcProcessOptions) {
@@ -252,16 +250,15 @@ export class RpcProcess {
   }
 
   private writeFrame(frame: RpcFrame, callback: (error?: Error | null) => void): void {
-    let lines: string[];
+    let line: string;
     try {
-      lines = encodeRpcFrames(frame, this.protocolVersion, `web-${this.nextChunkId++}`);
+      line = encodeRpcFrameLine(frame);
     } catch (error) {
       callback(error instanceof Error ? error : new Error(String(error)));
       return;
     }
-    // Enqueue the entire encoded logical frame; the next frame's physical
-    // records only start after this frame has been fully handed to the stdin
-    // sink, so two frames can never interleave their chunk sequences.
+    // Serialized: a frame is handed to stdin whole before the next one starts,
+    // so two writers cannot interleave halves of two frames on the pipe.
     this.writeQueue = this.writeQueue.then(
       () => new Promise<void>((resolve) => {
         if (this.exited || !this.child.stdin) {
@@ -270,7 +267,7 @@ export class RpcProcess {
           return;
         }
         try {
-          for (const line of lines) this.child.stdin.write(line);
+          this.child.stdin.write(line);
           callback(null);
         } catch (error) {
           callback(error instanceof Error ? error : new Error(String(error)));
