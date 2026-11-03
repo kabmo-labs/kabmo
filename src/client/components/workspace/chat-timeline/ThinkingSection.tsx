@@ -56,7 +56,9 @@ export function ThinkingSection({
 }: ThinkingSectionProps) {
   const mode = useToolRenderMode();
   const chrome = blockChrome(mode);
-  const framed = mode === 'card';
+  // Whether the style draws a FRAME is the chrome's own fact, not the mode's
+  // name: `card` boxes the block, `compact`/`trace`/`minimal`/`tui` are lines.
+  const framed = chrome.frame !== '';
 
   const isGenerating = typeof thinking === 'object' ? Boolean(thinking.isGenerating) : false;
   const { isOpen, toggle: toggleOpen } = useThinkingOpenState(messageId, defaultExpanded, isGenerating);

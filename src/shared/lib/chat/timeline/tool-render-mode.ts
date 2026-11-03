@@ -4,7 +4,7 @@
  */
 
 /**
- * How a tool call is drawn in the chat transcript, as ONE of four modes.
+ * How a tool call is drawn in the chat transcript, as ONE of five modes.
  *
  * This is a READING style, not a capability: every mode renders the same call,
  * the same facts and the same body — only the frame, the density and the
@@ -15,13 +15,15 @@
  *  - `compact` — one status line per call, facts inline, body inset on demand.
  *  - `trace`   — a vertical rail per section, one node per call.
  *  - `minimal` — a faint line per call, read as part of the answer.
+ *  - `tui`     — omp's own terminal frame: a rounded box drawn from glyphs,
+ *                with the header riding the top border.
  *
  * **The mode NAMES and the copy live here**; the markup lives in
  * `tool-renderers/styles/`. A mode added here without a renderer is a build
  * error at the switch in `ToolCallingSection`, not a silent fallback.
  */
 
-export type ToolRenderMode = 'card' | 'compact' | 'trace' | 'minimal';
+export type ToolRenderMode = 'card' | 'compact' | 'trace' | 'minimal' | 'tui';
 
 /**
  * The mode a document with no stored preference renders at. It is the value
@@ -30,11 +32,17 @@ export type ToolRenderMode = 'card' | 'compact' | 'trace' | 'minimal';
 export const DEFAULT_TOOL_RENDER_MODE: ToolRenderMode = 'card';
 
 /** Every mode, in the order the settings control lists them: fullest first. */
-export const TOOL_RENDER_MODES = ['card', 'compact', 'trace', 'minimal'] as const;
+export const TOOL_RENDER_MODES = ['card', 'compact', 'trace', 'minimal', 'tui'] as const;
 
 /** A stored value written by another build is not a mode this one can draw. */
 export function isToolRenderMode(value: unknown): value is ToolRenderMode {
-  return value === 'card' || value === 'compact' || value === 'trace' || value === 'minimal';
+  return (
+    value === 'card' ||
+    value === 'compact' ||
+    value === 'trace' ||
+    value === 'minimal' ||
+    value === 'tui'
+  );
 }
 
 /**
@@ -70,5 +78,10 @@ export const TOOL_RENDER_MODE_COPY: Record<ToolRenderMode, ToolRenderModeCopy> =
   minimal: {
     label: 'Minimal',
     description: 'The quietest form: a faint line per call, read as part of the answer.',
+  },
+  tui: {
+    label: 'TUI',
+    description:
+      "omp's terminal frame: a rounded box with the header on the top border, the way the TUI draws a call.",
   },
 };

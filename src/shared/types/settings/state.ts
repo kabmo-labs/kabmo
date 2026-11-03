@@ -100,9 +100,10 @@ export interface SettingsState {
   chatWidthMode: ChatWidthMode;
   /**
    * How a tool call is drawn in the transcript (`card` | `compact` | `trace` |
-   * `minimal`). A reading style: every mode renders the same call, facts and
-   * body — only the frame, density and grouping change. Global, like the chat
-   * width, because density is a property of the person and the display.
+   * `minimal` | `tui`). A reading style: every mode renders the same call,
+   * facts and body — only the frame, density and grouping change. Global, like
+   * the chat width, because density is a property of the person and the
+   * display.
    */
   toolRenderStyle: ToolRenderMode;
   /**

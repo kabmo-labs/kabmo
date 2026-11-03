@@ -86,10 +86,12 @@ async function paint(style: string, node: preact.ComponentChildren): Promise<HTM
 }
 
 describe('blockChrome', () => {
-  test('only the card style has a frame', () => {
+  test('only the card style has a frame; tui is a line of text like its siblings', () => {
     expect(blockChrome('card').frame).toContain('rounded-xl');
     expect(blockChrome('card').frame).toContain('border-ink/10');
-    for (const mode of ['compact', 'trace', 'minimal'] as const) {
+    // `tui` is NOT a card: no border, no fill. Its shape lives in the header
+    // row's type and colour, not in a box.
+    for (const mode of ['compact', 'trace', 'minimal', 'tui'] as const) {
       expect(blockChrome(mode).frame).toBe('');
     }
   });
@@ -100,6 +102,7 @@ describe('blockChrome', () => {
     expect(blockChrome('compact').node).toBeUndefined();
     expect(blockChrome('card').node).toBeUndefined();
     expect(blockChrome('minimal').node).toBeUndefined();
+    expect(blockChrome('tui').node).toBeUndefined();
   });
 
   test('the minimal style is the smallest type, the frame styles the largest', () => {
@@ -107,6 +110,14 @@ describe('blockChrome', () => {
     expect(blockChrome('card').title).toContain('text-[12px]');
     expect(blockChrome('card').header).toContain('px-3 py-2.5');
     expect(blockChrome('compact').header).toContain('py-1');
+  });
+
+  test('the tui header is terminal text: monospace, accent name, meta subject', () => {
+    expect(blockChrome('tui').header).toContain('font-mono');
+    expect(blockChrome('tui').title).toContain('text-info');
+    expect(blockChrome('tui').subtitle).toContain('text-meta');
+    expect(blockChrome('tui').body).toContain('font-mono');
+    expect(blockChrome('tui').header).not.toBe(blockChrome('card').header);
   });
 });
 

@@ -96,7 +96,7 @@ function toggle(el: HTMLElement): HTMLElement {
   return el.querySelector('[aria-label^="Expand "], [aria-label^="Collapse "]') as HTMLElement;
 }
 
-describe.each(['card', 'compact', 'trace', 'minimal'])('tool render style: %s', (style) => {
+describe.each(['card', 'compact', 'trace', 'minimal', 'tui'])('tool render style: %s', (style) => {
   test('draws one row per call and names it', async () => {
     const el = await mount([OK_TOOL], style);
     expect(el.querySelector('[data-tool-section]')?.getAttribute('data-tool-style')).toBe(style);

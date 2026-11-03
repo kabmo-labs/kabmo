@@ -6,12 +6,12 @@
 /**
  * How a tool call is drawn in the transcript.
  *
- * Four cards, one per renderer, in the order `TOOL_RENDER_MODES` declares:
+ * One card per renderer, in the order `TOOL_RENDER_MODES` declares:
  * fullest first. Each card carries a miniature of its own renderer, because the
- * difference between the modes is SHAPE — a label alone cannot show a rail or a
- * status line. The miniature is drawn from the same primitives the transcript
- * uses (a hairline, a dot, a mono line), so the preview is honest about what
- * the reader will get.
+ * difference between the modes is SHAPE — a label alone cannot show a rail, a
+ * status line or a terminal frame. The miniature is drawn from the same
+ * primitives the transcript uses (a hairline, a dot, a mono line), so the
+ * preview is honest about what the reader will get.
  *
  * The copy lives in `shared/lib/chat/timeline/tool-render-mode.ts`, so this
  * file states neither the names nor the descriptions.
@@ -65,6 +65,24 @@ function ModePreview({ mode }: { mode: ToolRenderMode }) {
           <div key={row} className="flex items-center gap-1 py-0.5">
             <span className="h-1.5 w-1.5 rounded-full bg-ink/40" />
             <span className="h-1 w-10 rounded-full bg-ink/25" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (mode === 'tui') {
+    // A line of coloured terminal text, not a box: glyph in the state tone, the
+    // name in the accent, the subject in the meta hue, then the dim facts. The
+    // miniature mirrors the real row, so "TUI" cannot be mistaken for a card
+    // with a different paint job.
+    return (
+      <div aria-hidden className="space-y-1 px-1 py-1 font-mono">
+        {[0, 1].map((row) => (
+          <div key={row} className="flex items-baseline gap-1">
+            <span className="text-[6px] text-success">✔</span>
+            <span className="h-1 w-3 rounded-full bg-info/70" />
+            <span className="h-1 w-6 rounded-full bg-meta/70" />
+            <span className="ml-auto h-1 w-2 rounded-full bg-ink/25" />
           </div>
         ))}
       </div>

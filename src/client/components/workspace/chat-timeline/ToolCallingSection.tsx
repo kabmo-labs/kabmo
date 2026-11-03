@@ -33,6 +33,7 @@ import { CardRow } from '@/client/components/workspace/chat-timeline/tool-render
 import { CompactRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Compact';
 import { TraceRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Trace';
 import { MinimalRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Minimal';
+import { TuiRow } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/Tui';
 import type { ToolRowProps } from '@/client/components/workspace/chat-timeline/tool-renderers/styles/props';
 
 interface ToolCallingSectionProps {
@@ -48,6 +49,7 @@ const ROW_BY_MODE: Record<ToolRenderMode, FunctionComponent<ToolRowProps>> = {
   compact: CompactRow,
   trace: TraceRow,
   minimal: MinimalRow,
+  tui: TuiRow,
 };
 
 function normalizeToolData(action: ToolCallData | AgentActionData, index: number): ToolCallData {

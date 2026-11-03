@@ -92,11 +92,30 @@ const MINIMAL: BlockChrome = {
   body: 'my-1.5 overflow-hidden rounded-md border border-dashed border-ink/15 px-3 py-2.5',
 };
 
+/**
+ * `tui` — omp's terminal transcript. A block is a LINE of coloured text, not a
+ * box: the tool row draws its own status line (`styles/Tui.tsx`), and a
+ * thinking block or a notice wears the same frameless shape in the terminal's
+ * own type, with its name in the accent and its subject in the meta hue. The
+ * body hangs off a hairline rule, the way a terminal prints output under the
+ * command that produced it.
+ */
+const TUI: BlockChrome = {
+  root: '',
+  frame: '',
+  header: 'flex w-full items-center gap-2 px-1 py-0.5 text-left transition-colors font-mono',
+  icon: 'flex shrink-0 items-center justify-center',
+  title: 'shrink-0 text-[11.5px] font-semibold text-info',
+  subtitle: 'min-w-0 truncate font-mono text-[10.5px] text-meta',
+  body: 'my-1.5 ml-2 overflow-hidden border-l border-ink/10 py-1.5 pl-3 font-mono',
+};
+
 const BY_MODE: Record<ToolRenderMode, BlockChrome> = {
   card: CARD,
   compact: COMPACT,
   trace: TRACE,
   minimal: MINIMAL,
+  tui: TUI,
 };
 
 export function blockChrome(mode: ToolRenderMode): BlockChrome {
