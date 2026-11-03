@@ -248,6 +248,33 @@ describe('extensions', () => {
     expect(await setExtensionDisabled('skill:a', false)).toBe(false);
     expect(await fs.promises.readFile(configPath, 'utf8')).toBe('theme: dark\n');
   });
+
+  /**
+   * The list was read with `doc.get()`, which returns a YAML SEQ node —
+   * `Array.isArray` on that is `false`, so the panel saw an empty list. Turning
+   * an extension back ON then found its id "absent" and answered "nothing to
+   * do", leaving it disabled forever; turning one OFF overwrote every other
+   * disabled id. Both directions are pinned here.
+   */
+  test('disabling keeps the ids already in the list', async () => {
+    const agent = await freshAgentDir();
+    const configPath = join(agent, 'config.yml');
+    await Bun.write(configPath, 'disabledExtensions:\n  - skill:a\n  - skill:b\n');
+    expect(await setExtensionDisabled('extension-module:c', true)).toBe(true);
+    expect(Bun.YAML.parse(await fs.promises.readFile(configPath, 'utf8'))).toEqual({
+      disabledExtensions: ['skill:a', 'skill:b', 'extension-module:c'],
+    });
+  });
+
+  test('enabling removes only its own id and reports the change', async () => {
+    const agent = await freshAgentDir();
+    const configPath = join(agent, 'config.yml');
+    await Bun.write(configPath, 'disabledExtensions:\n  - skill:a\n  - skill:b\n');
+    expect(await setExtensionDisabled('skill:a', false)).toBe(true);
+    expect(Bun.YAML.parse(await fs.promises.readFile(configPath, 'utf8'))).toEqual({
+      disabledExtensions: ['skill:b'],
+    });
+  });
 });
 
 describe('behavior rules', () => {

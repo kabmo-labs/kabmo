@@ -12,7 +12,7 @@
 import { join } from 'path';
 import { getAgentDir, pathExists } from '@/server/lib/omp/core/paths';
 import { getOmpConfigPath } from '@/server/lib/omp/config/yaml';
-import { withOmpYamlDocument } from '@/server/lib/omp/config/document';
+import { seqAt, valueAt, withOmpYamlDocument } from '@/server/lib/omp/config/document';
 import { isRecord } from '@/shared/lib/util/guards';
 
 export interface DiscoveredExtension {
@@ -75,17 +75,26 @@ export async function readDisabledExtensions(): Promise<Set<string>> {
   }
 }
 
-/** Toggle one extension id in config.yml disabledExtensions atomically. */
+/**
+ * Toggle one extension id in config.yml `disabledExtensions` atomically.
+ *
+ * The list is read through `valueAt`, which unwraps the YAML node: `doc.get()`
+ * returns a SEQ node, and `Array.isArray` on a node is `false` — so the whole
+ * list read as empty. Disabling then wrote a one-item list over the user's
+ * others, and ENABLING found the id absent from its own empty view, answered
+ * "nothing to do", and left the extension disabled forever.
+ */
 export async function setExtensionDisabled(id: string, disabled: boolean): Promise<boolean> {
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(id)) throw new Error('Invalid extension id');
   const path = getOmpConfigPath();
   return withOmpYamlDocument(path, (doc) => {
-    const current = doc.get('disabledExtensions');
-    const list = Array.isArray(current)
-      ? current.filter((item): item is string => typeof item === 'string')
-      : [];
+    const raw = valueAt(doc, ['disabledExtensions']);
+    const list = Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
     if (disabled === list.includes(id)) return { result: false, changed: false };
-    doc.set('disabledExtensions', disabled ? [...list, id] : list.filter((item) => item !== id));
+    const next = disabled ? [...list, id] : list.filter((item) => item !== id);
+    const seq = seqAt(doc, ['disabledExtensions']);
+    if (seq) seq.items = next;
+    else doc.set('disabledExtensions', next);
     return { result: true, changed: true };
   });
 }
