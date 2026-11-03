@@ -207,13 +207,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (body.scope === 'user' && typeof body.name === 'string' && body.server) {
         await writeUserMcpServer(body.name, toNativeServer(body.server));
         const custom = await readCustomServers(db);
-        return json({ success: true, servers: mergeServers(custom) });
+        return json({ success: true, servers: await mergeServers(custom) });
       }
 
       if (Array.isArray(body) || Array.isArray(body.servers)) {
         const updatedServers: McpServerItem[] = Array.isArray(body) ? body : body.servers;
         await writeCustomServers(db, updatedServers);
-        return json({ success: true, servers: isMockMode() ? updatedServers : mergeServers(updatedServers) });
+        return json({ success: true, servers: isMockMode() ? updatedServers : await mergeServers(updatedServers) });
       }
 
       if (!body.server) return json({ error: 'server is required' }, { status: 400 });
@@ -235,23 +235,31 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
 
       const mock = isMockMode();
+      const previousName = previousNativeName(server.id, server.name);
       if (!mock) {
         if (server.scope === 'this-project') {
           if (!projectPath) {
             return json({ error: 'A registered projectPath is required for project-scoped servers' }, { status: 400 });
           }
-          await writeProjectMcpServer(projectPath, server.name, toNativeServer(server), previousNativeName(server.id, server.name));
+          await writeProjectMcpServer(projectPath, server.name, toNativeServer(server), previousName);
         } else {
-          await writeUserMcpServer(server.name, toNativeServer(server), undefined, previousNativeName(server.id, server.name));
+          await writeUserMcpServer(server.name, toNativeServer(server), undefined, previousName);
         }
       }
 
       // Upsert the DB row so ids/enabled stay stable across scope changes.
       const storedServer: McpServerItem = projectPath ? { ...server, projectPath } : server;
-      const custom = await mcpStore.upsertItem(db, storedServer, { absent: mock ? DEFAULT_MCP_SERVERS : [] });
+      const upserted = await mcpStore.upsertItem(db, storedServer, { absent: mock ? DEFAULT_MCP_SERVERS : [] });
+      // A RENAME leaves the old name behind as a second row: the native file is
+      // rewritten under the new name, but the app-local row that mirrored the
+      // old one still answers the old name and the panel lists both. The row is
+      // the one thing the native write cannot clean up.
+      const custom = previousName
+        ? upserted.filter((entry) => entry.name.toLowerCase() !== previousName.toLowerCase())
+        : upserted;
       await writeCustomServers(db, custom);
 
-      return json({ success: true, servers: mock ? custom : mergeServers(custom, projectPath ?? undefined) });
+      return json({ success: true, servers: mock ? custom : await mergeServers(custom, projectPath ?? undefined) });
     }
 
     return methodNotAllowed({ request, params });
