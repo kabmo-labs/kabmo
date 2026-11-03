@@ -40,6 +40,29 @@ const native: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
 const WIDTH = 400;
 const HEIGHT = 200;
 
+/**
+ * The prototype members this suite replaces, and whether they were the
+ * prototype's OWN before.
+ *
+ * A happy-dom `Window`'s prototypes belong to the MODULE, not to the window
+ * object: a second `new Window()` in a later suite hands back the same
+ * `HTMLElement.prototype`, so a stub installed here and left behind is still
+ * installed for every file after this one. Measured: `getBoundingClientRect`
+ * answered this suite's 400×200 box to `toolbar-row/index.test.tsx`, whose
+ * `ToolbarRow` read a 400px row for a toolbar it asked to be 400 wide with
+ * three 60px clusters — one cluster too many, so the row rendered `⋯` and the
+ * case failed, in a file that names none of this.
+ *
+ * Restoring by ASSIGNMENT is not enough, and is its own leak: these members are
+ * inherited (`Element.prototype` owns `getBoundingClientRect`), so assigning
+ * the function back leaves an OWN property on `HTMLElement.prototype` that
+ * shadows the ancestor — and that shadow is what the next suite's
+ * `Element.prototype.getBoundingClientRect` stub then fails to reach. Only a
+ * member that was an own property is written back; the rest are deleted.
+ */
+const protoStubs: Record<string, { own: boolean; value: unknown }> = {};
+let stubbedProto: Record<string, unknown> | undefined;
+
 beforeAll(() => {
   const win = new Window({ url: 'http://localhost' });
   const target = globalThis as unknown as Record<string, unknown>;
@@ -49,6 +72,11 @@ beforeAll(() => {
   }
   // happy-dom has no layout: the surface reports the box these cases drag on.
   const proto = win.HTMLElement.prototype as unknown as Record<string, unknown>;
+  stubbedProto = proto;
+  for (const key of ['getBoundingClientRect', 'setPointerCapture', 'releasePointerCapture']) {
+    const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+    protoStubs[key] = { own: descriptor !== undefined, value: proto[key] };
+  }
   proto.getBoundingClientRect = () => ({
     x: 0, y: 0, left: 0, top: 0, right: WIDTH, bottom: HEIGHT, width: WIDTH, height: HEIGHT,
     toJSON: () => ({}),
@@ -62,6 +90,14 @@ afterAll(() => {
   for (const key of DOM_GLOBALS) {
     if (native[key] === undefined) delete target[key];
     else target[key] = native[key];
+  }
+  // Put the prototype back BEFORE the globals go: the next suite gets its own
+  // window object but this same prototype.
+  if (stubbedProto) {
+    for (const [key, { own, value }] of Object.entries(protoStubs)) {
+      if (own) stubbedProto[key] = value;
+      else delete stubbedProto[key];
+    }
   }
 });
 

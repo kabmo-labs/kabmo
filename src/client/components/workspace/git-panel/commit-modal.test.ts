@@ -81,7 +81,7 @@ afterAll(() => {
  * `IntersectionObserver`). Stubbed rather than asserted on: the modal's
  * geometry is not what this test is about.
  */
-const OBSERVER_STUBS = ['ResizeObserver', 'IntersectionObserver'] as const;
+const OBSERVER_STUBS = ['ResizeObserver', 'IntersectionObserver', 'requestAnimationFrame', 'cancelAnimationFrame'] as const;
 const stubs: Partial<Record<(typeof OBSERVER_STUBS)[number], unknown>> = {};
 
 beforeAll(() => {
@@ -97,12 +97,14 @@ beforeAll(() => {
 
 afterAll(() => {
   const target = globalThis as unknown as Record<string, unknown>;
+  // Restored through the same loop as the observers, never deleted: a deleted
+  // `requestAnimationFrame` is what breaks the NEXT suite, which renders Preact
+  // hooks that schedule through it and dies with `ReferenceError:
+  // requestAnimationFrame is not defined` — in a file that names none of this.
   for (const key of OBSERVER_STUBS) {
     if (stubs[key] === undefined) delete target[key];
     else target[key] = stubs[key];
   }
-  delete target.requestAnimationFrame;
-  delete target.cancelAnimationFrame;
 });
 
 /** Mount with an HTTP POST that answers a history page. */

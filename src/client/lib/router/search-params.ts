@@ -23,29 +23,54 @@ type SetParams = (next: SetParamsInit | SetParamsFn, options?: { replace?: boole
 export type SetSearchParams = SetParams;
 
 const listeners = new Set<() => void>();
-let currentSearch = typeof window === 'undefined' ? '' : window.location.search;
 
 function emit(): void {
   for (const listener of listeners) listener();
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+/**
+ * The search string of the window in scope RIGHT NOW, never a value cached when
+ * this module was first evaluated.
+ *
+ * A module-level `currentSearch` reads as a harmless cache and is not: it pins
+ * the store to whichever `window` existed at import time, and so does the
+ * `popstate` listener below. In the browser there is one window forever and the
+ * two are equivalent; under `bun test` every DOM suite installs its OWN window,
+ * so the pinned pair made the router answer a URL nobody can see and miss
+ * `popstate` on the window the suite is actually driving — measured: a suite
+ * that set `?sessionId=` and mounted the composer read `''` and drew the
+ * landing, failing a case that passes when its file runs alone.
+ */
+function liveSearch(): string {
+  return typeof window === 'undefined' ? '' : window.location.search;
 }
 
-/** Re-read `location.search` and notify only when it actually changed. */
-function syncFromLocation(): void {
-  const next = typeof window === 'undefined' ? '' : window.location.search;
-  if (next === currentSearch) return;
-  currentSearch = next;
+/**
+ * The window this store is currently listening on.
+ *
+ * Rebound on subscribe rather than once at module load, for the reason above:
+ * a suite that replaces `globalThis.window` must get a router that follows it.
+ */
+let boundWindow: Window | undefined;
+
+function onPopState(): void {
   emit();
 }
 
-if (typeof window !== 'undefined') {
+function bindToCurrentWindow(): void {
+  const next = typeof window === 'undefined' ? undefined : window;
+  if (next === boundWindow) return;
+  boundWindow?.removeEventListener('popstate', onPopState);
+  boundWindow = next;
   // Back/forward navigation. `pushState`/`replaceState` do NOT fire popstate,
   // so setParams notifies directly.
-  window.addEventListener('popstate', syncFromLocation);
+  next?.addEventListener('popstate', onPopState);
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  bindToCurrentWindow();
+  return () => listeners.delete(listener);
 }
 
 function toSearchString(init: SetParamsInit): string {
@@ -63,22 +88,19 @@ function resolveNext(next: SetParamsInit | SetParamsFn, current: URLSearchParams
   return toSearchString(next);
 }
 
-function getSnapshot(): string {
-  return currentSearch;
-}
-
 export function useSearchParams(): [URLSearchParams, SetParams] {
   // Preact's `useSyncExternalStore` takes only (subscribe, getSnapshot) — no
-  // server-snapshot argument — and the app is client-rendered, so `currentSearch`
-  // is the single source of truth.
-  const search = useSyncExternalStore(subscribe, getSnapshot);
+  // server-snapshot argument — and the app is client-rendered, so the live
+  // `location.search` is the single source of truth. It is read on demand, and
+  // `useSyncExternalStore` compares snapshots by value, so an unchanged URL
+  // costs one string comparison and no render.
+  const search = useSyncExternalStore(subscribe, liveSearch);
 
   const setParams = useCallback<SetParams>((next, options) => {
-    const searchString = resolveNext(next, new URLSearchParams(currentSearch));
+    const searchString = resolveNext(next, new URLSearchParams(liveSearch()));
     const url = `${window.location.pathname}${searchString}${window.location.hash}`;
     if (options?.replace) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
-    currentSearch = searchString;
     emit();
   }, []);
 

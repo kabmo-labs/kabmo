@@ -50,6 +50,9 @@ const scrollWrites: Array<{ top: number; behavior?: ScrollBehavior }> = [];
 /** Frames are queued, never run by the platform, so a test drives them. */
 let frames: Array<() => void> = [];
 
+/** The runner's own globals, captured before this suite overwrites them. */
+const saved: Record<string, unknown> = {};
+
 function drainFrames(rounds = 6): void {
   for (let i = 0; i < rounds && frames.length > 0; i += 1) {
     const pending = frames;
@@ -119,6 +122,8 @@ beforeAll(async () => {
     cancelAnimationFrame: () => {},
   };
   for (const [key, value] of Object.entries(globals)) {
+    // Captured BEFORE the overwrite, so the runner's own values come back.
+    saved[key] = (globalThis as Record<string, unknown>)[key];
     (globalThis as Record<string, unknown>)[key] = value;
   }
   // Preact binds its environment at module evaluation, so the modules below
@@ -129,8 +134,16 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  for (const key of ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame']) {
-    delete (globalThis as Record<string, unknown>)[key];
+  // RESTORED, never deleted: `requestAnimationFrame`/`cancelAnimationFrame` are
+  // in `installDomGlobals`'s list (`pristine-globals.ts`), so a later suite that
+  // installs a window keeps whatever this file left behind. Deleting them made
+  // every following Preact suite that schedules a frame die with
+  // `ReferenceError: cancelAnimationFrame is not defined` (measured:
+  // `session-pagination.test.ts`'s rail jump, and the unhandled errors that
+  // followed it through `session-switch` and `scroll-reading-back`).
+  for (const [key, value] of Object.entries(saved)) {
+    if (value === undefined) delete (globalThis as Record<string, unknown>)[key];
+    else (globalThis as Record<string, unknown>)[key] = value;
   }
 });
 
