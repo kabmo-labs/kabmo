@@ -52,8 +52,7 @@ export class AgentSessionWrapper {
   promptDispatchPendingCount = 0;
   awaitingAgentStart = false;
   awaitingAgentStartDeadline = 0;
-  /** Watches the deadline above so a dispatch whose turn never opens cannot
-   *  strand the session (see `AgentStartWatchdog`). */
+  /** Watches the deadline above so a stranded dispatch is settled (`AgentStartWatchdog`). */
   private readonly agentStartWatchdog: AgentStartWatchdog;
   /** Settles a run omp no longer owns (see `run-settle.server.ts`). */
   readonly runSettle: RunSettle;
@@ -61,6 +60,7 @@ export class AgentSessionWrapper {
   bashRunning = false;
   streaming = false;
   compacting = false;
+  runAborted = false;
   fastModeEnabled = false;
   runModel: SessionRunModel | null = null;
   private onDestroyCallback: (() => void) | null = null;

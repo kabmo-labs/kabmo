@@ -46,6 +46,8 @@ export interface SessionFrameHost extends AutoTitleHost, QueueDeliveryHost {
   promptRunning: boolean;
   streaming: boolean;
   compacting: boolean;
+  /** Abort verdict of the current run — see `endedAborted` in `terminal-settle.ts`. */
+  runAborted: boolean;
   awaitingAgentStart: boolean;
   awaitingAgentStartDeadline: number;
   continuationGraceUntil: number;
@@ -99,6 +101,7 @@ export interface FrameFoldResult {
  */
 function handleMessageEnd(host: SessionFrameHost, event: AgentEvent): void {
   const message = event.message as Record<string, unknown> | undefined;
+  if (message?.role === 'assistant' && message.stopReason === 'aborted') host.runAborted = true;
   if (message?.role === 'user') void triggerAutoSessionTitle(host, 'opening');
   else if (message?.role === 'custom' && message.customType === SKILL_PROMPT_CUSTOM_TYPE) {
     void triggerAutoSessionTitle(host, 'opening');
@@ -188,6 +191,7 @@ export function foldSessionFrame(host: SessionFrameHost, event: AgentEvent): Fra
     case 'agent_start':
       host.promptRunning = true;
       host.streaming = true;
+      host.runAborted = false;
       host.awaitingAgentStart = false;
       host.awaitingAgentStartDeadline = 0;
       host.continuationGraceUntil = 0;

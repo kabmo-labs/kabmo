@@ -39,10 +39,32 @@ import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
 import { publishSidebarStructure } from '@/server/lib/realtime/topics.server';
 
 /** The wrapper surface a terminal settle touches. */
-export interface TerminalSettleHost extends AutoTitleHost, QueueDeliveryHost {}
+export interface TerminalSettleHost extends AutoTitleHost, QueueDeliveryHost {
+  /** Abort verdict captured from `message_end` — see `SessionFrameHost.runAborted`. */
+  runAborted: boolean;
+}
 
-/** True when the ending turn was a user abort rather than a natural stop. */
-function endedAborted(messages: unknown): boolean {
+/**
+ * True when the ending turn was a user abort rather than a natural stop.
+ *
+ * Two sources, because neither is sufficient alone. `host.runAborted` is read
+ * from `message_end`, where the message is still whole; `agent_end.messages` is
+ * a fallback for a host that attached mid-run (a reattached client, or a
+ * synthetic terminal frame from `run-settle.server.ts`), which never saw one.
+ *
+ * The frame's own array cannot be the primary source: omp compacts an oversized
+ * terminal frame by dropping every message it already delivered through
+ * `message_end` (keeping only `messageCount`), and the aborted assistant message
+ * is always among them — measured on 18.16.0, `message_end`
+ * (`role: "assistant"`, `stopReason: "aborted"`) arrives before `agent_end`.
+ * Reading only the frame therefore reports a stopped run as finished, and the
+ * settle then titles the session, audits the goal and releases the queue for a
+ * turn the operator cancelled. 12.7% of the runs in this workstation's own
+ * session store (494 of 3901) exceed the 1 MiB frame ceiling, so the trimmed
+ * case is routine, not exotic.
+ */
+function endedAborted(host: TerminalSettleHost, messages: unknown): boolean {
+  if (host.runAborted) return true;
   return (
     Array.isArray(messages) &&
     messages.some((entry) => {
@@ -60,11 +82,11 @@ function endedAborted(messages: unknown): boolean {
  * Re-check the current row and only upgrade `stream` rows, so a `finish`
  * written here can never clobber a newer run's live `stream`/`abort`.
  */
-async function markEndStatus(sessionId: string, messages: unknown): Promise<void> {
+async function markEndStatus(sessionId: string, host: TerminalSettleHost, messages: unknown): Promise<void> {
   if (!sessionId) return;
   const current = await loadStreamStatuses();
   if (current[sessionId] !== 'stream') return;
-  await markStreamStatus(sessionId, endedAborted(messages) ? 'abort' : 'finish');
+  await markStreamStatus(sessionId, endedAborted(host, messages) ? 'abort' : 'finish');
 }
 
 /**
@@ -75,8 +97,8 @@ async function markEndStatus(sessionId: string, messages: unknown): Promise<void
  * machine, and this function only performs the work the settle triggers.
  */
 export function settleTerminalRun(host: TerminalSettleHost, messages: unknown): void {
-  const aborted = endedAborted(messages);
-  if (host.sessionId) void markEndStatus(host.sessionId, messages);
+  const aborted = endedAborted(host, messages);
+  if (host.sessionId) void markEndStatus(host.sessionId, host, messages);
   if (!aborted) {
     void triggerAutoSessionTitle(host, 'settle');
     void driveGoalAfterTurn({ host, messages });

@@ -25,37 +25,9 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { foldSessionFrame, type SessionFrameHost } from '@/server/lib/omp/rpc/frame-fold';
+import { foldSessionFrame } from '@/server/lib/omp/rpc/frame-fold';
+import { makeHost } from '@/server/lib/omp/rpc/frame-fold-host.test-util';
 import { onRealtimeSignal } from '@/server/lib/realtime/signals.server';
-import { ModeMirror } from '@/server/lib/omp/rpc/mode-mirror';
-
-/** The same minimal host the sibling suite uses. */
-function makeHost(overrides: Partial<SessionFrameHost> = {}): SessionFrameHost {
-  return {
-    sessionId: '',
-    autoTitleWindowUntil: 0,
-    autoTitleClaims: 0,
-    autoTitleDispatch: null,
-    autoTitlePending: true,
-    autoTitleRequested: false,
-    promptRunning: false,
-    streaming: false,
-    compacting: false,
-    awaitingAgentStart: false,
-    awaitingAgentStartDeadline: 0,
-    continuationGraceUntil: 0,
-    proc: { sendCommand: async () => undefined as never },
-    emit() {},
-    trackUiDialog() {},
-    observeSubagent() {},
-    syncRunModel() {},
-    modeMirror: new ModeMirror(),
-    isAlive: () => true,
-    isBusy: () => false,
-    send: async () => undefined,
-    ...overrides,
-  };
-}
 
 /**
  * The `tool_execution_end` frame is what moves a running session's sidebar row

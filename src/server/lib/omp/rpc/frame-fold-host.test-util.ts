@@ -29,6 +29,7 @@ export function makeHost(overrides: Partial<SessionFrameHost> = {}): SessionFram
     promptRunning: false,
     streaming: false,
     compacting: false,
+    runAborted: false,
     awaitingAgentStart: false,
     awaitingAgentStartDeadline: 0,
     continuationGraceUntil: 0,

@@ -119,6 +119,61 @@ describe('auto-title trigger wiring', () => {
   });
 });
 
+describe('the abort verdict survives agent_end compaction', () => {
+  test('an aborted assistant message is remembered before agent_end trims it', () => {
+    // omp drops the messages it already delivered via `message_end` when the
+    // terminal frame is oversized, and the aborted assistant message is one of
+    // them — so reading the verdict from `agent_end.messages` alone reports a
+    // stopped run as finished. Measured on 18.16.0: `message_end`
+    // (role=assistant, stopReason=aborted) arrives BEFORE `agent_end`.
+    const host = makeHost();
+    fold(host, { type: 'agent_start' });
+    fold(host, { type: 'message_end', message: { role: 'user', content: 'go' } });
+    fold(host, { type: 'message_end', message: { role: 'assistant', stopReason: 'aborted' } });
+
+    expect(host.runAborted).toBe(true);
+
+    // The compacted terminal frame: everything streamed, nothing left to carry
+    // the stopReason.
+    fold(host, { type: 'agent_end', isTerminal: true, messages: [], messageCount: 2 });
+
+    // A stopped turn is not a settle, so the title latch must survive.
+    expect(host.autoTitlePending).toBe(true);
+  });
+
+  test('a natural stop is not remembered as an abort', () => {
+    const host = makeHost();
+    fold(host, { type: 'agent_start' });
+    fold(host, { type: 'message_end', message: { role: 'assistant', stopReason: 'stop' } });
+
+    expect(host.runAborted).toBe(false);
+    fold(host, { type: 'agent_end', isTerminal: true, messages: [] });
+    expect(host.autoTitlePending).toBe(false);
+  });
+
+  test('a new run starts un-aborted', () => {
+    const host = makeHost();
+    fold(host, { type: 'agent_start' });
+    fold(host, { type: 'message_end', message: { role: 'assistant', stopReason: 'aborted' } });
+    expect(host.runAborted).toBe(true);
+
+    fold(host, { type: 'agent_start' });
+    expect(host.runAborted).toBe(false);
+  });
+
+  test('the frame is still read for a host that attached mid-run', () => {
+    // A synthetic terminal frame (`run-settle.server.ts`) carries no
+    // `message_end` history, so the array remains the fallback source.
+    const host = makeHost();
+    fold(host, {
+      type: 'agent_end',
+      isTerminal: true,
+      messages: [{ role: 'assistant', stopReason: 'aborted' }],
+    });
+    expect(host.autoTitlePending).toBe(true);
+  });
+});
+
 /**
  * The Kabmo's own background `/rename` answers on `prompt_result` with
  * `agentInvoked:false` — auto-title fires it right after the first settled user
