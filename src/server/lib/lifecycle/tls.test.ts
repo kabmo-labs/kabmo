@@ -44,6 +44,11 @@ describe('the tls flag', () => {
 });
 
 describe('ensureTlsCertificate', () => {
+  // A GENEROUS budget, because this spawns a real `openssl req -newkey rsa:2048`
+  // and the runner is not the machine this was written on: 63 ms here, and on
+  // the Windows gate it outran Bun's 5 s default and reported `ok: false` for a
+  // certificate that was being generated correctly. The work is unchanged; only
+  // the window it has to finish in is honest about RSA keygen on a slow host.
   test('generates a usable pair on first call', () => {
     const result = ensureTlsCertificate();
 
@@ -62,7 +67,7 @@ describe('ensureTlsCertificate', () => {
     // mismatch on top of the self-signed warning.
     expect(san).toContain('DNS:localhost');
     expect(san).toContain('IP Address:127.0.0.1');
-  });
+  }, 60_000);
 
   test('reuses an existing pair rather than regenerating it', () => {
     const first = ensureTlsCertificate();

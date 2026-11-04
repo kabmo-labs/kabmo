@@ -245,67 +245,8 @@ describe('glass dialog material', () => {
 
 /**
  * The material has to hold on EVERY palette in the catalog, not on the eighteen
- * it was tuned against. The alphas are read out of `glass.css` itself, so this
- * cannot drift from the shipped values, and the composite it measures is the one
- * the browser computes: `color-mix(… paper N%, transparent)` over the plane,
- * which is itself paper over canvas.
+ * it was tuned against.
  *
- * The invariant is the one a new palette can break without anyone noticing: body
- * text on the chrome and on a card keeps the 4.5:1 floor. Measured across all 63
- * palettes, the worst is `solarized-light` at 4.89:1 — the same number its
- * opaque paper has, which is what "the tint costs no contrast" means.
- */
-describe('glass material across the catalog', () => {
-  const alphaOf = (body: string, token: string): number => {
-    const match = new RegExp(`${token}: color-mix\\(in srgb, var\\(--theme-paper\\) (\\d+)%, transparent\\)`).exec(body);
-    if (!match) throw new Error(`no ${token} alpha`);
-    return Number(match[1]) / 100;
-  };
-  const percentOf = (body: string, token: string): number => {
-    const match = new RegExp(`${token}: (\\d+)%;`).exec(body);
-    if (!match) throw new Error(`no ${token}`);
-    return Number(match[1]) / 100;
-  };
-
-  test('every palette keeps body text legible on the plane, the chrome and a card', async () => {
-    const glass = await read('./glass.css');
-    const light = ruleBody(glass, '[data-surface="glass"]');
-    const dark = ruleBody(glass, '[data-surface="glass"][data-theme-variant="dark"]');
-    const root = ruleBody(glass, ':root');
-    const darkVariant = ruleBody(glass, '[data-theme-variant="dark"]');
-
-    const alphas = {
-      light: {
-        tint: percentOf(light, '--glass-tint'),
-        chrome: alphaOf(light, '--glass-chrome'),
-        // A card's fill is surface-INDEPENDENT (the composer's `glass` style is
-        // offered in the classic look), so it lives on `:root` / the variant.
-        card: alphaOf(root, '--glass-card'),
-      },
-      dark: {
-        tint: percentOf(dark, '--glass-tint'),
-        chrome: alphaOf(dark, '--glass-chrome'),
-        card: alphaOf(darkVariant, '--glass-card'),
-      },
-    };
-
-    for (const theme of THEMES) {
-      const alpha = alphas[theme.variant];
-      const plane = mixHex(theme.canvas, theme.paper, alpha.tint);
-      const chrome = mixHex(plane, theme.paper, alpha.chrome);
-      const card = mixHex(plane, theme.paper, alpha.card);
-      for (const [tier, surface] of [['plane', plane], ['chrome', chrome], ['card', card]] as const) {
-        expect({ id: theme.id, tier, ratio: contrastRatio(theme.ink, surface) >= 4.5 }).toEqual({
-          id: theme.id,
-          tier,
-          ratio: true,
-        });
-      }
-    }
-  });
-});
-
-/**
  * The material is DERIVED from the palette — `--glass-panel` is
  * `color-mix(paper N%, transparent)` and the chrome is one more mix over it — so
  * a theme does not "support glass" by declaring something; it supports it when
@@ -315,7 +256,11 @@ describe('glass material across the catalog', () => {
  *
  * The alphas are read out of `glass.css` rather than repeated here, so the test
  * cannot drift from the shipped values, and the composite is the browser's own:
- * plane = paper over canvas, chrome/card = paper over plane.
+ * plane = paper over canvas, chrome/card = paper over plane. The invariant a new
+ * palette breaks without anyone noticing is body text keeping the 4.5:1 floor on
+ * the chrome and on a card. Measured across all 63 palettes, the worst is
+ * `solarized-light` at 4.89:1 — the same number its opaque paper has, which is
+ * what "the tint costs no contrast" means.
  */
 describe('glass material on every catalog palette', () => {
   /** A percentage out of a token, whether bare (`50%`) or inside a `color-mix`. */
