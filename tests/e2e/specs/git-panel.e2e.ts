@@ -602,7 +602,29 @@ test.describe('Source Control — sync', () => {
     await expect(page.getByText('↑1 ↓1')).toBeVisible();
     const sync = page.getByRole('button', { name: 'Sync with upstream' });
     await expect(sync).toBeEnabled();
+
+    // Hold the sync request so the in-flight state is observable: the button
+    // must show a spinner for the whole pull+push, not the idle glyph (the
+    // reported "the button looks like it was never pressed").
+    const holdSync = Promise.withResolvers<void>();
+    const syncStarted = Promise.withResolvers<void>();
+    await page.route('**/api/fs/git', async (route) => {
+      const request = route.request();
+      const post = request.postData() ?? '';
+      if (request.method() !== 'POST' || !post.includes('actionType') || !post.includes('sync')) {
+        await route.continue();
+        return;
+      }
+      syncStarted.resolve();
+      await holdSync.promise;
+      await route.continue();
+    });
+
     await sync.click();
+    await syncStarted.promise;
+    await expect(sync.locator('svg.animate-spin')).toBeVisible();
+    await expect(sync).toHaveAttribute('aria-busy', 'true');
+    holdSync.resolve();
 
     // The press has no other observable effect ON SCREEN: the working tree is
     // byte-identical afterwards, so the toast is the panel's only report that
@@ -616,6 +638,9 @@ test.describe('Source Control — sync', () => {
     // Both sides landed and the history records a real merge.
     expect(repo.git('log', '-1', '--pretty=%s')).toContain('Merge branch');
     expect(repo.git('status', '--porcelain=v1').trim()).toBe('');
+    // The spinner is the in-flight signal only; once the action settles the
+    // button is back to its idle glyph.
+    await expect(sync.locator('svg.animate-spin')).toHaveCount(0);
   });
 });
 

@@ -23,6 +23,8 @@ interface GitBranchToolbarProps {
   setViewMode: (mode: 'flat' | 'tree') => void;
   isBusy?: boolean;
   syncCount?: { ahead: number; behind: number };
+  /** A pull/push (the Sync action) is in flight — the button shows a spinner. */
+  syncing?: boolean;
   onSync: () => void;
   /** Refresh the remote-tracking refs without moving the branch. */
   onFetch: () => void;
@@ -50,6 +52,7 @@ export function GitBranchToolbar({
   setViewMode,
   isBusy = false,
   syncCount = { ahead: 0, behind: 0 },
+  syncing = false,
   onSync,
   onFetch,
   detached = false,
@@ -178,18 +181,25 @@ export function GitBranchToolbar({
           onClick={onSync}
           disabled={isBusy}
           title={
-            syncCount.ahead > 0 && syncCount.behind > 0
-              ? `Pull ${syncCount.behind} then push ${syncCount.ahead} commit(s)`
-              : syncCount.ahead > 0
-                ? `Push ${syncCount.ahead} commit(s)`
-                : syncCount.behind > 0
-                  ? `Pull ${syncCount.behind} commit(s)`
-                  : 'Up to date — sync anyway'
+            syncing
+              ? 'Syncing with upstream…'
+              : syncCount.ahead > 0 && syncCount.behind > 0
+                ? `Pull ${syncCount.behind} then push ${syncCount.ahead} commit(s)`
+                : syncCount.ahead > 0
+                  ? `Push ${syncCount.ahead} commit(s)`
+                  : syncCount.behind > 0
+                    ? `Pull ${syncCount.behind} commit(s)`
+                    : 'Up to date — sync anyway'
           }
           aria-label="Sync with upstream"
-          className="flex items-center gap-1 p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-busy={syncing}
+          className={`flex items-center gap-1 p-1 rounded hover:text-ink hover:bg-ink/5 cursor-pointer transition-colors disabled:cursor-not-allowed ${syncing ? '' : 'disabled:opacity-40'}`}
         >
-          <RefreshCw size={13} />
+          {/* The glyph ROTATES rather than being swapped for a spinner: the
+              button keeps one identity (the refresh mark it always had), its
+              width cannot shift under the counts, and the spin is the same
+              idiom the panel's own Refresh uses (`RepoHeader`). */}
+          <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} aria-hidden="true" />
           <span className="font-mono tabular-nums text-[10px]">↑{syncCount.ahead} ↓{syncCount.behind}</span>
         </button>
 

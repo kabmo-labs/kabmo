@@ -141,6 +141,12 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   // controls; a topic PUSH must not, or a background tool call would lock the
   // commit box for a beat.
   const isBusy = isReading || actionFetcher.state !== 'idle';
+  // The Sync button's own spinner. `isBusy` covers every action plus the status
+  // read, but only a pull/push is "syncing" — a commit or a stage must not spin
+  // the badge. `lastAction` is recorded by `execute` before the submit, so the
+  // first render after the fetch starts already names the right action.
+  const runningAction = actionFetcher.state === 'idle' ? null : actionFetcher.lastAction?.actionType ?? null;
+  const isSyncing = runningAction === 'sync' || runningAction === 'push' || runningAction === 'pull';
 
   // Unmerged pairs are excluded for the same reason `GitChangesList` excludes
   // them: their two letters are the two SIDES of a conflict, so the column test
@@ -264,6 +270,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
         setViewMode={setViewMode}
         isBusy={isBusy}
         syncCount={syncCount}
+        syncing={isSyncing}
         onSync={() => executeAction('sync')}
         onFetch={() => executeAction('fetch')}
         detached={data?.state?.detached ?? false}
