@@ -59,9 +59,21 @@ function join(parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
-/** The numbered lines in `text`, in arrival order. */
+/**
+ * The numbered lines in `text`, in arrival order.
+ *
+ * A trailing line with no newline after it is NOT counted: it is a line still
+ * arriving, and its prefix is a number that happens to parse. The replay is
+ * captured mid-flood by construction, so it routinely ends inside a line —
+ * measured on the Linux gate, where the replay ended after the first two bytes
+ * of `5136` and this helper turned that fragment into the line `51`, failing
+ * `gap(replayed)` with `5135 -> 51 at 5134` on a terminal that was working. The
+ * same rule makes the live collectors safe for the same reason: a line counts
+ * once the shell has finished writing it.
+ */
 function numbers(text: string): number[] {
-  return text
+  const complete = text.endsWith('\n') ? text : text.slice(0, text.lastIndexOf('\n') + 1);
+  return complete
     .split('\n')
     .map((line) => line.replace(/\r$/, '').trim())
     .filter((line) => /^\d+$/.test(line))
@@ -122,11 +134,17 @@ test('a viewer attaching mid-stream sees the replay and live output exactly once
   expect(replayed.length).toBeGreaterThan(0);
   expect(gap(replayed)).toBeNull();
 
-  // …and its live stream continues from the replay's last line: not one line
-  // earlier (a duplicate) and not one line later (a gap).
+  // …and the replay plus its live stream is ONE seamless rendering: no line
+  // twice, none skipped. Asserted on the CONCATENATION rather than by comparing
+  // `secondLines[0]` to the replay's last line, because the boundary is allowed
+  // to land inside a line — the replay is captured mid-flood, and measured on
+  // the Linux gate it ended two bytes into `5135`. A per-side comparison then
+  // reads that fragment as its own line and reports a gap on a working
+  // terminal; the concatenation is what the viewer actually renders, so a
+  // duplicate or a hole still fails here.
+  const combined = numbers(dec.decode(attachment.replay) + second.text());
   expect(secondLines.length).toBeGreaterThan(0);
-  expect(secondLines[0]).toBe((replayed.at(-1) ?? 0) + 1);
-  expect(gap([replayed.at(-1) ?? 0, ...secondLines])).toBeNull();
-  expect(new Set(secondLines).size).toBe(secondLines.length);
-  expect(secondLines.at(-1)).toBe(TOTAL);
+  expect(gap(combined)).toBeNull();
+  expect(new Set(combined).size).toBe(combined.length);
+  expect(combined.at(-1)).toBe(TOTAL);
 }, 60_000);
