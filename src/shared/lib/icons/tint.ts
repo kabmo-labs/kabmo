@@ -31,7 +31,7 @@
  * is the single translation to `lucide-trash-2`.
  */
 
-import { ICON_HUES } from '@/shared/lib/icons/tint-hues.generated';
+import { ICON_HUES, ICON_TONES } from '@/shared/lib/icons/tint-hues.generated';
 
 export type IconTintRole = 'error' | 'success' | 'warning' | 'info';
 
@@ -44,13 +44,12 @@ export const ICON_TINT_TOKENS: Readonly<Record<IconTintRole, string>> = {
 };
 
 /**
- * Saturation and lightness the generated hues are painted with, per variant.
+ * How the DARK hue is painted. Light has no pair any more — see below.
  *
- * These two pairs are the whole legibility budget: measured against every light
- * palette, `60% 30%` keeps its worst hue at 3.46:1 (the floor is 3:1 for a
- * graphic) even on `tokyonight-light`'s `#dee0ee` paper, and `65% 70%` keeps the
- * worst dark hue at 4.07:1 on `jetbrains-dark`'s `#2B2D30`. A lighter light
- * value (34%) drops two hues below the floor, which is why it is not "prettier".
+ * `65% 70%` is the whole legibility budget on that side: measured against every
+ * dark palette, its worst hue is 4.07:1 on `jetbrains-dark`'s `#2B2D30` (the
+ * floor is 3:1 for a graphic). It is also the side nobody complained about, so
+ * it is left exactly as it was.
  */
 export const ICON_HUE_PAINT = {
   light: { saturation: 60, lightness: 30 },
@@ -60,16 +59,46 @@ export const ICON_HUE_PAINT = {
 /** The hue an icon with no row keeps — a neutral blue, never a sixth signal. */
 export const DEFAULT_ICON_HUE = 210;
 
-/** One hue as a paintable `hsl()`. The single place the numbers become CSS. */
+/** The wheel step nearest `hue` — every producer today is already on it. */
+function wheelStep(hue: number): number {
+  return ((Math.round(hue / 10) * 10) % 360 + 360) % 360;
+}
+
+/**
+ * The LIGHT tone for a hue: a hex solved per hue, not one pair for all of them.
+ *
+ * Measured, this is the difference the report named — the muddiest row (hue 190)
+ * goes from OKLCH chroma 0.075 to 0.102, hue 200 from 0.078 to 0.121, and the
+ * mean from 0.121 to 0.162 (×1.34), with every tone still at 3.15:1 or better on
+ * all 32 light palettes. `icon-tone.ts` states the rule and the numbers.
+ *
+ * A hue off the wheel snaps to the nearest step: every producer here is a
+ * `hashHue` result (36 steps of 10°) or a table row, so the nearest step IS that
+ * hue; snapping is what keeps this a table lookup rather than a solve on load.
+ */
+export function iconTone(hue: number): string {
+  return ICON_TONES[wheelStep(hue)] ?? ICON_TONES[0]!;
+}
+
+/** One hue as a paintable colour. Light is a solved hex; dark is still an `hsl()`. */
 export function iconHueColor(hue: number, variant: 'light' | 'dark'): string {
-  const { saturation, lightness } = ICON_HUE_PAINT[variant];
+  if (variant === 'light') return iconTone(hue);
+  const { saturation, lightness } = ICON_HUE_PAINT.dark;
   return `hsl(${hue} ${saturation}% ${lightness}%)`;
 }
 
-/** The paint rule's value: the hue left to the custom property the class sets. */
+/**
+ * The paint rule's value: the hue left to the custom property the class sets.
+ *
+ * `--icon-tone` wins where it is stamped (every generated row, every plugin and
+ * panel mark). The `hsl()` behind it is the old light paint, kept as the last
+ * resort for an icon that declares a hue no table row covers — a shade that is
+ * merely dated, never absent.
+ */
 export function iconHuePaint(variant: 'light' | 'dark'): string {
   const { saturation, lightness } = ICON_HUE_PAINT[variant];
-  return `hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${saturation}% ${lightness}%)`;
+  const fallback = `hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${saturation}% ${lightness}%)`;
+  return variant === 'light' ? `var(--icon-tone, ${fallback})` : fallback;
 }
 
 /** Glyph name → the signal it stands for. Everything else gets a generated hue. */

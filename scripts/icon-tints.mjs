@@ -88,8 +88,9 @@ async function signalIcons() {
   return new Set([...block[1].matchAll(/^\s{2}([A-Za-z0-9]+):/gm)].map((m) => m[1]));
 }
 
-function render(rows) {
+function render(rows, tones) {
   const lines = rows.map(([name, hue]) => `  ${name}: ${hue},`);
+  const toneLines = Object.entries(tones).map(([hue, hex]) => `  ${hue}: '${hex}',`);
   return `/**
  * @license
  * SPDX-License-Identifier: MIT
@@ -103,23 +104,41 @@ function render(rows) {
  * paint a palette token, because a trash can has to be the theme's error colour
  * and not whatever the hash said.
  *
- * Regenerate with \`bun run icons:tints\` after adding an icon. The suite fails
- * when this table and the imports disagree (\`icons:tints:check\`), so a stale
- * table cannot ship.
+ * \`ICON_TONES\` is the LIGHT paint for each wheel hue, solved by
+ * \`shared/lib/icons/icon-tone.ts\` against every light palette this build ships.
+ * It is a table rather than a call because the solve needs the palette catalog,
+ * which the client would otherwise carry — and 11k contrast checks — only to
+ * colour a toolbar glyph. Dark keeps its single \`hsl()\` pair: it already reads
+ * bright, and one pair is enough when the budget is not spent.
+ *
+ * Regenerate with \`bun run icons:tints\` after adding an icon OR a palette. The
+ * suite fails when this table and the imports disagree (\`icons:tints:check\`),
+ * so a stale table cannot ship.
  */
 
 export const ICON_HUES: Readonly<Record<string, number>> = {
 ${lines.join('\n')}
 };
+
+/** The light paint for each wheel hue, darkest-legible-but-most-chromatic. */
+export const ICON_TONES: Readonly<Record<number, string>> = {
+${toneLines.join('\n')}
+};
 `;
 }
+
+// The light tones come from the app's OWN solver, never a second copy of the
+// same arithmetic: a table that disagreed with `icon-tone.ts` would be a colour
+// no test could defend. Its imports use the `@/` alias, which Bun resolves from
+// the tsconfig this repo already has.
+const { solveIconTones } = await import('../src/shared/lib/icons/icon-tone.ts');
 
 const [icons, signals] = await Promise.all([importedIcons(), signalIcons()]);
 const rows = icons
   .filter((name) => !signals.has(name))
   .map((name) => [name, (hash(name) % HUE_STEPS) * (360 / HUE_STEPS)]);
 
-const next = render(rows);
+const next = render(rows, solveIconTones());
 const check = process.argv.includes('--check');
 const current = await readFile(TARGET, 'utf8').catch(() => '');
 

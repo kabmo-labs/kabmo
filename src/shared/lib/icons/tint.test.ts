@@ -40,10 +40,12 @@ import {
   iconHueColor,
   iconHuePaint,
   iconTintRole,
+  iconTone,
   kebabIconName,
   lucideClassName,
 } from '@/shared/lib/icons/tint';
-import { ICON_HUES } from '@/shared/lib/icons/tint-hues.generated';
+import { ICON_HUES, ICON_TONES } from '@/shared/lib/icons/tint-hues.generated';
+import { oklchOf } from '@/shared/lib/icons/icon-tone';
 import { THEMES } from '@/shared/lib/theme/catalog';
 import { BRAND_CONTRAST_FLOOR, contrastRatio } from '@/shared/lib/theme/legibility';
 
@@ -196,26 +198,84 @@ describe('the generated hues', () => {
     expect(check.exitCode, check.stderr.toString()).toBe(0);
   });
 
-  test('every hue clears the non-text floor on every palette of its variant', () => {
-    for (const variant of ['light', 'dark'] as const) {
-      const { saturation, lightness } = ICON_HUE_PAINT[variant];
-      const papers = THEMES.filter((theme) => theme.variant === variant).map((theme) => theme.paper);
-      for (const hue of new Set(Object.values(ICON_HUES))) {
-        const color = hslHex(hue, saturation, lightness);
-        const worst = Math.min(...papers.map((paper) => contrastRatio(color, paper)));
-        expect(worst, `hue ${hue} ${variant} (${color})`).toBeGreaterThanOrEqual(BRAND_CONTRAST_FLOOR);
-      }
+  test('every light tone clears the non-text floor on every light palette', () => {
+    // The tone is SOLVED per hue (see `icon-tone.ts`); this is the property that
+    // let the mode carry 39% more chroma without losing a single row, so it is
+    // pinned per palette rather than against one hex.
+    const papers = THEMES.filter((theme) => theme.variant === 'light').map((theme) => theme.paper);
+    for (const [hue, tone] of Object.entries(ICON_TONES)) {
+      expect(tone, hue).toMatch(/^#[0-9a-f]{6}$/);
+      const worst = Math.min(...papers.map((paper) => contrastRatio(tone, paper)));
+      expect(worst, `hue ${hue} (${tone})`).toBeGreaterThanOrEqual(BRAND_CONTRAST_FLOOR);
     }
+  });
+
+  test('the dark hue still clears the floor at its one stated pair', () => {
+    // Dark is deliberately untouched: it reads bright already, and raising its
+    // chroma would only invert the complaint.
+    const { saturation, lightness } = ICON_HUE_PAINT.dark;
+    const papers = THEMES.filter((theme) => theme.variant === 'dark').map((theme) => theme.paper);
+    for (const hue of new Set(Object.values(ICON_HUES))) {
+      const color = hslHex(hue, saturation, lightness);
+      const worst = Math.min(...papers.map((paper) => contrastRatio(color, paper)));
+      expect(worst, `hue ${hue} (${color})`).toBeGreaterThanOrEqual(BRAND_CONTRAST_FLOOR);
+    }
+  });
+
+  test('a light tone carries MORE chroma than the pair it replaced', () => {
+    // The report — "warna icon di mode full color ketika light mode kelihatan
+    // kusem" — is this measurement, and nothing else: the old pair maxed out at
+    // OKLCH chroma 0.075 on the muddiest hue because one saturation had to suit
+    // every hue on the wheel. Solving per hue is what buys the colour back, and
+    // this is the assertion that would fail if a future edit quietly put a
+    // uniform pair back.
+    const hues = Object.keys(ICON_TONES).map(Number);
+    const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
+    const before = hues.map((hue) => oklchOf(hslHex(hue, ICON_HUE_PAINT.light.saturation, ICON_HUE_PAINT.light.lightness)).chroma);
+    const after = hues.map((hue) => oklchOf(ICON_TONES[hue]!).chroma);
+    expect(mean(after)).toBeGreaterThan(mean(before) * 1.3);
+    // Every single hue must improve — a table that traded one muddy row for
+    // another would still pass the mean.
+    for (const hue of hues) {
+      expect(oklchOf(ICON_TONES[hue]!).chroma, `hue ${hue}`).toBeGreaterThan(
+        oklchOf(hslHex(hue, ICON_HUE_PAINT.light.saturation, ICON_HUE_PAINT.light.lightness)).chroma,
+      );
+    }
+  });
+
+  test('a light tone keeps its hue, so a row does not change colour', () => {
+    // Solved in OKLCH, but the hue is the OKLCH angle of the OLD paint: a tone
+    // that drifted would recolour every icon in the app, which is not what
+    // "more colour" means.
+    for (const [hue, tone] of Object.entries(ICON_TONES)) {
+      const before = oklchOf(hslHex(Number(hue), ICON_HUE_PAINT.light.saturation, ICON_HUE_PAINT.light.lightness)).hue;
+      const after = oklchOf(tone).hue;
+      const circular = Math.min(Math.abs(before - after), 360 - Math.abs(before - after));
+      expect(circular, `hue ${hue} (${tone})`).toBeLessThan(12);
+    }
+  });
+
+  test('the light tone is a table lookup, not a solve, and it snaps to the wheel', () => {
+    expect(iconTone(120)).toBe(ICON_TONES[120]!);
+    // `hashHue` only produces wheel steps, but a stored or plugin name could
+    // still reach here with something else; the nearest step keeps it a colour.
+    expect(iconTone(124)).toBe(ICON_TONES[120]!);
+    expect(iconTone(356)).toBe(ICON_TONES[0]!);
+    expect(iconTone(-10)).toBe(ICON_TONES[350]!);
   });
 
   test('the paint rule and the concrete colour share one formula', () => {
     // The stylesheet leaves the hue to `--icon-hue`; the settings preview needs a
     // real colour. Both must come from the same numbers, or the preview lies.
-    for (const variant of ['light', 'dark'] as const) {
-      const { saturation, lightness } = ICON_HUE_PAINT[variant];
-      expect(iconHuePaint(variant)).toBe(`hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${saturation}% ${lightness}%)`);
-      expect(iconHueColor(120, variant)).toBe(`hsl(120 ${saturation}% ${lightness}%)`);
-    }
+    // LIGHT reads the solved `--icon-tone` (falling back to the old pair), which
+    // is why it is not a bare `hsl()` any more.
+    const { saturation, lightness } = ICON_HUE_PAINT.dark;
+    expect(iconHuePaint('light')).toBe(
+      `var(--icon-tone, hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${ICON_HUE_PAINT.light.saturation}% ${ICON_HUE_PAINT.light.lightness}%))`,
+    );
+    expect(iconHuePaint('dark')).toBe(`hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${saturation}% ${lightness}%)`);
+    expect(iconHueColor(120, 'light')).toBe(ICON_TONES[120]!);
+    expect(iconHueColor(120, 'dark')).toBe(`hsl(120 ${saturation}% ${lightness}%)`);
   });
 
   test('the table is exactly what the runtime hash produces', () => {

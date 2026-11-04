@@ -21,6 +21,7 @@ import { h, render } from 'preact';
 import type { ComponentChild } from 'preact';
 import { act } from 'preact/test-utils';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
+import { ICON_TONES } from '@/shared/lib/icons/tint-hues.generated';
 
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
 /** The runner's own globals, restored on teardown — deleting them would strip
@@ -123,6 +124,20 @@ describe('PluginMark', () => {
     expect(hue).toMatch(/^\d+$/);
     expect(second?.style.getPropertyValue('--icon-hue')).toBe(hue);
     expect(paint(h(PluginMark, { name: 'Another Plugin' })).querySelector('span')?.style.getPropertyValue('--icon-hue')).not.toBe(hue);
+  });
+
+  test('a plugin mark stamps the LIGHT tone for its hue, not just the hue', () => {
+    // The hue alone is enough for dark (one `hsl()` pair) but not for light: the
+    // light paint is a solved per-hue hex, and a plugin's hue exists only at
+    // runtime, so no generated CSS row can carry it. Without this stamp a plugin
+    // would fall back to the dated `hsl(H 60% 30%)` while every glyph beside it
+    // got the brighter tone — the reported muddiness, on one icon only.
+    const badge = paint(h(PluginMark, { name: 'Demo Plugin' })).querySelector('span');
+    const hue = Number(badge?.style.getPropertyValue('--icon-hue'));
+    const tone = badge?.style.getPropertyValue('--icon-tone') ?? '';
+
+    expect(tone).toMatch(/^#[0-9a-f]{6}$/);
+    expect(tone).toBe(ICON_TONES[hue]);
   });
 
   test('the initials fallback takes the same colour hook as a vector mark', () => {

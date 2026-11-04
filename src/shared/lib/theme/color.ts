@@ -76,6 +76,56 @@ export function mixHex(base: string, blend: string, ratio: number): string {
   });
 }
 
+/**
+ * OKLCH, for the one place sRGB arithmetic is measurably wrong: shading a hue
+ * toward another tone.
+ *
+ * The icon tones are the reason. Mixing `#FFD21E` toward black in sRGB keeps
+ * 63% of its chroma where the same move in OKLCH keeps it whole, because sRGB
+ * channels are not perceptually spaced — a dark yellow drifts to olive. So the
+ * light icon tone is *solved* here: hold the hue, take the most chroma sRGB can
+ * actually show at that lightness, and then check the result with WCAG contrast.
+ *
+ * Values are the standard Björn Ottosson transform: OKLab is the linear part,
+ * OKLCH is that in polar form.
+ */
+export function oklchToRgb(lightness: number, chroma: number, hue: number): Rgba & { inGamut: boolean } {
+  const radians = (hue * Math.PI) / 180;
+  const a = chroma * Math.cos(radians);
+  const b = chroma * Math.sin(radians);
+
+  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
+
+  // Linear-light sRGB, then the transfer function.
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ] as const;
+  const channel = (value: number) => {
+    const encoded = value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055;
+    return encoded * 255;
+  };
+  // A hair of slack: at the gamut surface the transform lands on `-1e-8`, and
+  // an exact test would reject colours that round to a perfectly valid byte.
+  const inGamut = linear.every((value) => value >= -0.0005 && value <= 1.0005);
+  return { r: channel(linear[0]), g: channel(linear[1]), b: channel(linear[2]), a: 1, inGamut };
+}
+
+/** The most chroma sRGB can show at this lightness and hue. */
+export function maxChromaInGamut(lightness: number, hue: number): number {
+  let low = 0;
+  let high = 0.4;
+  for (let step = 0; step < 16; step += 1) {
+    const mid = (low + high) / 2;
+    if (oklchToRgb(lightness, mid, hue).inGamut) low = mid;
+    else high = mid;
+  }
+  return low;
+}
+
 /** WCAG relative luminance, used to order two palette colors light-to-dark. */
 export function relativeLuminance(value: string): number {
   const color = parseHexColor(value);

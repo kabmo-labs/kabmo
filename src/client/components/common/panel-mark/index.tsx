@@ -32,6 +32,7 @@
 
 import type { ReactNode } from 'preact/compat';
 import { legiblePair } from '@/shared/lib/theme/legibility';
+import { hashHue, iconTone } from '@/shared/lib/icons/tint';
 import { usePanelHues } from '@/client/hooks/workspace/panel-hues';
 import { panelHueOf } from '@/shared/lib/workspace/panel-hues';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
@@ -77,6 +78,12 @@ export function PanelMark({
 }: PanelMarkProps) {
   const hues = usePanelHues();
   const declared = color ? legiblePair(color) : null;
+  // The panel's hue, whichever family it is. A built-in view takes its id's hue
+  // (resolved over the whole set, so the answer cannot depend on the surface); a
+  // plugin takes the hue of its name, which is the one its own mark stamps. Both
+  // then need the LIGHT TONE for that hue — the solved table, since a panel's
+  // hue is only known at runtime and therefore cannot be a generated CSS row.
+  const hue = builtin ? panelHueOf(hues, panelId) : hashHue(name);
   return (
     <span
       className={className ?? 'inline-flex'}
@@ -86,7 +93,8 @@ export function PanelMark({
       // the rail's idle filter is exempted by this attribute.
       data-declared={declared ? '' : undefined}
       style={{
-        ...(builtin ? { '--panel-hue': String(panelHueOf(hues, panelId)) } : {}),
+        '--panel-hue': String(hue),
+        '--panel-tone': iconTone(hue),
         ...(declared ? { '--panel-color-light': declared.light } : {}),
         ...(declared?.dark ? { '--panel-color-dark': declared.dark } : {}),
       }}

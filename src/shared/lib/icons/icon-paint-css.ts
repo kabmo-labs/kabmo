@@ -54,6 +54,7 @@ import {
   ICON_TINT_ROWS,
   ICON_TINT_TOKENS,
   iconHuePaint,
+  iconTone,
 } from '@/shared/lib/icons/tint';
 
 /** The `<style>` element's id: the SSR shell writes it, the client checks it. */
@@ -74,7 +75,7 @@ function hueRules(): string[] {
     `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { color: ${iconHuePaint('dark')}; }`,
   ];
   for (const { className, hue } of ICON_HUE_ROWS) {
-    rules.push(`:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; }`);
+    rules.push(`:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${iconTone(hue)}; }`);
   }
   return rules;
 }

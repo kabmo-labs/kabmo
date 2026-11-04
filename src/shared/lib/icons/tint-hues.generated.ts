@@ -11,9 +11,16 @@
  * paint a palette token, because a trash can has to be the theme's error colour
  * and not whatever the hash said.
  *
- * Regenerate with `bun run icons:tints` after adding an icon. The suite fails
- * when this table and the imports disagree (`icons:tints:check`), so a stale
- * table cannot ship.
+ * `ICON_TONES` is the LIGHT paint for each wheel hue, solved by
+ * `shared/lib/icons/icon-tone.ts` against every light palette this build ships.
+ * It is a table rather than a call because the solve needs the palette catalog,
+ * which the client would otherwise carry — and 11k contrast checks — only to
+ * colour a toolbar glyph. Dark keeps its single `hsl()` pair: it already reads
+ * bright, and one pair is enough when the budget is not spent.
+ *
+ * Regenerate with `bun run icons:tints` after adding an icon OR a palette. The
+ * suite fails when this table and the imports disagree (`icons:tints:check`),
+ * so a stale table cannot ship.
  */
 
 export const ICON_HUES: Readonly<Record<string, number>> = {
@@ -227,4 +234,44 @@ export const ICON_HUES: Readonly<Record<string, number>> = {
   Zap: 120,
   ZoomIn: 250,
   ZoomOut: 340,
+};
+
+/** The light paint for each wheel hue, darkest-legible-but-most-chromatic. */
+export const ICON_TONES: Readonly<Record<number, string>> = {
+  0: '#db4241',
+  10: '#da4528',
+  20: '#cf5500',
+  30: '#b06600',
+  40: '#9e7200',
+  50: '#8e7a00',
+  60: '#808000',
+  70: '#738400',
+  80: '#5f8200',
+  90: '#4f8600',
+  100: '#3a8a00',
+  110: '#218c00',
+  120: '#008e0a',
+  130: '#008d29',
+  140: '#008c3e',
+  150: '#008b53',
+  160: '#008965',
+  170: '#008876',
+  180: '#008686',
+  190: '#00899f',
+  200: '#0085b7',
+  210: '#007cd8',
+  220: '#3972e9',
+  230: '#4f6de9',
+  240: '#6070ef',
+  250: '#736aec',
+  260: '#8663e6',
+  270: '#985cdc',
+  280: '#a556d0',
+  290: '#b051c4',
+  300: '#b94db8',
+  310: '#c149ab',
+  320: '#c9459b',
+  330: '#d04188',
+  340: '#d63f70',
+  350: '#da3f58',
 };

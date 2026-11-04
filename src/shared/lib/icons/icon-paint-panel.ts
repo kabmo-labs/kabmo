@@ -33,7 +33,12 @@ import { DEFAULT_ICON_HUE, ICON_HUE_PAINT } from '@/shared/lib/icons/tint';
  */
 function panelPaint(variant: 'light' | 'dark'): string {
   const { saturation, lightness } = ICON_HUE_PAINT[variant];
-  return `var(--panel-color-${variant}, hsl(var(--panel-hue, var(--icon-hue, ${DEFAULT_ICON_HUE})) ${saturation}% ${lightness}%))`;
+  const hsl = `hsl(var(--panel-hue, var(--icon-hue, ${DEFAULT_ICON_HUE})) ${saturation}% ${lightness}%)`;
+  // Light reads `--panel-tone`, the same solved table the glyph rows use: a
+  // panel's hue is assigned at runtime, so the tone is stamped by `PanelMark`
+  // rather than generated per row. Dark keeps the single `hsl()` pair.
+  const toned = variant === 'light' ? `var(--panel-tone, ${hsl})` : hsl;
+  return `var(--panel-color-${variant}, ${toned})`;
 }
 
 export function panelMarkRules(): string[] {
@@ -78,11 +83,15 @@ export function panelMarkRules(): string[] {
     // colour restored.
     //
     // The two variants shift in opposite directions because "recede" does: on ink
-    // an idle icon is DARKER, on paper it is LIGHTER. `1.25` in light, not more:
-    // measured, brighter steps walk the icon up the chroma curve and out of the
-    // rail's range (1.5 read 2.22:1 against 3.82:1 active — glare), while 1.25
-    // reads 2.74:1 with chroma 121 against the active 95, i.e. quieter and MORE
-    // coloured at once, which is the whole point of dimming by luminance.
+    // an idle icon is DARKER, on paper it is LIGHTER.
+    //
+    // Light's factor is `1.08 saturate(1.1)`, NOT the `1.25` the darker paint
+    // needed. The light tone is now a solved hex sitting AT the contrast floor
+    // (3.15 mean 3.30, `icon-tone.ts`), where the old pair had 6.11 of headroom to
+    // spend — so the old factor walked every idle mark down to 2.23:1 and the rail
+    // went dim rather than quiet. Re-measured over the shipped tones: `1.08/1.1`
+    // reads 2.79:1 mean, still a visible step down, and holds chroma at 111% of
+    // the active mark (the `saturate()` is what pays for the multiply).
     //
     // A DECLARED brand colour is NOT dimmed. The settings card draws the same
     // plugin at full strength, so dimming this copy made one brand two colours
@@ -94,7 +103,7 @@ export function panelMarkRules(): string[] {
     // `[data-declared]` is stamped from `panel.color` — a property, not a
     // class-name or inline-style guess, so this cannot drift when the mark
     // changes how it carries its colour.
-    '[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.25) saturate(1.05); }',
+    '[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.08) saturate(1.1); }',
     '[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(0.62) saturate(1.4); }',
   ];
 }

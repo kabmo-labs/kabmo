@@ -40,7 +40,7 @@
  */
 
 import { providerInitials } from '@/shared/lib/models/provider/glyph';
-import { hashHue } from '@/shared/lib/icons/tint';
+import { hashHue, iconTone } from '@/shared/lib/icons/tint';
 import { legiblePair } from '@/shared/lib/theme/legibility';
 
 interface PluginMarkProps {
@@ -70,8 +70,12 @@ export function PluginMark({ name, iconUrl, color, size = 16, tile = false }: Pl
   // (`legiblePair`): a bright hex like `#34d399` is 1.9:1 on white paper, so the
   // light and dark values are derived instead of trusted.
   const declared = color ? legiblePair(color) : null;
+  const hueValue = hashHue(name);
   const hue = {
-    '--icon-hue': String(hashHue(name)),
+    '--icon-hue': String(hueValue),
+    // The LIGHT tone for that hue, from the same solved table the glyph rows
+    // emit: a plugin's hue is runtime-only, so it cannot be a generated CSS row.
+    '--icon-tone': iconTone(hueValue),
     ...(declared ? { '--plugin-declared-light': declared.light } : {}),
     ...(declared?.dark ? { '--plugin-declared-dark': declared.dark } : {}),
   } as Record<string, string>;

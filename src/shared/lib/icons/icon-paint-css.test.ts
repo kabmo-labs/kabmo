@@ -28,6 +28,7 @@ import {
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import { ICON_HUE_ROWS, ICON_TINT_ROWS, ICON_TINT_TOKENS } from '@/shared/lib/icons/tint';
+import { ICON_TONES } from '@/shared/lib/icons/tint-hues.generated';
 
 const css = iconPaintStyleSheet();
 const rules = css.split('\n').filter((line) => line.startsWith(':where('));
@@ -87,7 +88,7 @@ describe('the icon paint stylesheet', () => {
     // the mute won and every muted icon stayed ink in the colour mode — the
     // reported "icon di setting modal kenapa gk full color".
     expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class*="text-ink/60"] { color: color-mix(in srgb,');
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink"] { color: hsl(var(--icon-hue');
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink"] { color: var(--icon-tone, hsl(var(--icon-hue');
     // Mixed toward the INK, never toward transparency: a hue at 40% alpha is
     // 1.56:1 against its surface, worse than the `text-ink/40` it replaces.
     const muted = css.split('\n').find((line) => line.includes('text-ink/40"')) ?? '';
@@ -138,7 +139,7 @@ describe('the icon paint stylesheet', () => {
 
   test('one hue statement per generated row', () => {
     for (const { className, hue } of ICON_HUE_ROWS) {
-      expect(css).toContain(`:where(svg.${className}) { --icon-hue: ${hue}; }`);
+      expect(css).toContain(`:where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${ICON_TONES[hue]}; }`);
     }
   });
 
@@ -170,7 +171,7 @@ describe('the icon paint stylesheet', () => {
   test('a plugin mark takes a runtime hue through --plugin-color', () => {
     // The hue is `hashHue(name)`, which no build can enumerate: the component
     // sets `--icon-hue` inline and these rules turn it into paint.
-    expect(css).toContain(':where([data-plugin-mark]) { --plugin-color: var(--plugin-declared-light, hsl(var(--icon-hue,');
+    expect(css).toContain(':where([data-plugin-mark]) { --plugin-color: var(--plugin-declared-light, var(--icon-tone, hsl(var(--icon-hue,');
     expect(css).toContain(':where([data-icon-style="color"][data-theme-variant="dark"]) :where([data-plugin-mark])');
   });
 
@@ -181,7 +182,7 @@ describe('the icon paint stylesheet', () => {
     // monochrome. These rules carry enough specificity to win, `:not(.bg-ink *)`
     // keeps an inverted chip on its own foreground, and `[data-idle]` replaces
     // the colour as the state instead of stacking a second one on top.
-    expect(css).toContain(':root[data-icon-style="color"] [data-panel-mark]:not(.bg-ink *) svg.lucide { color: var(--panel-color-light, hsl(var(--panel-hue, var(--icon-hue,');
+    expect(css).toContain(':root[data-icon-style="color"] [data-panel-mark]:not(.bg-ink *) svg.lucide { color: var(--panel-color-light, var(--panel-tone, hsl(var(--panel-hue, var(--icon-hue,');
     expect(css).toContain(':root[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark]:not(.bg-ink *) svg.lucide');
     // A plugin's own mark states `--plugin-color` from its name; inside a panel
     // mark the panel's declared colour (or its assigned hue) is the authority.
@@ -191,7 +192,7 @@ describe('the icon paint stylesheet', () => {
     // measured 95 → 62 on a 64px glyph, which is the "kusem" report. A brightness
     // shift moves luminance only; the two variants shift opposite ways because
     // "recede" is darker on ink and lighter on paper.
-    expect(css).toContain('[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.25) saturate(1.05); }');
+    expect(css).toContain('[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.08) saturate(1.1); }');
     expect(css).toContain(
       '[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(0.62) saturate(1.4); }',
     );
@@ -222,9 +223,9 @@ describe('the icon paint stylesheet', () => {
     // `--panel-declared`/`--panel-color` is the plugin's OWN brand, and the
     // hashed hue is only the fallback — the order inside the `var()` chain is the
     // contract, so it is pinned literally.
-    expect(css).toContain('--plugin-color: var(--plugin-declared-light, hsl(var(--icon-hue');
+    expect(css).toContain('--plugin-color: var(--plugin-declared-light, var(--icon-tone, hsl(var(--icon-hue');
     expect(css).toContain('--plugin-color: var(--plugin-declared-dark, hsl(var(--icon-hue');
-    expect(css).toContain('color: var(--panel-color-light, hsl(var(--panel-hue, var(--icon-hue,');
+    expect(css).toContain('color: var(--panel-color-light, var(--panel-tone, hsl(var(--panel-hue, var(--icon-hue,');
     expect(css).toContain('color: var(--panel-color-dark, hsl(var(--panel-hue, var(--icon-hue,');
   });
 
