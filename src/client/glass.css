@@ -468,8 +468,19 @@
  * ground, so the plane never depends on `<body>` — whose colour is pinned once
  * per request by the first-frame style, which is exactly the layer that would go
  * stale when the palette changes without a reload.
+ *
+ * A STICKY header is excluded too, and that exclusion is load-bearing rather than
+ * tidy: the phone drawer's header paints `bg-canvas` (its rows sit on canvas, see
+ * `WorkspaceHeader`), so it is a `.bg-canvas` inside `.app-window` — and THIS
+ * selector is (0,4,0) against the stuck fill's (0,3,0), so the well won and the
+ * pinned header stayed transparent. Measured at 412x900 with the drawer open and
+ * 420px scrolled: `data-stuck` set (after the scrollport fix), header pinned at
+ * the container's top edge, computed `background-color: rgba(0,0,0,0)` — an
+ * active sticky folder header with no surface, while the desktop column's
+ * `bg-paper` header (which this rule never matched) painted its fill. A sticky
+ * header is never a well: its own state decides, one rule below.
  */
-[data-surface="glass"] .app-window .bg-canvas:not(.app-window) {
+[data-surface="glass"] .app-window .bg-canvas:not(.app-window):not(.glass-sticky) {
   background-color: transparent;
 }
 

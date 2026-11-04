@@ -131,7 +131,7 @@ describe('switch knob', () => {
     expect(glass).toContain('background-color: var(--theme-canvas);');
     // The exemption must come AFTER the well rule it overrides, or source order
     // hands the knob back to the transparent one at equal specificity.
-    const well = glass.indexOf('[data-surface="glass"] .app-window .bg-canvas:not(.app-window) {');
+    const well = glass.indexOf('[data-surface="glass"] .app-window .bg-canvas:not(.app-window):not(.glass-sticky) {');
     const knob = glass.indexOf('[data-surface="glass"] .app-window [role="switch"] .bg-canvas {');
     expect(well).toBeGreaterThan(-1);
     expect(knob).toBeGreaterThan(well);

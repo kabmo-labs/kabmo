@@ -19,17 +19,38 @@
  *
  * `root: null`-style viewport maths is deliberately NOT used: the sidebar is an
  * inner scroll container, so the comparison has to be against THAT box.
+ *
+ * ## The scrollport is found by `overflow-y`, never by "does it overflow"
+ *
+ * From a sentinel-free test it is tempting to require `scrollHeight > clientHeight`
+ * when picking the container — "the nearest ancestor that actually scrolls".
+ * That test reads ZERO for a subtree mounted hidden, and the phone drawer IS
+ * mounted hidden: its screen is a sibling carrying `hidden`, so at mount the
+ * scroller measures 0/0. The hook then fell through to `window` (`scrollY`),
+ * which never moves for an inner scroller — measured on a 412x900 viewport with
+ * the drawer open and 420px scrolled, the folder header sat pinned at the
+ * container's top edge with **no** `data-stuck`, i.e. an active sticky header
+ * with a transparent background, while the desktop column (mounted visible)
+ * painted its fill. Per spec a `position: sticky` element is bound to its
+ * nearest SCROLL CONTAINER whether or not it overflows at this instant, so the
+ * `overflow-y` test alone is the accurate one — and it answers correctly for a
+ * hidden subtree, because computed style does not depend on the ancestor's
+ * `display`.
+ *
+ * Showing the drawer then has to re-measure by itself: a hidden subtree resizes
+ * from 0x0, so a `ResizeObserver` on the header (and on the container) is the
+ * signal that layout became real.
  */
 
 import { useEffect, useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
 
-/** The nearest ancestor that actually scrolls, or null for the document. */
+/** The nearest ancestor that scrolls (the sticky containing block), or null. */
 function scrollParent(element: HTMLElement): HTMLElement | null {
   let node = element.parentElement;
   while (node) {
     const style = getComputedStyle(node);
-    if (/(auto|scroll|overlay)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) return node;
+    if (/(auto|scroll|overlay)/.test(style.overflowY)) return node;
     node = node.parentElement;
   }
   return null;
@@ -38,9 +59,10 @@ function scrollParent(element: HTMLElement): HTMLElement | null {
 /**
  * True while `ref`'s element is pinned against the top of its scroll container.
  *
- * Re-measured on the container's `scroll`, on resize, and once after mount
- * (layout settles a frame later). A rAF coalesces the scroll events, so a fast
- * scroll costs one measurement per frame rather than one per event.
+ * Re-measured on the container's `scroll`, on resize, whenever the header or its
+ * container changes SIZE, and once after mount (layout settles a frame later). A
+ * rAF coalesces the scroll events, so a fast scroll costs one measurement per
+ * frame rather than one per event.
  */
 export function useStuckHeader(ref: RefObject<HTMLElement | null>): boolean {
   const [stuck, setStuck] = useState(false);
@@ -78,10 +100,19 @@ export function useStuckHeader(ref: RefObject<HTMLElement | null>): boolean {
     };
 
     measure();
+    // A hidden subtree mounts at 0x0 and its sticky geometry only becomes real
+    // when the ancestor stops being `hidden` — which is the phone drawer's whole
+    // lifecycle (`SessionSidebar` keeps the list mounted behind a hidden
+    // screen). Both boxes are watched: the container for the drawer appearing,
+    // the header for a density or label-height change.
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    resize?.observe(element);
+    if (container) resize?.observe(container);
     (container ?? window).addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     return () => {
       pending = false;
+      resize?.disconnect();
       (container ?? window).removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
     };

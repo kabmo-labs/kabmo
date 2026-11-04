@@ -86,7 +86,7 @@ afterAll(() => {
  * exactly what `useStuckHeader` reads. The header's rect is a LIVE getter over
  * `headerTop`, so a test scrolls by changing one number.
  */
-function mountHarness(): HTMLElement {
+function mountHarness(options: { collapsed?: boolean } = {}): HTMLElement {
   function Probe() {
     const ref = useRef<HTMLDivElement>(null);
     const stuck = useStuckHeader(ref);
@@ -95,8 +95,9 @@ function mountHarness(): HTMLElement {
 
   scroller = document.createElement('div');
   scroller.style.overflowY = 'auto';
-  Object.defineProperty(scroller, 'scrollHeight', { value: 1000, configurable: true });
-  Object.defineProperty(scroller, 'clientHeight', { value: 300, configurable: true });
+  // `collapsed` is the phone drawer's mount: the list is inside a hidden screen,
+  // so it measures 0x0 and the "does it overflow" test answers false.
+  setScrollerSizes(options.collapsed ? 0 : 1000, options.collapsed ? 0 : 300);
   Object.defineProperty(scroller, 'scrollTop', {
     get: () => scrollTop,
     set: (value: number) => {
@@ -116,6 +117,12 @@ function mountHarness(): HTMLElement {
   const header = scroller.querySelector('[data-testid="header"]') as HTMLElement;
   header.getBoundingClientRect = () => ({ top: headerTop, bottom: headerTop + 26 }) as DOMRect;
   return header;
+}
+
+/** The container's scroll extent, which is what the hook may NOT use to find it. */
+function setScrollerSizes(scrollHeight: number, clientHeight: number) {
+  Object.defineProperty(scroller, 'scrollHeight', { value: scrollHeight, configurable: true });
+  Object.defineProperty(scroller, 'clientHeight', { value: clientHeight, configurable: true });
 }
 
 /**
@@ -184,5 +191,23 @@ describe('useStuckHeader', () => {
     // …and scrolls back to the top: it is the first line of the list again.
     scrollTo(40, 0);
     expect(header.hasAttribute('data-stuck')).toBe(false);
+  });
+
+  test('a container mounted at 0x0 is still the scrollport (the phone drawer)', () => {
+    // Measured in the real drawer at 412x900: the list is mounted inside a
+    // `hidden` screen, so `scrollHeight`/`clientHeight` both read 0 at mount. The
+    // old container test required an overflow, gave up, and fell back to
+    // `window.scrollY` — which never moves for an inner scroller — so the folder
+    // header sat PINNED at the container's top edge with no `data-stuck`: an
+    // active sticky header painting nothing.
+    const header = mountHarness({ collapsed: true });
+    scrollTo(120, 0);
+    expect(header.hasAttribute('data-stuck')).toBe(false);
+
+    // The drawer opens (the box gets real) and the user scrolls: the fill must
+    // appear, which only happens if the CONTAINER was listened to.
+    setScrollerSizes(1000, 300);
+    scrollTo(0, 120);
+    expect(header.hasAttribute('data-stuck')).toBe(true);
   });
 });
