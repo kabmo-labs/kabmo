@@ -224,25 +224,6 @@ describe('fetchShellRelease', () => {
     });
   });
 
-  test('walks deeper than one feed page, because an unbumped shell is not rebuilt', async () => {
-    // `release.yml` builds a shell only when its OWN version moved, so most
-    // releases carry no artifact of the shell being asked about. The API window
-    // has to reach the last release that did, and it costs nothing to make it
-    // wide: 100 is GitHub's page ceiling for one request, so the deeper scan is
-    // the same round trip and the same quota unit.
-    const releases: Array<{ html_url: string; assets: Array<{ name: string; browser_download_url?: string }> }> =
-      Array.from({ length: 30 }, (_, index) => ({
-        html_url: `https://x/${index}`,
-        assets: [{ name: 'notes.md' }],
-      }));
-    releases[25] = {
-      html_url: 'https://x/app',
-      assets: [{ name: 'Kabmo-0.9.1-android.apk', browser_download_url: 'https://x/a.apk' }],
-    };
-
-    expect((await fetchShellRelease('android', stubFetch(releases).impl))?.latest).toBe('0.9.1');
-  });
-
   test('answers null when the probe fails', async () => {
     // An offline box must not take the sidebar down, and a failure must not be
     // read as "no newer version" either — it is simply no offer. BOTH paths are

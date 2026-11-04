@@ -173,7 +173,7 @@ release.yml
   and none is written. **The commit reaches `main` only after every shell build
   passed**: `shells` stages it on `release/shell-bump`, `apk-build` checks that
   commit out (the `ref:` input), and `shell-commit` fast-forwards `main` onto it
-  once every build that ran is green — so a failed build cannot leave a
+  once the APK and its four siblings are green — so a failed build cannot leave a
   bumped version on `main` for an artifact that was never produced. Building the
   trigger commit instead would declare the previous version.
 - **Why a version of its own.** The number is the entire delivery mechanism: the

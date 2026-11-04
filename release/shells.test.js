@@ -24,7 +24,7 @@ import { bumpVersion } from './bump.js';
 import { readVersionName as linuxRead, replaceVersionLine as linuxReplace } from './linux.js';
 import { readVersionName as macosRead, replaceVersionLine as macosReplace } from './macos.js';
 import { SHELLS, shellById } from './shells.js';
-import { runShellBumps, shellOutputs } from './shells-run.js';
+import { runShellBumps } from './shells-run.js';
 import { repoRoot } from './packages.mjs';
 
 const scratch = [];
@@ -218,62 +218,5 @@ describe('the runner bumps every shell in one pass, or none of them', () => {
     expect(readFileSync(join(root, 'packages/android/version.properties'), 'utf8')).toContain(
       'versionName=1.0.0',
     );
-  });
-});
-
-describe('the per-shell flags the workflow gates each build on', () => {
-  /** One outcome of each status, shaped as `runShellBumps` returns them. */
-  const outcome = (id, status, extra = {}) => ({ shell: shellById(id), status, ...extra });
-
-  test('every catalog shell answers, and only a bumped one answers true', () => {
-    // The `--only linux` shape: ONE outcome, the whole catalog asked. A missing
-    // output is an empty string in the workflow, which `== 'true'` also refuses —
-    // but an explicit `false` is what the run's log then shows, and a shell added
-    // to the catalog without a flag would gate its build on nothing.
-    const outputs = shellOutputs({
-      outcomes: [outcome('linux', 'bumped', { from: '0.1.0', next: '0.1.1' })],
-      shells: SHELLS,
-      failed: false,
-    });
-
-    expect(Object.keys(outputs.flags).sort()).toEqual(SHELLS.map((shell) => shell.id).sort());
-    for (const shell of SHELLS) {
-      expect(outputs.flags[shell.id], `${shell.id}'s flag`).toBe(shell.id === 'linux' ? 'true' : 'false');
-    }
-    expect(outputs.any).toBe('true');
-    expect(outputs.bumped).toBe('linux 0.1.1');
-  });
-
-  test('an unchanged or no-bump shell answers false', () => {
-    const outputs = shellOutputs({
-      outcomes: [
-        outcome('android', 'unchanged', { from: '0.7.3' }),
-        outcome('ios', 'no-bump', { from: '0.3.2', commits: 2 }),
-      ],
-      shells: SHELLS,
-      failed: false,
-    });
-
-    expect(outputs.any, 'no bump means no build').toBe('false');
-    expect(outputs.bumped).toBe('');
-    expect(Object.values(outputs.flags).every((flag) => flag === 'false')).toBe(true);
-  });
-
-  test('a failed run answers false everywhere, whatever it planned', () => {
-    // The step fails before the workflow reads anything, so this is belt and
-    // braces — but an `any=true` from a refused write would name a version `main`
-    // never receives, and a flag would build an artifact for it.
-    const outputs = shellOutputs({
-      outcomes: [
-        outcome('android', 'bumped', { from: '0.7.3', next: '0.7.4' }),
-        outcome('ios', 'failed', { reason: 'no versionName' }),
-      ],
-      shells: SHELLS,
-      failed: true,
-    });
-
-    expect(outputs.any).toBe('false');
-    expect(outputs.bumped).toBe('');
-    expect(Object.values(outputs.flags).every((flag) => flag === 'false')).toBe(true);
   });
 });

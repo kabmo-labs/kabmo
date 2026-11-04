@@ -87,18 +87,13 @@ const EMPTY_RELEASE: ShellRelease = { url: null, latest: null, releaseUrl: null,
  *
  * NOT `/releases/latest`, which answers the newest release of ANY kind. This
  * repository publishes several artifacts from one push, and the packages are
- * released FIRST (`packages → marketplace → shells → … → app` in
+ * released FIRST (`packages → marketplace → android → … → app` in
  * `release.yml`), so their `kabmo-sdk/v*` / `kabmo-ui/v*` releases are newer
  * than the app release that carries the shells. `@semantic-release/github` runs
  * in both pipelines, so those are real releases — measured against a stub that
  * answered a package release: `/releases/latest` produced `{url: null, …}` and
  * the sidebar's button disappeared even though the APK sat on the release
  * directly below.
- *
- * Skipping releases is now the COMMON case rather than the packages' exception:
- * `release.yml` builds a shell only when its own version moved (`shells` publishes
- * one flag per shell), so most releases carry no artifact of this shell at all.
- * The scan window below is sized for that walk.
  *
  * `arch` is what a DESKTOP shell reports about its own machine, and it is the
  * difference between "here is the page, pick your build" and "here is your
@@ -129,20 +124,8 @@ export async function fetchShellRelease(
   return resolved;
 }
 
-/**
- * How many releases to look back through for the artifact.
- *
- * `release.yml` builds a shell ONLY when its own version moved (one flag per shell
- * from `release/release-shells.mjs`), so most releases now carry no `ios`/`macos`/…
- * asset at all and walking past them is the NORMAL case rather than the exception
- * the packages' `kabmo-sdk/v*` releases made it. The window is therefore the
- * distance to the last release that carried this shell, not "a release or two".
- *
- * 100 is GitHub's page ceiling for one request, so the deeper window costs
- * nothing — no second round trip, same quota unit — and a shell whose last build
- * is a few releases back still resolves.
- */
-const RELEASE_SCAN = 100;
+/** How many releases to look back through for the artifact. */
+const RELEASE_SCAN = 20;
 
 /**
  * The REST read, or null when it did not answer with a usable release list.

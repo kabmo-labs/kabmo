@@ -379,12 +379,10 @@ Each has a `publish-*.yml` reusable body with a `build` and an `attach` phase, a
 place in the chain `packages → marketplace → shells → {apk-build, ipa-build,
 win-build, macos-build, linux-build} → shell-commit → app`. One `shells` job bumps
 all five (it was five separate bump jobs), and its commit is published only after
-every build that ran passed. **A build runs only for a shell whose version moved**:
-`shells` publishes one flag per shell and each build and attach reads its own, so a
-release that bumped only `linux` compiles only the Linux app. **The build is a
-gate, not a consequence**: `app` `needs:` every build job, so a shell that cannot
-compile stops the release before a tag exists — instead of a release that goes out
-with no artifact in it, repaired only by a hand-run dispatch. `attach` runs after `app` because `gh release upload` needs the
+every build passed. **The build is a gate, not a consequence**: `app` `needs:` every
+build job, so a shell that cannot compile stops the release before a tag exists —
+instead of a release that goes out with no artifact in it, repaired only by a
+hand-run dispatch. `attach` runs after `app` because `gh release upload` needs the
 release to exist, and it never rebuilds.
 
 The bump is the release. Each version file is the only place its shell's version
@@ -392,10 +390,8 @@ is declared, the level comes from the same Conventional Commits rules the app
 uses, and the bump commit is a `chore` that releases nothing on its own — so a
 shell-only fix reaches a user on the next app release, without cutting a server
 version for it. The staged commit is what makes a failed build harmless: `shells`
-publishes it on `release/shell-bump`, every build whose own shell version moved
-compiles that sha (a shell that did not bump is not rebuilt at all), and
-`shell-commit` fast-forwards `main` onto it only once every build that ran is
-green.
+publishes it on `release/shell-bump`, the five builds compile that sha, and
+`shell-commit` fast-forwards `main` onto it only once they are all green.
 
 The artifact's SHAPE follows each platform's own convention, and that is not
 cosmetic: **Windows gets an installer** (`Kabmo-<v>-win-<arch>-setup.exe`, compiled

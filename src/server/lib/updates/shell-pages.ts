@@ -25,32 +25,8 @@ import { SHELL_ASSETS, selfUpdateArtifact, versionFromAssetName } from '@/server
 import type { ShellArch } from '@/shared/lib/updates/shell-arch';
 import type { ShellKind } from '@/shared/lib/updates/shell-ua';
 
-/**
- * How many tags to walk before giving up.
- *
- * Deeper than the two-or-three entries the packages' releases used to need,
- * because `release.yml` now builds a shell only when its own version moved: most
- * tags carry no artifact of the shell being asked about, and the walk has to
- * reach the last release that did. Each tag that does not match costs one
- * fragment request, so this is a latency budget rather than a free number — the
- * answer is cached for five minutes (`shell-cache`).
- */
-const PAGE_SCAN = 20;
-
-/**
- * How many feed pages to fetch to fill `PAGE_SCAN`.
- *
- * The Atom feed truncates at TEN entries per page — measured: `?page=1` and
- * `?page=2` each answer 10 `<entry>` elements — so a `PAGE_SCAN` larger than one
- * page is only reachable by following the pages. Two pages is the depth the
- * per-shell build gate needs against this repository's cadence; a third page is a
- * request spent on a shell nobody has released in 30 releases, and the console
- * still answers the release PAGE for a shell it cannot resolve.
- */
-const FEED_PAGES = 2;
-
-/** Entries GitHub puts on one Atom page — measured, and what "a full page" means below. */
-const FEED_PAGE_SIZE = 10;
+/** How many tags to walk before giving up. */
+const PAGE_SCAN = 6;
 
 /** A tag from the Atom feed, with the release page it names. */
 export interface ReleaseTag {
@@ -82,10 +58,8 @@ export type PagesResult =
  * The newest tag that carries this shell's artifact.
  *
  * The FIRST tag with a matching asset wins, because the feed is newest-first and
- * a release that carries no artifact of this shell must not stop the walk — which
- * is now the common case rather than the packages' exception: a shell whose
- * version did not move is NOT BUILT (`release.yml` gates each build on its own
- * flag), so most releases carry three or fewer artifacts.
+ * a release that carries no artifact of this shell (a `kabmo-sdk/v*` package
+ * release, which the pipeline publishes before the app) must not stop the walk.
  */
 export async function findAssetInPages(
   kind: ShellKind,
@@ -93,41 +67,22 @@ export async function findAssetInPages(
   headers: Record<string, string>,
   arch: ShellArch | null = null,
 ): Promise<PagesResult> {
-  const tags: ReleaseTag[] = [];
+  const feed = await fetchImpl(`https://github.com/${REPO}/releases.atom`, {
+    headers: { accept: 'application/atom+xml, text/xml', ...headers },
+  });
+  if (!feed.ok) return { kind: 'unreachable' };
 
-  for (let index = 1; index <= FEED_PAGES && tags.length < PAGE_SCAN; index += 1) {
-    // Page 1 keeps the BARE url: it is the one GitHub canonicalizes, and every
-    // caller (and stub) written before pagination existed matches on it.
-    const feed = await fetchImpl(
-      index === 1 ? `https://github.com/${REPO}/releases.atom` : `https://github.com/${REPO}/releases.atom?page=${index}`,
-      { headers: { accept: 'application/atom+xml, text/xml', ...headers } },
-    );
-    // The FIRST page failing is an outage; a LATER one is just a short feed, and
-    // the tags already collected are still the newest ones — so it stops the walk
-    // rather than discarding them.
-    if (!feed.ok) {
-      if (index === 1) return { kind: 'unreachable' };
-      break;
-    }
-
-    const entries = releaseTags(await feed.text());
-    if (entries.length === 0) break;
-    tags.push(...entries);
-    // A SHORT page is the last one: GitHub answers 10 entries per page, so
-    // following `?page=N` past it would be a request spent on an empty body.
-    if (entries.length < FEED_PAGE_SIZE) break;
-  }
-
+  const tags = releaseTags(await feed.text());
   if (tags.length === 0) return { kind: 'none' };
 
   for (const tag of tags.slice(0, PAGE_SCAN)) {
-    const fragment = await fetchImpl(
+    const page = await fetchImpl(
       `https://github.com/${REPO}/releases/expanded_assets/${encodeURIComponent(tag.name)}`,
       { headers: { accept: 'text/html', ...headers } },
     );
-    if (!fragment.ok) continue;
+    if (!page.ok) continue;
 
-    const asset = shellAssetFromPage(kind, await fragment.text(), arch);
+    const asset = shellAssetFromPage(kind, await page.text(), arch);
     if (!asset) continue;
 
     return { kind: 'found', asset, releaseUrl: tag.url };
