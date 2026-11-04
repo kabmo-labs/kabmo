@@ -24,8 +24,13 @@
 
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, not `URL.pathname`: a pathname on Windows is
+// `/D:/a/kabmo/kabmo/`, which `readdir` cannot open, so `--check` would report
+// every import as missing rather than comparing the table. Every other script
+// here reads its own location the same way.
+const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const SRC = join(ROOT, 'src');
 const TARGET = join(SRC, 'shared/lib/icons/tint-hues.generated.ts');
 

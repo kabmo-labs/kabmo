@@ -23,7 +23,14 @@ describe('checkbox', () => {
     // The glob is rooted at the REPOSITORY, not at this folder: a path that
     // resolves wrong walks zero files and every assertion passes vacuously —
     // which is exactly what the first version of this test did.
-    const repo = new URL('../../../../..', import.meta.url).pathname;
+    //
+    // `Bun.fileURLToPath` and `new URL(file, repoUrl)`, never `URL.pathname`:
+    // on Windows the pathname is `/D:/a/kabmo/kabmo/`, which walks nothing —
+    // the same vacuous pass this comment warns about, arriving by another
+    // route. `Bun.fileURLToPath` rather than `node:url` because this module is
+    // under `src/`, where a `node:` import is not allowed.
+    const repoUrl = new URL('../../../../..', import.meta.url);
+    const repo = Bun.fileURLToPath(repoUrl);
     const glob = new Glob('src/client/**/*.tsx');
     const offenders: string[] = [];
     for await (const file of glob.scan({ cwd: repo })) {
@@ -31,7 +38,7 @@ describe('checkbox', () => {
       // Comments first: `SelectionCheckbox` documents itself with the literal
       // markup (`A native <input type="checkbox"> rather than a styled span`),
       // and a scanner that reads prose reports the file that explains the rule.
-      const source = (await Bun.file(`${repo}/${file}`).text())
+      const source = (await Bun.file(new URL(file, repoUrl)).text())
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '');
       if (!source.includes('type="checkbox"')) continue;

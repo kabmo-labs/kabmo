@@ -175,8 +175,20 @@ describe('the generated hues', () => {
   test('the hue table matches the icons this repo imports', async () => {
     // The generator is the source of truth; running its `--check` here is what
     // makes a stale table a test failure instead of a review miss.
-    const repoRoot = new URL('../../../..', import.meta.url).pathname;
-    const check = Bun.spawnSync(['bun', 'run', `${repoRoot}scripts/icon-tints.mjs`, '--check'], {
+    //
+    // `Bun.fileURLToPath`, not `URL.pathname`: on a Windows host the pathname
+    // is `/D:/a/kabmo/kabmo/`, which no process can open, so the spawn failed
+    // for a reason that had nothing to do with the table — measured on the
+    // Windows gate, where this case failed while every other row passed.
+    //
+    // The script is resolved THROUGH the URL rather than by string-joining onto
+    // the directory: `fileURLToPath` keeps a trailing separator (`…/kabmo/`),
+    // and a hand-written join would then carry one separator style into a path
+    // the other half spelled the other way.
+    const repoUrl = new URL('../../../..', import.meta.url);
+    const repoRoot = Bun.fileURLToPath(repoUrl);
+    const script = Bun.fileURLToPath(new URL('scripts/icon-tints.mjs', repoUrl));
+    const check = Bun.spawnSync(['bun', 'run', script, '--check'], {
       cwd: repoRoot,
       stdout: 'pipe',
       stderr: 'pipe',
