@@ -4,6 +4,26 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.21.0](https://github.com/kabmo-labs/kabmo/compare/v0.20.0...v0.21.0) — 2026-11-04
+
+### Added
+
+* **readme-media:** capture stills in the shipped look and verify each one ([8bfd283](https://github.com/kabmo-labs/kabmo/commit/8bfd2837b0ec8eb1208d3eb06a23782e6076c58d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Changed
+
+* **readme:** show the glass surface with full-colour icons, and call the product a web console ([a13b248](https://github.com/kabmo-labs/kabmo/commit/a13b248e90672231e59c387fa097edbe2875f2d5)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **glass:** keep a switch knob opaque by excluding it from the canvas well ([687f045](https://github.com/kabmo-labs/kabmo/commit/687f045f6de9f0452d80a4422f34ac38a4db15ab)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **icons:** solve the light icon tone per hue instead of one pair ([2a69ecd](https://github.com/kabmo-labs/kabmo/commit/2a69ecdbf57bf09f942f3f8c655b749b5b7333c4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **session-sidebar:** paint the stuck folder header on the phone ([f1a5372](https://github.com/kabmo-labs/kabmo/commit/f1a53722f67f109f10d25a4579018801f6347783)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Removed
+
+* Revert "fix(release): build a shell only when its version moved" ([2ffe027](https://github.com/kabmo-labs/kabmo/commit/2ffe02706ee43ae64dfea510416ee6e713dfcba8)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.20.0](https://github.com/kabmo-labs/kabmo/compare/v0.19.0...v0.20.0) — 2026-11-04
 
 ### Added
