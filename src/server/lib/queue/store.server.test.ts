@@ -35,9 +35,9 @@ import {
   requeueHeadQueueItem,
   reorderQueue,
   rowToQueuedMessage,
+  type ClaimedQueueItem,
 } from '@/server/lib/queue/store.server';
 import { restoreStore } from '@/server/lib/queue/delivery-harness';
-import type { QueuedMessage } from '@/shared/types/chat';
 import { removeDir } from '@/test-support/remove-dir';
 
 /**
@@ -240,12 +240,32 @@ describe('claim, requeue and presence', () => {
     useTempDb();
     await appendQueueItem('s1', { text: 'first' });
     await appendQueueItem('s1', { text: 'second' });
-    const failed = (await claimHeadQueueItem('s1')) as QueuedMessage;
+    const failed = (await claimHeadQueueItem('s1')) as ClaimedQueueItem;
     expect(failed.text).toBe('first');
 
     await requeueHeadQueueItem('s1', failed);
     expect((await listQueue('s1')).map((item) => item.text)).toEqual(['first', 'second']);
     expect((await claimHeadQueueItem('s1'))?.text).toBe('first');
+  });
+
+  // Measured live: a busy session rejected each dispatch (`agent_busy`) once
+  // per retry while the client's 3s nudge kept entering `deliverNext`, so two
+  // claims were in flight at once. `MIN(position) - 1` then put each failed
+  // item one slot too low and the pair came back swapped — the panel's order
+  // changed on every retry, and positions walked to -8..-1.
+  test('a requeue returns the item to its own slot, not below the queue', async () => {
+    useTempDb();
+    await appendQueueItem('s1', { text: 'a' });
+    await appendQueueItem('s1', { text: 'b' });
+    await appendQueueItem('s1', { text: 'c' });
+
+    // Two overlapping attempts: the second claims while the first dispatches.
+    const first = (await claimHeadQueueItem('s1')) as ClaimedQueueItem;
+    const second = (await claimHeadQueueItem('s1')) as ClaimedQueueItem;
+    await requeueHeadQueueItem('s1', first);
+    await requeueHeadQueueItem('s1', second);
+
+    expect((await listQueue('s1')).map((item) => item.text)).toEqual(['a', 'b', 'c']);
   });
 
   test('hasQueuedItem reports presence without claiming', async () => {

@@ -211,4 +211,52 @@ describe('queue dispatch', () => {
 
     expect(delivered).toBe(false);
   });
+
+  // omp refused the prompt because a turn was already in flight while the
+  // wrapper still read idle (a probe's stale answer had cleared its flags).
+  // Measured: 104 `agent_busy` failures in one session. The refusal is omp's
+  // own word that the session is busy, so the wrapper keeps `isBusy()` true and
+  // every later tick parks — one attempted dispatch, not one per retry — and the
+  // head keeps its place.
+  test('a busy refusal parks the queue instead of redispatching on every tick', async () => {
+    const sessionId = beginQueueTest();
+    queue.set(sessionId, [queueItem('a'), queueItem('b'), queueItem('c')]);
+    const { host, sent } = makeHost(sessionId);
+    // The wrapper's flags say idle; omp is actually mid-turn.
+    let wrapperBusy = false;
+    let ompBusy = true;
+    host.isBusy = () => wrapperBusy;
+    host.send = async (command) => {
+      if (command.type !== 'prompt') return {};
+      if (!ompBusy) {
+        sent.push(command);
+        return {};
+      }
+      // What the command dispatcher does with omp's `agent_busy` refusal: the
+      // typed error, and omp's verdict kept on the wrapper's own flags.
+      wrapperBusy = true;
+      throw new Error('agent_busy');
+    };
+
+    const delivered = await deliverQueueNow(host);
+    await flush();
+    expect(delivered).toBe(false);
+
+    // The retry timer and a client nudge both arrive while omp is still busy:
+    // neither may dispatch at the child again.
+    jest.advanceTimersByTime(2_000);
+    await flush();
+    await deliverQueueNow(host);
+    await flush();
+    expect(sent).toEqual([]);
+    expect(queue.get(sessionId)?.map((item) => item.text)).toEqual(['a', 'b', 'c']);
+
+    // The run ends: the head goes out, ahead of everything queued behind it.
+    ompBusy = false;
+    wrapperBusy = false;
+    await deliverQueueNow(host);
+    await flush();
+    expect(sent.map((command) => command.message)).toEqual(['a']);
+    expect(queue.get(sessionId)?.map((item) => item.text)).toEqual(['b', 'c']);
+  });
 });

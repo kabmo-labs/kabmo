@@ -83,11 +83,28 @@ interface QueueItemInput {
   model?: unknown;
 }
 
-/** The session's queued follow-ups in delivery order. */
+/**
+ * A claimed row plus the position it held. A failed dispatch puts the item
+ * back at exactly that slot: recomputing "one below the current minimum" from
+ * a queue two deliveries touched reorders the rest — measured as a live queue
+ * whose eight rows walked from positions 0..7 down to -8..-1 while a busy
+ * session rejected each dispatch (`agent_busy`) once per retry.
+ */
+export interface ClaimedQueueItem extends QueuedMessage {
+  position: number;
+}
+
+/**
+ * The session's queued follow-ups in delivery order.
+ *
+ * `rowid` breaks a position tie: two rows can share a position when a reorder
+ * ships a list that a concurrent append was not part of, and SQLite is free to
+ * return equal keys in any order — which reads as the panel shuffling itself.
+ */
 export async function listQueue(sessionId: string): Promise<QueuedMessage[]> {
   const db = await getDb();
   const rows = (await db.all(
-    'SELECT * FROM queued_messages WHERE session_id = ? ORDER BY position ASC',
+    'SELECT * FROM queued_messages WHERE session_id = ? ORDER BY position ASC, rowid ASC',
     [sessionId],
   )) as QueueRow[];
   return rows.map(rowToQueuedMessage);
@@ -171,18 +188,18 @@ export async function reorderQueue(sessionId: string, orderedIds: string[]): Pro
  * call and stranded the queue silently, with nudges failing the same way.
  * `getDb()` re-initializes instead, so a delivery heals the state it needs.
  */
-export async function claimHeadQueueItem(sessionId: string): Promise<QueuedMessage | null> {
+export async function claimHeadQueueItem(sessionId: string): Promise<ClaimedQueueItem | null> {
   const db = await getDb();
   return withTransaction(db, () => {
     const row = db.raw
-      .query('SELECT * FROM queued_messages WHERE session_id = ? ORDER BY position ASC LIMIT 1')
+      .query('SELECT * FROM queued_messages WHERE session_id = ? ORDER BY position ASC, rowid ASC LIMIT 1')
       .get(sessionId) as QueueRow | undefined;
     if (!row) return null;
     db.raw.run('DELETE FROM queued_messages WHERE id = ?', [row.id]);
     // The head left the queue: a panel showing it must be told, or it keeps
     // rendering an item that is already being sent.
     emitRealtimeSignal('session-data-dirty', sessionId);
-    return rowToQueuedMessage(row);
+    return { ...rowToQueuedMessage(row), position: row.position };
   });
 }
 
@@ -203,16 +220,21 @@ export async function hasQueuedItem(sessionId: string): Promise<boolean> {
 }
 
 /**
- * Put a failed delivery back at the head (position below the current minimum)
- * so it is retried before anything else. The next run end or mount nudge
- * picks it up again.
+ * Put a failed delivery back where it was: the position it was claimed from,
+ * so it is retried before anything queued after it.
+ *
+ * The position is carried by the claim rather than recomputed. `MIN(position)
+ * - 1` looks equivalent and is not: with two attempts in flight the second
+ * claim has already removed the next row, so the first requeue lands one slot
+ * too low and the pair swaps. Every retry against a busy session then permutes
+ * the queue again.
  */
-export async function requeueHeadQueueItem(sessionId: string, item: QueuedMessage): Promise<void> {
+export async function requeueHeadQueueItem(sessionId: string, item: ClaimedQueueItem): Promise<void> {
   const db = await getDb();
   db.raw.run(
     `INSERT INTO queued_messages (id, session_id, position, message, attachments, provider, model_id, thinking_level, access_mode)
-     VALUES (?, ?, COALESCE((SELECT MIN(position) FROM queued_messages WHERE session_id = ?), 0) - 1, ?, ?, ?, ?, ?, ?)`,
-    [item.id, sessionId, sessionId, item.text, serializeAttachments(item.attachments),
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [item.id, sessionId, item.position, item.text, serializeAttachments(item.attachments),
       item.model?.provider ?? null, item.model?.modelId ?? null, item.model?.thinkingLevel ?? null, item.model?.accessMode ?? null],
   );
   emitRealtimeSignal('session-data-dirty', sessionId);

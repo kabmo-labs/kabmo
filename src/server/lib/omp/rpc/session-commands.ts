@@ -142,6 +142,17 @@ export async function dispatchSessionCommand(host: SessionCommandHost, command: 
         // not know a run was in flight (a second tab, a reload, another
         // instance) recover instead of losing the prompt.
         if (error instanceof RpcCommandError && AGENT_BUSY_REFUSAL_RE.test(error.message)) {
+          // omp's verdict outranks our flags: a turn IS in flight, whatever
+          // this wrapper believed. The queue's delivery gate reads `isBusy()`,
+          // so without this a stale-idle wrapper (a `get_state` probe whose
+          // answer landed after `agent_start` clears both flags) dispatched at
+          // the child every retry and collected `agent_busy` for the rest of
+          // the run — measured as 104 failures in one session, each one
+          // requeueing the head. `agent_end`, or the settle probe's `isSettled`,
+          // is what clears it again.
+          host.streaming = true;
+          // ...and the run-settle clock retires it if that frame never comes.
+          host.runSettle?.arm();
           throw new WebRpcError(AGENT_BUSY_MESSAGE, 'agent_busy');
         }
         throw error;

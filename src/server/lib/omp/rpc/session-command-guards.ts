@@ -49,6 +49,11 @@ export interface SessionCommandHost extends WebStateHost {
   /** Arm the deadline watchdog for a dispatch whose turn never opened. Optional
    *  so a test host can omit it; the real wrapper always implements it. */
   armAgentStartWatchdog?(): void;
+  /** The run-settle clock. A refused dispatch (`agent_busy`) reveals a run this
+   *  wrapper did not see open, so the clock must be armed for it or a lost
+   *  terminal frame leaves the session marked busy forever. Optional for the
+   *  same reason as the watchdog. */
+  runSettle?: { arm(): void };
   /** The background `/rename` dispatch a following prompt must be ordered
    *  behind (see `session/title-request.server.ts`). Absent on a host that
    *  never titles, which is why the barrier treats it as idle. */

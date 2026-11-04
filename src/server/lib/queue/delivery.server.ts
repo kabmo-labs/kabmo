@@ -70,6 +70,8 @@ interface PendingDelivery {
 declare global {
   // eslint-disable-next-line no-var
   var __ompQueueDeliveryTimers: Map<string, PendingDelivery> | undefined;
+  // eslint-disable-next-line no-var
+  var __ompQueueDeliveryInFlight: Map<string, Promise<boolean>> | undefined;
 }
 
 /** Per-session pending delivery timer, so a second agent_end while one is
@@ -91,6 +93,24 @@ function clearPendingTimer(sessionId: string): void {
   if (entry === undefined) return;
   clearTimeout(entry.timer);
   pendingTimers.delete(sessionId);
+}
+
+/**
+ * The delivery currently running for a session, if any.
+ *
+ * Every trigger — a run end, the retry timer, a tab's nudge (which runs
+ * {@link deliverQueueNow} with no timer at all) — enters here, and they overlap
+ * freely: a nudge fires while the retry's dispatch is still awaiting the RPC.
+ * Two overlapping attempts claim two different heads, and each requeue then
+ * decides the order the pair comes back in. Serialized per session, so one
+ * dispatch is in flight at a time and the queue is only ever touched by it.
+ *
+ * On `globalThis` for the same reason as the timers: a `--hot` reload must not
+ * lose track of a running delivery.
+ */
+function getInFlightDeliveries(): Map<string, Promise<boolean>> {
+  if (!globalThis.__ompQueueDeliveryInFlight) globalThis.__ompQueueDeliveryInFlight = new Map();
+  return globalThis.__ompQueueDeliveryInFlight;
 }
 
 /** Send one queued item to the session as a normal prompt. The model snapshot
@@ -202,8 +222,27 @@ async function armRetryIfQueued(session: QueueDeliveryHost): Promise<void> {
  * strand the queue permanently: the timer had already been deleted from the map
  * by its own callback, so nothing remained to retry it and no later trigger was
  * guaranteed to arrive. Re-arming keeps the retry owned by this module.
+ *
+ * Concurrent calls share the running attempt instead of starting a second one:
+ * the dispatches that provoke them (`agent_busy` from omp while `isBusy()` still
+ * reads idle) otherwise overlap, and two overlapping claims plus two requeues
+ * reorder the queue.
  */
 async function deliverNext(session: QueueDeliveryHost): Promise<boolean> {
+  const sessionId = session.sessionId;
+  const inFlight = getInFlightDeliveries();
+  const running = inFlight.get(sessionId);
+  if (running) return running;
+  const attempt = runDelivery(session);
+  inFlight.set(sessionId, attempt);
+  try {
+    return await attempt;
+  } finally {
+    if (inFlight.get(sessionId) === attempt) inFlight.delete(sessionId);
+  }
+}
+
+async function runDelivery(session: QueueDeliveryHost): Promise<boolean> {
   const sessionId = session.sessionId;
   if (!session.isAlive()) return false;
   if (session.isBusy()) {

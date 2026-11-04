@@ -179,7 +179,8 @@ describe('prompt', () => {
   });
 
   test('a busy session refuses a retry, and omp\'s own mid-turn refusal is the typed `agent_busy`', async () => {
-    const h = makeHarness({ isBusy: () => true });
+    let settleArms = 0;
+    const h = makeHarness({ isBusy: () => true, runSettle: { arm: () => { settleArms += 1; } } });
     h.respond(() => {
       throw new RpcCommandTimeoutError('prompt', 1);
     });
@@ -191,6 +192,13 @@ describe('prompt', () => {
     h.respond(() => { throw new RpcCommandError('prompt', 'Agent is already processing.'); });
     const busy = await rejectionOf(dispatchSessionCommand(h.host, { type: 'prompt', message: 'hi' })) as WebRpcError;
     expect([busy.code, busy.message]).toEqual(['agent_busy', AGENT_BUSY_MESSAGE]);
+    // The refusal is proof of a live turn, and the wrapper must keep it: the
+    // queue's delivery gate and the sidebar both read these flags, so clearing
+    // them here is what let a session dispatch at a busy child on every retry.
+    expect(h.host.streaming).toBe(true);
+    // ...and the settle clock must be able to retire that flag if the run's
+    // terminal frame never arrives.
+    expect(settleArms).toBe(1);
   });
 
   test('a command dispatched during a run\'s ack window does not settle the run', async () => {

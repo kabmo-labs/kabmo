@@ -21,6 +21,7 @@
 
 import { jest, mock } from 'bun:test';
 import type { QueuedMessage } from '@/shared/types/chat';
+import type { ClaimedQueueItem } from '@/server/lib/queue/store.server';
 import type { QueueDeliveryHost } from '@/server/lib/queue/delivery.server';
 
 // Hoisted above the registration, so spreading it here snapshots the REAL
@@ -40,14 +41,17 @@ export const queue = new Map<string, QueuedMessage[]>();
  *  after another has restored the real one. */
 export function installStoreMock(): void {
   mock.module('@/server/lib/queue/store.server', () => ({
-    claimHeadQueueItem: async (sessionId: string): Promise<QueuedMessage | null> => {
+    claimHeadQueueItem: async (sessionId: string): Promise<ClaimedQueueItem | null> => {
       const items = queue.get(sessionId);
-      return items?.shift() ?? null;
+      const head = items?.shift();
+      // The list index IS the position here, and the head is always index 0.
+      return head ? { ...head, position: 0 } : null;
     },
     hasQueuedItem: async (sessionId: string): Promise<boolean> => (queue.get(sessionId)?.length ?? 0) > 0,
-    requeueHeadQueueItem: async (sessionId: string, item: QueuedMessage): Promise<void> => {
+    requeueHeadQueueItem: async (sessionId: string, item: ClaimedQueueItem): Promise<void> => {
       const items = queue.get(sessionId) ?? [];
-      items.unshift(item);
+      const { position: _position, ...row } = item;
+      items.splice(0, 0, row);
       queue.set(sessionId, items);
     },
   }));

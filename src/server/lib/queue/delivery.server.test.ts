@@ -24,6 +24,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, jest, mock, test } from 'bun:test';
 import {
   beginQueueTest,
+  deliverQueueNow,
   flush,
   installStoreMock,
   makeHost,
@@ -202,5 +203,33 @@ describe('queue delivery scheduling', () => {
 
     expect(sent.filter((c) => c.type === 'prompt').length).toBe(1);
     expect(queue.get(sessionId)).toEqual([]);
+  });
+
+  // The nudge path (`deliverQueueNow`) has no timer to dedupe it: a tab's 3s
+  // poll, a focus nudge and a run end can all be inside `deliverNext` at once.
+  // Two overlapping attempts claim two heads, and the requeues that follow
+  // decide which of the pair comes back first — measured on a live session as
+  // the panel's order changing on every `agent_busy` retry.
+  test('overlapping delivery attempts share one dispatch and leave the order alone', async () => {
+    const sessionId = beginQueueTest();
+    queue.set(sessionId, [queueItem('a'), queueItem('b'), queueItem('c')]);
+    const { host } = makeHost(sessionId);
+    let attempts = 0;
+    host.send = async () => {
+      attempts++;
+      throw new Error('agent_busy');
+    };
+
+    const results = await Promise.all([
+      deliverQueueNow(host),
+      deliverQueueNow(host),
+      deliverQueueNow(host),
+    ]);
+    await flush();
+
+    expect(results).toEqual([false, false, false]);
+    // One claim, one failed dispatch, one requeue — not three of each.
+    expect(attempts).toBe(1);
+    expect(queue.get(sessionId)?.map((item) => item.text)).toEqual(['a', 'b', 'c']);
   });
 });

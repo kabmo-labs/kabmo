@@ -213,6 +213,28 @@ describe('settling a run omp no longer owns', () => {
     }
   });
 
+  // A refusal is the only evidence some stranded runs ever leave: omp says a
+  // turn is in flight, the wrapper raised its flags from that verdict, and the
+  // terminal frame it expects may never arrive (that is what strands a queue —
+  // measured: 104 refusals in one session, one per retry). The clock is what
+  // retires the flags, exactly as it does for a lost terminal frame.
+  test('a run announced only by a refusal is settled on omp\'s quiescence verdict', async () => {
+    const { host, emitted } = makeHost(sessionState());
+    vi.useFakeTimers();
+    try {
+      const clock = settle(host, { silenceMs: 10 });
+      clock.arm();
+      vi.advanceTimersByTime(50);
+      await flushMicrotasks();
+      expect(host.streaming).toBe(false);
+      expect(host.promptRunning).toBe(false);
+      expect(emitted).toEqual([{ type: 'agent_end', isTerminal: true, messages: [] }]);
+      clock.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('stop() cancels the clock', async () => {
     const { host, sent } = makeHost(sessionState());
     vi.useFakeTimers();

@@ -155,6 +155,18 @@ export class RunSettle {
   }
 
   /**
+   * Start watching a run the frame path did not announce.
+   *
+   * A refused dispatch (`agent_busy`) proves a turn is in flight even when this
+   * wrapper read idle. The wrapper records that verdict in its own flags, and
+   * this clock is what retires them again if the run's terminal frame never
+   * arrives — the same repair every other lost-frame run gets.
+   */
+  arm(): void {
+    this.#arm();
+  }
+
+  /**
    * Probe omp and settle the run when omp itself reports the session quiescent.
    * Returns true when this call released a run.
    */
