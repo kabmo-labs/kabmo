@@ -127,13 +127,16 @@ describe('switch knob', () => {
 
   test('a knob on a switch keeps its fill under the glass surface', async () => {
     const glass = await Bun.file(new URL('../../../glass.css', import.meta.url)).text();
-    expect(glass).toContain('[data-surface="glass"] .app-window [role="switch"] .bg-canvas {');
-    expect(glass).toContain('background-color: var(--theme-canvas);');
-    // The exemption must come AFTER the well rule it overrides, or source order
-    // hands the knob back to the transparent one at equal specificity.
-    const well = glass.indexOf('[data-surface="glass"] .app-window .bg-canvas:not(.app-window):not(.glass-sticky) {');
-    const knob = glass.indexOf('[data-surface="glass"] .app-window [role="switch"] .bg-canvas {');
-    expect(well).toBeGreaterThan(-1);
-    expect(knob).toBeGreaterThan(well);
+    // The exemption lives INSIDE the well rule, as an `:not()`. It was a second
+    // rule first ("…except a knob on a switch"), and that rule never applied:
+    // `[role="switch"] .bg-canvas` is (0,4,0) against the well's (0,5,0), so the
+    // well won and every knob computed `rgba(0,0,0,0)` — a plain pill with no
+    // "on" position, on both layouts.
+    const start = glass.indexOf('[data-surface="glass"] .app-window .bg-canvas');
+    expect(start).toBeGreaterThan(-1);
+    const selector = glass.slice(start, glass.indexOf('{', start));
+    expect(selector).toContain(':not([role="switch"] *)');
+    // A same-property override anywhere would be the same race again.
+    expect(glass).not.toContain('[data-surface="glass"] .app-window [role="switch"] .bg-canvas');
   });
 });

@@ -197,6 +197,21 @@ describe('glass dialog material', () => {
     expect(glass).toContain('[data-surface="glass"] .glass-overlay > .bg-paper {\n  background-color: transparent;');
   });
 
+  test('a switch knob is not a canvas well, and the exclusion is in the well rule itself', async () => {
+    const glass = await read('./glass.css');
+    // The knob is `bg-canvas` on `bg-ink/70`: an OPAQUE contrasting disc is what
+    // makes the control read as a toggle. It was first exempted by a SECOND rule,
+    // and that rule never applied — `[role="switch"] .bg-canvas` is (0,4,0) and
+    // the well selector is (0,5,0), so the well won and every knob on every
+    // surface (desktop and phone alike) computed `rgba(0,0,0,0)`. Measured on the
+    // plugin switches: a plain pill with no "on" position.
+    const well = glass.slice(glass.indexOf('[data-surface="glass"] .app-window .bg-canvas'));
+    expect(well.slice(0, well.indexOf('{'))).toContain(':not([role="switch"] *)');
+    // A same-property override anywhere later would be the same race again, so
+    // there must be no second `background-color` rule for that knob at all.
+    expect(glass).not.toContain('[data-surface="glass"] .app-window [role="switch"] .bg-canvas');
+  });
+
   test('both fallback blocks outrank the dark palette block', async () => {
     const glass = await read('./glass.css');
     // The dark tokens live in `[data-surface="glass"][data-theme-variant="dark"]`

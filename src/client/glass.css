@@ -472,32 +472,31 @@
  * A STICKY header is excluded too, and that exclusion is load-bearing rather than
  * tidy: the phone drawer's header paints `bg-canvas` (its rows sit on canvas, see
  * `WorkspaceHeader`), so it is a `.bg-canvas` inside `.app-window` — and THIS
- * selector is (0,4,0) against the stuck fill's (0,3,0), so the well won and the
+ * selector is (0,5,0) against the stuck fill's (0,4,0), so the well won and the
  * pinned header stayed transparent. Measured at 412x900 with the drawer open and
  * 420px scrolled: `data-stuck` set (after the scrollport fix), header pinned at
  * the container's top edge, computed `background-color: rgba(0,0,0,0)` — an
  * active sticky folder header with no surface, while the desktop column's
  * `bg-paper` header (which this rule never matched) painted its fill. A sticky
  * header is never a well: its own state decides, one rule below.
- */
-[data-surface="glass"] .app-window .bg-canvas:not(.app-window):not(.glass-sticky) {
-  background-color: transparent;
-}
-
-/*
- * …except a knob ON a switch, which is a SHAPE, not a well.
  *
- * `bg-canvas` is the app's ground, but a switch knob uses it as an OPAQUE
- * contrasting disc: `bg-canvas` on `bg-ink/70` is what makes the control read as
- * a toggle at all. Turning it transparent deleted the knob — measured on the
- * plugin switches in dark, the 12px knob composited to `rgba(0,0,0,0)` and the
- * control rendered as a plain pill with no "on" position ("ini juga dong",
- * with a screenshot of exactly that button). The mark is the switch ROLE, not a
- * class name: any control that declares itself a switch owns its knob, whatever
- * it happens to paint it with.
+ * A switch KNOB is excluded for the same reason, and it has to be excluded
+ * HERE: `bg-canvas` is the app's ground, but a knob uses it as an OPAQUE
+ * contrasting disc, and `bg-canvas` on `bg-ink/70` is what makes the control
+ * read as a toggle at all. Making it transparent deleted the knob — measured on
+ * the plugin switches, the 12px disc composited to `rgba(0,0,0,0)` and the
+ * control became a plain pill with no "on" position.
+ *
+ * It was first written as a SECOND rule ("…except a knob on a switch"), and that
+ * rule never applied once: `[role="switch"] .bg-canvas` is (0,4,0) and this
+ * selector is (0,5,0), so the well won and every knob on every surface — desktop
+ * and phone alike — painted nothing. A same-property override is a specificity
+ * race; an exclusion in the ONE rule that causes the problem is not. The mark is
+ * the switch ROLE rather than a class name, so any control that declares itself
+ * a switch owns its knob, whatever it paints it with.
  */
-[data-surface="glass"] .app-window [role="switch"] .bg-canvas {
-  background-color: var(--theme-canvas);
+[data-surface="glass"] .app-window .bg-canvas:not(.app-window):not(.glass-sticky):not([role="switch"] *) {
+  background-color: transparent;
 }
 
 /*
