@@ -53,6 +53,27 @@ name: Release
 # tagged; the `apk` job after `app` only attaches the artifact the build
 # uploaded, so the post-tag step cannot discover a broken APK.
 #
+# A build runs ONLY FOR A SHELL WHOSE VERSION MOVED, and a release that touches
+# one shell no longer compiles five artifacts. `release/release-shells.mjs`
+# publishes one flag per shell (`android`, `ios`, `windows`, `macos`, `linux`)
+# from the same outcomes it commits, every `*-build` job reads its own flag, and
+# every attach job reads the same one — so a release that bumped only `linux`
+# runs the Rust build and nothing else, and a push that bumped no shell compiles
+# nothing at all. That is safe because the console resolves a shell from the
+# newest release that CARRIES its artifact (`fetchShellRelease`, which scans
+# 100 releases in one API request), not from the newest release: a shell whose
+# number did not move has nothing an installed copy can install over itself.
+#
+# The `if:` that makes skipping survivable is on `shell-commit`
+# (`!cancelled() && !contains(needs.*.result, 'failure')`) and `app` (the same
+# plus `needs.shell-commit.result == 'success'`). A skipped dependency blocks its
+# dependents, so a skipped build would otherwise skip the commit and the tag; the
+# `contains(…)` term preserves the reason the staging branch exists, because a
+# build that RAN and failed still stops the commit; and `app`'s extra term covers
+# the case a skipped-only check misses — a failed `shells` job leaves every build
+# SKIPPED, which is not a `failure`, so without it the app would tag from a tree
+# whose version bump never landed.
+#
 # One run also keeps concurrency simple. Two workflows sharing a concurrency
 # group is not a lock: a group is a queue that DROPS pending members as it
 # grows, and sharing one across workflows let each cancel the other's releases.
@@ -373,7 +394,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # 1c. Every shell's version, in ONE job and ONE commit — committed to `main`
-  # only AFTER every build has passed.
+  # only AFTER every build that RAN has passed.
   #
   # It was five chained jobs (`android` -> `ios` -> `windows` -> `macos` ->
   # `linux`), each with its own checkout, install, bump, commit and push. The
@@ -386,10 +407,10 @@ jobs:
   #
   #   - this job writes the five files, commits them LOCALLY and publishes that
   #     commit on a STAGING BRANCH (`release/shell-bump`), never on `main`;
-  #   - the five builds compile the staging ref, so every artifact declares the
-  #     bumped version;
-  #   - `shell-commit` fast-forwards `main` onto that commit only once all five
-  #     have passed, and deletes the staging ref.
+  #   - each build whose own shell version moved compiles the staging ref, so
+  #     every artifact that is produced declares the bumped version;
+  #   - `shell-commit` fast-forwards `main` onto that commit only once every build
+  #     that RAN has passed, and deletes the staging ref.
   #
   # Committing first was the bug: a build that failed (a Kotlin compiler that
   # moved, a missing keystore, a Rust crate that stopped building) left `main`
@@ -420,8 +441,25 @@ jobs:
     outputs:
       bumped: ${{ steps.bump.outputs.bumped }}
       any: ${{ steps.bump.outputs.any }}
-      # The ref the five builds compile: the staged commit when there is one, and
-      # `main` when nothing changed (a chore-only push still runs every build).
+      # ONE FLAG PER SHELL, written by `release/release-shells.mjs` from the same
+      # outcome it commits. Every build and every attach below reads its own flag,
+      # so a release that moved only `linux` compiles only the Linux app: an
+      # artifact whose version did not change would be a byte-for-byte rebuild
+      # nothing can install over itself, and four runners plus a macOS/Windows
+      # toolchain is the most expensive part of a release.
+      #
+      # Skipping is safe because the console finds a shell by the newest release
+      # that CARRIES its artifact (`fetchShellRelease`, scanning 100 releases in
+      # one API request), not by the newest release: an unbumped shell's previous
+      # asset is still the file its installed copy runs, so nothing is lost from
+      # the update path.
+      android: ${{ steps.bump.outputs.android }}
+      ios: ${{ steps.bump.outputs.ios }}
+      windows: ${{ steps.bump.outputs.windows }}
+      macos: ${{ steps.bump.outputs.macos }}
+      linux: ${{ steps.bump.outputs.linux }}
+      # The ref the builds that DO run compile: the staged commit when there is
+      # one, and `main` when nothing changed.
       ref: ${{ steps.stage.outputs.ref || 'main' }}
     permissions:
       contents: write
@@ -461,6 +499,10 @@ jobs:
         # `release/shells.test.js` asserts the catalog against the tree. The bump
         # LEVEL is the app's own rule set, so a `fix` is a patch and a `feat` a
         # minor.
+        #
+        # It also writes the job's `bumped`/`any` outputs AND one flag per shell
+        # (`android`, `ios`, …) from the same outcomes it commits, which is what
+        # the builds and the attach jobs gate on: one fact, one writer.
         run: node release/release-shells.mjs
 
       # Committed HERE, not by the app job: semantic-release's release commit
@@ -468,11 +510,12 @@ jobs:
       # when that job resets to its checkout — and every artifact would declare
       # the OLD shell version.
       #
-      # Published on the STAGING BRANCH, not on `main`: the five builds compile
-      # that commit, and `shell-commit` fast-forwards `main` onto it only after
-      # all five have passed — so a build failure leaves `main`'s version files
-      # exactly as they were. The ref is force-updated rather than created: a run
-      # that stopped at a build leaves it behind, and the next release replaces it.
+      # Published on the STAGING BRANCH, not on `main`: the builds compile that
+      # commit, and `shell-commit` fast-forwards `main` onto it only after every
+      # build that ran has passed — so a build failure leaves `main`'s version
+      # files exactly as they were. The ref is force-updated rather than created:
+      # a run that stopped at a build leaves it behind, and the next release
+      # replaces it.
       #
       # The output is the COMMIT, not the branch name: each build compiles an
       # immutable sha, so a later run cannot move the tree under a build. The sha
@@ -521,9 +564,16 @@ jobs:
   # update no installed app is ever offered. The staged ref is a COMMIT, so the tree
   # this compiles cannot move under it.
   #
-  # It does NOT gate on the shell having changed: whether `app` will tag is not
-  # knowable before `app` runs, and a build that might be wasted is the price of the
-  # gate. The same is true of `apk-build`.
+  # It GATES ON ITS OWN SHELL, and that is the difference from the version of this
+  # file that built all five on every push: `shells` publishes one flag per shell,
+  # and a release that moved only `linux` now compiles only the Linux app. A build
+  # whose version did not change produces a byte-for-byte artifact nothing can
+  # install over itself, and it costs a macOS/Windows toolchain or a Kotlin
+  # compiler for no user-visible change.
+  #
+  # **A push that asks for no version bump (`any=false`) still builds nothing**, and
+  # that is correct rather than a hole: `app` will tag nothing on such a push, so
+  # the artifact would be built for a release that never exists.
   # ---------------------------------------------------------------------------
   ipa-build:
     name: Build the iOS IPA
@@ -531,6 +581,11 @@ jobs:
     # the shell versions — one job bumps them together, so one edge replaces the
     # old chain through `macos`.
     needs: shells
+    # The flag is the gate, and `!cancelled()` keeps a run a human stopped from
+    # building a shell nobody asked for. No `always()`: this job's only dependency
+    # is `shells`, which must SUCCEED for a flag to exist at all — `always()` would
+    # also run it after a failed bump, on a tree whose version never moved.
+    if: ${{ !cancelled() && needs.shells.outputs.ios == 'true' }}
     permissions:
       # `contents: write`, and the reason is a parse-time check rather than anything
       # this job does: GitHub validates a reusable workflow's permission CEILING
@@ -569,11 +624,13 @@ jobs:
   # building the starting commit would produce an APK declaring the previous one,
   # which is an update no installed app is ever offered. The ref is the staged
   # COMMIT (or `main` when nothing was bumped), so it names exactly the tree
-  # `shell-commit` publishes once this build and its four siblings pass.
+  # `shell-commit` publishes once the builds that ran have passed.
   #
-  # A run whose commits ask for no version bump still builds here; there is no
-  # way to know whether `app` will tag before `app` runs, and a build that
-  # might be wasted is the price of the gate.
+  # A run whose commits ask for no version bump still builds nothing: no bump means
+  # `app` tags nothing, so the artifact would be built for a release that never
+  # exists. The gate is `needs.shells.outputs.android`, one flag per shell written
+  # by `release/release-shells.mjs` — the same reading `ipa-build` documents, and
+  # the reason a release that moved only `linux` no longer compiles five artifacts.
   # ---------------------------------------------------------------------------
   apk-build:
     name: Build the Android APK
@@ -581,6 +638,10 @@ jobs:
     # version at once. Each artifact must be built from a tree that carries all
     # of the versions, and each is a gate on `app`.
     needs: shells
+    # The flag is the gate, and `!cancelled()` keeps a run a human stopped from
+    # building a shell nobody asked for. No `always()`: this job's only dependency
+    # is `shells`, which must SUCCEED for a flag to exist at all.
+    if: ${{ !cancelled() && needs.shells.outputs.android == 'true' }}
     permissions:
       # `contents: write`, NOT `read`, and the reason is a parse-time check
       # rather than anything this job does. GitHub validates a reusable
@@ -622,15 +683,16 @@ jobs:
   # staged the shell versions, and the artifact must declare THAT number — building
   # the starting commit would produce an app reporting the previous one.
   #
-  # It does NOT gate on the shell having changed: whether `app` will tag is not
-  # knowable before `app` runs, and a build that might be wasted is the price of
-  # the gate. The same is true of `apk-build` and `ipa-build`.
+  # It gates on `needs.shells.outputs.windows`, for the reason `ipa-build`
+  # documents: an unbumped shell has nothing new to ship, so packaging it again
+  # buys a .NET toolchain run and an artifact nothing can install over itself.
   # ---------------------------------------------------------------------------
   win-build:
     name: Build the Windows app
     # `shells` alone: every shell build reads the one staged bump commit, and `app`
-    # names all five builds plus `shell-commit`, so nothing else needs a chain here.
+    # names every build plus `shell-commit`, so nothing else needs a chain here.
     needs: shells
+    if: ${{ !cancelled() && needs.shells.outputs.windows == 'true' }}
     permissions:
       # `contents: write`, for the parse-time reason `apk-build` documents: GitHub
       # validates a reusable workflow's permission CEILING against the whole CALLEE
@@ -663,13 +725,12 @@ jobs:
   # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
   # staged the shell versions, and the bundle must declare THAT number.
   #
-  # It does NOT gate on the shell having changed: whether `app` will tag is not
-  # knowable before `app` runs, and a build that might be wasted is the price of the
-  # gate. The same is true of `apk-build`, `ipa-build` and `win-build`.
+  # It gates on `needs.shells.outputs.macos`, for the reason `ipa-build` documents.
   # ---------------------------------------------------------------------------
   macos-build:
     name: Build the macOS app
     needs: shells
+    if: ${{ !cancelled() && needs.shells.outputs.macos == 'true' }}
     permissions:
       # `contents: write`, for the parse-time reason `apk-build` documents: GitHub
       # validates a reusable workflow's permission CEILING against the whole CALLEE
@@ -690,9 +751,14 @@ jobs:
   # `ref: needs.shells.outputs.ref`, not the trigger commit: the `shells` job just
   # staged the shell versions, and `build.rs` bakes that number into the binary —
   # building the starting commit would declare the previous one.
+  #
+  # It gates on `needs.shells.outputs.linux`, for the reason `ipa-build` documents:
+  # a release that touches only another shell still ran this Rust build and shipped
+  # a binary identical to the previous one.
   linux-build:
     name: Build the Linux app
     needs: shells
+    if: ${{ !cancelled() && needs.shells.outputs.linux == 'true' }}
     permissions:
       # `contents: write` for the parse-time reason `apk-build` documents: GitHub
       # validates a reusable workflow's permission CEILING against the whole CALLEE
@@ -715,10 +781,18 @@ jobs:
   # for an artifact that was never produced. The order is bump -> build -> COMMIT ->
   # tag -> attach.
   #
-  # No job-level `if:` on purpose: a skipped job skips every dependent, and `app`
-  # must still run on a push that bumped no shell version, to report that there is
-  # nothing to release. In that case `shells.ref` is `main`, not a sha, and the steps
-  # below no-op.
+  # A job-level `if:` is now REQUIRED, because a build whose shell did not bump is
+  # SKIPPED and `needs` would otherwise skip this job with it.
+  #
+  # `!contains(needs.*.result, 'failure')` is the precise guard, and it is stated
+  # that way rather than as `!failure()` because it reads the results of the jobs
+  # this one NAMES — which include `shells`, so a bump that failed still stops the
+  # commit (the staging branch's invariant), while a build that was SKIPPED for an
+  # unbumped shell does not. `!cancelled()` keeps a stopped run from committing.
+  #
+  # `app` must still run on a push that bumped no shell version, to report that
+  # there is nothing to release; its own `if:` is what carries that, and the steps
+  # below no-op when `shells.ref` is `main` rather than a sha.
   #
   # `--ff-only` on purpose too. `main` moving during the build window is a failure
   # this run should report, not a merge it should invent: every artifact was built
@@ -728,6 +802,7 @@ jobs:
   shell-commit:
     name: Commit the shell bumps
     needs: [shells, apk-build, ipa-build, win-build, macos-build, linux-build]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -783,7 +858,20 @@ jobs:
     # it too (it depends on all five, so the gate is unchanged). Every build (and so
     # this job) reaches both gate workflows transitively through `shells` ->
     # `marketplace` -> `packages`.
+    #
+    # The `if:` mirrors `shell-commit`'s and exists for the same reason: builds for
+    # unbumped shells are SKIPPED, and a skipped dependency would skip `app` — while
+    # a release that moved only `linux` must still tag.
+    #
+    # It is a CONJUNCTION because neither half is enough alone:
+    # - `!contains(needs.*.result, 'failure')` is the gate on the builds `app`
+    #   names: one that ran and failed stops the tag.
+    # - `needs.shell-commit.result == 'success'` is the gate on everything UPSTREAM
+    #   of them. A failed `shells` job leaves every build SKIPPED, and a skipped
+    #   job is not a failure in this array — without this term the app would tag
+    #   from a tree whose version bump never landed.
     needs: [shell-commit, apk-build, ipa-build, win-build, macos-build, linux-build]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.shell-commit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -902,8 +990,11 @@ jobs:
   # ---------------------------------------------------------------------------
   ipa:
     name: Attach the iOS IPA
-    needs: app
-    if: needs.app.outputs.released == 'true'
+    # `shells` too: the attach reads that job's own flag, and a shell that did not
+    # bump has no build in this run and therefore no artifact to download — the
+    # download would fail and take the release with it.
+    needs: [app, shells]
+    if: needs.app.outputs.released == 'true' && needs.shells.outputs.ios == 'true'
     # `contents: write` on the CALLER, not only the callee: a reusable workflow can
     # only DOWNGRADE the permissions it inherits, so `read` here would turn the body's
     # `contents: write` into read and the upload would fail with 403 after a full
@@ -950,16 +1041,11 @@ jobs:
   # ---------------------------------------------------------------------------
   apk:
     name: Attach the Android APK
-    # `needs: app` alone is enough, and the build is still a gate: `app`
-    # `needs: apk-build`, so a failed build skips `app`, and a skipped `app`
-    # leaves `released` empty and this job skipped with it.
-    needs: app
-    if: needs.app.outputs.released == 'true'
-    # `contents: write` on the CALLER, not only the callee: a reusable workflow
-    # can only DOWNGRADE the permissions it inherits, so `read` here would turn
-    # the body's `contents: write` into read and `gh release upload` would fail
-    # with 403 after a full build. Unlike `app-publish` (which reads a commit
-    # and pushes to npm), this job writes to the release.
+    # `needs: app` for the release, and `needs: shells` for the FLAG: a shell whose
+    # version did not bump has no `apk-build` in this run, so there is no artifact to
+    # download and the attach would fail on the release that did ship.
+    needs: [app, shells]
+    if: needs.app.outputs.released == 'true' && needs.shells.outputs.android == 'true'
     permissions:
       contents: write
     uses: ./.github/workflows/publish-android.yml
@@ -987,8 +1073,10 @@ jobs:
   # ---------------------------------------------------------------------------
   windows-app:
     name: Attach the Windows app
-    needs: app
-    if: needs.app.outputs.released == 'true'
+    # `shells` too: a shell that did not bump has no build here, so there is no
+    # artifact to download. See `apk`'s note.
+    needs: [app, shells]
+    if: needs.app.outputs.released == 'true' && needs.shells.outputs.windows == 'true'
     # `contents: write` on the CALLER, not only the callee: a reusable workflow can
     # only DOWNGRADE the permissions it inherits, so `read` here would turn the
     # body's `contents: write` into read and the upload would fail with 403 after a
@@ -1018,8 +1106,10 @@ jobs:
   # ---------------------------------------------------------------------------
   macos-app:
     name: Attach the macOS app
-    needs: app
-    if: needs.app.outputs.released == 'true'
+    # `shells` too: a shell that did not bump has no build here, so there is no
+    # artifact to download. See `apk`'s note.
+    needs: [app, shells]
+    if: needs.app.outputs.released == 'true' && needs.shells.outputs.macos == 'true'
     # `contents: write` on the CALLER, not only the callee: a reusable workflow can
     # only DOWNGRADE the permissions it inherits, so `read` here would turn the
     # body's `contents: write` into read and the upload would fail with 403 after a
@@ -1042,8 +1132,10 @@ jobs:
   # ---------------------------------------------------------------------------
   linux-app:
     name: Attach the Linux app
-    needs: app
-    if: needs.app.outputs.released == 'true'
+    # `shells` too: a shell that did not bump has no build here, so there is no
+    # artifact to download. See `apk`'s note.
+    needs: [app, shells]
+    if: needs.app.outputs.released == 'true' && needs.shells.outputs.linux == 'true'
     # `contents: write` on the CALLER, not only the callee: a reusable workflow can
     # only DOWNGRADE the permissions it inherits, so `read` here would turn the
     # body's `contents: write` into read and the upload would fail with 403 after a

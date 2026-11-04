@@ -20,6 +20,8 @@ import { releaseTags } from '@/server/lib/updates/shell-pages';
 function routedFetch(routes: {
   api?: unknown;
   atom?: string;
+  /** Per-page Atom bodies, for the multi-page walk (`?page=N`). */
+  atomPages?: Record<number, string>;
   assets?: Record<string, string>;
 }) {
   const calls: string[] = [];
@@ -31,9 +33,12 @@ function routedFetch(routes: {
       if (routes.api === undefined) return { ok: false, json: async () => ({}), text: async () => '' } as Response;
       return { ok: true, json: async () => routes.api, text: async () => JSON.stringify(routes.api) } as Response;
     }
-    if (url.endsWith('/releases.atom')) {
-      const body = routes.atom ?? '';
-      return { ok: Boolean(routes.atom), json: async () => ({}), text: async () => body } as Response;
+    if (url.includes('/releases.atom')) {
+      // Page 1 is the bare URL; a later page names itself. A page that was not
+      // stubbed is a 404, which is what a feed shorter than the walk answers.
+      const page = Number(new URL(url).searchParams.get('page') ?? '1');
+      const body = routes.atomPages ? routes.atomPages[page] : page === 1 ? routes.atom : undefined;
+      return { ok: body !== undefined, json: async () => ({}), text: async () => body ?? '' } as Response;
     }
     const tag = url.slice(url.lastIndexOf('/') + 1);
     const body = routes.assets?.[decodeURIComponent(tag)];
@@ -174,6 +179,32 @@ describe('the fallback when the API is unavailable', () => {
 
     expect((await fetchShellRelease('android', impl))?.latest).toBe('1.0.0');
     expect(calls.some((url) => url.endsWith('/releases.atom'))).toBe(false);
+  });
+
+  test('walks a SECOND feed page, because an unbumped shell is not rebuilt', async () => {
+    // The Atom feed truncates at 10 entries, so a walk deeper than one page has
+    // to follow `?page=2` — and it has to, now that a release carries only the
+    // shells whose version moved: ten newer app releases may hold no artifact of
+    // the shell being asked about.
+    const entries = (tags: string[]) =>
+      `<?xml version="1.0" encoding="UTF-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">\n${tags
+        .map(
+          (tag) =>
+            `  <entry><link rel="alternate" type="text/html" href="https://github.com/kabmo-labs/kabmo/releases/tag/${tag}"/><title>${tag}</title></entry>`,
+        )
+        .join('\n')}\n</feed>`;
+
+    const filled = (prefix: string) => Array.from({ length: 10 }, (_, index) => `${prefix}0.${index}`);
+    const pageOne = filled('v1.');
+    const pageTwo = filled('v2.');
+
+    const { impl, calls } = routedFetch({
+      atomPages: { 1: entries(pageOne), 2: entries(['v3.0.0', ...pageTwo.slice(1)]) },
+      assets: { 'v3.0.0': ASSETS_V070 },
+    });
+
+    expect((await fetchShellRelease('android', impl))?.latest).toBe('0.6.0');
+    expect(calls.some((url) => url.includes('page=2'))).toBe(true);
   });
 
   test('releaseTags reads the feed in order, with each page', () => {

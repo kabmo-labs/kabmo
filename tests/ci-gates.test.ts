@@ -364,14 +364,15 @@ describe('the gate contract', () => {
     expect(needsOf('app')).toContain('macos-build');
     expect(needsOf('app')).toContain('linux-build');
 
-    // The three attach jobs are the only ones allowed to hang off `app` alone: they
-    // upload to the release `app` created, so they cannot run earlier, and their own
-    // `if:` keeps a no-release run from calling them at all.
-    expect(needsOf('apk')).toEqual(['app']);
-    expect(needsOf('ipa')).toEqual(['app']);
-    expect(needsOf('windows-app')).toEqual(['app']);
-    expect(needsOf('macos-app')).toEqual(['app']);
-    expect(needsOf('linux-app')).toEqual(['app']);
+    // The five attach jobs hang off `app` (they upload to the release it created)
+    // and `shells` (the per-shell flag that says whether this run has an artifact
+    // for their shell at all). Their own `if:` keeps a no-release run from calling
+    // them.
+    expect(needsOf('apk')).toEqual(['app', 'shells']);
+    expect(needsOf('ipa')).toEqual(['app', 'shells']);
+    expect(needsOf('windows-app')).toEqual(['app', 'shells']);
+    expect(needsOf('macos-app')).toEqual(['app', 'shells']);
+    expect(needsOf('linux-app')).toEqual(['app', 'shells']);
   });
 
   test('the shell bumps are ONE job and ONE commit, before the app tags', async () => {
@@ -438,9 +439,14 @@ describe('the gate contract', () => {
       expect(needs, `shell-commit must wait for ${build}`).toContain(build);
     }
     expect(needs, 'shell-commit must wait for the staging job').toContain('shells');
-    // A job-level `if:` would skip `app` with it, and `app` must still run on a
-    // push that bumped no shell version, to report that there is nothing to release.
-    expect(commitJob.if, 'a skipped commit job would skip app too').toBeUndefined();
+    // A job-level `if:` IS required now that a build for an unbumped shell is
+    // SKIPPED: `needs` alone would skip this job with it, and the bump would never
+    // reach `main`. `!failure()` is what keeps the staging branch's invariant —
+    // a build that ran and failed still stops the commit — while `app` carries the
+    // same pair so a release that moved one shell still tags.
+    expect(commitJob.if, 'a skipped build must not skip the shell commit').toBe(
+      "${{ !cancelled() && !contains(needs.*.result, 'failure') }}",
+    );
 
     // Every build compiles THAT ref, or the artifact declares the version `main`
     // carried before the bump — the one update an installed shell is never offered.
@@ -461,6 +467,67 @@ describe('the gate contract', () => {
     const appNeeds: string[] = Array.isArray(doc.jobs.app.needs) ? doc.jobs.app.needs : [doc.jobs.app.needs];
     expect(appNeeds, 'the app must tag from a tree that carries the committed bumps').toContain(
       'shell-commit',
+    );
+  });
+
+  test('a build and an attach run only for a shell whose version moved', async () => {
+    // Building all five on EVERY push was the cost this gate removes: a web-only
+    // fix produced four shell artifacts nobody could install over the copy they
+    // already had (the version did not move), at the price of a Kotlin compiler, a
+    // Swift toolchain, a .NET toolchain, a Rust build and a Gradle build.
+    //
+    // The gate is ONE output per shell, written by `release/release-shells.mjs`
+    // from the same outcomes it commits (`shellOutputs`), and read by exactly two
+    // jobs per shell. Skipping is safe for the update path: the console resolves a
+    // shell from the newest release that CARRIES its artifact (`fetchShellRelease`,
+    // 100 releases in one API request), not from the newest release, so an
+    // unbumped shell's previous asset is still what its installed copy is running.
+    const doc = await load('release.yml');
+    const outputs = doc.jobs.shells.outputs as Record<string, string>;
+    const rows = [
+      ['android', 'apk-build', 'apk'],
+      ['ios', 'ipa-build', 'ipa'],
+      ['windows', 'win-build', 'windows-app'],
+      ['macos', 'macos-build', 'macos-app'],
+      ['linux', 'linux-build', 'linux-app'],
+    ] as const;
+
+    for (const [shell, build, attach] of rows) {
+      expect(outputs?.[shell], `the shells job must publish ${shell}'s flag`).toBe(
+        `\${{ steps.bump.outputs.${shell} }}`,
+      );
+
+      // `!cancelled()` keeps a stopped run from building anything; the flag is the
+      // condition, and it is `== 'true'` because an unset output is an empty
+      // string, which a bare truthiness check would also reject — but only the
+      // comparison says so.
+      expect(doc.jobs[build].if, `${build} must gate on ${shell}'s own bump`).toContain(
+        `needs.shells.outputs.${shell} == 'true'`,
+      );
+      expect(doc.jobs[attach].if, `${attach} must gate on the same flag`).toContain(
+        `needs.shells.outputs.${shell} == 'true'`,
+      );
+      // The attach downloads the artifact the build in THIS run uploaded, so it
+      // must be able to read that flag — and skip rather than fail on a missing
+      // artifact.
+      expect(doc.jobs[attach].needs, `${attach} must be able to read the flag`).toContain('shells');
+    }
+
+    // The skip must not take the release with it: a build that was skipped is not
+    // a failure, so `app` still tags — while `!failure()` keeps a build that ran
+    // and failed a hard stop.
+    expect(doc.jobs['shell-commit'].if, 'a skipped build must not skip the commit').toBe(
+      "${{ !cancelled() && !contains(needs.*.result, 'failure') }}",
+    );
+    // `app` needs more than that: a failed `shells` job leaves every build SKIPPED,
+    // and a skipped job is not a `failure` in `needs.*.result` — so the app would
+    // tag from a tree whose version bump never landed. The second term is the gate
+    // on everything upstream of the builds.
+    expect(doc.jobs.app.if, 'the app must still tag when builds were skipped').toContain(
+      "!contains(needs.*.result, 'failure')",
+    );
+    expect(doc.jobs.app.if, 'the app must not tag when the bump never landed').toContain(
+      "needs.shell-commit.result == 'success'",
     );
   });
 

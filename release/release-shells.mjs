@@ -46,12 +46,11 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { analyzerConfig, bumpVersion, setOutput, toCommit } from './bump.js';
 import { repoRoot } from './packages.mjs';
 import { SHELLS, shellById } from './shells.js';
-import { runShellBumps } from './shells-run.js';
+import { runShellBumps, shellOutputs } from './shells-run.js';
 
 const dryRun = process.argv.includes('--dry-run');
 
@@ -104,12 +103,16 @@ for (const outcome of outcomes) {
 // A failed run publishes an empty answer: its step fails, so the workflow never
 // reaches the commit, and an `any=true` here would claim a bump that `main`
 // never receives.
-const bumped = failed ? [] : outcomes.filter((outcome) => outcome.status === 'bumped');
+const outputs = shellOutputs({ outcomes, shells: SHELLS, failed });
 
 // `android 0.7.3, ios 0.3.2` — the commit's subject names what moved, so the
 // history line is the release note for the shells.
-setOutput('bumped', bumped.map((outcome) => `${outcome.shell.id} ${outcome.next}`).join(', '));
-setOutput('any', bumped.length > 0 ? 'true' : 'false');
+setOutput('bumped', outputs.bumped);
+setOutput('any', outputs.any);
+
+// One flag per shell, as its id: `release.yml` gates each build and each attach
+// on it, so a release that moved one shell compiles one artifact instead of five.
+for (const shell of SHELLS) setOutput(shell.id, outputs.flags[shell.id]);
 
 if (failed) {
   // The plan above may name a bump the run then refused to write — say so, so
@@ -118,8 +121,8 @@ if (failed) {
   process.exit(1);
 }
 
-if (bumped.length === 0) {
+if (outputs.any === 'false') {
   console.log('No shell bump: nothing since the last version write asks for one.');
 } else if (dryRun) {
-  console.log(`Dry run: would bump ${bumped.map((outcome) => outcome.shell.id).join(', ')}`);
+  console.log(`Dry run: would bump ${outputs.bumped}`);
 }
