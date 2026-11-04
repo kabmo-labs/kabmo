@@ -4,6 +4,22 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.19.0](https://github.com/kabmo-labs/kabmo/compare/v0.18.0...v0.19.0) — 2026-11-04
+
+### Added
+
+* **git-panel:** spin the Sync glyph while a pull or push is in flight ([1565485](https://github.com/kabmo-labs/kabmo/commit/15654854cf502305866bb5ba8dde8685d91f8462)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **theme:** add a glass surface style and a two-axis icon colour mode ([049a100](https://github.com/kabmo-labs/kabmo/commit/049a10073e0e94de12c15d1b6f06db61bca5b142)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **theme:** port nine newer palette families and guard the glass composite ([0c46f3f](https://github.com/kabmo-labs/kabmo/commit/0c46f3fa8239720b41285da9bf9843e6997f9963)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **wordmark:** give the header lockup a soft halo on dark palettes ([49d4938](https://github.com/kabmo-labs/kabmo/commit/49d49388deaffcabbf402bda384c41e0276aea13)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **icons:** resolve the repo root without URL.pathname, which breaks on Windows ([db8e9e9](https://github.com/kabmo-labs/kabmo/commit/db8e9e9b201a6cc8e935bf6b22b18cd1d120956c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **queue:** keep queued follow-ups in order and parked while omp is busy ([9e860ca](https://github.com/kabmo-labs/kabmo/commit/9e860cad92a4bd51922093141bbfb029326d597f)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **rpc:** keep an aborted run's verdict through agent_end compaction ([7047281](https://github.com/kabmo-labs/kabmo/commit/70472818b43908d818792ccb59e3888097cfb3d8)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **rpc:** read the advertised transport ceilings and survive a bad chunk ([c13dc08](https://github.com/kabmo-labs/kabmo/commit/c13dc08875f27f960dbdb27188b33f751b91006d)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.18.0](https://github.com/kabmo-labs/kabmo/compare/v0.17.0...v0.18.0) — 2026-11-03
 
 ### Added
