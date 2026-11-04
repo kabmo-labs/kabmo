@@ -70,7 +70,7 @@ export function ReviewPopover({ block, verdict, note, anchor, onSave, onRemove, 
       aria-label={`Review block ${rangeOf(block)}`}
       // `fixed`, from the click's own rectangle — see the module note.
       style={{ top: `${anchor.top}px`, left: `${anchor.left}px` }}
-      className="fixed z-[65] w-[min(24rem,calc(100vw-2rem))] rounded-md border border-ink/15 bg-paper shadow-lg p-2 font-sans text-[11.5px] text-ink"
+      className="glass-popover fixed z-[65] w-[min(24rem,calc(100vw-2rem))] rounded-md border border-ink/15 bg-paper shadow-lg p-2 font-sans text-[11.5px] text-ink"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-ink/50">

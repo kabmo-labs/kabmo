@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import type { ComponentChildren } from 'preact';
 import { AlertCircle, Check, Eye, EyeOff, Loader2, Lock, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-preact';
 import type { SkillItem } from '@/shared/types';
@@ -147,7 +148,7 @@ export function SkillDetailHeader({
           checked={hidden}
           disabled={readOnly}
           onChange={(event) => onHiddenChange(event.currentTarget.checked)}
-          className="mt-0.5 accent-ink cursor-pointer disabled:cursor-not-allowed"
+          className={`${CHECKBOX_CLASS} mt-0.5 accent-ink cursor-pointer disabled:cursor-not-allowed`}
         />
         <span className="text-[11px] text-ink/75 leading-relaxed">
           <span className="inline-flex items-center gap-1">

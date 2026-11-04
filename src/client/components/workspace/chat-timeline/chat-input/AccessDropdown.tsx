@@ -32,7 +32,7 @@ export function AccessDropdown({ value, onSelect }: AccessDropdownProps) {
         <span className="hidden lg:inline">{ACCESS_LEVEL_LABELS[value]}</span>
       </button>
       {showAccess && (
-        <div className="absolute bottom-full left-0 mb-1 w-40 bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs">
+        <div className="glass-popover absolute bottom-full left-0 mb-1 w-40 bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs">
           <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-1">Access Control</div>
           {APPROVAL_MODES.map(mode => (
             <button

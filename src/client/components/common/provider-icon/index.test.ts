@@ -104,4 +104,18 @@ describe('ProviderIcon ink', () => {
     expect(el.querySelector('svg')).toBeNull();
     expect(el.textContent).toBe('ti.');
   });
+
+  test('a built-in mark names itself, so the colour rule has a key', () => {
+    const svg = paint(h(ProviderIcon, { slug: 'claude' })).querySelector('svg');
+
+    expect(svg?.getAttribute('data-provider')).toBe('claude');
+  });
+
+  test('the attribute is the GLYPH name, not the spelling the caller passed', () => {
+    // `claude-code` folds to the `claude` glyph; the colour row is keyed on the
+    // glyph, so a caller's spelling cannot miss it.
+    const svg = paint(h(ProviderIcon, { slug: 'claude-code' })).querySelector('svg');
+
+    expect(svg?.getAttribute('data-provider')).toBe('claude');
+  });
 });

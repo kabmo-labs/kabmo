@@ -34,6 +34,9 @@ import { isRemoteGitUrl } from '@/shared/lib/git/url';
 import { resolveInsideRoot } from '@/shared/lib/panels/resolve-asset';
 
 /** An id segment: what a plugin id may look like. */
+/** The only colour form a manifest may declare: `#RRGGBB`. */
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 
 function trimmed(value: unknown): string | undefined {
@@ -87,6 +90,14 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
     return { error: `manifest readme "${readme}" escapes the plugin directory` };
   }
 
+  // A mark colour reaches an inline custom property, so it is a HEX and nothing
+  // else: `color: url(...)`, `red; background: …` or a `var()` that resolves
+  // elsewhere are all refusals rather than values the host has to escape.
+  const color = trimmed(raw.color);
+  if (color && !HEX_COLOR.test(color)) {
+    return { error: `manifest color ${JSON.stringify(raw.color)} is not a #RRGGBB hex` };
+  }
+
   const branding = isRecord(raw.branding) ? trimmed(raw.branding.icon) : undefined;
   const engines = toEngines(raw.engines);
   if ('error' in engines) return engines;
@@ -111,6 +122,7 @@ export function toManifest(raw: unknown, root: string): PanelPluginManifest | { 
     ...(trimmed(raw.homepage) ? { homepage: trimmed(raw.homepage) } : {}),
     ...(icon ? { icon } : {}),
     ...(readme ? { readme } : {}),
+    ...(color ? { color: color.toLowerCase() } : {}),
     ...(branding ? { branding: { icon: branding } } : {}),
     ...(author ? { author } : {}),
     ...(slots ? { slots } : {}),

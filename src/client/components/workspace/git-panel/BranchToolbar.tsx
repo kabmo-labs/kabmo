@@ -71,7 +71,7 @@ export function GitBranchToolbar({
         </button>
         
         {showBranchMenu && (
-          <div className="absolute top-full left-0 mt-1 w-56 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
+          <div className="glass-popover absolute top-full left-0 mt-1 w-56 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
             <div className="max-h-48 scrollbar-overlay-container py-1">
               {branches.length > 0 && (
                 <>
@@ -235,7 +235,7 @@ export function GitBranchToolbar({
         </button>
         
         {showOptions && (
-          <div className="absolute right-0 top-full mt-1 w-36 bg-paper border border-ink/15 rounded-md shadow-lg z-50 py-1 font-mono text-xs">
+          <div className="glass-popover absolute right-0 top-full mt-1 w-36 bg-paper border border-ink/15 rounded-md shadow-lg z-50 py-1 font-mono text-xs">
             <button 
               type="button"
               onClick={() => { setViewMode('flat'); setShowOptions(false); }}

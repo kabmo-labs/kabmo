@@ -114,7 +114,7 @@ export function ModelSpecsTooltip({ model }: ModelSpecsTooltipProps) {
       // `pointer-events-none`: the card sits beside the list, so a card that
       // captured the pointer would take the hover off the row it describes and
       // flicker as the reader moved toward it.
-      className="w-72 bg-paper/95 backdrop-blur-sm border border-ink/20 rounded-xl shadow-2xl p-3.5 text-xs text-ink select-none pointer-events-none animate-in fade-in zoom-in-95 duration-100"
+      className="glass-popover w-72 bg-paper/95 backdrop-blur-sm border border-ink/20 rounded-xl shadow-2xl p-3.5 text-xs text-ink select-none pointer-events-none animate-in fade-in zoom-in-95 duration-100"
     >
       {facts.length > 0 && (
         <dl className={GRID}>

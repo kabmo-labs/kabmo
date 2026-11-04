@@ -69,13 +69,13 @@ export function NewChatModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 animate-in fade-in duration-200 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 p-4">
       <div 
-        className="bg-canvas border border-ink/15 rounded-xl shadow-xl w-full flex flex-col overflow-hidden"
+        className="glass-overlay bg-canvas border border-ink/15 rounded-xl shadow-xl w-full flex flex-col overflow-hidden"
         style={maximized ? MODAL_EXPANDED_STYLE : MODAL_DEFAULT_STYLE}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10 bg-paper">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10">
           <h2 className="text-[13px] font-semibold text-ink">New Chat</h2>
           <div className="flex items-center gap-0.5">
             <button

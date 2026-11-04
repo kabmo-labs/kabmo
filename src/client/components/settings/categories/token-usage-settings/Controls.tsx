@@ -75,7 +75,7 @@ export function TokenUsageControls({
             // `right-0` menu hung off its right edge landed at x=-157. From
             // `sm` up the trigger is narrow and right-aligned, so the menu
             // follows it.
-            <div className="absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] divide-y divide-ink/5 rounded-md border border-ink/15 bg-paper py-1 text-[11px] shadow-lg sm:left-auto sm:right-0">
+            <div className="glass-popover absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] divide-y divide-ink/5 rounded-md border border-ink/15 bg-paper py-1 text-[11px] shadow-lg sm:left-auto sm:right-0">
               {ranges.map((entry) => (
                 <button
                   key={entry.id}

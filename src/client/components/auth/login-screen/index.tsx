@@ -18,6 +18,7 @@
  * session entitles it to.
  */
 
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
 import { Eye, EyeOff, Loader2 } from 'lucide-preact';
@@ -129,7 +130,7 @@ export const LoginScreen: FunctionComponent = () => {
             checked={trustDevice}
             onChange={(event) => setTrustDevice(event.currentTarget.checked)}
             disabled={busy}
-            className="size-3.5 accent-ink"
+            className={`${CHECKBOX_CLASS} size-3.5 accent-ink`}
           />
           <span>Remember this device for 7 days</span>
         </label>

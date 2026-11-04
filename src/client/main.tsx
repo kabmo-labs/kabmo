@@ -5,6 +5,8 @@ import { warmSyntaxTokenizers } from '@/shared/lib/code/highlighter-warmup';
 import { primeKabmoSettings } from '@/shared/lib/settings/client';
 import { initDocumentTheme } from '@/client/hooks/ui/theme';
 import { initChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
+import { initSurfaceStyle } from '@/client/hooks/ui/surface-style';
+import { initIconStyle } from '@/client/hooks/ui/icon-style';
 import { primeWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { installAuthFetchBridge, primeAuthState } from '@/client/hooks/ui/auth';
 import { installPluginRuntime } from '@/client/lib/plugins/runtime';
@@ -19,6 +21,7 @@ import { installOpenPaths } from '@/client/lib/native/open-paths';
 import { installDeviceFiles } from '@/client/lib/launch/device-files';
 
 import '@/client/tailwind.css';
+import '@/client/glass.css';
 import '@/shared/lib/markdown/katex-fonts.css';
 import '@/shared/lib/markdown/fira-code-fonts.css';
 import '@/shared/lib/fonts/nerd-symbols.css';
@@ -40,6 +43,13 @@ primeKabmoSettings(bootstrap?.appSettings);
 // `initDocumentTheme` below is here rather than in a hook — the timeline is a
 // lazily mounted subtree, and a hook would not run until it mounted.
 initChatWidthMode();
+
+// The surface material and the brand-mark paint, also before the first render:
+// a glass install that painted the opaque shell first would swap every panel
+// one frame later, and a colour install would draw ink marks and then repaint
+// them. Both write an attribute CSS reads — no event, no re-render.
+initSurfaceStyle();
+initIconStyle();
 
 // BEFORE the theme init, which writes the chrome meta: a phone that repainted
 // it from the module default would flash the desktop's color for a frame. The

@@ -229,7 +229,7 @@ export function MobileSessionToolbar({
             </button>
 
             {optionsOpen && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 rounded-xl shadow-xl z-50 p-2 text-xs">
+              <div className="glass-popover absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 rounded-xl shadow-xl z-50 p-2 text-xs">
                 <SortMenu variant="mobile" sortOption={sortOption} onSortChange={onSortChange} />
               </div>
             )}

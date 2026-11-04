@@ -149,12 +149,12 @@ export function AiMessageFooter({
 
         {isMenuOpen && (
           <div
-            className="fixed inset-0 z-[70] flex items-end bg-ink/40 backdrop-blur-[1px] animate-in fade-in duration-150"
+            className="fixed inset-0 z-[70] flex items-end modal-scrim backdrop-blur-[1px] animate-in fade-in duration-150"
             role="presentation"
             onClick={() => setIsMenuOpen(false)}
           >
             <div
-              className="w-full max-h-[80vh] overflow-y-auto rounded-t-2xl border border-ink/15 bg-paper pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
+              className="glass-overlay w-full max-h-[80vh] overflow-y-auto rounded-t-2xl border border-ink/15 bg-paper pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
               role="dialog"
               aria-modal="true"
               aria-labelledby={`message-actions-${msgId}`}

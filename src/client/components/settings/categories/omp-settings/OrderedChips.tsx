@@ -97,7 +97,7 @@ export function OrderedChips({ options, value, saving, onCommit }: OrderedChipsP
           <Plus size={10} /> add
         </button>
         {open && remaining.length > 0 && (
-          <div className="absolute right-0 top-full z-20 mt-1 max-h-44 w-48 overflow-auto rounded-md border border-ink/15 bg-paper p-1 shadow-lg">
+          <div className="glass-popover absolute right-0 top-full z-20 mt-1 max-h-44 w-48 overflow-auto rounded-md border border-ink/15 bg-paper p-1 shadow-lg">
             {remaining.map((option) => (
               <button
                 key={option.value}

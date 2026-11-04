@@ -18,7 +18,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { BRAND_ICONS, BRAND_VIEWBOX } from '@/client/components/common/file-icon/brand-paths';
+import { BRAND_ICONS, BRAND_VIEWBOX } from '@/shared/lib/icons/file-brand-paths';
 import { PROVIDER_GLYPHS } from '@/client/components/common/provider-icon/glyphs';
 
 describe('PROVIDER_GLYPHS', () => {

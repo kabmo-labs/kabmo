@@ -122,7 +122,7 @@ export function LeftColumn({
             view, then the strip across the whole width again. The rail must not
             start above the title — it would run under the app's own titlebar —
             and the strip must not stop at the view's edge. */}
-        <div className="flex flex-col h-full w-full bg-paper">
+        <div className="glass-chrome flex flex-col h-full w-full bg-paper">
           <SessionSidebarHeader streamStatus={streamStatus} onCollapse={onCollapse} />
           <div className="flex flex-1 min-h-0 w-full">
             {railEnabled ? (

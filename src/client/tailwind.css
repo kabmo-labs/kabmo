@@ -92,6 +92,209 @@
   }
 }
 
+/* The veil behind a dialog.
+ *
+ * It must DARKEN the app in both variants, and `bg-ink/40` cannot: `ink` is the
+ * foreground, so it is dark on a light theme and LIGHT on a dark one — measured
+ * on `one-dark-pro-soft`, every dialog sat in a `rgb(127,136,149)` field, i.e.
+ * lit from behind, and a dialog then read as a dark hole. One class, one fact:
+ * the ink on light, black on dark. */
+.modal-scrim {
+  background-color: color-mix(in srgb, var(--theme-ink) 40%, transparent);
+}
+
+[data-theme-variant='dark'] .modal-scrim {
+  /* 58% black put the dialog at 1.01:1 against its own scrim — measured, the
+   * panel disappeared into the veil. The veil's job is to recede, not to match:
+   * 42% leaves the paper visibly above it while still dimming the app. */
+  background-color: color-mix(in srgb, #000 42%, transparent);
+}
+
+/* Under the glass surface the veil is FROSTED, not just dimmed.
+ *
+ * A dialog's own 96% tint contributes almost nothing of what is behind it, so
+ * the material has to be legible in the margin AROUND the panel — and there a
+ * flat wash reads as "the app is off", not as glass. Blurring the veil is what
+ * turns that margin into a pane: the app stays in place, its detail goes soft,
+ * and the panel's edge sits on a field that is visibly blurred rather than
+ * merely dark. The tint is NOT touched, so the panel's own luminance and every
+ * text contrast on it are exactly what they were measured at.
+ *
+ * One blur pass, only while a modal is open — a modal is exclusive, so this
+ * never stacks with a streaming transcript. */
+[data-surface='glass'] .modal-scrim {
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+}
+
+/* The checkbox, drawn here rather than by the engine.
+ *
+ * A native `<input type="checkbox">` is the right CONTROL and the wrong
+ * RENDERING. The engine paints an unchecked box that is barely there and a
+ * checked one in its own accent; measured in the session sidebar, the unchecked
+ * box composited to `(236,238,235)` on a `(250,248,242)` row — **1.10:1** —
+ * against 10.84:1 for the checked one, which is "checkbox gk kelihatan on off
+ * nya". The input stays (semantics, keyboard, `indeterminate`); its box is
+ * replaced.
+ *
+ * Three numbers here, each a budget:
+ *
+ * - **The ring is `ink 75%`.** WCAG's non-text floor is 3:1, and across all 43
+ *   palettes `ink 75%` is the first alpha whose worst case clears it (3.02:1 on
+ *   `solarized-light`). 60% is 2.34:1; the `border-ink/30` these shipped with is
+ *   1.71:1 — the bug.
+ * - **The checked fill is the full ink**, so the tick is `paper` and the pair is
+ *   the palette's own ink/paper contrast: 17.5:1 on `paper`, 4.85:1 worst case.
+ * - **The dash uses the same ink**, because indeterminate is a THIRD state and
+ *   has to read as "on, partly" rather than as "off with a line in it".
+ *
+ * `accent-color` stays set at the call sites: an engine that cannot draw the
+ * pseudo-element falls back to the platform control instead of a blank square.
+ *
+ * The pseudo-elements only carry `content`, so the shared `box-sizing` and the
+ * palette tokens do the rest; `:disabled` dims instead of changing colour, so a
+ * disabled checked box still reads as checked.
+ */
+@layer components {
+  .kabmo-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+    /* A DEFAULT size, because `appearance: none` removes the intrinsic one: a
+     * call site that never passed `w-3.5` (the settings rows relied on the
+     * engine's 13px box) measured **4x4px** — the border box with nothing
+     * inside. This sits in `@layer components`, so a call site's `w-4`/`size-3.5`
+     * utility still wins. */
+    width: 0.875rem;
+    height: 0.875rem;
+    box-sizing: border-box;
+    /* 2px, not 1.5px: at a device pixel ratio of 1 a 1.5px border lands on a
+     * half pixel and antialiases into a ~50% blend, so the intended
+     * `ink 75%` ring rendered as `(166,169,166)` on a `(223,229,220)` row — 1.85:1,
+     * below the floor the alpha was chosen for. 2px gives two full device pixels
+     * with no partial coverage in the middle. */
+    border: 2px solid color-mix(in srgb, var(--theme-ink) 75%, transparent);
+    border-radius: 3px;
+    background-color: transparent;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .kabmo-checkbox:hover:not(:disabled) {
+    border-color: var(--theme-ink);
+  }
+
+  .kabmo-checkbox::after {
+    content: '';
+    position: absolute;
+    /* 1px, not 3px: `inset` is measured from the PADDING box, so on a 14px
+     * control with a 2px ring the interior is 10px — a 3px inset left a 4px
+     * mark, which renders as a blob rather than a tick. 1px leaves 8px, the
+     * size a checkmark needs at this scale. */
+    inset: 1px;
+    transform: scale(0);
+    transition: transform 100ms ease;
+    /* The tick is a mask, not a glyph: an SVG path in `currentColor` would inherit
+     * whatever the caller's text colour is, and these controls sit in rows that
+     * set `text-ink/NN` for their own reasons. A masked box paints `paper`, which
+     * is the pair the fill guarantees. */
+    background-color: var(--theme-paper);
+    mask: center / contain no-repeat
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12.5 9.5 18 20 6.5'/%3E%3C/svg%3E");
+    -webkit-mask: center / contain no-repeat
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12.5 9.5 18 20 6.5'/%3E%3C/svg%3E");
+  }
+
+  .kabmo-checkbox:checked,
+  .kabmo-checkbox:indeterminate {
+    background-color: var(--theme-ink);
+    border-color: var(--theme-ink);
+  }
+
+  .kabmo-checkbox:checked::after {
+    transform: scale(1);
+  }
+
+  /* Indeterminate is a DASH: the tick is replaced, not overlaid, so the two states
+   * cannot be confused at 14px. */
+  .kabmo-checkbox:indeterminate::after {
+    inset: auto 2px;
+    top: calc(50% - 1px);
+    height: 2px;
+    border-radius: 1px;
+    transform: scale(1);
+    mask: none;
+    -webkit-mask: none;
+  }
+
+  /* No `opacity` here: the call sites already say `disabled:opacity-60` /
+   * `disabled:opacity-50`, and an unlayered declaration would beat every one of
+   * them — a control that dims to 0.45 no matter what its owner asked for. */
+  .kabmo-checkbox:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* FULL COLOUR MODE: on is GREEN, off is RED.
+ *
+ * The colour mode is the one place a user asks for chroma, so the checkbox
+ * answers it: a checked box fills with the palette's success colour and an
+ * unchecked one shows the error colour in its ring. Monochrome — the absence of
+ * the attribute — keeps the ink-based pair, because that mode has no colour to
+ * state a state with.
+ *
+ * Both are MIXED TOWARD THE INK, and that is a contrast budget, not taste. At
+ * full strength the ring measures 2.73:1 worst case (`mono-light`) and the fill
+ * 1.75:1 (`nord-light`) against the surface they sit on — both below the 3:1
+ * non-text floor. Mixing toward the ink moves them along the one axis the
+ * palette already guarantees: `error 75%` clears 3.56:1 and `success 55%`
+ * 3.64:1 across all 44 palettes, measured on the REAL chrome composite (paper
+ * over plane over canvas), not on bare paper.
+ *
+ * The tick stays `--theme-paper`: on the green fill that is the palette's own
+ * paper/ink relationship read backwards, 3.60:1 worst case.
+ */
+[data-icon-style="color"] .kabmo-checkbox {
+  border-color: color-mix(in srgb, var(--theme-error) 75%, var(--theme-ink));
+}
+
+/* Hover deepens toward the error colour, but stops at 85%: at full strength the
+ * ring measures 2.77:1 on `mono-light` — under the floor the resting state was
+ * chosen to clear — so the hover would be LESS legible than the idle box it is
+ * trying to highlight. 85% reads 3.47:1 and is still visibly warmer. */
+[data-icon-style="color"] .kabmo-checkbox:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--theme-error) 85%, var(--theme-ink));
+}
+
+[data-icon-style="color"] .kabmo-checkbox:checked,
+[data-icon-style="color"] .kabmo-checkbox:indeterminate {
+  background-color: color-mix(in srgb, var(--theme-success) 55%, var(--theme-ink));
+  border-color: color-mix(in srgb, var(--theme-success) 55%, var(--theme-ink));
+}
+
+/* A SWITCH states the same two facts as a checkbox, so it states them in the same
+ * two colours — keyed on the ROLE and `aria-checked`, not on a class, because
+ * six call sites paint their track with five different utilities (`bg-ink`,
+ * `bg-ink/70`, `bg-ink/20`, `bg-ink/15`) and none of them is the thing that
+ * means "on".
+ *
+ * The alphas are the checkbox's, and for the same reason: measured over all 43
+ * palettes, `success 55%` clears 3.60:1 and `error 75%` 3.46:1 against the panel
+ * a switch sits on, while the canvas knob clears 3.72:1 / 3.87:1 against those
+ * tracks. The raw signal colours do not: `success` reaches 1.75:1 worst case.
+ *
+ * `[aria-checked="false"]` rather than `:not([aria-checked="true"])`: a switch
+ * that forgot the attribute is a bug in the control, and painting it red would
+ * hide that behind a plausible state. */
+[data-icon-style="color"] [role="switch"][aria-checked="true"] {
+  background-color: color-mix(in srgb, var(--theme-success) 55%, var(--theme-ink));
+}
+
+[data-icon-style="color"] [role="switch"][aria-checked="false"] {
+  background-color: color-mix(in srgb, var(--theme-error) 75%, var(--theme-ink));
+}
+
 /* Dot grain texture for Hero production card */
 .dot-grain-texture {
   background-image: radial-gradient(color-mix(in srgb, var(--theme-ink) 6%, transparent) 0.65px, transparent 0.65px);
@@ -380,19 +583,36 @@
  * paper. It has a real subject when the phone STRETCHES the composer over the
  * transcript (`fixed inset-0`), which is the state the effect was drawn for.
  */
+/* The material comes from `glass.css`, NOT from a second recipe here: one
+ * `--glass-*` token set states tint, bloom, sheen, shadow and the two blur
+ * budgets. The card takes `--glass-card-filter`, not the plane's — a 30px blur
+ * behind a card floating over a static transcript is a pass nobody can see.
+ * Under the classic look every token resolves to the values this block used to
+ * hardcode, so the style is unchanged when the surface is.
+ *
+ * Four layers, because one tint cannot be a pane of glass: the tint
+ * (`--glass-card`), the bloom (`--glass-bloom`, the light that passed through
+ * and landed in the corners), the sheen (`--glass-sheen`, the specular
+ * reflection on the face) and the rim + shadow (`--glass-edge`,
+ * `--glass-shadow`). Measured on the docked card, tint-only read 1.03:1
+ * (light) / 1.04:1 (dark) against the surface beside it — a card you could not
+ * see. The corner bloom is what makes the frost legible where nothing is
+ * behind it to blur. */
 [data-composer-style="glass"] {
   border-radius: 1.25rem;
-  border-color: color-mix(in srgb, var(--theme-ink) 12%, transparent);
-  background-color: color-mix(in srgb, var(--theme-paper) 58%, transparent);
-  background-image: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--theme-ink) 5%, transparent) 0%,
-    color-mix(in srgb, var(--theme-ink) 1.5%, transparent) 38%,
-    transparent 100%
-  );
-  backdrop-filter: blur(16px) saturate(1.15);
-  -webkit-backdrop-filter: blur(16px) saturate(1.15);
-  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--theme-ink) 6%, transparent);
+  /* The RIM is what makes the surface legible — the fill cannot, because the
+   * plane under a docked composer is within 3 points of paper. It is the CARD's
+   * rim (`--glass-card-edge`), not the window's: the window's 1.5px `#fff 95%`
+   * line is right for a 1400px frame and reads as glare across 620px. */
+  border-color: transparent;
+  background-color: var(--glass-card);
+  /* NOT the plane's gradient stack (`--glass-glow`): that belongs to the window,
+   * and a card that borrowed it would paint a second highlight inside the first.
+   * The reflection sits ABOVE the transmitted light, as it does on real glass. */
+  background-image: var(--glass-sheen), var(--glass-bloom);
+  backdrop-filter: var(--glass-card-filter);
+  -webkit-backdrop-filter: var(--glass-card-filter);
+  box-shadow: var(--glass-card-edge), var(--glass-shadow);
 }
 [data-composer-style="glass"] .composer-attach-row {
   padding-bottom: 0.25rem;

@@ -74,8 +74,11 @@ describe('PluginMark', () => {
     expect(el.querySelector('img')).toBeNull();
     expect(span?.style.width).toBe('16px');
     expect(span?.style.height).toBe('16px');
-    // Serialized lowercased by the engine (verified in Chrome and happy-dom).
-    expect(span?.style.backgroundColor).toBe('currentcolor');
+    // The paint is a VARIABLE, so the mode decides it: monochrome leaves
+    // `--plugin-color` undefined and the mark keeps the ink it always used.
+    expect(span?.style.backgroundColor).toBe('var(--plugin-color, currentColor)');
+    expect(span?.getAttribute('data-plugin-mark')).toBe('');
+    expect(span?.style.getPropertyValue('--icon-hue')).not.toBe('');
     // The extension is read off the PATH; the registry's URL carries a `?v=` hash.
     expect(span?.style.maskImage).toContain('/api/panels/icon/demo/icon.svg?v=abc');
     expect(span?.style.maskSize).toBe('contain');
@@ -107,6 +110,52 @@ describe('PluginMark', () => {
 
     expect(el.querySelector('img')).not.toBeNull();
     expect(el.querySelector('span')).toBeNull();
+  });
+
+  test('a plugin mark carries its own hue, stable across renders', () => {
+    const first = paint(h(PluginMark, { name: 'Demo Plugin', iconUrl: '/api/panels/icon/demo/icon.svg' }))
+      .querySelector('span');
+    const hue = first?.style.getPropertyValue('--icon-hue');
+    render(null, container);
+    const second = paint(h(PluginMark, { name: 'Demo Plugin', iconUrl: '/api/panels/icon/demo/icon.svg' }))
+      .querySelector('span');
+
+    expect(hue).toMatch(/^\d+$/);
+    expect(second?.style.getPropertyValue('--icon-hue')).toBe(hue);
+    expect(paint(h(PluginMark, { name: 'Another Plugin' })).querySelector('span')?.style.getPropertyValue('--icon-hue')).not.toBe(hue);
+  });
+
+  test('the initials fallback takes the same colour hook as a vector mark', () => {
+    const badge = paint(h(PluginMark, { name: 'Session Info' })).querySelector('span');
+
+    expect(badge?.getAttribute('data-plugin-mark')).toBe('');
+    // 45% of the palette ink is what `text-ink/45` meant, restated as a value so
+    // the colour mode can replace it without a second class.
+    expect(badge?.style.color).toBe('var(--plugin-color, color-mix(in srgb, var(--theme-ink) 45%, transparent))');
+  });
+
+  test('a declared colour rides as a clamped pair, so the mode still gates it', () => {
+    // The manifest's `color` is the plugin's own brand. It is set as custom
+    // properties rather than as a colour, because `monochrome` must still paint
+    // the palette ink — the stylesheet reads them only under
+    // `[data-icon-style="color"]`. Two values, because `#34d399` is 1.9:1 on
+    // white paper and 7:1 on dark: `legiblePair` derives the light one.
+    const el = paint(h(PluginMark, { name: 'Demo', iconUrl: '/api/panels/icon/demo/icon.svg', color: '#34d399' }));
+    const span = el.querySelector('span');
+    const light = span?.style.getPropertyValue('--plugin-declared-light') ?? '';
+
+    expect(light).toMatch(/^#[0-9a-f]{6}$/);
+    expect(light).not.toBe('#34d399');
+    expect(span?.style.getPropertyValue('--plugin-declared-dark')).toBe('#34d399');
+    expect(span?.style.backgroundColor).toBe('var(--plugin-color, currentColor)');
+  });
+
+  test('no declared colour leaves both variables unset, so the hue applies', () => {
+    const span = paint(h(PluginMark, { name: 'Demo' })).querySelector('span');
+
+    expect(span?.style.getPropertyValue('--plugin-declared-light')).toBe('');
+    expect(span?.style.getPropertyValue('--plugin-declared-dark')).toBe('');
+    expect(span?.style.getPropertyValue('--icon-hue')).not.toBe('');
   });
 
   test('falls back to the plugin initials when no icon is declared', () => {

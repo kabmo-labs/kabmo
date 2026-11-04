@@ -3,6 +3,8 @@ import type { ChatWidthMode } from '@/shared/lib/chat/timeline/width-mode';
 import type { ToolRenderMode } from '@/shared/lib/chat/timeline/tool-render-mode';
 import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
+import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
+import type { IconStyle } from '@/shared/lib/theme/icon-style';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
@@ -127,6 +129,30 @@ export interface SettingsState {
    * style. `classic` is the default so an upgrade rearranges nothing.
    */
   composerStyle: ComposerStyle;
+  /**
+   * What the app's surfaces are cut from (`classic` | `glass`). A
+   * PRESENTATION choice over one shell: both styles draw the same panels, rows,
+   * controls and dialogs, and only the material changes. The table lives in
+   * `shared/lib/theme/surface-style.ts`; the pixels are the `[data-surface]`
+   * blocks in `tailwind.css`.
+   *
+   * It reaches the document as `data-surface` on `<html>` because the sidebar,
+   * navbar, composer and every modal are separate subtrees — a prop would be one
+   * call site each. `classic` is the default so an upgrade restyles nothing.
+   */
+  surfaceStyle: SurfaceStyle;
+  /**
+   * How EVERY icon is painted (`monochrome` | `color`): functional Lucide
+   * glyphs, provider/model marks and file-type marks. `color` gives each glyph
+   * its own hue, keeps the palette signals for the ones whose meaning is a
+   * signal, and paints brand art in the brand's colour; a colour that would
+   * vanish on the active variant falls back to the ink. The rules are
+   * `:where()`-wrapped, so a control's own colour still wins.
+   *
+   * Document attribute `data-icon-style`; see `shared/lib/theme/icon-style.ts`
+   * and `shared/lib/icons/icon-paint-css.ts`.
+   */
+  iconStyle: IconStyle;
   followUpBehavior: 'queue' | 'steering';
   keybindingSend: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';
   keybindingNewLine: 'Enter' | 'Shift + Enter' | 'Ctrl / Cmd + Enter';

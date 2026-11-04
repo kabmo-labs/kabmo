@@ -1,0 +1,785 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/*
+ * The GLASS surface material, as one recipe.
+ *
+ * `[data-surface="glass"]` on `<html>` switches the shell from opaque panels to
+ * one frosted plane over a palette-coloured glow. The tokens below are the whole
+ * system; every rule in this file reads them, and so does the composer's own
+ * `glass` style — a second recipe for the same material is the defect, not the
+ * feature.
+ *
+ * Four facts are load-bearing, each measured against the reference this follows
+ * (ghostex.dev's demo window) with `getComputedStyle`:
+ *
+ * 1. **The PLANE owns the blur, not the panels.** One `backdrop-filter` per
+ *    window; the sidebar, navbar and cards above it are flat tints. Blurring
+ *    every panel costs one pass per panel and is what makes a frosted UI drop
+ *    frames while a transcript streams.
+ * 2. **The blur needs something behind it.** The `.app-window-aura` blobs are
+ *    the only colour under the plane — without them a frosted plane over a flat
+ *    canvas is indistinguishable from a translucent one.
+ * 3. **Tint rises and rim falls on a dark palette.** The reference ships
+ *    `--gxd-glass-a: .5` / a white rim in light and `.62` / `#ffffff12` in dark;
+ *    reusing the light rim on a dark theme paints a glowing outline.
+ * 4. **Contrast comes from the tint, never the blur.** The plane keeps the
+ *    palette's paper at 50% (light) / 62% (dark) and the chrome at 34-38%, so
+ *    body text stays above the 4.5:1 floor. A raised surface — a card, a
+ *    dropdown, a tool call — keeps its own opaque `bg-paper` instead: those are
+ *    read, and a translucent one would put the transcript behind its text.
+ *
+ * A browser without `backdrop-filter`, or a user who asked for reduced
+ * transparency, gets the opaque palette instead of a translucent pane with no
+ * blur behind it — a 50% paper plane over the canvas is legible, a 50% plane
+ * over the transcript is not.
+ */
+
+:root {
+  /* The shared material. Every value here is what the composer's `glass` style
+   * shipped alone; with `data-surface="classic"` (no attribute) it is still the
+   * only consumer, so nothing about the classic look moves. */
+  --glass-blur: 16px;
+  --glass-sat: 115%;
+  --glass-bright: 100%;
+  --glass-tint: 58%;
+  --glass-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright));
+  /* A CARD's own frost, deliberately NOT the plane's: a 30px blur behind a card
+   * floating over a static transcript is a pass nobody can see. One token so the
+   * composer and any later card agree on the number — the composer's `glass`
+   * style is its only consumer today.
+   *
+   * 24px and saturate 160%, not the old 16/115: the card sits over the aura, and
+   * at 16px with a 15% saturation the frost had nothing to show — measured, the
+   * composer composited 1.09:1 against the surface beside it, i.e. an invisible
+   * card ("composer type style glass sepertinya kurang glass"). */
+  --glass-card-filter: blur(24px) saturate(160%);
+  /* A dialog's frost. Wider than a card's because it covers a dimmed app rather
+   * than a static surface, and the blur is the only thing that reveals the veil
+   * is there at all. */
+  --glass-overlay-filter: blur(24px) saturate(150%);
+  /* The flat tint: the plane's fill, the chrome's, the overlay's, and the
+   * composer card's. The window additionally layers `--glass-glow` on top. */
+  --glass-panel: color-mix(in srgb, var(--theme-paper) var(--glass-tint), transparent);
+  /* The window plane's light: IMAGE layers only. A colour cannot live in a
+   * `background-image` layer (the browser drops the whole layer to `none`, which
+   * measured as an untinted plane), so the tint is `--glass-panel` on
+   * `background-color` and this token carries the gradients. */
+  --glass-glow: none;
+  /* A CARD's sheen: ONE soft highlight along the top, and nothing else.
+   *
+   * It used to be a 118deg `#fff 26%` sweep plus a second gradient plus an ink
+   * shade. Measured along the card's top margin, that made the edge itself a
+   * ramp from luminance 0.054 to 0.278 — a bright diagonal streak across the top
+   * of a 620px card, which is exactly what "composernya jelek, gk perlu silau
+   * gitu" was looking at. One highlight at 12% (light) / 7% (dark) keeps the
+   * card lit at its top edge and measures a 0.012 spread across the same margin
+   * instead of 0.224.
+   *
+   * The ink shade is gone with it: a card whose fill is already paper does not
+   * need a darkening pass on its face to prove it is a surface — the rim and the
+   * shadow say that, and they say it without touching the text's background. */
+  --glass-sheen: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fff 12%, transparent) 0%,
+    transparent 32%
+  );
+  /* A CARD's own light — in the DARK variant only, and the split is measured.
+   *
+   * `--theme-info` is darker than paper, so a corner wash on a light theme does
+   * not read as light: it reads as a smudge. Measured on the docked card, the
+   * top-left box came out BELOW the card's own body in luminance at every alpha
+   * tried — `(230,232,233)` against `(241,247,236)` at 14%, and the corner's
+   * chroma never cleared 12 against the body's own 11. On a dark theme the same
+   * token is brighter than ink, so it LIFTS the corner, which is the effect the
+   * token exists for. Light therefore has no bloom at all and leans on the rim,
+   * the sheen and the shadow; dark gets one low-alpha wash.
+   *
+   * Two hues was the "silau" report: a blue corner AND a violet corner measured
+   * 3.76:1 (top-left) and 2.59:1 (bottom-right) above the card's own body — two
+   * coloured glows competing with the draft text between them. One wash at 12%
+   * measures 1.83:1, chroma 20 instead of 46. */
+  --glass-bloom: none;
+  /* A RAISED CARD — a tool call, a notice, a result panel, and the composer's
+   * `glass` frame. Tint only, no blur: a transcript can hold a hundred of them,
+   * and a `backdrop-filter` each is a pass each.
+   *
+   * **Surface-INDEPENDENT, because a composer STYLE is not a surface style**: the
+   * `glass` composer is offered in the classic look too, so the token lives here
+   * and in the variant block rather than under `[data-surface="glass"]`. Read
+   * from the surface-scoped block it was undefined in the classic look, and
+   * `background-color: var(--glass-card)` computed to `rgba(0,0,0,0)` — a card
+   * with no fill at all.
+   *
+   * 66%, and the number is nearly free: measured across 55-92% the composited
+   * card stays within a few points of paper and `text-ink` holds 17.2-17.5:1
+   * (light) / 6.3-6.8:1 (dark), because the plane under it is already half paper.
+   * The lowest value that still reads as a card is chosen, so the aura's colour
+   * shows through instead of being covered by a near-opaque tint. */
+  --glass-card: color-mix(in srgb, var(--theme-paper) 66%, transparent);
+  /* A POPOVER's bloom: one low-alpha wash, dark variant only.
+   *
+   * A dropdown sits over live content, so unlike the docked composer its
+   * `backdrop-filter` has something real to sample and the material works in
+   * light without any colour. On a dark theme the tint over dark content gives no
+   * lift at all, so a single wash in the top-left keeps the panel reading as a
+   * lit pane. Two hues measured as two competing glows (the "silau" report);
+   * 16% measures colour without becoming a gradient. */
+  --glass-popover-bloom: none;
+  /* A DIALOG's light. A dialog is the largest surface in the app — the settings
+   * panel is 1280x810 — so it needs the material most and shows it worst: at 96%
+   * tint the veil behind contributes 4%, which measured as a uniform fill and
+   * nothing else ("setting modal juga belum glass"). A bloom SPREAD over a panel
+   * that size is a wash; the light has to be LOCAL, so the radii are narrow (36%
+   * x 44%) and pinned to the corners.
+   *
+   * Light takes a WHITE corner and a top highlight and NO hue: `--theme-info` is
+   * darker than paper, so a coloured corner there darkens the panel instead of
+   * lighting it (measured 212 against 220 on the bottom-right). Dark takes the
+   * palette's two hues, because over ink they lift.
+   *
+   * **The peak sits OUTSIDE the panel (`-4% -8%`), not on its corner.** Pinned
+   * at `0% 0%` the light lands on the settings nav and drags its 12px labels from
+   * 3.8:1 to 3.0:1; moved outside it lifts the corner chroma 17 → 22 while the
+   * labels hold 3.97:1, i.e. the material becomes visible without printing on the
+   * text. The alphas are the quiet ones: this surface is the largest in the app,
+   * and a loud bloom here is the "silau" report again. */
+  --glass-dialog-bloom:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #fff 16%, transparent) 0%,
+      transparent 24%
+    ),
+    radial-gradient(
+      36% 44% at 0% 0%,
+      color-mix(in srgb, #fff 26%, transparent),
+      transparent 100%
+    ),
+    radial-gradient(
+      30% 38% at 100% 100%,
+      color-mix(in srgb, #fff 12%, transparent),
+      transparent 100%
+    );
+  /* A CARD's rim, softer than the window's.
+   *
+   * The window's `--glass-edge` includes `inset 0 1.5px 0 #fff 95%` — a hard
+   * white line, which is right for a 1400px app frame and reads as a lit strip
+   * across the top of a 620px composer. A card gets a hairline plus a gentle top
+   * light instead; the edge is still the thing that makes the surface legible
+   * (measured 1.15:1 against the paper beside it), it just stops glowing. */
+  --glass-card-edge: inset 0 0 0 1px color-mix(in srgb, var(--theme-ink) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+  --glass-edge: inset 0 0 0 1px color-mix(in srgb, var(--theme-ink) 12%, transparent);
+  --glass-shadow: 0 1px 0 0 color-mix(in srgb, var(--theme-ink) 6%, transparent);
+  --glass-hairline: color-mix(in srgb, var(--theme-ink) 10%, transparent);
+  --glass-chrome: var(--theme-paper);
+}
+
+/*
+ * The app window. Light: paper at half strength under a white highlight and a
+ * cool bottom-right wash. Dark: ink at 62% with a 16%-white top rim, because a
+ * bright rim on a dark palette reads as a glow.
+ */
+[data-surface="glass"] {
+  --glass-blur: 30px;
+  --glass-sat: 185%;
+  --glass-bright: 103%;
+  --glass-tint: 50%;
+  --glass-glow:
+    radial-gradient(
+      120% 70% at 0% 0%,
+      color-mix(in srgb, #fff 50%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      80% 60% at 100% 100%,
+      color-mix(in srgb, var(--theme-info) 40%, transparent),
+      transparent 65%
+    );
+  --glass-edge:
+    inset 0 0 0 1px color-mix(in srgb, #fff 60%, transparent),
+    inset 0 1.5px 0 color-mix(in srgb, #fff 95%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-ink) 18%, transparent);
+  --glass-shadow:
+    0 1px 2px color-mix(in srgb, var(--theme-ink) 6%, transparent),
+    0 26px 50px -22px color-mix(in srgb, var(--theme-ink) 30%, transparent),
+    0 70px 140px -40px color-mix(in srgb, var(--theme-ink) 30%, transparent);
+  --glass-hairline: color-mix(in srgb, var(--theme-ink) 7.5%, transparent);
+  --glass-chrome: color-mix(in srgb, var(--theme-paper) 34%, transparent);
+  /* A DIALOG's fill. It sits over a veil that now darkens in both variants
+   * (`.modal-scrim`), so the frost samples a dimmed app — which is what makes a
+   * translucent dialog read as glass instead of a grey wash.
+   *
+   * **96%, and the number is a contrast budget, not a taste.** The veil behind a
+   * dialog is much darker than the paper (light: ink at 40%; dark: black at
+   * 42%), so every point of transparency darkens the panel: measured, 88% put a
+   * light dialog at `rgb(233,230,225)` against its own paper `#faf8f3` and 94%
+   * still read 10 points low — a grey panel, which is the "kok gelap" report this
+   * tier started with. At 96% the panel is its paper within 4 points in both
+   * variants, and the material reads through the sheen, the rim and the blur at
+   * the edges — which is where glass is legible anyway, not in the middle of a
+   * paragraph. */
+  --glass-overlay: color-mix(in srgb, var(--theme-paper) 96%, transparent);
+  /* A POPOVER floats over live content with no veil, so its blur is the only
+   * thing separating it from what it covers — hence a slightly lighter tint
+   * than a dialog, and a sheen so the panel reads as lifted.
+   *
+   * **84% on light, 92% on dark, and the split is measured.** Light paper is
+   * within 3 points of white, so the tint is nearly free there: worst-case menu
+   * text over a WHITE backdrop (a screenshot under a dropdown) reads 4.93:1 at
+   * 84% and 4.89:1 at 92% — the same number, so the lower tint buys the
+   * transparency at no cost. On dark it is NOT free: the same text at 78% drops
+   * to 2.88:1 while 92% holds 4.59:1, because bright code behind a menu is what
+   * a dark theme actually has under it. */
+  --glass-popover: color-mix(in srgb, var(--theme-paper) 84%, transparent);
+  /* A STUCK sticky header's fill — see `.glass-sticky[data-stuck]`.
+   *
+   * OPAQUE, and mixed toward the CANVAS, not transparent. Two measured reasons.
+   * Transparent paper darkens whatever it lands on, so the header read darker
+   * than the column it belongs to ("hitam banget"). And plain paper is not the
+   * column's colour either: the sidebar is chrome over the plane, i.e.
+   * `paper 34%` over `paper 50% over canvas`, which composites to about
+   * `67% paper + 33% canvas`. Mixing to THAT is what makes the stuck header the
+   * sidebar's own surface instead of a darker patch of it.
+   *
+   * The last 4% is `--theme-info`: the column's colour is not neutral, it is the
+   * plane's aura showing through, and a neutral fill read as BLACK against it
+   * ("kenapa warnanya hitam banget, tidak sama dengan sidebar background") even
+   * when its luminance matched. Measured: neutral `(45,51,59)` against the
+   * sidebar's `(40,48,60)` — same brightness, half the chroma (14 against 20). */
+  --glass-stuck: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--theme-paper) 67%, var(--theme-canvas)) 96%,
+    var(--theme-info)
+  );
+  /* The colour a stuck label's halo is drawn in: the sidebar's own composite,
+   * opaque so it can occlude glyphs behind. */
+  --glass-halo: color-mix(in srgb, var(--theme-paper) 78%, var(--theme-canvas));
+  /* Light needs LESS glow than dark: on paper the same alpha reads as a wash of
+   * colour, while on ink it is the only thing making the frost visible. */
+  --glass-aura: 0.42;
+}
+
+/*
+ * The card's bloom is the one material value that does NOT follow the surface
+ * style: the composer's `glass` style is offered in the classic look too, so the
+ * token is keyed to the variant alone.
+ */
+[data-theme-variant="dark"] {
+  --glass-sheen: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fff 7%, transparent) 0%,
+    transparent 32%
+  );
+  --glass-bloom: radial-gradient(
+    70% 82% at 0% -16%,
+    color-mix(in srgb, var(--theme-info) 12%, transparent),
+    transparent 54%
+  );
+  --glass-card-edge: inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 9%, transparent);
+  --glass-popover-bloom: radial-gradient(
+    85% 100% at 0% -18%,
+    color-mix(in srgb, var(--theme-info) 16%, transparent),
+    transparent 52%
+  );
+  --glass-dialog-bloom:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #fff 3%, transparent) 0%,
+      transparent 22%
+    ),
+    radial-gradient(
+      30% 36% at -4% -8%,
+      color-mix(in srgb, var(--theme-info) 7%, transparent),
+      transparent 100%
+    ),
+    radial-gradient(
+      26% 32% at 104% 106%,
+      color-mix(in srgb, var(--theme-meta) 14%, transparent),
+      transparent 100%
+    );
+  /* The dark plane is 62% paper, so the same measurement holds: the card
+   * composites to `(36,42,49)`-`(42,48,51)` against paper `(40,44,52)`, and
+   * `text-ink` reads 6.3-6.8:1 — the same as an opaque card. */
+  --glass-card: color-mix(in srgb, var(--theme-paper) 70%, transparent);
+}
+
+[data-surface="glass"][data-theme-variant="dark"] {
+  --glass-blur: 34px;
+  --glass-sat: 170%;
+  --glass-bright: 100%;
+  --glass-tint: 62%;
+  --glass-glow:
+    radial-gradient(
+      120% 70% at 0% 0%,
+      color-mix(in srgb, #fff 10%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      80% 60% at 100% 100%,
+      color-mix(in srgb, var(--theme-meta) 22%, transparent),
+      transparent 65%
+    );
+  --glass-edge:
+    inset 0 0 0 1px color-mix(in srgb, #fff 7%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #000 45%, transparent);
+  --glass-chrome: color-mix(in srgb, var(--theme-paper) 38%, transparent);
+  --glass-overlay: color-mix(in srgb, var(--theme-paper) 96%, transparent);
+  --glass-popover: color-mix(in srgb, var(--theme-paper) 92%, transparent);
+  /* The same composite for the DARK chrome: `paper 38%` over `paper 62% over
+   * canvas` is about `76% paper + 24% canvas`, which is lighter than the paper
+   * itself — the reason a transparent fill read as black here. The 6% info is
+   * the aura's cast, measured: it brings the fill from `(45,51,59)` to the
+   * sidebar's `(40,48,60)` chroma. */
+  --glass-stuck: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--theme-paper) 76%, var(--theme-canvas)) 94%,
+    var(--theme-info)
+  );
+  --glass-halo: color-mix(in srgb, var(--theme-paper) 78%, var(--theme-canvas));
+  --glass-aura: 0.55;
+}
+
+/*
+ * The window itself.
+ *
+ * `isolation: isolate` keeps the aura's negative z-index inside this element, so
+ * the glow cannot escape over a modal. The plane is a pseudo-element rather than
+ * a wrapper because `<div id="app">` is the app's only mount point — a wrapper
+ * div would become the flex parent the whole layout measures against.
+ */
+[data-surface="glass"] .app-window {
+  isolation: isolate;
+  box-shadow: var(--glass-shadow);
+}
+
+[data-surface="glass"] .app-window::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--glass-panel);
+  background-image: var(--glass-glow);
+  box-shadow: var(--glass-edge);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+}
+
+/* The specular sheen. Its own element in the reference (`i.gxd-sheen`); a second
+ * pseudo-element here, because the plane already owns `::before` and a
+ * background blend of both would put the highlight under the tint. */
+[data-surface="glass"] .app-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      118deg,
+      color-mix(in srgb, #fff 42%, transparent) 0%,
+      transparent 26%
+    ),
+    radial-gradient(
+      60% 40% at 78% 0%,
+      color-mix(in srgb, #fff 35%, transparent),
+      transparent 70%
+    );
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}
+/* The plane and the sheen sit at NEGATIVE z-index, and `isolation: isolate` on
+ * the window keeps them inside it. That is the whole trick: no descendant is
+ * touched, so a `fixed inset-0` modal stays fixed and a transformed panel keeps
+ * its own stacking context. Forcing every direct child to `position: relative`
+ * would have made the first `fixed` child relative instead — and a modal that
+ * scrolls with the page is a defect, not a z-order preference. */
+
+/*
+ * The glow under the plane: three palette-derived blobs, no hex. This is what
+ * the blur samples — the reference calls them `gxd-aura` and draws them just
+ * outside the window so the colour bleeds past its edge; a full-screen app has
+ * no outside, so they sit inside and the plane's rim does the bleeding.
+ */
+[data-surface="glass"] .app-window-aura {
+  position: absolute;
+  inset: 0;
+  /* Behind the plane, which is behind everything else: the aura is what the
+   * blur samples, so it has to be the bottom-most layer of the window. */
+  z-index: -2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+[data-surface="glass"] .app-window-aura > i {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  opacity: var(--glass-aura, 0.5);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--aura) 55%, transparent),
+    color-mix(in srgb, var(--aura) 18%, transparent) 60%,
+    transparent
+  );
+}
+
+[data-surface="glass"] .app-window-aura > i:nth-child(1) {
+  --aura: var(--theme-info);
+  width: 62%;
+  height: 86%;
+  top: 14%;
+  left: -12%;
+}
+
+[data-surface="glass"] .app-window-aura > i:nth-child(2) {
+  --aura: var(--theme-meta);
+  width: 68%;
+  height: 78%;
+  top: -16%;
+  right: -14%;
+}
+
+[data-surface="glass"] .app-window-aura > i:nth-child(3) {
+  --aura: var(--theme-success);
+  width: 66%;
+  height: 62%;
+  bottom: -18%;
+  right: 2%;
+}
+
+/*
+ * Canvas wells go transparent; paper surfaces stay opaque.
+ *
+ * This is the one structural rule of the material, and the split is the whole
+ * reason it is safe: `bg-canvas` is the app's GROUND (a chat well, an editor
+ * pane, the transcript's gutter), so revealing the plane there is exactly the
+ * intent. `bg-paper` is a SURFACE with content on it — a dropdown, a card, a
+ * dialog — and making 470 of those translucent would put the transcript behind
+ * every popover's text. A raised surface keeps its own `bg-paper` — it is READ,
+ * and translucency there costs contrast for a material nobody asked it for.
+ *
+ * The window itself is excluded: it keeps the palette's canvas as the material's
+ * ground, so the plane never depends on `<body>` — whose colour is pinned once
+ * per request by the first-frame style, which is exactly the layer that would go
+ * stale when the palette changes without a reload.
+ */
+[data-surface="glass"] .app-window .bg-canvas:not(.app-window) {
+  background-color: transparent;
+}
+
+/*
+ * …except a knob ON a switch, which is a SHAPE, not a well.
+ *
+ * `bg-canvas` is the app's ground, but a switch knob uses it as an OPAQUE
+ * contrasting disc: `bg-canvas` on `bg-ink/70` is what makes the control read as
+ * a toggle at all. Turning it transparent deleted the knob — measured on the
+ * plugin switches in dark, the 12px knob composited to `rgba(0,0,0,0)` and the
+ * control rendered as a plain pill with no "on" position ("ini juga dong",
+ * with a screenshot of exactly that button). The mark is the switch ROLE, not a
+ * class name: any control that declares itself a switch owns its knob, whatever
+ * it happens to paint it with.
+ */
+[data-surface="glass"] .app-window [role="switch"] .bg-canvas {
+  background-color: var(--theme-canvas);
+}
+
+/*
+ * A STICKY header: NOTHING at rest, a surface only while PINNED.
+ *
+ * The folder header in the `modern` sidebar is `sticky top-0`, so it shipped an
+ * opaque `bg-paper` to separate its label from the rows sliding under it. Under
+ * `[data-surface="glass"]` that is a hard strip across a sidebar that is
+ * otherwise one translucent surface ("belang"). Two fills were measured and
+ * removed — opaque `rgb(255,255,254)` over rows at `rgb(243,241,237)`, then paper
+ * at 74% — and then the BLUR was removed too, because a `backdrop-filter` is
+ * still a visible patch: it smears whatever passes under it (rows, their
+ * coloured icons, the aura) into a rectangle whose average differs from the
+ * rows beside it. Measured with the blur still on: band `(47,55,67)` against the
+ * rows below `(45,51,60)` — close, and still a patch a reader can see while
+ * scrolling.
+ *
+ * Three treatments were measured here and every one of them was a band, because
+ * ANY paint or filter on a full-width sticky strip is a rectangle:
+ *
+ * 1. the opaque `bg-paper`/`bg-canvas` it shipped with — `rgb(255,255,254)` over
+ *    rows at `rgb(243,241,237)`;
+ * 2. paper at 74% — still a lighter strip;
+ * 3. `blur(24px) saturate(150%)`, the DIALOG tier's filter — the saturate
+ *    amplified the aura's blue inside the band, measured `(49,56,68)` against
+ *    rows at `(53,59,68)`: chroma +4.8, a visibly blue patch. Dropping the
+ *    saturate fixed the hue (−0.3) but the BLUR itself still reads as a patch,
+ *    because it smears whatever passes beneath it into a field whose texture no
+ *    neighbour has.
+ *
+ * So at rest the header paints nothing at all: `background: none`, no
+ * `backdrop-filter`. Its pixels are then literally the sidebar's own — measured
+ * `(50,56,64)` with the header drawn against `(49,55,63)` with it hidden,
+ * Δ(1,1,1), which is its own controls and no surface.
+ *
+ * The fill comes back only while the header is STUCK (`data-stuck`, from
+ * `useStuckHeader`) — the one state where a row really does slide underneath and
+ * the label needs a field. That is the distinction the band reports were really
+ * about: a header that paints while overlapping rows is doing its job, one that
+ * paints at rest is a stripe. The label's halo follows the same state, so a
+ * resting header has neither.
+ */
+[data-surface="glass"] .glass-sticky {
+  background-color: transparent;
+  background-image: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-surface="glass"] .glass-sticky[data-stuck] {
+  background-color: var(--glass-stuck);
+  /* NO sheen and NO blur: the fill is opaque, so a `backdrop-filter` has nothing
+   * left to sample — and the white gradient a card carries lightened this 26px
+   * strip by up to 6%, which measured `(47,55,65)` against a sidebar at
+   * `(40,48,60)`: a lighter band instead of a darker one. The rim alone is what
+   * separates it. */
+  box-shadow: var(--glass-edge);
+}
+
+[data-surface="glass"] .glass-sticky[data-stuck] .glass-sticky-label {
+  text-shadow:
+    0 0 6px var(--glass-halo),
+    0 0 3px var(--glass-halo),
+    0 0 10px var(--glass-halo);
+}
+
+/*
+ * Tier 1 — the chrome. A flat tint over the plane, no blur of its own. The
+ * hairline is a border rather than a shadow so it scales with the element.
+ */
+[data-surface="glass"] .glass-chrome {
+  background-color: var(--glass-chrome);
+  border-color: var(--glass-hairline);
+}
+
+/*
+ * The right panel's COLUMN is chrome, and its views' own `bg-paper` root steps
+ * aside for it.
+ *
+ * Every workspace view — the file tree, search, source control, the terminal,
+ * usage, todos, plan, wiki and every plugin panel — opens with its own
+ * `<div class="… bg-paper">`, which is right in the classic look and wrong under
+ * the glass surface: measured, the whole 293px column composited to the palette's
+ * solid paper `rgb(40,44,52)` while the sidebar beside it was the plane's chrome,
+ * so the two columns of the same window read as two different materials
+ * ("right panel juga belum glass banget").
+ *
+ * The rule is the slot's, not each view's (`data-panel-chrome` is stamped by
+ * `WorkspacePanels` and `LeftDock`), so a view added later inherits it — and it
+ * only reaches the column ROOT: the toolbars, rows and cards a view draws INSIDE
+ * it keep their own opaque paper, because those are read.
+ *
+ * **The second selector is for PLUGIN panels, and it is the whole difference
+ * between a built-in view and an installed one.** A plugin's component renders
+ * inside `<span data-plugin-surface="<id>" style="display: contents">` (the scope
+ * the server wraps its stylesheet in), and that span has a BOX in the DOM even
+ * though it paints none — so the direct-child combinator stops there. Measured
+ * on the three bundled marketplace plugins in dark, every one of them painted
+ * `rgb(40,44,52)` over the column while the built-in views beside them were
+ * chrome: Stats, Runner and Forge all open with the kit's `Panel`, whose root is
+ * `flex flex-col h-full w-full bg-paper text-ink` — a plugin ships its own
+ * opinion about its frame, and the host is what has to overrule it.
+ */
+[data-surface="glass"] [data-panel-chrome] > .bg-paper,
+[data-surface="glass"] [data-panel-chrome] > [data-plugin-surface] > .bg-paper {
+  background-color: transparent;
+}
+
+/*
+ * Tier 2 — dialogs.
+ *
+ * A dialog gets the material too: the frost samples the DIMMED app behind it,
+ * which is why the veil had to be fixed first (`.modal-scrim` darkens in both
+ * variants; the old `bg-ink/40` lit a dark theme from behind, so a translucent
+ * dialog there composited to a grey wash — measured `#3a3d44` against the app's
+ * `#282c34`). The tint is higher than a card's because a dialog carries prose,
+ * and the rim is what keeps its edge visible over the veil.
+ */
+[data-surface="glass"] .glass-overlay,
+[data-surface="glass"] .glass-popover {
+  /* The sheen is what makes a translucent panel read as glass rather than as a
+   * darker box: without it the tint only ever darkens the paper, which on a dark
+   * palette is indistinguishable from a shadow. */
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fff 7%, transparent) 0%,
+    transparent 42%
+  );
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+  border-color: var(--glass-hairline);
+  backdrop-filter: var(--glass-overlay-filter);
+  -webkit-backdrop-filter: var(--glass-overlay-filter);
+}
+
+/*
+ * A POPOVER adds the bloom on top of that shared material.
+ *
+ * A dropdown is small, sits over a list it just covered, and has almost no
+ * interior — so the sheen alone still left it reading as a lifted box: measured
+ * on the session-actions menu, the top-left corner `(56,61,71)` against a body
+ * of `(41,44,52)` on a sidebar of `(51,58,67)`, i.e. no light anywhere and
+ * 1.09:1 against what it covers ("dropdown juga belum glass"). With the bloom
+ * the corner reads `(117,137,155)` and the bottom-right `(63,70,97)`, and the
+ * interior chroma goes 12.8 → 15.0 while the centre keeps its exact value — the
+ * pane glows at the corners and stays legible in the middle, which is the whole
+ * difference between glass and a darker rectangle.
+ *
+ * Not `--glass-bloom` itself, because a dropdown is a fifth the size of the
+ * composer card: the same radial at the same percentage would put the whole
+ * gradient INSIDE a 176px panel. The stops are tightened so the peak stays off
+ * the panel and only the corner catches it.
+ */
+[data-surface="glass"] .glass-popover {
+  background-image: var(--glass-sheen), var(--glass-popover-bloom);
+}
+
+/*
+ * A dialog's own HEADER and FOOTER strips are chrome too, and they have to step
+ * aside for the same reason a workspace column does.
+ *
+ * `.glass-overlay` is the panel; its chrome strips write `bg-paper` for the
+ * classic look, and an opaque strip along the top of a 1200x792 panel covers
+ * exactly the edge the material is legible at. Measured on the git commit
+ * history modal, its 1198x109 header painted `rgb(40,44,52)` — the palette's
+ * solid paper — across the whole top edge, so the panel's highlight and its
+ * top-left bloom never appeared and the face read as one flat value
+ * ("git history commit modal juga belum glass"). With the strip transparent the
+ * same panel shows the light: corner chroma 11 → 26.
+ *
+ * The direct child only, exactly like `[data-panel-chrome]`: a dialog's BODY
+ * keeps every card, row and notice it draws, because those are read.
+ */
+[data-surface="glass"] .glass-overlay > .bg-paper {
+  background-color: transparent;
+}
+
+/*
+ * A DIALOG adds ITS light, and it is a different one: local, not spread.
+ *
+ * Measured on the settings panel (1280x810) in dark, the shared sheen plus a
+ * panel-wide bloom left the corners within 1.06:1 of the middle — a flat sheet.
+ * A local light with its peak just OUTSIDE the frame reads `(53,63,76)` against
+ * a body of `(65,69,75)`: the corner sits 23 chroma above its own body while the
+ * middle keeps its exact value, and the nav labels hold 4.14:1 — against 3.77:1
+ * before, because the light never lands on the text.
+ */
+[data-surface="glass"] .glass-overlay {
+  background-image: var(--glass-dialog-bloom);
+}
+
+/*
+ * A raised card: one tint, no blur.
+ *
+ * Scoped to a TOOL ROW rather than to `.bg-paper` everywhere, and that scope is
+ * the whole safety argument: the transcript's tool cards are a closed region
+ * (they carry `data-tool-row`), so one rule reaches every panel's inner surface
+ * — 70-odd files that each wrote `bg-paper` for a code block, a result list or a
+ * notice — without turning the assistant's own message bubble, a dropdown or a
+ * dialog translucent. Those are reading surfaces and keep their opaque paper.
+ */
+/* The row's OWN frame carries both the marker and `bg-paper`, so it needs its
+ * own compound — a descendant selector alone would leave the card opaque. */
+[data-surface="glass"] [data-tool-row].bg-paper,
+[data-surface="glass"] [data-tool-row] .bg-paper {
+  background-color: var(--glass-card);
+}
+
+[data-surface="glass"] .glass-overlay {
+  background-color: var(--glass-overlay);
+}
+
+[data-surface="glass"] .glass-popover {
+  background-color: var(--glass-popover);
+}
+
+/* A browser that cannot blur, or a user who asked for less transparency: the
+ * opaque palette. `--glass-panel` IS the plane's fill, so overriding it here
+ * also fixes the sheen's contrast, which is why the sheen is switched off too.
+ *
+ * The token list below is repeated in the media query under it, and that is a
+ * limit of the language rather than an oversight: CSS has no way to OR a
+ * `@supports` with a `@media`, so one of the two has to restate it. Edit them
+ * together — the drift is visible as a translucent plane with no blur behind it,
+ * which is exactly the state `@supports` exists to prevent.
+ *
+ * **The selectors are `:root[data-surface="glass"]`, and the `:root` is not
+ * decoration.** The dark palette's tokens live in
+ * `[data-surface="glass"][data-theme-variant="dark"]` — (0,2,0) — and a plain
+ * `[data-surface="glass"]` here is (0,1,0), so on EVERY dark palette the
+ * fallback lost and the tokens it was meant to replace stayed translucent:
+ * measured with the block's own declarations applied, `--glass-panel` on
+ * `one-dark-pro-soft` kept `color-mix(… 62%, transparent)` and `.glass-chrome`
+ * kept alpha `0.38` — a translucent plane with no blur behind it, i.e. the exact
+ * state this block exists to prevent, and it went unnoticed because the light
+ * theme has no such competitor. `:root` adds one pseudo-class (0,2,0), which
+ * TIES the dark block and, being later in the file, wins. Every token in the
+ * list has to beat that tie, so both blocks carry it. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-surface="glass"] {
+    --glass-glow: none;
+    --glass-panel: var(--theme-paper);
+    --glass-chrome: var(--theme-paper);
+    --glass-overlay: var(--theme-paper);
+    --glass-popover: var(--theme-paper);
+    --glass-card: var(--theme-paper);
+    --glass-stuck: var(--theme-paper);
+    --glass-bloom: none;
+    --glass-popover-bloom: none;
+    --glass-dialog-bloom: none;
+    --glass-overlay-filter: none;
+  }
+
+  [data-surface="glass"] .app-window::after {
+    opacity: 0;
+  }
+
+  /* The veil's frost goes with the rest of the material: a blurred backdrop
+   * behind a dialog that no longer has a blur of its own is decoration with no
+   * subject. */
+  [data-surface="glass"] .modal-scrim {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-surface="glass"] {
+    --glass-glow: none;
+    --glass-panel: var(--theme-paper);
+    --glass-chrome: var(--theme-paper);
+    --glass-overlay: var(--theme-paper);
+    --glass-popover: var(--theme-paper);
+    --glass-card: var(--theme-paper);
+    --glass-stuck: var(--theme-paper);
+    --glass-bloom: none;
+    --glass-popover-bloom: none;
+    --glass-dialog-bloom: none;
+    --glass-overlay-filter: none;
+  }
+
+  [data-surface="glass"] .app-window::after {
+    opacity: 0;
+  }
+
+  [data-surface="glass"] .app-window-aura {
+    display: none;
+  }
+
+  /* The veil's frost goes with the rest of the material: a blurred backdrop
+   * behind a dialog that no longer has a blur of its own is decoration with no
+   * subject. */
+  [data-surface="glass"] .modal-scrim {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

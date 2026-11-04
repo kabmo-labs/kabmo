@@ -111,7 +111,7 @@ export function HeaderMoreMenu({ entries = [] }: { entries?: HeaderEntry[] }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 w-44 bg-paper border border-ink/15 rounded-xl shadow-lg z-50 py-1 text-xs"
+          className="glass-popover absolute right-0 top-full mt-1 w-44 bg-paper border border-ink/15 rounded-xl shadow-lg z-50 py-1 text-xs"
         >
           <button
             type="button"

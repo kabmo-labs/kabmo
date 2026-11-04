@@ -88,11 +88,11 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
 
   return (
     <div
-      className="fixed inset-0 bg-ink/30 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 modal-scrim z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-paper border border-ink/15 rounded-lg shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+        className="glass-overlay bg-paper border border-ink/15 rounded-lg shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

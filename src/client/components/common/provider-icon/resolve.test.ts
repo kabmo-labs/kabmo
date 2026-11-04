@@ -58,18 +58,18 @@ describe('resolveProviderMark', () => {
   test('a registered glyph wins over the built-in mark for that provider', () => {
     const mark = resolveProviderMark(['deepseek'], [row('demo', 'deepseek', CUSTOM)]);
 
-    expect(mark).toEqual({ viewBox: '0 0 32 32', body: '<path d="M4 4h24v24H4z"/>' });
+    expect(mark).toEqual({ viewBox: '0 0 32 32', body: '<path d="M4 4h24v24H4z"/>', brandKey: null });
   });
 
   test('a registration leaves every other provider on its built-in mark', () => {
     const rows = [row('demo', 'deepseek', CUSTOM)];
 
-    expect(resolveProviderMark(['openai'], rows)).toBe(PROVIDER_GLYPHS.openai);
-    expect(resolveProviderMark(['deepseek'], rows)).not.toBe(PROVIDER_GLYPHS.deepseek);
+    expect(resolveProviderMark(['openai'], rows)).toEqual({ ...PROVIDER_GLYPHS.openai, brandKey: 'openai' });
+    expect(resolveProviderMark(['deepseek'], rows)?.brandKey).toBeNull();
   });
 
   test('an unregistered provider is unchanged, unknown ones still fall to initials', () => {
-    expect(resolveProviderMark(['deepseek'], [])).toBe(PROVIDER_GLYPHS.deepseek);
+    expect(resolveProviderMark(['deepseek'], [])).toEqual({ ...PROVIDER_GLYPHS.deepseek, brandKey: 'deepseek' });
     expect(resolveProviderMark(['my-private-gateway'], [])).toBeNull();
   });
 
@@ -95,9 +95,10 @@ describe('resolveProviderMark', () => {
 
   test('a malformed glyph falls through instead of rendering a broken mark', () => {
     // On a provider the built-in table knows, the built-in mark comes back.
-    expect(resolveProviderMark(['deepseek'], [row('demo', 'deepseek', MALFORMED)])).toBe(
-      PROVIDER_GLYPHS.deepseek,
-    );
+    expect(resolveProviderMark(['deepseek'], [row('demo', 'deepseek', MALFORMED)])).toEqual({
+      ...PROVIDER_GLYPHS.deepseek,
+      brandKey: 'deepseek',
+    });
     // With no built-in either, there is nothing to draw and the badge runs.
     expect(resolveProviderMark(['acme'], [row('demo', 'acme', MALFORMED)])).toBeNull();
   });

@@ -4,6 +4,7 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { registerBackHandler } from '@/client/lib/native/back';
 import type { SettingsCategoryId } from '@/shared/types';
 import { MobileMainView } from '@/client/components/mobile/MainView';
+import { WindowAura } from '@/client/components/layout/WindowAura';
 import { MobileSessionSidebar } from '@/client/components/mobile/SessionSidebar';
 import { MobileRightSidebar } from '@/client/components/mobile/RightSidebar';
 import { MobileFullEditor } from '@/client/components/mobile/mobile-right-sidebar/FullEditor';
@@ -242,8 +243,9 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
   return (
     <div
       data-testid="app-root"
-      className="flex flex-col h-dvh w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas relative"
+      className="app-window flex flex-col h-dvh w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas relative"
     >
+      <WindowAura />
       {/* The plugin system's boot, on the PHONE too. It is mounted at the top of
           the workspace on the desktop (`desktop-layout/index.tsx`), and without
           it here a phone had no plugin CONTEXT (so `usePanelInfo()` answered

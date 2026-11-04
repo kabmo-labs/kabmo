@@ -39,7 +39,7 @@ import { pluginEnablementKey } from '@/shared/lib/workspace/panel-ids';
 import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 import { SESSIONS_VIEW_ID, isLeftDockPanelId } from '@/shared/lib/workspace/left-dock';
 import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
-import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
+import { PanelMark } from '@/client/components/common/panel-mark';
 import { PanelVisibilityMenu, type PanelVisibilityItem } from '@/client/components/layout/PanelVisibilityMenu';
 
 interface ActivityBarProps {
@@ -126,7 +126,7 @@ export function ActivityBar({ side, activePanel, onChangePanel, isPanelOpen, has
         ref={navRef}
         onContextMenu={openMenu}
         aria-label={side === 'left' ? 'Left panel views' : 'Right panel views'}
-        className={`w-11 flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center py-3 space-y-2 z-10`}
+        className={`glass-chrome w-11 flex-shrink-0 ${side === 'left' ? 'border-r' : 'border-l'} border-ink/10 bg-paper flex flex-col items-center py-3 space-y-2 z-10`}
       >
         <div className="flex flex-col items-center space-y-1 w-full">
           {drawn.map((panel, index) => (
@@ -243,7 +243,26 @@ function PanelButton({
       title={panel.title}
       aria-label={panel.title}
     >
-      {panel.builtin && panel.icon ? panel.icon : panel.builtin ? <PluginMark name={panel.label} size={PANEL_MARK_SIZE} /> : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={PANEL_MARK_SIZE} />}
+      {/* The mark's wrapper carries the state as OPACITY, not as a text colour:
+          a `text-ink/40` here outranks the colour mode's hue rule, which is what
+          kept this rail monochrome while the panels behind it were tinted. In
+          the monochrome mode nothing dims the ink twice — `[data-idle]` is only
+          read under `[data-icon-style="color"]`.
+
+          The colour itself is NOT decided here: `PanelMark` stamps the same
+          `--panel-hue` the phone's chip strip and Settings read, so this button
+          cannot disagree with them about what `Files` looks like. */}
+      <PanelMark
+        className="panel-rail-mark inline-flex"
+        panelId={panel.id}
+        builtin={panel.builtin}
+        icon={panel.builtin ? panel.icon : undefined}
+        name={panel.builtin ? panel.label : panel.name}
+        {...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {})}
+        {...(panel.color ? { color: panel.color } : {})}
+        size={PANEL_MARK_SIZE}
+        idle={!isActive}
+      />
       {showGitDot ? (
         <span
           className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-info"

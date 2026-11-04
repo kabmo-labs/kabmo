@@ -301,8 +301,17 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
                 onClose: onToggleRightPanel,
                 layout: 'desktop',
               };
+              // `glass-chrome` + `data-panel-chrome` on the SLOT, not on each
+              // view: the right panel is column chrome, exactly like the session
+              // sidebar, and ten built-in views plus every plugin panel paint
+              // their own `bg-paper` root. Marking the slot makes the column one
+              // surface and leaves a future view nothing to forget.
               return (
-                <div key={panel.id} className={isActiveView ? 'w-full h-full' : 'hidden'}>
+                <div
+                  key={panel.id}
+                  data-panel-chrome=""
+                  className={`glass-chrome w-full h-full${isActiveView ? '' : ' hidden'}`}
+                >
                   <PanelHostProvider value={body}>{panel.render(body)}</PanelHostProvider>
                 </div>
               );
@@ -310,7 +319,7 @@ export function WorkspacePanels(props: WorkspacePanelsProps) {
             {/* The selection names a panel that is switched off, uninstalled, or
                 whose bundle has not loaded — a notice, never a blank column. */}
             {!activePanel ? (
-              <div className="w-full h-full">
+              <div data-panel-chrome="" className="glass-chrome w-full h-full">
                 <PluginPanelBody panelKey={activeRightPanel} />
               </div>
             ) : null}

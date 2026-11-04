@@ -70,7 +70,7 @@ export function EditorPluginRail({ activeKey, onSelect, plugins }: EditorPluginR
             aria-label={plugin.title}
             aria-pressed={active}
           >
-            <PluginMark name={plugin.name} iconUrl={plugin.iconUrl} size={16} />
+            <PluginMark name={plugin.name} iconUrl={plugin.iconUrl} color={plugin.color} size={16} />
           </button>
         );
       })}

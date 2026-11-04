@@ -188,6 +188,26 @@ describe('toManifest', () => {
   });
 });
 
+describe('the manifest colour', () => {
+  test('a #RRGGBB is kept, lowercased', () => {
+    expect(toManifest({ ...MANIFEST, color: '#34D399' }, ROOT)).toMatchObject({ color: '#34d399' });
+  });
+
+  test('every other form is refused, because the value reaches an inline style', () => {
+    // `color` becomes a custom property on the rail's mark, so anything that is
+    // not a hex is a refusal rather than a value the host has to escape.
+    for (const color of ['red', 'rgb(0 0 0)', '#abc', '#12345', 'url(x)', 'red; background: url(x)', 'var(--x)', '']) {
+      const result = toManifest({ ...MANIFEST, color }, ROOT);
+      if (color === '') {
+        // An empty string is "not declared", not a refusal.
+        expect(result).not.toMatchObject({ error: expect.any(String) });
+        continue;
+      }
+      expect(result, color).toMatchObject({ error: expect.stringContaining('is not a #RRGGBB hex') });
+    }
+  });
+});
+
 describe('toMarketplaceCatalog', () => {
 
   test('accepts a catalog with no plugins array as empty', () => {

@@ -224,13 +224,13 @@ export function GitCommitModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-canvas/80 backdrop-blur-xs flex items-center justify-center p-0 lg:p-5"
+      className="fixed inset-0 z-50 modal-scrim backdrop-blur-xs flex items-center justify-center p-0 lg:p-5"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="bg-paper border-ink/20 shadow-2xl flex flex-col overflow-hidden
+        className="glass-overlay bg-paper border-ink/20 shadow-2xl flex flex-col overflow-hidden
           w-full h-full rounded-none border-0
           lg:w-[min(94vw,1200px)] lg:h-[88vh] lg:rounded-xl lg:border
           pt-[env(safe-area-inset-top,0px)] lg:pt-0"

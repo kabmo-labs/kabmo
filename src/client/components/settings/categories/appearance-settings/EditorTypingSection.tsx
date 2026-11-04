@@ -16,6 +16,7 @@
  * screen. The event fires only when a value actually moved.
  */
 
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { readKabmoSetting, writeKabmoSettings } from '@/shared/lib/settings/client';
 import type { SettingsState } from '@/shared/types';
 import {
@@ -52,7 +53,7 @@ function Toggle({
         checked={checked}
         onChange={(event) => onChange(event.currentTarget.checked)}
         aria-label={label}
-        className="mt-0.5 accent-ink flex-shrink-0"
+        className={`${CHECKBOX_CLASS} mt-0.5 accent-ink flex-shrink-0`}
       />
     </label>
   );

@@ -79,14 +79,14 @@ export function LogoutProviderModal({ isOpen, provider, onClose, onSignedOut }: 
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/40 backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center modal-scrim backdrop-blur-[2px] p-4"
       onClick={busyId !== null ? undefined : onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Confirm sign out"
     >
       <div
-        className="bg-paper border border-ink/20 rounded-xl shadow-2xl w-[min(94vw,480px)] max-h-full overflow-y-auto scrollbar-overlay-container text-ink"
+        className="glass-overlay bg-paper border border-ink/20 rounded-xl shadow-2xl w-[min(94vw,480px)] max-h-full overflow-y-auto scrollbar-overlay-container text-ink"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-5 py-4 border-b border-ink/10">

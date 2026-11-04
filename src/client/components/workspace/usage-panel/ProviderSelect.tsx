@@ -144,7 +144,7 @@ export function ProviderSelect({ providers, value, onChange }: ProviderSelectPro
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-52 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
+        <div className="glass-popover absolute top-full left-0 mt-1 w-52 bg-paper border border-ink/20 rounded-md shadow-lg z-50 flex flex-col overflow-hidden text-xs">
           <div className="px-2 py-1.5 border-b border-ink/10 flex items-center gap-1.5">
             <Search size={11} className="text-ink/40 flex-shrink-0" />
             <input

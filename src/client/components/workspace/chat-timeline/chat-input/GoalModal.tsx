@@ -21,6 +21,7 @@
  * accepts the same vocabulary.
  */
 
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { Target, X } from 'lucide-preact';
@@ -121,9 +122,9 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/30 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center modal-scrim p-4" onClick={onClose}>
       <div
-        className="w-full max-w-lg overflow-hidden rounded-xl border border-ink/15 bg-paper shadow-xl"
+        className="glass-overlay w-full max-w-lg overflow-hidden rounded-xl border border-ink/15 bg-paper shadow-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
@@ -258,7 +259,7 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
                 type="checkbox"
                 checked={guided}
                 onChange={(event) => setGuided(event.currentTarget.checked)}
-                className="mt-0.5"
+                className={`${CHECKBOX_CLASS} mt-0.5`}
               />
               <span>
                 Let the agent interview me first — it asks one question per turn, then writes the objective itself.

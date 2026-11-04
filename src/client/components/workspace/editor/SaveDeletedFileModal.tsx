@@ -33,14 +33,14 @@ export function SaveDeletedFileModal({ fileName, filePath, onClose, onConfirm }:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 animate-in fade-in duration-200 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Save deleted file"
     >
       <div
-        className="bg-paper border border-ink/20 rounded-xl shadow-xl w-[min(94vw,440px)] overflow-hidden"
+        className="glass-overlay bg-paper border border-ink/20 rounded-xl shadow-xl w-[min(94vw,440px)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-ink/10">

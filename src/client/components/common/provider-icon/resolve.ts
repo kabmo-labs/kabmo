@@ -63,6 +63,18 @@ export function parseRegisteredGlyph(source: string): ProviderGlyph | null {
 }
 
 /**
+ * A mark ready to draw, plus the built-in name it came from.
+ *
+ * `brandKey` is what the colour rule keys on (`BRAND_COLORS` in
+ * `shared/lib/models/provider/brand-color.ts`) and is `null` for a plugin's own
+ * art: a registration is the user's SVG, and painting it in a brand colour this
+ * build guessed would be a colour the author never chose.
+ */
+export interface ResolvedProviderMark extends ProviderGlyph {
+  brandKey: string | null;
+}
+
+/**
  * The mark to draw for a provider: a plugin's registration when one matches,
  * otherwise the built-in table entry.
  *
@@ -78,7 +90,7 @@ export function parseRegisteredGlyph(source: string): ProviderGlyph | null {
 export function resolveProviderMark(
   candidates: ReadonlyArray<string | null | undefined>,
   registered: ListSlotRows<ProviderIconRegistration>,
-): ProviderGlyph | null {
+): ResolvedProviderMark | null {
   for (const candidate of candidates) {
     if (!candidate) continue;
     const key = foldProviderKey(candidate);
@@ -86,9 +98,10 @@ export function resolveProviderMark(
     const entry = registered.find((row) => foldProviderKey(row.registration.provider) === key);
     if (!entry) continue;
     const glyph = parseRegisteredGlyph(entry.registration.glyph);
-    if (glyph) return glyph;
+    if (glyph) return { ...glyph, brandKey: null };
     break;
   }
   const name = resolveProviderGlyph(...candidates);
-  return name ? (PROVIDER_GLYPHS[name] ?? null) : null;
+  const glyph = name ? PROVIDER_GLYPHS[name] : undefined;
+  return glyph ? { ...glyph, brandKey: name ?? null } : null;
 }

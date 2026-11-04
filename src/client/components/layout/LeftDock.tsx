@@ -101,7 +101,14 @@ export function LeftDockView({
           if (!panel.builtin && !isActive) return null;
           const viewBody: PanelBodyProps = { ...body, active: isActive, enabled: isActive };
           return (
-            <div key={panel.id} className={isActive ? 'w-full h-full' : 'hidden'}>
+            // `data-panel-chrome`, like the right column's slot: a plugin
+            // placed on the LEFT draws its own `bg-paper` root too, and the
+            // column it lands in is chrome — one marker, both columns.
+            <div
+              key={panel.id}
+              data-panel-chrome=""
+              className={isActive ? 'w-full h-full' : 'hidden'}
+            >
               <PanelHostProvider value={viewBody}>{panel.render(viewBody)}</PanelHostProvider>
             </div>
           );
@@ -110,7 +117,7 @@ export function LeftDockView({
             whose bundle has not loaded — a notice, never a blank column. The
             session list is always drawable, so it is never this case. */}
         {!active ? (
-          <div className="w-full h-full">
+          <div data-panel-chrome="" className="w-full h-full">
             <PluginPanelBody panelKey={activeView} />
           </div>
         ) : null}

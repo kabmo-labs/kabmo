@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { AlertCircle, Check, GitBranch, Loader2, Search } from 'lucide-preact';
@@ -123,7 +124,7 @@ export function GitImportPanel({ controller, onInstalled }: GitImportPanelProps)
                     checked={isSelected}
                     disabled={Boolean(blocked)}
                     onChange={() => controller.toggle(skill.path)}
-                    className="mt-0.5 accent-ink cursor-pointer disabled:cursor-not-allowed"
+                    className={`${CHECKBOX_CLASS} mt-0.5 accent-ink cursor-pointer disabled:cursor-not-allowed`}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 min-w-0">
@@ -190,7 +191,7 @@ export function GitImportPanel({ controller, onInstalled }: GitImportPanelProps)
                 type="checkbox"
                 checked={overwrite}
                 onChange={(event) => controller.setOverwrite(event.currentTarget.checked)}
-                className="mt-0.5 accent-ink cursor-pointer"
+                className={`${CHECKBOX_CLASS} mt-0.5 accent-ink cursor-pointer`}
               />
               <span className="text-[11px] text-ink/70 leading-relaxed">
                 Replace skills that already have the same name

@@ -231,7 +231,7 @@ function OverflowMenu({ actions }: { actions: ToolbarOverflowAction[] }) {
               // settles the position before the browser paints.
               visibility: position ? 'visible' : 'hidden',
             }}
-            className="fixed z-[80] w-52 bg-paper border border-ink/15 rounded-lg shadow-lg py-1 text-xs"
+            className="glass-popover fixed z-[80] w-52 bg-paper border border-ink/15 rounded-lg shadow-lg py-1 text-xs"
           >
             {actions.map((action) => (
               <button

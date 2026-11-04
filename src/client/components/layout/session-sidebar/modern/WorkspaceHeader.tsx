@@ -47,6 +47,7 @@
  */
 
 import { useRef, useState } from 'preact/hooks';
+import { useStuckHeader } from '@/client/hooks/ui/stuck-header';
 import type { ReactNode } from 'preact/compat';
 import { ChevronDown, ChevronRight, MoreHorizontal, Pin, Plus } from 'lucide-preact';
 import { AnchoredMenu } from '@/client/components/common/anchored-menu';
@@ -96,11 +97,18 @@ export function WorkspaceHeader({
   // it, so a rectangle read on every render would drag the panel along with the
   // rows instead of leaving it where the click put it.
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
+  // A surface only while PINNED: at rest the header is the first line of the
+  // list and any fill is a band across a uniform sidebar. Once rows slide under
+  // it, it needs a field of its own — that is the state `data-stuck` marks.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const stuck = useStuckHeader(headerRef);
 
   return (
     <div
+      ref={headerRef}
+      data-stuck={stuck ? '' : undefined}
       className={`group/ws sticky top-0 z-10 -mx-1 flex items-center gap-1 rounded-md px-1 text-xs font-semibold text-ink ${
-        touch ? 'h-8 bg-canvas' : 'h-[26px] bg-paper'
+        touch ? 'h-8 bg-canvas glass-sticky' : 'h-[26px] bg-paper glass-sticky'
       }`}
     >
       <button
@@ -128,12 +136,12 @@ export function WorkspaceHeader({
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <ProjectIcon size={15} className="text-ink/70" style={{ color: accent }} />
+              <ProjectIcon size={15} className="project-accent-mark text-ink/70" style={accent ? { '--project-accent': accent } : undefined} />
             )}
           </span>
         )}
 
-        <span className="truncate text-[13px] font-semibold tracking-tight">{folder.name}</span>
+        <span className="glass-sticky-label truncate text-[13px] font-semibold tracking-tight">{folder.name}</span>
         {folder.isPinned && <Pin size={10} className="shrink-0 text-ink/45" />}
 
         {/* The accent as a dot: the icon column keeps the chevron's slot, so the
@@ -142,7 +150,7 @@ export function WorkspaceHeader({
           <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
         )}
 
-        <span className="shrink-0 font-mono text-[10px] font-normal tabular-nums text-ink/35">{sessionCount}</span>
+        <span className="glass-sticky-label shrink-0 font-mono text-[10px] font-normal tabular-nums text-ink/35">{sessionCount}</span>
 
         <span className="ml-auto shrink-0 text-ink/40">
           {isOpen ? <ChevronDown size={touch ? 14 : 12} /> : <ChevronRight size={touch ? 14 : 12} />}
@@ -198,7 +206,7 @@ export function WorkspaceHeader({
               anchor={showMenu && menu ? anchor : null}
               align="end"
               ariaLabel={`Options for ${folder.name}`}
-              className="w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
+              className="glass-popover w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
               onClose={onCloseMenu}
             >
               {menu}

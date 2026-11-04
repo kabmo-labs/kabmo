@@ -1,5 +1,7 @@
 import { Loader2 } from 'lucide-preact';
 import { BUILTIN_PANELS } from '@/client/components/workspace/panels/builtin';
+import { PanelMark } from '@/client/components/common/panel-mark';
+import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 
 interface BuiltinListProps {
   /** Every panel id switched off — a bare view id, or `plugin:<id>`. */
@@ -55,9 +57,25 @@ export function BuiltinList({ disabled, busy, onSetEnabled }: BuiltinListProps) 
                 enabled ? 'bg-paper' : 'bg-ink/[0.02]'
               }`}
             >
-              <span className={enabled ? 'text-ink/70 flex-shrink-0' : 'text-ink/30 flex-shrink-0'}>
-                {panel.icon}
-              </span>
+              {/* The SAME mark the rail and the phone's chip strip draw, from
+                  the same hue map: this row used to render the bare glyph and
+                  therefore took the GLYPH's colour (`lucide-files` → 320°) while
+                  the rail drew the PANEL's (`files` → 0°).
+
+                  The off state is stated the way the rail states it — the ink
+                  weight for the monochrome mode, `data-idle` for the colour
+                  mode, which dims by LUMINANCE and keeps the chroma. `opacity`
+                  here would have washed the hue out, the exact "kusem" the rail
+                  stopped doing. */}
+              <PanelMark
+                className={`flex-shrink-0 ${enabled ? 'text-ink/70' : 'text-ink/30'}`}
+                panelId={panel.id}
+                builtin
+                icon={panel.icon}
+                name={panel.title}
+                size={PANEL_MARK_SIZE}
+                idle={!enabled}
+              />
               <span className="min-w-0 flex-1">
                 <span className={`block text-xs truncate ${enabled ? 'text-ink' : 'text-ink/45'}`} title={panel.title}>
                   {panel.title}

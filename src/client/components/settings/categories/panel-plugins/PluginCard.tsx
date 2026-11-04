@@ -95,7 +95,7 @@ export function PluginCard({
     >
       <header className="flex items-start gap-2.5">
         <div className={plugin.enabled ? '' : 'opacity-50'}>
-          <PluginMark name={plugin.name} iconUrl={iconUrl} />
+          <PluginMark name={plugin.name} iconUrl={iconUrl} color={plugin.color} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">

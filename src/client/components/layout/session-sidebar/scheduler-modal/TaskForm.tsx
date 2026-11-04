@@ -13,6 +13,7 @@
  * refuses.
  */
 
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import { Loader2 } from 'lucide-preact';
 import { validateSchedule } from '@/shared/lib/schedule/parse';
@@ -185,7 +186,7 @@ export function TaskForm({
               checked={useActiveSession}
               disabled={!activeSessionId}
               onChange={(e) => setUseActiveSession(e.currentTarget.checked)}
-              className="accent-ink"
+              className={`${CHECKBOX_CLASS} accent-ink`}
             />
             <span>Resume the open session each run</span>
           </label>

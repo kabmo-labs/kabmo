@@ -33,6 +33,8 @@ import { applyChatWidthMode } from '@/client/hooks/chat/timeline/width-mode';
 import { applyToolRenderMode } from '@/client/hooks/chat/timeline/tool-render-mode';
 import { applySidebarStyle } from '@/client/hooks/workspace/sidebar-style';
 import { applyComposerStyle } from '@/client/hooks/chat/composer/style';
+import { applySurfaceStyle } from '@/client/hooks/ui/surface-style';
+import { applyIconStyle } from '@/client/hooks/ui/icon-style';
 import { EDITOR_FONT_CHANGED_EVENT } from '@/client/hooks/editor/font';
 import { EDITOR_THEME_CHANGED_EVENT } from '@/client/hooks/editor/theme';
 
@@ -86,5 +88,17 @@ export function applySettingsSideEffects(previous: SettingsState, next: Settings
   // separate subtree that never re-reads `appSettings`.
   if (next.composerStyle !== previous.composerStyle) {
     applyComposerStyle(next.composerStyle);
+  }
+
+  // The surface material and the brand-mark paint are CSS-only: one attribute
+  // each on `<html>`, which every rule already keys on. Written here so the
+  // panels behind the modal repaint on the click, and so the next render cannot
+  // show a style the document does not carry.
+  if (next.surfaceStyle !== previous.surfaceStyle) {
+    applySurfaceStyle(next.surfaceStyle);
+  }
+
+  if (next.iconStyle !== previous.iconStyle) {
+    applyIconStyle(next.iconStyle);
   }
 }

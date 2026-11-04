@@ -132,6 +132,10 @@ export function ProviderIcon({
       // carry their own attributes (`azure`'s `fill-opacity`, `synthetic`'s
       // stroked outline, the baked `currentColor` paths) keep them.
       fill="currentColor"
+      // The colour rule's key: `<html data-icon-style="color">` paints
+      // `svg[data-provider=…]` from the brand table, and the attribute is absent
+      // for a plugin's own art so no guessed brand colour can land on it.
+      data-provider={glyph.brandKey ?? undefined}
       // `block` + the explicit width/height are the containment contract: an
       // inline SVG sits on the text baseline and adds descender space, which is
       // how a mark "fits" its attributes yet still pushes a plate's edge.

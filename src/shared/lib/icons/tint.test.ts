@@ -1,0 +1,261 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The functional-glyph colour table.
+ *
+ * Four facts are worth pinning, and each is invisible until wrong:
+ *
+ * - **The class conversion matches what Lucide emits.** `Trash2` is an alias of
+ *   `trash` (class `lucide-trash-2`), `AlertTriangle` of `triangle-alert`, so a
+ *   table keyed on the IMPORT name is only useful if the kebab translation lands
+ *   on a class the component really carries. Every row is RENDERED here rather
+ *   than trusted.
+ * - **The hue table matches the imports.** It is generated from `src/`; a stale
+ *   copy would leave a newly added icon on the default hue, which looks like the
+ *   mode half-applied. `scripts/icon-tints.mjs --check` is the same comparison.
+ * - **Every generated hue clears the non-text contrast floor** on every palette
+ *   of its variant, at the lightness `ICON_HUE_PAINT` states. That is the whole
+ *   reason the lightness is 30% / 70% and not something prettier.
+ * - **A signal icon is never also a hue row**, so the signal colour cannot be
+ *   shadowed by a `--icon-hue` on the same element.
+ */
+
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { Window } from 'happy-dom';
+import { h, render } from 'preact';
+import * as lucide from 'lucide-preact';
+import {
+  assignPanelHues,
+  DEFAULT_ICON_HUE,
+  ICON_HUE_PAINT,
+  ICON_HUE_ROWS,
+  ICON_TINTS,
+  ICON_TINT_ROWS,
+  ICON_TINT_TOKENS,
+  iconHue,
+  hashHue,
+  iconHueColor,
+  iconHuePaint,
+  iconTintRole,
+  kebabIconName,
+  lucideClassName,
+} from '@/shared/lib/icons/tint';
+import { ICON_HUES } from '@/shared/lib/icons/tint-hues.generated';
+import { THEMES } from '@/shared/lib/theme/catalog';
+import { BRAND_CONTRAST_FLOOR, contrastRatio } from '@/shared/lib/theme/legibility';
+
+const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event'] as const;
+const nativeGlobals: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
+let container: HTMLElement;
+
+beforeEach(() => {
+  const win = new Window({ url: 'http://localhost' });
+  const target = globalThis as unknown as Record<string, unknown>;
+  for (const key of DOM_GLOBALS) {
+    if (!(key in nativeGlobals)) nativeGlobals[key] = win[key as keyof Window];
+    target[key] = win[key as keyof Window];
+  }
+  container = document.createElement('div');
+  document.body.appendChild(container);
+});
+
+afterEach(() => {
+  render(null, container);
+  container.remove();
+});
+
+afterAll(() => {
+  const target = globalThis as unknown as Record<string, unknown>;
+  for (const key of DOM_GLOBALS) {
+    if (key in nativeGlobals) target[key] = nativeGlobals[key];
+    else delete target[key];
+  }
+});
+
+/** `hsl(<hue> <sat>% <light>%)` as a hex, so contrast can be measured. */
+function hslHex(hue: number, saturation: number, lightness: number): string {
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const k = (n: number) => (n + hue / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = (value: number) =>
+    Math.round(Math.min(1, Math.max(0, value)) * 255)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${toHex(channel(0))}${toHex(channel(8))}${toHex(channel(4))}`;
+}
+
+
+
+describe('kebabIconName', () => {
+  test('lowercase, camel and digit boundaries', () => {
+    expect(kebabIconName('Trash2')).toBe('trash-2');
+    expect(kebabIconName('AlertTriangle')).toBe('alert-triangle');
+    expect(kebabIconName('ChevronsUpDown')).toBe('chevrons-up-down');
+    expect(kebabIconName('BarChart3')).toBe('bar-chart-3');
+    expect(kebabIconName('CircleQuestionMark')).toBe('circle-question-mark');
+    expect(kebabIconName('ZoomIn')).toBe('zoom-in');
+    expect(kebabIconName('Cpu')).toBe('cpu');
+    expect(kebabIconName('X')).toBe('x');
+    expect(kebabIconName('Settings2')).toBe('settings-2');
+  });
+
+  test('the class is the kebab name behind the component prefix', () => {
+    expect(lucideClassName('Trash2')).toBe('lucide-trash-2');
+  });
+});
+
+describe('the signal table', () => {
+  test('every row names an icon this build can import', () => {
+    for (const name of Object.keys(ICON_TINTS)) {
+      expect((lucide as Record<string, unknown>)[name], `${name} is not a lucide export`).toBeDefined();
+    }
+  });
+
+  test('every row renders the class the stylesheet keys on', () => {
+    for (const name of Object.keys(ICON_TINTS)) {
+      const Icon = (lucide as unknown as Record<string, (props: object) => unknown>)[name] as (props: object) => unknown;
+      render(h(Icon as never, { 'aria-hidden': true }), container);
+      const svg = container.querySelector('svg');
+      expect(svg, `${name} draws an svg`).not.toBeNull();
+      expect(svg?.classList.contains(lucideClassName(name)), `${name} -> ${lucideClassName(name)}`).toBe(true);
+      render(null, container);
+    }
+  });
+
+  test('an unlisted icon has no role, so it takes its own hue', () => {
+    expect(iconTintRole('Sparkles')).toBeNull();
+  });
+
+  test('a signal role answers its own token', () => {
+    expect(iconTintRole('Trash2')).toBe('error');
+    expect(iconTintRole('CheckCircle2')).toBe('success');
+    expect(iconTintRole('Hourglass')).toBe('warning');
+    expect(iconTintRole('Info')).toBe('info');
+  });
+
+  test('every role paints a theme token, never a hex', () => {
+    for (const role of new Set(Object.values(ICON_TINTS))) {
+      expect(ICON_TINT_TOKENS[role], role).toMatch(/^var\(--theme-[a-z]+\)$/);
+    }
+  });
+
+  test('the signal rows are unique, so no rule can be shadowed', () => {
+    const classes = ICON_TINT_ROWS.map((row) => row.className);
+    expect(new Set(classes).size).toBe(classes.length);
+  });
+});
+
+describe('the generated hues', () => {
+  test('the table has one entry per imported, non-signal icon', () => {
+    expect(Object.keys(ICON_HUES).length).toBeGreaterThan(100);
+    for (const name of Object.keys(ICON_TINTS)) {
+      expect(ICON_HUES[name], `${name} is a signal and must not carry a hue`).toBeUndefined();
+    }
+  });
+
+  test('every hue is a step on the 36-hue wheel', () => {
+    for (const [name, hue] of Object.entries(ICON_HUES)) {
+      expect(hue % 10, name).toBe(0);
+      expect(hue, name).toBeGreaterThanOrEqual(0);
+      expect(hue, name).toBeLessThan(360);
+    }
+  });
+
+  test('neighbouring icons are not all the same colour', () => {
+    const hues = new Set(Object.values(ICON_HUES));
+    // The whole point of a per-icon hue: a dense list must not be one colour.
+    expect(hues.size).toBeGreaterThan(20);
+  });
+
+  test('the hue table matches the icons this repo imports', async () => {
+    // The generator is the source of truth; running its `--check` here is what
+    // makes a stale table a test failure instead of a review miss.
+    const repoRoot = new URL('../../../..', import.meta.url).pathname;
+    const check = Bun.spawnSync(['bun', 'run', `${repoRoot}scripts/icon-tints.mjs`, '--check'], {
+      cwd: repoRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    expect(check.exitCode, check.stderr.toString()).toBe(0);
+  });
+
+  test('every hue clears the non-text floor on every palette of its variant', () => {
+    for (const variant of ['light', 'dark'] as const) {
+      const { saturation, lightness } = ICON_HUE_PAINT[variant];
+      const papers = THEMES.filter((theme) => theme.variant === variant).map((theme) => theme.paper);
+      for (const hue of new Set(Object.values(ICON_HUES))) {
+        const color = hslHex(hue, saturation, lightness);
+        const worst = Math.min(...papers.map((paper) => contrastRatio(color, paper)));
+        expect(worst, `hue ${hue} ${variant} (${color})`).toBeGreaterThanOrEqual(BRAND_CONTRAST_FLOOR);
+      }
+    }
+  });
+
+  test('the paint rule and the concrete colour share one formula', () => {
+    // The stylesheet leaves the hue to `--icon-hue`; the settings preview needs a
+    // real colour. Both must come from the same numbers, or the preview lies.
+    for (const variant of ['light', 'dark'] as const) {
+      const { saturation, lightness } = ICON_HUE_PAINT[variant];
+      expect(iconHuePaint(variant)).toBe(`hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${saturation}% ${lightness}%)`);
+      expect(iconHueColor(120, variant)).toBe(`hsl(120 ${saturation}% ${lightness}%)`);
+    }
+  });
+
+  test('the table is exactly what the runtime hash produces', () => {
+    // One formula for both: a plugin's mark is coloured by `hashHue` at runtime,
+    // so if the generated rows drifted from it, an installed plugin would sit on
+    // a different wheel than the glyphs beside it.
+    for (const [name, hue] of Object.entries(ICON_HUES)) {
+      expect(hashHue(name), name).toBe(hue);
+    }
+  });
+
+  test('a plugin name gets a stable hue on the same wheel', () => {
+    expect(hashHue('Demo Plugin')).toBe(hashHue('Demo Plugin'));
+    expect(hashHue('Demo Plugin')).not.toBe(hashHue('Other Plugin'));
+    for (const name of ['Demo', 'Session Info', 'git-forge', 'Stats — CPU & RAM']) {
+      expect(hashHue(name) % 10, name).toBe(0);
+      expect(hashHue(name), name).toBeLessThan(360);
+    }
+  });
+
+  test('the rail gives every panel its OWN hue, even when two hashes collide', () => {
+    // Fourteen buttons on a 36-slot wheel collide about nine times in ten
+    // (birthday bound) — measured, three right-rail icons shared one blue.
+    const ids = [
+      'context', 'files', 'search', 'git', 'wiki', 'terminal', 'user-browser',
+      'browser', 'usage', 'todo', 'plan', 'plugin:command-runner',
+      'plugin:git-forge', 'plugin:stats',
+    ];
+    const hues = assignPanelHues(ids);
+
+    expect(hues.size).toBe(ids.length);
+    expect(new Set(hues.values()).size).toBe(ids.length);
+  });
+
+  test('the assignment does not depend on the catalog order', () => {
+    // Reordering a rail must not recolour it: the ids are sorted before probing.
+    const ids = ['b', 'a', 'c', 'plugin:x'];
+    expect([...assignPanelHues(ids)]).toEqual([...assignPanelHues([...ids].reverse())]);
+  });
+
+  test('an unassigned panel falls back to the plain hash', () => {
+    expect(assignPanelHues(['only']).get('only')).toBe(hashHue('only'));
+  });
+
+  test('an icon outside the table keeps a neutral default', () => {
+    expect(iconHue('NotAnIcon')).toBe(DEFAULT_ICON_HUE);
+    expect(iconHue('Trash2')).toBe(DEFAULT_ICON_HUE);
+  });
+
+  test('the rows name classes, one per hue', () => {
+    const classes = ICON_HUE_ROWS.map((row) => row.className);
+    expect(new Set(classes).size).toBe(classes.length);
+    expect(classes.every((className) => className.startsWith('lucide-'))).toBe(true);
+  });
+});

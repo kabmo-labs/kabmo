@@ -114,7 +114,7 @@ export function BrowserViewportSelector({
         </button>
 
         {dropdownOpen && (
-          <div className="absolute right-0 top-full mt-1 w-56 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 z-50 text-xs font-mono">
+          <div className="glass-popover absolute right-0 top-full mt-1 w-56 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 z-50 text-xs font-mono">
             {/* Responsive Section */}
             <div className="px-2.5 py-1 text-[10px] text-ink/40 uppercase tracking-wider font-semibold">
               Responsive Testing

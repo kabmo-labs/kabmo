@@ -50,7 +50,7 @@ export function TabContextMenu({ x, y, rows, onAction, onClose }: TabContextMenu
         ref={menuRef}
         role="menu"
         aria-label="Tab actions"
-        className="absolute w-52 bg-paper border border-ink/15 rounded-md shadow-xl py-1 text-xs text-ink"
+        className="glass-popover absolute w-52 bg-paper border border-ink/15 rounded-md shadow-xl py-1 text-xs text-ink"
         style={{ left: `${position.left}px`, top: `${position.top}px` }}
         onClick={(event) => event.stopPropagation()}
       >

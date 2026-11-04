@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import type { FormEvent, FunctionComponent } from 'preact/compat';
 import { AlertCircle, Check, Code, Globe, Loader2, Save, Terminal, Trash2 } from 'lucide-preact';
@@ -162,7 +163,7 @@ export const McpDetailPane: FunctionComponent<McpDetailPaneProps> = ({
             id="enable-mcp"
             checked={formData.enabled}
             onChange={(e) => setFormData({ ...formData, enabled: e.currentTarget.checked })}
-            className="w-4 h-4 rounded border-ink/30 text-ink focus:ring-0 cursor-pointer"
+            className={`${CHECKBOX_CLASS} w-4 h-4 cursor-pointer`}
           />
           <label htmlFor="enable-mcp" className="text-xs font-medium text-ink cursor-pointer select-none">
             Enable Server

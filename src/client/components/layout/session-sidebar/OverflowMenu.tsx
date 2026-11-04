@@ -101,7 +101,7 @@ export function ToolbarOverflowMenu({
       {open && (
         <div
           role="menu"
-          className={`absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 shadow-lg z-50 py-1 text-xs ${
+          className={`glass-popover absolute right-0 top-full mt-2 w-52 bg-paper border border-ink/15 shadow-lg z-50 py-1 text-xs ${
             mobile ? 'rounded-xl p-2' : 'rounded-lg'
           }`}
         >

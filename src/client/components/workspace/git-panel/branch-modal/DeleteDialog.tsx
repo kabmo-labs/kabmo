@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { AlertTriangle } from 'lucide-preact';
 import { Modal } from '@/client/components/common/Modal';
 import type { GitBranchDetail } from '@/shared/types/git';
@@ -73,7 +74,7 @@ export function DeleteBranchDialog({
             type="checkbox"
             checked={force}
             onChange={(e) => onForceChange(e.currentTarget.checked)}
-            className="accent-error cursor-pointer mt-0.5"
+            className={`${CHECKBOX_CLASS} accent-error cursor-pointer mt-0.5`}
           />
           <span className="flex flex-col gap-0.5">
             <span className="text-error font-medium">Delete even if its commits are not merged</span>

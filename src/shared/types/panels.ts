@@ -96,6 +96,20 @@ export interface PanelPluginManifest {
   /** Optional icon file, relative to the plugin root. */
   icon?: string;
   /**
+   * The colour this plugin's mark is drawn in, as a CSS hex (`#RRGGBB`).
+   *
+   * Declared by the plugin because only the plugin knows its own brand — the
+   * host's alternative is a hue hashed from the plugin's NAME, which is stable
+   * but arbitrary (`hashHue`), and a marketplace author who ships a logo should
+   * not have that logo tinted by a hash. Read by the activity bar's colour mode;
+   * absent means the host falls back to the hashed hue.
+   *
+   * Hex only, and validated on the server: the value reaches an inline custom
+   * property, so `color: url(...)` or `red; background: …` must not be able to
+   * arrive through a manifest. The same rule the project accent follows.
+   */
+  color?: string;
+  /**
    * Optional README, relative to the plugin root. Markdown, shown in the pane's
    * reader so a user can judge a plugin before installing it.
    *

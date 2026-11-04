@@ -7,13 +7,13 @@ export { GitCommitModal as GitOutputModal } from '@/client/components/workspace/
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-canvas/80 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 modal-scrim flex items-center justify-center p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="bg-paper border border-ink/20 rounded-lg shadow-xl flex flex-col overflow-hidden w-[min(94vw,420px)] max-h-[80vh]"
+        className="glass-overlay bg-paper border border-ink/20 rounded-lg shadow-xl flex flex-col overflow-hidden w-[min(94vw,420px)] max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {children}

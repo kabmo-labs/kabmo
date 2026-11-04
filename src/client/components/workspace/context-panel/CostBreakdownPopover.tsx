@@ -40,7 +40,7 @@ export function CostBreakdownPopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 mt-1.5 z-50 w-64 bg-paper border border-ink/10 rounded-lg shadow-lg p-3"
+      className="glass-popover absolute top-full right-0 mt-1.5 z-50 w-64 bg-paper border border-ink/10 rounded-lg shadow-lg p-3"
       role="dialog"
       aria-modal="false"
     >

@@ -35,8 +35,8 @@ interface NewFileModalProps {
 export function FileCreateModal({ folderPath, kind, value, error, isLoading, onChange, onCancel, onSubmit }: NewFileModalProps) {
   const label = kind === 'folder' ? 'Folder' : 'File';
   return createPortal(
-    <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-      <form onSubmit={onSubmit} className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+      <form onSubmit={onSubmit} className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-3 text-sm">New {label}</h3>
         <div className="flex items-center gap-1 mb-1 text-xs font-mono text-ink/50 min-w-0">
           <span className="truncate" title={folderPath}>{folderPath || '.'}/</span>
@@ -92,8 +92,8 @@ interface DeleteModalProps {
 
 export function FileDeleteModal({ fileName, displayName, isFolder, isLoading, onCancel, onConfirm }: DeleteModalProps) {
   return createPortal(
-    <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-2 text-sm">Delete {isFolder ? 'Folder' : 'File'}</h3>
         <p className="text-xs text-ink/70 mb-4">Are you sure you want to delete <span className="font-mono bg-canvas px-1 rounded">{fileName}</span>? This action cannot be undone.</p>
         {/* A collapsed chain row is LABELLED `com/java/app/package` but its path
@@ -158,8 +158,8 @@ interface RenameModalProps {
  */
 export function FileRenameModal({ isFolder, renameValue, originalPath, displayName, error, isLoading, onChange, onCancel, onSubmit }: RenameModalProps) {
   return createPortal(
-    <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-      <form onSubmit={onSubmit} className="bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+      <form onSubmit={onSubmit} className="glass-overlay bg-paper rounded shadow-xl p-4 w-full max-w-sm border border-ink/10 font-sans">
         <h3 className="font-semibold text-ink mb-3 text-sm">Rename {isFolder ? 'Folder' : 'File'}</h3>
         <input 
           autoFocus
@@ -215,8 +215,8 @@ interface HistoryModalProps {
 export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose }: HistoryModalProps) {
   const rows = fetcherData?.type === 'history' ? fetcherData.data : undefined;
   return createPortal(
-    <div className="fixed inset-0 bg-ink/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-paper rounded-lg shadow-xl w-full max-w-4xl border border-ink/10 flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 modal-scrim z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="glass-overlay bg-paper rounded-lg shadow-xl w-full max-w-4xl border border-ink/10 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between p-4 border-b border-ink/10">
           <h3 className="text-sm font-semibold text-ink flex items-center space-x-2">
             <History size={16} className="text-ink/60" />
@@ -230,7 +230,7 @@ export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose 
           </button>
         </div>
         
-        <div className="flex-1 scrollbar-overlay-container bg-paper p-2">
+        <div className="flex-1 scrollbar-overlay-container p-2">
           {fetcherState === 'idle' ? (
             rows ? (
               rows.length > 0 ? (
@@ -245,7 +245,7 @@ export function FileHistoryModal({ filePath, fetcherState, fetcherData, onClose 
                   </thead>
                   <tbody className="divide-y divide-ink/5">
                     {rows.map((row, i) => (
-                      <tr key={i} className="hover:bg-ink/[0.03] transition-colors group bg-paper">
+                      <tr key={i} className="hover:bg-ink/[0.03] transition-colors group">
                         <td className="px-3 py-2 text-ink">
                           {row.message ? <span className="font-medium text-ink/90 group-hover:text-ink">{row.message}</span> : null}
                         </td>

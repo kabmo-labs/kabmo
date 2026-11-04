@@ -66,6 +66,12 @@ export interface ResolvedPanel {
   icon?: ReactNode;
   /** A plugin's icon URL, when its manifest declares one. */
   iconUrl?: string;
+  /**
+   * The colour a plugin's mark is drawn in, when its manifest declares one.
+   * A built-in view never carries this: its mark is a glyph, and the palette
+   * decides its colour.
+   */
+  color?: string;
   /** The plugin's display name; empty for a built-in view. */
   name: string;
   builtin: boolean;
@@ -178,6 +184,7 @@ export function usePanelCatalog(side: PanelCatalogSide = 'right'): ResolvedPanel
         defaultWidth: widths.px,
         defaultFraction: widths.fraction,
         ...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {}),
+        ...(panel.color ? { color: panel.color } : {}),
         // Wrapped so the kit's participant hooks resolve THIS plugin's id while
         // its panel renders — the scope is what `useRpc`/`useRealtime` read.
         // The boundary is the other half: a plugin component that throws must

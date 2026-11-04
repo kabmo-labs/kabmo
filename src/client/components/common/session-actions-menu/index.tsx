@@ -167,7 +167,7 @@ export function SessionActionsMenu({
           // the position before the browser paints, so this never flashes.
           visibility: pos ? 'visible' : 'hidden',
         }}
-        className="fixed z-[70] w-44 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
+        className="glass-popover fixed z-[70] w-44 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         {onRename && (

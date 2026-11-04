@@ -88,6 +88,36 @@ describe('applySettingsSideEffects', () => {
     expect(events).toEqual([]);
   });
 
+  test('the surface material is written to the document, and only when it moves', () => {
+    installDom();
+    const root = globalThis.document.documentElement;
+
+    applySettingsSideEffects(state(), state({ surfaceStyle: 'glass' }));
+    expect(root.getAttribute('data-surface')).toBe('glass');
+
+    // Same value again: the attribute must survive an unrelated re-render
+    // untouched (the writer removes the default, so a stray call would clear it).
+    applySettingsSideEffects(state({ surfaceStyle: 'glass' }), state({ surfaceStyle: 'glass', goalDefaultBudget: 1 }));
+    expect(root.getAttribute('data-surface')).toBe('glass');
+
+    applySettingsSideEffects(state({ surfaceStyle: 'glass' }), state({ surfaceStyle: 'classic' }));
+    expect(root.hasAttribute('data-surface')).toBe(false);
+  });
+
+  test('the brand-mark style is written to the document, and only when it moves', () => {
+    installDom();
+    const root = globalThis.document.documentElement;
+
+    applySettingsSideEffects(state(), state({ iconStyle: 'color' }));
+    expect(root.getAttribute('data-icon-style')).toBe('color');
+
+    applySettingsSideEffects(state({ iconStyle: 'color' }), state({ iconStyle: 'color', goalDefaultBudget: 1 }));
+    expect(root.getAttribute('data-icon-style')).toBe('color');
+
+    applySettingsSideEffects(state({ iconStyle: 'color' }), state({ iconStyle: 'monochrome' }));
+    expect(root.hasAttribute('data-icon-style')).toBe(false);
+  });
+
   test('the editor font still announces when it moves', () => {
     const win = installDom();
     const seen: unknown[] = [];

@@ -160,7 +160,7 @@ export function SearchPanelBody({
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-paper border border-ink/10 rounded shadow-lg z-10 py-1">
+            <div className="glass-popover absolute right-0 top-full mt-1 w-48 bg-paper border border-ink/10 rounded shadow-lg z-10 py-1">
               <button
                 onClick={() => {
                   setShowIncludeField(!showIncludeField);

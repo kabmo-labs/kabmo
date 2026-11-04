@@ -76,7 +76,7 @@ export function PanelVisibilityMenu({ anchor, items, hidden, onToggle, onClose }
           // the position before the browser paints, so this never flashes.
           visibility: pos ? 'visible' : 'hidden',
         }}
-        className="fixed z-[70] w-52 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
+        className="glass-popover fixed z-[70] w-52 bg-paper border border-ink/15 rounded-lg shadow-xl py-1 text-xs text-ink font-sans"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-3 py-1 text-[10px] uppercase font-mono text-ink/40 border-b border-ink/10 mb-1">

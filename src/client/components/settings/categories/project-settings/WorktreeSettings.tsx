@@ -18,6 +18,7 @@
  * the next create uses — including one started by a scheduled task.
  */
 
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useState } from 'preact/hooks';
 import { readKabmoSetting, writeSetting } from '@/shared/lib/settings/client';
 import { useWorktrees } from '@/client/hooks/workspace/worktree/index';
@@ -131,7 +132,7 @@ export function WorktreeSettings({ root, folderId, onReport }: WorktreeSettingsP
             setCarry(next);
             writeSetting(WORKTREE_CARRY_SETTING, next);
           }}
-          className="mt-0.5"
+          className={`${CHECKBOX_CLASS} mt-0.5`}
         />
         <span className="flex flex-col gap-0.5">
           <span className="text-xs font-semibold text-ink">Copy ignored files into new worktrees</span>

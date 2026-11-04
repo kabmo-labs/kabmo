@@ -129,7 +129,7 @@ export function FileContextMenu({ x, y, isFolder, hasGitStatus, pasteLabel, chai
     >
       <div
         ref={menuRef}
-        className="fixed z-50 bg-paper border border-ink/15 shadow-2xl rounded-lg py-1 min-w-[185px] text-xs text-ink font-sans"
+        className="glass-popover fixed z-50 bg-paper border border-ink/15 shadow-2xl rounded-lg py-1 min-w-[185px] text-xs text-ink font-sans"
         style={{ top: posY, left: posX }}
         onClick={e => e.stopPropagation()}
       >

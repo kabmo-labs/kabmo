@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { Plus, X } from 'lucide-preact';
 import { PROVIDER_DISCOVERY_TYPES } from '@/shared/lib/models/provider/dialect';
 import type { ProviderDiscoveryType } from '@/shared/types/settings/provider';
@@ -95,7 +96,7 @@ export function EntryAdvanced({
                 type="checkbox"
                 checked={discovery.injectV1 === true}
                 onChange={(e) => patch({ injectV1: e.currentTarget.checked })}
-                className="mt-0.5"
+                className={`${CHECKBOX_CLASS} mt-0.5`}
               />
               <span>
                 Skip the forced <span className="font-mono">/v1</span> prefix — for a gateway rooted at a
@@ -109,7 +110,7 @@ export function EntryAdvanced({
                 type="checkbox"
                 checked={discovery.advertisedReasoning === true}
                 onChange={(e) => patch({ advertisedReasoning: e.currentTarget.checked })}
-                className="mt-0.5"
+                className={`${CHECKBOX_CLASS} mt-0.5`}
               />
               <span>Trust the reasoning ladder the endpoint advertises in its model rows.</span>
             </label>

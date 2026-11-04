@@ -30,7 +30,7 @@ export function ThinkingLevelDropdown({ thinkingLevels, currentThinking, onSelec
         <span className="hidden lg:inline">{currentThinking}</span>
       </button>
       {showThinking && thinkingLevels.length > 0 && (
-        <div className="absolute bottom-full left-0 mb-1 w-40 bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs">
+        <div className="glass-popover absolute bottom-full left-0 mb-1 w-40 bg-paper border border-ink/20 rounded-md shadow-lg z-50 py-1 text-xs">
           <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold mb-1">Thinking Level</div>
           {thinkingLevels.map(level => (
             <button

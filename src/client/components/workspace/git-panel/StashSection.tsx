@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useCallback, useEffect, useId, useState } from 'preact/hooks';
 import { Archive, Download, Plus, Trash2 } from 'lucide-preact';
 import type { GitStashEntry } from '@/shared/types/git';
@@ -176,7 +177,7 @@ export function GitStashSection({ rootPath, repo, isBusy, onAction }: GitStashSe
                   type="checkbox"
                   checked={untracked}
                   onChange={(e) => setUntracked(e.currentTarget.checked)}
-                  className="accent-ink cursor-pointer"
+                  className={`${CHECKBOX_CLASS} accent-ink cursor-pointer`}
                 />
                 -u
               </label>

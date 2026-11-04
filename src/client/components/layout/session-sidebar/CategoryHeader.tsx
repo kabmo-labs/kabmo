@@ -122,8 +122,8 @@ export function CategoryHeader({
                 ) : (
                   <ProjectIcon
                     size={15}
-                    className="text-ink/75"
-                    style={{ color: folder.accentColor || undefined }}
+                    className="project-accent-mark text-ink/75"
+                    style={folder.accentColor ? { '--project-accent': folder.accentColor } : undefined}
                   />
                 )}
               </span>
@@ -182,7 +182,7 @@ export function CategoryHeader({
               anchor={showMenu ? anchor : null}
               align="end"
               ariaLabel={`Options for ${folder.name}`}
-              className="w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
+              className="glass-popover w-44 rounded-md border border-ink/15 bg-paper py-1 text-xs shadow-lg"
               onClose={onCloseMenu}
             >
               <WorkspaceOptionsMenu

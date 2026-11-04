@@ -189,11 +189,11 @@ export function SettingsModal({
 
   return (
     <div
-      className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-0 md:p-6 animate-in fade-in duration-150"
+      className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-0 md:p-6 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="relative bg-paper border border-ink/15 md:rounded-2xl shadow-2xl w-full h-full md:max-w-5xl lg:max-w-6xl xl:max-w-[1280px] md:h-[min(90vh,900px)] md:max-h-[92vh] flex flex-col md:flex-row overflow-hidden text-ink"
+        className="glass-overlay relative bg-paper border border-ink/15 md:rounded-2xl shadow-2xl w-full h-full md:max-w-5xl lg:max-w-6xl xl:max-w-[1280px] md:h-[min(90vh,900px)] md:max-h-[92vh] flex flex-col md:flex-row overflow-hidden text-ink"
         onClick={(e) => e.stopPropagation()}
       >
         {/* DESKTOP VIEW: 2-Column Split */}
@@ -212,13 +212,13 @@ export function SettingsModal({
         </div>
 
         {/* DESKTOP & MOBILE DETAIL VIEW */}
-        <div className={`flex-1 flex-col h-full bg-paper overflow-hidden ${isMobileDrilled ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`flex-1 flex-col h-full overflow-hidden ${isMobileDrilled ? 'flex' : 'hidden md:flex'}`}>
           {/* Header Bar. The height and padding carry the safe-area insets on a
               phone: the modal is full-screen below `md`, so without them the
               back button and the title sit under the status bar / notch, the
               same way the mobile chrome (header, editor, diff) already avoids. */}
           <div
-            className="px-6 border-b border-ink/10 flex items-center justify-between flex-shrink-0 bg-paper"
+            className="px-6 border-b border-ink/10 flex items-center justify-between flex-shrink-0"
             style={{
               height: 'calc(4rem + env(safe-area-inset-top, 0px))',
               paddingTop: 'env(safe-area-inset-top, 0px)',

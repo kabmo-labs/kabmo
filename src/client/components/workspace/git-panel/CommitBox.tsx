@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { Check } from 'lucide-preact';
 
 interface GitCommitBoxProps {
@@ -79,7 +80,7 @@ export function GitCommitBox({
             type="checkbox"
             checked={amend}
             onChange={(e) => onToggleAmend?.(e.currentTarget.checked)}
-            className="accent-ink cursor-pointer"
+            className={`${CHECKBOX_CLASS} accent-ink cursor-pointer`}
           />
           Amend
         </label>

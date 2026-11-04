@@ -62,7 +62,7 @@ export function TopNavbar({
   );
   return (
     <header
-      className="h-10 flex-shrink-0 border-b border-ink/10 bg-paper flex items-center justify-between z-20 titlebar-drag-region select-none"
+      className="glass-chrome h-10 flex-shrink-0 border-b border-ink/10 bg-paper flex items-center justify-between z-20 titlebar-drag-region select-none"
       {...dragRegionProps()}
       style={{
         // The sidebar's own header carries the left inset while it is open.

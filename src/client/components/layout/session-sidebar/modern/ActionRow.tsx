@@ -136,7 +136,7 @@ export function SidebarActionRow({
           </button>
           {optionsOpen && (
             <div
-              className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-ink/15 bg-paper py-1 shadow-lg"
+              className="glass-popover absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-ink/15 bg-paper py-1 shadow-lg"
               onMouseLeave={onCloseOptions}
             >
               <SortMenu variant="desktop" sortOption={sortOption} onSortChange={onSortChange} />

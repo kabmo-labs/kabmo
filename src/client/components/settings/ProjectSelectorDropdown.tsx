@@ -125,7 +125,7 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
         {isOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setIsOpen(false)} />
-            <div className="absolute left-2.5 right-2.5 top-12 z-30 bg-paper border border-ink/15 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
+            <div className="glass-popover absolute left-2.5 right-2.5 top-12 z-30 bg-paper border border-ink/15 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
               {optionButtons}
             </div>
           </>
@@ -149,7 +149,7 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
       </button>
 
       {isOpen && (
-        <div className="absolute top-12 left-3 right-3 bg-paper border border-ink/20 rounded-lg shadow-lg z-30 py-1 divide-y divide-ink/5 animate-in fade-in zoom-in-95 duration-100">
+        <div className="glass-popover absolute top-12 left-3 right-3 bg-paper border border-ink/20 rounded-lg shadow-lg z-30 py-1 divide-y divide-ink/5 animate-in fade-in zoom-in-95 duration-100">
           {optionButtons}
         </div>
       )}

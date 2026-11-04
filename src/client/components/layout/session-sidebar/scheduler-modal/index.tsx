@@ -127,14 +127,14 @@ export function SchedulerModal({
 
   return (
     <div
-      className="fixed inset-0 bg-ink/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
       onClick={busy ? undefined : onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Scheduled tasks"
     >
       <div
-        className="bg-paper border border-ink/15 rounded-xl shadow-2xl w-[min(94vw,640px)] max-h-[88vh] flex flex-col overflow-hidden text-ink"
+        className="glass-overlay bg-paper border border-ink/15 rounded-xl shadow-2xl w-[min(94vw,640px)] max-h-[88vh] flex flex-col overflow-hidden text-ink"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10">

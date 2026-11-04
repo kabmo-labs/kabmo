@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import { Check, ChevronDown, ChevronRight, KeyRound } from 'lucide-preact';
 import type { PluginItem, PluginSettingSpec } from '@/shared/types';
@@ -172,7 +173,7 @@ function SettingInput({
           checked={value === 'true'}
           disabled={disabled}
           onChange={(event) => onChange(event.currentTarget.checked ? 'true' : 'false')}
-          className="accent-ink cursor-pointer"
+          className={`${CHECKBOX_CLASS} accent-ink cursor-pointer`}
         />
         <span className="text-[11px] text-ink/70">{value === 'true' ? 'true' : 'false'}</span>
       </label>

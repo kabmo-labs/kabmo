@@ -81,7 +81,7 @@ export function WorkspacePicker({
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 mb-1.5 w-64 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1"
+          className="glass-popover absolute bottom-full left-0 mb-1.5 w-64 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1"
         >
           <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink/40 font-semibold border-b border-ink/5">
             Target Workspace

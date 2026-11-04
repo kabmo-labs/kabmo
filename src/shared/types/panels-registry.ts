@@ -46,6 +46,8 @@ export interface PanelRegistryEntry {
   cssUrl?: string;
   /** Absolute URL of the plugin's icon, when it declares one. */
   iconUrl?: string;
+  /** The colour the plugin's mark is drawn in, when its manifest declares one. */
+  color?: string;
   /** Absolute URL of the plugin's README, when it ships one. */
   readmeUrl?: string;
 }
@@ -165,6 +167,8 @@ export interface PanelPluginStatus {
   homepage?: string;
   /** The slots the manifest DECLARES; live registrations are authoritative. */
   slots?: PanelSlotName[];
+  /** The mark colour the manifest declares, when it declares one. */
+  color?: string;
   capabilities?: string[];
   /** How many settings the manifest declares, so the card can say what is configurable. */
   settingsCount?: number;
@@ -203,6 +207,8 @@ export interface PanelCatalogEntry {
   description?: string;
   /** Absolute URL of the plugin's icon, when the store's copy declares one. */
   iconUrl?: string;
+  /** The mark colour the store's copy declares, so a card can preview it. */
+  color?: string;
   /** Absolute URL of the plugin's README, when the store's copy ships one. */
   readmeUrl?: string;
   /** True once the plugin is installed — the row then offers Enable/Remove. */

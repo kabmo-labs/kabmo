@@ -44,11 +44,11 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   return createPortal(
     <>
       <div
-        className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
-          className="relative bg-paper border border-ink/15 rounded-2xl shadow-2xl w-full max-w-[340px] p-6 text-center text-ink select-none"
+          className="glass-overlay relative bg-paper border border-ink/15 rounded-2xl shadow-2xl w-full max-w-[340px] p-6 text-center text-ink select-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}

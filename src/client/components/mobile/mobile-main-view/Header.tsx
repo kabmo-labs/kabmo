@@ -181,7 +181,7 @@ export function MobileHeader({
               to state them separately and drifted. */}
           {showSessionPicker && (
             <div
-              className="fixed z-50 bg-paper border border-ink/15 rounded-xl shadow-lg p-2 text-xs"
+              className="glass-popover fixed z-50 bg-paper border border-ink/15 rounded-xl shadow-lg p-2 text-xs"
               style={mobileOverlayStyle()}
             >
               <button

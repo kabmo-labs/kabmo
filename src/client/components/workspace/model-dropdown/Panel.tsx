@@ -86,7 +86,7 @@ export function ModelDropdownPanel({
 
   return (
     <div className="absolute bottom-full left-0 mb-2.5 z-50 flex items-start">
-      <div ref={panelRef} className="w-84 sm:w-96 bg-paper border border-ink/20 rounded-xl shadow-2xl flex flex-col overflow-hidden text-xs max-h-[460px] animate-in fade-in zoom-in-95 duration-100">
+      <div ref={panelRef} className="glass-popover w-84 sm:w-96 bg-paper border border-ink/20 rounded-xl shadow-2xl flex flex-col overflow-hidden text-xs max-h-[460px] animate-in fade-in zoom-in-95 duration-100">
         <ModelDropdownHeader
           search={search}
           onSearchChange={onSearchChange}

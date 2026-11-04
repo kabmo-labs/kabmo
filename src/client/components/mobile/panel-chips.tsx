@@ -31,7 +31,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import type { ResolvedPanel } from '@/client/components/workspace/plugin-panel/catalog';
-import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
+import { PanelMark } from '@/client/components/common/panel-mark';
 import { PANEL_MARK_SIZE } from '@/shared/lib/workspace/right-panels';
 import { scrollLeftForReveal } from '@/shared/lib/ui/scroll-reveal';
 
@@ -140,7 +140,15 @@ export function PanelChips({ panels, activeId, onSelect, hasGitChanges = false }
             }`}
             title={panel.title}
           >
-            {panel.builtin ? panel.icon : <PluginMark name={panel.name} iconUrl={panel.iconUrl} size={PANEL_MARK_SIZE} />}
+            <PanelMark
+              panelId={panel.id}
+              builtin={panel.builtin}
+              icon={panel.builtin ? panel.icon : undefined}
+              name={panel.builtin ? panel.label : panel.name}
+              {...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {})}
+              {...(panel.color ? { color: panel.color } : {})}
+              size={PANEL_MARK_SIZE}
+            />
             {active && (
               <span className={panel.id === 'git' ? 'tracking-wide' : undefined}>{panel.label}</span>
             )}

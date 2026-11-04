@@ -69,7 +69,7 @@ export function AvailableList({ entries, busy, onInstall, onInstallUrl }: Availa
               className="flex flex-col gap-2 border border-ink/10 rounded-lg p-3 bg-paper hover:border-ink/20 transition-colors"
             >
               <div className="flex items-start gap-2.5">
-                <PluginMark name={entry.name} iconUrl={entry.iconUrl} />
+                <PluginMark name={entry.name} iconUrl={entry.iconUrl} color={entry.color} />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-ink truncate" title={entry.name}>
                     {entry.name}

@@ -244,7 +244,7 @@ export function EditorTabs({
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-1 w-52 bg-paper border border-ink/10 rounded shadow-lg z-50 py-1">
+            <div className="glass-popover absolute right-0 top-full mt-1 w-52 bg-paper border border-ink/10 rounded shadow-lg z-50 py-1">
               <div className="px-3 py-1 text-[10px] uppercase font-mono text-ink/40 border-b border-ink/10 mb-1">
                 Older Tabs
               </div>

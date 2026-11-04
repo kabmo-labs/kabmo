@@ -142,11 +142,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
 
   return (
     <div
-      className="extension-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-      style={{
-        background: 'color-mix(in srgb, var(--theme-ink) 55%, transparent)',
-        backdropFilter: 'blur(8px)',
-      }}
+      className="extension-dialog-backdrop modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-[8px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) cancel();
       }}
@@ -157,7 +153,7 @@ export function ExtensionDialog({ request, onRespond }: ExtensionDialogProps) {
         aria-modal="true"
         aria-label={request.title || methodMeta.label}
         tabIndex={-1}
-        className="extension-dialog-panel w-full max-w-[560px] overflow-hidden rounded-2xl border border-ink/15 bg-paper shadow-2xl outline-none"
+        className="glass-overlay extension-dialog-panel w-full max-w-[560px] overflow-hidden rounded-2xl border border-ink/15 bg-paper shadow-2xl outline-none"
         style={{
           boxShadow: '0 24px 64px -8px color-mix(in srgb, var(--theme-ink) 28%, transparent)',
         }}

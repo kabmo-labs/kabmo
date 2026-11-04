@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useState } from 'preact/hooks';
 import { Modal } from '@/client/components/common/Modal';
 import type { GitBranchDetail } from '@/shared/types/git';
@@ -117,7 +118,7 @@ function RenameBranchForm({
             type="checkbox"
             checked={remote}
             onChange={(e) => setRemote(e.currentTarget.checked)}
-            className="accent-ink cursor-pointer mt-0.5"
+            className={`${CHECKBOX_CLASS} accent-ink cursor-pointer mt-0.5`}
           />
           <span className="flex flex-col gap-0.5">
             <span>Also rename it on the remote</span>

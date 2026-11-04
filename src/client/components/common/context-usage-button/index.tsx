@@ -99,8 +99,8 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
           aria-label="Context usage"
           className={
             layout === 'mobile'
-              ? 'fixed z-50 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono'
-              : 'absolute right-0 top-full z-50 mt-2 w-56 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono'
+              ? 'glass-popover fixed z-50 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono'
+              : 'glass-popover absolute right-0 top-full z-50 mt-2 w-56 bg-paper border border-ink/20 rounded-xl shadow-xl p-3 text-xs font-mono'
           }
           style={
             layout === 'mobile'

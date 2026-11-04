@@ -1,3 +1,4 @@
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useState } from 'preact/hooks';
 import { ExternalLink, RotateCcw, Trash2 } from 'lucide-preact';
 import type { PluginFeatureSpec, PluginItem } from '@/shared/types';
@@ -268,7 +269,7 @@ function FeaturesSection({
                     : prev.filter((name) => name !== feature.name),
                 )
               }
-              className="mt-0.5 accent-ink cursor-pointer disabled:opacity-60"
+              className={`${CHECKBOX_CLASS} mt-0.5 accent-ink cursor-pointer disabled:opacity-60`}
             />
             <span className="min-w-0">
               <span className="text-xs font-medium text-ink font-mono">{feature.name}</span>

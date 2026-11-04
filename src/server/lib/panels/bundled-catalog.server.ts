@@ -46,6 +46,7 @@ export async function readBundledCatalog(bundledRoot: string, installed: Readonl
       // details before the plugin is installed. Both come from the bundled
       // directory, which the routes resolve through the same registry.
       ...(manifest.icon ? { iconUrl: await iconUrl(pluginDir, manifest.icon) } : {}),
+      ...(manifest.color ? { color: manifest.color } : {}),
       ...(await readmeUrlFor(pluginDir, manifest)),
       ...(manifest.author ? { author: manifest.author } : {}),
       ...(manifest.homepage ? { homepage: manifest.homepage } : {}),

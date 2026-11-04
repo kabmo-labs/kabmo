@@ -127,6 +127,7 @@ export async function scanInstalledPlugins(options: {
       ...(manifest.author ? { author: manifest.author } : {}),
       ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
       ...(manifest.slots ? { slots: manifest.slots } : {}),
+      ...(manifest.color ? { color: manifest.color } : {}),
       ...(manifest.capabilities ? { capabilities: manifest.capabilities } : {}),
       ...(missingEntry ? { reason: `the build produced no ${missingEntry}` } : {}),
     });
@@ -154,6 +155,9 @@ export async function scanInstalledPlugins(options: {
         ? { cssUrl: await cssUrl(pluginDir, manifest.css) }
         : {}),
       ...(manifest.icon ? { iconUrl: await iconUrl(pluginDir, manifest.icon) } : {}),
+      // The plugin's own mark colour, so the activity bar can paint its brand
+      // instead of a hue hashed from its name.
+      ...(manifest.color ? { color: manifest.color } : {}),
       ...(await readmeUrlFor(pluginDir, manifest)),
     });
   }

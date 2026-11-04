@@ -221,7 +221,7 @@ export function SessionSidebarToolbar({
                 <ArrowUpDown size={14} />
               </button>
               {optionsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-paper border border-ink/15 rounded-lg shadow-lg z-50 py-1" onMouseLeave={onCloseOptions}>
+                <div className="glass-popover absolute right-0 top-full mt-2 w-48 bg-paper border border-ink/15 rounded-lg shadow-lg z-50 py-1" onMouseLeave={onCloseOptions}>
                   <SortMenu variant="desktop" sortOption={sortOption} onSortChange={onSortChange} />
                 </div>
               )}

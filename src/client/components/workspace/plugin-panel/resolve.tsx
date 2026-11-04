@@ -19,6 +19,8 @@ export interface ResolvedPluginPanel {
   title: string;
   Component: ComponentType<RightPanelProps>;
   iconUrl?: string;
+  /** The mark colour the plugin's manifest declares, when it declares one. */
+  color?: string;
   /** Sizing the bundle declared, passed through to the width resolver. */
   minWidth?: number;
   defaultFraction?: number;
@@ -61,6 +63,7 @@ export function usePluginPanels(activePanel: string): PluginPanels {
         title: entry?.titles.rightPanel ?? panel.name,
         Component,
         ...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {}),
+        ...(panel.color ? { color: panel.color } : {}),
         ...(size?.minWidth !== undefined ? { minWidth: size.minWidth } : {}),
         ...(size?.defaultFraction !== undefined ? { defaultFraction: size.defaultFraction } : {}),
       });
@@ -135,6 +138,7 @@ export function usePanelSlotPlugins(): ResolvedPluginPanel[] {
         title: entry?.titles.panel ?? panel.name,
         Component: Component as ResolvedPluginPanel['Component'],
         ...(panel.iconUrl ? { iconUrl: panel.iconUrl } : {}),
+        ...(panel.color ? { color: panel.color } : {}),
         ...(size?.minWidth !== undefined ? { minWidth: size.minWidth } : {}),
         ...(size?.defaultFraction !== undefined ? { defaultFraction: size.defaultFraction } : {}),
       });

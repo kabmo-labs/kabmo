@@ -88,7 +88,7 @@ export function ComposerPicker({
       role="listbox"
       id={listboxId}
       aria-label={ariaLabel}
-      className={`absolute left-0 right-0 z-50 min-w-[260px] flex max-h-60 flex-col rounded-md border border-ink/20 bg-paper shadow-lg text-sm ${
+      className={`glass-popover absolute left-0 right-0 z-50 min-w-[260px] flex max-h-60 flex-col rounded-md border border-ink/20 bg-paper shadow-lg text-sm ${
         placement === 'over' ? 'top-2' : 'bottom-full mb-1'
       }`}
     >

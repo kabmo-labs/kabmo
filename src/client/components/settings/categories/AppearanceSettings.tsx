@@ -3,6 +3,8 @@ import type { SettingsState } from '@/shared/types';
 import { resolveThemeId } from '@/shared/lib/theme/catalog';
 import { ThemeGrid } from '@/client/components/settings/categories/appearance-settings/ThemeGrid';
 import { SidebarStyleSection } from '@/client/components/settings/categories/appearance-settings/SidebarStyleSection';
+import { SurfaceStyleSection } from '@/client/components/settings/categories/appearance-settings/SurfaceStyleSection';
+import { IconStyleSection } from '@/client/components/settings/categories/appearance-settings/IconStyleSection';
 import { EditorFontSection } from '@/client/components/settings/categories/appearance-settings/EditorFontSection';
 import { EditorThemeSection } from '@/client/components/settings/categories/appearance-settings/EditorThemeSection';
 import { EditorIndentSection } from '@/client/components/settings/categories/appearance-settings/EditorIndentSection';
@@ -36,6 +38,10 @@ export function AppearanceSettings({ settings, onUpdate }: AppearanceSettingsPro
         </div>
 
         <SidebarStyleSection settings={settings} onUpdate={onUpdate} />
+
+        <SurfaceStyleSection settings={settings} onUpdate={onUpdate} />
+
+        <IconStyleSection settings={settings} onUpdate={onUpdate} />
       </section>
 
       <EditorFontSection settings={settings} onUpdate={onUpdate} />

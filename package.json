@@ -46,6 +46,8 @@
     "dev:lan": "HOST=0.0.0.0 bun run --hot src/server/index.ts --kabmo-server",
     "build": "bun run scripts/build-client.ts",
     "editor:themes": "bun run scripts/editor-themes.mjs",
+    "icons:tints": "bun run scripts/icon-tints.mjs",
+    "icons:tints:check": "bun run scripts/icon-tints.mjs --check",
     "editor:themes:check": "bun run scripts/editor-themes.mjs --check",
     "omp:schema": "bun run scripts/omp-schema.mjs",
     "omp:schema:check": "bun run scripts/omp-schema.mjs --check",

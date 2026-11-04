@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useRef } from 'preact/hooks';
+import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 
 export interface SelectionCheckboxProps {
   checked: boolean;
@@ -50,7 +51,7 @@ export function SelectionCheckbox({
       aria-label={label}
       onChange={onChange}
       onClick={(event) => event.stopPropagation()}
-      className={`shrink-0 accent-ink cursor-pointer rounded border-ink/30 ${
+      className={`${CHECKBOX_CLASS} shrink-0 accent-ink cursor-pointer ${
         size === 'md' ? 'w-3.5 h-3.5' : 'w-3 h-3'
       }`}
     />

@@ -21,8 +21,15 @@ import {
 } from '@/server/lib/assets/theme-shell.server';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
+import { applyShellDocumentFacts } from '@/server/lib/assets/shell-attributes.server';
+import { SURFACE_STYLE_SETTING_KEY } from '@/shared/lib/theme/surface-style';
+import { ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/icon-style';
 import { windowChromeColor } from '@/shared/lib/theme/chrome';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
+import {
+  ICON_PAINT_STYLE_ELEMENT_ID,
+  iconPaintStyleSheet,
+} from '@/shared/lib/icons/icon-paint-css';
 import { isAndroidDevice, shellVersion } from '@/shared/lib/updates/shell-ua';
 
 /** HTML-escape a string for interpolation into the failure page's `<pre>`. */
@@ -91,6 +98,7 @@ function storedThemeId(settings: Record<string, unknown>): string | undefined {
   const theme = readSettingsBlob(settings).theme;
   return typeof theme === 'string' && theme.length > 0 ? theme : undefined;
 }
+
 
 /**
  * The HTML shell is generated per request, so its cacheability is declared
@@ -216,6 +224,10 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // a second tag: with both present Chrome reads the first one, so an appended
   // tag would leave a dark theme painting light browser chrome.
   const themeStyle = `<style id="${THEME_STYLE_ELEMENT_ID}">${themeStyleSheet()}</style>`;
+  // The brand colours are generated from a TS table too, for the same reason:
+  // the bundler cannot carry a stylesheet derived from data, and a hand-written
+  // copy in `tailwind.css` would be 35 pairs that drift from the table.
+  const brandStyle = `<style id="${ICON_PAINT_STYLE_ELEMENT_ID}">${iconPaintStyleSheet()}</style>`;
   // The frame the browser paints BEFORE the bundle's stylesheet lands: the UA's
   // own canvas is white, and on a dark install that is a measured white flash
   // for the length of the CSS request. The palette's ground is the only correct
@@ -243,11 +255,16 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
 
   return maybeCompress(
     new Response(
-      shellHtml
-        .replace('data-theme="paper"', `data-theme="${theme.id}"`)
-        .replace('data-theme-variant="light"', `data-theme-variant="${theme.variant}"`)
-        .replace('<meta name="theme-color" content="#faf8f3" />', `<meta name="theme-color" content="${chrome}" />`)
-        .replace('<!--app-head-->', firstFrame + themeStyle + fontLink)
+      applyShellDocumentFacts(shellHtml, {
+        palette: theme,
+        // The two presentation styles are read from the same blob as the
+        // palette, so the FIRST frame is already the material the user chose:
+        // without this a glass install paints one opaque frame and swaps.
+        surfaceStyle: readSettingsBlob(settings)[SURFACE_STYLE_SETTING_KEY],
+        iconStyle: readSettingsBlob(settings)[ICON_STYLE_SETTING_KEY],
+        chromeColor: chrome,
+      })
+        .replace('<!--app-head-->', firstFrame + themeStyle + brandStyle + fontLink)
         .replace(SHELL_MARKER, `<script>window.__OMP_BOOTSTRAP__=${bootstrap}</script>`),
       { headers: HTML_HEADERS },
     ),

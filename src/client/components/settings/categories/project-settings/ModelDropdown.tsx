@@ -95,7 +95,7 @@ export function ProjectModelDropdown({
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-1 w-[288px] bg-paper border border-ink/15 rounded-lg shadow-xl z-50 overflow-hidden">
+            <div className="glass-popover absolute right-0 mt-1 w-[288px] bg-paper border border-ink/15 rounded-lg shadow-xl z-50 overflow-hidden">
               <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-ink/10">
                 <Search size={12} className="text-ink/40 shrink-0" />
                 <input

@@ -127,7 +127,7 @@ export function WaitingDependencyPicker({
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1.5 w-72 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
+        <div className="glass-popover absolute bottom-full left-0 mb-1.5 w-72 bg-paper border border-ink/10 rounded-lg shadow-lg z-50 flex flex-col overflow-hidden text-xs py-1">
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-ink/5">
             <span className="text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Wait for session</span>
             {value && (

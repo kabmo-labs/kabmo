@@ -11,7 +11,7 @@ import {
   FolderOpen,
 } from 'lucide-preact';
 import type { ReactNode } from 'preact/compat';
-import { BRAND_ICONS, BRAND_VIEWBOX, type BrandIconName } from '@/client/components/common/file-icon/brand-paths';
+import { BRAND_ICONS, BRAND_VIEWBOX, type BrandIconName } from '@/shared/lib/icons/file-brand-paths';
 import { getImageMimeType } from '@/shared/lib/fs/file-kind';
 
 interface FileIconProps {
@@ -22,9 +22,18 @@ interface FileIconProps {
   className?: string;
 }
 
-/** A brand icon rendered from static path data. Painted with the official brand
- *  color by default; `monochrome` takes the surrounding ink instead, for
- *  surfaces that must stay free of chroma (the chat's tool cards). */
+/**
+ * A brand icon rendered from static path data.
+ *
+ * The paint is CSS, not a prop: the mark is always `fill="currentColor"` and
+ * carries `data-file-brand`, which `icon-paint-css.ts` colours under
+ * `[data-icon-style="color"]` (and leaves ink otherwise). That is what makes the
+ * setting reach 30-odd call sites without a prop at any of them.
+ *
+ * `monochrome` is the explicit OPT-OUT, for a surface that must stay free of
+ * chroma whatever the setting says — the chat's tool cards, where a coloured
+ * logo beside every tool name would compete with the tool's own state colour.
+ */
 function BrandIconSvg({ name, size, className, monochrome = false }: { name: BrandIconName; size: number; className?: string; monochrome?: boolean }) {
   const brand = BRAND_ICONS[name];
   return (
@@ -32,7 +41,8 @@ function BrandIconSvg({ name, size, className, monochrome = false }: { name: Bra
       viewBox={BRAND_VIEWBOX}
       width={size}
       height={size}
-      fill={monochrome ? 'currentColor' : brand.color}
+      fill="currentColor"
+      data-file-brand={monochrome ? undefined : name}
       className={className}
       aria-hidden="true"
     >
@@ -126,7 +136,7 @@ export function FileIcon({ name, isFolder, isOpen, size = 14, className = '' }: 
   }
 
   if (lowerName.endsWith('.json')) {
-    return <Braces size={size} color="#eab308" className={className} />;
+    return <Braces size={size} className={className} />;
   }
   if (lowerName.endsWith('.css') || lowerName.endsWith('.scss')) {
     return <BrandIconSvg name="Css" size={size} className={className} />;
@@ -138,11 +148,15 @@ export function FileIcon({ name, isFolder, isOpen, size = 14, className = '' }: 
   // document icon for PDF/Word. Each has a viewer behind it, so the glyph is
   // what tells a user at a glance that the file opens as something other than
   // source text.
+  // These four used to carry inline hexes (`#22c55e`, `#f97316`, `#c084fc`),
+  // which made them the only icons in the app that ignored BOTH modes. Their
+  // hue is now a role in `shared/lib/icons/tint.ts`, so the palette decides it
+  // and `monochrome` finally reaches them.
   if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xlsm')) {
-    return <FileSpreadsheet size={size} color="#22c55e" className={className} />;
+    return <FileSpreadsheet size={size} className={className} />;
   }
   if (lowerName.endsWith('.pdf') || lowerName.endsWith('.docx')) {
-    return <FileType size={size} color="#f97316" className={className} />;
+    return <FileType size={size} className={className} />;
   }
   if (lowerName.endsWith('.md') || lowerName.endsWith('.txt')) {
     return <FileText size={size} className={`text-ink/70 ${className}`} />;
@@ -150,7 +164,7 @@ export function FileIcon({ name, isFolder, isOpen, size = 14, className = '' }: 
   // SVG is text the editor edits as code, but it is still a picture to the eye,
   // so the icon stays the image glyph for it.
   if (getImageMimeType(lowerName) || lowerName.endsWith('.svg')) {
-    return <FileImage size={size} color="#c084fc" className={className} />;
+    return <FileImage size={size} className={className} />;
   }
   if (lowerName.endsWith('.sh') || lowerName.endsWith('.bash')) {
     return <BrandIconSvg name="Gnubash" size={size} className={className} />;

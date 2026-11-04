@@ -9,6 +9,7 @@ import type { OpenedFile } from '@/shared/types/fs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
 import { WorkspacePanels } from '@/client/components/layout/desktop-layout/WorkspacePanels';
+import { WindowAura } from '@/client/components/layout/WindowAura';
 import { usePanelSlotPlugins } from '@/client/components/workspace/plugin-panel/resolve';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { usePanelWidths } from '@/client/hooks/workspace/panel-widths';
@@ -224,8 +225,9 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
   return (
     <div
       data-testid="app-root"
-      className="relative flex flex-col h-screen w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas"
+      className="app-window relative flex flex-col h-screen w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas"
     >
+      <WindowAura />
 
       {/* Main Workspace: the resizable LEFT dock (rail + view, see
           `LeftColumn`) plus the right stack. */}

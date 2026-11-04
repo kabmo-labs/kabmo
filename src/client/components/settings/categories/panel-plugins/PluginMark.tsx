@@ -26,11 +26,13 @@
  * `rgb(138,138,138)` in both the inactive and the active state, against a
  * built-in's `text-ink/40` → `text-ink`.
  *
- * A mask has no document to inherit into, so the host supplies the paint
- * (`background-color: currentColor`) and the file supplies only its alpha
- * channel. That is also the app's own rule for marks: the palette is monochrome,
- * and brand identity is carried by the shape ({@link ProviderIcon} does the same
- * by folding every glyph to `currentColor` at bake time).
+ * A mask has no document to inherit into, so the host supplies the paint and the
+ * file supplies only its alpha channel. That paint is `var(--plugin-color,
+ * currentColor)`: monochrome resolves to the ink the mask always used, and
+ * `[data-icon-style="color"]` defines `--plugin-color` from a hue derived from
+ * the plugin's own name — so a marketplace mark gets its own colour without the
+ * host guessing one at build time, and without the component reading the mode
+ * from JavaScript.
  *
  * A RASTER mark keeps the `<img>`. Masking a PNG or a JPEG would throw away its
  * colour — a brand logo the plugin chose to ship — and a JPEG has no alpha to
@@ -38,17 +40,41 @@
  */
 
 import { providerInitials } from '@/shared/lib/models/provider/glyph';
+import { hashHue } from '@/shared/lib/icons/tint';
+import { legiblePair } from '@/shared/lib/theme/legibility';
 
 interface PluginMarkProps {
   name: string;
   /** The registry's content-addressed icon URL, when the plugin declares one. */
   iconUrl?: string;
+  /**
+   * The mark colour the plugin's manifest declares (`color`), when it does.
+   *
+   * Set as a custom property pair (`--plugin-declared-light`/`-dark`), not as a
+   * colour, so the STYLE still decides whether it is used: `monochrome` leaves
+   * the mark in the palette ink, and the declared brand colour only appears under
+   * `[data-icon-style="color"]`. Two values because a brand hex is legible on one
+   * variant and not the other; `legiblePair` derives both.
+   */
+  color?: string;
   size?: number;
   /** Filled background behind the fallback, for a card that wants a tile. */
   tile?: boolean;
 }
 
-export function PluginMark({ name, iconUrl, size = 16, tile = false }: PluginMarkProps) {
+export function PluginMark({ name, iconUrl, color, size = 16, tile = false }: PluginMarkProps) {
+  // The mark's own colour, on the same wheel as every functional glyph. Set as a
+  // custom property rather than a colour so the STYLE decides whether it is used:
+  // monochrome leaves `--plugin-color` undefined and the mark keeps the ink.
+  // A declared brand colour is clamped the way every other brand mark is
+  // (`legiblePair`): a bright hex like `#34d399` is 1.9:1 on white paper, so the
+  // light and dark values are derived instead of trusted.
+  const declared = color ? legiblePair(color) : null;
+  const hue = {
+    '--icon-hue': String(hashHue(name)),
+    ...(declared ? { '--plugin-declared-light': declared.light } : {}),
+    ...(declared?.dark ? { '--plugin-declared-dark': declared.dark } : {}),
+  } as Record<string, string>;
   if (iconUrl) {
     // The QUERY is stripped before the extension is read: the registry's URL is
     // `/api/panels/icon/<plugin>/<path>?v=<hash>`, so the extension is on the
@@ -59,13 +85,15 @@ export function PluginMark({ name, iconUrl, size = 16, tile = false }: PluginMar
       return (
         <span
           aria-hidden="true"
+          data-plugin-mark=""
           className="inline-block flex-shrink-0"
           style={{
+            ...hue,
             width: size,
             height: size,
-            // The ink the mask is cut out of, so the mark follows the theme
-            // exactly like a built-in view's icon does.
-            backgroundColor: 'currentColor',
+            // The ink the mask is cut out of — or the plugin's own colour, which
+            // `[data-icon-style="color"]` supplies through `--plugin-color`.
+            backgroundColor: 'var(--plugin-color, currentColor)',
             maskImage: `url("${iconUrl}")`,
             maskSize: 'contain',
             maskRepeat: 'no-repeat',
@@ -98,10 +126,15 @@ export function PluginMark({ name, iconUrl, size = 16, tile = false }: PluginMar
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex flex-shrink-0 items-center justify-center font-semibold lowercase leading-none text-ink/45 ${
+      data-plugin-mark=""
+      className={`inline-flex flex-shrink-0 items-center justify-center font-semibold lowercase leading-none ${
         tile ? 'rounded bg-ink/5' : ''
       }`}
       style={{
+        ...hue,
+        // 45% of the palette ink is what `text-ink/45` meant; stated as a value
+        // so the colour mode can replace it without a second class.
+        color: 'var(--plugin-color, color-mix(in srgb, var(--theme-ink) 45%, transparent))',
         height: size,
         minWidth: size,
         paddingInline: Math.max(1, Math.round(size * 0.12)),

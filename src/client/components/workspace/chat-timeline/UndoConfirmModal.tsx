@@ -35,14 +35,14 @@ export function UndoConfirmModal({ content, isOmpSession, undoing, error, onClos
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 animate-in fade-in duration-200 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center modal-scrim animate-in fade-in duration-200 p-4"
       onClick={undoing ? undefined : onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Confirm undo"
     >
       <div
-        className="bg-paper border border-ink/20 rounded-xl shadow-xl w-[min(94vw,420px)] overflow-hidden"
+        className="glass-overlay bg-paper border border-ink/20 rounded-xl shadow-xl w-[min(94vw,420px)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-ink/10">

@@ -131,7 +131,11 @@ export function AnchoredMenu({
         ref={panelRef}
         role={role}
         aria-label={ariaLabel}
-        className={`fixed z-[70] overflow-y-auto overscroll-contain ${className}`}
+        // `glass-popover` belongs to the PRIMITIVE, not to each caller: every
+        // menu this renders is an anchored floating panel, and the tier is inert
+        // in the classic look (all of its rules are `[data-surface="glass"]`), so
+        // a caller that forgets it is the only way a dropdown stays opaque.
+        className={`glass-popover fixed z-[70] overflow-y-auto overscroll-contain ${className}`}
         style={style}
         onClick={(event) => event.stopPropagation()}
       >

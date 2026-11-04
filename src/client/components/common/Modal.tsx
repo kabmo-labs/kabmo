@@ -50,7 +50,7 @@ export function Modal({
 
   return (
     <div
-      className={`fixed inset-0 bg-ink/40 backdrop-blur-[2px] ${zClass} flex items-center justify-center p-4`}
+      className={`fixed inset-0 modal-scrim backdrop-blur-[2px] ${zClass} flex items-center justify-center p-4`}
       style={{
         paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
@@ -69,7 +69,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        className={`bg-paper border border-ink/15 rounded-xl shadow-2xl w-full ${maxWidthClass} max-h-full flex flex-col overflow-hidden text-ink`}
+        className={`glass-overlay bg-paper border border-ink/15 rounded-xl shadow-2xl w-full ${maxWidthClass} max-h-full flex flex-col overflow-hidden text-ink`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-ink/10 flex items-center justify-between flex-shrink-0">
