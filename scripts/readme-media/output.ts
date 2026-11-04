@@ -89,6 +89,22 @@ export async function composeTo(
 }
 
 /**
+ * The GIF palette and dither, stated once for both recordings.
+ *
+ * `dither=none` rather than `sierra2_4a`, measured on a glass-surfaced clip of
+ * the same tour: 2.0 MB vs 4.3 MB, and PSNR against the source frame is HIGHER
+ * without dithering (39.9 dB vs 37.8 dB). Error diffusion exists to hide the
+ * banding a 192-colour palette puts in a PHOTOGRAPH; the frost is already a
+ * smooth gradient, so the dither only adds per-pixel noise the encoder then has
+ * to store — half the file size and a cleaner frame is the same change. 192
+ * colours rather than 256: `none-256` measured 40.6 dB at 2.2 MB, so the extra
+ * 64 entries buy 0.7 dB for 10% more bytes and no visible difference on a
+ * palette-derived UI. Re-measure if the window stops being a smooth material —
+ * a photographic surface would want the diffusion back.
+ */
+const GIF_PALETTE = 'split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=none';
+
+/**
  * Encode the tour into its two formats.
  *
  * `introMs` is the measured time from recording start to the first settled
@@ -114,18 +130,18 @@ export async function encodeTour(source: string, assetsDir: string, introMs: num
   await ffmpeg([
     ...trim,
     '-i', source,
-    '-vf', 'fps=5,scale=1000:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a',
+    '-vf', `fps=5,scale=1000:-1:flags=lanczos,${GIF_PALETTE}`,
     '-loop', '0',
     join(assetsDir, 'tour.gif'),
   ]);
 }
 
-/** The theme cycle is short, so it gets a higher frame rate and a tighter palette. */
+/** The theme cycle is short, so it gets a higher frame rate and the same palette. */
 export async function encodeThemeCycle(source: string, assetsDir: string, introMs: number): Promise<void> {
   await ffmpeg([
     '-ss', (introMs / 1000).toFixed(2),
     '-i', source,
-    '-vf', 'fps=8,scale=1000:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a',
+    '-vf', `fps=8,scale=1000:-1:flags=lanczos,${GIF_PALETTE}`,
     '-loop', '0',
     join(assetsDir, 'themes.gif'),
   ]);

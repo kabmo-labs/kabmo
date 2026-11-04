@@ -13,7 +13,7 @@
  */
 
 import type { Browser } from '@playwright/test';
-import { openApp, openPanel, openSettings, setTheme } from './app';
+import { applyCaptureLook, openApp, openPanel, openSettings, setIconStyle, setSurfaceStyle, setTheme } from './app';
 import { composeTo, shot, tile } from './output';
 
 /** The README's desktop captures are all this size, so a row measures one height. */
@@ -48,6 +48,17 @@ const MONTAGE: Array<[string, string]> = [
   ['nord-dark', 'Nord Dark'],
 ];
 
+/**
+ * The two appearance axes, each pair captured on ONE surface and one palette so
+ * the image compares the setting rather than the theme.
+ */
+const STYLES: Array<[Parameters<typeof setSurfaceStyle>[1], Parameters<typeof setIconStyle>[1], string]> = [
+  ['classic', 'monochrome', 'Classic · Monochrome'],
+  ['glass', 'monochrome', 'Glass · Monochrome'],
+  ['classic', 'color', 'Classic · Full colour'],
+  ['glass', 'color', 'Glass · Full colour'],
+];
+
 export async function captureShots(browser: Browser, baseURL: string, assetsDir: string): Promise<void> {
   const context = await browser.newContext({ viewport: DESKTOP, deviceScaleFactor: 1, colorScheme: 'dark' });
   const page = await context.newPage();
@@ -56,6 +67,9 @@ export async function captureShots(browser: Browser, baseURL: string, assetsDir:
 
   console.log('desktop captures');
   await openApp(page, baseURL);
+  // Stated before the first still: both settings are server-side, so every
+  // later context (the montages, the phone) inherits them without repeating it.
+  await applyCaptureLook(page);
 
   // The two heroes: the app as it opens, in the dark and light default palettes.
   await setTheme(page, 'aura-dark');
@@ -84,8 +98,10 @@ export async function captureShots(browser: Browser, baseURL: string, assetsDir:
   await shot(page, assetsDir, 'settings-themes');
 
   // The montage: the SAME surface under eight palettes, so the comparison is the
-  // palette and nothing else.
+  // palette and nothing else — stated again, because `theme-styles` below walks
+  // every combination and a later reordering must not leak one into a cell.
   await page.getByRole('button', { name: 'Close settings', exact: true }).click();
+  await applyCaptureLook(page);
   const montage: string[] = [];
   for (const [id] of MONTAGE) {
     await setTheme(page, id);
@@ -101,6 +117,33 @@ export async function captureShots(browser: Browser, baseURL: string, assetsDir:
     labels: MONTAGE.map(([, label]) => label),
   }, montage);
   await montageContext.close();
+
+  // The two appearance axes: material and icon paint, on one palette, so the
+  // image compares the SETTING and nothing else. Last on the desktop pass
+  // because it leaves the document at glass + full colour.
+  await setTheme(page, 'aura-dark');
+  const styles: string[] = [];
+  for (const [surface, icons] of STYLES) {
+    await setSurfaceStyle(page, surface);
+    await setIconStyle(page, icons);
+    styles.push(await tile(page));
+  }
+  const styleContext = await browser.newContext({ viewport: DESKTOP, deviceScaleFactor: 1 });
+  const stylePage = await styleContext.newPage();
+  await composeTo(stylePage, assetsDir, 'theme-styles', {
+    // Two by two rather than one row of four: at a quarter width the per-icon
+    // colour and the frosted rim shrink below what the image is meant to show.
+    width: 2350,
+    height: 1372,
+    gap: 22,
+    columns: 2,
+    labels: STYLES.map(([, , label]) => label),
+  }, styles);
+  await styleContext.close();
+  // PUT THE SHOT LOOK BACK. `theme-styles` ends on classic + monochrome, and the
+  // phone captures below are still part of the main tour, so they must be shot
+  // in the same material as the desktop stills.
+  await applyCaptureLook(page);
   await context.close();
 
   console.log('phone captures');

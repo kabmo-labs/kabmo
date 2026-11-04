@@ -13,7 +13,7 @@
  */
 
 import type { Browser } from '@playwright/test';
-import { openApp, settle, setTheme } from './app';
+import { applyCaptureLook, openApp, openSettings, settle, setTheme } from './app';
 import { encodeThemeCycle, encodeTour } from './output';
 
 const VIDEO_VIEWPORT = { width: 1400, height: 800 };
@@ -34,6 +34,9 @@ async function recordTour(browser: Browser, baseURL: string, assetsDir: string, 
   const started = Date.now();
   const page = await context.newPage();
   await openApp(page, baseURL);
+  // Same material and icon paint as the stills, so the tour and the table it
+  // sits in are one product rather than two skins a click apart.
+  await applyCaptureLook(page);
   await setTheme(page, 'aura-dark');
   await settle(page);
   const introMs = Date.now() - started;
@@ -86,6 +89,9 @@ async function recordThemeCycle(browser: Browser, baseURL: string, assetsDir: st
   const started = Date.now();
   const page = await context.newPage();
   await openApp(page, baseURL);
+  // The cycle exists to show the frost following the palette ("every palette
+  // carries the glass surface"), so it is recorded on the surface it describes.
+  await applyCaptureLook(page);
   await settle(page);
   const introMs = Date.now() - started;
 
@@ -100,8 +106,9 @@ async function recordThemeCycle(browser: Browser, baseURL: string, assetsDir: st
     ['Nord', 'dark'],
   ];
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Appearance', exact: true }).first().click();
+  // The shared helper waits for the modal itself, so the category row cannot be
+  // queried before the dialog that owns it is up.
+  await openSettings(page, 'Appearance');
   await pause(900);
   for (const [name, variant] of cycle) {
     const card = page.locator(`button:has(span[title="${name}"]):has-text("${variant}")`).first();

@@ -63,6 +63,76 @@ export async function setTheme(page: Page, themeId: string): Promise<void> {
 }
 
 /**
+ * Store one `kabmo_settings` patch, reload, and prove every attribute it names.
+ *
+ * Written through the settings route for the same reason `setTheme` is: the
+ * capture needs one surface under several palettes/materials in a row, and a
+ * card for a value that is not in view cannot be clicked. The verification is
+ * per KEY, because a default is REMOVED from `<html>` rather than written
+ * (`applySurfaceStyle`/`applyIconStyle`), so "did it apply" is
+ * `attribute === expected` with `null` standing for the default.
+ */
+async function applyAppearance(
+  page: Page,
+  patch: Record<string, unknown>,
+  attributes: Record<string, string | null>,
+): Promise<void> {
+  await page.evaluate(async (body) => {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }, { kabmo_settings: patch });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('[data-testid="app-root"]').waitFor({ state: 'visible' });
+  await settle(page);
+  const actual = await page.evaluate(
+    (names) =>
+      Object.fromEntries(names.map((name) => [name, document.documentElement.getAttribute(name)])) as Record<
+        string,
+        string | null
+      >,
+    Object.keys(attributes),
+  );
+  for (const [name, expected] of Object.entries(attributes)) {
+    if (actual[name] !== expected) {
+      throw new Error(`${name} did not apply: wanted ${expected ?? 'the default (absent)'}, document says ${actual[name]}`);
+    }
+  }
+}
+
+/** Pick a surface material: the attribute is absent for the opaque default. */
+export async function setSurfaceStyle(page: Page, style: 'classic' | 'glass'): Promise<void> {
+  await applyAppearance(page, { surfaceStyle: style }, { 'data-surface': style === 'classic' ? null : style });
+}
+
+/** Pick an icon paint: the attribute is absent for the ink default. */
+export async function setIconStyle(page: Page, style: 'monochrome' | 'color'): Promise<void> {
+  await applyAppearance(page, { iconStyle: style }, { 'data-icon-style': style === 'monochrome' ? null : style });
+}
+
+/**
+ * The appearance every capture on the README is taken in.
+ *
+ * The stills and both recordings show the product as this build ships it, so
+ * they use the material and icon paint it leads with — glass and full colour —
+ * rather than the upgrade-safe defaults a fresh profile still starts at. One
+ * pair of constants rather than a literal per script, because the tour and the
+ * stills sit on one page and a mismatch is visible side by side. The image that
+ * states the CHOICE instead of the look is `theme-styles`, which captures all
+ * four combinations on purpose.
+ */
+export const CAPTURE_SURFACE = 'glass' as const;
+export const CAPTURE_ICON_STYLE = 'color' as const;
+
+/** Apply `CAPTURE_SURFACE`/`CAPTURE_ICON_STYLE` to the open document. */
+export async function applyCaptureLook(page: Page): Promise<void> {
+  await setSurfaceStyle(page, CAPTURE_SURFACE);
+  await setIconStyle(page, CAPTURE_ICON_STYLE);
+}
+
+/**
  * The right-panel view's own button, addressed by the title the catalog
  * declares (`panels/builtin.tsx`), which is also its accessible name.
  */
