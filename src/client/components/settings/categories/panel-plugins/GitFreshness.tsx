@@ -42,7 +42,7 @@ function shortSha(sha: string | null): string {
 }
 
 export function GitFreshness({ status, origin, busy, pluginId, onUpdate, latestVersion }: GitFreshnessProps) {
-  const updating = busy === `update_git:${pluginId}`;
+  const updating = busy === `update:${pluginId}`;
 
   if (!status) {
     return (

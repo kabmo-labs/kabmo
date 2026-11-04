@@ -131,6 +131,8 @@ describe('PluginToolbar', () => {
         gitCount: 1,
         onSetAutoUpdate: async () => true,
         onCheckUpdates: async () => true,
+        updateCount: 0,
+        onUpdateAll: async () => true,
         onRefresh: () => {},
       }),
     );
@@ -146,6 +148,8 @@ describe('PluginToolbar', () => {
         gitCount: 1,
         onSetAutoUpdate: async () => true,
         onCheckUpdates: async () => true,
+        updateCount: 0,
+        onUpdateAll: async () => true,
         onRefresh: () => {},
       }),
     );
@@ -162,6 +166,8 @@ describe('PluginToolbar', () => {
         gitCount: 0,
         onSetAutoUpdate: async () => true,
         onCheckUpdates: async () => true,
+        updateCount: 0,
+        onUpdateAll: async () => true,
         onRefresh: () => {},
       }),
     );
@@ -169,6 +175,46 @@ describe('PluginToolbar', () => {
     const check = buttons.find((button) => button.textContent?.includes('Check for updates'));
     expect(check?.hasAttribute('disabled')).toBe(true);
     expect(check?.getAttribute('title')).toContain('No git-installed plugins');
+  });
+
+  test('Update all is disabled with nothing to apply and counts what it would', () => {
+    const none = mount(
+      h(PluginToolbar, {
+        autoUpdate: false,
+        busy: null,
+        gitCount: 1,
+        onSetAutoUpdate: async () => true,
+        onCheckUpdates: async () => true,
+        updateCount: 0,
+        onUpdateAll: async () => true,
+        onRefresh: () => {},
+      }),
+    );
+    const idle = Array.from(none.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Update all'),
+    );
+    expect(idle?.hasAttribute('disabled')).toBe(true);
+    expect(idle?.textContent).toBe('Update all');
+
+    render(null, container);
+    const waiting = mount(
+      h(PluginToolbar, {
+        autoUpdate: false,
+        busy: null,
+        gitCount: 1,
+        onSetAutoUpdate: async () => true,
+        onCheckUpdates: async () => true,
+        updateCount: 2,
+        onUpdateAll: async () => true,
+        onRefresh: () => {},
+      }),
+    );
+    const ready = Array.from(waiting.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Update all'),
+    );
+    expect(ready?.hasAttribute('disabled')).toBe(false);
+    // The count is on the button, so one press says how much it will move.
+    expect(ready?.textContent).toBe('Update all (2)');
   });
 });
 

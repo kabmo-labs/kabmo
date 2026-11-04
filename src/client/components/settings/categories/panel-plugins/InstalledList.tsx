@@ -3,7 +3,7 @@ import type { PanelGitStatus, PanelPluginStatus } from '@/shared/types';
 import { PluginCard } from '@/client/components/settings/categories/panel-plugins/PluginCard';
 import { PluginReadmeModal } from '@/client/components/settings/categories/panel-plugins/ReadmeModal';
 import type { PluginSlots } from '@/client/lib/plugins/slots';
-import { isNewer } from '@/shared/lib/updates/semver';
+import { countPluginUpdates } from '@/shared/lib/panels/update';
 import type { LeftDockHandle } from '@/client/hooks/workspace/left-dock';
 
 interface InstalledGridProps {
@@ -24,7 +24,7 @@ interface InstalledGridProps {
   onSetEnabled: (pluginId: string, enabled: boolean) => Promise<boolean>;
   /** The last known freshness of each git-installed plugin. */
   gitStatus: Record<string, PanelGitStatus>;
-  onUpdateGit: (pluginId: string) => Promise<boolean>;
+  onUpdate: (pluginId: string) => Promise<boolean>;
 }
 
 /**
@@ -52,15 +52,13 @@ export function InstalledList({
   onRemove,
   onSetEnabled,
   gitStatus,
-  onUpdateGit,
+  onUpdate,
 }: InstalledGridProps) {
   const [reading, setReading] = useState<PanelPluginStatus | null>(null);
   const enabledCount = plugins.filter((plugin) => plugin.enabled).length;
-  // `isNewer`, not `!==`: a clone whose remote is at the SAME version is current,
-  // and counting it would announce an update that changes nothing.
-  const updates = plugins.filter(
-    (plugin) => plugin.latestVersion !== undefined && isNewer(plugin.latestVersion, plugin.version),
-  ).length;
+  // The SAME predicate the cards and the Update-all button use, so the header
+  // cannot announce a count no button would act on.
+  const updates = countPluginUpdates(plugins, gitStatus);
 
   return (
     <section>
@@ -92,7 +90,7 @@ export function InstalledList({
             onBuild={onBuild}
             onRemove={onRemove}
             onSetEnabled={onSetEnabled}
-            onUpdateGit={onUpdateGit}
+            onUpdate={onUpdate}
           />
         ))}
       </div>

@@ -108,11 +108,27 @@ async function readRemoteVersion(dir: string): Promise<string | undefined> {
   return undefined;
 }
 
-/** Whether the clone has uncommitted work that an update would discard. */
+/**
+ * Whether the clone has uncommitted work that an update would discard.
+ *
+ * `--untracked-files=no` is load-bearing, and it is not a shortcut: the update
+ * moves the tree with `git reset --hard`, which never touches an untracked file.
+ * Counting them refused every clone whose repository does not gitignore the
+ * build output — and Kabmo's OWN build writes `dist/` and `node_modules/` into
+ * the clone, so a perfectly ordinary plugin repo became permanently
+ * un-updatable the moment it was installed. Measured on a clone of a fixture
+ * repository with no `.gitignore`: `?? dist/` and `?? node_modules/` made Update
+ * answer "has uncommitted changes", and commiting nothing there is possible
+ * because the files are the install's, not the user's.
+ *
+ * A status that cannot be read is still treated as dirty: refusing an update is
+ * recoverable, discarding a user's edit is not.
+ */
 async function isDirty(dir: string): Promise<boolean> {
-  const result = await gitRun(['status', '--porcelain'], { cwd: dir, timeoutMs: PROBE_TIMEOUT_MS });
-  // A status that cannot be read is treated as dirty: refusing an update is
-  // recoverable, discarding a user's edit is not.
+  const result = await gitRun(['status', '--porcelain', '--untracked-files=no'], {
+    cwd: dir,
+    timeoutMs: PROBE_TIMEOUT_MS,
+  });
   return result.exitCode !== 0 || result.stdout.trim().length > 0;
 }
 

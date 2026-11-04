@@ -16,20 +16,33 @@
  * a write. It is the latter, and the sentence says so.
  */
 
-import { CheckSquare, RefreshCw, Square } from 'lucide-preact';
+import { ArrowDownToLine, CheckSquare, Loader2, RefreshCw, Square } from 'lucide-preact';
 
 interface PluginToolbarProps {
   autoUpdate: boolean;
   busy: string | null;
   /** How many installed plugins are git clones — the check's own subject. */
   gitCount: number;
+  /** How many installed plugins have an update waiting, from any source. */
+  updateCount: number;
   onSetAutoUpdate: (enabled: boolean) => Promise<boolean>;
   onCheckUpdates: () => Promise<boolean>;
+  onUpdateAll: () => Promise<boolean>;
   onRefresh: () => void;
 }
 
-export function PluginToolbar({ autoUpdate, busy, gitCount, onSetAutoUpdate, onCheckUpdates, onRefresh }: PluginToolbarProps) {
+export function PluginToolbar({
+  autoUpdate,
+  busy,
+  gitCount,
+  updateCount,
+  onSetAutoUpdate,
+  onCheckUpdates,
+  onUpdateAll,
+  onRefresh,
+}: PluginToolbarProps) {
   const checking = busy === 'check_updates';
+  const updatingAll = busy === 'update_all';
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
@@ -64,6 +77,25 @@ export function PluginToolbar({ autoUpdate, busy, gitCount, onSetAutoUpdate, onC
         Check for updates
       </button>
 
+      {/* The count is on the button because it is the button's subject: one
+          action for every waiting update, whatever the plugin's source. A
+          plugin whose files were edited is refused and reported, never
+          overwritten — that is what the blocked notice exists for. */}
+      <button
+        type="button"
+        onClick={() => void onUpdateAll()}
+        disabled={busy !== null || updateCount === 0}
+        title={
+          updateCount === 0
+            ? 'No updates to apply — press Check for updates to ask the git plugins\u2019 remotes'
+            : `Apply ${updateCount} update${updateCount === 1 ? '' : 's'} — a plugin with local edits is refused and reported, never overwritten`
+        }
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-warning/50 text-warning hover:bg-warning/10 disabled:opacity-50"
+      >
+        {updatingAll ? <Loader2 size={13} className="animate-spin" /> : <ArrowDownToLine size={13} />}
+        Update all{updateCount > 0 ? ` (${updateCount})` : ''}
+      </button>
+
       <button
         type="button"
         onClick={onRefresh}
@@ -83,3 +115,4 @@ export function PluginToolbar({ autoUpdate, busy, gitCount, onSetAutoUpdate, onC
     </div>
   );
 }
+

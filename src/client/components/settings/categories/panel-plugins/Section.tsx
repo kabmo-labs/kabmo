@@ -1,5 +1,6 @@
 import { AlertTriangle, Trash2, X } from 'lucide-preact';
 import type { PanelPluginError } from '@/shared/types';
+import { countPluginUpdates } from '@/shared/lib/panels/update';
 import {
   refreshPanelRegistry,
   usePanelPluginActions,
@@ -99,6 +100,9 @@ export function PanelPluginsSection() {
   const iconUrls = new Map(panels.map((panel) => [panel.pluginId, panel.iconUrl]));
   const readmeUrls = new Map(panels.map((panel) => [panel.pluginId, panel.readmeUrl]));
   const gitCount = plugins.filter((plugin) => plugin.gitOrigin).length;
+  // The same predicate the cards use — one answer for the count, the buttons
+  // and the Installed header, so they cannot disagree about what is waiting.
+  const updateCount = countPluginUpdates(plugins, gitStatus);
 
   return (
     <div className="space-y-4">
@@ -115,8 +119,10 @@ export function PanelPluginsSection() {
         autoUpdate={autoUpdate}
         busy={actions.busy}
         gitCount={gitCount}
+        updateCount={updateCount}
         onSetAutoUpdate={actions.setAutoUpdate}
         onCheckUpdates={actions.checkUpdates}
+        onUpdateAll={actions.updateAll}
         onRefresh={refresh}
       />
 
@@ -183,7 +189,7 @@ export function PanelPluginsSection() {
           onRemove={actions.remove}
           onSetEnabled={actions.setEnabled}
           gitStatus={gitStatus}
-          onUpdateGit={actions.updateGit}
+          onUpdate={actions.update}
         />
       ) : null}
 

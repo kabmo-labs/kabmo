@@ -244,8 +244,10 @@ export interface PanelPluginActions {
   setEnabled: (pluginId: string, enabled: boolean) => Promise<boolean>;
   /** Probe every git-installed plugin's remote for a newer commit. */
   checkUpdates: () => Promise<boolean>;
-  /** Bring one git-installed plugin up to its remote, and rebuild it. */
-  updateGit: (pluginId: string) => Promise<boolean>;
+  /** Bring one installed plugin up to its source — a remote, or the store's copy. */
+  update: (pluginId: string) => Promise<boolean>;
+  /** Apply every update that is available, in one pass. */
+  updateAll: () => Promise<boolean>;
   /** Turn automatic updating of git-installed plugins on or off. */
   setAutoUpdate: (enabled: boolean) => Promise<boolean>;
   /** Replace a blocked bundled plugin's edited files with the store's copy. */
@@ -317,7 +319,8 @@ export function usePanelPluginActions(): PanelPluginActions {
     [run],
   );
   const checkUpdates = useCallback(() => run('check_updates', { type: 'check_updates' }), [run]);
-  const updateGit = useCallback((pluginId: string) => run(`update_git:${pluginId}`, { type: 'update_git', pluginId }), [run]);
+  const update = useCallback((pluginId: string) => run(`update:${pluginId}`, { type: 'update', pluginId }), [run]);
+  const updateAll = useCallback(() => run('update_all', { type: 'update_all' }), [run]);
   const setAutoUpdate = useCallback(
     (enabled: boolean) => run('set_auto_update', { type: 'set_auto_update', enabled }),
     [run],
@@ -335,7 +338,8 @@ export function usePanelPluginActions(): PanelPluginActions {
     build,
     setEnabled,
     checkUpdates,
-    updateGit,
+    update,
+    updateAll,
     setAutoUpdate,
     forceSync,
   };

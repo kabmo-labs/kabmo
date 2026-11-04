@@ -171,7 +171,14 @@ async function applyStoreCopy(
  * say why, and it is cleared on the next pass that finds the tree unchanged, so a
  * user who reverts their edit gets the update without doing anything else.
  */
-export async function syncBundledPlugins(): Promise<{
+export async function syncBundledPlugins(options: {
+  /**
+   * Only this plugin id. The pane's own Update action is what needs it: the
+   * whole-store pass is the BOOT question ("is anything behind?"), while a
+   * user naming one plugin must not touch the others.
+   */
+  only?: string;
+} = {}): Promise<{
   updated: BundledSyncOutcome[];
   blocked: BundledSyncBlocked[];
   failed: Array<{ pluginId: string; error: string }>;
@@ -184,6 +191,7 @@ export async function syncBundledPlugins(): Promise<{
   const installedRoot = getMarketplacePluginsDir();
 
   for (const pluginId of await subdirectories(storeRoot)) {
+    if (options.only && pluginId !== options.only) continue;
     const destination = join(installedRoot, pluginId);
     if (!(await pathExists(destination))) continue;
     // A git-installed plugin is the user's own clone; the store's copy is not

@@ -19,52 +19,26 @@
  *
  * `enable`/`disable` only flip a flag: the plugin's files stay on disk, which is
  * what makes disabling reversible and different from `remove`.
+ *
+ * `update` and `update_all` are the pane's Update buttons. Both go through
+ * `update.server.ts`, which dispatches on the install's SOURCE — a git clone is
+ * fetched and reset to its remote, a bundled install takes the store's copy
+ * under the sync's own edit gate — so one button means one thing to the reader
+ * whatever the plugin's origin.
  */
 
 import { json, type ActionFunctionArgs } from '@/server/lib/remix-compat';
 import { methodNotAllowed } from '@/server/lib/route-adapter';
 import { discoverPanelPlugins, invalidatePanelScan } from '@/server/lib/panels/registry.server';
 import { installPanelPluginFromBundled, installPanelPluginFromGit, removePanelPlugin } from '@/server/lib/panels/install.server';
-import { probeGitUpdate, updateGitPlugin } from '@/server/lib/panels/git-update.server';
+import { probeGitUpdate } from '@/server/lib/panels/git-update.server';
+import { updateAllPanelPlugins, updatePanelPlugin } from '@/server/lib/panels/update.server';
 import { forceSyncBundledPlugin } from '@/server/lib/panels/sync.server';
 import { writeGitStatus } from '@/server/lib/panels/git-status.server';
 import { forgetCatalogEntry } from '@/server/lib/panels/catalog.server';
 import { setPluginAutoUpdate, setPluginEnabled } from '@/server/lib/panels/state.server';
-import { disposePlugin, loadPluginServer, notePluginLoadFailure } from '@/server/lib/plugins/loader.server';
+import { syncPluginServer } from '@/server/lib/plugins/server-half.server';
 import { emitRealtimeSignal } from '@/server/lib/realtime/signals.server';
-
-/**
- * Bring a plugin's SERVER half in line with its on-disk state, now.
- *
- * The server half is otherwise loaded once at boot (`loadPluginServers` in the
- * entry), so installing or switching a plugin on used to leave its routes, RPC
- * methods and realtime topic unregistered until the process restarted — a panel
- * that installed cleanly and then answered "no plugin is loaded", or a Stats
- * panel stuck on "No sample yet." with nothing on screen to explain it.
- *
- * Never throws: a plugin whose server half cannot load is a plugin whose PANEL
- * still works, and the failure is recorded through `notePluginLoadFailure` —
- * the same list `GET /api/plugins/state` serves to the pane — so the reader
- * sees WHY. Folding it into a 400 here would hide a successful install behind
- * an unrelated fault.
- */
-async function syncPluginServer(pluginId: string, enabled: boolean): Promise<void> {
-  try {
-    if (enabled) {
-      await loadPluginServer(pluginId);
-      // A later success clears an earlier failure, or the pane would keep
-      // reporting a fault the user has already fixed.
-      notePluginLoadFailure(pluginId, null);
-      return;
-    }
-    await disposePlugin(pluginId);
-    notePluginLoadFailure(pluginId, null);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    notePluginLoadFailure(pluginId, reason);
-    console.error(`[plugins] ${pluginId}: server half ${enabled ? 'load' : 'unload'} failed — ${reason}`);
-  }
-}
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') return methodNotAllowed({ request, params: {} });
@@ -152,43 +126,41 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ ok: true, ...(await discoverPanelPlugins()) });
   }
 
-  if (type === 'update_git') {
+  if (type === 'update') {
     const pluginId = typeof body.pluginId === 'string' ? body.pluginId.trim() : '';
     if (!pluginId) return json({ error: 'A plugin id is required.' }, { status: 400 });
 
-    // Unload BEFORE the files move, for the same reason a removal does: the
-    // module is already imported and its registrations are live, so a server
-    // half that kept running would answer from code the directory no longer
-    // holds. Reloaded below, after the update.
-    await syncPluginServer(pluginId, false);
-    const result = await updateGitPlugin(pluginId);
-    if (!result.ok) {
-      // The plugin is still installed and still on its previous commit — the
-      // refusal is about what an update WOULD do. Its server half goes back up
-      // either way, or a failed update would leave a working plugin inert.
-      await syncPluginServer(pluginId, true);
-      return json({ error: result.error, ...(await discoverPanelPlugins()) }, { status: 400 });
-    }
-    await syncPluginServer(pluginId, true);
-    // The freshness this update just achieved is written rather than probed
-    // again: the commit is known, and a second round trip could only disagree
-    // with the reset that already happened.
-    writeGitStatus(pluginId, {
-      current: result.commit ?? null,
-      latest: result.commit ?? null,
-      updateAvailable: false,
-      checkedAt: Date.now(),
-    });
-    // The statuses and the rebuilt bundle both travel on the scan payload, and
-    // the server-half reload above may have scanned in between — so the cache is
-    // dropped once more here, right before the read that answers the caller, and
-    // the topic is republished for the same reason `check_updates` does it: a
-    // stale topic snapshot wins over the response on the client.
+    // One button for both sources: a git clone is fetched and reset, a bundled
+    // install takes the store's copy under the sync's own edit gate. The
+    // unload/reload around the files and the freshness write live in
+    // `updatePanelPlugin`, so this branch only translates the outcome.
+    const result = await updatePanelPlugin(pluginId);
+    // The scan holds what either update moved — files, versions, the refusal
+    // record — and a stale topic snapshot WINS over the response on the client,
+    // so the topic is republished rather than only answered.
     invalidatePanelScan();
     emitRealtimeSignal('panels-changed');
     const payload = await discoverPanelPlugins();
+    if (result.error) return json({ error: result.error, ...payload }, { status: 400 });
     if (result.warning) return json({ ok: true, error: result.warning, ...payload });
     return json({ ok: true, updated: result.updated, ...payload });
+  }
+
+  if (type === 'update_all') {
+    const result = await updateAllPanelPlugins();
+    invalidatePanelScan();
+    emitRealtimeSignal('panels-changed');
+    const payload = await discoverPanelPlugins();
+    // A refusal is answered 200 where the pass ALSO updated something: one
+    // plugin with local edits must not hide the others' success. The reasons
+    // travel in `error` (the pane's warning banner) and, for a blocked bundled
+    // copy, in `syncBlocked` beside it.
+    const notes = [
+      ...result.refused.map((entry) => entry.error),
+      ...result.warnings.map((entry) => `${entry.pluginId}: ${entry.warning}`),
+    ];
+    if (notes.length > 0) return json({ ok: true, error: notes.join(' · '), ...payload });
+    return json({ ok: true, ...payload });
   }
 
   if (type === 'force_sync') {

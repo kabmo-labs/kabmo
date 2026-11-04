@@ -101,7 +101,10 @@ export { getMarketplacePluginsDir };
  * - the loaded plugins are DISPOSED, because the loader's registry is
  *   process-wide and a plugin from one test would still answer in the next;
  * - the load-failure list is cleared, because it is global too and a leftover
- *   entry makes a later "no errors" assertion pass or fail for the wrong reason.
+ *   entry makes a later "no errors" assertion pass or fail for the wrong reason;
+ * - the freshness cache is cleared, because it is a `globalThis` map that any
+ *   other suite's git probe writes to — a leftover status made this suite's
+ *   "nothing to probe" assertion read a plugin it never installed.
  */
 export function usePanelRouteFixtures(): void {
   beforeEach(async () => {
@@ -110,12 +113,14 @@ export function usePanelRouteFixtures(): void {
     process.env.KABMO_MARKETPLACE_DIR = dirs.root;
     process.env.KABMO_BUNDLED_MARKETPLACE_DIR = dirs.bundled;
     await isolateDb();
+    globalThis.__kabmoPanelGitStatus?.clear();
     invalidatePanelScan();
   });
 
   afterEach(async () => {
     await disposeAllPlugins();
     globalThis.__kabmoPluginLoadErrors = undefined;
+    globalThis.__kabmoPanelGitStatus?.clear();
     await releaseDb();
     delete process.env.KABMO_MARKETPLACE_DIR;
     delete process.env.KABMO_BUNDLED_MARKETPLACE_DIR;

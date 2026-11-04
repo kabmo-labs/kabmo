@@ -220,6 +220,26 @@ describe('updateGitPlugin', () => {
     expect(fs.readFileSync(join(root, 'plugins', 'from-git', 'dist', 'app.js'), 'utf8')).toContain('edited');
   });
 
+  test.skipIf(!hasGit)('updates a clone whose only untracked files are Kabmo’s own build output', async () => {
+    // A repository that does not gitignore `dist/` is ordinary, and Kabmo's build
+    // writes `dist/` and `node_modules/` into every clone. Counting those as
+    // uncommitted work made such a plugin permanently un-updatable — measured on a
+    // fixture repo with no .gitignore, where Update answered "has uncommitted
+    // changes" forever. `reset --hard` never touches an untracked file, so they
+    // are not what the refusal is protecting.
+    const repo = makeRepo();
+    await installPanelPluginFromGit(repo);
+    advance(repo, '2.0.0');
+    fs.mkdirSync(join(root, 'plugins', 'from-git', 'node_modules', 'dep'), { recursive: true });
+    fs.writeFileSync(join(root, 'plugins', 'from-git', 'node_modules', 'dep', 'index.js'), 'export default 1;');
+
+    const result = await updateGitPlugin('from-git');
+    expect(result.ok).toBe(true);
+    expect(result.updated).toBe(true);
+    // The untracked file was left alone rather than swept away by the reset.
+    expect(fs.existsSync(join(root, 'plugins', 'from-git', 'node_modules', 'dep', 'index.js'))).toBe(true);
+  });
+
   test('refuses a plugin that is not a git clone', async () => {
     const dir = join(root, 'plugins', 'plain');
     fs.mkdirSync(dir, { recursive: true });

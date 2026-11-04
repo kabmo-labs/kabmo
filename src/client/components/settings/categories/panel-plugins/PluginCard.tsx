@@ -24,8 +24,9 @@
  * now share the version, author, origin and slot pieces in `Meta.tsx`.
  */
 
-import { Hammer, Loader2, BookOpen } from 'lucide-preact';
+import { ArrowDownToLine, Hammer, Loader2, BookOpen } from 'lucide-preact';
 import type { PanelGitStatus, PanelPluginStatus } from '@/shared/types';
+import { pluginUpdate } from '@/shared/lib/panels/update';
 import { PluginMark } from '@/client/components/settings/categories/panel-plugins/PluginMark';
 import { RemovePluginButton } from '@/client/components/settings/categories/panel-plugins/InstallForm';
 import { GitFreshness } from '@/client/components/settings/categories/panel-plugins/GitFreshness';
@@ -61,7 +62,7 @@ interface PluginCardProps {
   onBuild: (pluginId: string) => Promise<boolean>;
   onRemove: (pluginId: string) => Promise<boolean>;
   onSetEnabled: (pluginId: string, enabled: boolean) => Promise<boolean>;
-  onUpdateGit: (pluginId: string) => Promise<boolean>;
+  onUpdate: (pluginId: string) => Promise<boolean>;
 }
 
 export function PluginCard({
@@ -77,7 +78,7 @@ export function PluginCard({
   onBuild,
   onRemove,
   onSetEnabled,
-  onUpdateGit,
+  onUpdate,
 }: PluginCardProps) {
   // The ENABLEMENT key is the panel key, not the plugin id: it is the id the
   // client filters its panel catalog by, so a switch that wrote the bare id
@@ -86,6 +87,9 @@ export function PluginCard({
   const toggling = busy === `enable:${panelKey}` || busy === `disable:${panelKey}`;
   const contributions = usePluginContributions(plugin.pluginId);
   const badges = contributionBadges(contributions, plugin.slots);
+  // One answer for both surfaces: a clone's Update lives in its freshness row,
+  // a bundled install's in the footer, and both ask this.
+  const pending = pluginUpdate(plugin, gitStatus);
 
   return (
     <article
@@ -211,14 +215,15 @@ export function PluginCard({
 
       {/* A git-installed plugin's freshness. Rendered for a clone only — a
           bundled install is kept current by Kabmo's own update, so a git row
-          there would describe a remote it does not have. */}
+          there would describe a remote it does not have. A clone's Update sits
+          INSIDE this row, beside the commit pair it would move. */}
       {plugin.gitOrigin ? (
         <GitFreshness
           status={gitStatus}
           origin={plugin.gitOrigin}
           busy={busy}
           pluginId={plugin.pluginId}
-          onUpdate={onUpdateGit}
+          onUpdate={onUpdate}
           latestVersion={plugin.latestVersion}
         />
       ) : null}
@@ -240,7 +245,29 @@ export function PluginCard({
             Rebuild
           </button>
         ) : null}
-        {plugin.gitOrigin && gitStatus?.updateAvailable ? null : null}
+        {/* A BUNDLED install's Update, in the footer rather than a freshness row:
+            its source is the store, which has no commit to show. A clone's update
+            is the one above, so this would be a second button for one action. */}
+        {pending && !plugin.gitOrigin ? (
+          <button
+            type="button"
+            onClick={() => void onUpdate(plugin.pluginId)}
+            disabled={busy !== null}
+            title={
+              pending.version
+                ? `Apply the store's copy of v${pending.version} — your edited files are left untouched, and the update is refused if they conflict`
+                : "Apply the store's copy — your edited files are left untouched, and the update is refused if they conflict"
+            }
+            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded border border-warning/50 text-warning hover:bg-warning/10 disabled:opacity-40"
+          >
+            {busy === `update:${plugin.pluginId}` ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : (
+              <ArrowDownToLine size={11} />
+            )}
+            Update
+          </button>
+        ) : null}
         <span className="ml-auto flex items-center gap-1">
           {readmeUrl ? (
             <button
