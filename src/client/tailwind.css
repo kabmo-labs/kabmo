@@ -249,7 +249,7 @@
  * 1.75:1 (`nord-light`) against the surface they sit on — both below the 3:1
  * non-text floor. Mixing toward the ink moves them along the one axis the
  * palette already guarantees: `error 75%` clears 3.56:1 and `success 55%`
- * 3.64:1 across all 44 palettes, measured on the REAL chrome composite (paper
+ * 3.63:1 across all 63 palettes, measured on the REAL chrome composite (paper
  * over plane over canvas), not on bare paper.
  *
  * The tick stays `--theme-paper`: on the green fill that is the palette's own

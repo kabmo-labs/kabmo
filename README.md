@@ -62,7 +62,7 @@ bun run dev                # source checkout: one process, HMR, no build step
 | ![Plan](docs/assets/panel-plan.png)<br>**Plan** — the plan artifact an omp session is working from, rendered as a document | ![Usage](docs/assets/panel-usage.png)<br>**Usage** — provider balance, plan windows, saved resets, per-model token spend |
 | ![Your browser](docs/assets/panel-user-browser.png)<br>**Browser (yours)** — a private iframe with real history and device presets | ![Agent browser](docs/assets/panel-agent-browser.png)<br>**Browser agent** — a live screencast of the tab the agent is driving |
 | ![Panel plugins](docs/assets/settings-panel-plugins.png)<br>**Panel plugins** — every view is a plugin, including the eleven bundled ones | ![Providers](docs/assets/settings-providers.png)<br>**Providers** — dialects, discovery, hand-added models, credential removal |
-| ![Mobile view](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, and the panel drawer | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 45 light and dark themes, applied to the whole console |
+| ![Mobile view](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, and the panel drawer | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 63 light and dark themes, applied to the whole console |
 
 - **Chat timeline** — streaming thinking blocks (omp's narrated prose promoted to answer text), a
   structured renderer per tool (bash, LSP, AST edit, `proc://` services, `wait` with a clock and
@@ -88,13 +88,16 @@ bun run dev                # source checkout: one process, HMR, no build step
 
 ## Themes
 
-45 palettes in one catalog (`src/shared/lib/theme/`): Kabmo's own three (`paper`, `contrast`,
-`one-dark-pro-soft`) and 21 light/dark pairs — Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula,
-Solarized, Kanagawa, Vesper, Ayu, Monokai and more. Switching repaints everything, syntax
-highlighting and Mermaid diagrams included, through one writer that sets `data-theme` and announces
-it — so an open editor, a live terminal and a diagram in the transcript all follow with no reload.
+63 palettes in one catalog (`src/shared/lib/theme/`): Kabmo's own three (`paper`, `contrast`,
+`one-dark-pro-soft`) and 30 light/dark pairs — Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula,
+Solarized, Kanagawa, Vesper, Ayu, Monokai, Everforest, Rose Pine, GitHub, Material, Vercel,
+Cursor, OpenCode, Osaka Jade and more. Switching repaints everything, syntax highlighting and
+Mermaid diagrams included, through one writer that sets `data-theme` and announces it — so an open
+editor, a live terminal and a diagram in the transcript all follow with no reload. Every palette
+carries the glass surface too: the frost is mixed from the palette's own paper and canvas, so no
+theme needs a second set of colours for it.
 
-![Eight of the 45 palettes, same surface](docs/assets/theme-grid.png)
+![Eight of the 63 palettes, same surface](docs/assets/theme-grid.png)
 
 ## Install
 

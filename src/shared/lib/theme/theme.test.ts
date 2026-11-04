@@ -30,7 +30,9 @@ import { mixHex, parseHexColor, relativeLuminance, rgbaToHex } from '@/shared/li
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
 import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
+import { DARK_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/dark-extended';
 import { LIGHT_PALETTES } from '@/shared/lib/theme/palettes/light';
+import { LIGHT_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/light-extended';
 import { THEMES } from '@/shared/lib/theme/catalog';
 
 const PALETTE_KEYS = [
@@ -160,7 +162,9 @@ describe('generated stylesheet', () => {
 });
 
 describe('palette sources', () => {
-  const all = [...KABMO_PALETTES, ...LIGHT_PALETTES, ...DARK_PALETTES];
+  const LIGHT_ALL = [...LIGHT_PALETTES, ...LIGHT_EXTENDED_PALETTES];
+  const DARK_ALL = [...DARK_PALETTES, ...DARK_EXTENDED_PALETTES];
+  const all = [...KABMO_PALETTES, ...LIGHT_ALL, ...DARK_ALL];
 
   test('every palette declares the same twelve keys', () => {
     for (const palette of all) {
@@ -183,16 +187,16 @@ describe('palette sources', () => {
       expect(seen.has(palette.id), `duplicate id ${palette.id}`).toBe(false);
       seen.add(palette.id);
     }
-    for (const palette of LIGHT_PALETTES) expect(palette.variant).toBe('light');
-    for (const palette of DARK_PALETTES) expect(palette.variant).toBe('dark');
+    for (const palette of LIGHT_ALL) expect(palette.variant).toBe('light');
+    for (const palette of DARK_ALL) expect(palette.variant).toBe('dark');
     expect(all.length).toBe(THEMES.length);
   });
 
   test('the ported families pair up: every light family has a dark twin', () => {
-    const light = new Set(LIGHT_PALETTES.map((palette) => palette.family));
-    const dark = new Set(DARK_PALETTES.map((palette) => palette.family));
-    expect(new Set(LIGHT_PALETTES.map((palette) => palette.family)).size).toBe(LIGHT_PALETTES.length);
-    expect(new Set(DARK_PALETTES.map((palette) => palette.family)).size).toBe(DARK_PALETTES.length);
+    const light = new Set(LIGHT_ALL.map((palette) => palette.family));
+    const dark = new Set(DARK_ALL.map((palette) => palette.family));
+    expect(light.size).toBe(LIGHT_ALL.length);
+    expect(dark.size).toBe(DARK_ALL.length);
     expect([...light].filter((family) => !dark.has(family))).toEqual([]);
     expect([...dark].filter((family) => !light.has(family))).toEqual([]);
   });

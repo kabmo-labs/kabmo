@@ -60,8 +60,9 @@ describe('checkbox', () => {
     expect(layer).toContain('width: 0.875rem;');
 
     // The ring's alpha is a contrast budget: `ink 75%` is the first alpha whose
-    // worst case over all 43 palettes clears WCAG's 3:1 non-text floor
-    // (3.02:1 on solarized-light); 40% measured 1.71:1, which was the bug. 2px
+    // worst case over all 63 palettes clears WCAG's 3:1 non-text floor
+    // (3.02:1 on solarized-light); 40% measured 1.71:1, which was the bug. The
+    // COLOURED ring below clears 3.56:1 on the same sweep. 2px
     // rather than 1.5px because a half-pixel border antialiases into a 50% blend
     // and the intended alpha never reaches the screen.
     expect(layer).toContain('border: 2px solid color-mix(in srgb, var(--theme-ink) 75%, transparent);');
@@ -80,8 +81,9 @@ describe('checkbox', () => {
     // The colour mode is the one place a user asks for chroma, so the states are
     // colour there. Both are MIXED TOWARD THE INK, which is a contrast budget:
     // at full strength the ring measured 2.73:1 and the fill 1.75:1 worst case
-    // over the 44 palettes, both under the 3:1 non-text floor; 75%/55% clear
-    // 3.56:1 and 3.64:1 on the real chrome composite.
+    // over the 63 palettes, both under the 3:1 non-text floor; 75%/55% clear
+    // 3.56:1 (`solarized-dark`) and 3.63:1 (`nord-light`) on the real chrome
+    // composite, and the tick's `paper` clears 3.59:1 on the same fill.
     expect(css).toContain('[data-icon-style="color"] .kabmo-checkbox {\n  border-color: color-mix(in srgb, var(--theme-error) 75%, var(--theme-ink));');
     expect(css).toContain('background-color: color-mix(in srgb, var(--theme-success) 55%, var(--theme-ink));');
     // Hover stops at 85%, not the raw error colour: at 100% the ring drops to

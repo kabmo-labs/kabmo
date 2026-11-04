@@ -17,7 +17,9 @@
 import type { ThemePalette, ThemeSwatch } from '@/shared/types/theme';
 import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
+import { DARK_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/dark-extended';
 import { LIGHT_PALETTES } from '@/shared/lib/theme/palettes/light';
+import { LIGHT_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/light-extended';
 
 /** The shipped default, and the fallback for any id the catalog does not know. */
 export const DEFAULT_THEME_ID = 'paper';
@@ -30,9 +32,17 @@ export const DEFAULT_THEME_ID = 'paper';
 export type ThemeId =
   | (typeof KABMO_PALETTES)[number]['id']
   | (typeof LIGHT_PALETTES)[number]['id']
-  | (typeof DARK_PALETTES)[number]['id'];
+  | (typeof LIGHT_EXTENDED_PALETTES)[number]['id']
+  | (typeof DARK_PALETTES)[number]['id']
+  | (typeof DARK_EXTENDED_PALETTES)[number]['id'];
 
-const ALL_PALETTES = [...KABMO_PALETTES, ...LIGHT_PALETTES, ...DARK_PALETTES];
+const ALL_PALETTES = [
+  ...KABMO_PALETTES,
+  ...LIGHT_PALETTES,
+  ...LIGHT_EXTENDED_PALETTES,
+  ...DARK_PALETTES,
+  ...DARK_EXTENDED_PALETTES,
+];
 
 const BY_ID: Record<string, ThemePalette | undefined> = Object.fromEntries(
   ALL_PALETTES.map((theme) => [theme.id, theme]),
@@ -50,7 +60,12 @@ const DEFAULT_PALETTE: ThemePalette = KABMO_PALETTES[0];
  */
 export const THEMES: readonly ThemePalette[] = (() => {
   const families = new Map<string, ThemePalette[]>();
-  for (const palette of [...LIGHT_PALETTES, ...DARK_PALETTES]) {
+  for (const palette of [
+    ...LIGHT_PALETTES,
+    ...DARK_PALETTES,
+    ...LIGHT_EXTENDED_PALETTES,
+    ...DARK_EXTENDED_PALETTES,
+  ]) {
     const group = families.get(palette.family);
     if (group) group.push(palette);
     else families.set(palette.family, [palette]);

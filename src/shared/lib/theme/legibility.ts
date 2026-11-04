@@ -7,7 +7,7 @@
  * How legible a brand colour is on the palettes this build actually ships.
  *
  * Brand art arrives with ONE hex, chosen by the brand for its own background.
- * Kabmo paints it on 45 palettes, so "the brand's colour" is not paintable
+ * Kabmo paints it on 63 palettes, so "the brand's colour" is not paintable
  * as-is: measured, `claude`'s `#D97757` reads 2.77:1 on `#f4f1ea` (the darkest
  * light paper shipped) while it is 5.25:1 on `#201E2B` (the lightest dark one).
  * This module is the one place that decides what to paint instead, so the
@@ -18,7 +18,7 @@
  * - **The worst surface is MEASURED, not assumed.** It is the minimum contrast
  *   against every palette of that variant (`THEMES`), not against one hardcoded
  *   hex — a new palette with a mid-tone paper would otherwise silently drop a
- *   mark below the floor. Cost is 45 comparisons per brand, once per process.
+ *   mark below the floor. Cost is 63 comparisons per brand, once per process.
  * - **A near-monochrome brand gets NO dark value.** `#000000` mixed toward white
  *   lands on `#737373`, which is indistinguishable from the ink it was meant to
  *   replace while claiming to be a brand colour; those brands are drawn in the

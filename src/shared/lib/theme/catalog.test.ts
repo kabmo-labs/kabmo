@@ -30,10 +30,11 @@ const COLOR_VALUE = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|#[0-9a-f]{8})$/i;
 
 describe('theme catalog', () => {
   test('ships Kabmo palettes plus every ported variant', () => {
-    expect(THEMES.length).toBe(45);
-    // 21 ported light + paper/contrast; 21 ported dark + one-dark-pro-soft.
-    expect(THEMES.filter((t) => t.variant === 'light').length).toBe(23);
-    expect(THEMES.filter((t) => t.variant === 'dark').length).toBe(22);
+    expect(THEMES.length).toBe(63);
+    // 21 ported light (upstream snapshot) + 9 newer light + paper/contrast;
+    // 21 ported dark + 9 newer dark + one-dark-pro-soft.
+    expect(THEMES.filter((t) => t.variant === 'light').length).toBe(32);
+    expect(THEMES.filter((t) => t.variant === 'dark').length).toBe(31);
   });
 
   test('ids are unique and each palette carries a paintable color for every slot', () => {
