@@ -240,3 +240,68 @@ describe('RpcFrameDecoder — sequence bookkeeping', () => {
     expect(decoder.push({ type: 'ready' })).toEqual({ type: 'ready' });
   });
 });
+
+describe('RpcFrameDecoder — ceilings advertised in ready', () => {
+  test('a smaller reassembly ceiling rejects a chunk above it', () => {
+    const decoder = new RpcFrameDecoder();
+    decoder.setLimits({ maxReassembledFrameBytes: 2 * 1024 * 1024 });
+    expect(() =>
+      decoder.push(chunk({ byteLength: 3 * 1024 * 1024, data: new Uint8Array(1024).fill(65).toBase64() })),
+    ).toThrow('invalid RPC chunk metadata');
+  });
+
+  test('a smaller reassembly ceiling caps how many slices one sequence may claim', () => {
+    const decoder = new RpcFrameDecoder();
+    decoder.setLimits({ maxReassembledFrameBytes: 2 * 1024 * 1024 });
+    // 2 MiB / 256 KiB = 8 slices; a ninth cannot exist under that ceiling.
+    expect(() =>
+      decoder.push(chunk({ count: 9, byteLength: 2 * 1024 * 1024, data: new Uint8Array(1024).fill(65).toBase64() })),
+    ).toThrow('invalid RPC chunk metadata');
+  });
+
+  test('a larger frame ceiling makes a formerly chunk-worthy frame too small to chunk', () => {
+    const decoder = new RpcFrameDecoder();
+    decoder.setLimits({ maxFrameBytes: 4 * 1024 * 1024 });
+    expect(() =>
+      decoder.push(chunk({ byteLength: 2 * 1024 * 1024, data: new Uint8Array(1024).fill(65).toBase64() })),
+    ).toThrow('invalid RPC chunk metadata');
+  });
+
+  test('a zero, negative, fractional or non-numeric ceiling keeps the previous value', () => {
+    const decoder = new RpcFrameDecoder();
+    decoder.setLimits({ maxFrameBytes: 0, maxReassembledFrameBytes: -1 });
+    decoder.setLimits({ maxFrameBytes: Number.NaN, maxReassembledFrameBytes: '8192' });
+    decoder.setLimits({ maxFrameBytes: 1.5, maxReassembledFrameBytes: null });
+    // Defaults still in force: below 1 MiB is not chunk-worthy, at 1 MiB is.
+    expect(() => decoder.push(chunk({ byteLength: MAX_RPC_FRAME_BYTES - 1 }))).toThrow('invalid RPC chunk metadata');
+    expect(decoder.push(chunk({ data: new Uint8Array(1024).fill(65).toBase64() }))).toBeUndefined();
+  });
+});
+
+describe('RpcFrameDecoder — resync after a damaged sequence', () => {
+  test('swallows the damaged tail and resumes at the next ordinary frame', () => {
+    const decoder = new RpcFrameDecoder();
+    expect(decoder.push(chunk({ count: 3, data: new Uint8Array(1024).fill(65).toBase64() }))).toBeUndefined();
+    // What `process.ts` does when `push` throws: abandon the sequence, keep the session.
+    decoder.resync();
+    expect(decoder.push(chunk({ count: 3, index: 2, data: new Uint8Array(1024).fill(65).toBase64() }))).toBeUndefined();
+    expect(decoder.push({ type: 'ready' })).toEqual({ type: 'ready' });
+  });
+
+  test('resumes at a new sequence that starts over at index 0', () => {
+    const decoder = new RpcFrameDecoder();
+    decoder.resync();
+    const frame = frameOfBytes(MAX_RPC_FRAME_BYTES + 5_000);
+    const records = chunkSequence(frame, 'after-resync');
+    for (const record of records.slice(0, -1)) expect(decoder.push(record)).toBeUndefined();
+    expect(decoder.push(records.at(-1))).toEqual(frame);
+  });
+
+  test('a malformed frame that is not a chunk still throws', () => {
+    // Recovery is scoped to a damaged CHUNK sequence; a line that is not an
+    // object at all remains a protocol fault the caller must see.
+    const decoder = new RpcFrameDecoder();
+    expect(() => decoder.push(42)).toThrow('RPC frame must be an object');
+    expect(() => decoder.push({ noType: 1 })).toThrow('RPC frame must be an object');
+  });
+});

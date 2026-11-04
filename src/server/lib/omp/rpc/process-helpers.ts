@@ -68,3 +68,14 @@ export interface RpcProcessOptions {
 }
 
 export const STDERR_TAIL_LIMIT = 8 * 1024;
+
+/**
+ * How many transport notices one child may push before the reader stops
+ * repeating itself.
+ *
+ * A malformed chunk sequence is recoverable (the logical frame is lost, the
+ * session is not), but a server stuck emitting invalid chunks would otherwise
+ * append a notice per line and bury the transcript. Three is enough to prove
+ * the fault is real; the stderr tail keeps the full account for diagnostics.
+ */
+export const MAX_PROTOCOL_ERROR_NOTICES = 3;

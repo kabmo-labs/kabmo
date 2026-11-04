@@ -20,9 +20,10 @@ import { signalName, stripKabmoHostEnv } from '@kabmo-labs/kabmo-sdk';
 import { describeSpawnFailure } from '@/server/lib/lifecycle/fd-pressure';
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { RpcFrameDecoder, encodeRpcFrameLine, type RpcFrameRecord, type RpcProtocolVersion } from '@/shared/lib/omp/rpc/frame';
+import { isRecord } from '@/shared/lib/util/guards';
 import { killProcessTree } from '@/server/lib/lifecycle/kill-tree';
 import { readLines } from '@/server/lib/omp/rpc/lines';
-import { RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
+import { MAX_PROTOCOL_ERROR_NOTICES, RpcCommandError, RpcCommandTimeoutError, STDERR_TAIL_LIMIT, type PendingCommand, type RpcFrame, type RpcProcessOptions, type RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
 
 export { RpcCommandError, RpcCommandTimeoutError } from '@/server/lib/omp/rpc/process-helpers';
 export type { RpcFrame, RpcProcessOptions, RpcResponseFrame } from '@/server/lib/omp/rpc/process-helpers';
@@ -90,6 +91,7 @@ export class RpcProcess {
     this.readyPromise.catch(() => {});
 
     const decoder = new RpcFrameDecoder();
+    let protocolErrorNotices = 0;
     void readLines(this.child.stdout, (line) => {
       const trimmed = line.trim();
       if (!trimmed) return;
@@ -102,18 +104,40 @@ export class RpcProcess {
       }
       let frame: RpcFrameRecord;
       try {
-        if (parsed && typeof parsed === 'object' && (parsed as { type?: unknown }).type === 'rpc_chunk' && this.protocolVersion !== 2) {
+        if (isRecord(parsed) && parsed.type === 'rpc_chunk' && this.protocolVersion !== 2) {
           throw new Error('RPC chunk received before protocol negotiation');
         }
         const decoded = decoder.push(parsed);
         if (!decoded) return;
         frame = decoded;
       } catch (error) {
-        this.stderrTail = (this.stderrTail + `\nRPC protocol error: ${error instanceof Error ? error.message : String(error)}`).slice(-STDERR_TAIL_LIMIT);
-        void this.dispose(0);
+        // A malformed chunk sequence costs ONE logical frame, not the session:
+        // killing the child took its LSP servers, browser targets and prewarm
+        // slot down for a transport fault. Report the lost event, then resync.
+        const detail = error instanceof Error ? error.message : String(error);
+        decoder.resync();
+        this.stderrTail = (this.stderrTail + `\nRPC protocol error: ${detail}`).slice(-STDERR_TAIL_LIMIT);
+        if (protocolErrorNotices < MAX_PROTOCOL_ERROR_NOTICES) {
+          protocolErrorNotices++;
+          const notice: RpcFrame = {
+            type: 'notice',
+            level: 'warning',
+            message: `OMP sent a malformed RPC frame (${detail}). One event was dropped; the session is still running.`,
+          };
+          for (const listener of this.frameListeners) {
+            try {
+              listener(notice);
+            } catch {}
+          }
+        }
         return;
       }
       if (frame.type === 'ready') {
+        // The server's own ceilings, which may grow without a protocol bump.
+        decoder.setLimits({
+          maxFrameBytes: frame.maxFrameBytes,
+          maxReassembledFrameBytes: frame.maxReassembledFrameBytes,
+        });
         resolveReady(frame);
         return;
       }

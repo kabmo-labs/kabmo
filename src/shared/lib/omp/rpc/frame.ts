@@ -84,22 +84,77 @@ function concatChunks(chunks: Uint8Array[], byteLength: number): Uint8Array {
   return merged;
 }
 
+export interface RpcTransportLimits {
+  /** Largest physical stdout line, newline included. */
+  maxFrameBytes: number;
+  /** Largest logical frame the server will reassemble from chunks. */
+  maxReassembledBytes: number;
+}
+
+/** The documented defaults, used until a `ready` frame says otherwise. */
+const DEFAULT_LIMITS: RpcTransportLimits = {
+  maxFrameBytes: MAX_RPC_FRAME_BYTES,
+  maxReassembledBytes: MAX_RPC_REASSEMBLED_BYTES,
+};
+
 /** Decodes complete logical frames from parsed JSONL records. */
 export class RpcFrameDecoder {
   private pending: PendingChunks | undefined;
+  /** Set by `resync()`: swallow chunk records until a sequence starts over. */
+  private discarding = false;
+  private limits: RpcTransportLimits = { ...DEFAULT_LIMITS };
+
+  /**
+   * Adopt the ceilings the server advertised in `ready`.
+   *
+   * They are the server's own transport contract and may change without a
+   * protocol bump, so the decoder validates chunks against the advertised
+   * values rather than against the constants this module was compiled with.
+   */
+  setLimits(advertised: { maxFrameBytes?: unknown; maxReassembledFrameBytes?: unknown }): void {
+    const frameBytes = advertised.maxFrameBytes;
+    const reassembledBytes = advertised.maxReassembledFrameBytes;
+    this.limits = {
+      maxFrameBytes: isSafeInteger(frameBytes) && frameBytes > 0 ? frameBytes : this.limits.maxFrameBytes,
+      maxReassembledBytes:
+        isSafeInteger(reassembledBytes) && reassembledBytes > 0 ? reassembledBytes : this.limits.maxReassembledBytes,
+    };
+  }
+
+  /**
+   * Drop a damaged chunk sequence and keep reading.
+   *
+   * Chunk sequences are written without interruption, so the next ordinary
+   * frame — or the next sequence's `index: 0` — marks the end of the damage.
+   * The logical frame that was in flight is LOST: the caller reports that to
+   * the operator instead of killing the child, because a whole session (its
+   * LSP children, its prewarm slot) is not a fair price for one event.
+   */
+  resync(): void {
+    this.pending = undefined;
+    this.discarding = true;
+  }
 
   push(value: unknown): RpcFrameRecord | undefined {
     if (!isRecord(value) || value.type !== 'rpc_chunk') {
-      if (this.pending) throw new Error('RPC chunk sequence interrupted');
+      if (this.pending && !this.discarding) throw new Error('RPC chunk sequence interrupted');
+      this.pending = undefined;
+      this.discarding = false;
       if (!isRecord(value) || typeof value.type !== 'string') throw new Error('RPC frame must be an object');
       return value as RpcFrameRecord;
     }
+    // Mid-resync: ignore the tail of the damaged sequence. `index: 0` proves a
+    // new sequence started, so normal handling resumes with it.
+    if (this.discarding && value.index !== 0) return undefined;
+    this.discarding = false;
+
     const { chunkId, index, count, byteLength } = value;
+    const { maxFrameBytes, maxReassembledBytes } = this.limits;
     if (
       typeof chunkId !== 'string' || chunkId.length === 0 || chunkId.length > 128 ||
       !isSafeInteger(index) || !isSafeInteger(count) || !isSafeInteger(byteLength) ||
-      index < 0 || count < 2 || count > Math.ceil(MAX_RPC_REASSEMBLED_BYTES / RPC_CHUNK_PAYLOAD_BYTES) ||
-      index >= count || byteLength < MAX_RPC_FRAME_BYTES || byteLength > MAX_RPC_REASSEMBLED_BYTES
+      index < 0 || count < 2 || count > Math.ceil(maxReassembledBytes / RPC_CHUNK_PAYLOAD_BYTES) ||
+      index >= count || byteLength < maxFrameBytes || byteLength > maxReassembledBytes
     ) throw new Error('invalid RPC chunk metadata');
 
     const bytes = decodeBase64(value.data);
