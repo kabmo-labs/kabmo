@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Kabmo",
   "short_name": "Kabmo",
-  "description": "Browser console and diagnostic workbench for AI coding agents.",
+  "description": "Web console and diagnostic workbench for AI coding agents.",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#0B5D3B",

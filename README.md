@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  Browser console and diagnostic workbench for <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) agent sessions.<br>
+  Web console and diagnostic workbench for <a href="https://github.com/can1357/oh-my-pi">Oh-My-Pi</a> (<code>omp</code>) agent sessions.<br>
   Watch, steer and audit autonomous coding sessions from one paper-flat dashboard.
 </p>
 
@@ -29,7 +29,7 @@
 
 ## What it is
 
-The browser view onto a live `omp` install. It is not a terminal wrapper: Kabmo reads omp's own
+The web app over a live `omp` install. It is not a terminal wrapper: Kabmo reads omp's own
 session JSONL, project registry, config and subagent transcripts, folds them into one live view, and
 writes back through omp's RPC mode.
 
@@ -43,7 +43,8 @@ bun run dev                # source checkout: one process, HMR, no build step
   no separate client watcher.
 - **Two data modes.** `MOCK=false` (the default, also when unset) runs on the real SQLite database
   and your real workspace; `MOCK=true` swaps in bundled demo datasets. Every screenshot and
-  recording on this page was captured in `MOCK=true`.
+  recording on this page was captured in `MOCK=true`, in the **glass** surface style with
+  **full-colour** icons.
 - **Bun only.** The server imports `bun:sqlite` and `Bun.YAML`, the client is bundled by `Bun.build`,
   and sessions, config and updates shell out to the `omp` binary.
 
@@ -61,7 +62,7 @@ bun run dev                # source checkout: one process, HMR, no build step
 | ![Wiki](docs/assets/panel-wiki.png)<br>**Wiki** — reads a project's GitHub/GitLab wiki over git, with its own `_Sidebar` as navigation | ![Todos](docs/assets/panel-todo.png)<br>**Todos** — the session's live list, all five omp statuses, blockers and per-phase progress |
 | ![Plan](docs/assets/panel-plan.png)<br>**Plan** — the plan artifact an omp session is working from, rendered as a document | ![Usage](docs/assets/panel-usage.png)<br>**Usage** — provider balance, plan windows, saved resets, per-model token spend |
 | ![Your browser](docs/assets/panel-user-browser.png)<br>**Browser (yours)** — a private iframe with real history and device presets | ![Agent browser](docs/assets/panel-agent-browser.png)<br>**Browser agent** — a live screencast of the tab the agent is driving |
-| ![Panel plugins](docs/assets/settings-panel-plugins.png)<br>**Panel plugins** — every view is a plugin, including the eleven bundled ones | ![Providers](docs/assets/settings-providers.png)<br>**Providers** — dialects, discovery, hand-added models, credential removal |
+| ![Panel plugins](docs/assets/settings-panel-plugins.png)<br>**Panel plugins** — every view is a plugin, the eleven built-in ones included | ![Providers](docs/assets/settings-providers.png)<br>**Providers** — dialects, discovery, hand-added models, credential removal |
 | ![Mobile view](docs/assets/mobile.png)<br>**Mobile view** — the same session on a phone: chat, sessions drawer, and the panel drawer | ![Light theme](docs/assets/hero-light.png)<br>**Any palette** — 63 light and dark themes, applied to the whole console |
 
 - **Chat timeline** — streaming thinking blocks (omp's narrated prose promoted to answer text), a
@@ -78,7 +79,7 @@ bun run dev                # source checkout: one process, HMR, no build step
 - **Eleven right-panel views, each a plugin** — context & telemetry, files, search, source control,
   wiki, terminal, your browser, the agent browser, usage, todos and plan; each remembers its own width
   per session. A plugin can ship a Preact view, a server half, storage, RPC methods, a realtime topic
-  and settings; three are bundled (`Runner`, `Stats`, `Session Info`).
+  and settings; four are bundled (`Runner`, `Stats`, `Session Info`, `Forge`).
 - **The whole omp settings surface** — engine config generated from omp's own schema, providers,
   agents, `AGENTS.md` / `RULES.md`, slash commands, MCP servers with live connection tests, skills,
   token usage, notifications and dictation.
@@ -98,6 +99,32 @@ carries the glass surface too: the frost is mixed from the palette's own paper a
 theme needs a second set of colours for it.
 
 ![Eight of the 63 palettes, same surface](docs/assets/theme-grid.png)
+
+## Surfaces and icons
+
+Two appearance axes sit on top of the palette, each one setting on the same shell — the same panels,
+rows and dialogs, only cut from a different material:
+
+- **Surfaces** (`surfaceStyle`) — `Classic` is opaque paper over the palette canvas: the sharpest
+  text and the cheapest frame, and what an upgrade keeps. `Glass` is one frosted plane under a
+  palette-tinted aura, with the panels above it as translucent tints. The plane owns the blur — a
+  single `backdrop-filter` per window — so the panel count never decides the frame budget, and the
+  frost is mixed from the palette's own paper and canvas, so no theme needs a second set of colours
+  for it. A machine that reports no backdrop blur, or asks apps to reduce transparency, falls back to
+  opaque panels and the settings card says which of the two it found.
+- **Icons** (`iconStyle`) — `Monochrome` paints every icon in the surrounding ink. `Full colour`
+  gives each one its own colour: functional glyphs a generated per-icon hue, provider and model marks
+  their own brand colour, file-type marks their language's, and a project its accent. A brand colour
+  that would vanish on the active variant (a black logo on a dark theme) keeps the ink instead, and
+  the generated hues are stated at a lightness that clears the 3:1 non-text floor on every palette of
+  that variant. Tool cards in a transcript stay ink — they are read, not scanned.
+
+Both reach the document as attributes on `<html>` (`data-surface`, `data-icon-style`) and are read by
+CSS only, so one setting repaints every surface — sidebar, navbar, composer, modal — without a prop
+at any call site. The first frame is painted from the SSR shell, so a glass install never flashes
+opaque.
+
+![Classic and glass surfaces, monochrome and full-colour icons, same palette](docs/assets/theme-styles.png)
 
 ## Install
 

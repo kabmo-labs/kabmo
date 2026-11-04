@@ -1,6 +1,6 @@
 # AGENTS.md — Kabmo agent contract
 
-**Kabmo** is the browser console and diagnostic workbench for **Oh-My-Pi** (`omp`): a Preact client,
+**Kabmo** is the web console and diagnostic workbench for **Oh-My-Pi** (`omp`): a Preact client,
 a Bun/Elysia server that speaks omp's RPC mode, and a panel-plugin platform.
 
 This file is the short, binding contract. It is deliberately **not** the manual: the measured detail
