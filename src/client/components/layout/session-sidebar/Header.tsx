@@ -38,7 +38,7 @@ export function SessionSidebarHeader({
           same placement the phone's header uses — it reads as part of the
           title instead of competing with the icon controls for a slot. */}
       <span className="relative font-bold text-sm tracking-tight flex items-center">
-        <BrandWordmark />
+        <BrandWordmark glow />
         <span className="absolute -top-0.5 -right-1.5 flex">
           <StreamStatusDot status={streamStatus} />
         </span>

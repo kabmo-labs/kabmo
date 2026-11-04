@@ -83,7 +83,7 @@ export function TopNavbar({
               <PanelLeft size={16} />
             </button>
             <span className="relative font-bold text-sm tracking-tight hidden sm:flex items-center flex-shrink-0">
-              <BrandWordmark />
+              <BrandWordmark glow />
               {/* Same badge placement the sidebar header and the phone use:
                   the stream indicator belongs to the wordmark, not to the
                   control cluster. */}

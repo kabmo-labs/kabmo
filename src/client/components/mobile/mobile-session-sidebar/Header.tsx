@@ -46,7 +46,7 @@ export function MobileSessionHeader({ onClose, viewLabel = 'Sessions' }: { onClo
     >
       <div className="flex items-center space-x-2.5 titlebar-no-drag min-w-0">
         <span className="font-bold text-sm tracking-tight flex items-center flex-shrink-0">
-          <BrandWordmark className="text-[16px]" />
+          <BrandWordmark className="text-[16px]" glow />
         </span>
         <span className="text-ink/25 text-xs select-none flex-shrink-0">/</span>
         <span className="text-[11px] font-semibold text-ink/60 uppercase tracking-wider font-mono truncate">{viewLabel}</span>

@@ -138,7 +138,7 @@ export function MobileHeader({
             into the `⋯` menu (`HeaderControls`), which is what pays for the
             wordmark plus the slash beside it. */}
         <span className="relative font-bold text-sm tracking-tight flex items-center flex-shrink-0">
-          <BrandWordmark />
+          <BrandWordmark glow />
           <span className="absolute -top-0.5 -right-1.5 flex">
             <StreamStatusDot status={streamStatus} />
           </span>

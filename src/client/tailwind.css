@@ -757,6 +757,39 @@ html[data-theme-variant="dark"] .shiki span { color: var(--shiki-dark); }
   will-change: transform;
 }
 
+/* The header wordmark's halo (`common/brand-wordmark`, `glow`).
+ *
+ * Why it exists: the lockup ends in `text-ink` and starts in a warm gradient,
+ * and on a dark palette both sit on a near-black bar — the word is legible but
+ * flat, which is the state a title should not be in. The halo is what gives it
+ * a light source.
+ *
+ * Two `drop-shadow`s, not `text-shadow`: the first run is an SVG (the K's
+ * plate) and the second is gradient-clipped text, so a glyph shadow would paint
+ * under neither. `drop-shadow` follows the rendered alpha of all three runs.
+ *
+ * WHITE at 10%, and that is a decision with a measurement behind it. The halo
+ * started as `--color-brand` and was rejected twice — at 40%/22% it was
+ * invisible (the ring 1–8px outside the lockup moved +3 in mean red), and at
+ * full strength it tinted the whole bar and read as a lamp, not as light (that
+ * ring moved +41 in warm bias). The chroma was the problem: the lockup's own
+ * ink is near-white, so an orange halo is a second colour fighting the first.
+ * White at the same radius is the letters' own light — the warm bias does not
+ * move at all (−10.7 against the bare header's −10.8) while luminance rises
+ * +3.0 in the 1–8px ring and +0.7 in the 8–22px one, and the profile falls off
+ * over ~25px. Alphas stay at 10% on BOTH layers: raising one is what made the
+ * earlier attempts either invisible or heavy, and the visible edge of a halo is
+ * its radius, not its opacity.
+ *
+ * DARK VARIANTS ONLY: on paper a white glow is a no-op at best, and the light
+ * palettes never had the problem this fixes. Values are in `em` so the halo
+ * scales with the size the caller sets. */
+html[data-theme-variant='dark'] .brand-wordmark-glow {
+  filter:
+    drop-shadow(0 0 0.35em rgb(255 255 255 / 10%))
+    drop-shadow(0 0 0.9em rgb(255 255 255 / 10%));
+}
+
 /* PWA Window Controls Overlay and Native Titlebar Styling */
 .titlebar-drag-region {
   -webkit-app-region: drag;

@@ -47,10 +47,10 @@ afterEach(() => {
   container?.remove();
 });
 
-function mount(className?: string): HTMLElement {
+function mount(className?: string, glow = false): HTMLElement {
   container = document.createElement('div');
   document.body.appendChild(container);
-  render(h(BrandWordmark, className ? { className } : {}), container);
+  render(h(BrandWordmark, { ...(className ? { className } : {}), ...(glow ? { glow } : {}) }), container);
   return container;
 }
 
@@ -111,5 +111,16 @@ describe('BrandWordmark', () => {
     expect(root.className).toContain('text-2xl');
     expect(root.className).toContain('tracking-tight');
     expect(root.className).toContain('font-extrabold');
+  });
+
+  test('the halo is opt-in and rides with the size, never instead of it', () => {
+    // The default (login screen, About dialog) is unchanged: the halo belongs
+    // to the four header surfaces that pass it.
+    const plain = mount().firstElementChild as HTMLElement;
+    expect(plain.className).not.toContain('brand-wordmark-glow');
+    const halo = mount('text-sm', true).firstElementChild as HTMLElement;
+    expect(halo.className).toContain('brand-wordmark-glow');
+    expect(halo.className).toContain('text-sm');
+    expect(halo.className).toContain('tracking-tight');
   });
 });

@@ -42,12 +42,23 @@
  * `className` carries the SIZE (each surface sets its own) and nothing else: the
  * colour split and the tracking are the brand and are not a per-call-site
  * decision.
+ *
+ * `glow` adds the soft halo every HEADER surface wears — both layouts' sidebar
+ * headers and both top navbars — and nothing else does. It is a variant rather
+ * than another `className` value for the reason above: the effect is the same
+ * brand decision on all four, and a caller that spelled it itself would be the
+ * second copy this module exists to prevent. All four or none: the desktop
+ * draws its sidebar and its navbar side by side, so a wordmark that glowed in
+ * one and not the other would be two products on one screen. The halo is drawn
+ * by `.brand-wordmark-glow` in `tailwind.css`, which applies it on dark
+ * palettes only: on a near-black canvas the lockup needs the light, on paper a
+ * white glow would only muddy the ink it is drawn on.
  */
 import { BrandMark } from '@/client/components/common/brand-wordmark/Mark';
 
-export function BrandWordmark({ className = 'text-[15px]' }: { className?: string }) {
+export function BrandWordmark({ className = 'text-[15px]', glow = false }: { className?: string; glow?: boolean }) {
   return (
-    <span className={`font-extrabold tracking-tight ${className}`}>
+    <span className={`font-extrabold tracking-tight${glow ? ' brand-wordmark-glow' : ''} ${className}`}>
       <BrandMark />
       <span className="sr-only">K</span>
       <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600" style={{ paddingRight: '0.06em', marginRight: '-0.06em' }}>ab</span>
