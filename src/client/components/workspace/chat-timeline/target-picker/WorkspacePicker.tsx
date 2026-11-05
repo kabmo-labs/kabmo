@@ -68,7 +68,7 @@ export function WorkspacePicker({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="group flex items-center space-x-1.5 px-1.5 py-1 rounded-md text-xs font-medium text-ink/75 hover:text-ink hover:bg-ink/5 focus-visible:bg-ink/5 transition-all outline-none cursor-pointer select-none"
+        className="tap-chip group flex items-center space-x-1.5 px-1.5 py-1 rounded-md text-xs font-medium text-muted hover:text-ink hover:bg-ink/5 focus-visible:bg-ink/5 transition-all cursor-pointer select-none"
       >
         <Folder size={13} className="text-ink/50 group-hover:text-ink/80 transition-colors flex-shrink-0" />
         <span className="max-w-[260px] truncate tracking-tight">{label}</span>

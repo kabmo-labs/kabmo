@@ -17,12 +17,15 @@ import type { RefObject } from 'preact/compat';
 import { MobileSessionToolbar } from '@/client/components/mobile/mobile-session-sidebar/Toolbar';
 import { MobileSessionList } from '@/client/components/mobile/mobile-session-sidebar/List';
 import { MobileSessionListSkeleton } from '@/client/components/mobile/mobile-session-sidebar/Skeleton';
+import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
 import type { BatchBinding } from '@/client/components/common/batch-selection/types';
 import type { SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 
 export interface ClassicDrawerProps {
   folders: WorkspaceFolderData[];
   initializing: boolean;
+  /** The first read failed: say so and offer the retry, do not draw a skeleton. */
+  failed: boolean;
   activeSessionId: number | string | null;
   expandedFolders: Record<number, boolean>;
   sessionStatus: Record<string, 'stream' | 'finish' | 'abort'>;
@@ -59,6 +62,7 @@ export interface ClassicDrawerProps {
 export function ClassicDrawer({
   folders,
   initializing,
+  failed,
   activeSessionId,
   expandedFolders,
   sessionStatus,
@@ -116,7 +120,9 @@ export function ClassicDrawer({
         selecting={selecting}
       />
 
-      {initializing ? (
+      {failed ? (
+        <SessionListNotice touch onRetry={onRefresh} />
+      ) : initializing ? (
         <MobileSessionListSkeleton />
       ) : (
         <MobileSessionList

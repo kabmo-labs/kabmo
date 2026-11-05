@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { Heart, X } from 'lucide-preact';
 import packageJson from '@/../package.json';
@@ -9,6 +9,7 @@ import { SocialLinks } from '@/client/components/layout/session-sidebar/about-mo
 import { UpdateSection } from '@/client/components/layout/session-sidebar/about-modal/UpdateSection';
 import { VersionLine } from '@/client/components/layout/session-sidebar/about-modal/VersionLine';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 import type { UpdateTarget } from '@/shared/types/updates';
 
@@ -23,6 +24,11 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // Which product's "what am I running" notes are open. The dialog draws above
   // this panel instead of replacing it, so closing it returns here.
   const [notesTarget, setNotesTarget] = useState<UpdateTarget | null>(null);
+  // The About sheet is a dialog to assistive tech and to the keyboard. It had
+  // neither: measured in the running console it carried no `role`, no
+  // `aria-modal`, and Escape did nothing while focus sat inside it.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useDialogBehaviour(panelRef, { open: isOpen, onClose });
 
   // "What's new" opens the popup, which draws at a higher layer: leaving this
   // dialog mounted would stack two modals over the same subject, and its
@@ -48,6 +54,11 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
         onClick={onClose}
       >
         <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="About Kabmo"
+          tabIndex={-1}
           className="glass-overlay relative bg-paper border border-ink/15 rounded-2xl shadow-2xl w-full max-w-[340px] p-6 text-center text-ink select-none"
           onClick={(e) => e.stopPropagation()}
         >

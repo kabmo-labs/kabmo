@@ -5,11 +5,11 @@ import { LeftColumn } from '@/client/components/layout/desktop-layout/LeftColumn
 import { SettingsModal } from '@/client/components/settings/LazyModal';
 import { activeProjectForSession, effectiveRootFor } from '@/shared/lib/workspace/active-project';
 import { useFileTabs } from '@/client/hooks/workspace/file-tabs';
-import type { OpenedFile } from '@/shared/types/fs';
 import { useSessionState } from '@/client/hooks/workspace/session-state';
 import { TopNavbar } from '@/client/components/layout/desktop-layout/TopNavbar';
 import { WorkspacePanels } from '@/client/components/layout/desktop-layout/WorkspacePanels';
 import { WindowAura } from '@/client/components/layout/WindowAura';
+import { ShellNotice } from '@/client/components/layout/ShellNotice';
 import { usePanelSlotPlugins } from '@/client/components/workspace/plugin-panel/resolve';
 import { useAgentStreamStatus } from '@/client/hooks/chat/omp/status';
 import { usePanelWidths } from '@/client/hooks/workspace/panel-widths';
@@ -30,6 +30,7 @@ import type { EditorDropResult } from '@/client/hooks/editor/use-editor-drop';
 import { ToastStack } from '@/client/components/common/ToastStack';
 import { SessionDeleteModal } from '@/client/components/common/session-delete-modal';
 import { useNavbarSessionActions } from '@/client/hooks/workspace/navbar-session-actions';
+import { useCopyTabPath } from '@/client/hooks/workspace/copy-tab-path';
 
 interface DesktopLayoutProps {
   sessionId: string | null;
@@ -38,7 +39,7 @@ interface DesktopLayoutProps {
 }
 
 export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }: DesktopLayoutProps) {
-  const { folders } = useSidebarData();
+  const { folders, isMock } = useSidebarData();
   const [showRightPanel, setShowRightPanel] = useSessionState<boolean>('layout.showRightPanel', appSettings.showRightPanel ?? true);
   const [activeRightPanel, setActiveRightPanel] = useSessionState<string>('layout.activeRightPanel', (appSettings.activeRightPanel as string) ?? 'files');
   const [showLeftPanel, setShowLeftPanel] = useSessionState<boolean>('layout.showLeftPanel', appSettings.showLeftPanel ?? true);
@@ -96,17 +97,9 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
     convertDiffToEditor,
   } = useFileTabs(activeProjectPath, sessionId || '', handleOpenTab);
 
-  /**
-   * The tab menu's two scope-dependent actions.
-   *
-   * Copy Path needs the tab's own path (which may be a diff's), and Reveal needs the
-   * Files panel to expand to it — both live here because the strip has no workspace
-   * scope of its own.
-   */
-  const handleCopyTabPath = useCallback((tab: OpenedFile) => {
-    if (!tab.path) return;
-    void navigator.clipboard?.writeText(tab.path);
-  }, []);
+  // The tab strip's Copy Path action. Extracted because the layout's own
+  // state must stay readable: one action, one owner.
+  const handleCopyTabPath = useCopyTabPath();
 
   // Three ways the column has content: a file, a chosen takeover, and a
   // takeover that merely exists. Only the first two OPEN it — installing a
@@ -228,6 +221,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
       className="app-window relative flex flex-col h-screen w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas"
     >
       <WindowAura />
+      <ShellNotice isMock={isMock} />
 
       {/* Main Workspace: the resizable LEFT dock (rail + view, see
           `LeftColumn`) plus the right stack. */}
@@ -264,9 +258,13 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
             onOpenFile={(file) => handleOpenFile(file as Parameters<typeof handleOpenFile>[0])}
           />
 
-          {/* Right stack: top navbar + resizable workspace (the group's filler) */}
+          {/* Right stack: top navbar + resizable workspace (the group's filler).
+              The column IS the document's main content, so it carries the
+              landmark: a screen reader could otherwise jump only between the
+              sidebar's `aside` and the header's `nav`, with everything the app
+              exists for unreachable by landmark. */}
           <Panel id="main-right-stack" filler minSize={0}>
-            <div className="flex flex-col h-full">
+            <main className="flex flex-col h-full">
               <PluginBootstrap workspacePath={activeProjectPath} />
               <TopNavbar
                 sessionTitle={sessionTitle}
@@ -318,7 +316,7 @@ export function DesktopLayout({ sessionId, onSwitchToMobile, appSettings = {} }:
                 onSessionTitle={setSessionTitle}
                 onPanelWidths={commitWidths}
               />
-            </div>
+            </main>
           </Panel>
         </Group>
       </div>

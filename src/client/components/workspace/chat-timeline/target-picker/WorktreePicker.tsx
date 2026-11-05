@@ -151,7 +151,7 @@ export function WorktreePicker({ folders, selectedFolderId, target, setTarget, o
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="group flex items-center space-x-1.5 px-1.5 py-1 rounded-md text-xs font-medium text-ink/75 hover:text-ink hover:bg-ink/5 focus-visible:bg-ink/5 transition-all outline-none cursor-pointer select-none"
+        className="tap-chip group flex items-center space-x-1.5 px-1.5 py-1 rounded-md text-xs font-medium text-muted hover:text-ink hover:bg-ink/5 focus-visible:bg-ink/5 transition-all cursor-pointer select-none"
       >
         {dirty > 0 ? (
           <AlertTriangle

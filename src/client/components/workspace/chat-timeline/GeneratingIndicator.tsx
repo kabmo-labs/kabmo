@@ -74,33 +74,20 @@ export function GeneratingIndicator({ modelName, generatingVerb, provider, provi
       id={id}
       className="w-full flex items-center px-1 py-1 bg-transparent border-0 border-none text-[11px] font-mono select-none animate-in fade-in duration-200"
     >
-      <style>{`
-        @keyframes bounce-dot {
-          0%, 100% { opacity: 0.2; transform: translateY(0); }
-          50% { opacity: 1; transform: translateY(-15%); }
-        }
-        .dot-anim-1 { animation: bounce-dot 1.2s infinite both; }
-        .dot-anim-2 { animation: bounce-dot 1.2s infinite both 0.2s; }
-        .dot-anim-3 { animation: bounce-dot 1.2s infinite both 0.4s; }
-      `}</style>
-
-      {/* Left info: Animated Rainbow Spinner Ring + Bot Badge + Model Name + Dynamic Action Verb */}
+      {/* Left info: the identity mark, then the provider/model and the verb. */}
       <div className="flex items-center space-x-2 min-w-0 flex-1">
-        
-        {/* Bot Icon with Animated Colorful Gradient Spinner */}
-        <div className="relative w-4 h-4 rounded flex items-center justify-center shrink-0">
-          {/* Multi-color conic gradient spinner ring */}
-          <div 
-            className="absolute -inset-[1.5px] rounded-[5px] animate-spin"
-            style={{
-              background: 'conic-gradient(from 0deg, #ff453a, #ff9f0a, #ffd60a, #30d158, #64d2ff, #0a84ff, #bf5af2, #ff375f, #ff453a)',
-              animationDuration: '1.2s'
-            }}
-          />
-          {/* Center Dark Bot Badge */}
-          <div className="relative w-full h-full rounded-[3px] bg-ink flex items-center justify-center text-canvas z-10 shadow-2xs">
-            <Bot size={10} className="text-canvas" />
-          </div>
+        {/* The run's mark. It was a NINE-HUE conic gradient spun inline, the only
+            chroma in the app outside the palette's own signal tokens, injected
+            as a per-render `<style>` block (the single inline stylesheet in
+            `src/client`) with an infinite bounce for the dots. A transcript can
+            hold several of these rows at once, so the rainbow was decoration
+            that competed with the tool cards it sat among — and `DESIGN.md`
+            reserves chroma for state, not for "something is happening".
+            The ink mark plus the pulsing dots now say the same thing in the
+            palette's own voice: the glyph is the agent, `animate-pulse` is the
+            life, and `motion-reduce` parks both. */}
+        <div className="relative w-4 h-4 rounded-[3px] bg-ink flex items-center justify-center text-canvas shrink-0">
+          <Bot size={10} className="text-canvas" />
         </div>
 
         {/* Provider & model name with dynamic verb + dots. When neither half is

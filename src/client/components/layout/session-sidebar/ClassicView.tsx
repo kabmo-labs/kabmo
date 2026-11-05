@@ -20,12 +20,14 @@ import { useState } from 'preact/hooks';
 import { SessionSidebarToolbar } from '@/client/components/layout/session-sidebar/Toolbar';
 import { SessionSidebarSessionList } from '@/client/components/layout/session-sidebar/SessionList';
 import { SessionListSkeleton } from '@/client/components/layout/session-sidebar/Skeleton';
+import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
 import type { SessionSidebarVariantProps } from '@/client/components/layout/session-sidebar/variant-props';
 
 export function ClassicSidebarView({
   className = '',
   folders,
   initializing,
+  failed,
   activeSessionId,
   sessionStatus,
   searchQuery,
@@ -98,7 +100,9 @@ export function ClassicSidebarView({
         selecting={batchActive}
       />
 
-      {initializing ? (
+      {failed ? (
+        <SessionListNotice onRetry={onRefresh} />
+      ) : initializing ? (
         <SessionListSkeleton />
       ) : (
         <SessionSidebarSessionList

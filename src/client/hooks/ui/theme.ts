@@ -22,6 +22,7 @@ import { useKabmoSettingsWriter } from '@/client/hooks/settings/use-kabmo-settin
 import { applyWindowChrome } from '@/client/hooks/ui/window-chrome';
 import { DEFAULT_THEME_ID, resolveTheme } from '@/shared/lib/theme/catalog';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
+import { FIRST_FRAME_STYLE_ELEMENT_ID, firstFrameStyle } from '@/shared/lib/theme/first-frame';
 
 /** Broadcast on every theme write. Detail is the new theme id. */
 export const THEME_CHANGED_EVENT = 'omp:theme-changed';
@@ -53,6 +54,14 @@ export function initDocumentTheme(): void {
     style.textContent = themeStyleSheet();
     document.head.appendChild(style);
   }
+  // A document served by an older shell has the rule without an id (or not at
+  // all). Create it here, so `applyDocumentTheme` below has one element to
+  // rewrite on every later palette change — including the very first one.
+  if (!document.getElementById(FIRST_FRAME_STYLE_ELEMENT_ID)) {
+    const firstFrame = document.createElement('style');
+    firstFrame.id = FIRST_FRAME_STYLE_ELEMENT_ID;
+    document.head.appendChild(firstFrame);
+  }
   applyDocumentTheme(currentThemeId());
 }
 
@@ -70,6 +79,14 @@ export function applyDocumentTheme(theme: string): void {
   const root = document.documentElement;
   root.dataset.theme = palette.id;
   root.dataset.themeVariant = palette.variant;
+  // The inline first-frame rule is UNLAYERED, so it outranks `body` in the
+  // bundle at any specificity — which is why it is still the winner after a
+  // runtime switch, and why it has to be rewritten here. Measured: choosing a
+  // light palette left `body` painted `rgb(30,34,42)` from the previous dark
+  // one while `--theme-canvas` had already moved, so the whole window sat on
+  // the old ground. One rule, one writer (`shared/lib/theme/first-frame.ts`).
+  const firstFrame = document.getElementById(FIRST_FRAME_STYLE_ELEMENT_ID);
+  if (firstFrame) firstFrame.textContent = firstFrameStyle(palette);
   // The chrome color is not simply the palette's canvas: it has to match the
   // surface at the TOP of the window, which differs per layout. See
   // `shared/lib/theme/chrome.ts` for the rule.

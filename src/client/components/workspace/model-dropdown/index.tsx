@@ -249,7 +249,7 @@ export function ModelDropdown({
           setHoveredRow(null);
           setFocusedIndex(-1);
         }}
-        className="flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium cursor-pointer min-w-0 max-w-full"
+        className="tap-chip flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium cursor-pointer min-w-0 max-w-full"
         title={selectedModel ? `${selectedModel.provider} • ${selectedModel.name}` : 'Select a model'}
       >
         {selectedModel ? (
@@ -267,8 +267,8 @@ export function ModelDropdown({
                 takes the slack, because it is the part the reader is choosing
                 and the only part whose identity survives a cut. */}
             <span className="flex items-baseline gap-1 min-w-0">
-              <span className="shrink-0 text-ink/50 font-normal">{selectedModel.provider}</span>
-              <span className="text-ink/30 flex-shrink-0">•</span>
+              <span className="shrink-0 text-muted font-normal">{selectedModel.provider}</span>
+              <span className="text-ink/50 flex-shrink-0">•</span>
               <span className="min-w-0 flex-1 truncate">{selectedModel.name}</span>
             </span>
           </>

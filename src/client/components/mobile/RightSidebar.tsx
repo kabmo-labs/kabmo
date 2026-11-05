@@ -150,7 +150,7 @@ export function MobileRightSidebar({
           </Suspense>
         ) : (
           <div className="h-full flex items-center justify-center text-ink/40">
-            <span className="text-xs font-mono">No session selected</span>
+            <span className="text-xs font-mono text-muted">No session selected</span>
           </div>
         )}
       </div>

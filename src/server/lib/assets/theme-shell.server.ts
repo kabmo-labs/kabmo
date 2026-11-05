@@ -26,7 +26,6 @@
 
 import { resolve } from 'path';
 
-import { parseHexColor, rgbaToHex } from '@/shared/lib/theme/color';
 import { packageDir } from '@/server/lib/fs/package-root';
 import type { ThemePalette } from '@/shared/types/theme';
 
@@ -106,13 +105,8 @@ export function themedManifest(source: string, palette: ThemePalette): string {
 }
 
 /**
- * The inline style that paints the first frame.
- *
- * Unlayered on purpose: Tailwind's base layer declares the same values, and an
- * unlayered author rule wins over a layered one — so this cannot lose to the
- * bundle it is standing in for. It carries no `!important`, because the values
- * ARE the document's own and nothing needs overriding once the bundle lands.
+ * The inline style that paints the first frame, re-exported from the shared
+ * module: the CLIENT rewrites this same rule on every theme switch, so the
+ * two writers cannot be allowed to state it differently.
  */
-export function firstFrameStyle(palette: ThemePalette): string {
-  return `html,body{background-color:${rgbaToHex(parseHexColor(palette.canvas) ?? { r: 0, g: 0, b: 0, a: 1 })};}`;
-}
+export { firstFrameStyle } from '@/shared/lib/theme/first-frame';

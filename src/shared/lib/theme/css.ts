@@ -28,6 +28,13 @@
 
 import type { ThemePalette } from '@/shared/types/theme';
 import { THEMES } from '@/shared/lib/theme/catalog';
+import {
+  MUTED_STEPS,
+  SIGNAL_SLOTS,
+  inkScale,
+  onInkTextColor,
+  signalTextColor,
+} from '@/shared/lib/theme/ink-scale';
 
 /** The `<style>` element's id: the SSR shell writes it, the client checks it. */
 export const THEME_STYLE_ELEMENT_ID = 'omp-theme-palettes';
@@ -44,16 +51,30 @@ const HOVER_MIXES: ReadonlyArray<readonly [string, string]> = [
 ];
 
 function paletteBlock(theme: ThemePalette): string {
+  const scale = inkScale(theme);
   const lines = [
     `  --theme-paper: ${theme.paper};`,
     `  --theme-canvas: ${theme.canvas};`,
     `  --theme-ink: ${theme.ink};`,
+    // Fifteen distinct values: the ink at N% over this palette's paper.
+    ...scale.ladder.map((value, index) => `  --theme-ink-${MUTED_STEPS[index]}: ${value};`),
+    // Muted text on an inverted surface: an alpha reads 2.91:1 on `solarized-light`.
+    `  --theme-on-ink-muted: ${onInkTextColor(theme)};`,
+    // The one level that clears AA on THIS palette. No single rung can be legal
+    // everywhere: the measured floor ranges from `/50` to `/90` across the 63.
+    `  --theme-muted: ${scale.muted};`,
     `  --theme-error: ${theme.error};`,
     `  --theme-success: ${theme.success};`,
     `  --theme-info: ${theme.info};`,
     `  --theme-warning: ${theme.warning};`,
     `  --theme-meta: ${theme.meta};`,
   ];
+  // The same five signals as READABLE TEXT. A status word is text, and the
+  // palette's own signal hex is chosen for a fill: measured as text it reaches
+  // 1.53:1 (`warning` on `carbonfox-light`) and fails AA on 14-22 palettes.
+  for (const slot of SIGNAL_SLOTS) {
+    lines.push(`  --theme-${slot}-text: ${signalTextColor(theme, slot)};`);
+  }
   for (const [name, source] of HOVER_MIXES) {
     lines.push(`  ${name}: color-mix(in srgb, var(${source}) 85%, var(--theme-ink));`);
   }

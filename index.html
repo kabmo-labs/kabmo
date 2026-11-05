@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="Kabmo" />
     <meta
       name="description"
-      content="A light e-ink paper developer dashboard for AI Oh-My-Pi agent sessions — a web console for CI/CD deployments."
+      content="Web console and diagnostic workbench for Oh-My-Pi agent sessions: watch, steer and audit autonomous coding runs from one paper-flat dashboard."
     />
     <title>Kabmo</title>
     <!-- Inline and in the head on purpose: this has to be registered BEFORE the
@@ -57,12 +57,13 @@
     <link rel="icon" type="image/svg+xml" href="./public/icon.svg" sizes="any" />
     <link rel="icon" type="image/png" href="./public/icon-192x192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="./public/apple-touch-icon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
-    />
+    <!-- No webfont from a third party. This block used to load Inter from
+         `fonts.googleapis.com` — a render-blocking request in `<head>` for a
+         family no stylesheet in the app ever named, so the browser paid a
+         round-trip to a third party and drew nothing with it. The UI stack is
+         the system face (`tailwind.css` → `body`), and the mono face is bundled
+         by `scripts/build-client.ts`. A page that ships an external font must
+         name it somewhere; this one did not. -->
     <!--app-head-->
   </head>
   <body>

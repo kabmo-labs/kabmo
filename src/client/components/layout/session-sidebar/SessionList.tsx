@@ -41,7 +41,7 @@ export function SessionSidebarSessionList({
   return (
     <div className="flex-1 scrollbar-overlay-container p-2 space-y-4">
       {folders.length === 0 ? (
-        <div className="text-center py-8 text-xs text-ink/40">
+        <div className="text-center py-8 text-xs text-muted">
           {searchQuery ? 'No results found.' : 'No workspaces available.'}
         </div>
       ) : (

@@ -102,7 +102,7 @@ export function PlanPanel({ className = '', active = true }: PlanPanelProps) {
   if (!sessionId) {
     return (
       <div className={`flex h-full flex-col items-center justify-center bg-paper text-ink/40 ${className}`}>
-        <span className="text-xs font-mono">No session selected</span>
+        <span className="text-xs font-mono text-muted">No session selected</span>
       </div>
     );
   }
@@ -116,7 +116,7 @@ export function PlanPanel({ className = '', active = true }: PlanPanelProps) {
           <FileText size={12} className="flex-shrink-0 text-ink/50" />
           <span className="truncate text-[11px] font-medium text-ink/70">Plan mode</span>
           {hasPlan && (
-            <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[9.5px] text-ink/60">
+            <span className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] text-ink/60">
               {files.length}
             </span>
           )}

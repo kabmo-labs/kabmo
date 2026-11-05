@@ -1,5 +1,7 @@
+import { useId, useRef } from 'preact/hooks';
 import type { FormEvent, ReactNode } from 'preact/compat';
 import { X } from 'lucide-preact';
+import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 
 export interface ModalProps {
   /** Backdrop click / close-button handler. */
@@ -22,6 +24,7 @@ export interface ModalProps {
   /**
    * Accessible name for the dialog. The header is ordinary content, so without
    * this the `role="dialog"` announces itself anonymously to a screen reader.
+   * When absent the header's own text names it through `aria-labelledby`.
    */
   ariaLabel?: string;
 }
@@ -41,6 +44,12 @@ export function Modal({
   zClass = 'z-[60]',
   ariaLabel,
 }: ModalProps) {
+  // Focus, Escape and the Tab wrap come from ONE hook, so every dialog built on
+  // this shell behaves the same and a later shell cannot forget the keyboard.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const headerId = useId();
+  useDialogBehaviour(panelRef, { open: true, onClose });
+
   const body = (
     <>
       {children}
@@ -66,14 +75,19 @@ export function Modal({
           shells already carry the pair; the shared shell was the one that
           lacked it. */}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
+        aria-labelledby={ariaLabel ? undefined : headerId}
+        tabIndex={-1}
         className={`glass-overlay bg-paper border border-ink/15 rounded-xl shadow-2xl w-full ${maxWidthClass} max-h-full flex flex-col overflow-hidden text-ink`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-ink/10 flex items-center justify-between flex-shrink-0">
-          {header}
+          <div id={headerId} className="min-w-0">
+            {header}
+          </div>
           <button
             type="button"
             onClick={onClose}

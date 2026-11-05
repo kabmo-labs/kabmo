@@ -161,7 +161,7 @@ export function GitPanel({ className = '', enabled = true, rootPath, refreshKey 
   if (!enabled) {
     return (
       <div className={`flex flex-col h-full bg-paper items-center justify-center text-ink/40 ${className}`}>
-        <span className="text-xs font-mono">No session selected</span>
+        <span className="text-xs font-mono text-muted">No session selected</span>
       </div>
     );
   }

@@ -56,13 +56,16 @@ export function MobileMainView({
         onSelectSession={onSelectSession}
       />
 
-      <div className="flex-1 min-h-0">
+      {/* The document's main content on a phone, so the chat is reachable by
+          landmark. The header above is a `banner`, the drawers are their own
+          screens. */}
+      <main className="flex-1 min-h-0">
         <ChatTimeline
           appSettings={appSettings}
           onSessionTitle={setLiveTitle}
           variant="mobile"
         />
-      </div>
+      </main>
     </div>
   );
 }

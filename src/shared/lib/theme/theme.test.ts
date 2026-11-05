@@ -28,6 +28,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { mixHex, parseHexColor, relativeLuminance, rgbaToHex } from '@/shared/lib/theme/color';
 import { THEME_STYLE_ELEMENT_ID, themeStyleSheet } from '@/shared/lib/theme/css';
+import { MUTED_STEPS, inkScale, onInkTextColor, signalTextColor } from '@/shared/lib/theme/ink-scale';
 import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import { DARK_PALETTES } from '@/shared/lib/theme/palettes/dark';
 import { DARK_EXTENDED_PALETTES } from '@/shared/lib/theme/palettes/dark-extended';
@@ -136,11 +137,25 @@ describe('generated stylesheet', () => {
       `  --theme-paper: ${paper.paper};`,
       `  --theme-canvas: ${paper.canvas};`,
       `  --theme-ink: ${paper.ink};`,
+      // The fifteen solved muted steps, stated per palette because an alpha over
+      // the ink cannot clear AA on every one (`ink-scale.ts`). One token per
+      // step: bucketing them onto four collapsed the ladder.
+      ...MUTED_STEPS.map((step, index) => `  --theme-ink-${step}: ${inkScale(paper).ladder[index]};`),
+      // Muted text for an inverted surface (`bg-ink`).
+      `  --theme-on-ink-muted: ${onInkTextColor(paper)};`,
+      `  --theme-muted: ${inkScale(paper).muted};`,
       `  --theme-error: ${paper.error};`,
       `  --theme-success: ${paper.success};`,
       `  --theme-info: ${paper.info};`,
       `  --theme-warning: ${paper.warning};`,
       `  --theme-meta: ${paper.meta};`,
+      // The same five as readable text (a status word is text, and the palette
+      // hex is chosen for a fill — see `signalTextColor`).
+      `  --theme-error-text: ${signalTextColor(paper, 'error')};`,
+      `  --theme-success-text: ${signalTextColor(paper, 'success')};`,
+      `  --theme-info-text: ${signalTextColor(paper, 'info')};`,
+      `  --theme-warning-text: ${signalTextColor(paper, 'warning')};`,
+      `  --theme-meta-text: ${signalTextColor(paper, 'meta')};`,
       '  --theme-info-hover: color-mix(in srgb, var(--theme-info) 85%, var(--theme-ink));',
       '  --theme-warning-hover: color-mix(in srgb, var(--theme-warning) 85%, var(--theme-ink));',
       `  color-scheme: ${paper.variant};`,
@@ -150,10 +165,20 @@ describe('generated stylesheet', () => {
   });
 
   test('names every slot --theme-* and nothing else', () => {
-    const names = [...css.matchAll(/--theme-[a-z-]+:/g)].map((match) => match[0]);
-    expect(new Set(names).size).toBe(10);
+    const names = [...css.matchAll(/--theme-[a-z0-9-]+:/g)].map((match) => match[0]);
+    // Eight palette slots, fifteen muted steps, the inverted-surface level, the
+    // palette's own AA level (`--theme-muted`), the five solved signal levels,
+    // and the two hover mixes.
+    expect(new Set(names).size).toBe(32);
     expect(names[0]).toBe('--theme-paper:');
-    expect(names[7]).toBe('--theme-meta:');
+    // Slot order is the swatch order the appearance cards render.
+    expect(names[2]).toBe('--theme-ink:');
+    expect(names[3]).toBe('--theme-ink-20:');
+    expect(names[17]).toBe('--theme-ink-90:');
+    expect(names[18]).toBe('--theme-on-ink-muted:');
+    expect(names[19]).toBe('--theme-muted:');
+    expect(names[24]).toBe('--theme-meta:');
+    expect(names[25]).toBe('--theme-error-text:');
   });
 
   test('is cached for the life of the process', () => {

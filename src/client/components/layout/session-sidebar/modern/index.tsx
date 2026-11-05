@@ -26,6 +26,7 @@ import { FilterChips } from '@/client/components/layout/session-sidebar/modern/F
 import { SidebarActionRow } from '@/client/components/layout/session-sidebar/modern/ActionRow';
 import { WorkspaceSection } from '@/client/components/layout/session-sidebar/modern/WorkspaceSection';
 import { ModernSidebarSkeleton } from '@/client/components/layout/session-sidebar/modern/Skeleton';
+import { SessionListNotice } from '@/client/components/layout/session-sidebar/SessionListNotice';
 import {
   focusFolders,
   runningSessionCount,
@@ -37,6 +38,7 @@ export function ModernSidebarView({
   className = '',
   folders,
   initializing,
+  failed,
   activeSessionId,
   sessionStatus,
   searchQuery,
@@ -109,10 +111,12 @@ export function ModernSidebarView({
       />
 
       <div className="mt-1 flex-1 scrollbar-overlay-container px-2 pb-3">
-        {initializing ? (
+        {failed ? (
+          <SessionListNotice touch={touch} onRetry={onRefresh} />
+        ) : initializing ? (
           <ModernSidebarSkeleton touch={touch} />
         ) : visible.length === 0 ? (
-          <div className="px-1 py-8 text-center text-[11px] leading-relaxed text-ink/40">
+          <div className="px-1 py-8 text-center text-[11px] leading-relaxed text-muted">
             {focus === 'running'
               ? 'Nothing is running right now.'
               : searchQuery

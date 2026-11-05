@@ -242,6 +242,10 @@ function PanelButton({
       onDragEnd={onDragEnd}
       title={panel.title}
       aria-label={panel.title}
+      // A rail button is a TOGGLE: it says which view the column is showing.
+      // Without this the state existed only as a border colour, which assistive
+      // tech cannot read and measured as `aria-pressed: null` on all six marks.
+      aria-pressed={isActive}
     >
       {/* The mark's wrapper carries the state as OPACITY, not as a text colour:
           a `text-ink/40` here outranks the colour mode's hue rule, which is what

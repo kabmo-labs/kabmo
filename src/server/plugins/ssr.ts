@@ -21,6 +21,7 @@ import {
 } from '@/server/lib/assets/theme-shell.server';
 import { readSettingsBlob } from '@/shared/lib/settings/keys';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
+import { FIRST_FRAME_STYLE_ELEMENT_ID } from '@/shared/lib/theme/first-frame';
 import { applyShellDocumentFacts } from '@/server/lib/assets/shell-attributes.server';
 import { SURFACE_STYLE_SETTING_KEY } from '@/shared/lib/theme/surface-style';
 import { ICON_STYLE_SETTING_KEY } from '@/shared/lib/theme/icon-style';
@@ -232,7 +233,7 @@ export const ssrRoutes = new Elysia({ name: 'ssr' }).get('*', async ({ request }
   // own canvas is white, and on a dark install that is a measured white flash
   // for the length of the CSS request. The palette's ground is the only correct
   // answer, and it has to be inline because nothing else has loaded.
-  const firstFrame = `<style>${firstFrameStyle(theme)}</style>`;
+  const firstFrame = `<style id="${FIRST_FRAME_STYLE_ELEMENT_ID}">${firstFrameStyle(theme)}</style>`;
   // The chrome color has to match the surface at the TOP of the window, which
   // is per-layout (`shared/lib/theme/chrome.ts`); this request already knows the
   // two facts behind it. The login screen is the shell too, and paints canvas.

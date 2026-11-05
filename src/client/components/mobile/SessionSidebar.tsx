@@ -83,6 +83,7 @@ export function MobileSessionSidebar({
   });
   const {
     initializing,
+    failed,
     refreshNow,
     isRefreshing,
     searchQuery,
@@ -173,6 +174,7 @@ export function MobileSessionSidebar({
     className: 'flex-1 min-h-0 w-full',
     folders: processedFolders,
     initializing,
+    failed,
     activeSessionId,
     sessionStatus,
     searchQuery,
@@ -228,6 +230,7 @@ export function MobileSessionSidebar({
           <ClassicDrawer
             folders={processedFolders}
             initializing={initializing}
+            failed={failed}
             activeSessionId={activeSessionId}
             expandedFolders={expandedFolders}
             sessionStatus={sessionStatus}

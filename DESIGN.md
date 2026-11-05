@@ -1,70 +1,169 @@
-# DESIGN.md — Light 'E-Ink Paper' Developer Dashboard Spec
+# DESIGN.md: Kabmo's design direction
 
-## 1. Palette & Surface Tokens
+Kabmo is a **web console and diagnostic workbench for Oh-My-Pi (`omp`) agent sessions**. It is
+read for hours, often beside a terminal, and its job is to make an autonomous run legible: what
+the agent is doing, what it changed, what it is waiting for.
 
-| Token | CSS Variable (Light) | Purpose |
+This file is the direction the UI is held to. Every claim here is measured against the code and
+the running app; the module that owns each fact is named so a change has one place to land.
+
+**Dial: ENERGY 1 / RHYTHM 2 / MOTION 1.** A tool that is read, not a page that is pitched. The
+console speaks quietly, sections differ where the work differs (chat, file tree, diff, terminal),
+and nothing moves unless it is reporting live state.
+
+---
+
+## 1. Palette and surfaces
+
+One palette per theme, and the theme is the user's. Sixty-three palettes ship (Kabmo's own three
+first, then ported families); all of them are data in
+`src/shared/lib/theme/palettes/`, and the CSS is generated from that data by
+`src/shared/lib/theme/css.ts`. Never hand-write a palette block.
+
+| Token | Variable | Purpose |
 |---|---|---|
-| **App Canvas** | `var(--theme-canvas)` | Warm paper base ground |
-| **Raised Paper** | `var(--theme-paper)` | Cards, sidebars, elevated surfaces |
-| **Primary Ink** | `var(--theme-ink)` | High-contrast text, primary buttons, filled glyphs |
-| **Secondary Ink** | `color-mix(in srgb, var(--theme-ink) 62%, transparent)` | Secondary labels, descriptions, durations |
-| **Muted Meta** | `color-mix(in srgb, var(--theme-ink) 42%, transparent)` | Micro-headers, timestamps, subtle breadcrumbs |
-| **Hairline Dividers** | `color-mix(in srgb, var(--theme-ink) 14%, transparent)` | 1px border lines and grid dividers |
-| **Signal Red (Only Chroma)** | `var(--theme-error)` | Reserved strictly for failed build row & error log tail |
+| App ground | `--theme-canvas` | The window behind panels |
+| Raised surface | `--theme-paper` | Panels, cards, sidebars, dialogs |
+| Primary ink | `--theme-ink` | Body text, filled buttons, active glyphs |
+| Muted inks | `--theme-ink-muted` … `-4` | Four muted weights, floor 4.5 / 6.25 / 8.7 / 12.1 |
+| On-ink ink | `--theme-on-ink-muted` | Muted text on an inverted surface (`bg-ink`) |
+| Hairline | `color-mix(ink 14%)` | 1px rules and dividers only, never text |
+| Signal colours | `--theme-error`, `--theme-success`, `--theme-info`, `--theme-warning`, `--theme-meta` | Status only, see §3 |
 
-The system uses `data-theme` on the `html` tag to swap palettes (e.g., `one-dark-pro-soft`). Always use tailwind theme classes (e.g. `bg-canvas`, `text-ink`, `border-ink/20`) instead of raw hex values to ensure themes apply universally.
+**The muted ink is a lightness ramp, not a contrast curve.** `src/shared/lib/theme/ink-scale.ts`
+derives each of the fifteen steps as the palette's ink at that percentage over its paper. On `paper`
+the ramp moves OKLab L by a steady 0.034–0.045 per step:
 
----
+| Step | Colour | Contrast | L |
+|---|---|---|---|
+| `/20` | `#cccac6` | 1.45:1 | 0.839 |
+| `/40` | `#9e9c98` | 2.43:1 | 0.693 |
+| `/55` | `#7b7a76` | 3.81:1 | 0.579 |
+| `/65` | `#65635f` | 5.31:1 | 0.500 |
+| `/80` | `#42413d` | 9.06:1 | 0.375 |
+| `/90` | `#2b2a27` | 12.72:1 | 0.285 |
 
-## 2. Typography & Hierarchy
+**Legibility is a floor, not a reshape.** `TEXT_CONTRAST_FLOOR` (`/65`) is the lightest step that
+still clears AA on `paper` — 5.31:1, with `/60` at 4.46:1 just below. Anything that must be readable
+sits at or above it. Below the floor the ramp carries decoration, empty-state captions and
+placeholders, which WCAG 1.4.3 exempts as incidental text and which look wrong when they reach
+4.5:1: a placeholder that reads as strongly as a typed value makes an empty field look filled.
 
-- **UI Headings & Body**: `IBM Plex Sans` (Weights: 400 Regular, 500 Medium, 600 SemiBold)
-- **Data & Telemetry**: `IBM Plex Mono` with `font-variant-numeric: tabular-nums` (commit hashes, durations, deploy IDs, log lines, stats)
-- **Micro-Headers**: Uppercase `10.5px - 11px`, `weight: 600`, `letter-spacing: 0.08em`, muted ink.
+Do not "fix" the ramp by fitting every step to 4.5:1. It was tried, twice, and the measurement is
+why this section exists. Contrast is not linear in lightness: lifting `/20` from 1.45:1 to 4.5:1
+consumes 0.30 of L while the whole `/60`–`/90` range spans 0.26, so twelve steps end up competing
+for 0.35 of L and compress unevenly — ΔL 0.193 at the light end against 0.098 at the dark end.
+Measured consequences: the tool card's header (`/60`) and subtitle (`/45`) collapsed from ΔL 0.116 to
+0.081 and read as the same grey, and the composer placeholder (`/40`) went from 2.58:1 to 5.40:1,
+"too strong" against the text beside it. A ramp's job is even spacing; AA is a floor on the steps
+that carry meaning.
 
----
+An alpha ramp cannot clear AA on all 63 palettes at once — the measured floor ranges from `/50` to
+`/90` depending on the palette — so `inkScale().muted` is that palette's own lightest legal step,
+and `solarized-light` (ink 4.85:1) puts it on its own ink rather than inventing contrast.
 
-## 3. Ink Status Glyph Vocabulary
+An inverted surface (`bg-ink`) gets its own solved level, `--theme-on-ink-muted`: an alpha over the
+canvas reads **2.91:1** there on `solarized-light`, and even the full canvas only reaches 4.99.
 
-Never use green, blue, or yellow. Semantic states are expressed purely in ink:
-- **Ready**: Solid filled `#141310` circle (`r=6`)
-- **Building**: Half-filled `#141310` ring with spinning animation
-- **Queued**: Empty `1.5px` stroked ring
-- **Canceled**: Dashed-stroke ring (`stroke-dasharray="3 3"`)
-- **Failed**: Filled `#c8321e` circle with white `x` (only colored element on page)
+The classes `text-ink/40` … `text-ink/80` are mapped in `tailwind.css` onto `--theme-ink-NN`; the
+names mean a **weight**, which is also how the icon system reads them
+(`src/shared/lib/icons/icon-paint-weight.ts`). Never write `text-ink-NN` with a hyphen — that class
+does not exist, and the element silently inherits its parent's colour.
 
----
-
-## 4. Texture & Borders
-
-- **Dot Grain Texture**: Faint radial dot-grain applied to the hero card:
-  `radial-gradient(rgba(20, 19, 16, 0.06) 0.65px, transparent 0.65px)` with `4px` grid size.
-- **Zero Drop Shadows**: Hierarchy is built exclusively through 1px hairline borders, font weights, and paper-ground tonal contrasts.
-- **Zero Gradients**: Flat surfaces with clean ink borders.
-
----
-
-## 5. Structural Layout
-
-- **Left Sidebar**: Fixed ~240px with workspace switcher ('SD'), Cmd+K search, main nav with active 3px ink rule, environments group, build quota meter (412/600), and user row.
-- **Navbar**: 52px height with breadcrumb, segmented All/Production/Preview pill control, ghost filter, right sidebar Kabmo toggle, and solid-ink Deploy button.
-- **Hero Card**: Current production with 4-stage pipeline rail (Build, Test, Bundle, Deploy summing exactly to 2m 41s).
-- **Deployments Table**: Dense table with ~44px rows, branch chips, commit messages, and redeploy action.
-- **Bottom Split**: Last failed build log excerpt with signal red error lines + Deploys last 14 days stepped ink bar chart.
-- **Right Sidebar**: Double panel containing the **AI Oh-My-Pi Chamber** (interactive prompt/diagnostic assistant) and **Deployment Inspector** (runtime properties & stage breakdown).
-- **Provider Settings Controls**: Connected-provider sidebar, filtered New Provider preset picker, and Available Models actions (fetch, hide all, show all) with disabled/loading feedback.
-
----
-
-## 6. Route Architecture & Domain Grouping
-
-- **Hierarchical Modular Routes**: All routes in `app/routes/` are strictly organized into logical domain subdirectories (`api/settings/`, `api/chat/`, `api/fs/`, `api/terminal/`, `api/telemetry/`, `api/sessions/`, `api/files/`, `api/folders/`) rather than residing in a flat, unorganized directory.
-- **Predictable REST Resource URI Mapping**: Nested endpoints reflect clean REST hierarchy (e.g., `/api/settings/agents`, `/api/settings/providers`, `/api/chat/:sessionId`, `/api/fs/git`).
+Never write a hex in a component. Every colour is a `var(--theme-*)` or a Tailwind class mapped to
+one.
 
 ---
 
-## 7. Data Layer Architecture (Mock vs Real Mode)
+## 2. Typography
 
-- **Environment-Controlled Toggle (`MOCK=true` / `MOCK=false`)** — unset defaults to real data:
-  - **`MOCK=true`**: Provides sample simulation states (token graphs, chat monologue traces, preset agent configs, demo workspace sessions) for standalone previews and diagnostic demonstrations.
-  - **`MOCK=false` (default)**: Connects directly to real SQLite tables and workspace files with zero synthetic demo sessions or fake commit data.
+- **UI: the system stack** (`-apple-system`, `Segoe UI`, `Roboto`, …) plus the bundled Nerd Font
+  symbols face last. Stated once in `tailwind.css` (both `body` and `@theme --font-sans`). The
+  product reads like the machine it runs on, and a console that ships a webfont for its chrome is
+  paying a round trip for a voice it already has.
+- **Data and code: Fira Code**, bundled from `@fontsource/fira-code`, with
+  `font-variant-numeric: tabular-nums` everywhere numbers are compared (durations, tokens, diff
+  counts, hashes, log lines).
+- **Micro-headers**: 10-11px, weight 600, `uppercase`, `tracking-wider`, tertiary ink. This is a
+  dense console; 10px is the floor for text a user must read, and there is no 8px or 9px step.
+- No third-party webfont is loaded. If one ever is, the family must appear in a stylesheet.
+
+---
+
+## 3. Chroma is state, not decoration
+
+The palette's five signal colours are for status and nothing else: a failing tool call, a
+successful one, a warning, an informational fact, an accent. There is no gradient, glow, or
+per-element hue as personality, and the generating indicator draws its life with the palette's own
+ink plus a pulse rather than a nine-hue spinner.
+
+**Icons.** Lucide is the functional glyph set (346 files import it), and the colour mode tints each
+glyph by its own solved hue; monochrome mode paints them in the current ink. A brand mark that
+does not exist in Lucide is drawn from its own SVG (`provider-icon/glyphs.ts`,
+`file-icon`). Never add a decorative sparkle, wand, or orb: a glyph that names nothing is noise in
+the densest part of the app.
+
+---
+
+## 4. Structure
+
+The console has three columns and a rail on each side, and the user can reorder, collapse and
+re-purpose all of them. `src/client/components/layout/desktop-layout/` is the composition; the
+phone is the same product at one column (`src/client/components/mobile/`).
+
+- **Left:** the session sidebar (folders and rows) plus a dock of plugin views, switched by a
+  vertical rail. The sidebar width is per view and remembered.
+- **Centre:** the chat timeline, with the composer docked at the bottom, and the editor column
+  beside it when a file or diff is open. Panels are resizable, measured in pixels, and their
+  widths are remembered per session.
+- **Right:** a stack of telemetry and tool panels (context, files, search, source control, wiki,
+  terminal, plugins), same rail, same reordering.
+- **Chrome:** the desktop's top strip is `--theme-paper`; the phone's header is `--theme-canvas`.
+  `src/shared/lib/theme/chrome.ts` owns that rule because two writers (the SSR shell and the client)
+  must agree on it.
+
+**Both layouts are one product.** A control added to the desktop belongs to the phone too, unless
+the platform genuinely cannot do it, and then the phone says so in words.
+
+---
+
+## 5. Elevation, radius, motion
+
+- **Elevation is rarity.** Panels sit flat on hairline borders. A dialog and a popover lift with
+  `--glass-shadow` (or `shadow-lg`/`2xl` in the classic surface); a list row does not. A page where
+  everything floats has no ground plane, which is what the density here needs.
+- **Radius is a small set**: 4px for chips and rows, 6-8px for controls, 12px for panel cards,
+  `--radius` for dialogs. Pill shapes belong to status badges and toggles only.
+- **Motion is live state.** The generating dots, a spinner on a running tool call, the refresh
+  pulse. Everything else is a 120-200ms colour or width transition. `prefers-reduced-motion`
+  stops the ambient animation once, globally (`tailwind.css`): pulses park, spinners breathe
+  slowly, nothing is left spinning at full speed for a user who asked it not to.
+- **Glass is one surface style, not the default.** `data-surface="glass"` blurs the window plane
+  and tints the chrome; the classic surface is opaque. Both ship, both must stay legible: the
+  translucent chrome is tinted for contrast, never blurred into illegibility.
+
+---
+
+## 6. Copy
+
+- **One language: English.** UI text, hints, `aria-label`s and `title`s.
+- No em dashes in UI text. Use a colon, comma, or parentheses. An en dash (`–`) is the placeholder
+  for an absent value, in data cells and timestamps.
+- States name their cause and the next action: an empty list says why it is empty, a failed read
+  says what failed and offers the retry, a demo run says it is demo data.
+- No invented numbers, testimonials, or claims. Where a figure is real, its period is named.
+- No marketing vocabulary ("seamless", "powerful", "AI-powered"). Say what the control does.
+
+---
+
+## 7. Accessibility floor
+
+- WCAG AA for all text, on every palette, measured by `ink-scale.test.ts` and
+  `tailwind-contrast.test.ts` rather than assumed.
+- Every control reachable and operable by keyboard, with a visible focus ring; every dialog has a
+  role, an accessible name, Escape, a Tab trap and restores focus to its opener
+  (`src/client/hooks/ui/dialog-behaviour.ts`).
+- Touch targets are 44px on a coarse pointer (`.tap-target` in `tailwind.css`), without inflating
+  the dense desktop geometry.
+- Every icon-only control has an `aria-label`; every image has `alt`; every region a landmark. A
+  page has one `h1` and no skipped heading levels.

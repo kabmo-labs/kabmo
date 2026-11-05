@@ -16,7 +16,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import { THEMES, resolveTheme } from '@/shared/lib/theme/catalog';
-import { mixHex } from '@/shared/lib/theme/color';
+import { mixHex, relativeLuminance } from '@/shared/lib/theme/color';
+import { MUTED_CONTRAST_FLOOR, inkScale } from '@/shared/lib/theme/ink-scale';
 import { KABMO_PALETTES } from '@/shared/lib/theme/palettes/kabmo';
 import {
   DEFAULT_SHELL_PALETTE,
@@ -44,13 +45,29 @@ describe('shellPaletteFor', () => {
     expect(shellPaletteFor(oneDark).variant).toBe('dark');
   });
 
-  test('derives the two inks from the SAME mixes the document declares', () => {
+  test('derives the two inks from the SAME values the document declares', () => {
     for (const palette of THEMES) {
       const shell = shellPaletteFor(palette);
-      // `--ink-secondary` is `color-mix(in srgb, ink 62%, transparent)` over the
-      // canvas; `--ink-hairline` is the same at 14%.
-      expect(shell.muted, palette.id).toBe(mixHex(palette.canvas, palette.ink, 0.62));
+      // `muted` is the palette's solved secondary text level (`--theme-ink-2`):
+      // the shell's status line sits beside the web view's labels, so an alpha
+      // that fails AA on a shipped palette would make the sentence vanish there.
+      expect(shell.muted, palette.id).toBe(inkScale(palette).muted);
+      // `hairline` is a border, not text, and stays the 14% mix.
       expect(shell.hairline, palette.id).toBe(mixHex(palette.canvas, palette.ink, 0.14));
+    }
+  });
+
+  test('the muted colour clears AA on every palette the shell can paint', () => {
+    for (const palette of THEMES) {
+      const shell = shellPaletteFor(palette);
+      const contrast = (a: string, b: string): number => {
+        const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+        return (hi + 0.05) / (lo + 0.05);
+      };
+      // The secondary level's own floor, capped by the palette's own ink: three
+      // palettes cannot reach it and their ink IS the ceiling.
+      const target = Math.min(MUTED_CONTRAST_FLOOR, contrast(palette.ink, palette.canvas));
+      expect(contrast(shell.muted, palette.canvas), palette.id).toBeGreaterThanOrEqual(target - 0.001);
     }
   });
 

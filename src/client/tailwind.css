@@ -28,14 +28,43 @@
    * `NERD_SYMBOLS_FAMILY`, which `nerd-symbols.test.ts` asserts. */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "FiraCode Nerd Font Mono", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "JetBrainsMono NF", "JetBrains Mono Nerd Font", "Hack Nerd Font", "MesloLGS NF", "MesloLGM Nerd Font", "CaskaydiaCove Nerd Font", "SauceCodePro Nerd Font", "Symbols Nerd Font Mono", "Symbols Nerd Font", "PowerlineSymbols", "Kabmo Nerd Symbols";
   --color-ink: var(--theme-ink);
+  /* One token per `text-ink/NN` step, each the ink at that percentage over the
+     paper. Emitted per palette by `shared/lib/theme/css.ts`. */
+  --color-ink-20: var(--theme-ink-20);
+  --color-ink-25: var(--theme-ink-25);
+  --color-ink-30: var(--theme-ink-30);
+  --color-ink-35: var(--theme-ink-35);
+  --color-ink-40: var(--theme-ink-40);
+  --color-ink-45: var(--theme-ink-45);
+  --color-ink-50: var(--theme-ink-50);
+  --color-ink-55: var(--theme-ink-55);
+  --color-ink-60: var(--theme-ink-60);
+  --color-ink-65: var(--theme-ink-65);
+  --color-ink-70: var(--theme-ink-70);
+  --color-ink-75: var(--theme-ink-75);
+  --color-ink-80: var(--theme-ink-80);
+  --color-ink-85: var(--theme-ink-85);
+  --color-ink-90: var(--theme-ink-90);
+  /* Muted text for an INVERTED surface (`bg-ink`), solved like the rest: an
+     alpha over the canvas reads 2.91:1 there on `solarized-light`. */
+  --color-on-ink-muted: var(--theme-on-ink-muted);
   --color-paper: var(--theme-paper);
   --color-canvas: var(--theme-canvas);
+  /* Signal colours, twice: the FILL (`bg-error`, a chip's ground) keeps the
+     palette's own hex, and the TEXT token is the same hue solved until it can
+     be read. Measured before: `text-success` reached 1.75:1 on `nord-light`,
+     and every slot failed AA on 14-22 of the 63 palettes. */
   --color-error: var(--theme-error);
+  --color-error-text: var(--theme-error-text);
   --color-success: var(--theme-success);
+  --color-success-text: var(--theme-success-text);
   --color-meta: var(--theme-meta);
+  --color-meta-text: var(--theme-meta-text);
   --color-info: var(--theme-info);
+  --color-info-text: var(--theme-info-text);
   --color-info-hover: var(--theme-info-hover);
   --color-warning: var(--theme-warning);
+  --color-warning-text: var(--theme-warning-text);
   --color-warning-hover: var(--theme-warning-hover);
   /* The brand mark's own colour, and deliberately NOT a theme token: the logo
      is the same mark in every palette, so a theme flip must not repaint the
@@ -61,7 +90,37 @@
     --theme-paper: #faf8f3;
     --theme-canvas: #f4f1ea;
     --theme-ink: #141310;
+    /* The fifteen steps as `inkScale()` derives them for this palette: the ink
+       at N% over the paper, which is the shipped lightness ramp. Not solved for
+       contrast — a separator is allowed to be a separator. The SSR sheet
+       re-states them for every other theme. */
+    --theme-ink-20: #cccac6;
+    --theme-ink-25: #c1bfba;
+    --theme-ink-30: #b5b3af;
+    --theme-ink-35: #aaa8a4;
+    --theme-ink-40: #9e9c98;
+    --theme-ink-45: #93918d;
+    --theme-ink-50: #878682;
+    --theme-ink-55: #7b7a76;
+    --theme-ink-60: #706f6b;
+    --theme-ink-65: #65635f;
+    --theme-ink-70: #595854;
+    --theme-ink-75: #4e4c49;
+    --theme-ink-80: #42413d;
+    --theme-ink-85: #373532;
+    --theme-ink-90: #2b2a27;
+    --theme-on-ink-muted: #f4f1ea;
+    /* The one level guaranteed to clear AA on this palette (`inkScale().muted`).
+       `text-muted` uses it; the numbered rungs do not promise AA. */
+    --theme-muted: #65635f;
     --theme-error: #c8321e;
+    /* Solved by `signalTextColor()` for this palette; the SSR sheet restates all
+       five for every other theme (see `ink-scale.ts`). */
+    --theme-error-text: #c8321e;
+    --theme-success-text: #047857;
+    --theme-info-text: #0274af;
+    --theme-warning-text: #c2410c;
+    --theme-meta-text: #4f46e5;
     --theme-success: #047857;
     --theme-meta: #4f46e5;
     --theme-info: #0284c7;
@@ -74,14 +133,24 @@
     --paper-raised: var(--theme-paper);
     --paper-card: var(--theme-paper);
     --ink-primary: var(--theme-ink);
-    --ink-secondary: color-mix(in srgb, var(--theme-ink) 62%, transparent);
-    --ink-muted: color-mix(in srgb, var(--theme-ink) 42%, transparent);
+    /* Two derived inks. Text goes through `--theme-ink-muted` (see
+       `ink-scale.ts`); `--ink-hairline` is borders only. */
+    --ink-secondary: var(--theme-ink-50);
+    --ink-muted: var(--theme-ink-40);
     --ink-hairline: color-mix(in srgb, var(--theme-ink) 14%, transparent);
     --signal-red: var(--theme-error);
   }
 
   body {
-    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* One UI stack, and it is the one that actually renders. The previous
+       value named `IBM Plex Sans` first, and no stylesheet ever shipped that
+       face: measured in the running app, `document.fonts.check('16px "IBM Plex
+       Sans"')` resolved against the fallback, so every heading was drawn in the
+       system UI face while the code claimed otherwise. The system stack IS the
+       product's voice (a console that looks like the machine it runs on), and
+       the mono face is bundled, so data stays on one family everywhere.
+       `--font-sans` in `@theme` carries the same stack for `font-sans`. */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "FiraCode Nerd Font Mono", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "JetBrainsMono NF", "JetBrains Mono Nerd Font", "Hack Nerd Font", "MesloLGS NF", "MesloLGM Nerd Font", "CaskaydiaCove Nerd Font", "SauceCodePro Nerd Font", "Symbols Nerd Font Mono", "Symbols Nerd Font", PowerlineSymbols, "Kabmo Nerd Symbols";
     background-color: var(--theme-canvas);
     color: var(--theme-ink);
   }
@@ -295,11 +364,9 @@
   background-color: color-mix(in srgb, var(--theme-error) 75%, var(--theme-ink));
 }
 
-/* Dot grain texture for Hero production card */
-.dot-grain-texture {
-  background-image: radial-gradient(color-mix(in srgb, var(--theme-ink) 6%, transparent) 0.65px, transparent 0.65px);
-  background-size: 4px 4px;
-}
+/* (The hero card's dot-grain texture lived here and was used by nothing: the
+   deploy hero it decorated is not part of this product. A texture with no
+   consumer is a rule that only drifts.) */
 
 /* ============================================================================
  * Scrollbars — ONE size, ONE palette, ONE reveal rule, for every scroll
@@ -1169,4 +1236,256 @@ html[data-theme-variant='dark'] .brand-wordmark-glow {
  * click; this only says so. */
 .md-review-active .prose-content [data-md-block] a {
   cursor: pointer;
+}
+
+/* The `text-ink/NN` ramp: a weight, not a translucency. Each step points at its
+ * own token, so `text-ink/40` is the ink at 40% over the paper.
+ *
+ * Rungs are a fixed lightness ramp, not a contrast curve: fitting them to AA
+ * compresses the dark end until a header and its subtitle read as one grey. Text
+ * that must clear AA uses `text-muted`; the numbers live in `ink-scale.ts`.
+ *
+ * Inside `utilities` so the icon colour mode (0,4,1) still wins; `html` plus the
+ * class is (0,2,0), and variants are restated so `hover:` still moves. */
+@layer utilities {
+  html .text-ink\/20 {
+    color: var(--theme-ink-20);
+  }
+  html .text-ink\/25 {
+    color: var(--theme-ink-25);
+  }
+  html .text-ink\/30 {
+    color: var(--theme-ink-30);
+  }
+  html .text-ink\/35 {
+    color: var(--theme-ink-35);
+  }
+  html .text-ink\/40 {
+    color: var(--theme-ink-40);
+  }
+  html .text-ink\/45 {
+    color: var(--theme-ink-45);
+  }
+  html .text-ink\/50 {
+    color: var(--theme-ink-50);
+  }
+  html .text-ink\/55 {
+    color: var(--theme-ink-55);
+  }
+  html .text-ink\/60 {
+    color: var(--theme-ink-60);
+  }
+  html .text-ink\/65 {
+    color: var(--theme-ink-65);
+  }
+  html .text-ink\/70 {
+    color: var(--theme-ink-70);
+  }
+  html .text-ink\/75 {
+    color: var(--theme-ink-75);
+  }
+  html .text-ink\/80 {
+    color: var(--theme-ink-80);
+  }
+  html .text-ink\/85 {
+    color: var(--theme-ink-85);
+  }
+  html .text-ink\/90 {
+    color: var(--theme-ink-90);
+  }
+
+  /* Hover and press states step one rung louder than the resting weight, so a
+     muted row still responds rather than looking dead. */
+  html .hover\:text-ink\/50:hover {
+    color: var(--theme-ink-60);
+  }
+
+  html .hover\:text-ink\/60:hover {
+    color: var(--theme-ink-70);
+  }
+
+  html .hover\:text-ink\/70:hover {
+    color: var(--theme-ink-85);
+  }
+
+  html .hover\:text-ink\/80:hover {
+    color: var(--theme-ink);
+  }
+
+  html .group:hover .group-hover\:text-ink\/50 {
+    color: var(--theme-ink-60);
+  }
+
+  html .group:hover .group-hover\:text-ink\/80 {
+    color: var(--theme-ink);
+  }
+
+  html .disabled\:hover\:text-ink\/45:disabled:hover,
+  html .disabled\:hover\:text-ink\/45:hover:disabled {
+    color: var(--theme-ink-50);
+  }
+
+  /* The one rung legal on every palette. Measured, `/65` is 5.31:1 on `paper`
+     but 3.67:1 on `one-dark-pro-soft`; this resolves to the palette's own solved
+     level instead. `html` plus the class keeps the icon mode (0,4,1) winning. */
+  html .text-muted {
+    color: var(--theme-muted);
+  }
+  html .hover\:text-muted:hover {
+    color: var(--theme-muted);
+  }
+
+  /* Placeholders: their own steps, still the solved colours. */
+  html .placeholder-ink\/30::placeholder,
+  html .placeholder\:text-ink\/30::placeholder {
+    color: var(--theme-ink-30);
+  }
+  html .placeholder-ink\/35::placeholder,
+  html .placeholder\:text-ink\/35::placeholder {
+    color: var(--theme-ink-35);
+  }
+  html .placeholder-ink\/40::placeholder,
+  html .placeholder\:text-ink\/40::placeholder {
+    color: var(--theme-ink-40);
+  }
+}
+
+/* The generating indicator's three dots.
+ *
+ * They used to be a `<style>` block inside the component — the ONLY inline
+ * stylesheet in `src/client` — which re-declared the same keyframes on every
+ * render of every indicator a transcript held. Stated here once instead, and
+ * parked under `prefers-reduced-motion` like every other moving thing. */
+@keyframes indicator-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-15%);
+  }
+}
+
+.dot-anim-1,
+.dot-anim-2,
+.dot-anim-3 {
+  animation: indicator-dot 1.2s infinite both;
+}
+
+.dot-anim-2 {
+  animation-delay: 0.2s;
+}
+
+.dot-anim-3 {
+  animation-delay: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-anim-1,
+  .dot-anim-2,
+  .dot-anim-3 {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* ============================================================================
+ * Motion, under the user's own switch.
+ *
+ * Measured with `prefers-reduced-motion: reduce` active, `.animate-spin` still
+ * computed `spin 1s infinite` and `.animate-pulse` `pulse 2s infinite`: the app
+ * honoured the preference in three hand-written places (the section reveal, the
+ * extension dialog, the wait bar) and nowhere else, so 107 `animate-spin` call
+ * sites and every skeleton kept moving for a user who had asked them not to.
+ *
+ * The rule stops the ANIMATION, not the element: a loader that disappears is
+ * worse than one that moves, so it keeps its shape and takes a static opacity
+ * that still reads as "in progress". A spinner has no non-animated equivalent,
+ * which is why `spin` is slowed rather than switched off mid-rotation.
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .animate-spin {
+    animation-duration: 3s;
+  }
+
+  .animate-bounce,
+  .animate-ping {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+ * `text-error` and friends: the same signal, as READABLE text.
+ *
+ * The five signal slots are chosen for a FILL: a failed chip's ground, a 2px
+ * severity rule. The UI also prints them as words (`text-error`, `text-warning`,
+ * `text-success`, `text-info`, `text-meta` — 514 call sites between them), and a
+ * status word is text a user reads. Measured as text on the palette's own
+ * surface, `success` reaches 1.75:1 on `nord-light` and `warning` 1.53:1 on
+ * `carbonfox-light`; every slot fails AA on 14-22 of the 63 palettes.
+ *
+ * So the fill keeps the palette hex and the TEXT resolves to the solved level
+ * (`signalTextColor`, emitted as `--theme-<slot>-text`). The override lives here
+ * rather than at 514 call sites for the same reason the ink ramp does: one
+ * mapping, and the call sites keep the name that says what the colour MEANS.
+ * Unlayered, so it outranks Tailwind's own utility at any specificity.
+ *
+ * The subject list is load-bearing: a glyph carries the class on the `<svg>`
+ * itself, and the icon colour mode must keep deciding its paint. Only text
+ * elements move.
+ * ------------------------------------------------------------------------- */
+html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em, small, code, kbd, output, summary).text-error {
+  color: var(--theme-error-text);
+}
+
+html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em, small, code, kbd, output, summary).text-success {
+  color: var(--theme-success-text);
+}
+
+html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em, small, code, kbd, output, summary).text-info {
+  color: var(--theme-info-text);
+}
+
+html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em, small, code, kbd, output, summary).text-warning {
+  color: var(--theme-warning-text);
+}
+
+html :is(span, div, p, a, li, td, th, h1, h2, h3, h4, h5, h6, label, strong, em, small, code, kbd, output, summary).text-meta {
+  color: var(--theme-meta-text);
+}
+
+/* ============================================================================
+ * The touch target floor: 44px, as real geometry.
+ *
+ * Measured on the running phone layout (390x844), 15 of 28 controls were below
+ * the 44px minimum: header buttons at 32x32, the composer's plan/goal toggles at
+ * 28x20, attach and maximize at 22x22, the access chip at 32x20.
+ *
+ * The first attempt put an invisible 44px pseudo-element over each one. Two
+ * measured problems killed it: headless Chromium never reports `pointer: coarse`
+ * (so the rule could not be verified at all), and a 44px overlay on a 32px button
+ * with a 4px gap overlaps its neighbour by 8px — a tap near the edge would go to
+ * whichever button paints last. A hit area that can steal a neighbour's click is
+ * worse than a small target.
+ *
+ * So the size is real and part of the layout, and scoped to a coarse pointer so
+ * the desktop keeps the density it was measured at.
+ * ------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .tap-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .tap-chip {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

@@ -74,7 +74,7 @@ export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
   if (!sessionId) {
     return (
       <div className={`flex h-full flex-col items-center justify-center bg-paper text-ink/40 ${className}`}>
-        <span className="text-xs font-mono">No session selected</span>
+        <span className="text-xs font-mono text-muted">No session selected</span>
       </div>
     );
   }
@@ -122,7 +122,7 @@ export function TodoPanel({ className = '', active = true }: TodoPanelProps) {
         {stale && (
           <div className="flex items-start gap-2 rounded-lg border border-ink/15 bg-ink/5 px-3 py-2 text-[11px] text-ink/60">
             <AlertCircle size={13} className="mt-[1px] shrink-0" />
-            <span className="min-w-0 break-words">Reconnecting — this list may be out of date.</span>
+            <span className="min-w-0 break-words">Reconnecting: this list may be out of date.</span>
           </div>
         )}
 

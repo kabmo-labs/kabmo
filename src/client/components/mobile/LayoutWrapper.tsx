@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { useSearchParams } from '@/client/lib/router/search-params';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
-import { registerBackHandler } from '@/client/lib/native/back';
+import { useMobileBackStack } from '@/client/hooks/workspace/mobile-back';
 import type { SettingsCategoryId } from '@/shared/types';
 import { MobileMainView } from '@/client/components/mobile/MainView';
 import { WindowAura } from '@/client/components/layout/WindowAura';
+import { ShellNotice } from '@/client/components/layout/ShellNotice';
 import { MobileSessionSidebar } from '@/client/components/mobile/SessionSidebar';
 import { MobileRightSidebar } from '@/client/components/mobile/RightSidebar';
 import { MobileFullEditor } from '@/client/components/mobile/mobile-right-sidebar/FullEditor';
@@ -35,7 +36,7 @@ interface MobileLayoutWrapperProps {
 export type MobileScreen = 'main' | 'session' | 'right';
 
 export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: MobileLayoutWrapperProps) {
-  const { folders } = useSidebarData();
+  const { folders, isMock } = useSidebarData();
   // The placement state the panel-open event resolves against, and the session
   // the tab it writes belongs to — read once here rather than per drawer,
   // because the drawer that receives the selection is not mounted yet.
@@ -76,33 +77,21 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
 
   // The Android shell's back button asks this layout first.
   //
-  // Order is what the user sees, innermost first: the full-screen editor and
-  // diff cover everything, then the settings modal, then the drawer screens,
-  // and only then does the shell walk WebView history. Without this, back
-  // reopened the previous session while leaving the drawer that opened it on
-  // screen — the screens live in React state, not in the URL.
-  useEffect(() => {
-    return registerBackHandler(() => {
-      if (mobileEditorFile) {
-        setMobileEditorFile(null);
-        return true;
-      }
-      if (mobileDiff) {
-        setMobileDiff(null);
-        return true;
-      }
-      if (settingsOpen) {
-        setSettingsOpen(false);
-        setAutoOpenAddProvider(false);
-        return true;
-      }
-      if (currentScreen !== 'main') {
-        setCurrentScreen('main');
-        return true;
-      }
-      return false;
-    });
-  }, [mobileEditorFile, mobileDiff, settingsOpen, currentScreen]);
+  // The back gesture walks the screens innermost first. The hook owns the
+  // subscription; the order is the layout's, because the layout owns the state.
+  useMobileBackStack({
+    editorOpen: mobileEditorFile !== null,
+    diffOpen: mobileDiff !== null,
+    settingsOpen,
+    offMainScreen: currentScreen !== 'main',
+    onCloseEditor: () => setMobileEditorFile(null),
+    onCloseDiff: () => setMobileDiff(null),
+    onCloseSettings: () => {
+      setSettingsOpen(false);
+      setAutoOpenAddProvider(false);
+    },
+    onReturnToMain: () => setCurrentScreen('main'),
+  });
 
   const { folder: sessionFolder } = activeProjectForSession(folders, sessionId);
   const contextFolder = sessionFolder ?? (folderId ? folders.find(f => String(f.id) === String(folderId)) ?? null : null);
@@ -246,6 +235,7 @@ export function MobileLayoutWrapper({ onDesktopToggle, appSettings = {} }: Mobil
       className="app-window flex flex-col h-dvh w-screen overflow-hidden bg-canvas text-ink font-sans selection:bg-ink selection:text-canvas relative"
     >
       <WindowAura />
+      <ShellNotice isMock={isMock} />
       {/* The plugin system's boot, on the PHONE too. It is mounted at the top of
           the workspace on the desktop (`desktop-layout/index.tsx`), and without
           it here a phone had no plugin CONTEXT (so `usePanelInfo()` answered

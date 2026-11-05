@@ -150,7 +150,7 @@ export function WikiPanel({
   if (!enabled) {
     return (
       <div className={`flex h-full flex-col items-center justify-center bg-paper text-ink/40 ${className}`}>
-        <span className="text-xs font-mono">No session selected</span>
+        <span className="text-xs font-mono text-muted">No session selected</span>
       </div>
     );
   }
@@ -169,7 +169,7 @@ export function WikiPanel({
           />
           {repo && (
             <span
-              className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider text-ink/60"
+              className="flex-shrink-0 rounded border border-ink/15 bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/60"
               title={`${repo.host}/${repo.slug} · ${repo.revision.slice(0, 8)}`}
             >
               {repo.provider}

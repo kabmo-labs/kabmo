@@ -30,6 +30,12 @@ export interface SessionSidebarVariantProps {
   folders: WorkspaceFolderData[];
   /** True until the first list fetch settles (drives the skeleton). */
   initializing: boolean;
+  /**
+   * The first list read failed and no answer is coming on its own. Distinct from
+   * `initializing`, which promises that a reply is still on its way; this draws
+   * the cause and a retry instead of a skeleton that never resolves.
+   */
+  failed: boolean;
   activeSessionId: number | string | null;
   sessionStatus: SessionStatusMap;
 

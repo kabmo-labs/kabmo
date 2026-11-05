@@ -28,14 +28,15 @@
  * the default light palette — which is a double mismatch on a dark theme: wrong
  * shade AND wrong side of the light/dark split.
  *
- * `muted` and `hairline` mirror the two derived variables the document already
- * declares (`--ink-secondary`, `--ink-hairline`), which are `color-mix` over the
- * surface rather than palette slots.
+ * `muted` is the palette's own solved muted text level
+ * (`--theme-ink-muted`, see `ink-scale.ts`), and `hairline` is the same 14% mix
+ * the document declares — both derived rather than palette slots.
  */
 
 import type { ThemePalette } from '@/shared/types/theme';
 import { mixHex, parseHexColor, rgbaToHex } from '@/shared/lib/theme/color';
 import { resolveTheme } from '@/shared/lib/theme/catalog';
+import { inkScale } from '@/shared/lib/theme/ink-scale';
 
 /** The colours a shell needs, as literal hex — no `color-mix`, no CSS. */
 export interface ShellPalette {
@@ -75,7 +76,11 @@ export function shellPaletteFor(palette: ThemePalette): ShellPalette {
     canvas: hex(palette.canvas),
     paper: hex(palette.paper),
     ink: hex(palette.ink),
-    muted: mixHex(palette.canvas, palette.ink, 0.62),
+    // The SAME solved secondary level the document paints, not a second alpha:
+    // the shell's status line sits beside the web view's labels, and 0.62 alpha
+    // is 4.98:1 on `paper` but 2.3:1 on `solarized-light` — a shell sentence
+    // that disappears on the palette it was shipped with.
+    muted: inkScale(palette).muted,
     hairline: mixHex(palette.canvas, palette.ink, 0.14),
     error: hex(palette.error),
   };

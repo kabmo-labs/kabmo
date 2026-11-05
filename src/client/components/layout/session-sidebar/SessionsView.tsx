@@ -56,6 +56,7 @@ export function SessionsView({
   const {
     folders,
     initializing,
+    failed,
     refreshNow,
     isRefreshing,
     activeSessionId,
@@ -180,6 +181,7 @@ export function SessionsView({
     className: `flex-1 min-h-0 w-full ${className}`,
     folders: processedFolders,
     initializing,
+    failed,
     activeSessionId,
     sessionStatus,
     searchQuery,
