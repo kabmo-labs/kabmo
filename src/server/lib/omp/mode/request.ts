@@ -24,7 +24,12 @@
  */
 
 import { isRecord } from '@/shared/lib/util/guards';
-import { KABMO_MODE_COMMAND, type KabmoModeSelection } from '@/shared/lib/omp/mode/types';
+import {
+  KABMO_MODE_COMMAND,
+  LEGACY_MODE_COMMAND_TYPE,
+  MODE_COMMAND_TYPE,
+  type KabmoModeSelection,
+} from '@/shared/lib/omp/mode/types';
 
 export type ModeScope = 'plan' | 'goal';
 
@@ -36,14 +41,17 @@ export interface ModeRequest {
 
 /** The command type a mode request travels as.
  *
+ *  The name lives in the shared vocabulary (`@/shared/lib/omp/mode/types`)
+ *  because BOTH ends need it: the client posts it and the route matches it, and
+ *  two declarations would let a rename ship on one side only.
+ *
  *  `kabmo_mode` is what this build sends; `chamber_mode` is the pre-rename
  *  spelling and is still ACCEPTED, because a tab that loaded before a restart
  *  keeps posting the old name until it reloads, and a rejected request there
- *  reads as a dead Plan/Goal button. */
-export const MODE_COMMAND_TYPE = 'kabmo_mode';
-
-/** @deprecated Use `MODE_COMMAND_TYPE`. Accepted on the read side. */
-export const LEGACY_MODE_COMMAND_TYPE = 'chamber_mode';
+ *  reads as a dead Plan/Goal button. That legacy name is an external
+ *  compatibility requirement (a browser tab this build does not control),
+ *  which is why it survives the rename */
+export { LEGACY_MODE_COMMAND_TYPE, MODE_COMMAND_TYPE };
 
 /** Whether a command body's `type` names a mode request, under either spelling. */
 export function isModeCommandType(type: unknown): boolean {

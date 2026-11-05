@@ -27,6 +27,9 @@
 
 import { GOAL_CONTINUATION_PROMPT, GUIDED_GOAL_INTERVIEW_PROMPT, renderPrompt } from './prompts';
 import type { ExtensionCtx, ModeApi, ModeSession } from './session';
+import { startGuidedGoal, startGoalTurn } from './goal-start';
+
+export { startGuidedGoal, startGoalTurn };
 import {
   KABMO_GOAL_CONTINUATION_MARKER,
   KABMO_GOAL_EVALUATING_MARKER,
@@ -103,16 +106,18 @@ function ceilingFor(goalId: string): number {
   return goalCeilings.get(goalId) ?? fallback;
 }
 
-/** Custom-message types, matching the TUI's own naming so a transcript written
- *  by either surface reads the same. */
+/** The loop's own turn type. The two OPENING types live in `goal-start.ts`,
+ *  which is what sends them; matching the TUI's naming keeps a transcript
+ *  written by either surface readable by both. */
 const GOAL_CONTINUATION_TYPE = 'goal-continuation';
-const GUIDED_GOAL_TYPE = 'guided-goal-interview';
-/** The opening turn of a goal. Distinct from `goal-continuation` because the
- *  transcript should read as one started objective, not as a continuation. */
-const GOAL_START_TYPE = 'goal-start';
 
 interface GoalArgs {
   objective?: string;
+  /** Whether creating the goal should also OPEN its first turn. Omitted means
+   *  `true` (a goal created by itself, as omp's own `/goal <objective>` does).
+   *  `false` is the armed path: Kabmo creates the record at the fence of the
+   *  operator's prompt, and THAT prompt is the goal's first turn. */
+  startTurn?: boolean;
   tokenBudget?: number;
   guided?: string;
   /** Automatic-turn ceiling for THIS goal; overrides the install default. */
@@ -141,6 +146,7 @@ export function parseGoalArgs(rest: string): GoalArgs {
     payload = { objective: trimmed };
   }
   const objective = typeof payload.objective === 'string' ? payload.objective.trim() : undefined;
+  const startTurn = payload.startTurn === false ? false : undefined;
   const guided = typeof payload.guided === 'string' ? payload.guided : undefined;
   // The Kabmo's auditor reports its terminal verdict through `done`; the
   // reason travels so the strip can name it (and so a reload can too).
@@ -155,7 +161,7 @@ export function parseGoalArgs(rest: string): GoalArgs {
   const rawMaxTurns = payload.maxTurns;
   const maxTurns =
     typeof rawMaxTurns === 'number' && Number.isInteger(rawMaxTurns) && rawMaxTurns > 0 ? rawMaxTurns : undefined;
-  return { objective, tokenBudget, guided, maxTurns, stopped };
+  return { objective, tokenBudget, guided, maxTurns, stopped, startTurn };
 }
 
 /** The record Kabmo mirrors. `enabled` is what decides whether the
@@ -193,37 +199,6 @@ export async function createGoalFromSelection(
   // every later decision (and a Resume) reads the same number.
   const goalId = created?.goal?.id ?? session.getGoalModeState?.()?.goal?.id;
   if (goalId && input.maxTurns !== undefined) goalCeilings.set(goalId, input.maxTurns);
-}
-
-/**
- * The turn that makes a freshly created goal actually start.
- *
- * `createGoal` only writes the record — it opens no turn, so a goal created
- * here sat live with an idle child until the operator happened to send
- * something else, which is not "keeps working across turns". omp's own
- * `/goal <objective>` path does both (`#zs`: `#Tn({objective})` then a prompt
- * with the objective as text), and this is that second half.
- *
- * Sent as a hidden custom message rather than through the RPC prompt path: the
- * Kabmo cannot reach the live session's prompt, and `display: false` is what
- * keeps the objective out of the transcript as a second user bubble.
- */
-export function startGoalTurn(api: ModeApi, objective: string): void {
-  api.sendMessage?.({ customType: GOAL_START_TYPE, content: objective, display: false }, { triggerTurn: true });
-}
-
-/**
- * Start the guided-goal interview.
- *
- * A normal conversation with a hidden kickoff: the agent asks its questions as
- * ordinary assistant turns, the operator answers in the composer, and the model
- * closes by calling `goal({op:"create"})` itself — which flips goal mode on
- * through `goal_updated`. The `goal` tool must already be active, which is what
- * the caller's `ensureGoalTool` provides.
- */
-export function startGuidedGoal(api: ModeApi, rough: string): void {
-  const content = renderPrompt(GUIDED_GOAL_INTERVIEW_PROMPT, { initial: rough || undefined });
-  api.sendMessage?.({ customType: GUIDED_GOAL_TYPE, content, display: false }, { triggerTurn: true });
 }
 
 /**

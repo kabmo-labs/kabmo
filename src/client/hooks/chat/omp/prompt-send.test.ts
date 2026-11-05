@@ -202,6 +202,42 @@ describe('useOmpPromptSender.sendPrompt', () => {
   });
 });
 
+describe('useOmpPromptSender.sendNewPrompt — ordering', () => {
+  const NEW = '/api/agent/new';
+
+  test('beforePrompt runs after the id exists and before the prompt', async () => {
+    const order: string[] = [];
+    const requests = installFetch({ [NEW]: { body: { success: true, sessionId: 'omp-5' } } });
+    const probe = mountSender(null);
+    // One extra hook: the prompt POST is the last call, so its ORDER is what
+    // the armed goal depends on — a goal created after it can miss the turn.
+    const original = (globalThis as unknown as Record<string, unknown>).fetch as typeof fetch;
+    (globalThis as unknown as Record<string, unknown>).fetch = (async (input: unknown, init?: { method?: string; body?: string }) => {
+      order.push(String(input));
+      return original(input as never, init as never);
+    }) as typeof fetch;
+
+    const result = await probe.sender().sendNewPrompt('first', '/w', undefined, {}, async (sid) => {
+      order.push(`goal:${sid}`);
+      return false;
+    });
+
+    expect(result).toEqual({ sessionId: 'omp-5', model: null });
+    expect(order).toEqual([NEW, 'goal:omp-5', '/api/agent/omp-5']);
+    expect(requests.length).toBe(2);
+  });
+
+  test('a spawn with no armed goal passes no hook at all', async () => {
+    const requests = installFetch({ [NEW]: { body: { success: true, sessionId: 'omp-6' } } });
+    const probe = mountSender(null);
+
+    // The goal-less path: exactly two requests (create + prompt), no third call.
+    await probe.sender().sendNewPrompt('first', '/w');
+
+    expect(requests.map((r) => r.url)).toEqual([NEW, '/api/agent/omp-6']);
+  });
+});
+
 describe('useOmpPromptSender.sendNewPrompt', () => {
   const NEW = '/api/agent/new';
 

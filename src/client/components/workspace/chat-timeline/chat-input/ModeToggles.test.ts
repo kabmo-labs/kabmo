@@ -53,6 +53,7 @@ function paint(overrides: Partial<ModeTogglesProps> = {}): HTMLElement {
   const props: ModeTogglesProps = {
     plan: false,
     goal: false,
+    goalArm: null,
     goalRecord: null,
     pending: false,
     onTogglePlan: () => {},
@@ -99,5 +100,24 @@ describe('ModeToggles', () => {
     const button = el.querySelector('[aria-label="Manage the active goal"]');
     expect(button?.getAttribute('title')).toContain('50,000');
     expect(el.textContent).not.toContain('left');
+  });
+});
+
+describe('an armed goal', () => {
+  test('reads as set but not running, and says what starts it', () => {
+    const el = paint({ goalArm: { kind: 'create', objective: 'Ship the importer' } });
+    const button = el.querySelector('[aria-label="Edit the armed goal"]') as HTMLButtonElement | null;
+
+    expect(button).not.toBeNull();
+    // Pressed, because it IS set — but the label and the title both name the
+    // waiting state, so "on" never claims work that has not started.
+    expect(button?.getAttribute('aria-pressed')).toBe('true');
+    expect(button?.title).toContain('starts with your next message');
+  });
+
+  test('a running goal keeps the running wording', () => {
+    const el = paint({ goal: true, goalRecord: goalRecord });
+    expect(el.querySelector('[aria-label="Manage the active goal"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="Edit the armed goal"]')).toBeNull();
   });
 });

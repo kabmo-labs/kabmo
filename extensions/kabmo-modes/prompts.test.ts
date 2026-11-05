@@ -67,4 +67,16 @@ describe('renderPrompt', () => {
     const rendered = renderPrompt('{{#if y}}YES {{z}}{{/if}}', { y: true });
     expect(rendered).toBe('YES {{z}}');
   });
+
+  test('an {{else}} branch replaces the block instead of surviving in it', () => {
+    // The guided interview template uses this shape. A renderer that ignored
+    // `{{else}}` left BOTH branches in the prompt — measured on a real session,
+    // where the kickoff carried the literal `{{else}}` and told the model to ask
+    // for an objective it had just been given.
+    const template = '{{#if initial}}HAVE {{initial}}{{else}}ASK{{/if}}';
+
+    expect(renderPrompt(template, { initial: 'speed up the tests' })).toBe('HAVE speed up the tests');
+    expect(renderPrompt(template, {})).toBe('ASK');
+    expect(renderPrompt(template, { initial: 'x' })).not.toContain('{{else}}');
+  });
 });

@@ -23,40 +23,18 @@
 
 import { CHECKBOX_CLASS } from '@/client/components/common/checkbox/style';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
+import { createPortal } from 'preact/compat';
 import { Target, X } from 'lucide-preact';
-import type { GoalRecord } from '@/shared/lib/omp/mode/types';
-import type { GoalAction } from '@/client/hooks/chat/timeline/modes';
+import type { GoalAction } from '@/shared/lib/omp/mode/actions';
+import {
+  ActionButton,
+  Stat,
+  parseBudget,
+  parseMaxTurns,
+  type GoalModalProps,
+} from '@/client/components/workspace/chat-timeline/chat-input/goal-modal-parts';
 
-export interface GoalModalProps {
-  open: boolean;
-  goal: boolean;
-  goalRecord: GoalRecord | null;
-  pending: boolean;
-  /** The default token budget a NEW goal starts with (Settings → Chats → Goal
-   *  Mode). Null means no budget, which is also what an empty field means. */
-  defaultBudget?: number | null;
-  onClose: () => void;
-  onSubmit: (action: GoalAction) => void;
-}
-
-function parseBudget(raw: string): { value: number | 'off' } | { error: string } {
-  const trimmed = raw.trim();
-  if (!trimmed) return { value: 'off' };
-  if (trimmed === 'off') return { value: 'off' };
-  const parsed = Number.parseInt(trimmed, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) return { error: 'Budget must be a positive integer, or `off`.' };
-  return { value: parsed };
-}
-
-/** An empty field means "whatever this install defaults to" — not zero. */
-function parseMaxTurns(raw: string): { value: number | 'default' } | { error: string } {
-  const trimmed = raw.trim();
-  if (!trimmed) return { value: 'default' };
-  const parsed = Number.parseInt(trimmed, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) return { error: 'Max turns must be a positive integer.' };
-  return { value: parsed };
-}
+export type { GoalModalProps };
 
 export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = null, onClose, onSubmit }: GoalModalProps) {
   const [objective, setObjective] = useState('');
@@ -64,6 +42,9 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
   const [maxTurns, setMaxTurns] = useState('');
   const [guided, setGuided] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** True while the submitted command is in flight: the buttons read as busy
+   *  instead of accepting a second click for the same goal. */
+  const [submitting, setSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // A fresh open starts from a blank form: a previous objective left behind
@@ -92,10 +73,28 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
 
   if (!open) return null;
 
-  const submitCreate = () => {
+  // One submit path for every action: await the outcome, close only on success.
+  // A refusal leaves the form (and whatever was typed) exactly where it was, with
+  // the reason under the fields — the previous version closed first and then
+  // dropped the objective, which is what made a refusal read as a dead button.
+  const busy = pending || submitting;
+  const submit = async (action: GoalAction): Promise<void> => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const result = await onSubmit(action);
+      if (result.ok) onClose();
+      else setError(result.error ?? 'The goal command was refused.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The goal command was refused.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitCreate = (): void => {
     if (guided) {
-      onSubmit({ kind: 'guided', rough: objective.trim() });
-      onClose();
+      void submit({ kind: 'guided', rough: objective.trim() });
       return;
     }
     if (!objective.trim()) {
@@ -112,16 +111,32 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
       setError(turns.error);
       return;
     }
-    onSubmit({
+    void submit({
       kind: 'create',
       objective: objective.trim(),
       ...(parsed.value === 'off' ? {} : { tokenBudget: parsed.value }),
       ...(turns.value === 'default' ? {} : { maxTurns: turns.value }),
     });
-    onClose();
   };
 
-  return (
+  // PORTALLED to `<body>`, and that is what centres it.
+  //
+  // The modal is mounted from the composer's `header` slot, and a `fixed`
+  // element is contained by any ancestor that is a containing block. Measured
+  // in Chromium at 1440x900 by re-parenting the real scrim into the composer
+  // card: the scrim went from `1440x900` at `(0,0)` — the viewport — to
+  // `710x164` at the CARD's box, i.e. exactly the `@container` composer, and the
+  // dialog centred on it (dx -49, dy +38). Reproduced by any of the three
+  // properties the composer can carry: `backdrop-filter` (the `glass` style's
+  // `--glass-card-filter`), a `transform`, or `contain: layout`. `container-type`
+  // alone did NOT trigger it, so an earlier note here blaming containment was
+  // wrong.
+  //
+  // The effect is what the operator sees as "the goal modal opens in front of
+  // the composer" instead of the middle of the screen. A portal escapes every
+  // such ancestor; the same reason `Toast`, `anchored-menu` and `diagram-viewer`
+  // portal.
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center modal-scrim p-4" onClick={onClose}>
       <div
         className="glass-overlay w-full max-w-lg overflow-hidden rounded-xl border border-ink/15 bg-paper shadow-xl"
@@ -163,11 +178,11 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
             {error && <div className="text-error">{error}</div>}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {goalRecord.status === 'paused' ? (
-                <ActionButton onClick={() => { onSubmit({ kind: 'resume' }); onClose(); }} disabled={pending}>
+                <ActionButton onClick={() => void submit({ kind: 'resume' })} disabled={busy}>
                   Resume
                 </ActionButton>
               ) : (
-                <ActionButton onClick={() => { onSubmit({ kind: 'pause' }); onClose(); }} disabled={pending}>
+                <ActionButton onClick={() => void submit({ kind: 'pause' })} disabled={busy}>
                   Pause
                 </ActionButton>
               )}
@@ -178,10 +193,9 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
                     setError(parsed.error);
                     return;
                   }
-                  onSubmit({ kind: 'budget', value: parsed.value });
-                  onClose();
+                  void submit({ kind: 'budget', value: parsed.value });
                 }}
-                disabled={pending}
+                disabled={busy}
               >
                 Set budget
               </ActionButton>
@@ -193,8 +207,8 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
               />
               <button
                 type="button"
-                onClick={() => { onSubmit({ kind: 'drop' }); onClose(); }}
-                disabled={pending}
+                onClick={() => void submit({ kind: 'drop' })}
+                disabled={busy}
                 className="ml-auto rounded border border-error/40 px-3 py-1.5 text-[11px] text-error transition-colors hover:bg-error/10 disabled:opacity-50"
               >
                 Drop goal
@@ -219,15 +233,19 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
                 Name the deliverables, the evidence of completion, and any prohibited shortcuts.
               </p>
             </div>
+            {/* `min-w-0` on both halves: a flex item defaults to
+                `min-width: auto`, so the two fields kept their intrinsic input
+                width and overflowed a phone's 358px card (measured: "auto: this
+                install'" and "2000" clipped mid-word). */}
             <div className="flex items-end gap-3">
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-ink/45">
                   Token budget
                 </label>
                 <input
                   value={budget}
                   onChange={(event) => setBudget(event.currentTarget.value)}
-                  placeholder="optional — e.g. 200000, or off"
+                  placeholder="e.g. 200000"
                   aria-label="Token budget"
                   className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-1.5 font-mono text-[11.5px] outline-none focus:border-ink"
                 />
@@ -237,14 +255,14 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
                   </p>
                 )}
               </div>
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-ink/45">
                   Max turns
                 </label>
                 <input
                   value={maxTurns}
                   onChange={(event) => setMaxTurns(event.currentTarget.value)}
-                  placeholder="auto — this install's default"
+                  placeholder="install default"
                   inputMode="numeric"
                   aria-label="Max automatic turns"
                   className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-1.5 font-mono text-[11.5px] outline-none focus:border-ink"
@@ -277,7 +295,7 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
               <button
                 type="button"
                 onClick={submitCreate}
-                disabled={pending}
+                disabled={busy}
                 className="rounded bg-ink px-3 py-1.5 text-[11.5px] text-canvas transition-colors hover:bg-ink/80 disabled:opacity-50"
               >
                 {guided ? 'Start interview' : 'Start goal'}
@@ -286,36 +304,7 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-ink/10 bg-canvas/30 p-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">{label}</div>
-      <div className="mt-0.5 truncate font-mono text-[11.5px] text-ink">{value}</div>
-    </div>
-  );
-}
-
-function ActionButton({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: ComponentChildren;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="rounded border border-ink/20 px-3 py-1.5 text-[11px] text-ink transition-colors hover:bg-ink/5 disabled:opacity-50"
-    >
-      {children}
-    </button>
+    </div>,
+    document.body,
   );
 }

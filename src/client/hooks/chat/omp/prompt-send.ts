@@ -20,7 +20,7 @@ import { useCallback } from 'preact/hooks';
 import type { Dispatch, SetStateAction } from 'preact/compat';
 import { setSessionTitleHint } from '@/client/hooks/chat/omp/sidebar-overlay';
 import { redirectToOwningInstance, type SessionOwnerConflict } from '@/client/hooks/chat/omp/owner-redirect';
-import type { AgentImage, OmpAgentState, PromptDispatchResult } from '@/shared/types';
+import type { AgentImage, OmpAgentState, PromptDispatchResult, SpawnOptions, SpawnedSession } from '@/shared/types';
 import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 
 export interface OmpPromptSenderDeps {
@@ -37,16 +37,19 @@ export interface OmpPromptSender {
     message: string,
     cwd: string,
     images?: AgentImage[],
-    composerOptions?: {
-      model?: { provider: string; modelId: string } | null;
-      thinkingLevel?: string | null;
-      accessMode?: ApprovalMode;
-      /** Plan/goal picks made on the pending view. Applied through the spawn
-       *  ENVIRONMENT, because a brand-new session has no transcript for the
-       *  extension to restore from — see the route's `modes` handling. */
-      modes?: { plan: boolean; goal: boolean } | null;
-    },
-  ) => Promise<{ sessionId: string; model: { provider: string; modelId: string } | null } | null>;
+    composerOptions?: SpawnOptions,
+    /**
+     * Runs once the session exists and its stream is attached, BEFORE the
+     * prompt is dispatched. The armed goal is started here: the record must
+     * exist before the turn it belongs to starts, and this is the only moment
+     * that is both after the id exists and before the prompt.
+     *
+     * Resolves TRUE when it CONSUMED the prompt — an armed interview renders
+     * its own opening turn with the operator's words folded in, so dispatching
+     * the raw message after it would be a second turn asking the same thing.
+     */
+    beforePrompt?: (sessionId: string) => Promise<boolean>,
+  ) => Promise<SpawnedSession | null>;
 }
 
 export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
@@ -118,13 +121,9 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
     message: string,
     cwd: string,
     images?: AgentImage[],
-    composerOptions?: {
-      model?: { provider: string; modelId: string } | null;
-      thinkingLevel?: string | null;
-      accessMode?: ApprovalMode;
-      modes?: { plan: boolean; goal: boolean } | null;
-    },
-  ): Promise<{ sessionId: string; model: { provider: string; modelId: string } | null } | null> => {
+    composerOptions?: SpawnOptions,
+    beforePrompt?: (sessionId: string) => Promise<boolean>,
+  ): Promise<SpawnedSession | null> => {
     setState((prev) => ({ ...prev, isGenerating: true, error: null }));
     // The real id does not exist until `ensure_session` answers, so the mark
     // can only be armed past that point — the spawn itself is covered by the
@@ -162,6 +161,13 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
       // first assistant message), so until then the row would read
       // `New Session - <clock>`. A hint only — the real row supersedes it.
       setSessionTitleHint(sid, message);
+      // The goal (when one is armed) is STARTED HERE — after the id exists,
+      // before the prompt — so the prompt below is its first turn. Awaiting it
+      // is what makes the order a fact rather than a race. An armed interview
+      // answers true: it already opened the turn, so this prompt is not sent.
+      if (beforePrompt && await beforePrompt(sid)) {
+        return { sessionId: sid, model: createdBody.model ?? null };
+      }
       const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

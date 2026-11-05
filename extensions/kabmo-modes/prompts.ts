@@ -156,8 +156,15 @@ export function renderPrompt(
   template: string,
   values: Record<string, string | number | boolean | undefined>,
 ): string {
-  let out = template.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_match, key: string, body: string) =>
-    values[key] ? body : '',
+  // `{{#if}}` blocks carry an optional `{{else}}`. omp's own templates use it
+  // (the interview's "No objective stated" branch), and a renderer that ignored
+  // it left BOTH branches in the prompt — measured on a real session, where the
+  // kickoff contained the literal `{{else}}` and told the model to ask a
+  // question it had already been given the answer to.
+  let out = template.replace(
+    /\{\{#if\s+(\w+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g,
+    (_match, key: string, whenTrue: string, whenFalse: string | undefined) =>
+      (values[key] ? whenTrue : (whenFalse ?? '')),
   );
   out = out.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
     const value = values[key];

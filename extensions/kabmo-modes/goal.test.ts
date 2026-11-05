@@ -19,17 +19,21 @@ import {
   continueGoalTurn,
   createGoalFromSelection,
   finishGoalTurn,
+  parseGoalArgs,
   resetGoalContinuationTurns,
   startGoalTurn,
+  startGuidedGoal,
 } from './goal';
 import type { GoalRecord } from './protocol';
-import type { ExtensionCtx, ModeApi, ModeSession } from './session';
+import { bindApi, type ExtensionCtx, type ModeApi, type ModeSession } from './session';
 
 const MAX_TURNS_ENV = 'KABMO_GOAL_MAX_TURNS';
 
 interface Harness {
   api: ModeApi;
   ctx: ExtensionCtx;
+  /** Visible turns the session was asked to run (`session.prompt`). */
+  prompts: string[];
   sent: Array<{ customType: string; content: string; display?: boolean }>;
   /** Entries the loop appended (the persisted verdict). */
   entries: Array<{ customType: string; data: Record<string, unknown> }>;
@@ -44,6 +48,7 @@ interface Harness {
 }
 
 function harness(): Harness {
+  const prompts: string[] = [];
   const sent: Harness['sent'] = [];
   const entries: Harness['entries'] = [];
   const markers: Harness['markers'] = [];
@@ -61,6 +66,7 @@ function harness(): Harness {
   let enabled = true;
 
   const session: ModeSession = {
+    prompt: async (text: string) => { prompts.push(text); },
     getGoalModeState: () => ({ goal, enabled }),
     goalRuntime: {
       // omp's own shape: `createGoal` answers the new record, which is how the
@@ -86,6 +92,7 @@ function harness(): Harness {
   return {
     api,
     ctx: { cwd: '/tmp/goal-test', ui: { notify: () => {} } },
+    prompts,
     sent,
     entries,
     markers,
@@ -228,12 +235,80 @@ describe('finishGoalTurn', () => {
 });
 
 describe('startGoalTurn', () => {
-  test('the objective is sent as a hidden turn, not as a visible message', () => {
+  test('the objective is the first USER turn of the session', async () => {
     const h = harness();
-    startGoalTurn(h.api, 'ship it');
+    await startGoalTurn(h.session, 'ship it');
     // `createGoal` writes the record and opens nothing; this is the half that
-    // makes the goal actually start, and `display: false` is what keeps the
-    // objective out of the transcript as a second user bubble.
+    // makes the goal actually start. It goes through `session.prompt` — the same
+    // entry point omp's own `/goal <objective>` uses — so the transcript opens
+    // with the operator's objective instead of an answer to nobody. Measured
+    // with the hidden form: `custom x8, assistant x3, toolResult x2, user x0`.
+    expect(h.prompts).toEqual(['ship it']);
+    expect(h.sent).toEqual([]);
+  });
+
+  test('a session that cannot take a prompt still opens a turn', async () => {
+    const h = harness();
+    // The RPC-side fallback: a build whose session has no `prompt` gets the
+    // hidden custom message, which still triggers a turn — it just cannot show
+    // the objective. A goal that never runs would be worse than a silent one.
+    // The bind is module-level (`bindApi`, called once at extension load), so
+    // the harness installs its own api here to observe the fallback.
+    bindApi(h.api);
+    const withoutPrompt: ModeSession = { ...h.session, prompt: undefined };
+    await startGoalTurn(withoutPrompt, 'ship it');
     expect(h.sent).toEqual([{ customType: 'goal-start', content: 'ship it', display: false }]);
+  });
+});
+
+describe('parseGoalArgs startTurn', () => {
+  test('an absent flag means the goal opens its own turn', () => {
+    // omp's own `/goal <objective>` behaviour, and the TUI's: the command is the
+    // question, so the child opens the turn.
+    expect(parseGoalArgs(JSON.stringify({ objective: 'ship it' })).startTurn).toBeUndefined();
+  });
+
+  test('false is carried through, so the operator prompt becomes turn one', () => {
+    const parsed = parseGoalArgs(JSON.stringify({ objective: 'ship it', startTurn: false }));
+    expect(parsed.startTurn).toBe(false);
+    expect(parsed.objective).toBe('ship it');
+  });
+
+  test('any other value is ignored rather than read as false', () => {
+    // A truthy string must not silently suppress the opening turn: only the
+    // literal false is the armed path.
+    expect(parseGoalArgs(JSON.stringify({ objective: 'x', startTurn: 'no' })).startTurn).toBeUndefined();
+    expect(parseGoalArgs(JSON.stringify({ objective: 'x', startTurn: true })).startTurn).toBeUndefined();
+  });
+});
+
+describe('startGuidedGoal', () => {
+  test('the operator message is the visible content of turn one', async () => {
+    const h = harness();
+    await startGuidedGoal(h.session, 'speed up the test suite', '');
+
+    expect(h.prompts).toHaveLength(1);
+    const body = h.prompts[0];
+    // The interview template's own slot, fed with what the operator typed — so
+    // the transcript opens on their words, not on a question to nobody.
+    expect(body).toContain('<rough-goal>');
+    expect(body).toContain('speed up the test suite');
+    // Nothing hidden was sent: the visible prompt IS the turn.
+    expect(h.sent).toEqual([]);
+  });
+
+  test("the modal's rough idea rides along when the message does not carry it", async () => {
+    const h = harness();
+    await startGuidedGoal(h.session, 'speed up the test suite', 'the slow ones are the route specs');
+    expect(h.prompts[0]).toContain('speed up the test suite');
+    expect(h.prompts[0]).toContain('the slow ones are the route specs');
+  });
+
+  test('a session that cannot take a prompt falls back to the hidden kickoff', async () => {
+    const h = harness();
+    bindApi(h.api);
+    const withoutPrompt: ModeSession = { ...h.session, prompt: undefined };
+    await startGuidedGoal(withoutPrompt, 'speed up the tests', '');
+    expect(h.sent.map((entry) => entry.customType)).toEqual(['guided-goal-interview']);
   });
 });

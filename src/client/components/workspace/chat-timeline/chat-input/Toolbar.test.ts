@@ -66,12 +66,14 @@ const MODES = {
   goalRecord: null,
   goalContinuation: null,
   goalEvaluating: false,
+  goalArm: null,
+  disarmGoal: () => {},
   pending: false,
   planAvailable: true,
   error: null,
   clearError: () => {},
   onTogglePlan: () => {},
-  onGoalAction: () => {},
+  onGoalAction: async () => ({ ok: true }),
 };
 
 /** The selectors are off: this file is about the right-hand action strip. */

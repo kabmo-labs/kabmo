@@ -11,85 +11,20 @@
  */
 
 import { useCallback } from 'preact/hooks';
-import type { Dispatch, SetStateAction } from 'preact/compat';
-import type { AgentImage, Attachment, ChatMessageData, OmpAgentHandle, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
-import type { ApprovalMode } from '@/shared/lib/omp/config/access-mode';
-import type { SessionSeed } from '@/client/hooks/chat/timeline/session-load';
+import type { ChatTimelineSendDeps, ChatTimelineSendResult } from '@/client/hooks/chat/timeline/send-props';
+
+export type { ChatTimelineSendDeps, ChatTimelineSendResult };
+import type { AgentImage, Attachment, PromptDispatchResult, QueuedMessageModel } from '@/shared/types';
 import { buildPromptText } from '@/client/hooks/chat/timeline/prompt-text';
-import { flushDeferredPick, type DeferredModelStore } from '@/client/hooks/chat/timeline/deferred-model';
+import { flushDeferredPick } from '@/client/hooks/chat/timeline/deferred-model';
 import { readTextAttachments } from '@/shared/lib/chat/attachments';
 import { buildOptimisticRows, collectImages, streamMockFallback } from '@/client/hooks/chat/timeline/send-helpers';
 import { adoptPendingSession, markPendingSessionSent } from '@/client/hooks/chat/omp/pending-sessions';
+import { postModeCommand } from '@/client/hooks/chat/timeline/mode-post';
+import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 import { blockTuiOnlySend } from '@/client/hooks/chat/timeline/tui-only-guard';
 import { PHASE_VERBS } from '@/shared/lib/chat/timeline/tool-phrases';
 import { formatClock } from '@/shared/lib/format/time';
-
-export interface ChatTimelineSendDeps {
-  folders: any[];
-  selectedFolderId: number | null;
-  sessionId: string | null;
-  isOmpSession: boolean;
-  appSettings: Record<string, any>;
-  ompAgent: OmpAgentHandle;
-  setLocalMessages: Dispatch<SetStateAction<ChatMessageData[]>>;
-  persistMessages: (messages: any[]) => void;
-  setGenerating: (v: boolean, owned?: boolean) => void;
-  setGeneratingVerb: (v: string) => void;
-  /** Follow-gated scroll for stream chunks. */
-  scrollToBottom: (behavior?: ScrollBehavior) => void;
-  /** Explicit user-action scroll: re-engages follow mode (send/steer). */
-  jumpToBottom: (behavior?: ScrollBehavior) => void;
-  aiPlaceholderIdRef: { current: string | null };
-  adoptedSessionIdRef: { current: string | null };
-  optimisticUserIdRef: { current: string | null };
-  pendingUserDisplaysRef: { current: { sent: string; display: string }[] };
-  /** Adopt the spawned session's identity (model + the thinking level the first
-   *  prompt runs with) so the composer replacing the pending view shows it. */
-  seedSession: (seed: SessionSeed) => void;
-  /** Model/thinking picked in the composer before the session existed —
-   *  applied to the spawn command so the first prompt runs with them. */
-  pendingComposerModelRef: { current: { provider: string; modelId: string } | null };
-  pendingThinkingLevelRef: { current: string | null };
-  /** Global access-control mode (persisted user preference), read at send time
-   *  so the spawn-capable requests carry the latest value. */
-  accessModeRef: { current: ApprovalMode };
-  /** Plan/goal picks made on a pending `new-…` chat, applied to the spawn that
-   *  replaces it. Read here rather than from `modes` because the spawn happens
-   *  outside the render that produced the pick, and it is the FIRST moment a
-   *  child exists to carry the selection. */
-  spawnSelectionRef: { current: { plan: boolean; goal: boolean } | null };
-  /**
-   * The worktree the pending chat picked (`chat.spawnTarget`), read through a
-   * REF because the composer is remounted by a stretch, a tab switch and a
-   * reload while this handler is created once per deps record — the same reason
-   * the waiting pick keeps one.
-   */
-  spawnWorktreeRef: { current: string | null };
-  /** Picks the composer made while a turn was streaming. Pushed onto the
-   *  session here, immediately before the prompt they were meant for. */
-  deferredComposerPickRef: DeferredModelStore;
-  abortControllerRef: { current: AbortController | null };
-  setInputValue: (v: string) => void;
-  /** Surface a refused send. The optimistic bubbles are rolled back either
-   *  way; without this the operator's turn simply VANISHES, which is the
-   *  "prompt failed to send" report this exists to answer. */
-  reportActionError: (message: string) => void;
-  setSearchParams: (fn: (prev: URLSearchParams) => URLSearchParams, opts?: { replace?: boolean }) => void;
-}
-
-export interface ChatTimelineSendResult {
-  /** Steer the running turn; resolves with the outcome so a refusal can be
-   *  reported (the composer is cleared before the request goes out). */
-  steerOmpAgent: (text: string, attachments: Attachment[]) => Promise<PromptDispatchResult>;
-  /** `model` re-applies a queued item's snapshot before the prompt runs
-   *  (set_model / set_thinking_level RPC + prompt access mode). `busy: true`
-   *  means omp REFUSED the prompt mid-turn — the caller queues it instead. */
-  executeSend: (
-    text: string,
-    attachments: Attachment[],
-    options?: { model?: QueuedMessageModel | null },
-  ) => Promise<PromptDispatchResult>;
-}
 
 export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSendResult {
   const {
@@ -115,12 +50,56 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     deferredComposerPickRef,
     accessModeRef,
     spawnSelectionRef,
+    goalArmRef,
+    disarmGoal,
     spawnWorktreeRef,
     abortControllerRef,
     setInputValue,
     reportActionError,
     setSearchParams,
   } = deps;
+
+  /**
+   * Start the armed goal in `sessionId`, from the operator's own prompt.
+   *
+   * Awaited BEFORE the prompt leaves, so the order is a fact. Resolves TRUE when
+   * the goal consumed the prompt — the caller must then not send it again.
+   *
+   *  - `create` — the record is written with `startTurn: false`, and the prompt
+   *    that follows is the goal's first turn. The prompt is still sent.
+   *  - `guided` — there is no objective yet (the model writes it at the end of
+   *    the interview), so the operator's message IS the interview's opening
+   *    turn: the extension renders its kickoff prompt with their words folded
+   *    in (`<rough-goal>`) and runs that as turn one. The raw message is
+   *    therefore NOT sent separately — it is already inside that turn.
+   *
+   * A refusal is reported rather than swallowed, and the prompt still goes out
+   * for `create`: the goal the operator set is missing, but their words are not
+   * the goal's business. A refused `guided` cannot fall back the same way — the
+   * interview kickoff is the extension's text — so it resolves false and the
+   * caller sends the message as an ordinary prompt.
+   */
+  const startArmedGoal = useCallback(async (targetId: string, armed: ArmedGoal, promptText: string): Promise<boolean> => {
+    const posted = armed.kind === 'guided'
+      // `message` is the operator's prompt: the extension renders its kickoff
+      // with this as the visible content of turn one.
+      ? await postModeCommand(targetId, 'goal', 'guided', { message: promptText, rough: '' })
+      : await postModeCommand(targetId, 'goal', 'create', {
+        objective: armed.objective,
+        ...(armed.tokenBudget === undefined ? {} : { tokenBudget: armed.tokenBudget }),
+        ...(armed.maxTurns === undefined ? {} : { maxTurns: armed.maxTurns }),
+        // The prompt that follows IS the goal's first turn. Without this the
+        // child would open its own hidden turn and the operator's message would
+        // arrive as a second turn — or be refused as `agent_busy`.
+        startTurn: false,
+      });
+    if (!posted.ok) {
+      reportActionError(`The goal was not started: ${posted.error ?? 'the child refused it'}`);
+      return false;
+    }
+    disarmGoal();
+    return armed.kind === 'guided';
+  }, [disarmGoal, reportActionError]);
 
   // Reads text-file attachments and builds the prompt + image payload for an
   // omp delivery (mirror of executeSend's assembly block).
@@ -231,6 +210,13 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
       // Inline text-file contents into the prompt: the model sees the full file
       // content as fenced blocks, not just the filename.
       const promptText = await buildPromptText(text, textFiles);
+      // The armed goal is created HERE, at the fence of the prompt that will be
+      // its first turn — never earlier (nothing to act on) and never after the
+      // prompt (the goal would miss its opening turn). An armed INTERVIEW
+      // consumes this prompt as its kickoff, so nothing is sent after it.
+      const armed = goalArmRef.current;
+      const consumed = armed && sessionId ? await startArmedGoal(sessionId, armed, promptText) : false;
+      if (consumed) return { ok: true, busy: false };
       const result = await ompAgent.sendPrompt(promptText, images, { accessMode: effectiveAccessMode });
       if (!result.ok) {
         // Roll back the optimistic bubbles on a failed send.
@@ -265,11 +251,17 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
         // here, and cleared below on success: a selection that outlived its
         // spawn would re-apply to the NEXT new session the user opens.
         const spawnModes = spawnSelectionRef.current;
+        // An armed goal is recorded between the spawn and the prompt: the id
+        // exists by then, and the prompt below is the goal's first turn. Not
+        // after the prompt — a fast turn could finish before the record landed,
+        // leaving a goal with no turn to act on.
+        const armed = goalArmRef.current;
         const spawned = await ompAgent.sendNewPrompt(
           promptText,
           cwd,
           images,
           { model: composerModel, thinkingLevel: composerThinking, accessMode: accessModeRef.current, modes: spawnModes },
+          armed ? (id) => startArmedGoal(id, armed, promptText) : undefined,
         );
         if (spawned) {
           spawnSelectionRef.current = null;

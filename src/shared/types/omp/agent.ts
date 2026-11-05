@@ -122,6 +122,24 @@ export interface PromptDispatchResult {
   uncertain?: boolean;
 }
 
+/** The composer picks a spawn carries. Declared once so the sender, the handle
+ *  and the tests cannot drift. */
+export interface SpawnOptions {
+  model?: { provider: string; modelId: string } | null;
+  thinkingLevel?: string | null;
+  accessMode?: ApprovalMode;
+  /** Plan/goal picks made on a pending view. A brand-new session has no
+   *  transcript to restore them from, so they ride the spawn environment. */
+  modes?: { plan: boolean; goal: boolean } | null;
+}
+
+/** What a spawn answers: omp's own session id, and the model the child
+ *  resolved (which can differ from the one asked for). */
+export interface SpawnedSession {
+  sessionId: string;
+  model: { provider: string; modelId: string } | null;
+}
+
 /** Command surface returned by useOmpAgent — the live omp session handle the
  *  chat timeline drives. */
 export interface OmpAgentHandle extends OmpAgentState {
@@ -136,15 +154,12 @@ export interface OmpAgentHandle extends OmpAgentState {
     message: string,
     cwd: string,
     images?: AgentImage[],
-    composerOptions?: {
-      model?: { provider: string; modelId: string } | null;
-      thinkingLevel?: string | null;
-      accessMode?: ApprovalMode;
-      /** Plan/goal picks made on a pending view. A brand-new session has no
-       *  transcript to restore them from, so they ride the spawn environment. */
-      modes?: { plan: boolean; goal: boolean } | null;
-    },
-  ) => Promise<{ sessionId: string; model: { provider: string; modelId: string } | null } | null>;
+    composerOptions?: SpawnOptions,
+    /** Runs after the id exists and before the prompt is dispatched — where an
+     *  armed goal is started, so the prompt IS its first turn. Resolves true
+     *  when it consumed the prompt (an interview renders its own). */
+    beforePrompt?: (sessionId: string) => Promise<boolean>,
+  ) => Promise<SpawnedSession | null>;
   /** Steer the running agent: deliver the message INTO the turn in flight
    *  (omp's `steer` RPC). The run continues; the model sees the message inside
    *  the same turn and answers it there.

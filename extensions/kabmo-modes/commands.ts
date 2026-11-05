@@ -168,7 +168,7 @@ export async function dispatchGoal(
 
   switch (action) {
     case 'create': {
-      const { objective, tokenBudget, maxTurns } = parseGoalArgs(rest);
+      const { objective, tokenBudget, maxTurns, startTurn } = parseGoalArgs(rest);
       if (!objective) {
         emitModeError(ctx, 'goal', 'an objective is required');
         return;
@@ -179,7 +179,10 @@ export async function dispatchGoal(
       // second call the goal went live with an idle child — measured on a real
       // session, where the toggle read `goalLive` and nothing ever ran. From
       // there Kabmo drives: it audits this turn and calls `continue`.
-      startGoalTurn(api, objective);
+      // `startTurn: false` means the operator's own prompt is about to become
+      // this goal's first turn (the aim-and-send path), so opening one here
+      // would either run twice or be refused as `agent_busy`.
+      if (startTurn !== false) await startGoalTurn(session, objective);
       emit(ctx, KABMO_GOAL_STATE_MARKER, goalStateRecord(session));
       return;
     }
@@ -200,7 +203,18 @@ export async function dispatchGoal(
       // The interview ends with the MODEL calling `goal({op:"create"})`, which
       // is why the tool had to be enabled above — the `goal_updated` it emits
       // is what turns the toggle on.
-      startGuidedGoal(api, rest.trim());
+      //
+      // `message` is the operator's own prompt (the armed path: their first
+      // message IS the interview's opening turn), `rough` the half-written idea
+      // from the modal. The message leads when both are present.
+      const payload = parsePayload(rest);
+      const message = typeof payload.message === 'string' ? payload.message.trim() : '';
+      const rough = typeof payload.rough === 'string' ? payload.rough.trim() : '';
+      if (!message && !rough) {
+        emitModeError(ctx, 'goal', 'an interview needs a message to start from');
+        return;
+      }
+      await startGuidedGoal(session, message || rough, rough);
       return;
     }
     case 'pause':

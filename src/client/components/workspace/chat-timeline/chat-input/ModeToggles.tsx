@@ -29,10 +29,13 @@
 
 import { ClipboardList, Target } from 'lucide-preact';
 import type { GoalRecord } from '@/shared/lib/omp/mode/types';
+import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 
 export interface ModeTogglesProps {
   plan: boolean;
   goal: boolean;
+  /** A goal set but not started: the next message is its first turn. */
+  goalArm: ArmedGoal | null;
   goalRecord: GoalRecord | null;
   /** A mode command is in flight; the buttons stay responsive but read as
    *  pending so a slow child cannot look like a dead button. */
@@ -60,6 +63,7 @@ function goalTitle(goal: boolean, record: GoalRecord | null): string {
 export function ModeToggles({
   plan,
   goal,
+  goalArm,
   goalRecord,
   pending,
   onTogglePlan,
@@ -84,14 +88,16 @@ export function ModeToggles({
         </button>
       )}
 
+      {/* An ARMED goal is not a running one: the button names it as waiting,
+          so "on" never claims work that has not started. */}
       <button
         type="button"
         onClick={onOpenGoal}
-        aria-pressed={goal}
-        aria-label={goal ? 'Manage the active goal' : 'Set a goal'}
-        title={goalTitle(goal, goalRecord)}
+        aria-pressed={goal || Boolean(goalArm)}
+        aria-label={goalArm ? 'Edit the armed goal' : goal ? 'Manage the active goal' : 'Set a goal'}
+        title={goalArm ? 'Goal armed: it starts with your next message' : goalTitle(goal, goalRecord)}
         className={`tap-chip flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors cursor-pointer ${
-          goal ? 'bg-ink text-canvas' : 'text-muted hover:bg-ink/5'
+          goal ? 'bg-ink text-canvas' : goalArm ? 'border border-dashed border-ink/30 text-muted' : 'text-muted hover:bg-ink/5'
         } ${pending ? 'opacity-60' : ''}`}
       >
         <Target size={12} className={goal ? '' : 'text-ink/60'} />

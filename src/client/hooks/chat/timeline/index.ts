@@ -39,10 +39,6 @@ export function useChatTimeline({
   reportActionError = (message: string) => console.error(message),
 }: UseChatTimelineOptions = {}) {
   const { sessionId, folderId, selectedFolderId, selectContextFolder, setSearchParams } = useTimelineScope();
-  // Plan/goal toggles plus the plan-review surface. PER SESSION, unlike the
-  // access mode: they describe what this conversation is doing, and one hook
-  // returns both halves because a mode command can produce a proposal.
-  const { modes, planReview } = useComposerModes(sessionId);
 
   // Ref mirror of loadOlder so the scroll handler can call the latest one
   // without re-creating it (useSessionLoad is defined below the scroll hook).
@@ -217,6 +213,11 @@ export function useChatTimeline({
   }), activityRef, localMessagesRef);
   const spawn = useSpawnTarget(sessionId);
 
+  // Plan/goal toggles plus the plan-review surface. PER SESSION, unlike the
+  // access mode: they describe what this conversation is doing, and a mode
+  // command can produce a proposal.
+  const { modes, planReview } = useComposerModes(sessionId);
+
   const { steerOmpAgent, executeSend } = useChatTimelineSend({
     folders,
     selectedFolderId,
@@ -240,6 +241,8 @@ export function useChatTimeline({
     deferredComposerPickRef,
     accessModeRef,
     spawnSelectionRef: modes.spawnSelectionRef,
+    goalArmRef: modes.goalArmRef,
+    disarmGoal: modes.disarmGoal,
     spawnWorktreeRef: spawn.worktreePathRef,
     abortControllerRef,
     setInputValue,

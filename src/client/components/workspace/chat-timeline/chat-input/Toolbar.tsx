@@ -143,6 +143,7 @@ export function ComposerToolbar({
             <ModeToggles
               plan={modes.plan}
               goal={modes.goalOpen}
+              goalArm={modes.goalArm}
               goalRecord={modes.goalRecord}
               pending={modes.pending}
               onTogglePlan={modes.onTogglePlan}

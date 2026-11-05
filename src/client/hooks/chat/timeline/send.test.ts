@@ -13,6 +13,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import type { ChatMessageData, OmpAgentHandle } from '@/shared/types';
+import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 import {
   useChatTimelineSend,
   type ChatTimelineSendDeps,
@@ -125,7 +126,10 @@ interface SendHarness {
   generating: boolean[];
   drafts: string[];
   params: string[];
+  reported: string[];
   seeds: SessionSeed[];
+  /** The armed goal, so a case can arm one and read what the send consumed. */
+  goalArmRef: { current: ArmedGoal | null };
   spawnSelectionRef: { current: { plan: boolean; goal: boolean } | null };
   adoptedSessionIdRef: { current: string | null };
 }
@@ -150,7 +154,12 @@ function makeSendHarness(options: {
   const drafts: string[] = [];
   const params: string[] = [];
   const seeds: SessionSeed[] = [];
+  /** Refusals the send reported (`reportActionError`). */
+  const reported: string[] = [];
   const spawnSelectionRef = { current: { plan: true, goal: false } };
+  /** No goal armed unless a case arms one. */
+  const goalArmRef: { current: ArmedGoal | null } = { current: null };
+  const disarmGoal = () => { goalArmRef.current = null; };
   const spawnWorktreeRef = { current: null as string | null };
   const adoptedSessionIdRef = { current: null };
   const deps: ChatTimelineSendDeps = {
@@ -182,12 +191,16 @@ function makeSendHarness(options: {
     deferredComposerPickRef: options.deferredPick ?? { current: null },
     accessModeRef: { current: 'always-ask' },
     spawnSelectionRef,
+    goalArmRef,
+    disarmGoal,
     spawnWorktreeRef,
     abortControllerRef: { current: null },
     setInputValue: (v) => {
       drafts.push(v);
     },
-    reportActionError: () => {},
+    reportActionError: (message: string) => {
+      reported.push(message);
+    },
     setSearchParams: (fn) => {
       params.push(fn(new URLSearchParams('sessionId=new-1')).toString());
     },
@@ -208,8 +221,10 @@ function makeSendHarness(options: {
     generating,
     drafts,
     params,
+    reported,
     seeds,
     spawnSelectionRef,
+    goalArmRef,
     adoptedSessionIdRef,
   };
 }
@@ -232,3 +247,4 @@ describe('steerOmpAgent', () => {
     expect(h1.drafts).toEqual([]);
   });
 });
+

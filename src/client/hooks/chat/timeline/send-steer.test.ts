@@ -12,6 +12,7 @@ import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import type { ChatMessageData, OmpAgentHandle } from '@/shared/types';
+import type { ArmedGoal } from '@/shared/lib/omp/mode/actions';
 import {
   useChatTimelineSend,
   type ChatTimelineSendDeps,
@@ -151,6 +152,9 @@ function makeSendHarness(options: {
   const params: string[] = [];
   const seeds: SessionSeed[] = [];
   const spawnSelectionRef = { current: { plan: true, goal: false } };
+  /** No goal armed unless a case arms one. */
+  const goalArmRef: { current: ArmedGoal | null } = { current: null };
+  const disarmGoal = () => { goalArmRef.current = null; };
   const spawnWorktreeRef = { current: null as string | null };
   const adoptedSessionIdRef = { current: null };
   const deps: ChatTimelineSendDeps = {
@@ -182,6 +186,8 @@ function makeSendHarness(options: {
     deferredComposerPickRef: options.deferredPick ?? { current: null },
     accessModeRef: { current: 'always-ask' },
     spawnSelectionRef,
+    goalArmRef,
+    disarmGoal,
     spawnWorktreeRef,
     abortControllerRef: { current: null },
     setInputValue: (v) => {

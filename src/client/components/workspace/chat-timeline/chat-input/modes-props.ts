@@ -13,7 +13,8 @@
  */
 
 import type { GoalContinuation, GoalRecord } from '@/shared/lib/omp/mode/types';
-import type { GoalAction } from '@/client/hooks/chat/timeline/modes';
+import type { ArmedGoal, GoalAction } from '@/shared/lib/omp/mode/actions';
+import type { GoalActionResult } from '@/client/hooks/chat/timeline/goal-command';
 
 export interface ComposerModes {
   plan: boolean;
@@ -27,6 +28,14 @@ export interface ComposerModes {
   goalContinuation: GoalContinuation | null;
   /** The loop is deciding whether to open another automatic turn. */
   goalEvaluating: boolean;
+  /**
+   * A goal the operator set but has not started. It is NOT `goalOpen`: no child
+   * record exists until the next prompt creates it, so this is what the strip
+   * and the button read while the goal waits.
+   */
+  goalArm: ArmedGoal | null;
+  /** Cancel the armed goal. */
+  disarmGoal: () => void;
   pending: boolean;
   /** Plan is hidden while Goal is on: omp refuses to enter one mode while the
    *  other is active, so offering both would present a button whose only
@@ -44,6 +53,9 @@ export interface ComposerModes {
   onTogglePlan: (enabled: boolean) => void;
   /** The Goal modal's outcome. Opening the modal is the TOOLBAR's business
    *  (the modal itself lives in `ChatInput`), so that handler is passed
-   *  separately and does not belong to the shared mode shape. */
-  onGoalAction: (action: GoalAction) => void;
+   *  separately and does not belong to the shared mode shape.
+   *
+   *  Resolves with the outcome: the modal closes on `ok` and keeps the form
+   *  otherwise, so a refusal can be read and retried. */
+  onGoalAction: (action: GoalAction) => Promise<GoalActionResult>;
 }

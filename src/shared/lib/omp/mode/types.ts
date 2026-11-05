@@ -141,6 +141,18 @@ export const KABMO_MODES_ENV = 'KABMO_MODES';
 /** Kabmo-owned slash command the extension registers. */
 export const KABMO_MODE_COMMAND = 'kabmo-mode';
 
+/** The body `type` a mode request travels as, from the console to
+ *  `POST /api/agent/:id`. Distinct from the slash command above: the type
+ *  selects the route's branch, the command names what the child runs. */
+export const MODE_COMMAND_TYPE = 'kabmo_mode';
+
+/** The pre-rename wire type. Still ACCEPTED, never sent: a browser tab this
+ *  server does not control keeps posting it until the page reloads, and a
+ *  rejected request there reads as a dead Plan/Goal button. External
+ *  compatibility requirement, so it is a permanent part of the read contract
+ *  rather than a pending deletion. */
+export const LEGACY_MODE_COMMAND_TYPE = 'chamber_mode';
+
 /**
  * The pre-rename names, still READ and never written.
  *

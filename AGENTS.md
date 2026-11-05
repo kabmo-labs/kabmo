@@ -76,6 +76,13 @@ Plus, before declaring anything done:
   hides the real problem).
 - **Every right-panel view is a plugin**, built-in or installed, resolved through one catalog. A view
   cannot be a table in one layout and a fetch in another.
+- **A `fixed` overlay the composer mounts PORTALS to `<body>`.** The composer card can become a
+  containing block for `position: fixed` through any of `backdrop-filter` (its own `glass` style), a
+  `transform`, or `contain: layout` — and then `inset-0` sizes the overlay to the CARD, so a dialog
+  opens in front of the composer instead of the middle of the screen. Measured in Chromium at
+  1440x900: re-parenting the Goal dialog's scrim into `[data-composer-style]` took it from
+  `1440x900` at `(0,0)` to `710x164` at the card's box. Use `createPortal(…, document.body)` and
+  guard it with a tree assertion (`composer-portal.test.tsx`), never with a visual claim.
 - **A fact is stated once.** Layout math, the panel order, header control order, the theme writer,
   the scrollbar reveal, the wordmark and every other shared fact has exactly one module; a second
   copy drifts silently and is how a layout looks right in one place and wrong in another.

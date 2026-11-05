@@ -17,6 +17,7 @@
  * is its other trigger.
  */
 
+import { ArmedGoalStrip } from '@/client/components/workspace/chat-timeline/chat-input/ArmedGoalStrip';
 import { GoalBanner } from '@/client/components/workspace/chat-timeline/chat-input/GoalBanner';
 import { GoalModal } from '@/client/components/workspace/chat-timeline/chat-input/GoalModal';
 import type { ComposerModes } from '@/client/components/workspace/chat-timeline/chat-input/modes-props';
@@ -50,11 +51,19 @@ export function GoalSurfaces({ modes, running, open, defaultBudget, onOpen, onCl
         />
       )}
 
+      {/* An armed goal has no record yet, so the banner cannot draw it; the
+          button alone would read "on" over nothing running. */}
+      {modes.goalArm && (
+        <ArmedGoalStrip goal={modes.goalArm} onDisarm={modes.disarmGoal} />
+      )}
+
       <GoalModal
         open={open}
         // Manage view whenever a goal the chat still owns exists — the create
         // form would otherwise offer to start a second goal over a PAUSED one,
-        // with Resume/Drop/budget unreachable.
+        // with Resume/Drop/budget unreachable. An ARMED goal shows the create
+        // form again: pressing Goal is how it is re-armed (its objective and
+        // limits replace the waiting one).
         goal={modes.goalOpen}
         goalRecord={modes.goalRecord}
         defaultBudget={defaultBudget}
