@@ -234,6 +234,21 @@
    * to 2.88:1 while 92% holds 4.59:1, because bright code behind a menu is what
    * a dark theme actually has under it. */
   --glass-popover: color-mix(in srgb, var(--theme-paper) 84%, transparent);
+  /* The fill for a popover that CANNOT blur: one nested inside another frosted
+   * surface, which is a backdrop root (see the rule near the bottom of this
+   * file). Declared here, surface-independent, because the composer's `glass`
+   * style is offered in the classic look too.
+   *
+   * **OPAQUE, and the number is a measurement rather than a preference.** With
+   * no blur the panel is a straight alpha over its backdrop, so every percent of
+   * transparency is readable text behind a list of model names. Measured with
+   * ghost text painted exactly behind the panel: 84% left it at `1.47:1`, 92%
+   * `1.21:1`, 96% `1.10:1` — all still legible in the screenshot. This is the
+   * file's own rule ("a raised surface that is READ keeps its own opaque
+   * `bg-paper`"), and a dropdown is the most-read surface there is. The material
+   * still reads as glass through the sheen, the rim and the bloom, which is
+   * where a pane is legible anyway. */
+  --glass-popover-nested: var(--theme-paper);
   /* A STUCK sticky header's fill — see `.glass-sticky[data-stuck]`.
    *
    * OPAQUE, and mixed toward the CANVAS, not transparent. Two measured reasons.
@@ -712,6 +727,39 @@
   background-color: var(--glass-popover);
 }
 
+/*
+ * A popover NESTED in another frosted surface cannot lean on its blur, so its
+ * fill has to carry the legibility by itself.
+ *
+ * `backdrop-filter` makes an element a BACKDROP ROOT: a descendant's filter
+ * samples that ancestor's painted output, not the page. The composer card is
+ * `[data-composer-style="glass"]`, whose own `backdrop-filter:
+ * var(--glass-card-filter)` IS the material — so the model dropdown (with the
+ * thinking and access panels and the specs card beside it) ran a `blur(24px)`
+ * that sampled nothing. Measured on the real dropdown over 6px black/white
+ * stripes: inside the card the stripes stayed at min/max `0/255` (variance
+ * 16216), while the same panel portalled to `<body>` read `221/224` (variance
+ * 0.7). The panel was therefore a straight alpha over RAW content, and a
+ * transcript showing through measured `1.47:1` — reported as the composer's
+ * model dropdown being "terlalu transparan sehingga teks tidak terlihat ketika
+ * di belakannya ada teks juga". Raising the tint alone did not fix it: 92%
+ * measured `1.21:1` and 96% `1.10:1`, both still readable in a screenshot.
+ *
+ * So this tier takes the file's own answer for a surface that is READ: the
+ * palette's opaque paper. The sheen, the rim and the bloom still paint at full
+ * strength, so it still reads as glass at its edges — which is where a pane is
+ * legible anyway.
+ *
+ * The scope is the composer card ONLY. A popover that hangs in `<body>` (every
+ * `AnchoredMenu`, the settings menus) keeps `--glass-popover`: there the blur IS
+ * alive, and 84% measured free. A dialog is not the same case either — its own
+ * 96% tint and the veil already flatten what it covers, verified with the same
+ * stripe probe.
+ */
+[data-surface="glass"] [data-composer-style="glass"] .glass-popover {
+  background-color: var(--glass-popover-nested);
+}
+
 /* A browser that cannot blur, or a user who asked for less transparency: the
  * opaque palette. `--glass-panel` IS the plane's fill, so overriding it here
  * also fixes the sheen's contrast, which is why the sheen is switched off too.
@@ -741,6 +789,7 @@
     --glass-chrome: var(--theme-paper);
     --glass-overlay: var(--theme-paper);
     --glass-popover: var(--theme-paper);
+    --glass-popover-nested: var(--theme-paper);
     --glass-card: var(--theme-paper);
     --glass-stuck: var(--theme-paper);
     --glass-bloom: none;
@@ -769,6 +818,7 @@
     --glass-chrome: var(--theme-paper);
     --glass-overlay: var(--theme-paper);
     --glass-popover: var(--theme-paper);
+    --glass-popover-nested: var(--theme-paper);
     --glass-card: var(--theme-paper);
     --glass-stuck: var(--theme-paper);
     --glass-bloom: none;

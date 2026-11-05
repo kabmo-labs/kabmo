@@ -129,6 +129,59 @@ describe('glass popover material', () => {
     expect(menu).toContain('glass-popover fixed');
     expect(list).toContain('glass-popover fixed');
   });
+
+  /**
+   * The `/` (commands and skills) and `@` (files and agents) lists are the
+   * composer's own popovers, so the nested tier has to reach them: they render
+   * INSIDE `[data-composer-style="glass"]`, exactly where a blur is dead.
+   * Verified live by painting ghost text behind the open list: at 84% the rows
+   * and the ghost text interleaved, and the nested tier erased it.
+   *
+   * The picker is a plain div, not an `AnchoredMenu`, so the tier is a literal in
+   * its className — this pins it, because the class is what makes the list a
+   * popover at all in the glass surface.
+   */
+  test('the composer picker carries the popover tier', async () => {
+    const picker = await read('./components/common/ComposerPicker.tsx');
+    expect(picker).toContain('glass-popover');
+  });
+
+  /**
+   * A popover INSIDE another frosted surface has no working blur: `backdrop-filter`
+   * makes its host a backdrop root, so the descendant's filter samples that host
+   * rather than the page. Measured on the composer's model dropdown over 6px
+   * black/white stripes — min/max `0/255` (variance 16216) nested in the glass
+   * card against `221/224` (variance 0.7) portalled to `<body>`; the text behind
+   * it measured `1.47:1` at the popover tint and was still readable at 96%.
+   *
+   * The contract is therefore: the NESTED tier is OPAQUE — the file's own rule for
+   * a surface that is read — and the fill is scoped to the composer card, so a
+   * body-portalled menu keeps its better-looking 84% with a live blur.
+   */
+  test('a popover nested in a frosted surface is opaque, and only there', async () => {
+    const glass = await read('./glass.css');
+    const surface = ruleBody(glass, '[data-surface="glass"]');
+    const nested = ruleBody(glass, '[data-surface="glass"] [data-composer-style="glass"] .glass-popover');
+
+    // The rule reads a token, not a literal: a second recipe for the material is
+    // the defect every assertion in this file exists to prevent.
+    expect(nested).toContain('background-color: var(--glass-popover-nested)');
+    // Opaque paper, because no blur hides the backdrop and every percent of
+    // transparency is legible text behind a list of model names.
+    expect(surface).toContain('--glass-popover-nested: var(--theme-paper);');
+    // The blurred tier stays translucent — a body-portalled menu still blurs.
+    expect(surface).toContain('--glass-popover: color-mix(');
+
+    // A browser without `backdrop-filter`, or a reduced-transparency request,
+    // resolves every tint to solid paper — the nested token has to be in BOTH
+    // blocks or it keeps compositing a translucent panel with nothing behind it.
+    for (const block of [
+      glass.slice(glass.indexOf('@supports not ('), glass.indexOf('@media (prefers-reduced-transparency')),
+      glass.slice(glass.indexOf('@media (prefers-reduced-transparency')),
+    ]) {
+      expect(block).toContain('--glass-popover-nested: var(--theme-paper);');
+    }
+  });
 });
 
 /**
