@@ -112,7 +112,7 @@ export function WaitingDependencyPicker({
         title={unavailable && !value ? 'No session is running right now' : 'Wait for another session to finish'}
         aria-label={value ? `Waiting for ${value.title}` : 'Wait for session'}
         aria-expanded={open}
-        className={`group flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium transition-all outline-none focus-visible:bg-ink/5 cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`tap-chip group flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium transition-all focus-visible:bg-ink/5 cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-50 ${
           value ? 'bg-ink/10 text-ink' : 'text-ink/75 hover:text-ink hover:bg-ink/5'
         }`}
       >
@@ -162,7 +162,7 @@ export function WaitingDependencyPicker({
                       setOpen(false);
                     }}
                     className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition-colors cursor-pointer ${
-                      selected ? 'bg-ink/10 text-ink font-semibold' : 'text-ink/80 hover:bg-ink/5 hover:text-ink'
+                      selected ? 'bg-ink/10 text-ink font-semibold' : 'text-muted hover:bg-ink/5 hover:text-ink'
                     }`}
                   >
                     <span className="flex items-center gap-2 truncate pr-2">

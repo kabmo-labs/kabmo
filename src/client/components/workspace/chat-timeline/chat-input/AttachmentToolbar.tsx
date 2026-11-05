@@ -52,7 +52,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
       <div className="composer-attach-row flex items-center flex-wrap gap-1.5 px-3 py-2 text-ink/60">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center justify-center hover:bg-ink/5 p-1 rounded transition-colors text-ink/60 hover:text-ink shrink-0"
+          className="tap-target flex items-center justify-center hover:bg-ink/5 p-1 rounded transition-colors text-ink/60 hover:text-ink shrink-0"
           title="Attach file or image"
         >
           <Paperclip size={14} />
@@ -83,7 +83,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
                 <FileIcon size={12} />
               </div>
             )}
-            <span className="truncate max-w-[120px] font-mono text-[10px] text-ink/80">{attachmentName(att)}</span>
+            <span className="truncate max-w-[120px] font-mono text-[10px] text-muted">{attachmentName(att)}</span>
             <button
               onClick={() => onRemove(att.id)}
               className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 text-ink/40 hover:text-error hover:bg-error/10 rounded transition-colors"
@@ -104,6 +104,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
             <ModeToggles
               plan={modes.plan}
               goal={modes.goalOpen}
+              goalArm={modes.goalArm}
               goalRecord={modes.goalRecord}
               pending={modes.pending}
               onTogglePlan={modes.onTogglePlan}
@@ -127,7 +128,7 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
             // as a tool card whose title is "composer".
             aria-label={expanded ? 'Restore composer' : 'Maximize composer'}
             title={expanded ? 'Restore composer' : 'Maximize composer'}
-            className={`${modes && onOpenGoal ? '' : 'ml-auto '}flex items-center justify-center p-1 rounded transition-colors shrink-0 ${
+            className={`tap-target ${modes && onOpenGoal ? '' : 'ml-auto '}flex items-center justify-center p-1 rounded transition-colors shrink-0 ${
               expanded ? 'bg-ink/10 text-ink' : 'text-ink/60 hover:bg-ink/5 hover:text-ink'
             }`}
           >

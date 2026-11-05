@@ -26,7 +26,7 @@ export function AccessDropdown({ value, onSelect }: AccessDropdownProps) {
       <button
         type="button"
         onClick={() => setShowAccess(!showAccess)}
-        className="flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80"
+        className="tap-chip flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted"
       >
         <LockKeyhole size={12} className="text-ink/60" />
         <span className="hidden lg:inline">{ACCESS_LEVEL_LABELS[value]}</span>

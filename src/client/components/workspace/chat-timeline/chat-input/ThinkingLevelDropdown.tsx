@@ -23,7 +23,7 @@ export function ThinkingLevelDropdown({ thinkingLevels, currentThinking, onSelec
       <button
         onClick={() => thinkingLevels.length > 0 && setShowThinking(!showThinking)}
         disabled={thinkingLevels.length === 0}
-        className="flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="tap-chip flex items-center space-x-1 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted disabled:opacity-40 disabled:cursor-not-allowed"
         title={thinkingLevels.length === 0 ? 'This model exposes no thinking levels' : `Thinking Level: ${currentThinking}`}
       >
         <Brain size={12} className="text-ink/60" />

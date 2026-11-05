@@ -249,7 +249,7 @@ export function ModelDropdown({
           setHoveredRow(null);
           setFocusedIndex(-1);
         }}
-        className="tap-chip flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-ink/80 font-medium cursor-pointer min-w-0 max-w-full"
+        className="tap-chip flex items-center space-x-1.5 hover:bg-ink/5 px-2 py-1 rounded transition-colors text-xs text-muted font-medium cursor-pointer min-w-0 max-w-full"
         title={selectedModel ? `${selectedModel.provider} • ${selectedModel.name}` : 'Select a model'}
       >
         {selectedModel ? (
