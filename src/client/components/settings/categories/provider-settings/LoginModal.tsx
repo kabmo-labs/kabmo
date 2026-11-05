@@ -190,7 +190,7 @@ export function LoginModal({ isOpen, provider, onClose, onAuthenticated }: Login
         )}
 
         {state.status === 'success' && (
-          <div className="flex items-center gap-2 text-xs text-emerald-500 font-medium">
+          <div className="flex items-center gap-2 text-xs text-success font-medium">
             <CheckCircle2 size={14} /> Signed in. omp stored the credential.
           </div>
         )}

@@ -155,7 +155,7 @@ export function EditorToolbar({
       aria-label={saveTitle}
     >
       {saveStatus === 'saving' ? (
-        <Save size={14} className="text-amber-500 animate-pulse" />
+        <Save size={14} className="text-warning animate-pulse" />
       ) : saveStatus === 'saved' ? (
         <Check size={14} className="text-success" />
       ) : saveStatus === 'error' ? (

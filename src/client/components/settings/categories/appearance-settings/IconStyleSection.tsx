@@ -17,7 +17,7 @@
  * components: those paint from the document attribute, so both cards would show
  * the user's current choice and neither would preview its own. The colour values
  * come from the SAME tables and formula the stylesheet uses (`ICON_TINT_TOKENS`,
- * `iconHueColor`, `BRAND_COLORS`, `FILE_BRAND_COLORS`), so a preview cannot
+ * `iconTone`, `BRAND_COLORS`, `FILE_BRAND_COLORS`), so a preview cannot
  * promise a look the shell does not ship.
  */
 
@@ -32,7 +32,7 @@ import {
 } from '@/shared/lib/theme/icon-style';
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
-import { ICON_TINT_TOKENS, iconHue, iconHueColor, iconTintRole } from '@/shared/lib/icons/tint';
+import { ICON_TINT_TOKENS, iconHue, iconTintRole, iconTone } from '@/shared/lib/icons/tint';
 
 interface IconStyleSectionProps {
   settings: SettingsState;
@@ -44,12 +44,12 @@ function GlyphSample({ name, Icon, colored }: { name: string; Icon: typeof Check
   const role = iconTintRole(name);
   // The role wins over the hue, exactly as the stylesheet orders its rules.
   // Same formula as the stylesheet's light paint, through the same helper: the
-  // sample reads the hue table and the ONE saturation/lightness pair.
+  // sample reads the hue table and the solved light tone.
   const color = !colored
     ? undefined
     : role
       ? ICON_TINT_TOKENS[role]
-      : iconHueColor(iconHue(name), 'light');
+      : iconTone(iconHue(name), 'light');
   return <Icon size={13} strokeWidth={2} style={color ? { color } : undefined} aria-hidden="true" />;
 }
 

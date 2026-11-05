@@ -48,6 +48,7 @@
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { panelMarkRules } from '@/shared/lib/icons/icon-paint-panel';
 import { inkWeightRules } from '@/shared/lib/icons/icon-paint-weight';
+import { authorColourRules, solidSignalFillRules } from '@/shared/lib/icons/icon-paint-authority';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import {
   DEFAULT_ICON_HUE,
@@ -81,7 +82,12 @@ function hueRules(): string[] {
     `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: ${iconHuePaint('dark')}; }`,
   ];
   for (const { className, hue } of ICON_HUE_ROWS) {
-    rules.push(`:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${iconTone(hue)}; }`);
+    // BOTH variants on one element, so the variant rule below only has to pick
+    // between two custom properties. Stamping `--icon-tone` alone is what left
+    // dark on a single `hsl()` pair for every hue.
+    rules.push(
+      `:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${iconTone(hue, 'light')}; --icon-tone-dark: ${iconTone(hue, 'dark')}; }`,
+    );
   }
   return rules;
 }
@@ -196,7 +202,14 @@ function toolCardRules(): string[] {
  */
 function projectAccentRules(): string[] {
   return [
+    // The pair, not one value: every shipped preset is chosen to look good as a
+    // SWATCH, and measured as a glyph nine of them fall below the 3:1 floor on
+    // light paper — `#a3e635` reads 1.15:1, `#fbbf24` 1.27:1. The component
+    // derives both values through `legiblePair`, the same rule every brand mark
+    // uses, so the icon is the user's colour at a legal lightness while the
+    // swatch keeps the exact hex they picked.
     ':root[data-icon-style="color"] .project-accent-mark { color: var(--project-accent); }',
+    ':root[data-icon-style="color"][data-theme-variant="dark"] .project-accent-mark { color: var(--project-accent-dark, var(--project-accent)); }',
   ];
 }
 
@@ -270,6 +283,9 @@ export function iconPaintStyleSheet(): string {
     '@layer utilities {',
     ...hueRules(),
     ...signalRules(),
+    // An author's own signal class is a decision, so it is stated after the
+    // table that would otherwise guess one for the same glyph.
+    ...authorColourRules(),
     ...pluginMarkRules(),
     // Every `--icon-color` source is stated above this line; the paint and the
     // weight that SCALES it are stated below, in that order.
@@ -279,6 +295,7 @@ export function iconPaintStyleSheet(): string {
     // Last: same specificity as everything above, so order is what makes an
     // inverted surface win over the paper-tuned paint.
     ...invertedSurfaceRules(),
+    ...solidSignalFillRules(),
     ...projectAccentRules(),
     ...monochromeRules(),
     ...toolCardRules(),

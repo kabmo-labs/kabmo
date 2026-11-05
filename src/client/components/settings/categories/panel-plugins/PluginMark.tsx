@@ -73,9 +73,10 @@ export function PluginMark({ name, iconUrl, color, size = 16, tile = false }: Pl
   const hueValue = hashHue(name);
   const hue = {
     '--icon-hue': String(hueValue),
-    // The LIGHT tone for that hue, from the same solved table the glyph rows
-    // emit: a plugin's hue is runtime-only, so it cannot be a generated CSS row.
-    '--icon-tone': iconTone(hueValue),
+    // BOTH solved tones for that hue, from the same table the glyph rows emit: a
+    // plugin's hue is runtime-only, so it cannot be a generated CSS row.
+    '--icon-tone': iconTone(hueValue, 'light'),
+    '--icon-tone-dark': iconTone(hueValue, 'dark'),
     ...(declared ? { '--plugin-declared-light': declared.light } : {}),
     ...(declared?.dark ? { '--plugin-declared-dark': declared.dark } : {}),
   } as Record<string, string>;

@@ -11,12 +11,17 @@
  * paint a palette token, because a trash can has to be the theme's error colour
  * and not whatever the hash said.
  *
- * `ICON_TONES` is the LIGHT paint for each wheel hue, solved by
- * `shared/lib/icons/icon-tone.ts` against every light palette this build ships.
- * It is a table rather than a call because the solve needs the palette catalog,
- * which the client would otherwise carry — and 11k contrast checks — only to
- * colour a toolbar glyph. Dark keeps its single `hsl()` pair: it already reads
- * bright, and one pair is enough when the budget is not spent.
+ * `ICON_TONES` and `ICON_TONES_DARK` are the paints for each wheel hue, solved
+ * by `shared/lib/icons/icon-tone.ts` against every palette of that variant this
+ * build ships. They are tables rather than calls because the solve needs the
+ * palette catalog, which the client would otherwise carry — and 11k contrast
+ * checks — only to colour a toolbar glyph.
+ *
+ * Both variants are solved, and that is the fix for the mode's other half: dark
+ * used to be one `hsl(H 65% 70%)` for every hue, which spread its lightness
+ * over 0.25 and left the muddiest row at a quarter of the vividest row's
+ * chroma. Solved per hue inside a pinned band, both variants now land in a
+ * narrow lightness spread, so a glyph is the same colour on either theme.
  *
  * Regenerate with `bun run icons:tints` after adding an icon OR a palette. The
  * suite fails when this table and the imports disagree (`icons:tints:check`),
@@ -274,4 +279,44 @@ export const ICON_TONES: Readonly<Record<number, string>> = {
   330: '#d04188',
   340: '#d63f70',
   350: '#da3f58',
+};
+
+/** The dark paint for each wheel hue: the same hue, solved for ink surfaces. */
+export const ICON_TONES_DARK: Readonly<Record<number, string>> = {
+  0: '#ff7d7f',
+  10: '#ff8069',
+  20: '#ff843d',
+  30: '#ff9e07',
+  40: '#f7b900',
+  50: '#e1c400',
+  60: '#cfcc00',
+  70: '#bed200',
+  80: '#abd82f',
+  90: '#99dc46',
+  100: '#88df57',
+  110: '#79e164',
+  120: '#6ce36e',
+  130: '#5be479',
+  140: '#3ee687',
+  150: '#00e79c',
+  160: '#00e5b4',
+  170: '#00e2cc',
+  180: '#00e0e1',
+  190: '#00dcf8',
+  200: '#09c1ff',
+  210: '#5cb1ff',
+  220: '#7fa9ff',
+  230: '#91a3ff',
+  240: '#9d9fff',
+  250: '#a99aff',
+  260: '#b793ff',
+  270: '#c68bff',
+  280: '#d581fe',
+  290: '#ea87fd',
+  300: '#fc8dfc',
+  310: '#fd84ea',
+  320: '#fe7ad5',
+  330: '#fe71bd',
+  340: '#ff76a7',
+  350: '#ff7a93',
 };

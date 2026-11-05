@@ -239,7 +239,7 @@ function PluginRow({
         <span className="text-[10px] font-mono uppercase text-ink/50">{plugin.scope}</span>
         {plugin.shadowedBy && <span className="text-[10px] text-ink/45">shadowed</span>}
         {plugin.updateAvailable && (
-          <span className="text-[10px] px-1 rounded bg-amber-500/15 text-amber-900 border border-amber-500/20">
+          <span className="text-[10px] px-1 rounded border border-warning/30 bg-warning/15 text-warning">
             {plugin.updateAvailable}
           </span>
         )}

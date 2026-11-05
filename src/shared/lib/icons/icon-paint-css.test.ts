@@ -18,6 +18,11 @@
  *   would tint icons for a user who chose monochrome.
  * - **Signal rows come after the hue rows**, so `--icon-hue` cannot shadow a
  *   palette signal on the same element.
+ * - **An author's class and a solid signal fill are AUTHORITY, not defaults.**
+ *   The mode paints what an icon did not say; a call site that wrote
+ *   `text-error` or wrapped the glyph in `bg-error text-canvas` has said
+ *   something, and both used to be discarded — measured, 22 glyphs lost their
+ *   signal colour and a trash can rendered at 1.00:1 on its own fill.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -28,7 +33,7 @@ import {
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import { ICON_HUE_ROWS, ICON_TINT_ROWS, ICON_TINT_TOKENS } from '@/shared/lib/icons/tint';
-import { ICON_TONES } from '@/shared/lib/icons/tint-hues.generated';
+import { ICON_TONES, ICON_TONES_DARK } from '@/shared/lib/icons/tint-hues.generated';
 
 const css = iconPaintStyleSheet();
 const rules = css.split('\n').filter((line) => line.startsWith(':where('));
@@ -97,7 +102,12 @@ describe('the icon paint stylesheet', () => {
     // VARIANT token — `text-ink/50 group-hover:text-ink/80` matched both, so the
     // resting icon was painted at its hover weight (measured on the composer's
     // target picker, `Folder` computed the `/80` paint while not hovered).
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/60"] { --icon-paint: oklch(from var(--icon-color) l calc(c * 0.6) h); }');
+    // The weight keeps a CHROMA FLOOR: `FLOOR + (1 - FLOOR) * step`, so `/60`
+    // paints 0.78 of the tone rather than 0.6 and `/40` paints 0.67 rather than
+    // 0.4. A straight `c * step` is what left 169 of 1139 coloured glyphs under
+    // chroma 0.08 — greyer than the ink they replaced.
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/60"] { --icon-paint: oklch(from var(--icon-color) l calc(c * 0.780) h); }');
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/40"] { --icon-paint: oklch(from var(--icon-color) l calc(c * 0.670) h); }');
     expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink"] { --icon-paint: var(--icon-color); }');
     expect(css).not.toContain('[class*="text-ink/');
     // Never toward transparency: a hue at 40% alpha is 1.56:1 against its
@@ -106,6 +116,24 @@ describe('the icon paint stylesheet', () => {
     expect(muted).toContain('oklch(from');
     expect(muted).not.toContain('transparent');
     expect(muted).not.toContain('var(--theme-ink)');
+  });
+
+  test('the weight ramp is monotonic and floored, so a mute keeps its colour', () => {
+    // Two properties, and the ramp fails differently without each: MONOTONIC, or
+    // a quieter icon is not quieter; FLOORED, or the quietest steps read grey.
+    const scaleOf = (step: number) => {
+      const rule = css.split('\n').find((line) => line.includes(`[class~="text-ink/${step}"]`)) ?? '';
+      return Number(/calc\(c \* ([\d.]+)\)/.exec(rule)?.[1] ?? '0');
+    };
+    let previous = 0;
+    for (const step of [20, 30, 40, 50, 60, 70, 80, 90]) {
+      const scale = scaleOf(step);
+      expect(scale, `/ ${step}`).toBeGreaterThan(previous);
+      previous = scale;
+    }
+    // Mirrors `WEIGHT_CHROMA_FLOOR = 0.45`: the lightest mute keeps 0.56.
+    expect(scaleOf(20)).toBeGreaterThanOrEqual(0.55);
+    expect(scaleOf(90)).toBeLessThanOrEqual(1);
   });
 
   test('the project accent survives the dark ink weights', () => {
@@ -146,7 +174,7 @@ describe('the icon paint stylesheet', () => {
 
   test('the base hue rule states --icon-color, per variant, and one rule paints it', () => {
     expect(css).toContain(':where(svg.lucide) { --icon-color: var(--icon-tone, hsl(var(--icon-hue,');
-    expect(css).toContain(':where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: hsl(var(--icon-hue,');
+    expect(css).toContain(':where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: var(--icon-tone-dark, hsl(var(--icon-hue,');
     // ONE `color:` statement, derived from the two custom properties. Stating it
     // per source instead made the weight rules fight them on specificity, and a
     // signal token could be overwritten by winning that race.
@@ -155,7 +183,11 @@ describe('the icon paint stylesheet', () => {
 
   test('one hue statement per generated row', () => {
     for (const { className, hue } of ICON_HUE_ROWS) {
-      expect(css).toContain(`:where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${ICON_TONES[hue]}; }`);
+      // BOTH variants on one row: stamping only the light tone is what left
+      // dark on a single `hsl()` pair for every hue.
+      expect(css).toContain(
+        `:where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${ICON_TONES[hue]}; --icon-tone-dark: ${ICON_TONES_DARK[hue]}; }`,
+      );
     }
   });
 
@@ -208,9 +240,13 @@ describe('the icon paint stylesheet', () => {
     // measured 95 → 62 on a 64px glyph, which is the "kusem" report. A brightness
     // shift moves luminance only; the two variants shift opposite ways because
     // "recede" is darker on ink and lighter on paper.
-    expect(css).toContain('[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.08) saturate(1.1); }');
+    // Both factors are measured against the floor, not picked: with the solved
+    // light tone at 3.30:1 mean, `1.08` walked the idle mark down to 2.88 mean
+    // with 35 of 36 hues UNDER 3:1; `1.02` holds 3.18 with none. Dark's `0.62`
+    // read 2.86 mean and `0.75` reads 4.00 with none.
+    expect(css).toContain('[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.02) saturate(1.1); }');
     expect(css).toContain(
-      '[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(0.62) saturate(1.4); }',
+      '[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(0.75) saturate(1.4); }',
     );
     // And the state must not be stated twice: an opacity left behind would
     // desaturate exactly what the filter restored.
@@ -245,9 +281,9 @@ describe('the icon paint stylesheet', () => {
     // hashed hue is only the fallback — the order inside the `var()` chain is the
     // contract, so it is pinned literally.
     expect(css).toContain('--plugin-color: var(--plugin-declared-light, var(--icon-tone, hsl(var(--icon-hue');
-    expect(css).toContain('--plugin-color: var(--plugin-declared-dark, hsl(var(--icon-hue');
+    expect(css).toContain('--plugin-color: var(--plugin-declared-dark, var(--icon-tone-dark, hsl(var(--icon-hue');
     expect(css).toContain('color: var(--panel-color-light, var(--panel-tone, hsl(var(--panel-hue, var(--icon-hue,');
-    expect(css).toContain('color: var(--panel-color-dark, hsl(var(--panel-hue, var(--icon-hue,');
+    expect(css).toContain('color: var(--panel-color-dark, var(--panel-tone-dark, hsl(var(--panel-hue, var(--icon-hue,');
   });
 
   test('the string is cached, not rebuilt per call', () => {

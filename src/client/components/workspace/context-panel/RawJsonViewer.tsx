@@ -58,8 +58,8 @@ export function RawJsonViewer({ data }: RawJsonViewerProps) {
         >
           {copied ? (
             <>
-              <Check size={11} className="text-emerald-600" />
-              <span className="text-emerald-600 font-sans font-medium">Copied</span>
+              <Check size={11} className="text-success" />
+              <span className="text-success font-sans font-medium">Copied</span>
             </>
           ) : (
             <>

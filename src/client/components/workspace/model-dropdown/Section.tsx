@@ -65,7 +65,7 @@ export function ModelDropdownSection({
         <div className="flex items-center gap-2 min-w-0">
           {iconType === 'star' && (
             <span className="inline-flex items-center justify-center w-[18px] h-[18px] shrink-0">
-              <Star size={12} className="fill-sky-400 text-sky-400" />
+              <Star size={12} className="fill-current text-warning" />
             </span>
           )}
           {iconType === 'recent' && (

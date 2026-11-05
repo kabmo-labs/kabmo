@@ -31,7 +31,7 @@
  * is the single translation to `lucide-trash-2`.
  */
 
-import { ICON_HUES, ICON_TONES } from '@/shared/lib/icons/tint-hues.generated';
+import { ICON_HUES, ICON_TONES, ICON_TONES_DARK } from '@/shared/lib/icons/tint-hues.generated';
 
 export type IconTintRole = 'error' | 'success' | 'warning' | 'info';
 
@@ -44,12 +44,13 @@ export const ICON_TINT_TOKENS: Readonly<Record<IconTintRole, string>> = {
 };
 
 /**
- * How the DARK hue is painted. Light has no pair any more — see below.
+ * How the LIGHT hue is painted when nothing stamps `--icon-tone`.
  *
- * `65% 70%` is the whole legibility budget on that side: measured against every
- * dark palette, its worst hue is 4.07:1 on `jetbrains-dark`'s `#2B2D30` (the
- * floor is 3:1 for a graphic). It is also the side nobody complained about, so
- * it is left exactly as it was.
+ * Both variants now have a solved table, so this is no longer the paint itself —
+ * it is the FALLBACK for a hue no row covers, and it is kept because a rule that
+ * resolves to nothing is an icon that inherits whatever colour its parent has.
+ * `saturation`/`lightness` are the pairs the mode shipped before it was solved
+ * per hue, and their OKLCH hue angle is what every solved row keeps.
  */
 export const ICON_HUE_PAINT = {
   light: { saturation: 60, lightness: 30 },
@@ -65,40 +66,37 @@ function wheelStep(hue: number): number {
 }
 
 /**
- * The LIGHT tone for a hue: a hex solved per hue, not one pair for all of them.
+ * The tone for a hue in a variant: a hex solved per hue, not one pair for all.
  *
- * Measured, this is the difference the report named — the muddiest row (hue 190)
- * goes from OKLCH chroma 0.075 to 0.102, hue 200 from 0.078 to 0.121, and the
- * mean from 0.121 to 0.162 (×1.34), with every tone still at 3.15:1 or better on
- * all 32 light palettes. `icon-tone.ts` states the rule and the numbers.
+ * Measured, this is the difference the report named — on the light side the
+ * muddiest row (hue 190) goes from OKLCH chroma 0.075 to 0.102, hue 200 from
+ * 0.078 to 0.121, and the mean from 0.121 to 0.162 (×1.34), with every tone
+ * still at 3.15:1 or better on all 32 light palettes. On the dark side the same
+ * solve collapses a lightness spread of 0.25 into 0.08 while RAISING mean
+ * chroma 0.126 → 0.170. `icon-tone.ts` states both measurements.
  *
  * A hue off the wheel snaps to the nearest step: every producer here is a
  * `hashHue` result (36 steps of 10°) or a table row, so the nearest step IS that
  * hue; snapping is what keeps this a table lookup rather than a solve on load.
  */
-export function iconTone(hue: number): string {
-  return ICON_TONES[wheelStep(hue)] ?? ICON_TONES[0]!;
-}
-
-/** One hue as a paintable colour. Light is a solved hex; dark is still an `hsl()`. */
-export function iconHueColor(hue: number, variant: 'light' | 'dark'): string {
-  if (variant === 'light') return iconTone(hue);
-  const { saturation, lightness } = ICON_HUE_PAINT.dark;
-  return `hsl(${hue} ${saturation}% ${lightness}%)`;
+export function iconTone(hue: number, variant: 'light' | 'dark' = 'light'): string {
+  const table = variant === 'light' ? ICON_TONES : ICON_TONES_DARK;
+  return table[wheelStep(hue)] ?? table[0]!;
 }
 
 /**
  * The paint rule's value: the hue left to the custom property the class sets.
  *
- * `--icon-tone` wins where it is stamped (every generated row, every plugin and
- * panel mark). The `hsl()` behind it is the old light paint, kept as the last
- * resort for an icon that declares a hue no table row covers — a shade that is
- * merely dated, never absent.
+ * `--icon-tone` (light) and `--icon-tone-dark` win where they are stamped —
+ * every generated row, every plugin and panel mark. The `hsl()` behind each is
+ * the pair the mode shipped before it was solved, kept as the last resort for an
+ * icon that declares a hue no table row covers: a shade that is merely dated,
+ * never absent.
  */
 export function iconHuePaint(variant: 'light' | 'dark'): string {
   const { saturation, lightness } = ICON_HUE_PAINT[variant];
   const fallback = `hsl(var(--icon-hue, ${DEFAULT_ICON_HUE}) ${saturation}% ${lightness}%)`;
-  return variant === 'light' ? `var(--icon-tone, ${fallback})` : fallback;
+  return variant === 'light' ? `var(--icon-tone, ${fallback})` : `var(--icon-tone-dark, ${fallback})`;
 }
 
 /** Glyph name → the signal it stands for. Everything else gets a generated hue. */

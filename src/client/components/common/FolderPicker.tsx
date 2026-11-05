@@ -169,7 +169,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
               <Loader2 size={18} className="animate-spin" />
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-40 text-xs text-red-600 space-y-2 px-4">
+            <div className="flex flex-col items-center justify-center h-40 text-xs text-error space-y-2 px-4">
               <span>{error}</span>
               <button
                 type="button"

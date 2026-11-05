@@ -98,10 +98,24 @@ per-element hue as personality, and the generating indicator draws its life with
 ink plus a pulse rather than a nine-hue spinner.
 
 **Icons.** Lucide is the functional glyph set (346 files import it), and the colour mode tints each
-glyph by its own solved hue; monochrome mode paints them in the current ink. A brand mark that
-does not exist in Lucide is drawn from its own SVG (`provider-icon/glyphs.ts`,
-`file-icon`). Never add a decorative sparkle, wand, or orb: a glyph that names nothing is noise in
-the densest part of the app.
+glyph by its own hue — solved per hue in **both** variants (`ICON_TONES`, `ICON_TONES_DARK`), never
+one `hsl()` pair for the whole wheel, because a single pair spends its legibility budget on the worst
+hue and leaves the muddiest row at a quarter of the vividest row's chroma. Monochrome paints them in
+the current ink. A brand mark that does not exist in Lucide is drawn from its own SVG
+(`provider-icon/glyphs.ts`, `file-icon`). Never add a decorative sparkle, wand, or orb: a glyph that
+names nothing is noise in the densest part of the app.
+
+Three rules make the mode safe, and each is enforced rather than reviewed:
+
+- **An author's signal class wins.** `text-error`, `text-success`, `text-warning`, `text-info`,
+  `text-meta` (and their `/60`-`/90` weights) on a glyph is a decision; the mode only paints glyphs
+  that said nothing. A hue painting over a call site that named a state discards the only colour
+  information it had.
+- **A solid signal fill owns its icon's foreground.** `bg-error text-canvas` is a filled button, so
+  the glyph takes the surface's own foreground; otherwise a trash can renders at 1:1 on its own fill.
+- **No palette rung, ever.** `text-amber-500` and its family measure 1.6-2.9:1 on light paper, and
+  they ignore the theme. Use the signal tokens, which are solved to 4.5:1 minimum on every palette of
+  both variants. `src/client/palette-class.test.ts` scans for violations.
 
 ---
 

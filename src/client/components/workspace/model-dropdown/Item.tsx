@@ -170,11 +170,11 @@ export function ModelDropdownItem({
           type="button"
           onClick={(e) => onToggleFavorite(model, e)}
           title={model.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-          className="p-1 rounded text-ink/30 hover:text-sky-400 hover:bg-ink/5 transition-colors cursor-pointer"
+          className="group p-1 rounded text-ink/30 hover:text-warning hover:bg-warning/10 transition-colors cursor-pointer"
         >
           <Star
             size={13}
-            className={model.isFavorite ? 'fill-sky-400 text-sky-400' : 'text-ink/30 hover:text-sky-400'}
+            className={model.isFavorite ? 'fill-current text-warning' : 'text-ink/30 group-hover:text-warning'}
           />
         </button>
       </div>

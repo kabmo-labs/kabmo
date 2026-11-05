@@ -18,6 +18,7 @@
  */
 
 import type { AccentColorOption } from '@/shared/types';
+import { legiblePair } from '@/shared/lib/theme/legibility';
 
 /**
  The accent the custom picker starts on: a violet that is deliberately NOT one of
@@ -47,6 +48,28 @@ export function normalizeHexAccent(value: string): string | null {
 /** True when the value is a stored-form hex accent, i.e. what the server keeps. */
 export function isHexAccent(value: string): boolean {
   return normalizeHexAccent(value) === value && value !== '';
+}
+
+/**
+ * The accent as the two custom properties a markup style needs.
+ *
+ * The stored hex is what the user picked, and it is drawn as a SWATCH — a dot, a
+ * preset circle — where a fill is its own background and any hex is legible. A
+ * GLYPH is different: it is painted on paper, and measured over the shipped
+ * presets, nine of the ten fall below the 3:1 floor there (`#a3e635` reads
+ * 1.15:1 on the darkest light paper, `#fbbf24` 1.27:1). So the mark takes the
+ * clamped pair `legiblePair` derives for every other brand colour, and the
+ * swatch keeps the exact hex.
+ *
+ * Returns an empty object for "no accent", so a caller can spread it.
+ */
+export function projectAccentStyle(accent: string | null | undefined): Record<string, string> {
+  if (!accent) return {};
+  const pair = legiblePair(accent);
+  return {
+    '--project-accent': pair.light,
+    '--project-accent-dark': pair.dark ?? pair.light,
+  };
 }
 
 export const PROJECT_ACCENT_OPTIONS: AccentColorOption[] = [

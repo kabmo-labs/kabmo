@@ -75,11 +75,43 @@ export const ICON_TONE_CONTRAST = 3.15;
  * can show at that lightness. Measured, that reads as a neon sign beside a
  * toolbar glyph, not as a hue. 0.19 keeps every capped hue vivid and leaves the
  * ones that cannot reach it (yellow, teal) at their gamut maximum.
+ *
+ * Raising the cap is NOT the lever for a dull hue, which is why it stays: the
+ * rows that read greyest (teal/cyan, C 0.096-0.102) are at the sRGB gamut
+ * boundary for their lightness, so a bigger cap changes nothing there and only
+ * pushes magenta and red further toward neon — a wider spread, not a more even
+ * wheel. Consistency is bought by solving each variant and by the weight floor,
+ * not by more chroma at the top.
  */
 export const ICON_TONE_CHROMA_CAP = 0.19;
 
-/** Lightnesses the solver may use, lightest first — ties prefer the lighter. */
+/**
+ * Lightnesses the LIGHT solver may use, lightest first — ties prefer the lighter.
+ *
+ * The ceiling is not taste: above 0.62 the darkest light papers in the catalog
+ * (`tokyonight-light` `#dee0ee`, `kanagawa-light` `#eae4bf`) drop the most
+ * chromatic hues under the floor.
+ */
 const LIGHTNESS_LADDER = [0.62, 0.6, 0.58, 0.56, 0.54, 0.52, 0.5, 0.48, 0.46, 0.44, 0.4];
+
+/**
+ * Lightnesses the DARK solver may use, lightest first — ties prefer the lighter.
+ *
+ * Dark used to be ONE `hsl(H 65% 70%)` for every hue, and the measured cost is a
+ * lightness spread of **0.25** (L 0.65 at hue 240 against L 0.90 at hue 60): the
+ * same mode draws a blue icon markedly heavier than the yellow one beside it,
+ * which is the inconsistency the light side was solved out of.
+ *
+ * The band is a BAND, not a ladder from black to white, and that is the whole
+ * fix. Solved per hue with no bound, the solver still spreads 0.20 — it spends
+ * every point of lightness the dark palettes would allow chasing chroma. Pinned
+ * to 0.74-0.82 it cannot: measured over the 36 hues, the spread falls to
+ * **0.08** while the mean chroma RISES 0.126 → 0.170 and the muddiest row goes
+ * 0.082 → 0.134, every row still clearing 3.15:1 on all 31 dark papers.
+ */
+const DARK_LIGHTNESS_LADDER = [
+  0.82, 0.81, 0.8, 0.79, 0.78, 0.77, 0.76, 0.75, 0.74,
+];
 
 /** The wheel the generated hues land on: 36 steps of 10°. */
 export const ICON_TONE_WHEEL = Array.from({ length: 36 }, (_, index) => index * 10);
@@ -113,34 +145,47 @@ export function oklchOf(hex: string): { lightness: number; chroma: number; hue: 
   };
 }
 
-/** The lowest contrast `hex` reaches on any light palette's surface. */
-function worstLightContrast(hex: string): number {
+/** The lowest contrast `hex` reaches on any palette surface of `variant`. */
+function worstVariantContrast(hex: string, variant: 'light' | 'dark'): number {
   let worst = Number.POSITIVE_INFINITY;
   for (const theme of THEMES) {
-    if (theme.variant !== 'light') continue;
+    if (theme.variant !== variant) continue;
     worst = Math.min(worst, contrastRatio(hex, theme.paper));
   }
   return worst === Number.POSITIVE_INFINITY ? BRAND_CONTRAST_FLOOR : worst;
 }
 
 /**
- * The tone for ONE wheel hue, given the pair the mode used to paint with.
+ * The tone for ONE wheel hue in ONE variant.
  *
- * `saturation`/`lightness` are the OLD constants, and they are only used to name
- * the colour: `hsl(H 60% 30%)` is hue `H` as this app already means it, and its
- * OKLCH hue angle is what gets kept.
+ * `saturation`/`lightness` are the pair the mode used to paint with, and they
+ * are only used to NAME the colour: `hsl(H 60% 30%)` (light) and `hsl(H 65% 70%)`
+ * (dark) are hue `H` as this app already means it, and the OKLCH hue angle of
+ * that paint is what every candidate keeps.
+ *
+ * The rule is identical for both variants — keep the hue, take the most chroma
+ * sRGB can show at a legal lightness, prefer chroma then the lighter candidate —
+ * because the complaint and the fix are the same on either side: a single pair
+ * spends its whole budget on the worst hue and leaves the muddiest row at less
+ * than half the chroma of the vividest one.
  */
-export function solveIconTone(wheelHue: number, saturation = 60, lightness = 30): string {
+export function solveIconTone(
+  wheelHue: number,
+  variant: 'light' | 'dark' = 'light',
+  saturation = variant === 'light' ? 60 : 65,
+  lightness = variant === 'light' ? 30 : 70,
+): string {
   const colorHue = oklchOf(hslToHex(wheelHue, saturation, lightness)).hue;
+  const ladder = variant === 'light' ? LIGHTNESS_LADDER : DARK_LIGHTNESS_LADDER;
   let best: { hex: string; chroma: number; lightness: number } | null = null;
   let darkest = '';
-  for (const candidate of LIGHTNESS_LADDER) {
+  for (const candidate of ladder) {
     const chroma = Math.min(ICON_TONE_CHROMA_CAP, maxChromaInGamut(candidate, colorHue));
     const paint = oklchToRgb(candidate, Math.max(chroma, 0.02), colorHue);
     const hex = rgbaToHex(paint);
     darkest = hex;
     if (!paint.inGamut) continue;
-    if (worstLightContrast(hex) < ICON_TONE_CONTRAST) continue;
+    if (worstVariantContrast(hex, variant) < ICON_TONE_CONTRAST) continue;
     const better = !best || chroma > best.chroma + 1e-6 || (Math.abs(chroma - best.chroma) <= 1e-6 && candidate > best.lightness);
     if (better) best = { hex, chroma, lightness: candidate };
   }
@@ -148,8 +193,8 @@ export function solveIconTone(wheelHue: number, saturation = 60, lightness = 30)
 }
 
 /** Every wheel hue's light tone: what the generator writes to disk. */
-export function solveIconTones(): Record<number, string> {
-  return Object.fromEntries(ICON_TONE_WHEEL.map((hue) => [hue, solveIconTone(hue)]));
+export function solveIconTones(variant: 'light' | 'dark' = 'light'): Record<number, string> {
+  return Object.fromEntries(ICON_TONE_WHEEL.map((hue) => [hue, solveIconTone(hue, variant)]));
 }
 
 /** `hsl(h <saturation>% <lightness>%)` as `#rrggbb` — the paint this module replaces. */

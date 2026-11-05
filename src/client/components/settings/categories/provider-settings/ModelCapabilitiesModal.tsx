@@ -127,7 +127,7 @@ export function ModelCapabilitiesModal({ isOpen, model, onClose }: ModelCapabili
                       </span>
                     ) : null
                   ) : fact.value ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-semibold uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-1 text-[10px] text-success font-semibold uppercase tracking-wider">
                       <Check size={11} strokeWidth={2.5} />
                       Yes
                     </span>

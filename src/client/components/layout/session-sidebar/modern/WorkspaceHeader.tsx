@@ -55,6 +55,7 @@ import { anchorRectOf, type AnchorRect } from '@/shared/lib/ui/menu-anchor';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import type { CategoryHeaderCheckbox } from '@/client/components/layout/session-sidebar/CategoryHeader';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
+import { projectAccentStyle } from '@/shared/lib/workspace/project-accent';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export interface WorkspaceHeaderProps {
@@ -136,7 +137,7 @@ export function WorkspaceHeader({
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <ProjectIcon size={15} className="project-accent-mark text-ink/70" style={accent ? { '--project-accent': accent } : undefined} />
+              <ProjectIcon size={15} className="project-accent-mark text-ink/70" style={projectAccentStyle(accent) as unknown as Record<string, string>} />
             )}
           </span>
         )}

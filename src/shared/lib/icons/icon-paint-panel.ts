@@ -34,10 +34,11 @@ import { DEFAULT_ICON_HUE, ICON_HUE_PAINT } from '@/shared/lib/icons/tint';
 function panelPaint(variant: 'light' | 'dark'): string {
   const { saturation, lightness } = ICON_HUE_PAINT[variant];
   const hsl = `hsl(var(--panel-hue, var(--icon-hue, ${DEFAULT_ICON_HUE})) ${saturation}% ${lightness}%)`;
-  // Light reads `--panel-tone`, the same solved table the glyph rows use: a
-  // panel's hue is assigned at runtime, so the tone is stamped by `PanelMark`
-  // rather than generated per row. Dark keeps the single `hsl()` pair.
-  const toned = variant === 'light' ? `var(--panel-tone, ${hsl})` : hsl;
+  // Both variants read a `--panel-tone*` stamped by `PanelMark` from the solved
+  // table: a panel's hue is assigned at runtime, so it cannot be a generated CSS
+  // row, and an unsolved `hsl()` on the dark side is the lightness spread this
+  // mode was fixed by removing.
+  const toned = variant === 'light' ? `var(--panel-tone, ${hsl})` : `var(--panel-tone-dark, ${hsl})`;
   return `var(--panel-color-${variant}, ${toned})`;
 }
 
@@ -78,20 +79,16 @@ export function panelMarkRules(): string[] {
     // **62** when idle, and the rail read as washed-out pastels — "warna icon di
     // activity panel kanan / kiri kok agak kusem". A `brightness()` shift plus
     // the `saturate()` that pays back what the multiply costs keeps the colour
-    // and moves only the luminance: the same glyph measures **94** chroma at
-    // contrast 3.07 instead of 62 at 2.94, i.e. the SAME quietness with the
-    // colour restored.
+    // and moves only the luminance — but it must not walk the mark UNDER the
+    // floor, and it did: with the solved light tone sitting at 3.30:1 mean,
+    // `brightness(1.08)` dropped the idle mark to **2.88:1 mean, 35 of 36 hues
+    // below 3:1**. Measured over the same tones, `1.02` holds 3.18 mean with
+    // every hue clear, so that is the light factor now.
     //
     // The two variants shift in opposite directions because "recede" does: on ink
-    // an idle icon is DARKER, on paper it is LIGHTER.
-    //
-    // Light's factor is `1.08 saturate(1.1)`, NOT the `1.25` the darker paint
-    // needed. The light tone is now a solved hex sitting AT the contrast floor
-    // (3.15 mean 3.30, `icon-tone.ts`), where the old pair had 6.11 of headroom to
-    // spend — so the old factor walked every idle mark down to 2.23:1 and the rail
-    // went dim rather than quiet. Re-measured over the shipped tones: `1.08/1.1`
-    // reads 2.79:1 mean, still a visible step down, and holds chroma at 111% of
-    // the active mark (the `saturate()` is what pays for the multiply).
+    // an idle icon is DARKER, on paper it is LIGHTER. Dark has 6.97:1 of headroom
+    // and spends more of it: `0.62` read 2.86 mean (20 hues below the floor)
+    // while `0.75` reads 4.00 with none.
     //
     // A DECLARED brand colour is NOT dimmed. The settings card draws the same
     // plugin at full strength, so dimming this copy made one brand two colours
@@ -103,7 +100,7 @@ export function panelMarkRules(): string[] {
     // `[data-declared]` is stamped from `panel.color` — a property, not a
     // class-name or inline-style guess, so this cannot drift when the mark
     // changes how it carries its colour.
-    '[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.08) saturate(1.1); }',
-    '[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(0.62) saturate(1.4); }',
+    '[data-icon-style="color"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(1.02) saturate(1.1); }',
+    '[data-icon-style="color"][data-theme-variant="dark"] [data-panel-mark][data-idle]:not([data-declared]) { filter: brightness(0.75) saturate(1.4); }',
   ];
 }

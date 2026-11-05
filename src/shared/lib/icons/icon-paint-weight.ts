@@ -76,9 +76,28 @@
 /** The steps call sites actually use, plus the neighbours a new one may reach for. */
 const WEIGHT_STEPS = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
 
+/**
+ * How much chroma a weight KEEPS, as a multiplier on the source colour.
+ *
+ * A straight `c * step` is what made the lighter mutes read grey: measured over
+ * the shipped tones, `text-ink/40` (the single most common icon mute — 84 call
+ * sites) painted chroma **0.065**, under half the tone's 0.163, and 169 of 1139
+ * coloured glyphs landed below 0.08, i.e. indistinguishable from ink.
+ *
+ * The curve keeps a floor: `FLOOR + (1 - FLOOR) * step`. At `FLOOR = 0.45` the
+ * same `/40` paints 0.110 instead of 0.065 and `/20` paints 0.089 instead of
+ * 0.033, while the ORDER the ramp exists for survives — `/90` is still nearly
+ * twice the chroma of `/40`, so a quiet icon still reads as quieter. Contrast is
+ * untouched: only chroma moves, and the tone's lightness is what the floor is
+ * measured against.
+ */
+const WEIGHT_CHROMA_FLOOR = 0.45;
+
 /** The weight at `step/100`, or the untouched colour. */
 function paintAt(step: number | null): string {
-  return step === null ? 'var(--icon-color)' : `oklch(from var(--icon-color) l calc(c * ${step / 100}) h)`;
+  if (step === null) return 'var(--icon-color)';
+  const scale = (WEIGHT_CHROMA_FLOOR + (1 - WEIGHT_CHROMA_FLOOR) * (step / 100)).toFixed(3);
+  return `oklch(from var(--icon-color) l calc(c * ${scale}) h)`;
 }
 
 /** Every variant prefix that carries a `text-ink` weight somewhere in this app. */

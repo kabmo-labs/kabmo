@@ -22,6 +22,7 @@ import { NewWorktreeModal } from '@/client/components/workspace/worktree-modal/i
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
 import { WorkspaceOptionsMenu } from '@/client/components/common/workspace-options-menu';
 import { getProjectIcon } from '@/shared/lib/workspace/project-icon';
+import { projectAccentStyle } from '@/shared/lib/workspace/project-accent';
 import type { WorkspaceFolderData } from '@/shared/types';
 
 export interface CategoryHeaderCheckbox {
@@ -123,7 +124,7 @@ export function CategoryHeader({
                   <ProjectIcon
                     size={15}
                     className="project-accent-mark text-ink/75"
-                    style={folder.accentColor ? { '--project-accent': folder.accentColor } : undefined}
+                    style={projectAccentStyle(folder.accentColor) as unknown as Record<string, string>}
                   />
                 )}
               </span>

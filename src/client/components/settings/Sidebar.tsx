@@ -128,7 +128,7 @@ export function SettingsSidebar({
                           <span className="truncate">{item.label}</span>
                         </div>
                         {item.badge && (
-                          <span className="px-1.5 py-0.2 text-[10px] font-mono font-medium rounded bg-amber-500/15 text-amber-900 border border-amber-500/20">
+                          <span className="px-1.5 py-0.2 text-[10px] font-mono font-medium rounded border border-warning/30 bg-warning/15 text-warning">
                             {item.badge}
                           </span>
                         )}

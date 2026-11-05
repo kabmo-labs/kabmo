@@ -60,12 +60,12 @@ export function ProviderAuthSection({
               </>
             ) : isConnected ? (
               <>
-                <Check size={15} className="text-emerald-500 flex-shrink-0" strokeWidth={2.4} />
+                <Check size={15} className="text-success flex-shrink-0" strokeWidth={2.4} />
                 <span className="text-xs font-medium text-ink">Connected</span>
               </>
             ) : (
               <>
-                <AlertCircle size={15} className="text-amber-500 flex-shrink-0" strokeWidth={2.4} />
+                <AlertCircle size={15} className="text-warning flex-shrink-0" strokeWidth={2.4} />
                 <span className="text-xs font-medium text-ink/80">Not signed in</span>
               </>
             )}

@@ -94,7 +94,8 @@ export function PanelMark({
       data-declared={declared ? '' : undefined}
       style={{
         '--panel-hue': String(hue),
-        '--panel-tone': iconTone(hue),
+        '--panel-tone': iconTone(hue, 'light'),
+        '--panel-tone-dark': iconTone(hue, 'dark'),
         ...(declared ? { '--panel-color-light': declared.light } : {}),
         ...(declared?.dark ? { '--panel-color-dark': declared.dark } : {}),
       }}

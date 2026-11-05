@@ -88,9 +88,9 @@ async function signalIcons() {
   return new Set([...block[1].matchAll(/^\s{2}([A-Za-z0-9]+):/gm)].map((m) => m[1]));
 }
 
-function render(rows, tones) {
+function render(rows, lightTones, darkTones) {
   const lines = rows.map(([name, hue]) => `  ${name}: ${hue},`);
-  const toneLines = Object.entries(tones).map(([hue, hex]) => `  ${hue}: '${hex}',`);
+  const toneLines = (tones) => Object.entries(tones).map(([hue, hex]) => `  ${hue}: '${hex}',`).join('\n');
   return `/**
  * @license
  * SPDX-License-Identifier: MIT
@@ -104,12 +104,17 @@ function render(rows, tones) {
  * paint a palette token, because a trash can has to be the theme's error colour
  * and not whatever the hash said.
  *
- * \`ICON_TONES\` is the LIGHT paint for each wheel hue, solved by
- * \`shared/lib/icons/icon-tone.ts\` against every light palette this build ships.
- * It is a table rather than a call because the solve needs the palette catalog,
- * which the client would otherwise carry — and 11k contrast checks — only to
- * colour a toolbar glyph. Dark keeps its single \`hsl()\` pair: it already reads
- * bright, and one pair is enough when the budget is not spent.
+ * \`ICON_TONES\` and \`ICON_TONES_DARK\` are the paints for each wheel hue, solved
+ * by \`shared/lib/icons/icon-tone.ts\` against every palette of that variant this
+ * build ships. They are tables rather than calls because the solve needs the
+ * palette catalog, which the client would otherwise carry — and 11k contrast
+ * checks — only to colour a toolbar glyph.
+ *
+ * Both variants are solved, and that is the fix for the mode's other half: dark
+ * used to be one \`hsl(H 65% 70%)\` for every hue, which spread its lightness
+ * over 0.25 and left the muddiest row at a quarter of the vividest row's
+ * chroma. Solved per hue inside a pinned band, both variants now land in a
+ * narrow lightness spread, so a glyph is the same colour on either theme.
  *
  * Regenerate with \`bun run icons:tints\` after adding an icon OR a palette. The
  * suite fails when this table and the imports disagree (\`icons:tints:check\`),
@@ -122,7 +127,12 @@ ${lines.join('\n')}
 
 /** The light paint for each wheel hue, darkest-legible-but-most-chromatic. */
 export const ICON_TONES: Readonly<Record<number, string>> = {
-${toneLines.join('\n')}
+${toneLines(lightTones)}
+};
+
+/** The dark paint for each wheel hue: the same hue, solved for ink surfaces. */
+export const ICON_TONES_DARK: Readonly<Record<number, string>> = {
+${toneLines(darkTones)}
 };
 `;
 }
@@ -138,7 +148,7 @@ const rows = icons
   .filter((name) => !signals.has(name))
   .map((name) => [name, (hash(name) % HUE_STEPS) * (360 / HUE_STEPS)]);
 
-const next = render(rows, solveIconTones());
+const next = render(rows, solveIconTones('light'), solveIconTones('dark'));
 const check = process.argv.includes('--check');
 const current = await readFile(TARGET, 'utf8').catch(() => '');
 
