@@ -75,8 +75,8 @@ export function ModeToggles({
           aria-pressed={plan}
           aria-label={plan ? 'Leave plan mode' : 'Enter plan mode'}
           title={plan ? 'Plan mode is on — the agent explores before editing' : 'Plan mode: explore and draft before any edit'}
-          className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors cursor-pointer ${
-            plan ? 'bg-ink text-canvas' : 'text-ink/80 hover:bg-ink/5'
+          className={`tap-chip flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors cursor-pointer ${
+            plan ? 'bg-ink text-canvas' : 'text-muted hover:bg-ink/5'
           } ${pending ? 'opacity-60' : ''}`}
         >
           <ClipboardList size={12} className={plan ? '' : 'text-ink/60'} />
@@ -90,8 +90,8 @@ export function ModeToggles({
         aria-pressed={goal}
         aria-label={goal ? 'Manage the active goal' : 'Set a goal'}
         title={goalTitle(goal, goalRecord)}
-        className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors cursor-pointer ${
-          goal ? 'bg-ink text-canvas' : 'text-ink/80 hover:bg-ink/5'
+        className={`tap-chip flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors cursor-pointer ${
+          goal ? 'bg-ink text-canvas' : 'text-muted hover:bg-ink/5'
         } ${pending ? 'opacity-60' : ''}`}
       >
         <Target size={12} className={goal ? '' : 'text-ink/60'} />

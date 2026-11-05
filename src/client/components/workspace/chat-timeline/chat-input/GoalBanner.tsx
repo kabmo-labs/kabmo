@@ -162,7 +162,7 @@ export function GoalBanner({ record, running, continuation, evaluating, pending,
         )}
       </span>
 
-      <span className={`shrink-0 rounded-full px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider ${badge}`}>
+      <span className={`shrink-0 rounded-full px-1.5 py-px font-mono text-[10px] uppercase tracking-wider ${badge}`}>
         {paused ? record.status : stop ? STOP_UI[stop].badge : record.status}
       </span>
 

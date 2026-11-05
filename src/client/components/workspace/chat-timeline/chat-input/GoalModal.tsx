@@ -293,7 +293,7 @@ export function GoalModal({ open, goal, goalRecord, pending, defaultBudget = nul
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-ink/10 bg-canvas/30 p-2">
-      <div className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">{label}</div>
       <div className="mt-0.5 truncate font-mono text-[11.5px] text-ink">{value}</div>
     </div>
   );

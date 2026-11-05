@@ -164,7 +164,7 @@ export function ComposerToolbar({
             type="button"
             onClick={onVoiceToggle}
             disabled={voiceBusy}
-            className={`flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+            className={`tap-target flex items-center justify-center rounded transition-colors flex-shrink-0 ${
               voiceBusy
                 ? 'text-ink/40 cursor-wait'
                 : voiceListening
@@ -195,7 +195,7 @@ export function ComposerToolbar({
           <button
             type="button"
             onClick={onStop}
-            className={`flex items-center justify-center rounded transition-colors cursor-pointer shadow-xs animate-in zoom-in-90 duration-150 flex-shrink-0 ${
+            className={`tap-target flex items-center justify-center rounded transition-colors cursor-pointer shadow-xs animate-in zoom-in-90 duration-150 flex-shrink-0 ${
               isMobile
                 ? 'w-8 h-8 rounded-md border border-ink/25 text-ink hover:bg-error hover:text-canvas hover:border-error'
                 : 'w-7 h-7 bg-ink text-canvas hover:bg-error hover:text-canvas'
@@ -210,7 +210,7 @@ export function ComposerToolbar({
           type="button"
           onClick={onSend}
           disabled={sendDisabled}
-          className={`flex items-center justify-center rounded bg-ink text-canvas hover:bg-ink/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 ${
+          className={`tap-target flex items-center justify-center rounded bg-ink text-canvas hover:bg-ink/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 ${
             isMobile ? 'w-8 h-8 rounded-md' : 'w-7 h-7'
           }`}
           title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
