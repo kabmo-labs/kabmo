@@ -66,13 +66,32 @@ function install(): void {
  */
 export function installDomGlobals(): void {
   holders += 1;
-  if (!installed) install();
+  ensureDom();
 }
 
 export function restoreDomGlobals(): void {
   if (holders === 0) return;
   holders -= 1;
   if (holders === 0) installed?.restore();
+}
+
+/**
+ * Make sure the DOM really is on `globalThis`, whatever the flag says.
+ *
+ * The flag alone is not trustworthy. `pristine-globals.ts` is a SECOND manager
+ * of the same names, and its `restoreDomGlobals` DELETES a global whose pristine
+ * value was undefined — which is exactly `document` under `bun test`. A file
+ * that uses that helper while this harness held the DOM therefore strips it and
+ * leaves `installed` pointing at a restore for globals that are already gone.
+ * Measured on the Windows gate: all eight `executeSend` cases failed with
+ * `ReferenceError: document is not defined` from `makeSendHarness`, while the
+ * same file passed alone. Checking the global is what makes the two managers
+ * safe in either order.
+ */
+function ensureDom(): void {
+  if (installed && typeof (globalThis as Record<string, unknown>).document !== 'undefined') return;
+  installed = null;
+  install();
 }
 
 /** The runner's own fetch, reached through `Bun` so a leaked stub cannot be mistaken for it. */
@@ -183,7 +202,7 @@ export function makeSendHarness(options: {
 } = {}): SendHarness {
   // Ensure, never HOLD: a case's DOM comes from its file's `beforeAll`, and
   // counting here would leave the globals installed for the whole process.
-  if (!installed) install();
+  ensureDom();
   const { messages, setLocalMessages } = makeMessages();
   // `options.agent` is either overrides for the recorder's `AgentCalls` or
   // the finished recorder itself; the two forms are told apart by shape.
