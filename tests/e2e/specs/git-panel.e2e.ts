@@ -886,7 +886,12 @@ test.describe('Source Control — repository management', () => {
     // The dirty repo says so — the whole reason a modal beats a dropdown.
     await expect(dialog.getByTitle('1 changed, 1 untracked')).toBeVisible();
     // A clean repo says so explicitly rather than showing an empty strip.
-    await expect(dialog.getByTitle('Nothing to report — clean and in sync').first()).toBeVisible();
+    //
+    // The title is the SHIPPED string, colon included: `82d345b7` rewrote the
+    // label in `repo-picker/Row.tsx` from an em dash to a colon while raising
+    // the type scale, and this locator kept the old punctuation — so it waited
+    // 15 s for an element that no longer exists, on every run.
+    await expect(dialog.getByTitle('Nothing to report: clean and in sync').first()).toBeVisible();
 
     // Switching from the modal closes it and moves the panel.
     //

@@ -232,7 +232,13 @@ test.describe('command runner plugin', () => {
       await page.getByRole('button', { name: 'Run make slow', exact: true }).click();
 
       // The job is listed and the process is alive.
-      await expect(page.getByText('Running').first()).toBeVisible({ timeout: 20_000 });
+      //
+      // `exact: true` on the panel's own chip word. `Row.tsx`'s `stateLabel`
+      // renders a live run as lowercase `running`, so the loose substring form
+      // never matched it — with `exact: false` (the default) the FIRST match was
+      // the browser panel's hidden empty-state heading, "The agent is not
+      // running", and the case waited 20 s for a hidden element on every run.
+      await expect(page.getByText('running', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
       await expect.poll(() => markerCount(script), { timeout: 20_000 }).toBeGreaterThan(0);
 
       // Switch to the nested repo from the FILE panel — the Commands panel is
@@ -250,7 +256,8 @@ test.describe('command runner plugin', () => {
       // it comes back.
       await expect.poll(() => markerCount(script), { timeout: 20_000 }).toBe(0);
       await commandsButton(page).click();
-      await expect(page.getByText('Running')).toHaveCount(0);
+      // The same exact chip word as above; see why the loose form is wrong there.
+      await expect(page.getByText('running', { exact: true })).toHaveCount(0);
     } finally {
       rmSync(script, { force: true });
       workspace.dispose();

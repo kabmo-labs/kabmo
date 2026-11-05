@@ -29,13 +29,11 @@ import type { SessionSeed } from '@/client/hooks/chat/timeline/session-load';
 const DOM_GLOBALS = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'Event', 'CustomEvent'] as const;
 
 let installed: { restore: () => void } | null = null;
+/** How many files currently want the DOM installed. */
+let holders = 0;
 
-/**
- * Give the file a DOM. Idempotent per process, and the restore puts the
- * runner's own globals back so later files are unaffected.
- */
-export function installDomGlobals(): void {
-  if (installed) return;
+/** Put happy-dom's globals in place, remembering the runner's own. */
+function install(): void {
   const native: Partial<Record<(typeof DOM_GLOBALS)[number], unknown>> = {};
   const win = new Window({ url: 'http://localhost' });
   const target = globalThis as unknown as Record<string, unknown>;
@@ -54,8 +52,27 @@ export function installDomGlobals(): void {
   };
 }
 
+/**
+ * Give the file a DOM, as a HOLD.
+ *
+ * REFERENCE-COUNTED, because several files share this harness and `bun test`
+ * runs them in one process: `send-execute.test.ts` and `send-refusal.test.ts`
+ * both install in `beforeAll` and restore in `afterAll`. With a plain
+ * installed/not-installed flag the second file's install was a no-op and the
+ * FIRST file's restore then removed the DOM from under it — measured on the
+ * Windows gate, where all eight `executeSend` cases failed with
+ * `ReferenceError: document is not defined` while the same file passed alone.
+ * The globals go only when the last holder lets go.
+ */
+export function installDomGlobals(): void {
+  holders += 1;
+  if (!installed) install();
+}
+
 export function restoreDomGlobals(): void {
-  installed?.restore();
+  if (holders === 0) return;
+  holders -= 1;
+  if (holders === 0) installed?.restore();
 }
 
 /** The runner's own fetch, reached through `Bun` so a leaked stub cannot be mistaken for it. */
@@ -164,7 +181,9 @@ export function makeSendHarness(options: {
   agent?: AgentRecorder | Partial<AgentCalls>;
   deferredPick?: { current: unknown };
 } = {}): SendHarness {
-  installDomGlobals();
+  // Ensure, never HOLD: a case's DOM comes from its file's `beforeAll`, and
+  // counting here would leave the globals installed for the whole process.
+  if (!installed) install();
   const { messages, setLocalMessages } = makeMessages();
   // `options.agent` is either overrides for the recorder's `AgentCalls` or
   // the finished recorder itself; the two forms are told apart by shape.

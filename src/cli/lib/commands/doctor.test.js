@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 import { collectReport, exitCodeFor } from '@/cli/lib/commands/doctor.js';
 import { invalidateOmpCliCache } from '@/server/lib/omp/core/cli';
+import { testPosix } from '@/test-support/platform';
 
 const originalFetch = Bun.fetch;
 const realEnv = {
@@ -60,7 +61,11 @@ afterEach(() => {
 });
 
 describe('collectReport', () => {
-  test('reports the resolved binary and the version it names itself', async () => {
+  // POSIX only, because the assertion is `omp --version` being RUN: `fakeOmp`
+  // writes a `#!/bin/sh` script, and Windows cannot start one — `CreateProcess`
+  // needs a real executable, so the version came back null on the Windows gate
+  // while every other case here passed (they only need the PATH to resolve).
+  testPosix('reports the resolved binary and the version it names itself', async () => {
     Bun.env.KABMO_OMP_BIN = fakeOmp('18.20.1');
     const report = await collectReport({ instances: [] });
     expect(report.omp.installed).toBe(true);

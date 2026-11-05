@@ -9,18 +9,17 @@ import { mixHex } from '@/shared/lib/theme/color';
 import { contrastRatio } from '@/shared/lib/theme/legibility';
 
 /**
- * The composer's `glass` style is a STYLE, not a surface style: it is offered in
- * the classic look too, where `[data-surface="glass"]` is not set. A `--glass-*`
- * token that is only declared inside that attribute block therefore does not
- * exist for the composer, and `background-color: var(--glass-card)` silently
- * computes to `rgba(0,0,0,0)` — a card with no fill at all. That is not
- * hypothetical: it shipped for the length of one edit, and the browser reported
- * it as a transparent composer while `getComputedStyle` on the token returned an
+ * The composer's `glass` STYLE is not a surface style: it is offered in the
+ * classic look too, where `[data-surface="glass"]` is not set. A `--glass-*`
+ * token declared only inside that attribute block therefore does not exist for
+ * the composer, and `background-color: var(--glass-card)` silently computes to
+ * `rgba(0,0,0,0)` — a card with no fill. That shipped for the length of one
+ * edit: a transparent composer while `getComputedStyle` on the token returned an
  * empty string.
  *
- * This asserts the shape of the contract rather than one value: every material
- * token the composer rule READS has to be declared where the rule can see it,
- * i.e. in `:root` (or a variant block), never only under the surface attribute.
+ * So this asserts the SHAPE of the contract, not one value: every material token
+ * the composer rule READS must be declared where the rule can see it — `:root`
+ * or a variant block, never only under the surface attribute.
  */
 const read = (file: string): Promise<string> => Bun.file(new URL(file, import.meta.url)).text();
 
@@ -91,11 +90,11 @@ describe('glass composer material', () => {
 });
 
 /**
- * The popover tier is the same argument as the composer's, one size down: a
- * dropdown that carries only a tint reads as a LIFTED BOX, because on a dark
- * palette a translucent paper only ever darkens it. Measured on the
- * session-actions menu before the bloom — corner `(56,61,71)` over a body of
- * `(41,44,52)` on a sidebar of `(51,58,67)`, 1.09:1 against what it covers.
+ * The popover tier is the composer's argument one size down: a dropdown carrying
+ * only a tint reads as a LIFTED BOX, because on a dark palette translucent paper
+ * only ever darkens it. Measured on the session-actions menu before the bloom —
+ * corner `(56,61,71)` over a body of `(41,44,52)` on a sidebar of `(51,58,67)`,
+ * 1.09:1 against what it covers.
  */
 describe('glass popover material', () => {
   test('the popover adds its own bloom on top of the shared material', async () => {
@@ -116,8 +115,7 @@ describe('glass popover material', () => {
     expect(sharedBody).toContain('background-image: linear-gradient(');
 
     // A dialog keeps the sheen and the rim it was measured with: a dialog has
-    // prose in the middle, and the bloom's whole point is that it stays in the
-    // corners — which a dialog cannot afford to guess at.
+    // prose in the middle, and the bloom stays in the corners.
     expect(tailwind).toContain('[data-composer-style="glass"]');
   });
 
@@ -131,15 +129,11 @@ describe('glass popover material', () => {
   });
 
   /**
-   * The `/` (commands and skills) and `@` (files and agents) lists are the
-   * composer's own popovers, so the nested tier has to reach them: they render
-   * INSIDE `[data-composer-style="glass"]`, exactly where a blur is dead.
-   * Verified live by painting ghost text behind the open list: at 84% the rows
-   * and the ghost text interleaved, and the nested tier erased it.
-   *
-   * The picker is a plain div, not an `AnchoredMenu`, so the tier is a literal in
-   * its className — this pins it, because the class is what makes the list a
-   * popover at all in the glass surface.
+   * The `/` and `@` lists are the composer's own popovers and render INSIDE
+   * `[data-composer-style="glass"]`, exactly where a blur is dead, so the nested
+   * tier has to reach them. The picker is a plain div, not an `AnchoredMenu`, so
+   * the tier is a literal in its className — and that class is what makes the
+   * list a popover at all in the glass surface.
    */
   test('the composer picker carries the popover tier', async () => {
     const picker = await read('./components/common/ComposerPicker.tsx');
@@ -147,16 +141,15 @@ describe('glass popover material', () => {
   });
 
   /**
-   * A popover INSIDE another frosted surface has no working blur: `backdrop-filter`
-   * makes its host a backdrop root, so the descendant's filter samples that host
-   * rather than the page. Measured on the composer's model dropdown over 6px
-   * black/white stripes — min/max `0/255` (variance 16216) nested in the glass
-   * card against `221/224` (variance 0.7) portalled to `<body>`; the text behind
-   * it measured `1.47:1` at the popover tint and was still readable at 96%.
+   * A popover INSIDE another frosted surface has no working blur:
+   * `backdrop-filter` makes its host a backdrop root, so the descendant's filter
+   * samples that host, not the page. Measured on the composer's model dropdown
+   * over 6px black/white stripes — min/max `0/255` (variance 16216) nested in the
+   * glass card against `221/224` (variance 0.7) portalled to `<body>`; text
+   * behind it measured `1.47:1` and was still readable at 96%.
    *
-   * The contract is therefore: the NESTED tier is OPAQUE — the file's own rule for
-   * a surface that is read — and the fill is scoped to the composer card, so a
-   * body-portalled menu keeps its better-looking 84% with a live blur.
+   * So the NESTED tier is OPAQUE, scoped to the composer card, so a
+   * body-portalled menu keeps its 84% with a live blur.
    */
   test('a popover nested in a frosted surface is opaque, and only there', async () => {
     const glass = await read('./glass.css');
@@ -166,15 +159,15 @@ describe('glass popover material', () => {
     // The rule reads a token, not a literal: a second recipe for the material is
     // the defect every assertion in this file exists to prevent.
     expect(nested).toContain('background-color: var(--glass-popover-nested)');
-    // Opaque paper, because no blur hides the backdrop and every percent of
-    // transparency is legible text behind a list of model names.
+    // Opaque paper: no blur hides the backdrop, and every percent of transparency
+    // is legible text behind a list of model names.
     expect(surface).toContain('--glass-popover-nested: var(--theme-paper);');
     // The blurred tier stays translucent — a body-portalled menu still blurs.
     expect(surface).toContain('--glass-popover: color-mix(');
 
     // A browser without `backdrop-filter`, or a reduced-transparency request,
-    // resolves every tint to solid paper — the nested token has to be in BOTH
-    // blocks or it keeps compositing a translucent panel with nothing behind it.
+    // resolves every tint to solid paper — the nested token must be in BOTH
+    // blocks, or it keeps compositing a translucent panel with nothing behind.
     for (const block of [
       glass.slice(glass.indexOf('@supports not ('), glass.indexOf('@media (prefers-reduced-transparency')),
       glass.slice(glass.indexOf('@media (prefers-reduced-transparency')),
@@ -186,9 +179,10 @@ describe('glass popover material', () => {
 
 /**
  * A workspace column is the same chrome as the sidebar beside it. Every view
- * under it opens with its own `bg-paper` root, which is right in the classic look
- * and wrong under the glass surface — measured, the 293px column composited to
- * the palette's solid paper while the sidebar was the plane's chrome.
+ * under it opens with its own `bg-paper` root, right in the classic look and
+ * wrong under the glass surface — measured, the 293px column composited to the
+ * palette's solid paper while the sidebar was the plane's chrome ("right panel
+ * juga belum glass banget").
  */
 describe('glass column material', () => {
   test('a workspace column is chrome, and its view roots step aside for it', async () => {
@@ -196,10 +190,7 @@ describe('glass column material', () => {
       read('./glass.css'),
       read('./components/layout/desktop-layout/WorkspacePanels.tsx'),
     ]);
-    // Measured: every right-panel view opens with its own `bg-paper` root, so the
-    // 293px column composited to solid paper while the sidebar beside it was the
-    // plane's chrome — two materials in one window ("right panel juga belum glass
-    // banget"). The marker is on the SLOT (one owner), never on each view.
+    // The marker is on the SLOT (one owner), never on each view.
     expect(panels).toContain('data-panel-chrome=""');
     expect(panels).toContain('glass-chrome w-full h-full');
     expect(glass).toContain('[data-surface="glass"] [data-panel-chrome] > .bg-paper,');
