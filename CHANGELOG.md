@@ -4,6 +4,12 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.21.1](https://github.com/kabmo-labs/kabmo/compare/v0.21.0...v0.21.1) — 2026-11-05
+
+### Fixed
+
+* **icons:** mute an icon by removing colour, not by darkening it ([dd7056b](https://github.com/kabmo-labs/kabmo/commit/dd7056b0b22ca53029c38b6765aa37a09a6709e6)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.21.0](https://github.com/kabmo-labs/kabmo/compare/v0.20.0...v0.21.0) — 2026-11-04
 
 ### Added
