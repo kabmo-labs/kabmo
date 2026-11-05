@@ -16,7 +16,7 @@
 
 import { describe, expect, test } from 'bun:test';
 
-import { manualModelSeed, toModelEntry } from '@/server/lib/omp/config/provider-seeds';
+import { backfillableIds, manualModelSeed, toModelEntry } from '@/server/lib/omp/config/provider-seeds';
 import { validateModelsDocument, sanitizeModelEntry } from '@/server/lib/omp/config/models-validation';
 
 describe('manualModelSeed', () => {
@@ -133,6 +133,44 @@ describe('manualModelSeed — reasoning ladder', () => {
 
   test('a model without a ladder writes no thinking block at all', () => {
     expect(toModelEntry(manualModelSeed({ id: 'm', reasoning: true })).thinking).toBeUndefined();
+  });
+});
+
+describe('toModelEntry — image input', () => {
+  test('a vision model declares the compat that makes omp send the pixels', () => {
+    const entry = toModelEntry(manualModelSeed({ id: 'deepseek-v4-1-flash', imageInput: true }));
+    expect(entry.input).toEqual(['text', 'image']);
+    expect(entry.compat).toEqual({ stripImageInput: false });
+    expect(validateModelsDocument({
+      providers: { p: { baseUrl: 'https://x/v1', apiKey: 'k', api: 'openai-completions', models: [entry] } },
+    })).toEqual([]);
+  });
+
+  test('a text-only model writes neither the image input nor the compat block', () => {
+    const entry = toModelEntry(manualModelSeed({ id: 'm', imageInput: false }));
+    expect(entry.input).toEqual(['text']);
+    expect(entry.compat).toBeUndefined();
+  });
+});
+
+describe('backfillableIds — image input', () => {
+  const seed = (imageInput: boolean) => new Map([['m', { id: 'm', imageInput }]]);
+
+  test('an entry that names the image input but no compat is worth repairing', () => {
+    // This is the pair omp reads as "vision declared, every picture stripped",
+    // so re-importing the provider has to touch it.
+    expect(backfillableIds([{ id: 'm', input: ['text', 'image'] }], seed(true))).toEqual(['m']);
+  });
+
+  test('an entry that already carries compat is left alone', () => {
+    expect(backfillableIds(
+      [{ id: 'm', input: ['text', 'image'], compat: { stripImageInput: false } }],
+      seed(true),
+    )).toEqual([]);
+  });
+
+  test('a text-only seed never invites a compat block', () => {
+    expect(backfillableIds([{ id: 'm', input: ['text'] }], seed(false))).toEqual([]);
   });
 });
 

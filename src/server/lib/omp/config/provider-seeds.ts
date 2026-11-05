@@ -53,6 +53,24 @@ export function knownModelIds(provider: Record<string, unknown> | undefined): Se
   );
 }
 
+/**
+ * `compat` block that makes omp actually send the image.
+ *
+ * omp's model classifier derives `stripImageInput` from the model id and wins
+ * over a `compat` the file does not state: a `deepseek-v4-1-flash` entry
+ * declaring `input: [text, image]` still had its pixels replaced with
+ * `[image omitted: the active model does not support image input]` on the wire,
+ * while the same provider accepted the identical payload when posted by hand.
+ * Declaring the flag is what turns the vision checkbox into behaviour instead
+ * of a comment omp ignores.
+ *
+ * Written for EVERY `imageInput` model rather than only the ids that strip
+ * today: re-deriving omp's classification here would be a second copy of a fact
+ * omp already owns, and it would silently miss the next family added to that
+ * table. The flag is inert where nothing strips.
+ */
+const VISION_COMPAT = { stripImageInput: false } as const;
+
 /** The model entry as omp expects it, omitting anything omp would reject. */
 export function toModelEntry(model: OmpProviderModelSeed): Record<string, unknown> {
   const efforts = model.efforts && model.efforts.length > 0 ? model.efforts : undefined;
@@ -62,7 +80,9 @@ export function toModelEntry(model: OmpProviderModelSeed): Record<string, unknow
     ...(model.kind && model.kind !== 'chat' ? { kind: model.kind } : {}),
     ...(model.reasoning !== undefined ? { reasoning: model.reasoning } : {}),
     ...(efforts ? { thinking: { mode: 'effort', efforts } } : {}),
-    ...(model.imageInput ? { input: ['text', 'image'] } : { input: ['text'] }),
+    ...(model.imageInput
+      ? { input: ['text', 'image'], compat: { ...VISION_COMPAT } }
+      : { input: ['text'] }),
     ...(model.contextWindow && model.contextWindow > 0 ? { contextWindow: model.contextWindow } : {}),
     ...(model.maxTokens && model.maxTokens > 0 ? { maxTokens: model.maxTokens } : {}),
     ...(model.cost ? { cost: model.cost } : {}),
@@ -82,6 +102,11 @@ export function backfillEntry(doc: Document, entry: YAMLMap, seed: OmpProviderMo
   if (seed.imageInput && (!Array.isArray(currentInput) || !currentInput.includes('image'))) {
     entry.set('input', ['text', 'image']);
   }
+  // Separate from the branch above on purpose: an entry that already names the
+  // image input but leaves `compat` unstated is exactly the pair omp reads as
+  // "vision declared, pixels stripped", so the flag has to be filled even when
+  // the input list needs no change. A `compat` the user pinned is theirs.
+  if (seed.imageInput && !entry.has('compat')) entry.set('compat', { ...VISION_COMPAT });
   if (seed.contextWindow && seed.contextWindow > 0 && !plainOf(doc, entry.get('contextWindow'))) {
     entry.set('contextWindow', seed.contextWindow);
   }
@@ -104,6 +129,7 @@ export function updateEntry(_doc: Document, entry: YAMLMap, seed: OmpProviderMod
   if (seed.reasoning !== undefined) entry.set('reasoning', seed.reasoning);
   if (seed.imageInput !== undefined) {
     entry.set('input', seed.imageInput ? ['text', 'image'] : ['text']);
+    if (seed.imageInput && !entry.has('compat')) entry.set('compat', { ...VISION_COMPAT });
   }
   if (seed.contextWindow && seed.contextWindow > 0) entry.set('contextWindow', seed.contextWindow);
   if (seed.maxTokens && seed.maxTokens > 0) entry.set('maxTokens', seed.maxTokens);
@@ -112,7 +138,9 @@ export function updateEntry(_doc: Document, entry: YAMLMap, seed: OmpProviderMod
 
 /**
  * Existing entries worth backfilling: a bare id whose seed now carries
- * metadata the entry lacks (context window, price, reasoning, image input).
+ * metadata the entry lacks (context window, price, reasoning, image input), or
+ * one that declares the image input without the `compat` that makes omp honour
+ * it — the entry looks configured and drops every picture.
  */
 export function backfillableIds(
   existingModels: unknown,
@@ -129,7 +157,8 @@ export function backfillableIds(
         (missingContext && (seed.contextWindow || seed.maxTokens))
         || (!model.cost && seed.cost)
         || (seed.reasoning !== undefined && model.reasoning === undefined)
-        || (!Array.isArray(model.input) && seed.imageInput),
+        || (!Array.isArray(model.input) && seed.imageInput)
+        || (seed.imageInput && !isRecord(model.compat)),
       );
     })
     .map((model) => String(model.id));
