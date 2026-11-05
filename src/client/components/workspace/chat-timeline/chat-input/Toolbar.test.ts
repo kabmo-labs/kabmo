@@ -57,6 +57,8 @@ interface MountOptions {
   onStop?: () => void;
   /** Renders the Plan/Goal group when supplied. */
   withModes?: boolean;
+  /** Blocks the send control, as an empty draft does. */
+  sendDisabled?: boolean;
 }
 
 const MODES = {
@@ -77,7 +79,7 @@ const MODES = {
 };
 
 /** The selectors are off: this file is about the right-hand action strip. */
-async function mount({ isGenerating, chatRunning, isMobile = false, onStop, withModes = false }: MountOptions): Promise<HTMLElement> {
+async function mount({ isGenerating, chatRunning, isMobile = false, onStop, withModes = false, sendDisabled = false }: MountOptions): Promise<HTMLElement> {
   container = document.createElement('div');
   document.body.appendChild(container);
   await act(async () => {
@@ -93,7 +95,7 @@ async function mount({ isGenerating, chatRunning, isMobile = false, onStop, with
         chatRunning,
         onStop,
         onSend: () => {},
-        sendDisabled: false,
+        sendDisabled,
         showModel: false,
         showThinking: false,
         showAccess: withModes,
@@ -127,6 +129,64 @@ describe('composer toolbar Stop', () => {
   test('keeps Stop off a phone composer that has no stop handler', async () => {
     const el = await mount({ isGenerating: true, chatRunning: true, isMobile: true, onStop: undefined });
     expect(el.querySelectorAll(stops).length).toBe(0);
+  });
+});
+
+/**
+ * The action pair's contract, as the UI states it: one geometry for both
+ * controls, an accessible name on each, and a disabled send that still reports
+ * what it is. None of this is cosmetic — the pair had no `focus-visible`
+ * treatment at all and the square relied on `title` alone for its name, which
+ * is not a reliable accessible name across screen readers.
+ */
+describe('composer toolbar action pair', () => {
+  const send = '[aria-label="Send message"], [aria-label="Queue follow-up message"]';
+
+  test('names Stop for assistive tech, not only for a tooltip', async () => {
+    const el = await mount({ isGenerating: true });
+    const stop = el.querySelector(stops) as HTMLButtonElement;
+    expect(stop.getAttribute('aria-label')).toBe('Stop generation');
+  });
+
+  test('gives both controls the same box on a desktop', async () => {
+    const el = await mount({ isGenerating: true, onStop: () => {} });
+    const stop = el.querySelector(stops) as HTMLButtonElement;
+    const submit = el.querySelector(send) as HTMLButtonElement;
+    for (const box of ['w-7', 'h-7', 'rounded-lg']) {
+      expect(stop.className.split(/\s+/)).toContain(box);
+      expect(submit.className.split(/\s+/)).toContain(box);
+    }
+  });
+
+  test('gives both controls the same box on a phone', async () => {
+    const el = await mount({ isGenerating: true, isMobile: true, onStop: () => {} });
+    const stop = el.querySelector(stops) as HTMLButtonElement;
+    const submit = el.querySelector(send) as HTMLButtonElement;
+    for (const box of ['w-8', 'h-8', 'rounded-lg']) {
+      expect(stop.className.split(/\s+/)).toContain(box);
+      expect(submit.className.split(/\s+/)).toContain(box);
+    }
+  });
+
+  test('keeps Send usable and labelled while nothing is typed', async () => {
+    const el = await mount({ isGenerating: false });
+    const submit = el.querySelector(send) as HTMLButtonElement;
+    expect(submit.disabled).toBe(false);
+    expect(submit.getAttribute('title')).toBe('Send message');
+  });
+
+  test('states the queue action once a run is in flight', async () => {
+    const el = await mount({ isGenerating: false, chatRunning: true });
+    const submit = el.querySelector('[aria-label="Queue follow-up message"]') as HTMLButtonElement;
+    expect(submit).not.toBeNull();
+    expect(submit.disabled).toBe(false);
+  });
+
+  test('renders a disabled Send as disabled, with no hover lift', async () => {
+    const el = await mount({ isGenerating: false, sendDisabled: true });
+    const submit = el.querySelector(send) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(submit.className).toContain('disabled:hover:bg-ink');
   });
 });
 

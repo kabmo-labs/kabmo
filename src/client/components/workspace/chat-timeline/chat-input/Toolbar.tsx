@@ -56,6 +56,34 @@ export interface ComposerToolbarProps {
 }
 
 /**
+ * The chat's two ACTION controls, one geometry.
+ *
+ * They used to state their own boxes: `rounded` on send (4px, below DESIGN.md
+ * §5's 6-8px control radius) and `rounded-md` on a phone's stop, so the pair
+ * disagreed on radius and only agreed on size by coincidence. Both are 28px on
+ * a desktop and 32px on a phone, from ONE pair of classes below, so a future
+ * size change cannot land on one control and miss the other.
+ *
+ * `focus-visible` is not decoration: the send and stop controls had no focus
+ * treatment at all, so the two controls that start and end a turn were the only
+ * interactive elements in the composer a keyboard user could not see. The ring
+ * is ink at 50%, not the `/20`-`/30` the timeline cards use: WCAG 1.4.11 wants
+ * 3:1 for a focus indicator, and on `paper` the ramp measures `/30` 1.97, `/45`
+ * 2.96 and `/50` 3.43. It is offset by 2px of the card's own paper so it reads
+ * as a halo on the filled send button too. The voice control shares this base
+ * because it is the third member of the same cluster.
+ *
+ * The transition is Tailwind's own `transition` (colour, background, border,
+ * box-shadow, transform), not a hand-listed property set: those are the five
+ * things this button changes, and they are the default for a reason.
+ */
+const ACTION_BASE =
+  'tap-target flex items-center justify-center rounded-lg flex-shrink-0 cursor-pointer ' +
+  'transition duration-150 ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50 ' +
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-paper active:scale-95';
+
+/**
  * Bottom config row of the composer: model + thinking + access + plan/goal
  * selectors on the left, Stop/Send on the right.
  *
@@ -96,6 +124,11 @@ export function ComposerToolbar({
 }: ComposerToolbarProps) {
   const chatInFlight = chatRunning ?? isGenerating;
   const showStop = chatInFlight && (isMobile ? Boolean(onStop) : true);
+  // The pair's box, and its glyph, from the one layout flag: 32px on a phone
+  // (the touch floor's real geometry) and 28px on the desktop toolbar the
+  // comment above measured.
+  const actionSize = isMobile ? 'w-8 h-8' : 'w-7 h-7';
+  const iconSize = isMobile ? 14 : 12;
 
   return (
     <div
@@ -159,20 +192,21 @@ export function ComposerToolbar({
             order. An empty slot renders nothing, so this row is unchanged. */}
         <PluginComposerActions text={text} isSubmitting={chatInFlight} />
         {/* Voice input — only when the browser can capture audio. Idle ▸ mic,
-            recording ▸ pulsing red mic-off, transcribing ▸ spinner. */}
+            recording ▸ pulsing red mic-off, transcribing ▸ spinner. It shares
+            the action pair's geometry: it is the third control of one cluster,
+            and a 4px radius beside two 8px ones was the same class of drift
+            this file's `ACTION_BASE` exists to stop. */}
         {voiceSupported && (
           <button
             type="button"
             onClick={onVoiceToggle}
             disabled={voiceBusy}
-            className={`tap-target flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+            className={`${ACTION_BASE} ${actionSize} ${
               voiceBusy
                 ? 'text-ink/40 cursor-wait'
                 : voiceListening
-                  ? 'bg-error text-canvas animate-pulse shadow-xs cursor-pointer'
-                  : 'text-ink/50 hover:text-ink hover:bg-ink/10 cursor-pointer'
-            } ${
-              isMobile ? 'w-8 h-8 rounded-md' : 'w-7 h-7'
+                  ? 'bg-error text-canvas animate-pulse shadow-xs'
+                  : 'text-ink/50 hover:text-ink hover:bg-ink/10'
             }`}
             title={
               voiceBusy
@@ -183,41 +217,56 @@ export function ComposerToolbar({
             }
           >
             {voiceBusy ? (
-              <Loader2 size={isMobile ? 14 : 12} className="animate-spin" />
+              <Loader2 size={iconSize} className="animate-spin" />
             ) : voiceListening ? (
-              <MicOff size={isMobile ? 14 : 12} />
+              <MicOff size={iconSize} />
             ) : (
-              <Mic size={isMobile ? 14 : 12} />
+              <Mic size={iconSize} />
             )}
           </button>
         )}
 
+        {/* Stop is the SECONDARY of the pair while a run is in flight: an
+            outline on the card's own surface, so it sits beside the filled
+            send without a second black block claiming equal weight. No shadow:
+            elevation is rarity (`DESIGN.md` §5), and the one control that must
+            read as primary in this row is Send.
+            Its hover is a red TINT rather than the solid `bg-error` it used to
+            switch to: a solid signal fill makes the glyph take the fill's own
+            colour (see `solidSignalFillRules`), and in the colour icon mode the
+            square then measured **1.27:1** against `#c8321e`. On a 10% tint the
+            ink-mode square reads 17.5:1 and the colour-mode one 3.4:1.
+            The entrance animation this used to carry was `animate-in
+            zoom-in-90`, which no build has ever emitted (no animate plugin in
+            the bundle): it was a dead class, and the composer's motion is
+            reserved for live state anyway. */}
         {showStop && (
           <button
             type="button"
             onClick={onStop}
-            className={`tap-target flex items-center justify-center rounded transition-colors cursor-pointer shadow-xs animate-in zoom-in-90 duration-150 flex-shrink-0 ${
-              isMobile
-                ? 'w-8 h-8 rounded-md border border-ink/25 text-ink hover:bg-error hover:text-canvas hover:border-error'
-                : 'w-7 h-7 bg-ink text-canvas hover:bg-error hover:text-canvas'
-            }`}
+            className={`${ACTION_BASE} ${actionSize} border border-ink/25 text-ink hover:border-error/50 hover:bg-error/10 hover:text-error`}
             title="Stop generation"
+            aria-label="Stop generation"
           >
-            <Square size={isMobile ? 12 : 10} className="fill-current" />
+            <Square size={iconSize} className="fill-current" />
           </button>
         )}
 
+        {/* Send is the primary: the only filled control in the row, and the
+            one that must stay findable at rest. A one-pixel lift on hover and
+            a press-scale are the whole state language; the disabled state is
+            the house pair (`bg-ink` at 40% opacity, no shadow) rather than a
+            washed-out fill, because a lighter FILL moves the glyph off the
+            inverted-surface rule and into the icon mode's own hue. */}
         <button
           type="button"
           onClick={onSend}
           disabled={sendDisabled}
-          className={`tap-target flex items-center justify-center rounded bg-ink text-canvas hover:bg-ink/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 ${
-            isMobile ? 'w-8 h-8 rounded-md' : 'w-7 h-7'
-          }`}
+          className={`${ACTION_BASE} ${actionSize} bg-ink text-canvas shadow-xs hover:bg-ink/85 hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-ink`}
           title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
           aria-label={chatInFlight ? 'Queue follow-up message' : 'Send message'}
         >
-          <Send size={isMobile ? 14 : 12} className="ml-px" />
+          <Send size={iconSize} className="ml-px" />
         </button>
       </div>
     </div>
