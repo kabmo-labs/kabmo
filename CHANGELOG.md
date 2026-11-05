@@ -4,6 +4,31 @@ All notable changes to Kabmo.
 
 Kabmo starts at `0.0.1`. The pre-rename history (OMPChamber 0.x-4.x) is kept in [CHANGELOG-legacy.md](./CHANGELOG-legacy.md).
 
+## [0.22.0](https://github.com/kabmo-labs/kabmo/compare/v0.21.1...v0.22.0) — 2026-11-05
+
+### Added
+
+* **chat:** arm a goal and start it with the operator's next message ([550dc0c](https://github.com/kabmo-labs/kabmo/commit/550dc0c80e8abc6b0d0532b385da937657bdc977)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#if](https://github.com/kabmo-labs/kabmo/issues/if)
+* **cli:** name the install command Kabmo requires, and add `kabmo doctor` ([e19969f](https://github.com/kabmo-labs/kabmo/commit/e19969f83cf6187e451eb3590dbe39c7d1b24e69)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** restyle the send and stop controls as one action pair ([1c19882](https://github.com/kabmo-labs/kabmo/commit/1c19882eaa5469559b4f58605dc06a24d1d63bf9)) (thanks [@rajebdev](https://github.com/rajebdev)), closes [#c8321e](https://github.com/kabmo-labs/kabmo/issues/c8321e)
+
+### Changed
+
+* **copy:** remove the em dash from every string the UI shows ([635847e](https://github.com/kabmo-labs/kabmo/commit/635847e7a3c084c2556b6274f857433549a0e577)) (thanks [@rajebdev](https://github.com/rajebdev))
+
+### Fixed
+
+* **composer:** drop a goalArm prop the committed types do not declare ([f52119d](https://github.com/kabmo-labs/kabmo/commit/f52119d5519fbb852cbb3531f9145beb0d486f0c)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **composer:** put the model and mode controls on the readable level ([26df853](https://github.com/kabmo-labs/kabmo/commit/26df85323886252fa275ea580941fcb61d211b00)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **glass:** make composer popovers opaque so text behind them stays hidden ([4153450](https://github.com/kabmo-labs/kabmo/commit/415345057d4678616aef6a66f6d6b31d770f8597)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **icons:** tint every icon legibly, and stop discarding a call site's colour ([06351fd](https://github.com/kabmo-labs/kabmo/commit/06351fd60be6b2b4e9a6c43490c8cc468c0d1248)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **models:** state the compat flag that makes omp send an attached image ([a03ab6b](https://github.com/kabmo-labs/kabmo/commit/a03ab6b4d8b7f739a090a452636efa0d15d6d9d3)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **sidebar:** carry the load-failure flag through the controller ([dc67efc](https://github.com/kabmo-labs/kabmo/commit/dc67efc56827fe1966ec8db6573dda86e22bf81e)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **theme:** keep the muted ink a lightness ramp and add a solved AA level ([d3506df](https://github.com/kabmo-labs/kabmo/commit/d3506df5b7c4c7ad29e869ffde271fe0cb919581)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** add the three extracted hooks the shell already imports ([3127c4a](https://github.com/kabmo-labs/kabmo/commit/3127c4affa8974f3b75216c12cedf4d8aecf37d4)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** finish the touch-target and type-scale pass in the composer ([d6430fe](https://github.com/kabmo-labs/kabmo/commit/d6430fee64f890cc2b8b5029d3cda1828d59a62b)) (thanks [@rajebdev](https://github.com/rajebdev))
+* **ui:** give phone controls a 44px target and dialogs a keyboard contract ([edd30ad](https://github.com/kabmo-labs/kabmo/commit/edd30ad147353813123a152480924d3f31c4575f)) (thanks [@rajebdev](https://github.com/rajebdev))
+
 ## [0.21.1](https://github.com/kabmo-labs/kabmo/compare/v0.21.0...v0.21.1) — 2026-11-05
 
 ### Fixed
