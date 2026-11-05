@@ -83,31 +83,43 @@ describe('the icon paint stylesheet', () => {
     expect(css).toContain('[data-tool-row] [data-plugin-mark] { --plugin-color: var(--theme-ink); }');
   });
 
-  test('a muted ink icon takes its hue, muted toward the ink rather than faded out', () => {
+  test('a muted ink icon keeps its hue and only loses CHROMA', () => {
     // `text-ink/60` is a WEIGHT. It is (0,1,0) and the hue rules are (0,0,0), so
     // the mute won and every muted icon stayed ink in the colour mode — the
     // reported "icon di setting modal kenapa gk full color".
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class*="text-ink/60"] { color: color-mix(in srgb,');
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink"] { color: var(--icon-tone, hsl(var(--icon-hue');
-    // Mixed toward the INK, never toward transparency: a hue at 40% alpha is
-    // 1.56:1 against its surface, worse than the `text-ink/40` it replaces.
+    //
+    // The weight multiplies CHROMA and leaves LIGHTNESS alone. Mixing toward the
+    // ink also darkens, which is the opposite of a mute: measured, a muted
+    // settings icon read 7.48:1 where the active one read 3.96:1 and the
+    // monochrome ink it replaced read 4.74:1 — darker than both, which is the
+    // "masih kusam di light mode" report.
+    // `[class~=…]`, never `[class*=…]`: a substring match also fires on the
+    // VARIANT token — `text-ink/50 group-hover:text-ink/80` matched both, so the
+    // resting icon was painted at its hover weight (measured on the composer's
+    // target picker, `Folder` computed the `/80` paint while not hovered).
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/60"] { --icon-paint: oklch(from var(--icon-color) l calc(c * 0.6) h); }');
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink"] { --icon-paint: var(--icon-color); }');
+    expect(css).not.toContain('[class*="text-ink/');
+    // Never toward transparency: a hue at 40% alpha is 1.56:1 against its
+    // surface, worse than the `text-ink/40` it replaces.
     const muted = css.split('\n').find((line) => line.includes('text-ink/40"')) ?? '';
-    expect(muted).toContain('var(--theme-ink)');
+    expect(muted).toContain('oklch(from');
     expect(muted).not.toContain('transparent');
+    expect(muted).not.toContain('var(--theme-ink)');
   });
 
   test('the project accent survives the dark ink weights', () => {
     // Each folder mark carries the user's OWN colour as `--project-accent`, and
     // the call sites also write `text-ink/70`. The dark weight selector is
-    // `[data-icon-style="color"][data-theme-variant="dark"] svg.lucide[class*="text-ink/70"]`
+    // `[data-icon-style="color"][data-theme-variant="dark"] svg.lucide[class~="text-ink/70"]`
     // = (0,4,1) — one ELEMENT above
     // `:root[data-icon-style="color"] .project-accent-mark` = (0,4,0) — so on a
     // dark theme every folder icon came out the same hue and light looked fine.
     // "A weight does not apply to the user's own colour" is the fix; out-specifying
     // it would be a tie waiting for the next attribute.
-    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class*="text-ink/70"]');
+    expect(css).toContain('[data-icon-style="color"] svg.lucide:not(.project-accent-mark)[class~="text-ink/70"]');
     expect(css).toContain(
-      '[data-icon-style="color"][data-theme-variant="dark"] svg.lucide:not(.project-accent-mark)[class*="text-ink/70"]',
+      '[data-icon-style="color"][data-theme-variant="dark"] svg.lucide:not(.project-accent-mark)[class~="text-ink/70"]',
     );
     expect(css).toContain(':root[data-icon-style="color"] .project-accent-mark { color: var(--project-accent); }');
     // Every weight rule, not just the one probed by hand: a single step that
@@ -132,9 +144,13 @@ describe('the icon paint stylesheet', () => {
     }
   });
 
-  test('the base hue rule paints a custom-property hsl(), per variant', () => {
-    expect(css).toContain(':where(svg.lucide) { color: hsl(var(--icon-hue,');
-    expect(css).toContain(':where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { color: hsl(var(--icon-hue,');
+  test('the base hue rule states --icon-color, per variant, and one rule paints it', () => {
+    expect(css).toContain(':where(svg.lucide) { --icon-color: var(--icon-tone, hsl(var(--icon-hue,');
+    expect(css).toContain(':where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: hsl(var(--icon-hue,');
+    // ONE `color:` statement, derived from the two custom properties. Stating it
+    // per source instead made the weight rules fight them on specificity, and a
+    // signal token could be overwritten by winning that race.
+    expect(css).toContain('[data-icon-style="color"] :is(svg.lucide, svg[data-provider], svg[data-file-brand]) { --icon-paint: var(--icon-color); color: var(--icon-paint); }');
   });
 
   test('one hue statement per generated row', () => {
@@ -146,7 +162,7 @@ describe('the icon paint stylesheet', () => {
   test('every signal row paints its palette token, after the hue rows', () => {
     const hueIndex = css.indexOf('--icon-hue');
     for (const { className, role } of ICON_TINT_ROWS) {
-      const needle = `:where(svg.${className}) { color: ${ICON_TINT_TOKENS[role]}; }`;
+      const needle = `:where(svg.${className}) { --icon-color: ${ICON_TINT_TOKENS[role]}; }`;
       expect(css).toContain(needle);
       expect(css.indexOf(needle), `${className} must follow the hue rules`).toBeGreaterThan(hueIndex);
     }
@@ -155,16 +171,16 @@ describe('the icon paint stylesheet', () => {
   test('every provider row paints both variants', () => {
     for (const [name, entry] of Object.entries(BRAND_COLORS)) {
       const selector = `svg[data-provider="${name}"]`;
-      expect(css).toContain(`:where(${selector}) { color: ${entry.light}; }`);
-      expect(css).toContain(`color: ${entry.dark ?? 'var(--theme-ink)'}; }`);
+      expect(css).toContain(`:where(${selector}) { --icon-color: ${entry.light}; }`);
+      expect(css).toContain(`--icon-color: ${entry.dark ?? 'var(--theme-ink)'}; }`);
     }
   });
 
   test('every file-brand row paints both variants', () => {
     for (const [name, entry] of Object.entries(FILE_BRAND_COLORS)) {
       const selector = `svg[data-file-brand="${name}"]`;
-      expect(css).toContain(`:where(${selector}) { color: ${entry.light}; }`);
-      expect(css).toContain(`color: ${entry.dark ?? 'var(--theme-ink)'}; }`);
+      expect(css).toContain(`:where(${selector}) { --icon-color: ${entry.light}; }`);
+      expect(css).toContain(`--icon-color: ${entry.dark ?? 'var(--theme-ink)'}; }`);
     }
   });
 
@@ -213,10 +229,15 @@ describe('the icon paint stylesheet', () => {
     // mid-tone ink (`#586e75`, `#93a1a1`), where no hue at any lightness clears
     // 3:1. The surface already declares `text-canvas`/`text-paper`, and the
     // palette guarantees that pair, so the icon inherits it.
-    expect(css).toContain(':where([data-icon-style="color"]) :where(.bg-ink) :where(svg.lucide) { color: currentColor; }');
+    // (0,2,1) with an explicit `color`, not `:where()`: it has to TIE with the
+    // paint rule and win on order, and it cannot feed `currentColor` back into
+    // `--icon-color` — that is a cycle on the property computing `color`.
+    expect(css).toContain('[data-icon-style="color"] .bg-ink svg.lucide { color: currentColor; }');
     expect(css).toContain(':where([data-icon-style="color"]) :where(.bg-ink) :where([data-plugin-mark]) { --plugin-color: currentColor; }');
     // Same zero specificity as the base rules, so it has to come AFTER them.
-    expect(css.indexOf(':where(.bg-ink) :where(svg.lucide)')).toBeGreaterThan(css.indexOf(':where(svg.lucide) { color: hsl(var(--icon-hue'));
+    expect(css.indexOf('.bg-ink svg.lucide { color: currentColor; }')).toBeGreaterThan(
+      css.indexOf('[data-icon-style="color"] :is(svg.lucide, svg[data-provider]'),
+    );
   });
 
   test('a plugin manifest colour wins over the hashed hue', () => {
@@ -231,5 +252,62 @@ describe('the icon paint stylesheet', () => {
 
   test('the string is cached, not rebuilt per call', () => {
     expect(iconPaintStyleSheet()).toBe(css);
+  });
+});
+
+describe('the ink weight selectors', () => {
+  // Only the rules that read a WEIGHT: the paint rule also sets `--icon-paint`
+  // (from `--icon-color`, unconditionally), and it is not a weight.
+  const weightRules = css.split('\n').filter((line) => line.includes('--icon-paint:') && line.includes('text-ink'));
+
+  test('a weight matches one class TOKEN, never a substring', () => {
+    // `[class*=…]` also fires on the VARIANT token: `text-ink/50
+    // group-hover:text-ink/80` matched both `/50` and `/80`, so the resting icon
+    // was painted at its HOVER weight — measured on the composer's target
+    // picker, `Folder` computed the `/80` paint while the pointer was elsewhere.
+    expect(weightRules.length).toBeGreaterThan(0);
+    for (const rule of weightRules) {
+      expect(rule, rule.slice(0, 90)).toContain('[class~="');
+      expect(rule, rule.slice(0, 90)).not.toContain('[class*="text-ink');
+    }
+  });
+
+  test('a hover weight is stated as a pseudo-class, in the right DOM order', () => {
+    // Two independent failures live here. ORDER: `.group` is an ancestor while
+    // `[data-icon-style]` sits on `<html>`, so `.group:hover` has to come AFTER
+    // the mode gate — written before it, the selector demands a descendant that
+    // carries the attribute and never matches (measured: `group-hover` had no
+    // effect at all). SPECIFICITY: the variant must outrank the resting rule, so
+    // an icon that is muted at rest and bright on hover really does brighten.
+    const groupRule = weightRules.find((line) => line.includes('[class~="group-hover:text-ink/80"]')) ?? '';
+    expect(groupRule).toMatch(/^\[data-icon-style="color"\] \.group:hover svg\.lucide/);
+
+    const hoverRule = weightRules.find((line) => line.includes('[class~="hover:text-ink/70"]')) ?? '';
+    expect(hoverRule).toMatch(/^\[data-icon-style="color"\] svg\.lucide.*\]:hover \{/);
+
+    // The resting rule for the same class must exist too, or the selector is a
+    // hover-only paint and the icon changes colour the moment the pointer moves.
+    expect(weightRules.some((line) => line.includes('[class~="text-ink/50"]') && !line.includes('hover'))).toBe(true);
+  });
+
+  test('the weight scales chroma, and never mixes toward the ink', () => {
+    // Mixing toward `var(--theme-ink)` desaturates AND darkens, and darkening is
+    // the opposite of a mute: a muted settings icon measured 7.48:1 where the
+    // active one read 3.96:1. Multiplying chroma leaves the solved lightness —
+    // and therefore the legibility — alone.
+    const stepped = weightRules.filter((line) => /text-ink\/\d+"\]/.test(line));
+    expect(stepped.length).toBeGreaterThan(0);
+    for (const rule of stepped) {
+      expect(rule, rule.slice(0, 90)).toContain('oklch(from var(--icon-color) l calc(c *');
+      expect(rule, rule.slice(0, 90)).not.toContain('var(--theme-ink)');
+      expect(rule, rule.slice(0, 90)).not.toContain('color-mix(');
+    }
+  });
+
+  test('every weight is gated on the colour mode and skips the project accent', () => {
+    for (const rule of weightRules) {
+      expect(rule.startsWith('[data-icon-style="color"]'), rule.slice(0, 80)).toBe(true);
+      expect(rule, rule.slice(0, 80)).toContain(':not(.project-accent-mark)');
+    }
   });
 });

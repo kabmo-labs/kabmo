@@ -47,6 +47,7 @@
 
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { panelMarkRules } from '@/shared/lib/icons/icon-paint-panel';
+import { inkWeightRules } from '@/shared/lib/icons/icon-paint-weight';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import {
   DEFAULT_ICON_HUE,
@@ -63,21 +64,62 @@ export const ICON_PAINT_STYLE_ELEMENT_ID = 'omp-icon-paint';
 /** Both rules for one brand, since a brand colour has two values. */
 function brandRules(selector: string, light: string, dark: string | null): string[] {
   return [
-    `:where([data-icon-style="color"]) :where(${selector}) { color: ${light}; }`,
-    `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(${selector}) { color: ${dark ?? 'var(--theme-ink)'}; }`,
+    `:where([data-icon-style="color"]) :where(${selector}) { --icon-color: ${light}; }`,
+    `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(${selector}) { --icon-color: ${dark ?? 'var(--theme-ink)'}; }`,
   ];
 }
 
 /** The hue a functional glyph is painted with, per variant. */
 function hueRules(): string[] {
   const rules = [
-    `:where([data-icon-style="color"]) :where(svg.lucide) { color: ${iconHuePaint('light')}; }`,
-    `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { color: ${iconHuePaint('dark')}; }`,
+    // `--icon-paint`, not `color`: WHICH colour an icon is and HOW LOUD it is are
+    // two decisions, and stating them as one `color` makes them compete on
+    // specificity. The weight rules below multiply the chroma of whatever this
+    // resolves to, so they cannot overwrite a signal token by winning a cascade
+    // race (which is exactly what they did — see `inkWeightRules`).
+    `:where([data-icon-style="color"]) :where(svg.lucide) { --icon-color: ${iconHuePaint('light')}; }`,
+    `:where([data-icon-style="color"][data-theme-variant="dark"]) :where(svg.lucide) { --icon-color: ${iconHuePaint('dark')}; }`,
   ];
   for (const { className, hue } of ICON_HUE_ROWS) {
     rules.push(`:where([data-icon-style="color"]) :where(svg.${className}) { --icon-hue: ${hue}; --icon-tone: ${iconTone(hue)}; }`);
   }
   return rules;
+}
+
+/**
+ * The paint itself. Stated ONCE, after the sources above, so every rule that
+ * decides a colour only has to set `--icon-color`.
+ *
+ * `color` rather than a second fallback inside each source: it is the one
+ * property a caller can also set (`text-ink/60`), and this block is gated, so an
+ * icon outside the colour mode keeps the author's class.
+ *
+ * **The selector covers all three icon families, not just `.lucide`.** Provider
+ * and file-type marks are their own `<svg>` and carry no `lucide` class, so a
+ * `.lucide`-only paint rule left them inheriting their parent's text colour —
+ * measured, a brand mark computed `oklab(0.523 -0.022 -0.018 / 0.8)` (its row's
+ * muted ink) while its `--icon-color` held the brand hex. `:is()` costs nothing:
+ * each argument is (0,1,1), so the whole selector stays (0,2,1) and still beats
+ * a single utility.
+ */
+function paintRules(): string[] {
+  return [
+    // `--icon-paint` is derived from `--icon-color`, which every source above
+    // sets. The indirection is what lets a WEIGHT rule (see `inkWeightRules`)
+    // transform the colour without knowing which source produced it — a signal
+    // token, a solved tone, a brand hex or a panel's own colour all flow through
+    // the same two lines.
+    //
+    // NOT `:where()` on this one, unlike every other rule in the sheet. The
+    // subject is the `color` property, which the call sites also set — a utility
+    // like `text-ink/60` is (0,1,0) — so a zero-specificity statement lost the
+    // mode entirely and every muted icon stayed monochrome ink (measured in the
+    // settings modal: `--icon-paint` computed to the tone, and `color` still
+    // resolved to `oklab(… / 0.6)`). (0,2,1) beats a single utility, and the
+    // rules that must still override it — a panel mark, a tool card, an inverted
+    // surface, the project accent — are stated after this one with more weight.
+    `[data-icon-style="color"] :is(svg.lucide, svg[data-provider], svg[data-file-brand]) { --icon-paint: var(--icon-color); color: var(--icon-paint); }`,
+  ];
 }
 
 /**
@@ -183,7 +225,12 @@ function projectAccentRules(): string[] {
  */
 function invertedSurfaceRules(): string[] {
   return [
-    ':where([data-icon-style="color"]) :where(.bg-ink) :where(svg.lucide) { color: currentColor; }',
+    // Stated at (0,2,1) to TIE with `paintRules` and win on order — `:where()`
+    // would be (0,0,0) and lose to it, which is the whole reason this rule
+    // exists. It sets `color` directly rather than `--icon-color`, because
+    // `currentColor` resolves FROM `color`: feeding it back into the property
+    // that computes `color` is a cycle the browser drops.
+    '[data-icon-style="color"] .bg-ink svg.lucide { color: currentColor; }',
     ':where([data-icon-style="color"]) :where(.bg-ink) :where([data-plugin-mark]) { --plugin-color: currentColor; }',
   ];
 }
@@ -203,52 +250,11 @@ function pluginMarkRules(): string[] {
   ];
 }
 
-/**
- * `text-ink/60` is a WEIGHT, not a colour choice.
- *
- * The settings sidebar, the composer toolbar and a few hundred other call sites
- * write `text-ink/40`-`/80` to mute an icon. That is "the ink, quieter" — the
- * caller did not pick a colour — but a utility class is (0,1,0) and the hue
- * rules are `:where()` (0,0,0), so the mute won and every muted icon stayed ink
- * in the colour mode ("icon di setting modal kenapa gk full color").
- *
- * The mute is reproduced by mixing toward the INK, not toward transparency. Two
- * reasons, both measured. Transparency is the wrong lever for a graphic: a hue at
- * 40% alpha is 1.56:1 (light) / 1.77:1 (dark) against its surface, while the
- * `text-ink/40` it replaces was already only 1.71 / 2.05 — so the colour mode
- * would have made every muted icon less legible than before. Mixing toward the
- * ink instead keeps the same "mostly ink, quieter" reading AND lands at 3.89:1
- * worst case across every palette (`hue 80% + ink 20%`), 4.65:1 at the muted end.
- *
- * Specificity `svg.lucide[class*=…]` (0,2,1) beats the utility (0,1,0) on its
- * own; the `!` is not needed and is not used anywhere in this sheet.
- */
-function inkWeightRules(): string[] {
-  const steps = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
-  const rules: string[] = [];
-  for (const variant of ['light', 'dark'] as const) {
-    const gate = variant === 'dark'
-      ? '[data-icon-style="color"][data-theme-variant="dark"]'
-      : '[data-icon-style="color"]';
-    const paint = iconHuePaint(variant);
-    // The un-suffixed `text-ink` is the full-strength ink.
-    rules.push(`${gate} svg.lucide:not(.project-accent-mark)[class~="text-ink"] { color: ${paint}; }`);
-    for (const step of steps) {
-      // `NN%` of hue over the ink: the caller's mute survives as "mostly ink",
-      // and the hue is what the mode added.
-      rules.push(
-        `${gate} svg.lucide:not(.project-accent-mark)[class*="text-ink/${step}"] { color: color-mix(in srgb, ${paint} ${step}%, var(--theme-ink)); }`,
-      );
-    }
-  }
-  return rules;
-}
-
 /** The signal colours, which beat the hue because they are stated after it. */
 function signalRules(): string[] {
   return ICON_TINT_ROWS.map(
     ({ className, role }) =>
-      `:where([data-icon-style="color"]) :where(svg.${className}) { color: ${ICON_TINT_TOKENS[role]}; }`,
+      `:where([data-icon-style="color"]) :where(svg.${className}) { --icon-color: ${ICON_TINT_TOKENS[role]}; }`,
   );
 }
 
@@ -263,10 +269,13 @@ export function iconPaintStyleSheet(): string {
     '@layer theme, base, components, utilities;',
     '@layer utilities {',
     ...hueRules(),
-    ...inkWeightRules(),
-    ...panelMarkRules(),
     ...signalRules(),
     ...pluginMarkRules(),
+    // Every `--icon-color` source is stated above this line; the paint and the
+    // weight that SCALES it are stated below, in that order.
+    ...paintRules(),
+    ...inkWeightRules(),
+    ...panelMarkRules(),
     // Last: same specificity as everything above, so order is what makes an
     // inverted surface win over the paper-tuned paint.
     ...invertedSurfaceRules(),
