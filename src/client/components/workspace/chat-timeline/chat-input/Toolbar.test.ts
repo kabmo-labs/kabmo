@@ -186,7 +186,32 @@ describe('composer toolbar action pair', () => {
     const el = await mount({ isGenerating: false, sendDisabled: true });
     const submit = el.querySelector(send) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
-    expect(submit.className).toContain('disabled:hover:bg-ink');
+    // The fill changes through a solved hover TOKEN, so the disabled state has
+    // to re-state the resting fill and the 40%: otherwise a barred control
+    // would darken on hover like a live one.
+    const classes = submit.className.split(/\s+/);
+    expect(classes).toContain('disabled:opacity-40');
+    expect(classes).toContain('disabled:hover:bg-info-text');
+    expect(classes).toContain('disabled:shadow-none');
+  });
+
+  test('paints Stop red and Send blue, so the two ends of a turn differ before the glyph is read', async () => {
+    const el = await mount({ isGenerating: true, onStop: () => {} });
+    const stop = el.querySelector(stops) as HTMLButtonElement;
+    const submit = el.querySelector(send) as HTMLButtonElement;
+    // `-text` is the palette's hex SOLVED to 4.5:1 against paper and canvas;
+    // the raw `bg-error`/`bg-info` is a chip ground and measures 2.73:1 and
+    // 1.94:1 on the worst palettes, so a control the user has to find cannot
+    // use it. On the solved fill `text-canvas` reads 4.50:1 minimum — measured
+    // over all 63 palettes.
+    expect(stop.className.split(/\s+/)).toContain('bg-error-text');
+    expect(submit.className.split(/\s+/)).toContain('bg-info-text');
+    expect(stop.className.split(/\s+/)).toContain('text-canvas');
+    expect(submit.className.split(/\s+/)).toContain('text-canvas');
+    // Neither is an outline any more: one geometry, one filled control per
+    // action. A leftover border would draw a second edge on a filled box.
+    expect(stop.className).not.toContain('border-');
+    expect(submit.className).not.toContain('bg-ink');
   });
 });
 

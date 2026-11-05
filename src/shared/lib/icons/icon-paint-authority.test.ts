@@ -63,14 +63,25 @@ describe('an author class is authority', () => {
 });
 
 describe('a solid signal fill owns its foreground', () => {
+  const scope =
+    '[class~="bg-error"], [class~="bg-error-text"], [class~="bg-success"], [class~="bg-success-text"], [class~="bg-warning"], [class~="bg-warning-text"], [class~="bg-info"], [class~="bg-info-text"]';
+
   test('an icon on bg-error/success/warning/info takes the inherited colour', () => {
     // `bg-error text-canvas` is a filled destructive button — Delete, Close, the
     // mobile save — and the glyph was painted in the SAME red as its fill:
     // measured in the running console, `Trash2` computed rgb(200,50,30) on
     // rgb(200,50,30), 1.00:1, a blank square where a bin should be.
-    expect(css).toContain(
-      '[data-icon-style="color"] :where([class~="bg-error"], [class~="bg-success"], [class~="bg-warning"], [class~="bg-info"]) svg.lucide { color: currentColor; }',
-    );
+    //
+    // `-text` is the same slot solved to 4.5:1 against paper and canvas, and it
+    // is the token a filled CONTROL uses: the raw palette hex is chosen for a
+    // chip's ground (measured 1.94:1 on `aura-light` for info). A scope that
+    // knew only the raw spelling left the composer's Stop and Send glyphs on
+    // the icon mode's own hue.
+    expect(css).toContain(`[data-icon-style="color"] :where(${scope}) svg.lucide { color: currentColor; }`);
+  });
+
+  test('the same fill in monochrome, which is the DEFAULT mode', () => {
+    expect(css).toContain(`:root:not([data-icon-style="color"]) :where(${scope}) svg.lucide { color: currentColor; }`);
   });
 
   test('a TINTED signal chip keeps its hue', () => {
@@ -81,6 +92,7 @@ describe('a solid signal fill owns its foreground', () => {
   });
 
   test('a plugin mark on the fill takes it too', () => {
-    expect(css).toContain(':where([class~="bg-error"], [class~="bg-success"]');
+    expect(css).toContain(`:where([data-icon-style="color"]) :where(${scope}) :where([data-plugin-mark]) { --plugin-color: currentColor; }`);
+    expect(css).toContain(`:root:not([data-icon-style="color"]) :where(${scope}) :where([data-plugin-mark]) { --plugin-color: currentColor; }`);
   });
 });

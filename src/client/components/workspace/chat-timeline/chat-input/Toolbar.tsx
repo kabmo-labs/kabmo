@@ -205,7 +205,7 @@ export function ComposerToolbar({
               voiceBusy
                 ? 'text-ink/40 cursor-wait'
                 : voiceListening
-                  ? 'bg-error text-canvas animate-pulse shadow-xs'
+                  ? 'bg-error-text text-canvas animate-pulse shadow-xs'
                   : 'text-ink/50 hover:text-ink hover:bg-ink/10'
             }`}
             title={
@@ -226,25 +226,30 @@ export function ComposerToolbar({
           </button>
         )}
 
-        {/* Stop is the SECONDARY of the pair while a run is in flight: an
-            outline on the card's own surface, so it sits beside the filled
-            send without a second black block claiming equal weight. No shadow:
-            elevation is rarity (`DESIGN.md` §5), and the one control that must
-            read as primary in this row is Send.
-            Its hover is a red TINT rather than the solid `bg-error` it used to
-            switch to: a solid signal fill makes the glyph take the fill's own
-            colour (see `solidSignalFillRules`), and in the colour icon mode the
-            square then measured **1.27:1** against `#c8321e`. On a 10% tint the
-            ink-mode square reads 17.5:1 and the colour-mode one 3.4:1.
-            The entrance animation this used to carry was `animate-in
-            zoom-in-90`, which no build has ever emitted (no animate plugin in
-            the bundle): it was a dead class, and the composer's motion is
-            reserved for live state anyway. */}
+        {/* Stop is the RED half of the pair: a filled signal control, which is
+            how the rest of the app draws "end this" (the delete dialogs, the
+            batch bar). It used to be an outline with a red tint on hover, and
+            the pair then read as one primary and one ghost when the two do
+            different things.
+
+            The fill is `bg-error-text`, NOT `bg-error`: the `-text` token is
+            the palette's own red solved until it clears 4.5:1 against paper
+            and canvas, so the button is a visible shape on all 63 palettes
+            (measured: `bg-error` reaches 2.73:1 against `mono-light`'s paper),
+            and a `text-canvas` glyph on it reads 4.50:1 minimum. The raw
+            palette hex is chosen for a chip's ground, not for a button the
+            user has to find.
+
+            `shadow-xs` is the same lift the send control carries, so the pair is
+            one object; the entrance animation this used to carry was
+            `animate-in zoom-in-90`, which no build has ever emitted (no animate
+            plugin in the bundle): it was a dead class, and the composer's
+            motion is reserved for live state anyway. */}
         {showStop && (
           <button
             type="button"
             onClick={onStop}
-            className={`${ACTION_BASE} ${actionSize} border border-ink/25 text-ink hover:border-error/50 hover:bg-error/10 hover:text-error`}
+            className={`${ACTION_BASE} ${actionSize} bg-error-text text-canvas shadow-xs hover:bg-error-text-hover`}
             title="Stop generation"
             aria-label="Stop generation"
           >
@@ -252,17 +257,25 @@ export function ComposerToolbar({
           </button>
         )}
 
-        {/* Send is the primary: the only filled control in the row, and the
-            one that must stay findable at rest. A one-pixel lift on hover and
-            a press-scale are the whole state language; the disabled state is
-            the house pair (`bg-ink` at 40% opacity, no shadow) rather than a
-            washed-out fill, because a lighter FILL moves the glyph off the
-            inverted-surface rule and into the icon mode's own hue. */}
+        {/* Send is the BLUE half of the pair, and the one that must stay
+            findable at rest: a run is started from here and stopped from the
+            red control beside it, so the two states are told apart by hue
+            before the glyph is read.
+
+            `bg-info-text` for the same reason Stop uses `bg-error-text`: it is
+            the palette's blue solved to 4.5:1 against paper and canvas, so the
+            control is a shape on every palette (`bg-info` reaches 1.94:1 on
+            `aura-light`) and its `text-canvas` glyph clears 4.50:1. A
+            one-pixel lift on hover and a press-scale are the whole state
+            language; the disabled state is the house pair (40% opacity, no
+            shadow) rather than a washed-out fill, because a lighter FILL moves
+            the glyph off the inverted-surface rule and into the icon mode's own
+            hue. */}
         <button
           type="button"
           onClick={onSend}
           disabled={sendDisabled}
-          className={`${ACTION_BASE} ${actionSize} bg-ink text-canvas shadow-xs hover:bg-ink/85 hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-ink`}
+          className={`${ACTION_BASE} ${actionSize} bg-info-text text-canvas shadow-xs hover:bg-info-text-hover hover:shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-info-text`}
           title={chatInFlight ? 'Queue follow-up message' : 'Send message'}
           aria-label={chatInFlight ? 'Queue follow-up message' : 'Send message'}
         >

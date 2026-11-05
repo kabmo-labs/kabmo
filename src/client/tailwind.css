@@ -66,6 +66,15 @@
   --color-warning: var(--theme-warning);
   --color-warning-text: var(--theme-warning-text);
   --color-warning-hover: var(--theme-warning-hover);
+  /* A filled control's hover, for the two slots the composer's action pair
+     uses. Mixing toward the theme's INK follows the palette (darker on a light
+     theme, lighter on a dark one) and keeps the `text-canvas` glyph legal:
+     measured over the 63 palettes, `hover:opacity-90` blended the fill into the
+     paper and dropped the glyph to **3.77:1** on `nightowl-light`, while this
+     mix holds 4.71:1 minimum. The `-text` fill is what the control rests on —
+     the raw palette hex measures 1.94:1 against `aura-light`'s canvas. */
+  --color-error-text-hover: color-mix(in srgb, var(--theme-error-text) 88%, var(--theme-ink));
+  --color-info-text-hover: color-mix(in srgb, var(--theme-info-text) 88%, var(--theme-ink));
   /* The brand mark's own colour, and deliberately NOT a theme token: the logo
      is the same mark in every palette, so a theme flip must not repaint the
      letter that carries it. This is the app icon's accent stroke — the orange

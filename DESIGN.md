@@ -113,6 +113,14 @@ Three rules make the mode safe, and each is enforced rather than reviewed:
   information it had.
 - **A solid signal fill owns its icon's foreground.** `bg-error text-canvas` is a filled button, so
   the glyph takes the surface's own foreground; otherwise a trash can renders at 1:1 on its own fill.
+  This holds in BOTH icon modes: `monochrome` is the default and it paints every glyph in the palette
+  ink, which on that fill is 1.04:1 (measured on `osaka-jade-light`).
+- **A filled control uses the `-text` slot, not the raw signal.** `--theme-error` and its family are
+  chosen for a chip's ground and measure 2.73:1 (`error` on `mono-light`), 1.94:1 (`info` on
+  `aura-light`), 1.75:1 (`success` on `nord-light`) against paper — they fail the 3:1 shape floor on
+  7-9 of the 63 palettes, so a button filled with one has no edge. `--theme-<slot>-text` is the same
+  hue solved to 4.5:1, and a `text-canvas` glyph on it reads 4.50:1 minimum across all 63. Hover is
+  `color-mix(slot-text 88%, ink)`, which keeps 4.71:1 where `hover:opacity-90` drops to 3.77:1.
 - **No palette rung, ever.** `text-amber-500` and its family measure 1.6-2.9:1 on light paper, and
   they ignore the theme. Use the signal tokens, which are solved to 4.5:1 minimum on every palette of
   both variants. `src/client/palette-class.test.ts` scans for violations.

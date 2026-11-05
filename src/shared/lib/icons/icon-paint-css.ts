@@ -48,7 +48,12 @@
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
 import { panelMarkRules } from '@/shared/lib/icons/icon-paint-panel';
 import { inkWeightRules } from '@/shared/lib/icons/icon-paint-weight';
-import { authorColourRules, solidSignalFillRules } from '@/shared/lib/icons/icon-paint-authority';
+import {
+  SOLID_FILL_EXCLUSIONS,
+  authorColourRules,
+  monochromeSolidFillRules,
+  solidSignalFillRules,
+} from '@/shared/lib/icons/icon-paint-authority';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import {
   DEFAULT_ICON_HUE,
@@ -145,12 +150,19 @@ function paintRules(): string[] {
  * the ink, at the weight the caller chose), and an inverted `bg-ink` surface
  * keeps its own foreground.
  *
+ * A SOLID SIGNAL FILL is excluded for the same reason as `bg-ink`: the ink is
+ * the wrong end of the contrast on it. Measured over the 63 palettes, a glyph
+ * on `bg-error` computed 1.04:1 on `osaka-jade-light`, and 44 of 63 sat under
+ * the 3:1 floor for a graphic — the composer's newly filled Stop and Send
+ * buttons would have been blank squares on any monochrome install. The
+ * foreground comes from `monochromeSolidFillRules`, stated after this one.
+ *
  * Specificity is the point: `:root:not(…)` plus the class beats a single utility
  * class, so this wins over `text-success` inside the same layer.
  */
 function monochromeRules(): string[] {
   return [
-    ':root:not([data-icon-style="color"]) svg.lucide:not([class*="text-ink"]):not(.bg-ink *) { color: var(--theme-ink); }',
+    `:root:not([data-icon-style="color"]) svg.lucide:not([class*="text-ink"]):not(.bg-ink *)${SOLID_FILL_EXCLUSIONS} { color: var(--theme-ink); }`,
     ':root:not([data-icon-style="color"]) [data-plugin-mark] { --plugin-color: currentColor; }',
   ];
 }
@@ -168,11 +180,13 @@ function monochromeRules(): string[] {
  * `var(--theme-ink)` rather than `currentColor`: the check inside a green status
  * chip inherits the chip's green, which is the colour this rule exists to remove.
  * Icons that declare `text-ink/…` are left alone (that is the ink, at the weight
- * the caller chose), and an inverted `bg-ink` surface keeps its own foreground.
+ * the caller chose), and an inverted `bg-ink` surface or a solid signal fill
+ * keeps its own foreground — that surface declares it, and this rule is about
+ * the glyphs that declare nothing.
  */
 function toolCardRules(): string[] {
   return [
-    '[data-tool-row] svg.lucide:not([class*="text-ink"]):not(.bg-ink *) { color: var(--theme-ink); }',
+    `[data-tool-row] svg.lucide:not([class*="text-ink"]):not(.bg-ink *)${SOLID_FILL_EXCLUSIONS} { color: var(--theme-ink); }`,
     '[data-tool-row] [data-plugin-mark] { --plugin-color: var(--theme-ink); }',
   ];
 }
@@ -298,6 +312,8 @@ export function iconPaintStyleSheet(): string {
     ...solidSignalFillRules(),
     ...projectAccentRules(),
     ...monochromeRules(),
+    // After the ink pass it corrects: same subject, so order decides.
+    ...monochromeSolidFillRules(),
     ...toolCardRules(),
     ...Object.entries(BRAND_COLORS).flatMap(([name, entry]) =>
       brandRules(`svg[data-provider="${name}"]`, entry.light, entry.dark),

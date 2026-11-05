@@ -31,6 +31,7 @@ import {
   iconPaintStyleSheet,
 } from '@/shared/lib/icons/icon-paint-css';
 import { BRAND_COLORS } from '@/shared/lib/models/provider/brand-color';
+import { SOLID_FILL_EXCLUSIONS } from '@/shared/lib/icons/icon-paint-authority';
 import { FILE_BRAND_COLORS } from '@/shared/lib/icons/file-brand-color';
 import { ICON_HUE_ROWS, ICON_TINT_ROWS, ICON_TINT_TOKENS } from '@/shared/lib/icons/tint';
 import { ICON_TONES, ICON_TONES_DARK } from '@/shared/lib/icons/tint-hues.generated';
@@ -75,16 +76,15 @@ describe('the icon paint stylesheet', () => {
   });
 
   test('monochrome paints ink, not the inherited colour, and skips inverted surfaces', () => {
-    // `currentColor` was not enough: a `Check` inside a green chip INHERITS the
-    // chip's green, so two icons survived a monochrome pass that way.
-    expect(css).toContain(
-      ':root:not([data-icon-style="color"]) svg.lucide:not([class*="text-ink"]):not(.bg-ink *) { color: var(--theme-ink); }',
-    );
+    // `currentColor` was not enough: a `Check` inside a green chip INHERITS the chip's green.
+    const ink = `:root:not([data-icon-style="color"]) svg.lucide:not([class*="text-ink"]):not(.bg-ink *)${SOLID_FILL_EXCLUSIONS} { color: var(--theme-ink); }`;
+    expect(css).toContain(ink);
     expect(css).toContain(':root:not([data-icon-style="color"]) [data-plugin-mark] { --plugin-color: currentColor; }');
   });
 
   test('a tool card is ink in both modes, so the transcript never turns into confetti', () => {
-    expect(css).toContain('[data-tool-row] svg.lucide:not([class*="text-ink"]):not(.bg-ink *) { color: var(--theme-ink); }');
+    const ink = `[data-tool-row] svg.lucide:not([class*="text-ink"]):not(.bg-ink *)${SOLID_FILL_EXCLUSIONS} { color: var(--theme-ink); }`;
+    expect(css).toContain(ink);
     expect(css).toContain('[data-tool-row] [data-plugin-mark] { --plugin-color: var(--theme-ink); }');
   });
 

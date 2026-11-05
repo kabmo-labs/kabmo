@@ -68,27 +68,72 @@ export function authorColourRules(): string[] {
 }
 
 /**
+ * The class tokens that mean "this element IS a solid signal fill".
+ *
+ * Both spellings count. `bg-error` is the palette's own hex, and `bg-error-text`
+ * is the SAME hue solved to 4.5:1 against paper and canvas — the one a filled
+ * control uses, because the raw hex is chosen for a chip's ground and measures
+ * 2.73:1 on `mono-light`. A rule that knew only `bg-error` left the composer's
+ * Stop and Send glyphs on the icon mode's own hue.
+ */
+const SOLID_FILL_TOKENS = [
+  'bg-error',
+  'bg-error-text',
+  'bg-success',
+  'bg-success-text',
+  'bg-warning',
+  'bg-warning-text',
+  'bg-info',
+  'bg-info-text',
+] as const;
+
+/** `[class~="bg-error"], …` — the SOLID classes only, never a `/10` tint. */
+const SOLID_FILL_SCOPE = SOLID_FILL_TOKENS.map((token) => `[class~="${token}"]`).join(', ');
+
+/**
  * Inside a SOLID signal fill, the glyph takes the surface's own foreground.
  *
  * `bg-error text-canvas` is a filled destructive button — Delete, Close, the
- * mobile save-and-recreate — and the colour mode painted the glyph in the same
- * red as the fill it sits on: measured in the running console, `Trash2` on the
- * Delete button computed `rgb(200, 50, 30)` on `rgb(200, 50, 30)`, **1.00:1**,
- * a white space where a bin should be. A hue is tuned for paper; a signal fill
- * is the signal used as paper, so the surface's declared foreground is the only
- * value that is right on it — exactly the argument `invertedSurfaceRules` makes
- * for `bg-ink`.
+ * mobile save-and-recreate, the composer's Stop and Send — and the colour mode
+ * painted the glyph in the same red as the fill it sits on: measured in the
+ * running console, `Trash2` on the Delete button computed `rgb(200, 50, 30)` on
+ * `rgb(200, 50, 30)`, **1.00:1**, a white space where a bin should be. A hue is
+ * tuned for paper; a signal fill is the signal used as paper, so the surface's
+ * declared foreground is the only value that is right on it — exactly the
+ * argument `invertedSurfaceRules` makes for `bg-ink`.
  *
  * `[class~="bg-error"]` matches the SOLID class only: Tailwind spells a tinted
  * one `bg-error/10`, a different token, so a tinted chip keeps its hue. Stated
  * after `paintRules` at the same (0,2,1) so it wins on order.
  */
 export function solidSignalFillRules(): string[] {
-  const scope = ['bg-error', 'bg-success', 'bg-warning', 'bg-info']
-    .map((token) => `[class~="${token}"]`)
-    .join(', ');
   return [
-    `[data-icon-style="color"] :where(${scope}) svg.lucide { color: currentColor; }`,
-    `:where([data-icon-style="color"]) :where(${scope}) :where([data-plugin-mark]) { --plugin-color: currentColor; }`,
+    `[data-icon-style="color"] :where(${SOLID_FILL_SCOPE}) svg.lucide { color: currentColor; }`,
+    `:where([data-icon-style="color"]) :where(${SOLID_FILL_SCOPE}) :where([data-plugin-mark]) { --plugin-color: currentColor; }`,
   ];
 }
+
+/**
+ * The same fill, in MONOCHROME — and there it was a blank button.
+ *
+ * The rule above is gated on the colour mode, but `monochrome` is the DEFAULT
+ * (`DEFAULT_ICON_STYLE`), and its rule paints every glyph without a `text-ink`
+ * class in `var(--theme-ink)`. On a solid signal fill that ink is the fill:
+ * measured across the 63 palettes, `Square` on `bg-error` computes **1.04:1**
+ * on `osaka-jade-light` and 44 of 63 sit under the 3:1 graphic floor. So the
+ * fill has to be excluded from the ink pass and take the surface's foreground
+ * in this mode too.
+ *
+ * The exclusions live on the monochrome rule itself (below) rather than here,
+ * because that rule is (0,5,1) and anything stated after it would need to
+ * out-specify a selector that exists to beat single utilities.
+ */
+export function monochromeSolidFillRules(): string[] {
+  return [
+    `:root:not([data-icon-style="color"]) :where(${SOLID_FILL_SCOPE}) svg.lucide { color: currentColor; }`,
+    `:root:not([data-icon-style="color"]) :where(${SOLID_FILL_SCOPE}) :where([data-plugin-mark]) { --plugin-color: currentColor; }`,
+  ];
+}
+
+/** The monochrome ink pass must not reach a solid fill (see above). */
+export const SOLID_FILL_EXCLUSIONS = SOLID_FILL_TOKENS.map((token) => `:not([class~="${token}"] *)`).join('');
