@@ -103,7 +103,7 @@ afterEach(() => {
 describe('label chips', () => {
   test('the offered vocabulary is rendered as chips', () => {
     const root = mount();
-    for (const name of ['header', 'form', 'tabel', 'modal']) {
+    for (const name of ['header', 'form', 'table', 'modal']) {
       expect(byText(root, name)).toBeDefined();
     }
   });
@@ -121,20 +121,20 @@ describe('label chips', () => {
   });
 
   test('the chip matching the mark is the pressed one', () => {
-    const root = mount({ shapes: [mark({ label: 'tabel' })] });
-    expect(byText(root, 'tabel')?.getAttribute('aria-pressed')).toBe('true');
+    const root = mount({ shapes: [mark({ label: 'table' })] });
+    expect(byText(root, 'table')?.getAttribute('aria-pressed')).toBe('true');
     expect(byText(root, 'form')?.getAttribute('aria-pressed')).toBe('false');
   });
 
   test('the free-text field carries the mark’s own label', () => {
     const root = mount({ shapes: [mark({ label: 'Ringkasan pesanan' })] });
-    const input = root.querySelector<HTMLInputElement>('input[aria-label="Nama bagian yang ditandai"]');
+    const input = root.querySelector<HTMLInputElement>('input[aria-label="Name of the marked part"]');
     expect(input?.value).toBe('Ringkasan pesanan');
   });
 
   test('typing in the field names the mark directly', () => {
     const root = mount();
-    const input = root.querySelector<HTMLInputElement>('input[aria-label="Nama bagian yang ditandai"]')!;
+    const input = root.querySelector<HTMLInputElement>('input[aria-label="Name of the marked part"]')!;
     act(() => {
       input.value = 'keranjang';
       input.dispatchEvent(new window.Event('input', { bubbles: true }));
@@ -144,7 +144,7 @@ describe('label chips', () => {
 
   test('the note field is separate from the label', () => {
     const root = mount();
-    const note = root.querySelector<HTMLTextAreaElement>('textarea[aria-label="Catatan anotasi"]')!;
+    const note = root.querySelector<HTMLTextAreaElement>('textarea[aria-label="Annotation note"]')!;
     act(() => {
       note.value = 'tombol mati';
       note.dispatchEvent(new window.Event('input', { bubbles: true }));
@@ -166,14 +166,14 @@ describe('element readout', () => {
 
   test('a cross-origin page says why there is no element, in words', () => {
     const root = mount({ readability: { ok: false, reason: 'cross-origin' } });
-    expect(root.textContent).toContain('beda origin');
-    expect(root.textContent).toContain('nama bagian');
+    expect(root.textContent).toContain('cross-origin');
+    expect(root.textContent).toContain('Name the part');
   });
 
   test('empty space is a different message from an unreadable page', () => {
     const root = mount({ readability: { ok: false, reason: 'no-element' } });
-    expect(root.textContent).toContain('tidak ada elemen');
-    expect(root.textContent).not.toContain('beda origin');
+    expect(root.textContent).toContain('no element');
+    expect(root.textContent).not.toContain('cross-origin');
   });
 
   test('a successful lookup prints no reason line at all', () => {
@@ -181,8 +181,8 @@ describe('element readout', () => {
       shapes: [mark({ element: { path: 'body > button', tag: 'button' } })],
       readability: { ok: true, element: { path: 'body > button', tag: 'button' } },
     });
-    expect(root.textContent).not.toContain('beda origin');
-    expect(root.textContent).not.toContain('tidak ada elemen');
+    expect(root.textContent).not.toContain('cross-origin');
+    expect(root.textContent).not.toContain('no element');
   });
 });
 
@@ -196,6 +196,6 @@ describe('missingElementReason', () => {
   });
 
   test('a frame that is not loaded yet is its own reason', () => {
-    expect(missingElementReason({ ok: false, reason: 'no-frame' })).toContain('belum dimuat');
+    expect(missingElementReason({ ok: false, reason: 'no-frame' })).toContain('has not loaded');
   });
 });

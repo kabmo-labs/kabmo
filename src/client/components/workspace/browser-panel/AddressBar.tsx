@@ -67,7 +67,7 @@ export function BrowserAddressBar({
       <div className="flex-1 min-w-0 flex items-center bg-canvas border border-ink/15 rounded-md px-2 py-0.5">
         <Globe size={12} className="text-ink/40 mr-1.5 flex-shrink-0" />
         <span className="w-full truncate text-ink/80 font-mono text-[11px]" title={url ?? ''}>
-          {url || 'Agent belum membuka halaman'}
+          {url || 'No page open yet'}
         </span>
       </div>
     </BrowserToolbar>

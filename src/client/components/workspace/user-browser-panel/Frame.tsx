@@ -54,7 +54,7 @@ export function UserBrowserFrame({
         </div>
         <h3 className="text-sm font-semibold text-ink mb-1">Browser Anda</h3>
         <p className="text-xs text-ink/60 max-w-sm">
-          Ketik alamat di atas lalu Enter. Halaman dimuat langsung di panel ini.
+          Type an address above and press Enter. The page loads inside this panel.
         </p>
         <p className="text-[11px] text-ink/45 max-w-sm mt-2">
           Sebagian situs (Google, GitHub) menolak ditampilkan dalam iframe — pakai tombol buka di tab baru.

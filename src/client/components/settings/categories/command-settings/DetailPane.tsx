@@ -167,7 +167,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
             disabled={readOnlyNow}
             placeholder="What does this command do?"
             rows={2}
-            className="w-full text-xs p-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/30 text-ink transition-colors disabled:opacity-60"
+            className="w-full text-xs p-3 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/35 text-ink transition-colors disabled:opacity-60"
           />
         </div>
 
@@ -181,7 +181,7 @@ export const CommandDetailPane: FunctionComponent<CommandDetailPaneProps> = ({
             onChange={(e) => setFormData({ ...formData, inputHint: e.currentTarget.value })}
             disabled={readOnlyNow}
             placeholder="[on|off|status]"
-            className="w-full text-xs font-mono p-2.5 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/30 text-ink transition-colors disabled:opacity-60"
+            className="w-full text-xs font-mono p-2.5 rounded-lg border border-ink/20 hover:border-ink/40 bg-paper focus:outline-none focus:border-ink placeholder:text-ink/35 text-ink transition-colors disabled:opacity-60"
           />
           <p className="text-[11px] text-ink/60 mt-1">
             Shown as ghost text after <span className="font-mono">/{formData.name || 'name'}</span> in the composer.

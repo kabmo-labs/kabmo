@@ -97,7 +97,7 @@ export function HeaderMoreMenu({ entries = [] }: { entries?: HeaderEntry[] }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+        className={`tap-target w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
           open ? 'bg-ink/10 text-ink' : 'text-ink hover:bg-ink/5 active:bg-ink/10'
         }`}
         title="More actions"

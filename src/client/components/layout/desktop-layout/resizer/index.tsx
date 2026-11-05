@@ -135,6 +135,17 @@ export function Panel(props: {
     filler ? null : clamp(toPx(defaultSize, minPx), minPx, maxPx),
   );
   const sizePxRef = useRef(sizePx);
+  // A width TRANSITION on the first frame is a layout shift, not an animation:
+  // the stored width arrives from settings in a later render, and every
+  // intermediate value the transition swept through counted as a shift —
+  // measured 268 → 276 → 288 → 312 → 333 px on mount, four entries in one load.
+  // Transitions start only after the panel has committed its first size, so the
+  // first paint is already the width the user will see.
+  const [transitionReady, setTransitionReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setTransitionReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   /**
    * The ONE way a size is applied: the ref and the state move together.
@@ -234,7 +245,9 @@ export function Panel(props: {
         // (see useSeparatorDrag), and this transition is what makes those steps
         // read as one movement. It also carries a panel to its remembered width
         // on a view switch, and to zero on collapse, instead of snapping.
-        transition: `${orientation === 'horizontal' ? 'width' : 'height'} 200ms cubic-bezier(0.22, 1, 0.36, 1)`,
+        transition: transitionReady
+          ? `${orientation === 'horizontal' ? 'width' : 'height'} 200ms cubic-bezier(0.22, 1, 0.36, 1)`
+          : 'none',
         overflow: 'hidden',
         position: 'relative',
       };

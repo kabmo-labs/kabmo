@@ -56,7 +56,7 @@ export function BrowserPanel({ className = '', active = true }: BrowserPanelProp
       if (closing === closingTarget) return;
       void closeTab(closingTarget).then((result) => {
         if (!result.ok) {
-          setCloseError(result.error ?? 'Gagal menutup tab');
+          setCloseError(result.error ?? 'The tab could not be closed');
           return;
         }
         setCloseError(null);

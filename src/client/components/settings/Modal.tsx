@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { AlertCircle, Check, ChevronLeft, X } from 'lucide-preact';
 import type { SettingsCategoryId, SettingsState } from '@/shared/types';
 import { mergeKabmoSettings } from '@/shared/lib/settings/client';
@@ -9,6 +9,7 @@ import { useReloadOmpEngine } from '@/client/hooks/settings/reload-engine';
 import { useRestartKabmo } from '@/client/hooks/settings/restart-kabmo';
 import { applySettingsSideEffects } from '@/client/components/settings/apply-side-effects';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
@@ -68,6 +69,14 @@ export function SettingsModal({
   const [settings, setSettings] = useState<SettingsState>(() =>
     mergeKabmoSettings(DEFAULT_SETTINGS, appSettings),
   );
+
+  // The sheet is a dialog: it carries the role, traps Tab, closes on Escape and
+  // returns focus to the Settings button. Measured before this, focus stayed on
+  // `<body>` when it opened and the first Tab went to the page behind the veil.
+  // Focus lands on the search field, which is the first control in BOTH layouts
+  // and is the fastest way to the category the user came for.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useDialogBehaviour(panelRef, { open: isOpen, onClose });
 
   useEffect(() => {
     if (isOpen) {
@@ -193,6 +202,11 @@ export function SettingsModal({
       onClick={onClose}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        tabIndex={-1}
         className="glass-overlay relative bg-paper border border-ink/15 md:rounded-2xl shadow-2xl w-full h-full md:max-w-5xl lg:max-w-6xl xl:max-w-[1280px] md:h-[min(90vh,900px)] md:max-h-[92vh] flex flex-col md:flex-row overflow-hidden text-ink"
         onClick={(e) => e.stopPropagation()}
       >

@@ -126,7 +126,7 @@ export function MobileHeader({
         <button
           type="button"
           onClick={onOpenSessionSidebar}
-          className="p-1.5 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0"
+          className="tap-target p-1.5 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0"
           title="Open Sessions"
           aria-label="Open Sessions"
         >
@@ -154,7 +154,7 @@ export function MobileHeader({
           <button
             type="button"
             onClick={() => setShowSessionPicker(!showSessionPicker)}
-            className="flex w-full items-center space-x-1 text-xs font-semibold text-ink hover:text-ink/80 transition-colors py-1 min-w-0"
+            className="tap-chip flex w-full items-center space-x-1 text-xs font-semibold text-ink hover:text-ink/80 transition-colors py-1 min-w-0"
             title={displayTitle}
           >
             <span className="truncate">{displayTitle}</span>

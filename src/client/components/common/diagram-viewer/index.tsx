@@ -216,7 +216,7 @@ export function DiagramViewer({ svg, width, height, onClose }: DiagramViewerProp
           <ViewerButton label="Zoom out (-)" onClick={() => zoomBy(1 / ZOOM_STEP)}>
             <Minus size={14} />
           </ViewerButton>
-          <span className="w-12 text-center font-mono text-[11px] tabular-nums text-canvas/80">
+          <span className="w-12 text-center font-mono text-[11px] tabular-nums text-on-ink-muted">
             {Math.round(view.scale * 100)}%
           </span>
           <ViewerButton label="Zoom in (+)" onClick={() => zoomBy(ZOOM_STEP)}>
@@ -250,7 +250,7 @@ function ViewerButton({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-canvas/80 transition-colors hover:bg-canvas/10 hover:text-canvas"
+      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-on-ink-muted transition-colors hover:bg-canvas/10 hover:text-canvas"
     >
       {children}
     </button>

@@ -229,7 +229,7 @@ export function SearchTool({ tool }: { tool: ToolCallData }) {
               placeholder="Filter paths..."
               value={filterText}
               onChange={(e) => setFilterText(e.currentTarget.value)}
-              className="h-6 w-28 rounded border border-ink/10 bg-canvas px-2 text-[10.5px] text-ink placeholder:text-ink/30 focus:border-ink/30 focus:outline-none"
+              className="h-6 w-28 rounded border border-ink/10 bg-canvas px-2 text-[10.5px] text-ink placeholder:text-ink/35 focus:border-ink/30 focus:outline-none"
             />
           )}
           <CopyButton

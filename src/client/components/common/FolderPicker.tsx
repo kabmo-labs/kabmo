@@ -121,7 +121,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
               value={pathInput}
               onChange={(e) => setPathInput(e.currentTarget.value)}
               placeholder="~ or /absolute/path"
-              className="flex-1 bg-transparent outline-none text-xs font-mono text-ink placeholder-ink/30 py-1"
+              className="flex-1 bg-transparent outline-none text-xs font-mono text-ink placeholder-ink/35 py-1"
               spellcheck={false}
             />
             <button

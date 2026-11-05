@@ -79,13 +79,13 @@ export function UserBrowserAddressBar({
 
   const navControls = (
     <div className="flex items-center bg-canvas border border-ink/10 rounded-md p-0.5 space-x-0.5 flex-shrink-0">
-      <button type="button" onClick={onBack} disabled={!canGoBack} aria-label="Kembali" title="Kembali" className={NAV_BUTTON}>
+      <button type="button" onClick={onBack} disabled={!canGoBack} aria-label="Back" title="Back" className={NAV_BUTTON}>
         <ArrowLeft size={12} />
       </button>
       <button type="button" onClick={onForward} disabled={!canGoForward} aria-label="Maju" title="Maju" className={NAV_BUTTON}>
         <ArrowRight size={12} />
       </button>
-      <button type="button" onClick={onReload} disabled={!url} aria-label="Muat ulang" title="Muat ulang" className={NAV_BUTTON}>
+      <button type="button" onClick={onReload} disabled={!url} aria-label="Reload" title="Reload" className={NAV_BUTTON}>
         <RefreshCw size={12} className={loading ? 'animate-spin' : undefined} />
       </button>
     </div>
@@ -123,13 +123,13 @@ export function UserBrowserAddressBar({
             type="text"
             value={input}
             onChange={(event) => onInputChange(event.currentTarget.value)}
-            placeholder="Ketik alamat (mis. localhost:5173) lalu Enter…"
-            aria-label="Alamat browser pengguna"
+            placeholder="Type an address (e.g. localhost:5173) and press Enter…"
+            aria-label="Browser address"
             aria-invalid={error !== undefined && error !== null}
             title={error ?? undefined}
             spellcheck={false}
             autoComplete="off"
-            className={`w-full min-w-0 bg-transparent outline-none font-mono text-[11px] placeholder:text-ink/30 ${error ? 'text-error' : 'text-ink/90'}`}
+            className={`w-full min-w-0 bg-transparent outline-none font-mono text-[11px] placeholder:text-ink/35 ${error ? 'text-error' : 'text-ink/90'}`}
           />
         </form>
       </div>

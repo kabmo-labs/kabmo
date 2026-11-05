@@ -59,7 +59,7 @@ function ImageLightbox({ src, name, onClose }: { src: string; name: string; onCl
             zoomed ? 'scale-150 cursor-zoom-out' : 'scale-100'
           }`}
         />
-        <div className="mt-3 max-w-[90vw] truncate text-[11px] font-mono text-canvas/80">{name}</div>
+        <div className="mt-3 max-w-[90vw] truncate text-[11px] font-mono text-on-ink-muted">{name}</div>
       </div>
     </div>,
     document.body

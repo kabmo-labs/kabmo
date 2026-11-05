@@ -180,7 +180,7 @@ export function TaskForm({
           </select>
         </div>
         <div className="flex items-end">
-          <label className={`flex items-center gap-2 text-[11px] ${activeSessionId ? 'text-ink/70' : 'text-ink/30'}`}>
+          <label className={`flex items-center gap-2 text-[11px] ${activeSessionId ? 'text-ink/70' : 'text-ink/35'}`}>
             <input
               type="checkbox"
               checked={useActiveSession}

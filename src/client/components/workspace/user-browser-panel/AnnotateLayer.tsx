@@ -143,7 +143,7 @@ export function AnnotateLayer({ shapes, tool, selectedId, onMeasure, onAdd, onSe
         className="absolute inset-0 w-full h-full"
         viewBox={`0 0 ${Math.max(1, box.width)} ${Math.max(1, box.height)}`}
         preserveAspectRatio="none"
-        aria-label="Area anotasi halaman"
+        aria-label="Page annotation area"
       >
         {painted.map((shape, index) => (
           <ShapeMark

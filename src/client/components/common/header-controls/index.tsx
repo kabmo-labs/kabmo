@@ -45,7 +45,10 @@ interface HeaderControlsProps {
 /** The hit area each layout gives an icon-only control. */
 const ICON_BUTTON_CLASS: Record<HeaderLayout, string> = {
   desktop: 'p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer',
-  mobile: 'w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer',
+  // A phone's row is a touch surface. `.tap-target` sets the 44px floor on a
+  // coarse pointer and the plate below is the RESTING size; on a desktop the
+  // class is inert, so the header keeps the density it was measured at.
+  mobile: 'tap-target w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer',
 };
 
 const ICON_SIZE: Record<HeaderLayout, number> = { desktop: 16, mobile: 18 };

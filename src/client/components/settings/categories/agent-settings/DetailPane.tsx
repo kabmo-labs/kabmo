@@ -137,7 +137,7 @@ export const AgentDetailPane: FunctionComponent<AgentDetailPaneProps> = ({
             placeholder="What does this agent do? Shown when omp lists it."
             rows={2}
             disabled={readOnly || feedback.saving}
-            className="w-full rounded-lg border border-ink/20 bg-paper p-3 text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/30 disabled:opacity-60"
+            className="w-full rounded-lg border border-ink/20 bg-paper p-3 text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/35 disabled:opacity-60"
           />
           <p className="mt-1 text-[10px] text-ink/45">
             Required by omp: a definition without a description is not loaded at all.
@@ -198,7 +198,7 @@ export const AgentDetailPane: FunctionComponent<AgentDetailPaneProps> = ({
               onInput={(e) => setToolsText(e.currentTarget.value)}
               placeholder="read, grep, glob, edit"
               disabled={readOnly || feedback.saving}
-              className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/30 disabled:opacity-60"
+              className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/35 disabled:opacity-60"
             />
           </div>
 
@@ -215,7 +215,7 @@ export const AgentDetailPane: FunctionComponent<AgentDetailPaneProps> = ({
               onInput={(e) => setFormData({ ...formData, spawns: e.currentTarget.value || undefined })}
               placeholder="*"
               disabled={readOnly || feedback.saving}
-              className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/30 disabled:opacity-60"
+              className="w-full rounded-lg border border-ink/20 bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors hover:border-ink/40 focus:border-ink focus:outline-none placeholder:text-ink/35 disabled:opacity-60"
             />
           </div>
         </div>

@@ -23,16 +23,16 @@ interface BrowserScreencastProps {
 
 const OFFLINE_COPY: Record<Exclude<BrowserViewStatus, 'live'>, { title: string; body: string }> = {
   'agent-offline': {
-    title: 'Agent belum berjalan',
-    body: 'Aktifkan sesi ini agar browser bisa dikendalikan agent.',
+    title: 'The agent is not running',
+    body: 'Start this session so the agent can drive the browser.',
   },
   'browser-offline': {
-    title: 'Belum ada browser aktif',
-    body: 'Minta agent membuka sebuah halaman; tampilan live akan muncul di sini.',
+    title: 'No browser is open',
+    body: 'Ask the agent to open a page; the live view appears here.',
   },
   'no-tab': {
-    title: 'Browser aktif, belum ada tab',
-    body: 'Sesi ini belum membuka tab di browser bersama.',
+    title: 'Browser is open, with no tab yet',
+    body: 'This session has not opened a tab in the shared browser.',
   },
 };
 

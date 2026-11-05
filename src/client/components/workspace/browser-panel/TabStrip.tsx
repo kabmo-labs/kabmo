@@ -75,7 +75,7 @@ export function BrowserTabStrip({ tabs, targetId, closing, onSelectTarget, onClo
               onClick={() => onCloseTarget(tab.targetId)}
               disabled={closing === tab.targetId}
               className={`mr-0.5 p-1 rounded hover:bg-error hover:text-paper transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                active ? 'text-canvas/70' : 'text-ink/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                active ? 'text-on-ink-muted' : 'text-ink/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
               }`}
               aria-label={`Tutup tab ${label}`}
               title={`Tutup tab ${label}`}

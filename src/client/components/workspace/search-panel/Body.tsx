@@ -187,7 +187,7 @@ export function SearchPanelBody({
               placeholder="Search"
               value={query}
               onChange={(e) => setQuery(e.currentTarget.value)}
-              className="w-full bg-transparent border-none text-xs px-2 py-1.5 focus:outline-none text-ink placeholder-ink/30 min-w-0"
+              className="w-full bg-transparent border-none text-xs px-2 py-1.5 focus:outline-none text-ink placeholder-ink/35 min-w-0"
             />
             {query && (
               <button
@@ -234,7 +234,7 @@ export function SearchPanelBody({
               placeholder="Replace"
               value={replaceQuery}
               onChange={(e) => setReplaceQuery(e.currentTarget.value)}
-              className="flex-1 min-w-0 bg-transparent border-none text-xs px-2 py-1.5 focus:outline-none text-ink placeholder-ink/30"
+              className="flex-1 min-w-0 bg-transparent border-none text-xs px-2 py-1.5 focus:outline-none text-ink placeholder-ink/35"
             />
             {replaceQuery && (
               <button
