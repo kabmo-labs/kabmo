@@ -61,6 +61,8 @@ export interface SessionSidebarControllerOptions {
 export interface SessionSidebarController {
   folders: WorkspaceFolderData[];
   initializing: boolean;
+  /** The first read failed; the list has no data and no reply is coming. */
+  failed: boolean;
   refresh: () => void;
   /** User-initiated refresh — raises `refreshing` until that load settles. */
   refreshNow: () => void;
@@ -88,7 +90,7 @@ export function useSessionSidebarController(
   options: SessionSidebarControllerOptions = {},
 ): SessionSidebarController {
   const { expandSearchMatches = false, onSelectSession, onAfterSelect } = options;
-  const { folders, initializing, refresh, refreshNow, refreshing, isRefreshing, markSeen, hasSeen, streamStatusMap, titleHint } = useSidebarData();
+  const { folders, initializing, failed, refresh, refreshNow, refreshing, isRefreshing, markSeen, hasSeen, streamStatusMap, titleHint } = useSidebarData();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionParam = searchParams.get('sessionId');
   // Read as a string, never off the `searchParams` object: `useSearchParams`
@@ -313,6 +315,7 @@ export function useSessionSidebarController(
   return {
     folders,
     initializing,
+    failed,
     refresh: revalidate,
     refreshNow,
     refreshing,
