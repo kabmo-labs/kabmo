@@ -164,14 +164,20 @@ describe('ContextUsageButton', () => {
     expect(arc().getAttribute('class')).toContain('text-error-text');
   });
 
-  test('the track is drawn at a rung that can be seen on every palette', async () => {
-    // The reported bug: at `/20` the track composited to 1.39:1 on the dark
-    // navbar, so an empty ring was invisible in dark mode. `/75` is the first
-    // rung whose worst case clears WCAG's 3:1 non-text floor across all 63
-    // palettes — the same rung the checkbox ring uses.
+  test('the track carries the state: heavy while empty, quiet under an arc', async () => {
+    // Two reported bugs, one control. At `/20` an EMPTY ring was invisible in
+    // dark mode (1.39:1 on the glass chrome), so it takes `/75` — the first rung
+    // clearing 3:1 on all 63 palettes. At `/75` a FILLED ring's track sat on the
+    // arc's own luminance (1.04:1 worst case on light), which is "warna hijau
+    // ndak kelihatan", so it steps back to `/35` once there is an arc to read.
+    await mount(telemetryAt(0));
+    expect(container.querySelectorAll('svg circle')[0].getAttribute('class')).toBe('text-ink/75');
+
+    render(null, container);
+    resetRealtimeClient();
+    server.stop();
     await mount(telemetryAt(42));
-    const track = container.querySelectorAll('svg circle')[0] as unknown as SVGElement;
-    expect(track.getAttribute('class')).toBe('text-ink/75');
+    expect(container.querySelectorAll('svg circle')[0].getAttribute('class')).toBe('text-ink/35');
   });
 
   test('the popover prints the session numbers, and Escape closes it', async () => {

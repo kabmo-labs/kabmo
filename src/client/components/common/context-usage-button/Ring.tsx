@@ -23,17 +23,40 @@
  * Colour is the band's, and the TRACK is deliberately neutral ink — a track in
  * the band colour made an empty ring look half full at a glance.
  *
- * The track is `/75`, not `/20`, and that is a measured floor. At `/20` the
- * stroke composited to `rgb(66, 71, 80)` on the dark navbar's glass chrome —
- * **1.39:1**, against WCAG's 3:1 non-text floor — so on `one-dark-pro-soft` the
- * whole control disappeared until the run was under way (the reported "icon
- * context di topnavbar gelap"). `/75` is the first rung of the ink ladder whose
- * worst case clears 3:1 on every one of the 63 palettes (3.02:1 on
- * `solarized-light`, 3.89:1 on `solarized-dark`), and it is the same rung the
- * checkbox ring already uses for exactly this reason (`tailwind.css`).
+ * ## The track has two weights, because it has two jobs
+ *
+ * An EMPTY ring carries no arc, so the track is the only thing that says the
+ * control is there: it is the whole graphic and needs to clear WCAG's 3:1
+ * non-text floor on its own. At `/20` it composited to `rgb(66, 71, 80)` on the
+ * dark navbar's glass chrome — **1.39:1** — so on `one-dark-pro-soft` the
+ * control disappeared entirely ("icon context di topnavbar gelap"). `/75` is
+ * the first rung whose worst case clears 3:1 on every one of the 63 palettes
+ * (3.02:1 on `solarized-light`, 3.89:1 on `solarized-dark`), and it is the rung
+ * the checkbox ring already uses for the same reason.
+ *
+ * A FILLED ring is the opposite problem, and it is measured, not aesthetic:
+ * `/75` sits at almost the same luminance as the arc's solved signal colour, so
+ * the two halves merged — worst case **1.04:1** from the arc on light palettes
+ * (`nightowl-light`) and **1.00:1** on dark (`rose-pine-dark`), which is the
+ * reported "mode light terlalu gelap, context warna hijau ndak kelihatan". No
+ * single rung can do both jobs: on `paper`, the ink range between the surface
+ * and the green arc is too narrow for one value to clear 3:1 against both.
+ *
+ * So the weight follows the arc. While an arc is drawn the track steps back to
+ * `/35`, the rung that maximises the WORSE of its two contrasts (`/35` and
+ * `/40` are the only candidates whose separation from the arc stays above 1.5
+ * everywhere; `/35` keeps more of it — 1.86:1 worst case, and 2.20-3.55:1 on
+ * the two shipped themes). The arc is the information then, and it clears
+ * 4.50:1 on every palette by construction.
  */
 
 import { CONTEXT_BAND_TONES, contextRingGeometry, contextUsageBand } from '@/shared/lib/chat/context/usage';
+
+/** The track while nothing is filled in: the ring IS the control. */
+const EMPTY_TRACK = 'text-ink/75';
+
+/** The track under an arc: quiet enough that the band colour stays the signal. */
+const FILLED_TRACK = 'text-ink/35';
 
 interface ContextRingProps {
   percent: number;
@@ -45,6 +68,11 @@ export function ContextRing({ percent, size = 18, strokeWidth = 2 }: ContextRing
   const { radius, circumference, dashOffset } = contextRingGeometry(percent, size, strokeWidth);
   const centre = size / 2;
   const band = contextUsageBand(percent);
+  // The threshold is GEOMETRIC, not a guessed percentage: an arc shorter than
+  // its own stroke width is a round-capped dot, not a share you can read, so
+  // below that the ring still takes the heavier track (a 2% arc on an 18px dial
+  // is a single pixel of colour, and the control would read as missing again).
+  const filled = circumference - dashOffset >= strokeWidth;
   const stroke = {
     fill: 'none',
     stroke: 'currentColor',
@@ -64,7 +92,7 @@ export function ContextRing({ percent, size = 18, strokeWidth = 2 }: ContextRing
         r={radius}
         {...stroke}
         transform={`rotate(-90 ${centre} ${centre})`}
-        className="text-ink/75"
+        className={filled ? FILLED_TRACK : EMPTY_TRACK}
       />
       <circle
         cx={centre}
