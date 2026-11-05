@@ -38,7 +38,7 @@ import type { ComposerDraftState } from '@/client/hooks/chat/composer/use-draft'
 import type { SessionStateContextValue } from '@/client/hooks/workspace/session-state/context';
 
 const LANDING_ID = '1';
-const SEEDED = '[Konteks halaman browser]\nURL: http://localhost:7801/\n(Lanjutkan dari halaman ini.)';
+const SEEDED = '[Browser page context]\nURL: http://localhost:7801/\n(Continue from this page.)';
 
 let container: HTMLElement | undefined;
 let holder: { api: ComposerDraftState | null };
@@ -118,7 +118,7 @@ describe('useComposerDraft', () => {
   test('an annotation sent at the landing stays out of the persisted draft', () => {
     mount('');
     act(() => emitBrowserPageContext({ url: 'https://a.test/x' }));
-    expect(holder.api!.inputValue).toContain('[Konteks halaman browser]');
+    expect(holder.api!.inputValue).toContain('[Browser page context]');
     expect(getSessionValue(LANDING_ID, CHAT_DRAFT_KEY)).toBeUndefined();
   });
 
