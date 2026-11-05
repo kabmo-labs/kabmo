@@ -104,7 +104,6 @@ export function AttachmentToolbar({ attachments, onFilesSelected, onRemove, mode
             <ModeToggles
               plan={modes.plan}
               goal={modes.goalOpen}
-              goalArm={modes.goalArm}
               goalRecord={modes.goalRecord}
               pending={modes.pending}
               onTogglePlan={modes.onTogglePlan}
