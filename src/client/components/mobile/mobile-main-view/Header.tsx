@@ -11,6 +11,7 @@ import { HeaderControls } from '@/client/components/common/header-controls';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { mobileOverlayStyle } from '@/shared/lib/ui/mobile-overlay';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
+import { CONTROL_CLUSTER_GAP } from '@/client/lib/ui/control-plate';
 
 interface MobileHeaderProps {
   activeSessionTitle: string;
@@ -91,7 +92,7 @@ export function MobileHeader({
 
   return (
     <header
-      className="flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between gap-2 px-3 z-20 titlebar-drag-region select-none"
+      className={`flex-shrink-0 bg-canvas border-b border-ink/10 flex items-center justify-between ${CONTROL_CLUSTER_GAP} px-3 z-20 titlebar-drag-region select-none`}
       {...dragRegionProps()}
       style={{
         height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
@@ -126,7 +127,7 @@ export function MobileHeader({
         <button
           type="button"
           onClick={onOpenSessionSidebar}
-          className="tap-target p-1.5 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0"
+          className="w-9 h-9 rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors flex-shrink-0 inline-flex items-center justify-center"
           title="Open Sessions"
           aria-label="Open Sessions"
         >

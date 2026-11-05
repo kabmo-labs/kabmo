@@ -4,6 +4,7 @@ import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { useSessionStateContext } from '@/client/hooks/workspace/session-state/context';
 import { PluginRenderBoundary } from '@/client/components/common/plugin-render-boundary';
 import { requestOpenPanel } from '@/shared/lib/workspace/panel-open';
+import { CONTROL_BOX, CONTROL_ROW_GAP } from '@/client/lib/ui/control-plate';
 import {
   MOBILE_HEADER_ENTRY_MAX_PX,
   type HeaderEntry,
@@ -63,7 +64,7 @@ export function HeaderPanelButtons({
   if (inline.length === 0) return null;
 
   return (
-    <div className="flex items-center space-x-1">
+    <div className={`flex items-center ${CONTROL_ROW_GAP}`}>
       {inline.map((entry) => (
         <HeaderPanelEntry
           key={entry.pluginId}
@@ -134,7 +135,7 @@ function HeaderEntryControl({ entry, layout, sessionId, open, onToggle, onClose 
   );
 
   const triggerClass = layout === 'mobile'
-    ? 'flex items-center gap-1 w-8 h-8 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer'
+    ? `${CONTROL_BOX.mobile} gap-1 transition-colors cursor-pointer`
     : 'flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer';
   /**
    * An ACTION entry's hit area grows with its readout.
@@ -147,7 +148,7 @@ function HeaderEntryControl({ entry, layout, sessionId, open, onToggle, onClose 
    * number.
    */
   const actionClass = layout === 'mobile'
-    ? 'flex items-center gap-1 h-8 px-1.5 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer'
+    ? `flex items-center gap-1 h-9 px-1.5 justify-center rounded-lg hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer`
     : 'flex items-center gap-1 px-1.5 py-1 rounded hover:bg-ink/10 transition-colors cursor-pointer';
 
   // An ACTION entry: the readout is a button that asks the layout to show the

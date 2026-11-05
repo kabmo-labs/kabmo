@@ -7,6 +7,7 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import type { AgentStreamStatus } from '@/shared/lib/chat/omp/status';
 import { withChord } from '@/client/lib/ui/with-chord';
+import { CONTROL_BOX, CONTROL_CLUSTER_GAP } from '@/client/lib/ui/control-plate';
 import { titlebarPaddingLeft, titlebarPaddingRight } from '@/shared/lib/ui/titlebar';
 import { ServerControl } from '@/client/components/common/server-control';
 import { dragRegionProps, titlebarInsetLeft } from '@/client/lib/desktop/titlebar';
@@ -76,7 +77,7 @@ export function TopNavbar({
             <button
               type="button"
               onClick={onToggleLeftPanel}
-              className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer flex-shrink-0 titlebar-no-drag"
+              className={`${CONTROL_BOX.desktop} hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer flex-shrink-0 titlebar-no-drag`}
               title={withChord('toggleSidebar', 'Expand Sidebar')}
               aria-label={withChord('toggleSidebar', 'Expand Sidebar')}
             >
@@ -142,7 +143,7 @@ export function TopNavbar({
         )}
       </div>
 
-      <div className="flex items-center space-x-3 titlebar-no-drag">
+      <div className={`flex items-center ${CONTROL_CLUSTER_GAP} titlebar-no-drag`}>
         {/* One cluster, one order, shared with the phone's header. Each layout
             passes only what it has; the order is stated in `HeaderControls`. */}
         {/* The shell's server control. It draws nothing in a browser; a shell

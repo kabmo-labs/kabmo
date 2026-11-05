@@ -25,6 +25,7 @@
 
 import { ArrowUpDown, Calendar, FolderPlus, Plus, RefreshCw } from 'lucide-preact';
 import { SortMenu } from '@/client/components/common/sort-menu';
+import { CONTROL_BOX, CONTROL_CLUSTER_GAP, CONTROL_ROW_GAP } from '@/client/lib/ui/control-plate';
 import type { SessionSortOption } from '@/shared/types';
 
 export interface SidebarActionRowProps {
@@ -67,11 +68,11 @@ export function SidebarActionRow({
   onSortChange,
   touch = false,
 }: SidebarActionRowProps) {
-  const glyph = `${GLYPH} ${touch ? 'h-9 w-9' : 'h-7 w-7'}`;
+  const glyph = `${GLYPH} ${touch ? CONTROL_BOX.mobile : CONTROL_BOX.desktop}`;
   const schedulerLabel = scheduledCount > 0 ? `Scheduled tasks (${scheduledCount} armed)` : 'Scheduled tasks';
 
   return (
-    <div className="flex items-center gap-1 px-3 pb-2">
+    <div className={`flex items-center ${CONTROL_CLUSTER_GAP} px-3 pb-2`}>
       <button
         type="button"
         onClick={onNewSession}
@@ -85,7 +86,7 @@ export function SidebarActionRow({
         <span className="truncate">New Session</span>
       </button>
 
-      <div className="flex shrink-0 items-center gap-0.5">
+      <div className={`flex shrink-0 items-center ${CONTROL_ROW_GAP}`}>
         <button
           type="button"
           onClick={onNewWorkspace}

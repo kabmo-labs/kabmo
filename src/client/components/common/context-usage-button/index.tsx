@@ -29,6 +29,7 @@ import { providerLabel } from '@/shared/lib/models/provider/label';
 import { formatCompactTokens } from '@/shared/lib/format/number';
 import { CONTEXT_BAND_TONES, contextUsageBand } from '@/shared/lib/chat/context/usage';
 import { ContextRing } from '@/client/components/common/context-usage-button/Ring';
+import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 interface ContextUsageButtonProps {
   sessionId: string | null;
@@ -73,8 +74,8 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
   const started = Boolean(telemetry && telemetry.messagesCount > 0);
   const band = contextUsageBand(percent);
   const triggerClass = layout === 'mobile'
-    ? 'tap-target w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center transition-colors cursor-pointer'
-    : 'p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer';
+    ? `${CONTROL_BOX.mobile} hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer`
+    : `${CONTROL_BOX.desktop} hover:bg-ink/10 transition-colors cursor-pointer`;
 
   return (
     <div className="relative flex items-center" ref={containerRef}>
@@ -90,6 +91,8 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
         aria-haspopup="dialog"
         aria-expanded={open}
       >
+        {/* The ring keeps its own 18px: it is a dial, not a glyph, and it reads
+            smaller than a stroke icon at the same box. */}
         <ContextRing percent={percent} />
       </button>
 

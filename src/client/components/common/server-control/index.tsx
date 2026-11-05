@@ -32,6 +32,7 @@ import { ServerCog } from 'lucide-preact';
 import { useShellServers } from '@/client/hooks/shell/servers';
 import { hasShellBridge } from '@/client/lib/shell/transport';
 import { ServerPanel } from '@/client/components/common/server-control/Panel';
+import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 export type ServerControlVariant = 'nav' | 'chip';
 
@@ -39,9 +40,9 @@ interface ServerControlProps {
   variant: ServerControlVariant;
 }
 
-/** The chip's box, matched to the drawer header's own close button. */
+/** The chip's box: the shared phone control plate, the drawer header's own size. */
 const CHIP_CLASS =
-  'w-8 h-8 rounded-lg flex items-center justify-center text-ink/60 hover:text-ink hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer flex-shrink-0 titlebar-no-drag';
+  `${CONTROL_BOX.mobile} text-ink/60 hover:text-ink hover:bg-ink/5 active:bg-ink/10 transition-colors cursor-pointer flex-shrink-0 titlebar-no-drag`;
 
 export function ServerControl({ variant }: ServerControlProps) {
   // A native host has to be PRESENT before the control exists at all: a browser

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { FunctionComponent } from 'preact/compat';
 import { Download } from 'lucide-preact';
+import { CONTROL_BOX } from '@/client/lib/ui/control-plate';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -70,7 +71,7 @@ export const PWAInstallButton: FunctionComponent = () => {
     return (
       <button
         onClick={install}
-        className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink"
+        className={`${CONTROL_BOX.desktop} hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink`}
         title="Install Kabmo"
       >
         <Download size={16} />
@@ -83,7 +84,7 @@ export const PWAInstallButton: FunctionComponent = () => {
       <>
         <button
           onClick={() => setShowIOSGuide(true)}
-          className="p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink"
+          className={`${CONTROL_BOX.desktop} hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink`}
           title="Install on iOS"
         >
           <Download size={16} />

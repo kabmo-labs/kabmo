@@ -10,6 +10,7 @@ import { WindowControls } from '@/client/components/common/window-controls';
 import { drawsWindowControls } from '@/client/lib/desktop/titlebar';
 import { useAuthEnabled, useAuthState } from '@/client/hooks/ui/auth';
 import { useViewportAtLeast } from '@/client/hooks/ui/media-query';
+import { CONTROL_BOX, CONTROL_GLYPH_PX, CONTROL_ROW_GAP } from '@/client/lib/ui/control-plate';
 import { withChord } from '@/client/lib/ui/with-chord';
 
 export type HeaderLayout = 'desktop' | 'mobile';
@@ -42,16 +43,23 @@ interface HeaderControlsProps {
   onSwitchToMobile?: () => void;
 }
 
-/** The hit area each layout gives an icon-only control. */
+/**
+ * The hit area each layout gives an icon-only control: the shared control box,
+ * plus this row's own colours.
+ *
+ * The box and the row's gap live in `lib/ui/control-plate.ts` because the
+ * sidebar's action row states the same density and the two drifted — the phone
+ * header drew 44px boxes 4px apart while the drawer drew 36px 2px apart, so the
+ * header's glyphs sat 48px apart against the drawer's 38px. The header is a
+ * dense chrome row, not a page of standalone controls, which is why it takes
+ * the row density rather than `.tap-target`'s standalone 44px floor.
+ */
 const ICON_BUTTON_CLASS: Record<HeaderLayout, string> = {
-  desktop: 'p-1.5 rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer',
-  // A phone's row is a touch surface. `.tap-target` sets the 44px floor on a
-  // coarse pointer and the plate below is the RESTING size; on a desktop the
-  // class is inert, so the header keeps the density it was measured at.
-  mobile: 'tap-target w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center text-ink transition-colors cursor-pointer',
+  desktop: `${CONTROL_BOX.desktop} rounded hover:bg-ink/10 transition-colors text-ink/60 hover:text-ink cursor-pointer`,
+  mobile: `${CONTROL_BOX.mobile} rounded-lg hover:bg-ink/5 active:bg-ink/10 text-ink transition-colors cursor-pointer`,
 };
 
-const ICON_SIZE: Record<HeaderLayout, number> = { desktop: 16, mobile: 18 };
+const ICON_SIZE: Record<HeaderLayout, number> = CONTROL_GLYPH_PX;
 
 /**
  * Every control the top navbar draws, in ONE order for both layouts.
@@ -126,7 +134,7 @@ export function HeaderControls({
     // window (reload, context, sign out, the right panel, `⋯`) swallowed its
     // own click. Stating it on the cluster is what makes the next layout that
     // draws it correct by construction.
-    <div className="flex items-center space-x-1 titlebar-no-drag">
+    <div className={`flex items-center ${CONTROL_ROW_GAP} titlebar-no-drag`}>
       {layout === 'desktop' && <PWAInstallButton />}
       <HeaderPanelButtons layout={layout} entries={headerEntries.inline} />
       {/* The cluster's ORDER is fixed; what changes on a narrow phone is that
