@@ -49,11 +49,25 @@ export function contextUsageBand(percent: number): ContextUsageBand {
  * `currentColor`, so the tone is a text class; the popover's status dot needs
  * the same colour as a background, and deriving one from the other with a
  * string replace is how the two drift apart.
+ *
+ * `text` is the SOLVED token (`--theme-<slot>-text`), not the palette hex, and
+ * that is a contrast budget rather than a preference: the arc is a 2px stroke —
+ * a graphic, under WCAG's 3:1 non-text floor. The raw signal hex is chosen for
+ * a FILL and measures 1.53:1 (`warning` on `carbonfox-light`), 1.75:1
+ * (`success` on `nord-light`) and 2.88:1 (`error` on `fields-of-the-shire-dark`)
+ * against paper, so a critical ring on that dark palette was a dim smear. The
+ * `-text` level is solved to 4.50:1 on every one of the 63 palettes
+ * (`signalTextColor`), for both light and dark.
+ *
+ * The same class on a `<span>` resolves to the identical value through the
+ * generated `text-<slot>` rule in `tailwind.css`, so a status WORD keeps the
+ * colour it always had. `fill` stays the palette hex: it is a solid ground, the
+ * one thing those hexes were chosen for.
  */
 export const CONTEXT_BAND_TONES: Record<ContextUsageBand, { text: string; fill: string }> = {
-  healthy: { text: 'text-success', fill: 'bg-success' },
-  warning: { text: 'text-warning', fill: 'bg-warning' },
-  critical: { text: 'text-error', fill: 'bg-error' },
+  healthy: { text: 'text-success-text', fill: 'bg-success' },
+  warning: { text: 'text-warning-text', fill: 'bg-warning' },
+  critical: { text: 'text-error-text', fill: 'bg-error' },
 };
 
 export interface ContextRingGeometry {

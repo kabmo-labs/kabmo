@@ -43,10 +43,14 @@ describe('contextUsageBand', () => {
     expect(clampContextPercent(63.4)).toBe(63.4);
   });
 
-  test('every band has its own tone', () => {
-    expect(CONTEXT_BAND_TONES.healthy.text).toBe('text-success');
-    expect(CONTEXT_BAND_TONES.warning.text).toBe('text-warning');
-    expect(CONTEXT_BAND_TONES.critical.text).toBe('text-error');
+  test('every band has its own tone, and the tone is the SOLVED signal level', () => {
+    // `-text`, not the palette hex: the arc is a 2px graphic and the raw signal
+    // hex fails the 3:1 non-text floor on most palettes (`usage.ts`). Pinning
+    // the exact token is what keeps a later "simplification" from putting the
+    // fill colour back on a stroke.
+    expect(CONTEXT_BAND_TONES.healthy.text).toBe('text-success-text');
+    expect(CONTEXT_BAND_TONES.warning.text).toBe('text-warning-text');
+    expect(CONTEXT_BAND_TONES.critical.text).toBe('text-error-text');
     expect(CONTEXT_BAND_TONES.healthy.fill).toBe('bg-success');
     expect(CONTEXT_BAND_TONES.critical.fill).toBe('bg-error');
     expect(new Set(Object.values(CONTEXT_BAND_TONES).map((tone) => tone.text)).size).toBe(3);

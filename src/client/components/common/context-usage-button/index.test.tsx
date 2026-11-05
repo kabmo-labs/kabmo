@@ -148,20 +148,30 @@ describe('ContextUsageButton', () => {
 
   test('draws the band the share falls in', async () => {
     await mount(telemetryAt(42));
-    expect(arc().getAttribute('class')).toContain('text-success');
+    expect(arc().getAttribute('class')).toContain('text-success-text');
     expect(trigger().getAttribute('title')).toContain('42%');
 
     render(null, container);
     resetRealtimeClient();
     server.stop();
     await mount(telemetryAt(55));
-    expect(arc().getAttribute('class')).toContain('text-warning');
+    expect(arc().getAttribute('class')).toContain('text-warning-text');
 
     render(null, container);
     resetRealtimeClient();
     server.stop();
     await mount(telemetryAt(72));
-    expect(arc().getAttribute('class')).toContain('text-error');
+    expect(arc().getAttribute('class')).toContain('text-error-text');
+  });
+
+  test('the track is drawn at a rung that can be seen on every palette', async () => {
+    // The reported bug: at `/20` the track composited to 1.39:1 on the dark
+    // navbar, so an empty ring was invisible in dark mode. `/75` is the first
+    // rung whose worst case clears WCAG's 3:1 non-text floor across all 63
+    // palettes — the same rung the checkbox ring uses.
+    await mount(telemetryAt(42));
+    const track = container.querySelectorAll('svg circle')[0] as unknown as SVGElement;
+    expect(track.getAttribute('class')).toBe('text-ink/75');
   });
 
   test('the popover prints the session numbers, and Escape closes it', async () => {

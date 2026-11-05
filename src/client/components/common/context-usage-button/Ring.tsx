@@ -22,6 +22,15 @@
  *
  * Colour is the band's, and the TRACK is deliberately neutral ink — a track in
  * the band colour made an empty ring look half full at a glance.
+ *
+ * The track is `/75`, not `/20`, and that is a measured floor. At `/20` the
+ * stroke composited to `rgb(66, 71, 80)` on the dark navbar's glass chrome —
+ * **1.39:1**, against WCAG's 3:1 non-text floor — so on `one-dark-pro-soft` the
+ * whole control disappeared until the run was under way (the reported "icon
+ * context di topnavbar gelap"). `/75` is the first rung of the ink ladder whose
+ * worst case clears 3:1 on every one of the 63 palettes (3.02:1 on
+ * `solarized-light`, 3.89:1 on `solarized-dark`), and it is the same rung the
+ * checkbox ring already uses for exactly this reason (`tailwind.css`).
  */
 
 import { CONTEXT_BAND_TONES, contextRingGeometry, contextUsageBand } from '@/shared/lib/chat/context/usage';
@@ -55,7 +64,7 @@ export function ContextRing({ percent, size = 18, strokeWidth = 2 }: ContextRing
         r={radius}
         {...stroke}
         transform={`rotate(-90 ${centre} ${centre})`}
-        className="text-ink/20"
+        className="text-ink/75"
       />
       <circle
         cx={centre}
