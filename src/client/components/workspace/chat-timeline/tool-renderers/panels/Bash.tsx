@@ -95,7 +95,7 @@ export function Bash({ tool }: { tool: ToolCallData }) {
           about a live dev server was its exit code. */}
       {service && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-ink/8 bg-paper px-3 py-2 font-mono text-[10.5px]">
-          <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">
             <Server size={11} className="text-ink/40" />
             Service
           </span>
@@ -151,7 +151,7 @@ export function Bash({ tool }: { tool: ToolCallData }) {
           omp's own TUI does; the full output is behind the artifact chip. */}
       {minimized && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-ink/8 bg-paper px-3 py-2 font-mono text-[10.5px]">
-          <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">
             <Shrink size={11} className="text-ink/40" />
             Minimized
           </span>
@@ -172,7 +172,7 @@ export function Bash({ tool }: { tool: ToolCallData }) {
               <Terminal size={11} className="shrink-0 text-ink/45" />
               <span className="font-mono text-[10px] font-semibold text-ink/50">bash</span>
               {cwd && (
-                <span className="truncate font-mono text-[9.5px] text-ink/40" title={cwd}>
+                <span className="truncate font-mono text-[10px] text-ink/40" title={cwd}>
                   {cwd}
                 </span>
               )}
@@ -181,7 +181,7 @@ export function Bash({ tool }: { tool: ToolCallData }) {
             <div className="flex items-center gap-2">
               {exitCode !== undefined && (
                 <span
-                  className={`rounded-full px-1.5 py-0.2 font-mono text-[9px] font-semibold ${
+                  className={`rounded-full px-1.5 py-0.2 font-mono text-[10px] font-semibold ${
                     exitCode === 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
                   }`}
                 >
@@ -189,14 +189,14 @@ export function Bash({ tool }: { tool: ToolCallData }) {
                 </span>
               )}
               {duration && (
-                <span className="flex items-center gap-1 font-mono text-[9.5px] text-ink/45">
+                <span className="flex items-center gap-1 font-mono text-[10px] text-ink/45">
                   <Clock size={10} />
                   <span>{duration}</span>
                 </span>
               )}
               <CopyButton
                 text={command}
-                className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+                className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
                 title="Copy command"
                 label="Copy"
               />
@@ -226,20 +226,20 @@ export function Bash({ tool }: { tool: ToolCallData }) {
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
           <div className="flex items-center justify-between border-b border-ink/6 bg-canvas/30 px-3 py-1.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Console Output</span>
-              <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] uppercase tracking-wider text-ink/50">JSON</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Console Output</span>
+              <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] uppercase tracking-wider text-ink/50">JSON</span>
               {jsonResult.linesCount && jsonResult.linesCount > 1 && (
-                <span className="font-mono text-[9.5px] text-ink/40">{jsonResult.linesCount} lines</span>
+                <span className="font-mono text-[10px] text-ink/40">{jsonResult.linesCount} lines</span>
               )}
             </div>
             <CopyButton
               text={jsonResult.isValid && jsonResult.pretty ? jsonResult.pretty : output}
-              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
               label="Copy"
             />
           </div>
           {truncatedPretty && truncatedPretty.skipped > 0 && (
-            <div className="border-b border-ink/6 bg-canvas/40 px-3 py-1 font-mono text-[9.5px] text-ink/45">
+            <div className="border-b border-ink/6 bg-canvas/40 px-3 py-1 font-mono text-[10px] text-ink/45">
               … {truncatedPretty.skipped} earlier lines hidden
             </div>
           )}
@@ -252,10 +252,10 @@ export function Bash({ tool }: { tool: ToolCallData }) {
       ) : (
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
           <div className="flex items-center justify-between border-b border-ink/6 bg-canvas/30 px-3 py-1.5">
-            <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Console Output</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Console Output</span>
             <CopyButton
               text={copyText}
-              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
               label="Copy"
             />
           </div>

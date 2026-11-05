@@ -46,7 +46,7 @@ export function QueueList({ queue, onReorder, onRemove, onEdit, onSendNow }: Que
           <div className="cursor-grab text-ink/40 group-hover:text-ink/80">
             <GripVertical size={14} />
           </div>
-          <span className="shrink-0 text-[9px] font-mono uppercase tracking-wider px-1 py-px rounded bg-ink/10 text-ink/70">
+          <span className="shrink-0 text-[10px] font-mono uppercase tracking-wider px-1 py-px rounded bg-ink/10 text-ink/70">
             follow-up
           </span>
           <div className="flex-1 truncate text-ink/80 pr-2">

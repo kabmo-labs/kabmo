@@ -46,7 +46,7 @@ export function ExtensionDialogHeader({
             <h3 className="truncate text-[14px] font-semibold tracking-tight text-ink">
               {heading}
             </h3>
-            <span className="flex items-center gap-1 rounded-full border border-ink/10 bg-paper px-2 py-0.5 font-mono text-[9px] font-medium tracking-wider text-ink/60 uppercase">
+            <span className="flex items-center gap-1 rounded-full border border-ink/10 bg-paper px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-ink/60 uppercase">
               <Sparkles size={9} className="text-ink/40" />
               {badge}
             </span>

@@ -55,10 +55,10 @@ function OpBody({ body, lang }: { body: string[]; lang: string }) {
 export function HashlinePatch({ sections }: { sections: HashlineSection[] }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
         <span>Hashline Patch</span>
         {sections[0].tag && (
-          <span className="font-mono text-[9px] font-normal tracking-normal text-ink/50">
+          <span className="font-mono text-[10px] font-normal tracking-normal text-ink/50">
             snapshot {sections[0].tag}
           </span>
         )}
@@ -72,7 +72,7 @@ export function HashlinePatch({ sections }: { sections: HashlineSection[] }) {
                 <span className="shrink-0 font-mono text-[10px] text-ink/50">→ {section.moveTo}</span>
               )}
               {section.removed && (
-                <span className="shrink-0 rounded bg-error/10 px-1.5 font-mono text-[9px] uppercase tracking-wider text-error">
+                <span className="shrink-0 rounded bg-error/10 px-1.5 font-mono text-[10px] uppercase tracking-wider text-error">
                   Removes file
                 </span>
               )}
@@ -81,7 +81,7 @@ export function HashlinePatch({ sections }: { sections: HashlineSection[] }) {
               {section.ops.map((op, index) => (
                 <div key={`${op.verb}-${op.spec}-${index}`}>
                   <div className="flex items-center gap-2 px-2.5 py-1">
-                    <span className={`shrink-0 rounded px-1.5 font-mono text-[9px] font-semibold ${opTone(op.verb)}`}>
+                    <span className={`shrink-0 rounded px-1.5 font-mono text-[10px] font-semibold ${opTone(op.verb)}`}>
                       {op.verb}
                     </span>
                     {op.spec && <span className="font-mono text-[10.5px] text-ink/70">{op.spec}</span>}

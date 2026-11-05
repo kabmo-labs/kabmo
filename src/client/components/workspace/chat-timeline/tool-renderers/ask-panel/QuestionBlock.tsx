@@ -128,7 +128,7 @@ export function QuestionBlock({
                 <span className="block truncate">
                   {option.label}
                   {question.recommended === optionIndex && (
-                    <span className="ml-1.5 font-mono text-[9px] uppercase tracking-wider text-ink/35">
+                    <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wider text-ink/35">
                       suggested
                     </span>
                   )}
@@ -147,7 +147,7 @@ export function QuestionBlock({
           {settled ? (
             <div className="flex items-center gap-1.5 pt-0.5 text-[10.5px] text-ink/40">
               <Ban size={10} className="shrink-0" />
-              <span>Not answered — the ask was cut short.</span>
+              <span>Not answered: the ask was cut short.</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 pt-0.5 text-[10.5px] text-ink/40">

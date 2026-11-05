@@ -40,7 +40,7 @@ export function ThemeCard({ theme, selected, onSelect }: ThemeCardProps) {
         <span className="truncate font-semibold text-ink" title={theme.name}>
           {theme.name}
         </span>
-        <span className="shrink-0 rounded-full border border-ink/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-ink/50">
+        <span className="shrink-0 rounded-full border border-ink/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-ink/50">
           {theme.variant}
         </span>
         {selected && <Check size={14} className="ml-auto shrink-0 text-ink" />}

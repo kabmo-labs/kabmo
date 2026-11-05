@@ -25,14 +25,14 @@ function EnvelopeRow({ envelope }: { envelope: XmlEnvelope }) {
       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${tone.badge}`}>
         {tone.icon}
       </span>
-      <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/60">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/60">
         {toTitleCase(envelope.tag)}
       </span>
       {Object.entries(envelope.attributes).map(([key, value]) => (
         <span
           key={key}
           title={`${key}=${value}`}
-          className="max-w-[240px] truncate rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9.5px] text-ink/60"
+          className="max-w-[240px] truncate rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] text-ink/60"
         >
           {value ? `${key}=${value}` : key}
         </span>

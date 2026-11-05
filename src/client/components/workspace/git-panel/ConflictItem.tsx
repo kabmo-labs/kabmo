@@ -77,9 +77,9 @@ export function GitConflictItem({ change, repo, rootPath, onResolve }: GitConfli
           <FileWarning size={11} className="text-warning flex-shrink-0" />
           <FileIcon name={fileName} size={12} className="flex-shrink-0" />
           <span className="truncate text-warning" title={change.file}>{fileName}</span>
-          {dirPath && <span className="text-[9px] text-ink/40 truncate ml-1">{dirPath}</span>}
+          {dirPath && <span className="text-[10px] text-ink/40 truncate ml-1">{dirPath}</span>}
           {isUnmergedCode(change.status) && (
-            <span className="text-[9px] text-warning/70 font-mono flex-shrink-0">{change.status}</span>
+            <span className="text-[10px] text-warning/70 font-mono flex-shrink-0">{change.status}</span>
           )}
         </div>
         <button
@@ -115,7 +115,7 @@ export function GitConflictItem({ change, repo, rootPath, onResolve }: GitConfli
           <button
             type="button"
             onClick={() => onResolve(change.file, '')}
-            title="Mark resolved — the file was edited by hand, this stages it"
+            title="Mark resolved: the file was edited by hand, this stages it"
             className="px-2 py-0.5 text-[10px] font-mono rounded border border-ink/20 hover:bg-ink/5 text-ink/80 hover:text-ink transition-colors cursor-pointer flex items-center gap-1"
           >
             <Check size={10} />

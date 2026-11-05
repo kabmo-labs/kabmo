@@ -129,8 +129,8 @@ export function BrowserToolbar({
           type="button"
           onClick={handleInclude}
           disabled={!url}
-          aria-label="Sertakan halaman ini di draft chat"
-          title={included ? 'Konteks halaman ditambahkan ke draft' : 'Sertakan halaman ini di draft chat'}
+          aria-label="Include this page in the chat draft"
+          title={included ? 'Page context added to the draft' : 'Include this page in the chat draft'}
           className={ICON_BUTTON}
         >
           {included ? <Check size={14} className="text-success" /> : <MessageSquarePlus size={14} />}
@@ -141,20 +141,20 @@ export function BrowserToolbar({
             type="button"
             onClick={annotate.onToggle}
             disabled={!url}
-            aria-label="Mode anotasi halaman"
+            aria-label="Page annotation mode"
             aria-pressed={annotate.active}
             title={
               annotate.active
                 ? 'Tutup mode anotasi'
                 : annotate.count > 0
                   ? `Anotasi (${annotate.count}) — buka lagi`
-                  : 'Tandai bagian halaman lalu kirim ke chat'
+                  : 'Mark a part of the page, then send it to the chat'
             }
             className={`${ICON_BUTTON} relative ${annotate.active ? 'bg-ink/10 text-ink' : ''}`}
           >
             <SquarePen size={14} />
             {annotate.count > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] px-0.5 rounded-full bg-error text-paper text-[9px] leading-[13px] font-mono text-center">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] px-0.5 rounded-full bg-error text-paper text-[10px] leading-[13px] font-mono text-center">
                 {annotate.count}
               </span>
             )}

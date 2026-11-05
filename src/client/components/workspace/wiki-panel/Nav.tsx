@@ -77,7 +77,7 @@ export function WikiNav({ sections, selected, onSelect }: WikiNavProps) {
           filtered.map((section, index) => (
             <div key={`${section.title ?? 'links'}-${index}`} className="py-0.5">
               {section.title && (
-                <div className="px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+                <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">
                   {section.title}
                 </div>
               )}

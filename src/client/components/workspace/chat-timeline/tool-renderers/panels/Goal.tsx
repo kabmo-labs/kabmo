@@ -114,7 +114,7 @@ export function Goal({ tool }: { tool: ToolCallData }) {
               </span>
             </div>
             {(payload.status || (isError ? 'error' : 'success')) && (
-              <span className={`rounded-full px-2 py-0.5 font-mono text-[9.5px] font-medium uppercase ${isError || payload.error ? 'bg-error/10 text-error' : 'bg-success/10 text-success'}`}>
+              <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-medium uppercase ${isError || payload.error ? 'bg-error/10 text-error' : 'bg-success/10 text-success'}`}>
                 {payload.status || (isError ? 'failed' : 'success')}
               </span>
             )}
@@ -205,10 +205,10 @@ export function Goal({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
           {isYield ? 'Yield' : 'Goals'}
         </span>
-        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">
+        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
           {items.length}
         </span>
       </div>
@@ -227,7 +227,7 @@ export function Goal({ tool }: { tool: ToolCallData }) {
                   <Flag size={11} className="mt-0.5 shrink-0 text-ink/40" />
                 )}
                 <span className="min-w-0 flex-1 break-words text-ink/80">{label}</span>
-                <span className={`shrink-0 rounded-full px-1.5 py-px font-mono text-[9px] ${STATUS_STYLES[status]}`}>
+                <span className={`shrink-0 rounded-full px-1.5 py-px font-mono text-[10px] ${STATUS_STYLES[status]}`}>
                   {status}
                 </span>
               </div>
@@ -239,7 +239,7 @@ export function Goal({ tool }: { tool: ToolCallData }) {
                       style={{ width: `${Math.min(100, Math.max(0, Math.round(progress * 100)))}%` }}
                     />
                   </div>
-                  <span className="flex shrink-0 items-center gap-0.5 font-mono text-[9px] text-ink/45">
+                  <span className="flex shrink-0 items-center gap-0.5 font-mono text-[10px] text-ink/45">
                     <CircleDot size={8} />
                     {Math.round(progress * 100)}%
                   </span>

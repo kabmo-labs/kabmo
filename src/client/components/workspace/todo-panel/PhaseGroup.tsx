@@ -51,7 +51,7 @@ export function TodoPhaseGroup({ phase, index, collapsed, currentKey, onToggle }
         >
           {index + 1}. {phase.name}
         </span>
-        <span className="shrink-0 font-mono text-[9.5px] text-ink/40">
+        <span className="shrink-0 font-mono text-[10px] text-ink/40">
           {closed}/{phase.tasks.length}
         </span>
       </button>

@@ -80,7 +80,7 @@ export function AstEdit({ tool }: { tool: ToolCallData }) {
             </div>
 
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold ${
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${
                 isStaged ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
               }`}
             >
@@ -92,7 +92,7 @@ export function AstEdit({ tool }: { tool: ToolCallData }) {
           {/* Operations: Pattern -> Replacement */}
           {ops.length > 0 && (
             <div className="border-b border-ink/6 p-2.5 bg-canvas/20">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-ink/40">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">
                 Pattern Transformation
               </span>
               <div className="mt-1 space-y-1">
@@ -158,8 +158,8 @@ export function AstEdit({ tool }: { tool: ToolCallData }) {
     return (
       <div className="overflow-hidden rounded-lg border border-ink/8 select-text">
         <div className="border-b border-ink/8 bg-paper px-2.5 py-1.5">
-          <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">AST Changes</span>
-          <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">AST Changes</span>
+          <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
             {structuredItems.length}
           </span>
         </div>
@@ -175,10 +175,10 @@ export function AstEdit({ tool }: { tool: ToolCallData }) {
                 <span className="min-w-0 flex-1 break-words">
                   {file && <span className="font-mono text-[10px] text-ink/45">{file}: </span>}
                   <span className="text-ink/80">{msg}</span>
-                  {kind && <span className="ml-1 font-mono text-[9.5px] text-ink/35">({kind})</span>}
+                  {kind && <span className="ml-1 font-mono text-[10px] text-ink/35">({kind})</span>}
                 </span>
                 {changes !== undefined && (
-                  <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9px] text-ink/45">
+                  <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
                     {changes} changes
                   </span>
                 )}

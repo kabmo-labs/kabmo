@@ -150,7 +150,7 @@ export function ConfigTabs({
                 }`}
               >
                 {tab.label}
-                <span className={`ml-1.5 font-mono text-[9px] ${isActive ? 'text-ink/50' : 'text-ink/30'}`}>{count}</span>
+                <span className={`ml-1.5 font-mono text-[10px] ${isActive ? 'text-ink/50' : 'text-ink/35'}`}>{count}</span>
               </button>
             );
           })}
@@ -253,16 +253,16 @@ function GroupedRows({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="font-medium text-ink">{schemaEntry.ui.label}</span>
-                <span className="font-mono text-[9px] text-ink/30" title="config key">{key}</span>
+                <span className="font-mono text-[10px] text-ink/35" title="config key">{key}</span>
                 {isDirty && !saving && (
-                  <span className="shrink-0 rounded bg-warning/15 px-1 py-px text-[9px] font-semibold text-warning">unsaved</span>
+                  <span className="shrink-0 rounded bg-warning/15 px-1 py-px text-[10px] font-semibold text-warning">unsaved</span>
                 )}
                 {saving && (
-                  <span className="shrink-0 text-[9px] text-ink/40">saving…</span>
+                  <span className="shrink-0 text-[10px] text-ink/40">saving…</span>
                 )}
                 {errorMessage && !saving && (
                   <span
-                    className="shrink-0 rounded bg-error/10 px-1 py-px text-[9px] font-semibold text-error"
+                    className="shrink-0 rounded bg-error/10 px-1 py-px text-[10px] font-semibold text-error"
                     title={errorMessage}
                   >
                     save failed

@@ -73,20 +73,20 @@ export function ExcerptCode({ lines, path = '', tag }: ExcerptCodeProps) {
         <div className="flex min-w-0 items-center gap-2 border-b border-ink/6 bg-canvas/40 px-2.5 py-1.5">
           <span className="truncate font-mono text-[10.5px] font-medium text-ink/70">{path}</span>
           {tag && (
-            <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink/45">
+            <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/45">
               {tag}
             </span>
           )}
           <CopyButton
             text={visibleRows.map((row) => row.code).join('\n')}
-            className="ml-auto flex shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+            className="ml-auto flex shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
             iconSize={10}
             label="Copy"
           />
         </div>
       )}
       {hidden > 0 && (
-        <div className="border-b border-ink/6 px-2.5 py-1 font-mono text-[9.5px] text-ink/45">
+        <div className="border-b border-ink/6 px-2.5 py-1 font-mono text-[10px] text-ink/45">
           … {hidden} earlier lines hidden
         </div>
       )}

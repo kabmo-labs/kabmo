@@ -63,7 +63,7 @@ export function FileMatches({ path, lines, matchCount, isGlobList }: FileMatches
           <span className="truncate font-mono text-[11px] font-medium text-ink/85">{path}</span>
         </div>
         {matchCount > 0 && !isGlobList && (
-          <span className="ml-2 shrink-0 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9.5px] text-ink/50">
+          <span className="ml-2 shrink-0 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/50">
             {matchCount} {matchCount === 1 ? 'hit' : 'hits'}
           </span>
         )}

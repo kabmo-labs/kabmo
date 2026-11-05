@@ -129,7 +129,7 @@ export function ToolCallingSection({ tools, defaultExpanded = false, isMobile = 
                     keeps it visible when a sentence-length intent has to shrink
                     (a plain `flex-1` basis of 0 would collapse it to nothing). */}
                 <span
-                  className="min-w-0 truncate text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/35"
+                  className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/35"
                   title={intent}
                 >
                   {intent}

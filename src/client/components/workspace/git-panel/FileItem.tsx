@@ -38,7 +38,7 @@ export function GitFileItem({ change, isStaged, repo, rootPath, onAction }: GitF
       onClick={handleOpenDiff}
     >
       <div className="flex items-center space-x-1.5 flex-1 min-w-0 pr-2">
-        <span className={`font-bold font-mono text-[9px] w-3 flex-shrink-0 text-center ${colorClass}`} title={`Status: ${statusInfo.label}`}>
+        <span className={`font-bold font-mono text-[10px] w-3 flex-shrink-0 text-center ${colorClass}`} title={`Status: ${statusInfo.label}`}>
           {charStatus}
         </span>
         <FileIcon name={fileName} size={12} className="flex-shrink-0" />
@@ -46,7 +46,7 @@ export function GitFileItem({ change, isStaged, repo, rootPath, onAction }: GitF
           {fileName}
         </span>
         {dirPath && (
-          <span className="text-[9px] text-ink/40 truncate ml-1">
+          <span className="text-[10px] text-ink/40 truncate ml-1">
             {dirPath}
           </span>
         )}

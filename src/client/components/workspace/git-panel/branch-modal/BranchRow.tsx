@@ -80,7 +80,7 @@ export function BranchRow({ branch, detached, onCheckout, onMerge, onRename, onD
       </div>
 
       <div className="h-5 flex items-center justify-end">
-        {branch.date && <span className="text-[9px] text-ink/40 truncate">{branch.date}</span>}
+        {branch.date && <span className="text-[10px] text-ink/40 truncate">{branch.date}</span>}
       </div>
 
       <div className="h-5 flex items-center justify-end gap-0.5 touch-visible opacity-0 group-hover/row:opacity-100">
@@ -131,7 +131,7 @@ function TrackingBadge({ branch }: { branch: GitBranchDetail }) {
   if (branch.gone) {
     return (
       <span
-        className="text-[9px] font-mono text-warning border border-warning/30 rounded px-1 truncate"
+        className="text-[10px] font-mono text-warning border border-warning/30 rounded px-1 truncate"
         title={`${branch.upstream} no longer exists on the remote — fetch --prune to drop it`}
       >
         gone
@@ -144,14 +144,14 @@ function TrackingBadge({ branch }: { branch: GitBranchDetail }) {
     // fresh `git checkout -b` produces, and reporting ↑0 ↓0 would hide
     // unpushed commits.
     return (
-      <span className="text-[9px] font-mono text-ink/40 truncate" title="No upstream — this branch has never been published">
+      <span className="text-[10px] font-mono text-ink/40 truncate" title="No upstream: this branch has never been published">
         unpublished
       </span>
     );
   }
 
   return (
-    <span className="flex items-center gap-1 text-[9px] font-mono text-ink/50 min-w-0">
+    <span className="flex items-center gap-1 text-[10px] font-mono text-ink/50 min-w-0">
       <span className="truncate" title={branch.upstream}>{branch.upstream}</span>
       {(branch.ahead > 0 || branch.behind > 0) && (
         <span className="tabular-nums text-ink/70 flex-shrink-0">

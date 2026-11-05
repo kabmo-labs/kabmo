@@ -102,7 +102,7 @@ export function TokenUsageBreakdown({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
           <span className="flex items-baseline gap-2 text-xs font-semibold text-ink">
             Breakdown
-            <span className="font-mono text-[9px] font-normal uppercase tracking-wider text-ink/35">
+            <span className="font-mono text-[10px] font-normal uppercase tracking-wider text-ink/35">
               {isTree ? 'period total' : `${rows.length} ${rows.length === 1 ? 'row' : 'rows'} · ${granularity}`}
             </span>
           </span>
@@ -114,7 +114,7 @@ export function TokenUsageBreakdown({
                 role="tab"
                 aria-selected={tab === entry.id}
                 onClick={() => onTab(entry.id)}
-                className={`rounded px-2 py-0.5 text-[9px] font-bold tracking-wider transition-colors ${
+                className={`rounded px-2 py-0.5 text-[10px] font-bold tracking-wider transition-colors ${
                   tab === entry.id ? 'bg-paper text-ink shadow-xs' : 'text-ink/50 hover:text-ink'
                 }`}
               >
@@ -229,7 +229,7 @@ export function TokenUsageBreakdown({
       <div className="rounded-lg border border-ink/15 bg-paper p-3.5 shadow-xs">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <span className="text-xs font-semibold text-ink">Cost quality</span>
-          <span className="font-mono text-[9px] uppercase tracking-wider text-ink/35">period total</span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-ink/35">period total</span>
         </div>
         <dl className="space-y-2 text-[11px]">
           <div className="flex items-center justify-between">
@@ -243,7 +243,7 @@ export function TokenUsageBreakdown({
           <div className="flex items-center justify-between">
             <dt className="text-ink/60">Unpriced turns</dt>
             <dd className="tabular-nums font-semibold text-ink">
-              {totals.records > 0 ? `${((totals.unpriced / totals.records) * 100).toFixed(1)}%` : '—'}
+              {totals.records > 0 ? `${((totals.unpriced / totals.records) * 100).toFixed(1)}%` : '–'}
             </dd>
           </div>
           <div className="flex items-center justify-between">

@@ -244,7 +244,7 @@ export function ProviderModelsList({
                       {model.name}
                     </span>
                     {modelKind !== 'chat' && (
-                      <span className="shrink-0 px-1 py-0 rounded border border-ink/15 text-[9px] font-mono uppercase tracking-wide text-ink/55">
+                      <span className="shrink-0 px-1 py-0 rounded border border-ink/15 text-[10px] font-mono uppercase tracking-wide text-ink/55">
                         {MODEL_KIND_LABELS[modelKind]}
                       </span>
                     )}
@@ -280,7 +280,7 @@ export function ProviderModelsList({
                   <button
                     type="button"
                     onClick={() => onOpenModelCapabilities(model)}
-                    title="What this model declares — tools, vision, reasoning"
+                    title="What this model declares: tools, vision, reasoning"
                     aria-label={`Capabilities of ${model.name}`}
                     className="p-1 rounded text-ink/50 hover:text-ink hover:bg-ink/10 transition-colors cursor-pointer"
                   >

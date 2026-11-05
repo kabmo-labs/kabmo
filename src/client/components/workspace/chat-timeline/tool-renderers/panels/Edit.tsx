@@ -228,7 +228,7 @@ export function Edit({ tool }: { tool: ToolCallData }) {
       {/* Unified Diff if available */}
       {diffText && (
         <div className="space-y-1">
-          <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Diff Changes</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Diff Changes</div>
           <DiffView text={diffText} path={targetPath} />
         </div>
       )}
@@ -240,15 +240,15 @@ export function Edit({ tool }: { tool: ToolCallData }) {
       {/* Replacement Diff (old_string vs new_string) */}
       {!diffText && (oldString || newString) && (
         <div className="space-y-1.5">
-          <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Replacement Changes</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Replacement Changes</div>
           <div className="overflow-hidden rounded-lg border border-ink/8">
             {oldString && (
               <div className="border-b border-ink/6 bg-error/[0.04] p-2.5">
-                <div className="mb-1 flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-error">
+                <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-error">
                   <span>- Original Content</span>
                 </div>
                 {truncatedOld && truncatedOld.skipped > 0 && (
-                  <div className="mb-1 font-mono text-[9.5px] text-ink/45">… {truncatedOld.skipped} earlier lines hidden</div>
+                  <div className="mb-1 font-mono text-[10px] text-ink/45">… {truncatedOld.skipped} earlier lines hidden</div>
                 )}
                 <pre
                   className="max-h-40 overflow-x-auto font-mono text-[11px] leading-relaxed text-error/90 whitespace-pre-wrap break-words"
@@ -258,11 +258,11 @@ export function Edit({ tool }: { tool: ToolCallData }) {
             )}
             {newString && (
               <div className="bg-success/[0.04] p-2.5">
-                <div className="mb-1 flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-success">
+                <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-success">
                   <span>+ Replaced With</span>
                 </div>
                 {truncatedNew && truncatedNew.skipped > 0 && (
-                  <div className="mb-1 font-mono text-[9.5px] text-ink/45">… {truncatedNew.skipped} earlier lines hidden</div>
+                  <div className="mb-1 font-mono text-[10px] text-ink/45">… {truncatedNew.skipped} earlier lines hidden</div>
                 )}
                 <pre
                   className="max-h-48 overflow-x-auto font-mono text-[11px] leading-relaxed text-success/90 whitespace-pre-wrap break-words"
@@ -277,12 +277,12 @@ export function Edit({ tool }: { tool: ToolCallData }) {
       {/* Written File Content Preview for write/create_file */}
       {!diffText && !oldString && !newString && newContent && (
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
             <span className="flex items-center gap-1">
               <FileCode size={11} />
               <span>Written File Preview</span>
             </span>
-            <span className="font-mono text-[9px] text-ink/50">
+            <span className="font-mono text-[10px] text-ink/50">
               {previewLineCount} lines · {formatBytes(newContent.length)}
             </span>
           </div>
@@ -299,7 +299,7 @@ export function Edit({ tool }: { tool: ToolCallData }) {
       {/* Execution Result — excerpt rows bergutter per file, catatan sebagai markdown */}
       {sections.length > 0 && (
         <div className="space-y-2 rounded-lg border border-ink/8 bg-paper p-2.5 select-text">
-          <div className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">
             <ArrowRight size={11} className="text-success" />
             <span>Execution Output</span>
           </div>

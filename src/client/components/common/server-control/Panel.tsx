@@ -198,7 +198,7 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
           type="button"
           onClick={() => void store.reload()}
           disabled={store.busy}
-          title="Refresh — re-probe every server"
+          title="Refresh: re-probe every server"
           aria-label="Refresh servers"
           className="p-1 rounded text-ink/40 hover:text-ink hover:bg-ink/10 cursor-pointer disabled:opacity-40"
         >
@@ -215,7 +215,7 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
 
         {entries.length > 0 && (
           <>
-            <p className="px-1 text-[9px] uppercase tracking-wide text-ink/35">This window</p>
+            <p className="px-1 text-[10px] uppercase tracking-wide text-ink/35">This window</p>
             {entries.map((server) => (
               <Row
                 key={server.id}
@@ -232,7 +232,7 @@ export function ServerPanel({ open, onClose, variant, store, triggerRef }: Serve
 
         {detected.length > 0 && (
           <>
-            <p className="px-1 pt-1 text-[9px] uppercase tracking-wide text-ink/35">
+            <p className="px-1 pt-1 text-[10px] uppercase tracking-wide text-ink/35">
               Found on this machine
             </p>
             {detected.map((server) => (

@@ -86,7 +86,7 @@ export function UsageChart({ buckets, metric, providers, visible, onToggle, gran
           <div className="w-full border-t border-dashed border-ink/5" />
           <div className="w-full border-t border-ink/15" />
         </div>
-        <div className="absolute bottom-4 left-0 top-0 flex w-10 flex-col justify-between font-mono text-[9px] text-ink/40">
+        <div className="absolute bottom-4 left-0 top-0 flex w-10 flex-col justify-between font-mono text-[10px] text-ink/40">
           <span>{format(max)}</span>
           <span>{format(max / 2)}</span>
           <span>0</span>
@@ -109,7 +109,7 @@ export function UsageChart({ buckets, metric, providers, visible, onToggle, gran
             ))}
           </svg>
         </div>
-        <div className="absolute bottom-0 left-10 right-0 flex h-4 items-end justify-between text-[9px] text-ink/40">
+        <div className="absolute bottom-0 left-10 right-0 flex h-4 items-end justify-between text-[10px] text-ink/40">
           <span>{buckets[0]?.label}</span>
           {buckets.length > 2 && <span>{buckets[Math.floor(buckets.length / 2)]?.label}</span>}
           {/* One bucket would otherwise print the same label twice. */}

@@ -92,7 +92,7 @@ export function SubagentView({ sessionId, subagent, onBack, provider, providerNa
             <span className="font-mono text-[12px] font-semibold text-ink truncate">
               {headerTitle}
             </span>
-            <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+            <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/50">
               {STATUS_LABEL[effectiveStatus]}
             </span>
           </div>

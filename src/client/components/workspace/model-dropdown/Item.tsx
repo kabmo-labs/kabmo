@@ -159,7 +159,7 @@ export function ModelDropdownItem({
             composer trigger follows. */}
         {showProvider && (
           <span
-            className="shrink-0 whitespace-nowrap rounded border border-ink/15 bg-ink/5 px-1 font-mono text-[9px] leading-4 text-ink/55"
+            className="shrink-0 whitespace-nowrap rounded border border-ink/15 bg-ink/5 px-1 font-mono text-[10px] leading-4 text-ink/55"
             title={`Provider: ${model.provider}`}
           >
             {model.provider}

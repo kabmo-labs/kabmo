@@ -62,7 +62,7 @@ export function EditorFontSection({ settings, onUpdate }: EditorFontSectionProps
                 <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-ink/50">
                   <span>{choice.label}</span>
                   {choice.bundled && (
-                    <span className="rounded bg-ink/8 px-1 py-px text-[9px] uppercase tracking-wide">
+                    <span className="rounded bg-ink/8 px-1 py-px text-[10px] uppercase tracking-wide">
                       Bundled
                     </span>
                   )}

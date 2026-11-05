@@ -52,7 +52,7 @@ export function RoleRow({ role, info, value, candidates, disabled, onChange }: R
     <div className="flex items-center justify-between gap-3 px-3 py-2.5">
       <div className="min-w-0">
         <div className="font-medium text-ink">{info.label}</div>
-        <div className="font-mono text-[9px] text-ink/30">{role}</div>
+        <div className="font-mono text-[10px] text-ink/35">{role}</div>
       </div>
       <select
         aria-label={label}
@@ -62,7 +62,7 @@ export function RoleRow({ role, info, value, candidates, disabled, onChange }: R
         onChange={(event) => onChange(role, event.currentTarget.value)}
         className="w-60 max-w-[60%] bg-paper border border-ink/15 rounded-md px-2 py-1 text-ink font-mono text-[11px] cursor-pointer disabled:opacity-50"
       >
-        <option value="">— omp default —</option>
+        <option value="">omp default</option>
         {value && !known && <option value={value}>{value} (not in catalog)</option>}
         {groups.map((group) => (
           <optgroup key={group.provider} label={group.provider}>

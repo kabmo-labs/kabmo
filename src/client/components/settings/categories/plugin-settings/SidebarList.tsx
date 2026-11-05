@@ -233,7 +233,7 @@ function PluginRow({
           <span className="truncate text-xs font-medium">{plugin.name}</span>
           {plugin.enabled && <Check size={11} className="text-success flex-shrink-0" />}
         </div>
-        <span className="text-[10px] font-mono text-ink/45 flex-shrink-0">{plugin.version || '—'}</span>
+        <span className="text-[10px] font-mono text-ink/45 flex-shrink-0">{plugin.version || '–'}</span>
       </div>
       <div className="flex items-center gap-1.5 mt-0.5 pl-[19px]">
         <span className="text-[10px] font-mono uppercase text-ink/50">{plugin.scope}</span>

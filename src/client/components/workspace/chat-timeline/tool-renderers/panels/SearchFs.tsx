@@ -72,7 +72,7 @@ export function SearchFs({ tool }: { tool: ToolCallData }) {
         <div className="flex items-center gap-2">
           <FolderSearch size={13} className="text-ink/60" />
           <span className="text-[11px] font-semibold text-ink">Filesystem Search</span>
-          <span className="rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[9.5px] text-ink/50">
+          <span className="rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[10px] text-ink/50">
             {items.length} {items.length === 1 ? 'entry' : 'entries'}
           </span>
         </div>
@@ -115,7 +115,7 @@ export function SearchFs({ tool }: { tool: ToolCallData }) {
               <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink/80">{path}</span>
               {type !== 'unknown' && (
                 <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+                  className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
                     type === 'dir' ? 'bg-ink/8 text-ink/60' : 'bg-ink/5 text-ink/45'
                   }`}
                 >

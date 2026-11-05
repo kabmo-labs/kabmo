@@ -176,7 +176,7 @@ export function Lsp({ tool }: { tool: ToolCallData }) {
             <div className="flex items-center gap-2">
               <Server size={13} className="text-ink/60" />
               <span className="font-mono text-[10.5px] font-semibold text-ink">Language Servers</span>
-              <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+              <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] uppercase tracking-wider text-ink/50">
                 Capabilities
               </span>
             </div>
@@ -194,7 +194,7 @@ export function Lsp({ tool }: { tool: ToolCallData }) {
                   <div className="flex items-center gap-2">
                     <Cpu size={12} className="text-ink/50" />
                     <span className="font-mono font-medium text-ink">{srv.name}</span>
-                    <span className="ml-auto inline-flex items-center gap-1 font-mono text-[9.5px] text-success">
+                    <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-success">
                       <CheckCircle2 size={10} />
                       Connected
                     </span>
@@ -205,7 +205,7 @@ export function Lsp({ tool }: { tool: ToolCallData }) {
                       {capKeys.map((cap, i) => (
                         <span
                           key={i}
-                          className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] text-ink/60"
+                          className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] text-ink/60"
                         >
                           {cap}
                         </span>
@@ -236,7 +236,7 @@ export function Lsp({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8 select-text">
       <div className="flex items-center gap-2 border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
           Diagnostics
         </span>
         <span className="ml-auto flex items-center gap-2 font-mono text-[10px]">
@@ -264,8 +264,8 @@ export function Lsp({ tool }: { tool: ToolCallData }) {
               <span className="min-w-0 flex-1 break-words leading-5">
                 {loc && <span className="font-mono text-[10px] text-ink/45 mr-1">{loc}:</span>}
                 <span className={textColor}>{msg}</span>
-                {source && <span className="ml-1.5 font-mono text-[9px] text-ink/35">[{source}]</span>}
-                {code && <span className="ml-1 font-mono text-[9px] text-ink/35">({code})</span>}
+                {source && <span className="ml-1.5 font-mono text-[10px] text-ink/35">[{source}]</span>}
+                {code && <span className="ml-1 font-mono text-[10px] text-ink/35">({code})</span>}
               </span>
             </div>
           );

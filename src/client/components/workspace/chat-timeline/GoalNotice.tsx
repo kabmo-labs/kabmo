@@ -38,7 +38,7 @@ export function GoalNotice({ data }: { data: GoalNoticeData }) {
   return (
     <div className="space-y-2.5">
       <div className="rounded-lg border border-ink/8 bg-paper p-3">
-        <div className="mb-1 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">Objective</div>
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink/40">Objective</div>
         <MarkdownRenderer content={data.objective || '_No objective recorded._'} className="text-[12px] leading-relaxed" />
       </div>
 
@@ -52,7 +52,7 @@ export function GoalNotice({ data }: { data: GoalNoticeData }) {
 
       {data.instructions && (
         <div className="rounded-lg border border-ink/8 bg-canvas/40 p-3">
-          <div className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink/40">
             Instructions sent with it
           </div>
           <MarkdownRenderer content={data.instructions} className="text-[11.5px] leading-relaxed text-ink/75" />

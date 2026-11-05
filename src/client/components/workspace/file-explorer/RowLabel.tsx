@@ -47,7 +47,7 @@ export function TreeRowLabel({ name, path, isFolder, isOpen, ignored, gitStatus,
 
       {gitStatus && (
         <span
-          className={`font-mono text-[9px] font-bold px-1 rounded flex-shrink-0 ${gitStatus.colorClass}`}
+          className={`font-mono text-[10px] font-bold px-1 rounded flex-shrink-0 ${gitStatus.colorClass}`}
           title={`Git: ${gitStatus.label}`}
         >
           {gitStatus.charStatus}

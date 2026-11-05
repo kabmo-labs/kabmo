@@ -135,7 +135,7 @@ export function EditorTabs({
                   the one convention that reads as "this is gone" at a glance. */}
               <span className={`text-xs font-mono truncate flex-1${isMissing ? ' text-error line-through' : ''}`}>{file.name}</span>
               {statusInfo && (
-                <span className={`px-1 text-[9px] font-mono font-bold rounded ${statusInfo.badgeBgClass}`}>
+                <span className={`px-1 text-[10px] font-mono font-bold rounded ${statusInfo.badgeBgClass}`}>
                   {statusInfo.charStatus}
                 </span>
               )}

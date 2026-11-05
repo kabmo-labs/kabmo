@@ -65,8 +65,8 @@ export function Memory({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">{meta.label}</span>
-        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">{meta.label}</span>
+        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
           {items.length}
         </span>
       </div>
@@ -80,7 +80,7 @@ export function Memory({ tool }: { tool: ToolCallData }) {
               <span className="mt-0.5 shrink-0 text-ink/40">{meta.icon}</span>
               <span className="min-w-0 flex-1 break-words text-ink/80">{text}</span>
               {score !== undefined && (
-                <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9px] text-ink/45">
+                <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
                   {Math.round(score * 100)}%
                 </span>
               )}

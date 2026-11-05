@@ -199,7 +199,7 @@ export function FindWidget({ find }: FindWidgetProps) {
           nobody has used. */}
       {find.history.length > 0 && (
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          <span className="text-[9px] uppercase tracking-wide text-ink/40 flex-shrink-0">Recent</span>
+          <span className="text-[10px] uppercase tracking-wide text-ink/40 flex-shrink-0">Recent</span>
           {find.history.slice(0, 6).map((entry) => (
             <button
               key={entry}

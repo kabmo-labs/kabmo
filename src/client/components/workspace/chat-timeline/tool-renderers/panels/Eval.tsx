@@ -63,11 +63,11 @@ export function Eval({ tool }: { tool: ToolCallData }) {
               <span className="font-mono text-[10.5px] font-semibold text-ink">
                 Script Evaluation
               </span>
-              <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+              <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] uppercase tracking-wider text-ink/50">
                 {language}
               </span>
               {timeout && (
-                <span className="flex items-center gap-1 font-mono text-[9.5px] text-ink/40">
+                <span className="flex items-center gap-1 font-mono text-[10px] text-ink/40">
                   <Clock size={10} />
                   <span>{timeout}</span>
                 </span>
@@ -76,13 +76,13 @@ export function Eval({ tool }: { tool: ToolCallData }) {
 
             <CopyButton
               text={code}
-              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
               label="Copy"
             />
           </div>
 
           {truncatedCode.skipped > 0 && (
-            <div className="border-b border-ink/6 bg-canvas/40 px-3 py-1 font-mono text-[9.5px] text-ink/45">
+            <div className="border-b border-ink/6 bg-canvas/40 px-3 py-1 font-mono text-[10px] text-ink/45">
               … {truncatedCode.skipped} earlier lines hidden
             </div>
           )}
@@ -122,30 +122,30 @@ export function Eval({ tool }: { tool: ToolCallData }) {
               {isError ? (
                 <>
                   <AlertCircle size={11} className="text-error" />
-                  <span className="text-[9.5px] font-semibold uppercase tracking-wider text-error">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-error">
                     Execution Error
                   </span>
                 </>
               ) : isAborted ? (
                 <>
                   <Ban size={11} className="text-warning" />
-                  <span className="text-[9.5px] font-semibold uppercase tracking-wider text-warning">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-warning">
                     Evaluation Aborted
                   </span>
                 </>
               ) : (
                 <>
                   <Play size={11} className="text-success" />
-                  <span className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/50">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/50">
                     Evaluation Result
                   </span>
                   {jsonResult.isValid && (
                     <>
-                      <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+                      <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] uppercase tracking-wider text-ink/50">
                         JSON
                       </span>
                       {jsonResult.linesCount && jsonResult.linesCount > 1 && (
-                        <span className="font-mono text-[9.5px] text-ink/40">
+                        <span className="font-mono text-[10px] text-ink/40">
                           {jsonResult.linesCount} lines
                         </span>
                       )}
@@ -157,7 +157,7 @@ export function Eval({ tool }: { tool: ToolCallData }) {
 
             <CopyButton
               text={jsonResult.isValid && jsonResult.pretty ? jsonResult.pretty : output}
-              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
               label="Copy"
             />
           </div>

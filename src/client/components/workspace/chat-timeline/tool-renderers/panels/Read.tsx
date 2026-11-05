@@ -276,9 +276,9 @@ export function Read({ tool, targetFilePath, output }: ReadPanelProps) {
                   {entry.name}
                   {entry.isDir && '/'}
                 </span>
-                {entry.size && <span className="shrink-0 font-mono text-[9.5px] text-ink/40">{entry.size}</span>}
+                {entry.size && <span className="shrink-0 font-mono text-[10px] text-ink/40">{entry.size}</span>}
                 {entry.time && (
-                  <span className="shrink-0 rounded bg-ink/5 px-1 py-0.2 font-mono text-[9px] text-ink/45">
+                  <span className="shrink-0 rounded bg-ink/5 px-1 py-0.2 font-mono text-[10px] text-ink/45">
                     {entry.time}
                   </span>
                 )}

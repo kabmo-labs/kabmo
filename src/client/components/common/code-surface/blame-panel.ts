@@ -51,7 +51,7 @@ const AUTHOR_CLASS = 'truncate text-xs font-semibold text-ink';
 const AGE_CLASS = 'shrink-0 font-mono text-[10px] text-ink/40';
 const SUBJECT_CLASS = 'mt-1 line-clamp-2 text-[11px] leading-snug text-ink/80';
 const RULE_CLASS = 'mt-2 border-t border-ink/10 pt-2';
-const META_CLASS = 'flex items-center gap-2 font-mono text-[9px] text-ink/40';
+const META_CLASS = 'flex items-center gap-2 font-mono text-[10px] text-ink/40';
 const NOTE_CLASS = 'mt-1 text-[10px] leading-snug text-ink/50';
 const HISTORY_BUTTON_CLASS =
   'mt-2 flex w-full items-center gap-1.5 text-left text-[10px] text-ink/50 hover:text-ink cursor-pointer';

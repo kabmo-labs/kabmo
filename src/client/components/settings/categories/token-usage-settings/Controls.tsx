@@ -103,7 +103,7 @@ export function TokenUsageControls({
                     ] as const
                   ).map((field) => (
                     <label key={field.label} className="block">
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-ink/40">{field.label}</span>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-ink/40">{field.label}</span>
                       <input
                         type="date"
                         value={field.value}

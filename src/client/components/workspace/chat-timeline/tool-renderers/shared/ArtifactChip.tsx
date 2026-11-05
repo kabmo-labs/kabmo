@@ -127,7 +127,7 @@ function ArtifactModal({ url, elidedBytes, path, onClose }: ArtifactModalProps) 
           <FileText size={14} className="shrink-0 text-ink/60" />
           <span className="text-[13px] font-semibold text-ink">Full output</span>
           {viewKind && (
-            <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+            <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] uppercase tracking-wider text-ink/50">
               {viewKind}
             </span>
           )}

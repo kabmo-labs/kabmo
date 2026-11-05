@@ -39,12 +39,12 @@ export function QuestionCard({ index, total, header, question, multi, answered, 
   return (
     <div className="rounded-lg border border-ink/10 bg-paper p-2.5 shadow-xs">
       <div className="flex items-start gap-2">
-        <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded bg-ink/5 font-mono text-[9px] font-semibold text-ink/60">
+        <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded bg-ink/5 font-mono text-[10px] font-semibold text-ink/60">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-ink/40">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">
               {header ?? `Question ${index + 1}`}
             </span>
             {multi && (
@@ -56,7 +56,7 @@ export function QuestionCard({ index, total, header, question, multi, answered, 
               </span>
             )}
             {total > 1 && (
-              <span className="ml-auto font-mono text-[9px] text-ink/35">
+              <span className="ml-auto font-mono text-[10px] text-ink/35">
                 {index + 1}/{total}
               </span>
             )}
@@ -94,7 +94,7 @@ export function AnswerList({ parts, note }: { parts: string[]; note?: string }) 
           <span className="min-w-0 flex-1 break-words">{part}</span>
         </div>
       ))}
-      {note && <div className="font-mono text-[9px] text-ink/45">{note}</div>}
+      {note && <div className="font-mono text-[10px] text-ink/45">{note}</div>}
     </div>
   );
 }

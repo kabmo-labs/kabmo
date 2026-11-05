@@ -44,7 +44,7 @@ export function ToolPanelHeader({ icon, label, badge, copyText, copyLabel = 'Cop
           {label}
         </span>
         {badge && (
-          <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+          <span className="shrink-0 rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/50">
             {badge}
           </span>
         )}

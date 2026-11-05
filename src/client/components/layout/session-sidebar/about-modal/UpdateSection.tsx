@@ -79,7 +79,7 @@ export function UpdateSection({ updates, onToast }: UpdateSectionProps) {
     <section className="mt-5 border-y border-ink/10 py-3 text-left" aria-labelledby="updates-heading">
       <div className="flex items-center justify-between gap-3">
         <h3 id="updates-heading" className="text-xs font-semibold text-ink">Updates</h3>
-        {updates.info && <span className="font-mono text-[9px] text-ink/40">checked</span>}
+        {updates.info && <span className="font-mono text-[10px] text-ink/40">checked</span>}
       </div>
 
       {updates.progress && (

@@ -83,7 +83,7 @@ export function TodoRow({ task, current }: { task: TodoItem; current: boolean })
         )}
       </div>
       {visual.active && (
-        <span className="shrink-0 rounded bg-ink/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink/70">
+        <span className="shrink-0 rounded bg-ink/8 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/70">
           Now
         </span>
       )}

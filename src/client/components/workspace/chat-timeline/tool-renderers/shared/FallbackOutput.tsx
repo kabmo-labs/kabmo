@@ -26,14 +26,14 @@ export function FallbackOutput({ text }: FallbackOutputProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
           <Code size={11} className="text-ink/40" />
           <span>Output</span>
-          <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] text-ink/45">
+          <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/45">
             {output.format}
           </span>
           {lines > 1 && (
-            <span className="font-mono text-[9px] text-ink/35">
+            <span className="font-mono text-[10px] text-ink/35">
               {lines} lines
             </span>
           )}

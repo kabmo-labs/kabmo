@@ -35,7 +35,7 @@ function PhaseBlock({ name, index, tasks }: { name: string; index: number; tasks
         <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/50">
           {index + 1}. {name}
         </span>
-        <span className="font-mono text-[9.5px] text-ink/40">
+        <span className="font-mono text-[10px] text-ink/40">
           {closed}/{tasks.length}
         </span>
       </div>
@@ -69,7 +69,7 @@ export function Todo({ tool }: { tool: ToolCallData }) {
             <ListTodo size={13} className="text-ink/60" />
             <span className="text-[11px] font-semibold text-ink">Todo</span>
             {opBadge && (
-              <span className="rounded bg-success/10 px-2 py-0.5 font-mono text-[9.5px] font-medium text-success">
+              <span className="rounded bg-success/10 px-2 py-0.5 font-mono text-[10px] font-medium text-success">
                 {opBadge}
               </span>
             )}

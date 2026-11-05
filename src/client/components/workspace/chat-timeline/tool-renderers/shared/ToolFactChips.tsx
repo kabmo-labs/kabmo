@@ -68,7 +68,7 @@ const BADGE_KINDS: ReadonlySet<ToolFact['kind']> = new Set(['exit', 'diff', 'pro
 const ICONLESS_KINDS: ReadonlySet<ToolFact['kind']> = new Set(['diff']);
 
 function chipClass(fact: ToolFact): string {
-  const base = 'inline-flex shrink-0 items-center gap-1 px-1 py-0.5 font-mono text-[9.5px]';
+  const base = 'inline-flex shrink-0 items-center gap-1 px-1 py-0.5 font-mono text-[10px]';
   if (fact.parts && fact.parts.length > 0) return `${base} font-semibold text-ink/60`;
   if (fact.tone && fact.tone !== 'muted') return `${base} font-semibold ${TONE_CLASSES[fact.tone]}`;
   if (BADGE_KINDS.has(fact.kind)) return `${base} font-semibold text-ink/60`;
@@ -110,7 +110,7 @@ export function ToolFactChips({ facts, max = 4 }: { facts: ToolFact[]; max?: num
         </span>
       ))}
       {overflow > 0 && (
-        <span className="shrink-0 font-mono text-[9.5px] text-ink/35">+{overflow}</span>
+        <span className="shrink-0 font-mono text-[10px] text-ink/35">+{overflow}</span>
       )}
     </span>
   );

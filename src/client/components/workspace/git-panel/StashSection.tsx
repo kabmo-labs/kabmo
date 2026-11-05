@@ -128,7 +128,7 @@ export function GitStashSection({ rootPath, repo, isBusy, onAction }: GitStashSe
           <Archive size={12} />
           <span>Stash</span>
           {stashes.length > 0 && (
-            <span className="font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[9px] text-ink/50">
+            <span className="font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[10px] text-ink/50">
               {stashes.length}
             </span>
           )}
@@ -202,13 +202,13 @@ export function GitStashSection({ rootPath, repo, isBusy, onAction }: GitStashSe
                     <span className="min-w-0 truncate text-[10px] text-ink/80" title={entry.subject}>
                       {entry.subject}
                     </span>
-                    <span className="text-[9px] text-ink/40 text-right truncate">{entry.date}</span>
+                    <span className="text-[10px] text-ink/40 text-right truncate">{entry.date}</span>
                     <div className="flex items-center justify-end gap-0.5 touch-visible opacity-0 group-hover/stash:opacity-100">
                       <button
                         type="button"
                         onClick={() => run('stash_apply', { ref: entry.ref, pop: '1' })}
                         disabled={isBusy}
-                        title="Pop — apply and remove the entry"
+                        title="Pop: apply and remove the entry"
                         aria-label="Pop stash"
                         className="w-5 h-5 flex items-center justify-center rounded hover:text-ink hover:bg-ink/10 cursor-pointer transition-colors disabled:opacity-40"
                       >
@@ -218,7 +218,7 @@ export function GitStashSection({ rootPath, repo, isBusy, onAction }: GitStashSe
                         type="button"
                         onClick={() => run('stash_apply', { ref: entry.ref })}
                         disabled={isBusy}
-                        title="Apply — keep the entry"
+                        title="Apply: keep the entry"
                         aria-label="Apply stash"
                         className="w-5 h-5 flex items-center justify-center rounded hover:text-ink hover:bg-ink/10 cursor-pointer transition-colors disabled:opacity-40"
                       >
@@ -228,7 +228,7 @@ export function GitStashSection({ rootPath, repo, isBusy, onAction }: GitStashSe
                         type="button"
                         onClick={() => run('stash_drop', { ref: entry.ref })}
                         disabled={isBusy}
-                        title="Drop — discard the entry (the stash is not recoverable from the panel)"
+                        title="Drop: discard the entry (the stash is not recoverable from the panel)"
                         aria-label="Drop stash"
                         className="w-5 h-5 flex items-center justify-center rounded hover:text-error hover:bg-error/10 cursor-pointer transition-colors disabled:opacity-40"
                       >

@@ -75,7 +75,7 @@ export function GoalRecordPanel({ tool }: { tool: ToolCallData }) {
           <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/60">Goal</span>
           {op && <span className="font-mono text-[10px] text-ink/40">{op}</span>}
         </div>
-        <span className={`rounded-full px-2 py-0.5 font-mono text-[9.5px] font-medium uppercase ${style.className}`}>
+        <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-medium uppercase ${style.className}`}>
           {style.label}
         </span>
       </div>
@@ -87,11 +87,11 @@ export function GoalRecordPanel({ tool }: { tool: ToolCallData }) {
 
         <div className="grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-md border border-ink/8 bg-canvas/30 p-2">
-            <div className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">Tokens</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">Tokens</div>
             <div className="mt-0.5 font-mono text-[11px] text-ink/85">{formatTokens(record)}</div>
           </div>
           <div className="rounded-md border border-ink/8 bg-canvas/30 p-2">
-            <div className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">Time</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">Time</div>
             <div className="mt-0.5 font-mono text-[11px] text-ink/85">{formatGoalDuration(record.timeUsedSeconds)}</div>
           </div>
         </div>
@@ -106,14 +106,14 @@ export function GoalRecordPanel({ tool }: { tool: ToolCallData }) {
         {!completionReport && status === 'paused' && (
           <div className="flex items-start gap-2 rounded-md bg-warning/10 p-2.5 text-[11.5px] text-warning">
             <Pause size={13} className="mt-0.5 shrink-0" />
-            <span>Paused — the agent is not taking further steps until this is resumed.</span>
+            <span>Paused: the agent is not taking further steps until this is resumed.</span>
           </div>
         )}
 
         {!completionReport && status === 'active' && (
           <div className="flex items-center gap-1.5 text-[10.5px] text-ink/45">
             <CircleDot size={11} className="shrink-0" />
-            <span>Automatic continuation is on — the agent keeps working after each turn.</span>
+            <span>Automatic continuation is on: the agent keeps working after each turn.</span>
           </div>
         )}
       </div>

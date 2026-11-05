@@ -38,10 +38,10 @@ export function ContextNotes({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
           {isNew ? 'New Context' : 'Notes'}
         </span>
-        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">
+        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
           {items.length}
         </span>
       </div>

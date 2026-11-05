@@ -39,7 +39,7 @@ function ListNode({ items }: { items: unknown[] }) {
       <ol className="divide-y divide-ink/6 overflow-hidden rounded-lg border border-ink/8 bg-canvas/40">
         {shown.map((item, index) => (
           <li key={index} className="flex items-start gap-2 px-2.5 py-1.5">
-            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-ink/5 font-mono text-[9px] text-ink/45">
+            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-ink/5 font-mono text-[10px] text-ink/45">
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -132,7 +132,7 @@ export function Mcp({ tool }: { tool: ToolCallData }) {
 
       {tool.output && outputStructured ? (
         <div className="space-y-1">
-          <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Result</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Result</div>
           <ValueNode value={outputData} />
         </div>
       ) : tool.output ? (

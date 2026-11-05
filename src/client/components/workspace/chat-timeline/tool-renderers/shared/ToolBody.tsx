@@ -33,7 +33,7 @@ import { usePluginSlotContext } from '@/client/hooks/workspace/list-slots';
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
       {children}
     </div>
   );
@@ -63,7 +63,7 @@ export function ToolBody({ tool, view }: { tool: ToolCallData; view: ToolView })
             <div className="flex items-center gap-1.5">
               <SectionLabel>Input</SectionLabel>
               {view.inputJson?.isValid && (
-                <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] uppercase tracking-wider text-ink/45">
+                <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] uppercase tracking-wider text-ink/45">
                   JSON
                 </span>
               )}

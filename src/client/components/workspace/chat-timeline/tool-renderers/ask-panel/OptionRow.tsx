@@ -71,7 +71,7 @@ export function OptionRow({
         <span className="flex items-center gap-1.5 font-medium">
           <span className="truncate">{label}</span>
           {suggested && (
-            <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-ink/45">
+            <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] uppercase tracking-wider text-ink/45">
               suggested
             </span>
           )}

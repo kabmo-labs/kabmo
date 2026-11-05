@@ -81,7 +81,7 @@ export function MinimapShortcuts({ turns, jumping, onJumpTurn }: MinimapShortcut
             <div
               className={`absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-3 bg-ink text-canvas text-xs rounded-md shadow-lg pointer-events-none transition-opacity duration-200 z-30 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
             >
-              <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-canvas/20 font-mono text-[10px] uppercase tracking-wider text-canvas/60">
+              <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-canvas/20 font-mono text-[10px] uppercase tracking-wider text-on-ink-muted">
                 <span>#{idx + 1} of {turns.length}</span>
                 {formatMessageStamp(turn) && <span>{formatMessageStamp(turn)}</span>}
               </div>

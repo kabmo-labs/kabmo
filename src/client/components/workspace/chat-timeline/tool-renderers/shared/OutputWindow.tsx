@@ -41,14 +41,14 @@ export function OutputWindow({ lines, render, className }: OutputWindowProps) {
   return (
     <>
       {window.hidden > 0 && (
-        <div className="flex items-center gap-2 border-b border-ink/6 bg-canvas/40 px-3 py-1 font-mono text-[9.5px] text-ink/45">
+        <div className="flex items-center gap-2 border-b border-ink/6 bg-canvas/40 px-3 py-1 font-mono text-[10px] text-ink/45">
           <Info size={10} className="shrink-0" />
           <span>… {window.hidden} earlier lines hidden</span>
           {more && (
             <button
               type="button"
               onClick={reveal}
-              className="ml-auto flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/55 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="ml-auto flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/55 transition-colors hover:bg-ink/5 hover:text-ink"
             >
               <ChevronUp size={10} />
               Show earlier

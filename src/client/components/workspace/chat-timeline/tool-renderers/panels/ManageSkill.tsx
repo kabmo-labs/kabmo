@@ -57,8 +57,8 @@ export function ManageSkill({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Skills</span>
-        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Skills</span>
+        <span className="ml-2 rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">
           {items.length}
         </span>
       </div>
@@ -78,10 +78,10 @@ export function ManageSkill({ tool }: { tool: ToolCallData }) {
                 <PackageCheck size={11} className="shrink-0 text-ink/40" />
               )}
               <span className="shrink-0 font-mono text-[10px] font-semibold text-ink/70">{name}</span>
-              {scope && <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9px] text-ink/45">{scope}</span>}
-              {version && <span className="font-mono text-[9px] text-ink/35">v{version}</span>}
+              {scope && <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">{scope}</span>}
+              {version && <span className="font-mono text-[10px] text-ink/35">v{version}</span>}
               {msg && <span className="min-w-0 flex-1 truncate text-ink/65">{msg}</span>}
-              <span className={`ml-auto shrink-0 rounded-full px-1.5 py-px font-mono text-[9px] ${STATUS_STYLES[status]}`}>
+              <span className={`ml-auto shrink-0 rounded-full px-1.5 py-px font-mono text-[10px] ${STATUS_STYLES[status]}`}>
                 {status}
               </span>
             </div>

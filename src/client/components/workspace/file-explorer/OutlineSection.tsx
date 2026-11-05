@@ -114,7 +114,7 @@ export function OutlineSection() {
           <ListTree size={12} />
           <span>Outline</span>
           {total > 0 && (
-            <span className="font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[9px] text-ink/50">
+            <span className="font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[10px] text-ink/50">
               {truncated ? `${symbols.length}/${total.toLocaleString()}` : total}
             </span>
           )}
@@ -156,7 +156,7 @@ export function OutlineSection() {
                     <OutlineKindIcon kind={symbol.kind} />
                     <span className="min-w-0 flex-1 truncate text-[11px] font-mono text-ink/80">{symbol.name}</span>
                     {!preview && (
-                      <span className="flex-shrink-0 font-mono text-[9px] text-ink/35">{symbol.line}</span>
+                      <span className="flex-shrink-0 font-mono text-[10px] text-ink/35">{symbol.line}</span>
                     )}
                   </button>
                 ))}

@@ -103,7 +103,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
       {rows.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
           <div className="flex items-center gap-2 border-b border-ink/8 px-2.5 py-1.5">
-            <span className="flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/50">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/50">
               <Bot size={11} className="text-ink/60" />
               Subagents
             </span>
@@ -134,11 +134,11 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
                     {name || agent}
                   </span>
                   {name && (
-                    <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] text-ink/50">
+                    <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/50">
                       {agent}
                     </span>
                   )}
-                  <span className="ml-auto shrink-0 font-mono text-[9.5px] text-ink/40">
+                  <span className="ml-auto shrink-0 font-mono text-[10px] text-ink/40">
                     {right || (status === 'done' ? 'settled' : 'running')}
                   </span>
                 </div>
@@ -156,7 +156,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
             onClick={() => setContextExpanded(prev => !prev)}
             className="flex w-full cursor-pointer items-center justify-between px-2.5 py-1.5 text-left transition-colors hover:bg-ink/[0.02]"
           >
-            <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/50">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/50">
               <Target size={11} className="text-ink/60" />
               Goal & Constraints
             </span>
@@ -181,7 +181,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
             onClick={() => setTasksExpanded(prev => !prev)}
             className="flex w-full cursor-pointer items-center justify-between px-2.5 py-1.5 text-left transition-colors hover:bg-ink/[0.02]"
           >
-            <span className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/50">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/50">
               <FileText size={11} className="text-ink/60" />
               Task Brief & Specification
             </span>
@@ -197,7 +197,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-ink text-[12px]">{t.name || `Task #${idx + 1}`}</span>
                     {t.agent && (
-                      <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9.5px] text-ink/60">
+                      <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/60">
                         {t.agent}
                       </span>
                     )}
@@ -225,7 +225,7 @@ export function TaskResult({ tool }: { tool: ToolCallData }) {
           />
         ) : (
           <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper">
-            <div className="flex items-center gap-1.5 border-b border-ink/8 px-2.5 py-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/50">
+            <div className="flex items-center gap-1.5 border-b border-ink/8 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/50">
               <Bot size={11} className="text-ink/60" />
               <span>Yield Output</span>
             </div>

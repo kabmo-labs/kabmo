@@ -197,7 +197,7 @@ export function LeftDockSettings({ dock, plugins, slots }: LeftDockSettingsProps
           <div className="flex flex-col gap-1.5 border border-ink/10 rounded-lg px-2.5 py-2 bg-ink/[0.02]">
             <span className="min-w-0">
               <span className="block text-xs text-ink">Sessions</span>
-              <span className="block text-[10px] text-ink/40">The dock's own view — always here.</span>
+              <span className="block text-[10px] text-ink/40">The dock's own view, always here.</span>
             </span>
             <span className="text-[10px] font-mono text-ink/40 self-start">{SESSIONS_VIEW_ID}</span>
           </div>

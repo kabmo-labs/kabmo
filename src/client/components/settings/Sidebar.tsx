@@ -25,7 +25,7 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'omp', label: 'OMP Engine', icon: Cpu, section: 'OMP', description: 'Live agent state and native omp config keys.' },
   { id: 'providers', label: 'Providers', icon: Cloud, section: 'OMP', description: 'AI model engines, endpoints, and credentials.' },
   { id: 'agents', label: 'Agents', icon: Bot, section: 'OMP', description: 'Autonomous agent persona, self-healing, and reasoning.' },
-  { id: 'behavior', label: 'Behavior', icon: Sliders, section: 'OMP', description: 'Native AGENTS.md and RULES.md — global instructions, permission gates, and safety filters.' },
+  { id: 'behavior', label: 'Behavior', icon: Sliders, section: 'OMP', description: 'Native AGENTS.md and RULES.md: global instructions, permission gates, and safety filters.' },
   { id: 'commands', label: 'Commands', icon: Terminal, section: 'OMP', description: 'Slash command macros and terminal shortcuts.' },
   { id: 'mcp', label: 'MCP', icon: Boxes, section: 'OMP', description: 'Model Context Protocol servers and dynamic tools.' },
   // LIBRARY
@@ -128,7 +128,7 @@ export function SettingsSidebar({
                           <span className="truncate">{item.label}</span>
                         </div>
                         {item.badge && (
-                          <span className="px-1.5 py-0.2 text-[9px] font-mono font-medium rounded bg-amber-500/15 text-amber-900 border border-amber-500/20">
+                          <span className="px-1.5 py-0.2 text-[10px] font-mono font-medium rounded bg-amber-500/15 text-amber-900 border border-amber-500/20">
                             {item.badge}
                           </span>
                         )}

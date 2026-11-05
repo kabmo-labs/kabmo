@@ -160,35 +160,35 @@ function JobRow({ job }: { job: WaitJob }) {
           {label.split('\n')[0]}
         </span>
         {typeof percent === 'number' && (
-          <span className="shrink-0 font-mono text-[9.5px] text-ink/60">{Math.round(percent)}%</span>
+          <span className="shrink-0 font-mono text-[10px] text-ink/60">{Math.round(percent)}%</span>
         )}
         {job.exitCode !== undefined && (
-          <span className={`shrink-0 font-mono text-[9.5px] font-semibold ${job.exitCode === 0 ? TONE_CLASSES.ok : TONE_CLASSES.error}`}>
+          <span className={`shrink-0 font-mono text-[10px] font-semibold ${job.exitCode === 0 ? TONE_CLASSES.ok : TONE_CLASSES.error}`}>
             exit {job.exitCode}
           </span>
         )}
         {typeof job.durationMs === 'number' && (
-          <span className="shrink-0 font-mono text-[9.5px] tabular-nums text-ink/40">
+          <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink/40">
             {formatWaitClock(job.durationMs)}
           </span>
         )}
         {job.status && (
-          <span className={`shrink-0 font-mono text-[9px] font-semibold ${TONE_CLASSES[tone]}`}>{job.status}</span>
+          <span className={`shrink-0 font-mono text-[10px] font-semibold ${TONE_CLASSES[tone]}`}>{job.status}</span>
         )}
       </div>
       {running && percent !== undefined && (
         <ProgressTrack percent={percent} active />
       )}
       {subject.secondary && (
-        <div className="truncate font-mono text-[9px] text-ink/45" title={subject.secondary}>
+        <div className="truncate font-mono text-[10px] text-ink/45" title={subject.secondary}>
           {subject.secondary.split('\n')[0]}
         </div>
       )}
       {progress && (
-        <div className="truncate font-mono text-[9px] text-ink/40">{progress}</div>
+        <div className="truncate font-mono text-[10px] text-ink/40">{progress}</div>
       )}
       {job.resolvedModel && (
-        <div className="truncate font-mono text-[9px] text-ink/40">{job.resolvedModel}</div>
+        <div className="truncate font-mono text-[10px] text-ink/40">{job.resolvedModel}</div>
       )}
     </div>
   );
@@ -203,7 +203,7 @@ function AgentRow({ agent }: { agent: WaitAgent }) {
       <span className="shrink-0 font-mono text-[10px] font-semibold text-ink/80">{agent.id}</span>
       <span className="min-w-0 flex-1 truncate text-ink/85">{agent.activity ?? 'agent'}</span>
       {typeof agent.ageMs === 'number' && (
-        <span className="shrink-0 font-mono text-[9px] tabular-nums text-ink/40">{formatWaitClock(agent.ageMs)}</span>
+        <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink/40">{formatWaitClock(agent.ageMs)}</span>
       )}
     </div>
   );
@@ -268,21 +268,21 @@ export function Wait({ tool }: { tool: ToolCallData }) {
       <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper px-3 py-2.5">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[22px] font-semibold leading-none tabular-nums text-ink">
-            {elapsed !== undefined ? formatWaitClock(elapsed) : '—'}
+            {elapsed !== undefined ? formatWaitClock(elapsed) : '–'}
           </span>
           <span className="text-[10.5px] text-ink/45">{running ? 'waiting' : 'waited'}</span>
           {interrupted && (
-            <span className={`ml-auto font-mono text-[9px] font-semibold uppercase tracking-wider ${TONE_CLASSES.warn}`}>
+            <span className={`ml-auto font-mono text-[10px] font-semibold uppercase tracking-wider ${TONE_CLASSES.warn}`}>
               interrupted
             </span>
           )}
           {!interrupted && running && remainingMs !== undefined && (
-            <span className="ml-auto font-mono text-[9.5px] tabular-nums text-ink/40" title="omp caps one wait at 30 minutes">
+            <span className="ml-auto font-mono text-[10px] tabular-nums text-ink/40" title="omp caps one wait at 30 minutes">
               {formatWaitClock(remainingMs)} left of {formatWaitClock(WAIT_MAX_MS)}
             </span>
           )}
           {!running && hitLimit && (
-            <span className={`ml-auto font-mono text-[9px] font-semibold uppercase tracking-wider ${TONE_CLASSES.warn}`}>
+            <span className={`ml-auto font-mono text-[10px] font-semibold uppercase tracking-wider ${TONE_CLASSES.warn}`}>
               limit reached
             </span>
           )}
@@ -296,7 +296,7 @@ export function Wait({ tool }: { tool: ToolCallData }) {
       {/* A peer message that ended the wait — the reason it returned early. */}
       {waited && (
         <div className="overflow-hidden rounded-lg border border-ink/8 bg-paper px-3 py-2">
-          <div className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
             <MessageSquare size={10} />
             <span>Message</span>
             {waited.from && <span className="font-mono normal-case tracking-normal text-ink/55">from {waited.from}</span>}
@@ -308,8 +308,8 @@ export function Wait({ tool }: { tool: ToolCallData }) {
       {view.jobs.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-ink/8">
           <div className="flex items-center gap-2 border-b border-ink/8 bg-paper px-3 py-1.5">
-            <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Jobs</span>
-            <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">{counts.total}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Jobs</span>
+            <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">{counts.total}</span>
           </div>
           <div className="divide-y divide-ink/6 bg-canvas/40 py-1">
             {view.jobs.map((job, index) => (
@@ -322,8 +322,8 @@ export function Wait({ tool }: { tool: ToolCallData }) {
       {view.agents.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-ink/8">
           <div className="flex items-center gap-2 border-b border-ink/8 bg-paper px-3 py-1.5">
-            <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Agents</span>
-            <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">{view.agents.length}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Agents</span>
+            <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">{view.agents.length}</span>
           </div>
           <div className="divide-y divide-ink/6 bg-canvas/40 py-1">
             {view.agents.map((agent, index) => (

@@ -207,7 +207,7 @@ export function RepoModal({
         ) : (
           groups.map((group) => (
             <div key={group.key}>
-              <div className="px-4 py-1 text-[9px] uppercase tracking-wider text-ink/40 font-semibold bg-canvas/40 border-b border-ink/5 sticky top-0">
+              <div className="px-4 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold bg-canvas/40 border-b border-ink/5 sticky top-0">
                 {group.label ?? repoLabel('.', rootPath)}
               </div>
               {group.paths.map((path) => {

@@ -86,7 +86,7 @@ export function ThinkingSection({
     <div className={`${transcriptGutter(isMobile)} ${showSeparator ? 'space-y-1.5' : ''}`}>
       {showSeparator && (
         <div className={`flex items-center gap-2 px-1 pt-0.5 ${traceInset(mode, isMobile)}`}>
-          <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/35">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/35">
             Thinking
           </span>
           <span className="h-px flex-1 bg-ink/8" />
@@ -113,7 +113,7 @@ export function ThinkingSection({
               {isGenerating && <span className="h-1.5 w-1.5 rounded-full bg-ink/60 animate-pulse" />}
               {!isOpen && (
                 <>
-                  {!framed && <span className="text-ink/25">—</span>}
+                  {!framed && <span className="text-ink/25">·</span>}
                   <span className={`${chrome.subtitle} ${framed ? '' : 'flex-1'}`}>{summary}</span>
                 </>
               )}
@@ -132,7 +132,7 @@ export function ThinkingSection({
           {isOpen && (
             <div className={chrome.body}>
               <div className="flex items-center justify-between pb-1.5">
-                <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
                   Model Reasoning & Strategy
                 </span>
                 <CopyButton
@@ -150,7 +150,7 @@ export function ThinkingSection({
                     <BrainCircuit size={13} className="text-ink/70" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="mb-0.5 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-ink/50">
+                    <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink/50">
                       System Notice
                     </div>
                     <div className="text-[12px] leading-relaxed text-ink/85">

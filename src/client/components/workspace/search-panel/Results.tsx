@@ -153,7 +153,7 @@ export function SearchResults({
                   <div className="flex items-center min-w-0">
                     <FileIcon name={entry.file} size={12} className="mr-1.5 flex-shrink-0" />
                     <span className="truncate">{entry.file}</span>
-                    <span className="ml-2 bg-ink/10 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0">
+                    <span className="ml-2 bg-ink/10 text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0">
                       {entry.count}
                     </span>
                   </div>

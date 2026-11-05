@@ -68,7 +68,7 @@ export function WebSearch({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8 bg-canvas/40">
       {provider && (
-        <div className="flex items-center justify-between border-b border-ink/6 bg-paper px-2.5 py-1 text-[9.5px]">
+        <div className="flex items-center justify-between border-b border-ink/6 bg-paper px-2.5 py-1 text-[10px]">
           <span className="font-semibold uppercase tracking-wider text-ink/40">Sources</span>
           <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-ink/50 uppercase">
             {provider}
@@ -82,7 +82,7 @@ export function WebSearch({ tool }: { tool: ToolCallData }) {
           return (
             <li key={index} className="px-2.5 py-2 text-[11.5px]">
               <div className="flex items-center gap-1.5">
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-ink/5 font-mono text-[9px] text-ink/45">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-ink/5 font-mono text-[10px] text-ink/45">
                   {index + 1}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-medium text-ink">{resultTitle(r)}</span>
@@ -98,7 +98,7 @@ export function WebSearch({ tool }: { tool: ToolCallData }) {
                   </a>
                 )}
               </div>
-              <div className="flex items-center gap-2 pl-[22px] font-mono text-[9.5px] text-ink/40">
+              <div className="flex items-center gap-2 pl-[22px] font-mono text-[10px] text-ink/40">
                 {url && <span className="truncate">{url}</span>}
                 {pubDate && (
                   <span className="shrink-0 rounded bg-ink/5 px-1 py-0.2 text-[8.5px] text-ink/50">

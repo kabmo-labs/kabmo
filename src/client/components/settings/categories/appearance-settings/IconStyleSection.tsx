@@ -129,7 +129,7 @@ export function IconStyleSection({ settings, onUpdate }: IconStyleSectionProps) 
                 <span className="text-xs font-semibold text-ink">{copy.label}</span>
                 <span className="font-mono text-[10px] text-ink/40">{copy.caption}</span>
                 {isSelected && (
-                  <span className="ml-auto rounded-full bg-ink px-1.5 py-[1px] text-[9px] font-semibold text-paper">
+                  <span className="ml-auto rounded-full bg-ink px-1.5 py-[1px] text-[10px] font-semibold text-paper">
                     active
                   </span>
                 )}

@@ -70,8 +70,8 @@ export function SecurityScan({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="flex items-center gap-2 border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Findings</span>
-        <span className="ml-auto flex items-center gap-1.5 font-mono text-[9.5px]">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Findings</span>
+        <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px]">
           {counts.high > 0 && <span className="rounded-full bg-error/10 px-1.5 py-px text-error">{counts.high} high</span>}
           {counts.medium > 0 && <span className="rounded-full bg-warning/10 px-1.5 py-px text-warning">{counts.medium} med</span>}
           {counts.low > 0 && <span className="rounded-full bg-ink/8 px-1.5 py-px text-ink/55">{counts.low} low</span>}
@@ -88,10 +88,10 @@ export function SecurityScan({ tool }: { tool: ToolCallData }) {
             <div key={index} className="flex items-start gap-2 px-2.5 py-1.5 text-[11.5px]">
               <ShieldAlert size={11} className={`mt-0.5 shrink-0 ${sev === 'high' ? 'text-error' : sev === 'medium' ? 'text-warning' : 'text-ink/40'}`} />
               <span className="min-w-0 flex-1 break-words">
-                <span className={`mr-1.5 rounded-full px-1.5 py-px font-mono text-[9px] ${SEVERITY_STYLES[sev]}`}>{sev}</span>
+                <span className={`mr-1.5 rounded-full px-1.5 py-px font-mono text-[10px] ${SEVERITY_STYLES[sev]}`}>{sev}</span>
                 {file && <span className="font-mono text-[10px] text-ink/45">{file}{line !== undefined ? `:${line}` : ''}: </span>}
                 <span className="text-ink/80">{msg}</span>
-                {rule && <span className="ml-1 font-mono text-[9.5px] text-ink/35">({rule})</span>}
+                {rule && <span className="ml-1 font-mono text-[10px] text-ink/35">({rule})</span>}
               </span>
             </div>
           );

@@ -27,7 +27,7 @@ export function TokenUsageMetricsGrid({ totals, periodName }: TokenUsageMetricsG
             <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-ink/40">
               Provider-reported cost
             </span>
-            <span className="font-mono text-[9px] uppercase tracking-wider text-ink/30">{periodName}</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-ink/30">{periodName}</span>
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-bold tracking-tight tabular-nums text-ink">{metrics.rawCost}</span>

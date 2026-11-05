@@ -106,7 +106,7 @@ export function TaskResultContent({ task }: TaskResultContentProps) {
                     <FileCode size={11} className="text-ink/60" />
                     <span>Files Inspected</span>
                   </div>
-                  <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] text-ink/50">
+                  <span className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/50">
                     {structured.files.length} items
                   </span>
                 </div>
@@ -164,7 +164,7 @@ export function TaskResultContent({ task }: TaskResultContentProps) {
       {/* Outro & Follow-up URI Links */}
       {task.outro && (
         <div className="rounded-lg border border-ink/10 bg-canvas/60 p-2.5 text-[11px] text-ink/75">
-          <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-wider text-ink/50">
+          <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink/50">
             <Terminal size={11} />
             <span>Follow-up & Transcript</span>
           </div>

@@ -176,7 +176,7 @@ export function TokenUsageSettings({ settings: _settings, onUpdate: _onUpdate }:
                 role="tab"
                 aria-selected={metric === entry.id}
                 onClick={() => setMetric(entry.id)}
-                className={`rounded px-2 py-0.5 text-[9px] font-bold tracking-wider transition-colors ${
+                className={`rounded px-2 py-0.5 text-[10px] font-bold tracking-wider transition-colors ${
                   metric === entry.id ? 'bg-paper text-ink shadow-xs' : 'text-ink/50 hover:text-ink'
                 }`}
               >

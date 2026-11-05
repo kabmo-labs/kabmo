@@ -58,8 +58,8 @@ export function Debug({ tool }: { tool: ToolCallData }) {
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="flex items-center gap-2 border-b border-ink/8 bg-paper px-2.5 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">Debug Session</span>
-        <span className="ml-auto flex items-center gap-1.5 font-mono text-[9.5px]">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">Debug Session</span>
+        <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px]">
           {counts.attached > 0 && <span className="rounded-full bg-success/10 px-1.5 py-px text-success">{counts.attached} attached</span>}
           {counts.running > 0 && <span className="rounded-full bg-ink/8 px-1.5 py-px text-ink/60">{counts.running} run</span>}
           {counts.detached > 0 && <span className="rounded-full bg-error/10 px-1.5 py-px text-error">{counts.detached} detach</span>}
@@ -79,7 +79,7 @@ export function Debug({ tool }: { tool: ToolCallData }) {
                 <Target size={11} className="shrink-0 text-ink/40" />
               )}
               <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-ink/75">{label}</span>
-              <span className={`shrink-0 rounded-full px-1.5 py-px font-mono text-[9px] ${STATE_STYLES[state]}`}>
+              <span className={`shrink-0 rounded-full px-1.5 py-px font-mono text-[10px] ${STATE_STYLES[state]}`}>
                 {state}
               </span>
             </div>

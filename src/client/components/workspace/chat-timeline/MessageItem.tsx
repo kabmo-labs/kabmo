@@ -102,7 +102,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             <div className="flex items-center space-x-1.5 pb-1.5 mb-1 border-b border-ink/10 text-[11px] font-mono text-ink/70">
               <Bot size={12} className="text-ink shrink-0" />
               <span className="font-semibold text-ink">Subagent Assignment</span>
-              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink/5 text-ink/60">Delegated</span>
+              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink/5 text-ink/60">Delegated</span>
             </div>
           )}
           <MarkdownRenderer content={userContent} />

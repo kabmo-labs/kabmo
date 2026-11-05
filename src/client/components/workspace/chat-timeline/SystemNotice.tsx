@@ -233,20 +233,20 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
             {reminderInfo?.reason && (
               <span
                 title={reminderInfo.reason}
-                className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] text-ink/60"
+                className="rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/60"
               >
                 {reminderInfo.reason}
               </span>
             )}
             {taskNotice?.agent && (
-              <span className="flex items-center gap-1 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[9px] text-ink/60">
+              <span className="flex items-center gap-1 rounded bg-ink/5 px-1.5 py-0.2 font-mono text-[10px] text-ink/60">
                 <Bot size={10} />
                 {taskNotice.agent}
               </span>
             )}
             {taskNotice?.status && (
               <span
-                className={`flex items-center gap-1 rounded px-1.5 py-0.2 font-mono text-[9px] font-semibold uppercase ${
+                className={`flex items-center gap-1 rounded px-1.5 py-0.2 font-mono text-[10px] font-semibold uppercase ${
                   noticeStyle.isError ? 'bg-error/10 text-error' : 'bg-success/10 text-success'
                 }`}
               >
@@ -255,13 +255,13 @@ export function SystemNotice({ notice, source, isMobile = false }: SystemNoticeP
               </span>
             )}
             {taskNotice?.duration && (
-              <span className="flex items-center gap-1 font-mono text-[9px] text-ink/40">
+              <span className="flex items-center gap-1 font-mono text-[10px] text-ink/40">
                 <Clock size={9} />
                 {taskNotice.duration}
               </span>
             )}
             {taskNotice?.meta?.size && (
-              <span className="flex items-center gap-1 font-mono text-[9px] text-ink/40">
+              <span className="flex items-center gap-1 font-mono text-[10px] text-ink/40">
                 <Layers size={9} />
                 {taskNotice.meta.size}
               </span>

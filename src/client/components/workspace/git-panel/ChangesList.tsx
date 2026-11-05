@@ -77,7 +77,7 @@ export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, o
               <div className="flex items-center space-x-1 font-semibold text-warning text-xs">
                 <span className="w-3 text-center">{conflictsExpanded ? '▾' : '▸'}</span>
                 <span>Conflicts</span>
-                <span className="text-warning/70 font-normal ml-1 border border-warning/30 rounded-full px-1.5 text-[9px] bg-paper">
+                <span className="text-warning/70 font-normal ml-1 border border-warning/30 rounded-full px-1.5 text-[10px] bg-paper">
                   {conflictedChanges.length}
                 </span>
               </div>
@@ -104,7 +104,7 @@ export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, o
               <div className="flex items-center space-x-1 font-semibold text-ink text-xs">
                 <span className="w-3 text-center">{stagedExpanded ? '▾' : '▸'}</span>
                 <span>Staged Changes</span>
-                <span className="text-ink/40 font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[9px] bg-paper">
+                <span className="text-ink/40 font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[10px] bg-paper">
                   {stagedChanges.length}
                 </span>
               </div>
@@ -157,7 +157,7 @@ export function GitChangesList({ changes, isLoading, viewMode, repo, rootPath, o
               <div className="flex items-center space-x-1 font-semibold text-ink text-xs">
                 <span className="w-3 text-center">{unstagedExpanded ? '▾' : '▸'}</span>
                 <span>Changes</span>
-                <span className="text-ink/40 font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[9px] bg-paper">
+                <span className="text-ink/40 font-normal ml-1 border border-ink/20 rounded-full px-1.5 text-[10px] bg-paper">
                   {unstagedChanges.length}
                 </span>
               </div>

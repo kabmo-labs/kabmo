@@ -154,7 +154,7 @@ export function MobileSessionToolbar({
           >
             <Calendar size={16} strokeWidth={1.8} />
             {scheduledCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] px-[3px] rounded-full bg-ink text-canvas text-[8px] leading-[13px] text-center font-semibold">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] px-[3px] rounded-full bg-ink text-canvas text-[10px] leading-[13px] text-center font-semibold">
                 {scheduledCount > 9 ? '9+' : scheduledCount}
               </span>
             )}

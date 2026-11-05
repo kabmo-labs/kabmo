@@ -32,14 +32,14 @@ export function Think({ tool }: { tool: ToolCallData }) {
       <div className="flex items-center justify-between border-b border-ink/6 bg-canvas/40 px-3 py-1.5">
         <div className="flex items-center gap-1.5">
           <BrainCircuit size={12} className="text-ink/50" />
-          <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
             Internal Reasoning
           </span>
         </div>
 
         <CopyButton
           text={thoughtText}
-          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-ink/45 transition-colors hover:bg-ink/5 hover:text-ink"
           label="Copy"
         />
       </div>

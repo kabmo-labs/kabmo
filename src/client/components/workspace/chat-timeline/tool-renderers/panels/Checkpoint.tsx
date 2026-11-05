@@ -37,7 +37,7 @@ export function Checkpoint({ tool }: { tool: ToolCallData }) {
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
         {message && <div className="text-[11.5px] text-ink/85">{message}</div>}
-        <div className="flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9.5px] text-ink/45">
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[10px] text-ink/45">
           {id && <span>{id}</span>}
           {ts && <span>{ts}</span>}
           {fileCount !== undefined && <span>{fileCount} files</span>}

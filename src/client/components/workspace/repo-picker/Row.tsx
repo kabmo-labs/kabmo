@@ -140,7 +140,7 @@ function StateBadges({ row }: { row: GitRepoDetail }) {
     badges.push(
       <span
         key="operation"
-        className="flex flex-shrink-0 items-center gap-0.5 rounded border border-warning/30 px-1 text-[9px] font-mono text-warning"
+        className="flex flex-shrink-0 items-center gap-0.5 rounded border border-warning/30 px-1 text-[10px] font-mono text-warning"
         title={
           row.operation === 'stash-pop'
             ? `A stash pop stopped on ${row.conflicts} conflict(s)`
@@ -155,7 +155,7 @@ function StateBadges({ row }: { row: GitRepoDetail }) {
     badges.push(
       <span
         key="conflicts"
-        className="flex flex-shrink-0 items-center gap-0.5 rounded border border-warning/30 px-1 text-[9px] font-mono text-warning"
+        className="flex flex-shrink-0 items-center gap-0.5 rounded border border-warning/30 px-1 text-[10px] font-mono text-warning"
         title={`${row.conflicts} conflicted path(s)`}
       >
         <AlertTriangle size={9} />
@@ -168,7 +168,7 @@ function StateBadges({ row }: { row: GitRepoDetail }) {
     badges.push(
       <span
         key="dirty"
-        className="flex-shrink-0 rounded border border-info/30 px-1 text-[9px] font-mono tabular-nums text-info"
+        className="flex-shrink-0 rounded border border-info/30 px-1 text-[10px] font-mono tabular-nums text-info"
         title={`${row.changed} changed, ${row.untracked} untracked`}
       >
         {row.changed > 0 ? `${row.changed}±` : ''}
@@ -182,7 +182,7 @@ function StateBadges({ row }: { row: GitRepoDetail }) {
     badges.push(
       <span
         key="gone"
-        className="flex-shrink-0 rounded border border-warning/30 px-1 text-[9px] font-mono text-warning"
+        className="flex-shrink-0 rounded border border-warning/30 px-1 text-[10px] font-mono text-warning"
         title={`${row.upstream} no longer exists on the remote — fetch --prune to drop it`}
       >
         gone
@@ -192,7 +192,7 @@ function StateBadges({ row }: { row: GitRepoDetail }) {
     badges.push(
       <span
         key="track"
-        className="flex flex-shrink-0 items-center gap-0.5 text-[9px] font-mono tabular-nums text-ink/60"
+        className="flex flex-shrink-0 items-center gap-0.5 text-[10px] font-mono tabular-nums text-ink/60"
         title={`${row.ahead} ahead of, ${row.behind} behind ${row.upstream}`}
       >
         {row.ahead > 0 && (
@@ -213,7 +213,7 @@ function StateBadges({ row }: { row: GitRepoDetail }) {
 
   if (badges.length === 0) {
     return (
-      <span className="text-[9px] font-mono text-ink/30" title="Nothing to report — clean and in sync">
+      <span className="text-[10px] font-mono text-ink/30" title="Nothing to report: clean and in sync">
         clean, in sync
       </span>
     );

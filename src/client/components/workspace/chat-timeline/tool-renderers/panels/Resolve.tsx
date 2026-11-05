@@ -41,13 +41,13 @@ export function Resolve({ tool }: { tool: ToolCallData }) {
             <span className="font-mono text-[11px] font-semibold text-ink">
               {isReject ? 'Proposal Discarded' : 'Proposal Applied'}
             </span>
-            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink/50">
+            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink/50">
               {sourceTool}
             </span>
           </div>
 
           <span
-            className={`rounded-full px-2 py-0.5 font-mono text-[9.5px] font-semibold ${
+            className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${
               isReject ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
             }`}
           >
@@ -57,7 +57,7 @@ export function Resolve({ tool }: { tool: ToolCallData }) {
 
         {reason && (
           <div className="pt-2.5">
-            <span className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">
               Reason
             </span>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink/85 italic">
@@ -74,7 +74,7 @@ export function Resolve({ tool }: { tool: ToolCallData }) {
 
         {files.length > 0 && (
           <div className="mt-2.5 space-y-1 border-t border-ink/6 pt-2">
-            <div className="flex items-center justify-between text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">
+            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-ink/40">
               <span>Touched Files ({files.length})</span>
               {typeof replacements === 'number' && (
                 <span>{replacements} replacement{replacements === 1 ? '' : 's'}</span>

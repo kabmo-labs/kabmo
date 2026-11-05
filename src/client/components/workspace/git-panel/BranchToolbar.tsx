@@ -75,7 +75,7 @@ export function GitBranchToolbar({
             <div className="max-h-48 scrollbar-overlay-container py-1">
               {branches.length > 0 && (
                 <>
-                  <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-ink/40 font-semibold">Local</div>
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Local</div>
                   {branches.map(b => (
                     <div key={b} className="flex items-center group/branch">
                       <button 
@@ -108,7 +108,7 @@ export function GitBranchToolbar({
               )}
               {remoteBranches.length > 0 && (
                 <>
-                  <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-ink/40 font-semibold">Remote</div>
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-ink/40 font-semibold">Remote</div>
                   {remoteBranches.map(b => (
                     <div key={b} className="flex items-center group/branch">
                       <button 

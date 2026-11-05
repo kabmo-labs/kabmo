@@ -120,21 +120,21 @@ function JobRow({ job }: { job: ProcJob }) {
           {subject.primary ?? job.resultText ?? job.errorText ?? ''}
         </span>
         {job.resolvedModel && (
-          <span className="hidden max-w-[120px] truncate font-mono text-[9px] text-ink/40 sm:inline-block">
+          <span className="hidden max-w-[120px] truncate font-mono text-[10px] text-ink/40 sm:inline-block">
             {job.resolvedModel}
           </span>
         )}
-        {duration && <span className="shrink-0 font-mono text-[9px] text-ink/40">{duration}</span>}
+        {duration && <span className="shrink-0 font-mono text-[10px] text-ink/40">{duration}</span>}
         {job.status && (
-          <span className={`shrink-0 font-mono text-[9px] font-semibold ${TONE_CLASSES[tone]}`}>{job.status}</span>
+          <span className={`shrink-0 font-mono text-[10px] font-semibold ${TONE_CLASSES[tone]}`}>{job.status}</span>
         )}
       </div>
       {subject.secondary && (
-        <div className="truncate font-mono text-[9px] text-ink/45" title={subject.secondary}>
+        <div className="truncate font-mono text-[10px] text-ink/45" title={subject.secondary}>
           {subject.secondary}
         </div>
       )}
-      {progress && <div className="truncate font-mono text-[9px] text-ink/40">{progress}</div>}
+      {progress && <div className="truncate font-mono text-[10px] text-ink/40">{progress}</div>}
     </div>
   );
 }
@@ -148,12 +148,12 @@ function DaemonRow({ daemon, now }: { daemon: ProcDaemon; now: number }) {
     <div className="flex items-center gap-2 px-3 py-1.5 text-[11.5px]">
       <Server size={11} className="shrink-0 text-ink/50" />
       <span className="shrink-0 font-mono text-[10px] font-semibold text-ink/80">{daemon.name}</span>
-      <span className={`shrink-0 font-mono text-[9px] font-semibold ${TONE_CLASSES[tone]}`}>{daemon.state}</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-[9.5px] text-ink/40" title={daemon.readyMatch}>
+      <span className={`shrink-0 font-mono text-[10px] font-semibold ${TONE_CLASSES[tone]}`}>{daemon.state}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-ink/40" title={daemon.readyMatch}>
         {daemon.pid !== undefined ? `pid ${daemon.pid}` : ''}
       </span>
       {uptime && (
-        <span className="shrink-0 font-mono text-[9px] text-ink/40">
+        <span className="shrink-0 font-mono text-[10px] text-ink/40">
           {exited ? 'ran ' : 'up '}
           {uptime.label}
         </span>
@@ -170,7 +170,7 @@ function AgentRow({ agent }: { agent: ProcAgent }) {
       <span className="shrink-0 font-mono text-[10px] font-semibold text-ink/80">{agent.id}</span>
       <span className="min-w-0 flex-1 truncate text-ink/85">{agent.activity ?? 'agent'}</span>
       {typeof agent.ageMs === 'number' && (
-        <span className="shrink-0 font-mono text-[9px] text-ink/40">{formatProcDuration(agent.ageMs)}</span>
+        <span className="shrink-0 font-mono text-[10px] text-ink/40">{formatProcDuration(agent.ageMs)}</span>
       )}
     </div>
   );
@@ -181,8 +181,8 @@ function Group({ label, count, children }: { label: string; count: number; child
   return (
     <div className="overflow-hidden rounded-lg border border-ink/8">
       <div className="flex items-center gap-2 border-b border-ink/8 bg-paper px-3 py-1.5">
-        <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">{label}</span>
-        <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[9.5px] text-ink/45">{count}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">{label}</span>
+        <span className="rounded-full bg-ink/5 px-1.5 py-px font-mono text-[10px] text-ink/45">{count}</span>
       </div>
       <div className="divide-y divide-ink/6 bg-canvas/40 py-1">{children}</div>
     </div>
@@ -195,10 +195,10 @@ function LogBlock({ lines }: { lines: string[] }) {
   if (lines.length === 0) return null;
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
         <Terminal size={11} className="text-ink/40" />
         <span>Log</span>
-        <span className="font-mono text-[9px] text-ink/35">{lines.length} lines</span>
+        <span className="font-mono text-[10px] text-ink/35">{lines.length} lines</span>
       </div>
       <div className="max-h-72 overflow-auto rounded-lg border border-ink/8 bg-paper px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink/80 select-text">
         {lines.map((line, index) => (
@@ -246,7 +246,7 @@ export function Proc({ tool }: { tool: ToolCallData }) {
             <DaemonFacts daemon={view.daemon} now={now} />
             {view.input !== undefined && (
               <div className="pt-2">
-                <span className="text-[9.5px] font-semibold uppercase tracking-wider text-ink/40">Stdin</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink/40">Stdin</span>
                 <div className="mt-1 rounded border border-ink/6 bg-canvas/40 p-2 font-mono text-[10.5px] whitespace-pre-wrap break-all text-ink/80">
                   {view.input.trim() || '(Enter)'}
                 </div>
@@ -277,7 +277,7 @@ export function Proc({ tool }: { tool: ToolCallData }) {
                 <span className="min-w-0 flex-1 truncate text-ink/70" title={subject.primary}>
                   {subject.primary ?? subject.secondary ?? ''}
                 </span>
-                <span className={`shrink-0 font-mono text-[9px] font-semibold ${TONE_CLASSES[tone]}`}>
+                <span className={`shrink-0 font-mono text-[10px] font-semibold ${TONE_CLASSES[tone]}`}>
                   {outcome.status}
                 </span>
               </div>

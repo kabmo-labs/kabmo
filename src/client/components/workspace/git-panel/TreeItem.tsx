@@ -38,7 +38,7 @@ export function GitTreeItem({
             </span>
             <FileIcon name={node.name} isFolder={true} isOpen={isOpen} size={13} className="flex-shrink-0" />
             <span className="font-medium text-ink truncate">{node.name}</span>
-            <span className="text-[9px] text-ink/40 font-normal px-1 py-0.2 bg-ink/5 rounded-full ml-1">
+            <span className="text-[10px] text-ink/40 font-normal px-1 py-0.2 bg-ink/5 rounded-full ml-1">
               {node.changeCount}
             </span>
           </div>
@@ -135,7 +135,7 @@ export function GitTreeItem({
     >
       <div className="flex items-center space-x-1.5 flex-1 min-w-0 pr-1">
         <span className="w-3.5 h-3.5 flex items-center justify-center flex-shrink-0">
-          <span className={`font-bold font-mono text-[9px] ${colorClass}`} title={`Status: ${statusInfo.label}`}>
+          <span className={`font-bold font-mono text-[10px] ${colorClass}`} title={`Status: ${statusInfo.label}`}>
             {charStatus}
           </span>
         </span>
