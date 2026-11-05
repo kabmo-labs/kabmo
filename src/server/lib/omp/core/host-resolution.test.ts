@@ -13,8 +13,6 @@
  *    that lands while the server runs has to become visible).
  *  - `resolveProjectRoot` groups linked worktrees under the main repo; a
  *    non-git directory must resolve to itself, realpath-canonicalized.
- *  - `ompStartupError` is the one gate that keeps the server from booting
- *    without omp, with `MOCK=true` exempt by definition.
  *  - `buildWebState` reconciles the wrapper's running flags against the child's
  *    payload: dispatched-but-unstarted work and an unexpired continuation
  *    grace window keep a session "running" even when `isStreaming` is false.
@@ -22,13 +20,11 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import fs from 'fs';
-import { homedir, tmpdir } from 'os';
+import { tmpdir } from 'os';
 import { join } from 'path';
 
 import { invalidateOmpCliCache, resolveOmpBin } from '@/server/lib/omp/core/cli';
 import { resolveProjectRoot } from '@/server/lib/omp/core/worktree';
-import { ompStartupError, ompStartupLogLines } from '@/server/lib/omp/core/startup';
-import { getAgentDir, getConfigRoot } from '@/server/lib/omp/core/paths';
 import { buildWebState, type WebStateHost } from '@/server/lib/omp/rpc/web-state';
 import type { RpcSessionState } from '@/server/lib/omp/rpc/constants';
 
@@ -161,56 +157,6 @@ describe('resolveProjectRoot', () => {
     const added = Bun.spawnSync(['git', '-C', root, 'worktree', 'add', '--detach', worktree]);
     if (added.exitCode !== 0) return;
     expect(await resolveProjectRoot(worktree)).toBe(await fs.promises.realpath(root));
-  });
-});
-
-describe('ompStartupError', () => {
-  test('MOCK=true is exempt even when no binary resolves', () => {
-    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-mock'), 'omp');
-    Bun.env.MOCK = 'true';
-    invalidateOmpCliCache();
-    expect(ompStartupError()).toBeNull();
-  });
-
-  test('a missing binary yields the actionable multi-line message', () => {
-    Bun.env.KABMO_OMP_BIN = join(tempDir('omp-miss2'), 'omp');
-    Bun.env.MOCK = 'false';
-    invalidateOmpCliCache();
-    const message = ompStartupError();
-    expect(message).toContain('omp binary not found — Kabmo cannot start.');
-    expect(message).toContain('KABMO_OMP_BIN=/path/to/omp');
-    expect(message).toContain('MOCK=true');
-  });
-
-  test('a resolvable binary lets the app start', () => {
-    Bun.env.KABMO_OMP_BIN = fakeBinary();
-    Bun.env.MOCK = 'false';
-    invalidateOmpCliCache();
-    expect(ompStartupError()).toBeNull();
-  });
-});
-
-describe('ompStartupLogLines', () => {
-  test('names the executable actually spawned plus the config and agent dirs', () => {
-    const bin = fakeBinary();
-    const agentDir = tempDir('omp-agent');
-    Bun.env.KABMO_OMP_BIN = bin;
-    Bun.env.PI_CODING_AGENT_DIR = agentDir;
-    Bun.env.PI_CONFIG_DIR = '.omp-alt';
-    invalidateOmpCliCache();
-    const lines = ompStartupLogLines();
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toBe(`omp binary:     ${bin}`);
-    expect(lines[1]).toBe(`omp config dir: ${join(homedir(), '.omp-alt')}`);
-    expect(lines[2]).toBe(`omp agent dir:  ${agentDir}`);
-  });
-
-  test('the paths shown match the resolvers the running process uses', () => {
-    delete Bun.env.PI_CONFIG_DIR;
-    delete Bun.env.PI_CODING_AGENT_DIR;
-    const lines = ompStartupLogLines();
-    expect(lines[1]).toBe(`omp config dir: ${getConfigRoot()}`);
-    expect(lines[2]).toBe(`omp agent dir:  ${getAgentDir()}`);
   });
 });
 

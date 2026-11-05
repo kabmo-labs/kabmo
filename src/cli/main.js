@@ -16,7 +16,7 @@ import { migrateLegacyDataDir } from '@/server/lib/lifecycle/paths';
 
 const { version } = packageJson;
 
-const COMMANDS = ['serve', 'update', 'stop', 'restart', 'status', 'logs', 'plugin'];
+const COMMANDS = ['serve', 'update', 'stop', 'restart', 'status', 'doctor', 'logs', 'plugin'];
 
 export async function runCli(bin = 'kabmo') {
   const { command, positionals, options, unknown } = parseArgs(process.argv.slice(2));

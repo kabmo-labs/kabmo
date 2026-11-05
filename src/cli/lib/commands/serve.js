@@ -32,6 +32,7 @@ import { UI_PASSWORD_ENV } from '@/shared/lib/auth/password';
 import { getLogFilePath } from '@/cli/lib/paths.js';
 import { resolveServeMode } from '@/cli/lib/serve-mode.js';
 import { ompStartupError } from '@/server/lib/omp/core/startup';
+import { offerOmpInstall } from '@/cli/lib/omp-setup.js';
 import { installAutostart, removeLegacyAutostart, uninstallAutostart, getAutostartEntryPath } from '@/server/lib/tray/autostart';
 import { getAutostartCredentialPath, removeAutostartCredential, writeAutostartCredential } from '@/server/lib/tray/credential';
 import { buildLoginEntryArgv } from '@/server/lib/tray/entry';
@@ -96,17 +97,14 @@ export async function run(options, ctx) {
   const tls = options?.tls === true;
   const tray = trayForOptions(options);
 
-  // The same gate the server entry applies, run here first so a missing omp
-  // binary fails immediately — with no detached child spawned, no log file to
-  // read and no registry entry left pointing at a process that already exited.
-  const ompError = ompStartupError();
-  if (ompError) fail(ompError);
-
   // `--no-startup` is a REGISTRATION change, not a server start, so it runs
-  // before the port check and returns: asking to stop starting at login must
-  // work whether or not something is already serving the port (measured: with
-  // the flag below the port guard, `serve --no-startup` on a busy port failed
-  // with "already served" and left the entry in place).
+  // before the port check and the omp gate, then returns: asking to stop
+  // starting at login must work whether or not something is already serving the
+  // port (measured: with the flag below the port guard, `serve --no-startup` on
+  // a busy port failed with "already served" and left the entry in place), and
+  // whether or not omp resolves — a machine whose omp was removed is exactly
+  // when a leftover login entry has to be removable, and an install prompt
+  // there would ask for something the command does not need.
   if (options?.startup === false) {
     const removed = uninstallAutostart();
     // A pre-rename entry names a CLI file this release does not ship, so it
@@ -120,6 +118,21 @@ export async function run(options, ctx) {
     else if (removed) ok(`Removed the login entry${getAutostartEntryPath() ? `: ${getAutostartEntryPath()}` : ''}.`);
     else warn('No login entry was registered.');
     return;
+  }
+
+  // The same gate the server entry applies, run here first so a missing omp
+  // binary fails immediately — with no detached child spawned, no log file to
+  // read and no registry entry left pointing at a process that already exited.
+  //
+  // Before refusing, offer the one action that fixes it — but only on a
+  // terminal, and only when the answer defaults to no (see lib/omp-setup.js).
+  // The gate is re-evaluated afterwards rather than trusted: the install may
+  // have declined, failed, or written a binary this PATH cannot see.
+  const ompError = ompStartupError();
+  if (ompError) {
+    await offerOmpInstall({ json, quiet });
+    const stillMissing = ompStartupError();
+    if (stillMissing) fail(stillMissing);
   }
 
   if (mode === 'prod') {

@@ -8,7 +8,8 @@
 
 import { findLiveInstance, listLiveInstances, waitForHealth } from '@/cli/lib/runtime.js';
 import { isLoopbackHost, probeHost } from '@/server/lib/lifecycle/probe';
-import { log, ok, printJson, isJson } from '@/cli/lib/output.js';
+import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { log, ok, printJson, isJson, warn } from '@/cli/lib/output.js';
 
 function explicitPort(options) {
   const raw = options?.port;
@@ -92,9 +93,25 @@ function printInstance(entry) {
   log(`  log:      ${entry.logFile}`);
 }
 
+/**
+ * The omp fact, printed with the instance report.
+ *
+ * `serve` refuses to start without a resolvable binary, so "Kabmo is not
+ * running" and "omp is not installed" look identical from the outside and need
+ * opposite fixes. Reported here because this is the command a user runs to ask
+ * why — and it is a warning, not a failure: `status` answers whether instances
+ * are alive, and an instance can be alive only if this resolved at its start.
+ */
+function ompNote() {
+  const bin = resolveOmpBin();
+  if (bin) return `omp:      ${bin}`;
+  return 'omp:      not found — `kabmo serve` cannot start (run `kabmo doctor`)';
+}
+
 export async function run(options) {
   const json = isJson();
   const requested = explicitPort(options);
+  const ompBin = resolveOmpBin();
 
   const instances = requested !== null
     ? [await findLiveInstance(requested)].filter(Boolean)
@@ -102,10 +119,11 @@ export async function run(options) {
 
   if (instances.length === 0) {
     if (json) {
-      printJson(requested !== null ? { running: false, port: requested } : { running: false, instances: [] });
+      printJson(requested !== null ? { running: false, port: requested, omp: ompBin } : { running: false, instances: [], omp: ompBin });
       return;
     }
     log(requested !== null ? `No Kabmo instance on port ${requested}.` : 'Kabmo is not running.');
+    if (!ompBin) warn(ompNote());
     return;
   }
 
@@ -118,7 +136,7 @@ export async function run(options) {
   }
 
   if (json) {
-    printJson(requested !== null ? { ...reported[0], running: true } : { running: true, instances: reported });
+    printJson(requested !== null ? { ...reported[0], running: true, omp: ompBin } : { running: true, instances: reported, omp: ompBin });
     return;
   }
 
@@ -127,4 +145,5 @@ export async function run(options) {
     if (index > 0) log('');
     printInstance(entry);
   }
+  log(ompNote());
 }

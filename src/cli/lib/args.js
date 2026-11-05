@@ -5,6 +5,8 @@
  * to a stream. Callers decide how to react to `unknown` flags.
  */
 
+import { ompInstallHintLines } from '@/server/lib/omp/core/install-hint';
+
 const BOOLEAN_LONG = new Set([
   'lan',
   'dev',
@@ -221,9 +223,16 @@ COMMANDS:
   stop           Stop the instances the CLI started (--port/--all to stop any)
   restart        Stop and start again (every CLI-started instance, or --port <port>)
   status         Show running instances (every one, or --port <port>)
+  doctor         Diagnose this install: omp binary, versions, update source
   logs           Print or follow server logs (every instance, or --port <port>)
   plugin         Build, type, scaffold or list panel plugins
                  (build|types|new|list; see "${bin} plugin --help")
+
+REQUIRED: oh-my-pi (\`omp\`)
+  Kabmo drives your existing omp binary; it never installs one for you.
+  \`serve\` refuses to start until \`omp\` resolves (MOCK=true is the only
+  exception). Check this install with:  ${bin} doctor
+${ompInstallHintLines('  ').join('\n')}
 
 OPTIONS:
   -p, --port <port>       Web server port (default: 3000); scopes status/stop/restart/logs

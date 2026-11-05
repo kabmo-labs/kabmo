@@ -56,6 +56,32 @@ describe('helpText', () => {
     // The environment names are not the command name and must not be rewritten.
     expect(helpText('kabmo')).toContain('KABMO_DATA_DIR');
   });
+
+  // `--help` is where a user looks before running anything, and it used to
+  // mention omp only as an environment variable — so "why will this not start"
+  // had no answer anywhere in the output.
+  test('states the omp prerequisite and both install commands', () => {
+    const text = helpText('kabmo');
+    expect(text).toContain('REQUIRED: oh-my-pi');
+    expect(text).toContain('bun install -g @oh-my-pi/pi-coding-agent');
+    expect(text).toContain('https://omp.sh/install');
+    expect(text).toContain('kabmo doctor');
+  });
+
+  // The block arrived as an array interpolated into a template literal, which
+  // joins with commas — `bun install -g …,    or:  curl …`. The lines are
+  // asserted individually here so a caller that forgets `.join('\n')` fails.
+  test('the install block renders as separate lines, not one comma-joined row', () => {
+    const text = helpText('kabmo');
+    const lines = text.split('\n');
+    expect(lines.filter((line) => line.includes('install omp:')).length).toBe(1);
+    expect(lines.filter((line) => line.includes('or:  curl -fsSL')).length).toBe(1);
+    expect(text).not.toContain('pi-coding-agent,');
+  });
+
+  test('lists the doctor command', () => {
+    expect(helpText('kabmo')).toContain('doctor         Diagnose this install');
+  });
 });
 
 describe('--ui-password-file', () => {

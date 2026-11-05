@@ -132,9 +132,14 @@ Kabmo is published to npm and runs on **Bun 1.4+**, not Node. Live capabilities 
 binary on `PATH` (or `KABMO_OMP_BIN`); `MOCK=true` is the only mode that runs without one.
 
 ```bash
-bun add -g @kabmo-labs/kabmo   # puts the `kabmo` command on your PATH
-kabmo serve                    # start the server on :3000
+bun install -g @oh-my-pi/pi-coding-agent   # omp is a prerequisite, never installed by Kabmo
+bun add -g @kabmo-labs/kabmo               # puts the `kabmo` command on your PATH
+kabmo serve                                # start the server on :3000
 ```
+
+`kabmo serve` refuses to start without a resolvable `omp` and defaults to *not* installing one. On a
+terminal it offers `bun install -g` once (answer `N` to skip); `kabmo doctor` reports the binary,
+versions, data paths and install method without changing anything.
 
 From a checkout:
 

@@ -19,6 +19,7 @@
  */
 
 import { resolveOmpBin } from '@/server/lib/omp/core/cli';
+import { ompInstallHintLines } from '@/server/lib/omp/core/install-hint';
 import { getAgentDir, getConfigRoot } from '@/server/lib/omp/core/paths';
 import { isMockMode } from '@/server/mock.server';
 
@@ -30,8 +31,11 @@ export function ompStartupError(): string | null {
     'omp binary not found — Kabmo cannot start.',
     'Agent sessions, omp config, session state and updates all run through the `omp` CLI,',
     'so the binary must be resolvable before the server starts.',
-    'Install AI Oh-My-Pi and put `omp` on your PATH, or set KABMO_OMP_BIN=/path/to/omp.',
+    ...ompInstallHintLines('  '),
+    '  Kabmo never installs it for you, and never touches an existing omp.',
+    'Already installed somewhere else? Set KABMO_OMP_BIN=/path/to/omp.',
     'To run on demo data without an omp install, start with MOCK=true.',
+    'Full report: `kabmo doctor`.',
   ].join('\n');
 }
 
