@@ -68,7 +68,7 @@ export function PriceFields({
   return (
     <div>
       <label className="block text-xs font-semibold text-ink mb-1.5">
-        Price <span className="font-normal text-ink/40">— USD per 1M tokens, optional</span>
+        Price <span className="font-normal text-ink/40">(USD per 1M tokens, optional)</span>
       </label>
       <div className="grid grid-cols-2 gap-3">
         <PriceField

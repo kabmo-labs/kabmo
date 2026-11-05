@@ -226,7 +226,7 @@ export function AddModelModal({
       {/* Display name */}
       <div>
         <label className="block text-xs font-semibold text-ink mb-1">
-          Display Name <span className="font-normal text-ink/40">— optional</span>
+          Display Name <span className="font-normal text-ink/40">(optional)</span>
         </label>
         <input
           type="text"
@@ -261,7 +261,7 @@ export function AddModelModal({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">
-            Context window <span className="font-normal text-ink/40">— tokens</span>
+            Context window <span className="font-normal text-ink/40">(tokens)</span>
           </label>
           <input
             type="text"
@@ -274,7 +274,7 @@ export function AddModelModal({
         </div>
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">
-            Max output <span className="font-normal text-ink/40">— tokens</span>
+            Max output <span className="font-normal text-ink/40">(tokens)</span>
           </label>
           <input
             type="text"

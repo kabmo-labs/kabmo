@@ -42,7 +42,7 @@ interface TaskListProps {
 }
 
 function formatAbsolute(at: number | null): string {
-  return at === null ? '—' : new Date(at).toLocaleString();
+  return at === null ? '–' : new Date(at).toLocaleString();
 }
 
 /** A short label for the prompt when the task has no name. */
@@ -115,7 +115,7 @@ export function TaskList({
                   <span className="text-ink/30"> · </span>
                   {!task.enabled
                     ? task.kind === 'once' && task.lastRunAt !== null
-                      ? 'Ran once — no next run'
+                      ? 'Ran once, with no next run'
                       : 'Paused'
                     : `Next ${formatAbsolute(task.nextRunAt)}`}
                 </p>
@@ -204,7 +204,7 @@ export function TaskList({
                       >
                         {run.status}
                       </span>
-                      <span className="min-w-0 flex-1 text-ink/60 break-words">{run.detail || '—'}</span>
+                      <span className="min-w-0 flex-1 text-ink/60 break-words">{run.detail || '–'}</span>
                     </div>
                   ))}
               </div>

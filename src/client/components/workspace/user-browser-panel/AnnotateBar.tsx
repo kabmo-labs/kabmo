@@ -73,10 +73,10 @@ export function AnnotateBar({
           </button>
         ))}
         <span className="text-[11px] font-mono text-ink/45 ml-1">
-          {shapes.length > 0 ? `${shapes.length} tanda` : 'tarik di halaman untuk menandai'}
+          {shapes.length > 0 ? `${shapes.length} mark${shapes.length === 1 ? '' : 's'}` : 'drag on the page to mark a part'}
         </span>
         <div className="flex-1" />
-        <button type="button" onClick={onReset} disabled={!usable} className={ACTION_BUTTON} title="Hapus semua tanda">
+        <button type="button" onClick={onReset} disabled={!usable} className={ACTION_BUTTON} title="Clear all marks">
           <Trash2 size={12} /> Bersihkan
         </button>
         <button type="button" onClick={onSend} disabled={!usable} className={ACTION_BUTTON} title="Kirim anotasi ke draft chat">
@@ -98,13 +98,13 @@ export function AnnotateBar({
               onNote={(note) => onNote(selected.id, note)}
             />
           </div>
-          <button type="button" onClick={() => onRemove(selected.id)} className={ACTION_BUTTON} title="Hapus tanda ini">
+          <button type="button" onClick={() => onRemove(selected.id)} className={ACTION_BUTTON} title="Remove this mark">
             <Trash2 size={12} />
           </button>
         </div>
       ) : (
         <p className="text-[11px] text-ink/45">
-          Halaman ini tidak bisa di-screenshot — yang dikirim adalah area, nama bagian, dan catatanmu.
+          This page cannot be screenshotted, so what gets sent is the area, the part name and your note.
         </p>
       )}
     </div>

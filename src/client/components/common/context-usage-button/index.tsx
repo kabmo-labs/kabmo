@@ -73,7 +73,7 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
   const started = Boolean(telemetry && telemetry.messagesCount > 0);
   const band = contextUsageBand(percent);
   const triggerClass = layout === 'mobile'
-    ? 'w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center transition-colors cursor-pointer'
+    ? 'tap-target w-8 h-8 rounded-lg hover:bg-ink/5 active:bg-ink/10 flex items-center justify-center transition-colors cursor-pointer'
     : 'p-1.5 rounded hover:bg-ink/10 transition-colors cursor-pointer';
 
   return (
@@ -85,7 +85,7 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
           setOpen((previous) => !previous);
         }}
         className={triggerClass}
-        title={started ? `Context usage — ${percent.toFixed(0)}% of the window` : 'Context usage — session not started'}
+        title={started ? `Context usage: ${percent.toFixed(0)}% of the window` : 'Context usage: session not started'}
         aria-label="Context usage"
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -124,11 +124,11 @@ export function ContextUsageButton({ sessionId, layout = 'desktop' }: ContextUsa
             <div className="pt-2 space-y-1.5 text-[11px] text-ink/80">
               <div className="flex justify-between gap-2">
                 <span className="text-ink/50 flex-shrink-0">Provider:</span>
-                <span className="truncate text-right">{providerName || '—'}</span>
+                <span className="truncate text-right">{providerName || '–'}</span>
               </div>
               <div className="flex justify-between gap-2">
                 <span className="text-ink/50 flex-shrink-0">Model:</span>
-                <span className="truncate text-right">{modelName || '—'}</span>
+                <span className="truncate text-right">{modelName || '–'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink/50">Context:</span>

@@ -58,7 +58,7 @@ export function ConflictBanner({ markers, isBusy, error, onResolve, onDismissErr
             type="button"
             onClick={() => onResolve('')}
             disabled={isBusy}
-            title="Mark resolved — the file was edited by hand, this stages it"
+            title="Mark resolved: the file was edited by hand, this stages it"
             className="px-2 py-0.5 text-[10px] font-mono rounded border border-ink/20 hover:bg-ink/5 text-ink/80 hover:text-ink transition-colors cursor-pointer disabled:opacity-40"
           >
             mark resolved

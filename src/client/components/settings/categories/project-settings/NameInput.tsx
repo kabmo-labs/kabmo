@@ -66,7 +66,7 @@ export function ProjectNameInput({ name, disabled = false, onCommit }: ProjectNa
         placeholder="Enter project name…"
         className="w-full bg-paper border border-ink/20 rounded-md px-3 py-2 text-xs font-medium text-ink outline-none focus:border-ink/60 transition-colors shadow-2xs disabled:opacity-60"
       />
-      <p className="text-[11px] text-ink/50">Names are unique — the sidebar identifies a project by it.</p>
+      <p className="text-[11px] text-ink/50">Names are unique: the sidebar identifies a project by it.</p>
     </div>
   );
 }

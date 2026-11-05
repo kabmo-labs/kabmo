@@ -79,7 +79,7 @@ export function PlanReviewPanel({ proposal, deciding, error, onDecide, onDismiss
             type="button"
             onClick={onDismiss}
             aria-label="Dismiss the review without deciding"
-            title="Dismiss without deciding — the plan stays parked"
+            title="Dismiss without deciding: the plan stays parked"
             className="rounded p-1 text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
           >
             <X size={14} />

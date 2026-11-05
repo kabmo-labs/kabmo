@@ -112,18 +112,18 @@ export function EngineHeader({
         </Stat>
         <Stat label="Model">
           <span className="block truncate" title={modelId ? `${state?.model?.provider ?? ''} / ${modelId}` : undefined}>
-            {modelId ?? '—'}
+            {modelId ?? '–'}
           </span>
           {state?.model?.provider && (
             <span className="block truncate text-[10px] font-normal text-ink/40">{state.model.provider}</span>
           )}
         </Stat>
         <Stat label="Thinking">
-          <span className="capitalize">{state?.thinkingLevel ?? '—'}</span>
+          <span className="capitalize">{state?.thinkingLevel ?? '–'}</span>
         </Stat>
         <Stat label="Context">
           <span className={hasPercent ? tone.text : undefined}>
-            {hasPercent ? `${percent.toFixed(1)}%` : '—'}
+            {hasPercent ? `${percent.toFixed(1)}%` : '–'}
           </span>
           {hasPercent && (
             <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-ink/10" aria-hidden="true">

@@ -204,7 +204,7 @@ export function ProviderEntryModal({ isOpen, provider, onClose, onSaved }: Provi
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">
             API key
-            {hasStoredKey && <span className="font-normal text-ink/40"> — stored; leave empty to keep it</span>}
+            {hasStoredKey && <span className="font-normal text-ink/40"> (stored; leave empty to keep it)</span>}
           </label>
           <div className="relative flex items-center">
             <Key size={13} className="absolute left-2.5 text-ink/40 pointer-events-none" />
@@ -234,7 +234,7 @@ export function ProviderEntryModal({ isOpen, provider, onClose, onSaved }: Provi
             onChange={(e) => setApi(e.currentTarget.value as OmpProviderApi)}
             className={fieldClass}
           >
-            <option value="">— inherit omp’s —</option>
+            <option value="">Inherit omp's setting</option>
             {PROVIDER_APIS.map((value) => (
               <option key={value} value={value}>{value}</option>
             ))}

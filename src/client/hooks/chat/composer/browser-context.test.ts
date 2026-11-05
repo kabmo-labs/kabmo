@@ -72,7 +72,7 @@ describe('useBrowserPageContextInsert', () => {
   test('a plain page lands in the draft as the URL block', () => {
     mountBridge();
     act(() => emitBrowserPageContext({ url: 'https://a.test/x' }));
-    expect(draft).toBe('[Konteks halaman browser]\nURL: https://a.test/x\n(Lanjutkan dari halaman ini.)');
+    expect(draft).toBe('[Browser page context]\nURL: https://a.test/x\n(Continue from this page.)');
   });
 
   test('an annotated page lands as the block with its numbered marks', () => {
@@ -82,16 +82,16 @@ describe('useBrowserPageContextInsert', () => {
       annotations: [{ id: 'a', tool: 'box', start: { x: 0.1, y: 0.1 }, end: { x: 0.2, y: 0.2 }, label: '', note: 'mati' }],
       panel: { width: 1000, height: 500, viewportMode: 'laptop', zoom: 100 },
     }));
-    expect(draft).toContain('Anotasi (1):');
-    expect(draft).toContain('1. kotak kiri 10.0%, atas 10.0%');
-    expect(draft).toContain('— mati');
+    expect(draft).toContain('Annotations (1):');
+    expect(draft).toContain('1. box left 10.0%, top 10.0%');
+    expect(draft).toContain(': mati');
   });
 
   test('two events append two blocks rather than overwriting the draft', () => {
     mountBridge();
     act(() => emitBrowserPageContext({ url: 'https://a.test' }));
     act(() => emitBrowserPageContext({ url: 'https://b.test' }));
-    expect(draft.match(/\[Konteks halaman browser\]/g)).toHaveLength(2);
+    expect(draft.match(/\[Browser page context\]/g)).toHaveLength(2);
     expect(draft).toContain('https://a.test');
     expect(draft).toContain('https://b.test');
   });
@@ -111,7 +111,7 @@ describe('useBrowserPageContextInsert', () => {
       annotations: [{ id: 'a', tool: 'box', start: { x: 1, y: 0 } } as never],
       panel: { width: 1000, height: 500, viewportMode: 'laptop', zoom: 100 },
     }));
-    expect(draft).not.toContain('Anotasi');
+    expect(draft).not.toContain('Annotations');
     expect(draft).toContain('URL: https://a.test');
   });
 });

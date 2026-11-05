@@ -117,7 +117,7 @@ function AddProjectForm({ isSaving, onClose, onSubmit }: Omit<AddProjectModalPro
               placeholder="e.g. kabmo"
               className="w-full bg-paper border border-ink/20 rounded-md px-3 py-2 text-xs text-ink outline-none focus:border-ink/60 transition-colors"
             />
-            <p className="text-[11px] text-ink/50">Unique — the sidebar identifies a workspace by it.</p>
+            <p className="text-[11px] text-ink/50">Unique: the sidebar identifies a workspace by it.</p>
           </div>
 
           <div className="space-y-1.5">

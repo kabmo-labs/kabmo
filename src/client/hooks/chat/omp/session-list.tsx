@@ -50,6 +50,17 @@ export interface SidebarDataHandle {
   isMock: boolean;
   /** True only before the first snapshot lands — drives the skeleton. */
   initializing: boolean;
+  /**
+   * The first snapshot never arrived and the channel is not connected: the
+   * list has no data and no answer is coming on its own.
+   *
+   * This is what separates "still loading" from "failed", and before it existed
+   * the sidebar could only tell them apart by waiting — measured with `/api/**`
+   * aborted, the skeleton was still drawn after seven seconds with no message,
+   * no retry and no `role="alert"`. A UI that cannot say "this did not work" is
+   * an unfinished UI, so the state is a field rather than an inferred flag.
+   */
+  failed: boolean;
   /** True when the socket is down or a sequence gap was seen. */
   stale: boolean;
   /**
@@ -100,80 +111,19 @@ export interface SidebarDataHandle {
 
 const SidebarDataContext = createContext<SidebarDataHandle | null>(null);
 
-/** Merge a structure payload with the volatile map, by session id. */
-function mergeStatus(
-  folders: WorkspaceFolderData[],
-  status: SidebarStatusPayload | null,
-): WorkspaceFolderData[] {
-  if (!status) return folders;
-  return folders.map((folder) => ({
-    ...folder,
-    sessions: (folder.sessions ?? []).map((session) => {
-      const volatile = status[String(session.id)];
-      return volatile ? { ...session, ...volatile } : session;
-    }),
-  }));
-}
-
-/**
- * Advance each row's live fields from the activity payload.
- *
- * `sidebar:activity` carries only the RUNNING sessions (see its doc), so an id
- * it does not name keeps whatever the structure gave it. Three rules, each of
- * which is a way this can go wrong:
- *
- *   - the `updated_at` comparison is what makes two sources safe to
- *     interleave: the structure is re-scanned at every turn boundary and may
- *     already carry a stamp this payload has not caught up with, and a late
- *     activity frame must never move a row BACKWARDS (that reorders the
- *     sidebar under the reader);
- *   - `hasSubagents` only ever turns ON, because the payload is a live read of
- *     what is on disk and a subagent transcript does not disappear when its run
- *     ends — a `false` here is "not seen yet", not "none exist";
- *   - nothing else is touched. Every other field of a row changes on a
- *     STRUCTURAL event, and those publish the structure for their own reason.
- */
-function mergeActivity(
-  folders: WorkspaceFolderData[],
-  activity: SidebarActivityPayload | null,
-): WorkspaceFolderData[] {
-  if (!activity) return folders;
-  let changed = false;
-  const merged = folders.map((folder) => ({
-    ...folder,
-    sessions: (folder.sessions ?? []).map((session) => {
-      const live = activity[String(session.id)];
-      if (!live) return session;
-      const updated_at = live.updatedAt && isNewerStamp(live.updatedAt, session.updated_at)
-        ? live.updatedAt
-        : session.updated_at;
-      const hasSubagents = session.hasSubagents || live.hasSubagents === true;
-      if (updated_at === session.updated_at && hasSubagents === Boolean(session.hasSubagents)) return session;
-      changed = true;
-      return { ...session, updated_at, hasSubagents };
-    }),
-  }));
-  // A stable identity matters: the sidebar's own `useMemo` chain (filter, sort,
-  // pending overlay) keys on this array, and returning a fresh one per activity
-  // frame would re-sort 731 rows for a stamp that did not move.
-  return changed ? merged : folders;
-}
-
-/** Whether `next` is a later ISO stamp than `current`. An absent current is older. */
-function isNewerStamp(next: string, current?: string): boolean {
-  if (!current) return true;
-  const nextMs = Date.parse(next);
-  const currentMs = Date.parse(current);
-  // An unparseable value on either side is not evidence of a newer stamp; the
-  // structure's own field stays authoritative.
-  if (!Number.isFinite(nextMs) || !Number.isFinite(currentMs)) return false;
-  return nextMs > currentMs;
-}
+import { mergeActivity, mergeStatus } from '@/client/hooks/chat/omp/session-merges';
 
 export function SidebarDataProvider({ children, initialFolders = [] }: { children: ReactNode; initialFolders?: WorkspaceFolderData[] }) {
   const structure = useRealtimeTopic<SidebarPayload>(TOPIC_SIDEBAR);
   const status = useRealtimeTopic<SidebarStatusPayload>(TOPIC_SIDEBAR_STATUS);
   const activity = useRealtimeTopic<SidebarActivityPayload>(TOPIC_SIDEBAR_ACTIVITY);
+
+  // "Loading" is only true while an answer is still plausible. The channel
+  // reports its own verdict, so a socket that closed before the first snapshot
+  // is a FAILED read rather than an eternal skeleton: measured with `/api/**`
+  // aborted, the drawer drew placeholders forever with nothing on screen saying
+  // why and no control to try again.
+  const failed = structure.data === null && structure.status === 'closed';
 
   // Session ids whose badge the user has already dismissed on this mount.
   // Optimistic strip: keeps the click→disappearance instant and stops the
@@ -310,6 +260,7 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
       streamStatusMap,
       isMock,
       initializing,
+      failed,
       stale: structure.stale || status.stale,
       refresh,
       refreshNow,
@@ -320,7 +271,7 @@ export function SidebarDataProvider({ children, initialFolders = [] }: { childre
       titleHint: (id) => (id === null || id === undefined ? undefined : titleHintRef.current.get(String(id))),
     };
     // `overlayVersion` is the re-render trigger for the two refs above.
-  }, [folders, isMock, initializing, structure.stale, status.stale, structure.refreshing, refresh, refreshNow, refreshing, isRefreshing, markSeen, overlayVersion]);
+  }, [folders, isMock, initializing, failed, structure.stale, status.stale, structure.refreshing, refresh, refreshNow, refreshing, isRefreshing, markSeen, overlayVersion]);
 
   return <SidebarDataContext.Provider value={value}>{children}</SidebarDataContext.Provider>;
 }
@@ -337,6 +288,9 @@ export function useSidebarData(): SidebarDataHandle {
     streamStatusMap: {},
     isMock: false,
     initializing: true,
+    // No provider means no channel was ever asked; claiming a failure would be
+    // a guess, and the honest state is still "loading".
+    failed: false,
     stale: false,
     refresh: () => {},
     refreshNow: () => {},

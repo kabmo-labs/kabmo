@@ -42,7 +42,7 @@ function OrphanAskCard({ frame, onRespond }: {
     <div className="rounded-lg border border-ink/12 bg-paper p-3 shadow-xs">
       <div className="mb-2 flex items-center gap-1.5 text-[10.5px] text-ink/50">
         <HelpCircle size={11} className="shrink-0" />
-        <span>Input needed — the agent is blocked until you answer.</span>
+        <span>Input needed: the agent is blocked until you answer.</span>
       </div>
       <GroupedAsk
         frame={frame}

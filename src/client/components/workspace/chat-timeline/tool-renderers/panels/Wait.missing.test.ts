@@ -86,8 +86,10 @@ describe('Wait panel — a result it cannot read', () => {
     const el = await mount({ type: 'wait', name: 'wait', status: 'success', output: 'Nothing to wait for.', details: {} });
     expect(el.textContent ?? '').toContain('Nothing to wait for.');
     // No clock is invented either: with no start entry and no measured span the
-    // stopwatch reads `—`, which is the honest answer.
-    expect(el.textContent ?? '').toContain('—');
+    // stopwatch reads an EN DASH, which is the honest answer (an em dash is a
+    // punctuation mark the copy rules reserve, so the placeholder is the en
+    // dash everywhere in the app).
+    expect(el.textContent ?? '').toContain('–');
   });
 
   test('a call whose result was never written says so', async () => {

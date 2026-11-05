@@ -186,7 +186,7 @@ describe('ContextUsageButton', () => {
 
   test('a session with no turn says so instead of printing zeros', async () => {
     await mount({ ...telemetryAt(0), messagesCount: 0 });
-    expect(trigger().getAttribute('title')).toBe('Context usage — session not started');
+    expect(trigger().getAttribute('title')).toBe('Context usage: session not started');
     await act(async () => {
       trigger().click();
     });

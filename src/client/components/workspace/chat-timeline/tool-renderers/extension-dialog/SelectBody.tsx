@@ -103,7 +103,7 @@ export function ExtensionDialogSelectBody({
           An approval gate has no "Other" option, so it draws no field. */}
       {!hideCustomAnswer && (
         <div className="space-y-1.5 pt-1">
-          <div className="text-[11px] font-medium tracking-wider text-ink/50 uppercase">Other — type your own answer</div>
+          <div className="text-[11px] font-medium tracking-wider text-ink/50 uppercase">Other: type your own answer</div>
           <input
             ref={customInputRef}
             type="text"

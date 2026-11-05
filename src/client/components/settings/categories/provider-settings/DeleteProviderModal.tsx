@@ -92,7 +92,7 @@ export function DeleteProviderModal({
                     ? `, along with its ${modelCount} registered model${modelCount === 1 ? '' : 's'}.`
                     : '.'}
                 </li>
-                <li>The endpoint and API key stored on that entry are removed with it — they are shown masked here, so you would need to enter them again.</li>
+                <li>The endpoint and API key stored on that entry are removed with it. They are shown masked here, so you would need to enter them again.</li>
               </>
             ) : (
               <>

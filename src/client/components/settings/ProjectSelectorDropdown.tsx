@@ -101,7 +101,7 @@ export const ProjectSelectorDropdown: FunctionComponent<ProjectSelectorDropdownP
       <div className={variant === 'compact' ? 'p-2.5 border-b border-ink/10' : 'p-3 border-b border-ink/10'}>
         <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dashed border-ink/15 text-[11px] text-ink/50">
           <Folder size={13} className="text-ink/40 flex-shrink-0" />
-          <span className="truncate">No projects yet — add one in Settings → Projects</span>
+          <span className="truncate">No projects yet. Add one in Settings, Projects</span>
         </div>
       </div>
     );

@@ -55,7 +55,7 @@ export const MinimalRow = memo(function MinimalRow({ tool, isOpen, onToggle, def
         </span>
         <span className="sr-only">{status.word}</span>
         <span className="shrink-0 font-medium text-ink/70">{view.header.title}</span>
-        {(view.subtitle || factsLine) && <span className="text-ink/25">—</span>}
+        {(view.subtitle || factsLine) && <span className="text-ink/25">·</span>}
         <span className="min-w-0 truncate font-mono text-ink/45">
           {view.subtitle}
           {factsLine}

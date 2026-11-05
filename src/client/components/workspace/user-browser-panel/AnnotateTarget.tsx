@@ -33,9 +33,9 @@ const FIELD =
 /** Why the marked spot carries no element, in words the user can act on. */
 export function missingElementReason(readability: ElementAtResult | null): string | null {
   if (!readability || readability.ok) return null;
-  if (readability.reason === 'cross-origin') return 'Halaman ini beda origin — elemen tidak bisa dibaca, cukup beri nama bagian + catatan.';
-  if (readability.reason === 'no-frame') return 'Halaman belum dimuat — elemen belum bisa dibaca.';
-  return 'Di titik ini tidak ada elemen (ruang kosong) — beri nama bagiannya.';
+  if (readability.reason === 'cross-origin') return 'This page is cross-origin, so its elements cannot be read. Name the part and add a note instead.';
+  if (readability.reason === 'no-frame') return 'The page has not loaded, so its elements cannot be read yet.';
+  return 'There is no element at this point (empty space). Name the part instead.';
 }
 
 export function AnnotateTarget({ shape, index, readability, onLabel, onNote }: AnnotateTargetProps) {
@@ -70,8 +70,8 @@ export function AnnotateTarget({ shape, index, readability, onLabel, onNote }: A
           <input
             value={shape.label}
             onInput={(event) => onLabel(event.currentTarget.value)}
-            placeholder="atau ketik sendiri…"
-            aria-label="Nama bagian yang ditandai"
+            placeholder="or type your own…"
+            aria-label="Name of the marked part"
             spellcheck={false}
             className={`${FIELD} flex-1 min-w-[110px]`}
           />
@@ -80,9 +80,9 @@ export function AnnotateTarget({ shape, index, readability, onLabel, onNote }: A
         <textarea
           value={shape.note}
           onInput={(event) => onNote(event.currentTarget.value)}
-          placeholder="Apa yang salah di bagian ini? (mis. tombol Bayar terlihat nonaktif)"
+          placeholder="What is wrong with this part? (e.g. the Pay button looks disabled)"
           rows={2}
-          aria-label="Catatan anotasi"
+          aria-label="Annotation note"
           className={`${FIELD} resize-y`}
         />
 

@@ -109,7 +109,7 @@ export function SchedulerModal({
       onToast?.(failure, 'error');
       return;
     }
-    onToast?.('Task dispatched — open the session to watch it run.', 'success');
+    onToast?.('Task dispatched. Open the session to watch it run.', 'success');
   };
 
   const remove = async (id: string) => {

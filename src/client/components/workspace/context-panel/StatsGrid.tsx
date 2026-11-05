@@ -35,7 +35,7 @@ export function ContextStatsGrid({
         <StatCard
           variant="compact"
           label="Cache Hit"
-          value={cacheHitAverage !== undefined ? `${cacheHitAverage.toFixed(1)}%` : '—'}
+          value={cacheHitAverage !== undefined ? `${cacheHitAverage.toFixed(1)}%` : '–'}
         />
         <div className="relative bg-canvas border border-ink/10 rounded-lg px-2.5 py-1.5 flex flex-col gap-0.5 flex-1 min-w-0">
           <span className="text-[10px] font-medium text-ink/50 flex items-center gap-1">

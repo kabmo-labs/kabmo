@@ -68,7 +68,7 @@ export function ServerControl({ variant }: ServerControlProps) {
   if (!available) return null;
 
   const summary = active
-    ? `Server: ${active.label} — ${active.running ? 'running' : 'stopped'}`
+    ? `Server: ${active.label}, ${active.running ? 'running' : 'stopped'}`
     : 'Choose a server';
 
   if (variant === 'chip') {

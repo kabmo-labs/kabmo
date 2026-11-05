@@ -90,7 +90,7 @@ export function ReviewPopover({ block, verdict, note, anchor, onSave, onRemove, 
         <button
           type="button"
           aria-pressed={verdict === 'good'}
-          title="This block is good — do not change it"
+          title="This block is good, so leave it alone"
           onClick={() => submit('good')}
           className={`${ACTION_CLASS} border px-2 text-[11px] ${
             verdict === 'good' ? 'border-ink bg-ink/10 text-ink' : 'border-ink/15 text-ink/70 hover:border-ink/40'
@@ -124,7 +124,7 @@ export function ReviewPopover({ block, verdict, note, anchor, onSave, onRemove, 
         ref={field}
         defaultValue={note}
         rows={3}
-        placeholder="What is wrong — or what is right — with this block…"
+        placeholder="What is wrong (or right) with this block…"
         onKeyDown={(event) => {
           // ⌘↵ saves the CURRENT verdict; a block with none is not saved by a
           // keystroke that cannot say which answer it means.

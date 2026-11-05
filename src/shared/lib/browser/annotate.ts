@@ -69,9 +69,9 @@ export function isUsableShape(shape: Pick<AnnotateShape, 'start' | 'end' | 'note
 }
 
 export const ANNOTATE_TOOL_LABEL: Record<AnnotateTool, string> = {
-  box: 'kotak',
-  pin: 'titik',
-  arrow: 'panah',
+  box: 'box',
+  pin: 'pin',
+  arrow: 'arrow',
 };
 
 /**
@@ -85,19 +85,19 @@ export const ANNOTATE_TOOL_LABEL: Record<AnnotateTool, string> = {
 export const ANNOTATE_LABEL_SUGGESTIONS = [
   'header',
   'nav',
-  'konten',
+  'content',
   'form',
-  'tabel',
-  'daftar',
+  'table',
+  'list',
   'modal',
   'sidebar',
   'footer',
 ] as const;
 
-/** `bagian "Ringkasan pesanan"` for a named mark, nothing for an unnamed one. */
+/** `part "Checkout summary": ` for a named mark, nothing for an unnamed one. */
 function labelPrefix(label: string | undefined): string {
   const name = label?.trim();
-  return name ? `bagian "${name}" — ` : '';
+  return name ? `part "${name}": ` : '';
 }
 
 /** What the mark sits on, when the frame was readable. */
@@ -106,8 +106,8 @@ function elementSuffix(element: AnnotateShape['element']): string {
   const facts = [element.path];
   if (element.role) facts.push(`role ${element.role}`);
   if (element.state) facts.push(element.state);
-  if (element.text) facts.push(`teks "${element.text}"`);
-  return ` [elemen: ${facts.join(' · ')}]`;
+  if (element.text) facts.push(`text "${element.text}"`);
+  return ` [element: ${facts.join(' · ')}]`;
 }
 
 /** `12.0%` — one decimal, which is precise enough to re-find a spot by hand. */
@@ -137,18 +137,18 @@ export function describeShape(
   const tool = ANNOTATE_TOOL_LABEL[shape.tool];
   const head = `${index}. ${labelPrefix(shape.label)}${tool}`;
   const note = shape.note.trim();
-  const tail = note.length > 0 ? ` — ${note}` : '';
+  const tail = note.length > 0 ? `: ${note}` : '';
   const element = elementSuffix(shape.element);
 
-  if (shape.tool === 'pin') return `${head} di ${where} ${spot}${element}${tail}`;
+  if (shape.tool === 'pin') return `${head} at ${where} ${spot}${element}${tail}`;
   if (shape.tool === 'arrow') {
     const to = `(${percent(shape.end.x)}, ${percent(shape.end.y)})`;
     return `${head} ${where} → ${to}${element}${tail}`;
   }
   const region = shapeRegion(shape);
-  const size = `lebar ${percent(region.width)}, tinggi ${percent(region.height)}`;
+  const size = `width ${percent(region.width)}, height ${percent(region.height)}`;
   const pixels = `(${px(region.width, panel.width)}×${px(region.height, panel.height)} px)`;
-  return `${head} kiri ${percent(region.x)}, atas ${percent(region.y)}, ${size} ${pixels}${element}${tail}`;
+  return `${head} left ${percent(region.x)}, top ${percent(region.y)}, ${size} ${pixels}${element}${tail}`;
 }
 
 /** Every usable mark, described and numbered from 1 in draw order. */

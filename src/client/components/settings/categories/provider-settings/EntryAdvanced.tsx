@@ -56,14 +56,14 @@ export function EntryAdvanced({
     <>
       <div>
         <label className="block text-xs font-semibold text-ink mb-1">
-          Discovery <span className="font-normal text-ink/40">— optional</span>
+          Discovery <span className="font-normal text-ink/40">(optional)</span>
         </label>
         <select
           value={discovery.type}
           onChange={(e) => patch({ type: e.currentTarget.value as ProviderDiscoveryType | '' })}
           className={fieldClass}
         >
-          <option value="">— omp uses the registered model list —</option>
+          <option value="">Use the registered model list</option>
           {PROVIDER_DISCOVERY_TYPES.map((type) => (
             <option key={type.value} value={type.value}>{type.label}</option>
           ))}
@@ -79,7 +79,7 @@ export function EntryAdvanced({
         <div className="space-y-2 pl-3 border-l-2 border-ink/10">
           <div>
             <label className="block text-[11px] font-medium text-ink/70 mb-1">
-              Timeout <span className="font-normal text-ink/40">— ms, optional</span>
+              Timeout <span className="font-normal text-ink/40">(ms, optional)</span>
             </label>
             <input
               type="text"
@@ -121,7 +121,7 @@ export function EntryAdvanced({
       <div>
         <div className="flex items-center justify-between gap-2 mb-1">
           <label className="block text-xs font-semibold text-ink">
-            Request headers <span className="font-normal text-ink/40">— optional</span>
+            Request headers <span className="font-normal text-ink/40">(optional)</span>
           </label>
           <button
             type="button"

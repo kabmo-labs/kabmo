@@ -30,13 +30,13 @@ export const EDITOR_VIEW_MODES: Array<{
   {
     target: 'compact',
     label: 'Compact view',
-    hint: 'Editor takes the chat width — chat hidden, sidebar and right panel kept',
+    hint: 'Editor takes the chat width: chat hidden, sidebar and right panel kept',
     Icon: MessageSquareOff,
   },
   {
     target: 'full',
     label: 'Full view',
-    hint: 'Editor takes the chat and sidebar width — chat and sidebar hidden, right panel kept',
+    hint: 'Editor takes the chat and sidebar width: chat and sidebar hidden, right panel kept',
     Icon: PanelLeftClose,
   },
 ];

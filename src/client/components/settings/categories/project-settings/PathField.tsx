@@ -96,7 +96,7 @@ export function ProjectPathField({
             e.currentTarget.blur();
           }
         }}
-        placeholder="~ or /absolute/path — leave empty for an unbound grouping"
+        placeholder="~ or /absolute/path, or leave empty for an unbound grouping"
         spellcheck={false}
         className="w-full bg-paper border border-ink/20 rounded-md px-3 py-2 text-[11.5px] font-mono text-ink outline-none focus:border-ink/60 transition-colors shadow-2xs disabled:opacity-60"
       />

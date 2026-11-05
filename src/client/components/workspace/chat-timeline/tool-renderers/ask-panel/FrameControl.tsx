@@ -137,7 +137,7 @@ export function FrameControl({ frame, multi, selected, onAnswer, onToggle, onRes
       {!multi && (
         <input
           value={text}
-          placeholder="Other — type your own answer…"
+          placeholder="Other: type your own answer…"
           onChange={(event) => setText(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' || !text.trim()) return;

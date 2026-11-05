@@ -305,7 +305,7 @@ export function AddProviderModal({
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">
             API Key (stored securely)
-            {!requiresApiKey && <span className="font-normal text-ink/40"> — optional</span>}
+            {!requiresApiKey && <span className="font-normal text-ink/40"> (optional)</span>}
           </label>
           <div className="relative flex items-center">
             <Key size={13} className="absolute left-2.5 text-ink/40 pointer-events-none" />

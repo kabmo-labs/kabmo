@@ -81,14 +81,14 @@ describe('isUsableShape', () => {
 describe('describeShape', () => {
   test('a box states the region in percent AND the pixel size the panel size makes resolvable', () => {
     expect(describeShape(shape({ note: 'total harga terpotong' }), 1, PANEL))
-      .toBe('1. kotak kiri 10.0%, atas 20.0%, lebar 20.0%, tinggi 15.0% (205×115 px) — total harga terpotong');
+      .toBe('1. box left 10.0%, top 20.0%, width 20.0%, height 15.0% (205×115 px): total harga terpotong');
   });
 
   test('a pin states one point, an arrow states where it points', () => {
     expect(describeShape(shape({ tool: 'pin', note: 'badge salah' }), 2, PANEL))
-      .toBe('2. titik di (10.0%, 20.0%) (102×154 px) — badge salah');
+      .toBe('2. pin at (10.0%, 20.0%) (102×154 px): badge salah');
     expect(describeShape(shape({ tool: 'arrow', end: { x: 0.72, y: 0.185 } }), 3, PANEL))
-      .toBe('3. panah (10.0%, 20.0%) → (72.0%, 18.5%)');
+      .toBe('3. arrow (10.0%, 20.0%) → (72.0%, 18.5%)');
   });
 
   test('a mark with no note ends at the geometry, with no dangling separator', () => {
@@ -104,8 +104,8 @@ describe('describeAnnotations', () => {
       shape({ id: 'c', tool: 'pin', start: { x: 0.9, y: 0.1 }, end: { x: 0.9, y: 0.1 }, note: 'tiga' }),
     ], PANEL);
     expect(lines).toHaveLength(2);
-    expect(lines[0]?.startsWith('1. kotak')).toBe(true);
-    expect(lines[1]?.startsWith('2. titik')).toBe(true);
+    expect(lines[0]?.startsWith('1. box')).toBe(true);
+    expect(lines[1]?.startsWith('2. pin')).toBe(true);
   });
 });
 
@@ -150,10 +150,10 @@ describe('readAnnotatePanel', () => {
 describe('formatPageContextBlock', () => {
   test('a page with no marks keeps the shape the panel has always produced', () => {
     expect(formatPageContextBlock({ url: 'https://a.test/x', title: 'A' })).toBe([
-      '[Konteks halaman browser]',
+      '[Browser page context]',
       'URL: https://a.test/x',
-      'Judul: A',
-      '(Lanjutkan dari halaman ini.)',
+      'Title: A',
+      '(Continue from this page.)',
     ].join('\n'));
   });
 
@@ -164,8 +164,8 @@ describe('formatPageContextBlock', () => {
       annotations: [shape({ note: 'tombol Bayar nonaktif' })],
     });
     expect(block).toContain('Panel: laptop 1024×768 px @100%');
-    expect(block).toContain('Anotasi (1):\n1. kotak');
-    expect(block).toContain('hanya terlihat oleh user');
+    expect(block).toContain('Annotations (1):\n1. box');
+    expect(block).toContain('Only the user can see this page');
   });
 
   test('a panel size with only unusable marks sends no annotation section at all', () => {
@@ -174,23 +174,23 @@ describe('formatPageContextBlock', () => {
       panel: { width: 100, height: 100, viewportMode: 'responsive', zoom: 100 },
       annotations: [shape({ start: { x: 0.4, y: 0.4 }, end: { x: 0.4, y: 0.4 } })],
     });
-    expect(block).not.toContain('Anotasi');
+    expect(block).not.toContain('Annotations');
   });
 });
 
 describe('appendPageContext', () => {
   test('a blank draft receives the block alone', () => {
-    expect(appendPageContext('', { url: 'https://a.test' }).startsWith('[Konteks halaman browser]')).toBe(true);
+    expect(appendPageContext('', { url: 'https://a.test' }).startsWith('[Browser page context]')).toBe(true);
   });
 
   test('existing text is separated by exactly one blank line', () => {
     expect(appendPageContext('halo', { url: 'https://a.test' })).toBe(
-      'halo\n\n[Konteks halaman browser]\nURL: https://a.test\n(Lanjutkan dari halaman ini.)',
+      'halo\n\n[Browser page context]\nURL: https://a.test\n(Continue from this page.)',
     );
   });
 
   test('a draft already ending in a blank line does not gain a third', () => {
-    expect(appendPageContext('halo\n\n', { url: 'https://a.test' })).toContain('halo\n\n[Konteks');
+    expect(appendPageContext('halo\n\n', { url: 'https://a.test' })).toContain('halo\n\n[Browser');
     expect(appendPageContext('halo\n\n', { url: 'https://a.test' })).not.toContain('halo\n\n\n');
   });
 });
@@ -198,12 +198,12 @@ describe('appendPageContext', () => {
 describe('label on a mark', () => {
   test('a named region leads the line, so the agent knows WHAT before WHERE', () => {
     expect(describeShape(shape({ label: 'Ringkasan pesanan', note: 'total terpotong' }), 1, PANEL))
-      .toBe('1. bagian "Ringkasan pesanan" — kotak kiri 10.0%, atas 20.0%, lebar 20.0%, tinggi 15.0% (205×115 px) — total terpotong');
+      .toBe('1. part "Ringkasan pesanan": box left 10.0%, top 20.0%, width 20.0%, height 15.0% (205×115 px): total terpotong');
   });
 
   test('an unnamed mark keeps exactly the line it produced before labels existed', () => {
     expect(describeShape(shape(), 1, PANEL))
-      .toBe('1. kotak kiri 10.0%, atas 20.0%, lebar 20.0%, tinggi 15.0% (205×115 px)');
+      .toBe('1. box left 10.0%, top 20.0%, width 20.0%, height 15.0% (205×115 px)');
   });
 
   test('a label alone makes a zero-size mark worth sending', () => {
@@ -225,11 +225,11 @@ describe('element on a mark', () => {
 
   test('a readable element adds its path, state and text after the geometry', () => {
     const line = describeShape(shape({ element: select }), 1, PANEL);
-    expect(line).toContain('[elemen: section[aria-label="Ringkasan"] > form > select#prov');
+    expect(line).toContain('[element: section[aria-label="Ringkasan"] > form > select#prov');
     expect(line).toContain('nilai "Jawa Barat", 5 opsi');
-    expect(line).toContain('teks "Provinsi"');
+    expect(line).toContain('text "Provinsi"');
     // The note still ends the line, after the element facts.
-    expect(line.endsWith('px) [elemen:')).toBe(false);
+    expect(line.endsWith('px) [element:')).toBe(false);
   });
 
   test('an unreadable mark says nothing about elements rather than printing an empty one', () => {
@@ -273,11 +273,11 @@ describe('viewport resolution hint', () => {
 
   test('the block states the viewport the coordinates are fractions of', () => {
     const block = formatPageContextBlock(base);
-    expect(block).toContain('Koordinat relatif ke viewport 276×620 px');
-    expect(block).toContain('cari elemennya di titik itu');
+    expect(block).toContain('Coordinates are relative to a 276×620 px viewport');
+    expect(block).toContain('look for the element at that point');
   });
 
   test('the hint belongs to an annotated page, not to a plain one', () => {
-    expect(formatPageContextBlock({ url: 'https://a.test' })).not.toContain('Koordinat relatif');
+    expect(formatPageContextBlock({ url: 'https://a.test' })).not.toContain('Coordinates are relative');
   });
 });

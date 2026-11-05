@@ -180,7 +180,7 @@ export function PluginCard({
       ) : !entry ? (
         <p className="text-[11px] text-ink/45">Loading bundle…</p>
       ) : badges.items.length === 0 ? (
-        <p className="text-[11px] text-ink/45">Loaded, but registers nothing — no panel, no button, no hook.</p>
+        <p className="text-[11px] text-ink/45">Loaded, but registers nothing: no panel, no button, no hook.</p>
       ) : null}
 
       {/* The badges name what the plugin contributes; a PANEL one also carries

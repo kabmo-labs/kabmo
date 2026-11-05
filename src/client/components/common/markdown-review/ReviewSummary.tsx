@@ -97,7 +97,7 @@ export function ReviewSummary({ counts, outdated, error, sent, onSend, onRemoveO
           type="button"
           disabled={total === 0}
           onClick={onSend}
-          title="Put this review into the chat box — you still choose to send it"
+          title="Put this review into the chat box; you still choose to send it"
           className="flex items-center gap-1 rounded border border-ink bg-ink px-2 py-1 text-canvas transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send size={11} /> Send to chat

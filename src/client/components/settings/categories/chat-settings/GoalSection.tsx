@@ -174,7 +174,7 @@ export function ChatGoalSection({ settings, onUpdate }: ChatGoalSectionProps) {
             onKeyDown={(event) => {
               if (event.key === 'Enter') commitBudget();
             }}
-            placeholder="none — the turn ceiling is then the only stop"
+            placeholder="none: the turn ceiling is then the only stop"
             inputMode="numeric"
             aria-label="Default goal token budget"
             className="w-56 rounded border border-ink/15 bg-paper px-2 py-1.5 font-mono text-[11.5px] outline-none focus:border-ink"

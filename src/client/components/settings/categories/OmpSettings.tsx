@@ -221,7 +221,7 @@ export function OmpSettings(_props: OmpSettingsProps) {
             <h3 className="text-sm font-semibold text-ink">Config</h3>
             <p className="text-ink/50 mt-0.5">
               Schema-driven settings backed by <span className="font-mono">omp config</span>.
-              {searchQuery.trim() && ' — matching keys only'}
+              {searchQuery.trim() && ', matching keys only'}
             </p>
           </div>
           {savedKey && savedKey !== 'role-map' && !savedKey.startsWith('ext-') && (

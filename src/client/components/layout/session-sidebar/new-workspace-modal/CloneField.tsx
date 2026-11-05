@@ -42,7 +42,7 @@ export function CloneField({ parent, busy, onClone }: CloneFieldProps) {
     <div>
       <label className="block text-xs font-semibold mb-1 text-ink">
         Clone Git Repository{' '}
-        <span className="text-ink/40 font-normal">(optional — clones into the path above)</span>
+        <span className="text-ink/40 font-normal">(optional: clones into the path above)</span>
       </label>
       <div className="flex items-center space-x-2">
         <input

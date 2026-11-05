@@ -174,7 +174,7 @@ function NewWorkspaceForm({
             <label className="block text-xs font-semibold mb-1 text-ink">
               Workspace Name{' '}
               <span className="text-ink/40 font-normal">
-                {tab === 'clone' ? '(optional — defaults to the repository name)' : ''}
+                {tab === 'clone' ? '(optional: defaults to the repository name)' : ''}
               </span>
             </label>
             <input
@@ -190,7 +190,7 @@ function NewWorkspaceForm({
             <label className="block text-xs font-semibold mb-1 text-ink">
               {tab === 'clone' ? 'Clone Into' : 'Project Path'}{' '}
               <span className="text-ink/40 font-normal">
-                {tab === 'create' ? '(optional — binds omp sessions)' : ''}
+                {tab === 'create' ? '(optional: binds omp sessions)' : ''}
               </span>
             </label>
             <LocationBar

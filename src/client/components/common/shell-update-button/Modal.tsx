@@ -63,7 +63,7 @@ function installNote(download: ShellDownload): string {
     case 'windows':
       return 'Kabmo downloads the new installer and runs it silently. The window closes and reopens on the new version.';
     case 'linux':
-      return 'Kabmo downloads the new AppImage over the one it is running from and restarts. A package install (.deb / .rpm) cannot replace itself — that build is offered the release page instead.';
+      return 'Kabmo downloads the new AppImage over the one it is running from and restarts. A package install (.deb / .rpm) cannot replace itself, so that build is offered the release page instead.';
     default:
       return 'Kabmo installs the new build and restarts.';
   }

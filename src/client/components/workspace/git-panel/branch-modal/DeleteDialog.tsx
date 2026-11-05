@@ -61,11 +61,11 @@ export function DeleteBranchDialog({
         <div className="text-[10px] font-mono text-ink/60 border border-ink/10 rounded p-2 bg-canvas/40 flex flex-col gap-0.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-ink/40">last commit</span>
-            <span className="truncate">{branch.subject || '—'}</span>
+            <span className="truncate">{branch.subject || '–'}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-ink/40">when</span>
-            <span>{branch.date || '—'}</span>
+            <span>{branch.date || '–'}</span>
           </div>
         </div>
 
