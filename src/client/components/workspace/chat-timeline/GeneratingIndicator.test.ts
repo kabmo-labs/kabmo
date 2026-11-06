@@ -154,3 +154,44 @@ describe('GeneratingIndicator long-phrase layout', () => {
     }
   });
 });
+
+/**
+ * The mark: a nine-hue ring spun behind the ink badge.
+ *
+ * The ring was replaced by a bare ink badge because chroma is reserved for
+ * state, and that replacement shipped with no motion at all — its own comment
+ * promised `animate-pulse`, but the class was never applied, so a busy row
+ * looked exactly like a settled one. Restoring it must keep two properties the
+ * first version got wrong: the gradient is declared ONCE in the stylesheet (a
+ * component-level style block re-declared it on every render of every
+ * indicator in the transcript), and the spin is the shared `.animate-spin` so
+ * the reduced-motion rule can slow it instead of freezing an indicator that
+ * then looks stuck.
+ */
+describe('GeneratingIndicator mark', () => {
+  test('the ring is rendered behind the badge and spins', async () => {
+    const el = await mount({ modelName: 'DeepSeek V4 Flash' });
+    const ring = el.querySelector('.generating-mark-ring');
+    expect(ring, 'no generating mark ring').not.toBeNull();
+    expect(ring!.className).toContain('animate-spin');
+    // Decorative: the badge beside it carries the meaning.
+    expect(ring!.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('the gradient is declared in the stylesheet, not inline in the component', async () => {
+    const css = await Bun.file(new URL('../../../tailwind.css', import.meta.url)).text();
+    const rule = css.slice(css.indexOf('.generating-mark-ring {'));
+    const body = rule.slice(0, rule.indexOf('\n}'));
+    expect(body).toContain('conic-gradient');
+    // Nine stops, all nine hues: a two-stop gradient is not the mark.
+    expect((body.match(/#[0-9a-fA-F]{6}/g) ?? []).length).toBe(9);
+
+    // The component must not carry a hex or an inline `<style>` of its own —
+    // the reason the first version was removed is not the colour, it is where
+    // the colour was written.
+    const source = await Bun.file(new URL('./GeneratingIndicator.tsx', import.meta.url)).text();
+    expect(source).not.toContain('conic-gradient');
+    expect(source).not.toMatch(/#[0-9a-fA-F]{6}\b/);
+    expect(source).not.toContain('<style>');
+  });
+});

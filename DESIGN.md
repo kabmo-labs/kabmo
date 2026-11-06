@@ -94,8 +94,12 @@ one.
 
 The palette's five signal colours are for status and nothing else: a failing tool call, a
 successful one, a warning, an informational fact, an accent. There is no gradient, glow, or
-per-element hue as personality, and the generating indicator draws its life with the palette's own
-ink plus a pulse rather than a nine-hue spinner.
+per-element hue as personality — with **one named exception**: the generating indicator's mark
+(`.generating-mark-ring`, `src/client/tailwind.css`). The monochrome replacement shipped with no
+motion at all (the `animate-pulse` its own comment promised was never applied), which left a busy
+row looking identical to a settled one; the spun ring is what makes "a run is in flight" legible at
+a glance. The gradient is declared once in the stylesheet — never inline in a component — and the
+spin rides the shared `.animate-spin` so the reduced-motion rule slows it rather than freezing it.
 
 **Icons.** Lucide is the functional glyph set (346 files import it), and the colour mode tints each
 glyph by its own hue — solved per hue in **both** variants (`ICON_TONES`, `ICON_TONES_DARK`), never

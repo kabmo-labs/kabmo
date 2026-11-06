@@ -1400,6 +1400,35 @@ html[data-theme-variant='dark'] .brand-wordmark-glow {
   }
 }
 
+/* The generating indicator's mark: a nine-hue ring spun behind the ink badge.
+ *
+ * This is the ONE deliberate exception to "chroma is state" (DESIGN.md §3), and
+ * it is stated here rather than inline for the same reason the dots are: a
+ * component-level `<style>` block re-declared these keyframes on every render of
+ * every indicator a transcript holds, and a hex in a component is a hex nobody
+ * can find. The hues are the nine the original inline gradient used, so the mark
+ * reads identically to the one it replaces.
+ *
+ * `animation-duration` is 1.2s here and the reduce-motion block below slows
+ * `.animate-spin` to 3s — that block is later in the file, so it wins at equal
+ * specificity. A ring that stops dead would look like a frozen indicator. */
+.generating-mark-ring {
+  --generating-ring: conic-gradient(
+    from 0deg,
+    #ff453a,
+    #ff9f0a,
+    #ffd60a,
+    #30d158,
+    #64d2ff,
+    #0a84ff,
+    #bf5af2,
+    #ff375f,
+    #ff453a
+  );
+  background: var(--generating-ring);
+  animation-duration: 1.2s;
+}
+
 /* ============================================================================
  * Motion, under the user's own switch.
  *

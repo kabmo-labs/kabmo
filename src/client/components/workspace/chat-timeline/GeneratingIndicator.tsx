@@ -76,18 +76,17 @@ export function GeneratingIndicator({ modelName, generatingVerb, provider, provi
     >
       {/* Left info: the identity mark, then the provider/model and the verb. */}
       <div className="flex items-center space-x-2 min-w-0 flex-1">
-        {/* The run's mark. It was a NINE-HUE conic gradient spun inline, the only
-            chroma in the app outside the palette's own signal tokens, injected
-            as a per-render `<style>` block (the single inline stylesheet in
-            `src/client`) with an infinite bounce for the dots. A transcript can
-            hold several of these rows at once, so the rainbow was decoration
-            that competed with the tool cards it sat among — and `DESIGN.md`
-            reserves chroma for state, not for "something is happening".
-            The ink mark plus the pulsing dots now say the same thing in the
-            palette's own voice: the glyph is the agent, `animate-pulse` is the
-            life, and `motion-reduce` parks both. */}
-        <div className="relative w-4 h-4 rounded-[3px] bg-ink flex items-center justify-center text-canvas shrink-0">
-          <Bot size={10} className="text-canvas" />
+        {/* The run's mark: a nine-hue conic ring spun behind the ink badge.
+            The gradient itself lives in `tailwind.css` (`.generating-mark-ring`)
+            so no hex is written in a component, and the spin is the shared
+            `.animate-spin` slowed by the reduced-motion rule rather than a
+            per-render JSX style block. The ring is what makes the row read as
+            "working" at a glance; the dots are the spelling of it. */}
+        <div className="relative w-4 h-4 rounded flex items-center justify-center shrink-0">
+          <div aria-hidden="true" className="generating-mark-ring absolute -inset-[1.5px] rounded-[5px] animate-spin" />
+          <div className="relative w-full h-full rounded-[3px] bg-ink flex items-center justify-center text-canvas z-10 shadow-2xs">
+            <Bot size={10} className="text-canvas" />
+          </div>
         </div>
 
         {/* Provider & model name with dynamic verb + dots. When neither half is
