@@ -1,16 +1,20 @@
-import type { TargetedMouseEvent } from 'preact';
 import { useMemo, useRef, useState } from 'preact/hooks';
 import { ChevronDown, Sparkles } from 'lucide-preact';
-import type { AIModelOption, ModelPreferences } from '@/shared/types';
+import type { AIModelOption } from '@/shared/types';
 import { useOnClickOutside } from '@/client/hooks/ui/on-click-outside';
 import { invalidateModelsCache } from '@/shared/lib/models/client';
 import { ModelDropdownPanel } from '@/client/components/workspace/model-dropdown/Panel';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
 import { useModelCatalog } from '@/client/components/workspace/model-dropdown/use-catalog';
 import { useCollapsedSections } from '@/client/components/workspace/model-dropdown/collapsed';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
+import { useFullscreenPicker } from '@/client/components/workspace/model-dropdown/fullscreen-picker';
+import { harnessModels } from '@/client/components/workspace/model-dropdown/harness-models';
+import { useRowMutations } from '@/client/components/workspace/model-dropdown/row-mutations';
+import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { buildPickerGroups, type PickerRow } from '@/client/components/workspace/model-dropdown/groups';
 import { modelKey } from '@/shared/lib/models/identity';
-import { RECENT_MODELS_LIMIT, filterKnownKeys, readModelPreferences, recordRecentKey, toggleFavoriteKey } from '@/shared/lib/models/preferences';
+import { RECENT_MODELS_LIMIT, filterKnownKeys, recordRecentKey } from '@/shared/lib/models/preferences';
 
 interface ModelDropdownProps {
   selectedModel?: AIModelOption;
@@ -18,6 +22,17 @@ interface ModelDropdownProps {
   onOpenAddProvider?: () => void;
   onThinkingLevelChange?: (level: string) => void;
   className?: string;
+  /** The session's harness (`omp-rpc`, `claude`, …). Undefined for a chat that
+   *  has not spawned: the picker then shows the user's last choice. */
+  harness?: string;
+  /** Picked a tab for a chat that has no transcript yet. */
+  onSelectHarness?: (harness: string) => void;
+  /** False while the open chat has messages; the tabs explain instead of
+   *  switching. */
+  harnessEditable?: boolean;
+  /** The SHELL's layout verdict. When omitted the picker answers for itself from
+   *  the pointer — which is what the New Chat modal's preview does. */
+  isMobile?: boolean;
 }
 
 export function ModelDropdown({
@@ -26,8 +41,28 @@ export function ModelDropdown({
   onOpenAddProvider,
   onThinkingLevelChange,
   className = '',
+  harness,
+  onSelectHarness,
+  harnessEditable = true,
+  isMobile,
 }: ModelDropdownProps) {
+  const { harnesses, probe } = useHarnesses();
+  /**
+   * The harness whose list is on screen.
+   *
+   * Seeded from the SESSION's harness; before a chat exists the user moves it
+   * with the tab strip and the pick rides the spawn. It lives here rather than
+   * in the parent because the list it selects is this component's whole
+   * content.
+   */
+  const [viewHarness, setViewHarness] = useState<string>(harness ?? 'omp-rpc');
+  const activeHarness = harness ?? viewHarness;
   const [isOpen, setIsOpen] = useState(false);
+  // One answer to "which placement", used by BOTH the frame and the click-outside
+  // guard: a portalled full-screen picker is outside `containerRef` by
+  // construction, so an armed outside-press listener would close it on the very
+  // press that was meant to choose a row.
+  const fullscreen = useFullscreenPicker(isMobile);
   const [search, setSearch] = useState('');
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   // Hover is a ROW, not a model: one model can be drawn twice (its rail and its
@@ -46,6 +81,18 @@ export function ModelDropdown({
   } = useModelCatalog(externalSelectedModel);
 
   /**
+   * The rows this tab renders. `harnessModels` returns omp's registry untouched
+   * for omp's tab and the agent's OWN `configOptions[model]` list for every
+   * other — never a merge, because a row the active agent cannot run would fail
+   * at the first prompt.
+   */
+  const harnessList = useMemo(
+    () => harnessModels(harnesses, activeHarness, models),
+    [harnesses, activeHarness, models],
+  );
+  const visibleModels = harnessList.models;
+
+  /**
    * The selected model's mark, resolved against the CATALOG when the value the
    * composer handed us is a bare `{provider, id}` pair.
    *
@@ -57,7 +104,7 @@ export function ModelDropdown({
    */
   const selectedMark = useMemo(() => {
     if (!selectedModel) return null;
-    const fromCatalog = models.find(
+    const fromCatalog = visibleModels.find(
       (model) => model.provider === selectedModel.provider
         && (model.id === selectedModel.id || !selectedModel.id),
     );
@@ -69,14 +116,14 @@ export function ModelDropdown({
         ? { iconUrl: selectedModel.providerIconUrl ?? fromCatalog?.providerIconUrl }
         : {}),
     };
-  }, [selectedModel, models]);
+  }, [selectedModel, visibleModels]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(containerRef, () => {
     setIsOpen(false);
     setHoveredRow(null);
     setFocusedIndex(-1);
-  });
+  }, !fullscreen);
 
   const {
     filtered: filteredModels,
@@ -87,8 +134,8 @@ export function ModelDropdown({
     visibleFlatList,
     index: modelIndex,
   } = useMemo(
-    () => buildPickerGroups(models, search, collapsedSections, preferences.favorites, preferences.recentKeys),
-    [models, search, collapsedSections, preferences],
+    () => buildPickerGroups(visibleModels, search, collapsedSections, preferences.favorites, preferences.recentKeys),
+    [visibleModels, search, collapsedSections, preferences],
   );
 
   const selectedModelKey = modelKey(selectedModel);
@@ -107,78 +154,10 @@ export function ModelDropdown({
     }
   };
 
-  /**
-   * Flip one row's star. The optimistic stamp and the rollback both go through
-   * the preference pair — the flag on a row is derived state, so patching the
-   * row alone would be undone by the next `applyModelPreferences` (every reload
-   * re-stamps rows from the store).
-   */
-  const handleToggleFavorite = async (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => {
-    e.stopPropagation();
-    const key = modelKey(model);
-    const previous = preferences;
-    const optimistic: ModelPreferences = {
-      ...previous,
-      favorites: toggleFavoriteKey(previous.favorites, key),
-    };
-    applyPreferences(optimistic);
-    try {
-      const response = await fetch('/api/models', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionType: 'toggleFavorite', provider: model.provider, modelId: model.id }),
-      });
-      if (!response.ok) throw new Error(`toggleFavorite failed: ${response.status}`);
-      const data = await response.json() as { modelPreferences?: unknown };
-      // The server is the authority on the resulting list — it also drops keys
-      // the registry no longer serves. An absent/malformed payload keeps the
-      // optimistic list rather than blanking the rail.
-      if (data.modelPreferences) {
-        applyPreferences(readModelPreferences(data.modelPreferences));
-      }
-    } catch {
-      // A failed write must not leave the star lit: the next reload would show
-      // it unlit anyway, so the rollback keeps the panel honest immediately.
-      applyPreferences(previous);
-    }
-  };
-
-  const cycleThinkingLevel = (model: AIModelOption) => {
-    const ladder = model.thinkingLevels ?? [];
-    if (ladder.length === 0) return;
-    const current = model.thinkingLevel ?? ladder[0];
-    const idx = ladder.indexOf(current);
-    const nextThinking = ladder[(idx + 1) % ladder.length];
-
-    const key = modelKey(model);
-    setModels(prev => prev.map(m => modelKey(m) === key ? { ...m, thinkingLevel: nextThinking } : m));
-    // Only the active model's preset may reach the live session — cycling
-    // another provider's row (or a non-selected model) must not push its
-    // thinking level onto this session.
-    if (selectedModelKey === key && selectedModel) {
-      const nextSelected = { ...selectedModel, thinkingLevel: nextThinking };
-      setSelectedModel(nextSelected);
-      onSelectModel?.(nextSelected);
-      onThinkingLevelChange?.(nextThinking);
-    }
-  };
-
-  const toggleAgentCmd = async (model: AIModelOption) => {
-    const nextCmd = !model.isCmdAgent;
-    const key = modelKey(model);
-
-    setModels(prev => prev.map(m => modelKey(m) === key ? { ...m, isCmdAgent: nextCmd } : m));
-    if (selectedModelKey === key && selectedModel) {
-      setSelectedModel({ ...selectedModel, isCmdAgent: nextCmd });
-    }
-    try {
-      await fetch('/api/models', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionType: 'toggleCmd', provider: model.provider, modelId: model.id }),
-      });
-    } catch {}
-  };
+  const { toggleFavorite, cycleThinking, toggleAgentCmd } = useRowMutations({
+    preferences, applyPreferences, setModels, selectedModel, setSelectedModel,
+    selectedModelKey, onSelectModel, onThinkingLevelChange,
+  });
 
   const handleSelect = async (model: AIModelOption) => {
     setSelectedModel(model);
@@ -235,12 +214,21 @@ export function ModelDropdown({
       if (activeRow) toggleAgentCmd(activeRow.model);
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (activeRow) cycleThinkingLevel(activeRow.model);
+      if (activeRow) cycleThinking(activeRow.model);
     }
   };
 
   return (
-    <div className={`relative ${className}`} ref={containerRef} onKeyDown={handleKeyDown}>
+    // `data-model-dropdown-root` is the popover's measuring anchor: the panel
+    // sizes itself to the space above THIS element, and picking the element by
+    // attribute is exact where `parentElement.parentElement` would be a guess
+    // that breaks the first time the markup gains a wrapper.
+    <div
+      className={`relative ${className}`}
+      ref={containerRef}
+      data-model-dropdown-root=""
+      onKeyDown={handleKeyDown}
+    >
       {/* Trigger Button */}
       <button
         type="button"
@@ -254,6 +242,10 @@ export function ModelDropdown({
       >
         {selectedModel ? (
           <>
+            {/* Harness MARK, then the provider plate: the same two-mark order
+                the rows use, so the trigger and the list cannot describe two
+                different things. */}
+            <HarnessGlyph harness={activeHarness} size={HARNESS_GLYPH_SIZE.compact} />
             {selectedModel.isCmdAgent ? (
               <span className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-[4px] border border-ink/20 bg-ink/5 text-ink/70 flex-shrink-0 font-mono text-[10px] font-bold">
                 ⌘
@@ -291,7 +283,7 @@ export function ModelDropdown({
           search={search}
           onSearchChange={setSearch}
           onAddProvider={handleAddProviderClick}
-          isLoading={isLoading}
+          isLoading={isLoading && visibleModels.length === 0}
           filteredModels={filteredModels}
           favoriteModels={favoriteModels}
           recentModels={recentModels}
@@ -304,8 +296,8 @@ export function ModelDropdown({
           focusedIndex={focusedIndex}
           hoveredRow={hoveredRow}
           onSelect={handleSelect}
-          onToggleFavorite={handleToggleFavorite}
-          onCycleThinking={cycleThinkingLevel}
+          onToggleFavorite={toggleFavorite}
+          onCycleThinking={cycleThinking}
           onHoverItem={(idx) => {
             setFocusedIndex(idx);
             // The flat list is the one order the panel renders, so an index is
@@ -314,6 +306,34 @@ export function ModelDropdown({
             setHoveredRow(visibleFlatList[idx] ?? null);
           }}
           onMouseLeave={() => setHoveredRow(null)}
+          harnesses={harnesses}
+          activeHarness={activeHarness}
+          harnessEditable={harnessEditable}
+          unprobedHarness={harnessList.unprobed}
+          harnessBlocked={harnessList.blocked}
+          onSelectHarness={(id) => {
+            // The tab changes WHICH LIST this picker shows, in place. The pick
+            // reaches the spawn through `onSelectHarness`; the picker stays open
+            // so the user can then choose one of that harness's models.
+            setViewHarness(id);
+            setHoveredRow(null);
+            setFocusedIndex(-1);
+            setSearch('');
+            onSelectHarness?.(id);
+          }}
+          // A blocked tab probes once: the answer is the agent's own words
+          // (an auth command, a missing binary), and reporting it beats a
+          // silently unclickable tab.
+          onClose={() => {
+            setIsOpen(false);
+            setHoveredRow(null);
+          }}
+          fullscreen={fullscreen}
+          onFixHarness={(id) => {
+            void probe(id).then((reason) => {
+              if (reason) console.warn(`[harness] ${id}: ${reason}`);
+            });
+          }}
         />
       )}
     </div>

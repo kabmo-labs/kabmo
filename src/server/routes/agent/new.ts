@@ -8,6 +8,8 @@ import { rpcErrorResponse } from '@/server/lib/omp/rpc/errors';
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { parseModeSelection } from '@/server/lib/omp/mode/request';
 import { projectModelForCwd } from '@/server/lib/workspace/project-model.server';
+import { HARNESS_IDS, type HarnessId } from '@/shared/lib/harness/catalog';
+import { startAcpSession } from '@/server/lib/harness/spawn.server';
 
 /** The model-dropdown persists its selection here (actionType 'selectModel');
  *  a spawn that arrives without an explicit provider/modelId falls back to it. */
@@ -66,9 +68,20 @@ export async function action({ request }: ActionFunctionArgs) {
     // (measured: `modes:{plan:true}` produced a child reporting `plan: null`).
     const modes = body.modes !== undefined ? parseModeSelection(asRecord(body.modes)) : null;
     const modeEnv = modes ? kabmoModeEnv(modes) : undefined;
+    // A harness other than omp's RPC runs over ACP. The pick is validated
+    // against the catalog, so a typo cannot spawn an arbitrary binary.
+    const harness = HARNESS_IDS.includes(body.harness as HarnessId) ? body.harness as HarnessId : 'omp-rpc';
     // startNewRpcSession adopts the prewarmed idle process for this cwd when
     // one exists (fired by the sidebar's New Session click) and otherwise
     // cold-spawns — same contract, minus the boot wait when prewarmed.
+    if (harness !== 'omp-rpc') {
+      return await startAcpChat({
+        harness,
+        cwd,
+        body: body as Record<string, unknown>,
+        model: body.provider && body.modelId ? { provider: String(body.provider), modelId: String(body.modelId) } : null,
+      });
+    }
     const { session, realSessionId } = await startNewRpcSession(cwd, accessMode, modeEnv);
 
     const { type, message, images, provider, modelId, thinkingLevel } = body as {
@@ -118,4 +131,50 @@ export async function action({ request }: ActionFunctionArgs) {
   } catch (error) {
     return rpcErrorResponse(error);
   }
+}
+
+/**
+ * The ACP half of this route: spawn the agent, apply the picks, run the first
+ * prompt. Kept in the same file because both branches answer the SAME shapes
+ * (`{sessionId, model}` / `{sessionId, data}`), and a client must not be able to
+ * tell which transport served a new chat.
+ */
+async function startAcpChat({ harness, cwd, body, model }: {
+  harness: HarnessId;
+  cwd: string;
+  body: Record<string, unknown>;
+  model: { provider: string; modelId: string } | null;
+}): Promise<Response> {
+  const type = String(body.type ?? '');
+  const projectModel = await projectModelForCwd(await getDb(), cwd);
+  const thinkingLevel = typeof body.thinkingLevel === 'string' ? body.thinkingLevel : null;
+  const mode = harnessModeSelection(body);
+  const { session, realSessionId } = await startAcpSession({
+    harness,
+    sessionId: `__new__${Bun.randomUUIDv7()}`,
+    cwd,
+    model: model ?? projectModel ?? await loadPersistedModel(),
+    thinkingLevel,
+    mode,
+  });
+
+  if (type === 'ensure_session') {
+    return json({ success: true, sessionId: realSessionId, model: session.runModel, data: null, harness });
+  }
+  if (type === 'prompt') {
+    const ack = await session.send({
+      type: 'prompt',
+      message: typeof body.message === 'string' ? body.message : '',
+      ...(Array.isArray(body.images) && body.images.length > 0 ? { images: body.images } : {}),
+    });
+    return json({ success: true, sessionId: realSessionId, data: ack, harness });
+  }
+  return json({ error: `Unsupported command: ${type}` }, { status: 400 });
+}
+
+/** The ACP mode id a new chat asked for, when the composer sent one. */
+function harnessModeSelection(body: Record<string, unknown>): string | null {
+  const modes = asRecord(body.modes);
+  if (modes.plan === true) return 'plan';
+  return null;
 }

@@ -56,6 +56,9 @@ export function ChatInput({
   expandable = false,
   hero = false,
   shrinkWhileReading = false,
+  harness,
+  harnessEditable = true,
+  onSelectHarness,
 }: ChatInputProps) {
   // The Goal modal is owned here, not by the toolbar: the button is a toggle,
   // and the modal it opens needs the same `modes` slice the toolbar got.
@@ -299,6 +302,9 @@ export function ChatInput({
         currentThinking,
         onSelectThinking: selectThinking,
         onThinkingLevelChange,
+        ...(harness ? { harness } : {}),
+        harnessEditable,
+        ...(onSelectHarness ? { onSelectHarness } : {}),
         isGenerating,
         chatRunning,
         onStop,

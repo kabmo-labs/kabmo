@@ -29,6 +29,14 @@ export interface ComposerRefs {
   composerModelRef: { current: { provider: string; modelId: string; thinkingLevel: string } | null };
   /** A pick made mid-run, pushed right before the next prompt this composer starts. */
   deferredComposerPickRef: { current: ComposerModelPick | null };
+  /**
+   * Harness picked on a pending `new-…` chat.
+   *
+   * A ref for the same reason the model pick is one: the send path is built once
+   * per deps record, so a value read from render state there would dispatch with
+   * whatever it was when that closure was created.
+   */
+  pendingHarnessRef: { current: string | null };
 }
 
 export function useComposerRefs(sessionId: string | null): ComposerRefs {
@@ -36,6 +44,7 @@ export function useComposerRefs(sessionId: string | null): ComposerRefs {
   const pendingThinkingLevelRef = useRef<string | null>(null);
   const composerModelRef = useRef<{ provider: string; modelId: string; thinkingLevel: string } | null>(null);
   const deferredComposerPickRef = useRef<ComposerModelPick | null>(null);
+  const pendingHarnessRef = useRef<string | null>(null);
 
   // A stashed pick belongs to ONE session's next prompt: carrying it across a
   // switch would silently re-target the session the user just opened.
@@ -43,5 +52,11 @@ export function useComposerRefs(sessionId: string | null): ComposerRefs {
     deferredComposerPickRef.current = null;
   }, [sessionId]);
 
-  return { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef };
+  // A harness pick belongs to the chat being started: opening another session
+  // must not carry `claude` onto an omp conversation.
+  useEffect(() => {
+    pendingHarnessRef.current = null;
+  }, [sessionId]);
+
+  return { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef, pendingHarnessRef };
 }

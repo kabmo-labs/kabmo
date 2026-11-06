@@ -1,7 +1,7 @@
 import { json } from '@/server/lib/remix-compat';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@/server/lib/remix-compat';
 import { resolveSessionPathOr404 } from '@/server/lib/omp/session/locator';
-import { WebRpcError, getRpcSession, resolveSpawnCwd, startRpcSession, type AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
+import { WebRpcError, resolveSpawnCwd, startRpcSession, type AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
 import { getSpawnApprovalMode, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/session-registry';
 import { isApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { loadPersistedAccessMode } from '@/shared/lib/omp/config/access-mode.server';
@@ -13,6 +13,7 @@ import { isModeCommandType, modeCommandPrompt, parseModeRequest, parseModeSelect
 import { kabmoModeEnv } from '@/server/lib/omp/extensions/locator';
 import { resetGoalDriverState } from '@/server/lib/omp/session/goal-driver.server';
 import { forwardToPeer, isPeerRelayed, peerOriginForSession } from '@/server/lib/omp/rpc/peer-proxy.server';
+import { asOmpSession, getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 
 /** How long after an accepted Resume Kabmo nudges the loop. The
  *  extension answers the mode command first; this only coalesces the nudge
@@ -74,13 +75,21 @@ export async function sendCommand({ params, request }: ActionFunctionArgs) {
     // local extension command inside the child, never an RPC verb.
     const forwarded = modeRequest ? { type: 'prompt', message: modeCommandPrompt(modeRequest) } : body;
 
-    // Fast path: already-running session.
-    const existing = getRpcSession(sessionId);
+    // Fast path: already-running session — whichever harness runs it. An ACP
+    // session answers the same command vocabulary, so the transport is invisible
+    // to the client.
+    const existing = getLiveSession(sessionId);
     if (existing?.isAlive()) {
-      // A mid-conversation change is honoured by destroying the idle process so
-      // the spawn path below restarts it with the new --approval-mode flag.
-      const liveMode = explicitMode ?? getSpawnApprovalMode(existing);
-      if (!(await reconcileSpawnApprovalMode(existing, liveMode))) {
+      // The approval mode is a SPAWN flag (`--approval-mode`), so reconciling it
+      // means destroying an idle omp child and respawning. An ACP agent has no
+      // such flag — it gates through `session/request_permission` — so there is
+      // nothing to reconcile and the command goes straight through.
+      const ompSession = asOmpSession(existing);
+      const liveMode = explicitMode ?? (ompSession ? getSpawnApprovalMode(ompSession) : null);
+      const needsRespawn = Boolean(
+        ompSession && liveMode && (await reconcileSpawnApprovalMode(ompSession, liveMode)),
+      );
+      if (!needsRespawn) {
         const result = await existing.send(forwarded);
         // A Resume is the operator re-arming the loop: strike history from the
         // previous stop is not evidence about this run, and an idle session
@@ -184,8 +193,19 @@ export interface AgentSnapshot {
  * decides whether another instance owns it.
  */
 export async function buildAgentSnapshot(sessionId: string): Promise<AgentSnapshot> {
-  const session = getRpcSession(sessionId);
+  // Any harness: an ACP session answers `get_state` from its own config
+  // selectors (there is no RPC probe), so a reattaching tab sees one payload
+  // shape either way.
+  const session = getLiveSession(sessionId);
   if (!session || !session.isAlive()) return { running: false };
+  const omp = asOmpSession(session);
+  if (!omp) {
+    return {
+      running: true,
+      state: await session.send({ type: 'get_state' }),
+      pendingUiRequests: session.getPendingUiDialogs(),
+    };
+  }
 
   // A busy session answers from local flags: its `get_state` would queue behind
   // the running turn (omp runs RPC handlers one at a time), and a timeout there
@@ -197,9 +217,9 @@ export async function buildAgentSnapshot(sessionId: string): Promise<AgentSnapsh
   // chance to settle before they are trusted. A live run pays nothing —
   // `RunSettle` probes only after 30s of quiet and settles only on omp's own
   // `isSettled`.
-  if (session.isBusy()) {
-    await session.runSettle.reconcile('request');
-    if (session.isBusy()) return busySessionPayload(session) as AgentSnapshot;
+  if (omp.isBusy()) {
+    await omp.runSettle.reconcile('request');
+    if (omp.isBusy()) return busySessionPayload(omp) as AgentSnapshot;
   }
 
   try {
@@ -212,8 +232,9 @@ export async function buildAgentSnapshot(sessionId: string): Promise<AgentSnapsh
       state,
       pendingUiRequests: session.getPendingUiDialogs(),
       // The child's own goal state, read from the mirror so the composer's Goal
-      // toggle reflects the CHILD rather than the client's last request.
-      goal: { enabled: session.modeMirror.goalEnabled, status: session.modeMirror.goalStatus },
+      // toggle reflects the CHILD rather than the client's last request. Goal is
+      // a Kabmo extension inside the omp child, so another harness reports off.
+      goal: { enabled: omp.modeMirror.goalEnabled, status: omp.modeMirror.goalStatus },
     };
   } catch (error) {
     if (error instanceof WebRpcError && error.code === 'session_unresponsive') {
@@ -221,7 +242,7 @@ export async function buildAgentSnapshot(sessionId: string): Promise<AgentSnapsh
     }
     // A turn started between the check above and the RPC: report busy, not dead.
     if (error instanceof WebRpcError && error.code === 'session_busy') {
-      return busySessionPayload(session) as AgentSnapshot;
+      return busySessionPayload(omp) as AgentSnapshot;
     }
     throw error;
   }
@@ -232,7 +253,9 @@ export async function getAgentState({ params, request }: LoaderFunctionArgs) {
   const { sessionId } = params;
   if (!sessionId) return json({ error: 'session id is required' }, { status: 400 });
 
-  const session = getRpcSession(sessionId);
+  // Any harness: an ACP session has no `get_state` RPC, so its snapshot comes
+  // from the driver's own flags and config selectors.
+  const session = getLiveSession(sessionId);
   if (!session || !session.isAlive()) {
     // Another instance may be running it. Without this the client reads
     // `running: false`, never reattaches its stream, and shows a timeline that

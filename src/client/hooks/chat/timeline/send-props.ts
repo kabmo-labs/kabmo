@@ -45,6 +45,8 @@ export interface ChatTimelineSendDeps {
    *  applied to the spawn command so the first prompt runs with them. */
   pendingComposerModelRef: { current: { provider: string; modelId: string } | null };
   pendingThinkingLevelRef: { current: string | null };
+  /** Harness picked on the pending `new-…` chat; rides the spawn. */
+  pendingHarnessRef: { current: string | null };
   /** Global access-control mode (persisted user preference), read at send time
    *  so the spawn-capable requests carry the latest value. */
   accessModeRef: { current: ApprovalMode };

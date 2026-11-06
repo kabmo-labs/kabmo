@@ -25,6 +25,8 @@ interface ModelDropdownSectionProps {
   onCycleThinking: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
   /** Row index in the flat list; the panel resolves it to the row it renders. */
   onHoverItem: (index: number) => void;
+  /** Harness serving this section's rows — drawn before each provider plate. */
+  harnessOfModel?: string;
 }
 
 export function ModelDropdownSection({
@@ -42,6 +44,7 @@ export function ModelDropdownSection({
   onToggleFavorite,
   onCycleThinking,
   onHoverItem,
+  harnessOfModel,
 }: ModelDropdownSectionProps) {
   if (models.length === 0) return null;
 
@@ -116,6 +119,7 @@ export function ModelDropdownSection({
                 // two providers would render twice identically. A provider
                 // section already says the provider in its header.
                 showProvider={iconType !== 'provider' && ambiguousNames.has(normalizedModelName(m))}
+                {...(harnessOfModel ? { harness: harnessOfModel } : {})}
                 isSelected={selectedModelKey === modelKey(m)}
                 isFocused={focusedIndex === index}
                 onSelect={onSelect}

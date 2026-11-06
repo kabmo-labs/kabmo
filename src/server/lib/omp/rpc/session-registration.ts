@@ -16,6 +16,11 @@
  */
 
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
+import type { HarnessSession } from '@/server/lib/harness/session';
+
+/** Any session this registry can hold: the function only touches `sessionId` and
+ *  `onDestroy`, which both transports provide. */
+type RegistrableSession = AgentSessionWrapper | HarnessSession;
 
 /**
  * Register `created` under the id omp reported AND, when that differs, under the
@@ -41,8 +46,8 @@ import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
  * and it is removed with the wrapper, so a dead child can never answer for it.
  */
 export function registerSpawnedSession(
-  registry: Map<string, AgentSessionWrapper>,
-  created: AgentSessionWrapper,
+  registry: Map<string, RegistrableSession>,
+  created: RegistrableSession,
   requestedId: string,
   realSessionId: string,
 ): void {

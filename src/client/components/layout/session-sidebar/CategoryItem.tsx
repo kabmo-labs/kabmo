@@ -211,6 +211,7 @@ export function Category({
                 <SessionItem
                   sessionId={session.id}
                   title={session.title}
+                  harness={session.harness}
                   isActive={isActive && !isViewingSubagent}
                   isArchived={session.is_archived === 1}
                   status={sessionStatus[sessionKey]}

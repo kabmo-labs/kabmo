@@ -1,12 +1,20 @@
 import type { LucideIcon } from 'lucide-preact';
-import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Library, MessageSquare, Palette, Plug, Power, Puzzle, RefreshCw, Search, Sliders, Terminal, X } from 'lucide-preact';
+import { BarChart3, Bell, BookOpen, Bot, Boxes, Cloud, Coins, Cpu, FolderGit, Library, MessageSquare, Palette, Plug, Power, Puzzle, RefreshCw, Search, Sliders, Terminal, Waypoints, X } from 'lucide-preact';
+import { HarnessGlyph } from '@/client/components/common/harness-glyph';
 import type { SettingsCategoryId } from '@/shared/types';
+import { SETTINGS_SECTIONS, type SettingsSection } from '@/shared/lib/settings/sections';
+import { harnessMenuEntries } from '@/shared/lib/harness/menu';
 
 export interface CategoryDef {
   id: SettingsCategoryId;
   label: string;
   icon: LucideIcon;
-  section: 'KABMO' | 'WORKSPACE' | 'OMP' | 'LIBRARY';
+  section: SettingsSection;
+  /** The AGENT this entry is a page for, when it is one. Its row then draws the
+   *  vendor's own mark instead of a lucide shape — the sidebar is where a reader
+   *  identifies an agent by its logo everywhere else in the app, and a generic
+   *  `Waypoints` glyph beside "claude" is a shape nobody recognises. */
+  harness?: string;
   badge?: string;
   description: string;
 }
@@ -28,6 +36,19 @@ export const SETTINGS_CATEGORIES: CategoryDef[] = [
   { id: 'behavior', label: 'Behavior', icon: Sliders, section: 'OMP', description: 'Native AGENTS.md and RULES.md: global instructions, permission gates, and safety filters.' },
   { id: 'commands', label: 'Commands', icon: Terminal, section: 'OMP', description: 'Slash command macros and terminal shortcuts.' },
   { id: 'mcp', label: 'MCP', icon: Boxes, section: 'OMP', description: 'Model Context Protocol servers and dynamic tools.' },
+  // HARNESSES
+  // HARNESSES — one page per agent, derived from the catalog. `harnessMenuEntries`
+  // returns the overview first, then each non-built-in harness in catalog order.
+  ...harnessMenuEntries().map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    // The overview keeps a lucide glyph: it is not an agent, so a brand mark
+    // would claim it were one.
+    icon: Waypoints,
+    section: 'HARNESSES' as const,
+    ...(entry.harness ? { harness: entry.harness } : {}),
+    description: entry.description,
+  })),
   // LIBRARY
   { id: 'plugins', label: 'Plugins', icon: Plug, section: 'LIBRARY', description: 'Installed omp plugins, marketplaces, features, and plugin settings.' },
   { id: 'skills', label: 'Skills', icon: Library, section: 'LIBRARY', description: 'Manage downloaded skills and scripts.' },
@@ -65,7 +86,6 @@ export function SettingsSidebar({
       cat.description.toLowerCase().includes(q);
   });
 
-  const sections: Array<'KABMO' | 'WORKSPACE' | 'OMP' | 'LIBRARY'> = ['KABMO', 'WORKSPACE', 'OMP', 'LIBRARY'];
 
   return (
     <div className={`flex flex-col h-full bg-canvas border-r border-ink/10 text-ink select-none ${className}`}>
@@ -99,7 +119,7 @@ export function SettingsSidebar({
             No matching settings found
           </div>
         ) : (
-          sections.map(section => {
+          SETTINGS_SECTIONS.map(section => {
             const items = filteredCategories.filter(c => c.section === section);
             if (items.length === 0) return null;
 
@@ -124,7 +144,18 @@ export function SettingsSidebar({
                         }`}
                       >
                         <div className="flex items-center space-x-2.5 truncate">
-                          <Icon size={14} className={isActive ? 'text-ink' : 'text-ink/60'} />
+                          {/* The agent's own mark, at the size the lucide glyphs
+                              draw, so a mixed list keeps one rhythm. The slot is
+                              fixed width because the marks' viewBoxes differ
+                              (omp is 64x64, the rest 24x24) and a bare inline
+                              svg would shift every label beside it. */}
+                          {item.harness ? (
+                            <span className="flex w-[14px] shrink-0 items-center justify-center">
+                              <HarnessGlyph harness={item.harness} size={14} />
+                            </span>
+                          ) : (
+                            <Icon size={14} className={isActive ? 'text-ink' : 'text-ink/60'} />
+                          )}
                           <span className="truncate">{item.label}</span>
                         </div>
                         {item.badge && (

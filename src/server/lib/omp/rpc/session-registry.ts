@@ -24,17 +24,53 @@ import { claimPrewarmedSession } from '@/server/lib/omp/rpc/prewarm-pool';
 import { isUnrestorableModelFailure, resolveResumableModel } from '@/server/lib/omp/session/resumable-model.server';
 import { DEFAULT_APPROVAL_MODE, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import type { SelectedModel } from '@/shared/types/models';
+import { claimHarness, harnessOf } from '@/server/lib/harness/registry';
+import { saveHarnessSession } from '@/server/lib/harness/session-store.server';
+import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { HarnessSession } from '@/server/lib/harness/session';
+
+/**
+ * A session this process is running: omp over RPC, or any ACP agent.
+ *
+ * The union lives in the REGISTRY rather than behind two maps because every
+ * consumer asks the same questions — is it alive, is a run in flight, which
+ * dialogs are pending — and two registries would answer "is this session live"
+ * twice. Members that only omp has (`runSettle`, `modeMirror`, `reloadPlugins`)
+ * are reached through `asOmpSession`, which returns undefined for anything else
+ * so a missing panel is a stated gap rather than a crash.
+ */
+export type LiveSession = AgentSessionWrapper | HarnessSession;
+
+/**
+ * The omp view of a live session, or undefined when another harness owns it.
+ *
+ * Decided by the OWNERSHIP record, not by `instanceof` or by sniffing fields:
+ * a driver claims its sessions once at spawn (`claimHarness`), and everything
+ * that is not claimed is omp's — which is the truth for every session that
+ * predates harnesses, for a `bun --hot` reload, and for a test's own fake
+ * wrapper. Field sniffing classified those fakes as "another harness" and sent
+ * live omp chats down the harness-agnostic path.
+ */
+export function asOmpSession(session: LiveSession | undefined): AgentSessionWrapper | undefined {
+  if (!session) return undefined;
+  return harnessOf(session) === 'omp-rpc' ? (session as AgentSessionWrapper) : undefined;
+}
+
+/** Which harness runs a session. */
+export function harnessOfSession(session: LiveSession): HarnessId {
+  return harnessOf(session);
+}
 
 export { getSpawnApprovalMode, getSpawnModeEnv, reconcileSpawnApprovalMode } from '@/server/lib/omp/rpc/spawn-provenance';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __ompSessions: Map<string, AgentSessionWrapper> | undefined;
+  var __ompSessions: Map<string, LiveSession> | undefined;
   // eslint-disable-next-line no-var
   var __ompStartLocks: Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> | undefined;
 }
 
-function getRegistry(): Map<string, AgentSessionWrapper> {
+function getRegistry(): Map<string, LiveSession> {
   if (!globalThis.__ompSessions) {
     globalThis.__ompSessions = new Map();
     const cleanup = () => globalThis.__ompSessions?.forEach((s) => s.destroy());
@@ -50,13 +86,31 @@ function getLocks(): Map<string, Promise<{ session: AgentSessionWrapper; realSes
   return globalThis.__ompStartLocks;
 }
 
+/** The OMP view of a session, or undefined when another harness owns it.
+ *
+ *  Kept as the narrow accessor on purpose: fourteen call sites read omp-only
+ *  members (`runSettle`, `modeMirror`, `reloadPlugins`, the spawn flags), and
+ *  widening this would make each of them answer a question about a driver it
+ *  does not have. `getLiveSession` is the harness-agnostic lookup. */
 export function getRpcSession(sessionId: string): AgentSessionWrapper | undefined {
+  return asOmpSession(getRegistry().get(sessionId));
+}
+
+/** Any live session, whichever harness runs it. */
+export function getLiveSession(sessionId: string): LiveSession | undefined {
   return getRegistry().get(sessionId);
 }
 
-/** Every live session wrapper, for operations that must reach all of them
- *  (a plugin/skill reload) rather than one addressed id. */
+/** Every live OMP session. */
 export function listRpcSessions(): AgentSessionWrapper[] {
+  return [...getRegistry().values()]
+    .map((session) => asOmpSession(session))
+    .filter((session): session is AgentSessionWrapper => Boolean(session?.isAlive()));
+}
+
+/** Every live session, any harness — for operations that must reach all of them
+ *  (a plugin/skill reload, a sidebar status sweep) rather than one addressed id. */
+export function listLiveSessions(): LiveSession[] {
   return [...getRegistry().values()].filter((session) => session.isAlive());
 }
 
@@ -119,7 +173,10 @@ export async function startRpcSession(
   const registry = getRegistry();
   const locks = getLocks();
 
-  const existing = registry.get(sessionId);
+  // This function only ever SPAWNS omp sessions, so a live session under the
+  // same id that belongs to another harness is a collision the caller must
+  // resolve — adopting it here would hand back the wrong transport.
+  const existing = asOmpSession(registry.get(sessionId));
   if (existing?.isAlive()) {
     // The child's OWN id, not the one asked for: after a forked resume the two
     // differ, and `realSessionId` means the former. Callers that persist it (the
@@ -201,6 +258,18 @@ async function spawnOnce(
 
   const realSessionId = created.sessionId;
   registerSpawnedSession(registry, created, sessionId, realSessionId);
+  claimHarness(created, 'omp-rpc');
+  // Persist the ownership too, so the sidebar's mark does not depend on the
+  // fallback: a row is only `omp` by DEFAULT because nothing wrote the row, and
+  // a default is a guess where a record is a fact.
+  void saveHarnessSession({
+    sessionId: realSessionId,
+    harness: 'omp-rpc',
+    agentSessionId: '',
+    cwd,
+  }).catch((cause: unknown) => {
+    console.error(`[harness] could not record omp-rpc for session ${realSessionId}:`, cause);
+  });
   // A session's cwd may sit outside every registered workspace, and omp
   // resolves project skills from it all the same — so the discovery watcher
   // has to learn this directory. AWAITED, not fired and forgotten: the

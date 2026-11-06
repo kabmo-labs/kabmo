@@ -30,7 +30,7 @@ import {
   fetchPeerSessionSnapshot,
   peerOriginForSession,
 } from '@/server/lib/omp/rpc/peer-proxy.server';
-import { getRpcSession } from '@/server/lib/omp/rpc/manager';
+import { getLiveSession } from '@/server/lib/omp/rpc/session-registry';
 import { attachPeerSession } from '@/server/lib/realtime/topics/peer-relay.server';
 import { isRecord } from '@/shared/lib/util/guards';
 
@@ -91,7 +91,7 @@ function relayOwnerStream(sessionId: string, isCancelled: () => boolean): () => 
 export function sessionDescriptor(sessionId: string): TopicDescriptor {
   return {
     resolve: async (): Promise<AgentSnapshot> => {
-      const session = getRpcSession(sessionId);
+      const session = getLiveSession(sessionId);
       if (session?.isAlive()) return buildAgentSnapshot(sessionId);
       // Not ours: answer with the OWNER's payload, the way the HTTP route does.
       // A session that is free (no owner) keeps the local answer.
@@ -102,7 +102,7 @@ export function sessionDescriptor(sessionId: string): TopicDescriptor {
     },
 
     attach: () => {
-      const session = getRpcSession(sessionId);
+      const session = getLiveSession(sessionId);
       if (session?.isAlive()) {
         return session.onEvent((event) => {
           getRealtimeHub().publish(sessionTopic(sessionId), event);

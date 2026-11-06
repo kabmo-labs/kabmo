@@ -53,6 +53,10 @@ export interface ComposerToolbarProps {
   onVoiceToggle?: () => void;
   /** The draft, handed to a plugin `composerAction` at render time. */
   text?: string;
+  /** Which harness runs this chat, and whether the tab strip may change it. */
+  harness?: string;
+  harnessEditable?: boolean;
+  onSelectHarness?: (harness: string) => void;
 }
 
 /**
@@ -121,6 +125,9 @@ export function ComposerToolbar({
   voiceBusy,
   onVoiceToggle,
   text = '',
+  harness,
+  harnessEditable = true,
+  onSelectHarness,
 }: ComposerToolbarProps) {
   const chatInFlight = chatRunning ?? isGenerating;
   const showStop = chatInFlight && (isMobile ? Boolean(onStop) : true);
@@ -148,6 +155,10 @@ export function ComposerToolbar({
             selectedModel={selectedModel ?? undefined}
             onSelectModel={onSelectModel}
             onThinkingLevelChange={onThinkingLevelChange}
+            harness={harness}
+            harnessEditable={harnessEditable}
+            onSelectHarness={onSelectHarness}
+            isMobile={isMobile}
             className="min-w-0"
           />
         )}

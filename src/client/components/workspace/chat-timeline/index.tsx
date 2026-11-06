@@ -23,6 +23,7 @@ import { usePendingProjectModel } from '@/client/hooks/chat/timeline/pending-mod
 import { useNewChatOpen } from '@/client/hooks/chat/timeline/new-chat-open';
 import { useSidebarData } from '@/client/hooks/chat/omp/session-list';
 import { useHeldWait } from '@/client/hooks/chat/waiting/held';
+import { useSessionHarness } from '@/client/hooks/chat/timeline/session-harness';
 
 interface ChatTimelineProps {
   className?: string;
@@ -91,15 +92,14 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
     respondToExtensionUi,
     spawnTarget,
     setSpawnTarget,
+    pendingHarnessRef,
   } = useChatTimeline({ folders, streamStatusMap, appSettings, reportActionError: pushToast });
 
-  // Ask dialogs render on their own tool card; anything else omp is blocked on
-  // (an approval gate, an extension picker) has no card and keeps the modal.
-  // The modal also waits for the session's committed history: a dialog replayed
-  // on open (the agent probe answers from local flags, long before the JSONL
-  // fetch lands) has no card to be matched against yet, so deciding "no card
-  // owns this" during that window painted the ask modal and then took it back —
-  // the flash on switching to a session parked on a question.
+  const activeHarness = useSessionHarness(folders, sessionId, localMessages.length, pendingHarnessRef);
+  // Ask dialogs render on their own tool card; anything else the agent is
+  // blocked on (an approval gate, an extension picker) has no card and keeps
+  // the modal. It also waits for committed history: a replayed dialog has no
+  // card to match yet, and deciding early flashed the modal and withdrew it.
   const { framesByTool, orphanAsks, modalRequest } = useMemo(
     () => splitAskFrames(localMessages, extensionDialogs, !sessionLoading),
     [localMessages, extensionDialogs, sessionLoading],
@@ -150,12 +150,11 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
   const handleNewChat = newChat.open;
 
   const modelNames = useModelNames();
-  const providerNames = useProviderNames();
   const { sessionProvider, sessionModelName } = useRunIdentity({ folders, sessionId, sessionData, modelNames });
+  const providerNames = useProviderNames();
 
-  // A pending "new-…" session has no messages yet, so the workspace picker
-  // must stay available until the first chat is sent (which spawns the real
-  // omp session). Never lock the user into a folder before sending.
+  // A pending "new-…" chat has no messages yet, so the workspace picker stays
+  // available until the first send spawns the real session.
   const isPendingSession = Boolean(sessionId?.startsWith('new-'));
 
   const { heldWait, cancelHeldWait } = useHeldWait(sessionId, isPendingSession, pushToast);
@@ -304,6 +303,9 @@ export function ChatTimeline({ className = '', appSettings = {}, onSessionTitle,
                 deferredComposerPickRef={deferredComposerPickRef}
                 sessionModel={typeof sessionData?.model === 'object' ? sessionData.model : null}
                 sessionThinkingLevel={sessionData?.thinkingLevel}
+                {...(activeHarness.harness ? { harness: activeHarness.harness } : {})}
+                harnessEditable={activeHarness.editable}
+                onSelectHarness={activeHarness.pick}
                 variant={variant}
                 // The same scroll geometry that draws the scroll-to-bottom
                 // button, with hysteresis: the reader is back through the

@@ -83,6 +83,10 @@ export interface ComposerRowsInput {
   voiceListening?: boolean;
   voiceBusy?: boolean;
   onVoiceToggle?: () => void;
+  /** Which harness runs this chat, and whether the tab strip may change it. */
+  harness?: string;
+  harnessEditable?: boolean;
+  onSelectHarness?: (harness: string) => void;
 }
 
 export function composerRows({
@@ -172,6 +176,9 @@ export function composerRows({
         voiceBusy={input.voiceBusy}
         onVoiceToggle={input.onVoiceToggle}
         text={input.value}
+        harness={input.harness}
+        harnessEditable={input.harnessEditable}
+        onSelectHarness={input.onSelectHarness}
       />
     ),
   };

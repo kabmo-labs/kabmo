@@ -34,6 +34,19 @@ export interface ChatInputProps {
   onAttachmentsChange?: (attachments: SetStateAction<Attachment[]>) => void;
   onThinkingLevelChange?: (level: string) => void;
   onModelChange?: (provider: string, modelId: string) => void;
+  /**
+   * Which harness runs this chat. Absent on a chat that has not spawned, where
+   * the picker shows the user's last choice.
+   */
+  harness?: string;
+  /**
+   * False while the open chat has a transcript. Harness is decided at SPAWN, so
+   * the tab strip explains instead of switching the transport under a running
+   * conversation.
+   */
+  harnessEditable?: boolean;
+  /** Picked a harness for a chat with no transcript yet. */
+  onSelectHarness?: (harness: string) => void;
   /** Model last used by the active session (omp `model_change` entry). */
   sessionModel?: { provider: string; modelId: string } | null;
   /** Thinking level last used by the active session (omp `thinking_level_change` entry). */

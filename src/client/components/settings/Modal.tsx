@@ -12,6 +12,7 @@ import { useKabmoEvent } from '@/client/hooks/ui/window-event';
 import { useToasts } from '@/client/hooks/ui/toasts';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { SETTINGS_CATEGORIES, SettingsSidebar } from '@/client/components/settings/Sidebar';
+import { harnessIdFromCategory } from '@/shared/lib/harness/menu';
 import { AppearanceSettings } from '@/client/components/settings/categories/AppearanceSettings';
 import { ChatSettings } from '@/client/components/settings/categories/ChatSettings';
 import { ProjectSettings } from '@/client/components/settings/categories/ProjectSettings';
@@ -20,6 +21,7 @@ import { AgentSettings } from '@/client/components/settings/categories/AgentSett
 import { BehaviorSettings } from '@/client/components/settings/categories/BehaviorSettings';
 import { CommandSettings } from '@/client/components/settings/categories/CommandSettings';
 import { McpSettings } from '@/client/components/settings/categories/McpSettings';
+import { HarnessSettings } from '@/client/components/settings/categories/HarnessSettings';
 import { SkillSettings } from '@/client/components/settings/categories/SkillSettings';
 import { PluginSettings } from '@/client/components/settings/categories/PluginSettings';
 import { PanelPluginSettings } from '@/client/components/settings/categories/PanelPluginSettings';
@@ -152,6 +154,8 @@ export function SettingsModal({
         );
       case 'agents':
         return <AgentSettings settings={settings} onUpdate={handleUpdateSettings} />;
+      case 'harness-index':
+        return <HarnessSettings />;
       case 'behavior':
         return <BehaviorSettings />;
       case 'commands':
@@ -183,8 +187,14 @@ export function SettingsModal({
         return <OmpSettings settings={settings} onUpdate={handleUpdateSettings} />;
       case 'usage':
         return <UsageSettings />;
-      default:
+      default: {
+        // A single harness page: its own card, verbatim — the same component the
+        // overview draws, because a second renderer for one agent is how the two
+        // views start disagreeing about what it can do.
+        const harnessId = harnessIdFromCategory(activeCategory);
+        if (harnessId) return <HarnessSettings only={harnessId} />;
         return <OtherSettings category={activeCategory} />;
+      }
     }
   };
 

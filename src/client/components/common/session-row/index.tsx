@@ -49,6 +49,7 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { StatusSlot } from '@/client/components/common/session-row/StatusSlot';
+import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { TrailingSlot } from '@/client/components/common/session-row/TrailingSlot';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
@@ -58,6 +59,9 @@ export type SessionRowDensity = 'compact' | 'touch';
 export interface SessionRowProps {
   sessionId: string | number;
   title: string;
+  /** Harness that ran this session (`omp-rpc`, `claude`, …). Absent draws no
+   *  glyph, so a pre-harness row keeps its old alignment. */
+  harness?: string;
   isActive?: boolean;
   isArchived?: boolean;
   status?: 'stream' | 'finish' | 'abort';
@@ -85,6 +89,7 @@ export interface SessionRowProps {
 export function SessionRow({
   sessionId,
   title,
+  harness,
   isActive = false,
   isArchived = false,
   status,
@@ -180,8 +185,20 @@ export function SessionRow({
           touch={touch}
         />
 
+        {/* The harness mark sits BETWEEN the leading slot and the name — the
+            same order and size as the classic row (`SessionItem`): the leading
+            slot owns the run cue, the mark answers "which agent wrote this?",
+            and the name follows. Gated at the call site, because `HarnessGlyph`
+            returns null and would leave its 6px gap behind on a row that has no
+            harness (pre-harness and MOCK rows). */}
+        {harness && (
+          <span className="mr-1.5 flex shrink-0 items-center">
+            <HarnessGlyph harness={harness} size={touch ? HARNESS_GLYPH_SIZE.touch : HARNESS_GLYPH_SIZE.compact} />
+          </span>
+        )}
+
         <span className={`flex min-w-0 flex-1 flex-col leading-snug ${isArchived ? 'text-ink/45' : ''}`}>
-          <span className="truncate">{displayTitle}</span>
+          <span className="min-w-0 truncate">{displayTitle}</span>
           {waiting && (
             <span className="truncate text-[10px] font-normal text-ink/40">
               waiting for {waitingFor?.title ?? 'another session'}

@@ -157,6 +157,7 @@ Plus, before declaring anything done:
 | [Desktop integration](https://github.com/kabmo-labs/kabmo/wiki/Desktop-Integration) | tray, login entry, OS document handling |
 | [Workspace panels](https://github.com/kabmo-labs/kabmo/wiki/Workspace-Panels) | repo scope, source control, worktrees, search, the panel kit |
 | [Providers](https://github.com/kabmo-labs/kabmo/wiki/Providers) | provider settings, models, dialects, usage, marks |
+| [Harnesses](https://github.com/kabmo-labs/kabmo/wiki/Harnesses) | the agent behind a chat: ACP vs RPC, the model-dropdown tab, the sidebar mark, probed capabilities |
 | [Tool panels](https://github.com/kabmo-labs/kabmo/wiki/Tool-Panels) | command runner, ask dialog, approval gate, todo, wiki |
 | [Build, test and release internals](https://github.com/kabmo-labs/kabmo/wiki/Build-Test-and-Release) | dev loop, assets, fonts, E2E layer, route contract |
 | [Releases and workflows](https://github.com/kabmo-labs/kabmo/wiki/Releases-and-Workflows) | commits, changelog, package and shell releases, the bot |

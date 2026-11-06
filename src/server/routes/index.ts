@@ -27,6 +27,7 @@ import { reviewBindings } from '@/server/routes/review/bindings';
 import { panelsBindings } from '@/server/routes/panels/bindings';
 import { pluginsBindings } from '@/server/routes/plugins/bindings';
 import { realtimeWsRoutes } from '@/server/routes/realtime/ws';
+import { harnessBindings } from '@/server/routes/harness';
 import { healthBindings } from '@/server/routes/health';
 import { wellKnownBindings } from '@/server/routes/well-known';
 
@@ -36,6 +37,7 @@ const allBindings: HandlerBinding[] = [
   // @deprecated pre-rename path; same handlers, kept for an old page.
   ...chamberBindings,
   ...agentBindings,
+  ...harnessBindings,
   ...btwBindings,
   ...chatBindings,
   ...sessionsBindings,

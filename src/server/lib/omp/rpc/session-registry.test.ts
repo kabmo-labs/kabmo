@@ -31,6 +31,7 @@ import {
   getRpcSession,
   listRpcSessions,
   startNewRpcSession,
+  type LiveSession,
 } from '@/server/lib/omp/rpc/session-registry';
 import { stopDiscoveryRootsWatch } from '@/server/lib/omp/config/roots-watch.server';
 import type { AgentSessionWrapper } from '@/server/lib/omp/rpc/manager';
@@ -115,7 +116,7 @@ afterEach(() => {
   removeDir(root);
 });
 
-function registry(): Map<string, AgentSessionWrapper> {
+function registry(): Map<string, LiveSession> {
   globalThis.__ompSessions ??= new Map();
   return globalThis.__ompSessions;
 }

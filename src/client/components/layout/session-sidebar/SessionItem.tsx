@@ -4,6 +4,7 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
+import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 
@@ -11,6 +12,9 @@ export interface SessionItemProps {
   /** The session this row draws; the key its in-flight rename is tracked under. */
   sessionId: string | number;
   title: string;
+  /** Harness that ran this session (`omp-rpc`, `claude`, …). Absent draws no
+   *  badge — see `SessionItemData.harness`. */
+  harness?: string;
   isActive?: boolean;
   isArchived?: boolean;
   status?: 'stream' | 'finish' | 'abort';
@@ -55,6 +59,7 @@ export interface SessionItemProps {
 export function SessionItem({
   sessionId,
   title,
+  harness,
   isActive = false,
   isArchived = false,
   status,
@@ -208,6 +213,18 @@ export function SessionItem({
           </>
         )}
 
+        {/* The harness mark sits BETWEEN the leading slot and the name.
+            The slot already owns one glyph (run cue / chevron); this is the
+            second, and it answers a different question — which agent wrote
+            this? — so it leads the title rather than being pushed into it.
+            A row with no harness renders nothing, so pre-harness and MOCK rows
+            keep their old alignment. */}
+        {harness && (
+          <span className="mr-1.5 flex shrink-0 items-center">
+            <HarnessGlyph harness={harness} size={HARNESS_GLYPH_SIZE.compact} />
+          </span>
+        )}
+
         {/* Session Title - aligned straight with Folder Name */}
         {isEditing ? (
           <input
@@ -222,7 +239,7 @@ export function SessionItem({
           />
         ) : (
           <span className="flex-1 min-w-0 flex flex-col leading-snug">
-            <span className="truncate">
+            <span className="min-w-0 truncate">
               {title.charAt(0).toUpperCase() + title.slice(1)}
             </span>
             {/* One muted line under the title: the row is a real chat, and this

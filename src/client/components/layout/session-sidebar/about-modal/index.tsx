@@ -9,6 +9,9 @@ import { SocialLinks } from '@/client/components/layout/session-sidebar/about-mo
 import { UpdateSection } from '@/client/components/layout/session-sidebar/about-modal/UpdateSection';
 import { VersionLine } from '@/client/components/layout/session-sidebar/about-modal/VersionLine';
 import { useKabmoEvent } from '@/client/hooks/ui/window-event';
+import { useHarnesses } from '@/client/hooks/models/use-harnesses';
+import { HarnessTable, harnessCategoryFor } from '@/client/components/layout/session-sidebar/about-modal/HarnessTable';
+import { useHarnessVersions } from '@/client/hooks/models/use-harness-versions';
 import { useDialogBehaviour } from '@/client/hooks/ui/dialog-behaviour';
 import { UPDATE_POPUP_OPEN_EVENT } from '@/shared/lib/updates/popup-state';
 import type { UpdateTarget } from '@/shared/types/updates';
@@ -29,6 +32,43 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // `aria-modal`, and Escape did nothing while focus sat inside it.
   const panelRef = useRef<HTMLDivElement | null>(null);
   useDialogBehaviour(panelRef, { open: isOpen, onClose });
+  // The SAME shared store the composer's tab strip and Settings read, so a probe
+  // made in either appears here without a reload.
+  const { harnesses, isLoading: harnessesLoading } = useHarnesses();
+  const versions = useHarnessVersions();
+  // Which harness is mid-update. ONE row says so, so a second row cannot be
+  // started by accident and the reader can still read the rest of the card.
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  /** Run one harness's update and report the refusal, if there is one. */
+  const updateHarness = async (id: string): Promise<string | null> => {
+    setUpdating(id);
+    try {
+      const response = await fetch('/api/harness/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ harness: id }),
+      });
+      const payload = (await response.json()) as { message?: string; error?: string; output?: string };
+      if (!response.ok) {
+        return payload.error ?? `Update failed (HTTP ${response.status})`;
+      }
+      // The version the agent reports only changes after a restart, so the row is
+      // refreshed rather than optimistic: it will read the OLD number until the
+      // agent is probed again, and saying otherwise would be a claim Kabmo cannot
+      // stand behind.
+      // `refresh`, not `reload(false)`: the rows must be re-read, but forcing a
+      // registry request per npm harness after every update is a cost with no
+      // answer — the number this update just installed IS the latest one.
+      versions.refresh();
+      onToast?.(payload.message ?? 'Update finished', 'success');
+      return null;
+    } catch (cause) {
+      return cause instanceof Error ? cause.message : 'Update failed';
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   // "What's new" opens the popup, which draws at a higher layer: leaving this
   // dialog mounted would stack two modals over the same subject, and its
@@ -49,8 +89,15 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
   // closed, and was invisible.
   return createPortal(
     <>
+      {/* PHONE: the whole screen, one column, and it scrolls. DESKTOP: a wide
+          two-column card sized to its CONTENT, so nothing scrolls at all.
+
+          The two are one dialog with two frames, chosen by `md`: a 390px phone has
+          no room for a table beside a sidebar, and a desktop card that needs a
+          scrollbar to show fourteen rows is hiding information it has the space
+          to show. */}
       <div
-        className="fixed inset-0 modal-scrim backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 modal-scrim z-50 flex items-stretch justify-center p-0 md:items-center md:backdrop-blur-[2px] md:p-6 animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
@@ -59,53 +106,91 @@ export function AboutModal({ isOpen, onClose, updates, onToast }: AboutModalProp
           aria-modal="true"
           aria-label="About Kabmo"
           tabIndex={-1}
-          className="glass-overlay relative bg-paper border border-ink/15 rounded-2xl shadow-2xl w-full max-w-[340px] p-6 text-center text-ink select-none"
+          // A FIXED desktop width, not `w-auto`: the card is sized by its content
+          // when auto, so narrowing any one column shrank the whole dialog
+          // (measured when the action column went to an icon). 880px is what the
+          // two-column table needs with room for the widest agent name.
+          className="glass-overlay relative flex h-full w-full flex-col overflow-hidden border-ink/15 bg-paper text-ink md:h-auto md:max-h-[92vh] md:w-[880px] md:max-w-[calc(100vw-3rem)] md:rounded-2xl md:border md:shadow-2xl select-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-ink/40 hover:text-ink transition-colors p-1 rounded-md"
+            className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink md:right-4 md:top-4"
             aria-label="Close"
           >
             <X size={18} className="stroke-[2.5]" />
           </button>
 
-          {/* Brand mark */}
-          <div className="flex justify-center pt-2 pb-1">
-            <img src="/icon.svg" alt="Kabmo" width={96} height={96} draggable={false} />
+          {/* ONE scroller, on the phone only. On a desktop the card sizes itself
+              to the content instead of asking the reader to scroll a dialog. */}
+          <div className="scrollbar-overlay-container flex-1 overflow-y-auto p-5 md:flex-none md:overflow-visible md:p-6">
+            <header className="flex items-center gap-3 pr-10">
+              <img src="/icon.svg" alt="Kabmo" width={44} height={44} draggable={false} />
+              <div className="min-w-0">
+                <h2 className="flex items-center text-lg font-bold tracking-tight">
+                  <BrandWordmark className="text-lg" />
+                </h2>
+                {/* Version lines: each circle-i opens the release notes for the
+                    version that is RUNNING; the updates section answers what an
+                    update would install. */}
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11px] text-ink/55">
+                  <VersionLine
+                    label={`Kabmo v${packageJson.version}`}
+                    notesLabel="What's new in Kabmo"
+                    onNotes={() => setNotesTarget('kabmo')}
+                  />
+                  <VersionLine
+                    label={`Oh-My-Pi ${updates.info?.omp.current ?? '…'}`}
+                    notesLabel="What's new in Oh-My-Pi"
+                    onNotes={() => setNotesTarget('omp')}
+                  />
+                </div>
+              </div>
+            </header>
+
+            {/* The AGENTS own the card's width in a two-column list; the update
+                controls and links sit in ONE merged strip under them. A rail
+                beside the table was tried and measured: it squeezed each row's
+                three cells into 280px while the rail held two short blocks, so
+                the content paid for the sidebar. */}
+            <div className="mt-5">
+              <HarnessTable
+                harnesses={harnesses}
+                versions={versions.rows}
+                loading={harnessesLoading}
+                onUpdate={updateHarness}
+                updating={updating}
+                onOpenHarness={(id) => {
+                  onClose();
+                  // The settings modal is the frame that owns harness pages; the
+                  // dispatcher is its opener, so About does not need a reference
+                  // to it (and cannot hold a stale one).
+                  window.dispatchEvent(new CustomEvent('omp:open-settings', {
+                    detail: { category: harnessCategoryFor(id) },
+                  }));
+                }}
+              />
+            </div>
+
+            {/* ONE stacked strip, as it has always been: the Kabmo-side update
+                controls, then the project's links directly UNDER them. Side by
+                side was tried and is wrong — the two are different subjects, and
+                a reader who wants "check for updates" should not have to decide
+                which column it lives in. */}
+            {/* No `border-t` here: `UpdateSection` already draws `border-y`, and
+                two rules 16px apart read as a mistake. */}
+            <div className="mt-5">
+              <UpdateSection updates={updates} onToast={onToast} />
+              <SocialLinks />
+            </div>
+
+            {/* Footer */}
+            <p className="mt-6 flex items-center justify-center gap-1.5 border-t border-ink/10 pt-3 text-[11px] font-normal text-ink/50">
+              <Heart size={12} className="shrink-0 fill-current text-error" aria-hidden="true" />
+              Made with love for the community
+            </p>
           </div>
-
-          {/* Title */}
-          <h2 className="text-xl font-bold tracking-tight mt-3 flex items-center justify-center">
-            <BrandWordmark className="text-2xl" />
-          </h2>
-
-          {/* App & Agent Versions. Each line's circle-i opens the release notes
-              for the version that is RUNNING; the updates section below answers
-              the other question — what an update would install. */}
-          <div className="text-xs text-ink/60 space-y-1 mt-1.5 font-mono">
-            <VersionLine
-              label={`Kabmo v${packageJson.version}`}
-              notesLabel="What's new in Kabmo"
-              onNotes={() => setNotesTarget('kabmo')}
-            />
-            <VersionLine
-              label={`Oh-My-Pi ${updates.info?.omp.current ?? '…'}`}
-              notesLabel="What's new in Oh-My-Pi"
-              onNotes={() => setNotesTarget('omp')}
-            />
-          </div>
-
-          <UpdateSection updates={updates} onToast={onToast} />
-
-          <SocialLinks />
-
-          {/* Footer */}
-          <p className="text-[11px] text-ink/50 font-normal mt-8 flex items-center justify-center gap-1.5">
-            <Heart size={12} className="fill-current text-error shrink-0" aria-hidden="true" />
-            Made with love for the community
-          </p>
         </div>
       </div>
       {/* Sibling of the About backdrop, not a child: an event inside the portal

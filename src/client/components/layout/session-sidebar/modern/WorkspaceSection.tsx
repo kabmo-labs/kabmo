@@ -237,6 +237,7 @@ export function WorkspaceSection({
                 <SessionRow
                   sessionId={session.id}
                   title={session.title}
+                  harness={session.harness}
                   density={density}
                   isActive={isActive && !viewingSubagent}
                   isArchived={session.is_archived === 1}

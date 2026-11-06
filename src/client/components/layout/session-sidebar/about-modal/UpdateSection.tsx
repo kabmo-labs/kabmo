@@ -76,9 +76,11 @@ export function UpdateSection({ updates, onToast }: UpdateSectionProps) {
   const showResult = Boolean(updates.info && !updates.checking && !updates.error);
 
   return (
-    <section className="mt-5 border-y border-ink/10 py-3 text-left" aria-labelledby="updates-heading">
+    <section className="border-y border-ink/10 py-3 text-left" aria-labelledby="updates-heading">
       <div className="flex items-center justify-between gap-3">
-        <h3 id="updates-heading" className="text-xs font-semibold text-ink">Updates</h3>
+        {/* Same heading treatment as the Agents pane, so the two columns read as
+            one card rather than a header beside a paragraph. */}
+        <h3 id="updates-heading" className="text-[10px] font-semibold uppercase tracking-wider text-ink/45">Updates</h3>
         {updates.info && <span className="font-mono text-[10px] text-ink/40">checked</span>}
       </div>
 

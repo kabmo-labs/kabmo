@@ -27,6 +27,7 @@ export * from '@/shared/types/omp/subagent';
 export * from '@/shared/types/browser';
 export * from '@/shared/types/updates';
 export * from '@/shared/types/todo';
+export * from '@/shared/types/harness';
 export * from '@/shared/types/plan';
 export * from '@/shared/types/wiki';
 export * from '@/shared/types/panels';

@@ -142,6 +142,7 @@ export function useOmpPromptSender(deps: OmpPromptSenderDeps): OmpPromptSender {
           // Plan/goal picks from the pending view. Omitted when the user made
           // none, so a spawn with no selection behaves exactly as before.
           ...(composerOptions?.modes ? { modes: composerOptions.modes } : {}),
+          ...(composerOptions?.harness ? { harness: composerOptions.harness } : {}),
         }),
       });
       const createdBody = (await created.json().catch(() => ({}))) as {

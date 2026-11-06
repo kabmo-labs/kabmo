@@ -64,6 +64,12 @@ interface ComposerDockProps {
    * only ever changes the card's frame — never which controls exist.
    */
   hero?: boolean;
+  /** Which harness runs this chat. Absent before the first spawn. */
+  harness?: string;
+  /** False once the chat has a transcript: the harness tab strip explains that
+   *  switching needs a new chat rather than changing the transport silently. */
+  harnessEditable?: boolean;
+  onSelectHarness?: (harness: string) => void;
 }
 
 /**
@@ -105,6 +111,9 @@ export function ComposerDock({
   variant,
   shrinkWhileReading = false,
   hero = false,
+  harness,
+  harnessEditable = true,
+  onSelectHarness,
 }: ComposerDockProps) {
   // Side questions take over the composer entirely: the chat's own input is
   // hidden while the form is open, so a stray Enter cannot send to the wrong
@@ -171,6 +180,9 @@ export function ComposerDock({
             deferredComposerPickRef={deferredComposerPickRef}
             sessionModel={sessionModel}
             sessionThinkingLevel={sessionThinkingLevel}
+            harness={harness}
+            harnessEditable={harnessEditable}
+            onSelectHarness={onSelectHarness}
             variant={variant}
             expandable
             hero={hero}

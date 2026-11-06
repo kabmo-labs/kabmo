@@ -4,10 +4,14 @@ import { useInlineRename } from '@/client/hooks/ui/inline-rename';
 import { useSessionRenaming } from '@/client/hooks/workspace/renaming-sessions';
 import { SessionActionsMenu, useRowMenu } from '@/client/components/common/session-actions-menu';
 import { SelectionCheckbox } from '@/client/components/common/batch-selection/SelectionCheckbox';
+import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 import { WorktreeBadge } from '@/client/components/layout/session-sidebar/WorktreeBadge';
 
 export interface MobileSessionRowProps {
   session: SessionItemData;
+  /** Harness that ran this session (`omp-rpc`, `claude`, …). Absent draws no
+   *  glyph, so a pre-harness row keeps its old alignment. */
+  harness?: string;
   isActive: boolean;
   status?: 'stream' | 'finish' | 'abort';
   /** The session's agent is blocked on a question until the user answers it. */
@@ -41,6 +45,7 @@ export interface MobileSessionRowProps {
 
 export function MobileSessionRow({
   session,
+  harness,
   isActive,
   status,
   awaitingInput = false,
@@ -170,7 +175,18 @@ export function MobileSessionRow({
             </span>
             )}
             <span className="flex flex-col min-w-0 ml-2 leading-snug">
-              <span className="text-xs truncate">{title}</span>
+              {/* Same rule as both desktop rows: the mark sits between the
+                  leading slot and the name, at the touch size. Gated at the call
+                  site so a row with no harness draws nothing at all — not even
+                  the gap `HarnessGlyph`'s wrapper would leave behind. */}
+              <span className="flex min-w-0 items-center">
+                {harness && (
+                  <span className="mr-1.5 flex shrink-0 items-center">
+                    <HarnessGlyph harness={harness} size={HARNESS_GLYPH_SIZE.touch} />
+                  </span>
+                )}
+                <span className="min-w-0 truncate text-xs">{title}</span>
+              </span>
               {waiting && (
                 <span className="text-[10px] text-ink/40 truncate">
                   waiting for {waitingFor?.title ?? 'another session'}

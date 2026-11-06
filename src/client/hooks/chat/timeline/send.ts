@@ -47,6 +47,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
     seedSession,
     pendingComposerModelRef,
     pendingThinkingLevelRef,
+    pendingHarnessRef,
     deferredComposerPickRef,
     accessModeRef,
     spawnSelectionRef,
@@ -260,7 +261,15 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           promptText,
           cwd,
           images,
-          { model: composerModel, thinkingLevel: composerThinking, accessMode: accessModeRef.current, modes: spawnModes },
+          {
+            model: composerModel,
+            thinkingLevel: composerThinking,
+            accessMode: accessModeRef.current,
+            modes: spawnModes,
+            // A harness picked on the pending view rides the spawn; cleared on
+            // success below so it cannot leak onto the next new chat.
+            ...(pendingHarnessRef.current ? { harness: pendingHarnessRef.current } : {}),
+          },
           armed ? (id) => startArmedGoal(id, armed, promptText) : undefined,
         );
         if (spawned) {
@@ -282,6 +291,7 @@ export function useChatTimelineSend(deps: ChatTimelineSendDeps): ChatTimelineSen
           seedSession({ model: spawned.model, thinkingLevel: composerThinking });
           pendingComposerModelRef.current = null;
           pendingThinkingLevelRef.current = null;
+          pendingHarnessRef.current = null;
           fetch(`/api/chat/${encodeURIComponent(spawned.sessionId)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

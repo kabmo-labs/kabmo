@@ -22,6 +22,7 @@ import { ensureProviderIconSchema } from '@/server/lib/models/provider-icon-stor
 import { ensureUsageIndexSchema } from '@/server/lib/usage/index-schema.server';
 import { ensureWorktreeSchema } from '@/server/lib/db/worktree-registry.server';
 import { ensureReviewSchema } from '@/server/lib/review/schema.server';
+import { ensureHarnessSchema } from '@/server/lib/harness/schema.server';
 import { migrateWorkspaceFolderColumns } from '@/shared/lib/workspace/schema-migrations';
 import { migrateSessionStreamStateColumns } from '@/shared/lib/omp/session/schema-migrations';
 
@@ -137,6 +138,9 @@ export async function initSchema(db: DbClient): Promise<void> {
   // Review annotations on a rendered markdown document (per block, per file).
   await ensureReviewSchema(db);
 
+  // Harness ownership per session: the sidebar's mark needs it, and it has to
+  // outlive the process that spawned the child (a restart, a second instance).
+  await ensureHarnessSchema(db);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

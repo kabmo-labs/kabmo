@@ -3,6 +3,7 @@ import { Brain, Command, GripVertical, Star } from 'lucide-preact';
 import type { AIModelOption } from '@/shared/types';
 import { formatContextWindow } from '@/shared/lib/code/format';
 import { ProviderIconPlate } from '@/client/components/common/provider-icon/Plate';
+import { HarnessGlyph, HARNESS_GLYPH_SIZE } from '@/client/components/common/harness-glyph';
 
 interface ModelDropdownItemProps {
   model: AIModelOption;
@@ -21,6 +22,14 @@ interface ModelDropdownItemProps {
   onToggleFavorite: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
   onCycleThinking?: (model: AIModelOption, e: TargetedMouseEvent<HTMLElement>) => void;
   onMouseEnter: () => void;
+  /** Harness that serves this row, drawn BEFORE the provider plate.
+   *
+   *  Two marks, in a fixed order: which agent runs it, then which provider /
+   *  model it is. The harness comes first because it is the outer choice — the
+   *  tab above already narrowed the list to it, and a provider plate with no
+   *  agent mark would read as "this model, from this provider, on nothing". On
+   *  omp's own tab the mark is omp's, so every row in the picker is labelled. */
+  harness?: string;
 }
 
 /**
@@ -44,6 +53,7 @@ export function ModelDropdownItem({
   onToggleFavorite,
   onCycleThinking,
   onMouseEnter,
+  harness,
 }: ModelDropdownItemProps) {
   return (
     <div
@@ -78,6 +88,7 @@ export function ModelDropdownItem({
           />
         </span>
 
+        <HarnessGlyph harness={harness} size={HARNESS_GLYPH_SIZE.compact} />
         {model.isCmdAgent ? (
           <span
             className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-[5px] border border-ink/20 bg-ink/5 text-ink/80 flex-shrink-0"

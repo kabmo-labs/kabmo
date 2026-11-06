@@ -7,6 +7,10 @@ import { ModelDropdownFooter } from '@/client/components/workspace/model-dropdow
 import { ModelDropdownSkeleton } from '@/client/components/workspace/model-dropdown/Skeleton';
 import { ModelSpecsTooltip } from '@/client/components/workspace/model-dropdown/SpecsTooltip';
 import type { PickerRow } from '@/client/components/workspace/model-dropdown/groups';
+import { HarnessTabs } from '@/client/components/workspace/model-dropdown/HarnessTabs';
+import { usePopoverSize } from '@/client/components/workspace/model-dropdown/use-popover-size';
+import { ModelFullscreen } from '@/client/components/workspace/model-dropdown/Fullscreen';
+import type { HarnessSummary } from '@/shared/types/harness';
 
 interface ModelDropdownPanelProps {
   search: string;
@@ -34,6 +38,27 @@ interface ModelDropdownPanelProps {
   /** Row index in the flat list; the panel resolves it to the row it renders. */
   onHoverItem: (index: number) => void;
   onMouseLeave: () => void;
+  /** The harness tab strip's data. Omitted by a picker that cannot spawn
+   *  (the New Chat modal's preview), which then draws no tabs. */
+  harnesses?: HarnessSummary[];
+  activeHarness?: string | null;
+  /** False while the open chat already has a transcript: switching the harness
+   *  is a spawn-time choice, so the tab says so rather than changing the frame
+   *  source under a running conversation. */
+  harnessEditable?: boolean;
+  onSelectHarness?: (harness: string) => void;
+  onFixHarness?: (harness: string) => void;
+  /** The active tab's harness has never been probed, so its model list is
+   *  genuinely unknown rather than empty. */
+  unprobedHarness?: boolean;
+  /** Why the active tab cannot run (auth, missing binary), in the agent's words. */
+  harnessBlocked?: string;
+  /** Dismiss the full-screen picker. Required on a phone, where it owns the screen. */
+  onClose?: () => void;
+  /** Take the whole screen instead of hanging beside the trigger. Decided ONCE
+   *  by the picker (`useFullscreenPicker`) and passed in, so the panel never
+   *  holds a second answer to the same question. */
+  fullscreen?: boolean;
 }
 
 export function ModelDropdownPanel({
@@ -57,6 +82,15 @@ export function ModelDropdownPanel({
   onCycleThinking,
   onHoverItem,
   onMouseLeave,
+  harnesses = [],
+  activeHarness = null,
+  harnessEditable = true,
+  onSelectHarness,
+  onFixHarness,
+  unprobedHarness = false,
+  harnessBlocked,
+  onClose,
+  fullscreen = false,
 }: ModelDropdownPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -84,9 +118,49 @@ export function ModelDropdownPanel({
 
   useLayoutEffect(alignCardToRow, [alignCardToRow, collapsedSections]);
 
-  return (
-    <div className="absolute bottom-full left-0 mb-2.5 z-50 flex items-start">
-      <div ref={panelRef} className="glass-popover w-84 sm:w-96 bg-paper border border-ink/20 rounded-xl shadow-2xl flex flex-col overflow-hidden text-xs max-h-[460px] animate-in fade-in zoom-in-95 duration-100">
+  const size = usePopoverSize(panelRef);
+
+  /**
+   * The card's CONTENT, shared by both placements.
+   *
+   * One tree, two frames: a sheet that re-implemented the list would be a second
+   * picker that drifts (a new section, a new empty state, a new harness tab
+   * landing in only one of them). Only the outer box and its constraints differ.
+   */
+  const card = (
+    <>
+      <div
+          ref={panelRef}
+          // The measured box belongs to the POPOVER placement only. The
+          // full-screen frame owns both dimensions, so applying the popover's
+          // width here left a 292px card floating inside a 390px screen and
+          // truncated every model name to "A." (measured on a 390x844 phone).
+          style={fullscreen ? undefined : { maxHeight: `${size.height}px`, width: `${size.width}px` }}
+          // No `w-84 sm:w-96` here: width comes from `availableWidth` above, so
+          // the panel tracks the composer it belongs to instead of the viewport
+          // breakpoint.
+          className={
+            fullscreen
+              // Full screen: no chrome of its own. A rounded, bordered card
+              // floating inside an opaque full-screen frame draws a border that
+              // belongs to nothing, so it drops both and lets the frame own the
+              // edge.
+              ? 'flex flex-1 min-h-0 flex-col overflow-hidden text-xs'
+              : 'glass-popover bg-paper border border-ink/20 rounded-xl shadow-2xl flex flex-col overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-100'
+          }
+        >
+        {/* The harness tab strip sits ABOVE the search field: the tab changes
+            what the list IS, so the search that follows applies to the list the
+            tab selected. */}
+        {harnesses.length > 0 && (
+          <HarnessTabs
+            harnesses={harnesses}
+            active={activeHarness}
+            editable={harnessEditable}
+            onSelect={onSelectHarness ?? (() => {})}
+            onFix={onFixHarness}
+          />
+        )}
         <ModelDropdownHeader
           search={search}
           onSearchChange={onSearchChange}
@@ -100,7 +174,7 @@ export function ModelDropdownPanel({
             `p-1.5` list pinned its heading 6px down and `elementFromPoint` at
             2px returned a row). The first heading sits flush instead. */}
         <div
-          className="flex-1 scrollbar-overlay-container px-1.5 pb-1.5 space-y-2 max-h-80"
+          className="flex-1 min-h-0 scrollbar-overlay-container px-1.5 pb-1.5 space-y-2"
           onMouseLeave={onMouseLeave}
           // The row under a resting pointer moves when the list scrolls; the
           // card follows it instead of staying where the hover started.
@@ -109,11 +183,24 @@ export function ModelDropdownPanel({
           {isLoading ? (
             <ModelDropdownSkeleton />
           ) : filteredModels.length === 0 ? (
-            <div className="px-3 py-6 text-center text-ink/40 italic">
+            // Four empty states, and they mean different things. "No models"
+            // for an agent that never answered would be a lie about its
+            // catalog: an unprobed tab says so and offers the check, a blocked
+            // tab quotes the agent, and only omp's own tab talks about providers.
+            <div className="px-3 py-6 text-center text-ink/40">
               {search ? (
-                <>No models found matching &quot;{search}&quot;</>
+                <span className="italic">No models found matching &quot;{search}&quot;</span>
+              ) : harnessBlocked ? (
+                <span className="not-italic">{harnessBlocked}</span>
+              ) : unprobedHarness ? (
+                <span className="not-italic">
+                  This harness has not reported its models yet.
+                  <span className="mt-1 block text-[10px] text-ink/35">
+                    Check its status in Settings → Harnesses.
+                  </span>
+                </span>
               ) : (
-                <>No models available. Enable a provider in Settings → Providers.</>
+                <span className="italic">No models available for this harness.</span>
               )}
             </div>
           ) : (
@@ -133,6 +220,7 @@ export function ModelDropdownPanel({
                 onToggleFavorite={onToggleFavorite}
                 onCycleThinking={onCycleThinking}
                 onHoverItem={onHoverItem}
+                harnessOfModel={activeHarness ?? undefined}
               />
 
               <ModelDropdownSection
@@ -150,6 +238,7 @@ export function ModelDropdownPanel({
                 onToggleFavorite={onToggleFavorite}
                 onCycleThinking={onCycleThinking}
                 onHoverItem={onHoverItem}
+                harnessOfModel={activeHarness ?? undefined}
               />
 
               {Object.entries(providerGroups).map(([provider, pModels]) => (
@@ -169,13 +258,18 @@ export function ModelDropdownPanel({
                   onToggleFavorite={onToggleFavorite}
                   onCycleThinking={onCycleThinking}
                   onHoverItem={onHoverItem}
+                  harnessOfModel={activeHarness ?? undefined}
                 />
               ))}
             </>
           )}
         </div>
 
-        <ModelDropdownFooter />
+        {/* The footer is keyboard HINTS (`↑ ↓ navigate`, `Tab switch agent`,
+            `← → thinking`). A phone has no keyboard, so in the full-screen
+            placement it is three instructions the reader cannot follow, pinned
+            over the rows. The popover keeps it: its reader is at a keyboard. */}
+        {!fullscreen && <ModelDropdownFooter />}
       </div>
 
       {/* Floating Specs Card: only visible when hovering or keyboard navigating.
@@ -190,6 +284,23 @@ export function ModelDropdownPanel({
           <ModelSpecsTooltip model={hoveredRow.model} />
         </div>
       )}
+    </>
+  );
+
+  // On a phone the picker owns the whole screen; a desktop keeps the popover.
+  // `Fullscreen.tsx` states why each placement wins where it does, and why the
+  // overlay must portal out of the composer's containing block.
+  if (fullscreen) {
+    return <ModelFullscreen open onClose={onClose ?? (() => {})}>{card}</ModelFullscreen>;
+  }
+
+  return (
+    <div
+      // Anchored to the trigger's LEFT edge, which is what the composer row
+      // expects; the width cap above keeps it inside the panel.
+      className="absolute bottom-full left-0 mb-2.5 z-50 flex items-start"
+    >
+      {card}
     </div>
   );
 }

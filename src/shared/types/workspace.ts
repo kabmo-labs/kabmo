@@ -47,6 +47,16 @@ export interface SessionItemData {
    */
   cwd?: string;
   /**
+   * Which harness ran (and would resume) this session: `omp-rpc`, `claude`,
+   * `codex`, … Absent for a session created before harnesses were tracked and
+   * for a MOCK row, which no real agent owns — the row then draws no badge
+   * rather than a fabricated one.
+   *
+   * A spawn-time fact, not a display preference: the value decides the
+   * transport, the capabilities each panel can show, and the launch command.
+   */
+  harness?: string;
+  /**
    * The worktree this session runs in, when its cwd is a linked checkout.
    * Absent for an ordinary session (the common case) and for a session whose cwd
    * is outside every worktree of its project, which the row draws the same way.

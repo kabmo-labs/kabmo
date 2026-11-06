@@ -5,6 +5,7 @@ import type { SidebarStyle } from '@/shared/lib/workspace/sidebar-style';
 import type { ComposerStyle } from '@/shared/lib/chat/composer/style';
 import type { SurfaceStyle } from '@/shared/lib/theme/surface-style';
 import type { IconStyle } from '@/shared/lib/theme/icon-style';
+import type { SettingsSection } from '@/shared/lib/settings/sections';
 
 /** Wire protocol for the live agent event stream (chat timeline). */
 export type SettingsCategoryId =
@@ -27,6 +28,14 @@ export type SettingsCategoryId =
   | 'behavior'
   | 'commands'
   | 'mcp'
+  // HARNESSES — the agents Kabmo can drive, one PAGE each. Their own group in
+  // the sidebar: a different transport and a different config file from omp.
+  // The single-harness pages carry a dynamic id (`harness:claude`, from
+  // `harness/menu.ts`) rather than a union member per adapter: the catalog is
+  // what decides which agents exist, and a build-time union entry per harness
+  // would have to be edited for every adapter added at runtime.
+  | 'harness-index'
+  | `harness:${string}`
   // LIBRARY
   | 'plugins'
   | 'skills'
@@ -37,7 +46,7 @@ export interface SettingsCategoryItem {
   label: string;
   iconName: string;
   badge?: string;
-  section: 'KABMO' | 'WORKSPACE' | 'OMP' | 'LIBRARY';
+  section: SettingsSection;
   description?: string;
 }
 

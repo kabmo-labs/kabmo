@@ -27,7 +27,10 @@ import { healStaleStreamStatuses } from '@/shared/lib/omp/session/stream-heal.se
 import { getAwaitingInputSessionIds, getLiveRunSessionIds, listRpcSessions } from '@/server/lib/omp/rpc/session-registry';
 import type { SessionItemData, SessionSortOption, WorkspaceFolderData } from '@/shared/types';
 import { sessionWorktreeMap } from '@/server/lib/fs/worktree/topology';
+import { DEFAULT_HARNESS_ID, HARNESS_IDS } from '@/shared/lib/harness/catalog';
+import { knownHarness, loadAcpSessions, loadHarnessBySession } from '@/server/lib/harness/session-store.server';
 import { canonicalPath } from '@/server/lib/fs/canonical';
+import { acpRowsFor } from '@/server/lib/omp/session/acp-rows.server';
 import type { SessionWorktreeInfo } from '@/shared/lib/workspace/worktree/types';
 import type { OmpSession } from '@/shared/types/omp/session';
 
@@ -236,6 +239,22 @@ async function serverSidebarSort(): Promise<SessionSortOption> {
 async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string>): Promise<WorkspaceFolderData[]> {
   const data = await loadOmpSidebarData();
   const sessionsByRoot = groupSessionsByRoot(data.sessions);
+  // WHICH HARNESS OWNS EACH SESSION, read once for the whole list. The live
+  // registry cannot answer this: it is a `WeakMap` on the session objects of
+  // THIS process, so a restart, a closed tab or a second instance loses it — and
+  // that is why every row used to be reported as `omp`. This table is written at
+  // spawn and outlives all three.
+  let harnessBySession: Map<string, string>;
+  let acpSessions: Awaited<ReturnType<typeof loadAcpSessions>>;
+  try {
+    [harnessBySession, acpSessions] = await Promise.all([loadHarnessBySession(), loadAcpSessions()]);
+  } catch {
+    // A database without the table yet (an older file opened before this
+    // migration ran). Every row then falls back to the omp default below, which
+    // is what a reader saw before — never an error page over the whole sidebar.
+    harnessBySession = new Map();
+    acpSessions = [];
+  }
 
   return Promise.all(folderRows.map(async (folder) => {
     const root = folder.project_path ?? '';
@@ -267,6 +286,13 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
         id: session.id,
         folder_id: folder.id,
         title: sessionTitleFor(session),
+        // WHICH AGENT PRODUCED THIS CHAT, from the persisted record. A session
+        // discovered in omp's JSONL store with no row is an omp one by
+        // construction (that is where omp writes), and `DEFAULT_HARNESS_ID` is
+        // then the truth rather than a guess. A session spawned over ACP has its
+        // own row, so the mark beside its name names the agent that ran it —
+        // reporting `omp` for every row made the mark decorative.
+        harness: knownHarness(harnessBySession.get(String(session.id)), HARNESS_IDS) ?? DEFAULT_HARNESS_ID,
         created_at: session.created,
         updated_at: session.modified,
         is_active: 0,
@@ -279,6 +305,25 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
         ...(worktree ? { worktree } : {}),
       };
     }));
+    // ACP chats live ONLY here: their agent writes no session file, so omp's
+    // discovery cannot see them and a chat vanished from the sidebar the moment
+    // its tab closed. They are filed under the folder whose PROJECT contains
+    // their cwd, resolved the same way the discovery scan resolves it — a chat
+    // started in a subdirectory belongs to the folder that owns it, not to none.
+    const folderAcp = rootKey
+      ? await acpRowsFor(acpSessions, rootKey, folder.id, archivedIds)
+      : [];
+    // MERGED, then ordered as ONE list. Appending the ACP rows after omp's
+    // already-sorted bucket put them at the bottom of a 240-row folder, which is
+    // why a chat just spawned on `opencode2` never appeared above "Show more".
+    // The scan's own rule is `b.modified.localeCompare(a.modified)`
+    // (`groupSessionsByRoot`), so this uses the same key rather than a second
+    // definition of "newest".
+    const allSessions = [...folderSessions, ...folderAcp].sort((a, b) => {
+      const left = a.updated_at ?? a.created_at ?? '';
+      const right = b.updated_at ?? b.created_at ?? '';
+      return right.localeCompare(left);
+    });
     return {
       id: folder.id,
       name: folder.name,
@@ -289,9 +334,9 @@ async function buildRealFolders(folderRows: FolderRow[], archivedIds: Set<string
       accentColor: folder.accent_color || '',
       icon: folder.icon || 'default',
       customIconUrl: folder.custom_icon_url || undefined,
-      sessions: folderSessions,
-      hasMore: folderSessions.length > 7,
-      totalSessions: folderSessions.length,
+      sessions: allSessions,
+      hasMore: allSessions.length > 7,
+      totalSessions: allSessions.length,
     };
   }));
 }

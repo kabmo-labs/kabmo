@@ -156,16 +156,14 @@ export function useChatTimeline({
     scroll,
   });
 
-  // The composer's model/thinking mirrors and the mid-run stash (see the hook).
-  const { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef } =
+  // Composer model/thinking mirrors and the mid-run stash (see the hook).
+  const { pendingComposerModelRef, pendingThinkingLevelRef, composerModelRef, deferredComposerPickRef, pendingHarnessRef } =
     useComposerRefs(sessionId);
 
-  // Access control is a GLOBAL, persisted user preference (unlike the
-  // per-session model/thinking picks).
+  // Access control is a GLOBAL persisted preference, unlike per-session picks.
   const { accessMode, accessModeRef, setAccessMode: handleAccessModeChange } = useChatTimelineAccessMode(appSettings);
 
-  // "Wait for session" on a NEW chat: the pick, and the ref the send handler
-  // reads (see `choice.ts` for why both).
+  // "Wait for session" on a NEW chat: the pick and the ref the send reads.
   const waitingDependency = useWaitingDependencyChoice(sessionId);
 
   const persistMessages = useCallback((messagesToSave: any[]) => {
@@ -239,6 +237,7 @@ export function useChatTimeline({
     pendingComposerModelRef,
     pendingThinkingLevelRef,
     deferredComposerPickRef,
+    pendingHarnessRef,
     accessModeRef,
     spawnSelectionRef: modes.spawnSelectionRef,
     goalArmRef: modes.goalArmRef,
@@ -343,6 +342,7 @@ export function useChatTimeline({
     waitingDependency,
     spawnTarget: spawn.target,
     setSpawnTarget: spawn.setTarget,
+    pendingHarnessRef,
     extensionDialogs,
     resolveExtensionDialog,
     respondToExtensionUi: ompAgent.respondToExtensionUi,

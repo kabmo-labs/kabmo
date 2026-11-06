@@ -1,0 +1,130 @@
+/**
+ * @license
+ * SPDX-License-Identifier: MIT
+ */
+
+/**
+ * The command vocabulary an ACP session accepts, as ONE dispatch table.
+ *
+ * The routes already speak this vocabulary for omp (`prompt`, `steer`, `abort`,
+ * `set_model`, `get_state`, `extension_ui_response`, …), so a second table would
+ * be a place for the two transports to answer differently. What changes per
+ * harness is only what the agent can actually DO, and every branch here says so
+ * instead of pretending:
+ *
+ *  - `steer`/`follow_up` refuse when the capability record says the agent has no
+ *    mid-turn channel. Falling back to `session/prompt` is NOT an option: a
+ *    second prompt CANCELS the running turn (measured), which would throw away
+ *    the answer the user was reading.
+ *  - `set_model`/`set_thinking_level`/`set_mode` throw when the agent published
+ *    no such selector, naming the harness, rather than silently doing nothing.
+ */
+
+import { configOption, promptBlocks } from '@/server/lib/harness/acp/prompt';
+import { acpOptionValues } from '@/server/lib/harness/acp/protocol';
+import type { AcpConfigOption } from '@/server/lib/harness/acp/protocol';
+import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
+import type { HarnessId } from '@/shared/lib/harness/catalog';
+import type { AgentEvent } from '@/server/lib/omp/rpc/constants';
+
+/** The slice of `AcpSession` this table drives. Narrow on purpose: the dispatch
+ *  rules are testable against a stub, with no process and no protocol. */
+export interface AcpCommandHost {
+  readonly harness: HarnessId;
+  readonly sessionId: string;
+  readonly capabilities: HarnessCapabilities;
+  readonly configOptions: AcpConfigOption[];
+  /** Read by the guard, and cleared by the cancel branch. */
+  isPromptRunning: boolean;
+  startTurn(message: string, images: unknown): Promise<unknown> | unknown;
+  emit(event: AgentEvent): void;
+  isAlive(): boolean;
+  destroyAndWait(): Promise<void>;
+  steer(blocks: unknown[], queue: 'steering' | 'followUp'): Promise<unknown>;
+  cancelTurn(): void;
+  setConfig(configId: string, value: string | boolean): Promise<unknown>;
+  resolvePermission(dialogId: string, confirmed: boolean): unknown;
+  webState(): Record<string, unknown>;
+}
+
+  /** The command vocabulary the routes already use. */
+  export async function dispatchCommand(host: AcpCommandHost, command: Record<string, unknown>): Promise<unknown> {
+    if (!host.isAlive()) throw new Error('ACP session is not running');
+    const type = typeof command.type === 'string' ? command.type : '';
+
+    switch (type) {
+      case 'prompt':
+        return host.startTurn(String(command.message ?? ''), command.images);
+
+      case 'steer': {
+        const blocks = promptBlocks(String(command.message ?? ''), command.images);
+        if (host.capabilities.steerMode !== 'steer') {
+          throw new Error(`This harness has no mid-turn steering (${host.harness})`);
+        }
+        return host.steer(blocks, 'steering');
+      }
+
+      case 'follow_up': {
+        const blocks = promptBlocks(String(command.message ?? ''), command.images);
+        if (!host.capabilities.steerMode) throw new Error(`This harness cannot queue a follow-up (${host.harness})`);
+        return host.steer(blocks, 'followUp');
+      }
+
+      case 'abort':
+        host.cancelTurn();
+        // The turn's own response clears the flags; a cancel that never lands
+        // would otherwise leave the spinner up for the rest of the process.
+        host.isPromptRunning = false;
+        host.emit({ type: 'agent_end', isTerminal: true, stopReason: 'cancelled' });
+        return null;
+
+      case 'force_reset':
+        await host.destroyAndWait();
+        return null;
+
+      case 'set_model': {
+        const provider = String(command.provider ?? '');
+        const modelId = String(command.modelId ?? '');
+        const model = configOption(host.configOptions, 'model');
+        if (!model) throw new Error(`This harness exposes no model selector (${host.harness})`);
+        const wanted = `${provider}/${modelId}`;
+        const values = acpOptionValues(model);
+        const match = values.find((value) => value === wanted) ?? values.find((value) => value === modelId);
+        if (!match) throw new Error(`Model not offered by this harness: ${wanted}`);
+        const result = await host.setConfig('model', match);
+        return { id: modelId, provider, data: result };
+      }
+
+      case 'set_thinking_level': {
+        const level = String(command.level ?? '');
+        const thinking = configOption(host.configOptions, 'thought_level');
+        if (!thinking) throw new Error(`This harness exposes no thinking selector (${host.harness})`);
+        return host.setConfig('thinking', level);
+      }
+
+      case 'set_mode': {
+        const mode = String(command.mode ?? '');
+        const selector = configOption(host.configOptions, 'mode');
+        if (!selector) throw new Error(`This harness exposes no mode selector (${host.harness})`);
+        return host.setConfig('mode', mode);
+      }
+
+      case 'get_state':
+        return host.webState();
+
+      case 'get_commands':
+        return { commands: [] };
+
+      case 'extension_ui_response': {
+        // The approval dialog's answer, in the shape the shared gate sends. The
+        // session owns the picking (which option means "allow"), because it is
+        // also the side that rendered the options.
+        const id = typeof command.id === 'string' ? command.id : '';
+        const confirmed = command.confirmed === true || command.value === 'allow';
+        return host.resolvePermission(id, confirmed);
+      }
+
+      default:
+        throw new Error(`Command not supported by the ACP transport: ${type}`);
+    }
+}

@@ -131,6 +131,12 @@ export interface SpawnOptions {
   /** Plan/goal picks made on a pending view. A brand-new session has no
    *  transcript to restore them from, so they ride the spawn environment. */
   modes?: { plan: boolean; goal: boolean } | null;
+  /**
+   * Which harness runs the chat. A SPAWN property — it decides the transport,
+   * the model list and every capability the panels can show — so it can only be
+   * chosen on a chat with no transcript. Absent means omp's RPC mode.
+   */
+  harness?: string | null;
 }
 
 /** What a spawn answers: omp's own session id, and the model the child

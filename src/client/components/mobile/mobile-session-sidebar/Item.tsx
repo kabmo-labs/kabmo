@@ -241,6 +241,7 @@ export function MobileSessionCategory({
               <div key={session.id} className="space-y-0.5">
                 <MobileSessionRow
                   session={session}
+                  harness={session.harness}
                   isActive={isSessionActive && !isViewingSubagent}
                   status={sessionStatus[sessionKey]}
                   awaitingInput={Boolean(session.awaitingInput)}
