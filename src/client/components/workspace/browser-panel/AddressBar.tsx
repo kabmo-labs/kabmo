@@ -1,5 +1,5 @@
-import { Globe, RotateCw } from 'lucide-preact';
-import { BrowserToolbar, ICON_BUTTON } from '@/client/components/workspace/browser-toolbar/index';
+import { Globe } from 'lucide-preact';
+import { BrowserToolbar } from '@/client/components/workspace/browser-toolbar/index';
 import type { BrowserViewStatus } from '@/shared/types';
 
 interface BrowserAddressBarProps {
@@ -50,19 +50,9 @@ export function BrowserAddressBar({
       onResetZoom={onResetZoom}
       onIncludeInChat={onIncludeInChat}
       onOpenExternal={onOpenExternal}
+      onReconnect={onReconnect}
       openExternalLabel="Buka di jendela baru"
       openExternalTitle={url ? 'Open in new window' : 'No URL loaded'}
-      trailingControls={
-        <button
-          type="button"
-          onClick={onReconnect}
-          aria-label="Sambungkan ulang live view"
-          title="Reconnect live view"
-          className={ICON_BUTTON}
-        >
-          <RotateCw size={14} />
-        </button>
-      }
     >
       <div className="flex-1 min-w-0 flex items-center bg-canvas border border-ink/15 rounded-md px-2 py-0.5">
         <Globe size={12} className="text-ink/40 mr-1.5 flex-shrink-0" />

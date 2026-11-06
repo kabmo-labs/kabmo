@@ -61,13 +61,25 @@ export interface ToolbarCluster {
 interface ToolbarRowProps {
   clusters: ToolbarCluster[];
   className?: string;
+  /**
+   * The width the PARENT grants this row, when the row must not grow into the
+   * space beside it. A self-measuring row can only ever report the width its
+   * visible clusters add up to, so a cluster it buries stays buried when the
+   * panel widens — the sibling beside it absorbs the new space instead. Passing
+   * a number here makes the row content-sized (`flex-none`) and turns off its
+   * own measurement; the parent owns the split.
+   */
+  available?: number;
 }
 
-export function ToolbarRow({ clusters, className = '' }: ToolbarRowProps) {
+export function ToolbarRow({ clusters, className = '', available: granted }: ToolbarRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   /** Measured widths, tagged with the cluster set they describe. */
   const [metrics, setMetrics] = useState<{ signature: string; widths: number[] } | null>(null);
-  const [available, setAvailable] = useState(0);
+  const [rowWidth, setRowWidth] = useState(0);
+  /** Bumped by the observer to re-run a measurement the guard refused. */
+  const [measureTick, setMeasureTick] = useState(0);
+  const available = granted ?? rowWidth;
 
   // The set changes when a conditional cluster appears or disappears (a
   // previewable file opened, a byte viewer took over), and stale widths would
@@ -78,9 +90,13 @@ export function ToolbarRow({ clusters, className = '' }: ToolbarRowProps) {
   const ready = metrics?.signature === signature;
   const widths = ready ? metrics.widths : [];
   const pinned = clusters.map((cluster) => cluster.pinned === true);
-  const visible = widths.length > 0
-    ? toolbarVisibleClusters({ widths, pinned, available })
-    : clusters.map(() => true);
+  // A granted width of 0 means the parent has no room to give — not that the
+  // row is unmeasured. Everything but the `⋯` trigger goes into the menu.
+  const visible = granted === 0
+    ? clusters.map(() => false)
+    : widths.length > 0
+      ? toolbarVisibleClusters({ widths, pinned, available })
+      : clusters.map(() => true);
 
   useLayoutEffect(() => {
     const row = rowRef.current;
@@ -88,35 +104,56 @@ export function ToolbarRow({ clusters, className = '' }: ToolbarRowProps) {
     if (!ready) {
       const children = [...row.querySelectorAll<HTMLElement>('[data-toolbar-cluster]')];
       if (children.length === clusters.length) {
-        setMetrics({ signature, widths: children.map((child) => child.getBoundingClientRect().width) });
+        const measured = children.map((child) => child.getBoundingClientRect().width);
+        // All-zero means the row was laid out inside a collapsed ancestor — the
+        // panel is still animating open, or the tab is hidden. Recording that
+        // would make every cluster "0px wide", so the whole row would report as
+        // fitting and nothing would ever reach `⋯`. Wait for the observer's
+        // next tick instead, which is when the row has a real width. One zero
+        // is not this case: a cluster can legitimately render nothing.
+        if (measured.some((width) => width > 0)) setMetrics({ signature, widths: measured });
       }
     }
-    setAvailable(row.clientWidth);
-  });
+    if (granted === undefined) setRowWidth(row.clientWidth);
+  }, [granted, ready, signature, clusters.length, measureTick]);
 
   // The row's width changes on a window resize, a panel drag and a layout mode
-  // switch — none of which are `window` events.
+  // switch — none of which are `window` events. The same signal re-triggers a
+  // measurement that the guard above refused to commit.
   useEffect(() => {
     const row = rowRef.current;
     if (!row || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => setAvailable(row.clientWidth));
+    const observer = new ResizeObserver(() => {
+      setRowWidth(row.clientWidth);
+      setMeasureTick((tick) => tick + 1);
+    });
     observer.observe(row);
     return () => observer.disconnect();
   }, []);
 
   const hiddenActions = clusters.filter((_, index) => !visible[index]).flatMap((cluster) => cluster.actions);
 
-  // `flex-1 min-w-0` is what makes `available` mean anything. Without it the row
-  // is content-sized (`ml-auto` in a `justify-between` parent), so its width IS
-  // the sum of the clusters it currently shows — hiding one shrinks the row,
-  // which shrinks `available`, which hides another, and the row settles at a
-  // fraction of the space it was given and never grows back when the panel is
-  // widened. Measured: a 373px diff panel reported a 204px row at every
-  // viewport, so Unified/Split/Full Code lived in `⋯` on a wide screen. `min-w-0`
-  // is required with it, or the `flex-shrink-0` clusters set a content-based
-  // minimum and the row refuses to be narrower than all of them.
+  // SELF-MEASURED (`flex-1 min-w-0`) is what makes `available` mean anything
+  // when nothing grants a width. Without it the row is content-sized (`ml-auto`
+  // in a `justify-between` parent), so its width IS the sum of the clusters it
+  // currently shows — hiding one shrinks the row, which shrinks `available`,
+  // which hides another, and the row settles at a fraction of the space it was
+  // given and never grows back when the panel is widened. Measured: a 373px
+  // diff panel reported a 204px row at every viewport, so Unified/Split/Full
+  // Code lived in `⋯` on a wide screen. `min-w-0` is required with it, or the
+  // `flex-shrink-0` clusters set a content-based minimum and the row refuses to
+  // be narrower than all of them.
+  //
+  // GRANTED (`flex-none` + `max-width`) is the other case: the parent already
+  // did the split — a bar with an address field beside the row — so the row is
+  // content-sized but clamped to its budget, and the field takes the rest. Left
+  // as `flex-1` it would claim all the free space and squeeze the field.
   return (
-    <div ref={rowRef} className={`flex flex-1 min-w-0 flex-nowrap items-center justify-end gap-x-1 overflow-hidden ${className}`}>
+    <div
+      ref={rowRef}
+      style={granted === undefined ? undefined : { maxWidth: `${granted}px` }}
+      className={`flex ${granted === undefined ? 'flex-1' : 'flex-none'} min-w-0 flex-nowrap items-center justify-end gap-x-1 overflow-hidden ${className}`}
+    >
       {clusters.map((cluster, index) =>
         visible[index] ? (
           <div key={cluster.id} data-toolbar-cluster="" className="flex items-center flex-shrink-0">

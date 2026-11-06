@@ -1,19 +1,26 @@
-import { useState } from 'preact/hooks';
-import { Check, Copy, ExternalLink, MessageSquarePlus, SquarePen } from 'lucide-preact';
-import { BrowserViewportSelector } from '@/client/components/common/ViewportSelector';
-import { ZoomControls } from '@/client/components/workspace/browser-toolbar/ZoomControls';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { ToolbarRow } from '@/client/components/common/toolbar-row';
+import { buildBrowserClusters } from '@/client/components/workspace/browser-toolbar/clusters';
+import type { BrowserToolbarAnnotate } from '@/client/components/workspace/browser-toolbar/clusters';
 import type { ComponentChildren } from 'preact';
 import type { ViewportMode } from '@/shared/types';
 
-export const ICON_BUTTON =
-  'p-1.5 rounded hover:bg-ink/5 disabled:opacity-25 disabled:hover:bg-transparent text-ink/70 hover:text-ink transition-colors cursor-pointer disabled:cursor-not-allowed';
+export type { BrowserToolbarAnnotate };
 
-/** The user panel's annotation toggle; the agent panel never supplies it. */
-export interface BrowserToolbarAnnotate {
-  active: boolean;
-  count: number;
-  onToggle: () => void;
-}
+/** Width the status cluster is allowed at most; it shrinks away first. */
+const STATUS_MAX_PX = 108;
+/** Below this bar width the status label is dropped and only its dot stays. */
+const STATUS_LABEL_MIN_BAR_PX = 280;
+/** The status dot plus its gap. */
+const STATUS_DOT_PX = 18;
+/**
+ * Width the address slot keeps before the trailing row gives anything up. The
+ * user panel's slot also carries its Back/Forward/Reload cluster (~76px), so
+ * this is what is left for the field itself once that cluster is drawn.
+ */
+const ADDRESS_MIN_PX = 140;
+/** The bar's own `px-2.5` (20px) plus both `gap-x-2` (2 × 8px). */
+const BAR_CHROME_PX = 36;
 
 export interface BrowserToolbarProps {
   url: string;
@@ -43,8 +50,8 @@ export interface BrowserToolbarProps {
    * page by asking the agent instead of drawing on a JPEG.
    */
   annotate?: BrowserToolbarAnnotate;
-  /** Shown after the include/copy buttons — the agent panel's reconnect button. */
-  trailingControls?: ComponentChildren;
+  /** Agent panel only: re-attach the live view. Drawn inside the trailing row. */
+  onReconnect?: () => void;
   /** Open-external button label/title, differing between the two panels. */
   openExternalLabel: string;
   openExternalTitle: string;
@@ -53,12 +60,21 @@ export interface BrowserToolbarProps {
 }
 
 /**
- * Shared address bar for both browser panels. The two panels differ only in
- * their status semantics, the middle slot (read-only URL vs editable form),
- * the agent panel's reconnect button, and whether the device-testing cluster
- * is offered at all (user panel yes, agent panel no — see `viewportMode`);
- * everything else — the include, copy, open-external buttons and the zoom
- * cluster — lives here so the two toolbars cannot drift.
+ * Shared address bar for both browser panels.
+ *
+ * THREE regions, and only the first and third give ground:
+ *
+ * 1. The status cluster, capped at {@link STATUS_MAX_PX} (and shrinking below
+ *    that on a very narrow bar) so it can never crowd out the address slot.
+ * 2. The middle slot — the address field — `flex-1 min-w-0`. It is drawn at
+ *    EVERY width and is never a `⋯` candidate: an address bar behind a menu is
+ *    the one control this toolbar cannot do without. At the narrowest the panel
+ *    allows, the field's text truncates but the field itself stays.
+ * 3. The trailing controls, in a `ToolbarRow`, whose overflow rule moves what
+ *    does not fit into `⋯` and keeps it one click away. The row is given the
+ *    bar's remaining width as its budget, so as the panel is dragged narrower
+ *    the controls surrender space — right-to-left in row order — and the
+ *    address slot keeps {@link ADDRESS_MIN_PX} until they are all in the menu.
  */
 export function BrowserToolbar({
   url,
@@ -74,13 +90,15 @@ export function BrowserToolbar({
   annotate,
   onIncludeInChat,
   onOpenExternal,
-  trailingControls,
+  onReconnect,
   openExternalLabel,
   openExternalTitle,
   children,
 }: BrowserToolbarProps) {
   const [copied, setCopied] = useState(false);
   const [included, setIncluded] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barWidth, setBarWidth] = useState(0);
 
   const handleCopy = () => {
     if (!url) return;
@@ -99,92 +117,73 @@ export function BrowserToolbar({
     setTimeout(() => setIncluded(false), 2500);
   };
 
+  const clusters = buildBrowserClusters({
+    url,
+    zoomLevel,
+    copied,
+    included,
+    viewportMode,
+    onChangeViewport,
+    annotate,
+    onReconnect,
+    onIncludeInChat: handleInclude,
+    onCopy: handleCopy,
+    onOpenExternal,
+    onZoomIn,
+    onZoomOut,
+    onResetZoom,
+    onSetZoom,
+    openExternalLabel,
+    openExternalTitle,
+  });
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    setBarWidth(bar.clientWidth);
+  });
+
+  // The bar's width changes on a window resize, a panel drag and a layout mode
+  // switch — none of which are `window` events.
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => setBarWidth(bar.clientWidth));
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
+
+  const showStatusLabel = barWidth === 0 || barWidth >= STATUS_LABEL_MIN_BAR_PX;
+  const statusMax = showStatusLabel
+    ? barWidth > 0
+      ? Math.min(STATUS_MAX_PX, barWidth * 0.25)
+      : STATUS_MAX_PX
+    : STATUS_DOT_PX;
+  const tailBudget =
+    barWidth > 0 ? Math.max(0, barWidth - statusMax - ADDRESS_MIN_PX - BAR_CHROME_PX) : undefined;
+
   return (
-    <div className="h-10 px-2.5 border-b border-ink/10 bg-paper flex items-center justify-between flex-shrink-0 select-none space-x-2">
-      <div className="flex items-center space-x-1.5 flex-shrink-0" title={statusLabel}>
-        <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
-        <span className="text-[10px] font-mono uppercase tracking-wide text-ink/60">{statusLabel}</span>
+    <div
+      ref={barRef}
+      data-browser-toolbar=""
+      className="h-10 px-2.5 border-b border-ink/10 bg-paper flex items-center gap-x-2 flex-shrink-0 select-none"
+    >
+      <div
+        className="flex items-center space-x-1.5 flex-shrink-0 min-w-0"
+        style={{ maxWidth: `${statusMax}px` }}
+        title={statusLabel}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDotClass}`} />
+        {showStatusLabel && (
+          <span className="text-[10px] font-mono uppercase tracking-wide text-ink/60 truncate">{statusLabel}</span>
+        )}
       </div>
 
-      {children}
+      {/* Never a cluster: `flex-1 min-w-0` in the bar means it is drawn at every
+          width and takes the space the trailing controls give up. */}
+      <div className="flex flex-1 min-w-0 items-center">{children}</div>
 
-      <div className="flex items-center space-x-1.5 flex-shrink-0">
-        {viewportMode && onChangeViewport && (
-          <BrowserViewportSelector
-            viewportMode={viewportMode}
-            onChangeViewport={onChangeViewport}
-            zoomLevel={zoomLevel}
-            onSetZoom={onSetZoom}
-          />
-        )}
-
-        <ZoomControls
-          zoomLevel={zoomLevel}
-          onZoomIn={onZoomIn}
-          onZoomOut={onZoomOut}
-          onResetZoom={onResetZoom}
-        />
-
-        <button
-          type="button"
-          onClick={handleInclude}
-          disabled={!url}
-          aria-label="Include this page in the chat draft"
-          title={included ? 'Page context added to the draft' : 'Include this page in the chat draft'}
-          className={ICON_BUTTON}
-        >
-          {included ? <Check size={14} className="text-success" /> : <MessageSquarePlus size={14} />}
-        </button>
-
-        {annotate && (
-          <button
-            type="button"
-            onClick={annotate.onToggle}
-            disabled={!url}
-            aria-label="Page annotation mode"
-            aria-pressed={annotate.active}
-            title={
-              annotate.active
-                ? 'Tutup mode anotasi'
-                : annotate.count > 0
-                  ? `Anotasi (${annotate.count}) — buka lagi`
-                  : 'Mark a part of the page, then send it to the chat'
-            }
-            className={`${ICON_BUTTON} relative ${annotate.active ? 'bg-ink/10 text-ink' : ''}`}
-          >
-            <SquarePen size={14} />
-            {annotate.count > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] px-0.5 rounded-full bg-error text-paper text-[10px] leading-[13px] font-mono text-center">
-                {annotate.count}
-              </span>
-            )}
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={handleCopy}
-          disabled={!url}
-          aria-label="Salin URL"
-          title={copied ? 'Copied URL!' : 'Copy URL'}
-          className={ICON_BUTTON}
-        >
-          {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
-        </button>
-
-        {trailingControls}
-
-        <button
-          type="button"
-          onClick={onOpenExternal}
-          disabled={!url}
-          aria-label={openExternalLabel}
-          title={openExternalTitle}
-          className={ICON_BUTTON}
-        >
-          <ExternalLink size={14} />
-        </button>
-      </div>
+      <ToolbarRow clusters={clusters} available={tailBudget} />
     </div>
   );
 }
