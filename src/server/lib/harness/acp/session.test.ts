@@ -47,6 +47,8 @@ function mountSession(): {
   turn: Turn;
   /** How many times the turn-end seam fired (the queue's arming hook). */
   turnEnds: () => number;
+  /** The durable run markers written for this session, in order. */
+  streamMarks: () => string[];
 } {
   const events: AgentEvent[] = [];
   const dispatched = Promise.withResolvers<void>();
@@ -81,11 +83,16 @@ function mountSession(): {
     resetMapper: () => mapper.reset(),
     closeMessage: () => mapper.closeMessage(),
     openCalls: () => mapper.openCalls(),
-    onTurnEnd: () => {
+    onTurnEnd: (stopReason) => {
+      (session as unknown as { endStream: (reason?: string) => void }).endStream(stopReason);
       turnEndCount += 1;
     },
   });
+  const marks: string[] = [];
   Object.assign(session as unknown as Record<string, unknown>, {
+    markStream: (status: string) => {
+      marks.push(status);
+    },
     harness: 'opencode',
     cwd: '/tmp',
     sessionId: 'acp-1',
@@ -97,7 +104,7 @@ function mountSession(): {
     proc,
     destroyed: false,
   });
-  return { session, events, turn, turnEnds: () => turnEndCount };
+  return { session, events, turn, turnEnds: () => turnEndCount, streamMarks: () => marks };
 }
 
 describe('ACP prompt dispatch', () => {
@@ -367,5 +374,42 @@ describe('ACP silent turn', () => {
   test('a slash command is exempt: it is answered locally and produces nothing', async () => {
     const events = await finishWith('/kabmo-mode plan on');
     expect(events.some((event) => event.type === 'prompt_error')).toBe(false);
+  });
+});
+
+/**
+ * The sidebar's spinner comes from the `session_stream_state` row, and ACP had
+ * no writer for it: measured on a live chat, the transcript streamed while the
+ * session row's `aria-label="Running"` mark never appeared (omp's dispatch
+ * writes that row; this transport never did). The marker is asserted through the
+ * seam so these tests stay database-free.
+ */
+describe('ACP stream marker', () => {
+  test('a turn writes `stream` and closes with `finish`', async () => {
+    const { session, turn, streamMarks } = mountSession();
+    await session.send({ type: 'prompt', message: 'hello' });
+    await turn.started;
+    expect(streamMarks()).toEqual(['stream']);
+
+    turn.finish({ stopReason: 'end_turn' });
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    expect(streamMarks()).toEqual(['stream', 'finish']);
+  });
+
+  test('a Stop closes the marker as `abort`, not `finish`', async () => {
+    const { session, turn, streamMarks } = mountSession();
+    await session.send({ type: 'prompt', message: 'long job' });
+    await turn.started;
+    session.cancelTurn();
+    expect(streamMarks()).toEqual(['stream', 'abort']);
+  });
+
+  test('a refused prompt writes nothing', async () => {
+    const { session, turn, streamMarks } = mountSession();
+    await session.send({ type: 'prompt', message: 'first' });
+    await turn.started;
+    await expect(session.send({ type: 'prompt', message: 'second' })).rejects.toThrow('already processing');
+    expect(streamMarks()).toEqual(['stream']);
+    turn.finish({ stopReason: 'end_turn' });
   });
 });

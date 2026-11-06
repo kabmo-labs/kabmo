@@ -37,13 +37,14 @@ export interface AcpTurnSeams {
   /** Tool calls the turn abandoned, by id. */
   openCalls: () => string[];
   /**
-   * The turn is over (finished, failed or cancelled). The session arms the
-   * follow-up queue here, the same instant the omp wrapper's own terminal
-   * settle arms it: ACP has no other run-end hook, and without this a queued
-   * follow-up on an ACP chat sat in `queued_messages` until a tab nudged it —
-   * and the nudge route could not see an ACP session at all.
+   * The turn is over (finished, failed or cancelled), with the agent's own stop
+   * reason. The session arms the follow-up queue and closes its durable run
+   * marker here, at the same instant the omp wrapper's terminal settle does:
+   * ACP has no other run-end hook, and without one a queued follow-up sat in
+   * `queued_messages` until a tab nudged it — and the sidebar kept its spinner
+   * off, because no `stream` row was ever written for this transport.
    */
-  onTurnEnd: () => void;
+  onTurnEnd: (stopReason?: string) => void;
 }
 
 export class AcpTurns {
@@ -166,6 +167,6 @@ export class AcpTurns {
     this.isPromptRunning = false;
     this.isStreaming = false;
     this.seams.emit(turnEndFrame(result));
-    this.seams.onTurnEnd();
+    this.seams.onTurnEnd(result?.stopReason);
   }
 }

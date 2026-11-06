@@ -34,6 +34,7 @@ import { PendingPermissions, allowOption, autoApproval, type PermissionOption } 
 import { DEFAULT_APPROVAL_MODE, isApprovalMode, type ApprovalMode } from '@/shared/lib/omp/config/access-mode';
 import { dispatchCommand, type AcpCommandHost } from '@/server/lib/harness/acp/commands';
 import { scheduleQueueDelivery } from '@/server/lib/queue/delivery.server';
+import { markStreamStatus } from '@/shared/lib/omp/session/stream-state.server';
 import type { HarnessCapabilities } from '@/server/lib/harness/capabilities';
 import type { HarnessSession, HarnessSpawnRequest } from '@/server/lib/harness/session';
 import type { HarnessId } from '@/shared/lib/harness/catalog';
@@ -102,7 +103,10 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
       // queued follow-up stayed in `queued_messages` forever: nothing on this
       // transport scheduled a delivery, and the client's nudge route only knew
       // omp's wrapper.
-      onTurnEnd: () => scheduleQueueDelivery(this),
+      onTurnEnd: (stopReason) => {
+        this.endStream(stopReason);
+        scheduleQueueDelivery(this);
+      },
     });
     this.requestedModel = options.model ?? null;
     this.requestedThinking = options.thinkingLevel ?? null;
@@ -204,6 +208,24 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
     return this.proc.steer(this.sessionId, blocks, queue);
   }
 
+  /**
+   * The durable run marker (`session_stream_state`), the row the sidebar's
+   * spinner and a reattaching tab's "still running" answer read. A field so a
+   * unit test can stub it: the default writes the same row omp's dispatch writes.
+   */
+  markStream: (status: 'stream' | 'finish' | 'abort') => void = (status) => {
+    if (!this.sessionId) return;
+    void markStreamStatus(this.sessionId, status, status === 'stream' ? this.runModel : undefined).catch(() => {});
+  };
+
+  /**
+   * Close the durable run marker at turn end: a cancelled turn is an `abort`
+   * badge, every other ending a `finish`.
+   */
+  endStream(stopReason: string | undefined): void {
+    this.markStream(stopReason === 'cancelled' ? 'abort' : 'finish');
+  }
+
   /** Dispatcher seam: stop the turn. The rules live in `AcpTurns.cancel`. */
   cancelTurn(): void {
     this.turns.cancel();
@@ -283,7 +305,12 @@ export class AcpSession implements HarnessSession, AcpCommandHost {
    *  turn's end is reported by the `agent_end` frame below.
    */
   startTurn(message: string, images: unknown): unknown {
-    return this.turns.start(message, images);
+    const ack = this.turns.start(message, images);
+    // After the start, not before: `turns.start` throws when a turn is already
+    // open, and a marker written for a refused prompt would spin the sidebar
+    // over a run that never existed.
+    this.markStream('stream');
+    return ack;
   }
 
   private onNotification(method: string, params: Record<string, unknown>): void {
