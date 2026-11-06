@@ -57,3 +57,23 @@ describe('modelFromOption', () => {
     expect(modelFromOption(selector(''), 'omp-acp')).toBeNull();
   });
 });
+
+describe('modelFromOption — agent spellings', () => {
+  test('a stringified [provider, id] array is read as provider/model', () => {
+    // deepseek-harness-acp publishes exactly this; without the normalisation the
+    // run indicator named the harness as provider and the array as the model.
+    expect(modelFromOption(selector('["deepseek-official","deepseek-v4-flash"]'), 'dsh')).toEqual({
+      provider: 'deepseek-official',
+      modelId: 'deepseek-v4-flash',
+    });
+  });
+
+  test('a JSON array that is not a pair keeps the agent spelling', () => {
+    expect(modelFromOption(selector('["only-one"]'), 'dsh')).toEqual({
+      provider: 'dsh',
+      modelId: '["only-one"]',
+    });
+    expect(modelFromOption(selector('[1,2]'), 'dsh')).toEqual({ provider: 'dsh', modelId: '[1,2]' });
+    expect(modelFromOption(selector('[broken'), 'dsh')).toEqual({ provider: 'dsh', modelId: '[broken' });
+  });
+});

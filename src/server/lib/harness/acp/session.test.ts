@@ -328,3 +328,44 @@ describe('ACP permission gating', () => {
     turn.finish({ stopReason: 'end_turn' });
   });
 });
+
+/**
+ * A turn that ends with nothing must SAY so.
+ *
+ * Measured on pi-acp: when its provider call fails it answers `session/prompt`
+ * with `{}` and sends no frames at all, so the bubble stayed empty with no
+ * error and the operator could not tell a refusal from an empty answer.
+ */
+describe('ACP silent turn', () => {
+  /** Frames the mapper would have produced for the turn so far. */
+  const finishWith = async (message: string, say?: string) => {
+    const { session, events, turn } = mountSession();
+    await session.send({ type: 'prompt', message });
+    await turn.started;
+    if (say) {
+      (session as unknown as { onNotification: (m: string, p: unknown) => void }).onNotification('session/update', {
+        update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: say } },
+      });
+    }
+    turn.finish({ stopReason: 'end_turn' });
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    return events;
+  };
+
+  test('reports an error when no message and no tool call arrived', async () => {
+    const events = await finishWith('Say DUMMY_OK');
+    const error = events.find((event) => event.type === 'prompt_error');
+    expect(error).toMatchObject({ errorMessage: 'The agent ended the turn without sending an answer' });
+  });
+
+  test('an answered turn reports no error', async () => {
+    const events = await finishWith('Say DUMMY_OK', 'DUMMY_OK');
+    expect(events.some((event) => event.type === 'prompt_error')).toBe(false);
+    expect(events.some((event) => event.type === 'message_end' || event.type === 'message_update')).toBe(true);
+  });
+
+  test('a slash command is exempt: it is answered locally and produces nothing', async () => {
+    const events = await finishWith('/kabmo-mode plan on');
+    expect(events.some((event) => event.type === 'prompt_error')).toBe(false);
+  });
+});

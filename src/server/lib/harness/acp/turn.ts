@@ -56,6 +56,8 @@ export class AcpTurns {
   private seq = 0;
   /** The outstanding `session/prompt` request — the chain the next turn waits on. */
   private request: Promise<unknown> | null = null;
+  /** The prompt text of the turn being opened, for the silent-turn verdict. */
+  private promptText = '';
 
   constructor(private readonly seams: AcpTurnSeams) {}
 
@@ -67,6 +69,7 @@ export class AcpTurns {
     }
     this.seq += 1;
     const turnId = this.seq;
+    this.promptText = message;
     this.isPromptRunning = true;
     this.isStreaming = true;
     this.seams.emit({ type: 'agent_start' });
@@ -140,9 +143,25 @@ export class AcpTurns {
    *  call left open by a cancelled turn would spin forever — the agent is never
    *  going to report an end for work it abandoned. */
   private finish(result: { stopReason?: string } | undefined): void {
-    for (const event of this.seams.closeMessage()) this.seams.emit(event);
-    for (const toolCallId of this.seams.openCalls()) {
+    const flushed = this.seams.closeMessage();
+    for (const event of flushed) this.seams.emit(event);
+    const abandoned = this.seams.openCalls();
+    for (const toolCallId of abandoned) {
       this.seams.emit({ type: 'tool_execution_end', toolCallId, isError: true, result: { output: 'Cancelled' } });
+    }
+    // A prompt that ends with no message and no tool call is a SILENT failure on
+    // most agents (measured on pi-acp: it answers `session/prompt` with `{}` and
+    // sends no frames at all when its provider call fails). Reporting it beats
+    // leaving an empty bubble that reads as "the agent had nothing to say".
+    // Slash commands are exempt: an extension command is answered locally and
+    // correctly produces nothing, and a user's Stop is not a failure either.
+    const answered = flushed.length > 0 || abandoned.length > 0;
+    const cancelled = result?.stopReason === 'cancelled';
+    if (!answered && !cancelled && !this.promptText.trimStart().startsWith('/')) {
+      this.seams.emit({
+        type: 'prompt_error',
+        errorMessage: 'The agent ended the turn without sending an answer',
+      });
     }
     this.isPromptRunning = false;
     this.isStreaming = false;

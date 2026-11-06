@@ -38,10 +38,32 @@ export function modelFromOption(
 ): { provider: string; modelId: string } | null {
   const current = option?.currentValue;
   if (typeof current !== 'string' || current.length === 0) return null;
+  // deepseek-harness-acp publishes the model as a stringified `[provider, id]`
+  // array (measured: `["deepseek-official","deepseek-v4-flash"]`), so the run
+  // indicator would otherwise name the harness as the provider and print the
+  // array as the model. The LIST keeps the agent's own value — that is what a
+  // selection must write back — only the reported identity is normalised.
+  const pair = parseModelPair(current);
+  if (pair) return pair;
   const slash = current.indexOf('/');
   return slash > 0
     ? { provider: current.slice(0, slash), modelId: current.slice(slash + 1) }
     : { provider: fallbackProvider, modelId: current };
+}
+
+/** `[provider, id]` as JSON text, or null for any other spelling. */
+function parseModelPair(value: string): { provider: string; modelId: string } | null {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('[')) return null;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (Array.isArray(parsed) && parsed.length === 2 && parsed.every((part) => typeof part === 'string')) {
+      return { provider: String(parsed[0]), modelId: String(parsed[1]) };
+    }
+  } catch {
+    // Not JSON: the agent's own string is the truth.
+  }
+  return null;
 }
 
 /** A prompt in ACP content-block form. */
