@@ -41,6 +41,22 @@ import type { ProcessInfo } from './proc/types';
 /** What a group IS, which decides its icon, tone and ordering. */
 export type GroupKind = 'kabmo' | 'session' | 'prewarm' | 'utility' | 'daemon' | 'broker' | 'terminal' | 'other';
 
+/**
+ * Whether this argv is Kabmo's omp-over-ACP session child.
+ *
+ * An ACP chat runs `omp acp -e <extension>` — there is no `--mode rpc-ui` in its
+ * argv — so the rpc-ui test below never saw it: measured in the panel, a live
+ * ACP session rendered as a bare `omp` row folded into Kabmo's own group.
+ *
+ * A match is ALWAYS a live session: Kabmo spawns one ACP child per chat, with no
+ * prewarm and no utility spawn on this transport.
+ */
+export function isAcpSessionArgv(argv: readonly string[] | null | undefined): boolean {
+  if (!argv || argv.length < 2) return false;
+  const head = (argv[0] ?? '').split(/[\\/]/).pop();
+  return head === 'omp' && argv[1] === 'acp';
+}
+
 /** Where one process sits in the tree. */
 export interface GroupAssignment {
   /** Groups are compared by this; stable across samples for the same owner. */
@@ -104,6 +120,10 @@ function rootsOf(list: readonly ProcessInfo[], options: GroupOptions): Map<numbe
   for (const process of list) {
     if (process.ppid !== options.serverPid || roots.has(process.pid)) continue;
     const line = (process.argv ?? []).join(' ');
+    if (isAcpSessionArgv(process.argv)) {
+      roots.set(process.pid, { kind: 'session' });
+      continue;
+    }
     if (line.includes('--mode rpc-ui')) {
       // The LEASE decides session-vs-prewarm, never argv: a host that adopted a
       // prewarm keeps the prewarm's argv for its whole life, so argv alone

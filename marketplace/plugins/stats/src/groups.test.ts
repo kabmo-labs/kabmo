@@ -63,6 +63,20 @@ describe('assignGroups', () => {
     expect(groups.get(101)?.kind).toBe('utility');
   });
 
+  test('an omp acp child is a session root, not a bare row inside Kabmo', () => {
+    // Measured: an ACP chat runs `omp acp -e <extension>`, so the rpc-ui test
+    // never saw it and the panel drew it as a plain `omp` process.
+    const list = [
+      proc(SERVER_PID, 1, ['bun', '--kabmo-server']),
+      proc(101, SERVER_PID, ['/opt/homebrew/bin/omp', 'acp', '-e', '/repo/extensions/kabmo-modes/index.ts']),
+    ];
+    const groups = assignGroups(list, { serverPid: SERVER_PID, daemons: [] });
+    expect(groups.get(101)?.kind).toBe('session');
+    expect(groups.get(101)?.key).toBe('session:101');
+    expect(groups.get(101)?.ownerPid).toBe(101);
+    expect(groups.get(101)?.depth).toBe(0);
+  });
+
   test('a daemon root is a group even when parented to 1', () => {
     // The broker is detached and reparented, so a tree walk cannot see it.
     const list = [

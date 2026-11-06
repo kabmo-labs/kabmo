@@ -37,6 +37,7 @@
 import os from 'node:os';
 
 import type { ProcessInfo } from './proc/types';
+import { isAcpSessionArgv } from './groups';
 import { sessionFileForId, titleForSessionFile, sessionIdFromPath, lastWriteMs } from './sessions';
 
 /** A row's two lines. */
@@ -177,6 +178,12 @@ export function describeProcess(process: ProcessInfo, context: LabelContext): Pr
     return argv.some((value) => value.includes('--mcp'))
       ? { title: `codegraph MCP${project ? ` · ${project}` : ''}`, detail: detailOf(['--mcp', age]) }
       : { title: 'codegraph watchdog', detail: age };
+  }
+  if (isAcpSessionArgv(argv)) {
+    // An ACP chat's id lives in Kabmo's `harness_sessions` table, not in argv, and
+    // its transcript lives behind the agent — so the honest two lines are the
+    // transport and the project, never a fabricated session title.
+    return { title: 'omp (ACP)', detail: detailOf([cwdArg ?? project, age]) };
   }
   if (line.includes('--mode rpc-ui')) {
     if (argv.includes('--no-session')) {

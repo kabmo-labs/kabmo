@@ -110,6 +110,15 @@ describe('describeProcess', () => {
     expect(asSession.title.length).toBeGreaterThan(0);
   });
 
+  test('an omp acp child is named as the ACP session, never a bare `omp`', () => {
+    const label = describeProcess(
+      proc(200, ['/opt/homebrew/bin/omp', 'acp', '-e', '/repo/extensions/kabmo-modes/index.ts'], { cwd: '/Users/me/proj' }),
+      { now: NOW },
+    );
+    expect(label.title).toBe('omp (ACP)');
+    expect(label.detail).toContain('proj');
+  });
+
   test('a utility child is not called a prewarm', () => {
     const label = describeProcess(
       proc(102, ['bun', '/bin/omp', '--mode', 'rpc-ui', '--cwd', '/Users/me', '--no-session', '--no-lsp']),
